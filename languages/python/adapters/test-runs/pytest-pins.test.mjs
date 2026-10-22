@@ -57,6 +57,12 @@ describe('pinning the pytest options that let a failing run pass', () => {
       ],
     });
   });
+  it('drops the -m marker filter, which hides tests the same way -k does', () => {
+    expect(pinAddopts(['-q', '-m', 'not slow', '-mfast', '--strict-markers'])).toEqual({
+      kept: ['-q', '--strict-markers'],
+      removed: ['-m not slow', '-mfast'],
+    });
+  });
   it('keeps an -x that is the value of another short flag', () => {
     expect(pinAddopts(['-vWx']).kept).toEqual(['-vWx']);
   });

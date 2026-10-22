@@ -160,7 +160,7 @@ describe('the test file rules report the same on both lint engines', () => {
     ['jest/sample.test.mjs', 'waitFor from Testing Library or jest.advanceTimersByTimeAsync'],
     ['node/sample.test.mjs', 'an awaited event or promise, or mock.timers.tick'],
   ])('with a message in %s that names the call of the runner: %s', (name, advice) => {
-    const message = `Fixed sleeps are non-deterministic; wait on a condition with ${advice}. If a real wait is unavoidable, add an exception for nitpicker/no-fixed-sleep-synchronization in nitpicker.config.json.`;
+    const message = `Fixed sleeps are non-deterministic; wait on a condition with ${advice}. An exception fits only when a real wait is unavoidable.`;
 
     expect(sleepsOf(oxlintFindings, name)).toEqual([message]);
     expect(sleepsOf(eslintFindings, name)).toEqual([message]);

@@ -3,17 +3,16 @@ import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
-import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
+import {
+  fakeGradle,
+  runTasksWithFakeGradle,
+} from '../command/java/test-support/java-cli-harness.mjs';
 import { cacheKey } from '../diff/cache/findings-cache.mjs';
 import { baseSetupResolver } from '../command/policy-review/base-setup.mjs';
 import { runCli } from '../cli.mjs';
 
 const { createGitRepository } = useGitFixtures();
 
-const fakeGradle = path.resolve(
-  import.meta.dirname,
-  '../../languages/java/adapters/fixtures/fake-gradle.mjs',
-);
 const fourSpaces = 'package demo;\n\npublic final class A {\n    private int a;\n}\n';
 const outputs = [];
 let previousGradle;
@@ -52,7 +51,7 @@ describe('conventions in a run', () => {
       stdout: { write: (value) => (out += value) },
       stderr: { write: () => undefined },
       progress: { write: () => undefined },
-      runTasks: runTasksInProcess,
+      runTasks: runTasksWithFakeGradle,
     });
 
     expect(exitCode, out).toBe(0);
@@ -78,7 +77,7 @@ describe('conventions in a run', () => {
       stdout: { write: () => undefined },
       stderr: { write: (value) => (errors += value) },
       progress: { write: () => undefined },
-      runTasks: runTasksInProcess,
+      runTasks: runTasksWithFakeGradle,
     });
 
     expect(exitCode).toBe(2);

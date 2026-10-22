@@ -4,13 +4,16 @@ import { writeLines } from './shared/write-lines.js';
 
 const QUOTE_URL = 'https://prices.example.com/quotes/';
 const DEFAULT_OPTIONS = { maxAttempts: 3, baseDelayMs: 500 };
+const QUOTE_TIMEOUT_MS = 10_000;
 
 export function main(names: readonly string[]): void {
   runGreeting(names, { write: (text) => process.stdout.write(text) });
 }
 
 async function fetchQuote(symbol: string): Promise<{ status: number; body: string }> {
-  const response = await fetch(`${QUOTE_URL}${encodeURIComponent(symbol)}`);
+  const response = await fetch(`${QUOTE_URL}${encodeURIComponent(symbol)}`, {
+    signal: AbortSignal.timeout(QUOTE_TIMEOUT_MS),
+  });
   return { status: response.status, body: await response.text() };
 }
 

@@ -34,7 +34,7 @@ function runGradle() {
   roots.push(path.dirname(logFile));
   expect(message).toBe(`Full Gradle log: ${logFile}\n${error.message}`);
   expect(readFileSync(logFile, 'utf8')).toBe('=== stdout ===\n\n=== stderr ===\n');
-  return vi.mocked(spawnSync).mock.calls[0][2].timeout;
+  return JSON.parse(vi.mocked(spawnSync).mock.calls[0][2].input).options.timeout;
 }
 
 describe('the Gradle execution budget', () => {

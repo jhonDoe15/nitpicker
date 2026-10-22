@@ -1,4 +1,3 @@
-import { EXCEPTION_HINT, GENERAL_HINT } from '../rule-hints.mjs';
 import { extraAccessibilityRuleNames } from './rules/accessibility-rules.mjs';
 import { nitpickerReactRuleIds } from './rules/nitpicker-rules.mjs';
 import { thirdPartyReactRuleIds } from './rules/third-party-rules.mjs';
@@ -58,18 +57,18 @@ export const reactRuleIds = [
 
 export function testingLibraryHintsFor({ assertVisible, assertFocus }) {
   return {
-    'await-async-events': `. Await the call: \`await user.<event>(...)\`. On user-event v13, whose calls are synchronous, ${EXCEPTION_HINT}`,
-    'await-async-queries': `. Await it: \`await screen.findByRole(...)\`.${GENERAL_HINT}`,
-    'await-async-utils': `. Await it: \`await waitFor(...)\`.${GENERAL_HINT}`,
-    'no-debugging-utils': `. Remove the debug output and assert what you were looking for: ${assertVisible}.${GENERAL_HINT}`,
-    'no-manual-cleanup': ` Testing Library unmounts after each test by itself in this project: remove the call.${GENERAL_HINT}`,
-    'no-node-access': ` Use \`screen.getByRole(...)\` or \`within(...)\`, and ${assertFocus} for focus.${GENERAL_HINT}`,
-    'no-test-id-queries': ` Use \`screen.getByRole('button', { name: 'Save' })\`.${GENERAL_HINT}`,
-    'no-unnecessary-act': `: \`render\` and \`user\` events already run in \`act\`. Call them directly.${GENERAL_HINT}`,
-    'prefer-presence-queries': `: \`expect(screen.getByText('Saved')).toBeInTheDocument()\`, \`expect(screen.queryByText('Error')).not.toBeInTheDocument()\`.${GENERAL_HINT}`,
-    'prefer-screen-queries': `. For part of the page use \`within(element).getByRole(...)\`.${GENERAL_HINT}`,
-    'prefer-user-event': `. Use \`await user.click(button)\`.${GENERAL_HINT}`,
-    'prefer-user-event-setup': `, with \`import { userEvent } from '@testing-library/user-event'\`.${GENERAL_HINT}`,
+    'await-async-events': `. Await the call: \`await user.<event>(...)\`. An exception fits only on user-event v13, whose calls are synchronous.`,
+    'await-async-queries': `. Await it: \`await screen.findByRole(...)\`.`,
+    'await-async-utils': `. Await it: \`await waitFor(...)\`.`,
+    'no-debugging-utils': `. Remove the debug output and assert what you were looking for: ${assertVisible}.`,
+    'no-manual-cleanup': ` Testing Library unmounts after each test by itself in this project: remove the call.`,
+    'no-node-access': ` Use \`screen.getByRole(...)\` or \`within(...)\`, and ${assertFocus} for focus.`,
+    'no-test-id-queries': ` Use \`screen.getByRole('button', { name: 'Save' })\`.`,
+    'no-unnecessary-act': `: \`render\` and \`user\` events already run in \`act\`. Call them directly.`,
+    'prefer-presence-queries': `: \`expect(screen.getByText('Saved')).toBeInTheDocument()\`, \`expect(screen.queryByText('Error')).not.toBeInTheDocument()\`.`,
+    'prefer-screen-queries': `. For part of the page use \`within(element).getByRole(...)\`.`,
+    'prefer-user-event': `. Use \`await user.click(button)\`.`,
+    'prefer-user-event-setup': `, with \`import { userEvent } from '@testing-library/user-event'\`.`,
   };
 }
 
@@ -152,6 +151,6 @@ export const restrictedBrowserGlobals = [
   'error',
   ...confusingBrowserGlobals.map((name) => ({
     name,
-    message: `\`${name}\` here is the browser global, not a local value. Write \`window.${name}\` when you mean the global; otherwise take the value as a parameter (\`onClick={(event) => ...}\`) or declare it.${GENERAL_HINT}`,
+    message: `\`${name}\` here is the browser global, not a local value. Write \`window.${name}\` when you mean the global; otherwise take the value as a parameter (\`onClick={(event) => ...}\`) or declare it.`,
   })),
 ];

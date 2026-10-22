@@ -72,7 +72,7 @@ export const rule = {
     schema: [],
     messages: {
       unlabelled:
-        'Label this field: wrap it in `<label>`, give it an `id` that a `<label htmlFor>` points to, or set `aria-label`. If a wrapper labels it elsewhere, add an exception for this rule in nitpicker.config.json.',
+        'Label this field: wrap it in `<label>`, give it an `id` that a `<label htmlFor>` points to, or set `aria-label`. An exception fits only when a wrapper labels it elsewhere.',
     },
   },
   create(context) {

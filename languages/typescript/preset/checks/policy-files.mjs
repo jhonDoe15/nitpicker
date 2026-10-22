@@ -5,7 +5,7 @@ export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-pr
 
 export const POLICY_FILES = [
   'shared/test-timeouts/resolve.mjs',
-  'shared/glob.mjs',
+  'shared/paths/glob.mjs',
   'shared/head-policy.mjs',
   'shared/policy.mjs',
   'shared/traversal.mjs',
@@ -50,6 +50,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-branch-in-composition-root.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/no-comments.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/doc-comment-content.mjs',
+  'shared/rules/doc-comments/doc-comments.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/control/no-self-recursion.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-throw.mjs',
@@ -96,6 +97,7 @@ export const POLICY_FILES = [
   'languages/typescript/conventions/measures/typescript-syntax.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-silent-catch.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/report-module-load-effects.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/modules/entry/main-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/structured-catch-logging.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/assertions/test-must-use-production-runtime.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/test-code-analysis.mjs',

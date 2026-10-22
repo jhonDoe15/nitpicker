@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { escapeRegExp } from '../../../../../shared/glob.mjs';
+import { escapeRegExp } from '../../../../../shared/paths/glob.mjs';
 import { hasDomEnvironment } from '../../test-environment/environments.mjs';
 import {
   environmentsFromJestConfig,

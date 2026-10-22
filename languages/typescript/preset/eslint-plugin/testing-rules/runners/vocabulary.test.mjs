@@ -29,8 +29,7 @@ function messagesFor(rules, code, runner) {
 
 const sleepRules = { 'no-fixed-sleep': noFixedSleep };
 const intervalRules = { 'no-interval-polling': noIntervalPolling };
-const EXCEPTION =
-  'If a real wait is unavoidable, add an exception for nitpicker/no-fixed-sleep-synchronization in nitpicker.config.json.';
+const EXCEPTION = 'An exception fits only when a real wait is unavoidable.';
 
 const sleepMessage = (advice) =>
   `Fixed sleeps are non-deterministic; wait on a condition with ${advice}. ${EXCEPTION}`;

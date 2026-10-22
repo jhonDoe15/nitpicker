@@ -14,7 +14,7 @@ import {
   reactXHints,
   typedReactXRules,
 } from './rules/third-party-rules.mjs';
-import { EXCEPTION_HINT, GENERAL_HINT, withHint, withoutFixes } from '../rule-hints.mjs';
+import { withHint, withoutFixes } from '../rule-hints.mjs';
 import { createdByCallOnly } from './rules/static-components.mjs';
 import { outsideKeyAttributes } from './rules/purity-outside-keys.mjs';
 
@@ -39,10 +39,10 @@ function hintedRules(plugin, hints, typedNames = []) {
 export const reactPlugins = {
   'react-hooks': {
     rules: {
-      'rules-of-hooks': withHint(hooks.rules['rules-of-hooks'], GENERAL_HINT),
+      'rules-of-hooks': hooks.rules['rules-of-hooks'],
       'exhaustive-deps': withHint(
         hooks.rules['exhaustive-deps'],
-        ` If a dependency is deliberately left out, ${EXCEPTION_HINT}`,
+        ' An exception fits only when a dependency is deliberately left out.',
       ),
     },
   },
@@ -65,7 +65,9 @@ export const reactPlugins = {
     rules: Object.fromEntries(
       accessibilityRuleNames.map((name) => [
         name,
-        withHint(accessibility.rules[name], accessibilityHints[name] ?? GENERAL_HINT),
+        accessibilityHints[name] === undefined
+          ? accessibility.rules[name]
+          : withHint(accessibility.rules[name], accessibilityHints[name]),
       ]),
     ),
   },

@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { readDurations } from './sequencer.mjs';
@@ -58,6 +58,6 @@ async function recordDurations(argv) {
   writeFileSync(file, `${JSON.stringify(durations, null, 2)}\n`);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   await recordDurations(process.argv.slice(2));
 }
