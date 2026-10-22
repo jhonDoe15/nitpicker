@@ -10,12 +10,26 @@ testing {
     suites {
         test {
             useJUnitJupiter('5.11.4')
+            targets.all {
+                testTask.configure {
+                    useJUnitPlatform { excludeTags 'integration' }
+                }
+            }
         }
         integrationTest(JvmTestSuite) {
-            useJUnitJupiter('5.11.4')
+            useJUnitJupiter('5.11.0')
             dependencies {
                 implementation project()
             }
+            targets.all {
+                testTask.configure {
+                    useJUnitPlatform { includeTags 'integration' }
+                }
+            }
         }
     }
+}
+
+tasks.named('check') {
+    dependsOn testing.suites.integrationTest
 }

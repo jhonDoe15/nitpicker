@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 
 function touch(file, text = '') {
@@ -17,6 +24,27 @@ function toolClasspaths(argumentsList) {
   }
 }
 
+function classesOf(sourceRoot, classesRoot) {
+  if (existsSync(sourceRoot)) {
+    for (const file of readdirSync(sourceRoot, { recursive: true })) {
+      if (file.endsWith('.java')) {
+        touch(path.join(classesRoot, file.replace(/\.java$/u, '.class')), 'class');
+      }
+    }
+  }
+}
+
+function surefireReports() {
+  const results = 'test-results/test';
+  if (existsSync(results)) {
+    mkdirSync('target/surefire-reports', { recursive: true });
+    touch('target/nitpicker-jacoco.exec', 'recorded');
+    for (const report of readdirSync(results)) {
+      copyFileSync(path.join(results, report), path.join('target/surefire-reports', report));
+    }
+  }
+}
+
 function build(valueOf, io) {
   if (existsSync('MAVEN_FAIL')) {
     io.stdout.write(`[ERROR] ${readFileSync('MAVEN_FAIL', 'utf8')}`);
@@ -27,14 +55,16 @@ function build(valueOf, io) {
     .replace('${project.artifactId}', 'demo');
   touch(output);
   mkdirSync('target/classes', { recursive: true });
-  if (existsSync('MAIN_CLASSES')) {
-    touch('target/classes/demo/A.class', 'class');
-  }
   mkdirSync('target/test-classes', { recursive: true });
+  if (existsSync('MAIN_CLASSES')) {
+    classesOf('src/main/java', 'target/classes');
+    classesOf('src/test/java', 'target/test-classes');
+  }
+  surefireReports();
   return 0;
 }
 
-export function runFakeMaven(argumentsList, io) {
+function runFakeMaven(argumentsList, io) {
   function valueOf(prefix) {
     return argumentsList.find((argument) => argument.startsWith(prefix))?.slice(prefix.length);
   }
@@ -50,3 +80,5 @@ export function runFakeMaven(argumentsList, io) {
   }
   return 0;
 }
+
+export const fakeMaven = { url: import.meta.url, run: runFakeMaven };

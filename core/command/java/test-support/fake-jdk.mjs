@@ -1,8 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-export const FAKE_JDK_TOOLS = ['java', 'jdeps', 'jar'];
-
 const FIRST_FINDING_LINE = 3;
 const GOOGLE_CHECKS = [
   '<module name="Checker">',
@@ -92,12 +90,19 @@ function java(rawArguments, io) {
   } else if (script?.endsWith('ErrorProneReport.java')) {
     put(tokens[tokens.indexOf(script) + 1], '[]\n');
   } else {
-    HANDLERS[mainClass]({ after });
+    const handler = HANDLERS[mainClass];
+    if (handler === undefined) {
+      throw new Error(`fake java does not know how to run: ${tokens.join(' ')}`);
+    }
+    handler({ after });
   }
 }
 
 function jdeps(_rawArguments, io) {
-  io.stdout.write(existsSync('jdeps.txt') ? readFileSync('jdeps.txt', 'utf8') : '');
+  const reports = ['jdeps.txt', 'jdeps/jdeps.txt', 'jdeps/jdeps-test.txt'].filter((file) =>
+    existsSync(file),
+  );
+  io.stdout.write(reports.map((file) => readFileSync(file, 'utf8')).join(''));
 }
 
 function jar() {
@@ -106,7 +111,9 @@ function jar() {
 
 const TOOLS = { java, jdeps, jar };
 
-export function runFakeJdk([tool, ...rawArguments], io) {
+function runFakeJdk([tool, ...rawArguments], io) {
   TOOLS[tool](rawArguments, io);
   return 0;
 }
+
+export const fakeJdk = { url: import.meta.url, tools: Object.keys(TOOLS), run: runFakeJdk };
