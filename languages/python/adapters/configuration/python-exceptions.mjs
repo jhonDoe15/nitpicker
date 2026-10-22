@@ -1,7 +1,7 @@
 import { applyFindingExceptions } from '../../../../shared/exceptions/finding-exceptions.mjs';
 import { sharedRouteRule } from '../../../../shared/exceptions/routes.mjs';
 import { findingPaths } from '../../../../shared/findings/finding-policy.mjs';
-import { globToRegExp } from '../../../../shared/glob.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { FUNCTION_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { RUFF_SELECTOR } from './python-rule-ids.mjs';
 
@@ -24,7 +24,7 @@ export function applyPythonExceptions(findings, exceptions = []) {
     .filter((entry) => !narrowed(entry))
     .map(({ rule, paths }) => ({
       rule,
-      matchers: paths.map((glob) => globToRegExp(glob)),
+      matchers: paths.map((glob) => globMatcher(glob)),
     }));
   return applyFindingExceptions(
     findings.filter(

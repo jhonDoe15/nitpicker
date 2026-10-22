@@ -70,8 +70,8 @@ describe('config file', () => {
       preset: 'python',
       ...shared,
     });
-    expect(() => validateConfig({ preset: 'python', layout: {} })).toThrow(
-      '"layout" is not supported with "preset": "python"',
+    expect(() => validateConfig({ preset: 'python', layout: { sourceRoots: ['src'] } })).toThrow(
+      '"layout.sourceRoots" is not supported with "preset": "python"',
     );
     const exceptions = [{ rule: 'line-length-limit', paths: ['src/urls.py'], reason: 'URL table' }];
     expect(validateConfig({ preset: 'python', exceptions })).toEqual({
@@ -239,9 +239,7 @@ describe('config file', () => {
   });
 
   it.each([
-    ['java', 'layout'],
     ['java', 'react'],
-    ['kotlin', 'layout'],
     ['kotlin', 'react'],
   ])('rejects the %s preset with %s instead of ignoring it', (preset, key) => {
     expect(() => validateConfig({ preset, [key]: {} })).toThrow(

@@ -1,4 +1,4 @@
-import { escapeRegExp } from '../../../../../shared/glob.mjs';
+import { escapeRegExp } from '../../../../../shared/paths/glob.mjs';
 import { FOLDER_DEPTH_DEFAULTS } from '../../../../../shared/project-rules/size-rules.mjs';
 import { folderDepthFindings } from '../../../../../shared/rules/size/folder-depth.mjs';
 

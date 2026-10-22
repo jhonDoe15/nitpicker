@@ -1,4 +1,4 @@
-import { globToRegExp } from '../glob.mjs';
+import { globMatcher } from '../paths/glob.mjs';
 import { applyFindingExceptions } from '../exceptions/finding-exceptions.mjs';
 import { sharedRouteRule, withExceptionRoutes } from '../exceptions/routes.mjs';
 import { applyInventoryToFindings, readOptionalInventory } from '../legacy-inventory.mjs';
@@ -25,7 +25,7 @@ export function applyFindingPolicy(
   } = {},
   resolveOverlaps = (reported) => reported,
 ) {
-  const excluders = exclude.map((glob) => globToRegExp(glob));
+  const excluders = exclude.map((glob) => globMatcher(glob));
   const kept = resolveOverlaps(
     applyFindingExceptions(
       withExceptionRoutes(

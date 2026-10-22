@@ -1,4 +1,12 @@
 import path from 'node:path';
+import {
+  boundValues,
+  formatTitle,
+  literalOf,
+  literalsIn,
+  rowsOf,
+  tableOf,
+} from './test-tables.mjs';
 import { lineOf, parseSource, ts } from './typescript.mjs';
 
 const SUITE_NAMES = new Map([
@@ -23,10 +31,12 @@ const MOCK_METHODS = new Set(['mock', 'doMock']);
  * Parses a test file into its tests and mock calls.
  *
  * Each test is `{ key, title, line, skipped, only, assertions, weak, tautologies, shape }`:
- * `key` is the describe titles joined with the test title (duplicates get a `#n` suffix),
+ * `key` is the describe titles joined with the test title (duplicates get a `#n` suffix), with one
+ * entry per row of an `it.each` table (`row: true`, the title formatted from the row's values),
  * `assertions` counts `expect(...).matcher()` and `assert...()` calls, `weak` lists matchers that
  * pass for almost any value, `tautologies` lists assertions that cannot fail, and `shape` is the
- * whitespace-normalized callback text used to recognise a renamed test.
+ * whitespace-normalized callback text used to recognise a renamed test (plus the row's text for a
+ * row), and `literals` the sorted literal values the body and the row's bound values hold.
  */
 export function parseTestFile(file, text) {
   const sourceFile = parseSource(file, text);
@@ -51,7 +61,7 @@ export function parseTestFile(file, text) {
         return;
       }
       if (callee !== undefined && callee.kind === 'test') {
-        tests.push(analyzeTest({ node, callee, suite, sourceFile, keyCounts }));
+        tests.push(...analyzeTest({ node, callee, suite, sourceFile, keyCounts }));
         return;
       }
     }
@@ -70,6 +80,8 @@ function describeCallee(expression) {
   for (;;) {
     if (ts.isCallExpression(node)) {
       node = node.expression;
+    } else if (ts.isTaggedTemplateExpression(node)) {
+      node = node.tag;
     } else if (ts.isPropertyAccessExpression(node)) {
       modifiers.push(node.name.text);
       node = node.expression;
@@ -101,14 +113,75 @@ function titleOf(call, sourceFile) {
   return `<dynamic title at line ${String(lineOf(sourceFile, call))}>`;
 }
 
-function analyzeTest({ node, callee, suite, sourceFile, keyCounts }) {
-  const title = titleOf(node, sourceFile);
-  const baseKey = [...suite.titles, title].join(' > ');
+function keyFor(titles, keyCounts) {
+  const baseKey = titles.join(' > ');
   const seen = keyCounts.get(baseKey) ?? 0;
   keyCounts.set(baseKey, seen + 1);
+  return seen === 0 ? baseKey : `${baseKey}#${String(seen + 1)}`;
+}
+
+function analyzeTest({ node, callee, suite, sourceFile, keyCounts }) {
+  const title = titleOf(node, sourceFile);
+  const body = node.arguments.find(
+    (argument) => ts.isArrowFunction(argument) || ts.isFunctionExpression(argument),
+  );
+  const table = tableOf(node);
+  const rows = table === undefined ? undefined : rowsOf(table, sourceFile);
+  if (rows === undefined) {
+    const result = analyzeBody({ node, callee, suite, sourceFile, body });
+    return [{ ...result, key: keyFor([...suite.titles, title], keyCounts), title }];
+  }
+  return rows.map((row, index) => {
+    const result = analyzeBody({ node, callee, suite, sourceFile, body });
+    const rowTitle = formatTitle(title, row, index);
+    const bound = body === undefined ? [] : boundValues(row, body);
+    return {
+      ...result,
+      key: keyFor([...suite.titles, rowTitle], keyCounts),
+      title: rowTitle,
+      line: row.line,
+      row: true,
+      shape: `${result.shape} @ ${row.text}`,
+      weak: [...result.weak, ...rowWeakness(bound, body, sourceFile)],
+      literals: [
+        ...result.literals,
+        ...bound.map(({ node: value }) => literalOf(value) ?? `?${value.getText(sourceFile)}`),
+      ].toSorted(),
+    };
+  });
+}
+
+function rowWeakness(bound, body, sourceFile) {
+  const weak = [];
+  for (const { node, name } of bound) {
+    if (name === undefined || !isAnything(node, sourceFile)) {
+      continue;
+    }
+    const visit = (child) => {
+      const assertion = ts.isCallExpression(child) ? assertionOf(child) : undefined;
+      const [first] = assertion?.args ?? [];
+      if (
+        assertion !== undefined &&
+        !assertion.negated &&
+        first !== undefined &&
+        ts.isIdentifier(first) &&
+        first.text === name
+      ) {
+        weak.push(`${assertion.matcher}(expect.anything())`);
+      }
+      ts.forEachChild(child, visit);
+    };
+    visit(body);
+  }
+  return weak;
+}
+
+function isAnything(node, sourceFile) {
+  return ts.isCallExpression(node) && node.expression.getText(sourceFile) === 'expect.anything';
+}
+
+function analyzeBody({ node, callee, suite, sourceFile, body }) {
   const result = {
-    key: seen === 0 ? baseKey : `${baseKey}#${String(seen + 1)}`,
-    title,
     line: lineOf(sourceFile, node),
     skipped: suite.skipped || callee.skipped,
     only: suite.only || callee.only,
@@ -116,14 +189,13 @@ function analyzeTest({ node, callee, suite, sourceFile, keyCounts }) {
     weak: [],
     tautologies: [],
     shape: '',
+    literals: [],
   };
-  const body = node.arguments.find(
-    (argument) => ts.isArrowFunction(argument) || ts.isFunctionExpression(argument),
-  );
   if (body === undefined) {
     return result;
   }
   result.shape = body.getText(sourceFile).replace(/\s+/g, ' ');
+  result.literals = literalsIn(body.body).toSorted();
   const visit = (child) => {
     if (ts.isCallExpression(child)) {
       if (isInBodySkip(child)) {
