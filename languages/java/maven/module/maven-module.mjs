@@ -52,23 +52,20 @@ function hasJar(classpath, jar) {
   return classpath.some((entry) => jar.test(path.basename(entry)));
 }
 
-function writeManifest({ module, reportDir, pinned, spring, classpaths, kotlinManifest }) {
-  writeFileSync(
-    path.join(reportDir, 'manifest.json'),
-    JSON.stringify({
-      versions: pinned,
-      build: 'maven',
-      sourceRoots: relativeRoots(module, module.sourceRoots),
-      testSourceRoots: relativeRoots(module, module.testSourceRoots),
-      resourceRoots: relativeRoots(module, module.resourceRoots),
-      spring,
-      guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
-      testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
-      testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
-      published: module.published,
-      ...kotlinManifest,
-    }),
-  );
+export function moduleManifest({ module, classpaths, pinned }) {
+  return {
+    versions: pinned,
+    build: 'maven',
+    sourceRoots: relativeRoots(module, module.sourceRoots),
+    kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
+    testSourceRoots: relativeRoots(module, module.testSourceRoots),
+    resourceRoots: relativeRoots(module, module.resourceRoots),
+    spring: hasJar(classpaths.mainCompile, SPRING_JAR),
+    guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
+    testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
+    testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
+    published: module.published,
+  };
 }
 
 function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
@@ -103,7 +100,8 @@ export function analyzeModule({
 }) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
+  const manifest = moduleManifest({ module, classpaths, pinned });
+  const { spring } = manifest;
   const testRuntime = classpaths.testRuntime;
   const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
   const kotlin = analyzeKotlinModule({
@@ -136,5 +134,8 @@ export function analyzeModule({
     testsRan,
   });
   runPit({ module: kotlin.coverageModule, reportDir, tools, classpaths, isArchunit });
-  writeManifest({ module, reportDir, pinned, spring, classpaths, kotlinManifest: kotlin.manifest });
+  writeFileSync(
+    path.join(reportDir, 'manifest.json'),
+    JSON.stringify({ ...manifest, ...kotlin.manifest }),
+  );
 }

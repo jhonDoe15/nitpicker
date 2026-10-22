@@ -27,7 +27,7 @@ function discover(language, extra = []) {
 }
 
 const EXPECTED_JAVA_CASES = 76;
-const EXPECTED_KOTLIN_CASES = 104;
+const EXPECTED_KOTLIN_CASES = 107;
 const EXPECTED_CASES = { java: EXPECTED_JAVA_CASES, kotlin: EXPECTED_KOTLIN_CASES };
 
 function contained(base, ...segments) {

@@ -16,6 +16,7 @@ import {
 } from '../kotlin/rules/kotlin-source-rules.mjs';
 import { readKotlinSpringFindings } from '../kotlin/spring/kotlin-spring.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
+import { readKotlinReviewFindings } from '../kotlin/review-rules/review-findings.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -107,6 +108,7 @@ export function readKotlinFindings(context, crapLimit) {
     ...readTestAssertionFindings(projectRoot, testRoots, helpers),
     ...(manifest.spring === true ? readKotlinSpringFindings({ projectRoot, reportRoot }) : []),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
+    ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
     ...readKotlinStructureFindings(metrics, projectRoot),
     ...readKotlinCrapFindings(metrics, {
       projectRoot,

@@ -7,7 +7,7 @@ import { toolDependencies } from '../../maven-tools.mjs';
 import { detektArguments, detektClasspath, jdkHome } from './kotlin-detekt.mjs';
 import { kotlinTools } from './kotlin-dependencies.mjs';
 import { ktfmtArguments, ktlintArguments } from './kotlin-format.mjs';
-import { programArguments } from './kotlin-programs.mjs';
+import { programArguments, psiArguments } from './kotlin-programs.mjs';
 
 const roots = [];
 const module = {
@@ -168,19 +168,43 @@ describe('formatter and metrics arguments', () => {
     ).toEqual(['--meta-style', '--dry-run', '--max-width=120', 'src/main/kotlin/A.kt']);
   });
 
-  it('runs a PSI program on the module, with the roots relative to it', () => {
+  it('runs the syntax program on the module, with the roots relative to it', () => {
     const [program, ...rest] = programArguments({
-      program: 'KotlinMetrics.java',
-      output: '/r/kotlin-metrics.json',
+      program: 'KotlinSyntax.java',
+      output: '/r/kotlin-syntax.json',
       module,
     });
 
-    expect(path.basename(program)).toBe('KotlinMetrics.java');
+    expect(path.basename(program)).toBe('KotlinSyntax.java');
     expect(rest).toEqual([
-      '/r/kotlin-metrics.json',
+      '/r/kotlin-syntax.json',
       '/work/app',
       'src/main/java',
       'src/main/kotlin',
+    ]);
+  });
+
+  it('runs the PSI program on the module, with the main roots then the test roots marked test:', () => {
+    expect(
+      psiArguments({
+        metrics: '/r/kotlin-metrics.json',
+        facts: '/r/kotlin-facts.json',
+        module: {
+          ...module,
+          kotlin: {
+            ...module.kotlin,
+            testSourceRoots: ['/work/app/src/test/kotlin', '/work/app/src/test/java'],
+          },
+        },
+      }),
+    ).toEqual([
+      '/r/kotlin-metrics.json',
+      '/r/kotlin-facts.json',
+      '/work/app',
+      'src/main/java',
+      'src/main/kotlin',
+      'test:src/test/kotlin',
+      'test:src/test/java',
     ]);
   });
 });
