@@ -110,7 +110,8 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
       conventions: options.conventions,
       javaStyle: options.javaStyle,
       classLimits: { thresholds, exceptions, modulePath },
-      jacoco: readModuleJacoco(module, preset),
+      quick: options.quick === true,
+      jacoco: options.quick === true ? undefined : readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
       testTimes: {
         limits: options.testSeconds,
@@ -140,24 +141,34 @@ function readModuleFindings(context, crapLimit) {
     ...readErrorProneFindings(context),
     ...formatFindings(context),
     ...checkstyleFindings(context),
-    ...jacocoFindings(context, jacoco),
-    ...archunitFindings(context),
+    ...whenTested(context, () => jacocoFindings(context, jacoco)),
+    ...whenTested(context, () => archunitFindings(context)),
     ...springArchFindings(context),
-    ...crapFindings(context, jacoco, crapLimit),
-    ...pitFindings(context),
+    ...whenTested(context, () => crapFindings(context, jacoco, crapLimit)),
+    ...whenTested(context, () => pitFindings(context)),
     ...readJavaStructureFindings(reportRoot, projectRoot),
     ...readClassLimitFindings(reportRoot, context.classLimits),
-    ...branchFindings(context, jacoco),
+    ...whenTested(context, () => branchFindings(context, jacoco)),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-    ...readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),
-    ...readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
-    ...readUnrunTestFindings({
-      reportRoot,
-      projectRoot,
-      manifest: context.manifest,
-      modulePath: context.testTimes.modulePath,
-    }),
+    ...whenTested(context, () =>
+      readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),
+    ),
+    ...whenTested(context, () =>
+      readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
+    ),
+    ...whenTested(context, () =>
+      readUnrunTestFindings({
+        reportRoot,
+        projectRoot,
+        manifest: context.manifest,
+        modulePath: context.testTimes.modulePath,
+      }),
+    ),
   ];
+}
+
+function whenTested(context, read) {
+  return context.quick ? [] : read();
 }
 
 function withModuleIdentity(findings, module) {

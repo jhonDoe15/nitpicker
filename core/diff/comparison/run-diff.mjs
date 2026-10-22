@@ -41,6 +41,7 @@ function withDefaults(options) {
   return {
     headProjectRoot: path.join(options.repositoryRoot, options.projectRelativePath),
     includeWorkingTree: false,
+    captureHead: captureWorkingTree,
     additionalToolErrors: [],
     configOverrides: [],
     headPolicy: {},
@@ -48,10 +49,10 @@ function withDefaults(options) {
   };
 }
 
-function resolveSnapshots({ repositoryRoot, requestedBaseRef, includeWorkingTree }) {
+function resolveSnapshots({ repositoryRoot, requestedBaseRef, includeWorkingTree, captureHead }) {
   const committed = resolveComparison(repositoryRoot, requestedBaseRef);
   return includeWorkingTree
-    ? { ...committed, headSha: captureWorkingTree(repositoryRoot, committed.headSha) }
+    ? { ...committed, headSha: captureHead(repositoryRoot, committed.headSha) }
     : committed;
 }
 
@@ -180,6 +181,7 @@ function runAndCombine(context) {
     acceptPolicyChange: settings.acceptPolicyChange,
     policyAcceptanceSource: settings.policyAcceptanceSource,
     reportsPolicy: settings.reportsPolicy !== false,
+    quick: settings.quick,
     notices: settings.describeNotices?.([...layout.touchedCode.changedLines.keys()]) ?? [],
   });
 }

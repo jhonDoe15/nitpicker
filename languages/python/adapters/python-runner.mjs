@@ -43,6 +43,7 @@ function toolContext({ projectRoot, liveRoot, settings, policy, spawn }, reportR
     exclude: policy?.exclude,
     duplicateSkippedFolders: policy?.duplicateSkippedFolders,
     snapshot: policy?.snapshot,
+    quick: policy?.quick,
     baselineRoot: policy?.baselineRoot,
     conventions: policy?.conventions,
     policyRoot: policy?.policyRoot,
