@@ -13,7 +13,7 @@ function inPackage(prefix, ...names) {
   return names.map((name) => `${prefix}.${name}`);
 }
 
-function group(...lists) {
+export function group(...lists) {
   return new Set(lists.flat());
 }
 

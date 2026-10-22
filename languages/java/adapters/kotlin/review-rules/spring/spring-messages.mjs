@@ -70,10 +70,50 @@ const ALLOWED = {
     'Keep CSRF protection on for session-based security. Turn it off only for a stateless API, in the same filter chain: SessionCreationPolicy.STATELESS or a NullSecurityContextRepository on servlet security, NoOpServerSecurityContextRepository on WebFlux, or oauth2ResourceServer with jwt or opaqueToken and every login form disabled.',
   SpringHardcodedUser:
     'Load users from a UserDetailsService backed by the database, with passwords hashed by the delegating encoder. Do not put a user password in source code.',
+  JpaLazyFetching:
+    'Write fetch = FetchType.LAZY on every @ManyToOne and @OneToOne (they are eager by default) and never use EAGER; load what a query needs with join fetch.',
+  JpaEntityClass:
+    'Make the entity an open class that is not a data class: apply the all-open plugin for @Entity, @MappedSuperclass and @Embeddable (allOpen { annotation("jakarta.persistence.Entity") ... } next to kotlin("plugin.jpa")), or write open class. Hibernate cannot proxy a final class, so lazy loading stops working, and a data class compares and hashes every property; use data classes for DTOs.',
+  JpaManyToManyCascade:
+    'Do not cascade ALL or REMOVE on @ManyToMany: removing one parent deletes rows that other parents still share.',
+  JpaManyToManySet:
+    'Map @ManyToMany as a MutableSet (or a MutableList with @OrderColumn). A plain list makes Hibernate delete and re-insert every join row when one element is removed.',
+  JpaVersion:
+    'Add a @Version property next to the @Id, so concurrent updates fail instead of overwriting each other. Mark entities that are never updated with @Immutable.',
+  JpaSequenceIds:
+    'Generate ids with GenerationType.SEQUENCE (or UUID). IDENTITY and TABLE ids disable JDBC insert batching.',
+  JpaEnumString:
+    'Write @Enumerated(EnumType.STRING) on this enum property or element collection, and @MapKeyEnumerated(EnumType.STRING) on a map with enum keys. The default stores the ordinal, so adding or reordering constants silently corrupts stored rows.',
+  JpaIdentityHashCode:
+    'Return javaClass.hashCode() from the hashCode of an entity, or hash an immutable business key, and do not make an entity with a generated id a data class. A hash of the generated id or of every property changes when the entity is saved, and a hash set then loses it.',
+  SpringDataDerivedQuery:
+    'Write this repository function with @Query (JPQL in a raw string for JPA), naming the entity and every condition, instead of a query derived from the function name.',
+  SpringDataNativeQuery:
+    'Write the query in JPQL; native SQL is not checked at startup. If this one needs SQL, mark this function with @Suppress("PMD.SpringDataNativeQuery"), the only inline suppression nitpicker accepts.',
+  SpringDataModifyingQuery:
+    'Write @Modifying(clearAutomatically = true, flushAutomatically = true), so pending changes are flushed first and no stale entities stay in the persistence context.',
+  SpringDataNoSaveInLoop:
+    'Do not save or delete one entity per loop iteration. Collect the entities and call saveAll or deleteAll once.',
+  SpringDataNoFlush:
+    'Do not flush by hand. Let the transaction write changes at commit; an early flush defeats JDBC batching and hides ordering bugs.',
+  SpringDataNamedParameters:
+    'Bind query parameters by name (:email), not by position (?1); positions break silently when parameters are reordered.',
+  SpringDataQueryTextBlock:
+    'Write a multi-part query as one raw string (""") instead of joining strings with +.',
+  SpringDataBatchOfOne:
+    'Collect the entities of the whole loop and call saveAll or deleteAll once. Calling it with a one-element list on each iteration is still one write per entity.',
+  SpringDataRowWriteInLoop:
+    'Write one set-based @Query that takes the whole list, for example where id in :ids, and call it once after the loop instead of one repository update or delete per iteration.',
+  SpringDataSaveInLoopHelper:
+    'Collect the entities and call saveAll or deleteAll once after the loop; when rows must fail one by one, call saveAll per batch and handle the error per batch. This loop calls a function of this class that saves or deletes one entity, so it still writes once per iteration.',
+  SpringDataFilterInQuery:
+    'Filter and count in the database, with an @Query that has a where clause, a count query or an exists query, instead of loading the whole table with findAll().',
 };
 
 export const SPRING_RULES = Object.keys(ALLOWED);
 
+const OWN_ROUTE = new Set(['SpringDataNativeQuery']);
+
 export function springMessage(rule) {
-  return `${ALLOWED[rule]} ${exceptionRoute(rule)}`;
+  return OWN_ROUTE.has(rule) ? ALLOWED[rule] : `${ALLOWED[rule]} ${exceptionRoute(rule)}`;
 }
