@@ -32,7 +32,7 @@ function nestedWithout(settings, key, keys) {
 function settingLeaves(config) {
   const settings = withoutKeys(config, LISTED_KEYS);
   const nested = {
-    ...nestedWithout(settings, 'python', new Set(['exceptions'])),
+    ...nestedWithout(settings, 'python', new Set(['exceptions', 'entryPoints'])),
     ...nestedWithout(settings, 'layout', LISTED_LAYOUT_KEYS),
   };
   return new Map(

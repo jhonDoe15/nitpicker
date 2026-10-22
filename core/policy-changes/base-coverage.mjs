@@ -87,6 +87,12 @@ function stricterLists(baseConfig, headConfig) {
       exceptions: commonExceptions(baseConfig.python.exceptions, headConfig.python?.exceptions),
     };
   }
+  if (baseConfig.python?.entryPoints !== undefined) {
+    covering.python = {
+      ...(covering.python ?? baseConfig.python),
+      entryPoints: common(baseConfig.python.entryPoints, headConfig.python?.entryPoints ?? []),
+    };
+  }
   return covering;
 }
 

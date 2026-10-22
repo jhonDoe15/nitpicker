@@ -10,14 +10,16 @@ import {
   TYPESCRIPT_ONLY_KEYS,
   validateProjectRelativePath,
   validateFolderGlobs,
-  validateTestConsole,
   FEATURE_LAYOUT_KEYS,
   validateFactRuleSettings,
 } from '../../shared/config.mjs';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
-import { validatePythonConfig } from '../../languages/python/adapters/configuration/python-config.mjs';
-import { RULES, SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
+import {
+  PYTHON_TOP_LEVEL_EXCEPTION_RULES,
+  validatePythonConfig,
+} from '../../languages/python/adapters/configuration/python-config.mjs';
+import { RULES } from '../../shared/policy.mjs';
 import { factRuleSettings } from '../../shared/rules/facts/registry.mjs';
 import { validateTools } from './tool-settings.mjs';
 import { rejectHeadBase } from './project-checks/project-config.mjs';
@@ -25,6 +27,7 @@ import { conventionDefinitions } from '../conventions/definitions.mjs';
 import { validateConventions } from '../../shared/conventions/settings.mjs';
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
+import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
 import path from 'node:path';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
@@ -105,13 +108,22 @@ function validateScalars(config) {
   if (GRADLE_PRESETS.includes(config.preset)) {
     validateJavaConfig(config);
   }
+  validateJavascriptConfig(config);
   validateKotlinOptions(config);
   validatePythonConfig(
     config,
-    liftsOnlyRules(config.exceptions, SHARED_EXCEPTION_RULES)
-      ? TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions')
-      : TYPESCRIPT_ONLY_KEYS,
+    liftsOnlyRules(config.exceptions, PYTHON_TOP_LEVEL_EXCEPTION_RULES)
+      ? TYPESCRIPT_ONLY_KEYS.filter((key) => !['exceptions', 'tools'].includes(key))
+      : TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'tools'),
   );
+}
+
+function validateJavascriptConfig(config) {
+  if (config.preset === 'javascript' && config.react !== undefined) {
+    throw configError(
+      '"react" is not supported with "preset": "javascript": React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',
+    );
+  }
 }
 
 function validateProjectConventions({ conventions, preset }) {
@@ -158,23 +170,6 @@ function validateOptional(config) {
   }
   if (config.tools !== undefined) {
     validateTools(config.tools, config.preset);
-  }
-}
-
-function validateScope(name, scope, keys) {
-  if (scope === undefined) {
-    return;
-  }
-  if (!isPlainObject(scope)) {
-    throw configError(`"${name}" must be an object`);
-  }
-  for (const key of Object.keys(scope)) {
-    if (!keys.includes(key)) {
-      throw configError(`unknown ${name} key "${key}". Allowed ${name} keys: ${keys.join(', ')}`);
-    }
-  }
-  if (scope.enabled !== undefined && typeof scope.enabled !== 'boolean') {
-    throw configError(`"${name}.enabled" must be true or false`);
   }
 }
 

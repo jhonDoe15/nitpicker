@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { runCli } from '../../cli.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { usePythonFixtures } from './test-support/python-cli-harness.mjs';
+import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
 const { callsLog, pythonRepository, run, temporaryRoot } = usePythonFixtures(nitpickerCli);
@@ -118,7 +118,8 @@ describe('nitpicker with "preset": "python" running the project', () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(out.text).toBe(
+    expect(out.text).toMatch(/^Format with ruff: ruff format --isolated /);
+    expect(out.text.replace(/^Format with ruff: .*\n/, '')).toBe(
       [
         'Nitpicker quality snapshot',
         'Status: violations',
@@ -149,5 +150,33 @@ describe('nitpicker with "preset": "python" running the project', () => {
         '',
       ].join('\n'),
     );
+  });
+  it('keeps the other findings when pytest tests fail, and names the failing tests as a tool error', () => {
+    const root = pythonRepository({ 'tests/conftest.py': '' });
+    writeFiles(root, {
+      'test-exit.txt': '1\n',
+      'violations.txt': `${LEGACY_VIOLATION}F841|src/demo/a.py|unused variable\n`,
+    });
+    commit(root, 'break a test and add a finding');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(result.json('tool-errors.json')).toEqual([
+      {
+        tool: 'tests',
+        snapshot: 'head',
+        rule: 'tests-failed',
+        path: '.',
+        message: [
+          'Tests fail in the head snapshot. Make each failing test pass:',
+          '  tests/test_greet.py::test_greet',
+          'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
+          'Mutation testing (mutmut) leaves out the test modules tests/test_greet.py.',
+        ].join('\n'),
+      },
+    ]);
+    const ruff = result.json('new-findings.json').filter(({ tool }) => tool === 'ruff');
+    expect(ruff.map(({ rule, path: file }) => `${rule} ${file}`)).toEqual(['F841 src/demo/a.py']);
   });
 });

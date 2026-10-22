@@ -2,12 +2,13 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
 import { ingestSarif } from '../../ingest/sarif.mjs';
+import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
   readKotlinCrapFindings,
   readKotlinMetrics,
   readKotlinStructureFindings,
 } from '../kotlin/kotlin-metrics.mjs';
-import { addOneWayHint } from '../kotlin/rules/kotlin-rules.mjs';
+import { addOneWayHint, appendSentence } from '../kotlin/rules/kotlin-rules.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
 
 const DETEKT_TOOL = 'detekt';
@@ -15,6 +16,8 @@ const DETEKT_REPORT = 'detekt.sarif';
 const KTLINT_REPORT = 'ktlint.sarif';
 const KTFMT_REPORT = 'ktfmt.txt';
 const KTLINT_PREFIX = 'ktlint.';
+const DEFAULT_ADVICE = kotlinFormatAdvice({ ktfmtStyle: 'meta' }, {});
+const NOT_YOUR_FORMATTER = 'Not your formatter: set kotlin.formatter';
 const PACKAGE_DECLARATION = /^\s*package\s+([\w.`]+)/m;
 
 export function requireKotlinManifest(manifest) {
@@ -23,6 +26,10 @@ export function requireKotlinManifest(manifest) {
       'The kotlin preset needs a Gradle project that applies org.jetbrains.kotlin.jvm; this one does not',
     );
   }
+}
+
+export function kotlinLintedRoots({ kotlinSourceRoots, kotlinTestSourceRoots = [] }) {
+  return [...new Set([...kotlinSourceRoots, ...kotlinTestSourceRoots])];
 }
 
 export function jacocoSourceRoots({ sourceRoots, manifest, kotlin }) {
@@ -74,12 +81,12 @@ export function reportOnlyKotlinMutants(findings) {
 }
 
 export function readKotlinFindings(context, crapLimit) {
-  const { reportRoot, manifest, projectRoot, jacoco } = context;
+  const { reportRoot, manifest, projectRoot, jacoco, formatAdvice = DEFAULT_ADVICE } = context;
   const metrics = readKotlinMetrics(reportRoot);
   return [
-    ...detektFindings(reportRoot),
-    ...readSuppressionFindings(projectRoot, manifest.kotlinSourceRoots),
-    ...formatterFindings(reportRoot, manifest.kotlinFormatter),
+    ...detektFindings(reportRoot, formatAdvice),
+    ...readSuppressionFindings(projectRoot, kotlinLintedRoots(manifest)),
+    ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
     ...readKotlinStructureFindings(metrics, projectRoot),
     ...readKotlinCrapFindings(metrics, {
       projectRoot,
@@ -110,9 +117,16 @@ function readSarif(reportRoot, file) {
   return identifiedBySubject(JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8')));
 }
 
-function detektFindings(reportRoot) {
+function withProjectConfigRoute(finding, advice) {
+  const hinted = addOneWayHint(finding);
+  return hinted !== finding || advice.detekt === undefined
+    ? hinted
+    : { ...finding, message: appendSentence(finding.message, advice.detekt) };
+}
+
+function detektFindings(reportRoot, advice) {
   return ingestSarif(readSarif(reportRoot, DETEKT_REPORT), { tool: DETEKT_TOOL }).findings.map(
-    addOneWayHint,
+    (finding) => withProjectConfigRoute(finding, advice),
   );
 }
 
@@ -120,26 +134,26 @@ function ktlintSwitch(ruleId) {
   return `ktlint_${ruleId.replace(':', '_')}`;
 }
 
-function ktlintFindings(reportRoot) {
+function ktlintFindings(reportRoot, advice) {
   return ingestSarif(readSarif(reportRoot, KTLINT_REPORT), { tool: 'ktlint' }).findings.map(
     (finding) => ({
       ...finding,
       rule: `${KTLINT_PREFIX}${finding.rule}`,
-      message: `${finding.message}. Lift this rule: ${ktlintSwitch(finding.rule)} = disabled in .editorconfig. Not your formatter: set kotlin.formatter`,
+      message: `${finding.message}. ${advice.ktlint(ktlintSwitch(finding.rule))} ${NOT_YOUR_FORMATTER}`,
     }),
   );
 }
 
-function ktfmtFindings(reportRoot) {
+function ktfmtFindings(reportRoot, advice) {
   return ingestFormatCheck(readFileSync(path.join(reportRoot, KTFMT_REPORT), 'utf8'), {
     tool: 'ktfmt',
-    message: 'File is not formatted with ktfmt. Not your formatter: set kotlin.formatter',
+    message: `File is not formatted with ktfmt. ${advice.ktfmt} ${NOT_YOUR_FORMATTER}`,
   }).findings;
 }
 
-function formatterFindings(reportRoot, formatter) {
+function formatterFindings(reportRoot, formatter, advice) {
   if (formatter === 'ktlint') {
-    return ktlintFindings(reportRoot);
+    return ktlintFindings(reportRoot, advice);
   }
-  return formatter === 'ktfmt' ? ktfmtFindings(reportRoot) : [];
+  return formatter === 'ktfmt' ? ktfmtFindings(reportRoot, advice) : [];
 }

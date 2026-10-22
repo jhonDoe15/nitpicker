@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
+import { securitySupportGlobs } from '../eslint-config/policy/security-facts.mjs';
 import {
   selectFilesAndIgnores,
   customPolicy as policy,
@@ -26,23 +27,26 @@ describe('package-owned child configs', () => {
       'target/**',
     ]);
     const files = config.flatMap((entry) => entry.files ?? []).flat();
-    expect([...new Set(files)].sort()).toEqual([
-      '**/*.cts',
-      '**/*.mts',
-      '**/*.ts',
-      '**/*.tsx',
-      'lib/**/*.config.*',
-      'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'lib/**/.*rc.*',
-      'lib/**/__tests__/**',
-      'lib/**/__tests__/**/*.ts',
-      'lib/main/features/*/adapters/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'lib/main/features/*/domain/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'spec/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'spec/unit/**/*.ts',
-    ]);
+    expect([...new Set(files)].sort()).toEqual(
+      [
+        '**/*.cts',
+        '**/*.mts',
+        '**/*.ts',
+        '**/*.tsx',
+        'lib/**/*.config.*',
+        'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+        'lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+        'lib/**/.*rc.*',
+        'lib/**/__tests__/**',
+        'lib/**/__tests__/**/*.ts',
+        'lib/main/features/*/adapters/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+        'lib/main/features/*/domain/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+        'spec/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+        'spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+        'spec/unit/**/*.ts',
+        ...securitySupportGlobs(),
+      ].sort(),
+    );
     expect(files.filter((glob) => glob.startsWith('src/') || glob.startsWith('test'))).toEqual([]);
   });
   it('eslint.config.mjs turns on the script rules typescript-eslint leaves off for .js files', async () => {

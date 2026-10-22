@@ -73,6 +73,31 @@ export const policyFailureMessageCases = [
     'export const token = Math.random().toString(36);',
     'crypto.randomUUID()',
   ),
+  adapterCase(
+    'SQL built from a value names bind parameters',
+    'export function find(pool, id) { return pool.query(`SELECT * FROM users WHERE id = ${id}`); }',
+    'bind parameters',
+  ),
+  adapterCase(
+    'MD5 names sha256',
+    "import { createHash } from 'node:crypto'; export const id = (s) => createHash('md5').update(s).digest('hex');",
+    'sha256',
+  ),
+  adapterCase(
+    'disabled TLS verification names the CA',
+    'export const options = { rejectUnauthorized: false };',
+    'certificate authority',
+  ),
+  adapterCase(
+    'fetch without a timeout names AbortSignal.timeout',
+    'export function get(url) { return fetch(url); }',
+    'AbortSignal.timeout',
+  ),
+  adapterCase(
+    'unsafe deserialization names JSON.parse',
+    "import { unserialize } from 'node-serialize'; export const read = (text) => unserialize(text);",
+    'JSON.parse',
+  ),
   utilsCase('unknown main folder names features', 'export const a = 1;\n', 'features/<name>/'),
   adapterCase(
     'mutable module state names the composition root',

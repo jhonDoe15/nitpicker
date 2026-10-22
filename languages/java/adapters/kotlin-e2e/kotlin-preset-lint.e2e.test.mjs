@@ -21,6 +21,7 @@ import {
   initializeProject,
   kotlinE2eEnabled,
   kotlinPolicy,
+  kotlinPolicyWithProjectDetekt,
   kotlinSources,
   ktlintOf,
   ktlintRules,
@@ -139,8 +140,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
       ),
     ).toEqual([]);
   });
-  it("runs detekt with the project's config laid over the defaults", () => {
+  it("leaves the project's detekt config out unless the project is listed", () => {
     const result = diffOf(project, 'detekt-config');
+
+    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_DETEKT_FINDINGS].sort());
+  });
+  it("runs detekt with the project's config laid over the defaults when the project is listed", () => {
+    const result = diffOf(project, 'detekt-config', { policy: kotlinPolicyWithProjectDetekt });
 
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([
       'detekt detekt.style.UnusedPrivateProperty Bad.kt',
@@ -162,10 +168,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     expect(summarize(result.newEnforceable)).toEqual(
       [...BAD_FINDINGS, 'ktfmt format Bad.kt'].sort(),
     );
-    expect(fromTool(result.unchangedFindings, 'ktfmt')).toEqual([
-      'ktfmt format Greeter.kt',
-      'ktfmt format Legacy.kt',
-    ]);
+    expect(fromTool(result.unchangedFindings, 'ktfmt')).toEqual(
+      ['Greeter', 'GreeterTest', 'Legacy'].map((name) => `ktfmt format ${name}.kt`),
+    );
   });
   it('detects ktfmt from the build files when the project names it', () => {
     git(project, 'checkout', '-q', 'ktfmt-named');

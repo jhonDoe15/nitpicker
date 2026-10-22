@@ -12,8 +12,10 @@ import { withoutLineNumbers } from '../ingest/identities.mjs';
 import { ingestRulesReport } from '../ingest/rules-report.mjs';
 import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
-import { RULES_REPORT } from './analysis/python-ast-rules.mjs';
-import { readCouplingFindings } from './analysis/python-coupling.mjs';
+import { detectLibraries } from '../rules/libraries/project-libraries.mjs';
+import { pytestStyle } from '../rules/libraries/pytest-style.mjs';
+import { withoutAllowedForms } from '../rules/filters/ruff-allowed-forms.mjs';
+import { RULES_REPORT, readAllowances, readTestFiles } from './analysis/python-ast-rules.mjs';
 import { readPythonCrapFindings } from './mutation/python-crap.mjs';
 import { readImportLinterFindings } from './analysis/python-import-linter.mjs';
 import {
@@ -21,8 +23,22 @@ import {
   readPythonFunctions,
   readPythonStructureFindings,
 } from './analysis/python-structure.mjs';
-import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
+import { FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
+import { COVERAGE_REPORT } from './test-runs/test-step.mjs';
+import { testFailureFindings } from './test-runs/test-failures.mjs';
+import { readSlowTestFindings } from './test-runs/slow-tests.mjs';
+import { readCouplingFindings, readImportsReport } from './analysis/python-coupling.mjs';
+import { cycleFindings, outsideRootsFindings } from './imports/python-import-rules.mjs';
+import {
+  pythonClassLimitFindings,
+  pythonFolderDepthFindings,
+  readClassesReport,
+} from './size/python-size.mjs';
+import { readDependencyFindings } from './dependencies/dependency-findings.mjs';
+import { withoutFrameworkForms } from './dependencies/python-frameworks.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
+import { listProductionModules } from './analysis/python-sources.mjs';
+import { isGeneratedPython } from '../libraries/generated-files.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
 const NO_TESTS_RULE = 'no-tests-ran';
@@ -40,12 +56,19 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
   const coverage = readReport(reportRoot, COVERAGE_REPORT);
-  return {
-    findings: applyRuleHints([
-      ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), { roots, projectRoot }),
+  const imports = readImportsReport(reportRoot);
+  const libraries = { ...detectLibraries(projectRoot), pytestStyle: pytestStyle(projectRoot) };
+  const found = applyRuleHints(
+    [
+      ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), {
+        roots,
+        projectRoot,
+        testFiles: readTestFiles(reportRoot),
+        ...readAllowances(reportRoot),
+      }),
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
       ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
-      ...ingestRulesReport(readReport(reportRoot, RULES_REPORT)),
+      ...ingestRulesReport(readReport(reportRoot, RULES_REPORT), libraries),
       ...ingestCoverageJson(coverage, { roots }).findings,
       ...readPythonStructureFindings(reportRoot, projectRoot),
       ...pythonFileLimitFindings(projectRoot, policy),
@@ -64,18 +87,68 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
       ...readDuplicateFindings(reportRoot),
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),
-    ]),
-  };
+      ...testFailureFindings(manifest, policy.snapshot),
+      ...projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }),
+    ],
+    libraries,
+  );
+  return { findings: withoutFrameworkForms(found, projectRoot, imports) };
 }
 
-export function ruffFindings(log, { roots, projectRoot }) {
+function sizedModules(projectRoot, modules) {
+  return modules.filter(({ file }) => !isGeneratedPython(projectRoot, file));
+}
+
+function baseModules(baselineRoot, sourceRoots) {
+  return baselineRoot === undefined
+    ? undefined
+    : sizedModules(baselineRoot, listProductionModules(baselineRoot, sourceRoots));
+}
+
+function projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }) {
+  const limits = { thresholds: policy.fileLimits ?? {}, exceptions: policy.exceptions ?? [] };
+  return [
+    ...readSlowTestFindings({
+      reportRoot,
+      projectRoot,
+      limits: policy.testSeconds,
+      baselineRoot: policy.baselineRoot,
+      snapshot: policy.snapshot,
+      testRunner: manifest.testRunner,
+    }),
+    ...pythonFolderDepthFindings(sizedModules(projectRoot, imports.modules), {
+      ...limits,
+      tests: sizedModules(projectRoot, imports.others ?? []).filter(({ kind }) => kind === 'test'),
+      sourceRoots: manifest.sourceRoots ?? [],
+      rootModules: baseModules(policy.baselineRoot, manifest.sourceRoots ?? []),
+    }),
+    ...pythonClassLimitFindings(readClassesReport(reportRoot), imports.modules, limits),
+    ...cycleFindings(imports),
+    ...outsideRootsFindings(imports),
+    ...readDependencyFindings({ reportRoot, projectRoot, snapshot: policy.snapshot }),
+  ];
+}
+
+function sourceLine(projectRoot, file, line) {
+  return readSource(projectRoot, file)?.split(/\r?\n/u)[line - 1];
+}
+
+export function ruffFindings(
+  log,
+  { roots, projectRoot, testFiles = [], supportFiles = [], allowed = [] },
+) {
   const prepared = prepareSarif(log, {
     roots,
     sourceRoots: [],
     projectRoot,
     identityKey: (result) => withoutLineNumbers(result.message?.text ?? ''),
   });
-  return ingestSarif(prepared, { tool: 'ruff' }).findings;
+  return withoutAllowedForms(ingestSarif(prepared, { tool: 'ruff' }).findings, {
+    testFiles,
+    supportFiles,
+    allowed,
+    lineOf: (file, line) => sourceLine(projectRoot, file, line),
+  });
 }
 
 const TYPE_INGESTERS = {
@@ -101,7 +174,8 @@ function noTestsFinding() {
 
 function formatMessage({ formatter, formatterDetected }) {
   const base = `File is not formatted with ${formatter}`;
-  return formatterDetected ? `${base} (detected; set "python.formatter" if wrong)` : base;
+  const detected = formatterDetected ? ' (detected; set "python.formatter" if wrong)' : '';
+  return `${base}${detected}. Format it with the "Format with ${formatter}" command printed at the start of the run.`;
 }
 
 function formatFindings(text, { roots, manifest }) {

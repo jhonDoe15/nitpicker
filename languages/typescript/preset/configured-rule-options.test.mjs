@@ -1,8 +1,23 @@
 import vitest from '@vitest/eslint-plugin';
 import { Linter } from 'eslint';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import tseslint from 'typescript-eslint';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import presetConfig from './defaults/eslint.config.mjs';
+
+const presetConfigUrl = pathToFileURL(path.join(import.meta.dirname, 'defaults/eslint.config.mjs'));
+const temporaryRoots = [];
+let importCount = 0;
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  for (const root of temporaryRoots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 function configured(ruleId) {
   return presetConfig.findLast((entry) => entry.rules?.[ruleId] !== undefined).rules[ruleId];
@@ -64,6 +79,68 @@ describe('@typescript-eslint/ban-ts-comment', () => {
 
   it('allows @ts-check', () => {
     expect(tsCommentMessages('// @ts-check\nconst value = 1;\n')).toEqual([]);
+  });
+});
+
+async function ruleSettings(policy) {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-convention-rules-'));
+  temporaryRoots.push(root);
+  if (policy !== undefined) {
+    const policyFile = path.join(root, 'policy.json');
+    writeFileSync(policyFile, JSON.stringify(policy));
+    vi.stubEnv('NITPICKER_POLICY', policyFile);
+  }
+  importCount += 1;
+  const { default: config } = await import(
+    `${presetConfigUrl.href}?conventions=${String(importCount)}`
+  );
+  const settingOf = (ruleId) =>
+    config.findLast((entry) => entry.rules?.[ruleId] !== undefined).rules[ruleId];
+  return {
+    typeImports: settingOf('@typescript-eslint/consistent-type-imports'),
+    fileNames: settingOf('nitpicker/file-name-casing'),
+    assertFunctionNames: settingOf('vitest/expect-expect')[1].assertFunctionNames,
+  };
+}
+
+describe('rules configured from the followed conventions', () => {
+  it('keeps separate type imports and kebab-case file names by default', async () => {
+    expect(await ruleSettings()).toEqual({
+      typeImports: ['error', { disallowTypeAnnotations: false, fixStyle: 'separate-type-imports' }],
+      fileNames: ['error', { casing: 'kebab-case' }],
+      assertFunctionNames: ['expect', 'assert', 'expectTypeOf', 'assertType'],
+    });
+  });
+
+  it('follows inline type imports and the project file name casing', async () => {
+    expect(
+      await ruleSettings({
+        conventions: {
+          'typescript.typeImports': 'inline',
+          'typescript.fileNames': 'snake_case',
+          'typescript.assertionHelpers': ['assertOk', 'verifyCalled'],
+        },
+      }),
+    ).toEqual({
+      typeImports: ['error', { disallowTypeAnnotations: false, fixStyle: 'inline-type-imports' }],
+      fileNames: ['error', { casing: 'snake_case' }],
+      assertFunctionNames: [
+        'expect',
+        'assert',
+        'expectTypeOf',
+        'assertType',
+        'assertOk',
+        'verifyCalled',
+      ],
+    });
+  });
+
+  it('marks a pinned file name casing so the folder majority does not apply', async () => {
+    const { fileNames } = await ruleSettings({
+      conventionPins: { 'typescript.fileNames': 'kebab-case' },
+    });
+
+    expect(fileNames).toEqual(['error', { casing: 'kebab-case', pinned: true }]);
   });
 });
 

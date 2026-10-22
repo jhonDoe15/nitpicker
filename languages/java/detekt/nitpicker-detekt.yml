@@ -23,6 +23,28 @@ potential-bugs:
     ignoreAnnotated: []
     includes: []
 
+exceptions:
+  active: true
+  excludes: []
+  ignoreAnnotated: []
+  includes: []
+  TooGenericExceptionCaught:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+    exceptionNames:
+      - 'ArrayIndexOutOfBoundsException'
+      - 'Error'
+      - 'Exception'
+      - 'IllegalMonitorStateException'
+      - 'IndexOutOfBoundsException'
+      - 'NullPointerException'
+      - 'RuntimeException'
+      - 'Throwable'
+    allowedExceptionNameRegex: ''
+
 coroutines:
   active: true
   excludes: []
@@ -54,7 +76,7 @@ style:
       - value: 'kotlin.also'
         reason: 'Use `apply` to configure an object, or write a plain statement after it.'
       - value: 'kotlinx.coroutines.runBlocking'
-        reason: 'Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.'
+        reason: 'Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. In a test, use `runTest`.'
   UnnecessaryLet:
     active: true
     severity: warning

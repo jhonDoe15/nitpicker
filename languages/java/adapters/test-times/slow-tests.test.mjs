@@ -242,6 +242,60 @@ describe('readSlowTestFindings', () => {
     expect(findingsFor({ sources: unchanged, results, snapshot: 'base' })).toEqual([]);
   });
 
+  it('leaves out an unchanged test whose file moved to another package', () => {
+    const movedPath = `${TEST_ROOT}/shop/orders/OrderTest.java`;
+    const moved = ORDER_SOURCE.replace('package shop;', 'package shop.orders;');
+    const results = { test: suite('shop.orders.OrderTest', [['totals()', '9']]) };
+    const run = (source) =>
+      findingsFor({
+        sources: { [movedPath]: source },
+        results,
+        base: { [ORDER_TEST]: ORDER_SOURCE },
+      });
+
+    expect(run(moved)).toEqual([]);
+    expect(run(moved.replace('total()', 'total() + 0')).map(({ identity }) => identity)).toEqual([
+      'test:shop.orders.OrderTest#totals()',
+    ]);
+  });
+
+  it('counts a copy of a test whose original the change kept in another package', () => {
+    const copyPath = `${TEST_ROOT}/shop/orders/OrderTest.java`;
+    const copy = ORDER_SOURCE.replace('package shop;', 'package shop.orders;');
+    const results = { test: suite('shop.orders.OrderTest', [['totals()', '9']]) };
+
+    expect(
+      findingsFor({
+        sources: { [ORDER_TEST]: ORDER_SOURCE, [copyPath]: copy },
+        results,
+        base: { [ORDER_TEST]: ORDER_SOURCE },
+      }).map(({ identity }) => identity),
+    ).toEqual(['test:shop.orders.OrderTest#totals()']);
+  });
+
+  it('finds an inherited test in its superclass and counts it when that method or the class is new or edited', () => {
+    const contractPath = `${TEST_ROOT}/shop/StoreContract.java`;
+    const contract = (body) =>
+      `package shop;\n\nabstract class StoreContract {\n  @Test\n  void putThenGet() {\n    ${body}\n  }\n}\n`;
+    const diskPath = `${TEST_ROOT}/shop/DiskStoreTest.java`;
+    const disk = 'package shop;\n\nclass DiskStoreTest extends StoreContract {\n}\n';
+    const results = { test: suite('shop.DiskStoreTest', [['putThenGet()', '9']]) };
+    const base = { [contractPath]: contract('store.put();'), [diskPath]: disk };
+    const run = (sources) =>
+      findingsFor({ sources, results, base }).map(({ path: file, location }) => [
+        file,
+        location?.line,
+      ]);
+
+    expect(run(base)).toEqual([]);
+    expect(run({ ...base, [contractPath]: contract('store.put(); store.get();') })).toEqual([
+      [contractPath, 5],
+    ]);
+    expect(
+      findingsFor({ sources: base, results, base: { [contractPath]: contract('store.put();') } }),
+    ).toHaveLength(1);
+  });
+
   it('counts a case named after no method only when its file is new or a parameterized test changed', () => {
     const results = { test: suite('shop.OrderTest', [['[1] 1', '9']]) };
     const base = { [ORDER_TEST]: ORDER_SOURCE };

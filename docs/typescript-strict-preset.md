@@ -154,11 +154,12 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
 - Illegal states are made unrepresentable with discriminated unions.
 - `nitpicker/no-unknown-in-domain`: no `unknown` in a parameter or property type (including inside
   `readonly unknown[]`, `Record<string, unknown>` and index signatures). `domain/` receives values
-  already parsed and typed; the zod schema that parses untrusted input lives in `adapters/`, and
-  `domain/` writes its own readonly type for the value. Do not write `z.infer<typeof schema>`
-  in `domain/`: importing the schema type from `adapters/` breaks the layer rule, and a schema
-  defined in `domain/` is itself mutable. A zod output is assignable to the readonly type, so
-  `adapters/` parses and passes the result in. An alias that is or contains `unknown`
+  already parsed and typed; the schema that parses untrusted input (zod by default, otherwise the
+  project's validation library) lives in `adapters/`, and `domain/` writes its own readonly type for
+  the value. Do not write `z.infer<typeof schema>` or the library's equivalent in `domain/`:
+  importing the schema type from `adapters/` breaks the layer rule, and a schema defined in `domain/`
+  is itself mutable. The parsed output is assignable to the readonly type, so `adapters/` parses and
+  passes the result in. An alias that is or contains `unknown`
   (`type Raw = unknown`, `type JsonObject = Readonly<Record<string, unknown>>`), also one imported
   from another file, is reported like `unknown`. `unknown` as a
   generic bound or default (`<T extends unknown>`, `<T = unknown>`), a return type, a variable or a
@@ -215,8 +216,8 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   without a check function is a cast, and `z.looseObject()`, `.loose()`, `.passthrough()` and
   `.catchall(z.unknown())` let unknown keys through: use `z.object({...})` or
   `z.strictObject({...})`.
-- Untrusted input is parsed once, at the boundary, with zod. Hand-written type guards for external
-  data are not allowed (`nitpicker/no-handwritten-boundary-guard`, in `adapters/`, `shared/` and
+- Untrusted input is parsed once, at the boundary, with a schema library (zod by default). Hand-written
+  type guards for external data are not allowed (`nitpicker/no-handwritten-boundary-guard`, in `adapters/`, `shared/` and
   the other layers outside `domain/`): a predicate whose parameter is `unknown`, `any`, `object`,
   `{}` or `Record<string, unknown>`, an `unknown` value narrowed inline with `typeof x ===
 'object'` or `'key' in x`, and an overload whose implementation returns `unknown` or `any`. A
@@ -227,6 +228,59 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   (`error instanceof Error && 'code' in error`). `instanceof Object` or any other class does not
   count as a guard.
   `JSON.parse(JSON.stringify(value))` as a copy is reported: use `structuredClone(value)`.
+
+### Libraries follow the project
+
+The rules keep their reason (validate at the boundary, keep the caught error on the log call) and
+only the library follows the project. Nitpicker reads `dependencies`, `peerDependencies`,
+`optionalDependencies` and `devDependencies` (presence, not a vote over files).
+
+- **Where it reads.** The head policy carries the libraries of the head checkout:
+  `libraries: { validation, logger, packages }`, where `validation` and `logger` come from the root
+  `package.json` and `packages` maps each project-relative directory with a `package.json` (`.` for
+  the root; `node_modules` and excluded folders are skipped) to the libraries it declares. A base
+  run with its own `nitpicker.config.json` still takes the head's libraries, like the other facts of
+  the head checkout, so base and head are checked against the same libraries, and the policy hash
+  and cache key include them. The rules that report per file (the boundary guard, `unknown` in
+  `domain/`, catch logging) pick, from `packages`, the entry of the directory nearest the file and
+  every one above it up to the project root, so a monorepo package that declares valibot is
+  checked against valibot; they read no `package.json` while linting. Within the list
+  `dependencies` come before `devDependencies`, nearest package first; the first entry names the
+  library in messages. The static `as`, `any` and JSDoc-cast messages read the root list only, so
+  they name the root's library.
+- **Validation library.** Recognised: zod, valibot, yup, joi (and `@hapi/joi`), io-ts, arktype,
+  class-validator (with class-transformer), ajv, typebox, superstruct, runtypes, typia, effect
+  (`effect`, `@effect/schema`) and valita. With none found the preset names zod.
+  `nitpicker/no-handwritten-boundary-guard` accepts a parse of any detected library, matched by
+  receiver and method. Calls on a schema built from the library (a value whose chain starts at an
+  import or `require` of it) count for the library's parse methods: zod `parse`/`safeParse` and
+  the async forms, yup `validate`/`validateSync`/`isValid` and the `At` forms, joi `validate`/
+  `validateAsync`, io-ts `decode`, arktype `assert` and calling the schema, ajv `validate` and
+  calling a function from `compile`, typebox `Decode`/`Parse` on a compiled type, runtypes `check`/
+  `parse`/`assert`/`guard`/`validate`, valita `parse`/`try`. Functions of the library namespace or
+  named import count too: valibot `parse`/`safeParse`/`assert`/`is` and `parser(schema)(data)`,
+  `Joi.attempt`/`Joi.assert`, typebox `Value.Parse`/`Decode`/`Assert`, superstruct `create`/
+  `assert`/`validate`/`mask`/`is`, typia `assert`/`is`/`validate`, effect
+  `Schema.decodeUnknownSync(schema)(data)` and the other `decode` forms, class-validator
+  `validate`/`validateSync`/`validateOrReject` (with `plainToInstance` in between). The forms
+  `const { parse } = schema`, `schema['parse']`, `schema.parse.bind(schema)`, `pipe(data, codec.decode)`,
+  casts (`as`, `!`) and `await` around the `JSON.parse` call are followed.
+  A receiver the file cannot resolve (imported from your own module, a parameter, `this.schema`,
+  a class field) counts for those same methods when type information shows a type declared by the
+  library, or, without it, when its text matches `schema`, `codec`, `validat`, `type`, `ajv`,
+  `struct` or `parser`. Other calls with the same names (`console.assert`, `form.validate`,
+  `Value.Check`, yup `cast`) do not count. The guard and `unknown` messages are grammatical
+  per library ("an io-ts codec", "an ajv schema") and the guard messages say how to add an
+  exception. `nitpicker/no-unvalidated-schema-field` only looks at zod schemas, so it stays silent
+  without zod.
+- **Logger.** `nitpicker/structured-catch-logging` is never turned off; it checks the shape each
+  detected logger reads. pino, nestjs-pino, pino-http and bunyan take the caught value as
+  `logger.<level>({ err: error, ...context }, message)`. winston, log4js, loglevel, consola, tslog,
+  roarr and signale take the caught value itself, passed as an argument or as a field of an object
+  argument (`logger.error('message', error)`, `logger.error('message', { error })`), not its
+  `.message` or a template string. With several loggers any of their shapes passes; with none
+  found the `err` shape applies. `nitpicker/no-production-console` and `no-silent-catch` apply to
+  every logger.
 
 ## Everywhere
 
@@ -274,6 +328,12 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   (`@typescript-eslint/explicit-module-boundary-types`): `export function total(rows: readonly Row[]): number`;
   a React component returns `ReactElement`. A function typed by its variable
   (`export const handler: Handler = ...`) counts as typed. Tests and JavaScript files are exempt.
+- No deprecated API (`@typescript-eslint/no-deprecated`, type-aware, from the `strictTypeChecked`
+  set): a call, import or type that its declaration marks `@deprecated` (`new Buffer`, `url.parse`,
+  `fs.exists`, a deprecated React type) is reported with the replacement the deprecation names.
+  The check is the TypeScript counterpart of the Java preset's `javac/deprecation` and
+  `javac/removal` lint. A deprecation without a replacement, or an API the project must keep
+  calling, takes an exception for the rule in `nitpicker.config.json`.
 - No magic numbers (`nitpicker/no-magic-numbers`, which wraps
   `@typescript-eslint/no-magic-numbers`): name the number with a module-level constant; any number
   in its initializer is allowed (`const SECONDS_PER_DAY = 24 * 60 * 60;`,
@@ -304,6 +364,78 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   separator (`base + path.sep`, `` `${base}/` ``, `'/srv/'`): `full.startsWith(base)` also
   accepts `/srv-other`. A parameter as the first segment is the base and is fine
   (`path.join(dir, 'package.json')`).
+- Security sinks: SQL built from strings, weak hashes, disabled TLS checks, HTTP calls without a
+  timeout and unsafe deserialization. All five apply to production code, not to test support files (`test-support/`, `mocks/`, `__mocks__/`,
+  `__fixtures__/`, `fixtures/`, `stories/`, `.storybook/`, `*.stories.*`, `setupTests.*`); each message
+  names the allowed form and the exception route. They follow `const` values, aliases
+  (`import { createHash as digestOf }`, `const run = pool.query.bind(pool)`, `const { createHash } = crypto`),
+  `require`, `require(x).default`, `import x = require(x)`, `await import(x)`, default and namespace
+  imports, `enum` members, `readonly` class fields, and options objects held in a `const` or spread from one.
+  - `nitpicker/no-sql-string-building`: SQL text made by `+`, a template literal, `concat`, `join`,
+    `replace` or `util.format` with a runtime value in it. Text counts as SQL only with SQL context:
+    it starts with an upper-case statement (`SELECT ... FROM`, `INSERT INTO`, `UPDATE ... SET`,
+    `DELETE FROM`, `WITH x AS (`, DDL) or an upper-case clause (`WHERE id =`, `ORDER BY`, `LIMIT`),
+    or it reaches a query call: one named like `query`, `execute`, `raw`, `run` or `prepare`, or a
+    pg-promise method (`none`, `one`, `any`, `oneOrNone`, ...), where lower-case SQL and a fragment
+    such as `where id = ` before a value count too. English text, errors, log lines and JSX text are
+    not SQL. Query-builder sinks count any runtime value: knex `whereRaw`, `orderByRaw` and the other
+    `*Raw` methods, `sql.raw`, `Sequelize.literal`; TypeORM `where`/`andWhere`/`having` on a query
+    builder count a value after a comparison, and `orderBy`/`groupBy` any value that is not an alias
+    prefix (`${alias}.created_at`). Allowed: bind parameters (`$1`, `?`, `:name`), the project's tagged
+    template (`` sql`...` `` in drizzle-orm, kysely, postgres, `` prisma.$queryRaw`...` ``; the message
+    names the one in `package.json`), placeholder lists built only from placeholders
+    (`ids.map(() => '?').join(',')`, `rows.map(() => '(?, ?)').join(', ')`, `'?,'.repeat(n).slice(0, -1)`,
+    `Array.from(ids, () => '?')`, `$${i + 1}`, `$${params.length + 1}`), the optional-filter builder
+    (`conditions.push('name = ?')` joined with `' AND '`), a table or column from a fixed lookup
+    (`COLUMNS[key]` into a `const` object of plain names, also in JavaScript and `Object.freeze`, or a
+    `for (const table of TABLES)` loop over a `const` list), and values that cannot carry SQL:
+    numbers, `Number(x)`, `ids.map(Number)`, `Math.*`, `.length`, `mysql.escape(x)`, and with type
+    information a `number`, `number[]`, `boolean` or union of plain string literals (`table: 'users' | 'orders'`).
+  - `nitpicker/no-weak-hash`: MD5, SHA-1, MD2/MD4 and RIPEMD-160 in `createHash`, `createSign`,
+    `createVerify`, `crypto.hash`, `pbkdf2`, `hkdf`, WebCrypto `subtle.digest`, `sign` and `generateKey`, a
+    call whose name says hash, digest or checksum (not a predicate such as `isWeakHash`), a `{ algorithm }`
+    or `{ hashAlgorithm }` property, `crypto-js` `MD5`/`SHA1`/`algo.SHA1`, `@noble/hashes` and `hash-wasm`
+    `md5`/`sha1`, and the md5 and sha1 packages. A string counts only when it is exactly an algorithm
+    name (`'md5'`, `'SHA-1'`, `'RSA-SHA1'`), not a prefix such as `'md5-calculator'`. HMAC-SHA1
+    (`createHmac('sha1')`, `HmacSHA1`, subtle `{ name: 'HMAC', hash: 'SHA-1' }`, TOTP options with
+    `digits` or `period`) is allowed, since HMAC does not rest on collision resistance and TOTP and
+    OAuth 1.0a fix it; HMAC-MD5 is reported with its own message. Allowed: `createHash('sha256')` or
+    stronger, `createHmac('sha256', key)`, and `scrypt`, argon2 or bcrypt for passwords.
+  - `nitpicker/no-disabled-tls-verification`: `rejectUnauthorized: false`, `strictSSL: false`,
+    `sslValidate: false`, a `rejectUnauthorized` set from the environment or a condition
+    (`process.env.NODE_ENV === 'production'`, `!isDev`), MongoDB `tlsAllowInvalidCertificates`,
+    `tlsAllowInvalidHostnames` and `tlsInsecure`, `NODE_TLS_REJECT_UNAUTHORIZED` set to `0`
+    (assignment, `env` object, the whole string, or shell text given to `exec`/`spawn`),
+    `?sslmode=no-verify` and the MongoDB flags in a URL, a `checkServerIdentity` that returns nothing,
+    `ignoreHTTPSErrors`, `acceptInsecureCerts`, and `--ignore-certificate-errors` (also Electron's
+    `appendSwitch('ignore-certificate-errors')`) outside a blocklist or comparison. Not reported: a
+    server's `requestCert: true, rejectUnauthorized: false` (optional client certificates checked
+    through `socket.authorized`), `--ignore-certificate-errors-spki-list`, and the same words in help
+    or warning text. Allowed: trust the CA with `ca: readFileSync(caPath)`, `tlsCAFile` or
+    `NODE_EXTRA_CA_CERTS`, and pin a browser certificate with `--ignore-certificate-errors-spki-list`.
+  - `nitpicker/require-http-timeout`: a `fetch` without a `signal` or `dispatcher`, `axios` (`get`,
+    `post`, `request`, `create`) and `got` without `timeout` or `signal`, and `http`/`https`
+    `request`/`get` without `timeout`, `signal` or `setTimeout` (also after a chained `.on()`, and with a
+    named callback). A call whose options come from a parameter or a spread is not reported, options
+    built in steps (`init.signal = ...`) count, and a client made by `axios.create({ timeout })` or
+    `got.extend({ timeout })` covers its calls, as does an `axios.create()` instance whose every call
+    passes its own timeout. A timeout set once for the project counts: `axios.defaults.timeout` with a
+    non-zero value on the axios import or on the same instance, and undici
+    `setGlobalDispatcher(new Agent({ headersTimeout, bodyTimeout }))`, in the same file or in any
+    production module of the project. node-fetch 2's `timeout` option counts when the project's
+    node-fetch is 2.x. `fetch(request)` passthrough (a service worker's `event.request`, an edge
+    handler's `Request`), `data:` and `blob:` URLs and `new URL(path, import.meta.url)` are not
+    reported, and `axios.getUri` sends nothing. `fetch` is not checked in browser projects (React,
+    Preact, Vue, Svelte, Solid, Angular, read from `package.json`). Allowed:
+    `fetch(url, { signal: AbortSignal.timeout(10_000) })`.
+  - `nitpicker/no-unsafe-deserialization`: `node-serialize`, `funcster` and `cryo` (they rebuild
+    functions, also through `import x = require(...)` and `import()`), `v8.deserialize` (and the
+    `v8.deserialize(v8.serialize(x))` copy, whose allowed form is `structuredClone(x)`),
+    `vm.runInNewContext`, `runInThisContext`, `new vm.Script` and `compileFunction` with text that is
+    not a string literal, js-yaml `DEFAULT_FULL_SCHEMA` (imported, destructured or re-exported), js-yaml
+    3 `load`/`loadAll` without a `schema` (the installed major is read from the project), BSON
+    `evalFunctions: true` and libxmljs `noent: true`. Allowed: `JSON.parse` checked against a schema,
+    `yaml.load(text)` with the default schema in js-yaml 4, and `yaml.safeLoad(text)` in js-yaml 3.
 - Named exports list their names: no `export *`, which makes every internal export of a feature's
   `index.ts` public (`export { name } from './domain/x.js'`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).
@@ -1292,14 +1424,16 @@ change in review.
 
 Recommendation: documented expectation, not a peer dependency.
 
-The preset only requires that adapter code parse untrusted input with zod. Nitpicker's own runtime
-never imports zod (it is not in `package.json`), so a peer dependency would make every
-consumer install a package nitpicker does not use, and would break installs for projects that
-choose to have no external-input boundary. The `strict` ESLint rule that would check this works on
-syntax (a hand-written type guard on external data), not on which library parses it. Document in the
-preset README that adapters are expected to use zod, and have the rule message name zod as the
-allowed form. Revisit as a peer dependency (optional, via `peerDependenciesMeta`) only if a rule
-needs to import from zod at lint time.
+The preset only requires that adapter code parse untrusted input with a schema library, and zod is
+the default. Nitpicker's own runtime never imports zod (it is not in `package.json`), so a peer
+dependency would make every consumer install a package nitpicker does not use, and would break
+installs for projects that choose to have no external-input boundary. The rule that checks this
+works on syntax (a hand-written type guard on external data, an unparsed `JSON.parse`) and on which
+calls count as a parse, not on importing the library. Document in the preset README that adapters
+are expected to use zod unless the project has another validation library, and have the rule
+message name the project's library, or zod when it has none (see "Libraries follow the project").
+Revisit as a peer dependency (optional, via `peerDependenciesMeta`) only if a rule needs to import
+from zod at lint time.
 
 ### Does nitpicker's own code follow the preset
 
