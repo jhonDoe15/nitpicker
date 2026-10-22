@@ -44,10 +44,11 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-function buildAndTest({ projectRoot, maven, work, pinned, modules }) {
+function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
   runMaven({
     projectRoot,
     maven,
+    spawn,
     args: [
       '--quiet',
       `${jacocoPlugin(pinned)}:prepare-agent`,
@@ -81,8 +82,8 @@ function staleOutputs(module) {
   ];
 }
 
-function readModules(projectRoot, maven, work) {
-  const effectivePom = readEffectivePom(projectRoot, maven, work);
+function readModules({ projectRoot, maven, work, spawn }) {
+  const effectivePom = readEffectivePom({ projectRoot, maven, work, spawn });
   const modules = readReactor(projectRoot, effectivePom).filter(
     (module) => module.packaging !== 'pom',
   );
@@ -105,7 +106,7 @@ function missingLauncherVersions(analyzed) {
   return [...new Set(versions.filter((version) => version !== undefined))];
 }
 
-function analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin }) {
+function analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin, spawn }) {
   for (const { module, classpaths } of analyzed) {
     analyzeModule({
       module,
@@ -114,6 +115,7 @@ function analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin })
       pinned,
       configs,
       since,
+      spawn,
       style: {
         javaStyle: policy.javaStyle,
         indentation: checkstyleIndentation(policy.conventions),
@@ -124,11 +126,14 @@ function analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin })
   }
 }
 
-export function runMavenPreset(projectRoot, { maven, policy = {}, configs, environment = {} }) {
+export function runMavenPreset(
+  projectRoot,
+  { maven, policy = {}, configs, environment = {}, spawn },
+) {
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
   try {
-    const { modules, effectivePom } = readModules(projectRoot, maven, work);
+    const { modules, effectivePom } = readModules({ projectRoot, maven, work, spawn });
     const kotlin = kotlinSetup({
       projectRoot,
       policy,
@@ -138,9 +143,10 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, envir
       pinned,
       maven,
       environment,
+      spawn,
     });
     const since = Date.now() - 2000;
-    buildAndTest({ projectRoot, maven, work, pinned, modules });
+    buildAndTest({ projectRoot, maven, work, pinned, modules, spawn });
     const analyzed = modules.map((module) => ({
       module,
       classpaths: readClasspaths(work, module),
@@ -148,6 +154,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, envir
     const tools = resolveTools({
       projectRoot,
       maven,
+      spawn,
       pinned,
       launcherVersions: missingLauncherVersions(analyzed),
       extraTools: [
@@ -160,7 +167,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, envir
         ),
       ],
     });
-    analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin });
+    analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin, spawn });
     return {
       moduleDirs: modules.map((module) => module.basedir),
       formatAdvice: kotlin.options?.advice,

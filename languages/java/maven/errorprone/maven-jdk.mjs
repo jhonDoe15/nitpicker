@@ -71,16 +71,16 @@ export function chooseErrorProneJdk({ project, preview, installed }) {
     : { java: found.java };
 }
 
-function describe(java) {
-  const result = spawnSync(java, ['-version'], { encoding: 'utf8' });
+function describe(java, spawn) {
+  const result = spawn(java, ['-version'], { encoding: 'utf8' });
   if (result.error?.code === 'ENOENT') {
     return { java, missing: true };
   }
   return { java, feature: featureVersion(`${result.stderr}${result.stdout}`) };
 }
 
-export function errorProneJava({ preview }) {
-  const project = describe(javaCommand('java'));
+export function errorProneJava({ preview, spawn = spawnSync }) {
+  const project = describe(javaCommand('java'), spawn);
   if (project.missing) {
     throw new Error(
       `java not found (${project.java}): set JAVA_HOME to a JDK, or put its bin directory on the PATH`,
@@ -89,7 +89,7 @@ export function errorProneJava({ preview }) {
   if (project.feature === undefined) {
     throw new Error(`nitpicker could not read the version of ${project.java} (java -version)`);
   }
-  const installed = jdkHomes().map((jdk) => describe(path.join(jdk, 'bin', 'java')));
+  const installed = jdkHomes().map((jdk) => describe(path.join(jdk, 'bin', 'java'), spawn));
   const { java, problem } = chooseErrorProneJdk({ project, preview, installed });
   if (problem !== undefined) {
     throw new Error(problem);

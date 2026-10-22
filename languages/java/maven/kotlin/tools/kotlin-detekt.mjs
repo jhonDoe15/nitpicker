@@ -12,8 +12,8 @@ const FINDINGS_EXIT_CODE = 2;
 const STDLIB_JAR = /^kotlin-stdlib/u;
 const JAVA_HOME_LINE = /java\.home = (.+)/u;
 
-function runningJdkHome() {
-  const result = spawnSync(javaCommand('java'), ['-XshowSettings:properties', '-version'], {
+function runningJdkHome(spawn) {
+  const result = spawn(javaCommand('java'), ['-XshowSettings:properties', '-version'], {
     encoding: 'utf8',
   });
   const found = JAVA_HOME_LINE.exec(`${result.stderr}${result.stdout}`)?.[1].trim();
@@ -27,13 +27,13 @@ function runningJdkHome() {
 
 export function jdkHome({ jdkToolchain }, context = {}) {
   if (jdkToolchain === undefined) {
-    return { home: runningJdkHome() };
+    return { home: runningJdkHome(context.spawn ?? spawnSync) };
   }
   const home = toolchainJdkHome(jdkToolchain, context);
   if (home !== undefined) {
     return { home };
   }
-  const fallback = runningJdkHome();
+  const fallback = runningJdkHome(context.spawn ?? spawnSync);
   return {
     home: fallback,
     note: `The build selects the JDK toolchain ${JSON.stringify(jdkToolchain)}, which no toolchains file lists, so detekt resolves JDK types against ${fallback}`,
@@ -94,6 +94,7 @@ export function runDetekt({ module, reportDir, tools, classpaths, javaClassDirec
     mainClass: 'io.gitlab.arturbosch.detekt.cli.Main',
     args: detektArguments({ module, report, options, classpath, home: jdk.home }),
     cwd: module.basedir,
+    spawn: options.spawn,
     accept: (result) =>
       (result.status === 0 || result.status === FINDINGS_EXIT_CODE) && existsSync(report),
   });

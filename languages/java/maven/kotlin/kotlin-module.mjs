@@ -45,7 +45,14 @@ export function analyzeKotlinModule({ module, reportDir, tools, classpaths, pinn
     options,
   });
   runKotlinFormatter({ module, reportDir, tools, options });
-  runKotlinPsi({ module, reportDir, tools, pinned, classes: options.psiClasses });
+  runKotlinPsi({
+    module,
+    reportDir,
+    tools,
+    pinned,
+    classes: options.psiClasses,
+    spawn: options.spawn,
+  });
   return {
     spotbugsModule: { ...module, outputDirectory: javaClasses },
     auxClasspath: [...classpaths.mainCompile, module.outputDirectory],
