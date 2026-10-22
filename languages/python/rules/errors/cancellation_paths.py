@@ -43,7 +43,11 @@ def block_outcomes(statements, error, context, caught):
 
 
 def try_outcomes(node, error, context, caught):
-    pending = {UNKNOWN} if node.handlers else block_outcomes(node.body, error, context, caught)
+    pending = (
+        {UNKNOWN}
+        if node.handlers
+        else block_outcomes(node.body, error, context, caught)
+    )
     if not node.finalbody:
         return pending
     final = block_outcomes(node.finalbody, error, context, caught)
