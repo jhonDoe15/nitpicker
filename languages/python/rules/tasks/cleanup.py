@@ -46,7 +46,9 @@ def callee(node):
 def checkpoint(node, aliases):
     if isinstance(node, ast.Await):
         value = node.value
-        called = dotted_name(value.func, aliases) if isinstance(value, ast.Call) else None
+        called = (
+            dotted_name(value.func, aliases) if isinstance(value, ast.Call) else None
+        )
         return None if called in SAFE_AWAITS else f"await {callee(value)}"
     if isinstance(node, ast.AsyncWith):
         return f"async with {callee(node.items[0].context_expr)}"
