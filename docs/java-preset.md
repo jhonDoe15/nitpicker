@@ -1708,6 +1708,10 @@ palantir-java-format, or neither for `none`).
   (a package depending on a less stable package fails; the same violation on the base stays
   baselined).
 
+## Design rules
+
+The design rules of the shared rule set (see [`spec/checks.md`](../spec/checks.md)) also run on Java, on Gradle and Maven builds alike. A small program in `languages/java/gradle/design/` reads the main sources of all modules together (parsing only, so no extra build step and no classpath) and writes the facts the rules read to `design-facts.json` in the report directory (`target/nitpicker/` for Maven). Every design rule is report-only, except two cases that fail a change: `mutable-state-escape`, when a caller in another module changes the private mutable collection that an exported member of another class returns as it is, and `caller-protocol`, for a call that breaks a contract listed under `protocols` in the policy (an `open` without a `close` on every exit, a step before the `open`). Calls the program cannot resolve from the sources alone (library types, overloads of the same argument count, a method a supertype outside the project could declare) are left out of the facts, so a rule misses them instead of guessing. If the program cannot run, for example because no JDK is found or a source does not parse, the run reports a `design-facts-failure` tool error. The Kotlin preset does not run the design rules. How the program resolves names is in [internals.md](internals.md#java-preset-languagesjava).
+
 ## Generated sources
 
 Findings on generated sources are dropped (`generated/generated-sources.mjs`, applied to the Java

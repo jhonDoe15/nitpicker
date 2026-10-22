@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { runMaven } from './maven-command.mjs';
@@ -138,6 +138,17 @@ export function cacheDirectory(name) {
   const root = path.join(process.env.XDG_CACHE_HOME ?? path.join(homedir(), '.cache'), 'nitpicker');
   mkdirSync(root, { recursive: true, mode: 0o700 });
   return path.join(root, name);
+}
+
+export function publishDirectory(staging, target) {
+  try {
+    renameSync(staging, target);
+  } catch (raced) {
+    rmSync(staging, { recursive: true, force: true });
+    if (!existsSync(target)) {
+      throw raced;
+    }
+  }
 }
 
 export function resolveTools({ projectRoot, maven, pinned, launcherVersions, extraTools, spawn }) {
