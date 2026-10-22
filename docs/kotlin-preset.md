@@ -508,16 +508,19 @@ ktfmt checks the base with the same formatter and legacy formatting is not a new
 3. Otherwise `ktlint_` properties in `.editorconfig` mean ktlint.
 4. Otherwise none: no format check runs.
 
-On Maven the plugin declarations of the effective POM of the project (`mvn help:effective-pom`,
+On Maven the plugin declarations of the effective POM of the head checkout (`mvn help:effective-pom`,
 which contains the plugins of the parent POMs and the active profiles) are read, not its text: a
-project name, a dependency or a comment that holds the word `ktlint` or `ktfmt` decides nothing.
-`ktlint` means ktlint (a plugin whose artifact is a `ktlint` one such as `ktlint-maven-plugin`, a
-Spotless `<kotlin><ktlint/></kotlin>` step, or an exec plugin that runs the `ktlint` CLI), and `ktfmt`
-means ktfmt (the same three forms with `ktfmt`). Both mean ktlint, as on Gradle. The ktfmt style is
-the `<style>` (`KOTLINLANG`, `DROPBOX`, `GOOGLE` or `META`) of the ktfmt step or plugin itself, never
-the `<style>` of another formatter such as the Java `googleJavaFormat` step; no style means the
-followed indentation decides, as on Gradle (`DROPBOX` is ktfmt's older name for the kotlinlang
-style, and `dropboxStyle()` in a Gradle build means the same).
+project name, a dependency or a comment that holds the word `ktlint` or `ktfmt` decides nothing, and
+a POM that does not parse names no formatter. `ktlint` means ktlint (the ktlint Maven plugin of
+`com.github.gantsign.maven` or `com.github.shyiko`, or a Spotless `<kotlin><ktlint/></kotlin>`
+step), and `ktfmt` means ktfmt (a Spotless `<kotlin><ktfmt/></kotlin>` step). Both mean ktlint, as on
+Gradle. A formatter that is run through `exec-maven-plugin` is not read; set `kotlin.formatter`
+there. The ktfmt style is the `<style>` (`KOTLINLANG`, `DROPBOX`, `GOOGLE` or `META`) of the ktfmt
+step itself, never the `<style>` of another formatter such as the Java `googleJavaFormat` step; no
+style means the followed indentation decides, as on Gradle (`DROPBOX` is ktfmt's older name for the
+kotlinlang style, and `dropboxStyle()` in a Gradle build means the same). The head POM is the one
+source: the convention step, the summary and the run of both snapshots use the formatter and style it
+gives, so the base run cannot pick another formatter than the head run.
 
 Build logic that lives in `buildSrc`, an included build or a submodule is not searched; use the
 override there.
@@ -1229,7 +1232,11 @@ fails only when it grows, and a package folder moved to a new path is matched to
   threshold of -1, and one runs the Kotlin Spring fixture on Maven with ArchUnit written in
   Kotlin. `kotlin-maven-build-config.e2e.test.mjs` covers what the build declares: a formatter named
   by a Spotless step next to a Java formatter, a Java test that calls a Kotlin test helper, and a
-  folder the build does not compile.
+  folder the build does not compile. `kotlin-maven-test-frameworks.e2e.test.mjs` runs the Kotest,
+  JUnit 4 and TestNG fixtures (`fixtures/kotlin-kotest`, `kotlin-junit4`, `kotlin-testng`) for
+  coverage, mutants, slow tests and ArchUnit rules, and the lint file binds the ktlint and detekt
+  Maven plugins to the build to show that nitpicker skips them. The one-way rule cases are split into
+  banned, allowed and hostile-config files, as on Gradle.
 - `languages/java/adapters/kotlin-e2e/spring/kotlin-spring.e2e.test.mjs`: the same Spring fixture on Gradle.
 - `kotlin-psi` on a fixture (units, lambda properties, package, multifile parts, byte
   order mark, parse error, very deep nesting, test roots) is tested in the same opt-in suite, so a bump of
@@ -1272,8 +1279,11 @@ fails only when it grows, and a package folder moved to a new path is matched to
   source directory and `build-helper-maven-plugin` `add-source` roots, as the plugin compiles them.
   A root that a plugin adds in any other way is not read.
 - On Maven the project's own ktlint and detekt plugins are skipped with `-Dktlint.skip` and
-  `-Ddetekt.skip` while nitpicker runs the build; a formatter plugin that uses another property
-  name still runs, and a failure of it fails the build.
+  `-Ddetekt.skip` while nitpicker runs the build (a check bound to the lifecycle does not fail the
+  run; the Maven lint end-to-end file binds both and pins it). A formatter plugin that uses another
+  property name, and a formatter run through `exec-maven-plugin`, still run, and a failure of one
+  fails the build. The formatter that nitpicker follows is the one the effective POM names through
+  the ktlint Maven plugin or the Spotless `kotlin` step.
 - On Maven the Kotlin metrics and syntax programs run on the JDK that runs Maven (`JAVA_HOME`), as on
   Gradle they run on the JVM of Gradle; only detekt's `--jdk-home` follows the build's toolchain.
 - ArchUnit rule tests written in Kotlin run with the other tests, but the resolution of their

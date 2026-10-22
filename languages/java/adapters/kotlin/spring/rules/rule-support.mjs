@@ -1,17 +1,13 @@
+import { ancestors } from '../model/kotlin-declarations.mjs';
 import { argumentValue } from '../syntax/kotlin-annotations.mjs';
 import { enclosingFunction } from '../syntax/expressions/kotlin-scope.mjs';
 import { identifierOf } from '../syntax/kotlin-tree.mjs';
 
 export function classSymbolOf(declaration) {
-  const parts = [];
-  const pending = [declaration];
-  for (const current of pending) {
-    parts.unshift(current.name);
-    if (current.parent !== undefined) {
-      pending.push(current.parent);
-    }
-  }
-  return parts.join('.');
+  return ancestors(declaration)
+    .map(({ name }) => name)
+    .reverse()
+    .join('.');
 }
 
 function ownerSymbol(owner) {
@@ -127,16 +123,7 @@ export function hitOn(node, symbol) {
 }
 
 export function isWithin(declaration, ancestor) {
-  const pending = [declaration];
-  for (const current of pending) {
-    if (current === ancestor) {
-      return true;
-    }
-    if (current.parent !== undefined) {
-      pending.push(current.parent);
-    }
-  }
-  return false;
+  return ancestors(declaration).includes(ancestor);
 }
 
 export function memberSymbolOf(declaration) {

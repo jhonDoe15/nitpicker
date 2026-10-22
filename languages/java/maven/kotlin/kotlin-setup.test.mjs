@@ -9,8 +9,13 @@ import { kotlinSetup } from './kotlin-setup.mjs';
 const roots = [];
 const pinned = readPinnedTools();
 const NITPICKER_DETEKT = path.resolve(import.meta.dirname, '../../detekt/nitpicker-detekt.yml');
-const KTLINT_POM = pomWith('ktlint-maven-plugin');
-const KTFMT_POM = pomWith('ktfmt-maven-plugin', '<style>KOTLINLANG</style>');
+const KTLINT_POM = pluginPom(
+  '<groupId>com.github.gantsign.maven</groupId><artifactId>ktlint-maven-plugin</artifactId>',
+);
+const KTFMT_POM = pluginPom(
+  `<groupId>com.diffplug.spotless</groupId><artifactId>spotless-maven-plugin</artifactId>
+   <configuration><kotlin><ktfmt><style>KOTLINLANG</style></ktfmt></kotlin></configuration>`,
+);
 
 const formatFacts = ({ formatter, ktfmtStyle, ktfmtEditorconfig }) => ({
   formatter,
@@ -18,8 +23,7 @@ const formatFacts = ({ formatter, ktfmtStyle, ktfmtEditorconfig }) => ({
   ktfmtEditorconfig,
 });
 
-function pomWith(artifactId, configuration = '') {
-  const body = `<artifactId>${artifactId}</artifactId><configuration>${configuration}</configuration>`;
+function pluginPom(body) {
   return `<project><build><plugins><plugin>${body}</plugin></plugins></build></project>`;
 }
 
@@ -92,6 +96,22 @@ describe('kotlinSetup', () => {
     expect(setup({ effectivePom: '<name>plain</name>' }).result.options.formatter).toBe('none');
   });
 
+  it('follows the head facts over the formatter the snapshot POM names', () => {
+    const { result } = setup({
+      effectivePom: KTLINT_POM,
+      policy: {
+        kotlinFormatter: 'ktfmt',
+        kotlinFacts: { formatter: 'ktfmt', build: 'maven', ktfmtStyle: 'google' },
+      },
+    });
+
+    expect(formatFacts(result.options)).toEqual({
+      formatter: 'ktfmt',
+      ktfmtStyle: 'google',
+      ktfmtEditorconfig: false,
+    });
+  });
+
   it('lets kotlin.formatter win and has ktfmt read the editorconfig only when the project is opted in', () => {
     const files = { '.editorconfig': 'root = true\nindent_size = 2\n' };
     const effectivePom = KTLINT_POM;
@@ -140,7 +160,7 @@ describe('kotlinSetup', () => {
     const { result, projectRoot, work } = setup({
       files: {
         'config/detekt/detekt.yml':
-          'style:\n  ForbiddenMethodCall:\n    methods:\n      - value: java.lang.Thread.sleep\n        reason: no sleeping\n',
+          'style:\n  ForbiddenMethodCall:\n    methods:\n      - value: java.lang.Runtime.halt\n        reason: no halting\n',
       },
       policy: { toolPrecedence: { detekt: ['project', 'nitpicker'] } },
     });
@@ -151,7 +171,7 @@ describe('kotlinSetup', () => {
     expect(result.options.detektLists).toBe(path.join(work, 'detekt-lists.yml'));
     expect(forbiddenMethodsOf(readFileSync(result.options.detektLists, 'utf8'))).toEqual([
       ...forbiddenMethodsOf(readFileSync(NITPICKER_DETEKT, 'utf8')),
-      { value: 'java.lang.Thread.sleep', reason: 'no sleeping' },
+      { value: 'java.lang.Runtime.halt', reason: 'no halting' },
     ]);
   });
 

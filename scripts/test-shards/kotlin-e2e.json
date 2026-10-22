@@ -18,6 +18,7 @@
   "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-one-way-rules-banned.e2e.test.mjs": 130,
   "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-one-way-rules-hostile-config.e2e.test.mjs": 70,
   "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-review-rules.e2e.test.mjs": 205,
+  "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-test-frameworks.e2e.test.mjs": 120,
   "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-test-sources.e2e.test.mjs": 120,
   "languages/java/adapters/kotlin-e2e/maven/project/kotlin-maven-build-config.e2e.test.mjs": 140,
   "languages/java/adapters/kotlin-e2e/maven/project/kotlin-maven-modules.e2e.test.mjs": 200,
