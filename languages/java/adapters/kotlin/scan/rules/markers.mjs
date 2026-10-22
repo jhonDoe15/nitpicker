@@ -162,8 +162,13 @@ function commentGroups(scanned) {
 }
 
 function withoutGroups(text) {
-  const inner = text.replaceAll(GROUPED, '');
-  return inner === text ? text : withoutGroups(inner);
+  let current = text;
+  let inner = current.replaceAll(GROUPED, '');
+  while (inner !== current) {
+    current = inner;
+    inner = current.replaceAll(GROUPED, '');
+  }
+  return current;
 }
 
 function readsAsProse(text) {
