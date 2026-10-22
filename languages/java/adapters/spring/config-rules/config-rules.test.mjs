@@ -36,7 +36,7 @@ describe('active-profile', () => {
       rule: 'active-profile',
       file,
       identity: relaxed(key),
-      message: `${key} in the packaged main file turns those profiles on in every environment. ${PROFILE_ADVICE[key]}`,
+      message: `${PROFILE_ADVICE[key]} ${key} in the packaged main file turns those profiles on in every environment.`,
       line,
     });
 
@@ -97,63 +97,63 @@ describe('unsafe-diagnostics', () => {
       'spring.jpa.show-sql=true',
       diagnostic(
         'spring.jpa.show-sql',
-        'spring.jpa.show-sql=true prints SQL to standard output, outside logging. Remove it, and use the logging.level.org.hibernate.SQL logger in a local profile.',
+        'Log SQL with the logging.level.org.hibernate.SQL logger in a local profile and remove spring.jpa.show-sql=true, which prints SQL to standard output, outside logging.',
       ),
     ],
     [
       'logging.level.org.hibernate.orm.jdbc.bind=TRACE',
       diagnostic(
         'logging.level.org.hibernate.orm.jdbc.bind',
-        'logging.level.org.hibernate.orm.jdbc.bind=TRACE logs bound SQL values, including passwords and personal data. Leave the level at its default.',
+        'Leave logging.level.org.hibernate.orm.jdbc.bind at its default level; TRACE logs bound SQL values, including passwords and personal data.',
       ),
     ],
     [
       'logging.level.org.hibernate.type.descriptor.sql.BasicBinder=trace',
       diagnostic(
         'logging.level.org.hibernate.type.descriptor.sql.BasicBinder',
-        'logging.level.org.hibernate.type.descriptor.sql.BasicBinder=trace logs bound SQL values, including passwords and personal data. Leave the level at its default.',
+        'Leave logging.level.org.hibernate.type.descriptor.sql.BasicBinder at its default level; trace logs bound SQL values, including passwords and personal data.',
       ),
     ],
     [
       'management.endpoint.env.show-values=ALWAYS',
       diagnostic(
         'management.endpoint.env.show-values',
-        'management.endpoint.env.show-values=always serves internals to every caller. Use when-authorized, or never.',
+        'Set management.endpoint.env.show-values to when-authorized or never; always serves internals to every caller.',
       ),
     ],
     [
       'management.endpoint.health.show-details=always',
       diagnostic(
         'management.endpoint.health.show-details',
-        'management.endpoint.health.show-details=always serves internals to every caller. Use when-authorized, or never.',
+        'Set management.endpoint.health.show-details to when-authorized or never; always serves internals to every caller.',
       ),
     ],
     [
       'spring.h2.console.enabled=true',
       diagnostic(
         'spring.h2.console.enabled',
-        'spring.h2.console.enabled=true opens the H2 web console. Enable it only in a local profile.',
+        'Enable spring.h2.console.enabled only in a local profile; it opens the H2 web console.',
       ),
     ],
     [
       'spring.jpa.show-sql=${SHOW_SQL:true}',
       diagnostic(
         'spring.jpa.show-sql',
-        'spring.jpa.show-sql=true prints SQL to standard output, outside logging. Remove it, and use the logging.level.org.hibernate.SQL logger in a local profile.',
+        'Log SQL with the logging.level.org.hibernate.SQL logger in a local profile and remove spring.jpa.show-sql=true, which prints SQL to standard output, outside logging.',
       ),
     ],
     [
       'logging.level.org.hibernate.type=TRACE',
       diagnostic(
         'logging.level.org.hibernate.type',
-        'logging.level.org.hibernate.type=TRACE logs bound SQL values, including passwords and personal data. Leave the level at its default.',
+        'Leave logging.level.org.hibernate.type at its default level; TRACE logs bound SQL values, including passwords and personal data.',
       ),
     ],
     [
       'logging.level.root=all',
       diagnostic(
         'logging.level.root',
-        'logging.level.root=all logs bound SQL values, including passwords and personal data. Leave the level at its default.',
+        'Leave logging.level.root at its default level; all logs bound SQL values, including passwords and personal data.',
       ),
     ],
   ])('flags %s', (line, expected) => {
@@ -195,22 +195,22 @@ describe('error-details beyond the stack trace', () => {
     [
       'server.error.include-message=always',
       'server.error.includemessage',
-      'server.error.include-message sends exception messages to clients. Use never, and return a fixed ProblemDetail from a @RestControllerAdvice.',
+      'Set server.error.include-message=never and return a fixed ProblemDetail from a @RestControllerAdvice; other values send exception messages to clients.',
     ],
     [
       'server.error.include-binding-errors=on-param',
       'server.error.includebindingerrors',
-      'server.error.include-binding-errors sends rejected values to clients. Use never, and report field errors from a @RestControllerAdvice.',
+      'Set server.error.include-binding-errors=never and report field errors from a @RestControllerAdvice; other values send rejected values to clients.',
     ],
     [
       'server.error.include-message=${INCLUDE_MESSAGE:always}',
       'server.error.includemessage',
-      'server.error.include-message sends exception messages to clients. Use never, and return a fixed ProblemDetail from a @RestControllerAdvice.',
+      'Set server.error.include-message=never and return a fixed ProblemDetail from a @RestControllerAdvice; other values send exception messages to clients.',
     ],
     [
       'server.error.include-exception=true',
       'server.error.includeexception',
-      'server.error.include-exception sends exception class names to clients. Use false.',
+      'Set server.error.include-exception=false; true sends exception class names to clients.',
     ],
   ])('flags %s', (line, identity, message) => {
     expect(only('application.properties', line)).toEqual([detail(identity, message)]);
@@ -232,7 +232,7 @@ describe('credentials in URLs', () => {
       rule: 'literal-secret',
       file: MAIN_PROPERTIES,
       identity,
-      message: `${key} embeds a credential in its URL. Take it out of the URL and supply it from the environment, for example through a placeholder without a default.`,
+      message: `Supply the credential in ${key} from the environment, for example through a placeholder without a default, and take it out of the URL.`,
       line: 1,
     });
 

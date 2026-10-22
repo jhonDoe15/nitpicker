@@ -51,6 +51,7 @@ describe('moduleManifest', () => {
       versions: pinned,
       build: 'maven',
       sourceRoots: ['src/main/java'],
+      kotlinSourceRoots: [],
       testSourceRoots: ['src/test/java'],
       resourceRoots: ['src/main/resources'],
       spring: true,
