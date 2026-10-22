@@ -53,7 +53,8 @@ final class State {
     return m(
         "file", relative, "test", test, "package", file.getPackageFqName().asString(),
         "imports", imports(), "classes", classes, "functions", functions, "properties", properties,
-        "waits", waits, "predicates", predicates, "updates", updates, "topLevelVars", topLevelVars(), "typeAliases", typeAliases,
+        "waits", waits, "predicates", predicates, "updates", updates, "topLevelVars", topLevelVars(),
+        "typeAliases", typeAliases,
         "calls", new ArrayList<Object>(calls.stream().map(Json.Raw::new).toList()),
         "references", new ArrayList<Object>(references));
   }
