@@ -8,7 +8,7 @@ const TS_MODIFIERS = String.raw`(?:(?:public|private|protected|static|readonly)\
 const KOTLIN_TYPES = 'data|sealed|open|abstract|enum|annotation|inline|value|private|internal';
 const JAVA_MODIFIERS =
   '(?:(?:public|private|protected|static|final|abstract|transient|volatile|default)\\s+)*';
-const JAVA_TYPE = String.raw`[\w<>?,. [\]]+`;
+const JAVA_TYPE = String.raw`[\w<>?.[\]]+(?:, ?[\w<>?.[\]]+)*`;
 
 const PATTERNS = {
   typescript: [
