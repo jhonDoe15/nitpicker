@@ -671,7 +671,8 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 ([source scans](#source-scans)), the file limits, `slow-test` (or `test-runtime/slow-test`), the
 [dependency and repository checks](usage.md#dependency-and-repository-checks), stability, and the
 mutants of Java classes per path, and the structure, CRAP and coverage rules per function. Java rule
-ids are accepted for the Java sources of the project. `layout` is a config error.
+ids are accepted for the Java sources of the project. `layout` is a config error until the Kotlin
+preset runs the rule that reads it (`shared-used-by-one-feature`).
 
 ## Slow tests
 

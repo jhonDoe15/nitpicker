@@ -242,8 +242,11 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
       writeFileSync(path.join(directory, 'listing.txt'), 'deep.py');
 
       const result = spawnSync(
-        'python3',
+        'sh',
         [
+          '-c',
+          'ulimit -s 8192 && exec python3 "$@"',
+          'python3',
           script,
           path.join(directory, STRUCTURE_REPORT),
           directory,

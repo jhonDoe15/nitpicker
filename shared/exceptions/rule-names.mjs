@@ -1,4 +1,4 @@
-import { PREFIXED_RULE_TOOLS, PRESET_TOOLS, RULE_TOOLS } from '../policy.mjs';
+import { PREFIXED_RULE_TOOLS, PRESET_TOOLS, RULE_TOOLS } from './rule-tools.mjs';
 import { exceptionEntryText, exceptionSentence } from './sentence.mjs';
 
 /** A function name without its parameter list, with `::` written as `.`. */

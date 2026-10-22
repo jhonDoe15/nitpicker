@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -14,8 +14,4 @@ export function withMovesFile(moves, operation) {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-}
-
-export function readMovesFile(movesFile) {
-  return movesFile === undefined ? new Map() : new Map(JSON.parse(readFileSync(movesFile, 'utf8')));
 }

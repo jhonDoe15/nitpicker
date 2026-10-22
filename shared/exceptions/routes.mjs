@@ -1,14 +1,16 @@
 import {
-  CODING_STANDARDS_RULE_PREFIXES,
-  CODING_STANDARDS_RULES,
   DEAD_CODE_RULES,
-  DEPENDENCY_RULES,
   FUNCTION_EXCEPTION_RULES,
   NAME_EXCEPTION_RULES,
   RULE_IDS,
 } from '../policy.mjs';
-import { functionNameOf } from './function-names.mjs';
+import { functionNameOf } from './matching.mjs';
 import { exceptionRoute, toolsOf } from './rule-names.mjs';
+import {
+  CODING_STANDARDS_RULE_PREFIXES,
+  CODING_STANDARDS_RULES,
+  DEPENDENCY_RULES,
+} from './rule-tools.mjs';
 import { appendSentence } from './sentence.mjs';
 
 export const ROUTED_RULES = [

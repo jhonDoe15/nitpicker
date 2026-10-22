@@ -28,7 +28,12 @@ export function normalizeDeadCode(report, analyzerName, { exceptions = [] } = {}
   ]
     .filter(
       ({ finding, name }) =>
-        !isExcepted(exceptions, { rule: finding.rule, path: finding.path, packageName: name }),
+        !isExcepted(exceptions, {
+          rule: finding.rule,
+          path: finding.path,
+          packageName: name,
+          symbol: name,
+        }),
     )
     .map(({ finding }) => finding);
 }
