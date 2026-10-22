@@ -650,10 +650,17 @@ allprojects {
                 def unrunTestSourceSets = testSourceSets()
                     .findAll { set -> !set.output.classesDirs.files.any { runTestClassDirs.contains(it) } }
                     .collect { set -> [name: set.name, roots: sourceDirsOf(set).collect { relativeToRoot(it) }] }
+                def kotlinRoots = []
+                if (project.plugins.hasPlugin('org.jetbrains.kotlin.jvm')) {
+                    kotlinRoots = project.kotlin.sourceSets.main.kotlin.srcDirs.findAll {
+                        it.exists() && it.toPath().startsWith(projectDir.toPath()) && !it.toPath().startsWith(generatedRoot)
+                    }.sort().collect { relativeToRoot(it) }
+                }
                 reportDir.get().file('manifest.json').asFile.text = groovy.json.JsonOutput.toJson([
                     versions       : pinned,
                     moduleKey      : moduleKey,
                     sourceRoots    : roots,
+                    kotlinSourceRoots: kotlinRoots,
                     testSourceRoots: testRoots,
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
