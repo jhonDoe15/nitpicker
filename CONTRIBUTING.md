@@ -100,7 +100,7 @@ After moving E2E files or changing their package-script filters, verify real Vit
 case counts, profile coverage and the configured matrix partition without starting JVM builds:
 
 ```sh
-node scripts/test-shards/verify-e2e-shards.mjs
+npm run verify:e2e-shards
 ```
 
 Enabled JVM suites use separate timing files: `scripts/test-shards/java-e2e.json` and
