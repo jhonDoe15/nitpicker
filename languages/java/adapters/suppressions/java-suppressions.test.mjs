@@ -24,7 +24,14 @@ const REPOSITORY = `interface Products extends Repository<Product, Long> {
 `;
 
 const MESSAGE =
-  'Do not silence PMD inline: fix the finding, or add an exception for its rule in nitpicker.config.json. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
+  'Do not silence PMD inline: fix the finding. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
+
+const route = (rule, file) =>
+  `If this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
+const ERROR_PRONE_ROUTE = route('errorprone/InlineSuppression', 'A.java');
+const PMD_ROUTE = route('pmd/InlineSuppression', 'A.java');
+const afterMessage = (message, prefix) =>
+  message.slice(prefix.length, message.indexOf(' If this is intended'));
 
 const lines = (findings) => findings.map((finding) => finding.location.line);
 
@@ -60,11 +67,11 @@ describe('fileFindings', () => {
       rule: 'InlineSuppression',
       path: 'src/main/java/A.java',
       identity: expect.stringMatching(/^InlineSuppression:\w+$/),
-      message: `${MESSAGE} Found: "PMD.UnusedPrivateField".`,
+      message: `${MESSAGE} Found: "PMD.UnusedPrivateField". ${route('pmd/InlineSuppression', 'src/main/java/A.java')}`,
       classification: 'enforceable',
       location: { line: 2 },
     });
-    expect(findings.map((finding) => finding.message.slice(MESSAGE.length))).toEqual([
+    expect(findings.map((finding) => afterMessage(finding.message, MESSAGE))).toEqual([
       ' Found: "PMD.UnusedPrivateField".',
       ' Found: "PMD".',
       ' Found: "all".',
@@ -104,7 +111,7 @@ describe('fileFindings', () => {
       fileFindings(source, 'A.java')
         .filter((finding) => finding.tool === 'pmd')
         .map(
-          (finding) => `${String(finding.location.line)}${finding.message.slice(MESSAGE.length)}`,
+          (finding) => `${String(finding.location.line)}${afterMessage(finding.message, MESSAGE)}`,
         ),
     ).toEqual([
       '2 Found: "PMD.X".',
@@ -139,13 +146,12 @@ describe('fileFindings', () => {
 });
 
 describe('fileFindings for SpotBugs', () => {
-  const SPOTBUGS_MESSAGE =
-    'Do not silence SpotBugs inline: fix the bug, or add an exception for spotbugs/<bug pattern> in nitpicker.config.json.';
+  const SPOTBUGS_MESSAGE = 'Do not silence SpotBugs inline: fix the bug.';
   const prefixOf = (tool) => (tool === 'pmd' ? MESSAGE : SPOTBUGS_MESSAGE);
   const found = (findings) =>
     findings.map(
       ({ tool, location, message }) =>
-        `${tool} ${String(location.line)}${message.slice(prefixOf(tool).length)}`,
+        `${tool} ${String(location.line)}${afterMessage(message, prefixOf(tool))}`,
     );
 
   it('reports every @SuppressFBWarnings, without the justification, and not inside comments or strings', () => {
@@ -174,7 +180,7 @@ describe('fileFindings for SpotBugs', () => {
       rule: 'InlineSuppression',
       path: 'src/main/java/A.java',
       identity: expect.stringMatching(/^InlineSuppression:\w+$/),
-      message: `${SPOTBUGS_MESSAGE} Found: "EI_EXPOSE_REP", "NP_NULL".`,
+      message: `${SPOTBUGS_MESSAGE} Found: "EI_EXPOSE_REP", "NP_NULL". ${route('spotbugs/InlineSuppression', 'src/main/java/A.java')}`,
       classification: 'enforceable',
       location: { line: 3 },
     });
@@ -252,15 +258,30 @@ describe('fileFindings for Error Prone', () => {
         finding.message,
       ]),
     ).toEqual([
-      ['errorprone', 'InlineSuppression', 2, `${ERROR_PRONE_MESSAGE} Found: "NullAway".`],
-      ['errorprone', 'InlineSuppression', 3, `${ERROR_PRONE_MESSAGE} Found: "NullAway.Init".`],
+      [
+        'errorprone',
+        'InlineSuppression',
+        2,
+        `${ERROR_PRONE_MESSAGE} Found: "NullAway". ${ERROR_PRONE_ROUTE}`,
+      ],
+      [
+        'errorprone',
+        'InlineSuppression',
+        3,
+        `${ERROR_PRONE_MESSAGE} Found: "NullAway.Init". ${ERROR_PRONE_ROUTE}`,
+      ],
       [
         'errorprone',
         'InlineSuppression',
         4,
-        `${ERROR_PRONE_MESSAGE} Found: "FutureReturnValueIgnored".`,
+        `${ERROR_PRONE_MESSAGE} Found: "FutureReturnValueIgnored". ${ERROR_PRONE_ROUTE}`,
       ],
-      ['errorprone', 'InlineSuppression', 6, `${ERROR_PRONE_MESSAGE} Found: "dep-ann".`],
+      [
+        'errorprone',
+        'InlineSuppression',
+        6,
+        `${ERROR_PRONE_MESSAGE} Found: "dep-ann". ${ERROR_PRONE_ROUTE}`,
+      ],
     ]);
   });
 
@@ -270,8 +291,8 @@ describe('fileFindings for Error Prone', () => {
     expect(
       fileFindings(source, 'A.java').map((finding) => [finding.tool, finding.message]),
     ).toEqual([
-      ['pmd', `${MESSAGE} Found: "PMD".`],
-      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "NullAway".`],
+      ['pmd', `${MESSAGE} Found: "PMD". ${PMD_ROUTE}`],
+      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "NullAway". ${ERROR_PRONE_ROUTE}`],
     ]);
   });
 
@@ -281,8 +302,8 @@ describe('fileFindings for Error Prone', () => {
     expect(
       fileFindings(source, 'A.java').map((finding) => [finding.tool, finding.message]),
     ).toEqual([
-      ['pmd', `${MESSAGE} Found: "unused".`],
-      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "dep-ann".`],
+      ['pmd', `${MESSAGE} Found: "unused". ${PMD_ROUTE}`],
+      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "dep-ann". ${ERROR_PRONE_ROUTE}`],
     ]);
   });
 });

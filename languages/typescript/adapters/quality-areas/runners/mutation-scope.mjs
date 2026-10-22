@@ -4,16 +4,19 @@ import { diffFromBase } from '../../../../../core/tooling/git/base-diff.mjs';
 
 export const MUTATION_REPORT_PATH = 'reports/quality/mutation/mutation.json';
 
-export function mutationTargets({ snapshot, baselineRoot, projectRoot }, layout) {
-  if (snapshot === 'base') return [];
-  if (baselineRoot === undefined) return undefined;
-  const diff = diffFromBase({
+export function diffAgainstBase({ baselineRoot, projectRoot }, format) {
+  return diffFromBase({
     runGit,
     baselineRoot,
     projectRoot,
-    args: ['--unified=0', '--find-renames', '--relative', '--no-color', '--no-ext-diff'],
+    args: [format, '--find-renames', '--relative', '--no-color', '--no-ext-diff'],
   });
-  return [...parseChangedLines(diff).values()]
+}
+
+export function mutationTargets(options, layout) {
+  if (options.snapshot === 'base') return [];
+  if (options.baselineRoot === undefined) return undefined;
+  return [...parseChangedLines(diffAgainstBase(options, '--unified=0')).values()]
     .filter((file) => layout.isSourceFile(file.path))
     .flatMap((file) =>
       file.ranges.map(([start, end]) => `${file.path}:${String(start)}-${String(end)}`),

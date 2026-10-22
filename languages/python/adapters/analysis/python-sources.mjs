@@ -200,7 +200,7 @@ export function listProductionModules(projectRoot, sourceRoots) {
 
 const OUTSIDE_SKIPPED = new Set([...INSTALLED_DIRECTORIES, 'venv', 'env', 'build', 'dist']);
 
-function isUnder(file, root) {
+export function isUnder(file, root) {
   return root === '.' || file === root || file.startsWith(`${root}/`);
 }
 
