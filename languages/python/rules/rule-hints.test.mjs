@@ -11,12 +11,13 @@ import {
   withHint,
 } from './rule-hints.mjs';
 
-const sample = ({ tool, rule }) => ({
+const sample = ({ tool, rule, data }) => ({
   tool,
   rule,
   path: 'src/a.py',
   identity: 'x',
-  message: 'The base message.',
+  message:
+    data === undefined ? 'The base message.' : describeRuleFinding(rule, 'total.rate', { data }),
   classification: 'enforceable',
 });
 
@@ -47,7 +48,7 @@ describe('every message names the allowed form', () => {
     expect(message.toLowerCase()).toContain(testCase.mention.toLowerCase());
   });
 
-  it.each(RULE_CASES.filter((testCase) => hintFor(sample(testCase)).exception !== false))(
+  it.each(RULE_CASES.filter((testCase) => hintFor(sample(testCase)).exception === undefined))(
     'tells how to add an exception for $tool $rule',
     (testCase) => {
       expect(withHint(sample(testCase)).message).toMatch(
@@ -55,6 +56,16 @@ describe('every message names the allowed form', () => {
       );
     },
   );
+
+  it('sends unused-option to the top-level exceptions, in the wording every preset shares', () => {
+    const { message } = withHint(
+      sample({ tool: 'python-rules', rule: 'unused-option', data: { scope: 'private' } }),
+    );
+
+    expect(message).toBe(
+      'Option total.rate is never set. Remove it, or set it from a real call (tests do not count). If this is intended, add {"rule":"unused-option","paths":["src/a.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
+  });
 
   it('sends a suppression comment to the exception of no-inline-suppression itself', () => {
     const { message } = withHint(sample({ tool: 'python-rules', rule: 'no-inline-suppression' }));

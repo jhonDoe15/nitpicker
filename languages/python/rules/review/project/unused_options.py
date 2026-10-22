@@ -6,11 +6,35 @@ MAIN_GUARD = "__main__"
 MAIN_MODULE = "__main__.py"
 
 
-def is_target(statement):
+def assigned_names(statement):
+    if isinstance(statement, ast.Assign):
+        return statement.targets
+    if isinstance(statement, (ast.AnnAssign, ast.AugAssign)):
+        return [statement.target]
+    return []
+
+
+def literal_all(tree):
+    writes = [
+        statement
+        for statement in tree.body
+        if any(isinstance(t, ast.Name) and t.id == "__all__" for t in assigned_names(statement))
+    ]
+    if len(writes) != 1 or isinstance(writes[0], ast.AugAssign):
+        return None
+    value = writes[0].value
+    elements = value.elts if isinstance(value, (ast.List, ast.Tuple)) else None
+    if elements is None or not all(isinstance(element, ast.Constant) for element in elements):
+        return None
+    return {element.value for element in elements}
+
+
+def is_target(statement, exported):
     return (
         isinstance(statement, FUNCTION_TYPES)
         and not statement.decorator_list
-        and not statement.name.startswith("__")
+        and not statement.name.startswith("_")
+        and (exported is None or statement.name in exported)
         and bool(defaulted_parameters(statement))
     )
 
@@ -115,10 +139,11 @@ def unused_option_findings(index, options):
         usage.record_file(path, tree)
     scope = "published" if usage.published else "private"
     found = []
-    for path, tree in index.trees.items():
+    for path, tree in index.production_trees():
+        exported = literal_all(tree)
         for statement in tree.body:
             key = (path, getattr(statement, "name", None))
-            if path in index.tests or not is_target(statement) or not usage.judged(key):
+            if not is_target(statement, exported) or not usage.judged(key):
                 continue
             for parameter, position in defaulted_parameters(statement):
                 if not any(passes(call, parameter, position) for call in usage.calls[key]):

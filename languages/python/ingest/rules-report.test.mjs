@@ -272,8 +272,8 @@ describe('rules script report', () => {
     ];
 
     expect(ingestRulesReport(JSON.stringify(report)).map(({ message }) => message)).toEqual([
-      'Optional parameter `total.rate` is never passed by a call outside the tests',
-      "Optional parameter `total.cents` is never passed by any call, this package's own tests included",
+      'Option total.rate is never set. Remove it, or set it from a real call (tests do not count).',
+      "Option total.cents is never set. Remove it, or set it from a real call (this package's own tests count).",
     ]);
   });
 });

@@ -1,3 +1,4 @@
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
@@ -108,10 +109,14 @@ export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
     return rest;
   }
   const routed = hint?.exception === false || RULES_ROUTED_BY_A_SETTING.has(rest.rule);
+  const lifted =
+    hint?.exception === 'top-level'
+      ? exceptionHint(rest.rule, rest.path)
+      : exceptionSentence(rest.rule);
   const sentences = [
     `${rest.message.replace(/\.$/, '')}.`,
-    ...(hint === undefined ? [] : [allowedText(hint, subject, libraries)]),
-    ...(routed ? [] : [exceptionSentence(rest.rule)]),
+    ...(hint?.allowed === undefined ? [] : [allowedText(hint, subject, libraries)]),
+    ...(routed ? [] : [lifted]),
   ];
   return { ...rest, message: sentences.join(' ') };
 }

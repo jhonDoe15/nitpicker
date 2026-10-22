@@ -144,6 +144,10 @@ describe('python config validation', () => {
       `names no rule nitpicker reports: "${rule}"; ${rule} is now the shared "doc-comment-content" rule: move the entry to the top-level "exceptions" as "doc-comment-content"`,
     ]),
     [
+      { exceptions: [{ rule: 'unused-option', paths: ['a'], reason: 'r' }] },
+      'a rule shared by every preset: lift it in the top-level "exceptions" instead',
+    ],
+    [
       { exceptions: [{ rule: 'doc-comment-content', paths: ['a'], reason: 'r' }] },
       'a rule shared by every preset: lift it in the top-level "exceptions" instead',
     ],

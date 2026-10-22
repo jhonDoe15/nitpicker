@@ -30,7 +30,7 @@ export const UNUSED_API_RULES = [
     id: UNUSED_API_RULE_IDS.unusedOption,
     check: 'structure',
     limit:
-      'a property of the options parameter of an exported function that no call sets (a non-literal argument sets all); Python: an optional parameter (one with a default) of a module-level function that no call passes',
+      'a property of the options parameter of an exported function that no call sets (a non-literal argument sets all); Python: an optional parameter (one with a default) of a public module-level function (no leading underscore, and listed in `__all__` when the module has a literal one) that no call passes',
     enforcedBy: { ...TYPESCRIPT_ONLY, python: true },
   },
   {

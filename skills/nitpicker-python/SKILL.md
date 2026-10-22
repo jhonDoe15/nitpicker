@@ -61,8 +61,6 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   instead of `time.sleep` and fake network, database and disk access. A test over budget is run
   again alone without coverage and fails only if it is still over. Lift a legitimate one in the
   top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
-- A test run that writes new output to stderr, logs a warning or raises a warning fails
-  (`test-console-output`): stop the thread or task, or fix the deprecated call, in the test.
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.
@@ -70,7 +68,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   `nitpicker.config.json` with an entry such as
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
   message, under the key the message names: `python.exceptions` for most rules, the top-level
-  `exceptions` for the file limits. Don't add one to get past the gate: stop and ask.
+  `exceptions` for the rules every preset shares (the file and size limits, `slow-test`,
+  `test-console-output`, `unused-option` and the other fact rules), and `testConsole.allow` for one
+  third-party console message. Don't add one to get past the gate: stop and ask.
 
 ## Repository files
 

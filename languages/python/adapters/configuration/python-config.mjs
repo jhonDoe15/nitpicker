@@ -8,9 +8,14 @@ import {
 } from '../../../../shared/config.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { PYTHON_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
+import { UNUSED_API_RULE_IDS } from '../../../../shared/unused-api/unused-api-policy.mjs';
 
-/** The shared limits the top-level "exceptions" lift; python.exceptions lifts every other rule. */
-export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...SHARED_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
+/** The shared rules the top-level "exceptions" lift; python.exceptions lifts every other rule. */
+export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [
+  ...SHARED_EXCEPTION_RULES,
+  ...PYTHON_SIZE_RULES,
+  UNUSED_API_RULE_IDS.unusedOption,
+];
 import { ruleIdProblem } from './python-rule-ids.mjs';
 
 const ENVIRONMENTS = ['uv', 'poetry', 'path', 'pipenv', 'hatch', 'conda'];
