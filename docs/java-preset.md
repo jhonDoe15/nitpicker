@@ -52,7 +52,7 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   same names, so a sealed type's `permits` edge is left out whichever project declares it. The
   root's names and identities are as in a one-project build, which reads its own jdeps reports
   unmerged.
-- **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
+- **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` (`gradle-wrapper/gradle-preset.mjs`) runs the task,
   `readJavaFindings` converts the reports, `runJavaDiff` does worktrees, rename map, comparison.
   `languages/java/adapters/java-analyzer.mjs` wraps all of it as one analyzer named `java` for the CLI (slice
   2, below).
