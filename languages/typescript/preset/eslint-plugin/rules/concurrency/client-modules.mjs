@@ -21,6 +21,7 @@ const FETCH_MODULES = [
 ];
 const HTTP_SERVERS = ['http', 'node:http', 'https', 'node:https'];
 const MESSAGE_SERVICES = /client-(?:sqs|sns|eventbridge|kinesis|firehose)$/u;
+const DATABASE_SERVICES = /client-dynamodb$/u;
 
 function client(kind, spec) {
   return {
@@ -117,7 +118,7 @@ const SPECS = new Map([
   [
     'kafkajs',
     client('message', {
-      methods: new Set(['send']),
+      methods: new Set(['send', 'sendBatch']),
       makers: new Set(['Kafka']),
       derivers: new Set(['producer']),
       types: new Set(['Producer']),
@@ -141,10 +142,7 @@ const SPECS = new Map([
       types: new Set(['ChannelWrapper']),
     }),
   ],
-  [
-    'nats',
-    client('message', { methods: new Set(['publish', 'request']), makers: new Set(['connect']) }),
-  ],
+  ['nats', client('message', { methods: new Set(['publish']), makers: new Set(['connect']) })],
   [
     '@google-cloud/pubsub',
     client('message', {
@@ -154,18 +152,20 @@ const SPECS = new Map([
       types: new Set(['Topic']),
     }),
   ],
-  ['bullmq', client('message', { methods: new Set(['add']), makers: new Set(['Queue']) })],
-  ['bull', client('message', { methods: new Set(['add']), makers: new Set(['default']) })],
+  [
+    'bullmq',
+    client('message', { methods: new Set(['add', 'addBulk']), makers: new Set(['Queue']) }),
+  ],
+  [
+    'bull',
+    client('message', { methods: new Set(['add', 'addBulk']), makers: new Set(['default']) }),
+  ],
   [
     'mqtt',
     client('message', {
       methods: new Set(['publish', 'publishAsync']),
       makers: new Set(['connect', 'connectAsync']),
     }),
-  ],
-  [
-    'ioredis',
-    client('message', { methods: new Set(['publish']), makers: new Set(['default', 'Redis']) }),
   ],
   [
     '@azure/service-bus',
@@ -185,7 +185,7 @@ for (const name of HTTP_SERVERS) {
 }
 
 export function clientSpec(source) {
-  if (source.startsWith('@aws-sdk/client-')) {
+  if (source.startsWith('@aws-sdk/client-') && !DATABASE_SERVICES.test(source)) {
     return client(MESSAGE_SERVICES.test(source) ? 'message' : 'remote', {
       methods: new Set(['send']),
       makerPattern: /Client$/u,

@@ -1,5 +1,5 @@
 import { isFixedCollection, createBounds } from './bounds.mjs';
-import { helperOf, isIoCall } from './fan-out-io.mjs';
+import { helperOf, ioKind } from './fan-out-io.mjs';
 import { combinatorName, callsOf, mappings, workerOf } from './sites.mjs';
 
 const MAX_HELPER_DEPTH = 3;
@@ -20,7 +20,7 @@ function remoteIn(scope, worker, depth = 0) {
     if (bounds.wrapsInFunction(call, worker.root)) {
       continue;
     }
-    const kind = isIoCall(call, context);
+    const kind = ioKind(call, context);
     if (kind !== undefined) {
       return { kind, operation: labelOf(context, call) };
     }
