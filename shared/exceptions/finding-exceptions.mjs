@@ -47,13 +47,12 @@ const FOLDER_RULES = [
 ];
 
 function foldersOf(paths) {
-  const folders = new Set();
-  for (const path of paths) {
-    const parts = path.split('/').slice(0, -1);
-    for (let length = 1; length <= parts.length; length += 1) {
-      folders.add(parts.slice(0, length).join('/'));
-    }
-  }
+  const folders = new Set(
+    paths.flatMap((path) => {
+      const parts = path.split('/').slice(0, -1);
+      return parts.map((_part, index) => parts.slice(0, index + 1).join('/'));
+    }),
+  );
   return [...folders].flatMap((folder) => [folder, `${folder}/`]);
 }
 

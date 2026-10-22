@@ -89,14 +89,14 @@ function lineRange(sourceFile, node) {
   };
 }
 
-function classScope(sourceFile, node, scope) {
+function classScope({ sourceFile }, node, scope) {
   if (!ts.isClassLike(node)) {
     return undefined;
   }
   return { scope: [...scope, node.name?.text ?? bindingName(sourceFile, node) ?? ANONYMOUS] };
 }
 
-function objectScope(sourceFile, node, scope) {
+function objectScope({ sourceFile }, node, scope) {
   if (!ts.isObjectLiteralExpression(node)) {
     return undefined;
   }
@@ -114,7 +114,7 @@ function uniqueName(name, scope, anonymousCounts) {
   return count === 1 ? name : `<anonymous#${String(count)}>`;
 }
 
-function functionScope(sourceFile, node, scope, anonymousCounts) {
+function functionScope({ sourceFile, anonymousCounts }, node, scope) {
   if (!isFunctionLike(node)) {
     return undefined;
   }
@@ -124,7 +124,7 @@ function functionScope(sourceFile, node, scope, anonymousCounts) {
   };
 }
 
-function fieldScope(sourceFile, node, scope) {
+function fieldScope({ sourceFile }, node, scope) {
   if (
     !ts.isPropertyDeclaration(node) ||
     node.initializer === undefined ||
@@ -138,7 +138,7 @@ function fieldScope(sourceFile, node, scope) {
   };
 }
 
-function staticBlockScope(sourceFile, node, scope) {
+function staticBlockScope(_context, node, scope) {
   if (!ts.isClassStaticBlockDeclaration(node)) {
     return undefined;
   }
@@ -147,9 +147,9 @@ function staticBlockScope(sourceFile, node, scope) {
 
 const SCOPES = [classScope, objectScope, functionScope, fieldScope, staticBlockScope];
 
-function enter(sourceFile, node, scope, anonymousCounts) {
+function enter(context, node, scope) {
   for (const scopeOf of SCOPES) {
-    const entered = scopeOf(sourceFile, node, scope, anonymousCounts);
+    const entered = scopeOf(context, node, scope);
     if (entered !== undefined) {
       return entered;
     }
@@ -169,10 +169,10 @@ function unitEntry(sourceFile, node, { scope, unit }) {
 
 export function functionUnits(sourceFile) {
   const found = [];
-  const anonymousCounts = new Map();
+  const context = { sourceFile, anonymousCounts: new Map() };
   const pending = [{ node: sourceFile, scope: [] }];
   for (const { node, scope } of pending) {
-    const entered = enter(sourceFile, node, scope, anonymousCounts);
+    const entered = enter(context, node, scope);
     if (entered.unit !== undefined) {
       found.push(unitEntry(sourceFile, node, entered));
     }

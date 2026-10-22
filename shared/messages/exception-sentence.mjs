@@ -1,4 +1,4 @@
-export const PLACEHOLDER_REASON = '...';
+const PLACEHOLDER_REASON = '...';
 
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
 

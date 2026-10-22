@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { routeProblems } from '../../../../core/exceptions/test-support/route-check.mjs';
 import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { eslintRoute } from '../../adapters/hints/eslint-hints.mjs';
-import { checkFailureMessageCase, lintFixture } from './test-support/harness.mjs';
+import { checkFailureMessageCase, lintFixture, projectRelative } from './test-support/harness.mjs';
 import { failureMessageCases as baseCases } from './test-support/cases.mjs';
 import { testHonestyFailureMessageCases } from './test-support/honesty/test-honesty-cases.mjs';
 
@@ -22,9 +22,10 @@ describe('banned forms name the allowed form in their failure message', () => {
   it.each(failureMessageCases.map((testCase) => [testCase.name, testCase]))(
     '%s ends with an exception route that the preset accepts and that lifts it',
     (_name, { config, filename = 'src/fixture.ts', banned }) => {
+      const path = projectRelative(filename);
       const problems = lintFixture({ config, filename, code: banned }).flatMap((lint) => {
-        const route = eslintRoute({ rule: lint.ruleId, path: filename });
-        const finding = { tool: 'eslint', rule: lint.ruleId, path: filename };
+        const route = lint.ruleId === null ? undefined : eslintRoute({ rule: lint.ruleId, path });
+        const finding = { tool: 'eslint', rule: lint.ruleId, path };
         return route === undefined
           ? []
           : routeProblems(finding, appendSentence(lint.message, route), 'typescript').map(

@@ -2,7 +2,7 @@ import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { isUnder, matcherOf } from '../policy-scope.mjs';
 import { duplicateFolderExclusions } from './duplicate-folders.mjs';
-import { globsCovering, subjectLabel, subjectsOf } from './exception-scopes.mjs';
+import { globsCovering, subjectLabel, subjectsOf } from './exceptions/exception-scopes.mjs';
 
 const EXCLUSIONS = 'exclude and layout.excludedGlobs';
 

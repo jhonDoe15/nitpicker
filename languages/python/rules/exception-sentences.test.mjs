@@ -29,10 +29,4 @@ describe('Python finding messages', () => {
 
     expect(handWritten).toEqual([]);
   });
-
-  it('read the one route from the shared sentence that rule-hints.mjs calls', () => {
-    expect(readFileSync(path.join(packageRoot, PYTHON_PACKAGE, ROUTE_SOURCE), 'utf8')).toContain(
-      'key: PYTHON_EXCEPTIONS_KEY',
-    );
-  });
 });

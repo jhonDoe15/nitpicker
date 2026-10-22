@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JAVA_FINDING_TOOLS } from '../../languages/java/adapters/java-finding-rules.mjs';
+import { JAVA_TOOLS } from '../../languages/java/adapters/gradle-presets.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
 import { JAVA_SIZE_RULES } from '../../shared/project-rules/size-rules.mjs';
 import { validateConfig } from '../configuration/validate.mjs';
@@ -41,7 +41,7 @@ describe('config exceptions', () => {
       const other = { ...exception, rule: 'pmd.SomeRule' };
 
       expect(() => validateConfig({ preset: 'java', exceptions: [other] })).toThrow(
-        `"exceptions[0].rule" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${[...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES].join(', ')}. Tools: ${JAVA_FINDING_TOOLS.join(', ')}`,
+        `"exceptions[0].rule" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${[...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES].join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}`,
       );
     });
   });
@@ -259,7 +259,7 @@ describe('config exceptions', () => {
     const printed = (rule) => ({ rule, paths: ['src/main/java/a/A.java'], reason: 'A reason.' });
 
     it.each(['java', 'kotlin'])('accept %s findings of every tool as printed', (preset) => {
-      const exceptions = JAVA_FINDING_TOOLS.map((tool) => printed(`${tool}/SomeRule`));
+      const exceptions = JAVA_TOOLS.map((tool) => printed(`${tool}/SomeRule`));
 
       expect(validateConfig({ preset, exceptions }).exceptions).toEqual(exceptions);
     });

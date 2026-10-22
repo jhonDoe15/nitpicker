@@ -327,7 +327,7 @@ describe('a new throw in a legacy function', () => {
     const result = compareWithInserted(throws(oneThrow), throws(twoThrows), [[5, 7]]);
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      `${NO_THROW_MESSAGE} ${NO_THROW_ROUTE} This function had 1 of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.`,
+      `${NO_THROW_MESSAGE} This function had 1 of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function. ${NO_THROW_ROUTE}`,
     ]);
   });
 

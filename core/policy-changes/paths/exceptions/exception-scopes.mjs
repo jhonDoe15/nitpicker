@@ -1,4 +1,4 @@
-import { canonicalRule, normalizeFunctionName } from '../../../shared/exceptions/rule-names.mjs';
+import { canonicalRule, normalizeFunctionName } from '../../../../shared/exceptions/rule-names.mjs';
 
 function scopeOf({ rule, function: functionName, name }) {
   return {
@@ -20,7 +20,7 @@ function covers(baseScope, headScope) {
   );
 }
 
-export function subjectKey(entry) {
+function subjectKey(entry) {
   const { rule, function: functionName, name } = scopeOf(entry);
   return JSON.stringify([rule, functionName, name]);
 }
