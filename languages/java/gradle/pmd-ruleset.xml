@@ -48,7 +48,7 @@
   <rule ref="category/java/bestpractices.xml/AbstractClassWithoutAbstractMethod">
     <properties>
       <property name="violationSuppressXPath"
-                value="./ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MappedSuperclass')]"/>
+                value="./ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass')]"/>
     </properties>
   </rule>
   <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
