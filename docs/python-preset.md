@@ -1128,6 +1128,16 @@ the source root detection already does.
   file of the pair, and its message names both files and tells to add either one to `exclude` when
   the repetition is intended. An `exclude` glob or a `python.exceptions` entry for `duplicate-clone`
   that matches either file of the pair lifts the finding. A source root of `.` is supported.
+  A second jscpd run (100 tokens, 5 lines, `jscpd-renamed-config.json`) goes over a normalized copy
+  of the project's Python files, where names, strings, numbers and comments are one token each,
+  imports, `__all__` and literal-only lists, dicts and tuples are blanked and generated files are left
+  out, so a copy with renamed locals and changed literals is found: `duplicate-clone` with an
+  identity starting `renamed:`, the same message, lifted by the same `exclude` glob or
+  `python.exceptions` entry. It replaces a plain jscpd clone over the same two ranges and drops
+  clones made of class, field and enum member declarations only, and clones that only repeat one or
+  two statements (mapper calls, `add_argument` lists); dicts keyed by qualified names
+  (`Status.NEW: "new"`) are data. Findings are mapped back to the original lines
+  because the copy keeps every line break.
 - **Coupling.** `python -I languages/python/adapters/import-scan.py` (the project's interpreter,
   standard library only) parses every production file with `ast` and prints each file's `import`
   and `from ... import` statements, including those inside functions and `if TYPE_CHECKING:`
@@ -1559,10 +1569,14 @@ and CRAP rules.
   the one-way rules and `python.exceptions` end to end; `languages/python/adapters/e2e/` holds the
   basedpyright e2e (a configured and a weakened `[tool.basedpyright]` table) and the `if TYPE_CHECKING:`
   one (no stability inversion, import-linter still sees it), which share `helpers.mjs` with the preset e2e.
-- `languages/python/ruff/ruff-rules.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1` (the ruff
-  from the `PATH`, or `NITPICKER_RUFF`). Every stable `RUF` rule of the installed ruff must be
-  selected or ignored in `nitpicker-ruff.toml`, so a new stable rule fails the test until someone
-  reviews it.
+- `languages/python/ruff/ruff-rules.e2e.test.mjs` and `ruff-groups.e2e.test.mjs`: gated behind
+  `NITPICKER_PYTHON_E2E=1` and part of `npm run test:python` (the ruff from the `PATH`, or
+  `NITPICKER_RUFF`). Every stable `RUF` rule, and every stable rule of the listed groups, of the
+  installed ruff must be selected or ignored in `nitpicker-ruff.toml`, so a new stable rule fails the
+  test until someone reviews it. `adapters/configuration/python-ruff-config.e2e.test.mjs` (the
+  generated ruff config keeps the group selectors and the rules the installed ruff knows) and
+  `adapters/formatting/format-scope.e2e.test.mjs` (the formatters run isolated from the project
+  config) run in the same suite.
 - `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
   rules script, are in the npm package.
 - Slice 5 unit tests: `python-sources.test.mjs` (module naming, exclusions), `python-coupling.test.mjs`
