@@ -7,10 +7,17 @@ import {
   moduleClasspaths,
   parseDependencyList,
   readReactor,
+  usesSpring,
 } from './maven-project.mjs';
 import { junitLauncherVersion } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
-import { formatTool, jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
+import {
+  archunitTool,
+  formatTool,
+  jacocoPlugin,
+  MAVEN_PLUGINS,
+  resolveTools,
+} from './maven-tools.mjs';
 import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-options.mjs';
@@ -128,6 +135,10 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
         ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
         ...formatTool(policy.javaStyle, pinned),
         ...kotlin.extraTools,
+        ...archunitTool(
+          analyzed.some(({ classpaths }) => usesSpring(classpaths)),
+          pinned,
+        ),
       ],
     });
     for (const { module, classpaths } of analyzed) {

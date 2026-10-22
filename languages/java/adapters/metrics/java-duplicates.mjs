@@ -1,11 +1,19 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
+import {
+  renamedClones,
+  renamedFindings,
+  withoutRenamedCopies,
+} from '../../../../shared/renamed-clones/findings.mjs';
+import { sourceFilesUnder } from '../../../../shared/renamed-clones/files.mjs';
 import { withoutImportOnlyClones } from '../../../../core/tooling/jscpd/import-only.mjs';
 import { jscpdClones } from '../../../../core/tooling/jscpd/jscpd-clones.mjs';
 import {
   DUPLICATES_REPORT,
   DUPLICATES_TOOL,
+  insideReportRoot,
+  renamedReportFile,
   runJscpd,
 } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
 import {
@@ -22,6 +30,7 @@ export function runJavaDuplicates(
     rootsKey = 'sourceRoots',
     reportFile = DUPLICATES_REPORT,
     skippedFolders = JVM_SKIPPED_FOLDERS,
+    renamedExtensions = ['.java'],
   },
 ) {
   const roots = (manifest[rootsKey] ?? []).filter((root) =>
@@ -35,15 +44,35 @@ export function runJavaDuplicates(
     ignore: skippedFolderGlobs(skippedFolders),
     reportRoot,
     reportFile,
+    renamed: { syntax: format, files: sourceFilesUnder(projectRoot, roots, renamedExtensions) },
   });
 }
 
-export function readDuplicateFindings(reportRoot, reportFile = DUPLICATES_REPORT, format = 'java') {
-  const { runs } = JSON.parse(readFileSync(path.join(reportRoot, reportFile), 'utf8'));
-  return runs.flatMap(({ root, report }) =>
-    evaluateDuplicates(
-      withoutImportOnlyClones(jscpdClones(report, [root]), format),
-      DUPLICATES_TOOL,
-    ),
-  );
+function readRuns(reportRoot, reportFile) {
+  const { runs } = JSON.parse(readFileSync(insideReportRoot(reportRoot, reportFile), 'utf8'));
+  return runs.flatMap(({ root, report }) => jscpdClones(report, [root]));
+}
+
+export function duplicateFindings(plain, { reportRoot, reportFile, projectRoot, syntax }) {
+  const renamedFile = renamedReportFile(reportFile);
+  const renamed =
+    projectRoot !== undefined && existsSync(insideReportRoot(reportRoot, renamedFile))
+      ? renamedClones(readRuns(reportRoot, renamedFile), { projectRoot, syntax })
+      : [];
+  return [
+    ...evaluateDuplicates(withoutRenamedCopies(plain, renamed), DUPLICATES_TOOL),
+    ...renamedFindings(renamed, DUPLICATES_TOOL),
+  ];
+}
+
+export function readDuplicateFindings(
+  reportRoot,
+  { reportFile = DUPLICATES_REPORT, format = 'java', projectRoot } = {},
+) {
+  return duplicateFindings(withoutImportOnlyClones(readRuns(reportRoot, reportFile), format), {
+    reportRoot,
+    reportFile,
+    projectRoot,
+    syntax: format,
+  });
 }

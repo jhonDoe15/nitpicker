@@ -35,6 +35,12 @@ const RESOURCE_FILES = [
   'languages/java/messages/pmd.json',
   'languages/java/messages/checkstyle.json',
   'languages/java/messages/spotbugs.json',
+  'languages/java/gradle/archunit/ArchRules.java',
+  'languages/java/gradle/archunit/Found.java',
+  'languages/java/gradle/archunit/Layers.java',
+  'languages/java/gradle/archunit/Layout.java',
+  'languages/java/gradle/archunit/Spring.java',
+  'languages/java/gradle/archunit/TestRules.java',
 ];
 
 function kotlinPsiFiles() {

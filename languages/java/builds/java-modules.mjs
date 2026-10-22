@@ -83,10 +83,10 @@ export function readModuleFindings(projectRoot, moduleDirs, options) {
   const roots = mergedRoots(projectRoot, moduleDirs, options.reportDirectory);
   return [
     ...moduleFindings,
-    ...readProjectDuplicateFindings(
-      path.join(projectRoot, options.reportDirectory),
-      options.preset,
-    ),
+    ...readProjectDuplicateFindings(path.join(projectRoot, options.reportDirectory), {
+      preset: options.preset,
+      projectRoot,
+    }),
     ...projectWideFindings(projectRoot, {
       projects: moduleDirs.map((moduleDir) => moduleProject(projectRoot, moduleDir, options)),
       mergedRoot: path.join(projectRoot, options.reportDirectory),
