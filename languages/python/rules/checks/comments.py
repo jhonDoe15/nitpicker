@@ -18,7 +18,8 @@ TASK_MARKER = re.compile(
     r"(?<![\w./-])(?:TODO|FIXME|XXX|HACK)(?![\w-])(?![./]\w)", re.I
 )
 MARKER_FOLLOWER = re.compile(r"^[:(]")
-REFERENCE = r"#[1-9]\d*|[A-Z][A-Z0-9]+-[1-9]\d*|https?://\S+"
+WORK_WORDS = {"todo", "fixme"}
+REFERENCE = r"#\d+|[A-Z][A-Z0-9]+-\d+|https?://\S+"
 DIRECT_REFERENCE = re.compile(rf"^(?:\(\s*({REFERENCE})\s*\)|:?\s+({REFERENCE}))")
 NOT_ISSUE_KEYS = {
     "SHA",
@@ -59,9 +60,8 @@ def is_referenced(rest):
 def has_unreferenced_tag(line):
     for match in TASK_MARKER.finditer(line):
         shouted = match.group(0).isupper()
-        follows = (
-            shouted or match.start() == 0 or MARKER_FOLLOWER.match(line[match.end() :])
-        )
+        opens_comment = match.start() == 0 and match.group(0).lower() in WORK_WORDS
+        follows = shouted or opens_comment or MARKER_FOLLOWER.match(line[match.end() :])
         if follows and not is_referenced(line[match.end() :]):
             return True
     return False
