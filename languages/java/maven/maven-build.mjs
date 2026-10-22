@@ -164,7 +164,7 @@ function runCoverageTools(context) {
 }
 
 function analyzeModule(context) {
-  const { module, classpaths, pinned, since } = context;
+  const { module, classpaths, pinned } = context;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));

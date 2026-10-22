@@ -11,8 +11,6 @@ import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/re
 import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
 import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
-import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
-import { runGradle } from './gradle-wrapper/gradle-process.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
@@ -25,17 +23,13 @@ import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
 import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
-import {
-  assertGradleSucceeded,
-  runOrNoteFailingTests,
-  withTestsFailure,
-} from './red-base/tests-failed.mjs';
+import { runGradleStage } from './red-base/gradle-stage.mjs';
+import { runOrNoteFailingTests, withTestsFailure } from './red-base/tests-failed.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
 import { javaStyleProperties } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 
-const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const CLOCK_SLACK_MS = 2000;
 const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
 
@@ -49,18 +43,6 @@ function exportArguments(common, { initScript, directory, policy }) {
     initScript,
     'nitpickerCheckstyleConfig',
   ];
-}
-
-function runStage({ args, projectRoot, gradle, budget, reportBase, since }) {
-  const target = gradleTarget({ projectRoot, configured: gradle, args });
-  const result = runGradle(target.command, target.args, {
-    cwd: projectRoot,
-    encoding: 'utf8',
-    maxBuffer: MAX_OUTPUT_BYTES,
-    shell: target.shell,
-    timeout: budget.commandTimeoutMs,
-  });
-  assertGradleSucceeded(result, projectRoot, { reportBase, since });
 }
 
 function runJavaPreset(
@@ -103,7 +85,7 @@ function runJavaPreset(
       ],
     ];
     for (const stage of stages) {
-      runStage({ args: stage(), projectRoot, gradle, budget, reportBase, since });
+      runGradleStage({ args: stage(), projectRoot, gradle, budget, reportBase, since });
     }
   });
 }
