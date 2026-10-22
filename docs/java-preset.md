@@ -461,9 +461,12 @@ classpath and its `test` task, and adds no test library to the project.
   passed as `spawn` through `analyzeJavaSnapshot` and `runGradle`, answers the supervisor call for the fake's
   path, so no Node process starts per Gradle call. Output past `maxBuffer` is answered as `ENOBUFS` and an
   exception of the fake as a failed run; the process-tree deadline is not modelled and stays covered by
-  `gradle-process.test.mjs`, and `subprocess: true` tests run the real supervisor. The fake Maven and JDK are
-  shell shims that start a Node process per call, because the Maven preset has no `spawn` option. The real Gradle run stays
-  behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`), unchanged.
+  `gradle-process.test.mjs`, and `subprocess: true` tests run the real supervisor (the one CLI case that does
+  runs on the Gradle build; the process wiring does not depend on the build). The Maven preset takes the same
+  `spawn` option: `runMavenPreset` passes it to `runMaven`, `runJava` and the direct `jar`, `jdeps` and `java -version`
+  calls, and `spawnFakeMaven` (`core/command/java/test-support/in-process-maven.mjs`) answers the fake `mvn`
+  and the fake `java`, `jdeps` and `jar` (by program name, wherever they are found) in process, so no process
+  starts for them. The real Gradle and Maven runs stay behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`), unchanged.
 
 ## Slice 1: tools, reports and identities
 

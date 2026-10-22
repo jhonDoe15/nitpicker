@@ -1,12 +1,6 @@
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  writeFileSync,
-} from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 function touch(file, text = '') {
   mkdirSync(path.dirname(file), { recursive: true });
@@ -34,37 +28,39 @@ function classesOf(sourceRoot, classesRoot) {
   }
 }
 
-function surefireReports() {
-  const results = 'test-results/test';
+function surefireReports(cwd) {
+  const results = path.join(cwd, 'test-results/test');
   if (existsSync(results)) {
-    mkdirSync('target/surefire-reports', { recursive: true });
-    touch('target/nitpicker-jacoco.exec', 'recorded');
-    for (const report of readdirSync(results)) {
-      copyFileSync(path.join(results, report), path.join('target/surefire-reports', report));
-    }
+    const reports = path.join(cwd, 'target/surefire-reports');
+    mkdirSync(reports, { recursive: true });
+    touch(path.join(cwd, 'target/nitpicker-jacoco.exec'), 'recorded');
+    cpSync(results, reports, { recursive: true });
   }
 }
 
-function build(valueOf, io) {
-  if (existsSync('MAVEN_FAIL')) {
-    io.stdout.write(`[ERROR] ${readFileSync('MAVEN_FAIL', 'utf8')}`);
-    return 1;
+function build(valueOf, cwd) {
+  if (existsSync(path.join(cwd, 'MAVEN_FAIL'))) {
+    return {
+      status: 1,
+      stdout: `[ERROR] ${readFileSync(path.join(cwd, 'MAVEN_FAIL'), 'utf8')}`,
+      stderr: '',
+    };
   }
   const output = valueOf('-DoutputFile=')
     .replace('${project.groupId}', 'demo')
     .replace('${project.artifactId}', 'demo');
   touch(output);
-  mkdirSync('target/classes', { recursive: true });
-  mkdirSync('target/test-classes', { recursive: true });
-  if (existsSync('MAIN_CLASSES')) {
-    classesOf('src/main/java', 'target/classes');
-    classesOf('src/test/java', 'target/test-classes');
+  mkdirSync(path.join(cwd, 'target/classes'), { recursive: true });
+  mkdirSync(path.join(cwd, 'target/test-classes'), { recursive: true });
+  if (existsSync(path.join(cwd, 'MAIN_CLASSES'))) {
+    classesOf(path.join(cwd, 'src/main/java'), path.join(cwd, 'target/classes'));
+    classesOf(path.join(cwd, 'src/test/java'), path.join(cwd, 'target/test-classes'));
   }
-  surefireReports();
-  return 0;
+  surefireReports(cwd);
+  return { status: 0, stdout: '', stderr: '' };
 }
 
-function runFakeMaven(argumentsList, io) {
+export function runFakeMaven({ args: argumentsList, cwd }) {
   function valueOf(prefix) {
     return argumentsList.find((argument) => argument.startsWith(prefix))?.slice(prefix.length);
   }
@@ -72,13 +68,13 @@ function runFakeMaven(argumentsList, io) {
     return argumentsList.some((argument) => argument.includes(goal));
   }
   if (mentions(':effective-pom')) {
-    touch(valueOf('-Doutput='), readFileSync('pom.xml', 'utf8'));
+    touch(valueOf('-Doutput='), readFileSync(path.join(cwd, 'pom.xml'), 'utf8'));
   } else if (mentions(':build-classpath')) {
     toolClasspaths(argumentsList);
   } else {
-    return build(valueOf, io);
+    return build(valueOf, cwd);
   }
-  return 0;
+  return { status: 0, stdout: '', stderr: '' };
 }
 
-export const fakeMaven = { url: import.meta.url, run: runFakeMaven };
+export const fakeMavenCommand = fileURLToPath(import.meta.url);
