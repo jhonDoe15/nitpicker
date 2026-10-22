@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../../../core/tooling/output-file.mjs';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -11,7 +11,7 @@ const SCAN_TIMEOUT_MS = 5 * 60 * 1000;
 function runScan(context, [, ...args]) {
   const failures = [];
   for (const interpreter of INTERPRETERS) {
-    const result = spawnSync(interpreter, args, {
+    const result = spawnSyncWithOutputFile(interpreter, args, {
       cwd: context.projectRoot,
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
