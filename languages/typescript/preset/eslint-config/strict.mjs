@@ -113,6 +113,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         'no-restricted-syntax': ['error', ...restrictedSyntax.source],
         ...sourceSyntaxBans(options),
         'nitpicker/no-self-recursion': 'error',
+        'nitpicker/no-task-outliving-resource': 'error',
       },
     },
     {
