@@ -31,17 +31,20 @@ function wordsOf(name) {
     .map((word) => word.toLowerCase());
 }
 
-export function lettersOf(name) {
+function lettersOf(name) {
   return wordsOf(name)
     .join('')
     .replaceAll(/[^a-z]/g, '');
 }
 
+function withoutValueSuffixes(words) {
+  return words.length > 1 && VALUE_SUFFIXES.has(words.at(-1))
+    ? withoutValueSuffixes(words.slice(0, -1))
+    : words;
+}
+
 export function isSecretName(name) {
-  const words = wordsOf(name);
-  while (words.length > 1 && VALUE_SUFFIXES.has(words.at(-1))) {
-    words.pop();
-  }
+  const words = withoutValueSuffixes(wordsOf(name));
   return SECRET_NAME.test(words.join('').replaceAll(/[^a-z]/g, ''));
 }
 
