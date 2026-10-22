@@ -97,6 +97,45 @@
       </property>
     </properties>
   </rule>
+  <rule name="ServiceLocatorLookup" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Take the dependency as a constructor parameter (a Provider or Instance parameter when it is optional or created per use) instead of looking it up from a Guice Injector, CDI, a BeanManager or a JNDI context where it is used: the lookup hides what the class needs. The class with main, a @SpringBootApplication class, a Guice Module and @Produces or @Provides methods may look dependencies up.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall
+  [pmd-java:matchesSig('com.google.inject.Injector#getInstance(_*)')
+   or pmd-java:matchesSig('com.google.inject.Injector#getProvider(_*)')
+   or pmd-java:matchesSig('com.google.inject.Injector#getBinding(_*)')
+   or pmd-java:matchesSig('com.google.inject.Injector#getExistingBinding(_*)')
+   or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanManager#getReference(_*)')
+   or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanManager#getInjectableReference(_*)')
+   or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanManager#createInstance()')
+   or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanContainer#getReference(_*)')
+   or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanContainer#createInstance()')
+   or pmd-java:matchesSig('javax.enterprise.inject.spi.BeanManager#getReference(_*)')
+   or pmd-java:matchesSig('javax.enterprise.inject.spi.BeanManager#getInjectableReference(_*)')
+   or pmd-java:matchesSig('javax.enterprise.inject.spi.BeanManager#createInstance()')
+   or pmd-java:matchesSig('jakarta.enterprise.inject.spi.CDI#current()')
+   or pmd-java:matchesSig('javax.enterprise.inject.spi.CDI#current()')
+   or (@MethodName = 'select'
+       and *[1][not(self::MethodCall[@MethodName = 'current'])]
+                [pmd-java:typeIs('jakarta.enterprise.inject.spi.CDI')
+                 or pmd-java:typeIs('javax.enterprise.inject.spi.CDI')])
+   or pmd-java:matchesSig('javax.naming.Context#lookup(_*)')
+   or pmd-java:matchesSig('javax.naming.Context#lookupLink(_*)')]
+  [not(ancestor::ClassDeclaration
+         [ModifierList/Annotation[pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')]
+          or pmd-java:typeIs('com.google.inject.Module')
+          or ClassBody/MethodDeclaration[@Name = 'main'][pmd-java:modifiers() = 'static'][FormalParameters/@Size = 1]])]
+  [not(ancestor::MethodDeclaration/ModifierList/Annotation
+         [pmd-java:typeIs('jakarta.enterprise.inject.Produces')
+          or pmd-java:typeIs('javax.enterprise.inject.Produces')
+          or pmd-java:typeIs('com.google.inject.Provides')])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="SingularAndPluralMember" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A member and its plural (tag and tags) are two ways to pass the same data. Keep the plural and pass one item as a one-element list.">
     <priority>3</priority>

@@ -3,12 +3,15 @@ package nitpicker.kotlinpsi.facts;
 import static nitpicker.kotlinpsi.common.Psi.*;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import nitpicker.kotlinpsi.common.Frame;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.*;
 
 final class Declarations {
+  private static final Pattern CALL_ROOT = Pattern.compile("^\\s*([\\w.]+)\\s*\\(");
   private final State state;
 
   Declarations(State state) {
@@ -163,6 +166,20 @@ final class Declarations {
             "owner", owner.data.get("qualified"), "type", clip(property.getTypeReference()),
             "var", property.isVar(), "lateinit", property.hasModifier(KtTokens.LATEINIT_KEYWORD),
             "delegated", property.getDelegate() != null, "annotations", annotationNames(property)));
+  }
+
+  void typed(String name, KtTypeReference type, KtExpression initializer) {
+    if (!state.locatorImports || name == null) {
+      return;
+    }
+    String text = type != null ? withoutTypeArguments(type.getText()).replace("?", "").trim() : null;
+    if (text == null && initializer != null) {
+      Matcher matcher = CALL_ROOT.matcher(initializer.getText());
+      text = matcher.find() ? matcher.group(1) : null;
+    }
+    if (text != null) {
+      state.typed.add(m("name", name, "type", clip(text, 120)));
+    }
   }
 
   void declareTypeAlias(KtTypeAlias alias) {

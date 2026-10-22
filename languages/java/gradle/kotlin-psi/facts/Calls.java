@@ -14,6 +14,12 @@ final class Calls {
           "sleep", "parkNanos", "wait", "join", "delay", "continually", "after", "waitForTimeout",
           "until", "pollDelay", "during");
 
+  static final Set<String> LOOKUP_NAMES =
+      Set.of(
+          "get", "getOrNull", "getAll", "inject", "injectOrNull", "getKoin", "koinInject", "koinViewModel",
+          "getInstance", "getProvider", "getBinding", "getExistingBinding", "current", "select",
+          "getReference", "getInjectableReference", "createInstance", "lookup", "lookupLink");
+
   private final State state;
 
   Calls(State state) {
@@ -41,11 +47,37 @@ final class Calls {
       }
     }
     recordCall(name, positional, named, spread, lambda);
+    if (state.locatorImports && LOOKUP_NAMES.contains(name)) {
+      lookup(call, name, positional, lambda, frame);
+    }
     String imported = state.importedPath(name);
     String waitName = imported == null ? name : imported.substring(imported.lastIndexOf('.') + 1);
     if (state.test && WAIT_NAMES.contains(waitName)) {
       wait(call, waitName, imported, arguments, frame);
     }
+  }
+
+  private void lookup(KtCallExpression call, String name, int positional, boolean lambda, Frame frame) {
+    String qualifier = null;
+    if (call.getParent() instanceof KtQualifiedExpression
+        && ((KtQualifiedExpression) call.getParent()).getSelectorExpression() == call) {
+      qualifier = clip(((KtQualifiedExpression) call.getParent()).getReceiverExpression());
+    }
+    state.lookups.add(
+        m(
+            "line", state.lineOf(call.getTextRange().getStartOffset()), "name", name, "qualifier", qualifier,
+            "positional", positional, "lambda", lambda, "delegated", call.getParent() instanceof KtPropertyDelegate,
+            "annotations", enclosingAnnotations(call), "scopes", frame == null ? List.of() : frame.chain()));
+  }
+
+  private List<Object> enclosingAnnotations(PsiElement element) {
+    List<Object> names = new ArrayList<>();
+    for (PsiElement parent = element.getParent(); parent != null; parent = parent.getParent()) {
+      if (parent instanceof KtNamedFunction || parent instanceof KtClassOrObject) {
+        names.addAll(annotationNames((KtAnnotated) parent));
+      }
+    }
+    return names;
   }
 
   private void recordCall(String name, int positional, List<String> named, boolean spread, boolean lambda) {

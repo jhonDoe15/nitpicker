@@ -160,6 +160,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/ExhaustiveEnumPredicate',
       'pmd/StaticForwardingWrapper',
       'pmd/SingularAndPluralMember',
+      'pmd/ServiceLocatorLookup',
       'unused-option',
     ]);
     for (const rule of KOTLIN_REVIEW_EXCEPTION_RULES) {

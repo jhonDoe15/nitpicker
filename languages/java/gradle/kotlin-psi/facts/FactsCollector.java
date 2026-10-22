@@ -82,7 +82,12 @@ public final class FactsCollector {
 
   private void observe(PsiElement element, Frame frame) {
     if (element instanceof KtProperty) {
-      declarations.declareProperty((KtProperty) element, frame);
+      KtProperty property = (KtProperty) element;
+      declarations.typed(property.getName(), property.getTypeReference(), property.getInitializer());
+      declarations.declareProperty(property, frame);
+    } else if (element instanceof KtParameter) {
+      KtParameter parameter = (KtParameter) element;
+      declarations.typed(parameter.getName(), parameter.getTypeReference(), null);
     } else if (element instanceof KtTypeAlias) {
       declarations.declareTypeAlias((KtTypeAlias) element);
     } else if (element instanceof KtCallExpression) {
