@@ -78,7 +78,9 @@ public final class Loops {
   public void chunked(List<List<String>> chunks) {
     for (List<String> chunk : chunks) {
       orders.saveAll(chunk);
+      orders.markShipped(chunk);
     }
+    chunks.forEach(chunk -> orders.markShipped(chunk));
   }
 
   public String loaded(String id) {
