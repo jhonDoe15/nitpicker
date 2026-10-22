@@ -242,7 +242,8 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `rule` is the rule as the finding prints it: any `detekt.<ruleset>.<Rule>`, a
 `kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
-`pmd/NegativeWaitInTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
+`pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`,
+`pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
@@ -411,7 +412,8 @@ data classes; parameters with an annotation (`@RequestParam`, `@PathVariable`) a
 
 ## Review rules
 
-Six checks that detekt has no rule for run on a syntax tree of the Kotlin sources. They use the rule
+Checks that detekt has no rule for run on a syntax tree of the Kotlin sources, and, for the
+[test honesty](#test-honesty) rules, on the Kotlin test sources read as masked text. They use the rule
 ids and the exception route of the Java preset's PMD rules, so a finding reads the same in both
 languages and one `exceptions` entry style covers either.
 
@@ -427,14 +429,18 @@ declarations, across all modules of the build; a call that cannot be tied to one
 an unclear case is not flagged. A file nested deeper than even the large stack of that program allows is
 skipped with a note on stderr.
 
-| Rule id                                  | Where                                       | Flags                                                                                                                                                                  |
-| ---------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during` |
-| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                        |
-| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                           |
-| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                           |
-| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                   |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                               |
+| Rule id                                  | Where                                       | Flags                                                                                                                                                                                                 |
+| ---------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                |
+| `DisabledTest`                           | `review-rules/tests/honesty/`               | a skipped test: `@Disabled`, `@Ignore`, `@Ignored`, Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, `.config(enabled = false)`, a constant false `@EnabledIf` |
+| `FocusedTest`                            | `review-rules/tests/honesty/`               | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                   |
+| `AssertionInControlFlow`                 | `review-rules/tests/honesty/`               | an assertion inside an `if`, a `when`, or a `for` or `forEach` over a literal list of cases, in a JUnit test or a Kotest test body                                                                    |
+| `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`            | a `launch`, `async` or `future` on a scope the test does not own (`CoroutineScope(...)`, a scope field, a `TestScope` outside `runTest`) that nothing joins                                           |
+| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                                                       |
+| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                          |
+| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                          |
+| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                  |
+| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                              |
 
 Limits, all chosen to flag less rather than guess:
 
@@ -446,7 +452,8 @@ Limits, all chosen to flag less rather than guess:
   (in any module of the build) is allowed. A sleep in an inline lambda (`run`, `let`, `also`, `apply`, `with`,
   `repeat`, `takeIf`, `takeUnless`, `use`, `synchronized`, `forEach`, `forEachIndexed`, `onEach`) is judged by
   the loop or body around that lambda. A `for` over a collection is not a polling loop, as in the Java rule.
-  `delay` is judged only inside `runBlocking`; `runTest` runs it in virtual time. Only test sources are
+  `delay` is judged inside `runBlocking`, and inside a block that leaves the test scheduler (see
+  [Test honesty](#test-honesty)); `runTest` runs it in virtual time. Only test sources are
   read: a sleep in main sources is `detekt.style.ForbiddenMethodCall` (see [One-way rules](#one-way-rules)).
 - Which calls are waits: `Thread.sleep`, `TimeUnit.X.sleep` and `LockSupport.parkNanos`, also through an
   import or an alias of an import (`import java.lang.Thread.sleep as nap`); `join(ms)` and `wait(ms)` on any
@@ -490,6 +497,64 @@ Limits, all chosen to flag less rather than guess:
 - Not covered: Android and Kotlin Multiplatform modules (the facts step is registered for
   `org.jetbrains.kotlin.jvm` only), and source-set `exclude` patterns (every `.kt` file under a source
   directory is read, as for detekt and the other Kotlin steps).
+
+### Test honesty
+
+These rules read the Kotlin test source roots as text with comments and string bodies masked in place
+(`review-rules/tests/discovery/` finds the classes, the test functions and the Kotest registrations;
+`honesty/` and `coroutines/` hold the rules), so lines keep their numbers and a rule never matches inside a
+string or a comment. A finding is named after the test (`OrderTest.second`, or `OrderSpec > group > a`
+for Kotest), so a moved test is not a new finding. Files whose header says they are generated are skipped.
+
+Discovery: a JUnit 4, JUnit 5, kotlin.test, TestNG or Kotest `AnnotationSpec` function annotated `@Test`,
+`@ParameterizedTest`, `@RepeatedTest`, `@TestFactory`, `@TestTemplate`, `@Theory`, `@Property` or `@Example`
+in a class; and the registrations of a class whose supertype is a Kotest spec style (a name ending in
+`Spec`: `FunSpec`, `StringSpec`, `ShouldSpec`, `DescribeSpec`, `BehaviorSpec`, `FreeSpec`, `WordSpec`,
+`FeatureSpec`, `ExpectSpec`) in its constructor lambda (`class S : FunSpec({ ... })`) or an `init` block:
+`test`, `context`, `describe`, `it`, `should`, `given`, `when`, `then`, `and`, `feature`, `scenario`,
+`expect` with a string literal and a lambda, with or without `.config(...)`, the string forms (`"name" { }`,
+`"name" - { }`, `"name" should { }`) and `withData`. A registration whose lambda holds more registrations
+is a container; the others are the test bodies. Not discovered: registrations inside a loop, an `if` or a
+helper function, test factories (`funSpec { }`), and a spec whose supertype is a project class that does
+not end in `Spec`; such a body is not judged, never guessed at.
+
+- `DisabledTest`: any of the spellings above on a test or on a class (reported once, at the outermost
+  disabled class). A condition is constant false when `@EnabledIf` names a function or a Kotest condition class
+  of the same file whose body is `false` (or `@DisabledIf`, `true`), or is the text `false`; `@EnabledOnOs`,
+  `@EnabledIfSystemProperty`, `@DisabledIfEnvironmentVariable` and assumptions depend on the environment and
+  are not reported. Allowed: run the test, delete it, or limit it to the environment it needs. The
+  message and the rule id are the Java preset's `pmd/DisabledTest`.
+- `FocusedTest`: Kotest only (JUnit has no focus). Reported at the outermost focused registration.
+- `AssertionInControlFlow`: an assertion call (`assert*`, `verify`, `coVerify`, `expect*`, `should*` and the infix
+  `shouldBe` family, `andExpect`) inside an `if` or `else`, a `when`, a `for` or a `forEach`, `forEachIndexed`
+  or `onEach` over a literal list of cases (`listOf`, `setOf`, `mapOf`, `arrayOf`, `sequenceOf` ... inline,
+  or a name declared with one in the file). The Java rule reports `if` and `switch`; a loop over the results of
+  the code under test, a counted loop, a `while` and an `if` that only calls `fail` stay allowed here as there.
+  `@TestFactory` bodies, tests registered in a loop and `withData` are the allowed forms. Allowed form:
+  separate tests or `@ParameterizedTest` with `@MethodSource` or `@CsvSource`, Kotest `withData`, and
+  `assertIs` or `assertNotNull` to narrow a type instead of an `if`.
+- `CoroutineEscapesTest`: in a test body, `.launch`, `.async` or `.future` on `CoroutineScope(...)`,
+  `MainScope()`, a name declared in the file as a `CoroutineScope` (a field, `lateinit var`, local or
+  constructor property; every declaration of the name must be one), `TestScope` outside `runTest`, or a
+  `GlobalScope` imported under another name. Allowed: structured launches (`launch` without a receiver
+  inside `runTest`, `runBlocking`, `coroutineScope`, `supervisorScope` or a Kotest body, `backgroundScope`),
+  a `Job` or `Deferred` that the test joins or awaits (`val job = scope.launch { }; job.join()`, a chained
+  `.await()`, `joinAll`, `awaitAll`, `cancelAndJoin`, `cancel`), a scope that an `@After`, `@AfterEach`,
+  `@AfterTest` method or a Kotest `afterTest`, `afterSpec` or `afterEach` block cancels or joins, a test
+  that waits with a latch, a future, Awaitility or Kotest `eventually`, and a `TestScope` that the test
+  drives with `advanceUntilIdle`, `runCurrent` or `testScheduler`. Plain `GlobalScope` is left to
+  `detekt.coroutines.GlobalCoroutineUsage`, which already reports it in tests, so a line is not reported
+  twice. Launches in `@BeforeEach` methods, helper functions and class initializers are not judged.
+  detekt's `CoroutineLaunchedInTestWithoutRunTest` is not in the pinned detekt 1.23.8.
+- `FixedSleepInTest` for a real `delay` (the same rule id as the other fixed waits): a `delay` in a `withContext`
+  block whose context is `Dispatchers.Default`, `IO` or `Unconfined`, `Dispatchers.Main` when no test
+  dispatcher replaces it (`setMain` or a `MainDispatcherRule` anywhere in the test sources),
+  `newSingleThreadContext`, `newFixedThreadPoolContext` or an executor's `asCoroutineDispatcher()`, also
+  through a property or local that holds one, inside `runTest`; and a `delay` in a Kotest test body outside
+  `runTest` (the body runs on a real dispatcher), unless a test source sets `coroutineTestScope`. A
+  `withContext` on the test dispatcher, a `runTest` inside the real block, a context that is not resolved,
+  `launch`, `async` and `flow` bodies, polling loops, test fakes and delays inside `runBlocking` (judged by the
+  runBlocking check above) are not reported.
 
 Every message names the allowed form and ends with the exception route. For the pmd-id rules it is
 `exceptions` with `pmd/<RuleId>` and a path glob; for `unused-option` it is

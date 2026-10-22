@@ -9,6 +9,7 @@ import { readKotlinFacts } from './kotlin-facts.mjs';
 import { productionTypeResolver } from './production-types.mjs';
 import { findingFactory } from './review-finding.mjs';
 import { springContextFindings } from './tests/spring-context.mjs';
+import { testHonestyFindings } from './tests/test-honesty.mjs';
 import { testWaitFindings } from './tests/test-waits.mjs';
 
 const IDENTIFIER = /[\p{L}_$][\p{L}\p{N}_$]*/gu;
@@ -59,6 +60,7 @@ export function readKotlinReviewFindings(context) {
       awaitility: hasAwaitility({ manifest, projectRoot }),
       isProduction: productionTypeResolver({ files: projectFiles, projectRoot, javaRoots }),
     }),
+    ...testHonestyFindings({ projectRoot, testRoots: manifest.kotlinTestSourceRoots, finding }),
     ...springContextFindings(own, { finding }),
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
