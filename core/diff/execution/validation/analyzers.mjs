@@ -79,12 +79,18 @@ function validateAnalyzerReports(analyzer) {
   ) {
     throw new TypeError(`${analyzer.name} findingExitCodes must contain positive integers`);
   }
+  for (const key of ['reportedTools', 'toleratedDependencyErrors']) {
+    validateToolNames(analyzer, key);
+  }
+}
+
+function validateToolNames(analyzer, key) {
+  const tools = analyzer[key];
   if (
-    analyzer.reportedTools !== undefined &&
-    (!Array.isArray(analyzer.reportedTools) ||
-      analyzer.reportedTools.some((tool) => typeof tool !== 'string' || tool.length === 0))
+    tools !== undefined &&
+    (!Array.isArray(tools) || tools.some((tool) => typeof tool !== 'string' || tool.length === 0))
   ) {
-    throw new TypeError(`${analyzer.name} reportedTools must contain non-empty strings`);
+    throw new TypeError(`${analyzer.name} ${key} must contain non-empty strings`);
   }
 }
 

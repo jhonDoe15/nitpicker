@@ -1,3 +1,4 @@
+import { rule as noDevDependencyInProduction } from './rules/dependencies/no-dev-dependency-in-production.mjs';
 import { rule as integrationTestUsesApprovedHarness } from './rules/testing/processes/integration-test-uses-approved-harness.mjs';
 import { rule as containerPauseRequiresFinallyUnpause } from './rules/testing/lifecycle/container-pause-requires-finally-unpause.mjs';
 import { rule as boundedContainerTeardown } from './rules/testing/lifecycle/bounded-container-teardown.mjs';
@@ -10,6 +11,7 @@ import { rule as noModuleLevelLet } from './rules/modules/no-module-level-let.mj
 import { rule as noMockingSubjectUnderTest } from './rules/testing/assertions/no-mocking-subject-under-test.mjs';
 import { rule as cognitiveComplexity } from './rules/analysis/cognitive-complexity.mjs';
 import { rule as noComments } from './rules/modules/no-comments.mjs';
+import { rule as fileNameCasing } from './rules/naming/file-name-casing.mjs';
 import { rule as noUiFrameworkInDomain } from './rules/syntax/no-ui-framework-in-domain.mjs';
 import { noDefaultExport, noNull, noPromiseChain } from './rules/syntax/syntax-bans.mjs';
 import { rule as noProductionConsole } from './rules/modules/no-production-console.mjs';
@@ -33,6 +35,7 @@ import { rule as hermeticGitInTests } from './rules/testing/processes/hermetic-g
 import { rule as noNodeProcessPerTest } from './rules/testing/processes/no-node-process-per-test.mjs';
 import { rule as noServerOrWorkerPerTest } from './rules/testing/processes/no-server-or-worker-per-test.mjs';
 import { rule as noRaisedTestTimeout } from './rules/testing/assertions/no-raised-test-timeout.mjs';
+import { rule as requireTestProcessTimeout } from './rules/testing/processes/timeouts/require-test-process-timeout.mjs';
 import { rule as noUnusedDomEnvironment } from './rules/testing/environment/no-unused-dom-environment.mjs';
 import { rule as noPartialOutputAssertion } from './rules/testing/assertions/no-partial-output-assertion.mjs';
 import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mjs';
@@ -111,9 +114,11 @@ export const nitpickerRules = {
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
     'cognitive-complexity': cognitiveComplexity,
     'no-comments': noComments,
+    'file-name-casing': fileNameCasing,
     'no-production-console': noProductionConsole,
     'no-self-recursion': noSelfRecursion,
     'no-silent-catch': noSilentCatch,
+    'no-dev-dependency-in-production': noDevDependencyInProduction,
     'no-throw': noThrow,
     'no-unknown-in-domain': noUnknownInDomain,
     'no-mutating-method-in-domain': noMutatingMethodInDomain,
@@ -128,6 +133,7 @@ export const nitpickerRules = {
     'no-node-process-per-test': noNodeProcessPerTest,
     'no-server-or-worker-per-test': noServerOrWorkerPerTest,
     'no-raised-test-timeout': noRaisedTestTimeout,
+    'require-test-process-timeout': requireTestProcessTimeout,
     'no-partial-output-assertion': noPartialOutputAssertion,
     'no-unused-dom-environment': noUnusedDomEnvironment,
     'no-process-globals-outside-main-guard': noProcessGlobalsOutsideMainGuard,

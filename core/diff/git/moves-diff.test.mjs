@@ -303,3 +303,57 @@ describe('a change that adds a source root', () => {
     expect(identities(report.unchangedFindings).sort()).toEqual(['a-site', 'legacy-site']);
   });
 });
+
+describe('a duplicate-scan folder list that changed between base and head', () => {
+  const layout = { sourceRoots: ['src'] };
+  const files = {
+    'nitpicker.config.json': JSON.stringify({ layout }),
+    'src/dist/a.mjs': `${filler('a')}${finding('a-site')}`,
+    'src/dist/b.mjs': `${filler('b')}${finding('b-site')}`,
+  };
+
+  function widenTheScan(root) {
+    git(root, 'rm', '-q', 'nitpicker.config.json');
+    write(root, {
+      'nitpicker.config.json': JSON.stringify({
+        layout,
+        duplicates: { skippedFolders: ['build'] },
+      }),
+    });
+    commitHead(root);
+  }
+
+  function compareWithHeadFolders(root) {
+    const headConfig = { layout, duplicates: { skippedFolders: ['build'] } };
+    return compare(root, {
+      headPolicy: headConfig,
+      resolveBaseSetup: createBaseSetupResolver({
+        headConfig,
+        injectedAnalyzers: [probeAnalyzer()],
+      }),
+    });
+  }
+
+  it('scans the base with the head list, so widening it turns no legacy finding into a new one', () => {
+    const root = createRepository(files);
+    widenTheScan(root);
+
+    const report = compareWithHeadFolders(root);
+
+    expect(identities(report.newFindings)).toEqual([]);
+    expect(report.unchangedFindings).toHaveLength(2);
+  });
+
+  it('still reports what the head adds in the widened folders', () => {
+    const root = createRepository(files);
+    widenTheScan(root);
+    write(root, { 'src/dist/c.mjs': `${filler('c')}${finding('c-site')}` });
+    git(root, 'add', '-A');
+    git(root, 'commit', '-q', '-m', 'more');
+
+    const report = compareWithHeadFolders(root);
+
+    expect(identities(report.newFindings)).toEqual(['c-site']);
+    expect(report.unchangedFindings).toHaveLength(2);
+  });
+});

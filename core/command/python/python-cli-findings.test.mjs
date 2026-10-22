@@ -2,10 +2,11 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
-import { jscpdVersion } from '../../../languages/java/adapters/metrics/java-duplicates.mjs';
+import { jscpdVersion } from '../../tooling/jscpd/run-jscpd.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { RUFF_FORMAT_ADVICE } from '../../../languages/python/adapters/test-support/ruff-format-advice.mjs';
 
 const { callsLog, pythonRepository, run, temporaryRoot } = usePythonFixtures(nitpickerCli);
 
@@ -17,13 +18,16 @@ const FAILING_SUMMARY = [
   '  ruff/B006 src/demo/a.py:2',
   '    Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. To allow it for some paths, add a "python.exceptions" entry for B006 in nitpicker.config.json.',
   '  ruff-format/format src/demo/a.py',
-  '    File is not formatted with ruff (detected; set "python.formatter" if wrong)',
+  `    File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
   'Full diagnostics: <path>',
   '',
 ].join('\n');
 
 function summaryOf({ output }) {
-  return output.out.replace(/Full diagnostics: .*/, 'Full diagnostics: <path>');
+  expect(output.out).toMatch(/^Format with ruff: ruff format --isolated /);
+  return output.out
+    .replace(/^Format with ruff: .*\n/, '')
+    .replace(/Full diagnostics: .*/, 'Full diagnostics: <path>');
 }
 
 describe('nitpicker with "preset": "python"', () => {
@@ -35,13 +39,10 @@ describe('nitpicker with "preset": "python"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
-      'python',
-      'mutation',
-    ]);
-    expect(result.json('summary.json').tools.map(({ version }) => version)).toEqual([
-      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;jscpd@${jscpdVersion()}`,
-      'mutmut@3.8.0;pytest@8.3.1',
+    expect(result.json('summary.json').tools.map(({ name, version }) => [name, version])).toEqual([
+      ['python', `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;jscpd@${jscpdVersion()}`],
+      ['mutation', 'mutmut@3.8.0;pytest@8.3.1;pytest-django@missing'],
+      ['repository-hygiene', '1'],
     ]);
   });
   it('fails on a new lint finding and a new unformatted file in every report format', () => {
@@ -72,7 +73,7 @@ describe('nitpicker with "preset": "python"', () => {
         rule: 'format',
         path: 'src/demo/a.py',
         identity: 'format',
-        message: 'File is not formatted with ruff (detected; set "python.formatter" if wrong)',
+        message: `File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
         classification: 'enforceable',
       },
     ]);
@@ -116,7 +117,7 @@ describe('nitpicker with "preset": "python"', () => {
       [
         'python-rules/no-inline-suppression',
         'noqa',
-        'Inline suppression `# noqa`. Remove the comment and fix the code. If it must stay, add a "python.exceptions" entry for no-inline-suppression for this path.',
+        'Inline suppression `# noqa`. Remove the comment and fix the code. To allow it for some paths, add a "python.exceptions" entry for no-inline-suppression in nitpicker.config.json.',
       ],
     ]);
   });

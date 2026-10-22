@@ -126,6 +126,7 @@ describe('entry-point differential adapter', () => {
       'mutation',
       'prettier-format',
       'structure',
+      'test-console',
       'test-runtime',
       'typescript-typecheck',
     ]);

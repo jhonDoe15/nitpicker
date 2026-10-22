@@ -174,6 +174,7 @@ describe('reusing the base mutation results on head', () => {
     ['a test module next to the sources', { 'src/pkg/test_b.py': 'x = 1\n' }],
     ['a test module named like *_test.py', { 'src/pkg/b_test.py': 'x = 1\n' }],
     ['a conftest', { 'src/conftest.py': 'x = 1\n' }],
+    ['the tests.py of a Django app', { 'src/polls/tests.py': 'x = 1\n' }],
     ['a tests directory inside the sources', { 'src/pkg/tests/helper.py': 'x = 1\n' }],
     ['a dependency lock', { 'uv.lock': 'new lock\n' }],
     ['a file outside the source roots', { 'scripts/run.py': 'x = 1\n' }],

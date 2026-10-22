@@ -13,9 +13,18 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../builds/java-build.mjs';
-import { runJavaDuplicates } from '../adapters/metrics/java-duplicates.mjs';
-import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
-import { readReportModules } from '../adapters/gradle-reports/report-modules.mjs';
+import { runJavaDuplicates, readDuplicateFindings } from '../adapters/metrics/java-duplicates.mjs';
+import {
+  readReportModules,
+  readMainCheckstyle,
+} from '../adapters/gradle-reports/report-modules.mjs';
+import { DUPLICATES_REPORT } from '../../../core/tooling/jscpd/run-jscpd.mjs';
+import { ingestSarif, prepareSarif } from '../../../shared/ingest/sarif.mjs';
+import { checkstyleFindings } from '../adapters/reporting/format-findings.mjs';
+import { sourceLocator } from '../adapters/reporting/kotlin-reports.mjs';
+import { applyRuleMessages } from '../messages/rule-messages.mjs';
+import { readGuardFindings } from './index.mjs';
+import { coveredByCpd } from './cpd-duplicates.mjs';
 import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
 import { readErrorProneFindings } from '../adapters/errorprone/java-errorprone.mjs';
 import { readCpdFindings } from './cpd-duplicates.mjs';
@@ -30,6 +39,16 @@ const optionalGetMessage = (file) =>
   exceptionHint('pmd/OptionalGet', file);
 const LINE_MARKER = /\/\/ violation: (.*)$/;
 const FILE_MARKER = /\/\/ file violation: (.*)$/;
+const UNRELATED_TASKS = [
+  'nitpickerSpotbugs',
+  'nitpickerErrorProne',
+  'nitpickerFormat',
+  'nitpickerJacoco',
+  'nitpickerArchunit',
+  'nitpickerStructure',
+  'nitpickerPit',
+  'test',
+];
 const GUARD_TOOLS = new Set(['javac', 'forbiddenapis', 'dependencies', 'coupling', 'duplicates']);
 const GUARD_RULES = new Set([
   'OptionalGet',
@@ -103,7 +122,43 @@ function reportBaseOf(root) {
 }
 
 function guardFindings(root) {
-  return readJavaFindings(root, { reportBase: reportBaseOf(root) }).findings;
+  const reportBase = reportBaseOf(root);
+  const { modules, manifest } = readReportModules(reportBase, 'java');
+  return applyRuleMessages(
+    [
+      ...modules.flatMap((module) => moduleGuardFindings(root, module)),
+      ...readDuplicateFindings(reportBase, DUPLICATES_REPORT, {
+        skip: coveredByCpd(modules, root),
+      }),
+    ],
+    { testRoots: manifest.testSourceRoots },
+  );
+}
+
+function moduleGuardFindings(projectRoot, module) {
+  const context = {
+    projectRoot,
+    reportRoot: module.reportRoot,
+    roots: [projectRoot],
+    manifest: module.manifest,
+    sourceRoots: module.manifest.sourceRoots,
+    module: { moduleDir: module.dir },
+    locate: sourceLocator(projectRoot, [
+      ...module.manifest.sourceRoots,
+      ...module.manifest.testSourceRoots,
+    ]),
+    mainCheckstyle: readMainCheckstyle(projectRoot, module, 'java'),
+  };
+  const pmd = prepareSarif(
+    JSON.parse(readFileSync(path.join(module.reportRoot, 'pmd.sarif'), 'utf8')),
+    { ...context, identityKey: (result) => result.message?.text },
+  );
+  return [
+    ...ingestSarif(pmd, { tool: 'pmd' }).findings,
+    ...checkstyleFindings(context),
+    ...readGuardFindings(context),
+    ...readCouplingFindings(module.reportRoot, context),
+  ];
 }
 
 function reportedViolations(root) {
@@ -121,10 +176,14 @@ function runGradle(projectRoot, args) {
   const result = spawnSync(
     gradle,
     ['--console=plain', '--quiet', '--no-configuration-cache', '-I', INIT_SCRIPT, ...args],
-    { cwd: projectRoot, encoding: 'utf8', timeout: 15 * 60 * 1000 },
+    { cwd: projectRoot, encoding: 'utf8', timeout: 90_000 },
   );
   if (result.status !== 0) {
-    throw new Error(`Gradle failed: ${result.stderr}`);
+    throw new Error(
+      `Gradle failed (status=${String(result.status)}, signal=${String(result.signal)}): ` +
+        `${result.error?.message ?? ''}\n${result.stderr || result.stdout}`,
+      { cause: result.error },
+    );
   }
 }
 
@@ -145,28 +204,27 @@ function pmdRules(projectRoot) {
 describe.skipIf(!enabled)('Java guards on a fixture project', () => {
   const roots = [];
 
-  beforeAll(
-    () => {
-      roots.push(
-        gradleTasks('guards-project', ['nitpickerJava'], (root) => [
-          `-Pnitpicker.reportDir=${reportBaseOf(root)}`,
-        ]),
-      );
-      const { manifest } = readReportModules(reportBaseOf(roots[0]), 'java');
-      runJavaDuplicates(roots[0], { reportRoot: reportBaseOf(roots[0]), manifest });
-      roots.push(
-        gradleTasks('guards-compile-modes', [
-          'nitpickerLint',
-          ':legacy:nitpickerPmd',
-          ':arguments:nitpickerPmd',
-          ':modular:nitpickerJdeps',
-          ':modular:nitpickerErrorProne',
-          ':legacy:nitpickerCpd',
-        ]),
-      );
-    },
-    30 * 60 * 1000,
-  );
+  beforeAll(() => {
+    roots.push(
+      gradleTasks(
+        'guards-project',
+        ['nitpickerJava', ...UNRELATED_TASKS.flatMap((task) => ['-x', task])],
+        (root) => [`-Pnitpicker.reportDir=${reportBaseOf(root)}`],
+      ),
+    );
+    const { manifest } = readReportModules(reportBaseOf(roots[0]), 'java');
+    runJavaDuplicates(roots[0], { reportRoot: reportBaseOf(roots[0]), manifest });
+    roots.push(
+      gradleTasks('guards-compile-modes', [
+        'nitpickerLint',
+        ':legacy:nitpickerPmd',
+        ':arguments:nitpickerPmd',
+        ':modular:nitpickerJdeps',
+        ':modular:nitpickerErrorProne',
+        ':legacy:nitpickerCpd',
+      ]),
+    );
+  }, 120_000);
 
   afterAll(() => {
     for (const root of roots) {

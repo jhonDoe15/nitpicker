@@ -52,8 +52,8 @@ Before you change code other modules use or fix a bug, read
   `/** @typedef {import('./domain/tally.js').Invoice} Invoice */` in `invoices/index.js`, then
   `/** @import { Invoice } from '../../invoices/index.js' */` in the other feature. Never copy a
   type: import it, or derive it from a function you call (`Parameters<typeof runGreeting>[1]`).
-- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it
-  if it isn't a dependency). Field rules and conversions live in the schema
+- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with the project's
+  validation library (zod if it has none; add it then). Field rules and conversions live in the schema
   (`z.string().trim().min(1)`, `z.email()`, `z.iso.date()`, `.transform(toCents)`), never
   `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the issues'
   `path` (`[index, field]`) names the bad record: `issues.map((issue) => issue.path.join('.'))`.
@@ -67,9 +67,16 @@ Before you change code other modules use or fix a bug, read
 - Export only what another module imports: an exported function or `@typedef` that nothing imports
   fails dead-code.
 - Don't put `x.js` beside `x.ts` in one directory: TypeScript drops the `.js`. `.jsx` and `.tsx` are
-  outside the preset.
+  outside the preset, and so is React: a React project uses the typescript preset (`react` in
+  `nitpicker.config.json` is an error here).
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist. Match the
   module format of the files around you (ESM `import`/`export`, or CommonJS where the project is).
+
+## Dependencies and files
+
+- The gate fails unlisted, unused and unresolved dependencies, production imports of a
+  `devDependency`, and committed secrets, binaries, build output and files over 1 MB; each message
+  names the fix. Don't add an `exceptions` entry to get past one: stop and ask.
 
 ## Types are JSDoc
 
@@ -88,7 +95,7 @@ line) is a finding.
 - Bring a type in with `@import { Invoice } from '../domain/tally.js'`; there is no `import type`.
 - A value whose type can't be inferred gets a one-line `/** @type {string[]} */` above its `const`.
   A literal that must stay narrow is `/** @type {const} */ ([...])`; that is the one allowed cast.
-- No cast `/** @type {T} */ (value)`, the JSDoc `as`. Narrow with checks, parse with zod, or type the
+- No cast `/** @type {T} */ (value)`, the JSDoc `as`. Narrow with checks, parse with the project's validation library, or type the
   value correctly where it is made. There is no `!`.
 - No `any`, `*` or a bare `?` in a type. No `null`, `?T` or `T?`: absent is `undefined`
   (`{ readonly note: string | undefined }`).
@@ -183,6 +190,8 @@ line) is a finding.
   `import { initials } from '../src/main/features/greeting/domain/initials.cjs';`.
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.
+- A test run that prints new `console.error` or `console.warn` output fails
+  (`test-console-output`): cancel the timer or subscription in the cleanup.
 - Test features through their `index.js` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
   `vi.fn().mockRejectedValue(42)`. Read a fake's calls through a helper that throws when the call is missing, not
@@ -200,3 +209,11 @@ line) is a finding.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test (a
   padded value for a `.trim()`, two bad fields for a `join`); never delete a schema rule to silence it.
 - No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
+- Give synchronous `child_process` calls in integration tests and shared test helpers a positive
+  subprocess `timeout`, such as `{ timeout: 10_000 }`. The runner's test timeout cannot interrupt
+  `spawnSync`, `execSync` or `execFileSync` while they block the event loop.
+- Plan tests to be fast (`slow-test`): a test you add or edit that takes over 5 s fails, over 30 s
+  for an integration test (under an `integration`, `e2e` or `functional` folder, or named
+  `*.integration.test.js`, folders counted under the test roots). Use fake timers instead of waits
+  and fakes instead of network or disk. A test over budget is run again alone without coverage and
+  fails only if it is still over. A slow test you did not touch stays baselined.

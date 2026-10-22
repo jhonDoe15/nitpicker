@@ -4,11 +4,19 @@ import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { runJavaDiff } from '../../java-diff.mjs';
 
+const GIT_TIMEOUT_MS = 30_000;
+const JDK_PROBE_TIMEOUT_MS = 30_000;
+const JDK_COPY_TIMEOUT_MS = 120_000;
+
 export const kotlinE2eEnabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 
 export const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 
 export const kotlinPolicy = { preset: 'kotlin' };
+export const kotlinPolicyWithProjectDetekt = {
+  preset: 'kotlin',
+  toolPrecedence: { detekt: ['project', 'nitpicker'] },
+};
 
 export const kotlinSources = 'src/main/kotlin/demo';
 
@@ -26,6 +34,7 @@ export function git(project, ...args) {
     cwd: project.root,
     encoding: 'utf8',
     env: { ...process.env, ...gitEnvironment },
+    timeout: GIT_TIMEOUT_MS,
   });
 }
 
@@ -133,10 +142,10 @@ export function copyJdkWithNativeImage(target) {
   const settings = spawnSync(
     'sh',
     ['-c', 'exec "${JAVA_HOME:+$JAVA_HOME/bin/}java" -XshowSettings:properties -version'],
-    { encoding: 'utf8' },
+    { encoding: 'utf8', timeout: JDK_PROBE_TIMEOUT_MS },
   );
   const home = /java\.home = (.+)/.exec(settings.stderr)[1];
-  execFileSync('cp', ['-a', home, target]);
+  execFileSync('cp', ['-a', home, target], { timeout: JDK_COPY_TIMEOUT_MS });
   writeFileSync(path.join(target, 'bin/native-image'), '#!/bin/sh\n', { mode: 0o755 });
   return target;
 }

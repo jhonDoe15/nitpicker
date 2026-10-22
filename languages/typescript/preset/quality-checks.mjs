@@ -1,4 +1,5 @@
-import { EXCLUDED_PATH_PATTERN, resolveLayout } from './layout.mjs';
+import { DUPLICATES_CONFIGURATION_FILES } from './duplicates/configuration-files.mjs';
+import { EXCLUDED_PATH_PATTERN, prettierPatterns, resolveLayout } from './layout.mjs';
 import { testExecutionChecksFor } from './checks/test-execution.mjs';
 import {
   POLICY_FILES,
@@ -105,15 +106,6 @@ function entryPointsCheckFor(layout, exclusions) {
   };
 }
 
-function prettierPatterns(layout) {
-  const code = layout.formatExtensions.join(',');
-  return [
-    ...layout.sourceRoots.map((root) => `${root}/**/*.{${code},json,yaml,yml}`),
-    ...layout.testRoots.map((root) => `${root}/**/*.{${code},json}`),
-    `*.{${code},json}`,
-  ];
-}
-
 function prettierCheckFor(layout, exclusions) {
   return {
     name: 'prettier-format',
@@ -127,6 +119,9 @@ function prettierCheckFor(layout, exclusions) {
     configurationFiles: [
       'languages/typescript/adapters/prettier/prettier-layers.mjs',
       'languages/typescript/conventions/prettier-conventions.mjs',
+      'languages/typescript/conventions/measures/jsx-conventions.mjs',
+      'languages/typescript/conventions/measures/typescript-syntax.mjs',
+      'languages/typescript/conventions/measures/data-conventions.mjs',
       'languages/typescript/preset/layout.mjs',
       'languages/typescript/preset/head-policy.mjs',
       JAVASCRIPT_PRESET_FILE,
@@ -150,6 +145,7 @@ function typeAndArchitectureChecksFor(layout) {
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
         'languages/typescript/preset/tool-configs.mjs',
+        'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
         JAVASCRIPT_PRESET_FILE,
         'languages/typescript/preset/defaults/tsconfig.quality.json',
       ],
@@ -247,12 +243,7 @@ function repositoryChecksFor(exclusions) {
       exclusions: exclusions.general,
       timeoutMs: MINUTE_MS,
       shardWeight: 2,
-      configurationFiles: [
-        'languages/typescript/preset/defaults/jscpd.json',
-        'languages/typescript/preset/duplicates/normalize.mjs',
-        'languages/typescript/preset/tool-configs.mjs',
-        JAVASCRIPT_PRESET_FILE,
-      ],
+      configurationFiles: [...DUPLICATES_CONFIGURATION_FILES, JAVASCRIPT_PRESET_FILE],
     },
     {
       name: 'dead-code',
@@ -264,9 +255,16 @@ function repositoryChecksFor(exclusions) {
       configurationFiles: [
         'languages/typescript/preset/defaults/knip.json',
         'languages/typescript/preset/tool-configs.mjs',
+        'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
         'languages/typescript/preset/eslint-config/scope-support.mjs',
+        'languages/typescript/preset/libraries/file-libraries.mjs',
+        'languages/typescript/preset/libraries/logger-libraries.mjs',
+        'languages/typescript/preset/libraries/module-bindings.mjs',
+        'languages/typescript/preset/libraries/project-libraries.mjs',
+        'languages/typescript/preset/libraries/schema-calls.mjs',
+        'languages/typescript/preset/libraries/validation-libraries.mjs',
         'languages/typescript/preset/unused-api/test-only/production-config.mjs',
         'languages/typescript/preset/unused-api/test-only/test-only-exports.mjs',
         'languages/typescript/preset/unused-api/workspace/packages.mjs',

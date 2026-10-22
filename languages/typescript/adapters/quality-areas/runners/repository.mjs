@@ -10,8 +10,8 @@ import {
   normalizeCoupling,
   normalizeTestRuntime,
   normalizeStructure,
-  normalizeDeadCode,
 } from '../reporting/repository.mjs';
+import { normalizeDeadCode } from '../reporting/dead-code.mjs';
 import path from 'node:path';
 import { existsSync, readFileSync, writeFileSync, realpathSync, unlinkSync } from 'node:fs';
 import { existingRoots } from '../../../preset/layout.mjs';
@@ -23,6 +23,7 @@ import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mjs';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mjs';
+import { baselinePathsOf } from '../base-paths.mjs';
 
 export async function runCodingStandards(options) {
   const checker = await importPolicyModule(
@@ -130,7 +131,7 @@ export async function runStructure(options) {
   );
   return [
     ...functionFindings,
-    ...typescriptStructureProjectFindings(options),
+    ...typescriptStructureProjectFindings({ ...options, baselinePaths: baselinePathsOf(options) }),
     ...(await runUnusedApi(options)),
   ];
 }
@@ -231,6 +232,7 @@ export function runDeadCode(options) {
     ...normalizeDeadCode(
       withDeadCodeSourceHashes(normal, options.projectRoot),
       options.analyzerName,
+      { exceptions: readHeadPolicy().exceptions },
     ),
     ...runTestOnlyExports(options, {
       config,

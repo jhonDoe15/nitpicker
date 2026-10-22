@@ -1,4 +1,4 @@
-import { createIdentityCounter, hashIdentity } from '../common.mjs';
+import { createIdentityCounter, hashIdentity } from '../../../../shared/ingest/common.mjs';
 import { withoutClassLiteralRepeats } from './class-literals.mjs';
 import { errorProneMessage } from './messages.mjs';
 

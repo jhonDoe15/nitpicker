@@ -6,3 +6,5 @@ coverage/
 .pi/
 evals/results/
 release-assets/
+__pycache__/
+*.pyc

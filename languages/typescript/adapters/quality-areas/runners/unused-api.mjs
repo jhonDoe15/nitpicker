@@ -3,13 +3,16 @@ import { linkPolicyFile } from '../../../../../core/tooling/policy-links.mjs';
 import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
 import { layoutTransformFor } from '../../../preset/tool-configs.mjs';
-import { layoutKnipProductionConfig } from '../../../preset/unused-api/test-only/production-config.mjs';
+import {
+  layoutKnipProductionConfig,
+  withEntryExports,
+} from '../../../preset/unused-api/test-only/production-config.mjs';
 import {
   needsProductionRun,
   testOnlyExportFindings,
 } from '../../../preset/unused-api/test-only/test-only-exports.mjs';
 import { loadPackages } from '../../../preset/unused-api/workspace/packages.mjs';
-import { toolErrorFinding } from '../reporting/vitest.mjs';
+import { toolErrorFinding } from '../reporting/test-report.mjs';
 import { importPolicyModule, policyFile } from './tooling.mjs';
 
 const TYPESCRIPT_CONFIG = 'languages/typescript/preset/defaults/tsconfig.quality.json';
@@ -50,12 +53,18 @@ function testOnlyFindings(options, { config, normal, knip }) {
   const layout = readLayout();
   const packagesInfo = loadPackages(options.projectRoot, layout);
   const hasTests = layout.projectCodeFiles(options.projectRoot).some(layout.isTestFile);
-  if (!hasTests || !needsProductionRun(packagesInfo, options.projectRoot)) return [];
+  if (!hasTests || !needsProductionRun(packagesInfo, options.projectRoot)) {
+    return [];
+  }
+  const productionConfig = layoutKnipProductionConfig(config, layout);
   return testOnlyExportFindings({
     normal,
-    production: knip(layoutKnipProductionConfig(config, layout)),
+    production: knip(productionConfig),
+    entryExportsRun: () => knip(withEntryExports(productionConfig)),
     packagesInfo,
     context: {
+      layout,
+      entryPatterns: productionConfig.entry,
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       isExcepted: exceptionMatcher(readHeadPolicy().exceptions),

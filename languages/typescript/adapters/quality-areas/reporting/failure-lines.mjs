@@ -1,12 +1,11 @@
+import { stripAnsi } from '../../../preset/test-console/ansi.mjs';
+
 const MAX_ASSERTION_LINE_LENGTH = 200;
-const ESCAPE_CHARACTER = String.fromCodePoint(0x1b);
-const ANSI_PATTERN = new RegExp(`${ESCAPE_CHARACTER}\\[[0-9;]*m`, 'gu');
 
 export function firstLine(message) {
   const line =
     typeof message === 'string'
-      ? message
-          .replaceAll(ANSI_PATTERN, '')
+      ? stripAnsi(message)
           .split('\n')
           .map((candidate) => candidate.trim())
           .find((candidate) => candidate.length > 0)

@@ -6,26 +6,20 @@ import { codeExtensionNames } from '../../layout.mjs';
 const MANIFEST_ENTRY_FIELDS = ['source', 'types', 'typings', 'module', 'main'];
 const FALLBACK_ROOTS = ['src', '.'];
 
-function exportChildren(value) {
+function exportChildren(value, includeSubpaths) {
   if (value === null || typeof value !== 'object') return [];
-  const root = Object.hasOwn(value, '.') ? value['.'] : value;
+  const root = !includeSubpaths && Object.hasOwn(value, '.') ? value['.'] : value;
   if (typeof root === 'string') return [root];
   return Object.entries(root ?? {})
-    .filter(([key]) => !key.startsWith('.'))
+    .filter(([key]) => includeSubpaths || !key.startsWith('.'))
     .map(([, target]) => target);
 }
 
-function exportTargets(value) {
-  return [...depthFirst(value, exportChildren)].filter((target) => typeof target === 'string');
-}
-
-function manifestTargets(manifest) {
+function manifestTargets(manifest, { includeSubpaths }) {
   return [
-    ...MANIFEST_ENTRY_FIELDS.map((field) => manifest[field]).filter(
-      (target) => typeof target === 'string',
-    ),
-    ...exportTargets(manifest.exports),
-  ];
+    ...MANIFEST_ENTRY_FIELDS.map((field) => manifest[field]),
+    ...depthFirst(manifest.exports, (value) => exportChildren(value, includeSubpaths)),
+  ].filter((target) => typeof target === 'string');
 }
 
 function isSourceEntry(file, layout) {
@@ -45,9 +39,19 @@ function indexFiles(directory, roots) {
 }
 
 function sourceEntryOf({ dir, manifest }, layout) {
-  const declared = manifestTargets(manifest).map((target) => path.join(dir, target));
+  const declared = manifestTargets(manifest, { includeSubpaths: false }).map((target) =>
+    path.join(dir, target),
+  );
   const candidates = [...declared, ...indexFiles(dir, [...layout.sourceRoots, ...FALLBACK_ROOTS])];
   return candidates.find((file) => isSourceEntry(file, layout));
+}
+
+export function publicEntryGlobs(entry, layout) {
+  const targets = manifestTargets(entry.manifest, { includeSubpaths: true }).map((target) =>
+    path.join(entry.dir, target),
+  );
+  const sources = targets.filter((target) => target.includes('*') || isSourceEntry(target, layout));
+  return sources.length > 0 ? sources : [sourceEntryOf(entry, layout)].filter(Boolean);
 }
 
 /**

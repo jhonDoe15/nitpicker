@@ -1,47 +1,75 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, rmSync } from 'node:fs';
-import path from 'node:path';
+import {
+  DEPENDENCY_MANIFESTS,
+  detectPackageManager,
+  managerRoot,
+} from './package-managers/detect.mjs';
+import { containedPath } from './package-managers/contained-path.mjs';
+import {
+  ensureDependencyFolder,
+  failureMessage,
+  installDependencies,
+} from './package-managers/install.mjs';
+import { memberDependencyDirectories } from './package-managers/members.mjs';
 
-const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
-const DEPENDENCY_INSTALL_TIMEOUT_MS = 4 * 60 * 1000;
+const DEPENDENCY_DIRECTORY = 'node_modules';
 
-const npmDependencyHook = {
+function absoluteMembers(root, relatives) {
+  return relatives.map((relative) => containedPath(root, relative));
+}
+
+function removeInstalled(dependencyPath, memberPaths) {
+  for (const memberPath of memberPaths) {
+    rmSync(memberPath, { recursive: true, force: true });
+  }
+  rmSync(dependencyPath, { recursive: true, force: true });
+}
+
+function assertRegularDirectory(dependencyPath) {
+  const entry = lstatSync(dependencyPath);
+  if (!entry.isDirectory() || entry.isSymbolicLink()) {
+    throw new Error('Installed merge-base dependencies are not a regular directory');
+  }
+}
+
+function installedMembers(root, existingMembers) {
+  return absoluteMembers(
+    root,
+    memberDependencyDirectories(root).filter((relative) => !existingMembers.has(relative)),
+  );
+}
+
+const nodeDependencyHook = {
   language: 'typescript',
-  manifests: ['package.json', 'package-lock.json'],
-  directory: 'node_modules',
+  manifests: DEPENDENCY_MANIFESTS,
+  directory: DEPENDENCY_DIRECTORY,
+  dependencyRoot: managerRoot,
   install(projectRoot) {
-    const dependencyPath = path.join(projectRoot, npmDependencyHook.directory);
+    const packageManager = detectPackageManager(projectRoot);
+    const dependencyPath = containedPath(packageManager.root, DEPENDENCY_DIRECTORY);
     if (existsSync(dependencyPath)) {
       throw new Error(`Refusing to replace existing dependencies at ${dependencyPath}`);
     }
-    const result = spawnSync(
-      process.platform === 'win32' ? 'npm.cmd' : 'npm',
-      ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--prefer-offline'],
-      {
-        cwd: projectRoot,
-        encoding: 'utf8',
-        maxBuffer: MAX_OUTPUT_BYTES,
-        timeout: DEPENDENCY_INSTALL_TIMEOUT_MS,
-      },
-    );
-    if (result.error !== undefined || result.status !== 0) {
-      rmSync(dependencyPath, { recursive: true, force: true });
-      if (result.error !== undefined) {
-        throw result.error;
+    const existingMembers = new Set(memberDependencyDirectories(packageManager.root));
+    function memberPaths() {
+      return installedMembers(packageManager.root, existingMembers);
+    }
+    try {
+      const outcome = installDependencies(packageManager);
+      if (!outcome.ok) {
+        throw new Error(failureMessage(packageManager, outcome.detail));
       }
-      const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-      throw new Error(`Failed to install merge-base dependencies: ${detail}`);
+      ensureDependencyFolder(packageManager, dependencyPath);
+      assertRegularDirectory(dependencyPath);
+    } catch (error) {
+      removeInstalled(dependencyPath, memberPaths());
+      throw error;
     }
-    const entry = lstatSync(dependencyPath);
-    if (!entry.isDirectory() || entry.isSymbolicLink()) {
-      rmSync(dependencyPath, { recursive: true, force: true });
-      throw new Error('Installed merge-base dependencies are not a regular directory');
-    }
-    return { kind: 'installed', dependencyPath };
+    return { kind: 'installed', dependencyPath, memberPaths: memberPaths() };
   },
 };
 
-const HOOKS = new Map([[npmDependencyHook.language, npmDependencyHook]]);
+const HOOKS = new Map([[nodeDependencyHook.language, nodeDependencyHook]]);
 
 export function resolveDependencyHook(language = 'typescript') {
   const hook = HOOKS.get(language);

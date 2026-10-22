@@ -8,6 +8,7 @@ import {
   runDeadCode,
 } from './runners/repository.mjs';
 import { runMutation } from './runners/mutation.mjs';
+import { runTestConsole } from './runners/console/test-console.mjs';
 
 export const QUALITY_AREA_RUNNERS = new Map([
   ['policy-tests', runPolicyTests],
@@ -19,5 +20,6 @@ export const QUALITY_AREA_RUNNERS = new Map([
   ['dead-code', runDeadCode],
   ['coverage', runCoverage],
   ['crap', runCrap],
+  ['test-console', runTestConsole],
   ['mutation', runMutation],
 ]);

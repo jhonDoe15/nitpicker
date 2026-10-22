@@ -1,3 +1,4 @@
+import { escapeXml } from '../../adapters/tool-config/xml-write.mjs';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { escapeRegExp } from '../../../../shared/glob.mjs';
@@ -22,14 +23,6 @@ const TEST_CLASS_RULE = [
   '    </properties>',
   RULE_END,
 ];
-
-function escapeXml(text) {
-  return text
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
 
 function directoryPattern(kind, directory) {
   const pattern = `${escapeRegExp(directory + path.sep)}.*`;
@@ -124,7 +117,7 @@ function testOnlyRulesets(reportDir, testDirectories) {
   );
 }
 
-function nitpickerExtras({ reportDir, mainDirectories, testDirectories, compiler, spring }) {
+export function writeGuardRulesets({ reportDir, testDirectories, compiler, spring }) {
   const skipped = javaRelease(compiler) < PATTERN_MATCHING_RELEASE ? PATTERN_MATCHING_RULES : [];
   const guards = scopedRuleset(
     'nitpicker-guards-main',
@@ -136,6 +129,16 @@ function nitpickerExtras({ reportDir, mainDirectories, testDirectories, compiler
     path.join(GRADLE_DIRECTORY, 'code-smells-ruleset.xml'),
     { directories: testDirectories, overrides: spring ? SPRING_DATA_OVERRIDES : [] },
   );
+  return [
+    written(reportDir, 'pmd-guards-main.xml', guards),
+    written(reportDir, 'pmd-code-smells-main.xml', smells),
+    ...testOnlyRulesets(reportDir, testDirectories),
+  ];
+}
+
+function nitpickerExtras(plan) {
+  const { reportDir, mainDirectories, testDirectories, spring } = plan;
+  const guards = writeGuardRulesets(plan);
   const tests = rulesetXml('nitpicker-tests', {
     patterns: mainDirectories.map((directory) => directoryPattern('exclude', directory)),
     rules: TEST_CLASS_RULE,
@@ -146,9 +149,7 @@ function nitpickerExtras({ reportDir, mainDirectories, testDirectories, compiler
     { directories: testDirectories },
   );
   return [
-    written(reportDir, 'pmd-guards-main.xml', guards),
-    written(reportDir, 'pmd-code-smells-main.xml', smells),
-    ...testOnlyRulesets(reportDir, testDirectories),
+    ...guards,
     written(reportDir, 'pmd-tests.xml', tests),
     ...(spring ? [written(reportDir, 'pmd-spring-main.xml', springMain)] : []),
   ];

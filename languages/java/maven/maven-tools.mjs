@@ -33,6 +33,23 @@ function dependency(coordinates, exclusions = []) {
   ].join('');
 }
 
+export function formatTool(javaStyle, pinned) {
+  if (javaStyle === 'none') {
+    return [];
+  }
+  const palantir = javaStyle === 'palantir';
+  return [
+    {
+      name: palantir ? 'format-palantir' : 'format',
+      coordinates: [
+        palantir
+          ? `com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}`
+          : `com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`,
+      ],
+    },
+  ];
+}
+
 export function toolDependencies(pinned, launcherVersions = [], extraTools = []) {
   return {
     pmd: [
@@ -41,22 +58,20 @@ export function toolDependencies(pinned, launcherVersions = [], extraTools = [])
     ],
     forbiddenapis: [dependency(`de.thetaphi:forbiddenapis:${pinned.forbiddenapis}`)],
     spotbugs: [dependency(`com.github.spotbugs:spotbugs:${pinned.spotbugs}`)],
-    format: [
-      dependency(`com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`),
-    ],
     checkstyle: [dependency(`com.puppycrawl.tools:checkstyle:${pinned.checkstyle}`)],
     errorprone: [
       dependency(`com.google.errorprone:error_prone_core:${pinned.errorProne}`),
       dependency(`com.uber.nullaway:nullaway:${pinned.nullAway}`),
     ],
     jacoco: [dependency(`org.jacoco:org.jacoco.cli:${pinned.jacoco}:nodeps`)],
-    pit: [
-      dependency(`org.pitest:pitest-command-line:${pinned.pitest}`),
+    pit: [dependency(`org.pitest:pitest-command-line:${pinned.pitest}`)],
+    'pit-junit5': [
       dependency(
         `org.pitest:pitest-junit5-plugin:${pinned.pitestJunit5}`,
         JUNIT_PLATFORM_EXCLUSIONS,
       ),
     ],
+    'pit-testng': [dependency(`org.pitest:pitest-testng-plugin:${pinned.pitestTestng}`)],
     ...Object.fromEntries(
       launcherVersions.map((version) => [
         `launcher-${version}`,

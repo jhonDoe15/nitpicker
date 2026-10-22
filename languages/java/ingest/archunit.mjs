@@ -1,7 +1,7 @@
-import { childrenNamed, createIdentityCounter, parseXml } from './common.mjs';
+import { childrenNamed, createIdentityCounter, parseXml } from '../../../shared/ingest/common.mjs';
 
 const VIOLATION = /^([A-Z][A-Za-z ]*?) <((?:[^<>]|<\w+>)+)>/;
-const SOURCE_REFERENCE = /\s+in \(([^():]+\.java):\d+\)\s*$/;
+const SOURCE_REFERENCE = /\s+in \(([^():]+\.(?:java|kt|groovy)):\d+\)\s*$/;
 const MEMBER_KINDS = new Set(['Method', 'Field', 'Lambda']);
 
 export function ingestArchunit(xml, options = {}) {

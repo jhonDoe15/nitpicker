@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import { describe, expect, it } from 'vitest';
 import { policyHash } from '../../../core/diff/reporting/report-model.mjs';
-import { ESLINT_PLUGIN_PACKAGES, resolveAnalyzerVersion } from './analyzer-versions.mjs';
+import {
+  ESLINT_PLUGIN_PACKAGES,
+  resolveAnalyzerVersion,
+  testRunnerAnalyzerVersion,
+} from './analyzer-versions.mjs';
 
 function fakeResolver(overrides = {}) {
   return (name) => ({ version: overrides[name] ?? '1.0.0' });
@@ -47,4 +51,36 @@ describe('ESLint analyzer versions', () => {
       ),
     ).toBe('5.9.3;typescript-native@7.0.2');
   });
+
+  it('names the test runner and its version for coverage and mutation', () => {
+    const resolve = fakeResolver({
+      vitest: '4.1.11',
+      jest: '30.5.2',
+      '@stryker-mutator/core': '10.0.0',
+    });
+
+    expect(resolveAnalyzerVersion('coverage', '/project', resolve)).toBe('vitest@4.1.11');
+    expect(
+      testRunnerAnalyzerVersion('mutation', '/project', { resolve, configuredRunner: 'jest' }),
+    ).toBe('10.0.0;jest@30.5.2');
+    expect(
+      testRunnerAnalyzerVersion('coverage', '/project', { resolve, configuredRunner: 'node' }),
+    ).toBe(`node@${process.versions.node}`);
+  });
+});
+
+describe('package-bundled analyzer versions', () => {
+  it.each(['crap', 'structure'])(
+    'resolves %s from the TypeScript package of nitpicker, not from the project',
+    (analyzer) => {
+      const calls = [];
+      const resolve = (name, options) => {
+        calls.push({ name, projectRoot: options.projectRoot });
+        return { version: '5.4.3' };
+      };
+
+      expect(resolveAnalyzerVersion(analyzer, '/project', resolve)).toBe('5.4.3');
+      expect(calls).toEqual([{ name: 'typescript', projectRoot: PACKAGE_ROOT }]);
+    },
+  );
 });

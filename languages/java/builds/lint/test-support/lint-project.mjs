@@ -76,7 +76,7 @@ export function javaPlan(root, { basedir = root, compiler = {}, classpath = [], 
 }
 
 export function compileClasses(plan) {
-  execFileSync(JAVAC, ['-d', plan.classDirectory, ...plan.sources]);
+  execFileSync(JAVAC, ['-d', plan.classDirectory, ...plan.sources], { timeout: 10_000 });
 }
 
 export function baseCache(plan, lines) {

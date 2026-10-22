@@ -30,7 +30,10 @@ describe('nitpicker with "preset": "kotlin"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['kotlin']);
+    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
+      'kotlin',
+      'repository-hygiene',
+    ]);
   });
   it('fails on a new detekt finding and reports it in text and SARIF', () => {
     const root = kotlinRepository();
@@ -73,7 +76,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         identity: 'fp:nitpicker/subject=Wildcard import',
         location: { line: 3 },
         message:
-          'Wildcard import. Lift this rule: ktlint_standard_no-wildcard-imports = disabled in .editorconfig. Not your formatter: set kotlin.formatter',
+          'Wildcard import. Lift this rule with ktlint_standard_no-wildcard-imports = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run). Not your formatter: set kotlin.formatter',
         classification: 'enforceable',
       },
     ]);
@@ -92,7 +95,8 @@ describe('nitpicker with "preset": "kotlin"', () => {
         rule: 'format',
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'format',
-        message: 'File is not formatted with ktfmt. Not your formatter: set kotlin.formatter',
+        message:
+          'File is not formatted with ktfmt. Format it with the "Format with ktfmt" command printed at the start of the run. Not your formatter: set kotlin.formatter',
         classification: 'enforceable',
       },
     ]);

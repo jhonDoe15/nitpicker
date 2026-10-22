@@ -100,6 +100,60 @@ describe('readModuleFindings', () => {
     expect(new Set(coupling).size).toBe(coupling.length);
   });
 
+  it('hashes structure methods in a sibling source root within the reactor', () => {
+    const root = mavenProject();
+    const module = path.join(root, 'app');
+    const file = '../shared/src/shared/Raw.java';
+    write(path.join(module, file), 'class Raw {\n  int value() { return 1; }\n}\n');
+    write(
+      path.join(module, REPORT_DIRECTORY, 'structure.json'),
+      JSON.stringify([
+        {
+          file,
+          name: 'Raw.value',
+          start: 2,
+          end: 2,
+          lines: 51,
+          complexity: 10,
+          signature: 'Raw.value()',
+        },
+      ]),
+    );
+    const findings = readModuleFindings(root, [module], { reportDirectory: REPORT_DIRECTORY });
+    expect(
+      findings
+        .filter(({ rule }) => rule === 'function-lines-limit')
+        .map(({ path: file, identity }) => [file, identity]),
+    ).toEqual([
+      [
+        'shared/src/shared/Raw.java',
+        'function:Raw.value:occurrence:1:source:096551d15cee352ad0d88e80',
+      ],
+    ]);
+    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+  });
+
+  it('rejects structure sources outside the trusted reactor root', () => {
+    const root = mavenProject();
+    const module = path.join(root, 'app');
+    write(
+      path.join(module, REPORT_DIRECTORY, 'structure.json'),
+      JSON.stringify([
+        {
+          file: '../../outside/Raw.java',
+          name: 'Raw.value',
+          start: 1,
+          end: 1,
+          complexity: 1,
+          signature: 'Raw.value()',
+        },
+      ]),
+    );
+    expect(() => readModuleFindings(root, [module], { reportDirectory: REPORT_DIRECTORY })).toThrow(
+      'Source path escapes the project',
+    );
+  });
+
   it('reads a single module at the project root without a prefix', () => {
     const root = mavenProject();
     const findings = readModuleFindings(root, [path.join(root, 'app')], {

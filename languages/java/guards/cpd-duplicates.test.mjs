@@ -200,7 +200,7 @@ describe('readCpdFindings', () => {
             { path: MAIN_B, startLine: 2, endLine: 9 },
           ],
         },
-        message: `This code repeats ${MAIN_B}:2 (8 lines). Keep one copy and call it from both places.`,
+        message: `This code repeats ${MAIN_B}:2 (8 lines). Keep one copy and call it from both places. If the repetition is intended, add ${MAIN_A} or ${MAIN_B} to "exclude" in nitpicker.config.json.`,
       },
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();

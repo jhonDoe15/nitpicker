@@ -4,30 +4,17 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
-import { applyJavaPolicy, configureJavaAnalyzer, validateJavaConfig } from './java-policy.mjs';
-import { lintBaselineProperties, toolConfigProperties } from './java-diff.mjs';
-import { parseRunnerArguments } from './java-runner.mjs';
+import { lintBaselineProperties } from './java-diff.mjs';
+import {
+  configureJavaAnalyzer,
+  parseJavaRunnerArguments,
+  validateJavaConfig,
+} from './java-policy.mjs';
 
 const roots = [];
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
-
-function inventoryRoot(sites) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-policy-'));
-  roots.push(root);
-  writeFileSync(path.join(root, 'nitpicker.legacy.json'), JSON.stringify({ sites }));
-  return root;
-}
-
-const finding = (file, identity = 'id') => ({
-  tool: 'pmd',
-  rule: 'Rule',
-  path: file,
-  identity,
-  classification: 'enforceable',
-});
-const allow = (file, count, source = 'id') => ({ file, rule: 'Rule', source, count });
 
 const context = () => ({
   projectRoot: '/p',
@@ -52,7 +39,7 @@ describe('configureJavaAnalyzer', () => {
     });
 
     const { args } = configured.createInvocation(context());
-    const parsed = parseRunnerArguments(args.slice(1));
+    const parsed = parseJavaRunnerArguments(args.slice(1));
 
     expect(parsed.projectRoot).toBe('/p');
     expect(parsed.policy).toEqual({
@@ -78,7 +65,7 @@ describe('configureJavaAnalyzer', () => {
   it('hands the size thresholds to the runner', () => {
     const analyzer = createJavaAnalyzer();
     const policyOf = (options) =>
-      parseRunnerArguments(
+      parseJavaRunnerArguments(
         configureJavaAnalyzer(analyzer, options).createInvocation(context()).args.slice(1),
       ).policy;
 
@@ -101,7 +88,7 @@ describe('configureJavaAnalyzer', () => {
     ];
     const configured = configureJavaAnalyzer(analyzer, { exceptions });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
 
     expect(parsed.policy.exceptions).toEqual([
       { rule: 'detekt.style.ForbiddenMethodCall', glob: 'a/Main.kt' },
@@ -120,7 +107,7 @@ describe('configureJavaAnalyzer', () => {
       kotlin: { formatter: 'ktfmt', detektConfig: 'tools/rules.yml' },
     });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
 
     expect(parsed.policy).toEqual({
       crapLimit: undefined,
@@ -156,6 +143,7 @@ describe('configureJavaAnalyzer', () => {
       'google-java-format',
       'jacoco',
       'javac',
+      'palantir-java-format',
       'pit',
       'pmd',
       'spotbugs',
@@ -163,6 +151,32 @@ describe('configureJavaAnalyzer', () => {
       'structure',
       'test-runtime',
     ]);
+  });
+});
+
+describe('the duplicate folder list', () => {
+  it('reaches the runner, also when it is empty, and changes the hash', () => {
+    const analyzer = createJavaAnalyzer();
+    const listed = configureJavaAnalyzer(analyzer, { duplicates: { skippedFolders: ['target'] } });
+    const empty = configureJavaAnalyzer(analyzer, { duplicates: { skippedFolders: [] } });
+    const policyOf = (configured) =>
+      parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1)).policy;
+
+    expect(policyOf(listed).duplicateSkippedFolders).toEqual(['target']);
+    expect(policyOf(empty).duplicateSkippedFolders).toEqual([]);
+    expect(new Set([analyzer, listed, empty].map((entry) => entry.configurationHash)).size).toBe(3);
+    expect(configureJavaAnalyzer(analyzer, { duplicates: {} })).toBe(analyzer);
+  });
+
+  it('is left unset without the option and rejected when it is not a list of names', () => {
+    expect(
+      parseJavaRunnerArguments(['--project-root', '/p']).policy.duplicateSkippedFolders,
+    ).toBeUndefined();
+    for (const value of ['"build"', '[1]', '{}']) {
+      expect(() =>
+        parseJavaRunnerArguments(['--project-root', '/p', '--duplicate-skipped-folders', value]),
+      ).toThrow('--duplicate-skipped-folders must be a JSON array of folder names');
+    }
   });
 });
 
@@ -186,7 +200,7 @@ describe('project tool configs', () => {
     const configured = configureJavaAnalyzer(analyzer, { tools });
     const root = projectWith({ 'config/pmd/ruleset.xml': '<ruleset/>' });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
     const before = configured.resolveConfigurationHash(root);
     writeFileSync(path.join(root, 'config/pmd/ruleset.xml'), '<ruleset name="edited"/>');
 
@@ -228,39 +242,6 @@ describe('project tool configs', () => {
 
     expect(configured.resolveConfigurationHash(root)).not.toBe(before);
   });
-
-  it("uses only nitpicker's configs by default, and the head project's files when opted in", () => {
-    const head = projectWith({
-      'config/pmd/ruleset.xml': '<ruleset/>',
-      'config/checkstyle/checkstyle.xml': '<module/>',
-    });
-
-    expect(toolConfigProperties('/base', { policyRoot: head })).toEqual([]);
-    expect(
-      toolConfigProperties('/base', {
-        policyRoot: head,
-        toolPrecedence: { pmd: ['nitpicker', 'project'], checkstyle: ['project'] },
-      }),
-    ).toEqual([
-      `-Pnitpicker.pmd.projectConfig=${path.join(head, 'config/pmd/ruleset.xml')}`,
-      `-Pnitpicker.checkstyle.projectConfig=${path.join(head, 'config/checkstyle/checkstyle.xml')}`,
-      '-Pnitpicker.checkstyle.nitpickerConfig=false',
-    ]);
-    expect(
-      toolConfigProperties('/base', { policyRoot: head, toolPrecedence: { pmd: ['project'] } }),
-    ).toEqual([
-      `-Pnitpicker.pmd.projectConfig=${path.join(head, 'config/pmd/ruleset.xml')}`,
-      '-Pnitpicker.pmd.nitpickerConfig=false',
-    ]);
-  });
-
-  it('fails with the missing file when the project layer is chosen without one', () => {
-    expect(() =>
-      toolConfigProperties(projectWith({}), { toolPrecedence: { pmd: ['project'] } }),
-    ).toThrow(
-      new Error('"tools.pmd.precedence" lists "project" but config/pmd/ruleset.xml is missing'),
-    );
-  });
 });
 
 describe('lintBaselineProperties', () => {
@@ -281,7 +262,7 @@ describe('Java file limits', () => {
       exceptions: [{ rule: 'folder-files-limit', paths: ['src/main/java/icons/**'], reason: 'x' }],
     });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
 
     expect(parsed.policy.fileLimits).toEqual({ fileLines: 400, folderFiles: 12 });
     expect(parsed.policy.exceptions).toEqual([
@@ -293,7 +274,7 @@ describe('Java file limits', () => {
     const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
       thresholds: { crapLimit: 12 },
     });
-    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
     expect(parsed.policy.fileLimits).toBeUndefined();
   });
 
@@ -302,115 +283,96 @@ describe('Java file limits', () => {
       thresholds: { unitTestSeconds: 2, integrationTestSeconds: 40 },
     });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
 
     expect(parsed.policy.testSeconds).toEqual({ unitTestSeconds: 2, integrationTestSeconds: 40 });
     expect(parsed.policy.fileLimits).toBeUndefined();
   });
 
   it('rejects file limits that are not a JSON object', () => {
-    expect(() => parseRunnerArguments(['--project-root', '/p', '--file-limits', '[]'])).toThrow(
+    expect(() => parseJavaRunnerArguments(['--project-root', '/p', '--file-limits', '[]'])).toThrow(
       '--file-limits must be a JSON object',
     );
   });
 });
 
-describe('applyJavaPolicy', () => {
-  it('drops findings under excluded globs only', () => {
-    const findings = [finding('src/main/java/gen/A.java'), finding('src/main/java/app/B.java')];
+const JAVA_USAGE = new Error(
+  'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>] [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none] [--<tool>-precedence <layers>]...',
+);
 
-    expect(applyJavaPolicy(findings, { exclude: ['src/main/java/gen/**'] })).toEqual([findings[1]]);
-    expect(applyJavaPolicy(findings, {})).toEqual(findings);
+describe('parseJavaRunnerArguments', () => {
+  it('rejects unknown options, missing values and a bad CRAP limit', () => {
+    expect(() => parseJavaRunnerArguments(['--project-root'])).toThrow(JAVA_USAGE);
+    expect(() => parseJavaRunnerArguments(['--project-root', '/p', '--nope', 'x'])).toThrow(
+      JAVA_USAGE,
+    );
+    expect(() => parseJavaRunnerArguments(['--snapshot', 'head'])).toThrow(JAVA_USAGE);
+    expect(() => parseJavaRunnerArguments(['--project-root', '/p', '--crap-limit', '0'])).toThrow(
+      /positive number/,
+    );
   });
 
-  it('drops only the findings of the excepted rule under the excepted globs', () => {
-    const at = (file, rule) => ({ ...finding(file), rule });
-    const findings = [
-      at('src/Main.kt', 'detekt.style.ForbiddenMethodCall'),
-      at('src/Other.kt', 'detekt.style.ForbiddenMethodCall'),
-      at('src/Main.kt', 'detekt.style.UseDataClass'),
-    ];
-
-    expect(
-      applyJavaPolicy(findings, {
-        exceptions: [{ rule: 'detekt.style.ForbiddenMethodCall', glob: 'src/Main.kt' }],
-      }),
-    ).toEqual([findings[1], findings[2]]);
-  });
-
-  it('lifts a Java finding named as printed, <tool>/<rule>, only under the excepted glob', () => {
-    const findings = [
-      finding('src/main/java/legacy/A.java'),
-      { ...finding('src/main/java/legacy/A.java'), rule: 'Other' },
-      finding('src/main/java/app/B.java'),
-      { ...finding('src/main/java/legacy/C.java'), tool: 'spotbugs' },
-    ];
-
-    expect(
-      applyJavaPolicy(findings, {
-        exceptions: [{ rule: 'pmd/Rule', glob: 'src/main/java/legacy/**' }],
-      }),
-    ).toEqual([findings[1], findings[2], findings[3]]);
-  });
-
-  it('baselines inventory sites on both snapshots, using the head inventory', () => {
-    const headRoot = inventoryRoot([allow('a.java', 1)]);
-    const findings = [finding('a.java'), finding('a.java'), finding('b.java')];
-
-    expect(
-      applyJavaPolicy(findings, {
-        legacyInventory: 'nitpicker.legacy.json',
-        policyRoot: headRoot,
-        snapshot: 'base',
-      }),
-    ).toEqual([findings[1], findings[2]]);
-  });
-
-  it('reports baseline-expansion on head when the allowance rose over base', () => {
-    const headRoot = inventoryRoot([allow('a.java', 3)]);
-    const baseRoot = inventoryRoot([allow('a.java', 1)]);
-    const options = {
-      legacyInventory: 'nitpicker.legacy.json',
-      policyRoot: headRoot,
-      baselineRoot: baseRoot,
-    };
-
-    expect(applyJavaPolicy([], { ...options, snapshot: 'head' })).toEqual([
-      {
-        tool: 'java',
-        rule: 'baseline-expansion',
-        path: 'a.java',
-        identity: expect.stringMatching(/^site:\w+$/),
-        message: 'Legacy allowance increased from 1 to 3 for Rule',
-        classification: 'enforceable',
-      },
-    ]);
-    expect(applyJavaPolicy([], { ...options, snapshot: 'base' })).toEqual([]);
-    expect(
-      applyJavaPolicy([], { ...options, snapshot: 'head', preset: 'kotlin' }).map(
-        ({ tool, rule }) => [tool, rule],
-      ),
-    ).toEqual([['kotlin', 'baseline-expansion']]);
-  });
-
-  it('names the tool of a baseline-expansion after the language that asks', () => {
-    const options = {
-      legacyInventory: 'nitpicker.legacy.json',
-      policyRoot: inventoryRoot([allow('a.py', 3)]),
-      baselineRoot: inventoryRoot([allow('a.py', 1)]),
+  it('leaves the preset to the caller and accepts the kotlin preset with a formatter', () => {
+    expect(parseJavaRunnerArguments(['--project-root', '/p']).policy).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      exceptions: [],
+      legacyInventory: undefined,
+      policyRoot: undefined,
+      baselineRoot: undefined,
       snapshot: 'head',
-    };
+      preset: undefined,
+      kotlinFormatter: undefined,
+      kotlinDetektConfig: undefined,
+    });
+    expect(
+      parseJavaRunnerArguments([
+        '--project-root',
+        '/p',
+        '--preset',
+        'kotlin',
+        '--kotlin-formatter',
+        'none',
+        '--kotlin-detekt-config',
+        'detekt.yaml',
+      ]).policy,
+    ).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      exceptions: [],
+      legacyInventory: undefined,
+      policyRoot: undefined,
+      baselineRoot: undefined,
+      snapshot: 'head',
+      preset: 'kotlin',
+      kotlinFormatter: 'none',
+      kotlinDetektConfig: 'detekt.yaml',
+    });
+  });
 
-    expect(applyJavaPolicy([], { ...options, inventoryTool: 'python' })).toEqual([
-      {
-        tool: 'python',
-        rule: 'baseline-expansion',
-        path: 'a.py',
-        identity: expect.any(String),
-        message: 'Legacy allowance increased from 1 to 3 for Rule',
-        classification: 'enforceable',
-      },
-    ]);
+  it.each(['nocolon', ':glob/**', 'rule:'])(
+    'rejects the exception %s without a rule or a glob',
+    (value) => {
+      expect(() =>
+        parseJavaRunnerArguments(['--project-root', '/p', '--exception', value]),
+      ).toThrow(JAVA_USAGE);
+    },
+  );
+
+  it('keeps a colon inside the glob', () => {
+    expect(
+      parseJavaRunnerArguments(['--project-root', '/p', '--exception', 'r:a:b/**']).policy
+        .exceptions,
+    ).toEqual([{ rule: 'r', glob: 'a:b/**' }]);
+  });
+
+  it('rejects an unknown preset or Kotlin formatter', () => {
+    expect(() => parseJavaRunnerArguments(['--project-root', '/p', '--preset', 'scala'])).toThrow(
+      '--preset must be one of: java, kotlin',
+    );
+    expect(() =>
+      parseJavaRunnerArguments(['--project-root', '/p', '--kotlin-formatter', 'prettier']),
+    ).toThrow('--kotlin-formatter must be one of: ktlint, ktfmt, none');
   });
 });
 
