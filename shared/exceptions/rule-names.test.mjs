@@ -80,13 +80,13 @@ describe('exceptionRoute', () => {
     expect(
       exceptionRoute({ rule: 'crap-score-limit', path: 'src/a.ts', function: 'Store.save' }),
     ).toBe(
-      'If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/a.ts"],"function":"Store.save","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'If this is intended, add {"rule":"crap-score-limit","paths":["src/a.ts"],"function":"Store.save","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
   it('escapes the glob characters of the path', () => {
     expect(exceptionRoute({ rule: 'duplicate-clone', path: 'src/{x}/[id]/a,b*?.ts' })).toBe(
-      'If a reviewer agrees this is intended, add {"rule":"duplicate-clone","paths":["src/\\\\{x\\\\}/\\\\[id\\\\]/a\\\\,b\\\\*\\\\?.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'If this is intended, add {"rule":"duplicate-clone","paths":["src/\\\\{x\\\\}/\\\\[id\\\\]/a\\\\,b\\\\*\\\\?.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -98,7 +98,7 @@ describe('exceptionRoute', () => {
         name: 'unusedA',
       }),
     ).toBe(
-      'If a reviewer agrees this is intended, add {"rule":"exports","paths":["src/lib.ts"],"name":"unusedA","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'If this is intended, add {"rule":"exports","paths":["src/lib.ts"],"name":"unusedA","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 });

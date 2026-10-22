@@ -2,16 +2,22 @@ import path from 'node:path';
 import {
   configError,
   isPlainObject,
+  validateExceptions,
   validateProjectRelativePath,
   validateStringArray,
 } from '../../../../shared/config.mjs';
-import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
-import { ruleIdProblem } from './python-rule-ids.mjs';
-import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
+import { COMMON_EXCEPTION_RULES, FILE_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { PYTHON_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 
-const ENVIRONMENTS = ['uv', 'poetry', 'path'];
+/** The rules the top-level "exceptions" lift; python.exceptions lifts every other rule. */
+export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
+
+const PYTHON_PATH_ONLY_EXCEPTION_RULES = [...FILE_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
+import { ruleIdProblem } from './python-rule-ids.mjs';
+
+const ENVIRONMENTS = ['uv', 'poetry', 'path', 'pipenv', 'hatch', 'conda'];
 const FORMATTERS = ['ruff', 'black'];
-const TEST_RUNNERS = ['pytest', 'unittest'];
+const TEST_RUNNERS = ['pytest', 'unittest', 'django', 'nose2'];
 const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
 const SETTING_KEYS = [
   'environment',
@@ -21,6 +27,7 @@ const SETTING_KEYS = [
   'importLinter',
   'sourceRoots',
   'entryPoints',
+  'exceptions',
 ];
 
 export function validatePythonConfig(config, typescriptOnlyKeys) {
@@ -33,15 +40,9 @@ export function validatePythonConfig(config, typescriptOnlyKeys) {
   const unsupported = typescriptOnlyKeys.filter((key) => config[key] !== undefined);
   if (unsupported.length > 0) {
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: ${typescriptOnlyKeys.join(', ')}. Shared by all presets: thresholds, exclude, exceptions, legacyInventory`,
+      `"${unsupported[0]}" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: ${typescriptOnlyKeys.join(', ')}, except exceptions for ${PYTHON_TOP_LEVEL_EXCEPTION_RULES.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
     );
   }
-  if (config.python?.exceptions !== undefined) {
-    throw configError(
-      '"python.exceptions" does not exist: put the entries in the top-level "exceptions", for every rule',
-    );
-  }
-  validateRuleIds(config.exceptions);
   if (config.python !== undefined) {
     validateSettings(config.python);
   }
@@ -81,21 +82,23 @@ function validateSettings(settings) {
   if (settings.entryPoints !== undefined) {
     validateEntryPoints(settings.entryPoints);
   }
+  if (settings.exceptions !== undefined) {
+    validateExceptions(settings.exceptions, 'python.exceptions');
+    validateRuleIds(settings.exceptions);
+  }
 }
 
 function validateRuleIds(exceptions) {
-  if (!Array.isArray(exceptions)) {
-    return;
-  }
-  for (const [index, entry] of exceptions.entries()) {
-    const rule = entry?.rule;
-    if (typeof rule !== 'string' || SHARED_EXCEPTION_RULES.includes(canonicalRule(rule))) {
-      continue;
+  for (const [index, { rule }] of exceptions.entries()) {
+    if (PYTHON_PATH_ONLY_EXCEPTION_RULES.includes(rule)) {
+      throw configError(
+        `"python.exceptions[${String(index)}].rule" is "${rule}", a rule shared by every preset: lift it in the top-level "exceptions" instead`,
+      );
     }
     const problem = ruleIdProblem(rule);
     if (problem !== undefined) {
       throw configError(
-        `"exceptions[${String(index)}].rule" names no rule nitpicker reports: "${rule}"; ${problem}`,
+        `"python.exceptions[${String(index)}].rule" names no rule nitpicker reports: "${rule}"; ${problem}`,
       );
     }
   }

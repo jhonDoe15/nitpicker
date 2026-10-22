@@ -2,6 +2,7 @@ import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { isUnder, matcherOf } from '../policy-scope.mjs';
 import { exceptionPathsByRule, keyedExclusions, testRootReclassifier } from './hiding.mjs';
+import { duplicateFolderExclusions } from './duplicate-folders.mjs';
 
 const NOTHING_NEW = 'covers no checked file it did not cover before';
 
@@ -24,8 +25,16 @@ function addedGlob(text, covered, scope) {
 }
 
 function exclusionChanges(baseConfig, headConfig, scope) {
-  const base = keyedExclusions(baseConfig);
-  const head = keyedExclusions(headConfig);
+  return [keyedExclusions, duplicateFolderExclusions].flatMap((exclusions) =>
+    exclusionChangesOf(
+      exclusions(baseConfig, headConfig.preset ?? 'typescript'),
+      exclusions(headConfig),
+      scope,
+    ),
+  );
+}
+
+function exclusionChangesOf(base, head, scope) {
   const baseGlobs = base.map(({ glob }) => glob);
   const keyOf = new Map(base.map(({ glob, key }) => [glob, key]));
   const headGlobs = new Set(head.map(({ glob }) => glob));
@@ -178,6 +187,7 @@ export function coveredPathChanges(baseConfig, headConfig, scope) {
     ...exclusionChanges(baseConfig, headConfig, scope),
     ...entryPointChanges(baseConfig, headConfig, scope),
     ...exceptionChanges(baseConfig.exceptions, headConfig.exceptions, scope),
+    ...exceptionChanges(baseConfig.python?.exceptions, headConfig.python?.exceptions, scope),
     ...rootRemovals(scope),
     ...testRootAdditions(baseConfig, headConfig, scope),
   ];

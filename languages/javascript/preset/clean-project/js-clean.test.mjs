@@ -18,9 +18,10 @@ const UNKNOWN_FOLDER_ADVICE =
   'An exception fits only when this folder is deliberate.';
 const unknownFolder = (file, line) =>
   `eslint-lint/nitpicker/no-unknown-main-folder src/main/${file}:${String(line)} ` +
-  `'${file.split('/')[0]}/' is not a layer of this layout. ${UNKNOWN_FOLDER_ADVICE} ` +
-  `If a reviewer agrees this is intended, add {"rule":"nitpicker/no-unknown-main-folder","paths":["src/main/${file}"],` +
-  '"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';
+  `'${file.split('/')[0]}/' is not a layer of this layout. ${UNKNOWN_FOLDER_ADVICE}`;
+const unusedFile = (file) =>
+  `dead-code/files src/main/${file} Unused file: src/main/${file}. ` +
+  'Nothing imports it: delete it, or import it where it is needed.';
 const PLANTED_OUTPUT = [
   'Nitpicker quality snapshot',
   'Status: violations',
@@ -37,19 +38,19 @@ const PLANTED_OUTPUT = [
   'dead-code: total=11 enforceable=11 descriptive=0',
   '',
   'Enforceable findings:',
-  'dead-code/files src/main/billing/adapters/charge.js Unused file: src/main/billing/adapters/charge.js. Nothing imports it: delete it, or import it where it is needed. If a reviewer agrees this is intended, add {"rule":"files","paths":["src/main/billing/adapters/charge.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-  'dead-code/files src/main/billing/index.js Unused file: src/main/billing/index.js. Nothing imports it: delete it, or import it where it is needed. If a reviewer agrees this is intended, add {"rule":"files","paths":["src/main/billing/index.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-  'dead-code/files src/main/dup/a.js Unused file: src/main/dup/a.js. Nothing imports it: delete it, or import it where it is needed. If a reviewer agrees this is intended, add {"rule":"files","paths":["src/main/dup/a.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-  'dead-code/files src/main/dup/b.js Unused file: src/main/dup/b.js. Nothing imports it: delete it, or import it where it is needed. If a reviewer agrees this is intended, add {"rule":"files","paths":["src/main/dup/b.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-  'dead-code/files src/main/features/greeting/domain/typed.js Unused file: src/main/features/greeting/domain/typed.js. Nothing imports it: delete it, or import it where it is needed. If a reviewer agrees this is intended, add {"rule":"files","paths":["src/main/features/greeting/domain/typed.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-  'dead-code/files src/main/format/messy.cjs Unused file: src/main/format/messy.cjs. Nothing imports it: delete it, or import it where it is needed. If a reviewer agrees this is intended, add {"rule":"files","paths":["src/main/format/messy.cjs"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-  'dead-code/files src/main/format/messy.js Unused file: src/main/format/messy.js. Nothing imports it: delete it, or import it where it is needed. If a reviewer agrees this is intended, add {"rule":"files","paths":["src/main/format/messy.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-  'dead-code/files src/main/format/unformatted.ts Unused file: src/main/format/unformatted.ts. Nothing imports it: delete it, or import it where it is needed. If a reviewer agrees this is intended, add {"rule":"files","paths":["src/main/format/unformatted.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-  'dead-code/files src/main/lint/banned.js Unused file: src/main/lint/banned.js. Nothing imports it: delete it, or import it where it is needed. If a reviewer agrees this is intended, add {"rule":"files","paths":["src/main/lint/banned.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-  'dead-code/files src/main/lint/mode.ts Unused file: src/main/lint/mode.ts. Nothing imports it: delete it, or import it where it is needed. If a reviewer agrees this is intended, add {"rule":"files","paths":["src/main/lint/mode.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-  'dead-code/files src/main/orders/place.js Unused file: src/main/orders/place.js. Nothing imports it: delete it, or import it where it is needed. If a reviewer agrees this is intended, add {"rule":"files","paths":["src/main/orders/place.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-  'duplicates/duplicate-clone src/main/dup/a.js:5 This code repeats src/main/dup/b.js:5 (12 lines). Keep one copy and call it from both places. If a reviewer agrees this is intended, add {"rule":"duplicate-clone","paths":["src/main/dup/a.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-  'entry-points/public-alternative-bypass src/main/orders/place.js Import src/main/billing/adapters/charge.js through src/main/billing/index.js (runtime). If a reviewer agrees this is intended, add {"rule":"public-alternative-bypass","paths":["src/main/orders/place.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+  unusedFile('billing/adapters/charge.js'),
+  unusedFile('billing/index.js'),
+  unusedFile('dup/a.js'),
+  unusedFile('dup/b.js'),
+  unusedFile('features/greeting/domain/typed.js'),
+  unusedFile('format/messy.cjs'),
+  unusedFile('format/messy.js'),
+  unusedFile('format/unformatted.ts'),
+  unusedFile('lint/banned.js'),
+  unusedFile('lint/mode.ts'),
+  unusedFile('orders/place.js'),
+  'duplicates/duplicate-clone src/main/dup/a.js:5 This code repeats src/main/dup/b.js:5 (12 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/dup/a.js or src/main/dup/b.js to "exclude" in nitpicker.config.json.',
+  'entry-points/public-alternative-bypass src/main/orders/place.js Import src/main/billing/adapters/charge.js through src/main/billing/index.js (runtime)',
   unknownFolder('billing/adapters/charge.js', 5),
   unknownFolder('billing/index.js', 1),
   unknownFolder('dup/a.js', 5),
@@ -57,12 +58,12 @@ const PLANTED_OUTPUT = [
   unknownFolder('format/messy.cjs', 1),
   unknownFolder('format/messy.js', 1),
   unknownFolder('format/unformatted.ts', 1),
-  'eslint-lint/@typescript-eslint/no-unsafe-return src/main/lint/banned.js:7 Unsafe return of a value of type `any`. Give the value a JSDoc type at its source (`@param {string} name`, `@returns {Type}`, `@type {Type}`), or read fields of a legacy `any` value through one reader function whose parameter is `{unknown}` and that returns a typed object. If a reviewer agrees this is intended, add {"rule":"@typescript-eslint/no-unsafe-return","paths":["src/main/lint/banned.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-  'eslint-lint/nitpicker/no-comments src/main/lint/banned.js:1 JSDoc holds types only: remove the description text and put the intent in a descriptive identifier or a named function. If a reviewer agrees this is intended, add {"rule":"nitpicker/no-comments","paths":["src/main/lint/banned.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+  'eslint-lint/@typescript-eslint/no-unsafe-return src/main/lint/banned.js:7 Unsafe return of a value of type `any`. Give the value a JSDoc type at its source (`@param {string} name`, `@returns {Type}`, `@type {Type}`), or read fields of a legacy `any` value through one reader function whose parameter is `{unknown}` and that returns a typed object. If this is intended, add {"rule":"@typescript-eslint/no-unsafe-return","paths":["src/main/lint/banned.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+  'eslint-lint/nitpicker/no-comments src/main/lint/banned.js:1 JSDoc holds types only: remove the description text and put the intent in a descriptive identifier or a named function. If this is intended, add {"rule":"nitpicker/no-comments","paths":["src/main/lint/banned.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
   unknownFolder('lint/banned.js', 6),
-  'eslint-lint/no-var src/main/lint/banned.js:10 Unexpected var, use let or const instead. If a reviewer agrees this is intended, add {"rule":"no-var","paths":["src/main/lint/banned.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+  'eslint-lint/no-var src/main/lint/banned.js:10 Unexpected var, use let or const instead. If this is intended, add {"rule":"no-var","paths":["src/main/lint/banned.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
   unknownFolder('lint/mode.ts', 1),
-  'eslint-lint/no-restricted-syntax src/main/lint/mode.ts:1 Do not declare an `enum`. Use a union of string literals: `type Mode = \'read\' | \'write\'`. If a reviewer agrees this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/lint/mode.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+  'eslint-lint/no-restricted-syntax src/main/lint/mode.ts:1 Do not declare an `enum`. Use a union of string literals: `type Mode = \'read\' | \'write\'`. If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/lint/mode.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
   unknownFolder('orders/place.js', 1),
   'prettier-format/prettier/prettier src/main/format/messy.cjs:1 Format these lines with Prettier',
   'prettier-format/prettier/prettier src/main/format/messy.js:1 Format these lines with Prettier',
@@ -387,7 +388,7 @@ it('fails on purpose', () => {
           'Quality gate summary',
           '✖ 1 new enforceable violation',
           '  eslint-lint/nitpicker/no-null src/main/legacy.js:2',
-          '    Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it. If a reviewer agrees this is intended, add {"rule":"nitpicker/no-null","paths":["src/main/legacy.js"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          '    Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it. If this is intended, add {"rule":"nitpicker/no-null","paths":["src/main/legacy.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
           `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,
           '',
         ].join('\n'),

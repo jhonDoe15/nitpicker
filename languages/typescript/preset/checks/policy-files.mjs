@@ -4,6 +4,10 @@ import { CRAP_CHECK_FILES } from '../crap/check-files.mjs';
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
 export const POLICY_FILES = [
+  'shared/test-timeouts/resolve.mjs',
+  'shared/glob.mjs',
+  'shared/head-policy.mjs',
+  'shared/policy.mjs',
   'shared/traversal.mjs',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
@@ -84,6 +88,11 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/testing/assertions/no-mocking-subject-under-test.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/no-module-level-let.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/no-production-console.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/naming/file-name-casing.mjs',
+  'languages/typescript/conventions/file-name-casing.mjs',
+  'languages/typescript/conventions/type-import-style.mjs',
+  'languages/typescript/conventions/measures/assertion-helpers.mjs',
+  'languages/typescript/conventions/measures/typescript-syntax.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-silent-catch.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/report-module-load-effects.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/structured-catch-logging.mjs',

@@ -278,6 +278,8 @@ describe('head policy reader', () => {
       react: {},
       i18n: {},
       tools: {},
+      duplicates: {},
+      testConsole: {},
       generatedFiles: [],
       frameworks: { defaultExports: [], entryPoints: [] },
     });
@@ -298,6 +300,8 @@ describe('head policy reader', () => {
         react: {},
         i18n: {},
         tools: {},
+        duplicates: {},
+        testConsole: {},
         generatedFiles: [],
         frameworks: { defaultExports: [], entryPoints: [] },
       });
@@ -433,6 +437,8 @@ describe('head policy delivery', () => {
         react: {},
         i18n: {},
         tools: {},
+        duplicates: {},
+        testConsole: {},
         generatedFiles: [],
         frameworks: { defaultExports: [], entryPoints: [] },
       });
@@ -457,3 +463,32 @@ const gitFixtureEnvironment = {
 function git(cwd, arguments_) {
   return execFileSync('git', arguments_, { cwd, encoding: 'utf8', env: gitFixtureEnvironment });
 }
+
+describe('head policy duplicates key', () => {
+  it('is left out of the policy until the config sets it and read back as an empty object', () => {
+    expect(resolveHeadPolicy({})).toEqual({
+      exclude: [],
+      layout: {},
+      exceptions: [],
+      thresholds: {},
+    });
+    withHeadPolicyFile(resolveHeadPolicy({}), (policyFile) => {
+      expect(readHeadPolicy({ NITPICKER_POLICY: policyFile }).duplicates).toEqual({});
+      expect(readLayout({ NITPICKER_POLICY: policyFile }).duplicateSkippedFolders).toBeUndefined();
+    });
+  });
+
+  it('carries the skipped folders to the readers of the policy file and the layout', () => {
+    const policy = resolveHeadPolicy({ duplicates: { skippedFolders: ['dist'] } });
+
+    expect(policy.duplicates).toEqual({ skippedFolders: ['dist'] });
+    withHeadPolicyFile(policy, (policyFile) => {
+      expect(readHeadPolicy({ NITPICKER_POLICY: policyFile }).duplicates).toEqual({
+        skippedFolders: ['dist'],
+      });
+      expect(readLayout({ NITPICKER_POLICY: policyFile }).duplicateSkippedFolders).toEqual([
+        'dist',
+      ]);
+    });
+  });
+});

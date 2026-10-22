@@ -43,7 +43,12 @@
         "symbol": { "$ref": "#/$defs/nonEmptyString" },
         "location": { "$ref": "#/$defs/location" },
         "metric": { "$ref": "#/$defs/metric" },
-        "ratchet": { "$ref": "#/$defs/ratchet" }
+        "ratchet": { "$ref": "#/$defs/ratchet" },
+        "tokens": {
+          "description": "The words of the message. A new finding of three or more tokens counts as already present when the base has an unmatched finding with the same tool, rule, path and classification, the same number of tokens and at most one differing token.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        }
       },
       "if": { "required": ["metric"] },
       "then": {

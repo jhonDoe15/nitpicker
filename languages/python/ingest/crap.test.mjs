@@ -26,7 +26,7 @@ const scores = (options) =>
   });
 
 const ROUTE =
-  ' If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"B.go","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';
+  ' If this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"B.go","reason":"..."} to "exceptions" in nitpicker.config.json.';
 
 describe('ingestPythonCrap', () => {
   it('flags the uncovered methods over the limit, nothing else', () => {
@@ -93,7 +93,7 @@ describe('ingestPythonCrap', () => {
         symbol: 'f',
         identity: 'function:f',
         message:
-          'f has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If a reviewer agrees this is intended, add {"rule":"crap-coverage-unknown","paths":["other.py"],"function":"f","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'f has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["other.py"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
       },
@@ -113,14 +113,14 @@ describe('ingestPythonCrap', () => {
         symbol: 'coro',
         identity: 'function:coro',
         message:
-          'coro has CRAP 2.00; score must be below 2. Test its uncovered branches, or split a branchy part into its own function. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'coro has CRAP 2.00; score must be below 2. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 8 },
         ratchet: {
           key: 'function:coro:crap',
           value: 2,
           worseMessage:
-            'coro CRAP rose from {base} to 2 (limit 2). Put new code in a new function and cover it with tests. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+            'coro CRAP rose from {base} to 2 (limit 2). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"..."} to "exceptions" in nitpicker.config.json.',
           heldMessage:
             'coro: CRAP 2.00 (limit 2), allowed because base was {base}; any increase fails.',
         },
@@ -154,6 +154,29 @@ describe('ingestPythonCrap', () => {
 
     expect(known.identity).toBe('function:B.go:source:abc');
     expect(unknown.identity).toBe('function:f');
+  });
+
+  it('numbers same-named definitions among those of the same text, so adding one above does not rename another', () => {
+    const sourceHash = ({ start }) => (start === 30 ? 'setter' : 'getter');
+    const coverage = JSON.stringify({
+      files: { 'm.py': { executed_lines: [], missing_lines: [6, 11, 31], functions: {} } },
+    });
+    const identities = (starts) =>
+      ingestPythonCrap(
+        starts.map((start) => entry('m.py', 'A.value', [start, start + 1])),
+        coverage,
+        { limit: 1.5, sourceHash },
+      ).findings.map((finding) => finding.identity);
+
+    expect(identities([10, 30])).toEqual([
+      'function:A.value:source:getter',
+      'function:A.value:source:setter',
+    ]);
+    expect(identities([5, 10, 30])).toEqual([
+      'function:A.value:source:getter',
+      'function:A.value#2:source:getter',
+      'function:A.value:source:setter',
+    ]);
   });
 
   it('scores same-named definitions from the per-line data of their own ranges', () => {
@@ -227,6 +250,39 @@ describe('ingestPythonCrap', () => {
 
     expect(ingestPythonCrap(functions, coverage, { limit: 5 }).findings).toEqual([]);
     expect(ingestPythonCrap(functions, coverage, { limit: 4 }).findings).toHaveLength(1);
+  });
+
+  it('scores a lambda by whether the statement that creates it ran, however it is spread over lines, and numbers repeated lambdas by their source', () => {
+    const lambda = (name, line, complexity, statementLine) => ({
+      ...entry('m.py', name, [line, line], complexity),
+      bodyStart: line,
+      lambda: true,
+      statementLine,
+    });
+    const functions = [
+      lambda('run.<lambda>', 5, 4, 5),
+      lambda('run.<lambda>', 9, 4, 8),
+      lambda('run.<lambda>', 12, 4, 12),
+      lambda('run.key', 13, 1, 13),
+    ];
+    const coverage = JSON.stringify({
+      files: { 'm.py': { executed_lines: [5, 12, 13], missing_lines: [8], functions: {} } },
+    });
+
+    const findings = ingestPythonCrap(functions, coverage, { limit: 4 }).findings;
+
+    expect(
+      findings.map(({ symbol, identity, location, message }) => [
+        symbol,
+        identity,
+        location.line,
+        /CRAP (\d+\.\d+)/.exec(message)[1],
+      ]),
+    ).toEqual([
+      ['run.<lambda>', 'function:run.<lambda>', 5, '4.00'],
+      ['run.<lambda>', 'function:run.<lambda>#2', 9, '20.00'],
+      ['run.<lambda>', 'function:run.<lambda>#3', 12, '4.00'],
+    ]);
   });
 
   it('does not score an overload stub, whatever the shape of its signature', () => {

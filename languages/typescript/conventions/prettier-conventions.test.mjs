@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import * as prettier from 'prettier';
 import { describe, expect, it } from 'vitest';
+import { validateConventions } from '../../../shared/conventions/settings.mjs';
 import { layeredPrettierOptions } from '../adapters/prettier/prettier-layers.mjs';
 import { usesLayeredPrettier } from '../preset/head-policy.mjs';
 import { PRETTIER_CONVENTIONS, prettierConventionOptions } from './prettier-conventions.mjs';
@@ -83,30 +84,112 @@ describe('Prettier conventions', () => {
 
   it('formats code files with the project conventions on top of the nitpicker policy', async () => {
     const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-prettier-policy-'));
-    const policyFile = path.join(directory, 'policy.json');
-    writeFileSync(policyFile, JSON.stringify({ conventions: { 'prettier.quotes': 'double' } }));
-    const previous = process.env.NITPICKER_POLICY;
-    process.env.NITPICKER_POLICY = policyFile;
     try {
-      function optionsFor(relativePath) {
-        return layeredPrettierOptions(prettier, {
-          precedence: ['nitpicker'],
-          policyOptions: { singleQuote: true, printWidth: 100 },
-          liveProjectRoot: directory,
-          relativePath,
+      await withConventions(directory, { 'prettier.quotes': 'double' }, async () => {
+        expect(usesLayeredPrettier()).toBe(true);
+        expect(await optionsFor(directory, 'a.ts', ['nitpicker'])).toEqual({
+          singleQuote: false,
+          semi: true,
+          printWidth: 100,
         });
-      }
-      expect(usesLayeredPrettier()).toBe(true);
-      expect(await optionsFor('a.ts')).toEqual({ singleQuote: false, printWidth: 100 });
-      expect(await optionsFor('package.json')).toEqual({ singleQuote: true, printWidth: 100 });
+        expect(await optionsFor(directory, 'package.json', ['nitpicker'])).toEqual({
+          singleQuote: true,
+          semi: true,
+          printWidth: 100,
+        });
+      });
     } finally {
-      if (previous === undefined) {
-        delete process.env.NITPICKER_POLICY;
-      } else {
-        process.env.NITPICKER_POLICY = previous;
-      }
       rmSync(directory, { recursive: true, force: true });
     }
     expect(usesLayeredPrettier({})).toBe(false);
   });
+
+  it('accepts a pinned print width of any number of columns', () => {
+    const validate = (width) => () => {
+      validateConventions({ 'prettier.printWidth': width }, PRETTIER_CONVENTIONS);
+    };
+
+    expect(validate('110')).not.toThrow();
+    expect(validate('wide')).toThrow(
+      '"conventions.prettier.printWidth" must be one of: "80", "100", "120", or another number of columns',
+    );
+    expect(prettierConventionOptions({ 'prettier.printWidth': '110' })).toEqual({
+      printWidth: 110,
+    });
+  });
+
+  it('lets the project config override only the options it sets, conventions fill the rest', async () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-prettier-project-'));
+    writeFileSync(path.join(directory, '.prettierrc.json'), JSON.stringify({ semi: false }));
+    try {
+      await withConventions(directory, { 'prettier.quotes': 'double' }, async () => {
+        expect(await optionsFor(directory, 'a.ts', ['project', 'nitpicker'])).toEqual({
+          singleQuote: false,
+          semi: false,
+          printWidth: 100,
+        });
+        expect(await optionsFor(directory, 'a.ts', ['nitpicker', 'project'])).toEqual({
+          singleQuote: false,
+          semi: true,
+          printWidth: 100,
+        });
+      });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('fills the options a project-only config leaves unset with the followed conventions', async () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-prettier-project-only-'));
+    writeFileSync(path.join(directory, '.prettierrc.json'), JSON.stringify({ semi: false }));
+    try {
+      await withConventions(directory, { 'prettier.quotes': 'double' }, async () => {
+        expect(await optionsFor(directory, 'a.ts', ['project'])).toEqual({
+          singleQuote: false,
+          semi: false,
+          useTabs: false,
+          tabWidth: 2,
+          printWidth: 100,
+          trailingComma: 'all',
+          arrowParens: 'always',
+          bracketSpacing: true,
+          endOfLine: 'lf',
+          jsxSingleQuote: false,
+          bracketSameLine: false,
+        });
+        expect(await optionsFor(directory, 'data.json', ['project'])).toEqual({
+          semi: false,
+          useTabs: false,
+          tabWidth: 2,
+        });
+      });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
 });
+
+function optionsFor(directory, relativePath, precedence) {
+  return layeredPrettierOptions(prettier, {
+    precedence,
+    policyOptions: { singleQuote: true, semi: true, printWidth: 100 },
+    liveProjectRoot: directory,
+    relativePath,
+  });
+}
+
+async function withConventions(directory, conventions, run) {
+  const policyFile = path.join(directory, 'policy.json');
+  writeFileSync(policyFile, JSON.stringify({ conventions }));
+  const previous = process.env.NITPICKER_POLICY;
+  process.env.NITPICKER_POLICY = policyFile;
+  try {
+    await run();
+  } finally {
+    if (previous === undefined) {
+      delete process.env.NITPICKER_POLICY;
+    } else {
+      process.env.NITPICKER_POLICY = previous;
+    }
+  }
+}

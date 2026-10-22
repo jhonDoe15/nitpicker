@@ -54,8 +54,8 @@ describe('javascript-in-typescript-project', () => {
     ]);
     expect(findings[1].message).toBe(
       'src/orders/parse.mjs is JavaScript in a TypeScript project, so its values are not type-checked. ' +
-        'Write it as a .ts or .tsx file: src/orders/parse.ts. If a reviewer agrees this is intended, add ' +
-        '{"rule":"javascript-in-typescript-project","paths":["src/orders/parse.mjs"],"reason":"<why this is intended>"} ' +
+        'Write it as a .ts or .tsx file: src/orders/parse.ts. If this is intended, add ' +
+        '{"rule":"javascript-in-typescript-project","paths":["src/orders/parse.mjs"],"reason":"..."} ' +
         'to "exceptions" in nitpicker.config.json.',
     );
     expect(findings[2].message.split('. ')[1]).toBe(

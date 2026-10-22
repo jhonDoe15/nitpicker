@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { configurationFiles } from '../adapters/java-analyzer.mjs';
 import {
   CATALOG_TOOLS,
-  LAYOUT_FIX,
   applyRuleMessages,
   checkstyleRuleName,
   readCatalog,
@@ -22,7 +21,10 @@ const finding = (tool, rule, message, classification = 'enforceable') => ({
 });
 
 const hint = (rule) =>
-  `If a reviewer agrees this is intended, add {"rule":"${rule}","paths":["${FILE}"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`;
+  `If this is intended, add {"rule":"${rule}","paths":["${FILE}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
+
+const NOT_YOUR_FORMATTER =
+  'Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.';
 
 describe('checkstyleRuleName', () => {
   it('shortens check classes to the module name and keeps configured ids', () => {
@@ -60,8 +62,23 @@ describe('withRuleMessage', () => {
     const source = 'com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck';
     const message = "'method def' has incorrect indentation level 4, expected level should be 2.";
 
-    expect(withRuleMessage(finding('checkstyle', source, message))).toEqual(
-      finding('checkstyle', 'Indentation', `${message} ${LAYOUT_FIX}`),
+    const fix = (options) =>
+      withRuleMessage(finding('checkstyle', source, message), options).message;
+
+    expect(fix({ javaStyle: 'google' })).toBe(
+      `${message} Run google-java-format on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
+    );
+    expect(fix({ javaStyle: 'aosp' })).toBe(
+      `${message} Run google-java-format --aosp on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
+    );
+    expect(fix({ javaStyle: 'palantir' })).toBe(
+      `${message} Run palantir-java-format on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
+    );
+    expect(fix({ javaStyle: 'none' })).toBe(
+      `${message} Fix this layout by hand; no Java formatter runs.`,
+    );
+    expect(fix({})).toBe(
+      `${message} Run your Java formatter on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
     );
   });
 

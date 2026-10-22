@@ -35,7 +35,7 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
           path: 'src/main/kotlin/demo/K.kt',
           identity: `fp:nitpicker/subject=${forbidden}`,
           location: { line: 4 },
-          message: `${forbidden} If a reviewer agrees this is intended, add {"rule":"${callRule}","paths":["src/main/kotlin/demo/K.kt"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`,
+          message: `${forbidden} If this is intended, add {"rule":"${callRule}","paths":["src/main/kotlin/demo/K.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
           classification: 'enforceable',
         },
       ]);

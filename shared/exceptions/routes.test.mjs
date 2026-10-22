@@ -12,7 +12,7 @@ const finding = (rule, overrides = {}) => ({
 });
 
 const route = (entry) =>
-  `If a reviewer agrees this is intended, add ${entry} to "exceptions" in nitpicker.config.json.`;
+  `If this is intended, add ${entry} to "exceptions" in nitpicker.config.json.`;
 
 describe('withExceptionRoutes', () => {
   it.each([
@@ -33,7 +33,7 @@ describe('withExceptionRoutes', () => {
     expect(withExceptionRoutes([finding(rule, { tool })])).toEqual([
       finding(rule, {
         tool,
-        message: `The base message. ${route(`{"rule":"${rule}","paths":["src/a.ts"],"reason":"<why this is intended>"}`)}`,
+        message: `The base message. ${route(`{"rule":"${rule}","paths":["src/a.ts"],"reason":"..."}`)}`,
       }),
     ]);
   });
@@ -45,8 +45,8 @@ describe('withExceptionRoutes', () => {
         finding('exports', { tool: 'dead-code', symbol: 'helper' }),
       ]).map(({ message }) => message),
     ).toEqual([
-      `The base message. ${route('{"rule":"mutant-survived","paths":["src/a.ts"],"function":"Calc.save","reason":"<why this is intended>"}')}`,
-      `The base message. ${route('{"rule":"exports","paths":["src/a.ts"],"name":"helper","reason":"<why this is intended>"}')}`,
+      `The base message. ${route('{"rule":"mutant-survived","paths":["src/a.ts"],"function":"Calc.save","reason":"..."}')}`,
+      `The base message. ${route('{"rule":"exports","paths":["src/a.ts"],"name":"helper","reason":"..."}')}`,
     ]);
   });
 
@@ -56,7 +56,7 @@ describe('withExceptionRoutes', () => {
         finding('duplicate-clone', { tool: 'duplicates', path: 'src/[id]/{x}/a.ts' }),
       ])[0].message,
     ).toBe(
-      `The base message. ${route('{"rule":"duplicate-clone","paths":["src/\\\\[id\\\\]/\\\\{x\\\\}/a.ts"],"reason":"<why this is intended>"}')}`,
+      `The base message. ${route('{"rule":"duplicate-clone","paths":["src/\\\\[id\\\\]/\\\\{x\\\\}/a.ts"],"reason":"..."}')}`,
     );
   });
 
@@ -66,7 +66,7 @@ describe('withExceptionRoutes', () => {
         finding('stability-direction', { tool: 'coupling', message: 'a depends on b' }),
       ])[0].message,
     ).toBe(
-      `a depends on b. ${route('{"rule":"stability-direction","paths":["src/a.ts"],"reason":"<why this is intended>"}')}`,
+      `a depends on b. ${route('{"rule":"stability-direction","paths":["src/a.ts"],"reason":"..."}')}`,
     );
   });
 
@@ -82,7 +82,7 @@ describe('withExceptionRoutes', () => {
   it('routes the rules it is given', () => {
     expect(withExceptionRoutes([finding('exports')], ['exports'])).toEqual([
       finding('exports', {
-        message: `The base message. ${route('{"rule":"exports","paths":["src/a.ts"],"reason":"<why this is intended>"}')}`,
+        message: `The base message. ${route('{"rule":"exports","paths":["src/a.ts"],"reason":"..."}')}`,
       }),
     ]);
   });

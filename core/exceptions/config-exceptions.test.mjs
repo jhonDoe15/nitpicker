@@ -169,7 +169,7 @@ describe('config exceptions', () => {
       );
     });
 
-    it.each(['...', ' ... ', '<why this is intended>', '', '   '])(
+    it.each(['...', ' ... ', '...', '', '   '])(
       'rejects the reason %j',
       (reason) => {
         expect(rejected({ reason })).toThrow('"exceptions[0].reason" is');

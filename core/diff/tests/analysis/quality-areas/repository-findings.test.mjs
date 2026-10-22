@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   normalizeBaselineExpansions,
   normalizeCoupling,
-  normalizeDeadCode,
   normalizeStructure,
   normalizeTestRuntime,
 } from '../../../../../languages/typescript/adapters/quality-areas/reporting/repository.mjs';
+import { normalizeDeadCode } from '../../../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mjs';
 import { compareFindings } from '../../../comparison/compare.mjs';
 
 describe('repository-level findings in the quality-area analyzers', () => {
@@ -210,7 +210,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
               { name: 'Local', line: 2, col: 13, usedInFile: true },
             ],
             exports: [{ name: 'helper', line: 5, col: 17 }],
-            dependencies: [{ name: 'left-pad' }],
+            binaries: [{ name: 'left-pad' }],
           },
         ],
       },
@@ -222,7 +222,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
       'Exported type Rejection is never imported. Remove `export`, or the type if nothing uses it.',
       'Exported type Local is only used in its own file. Remove `export`.',
       'Export helper is never imported. Remove `export`, or the declaration if nothing uses it.',
-      'dependencies: left-pad',
+      'binaries: left-pad',
     ]);
   });
   it('keys unused exports by their declaration, not by the whole file', () => {

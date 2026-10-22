@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
 import { applyPythonExceptions } from './python-exceptions.mjs';
 
 const finding = (rule, path) => ({ tool: 'ruff', rule, path, identity: rule });
@@ -61,16 +62,24 @@ describe('python exceptions', () => {
     ).toEqual([broken[1]]);
   });
 
-  it('leaves the rules nitpicker adds to the shared exceptions, which can name one function', () => {
-    const structure = {
-      tool: 'structure',
-      rule: 'function-lines-limit',
-      path: 'src/a.py',
-      identity: 'z',
-    };
-
-    expect(applyPythonExceptions([structure], [exception('function-lines-limit', ['**'])])).toEqual(
-      [structure],
+  it('lifts a clone when the exception matches either file of the pair', () => {
+    const clones = evaluateDuplicates(
+      [
+        {
+          first: { file: 'src/a/left.py', line: 1 },
+          second: { file: 'src/b/right.py', line: 4 },
+          fragment: 'x',
+          lines: 9,
+          tokens: 70,
+        },
+      ],
+      'duplicates',
     );
+    const lifted = (glob) =>
+      applyPythonExceptions(clones, [exception('duplicate-clone', [glob])]).map(({ rule }) => rule);
+
+    expect(lifted('src/a/**')).toEqual(['duplicate-clone-size', 'duplicate-clone-size']);
+    expect(lifted('src/b/**')).toEqual(['duplicate-clone-size', 'duplicate-clone-size']);
+    expect(lifted('src/c/**')).toEqual(clones.map(({ rule }) => rule));
   });
 });

@@ -32,7 +32,7 @@ describe('exceptions with "preset": "javascript"', () => {
       [
         'function-parameters-limit',
         'wide',
-        'wide has 4 parameters; limit is 3. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/main/a.js"],"function":"wide","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'wide has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/a.js"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
 

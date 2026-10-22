@@ -1,6 +1,5 @@
-import { pathMatcher } from '../../../../shared/exceptions/matching.mjs';
-import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
-import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { findingPaths } from '../../../../shared/findings/finding-policy.mjs';
+import { globToRegExp } from '../../../../shared/glob.mjs';
 import { RUFF_SELECTOR } from './python-rule-ids.mjs';
 
 function covers(rule, finding) {
@@ -11,11 +10,16 @@ function covers(rule, finding) {
 }
 
 export function applyPythonExceptions(findings, exceptions = []) {
-  const lifted = exceptions
-    .filter(({ rule }) => !SHARED_EXCEPTION_RULES.includes(canonicalRule(rule)))
-    .map(({ rule, paths }) => ({ rule, matches: pathMatcher(paths) }));
+  const lifted = exceptions.map(({ rule, paths }) => ({
+    rule,
+    matchers: paths.map((glob) => globToRegExp(glob)),
+  }));
   return findings.filter(
     (finding) =>
-      !lifted.some(({ rule, matches }) => covers(rule, finding) && matches(finding.path)),
+      !lifted.some(
+        ({ rule, matchers }) =>
+          covers(rule, finding) &&
+          matchers.some((matcher) => findingPaths(finding).some((file) => matcher.test(file))),
+      ),
   );
 }

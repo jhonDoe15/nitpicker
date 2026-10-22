@@ -24,7 +24,7 @@ describe('new-icon-asset', () => {
     expect(findings[0].message).toBe(
       [
         'Use an icon from lucide-react instead of adding src/assets/arrow.svg.',
-        `If a reviewer agrees this is intended, add ${exceptionFor('new-icon-asset', 'src/assets/arrow.svg')}`,
+        `If this is intended, add ${exceptionFor('new-icon-asset', 'src/assets/arrow.svg')}`,
         'to "exceptions" in nitpicker.config.json.',
       ].join(' '),
     );

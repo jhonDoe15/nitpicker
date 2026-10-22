@@ -90,6 +90,12 @@ function stricterLists(baseConfig, headConfig) {
   if (baseConfig.thresholds !== undefined || headConfig.thresholds !== undefined) {
     covering.thresholds = stricterThresholds(baseConfig.thresholds, headConfig.thresholds);
   }
+  if (baseConfig.python?.exceptions !== undefined) {
+    covering.python = {
+      ...baseConfig.python,
+      exceptions: commonExceptions(baseConfig.python.exceptions, headConfig.python?.exceptions),
+    };
+  }
   if (baseConfig.python?.entryPoints !== undefined) {
     covering.python = {
       ...(covering.python ?? baseConfig.python),
@@ -99,11 +105,26 @@ function stricterLists(baseConfig, headConfig) {
   return covering;
 }
 
+function withHeadDuplicates(baseConfig, headConfig) {
+  const { duplicates } = headConfig;
+  const entries = Object.entries(baseConfig).flatMap(([key, value]) => {
+    if (key !== 'duplicates') {
+      return [[key, value]];
+    }
+    return duplicates === undefined ? [] : [[key, duplicates]];
+  });
+  return Object.fromEntries(
+    'duplicates' in baseConfig || duplicates === undefined
+      ? entries
+      : [...entries, ['duplicates', duplicates]],
+  );
+}
+
 export function baseConfigCoveringHead(baseConfig, headConfig) {
   const layout = coveringLayout(baseConfig.layout ?? {}, headConfig.layout ?? {});
   const covering = { ...baseConfig, ...stricterLists(baseConfig, headConfig) };
   if (Object.keys(layout).length > 0) {
     covering.layout = layout;
   }
-  return covering;
+  return withHeadDuplicates(covering, headConfig);
 }

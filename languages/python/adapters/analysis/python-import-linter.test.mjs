@@ -196,8 +196,7 @@ describe('reading import-linter findings', () => {
         rule: 'contract-broken',
         path: 'src/app/a.py',
         identity: 'contract:Naughty:app.a -> app.b',
-        message:
-          'Import contract "Naughty" is broken: app.a -> app.b. Remove the import. If a reviewer agrees this is intended, add {"rule":"contract-broken","paths":["src/app/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        message: 'Import contract "Naughty" is broken: app.a -> app.b. Remove the import.',
         classification: 'enforceable',
         location: { line: 3 },
       },

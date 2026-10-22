@@ -99,11 +99,10 @@ describe('describePolicyChanges', () => {
     ]);
   });
 
-  it('counts an exception of a python project like any other', () => {
+  it('counts a python exception like a top-level one', () => {
     const python = (exceptions) => ({
       preset: 'python',
-      python: { sourceRoots: ['src'] },
-      exceptions,
+      python: { sourceRoots: ['src'], exceptions },
     });
 
     expect(loosened(python([]), python([exception]), ['src/legacy/old.py'])).toEqual([
@@ -143,6 +142,24 @@ describe('describePolicyChanges', () => {
       'threshold lineLength raised from 100 to 120',
       'threshold folderFiles raised from 6 to 8',
     ]);
+  });
+
+  it('counts a slow test budget raised above the base or the default, or dropped back to a looser default', () => {
+    expect(
+      loosened(
+        { thresholds: { unitTestSeconds: 2, integrationTestSeconds: 60 } },
+        { thresholds: { integrationTestSeconds: 90 } },
+      ),
+    ).toEqual([
+      'threshold unitTestSeconds raised from 2 to 5',
+      'threshold integrationTestSeconds raised from 60 to 90',
+    ]);
+    expect(loosened({}, { thresholds: { unitTestSeconds: 600 } })).toEqual([
+      'threshold unitTestSeconds raised from 5 to 600',
+    ]);
+    expect(
+      loosened({ thresholds: { unitTestSeconds: 3 } }, { thresholds: { unitTestSeconds: 2 } }),
+    ).toEqual([]);
   });
 
   it('counts a removed or changed custom analyzer and lists an added one', () => {

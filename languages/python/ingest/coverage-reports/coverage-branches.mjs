@@ -1,7 +1,7 @@
 import { MINIMUM_BRANCH_COVERAGE } from '../../../../shared/policy.mjs';
 import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
 import { enclosingFunctionName } from '../../../../shared/rules/finding-helpers.mjs';
-import { hashIdentity, normalizeReportPath } from '../../../java/ingest/common.mjs';
+import { hashIdentity, normalizeReportPath } from '../../../../shared/ingest/common.mjs';
 
 const SCOPE_START = /^(?:async\s+def|def|class)\s+(\w+)/;
 

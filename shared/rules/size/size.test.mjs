@@ -10,7 +10,7 @@ const WORDING = {
   advice: (limit) => `Keep it ${String(limit)} deep.`,
 };
 const HINT = (rule, glob) =>
-  `If a reviewer agrees this is intended, add {"rule":"${rule}","paths":["${glob}"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`;
+  `If this is intended, add {"rule":"${rule}","paths":["${glob}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 
 const depthOf = ({ path }) => path.split('/').length - 2;
 const depthFindings = (files, options = {}) =>

@@ -41,7 +41,7 @@ const finding = (tool, rule, overrides = {}) => ({
 });
 
 const route = (entry) =>
-  `If a reviewer agrees this is intended, add ${entry} to "exceptions" in nitpicker.config.json.`;
+  `If this is intended, add ${entry} to "exceptions" in nitpicker.config.json.`;
 
 const ROUTED = [
   ['test-runtime', 'no-production-runtime'],
@@ -71,7 +71,7 @@ describe('applyAreaExceptions', () => {
       expect(applyAreaExceptions([found])).toEqual([
         {
           ...found,
-          message: `The base message. ${route(`{"rule":"${rule}","paths":["src/main/a.ts"],"reason":"<why this is intended>"}`)}`,
+          message: `The base message. ${route(`{"rule":"${rule}","paths":["src/main/a.ts"],"reason":"..."}`)}`,
         },
       ]);
     },
@@ -116,7 +116,7 @@ describe('architectureFindings', () => {
     const [violation] = architectureFindings(report, 'dependency-architecture');
 
     expect(violation.message).toBe(
-      `src/main/a.ts must not depend on src/main/adapters/b.ts. ${route('{"rule":"domain-does-not-import-adapters","paths":["src/main/a.ts"],"reason":"<why this is intended>"}')}`,
+      `src/main/a.ts must not depend on src/main/adapters/b.ts. ${route('{"rule":"domain-does-not-import-adapters","paths":["src/main/a.ts"],"reason":"..."}')}`,
     );
 
     withExceptions([

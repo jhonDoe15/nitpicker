@@ -2,6 +2,7 @@ import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { appendSentence } from '../../../../shared/exceptions/sentence.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import { immutableTypesMessage } from './immutable-types-hint.mjs';
+import { restrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mjs';
 
 const IMMUTABLE_TYPES_PREFIX =
   /^(Variable|Parameter|Return type|Property) should have an immutability of at least/u;
@@ -52,6 +53,22 @@ const SWITCH_NOT_EXHAUSTIVE_TEXT = 'Switch is not exhaustive';
 
 const SWITCH_NOT_EXHAUSTIVE_HINT =
   '. If this function is already over a size limit, adding cases will fail the size check: extract an exhaustive helper instead (e.g. a `Record<Union, number>` lookup).';
+
+const DISABLED_TEST_TAIL =
+  /\s*-\s*if you want to skip a test(?: suite)? temporarily, use \.todo\(\) instead$/u;
+
+const DISABLED_TEST_HINT =
+  '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`. A justified exception goes in nitpicker.config.json.';
+
+const BACKTICKED_MATCHER = /`([\w.]+)`/u;
+
+const PREFER_CALLED_WITH_TEXT =
+  'A bare `toHaveBeenCalled()` passes for a call with any arguments. Assert them with `toHaveBeenCalledWith(...)`. If the arguments cannot be pinned, add an exception for vitest/prefer-called-with in nitpicker.config.json.';
+
+const THROW_MESSAGE_TEXT =
+  "A bare `toThrow()` passes for any error. Pass the expected message: `toThrow('the message')`. If the message cannot be pinned, add an exception for vitest/require-to-throw-message in nitpicker.config.json.";
+const EXPECT_THROWS_HINT =
+  ' In a test, assert a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)` instead of asserting inside a `catch`.';
 
 const NODE_TEST_HINT =
   ' nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). An exception fits only a file that must stay on node:test.';
@@ -140,6 +157,15 @@ function switchExhaustivenessMessage({ text }) {
     : text;
 }
 
+function disabledTestMessage({ text }) {
+  return `${text.replace(DISABLED_TEST_TAIL, '').replace(/\.$/u, '')}${DISABLED_TEST_HINT}`;
+}
+
+function restrictedMatcherMessage({ text }) {
+  const matcher = BACKTICKED_MATCHER.exec(text)?.[1];
+  return (matcher === undefined ? undefined : restrictedMatchers[matcher]) ?? text;
+}
+
 function floatingPromiseMessage({ text }) {
   return FLOATING_PROMISE_TEXT.test(text) ? FLOATING_PROMISE_MESSAGE : text;
 }
@@ -160,6 +186,10 @@ function nodeTestMessage({ text }) {
 
 const MESSAGE_REWRITERS = new Map([
   ['vitest/no-import-node-test', nodeTestMessage],
+  ['vitest/no-disabled-tests', disabledTestMessage],
+  ['vitest/no-restricted-matchers', restrictedMatcherMessage],
+  ['vitest/prefer-called-with', () => PREFER_CALLED_WITH_TEXT],
+  ['vitest/require-to-throw-message', () => THROW_MESSAGE_TEXT],
   ['functional/prefer-immutable-types', immutableTypesRewrite],
   ['@typescript-eslint/prefer-promise-reject-errors', rejectErrorsMessage],
   ['@typescript-eslint/no-unsafe-member-access', unsafeAnyMessage],
@@ -169,6 +199,7 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/no-unsafe-return', unsafeAnyMessage],
   ['@typescript-eslint/only-throw-error', onlyThrowErrorMessage],
   ['vitest/expect-expect', expectExpectMessage],
+  ['vitest/no-conditional-expect', appendHint(EXPECT_THROWS_HINT)],
   ['@typescript-eslint/no-duplicate-type-constituents', duplicateConstituentsMessage],
   ['@typescript-eslint/switch-exhaustiveness-check', switchExhaustivenessMessage],
   ['@typescript-eslint/no-invalid-void-type', invalidVoidMessage],

@@ -31,7 +31,7 @@ describe('duplicate-definition', () => {
       [
         'ACCOUNT is also defined with the same value in src/main/billing/ids.ts.',
         'Keep one definition and import it.',
-        `If a reviewer agrees this is intended, add ${exceptionFor('duplicate-definition', findings[0].path)}`,
+        `If this is intended, add ${exceptionFor('duplicate-definition', findings[0].path)}`,
         'to "exceptions" in nitpicker.config.json.',
       ].join(' '),
     );

@@ -110,6 +110,9 @@ export function readPytestConfig(projectRoot) {
     pythonFunctions: listOr(options.python_functions, DEFAULT_PYTHON_FUNCTIONS),
     norecursedirs: listOr(options.norecursedirs, DEFAULT_NORECURSEDIRS),
     testpaths: words(options.testpaths),
+    ...(options.DJANGO_SETTINGS_MODULE === undefined
+      ? {}
+      : { djangoSettingsModule: options.DJANGO_SETTINGS_MODULE }),
     addopts: Array.isArray(addopts) ? addopts : shellWords(addopts ?? ''),
   };
 }
