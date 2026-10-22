@@ -2,9 +2,10 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
+import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
-import { applyJavaPolicy } from '../../java/adapters/java-policy.mjs';
-import { parseRunnerArguments } from '../../java/adapters/java-runner.mjs';
+import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
+import { precedenceToolNames } from '../../java/adapters/gradle-presets.mjs';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
@@ -37,9 +38,10 @@ function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
   return createToolContext({
     projectRoot,
     liveRoot,
-    settings,
+    settings: { ...settings, testSeconds: policy?.testSeconds },
     reportRoot,
     exclude: policy?.exclude,
+    duplicateSkippedFolders: policy?.duplicateSkippedFolders,
     snapshot: policy?.snapshot,
     baselineRoot: policy?.baselineRoot,
     conventions: policy?.conventions,
@@ -61,7 +63,7 @@ function withReportRoot(step) {
 
 function collectMutationFindings(options) {
   return withReportRoot((reportRoot) =>
-    applyJavaPolicy(
+    applyFindingPolicy(
       applyPythonExceptions(
         applyRuleHints(mutationFindings(toolContext(options, reportRoot))),
         options.settings?.exceptions,
@@ -79,7 +81,7 @@ function readFindings({ projectRoot, settings, policy }, reportRoot, { testsFail
     policy,
     testsFailed,
   });
-  return applyJavaPolicy(applyPythonExceptions(findings, settings.exceptions), {
+  return applyFindingPolicy(applyPythonExceptions(findings, settings.exceptions), {
     ...policy,
     inventoryTool: PYTHON_ANALYZER_NAME,
   });
@@ -136,7 +138,10 @@ export function parsePythonArguments(arguments_) {
       shared.push(argument);
     }
   }
-  const { projectRoot, policy } = parseRunnerArguments(shared);
+  const { projectRoot, policy } = parseRunnerArguments(shared, {
+    runner: 'python-runner.mjs',
+    precedenceTools: precedenceToolNames(),
+  });
   const part = own.get('--part') ?? PYTHON_ANALYZER_NAME;
   if (!(part in UNEXPECTED_FAILURE_RULES)) {
     throw new Error(`--part must be one of: ${Object.keys(UNEXPECTED_FAILURE_RULES).join(', ')}`);

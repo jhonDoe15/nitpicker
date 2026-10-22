@@ -7,7 +7,7 @@ import {
   positiveInteger,
 } from '../../../../../shared/rules/finding-helpers.mjs';
 import { branchCoverageFindings } from '../../../../../shared/rules/branch-coverage.mjs';
-import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
+import { DEFAULT_CRAP_SCORE_LIMIT, MESSAGES } from '../../../../../shared/policy.mjs';
 import { crapFindings } from '../../../../../shared/rules/crap.mjs';
 import { mutantFindings } from '../../../../../shared/rules/mutation.mjs';
 
@@ -75,6 +75,14 @@ function addTestEfficiency(findings, analyzerName, { coveredBranchOutcomes, test
   });
 }
 
+const COMPOSITION_ROOT_FILE = /(?:^|\/)(?:main|server|composition-root)\.[cm]?[jt]sx?$/u;
+
+export function crapUnknownMessage(sourcePath) {
+  return COMPOSITION_ROOT_FILE.test(sourcePath)
+    ? MESSAGES.crapCoverageUnknown
+    : MESSAGES.crapCoverageUnknownPlain;
+}
+
 export function normalizeCrap(
   report,
   analyzerName,
@@ -82,12 +90,24 @@ export function normalizeCrap(
 ) {
   const findings = summaryMetrics(analyzerName, report.summary, 'crap');
   const occurrences = new Map();
+  const violations = new Map();
   const functions = [...(report.functions ?? [])].sort(compareCrapSites);
   for (const entry of functions) {
     const occurrence = nextOccurrence(occurrences, `${entry.source}\0${entry.function}`);
-    addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence });
+    const overLimit = !(Number.isFinite(entry.crap) && entry.crap < scoreLimit);
+    const violationOccurrence = overLimit
+      ? nextOccurrence(violations, `${entry.source}\0${entry.function}\0${crapSourceHash(entry)}`)
+      : occurrence;
+    addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence, violationOccurrence });
   }
   return findings;
+}
+
+function crapSourceHash(entry) {
+  return (
+    entry.sourceHash ??
+    hash(`${entry.source}:${String(entry.lines?.start)}:${String(entry.lines?.end)}`)
+  );
 }
 
 function compareCrapSites(left, right) {
@@ -99,10 +119,12 @@ function compareCrapSites(left, right) {
   );
 }
 
-function addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence }) {
-  const { start, end } = entry.lines ?? {};
-  const sourceHash = entry.sourceHash ?? hash(`${entry.source}:${String(start)}:${String(end)}`);
-  const violationIdentity = `function:${entry.function}:occurrence:${String(occurrence)}:source:${sourceHash}`;
+function addCrapFunction(
+  findings,
+  entry,
+  { analyzerName, scoreLimit, occurrence, violationOccurrence },
+) {
+  const violationIdentity = `function:${entry.function}:occurrence:${String(violationOccurrence)}:source:${crapSourceHash(entry)}`;
   findings.push(
     ...crapFindings(
       [
@@ -110,13 +132,13 @@ function addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence
           path: entry.source,
           name: entry.function,
           identity: violationIdentity,
-          ratchetKey: `function:${entry.function}:occurrence:${String(occurrence)}:crap`,
-          line: start,
-          endLine: end,
+          ratchetKey: `function:${entry.function}:occurrence:${String(violationOccurrence)}:crap`,
+          line: entry.lines?.start,
+          endLine: entry.lines?.end,
           crap: entry.crap,
         },
       ],
-      { tool: analyzerName, limit: scoreLimit },
+      { tool: analyzerName, limit: scoreLimit, unknownMessage: crapUnknownMessage(entry.source) },
     ),
   );
   const values = {
@@ -184,6 +206,7 @@ function neutralMutant(mutant, { filePath, status, occurrences }) {
     path: filePath,
     identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
     status,
+    ...(status === 'Ignored' ? { hiddenByComment: true } : {}),
     label: mutant.mutatorName ?? 'mutant',
     line: mutant.location?.start?.line,
     ...(positiveInteger(mutant.location?.start?.column) === undefined

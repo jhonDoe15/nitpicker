@@ -1,9 +1,16 @@
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
-import { gradleFailure, isBaseTestFailure, testsFailedFinding } from './tests-failed.mjs';
+import {
+  assertGradleSucceeded,
+  gradleFailure,
+  isBaseTestFailure,
+  runOrNoteFailingTests,
+  testsFailedFinding,
+  withTestsFailure,
+} from './tests-failed.mjs';
 
 const temporaryRoots = [];
 
@@ -144,5 +151,115 @@ describe('collectJavaFindings on a failing Gradle build', () => {
 
     expect(() => collect(fake, 'base')).toThrow("Execution failed for task ':compileJava'");
     expect(fake.calls()).toEqual([false]);
+  });
+});
+
+describe('assertGradleSucceeded', () => {
+  const failed = { status: 1, stderr: TEST_TASK_OUTPUT, stdout: '' };
+
+  function reportsWith(suite) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-gradle-reports-'));
+    temporaryRoots.push(root);
+    const results = path.join(root, 'build/test-results/test');
+    mkdirSync(results, { recursive: true });
+    writeFileSync(path.join(root, 'test-results.json'), JSON.stringify([results]));
+    writeFileSync(path.join(results, 'TEST-shop.CartTest.xml'), suite);
+    return root;
+  }
+
+  function thrownBy(result, reportBase) {
+    try {
+      assertGradleSucceeded(result, '/p', { reportBase, since: 0 });
+    } catch (error) {
+      return error;
+    }
+    return undefined;
+  }
+
+  it('does nothing for a run that succeeded', () => {
+    expect(thrownBy({ status: 0, stdout: '', stderr: '' }, '/none')).toBeUndefined();
+  });
+
+  it('marks a failure whose test reports name failing tests and keeps their list as the detail', () => {
+    const reportBase = reportsWith(
+      '<testsuite name="shop.CartTest"><testcase classname="shop.CartTest" name="adds"><failure message="no"/></testcase></testsuite>',
+    );
+    const error = thrownBy({ ...failed, stderr: 'FAILURE: Build failed' }, reportBase);
+
+    expect({ testsFailed: error.testsFailed, detail: error.detail }).toEqual({
+      testsFailed: true,
+      detail: 'Tests fail in /p:\n  shop.CartTest.adds: no',
+    });
+  });
+
+  it('marks a failed test task from the Gradle output when there are no test reports', () => {
+    const error = thrownBy(failed, '/none');
+
+    expect({ testsFailed: error.testsFailed, detail: error.detail }).toEqual({
+      testsFailed: true,
+      detail: TEST_TASK_OUTPUT,
+    });
+  });
+
+  it('does not mark a run that could not start, even beside failing test reports', () => {
+    const reportBase = reportsWith(
+      '<testsuite name="shop.CartTest"><testcase classname="shop.CartTest" name="adds"><failure message="no"/></testcase></testsuite>',
+    );
+    const error = thrownBy({ error: new Error('timed out'), status: null }, reportBase);
+
+    expect(error.testsFailed).toBe(false);
+  });
+});
+
+describe('runOrNoteFailingTests', () => {
+  const failure = Object.assign(new Error('red'), { testsFailed: true });
+
+  function runner(fails) {
+    const calls = [];
+    const run = (_root, options) => {
+      calls.push(options.testsFailed === true);
+      if (fails && options.testsFailed !== true) {
+        throw failure;
+      }
+    };
+    return { run, calls };
+  }
+
+  it('runs once and notes nothing when the build passes', () => {
+    const { run, calls } = runner(false);
+
+    expect([runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'base' } }), calls]).toEqual([
+      undefined,
+      [false],
+    ]);
+  });
+
+  it('reruns a red base without tests and returns the failure as the note', () => {
+    const { run, calls } = runner(true);
+
+    expect([runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'base' } }), calls]).toEqual([
+      failure,
+      [false, true],
+    ]);
+  });
+
+  it('lets a red head fail', () => {
+    const { run, calls } = runner(true);
+
+    expect(() => runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'head' } })).toThrow(
+      failure,
+    );
+    expect(calls).toEqual([false]);
+  });
+});
+
+describe('withTestsFailure', () => {
+  it('adds the tool error of the failing tests, or nothing when none failed', () => {
+    const findings = [{ rule: 'x' }];
+
+    expect([
+      withTestsFailure(findings, 'java', undefined),
+      withTestsFailure(findings, 'java', { detail: 'boom' }),
+    ]).toEqual([findings, [...findings, testsFailedFinding('java', 'boom')]]);
   });
 });

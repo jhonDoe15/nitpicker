@@ -365,7 +365,7 @@ describe('analyzing a Python snapshot', () => {
     ]);
   });
 
-  it('keeps the findings that need no test run, and leaves out the coverage ones, when the base tests fail', () => {
+  it('keeps the findings that need no test run when the base tests fail', () => {
     const root = project({
       'violations.txt': 'F401|src/demo/a.py|unused\n',
       'unformatted.txt': 'src/demo/a.py\n',
@@ -373,12 +373,12 @@ describe('analyzing a Python snapshot', () => {
       'test-exit.txt': '1\n',
     });
 
-    const { findings } = analyze(root, { policy: { snapshot: 'base' } });
+    const base = analyze(root, { policy: { snapshot: 'base' } });
 
     expect(
-      findings
-        .filter(({ tool }) => tool !== 'coupling')
-        .map(({ tool, rule, classification }) => `${tool} ${rule} ${classification}`),
+      withoutCoupling(base).map(
+        ({ tool, rule, classification }) => `${tool} ${rule} ${classification}`,
+      ),
     ).toEqual([
       'ruff F401 enforceable',
       'ruff-format format enforceable',
@@ -392,14 +392,9 @@ describe('analyzing a Python snapshot', () => {
       'test-exit.txt': '1\n',
     });
 
-    const { findings } = analyze(root, { policy: { snapshot: 'base' } });
-
-    expect(findings.map(({ rule }) => rule)).toEqual([
-      'ruff-failed',
-      'format-failed',
-      'tests-failed',
-      'rules-failed',
-    ]);
+    expect(
+      analyze(root, { policy: { snapshot: 'base' } }).findings.map(({ rule }) => rule),
+    ).toEqual(['ruff-failed', 'format-failed', 'tests-failed', 'rules-failed']);
   });
 
   it('maps a broken environment to one tool-error finding', () => {
@@ -492,6 +487,10 @@ describe('runner arguments', () => {
   });
 
   it('rejects unknown options', () => {
-    expect(() => parsePythonArguments(['--project-root', '/p', '--nope', 'x'])).toThrow('Usage');
+    expect(() => parsePythonArguments(['--project-root', '/p', '--nope', 'x'])).toThrow(
+      new Error(
+        'Usage: python-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>] [--<tool>-precedence <layers>]...',
+      ),
+    );
   });
 });

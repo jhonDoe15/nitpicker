@@ -1,10 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import {
-  analyzeJavaSnapshot,
-  parseRunnerArguments,
-} from '../../../../languages/java/adapters/java-runner.mjs';
+import { analyzeJavaSnapshot } from '../../../../languages/java/adapters/java-runner.mjs';
+import { parseJavaRunnerArguments } from '../../../../languages/java/adapters/java-policy.mjs';
 import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
 import { progressEvent } from '../analyzer-scheduler.mjs';
 import { reportFromAnalyzerOutput } from '../process.mjs';
@@ -199,7 +197,7 @@ function spawnedOutput(task) {
 function runJavaRunner(argv) {
   let parsed;
   try {
-    parsed = parseRunnerArguments(argv);
+    parsed = parseJavaRunnerArguments(argv);
   } catch (error) {
     return { status: 2, signal: undefined, stdoutText: '', stderrText: error.message };
   }
