@@ -829,6 +829,16 @@ identity when the value changes: editing such a line counts as a resolved plus a
   `duplicates`: `duplicate-clone` (enforceable, one per clone) and `duplicate-clone-size`
   (descriptive metrics `lines` and `tokens`). There is no extra threshold:
   jscpd's defaults (5 lines, 50 tokens) apply, as for TypeScript.
+- **Renamed copies.** A second jscpd run (100 tokens, 5 lines), on Gradle and Maven alike, goes over
+  a normalized copy of the `.java` files of each source root, where names, strings, characters,
+  numbers and comments are one token each, `package` and `import` lines, literal-only `List.of`,
+  `Map.of` and `Arrays.asList` calls and array initializers are blanked and generated files are left
+  out, so a copy with renamed locals and changed literals fails too, with `duplicate-clone` and an
+  identity starting `renamed:`. It replaces a plain clone over the same two ranges, and drops clones
+  made of declarations only (fields, constructors, getters and setters) and clones that only repeat
+  one or two statements (DTO mappers, enum `switch` tables). The copy lives under the report
+  directory while the run lasts. The message names the same route as for any clone: add either file
+  of the pair to `exclude`.
 
 | Tool                 | Report                      | Ingester                                              | Classification                                                    | Identity                                                                                                                                                              |
 | -------------------- | --------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1939,7 +1949,7 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
 - **Duplicates.** The jscpd check is unchanged. `nitpickerCpd` runs PMD's copy-paste detector
   (BSD-style, already inside the pinned PMD) over main and test sources with identifiers and
   literals ignored and at least 100 tokens, so a copy with renamed variables is found. When jscpd
-  and CPD report the same clone (same two files, overlapping lines, jscpd's range ending at its
+  (its plain run or its renamed-copies run) and CPD report the same clone (same two files, overlapping lines, jscpd's range ending at its
   start line plus `lines` minus one), only the CPD finding is kept, also when nitpicker then drops
   CPD's clone as boilerplate or as overlapping its own copy; in a module where CPD did not run or
   wrote no usable report, jscpd's clones stay, overlapping

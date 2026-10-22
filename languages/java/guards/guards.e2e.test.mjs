@@ -18,7 +18,6 @@ import {
   readReportModules,
   readMainCheckstyle,
 } from '../adapters/gradle-reports/report-modules.mjs';
-import { DUPLICATES_REPORT } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { ingestSarif, prepareSarif } from '../../../shared/ingest/sarif.mjs';
 import { checkstyleFindings } from '../adapters/reporting/format-findings.mjs';
 import { sourceLocator } from '../adapters/reporting/kotlin-reports.mjs';
@@ -132,7 +131,8 @@ function guardFindings(root) {
   return applyRuleMessages(
     [
       ...modules.flatMap((module) => moduleGuardFindings(root, module)),
-      ...readDuplicateFindings(reportBase, DUPLICATES_REPORT, {
+      ...readDuplicateFindings(reportBase, {
+        projectRoot: root,
         skip: coveredByCpd(modules, root),
       }),
     ],

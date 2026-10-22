@@ -121,8 +121,8 @@ Before you change code other modules use, or fix a bug, read
 - Keep classes small: split by responsibility and prefer holding a collaborator to extending one.
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
-- Copied code fails (`duplicate-clone`): extract a method; in tests, a helper or one
-  `@ParameterizedTest`.
+- Copied code fails (`duplicate-clone`), also when the copy has other names and literals: extract
+  a method; in tests, a helper or one `@ParameterizedTest`.
 
 ## Tests
 

@@ -1129,6 +1129,16 @@ the source root detection already does.
   file of the pair, and its message names both files and tells to add either one to `exclude` when
   the repetition is intended. An `exclude` glob or a `python.exceptions` entry for `duplicate-clone`
   that matches either file of the pair lifts the finding. A source root of `.` is supported.
+  A second jscpd run (100 tokens, 5 lines, `jscpd-renamed-config.json`) goes over a normalized copy
+  of the project's Python files, where names, strings, numbers and comments are one token each,
+  imports, `__all__` and literal-only lists, dicts and tuples are blanked and generated files are left
+  out, so a copy with renamed locals and changed literals is found: `duplicate-clone` with an
+  identity starting `renamed:`, the same message, lifted by the same `exclude` glob or
+  `python.exceptions` entry. It replaces a plain jscpd clone over the same two ranges and drops
+  clones made of class, field and enum member declarations only, and clones that only repeat one or
+  two statements (mapper calls, `add_argument` lists); dicts keyed by qualified names
+  (`Status.NEW: "new"`) are data. Findings are mapped back to the original lines
+  because the copy keeps every line break.
 - **Coupling.** `python -I languages/python/adapters/import-scan.py` (the project's interpreter,
   standard library only) parses every production file with `ast` and prints each file's `import`
   and `from ... import` statements, including those inside functions and `if TYPE_CHECKING:`
