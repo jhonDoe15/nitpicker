@@ -35,6 +35,12 @@ export const RULES_CASES = [
   ...rulesCases('accumulator-copy', [
     ['accumulator-copy', 'itertools.chain', 'merged|merged + [...]|loop'],
   ]),
+  ...rulesCases('lazy-relation-django', [
+    ['lazy-relation-in-loop', 'select_related', 'Order.customer|django|Order.objects.all()'],
+  ]),
+  ...rulesCases('lazy-relation-sqlalchemy', [
+    ['lazy-relation-in-loop', 'selectinload', 'Order.customer|sqlalchemy|select(Order)'],
+  ]),
   ...rulesCases('todo-without-issue', [['todo-without-issue', '# todo(#123)']]),
   ...rulesCases('skipped-test', [['skipped-test-without-reason', 'reason=']]),
   ...rulesCases('sleep-in-test', [['sleep-in-test', 'fake clock']]),

@@ -603,6 +603,7 @@ are listed at the end.
 | Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
 | Input or output per item | one batch call; no batch endpoint: a bounded fan-out (`asyncio.Semaphore`, `CapacityLimiter`, fixed-size chunks)                                 | `io-in-loop` (script)                                                                                                                                |
 | Accumulator copies       | `append` in the loop, a comprehension, `itertools.chain.from_iterable`, `dict(pairs)`, `collections.defaultdict`                                 | `accumulator-copy` (script), ruff `RUF017` for `sum(lists, [])`                                                                                      |
+| Lazy relations per item  | `select_related`, `prefetch_related`, `selectinload` or `joinedload` in the query that loads the rows                                            | `lazy-relation-in-loop` (script)                                                                                                                     |
 | Task markers             | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
 | Commented-out code       | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
 | Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                         | ruff `S` (see below)                                                                                                                                 |
@@ -801,6 +802,20 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `{}`, `list()`, a `reduce` initial value); an accumulator of unknown type, a number or a string is not
   reported. `acc += [x]` and `acc |= {k: v}` change the object in place and are fine. `sum(lists, [])` is
   ruff's `RUF017`, which the preset already selects, so the script does not report it twice.
+- `lazy-relation-in-loop` reports a relationship read for each row of a query the same function runs,
+  when the query does not fetch it, so each row runs one more query. Django: the models of the project
+  give the forward `ForeignKey`, `OneToOneField` and `ManyToManyField` accessors and the reverse ones
+  (`order_set`, a `related_name`); the rows come from `Model.objects.all()`, `filter()`, `exclude()` and
+  the other queryset methods (directly, in a variable, or wrapped in `list()`); a forward or
+  one-to-one accessor counts when it is read, a manager (`order.lines`, `order.tags`) when `all()`,
+  `filter()`, `count()` or another query method is called on it; `select_related(...)`,
+  `prefetch_related(...)` or `Prefetch(...)` naming it (also `a__b`) or a bare `select_related()` (all
+  forward keys) clears it, and `order.customer_id` never loads. SQLAlchemy: a `relationship()` (also
+  SQLModel `Relationship` and `db.relationship`) with the default or `lazy="select"` strategy, read on the
+  rows of `session.scalars(select(M)...)`, `session.execute(select(M)...).scalars()` or
+  `session.query(M)...`; `.options(selectinload(...))`, `joinedload`, `subqueryload` or `immediateload`
+  naming it, or another `lazy=` strategy on the relationship, clears it. Rows of unknown origin (a
+  parameter), `values()` queries, a custom `objects` manager and selects of columns are not reported.
 - `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
   comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
   `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and
