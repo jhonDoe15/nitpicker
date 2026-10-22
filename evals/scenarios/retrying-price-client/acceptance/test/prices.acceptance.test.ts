@@ -375,9 +375,9 @@ describe('pricesMain', () => {
   }
 
   it('prints one line per symbol in order using the global fetch', async () => {
-    const urls: unknown[][] = [];
+    const urls: unknown[] = [];
     vi.stubGlobal('fetch', async (...args: unknown[]) => {
-      urls.push(args);
+      urls.push(args[0]);
       const url = String(args[0]);
       if (url.endsWith('/AAPL')) {
         return new Response('189.5\n', { status: 200 });
@@ -391,9 +391,9 @@ describe('pricesMain', () => {
     await pricesMain(['AAPL', 'ZZZZ', 'MSFT']);
     expect(chunks.join('')).toBe('AAPL 189.50\nZZZZ failed: not-found\nMSFT 0.07\n');
     expect(urls).toEqual([
-      ['https://prices.example.com/quotes/AAPL'],
-      ['https://prices.example.com/quotes/ZZZZ'],
-      ['https://prices.example.com/quotes/MSFT'],
+      'https://prices.example.com/quotes/AAPL',
+      'https://prices.example.com/quotes/ZZZZ',
+      'https://prices.example.com/quotes/MSFT',
     ]);
   });
 
@@ -402,9 +402,9 @@ describe('pricesMain', () => {
     vi.stubGlobal('fetch', fetchMock);
     const chunks = capture();
     await pricesMain(['BRK/B', 'A B']);
-    expect(fetchMock.mock.calls).toEqual([
-      ['https://prices.example.com/quotes/BRK%2FB'],
-      ['https://prices.example.com/quotes/A%20B'],
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      'https://prices.example.com/quotes/BRK%2FB',
+      'https://prices.example.com/quotes/A%20B',
     ]);
     expect(chunks.join('')).toBe('BRK/B 1.00\nA B 1.00\n');
   });

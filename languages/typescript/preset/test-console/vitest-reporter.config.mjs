@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
-import { escapeRegExp } from '../../../../shared/glob.mjs';
-import { stripAnsi } from '../../../../shared/console/ansi.mjs';
+import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { stripAnsi } from '../../../../shared/rules/console/ansi.mjs';
 
 export const REPORT_VARIABLE = 'NITPICKER_TEST_CONSOLE_REPORT';
 

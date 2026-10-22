@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { readHeadPolicyFile } from '../../../../shared/head-policy.mjs';
-import { testConsoleFindings } from '../../../../shared/console/console-findings.mjs';
+import { testConsoleFindings } from '../../../../shared/rules/console/console-findings.mjs';
 
 export const TEST_CONSOLE_TOOL = 'test-console';
 const CONSOLE_REPORT = 'test-console.json';
