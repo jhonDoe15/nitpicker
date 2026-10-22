@@ -114,8 +114,10 @@ describe('domain rules on installed npm packages', () => {
 
 describe('architecture findings', () => {
   it('name the allowed form, the exception route and the shared module on the way', () => {
-    const route =
+    const guidance =
       ' An exception fits only when it is deliberate; its paths are the importing files.';
+    const route = (rule, file) =>
+      ` If this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
     const idLibraries = [
       'domain/ may not import ID or random-data libraries (uuid, nanoid, cuid, ulid, faker).',
       ' Take the ID as a parameter from adapters/.',
@@ -128,10 +130,14 @@ describe('architecture findings', () => {
     expect(architectureFindings(project, 'absent', ({ message }) => message)).toEqual({
       toolErrors: [],
       findings: [
-        `src/main/features/orders/domain/order-id.ts must not depend on uuid. ${idLibraries}${route}`,
+        `src/main/features/orders/domain/order-id.ts must not depend on uuid. ${idLibraries}${guidance}${route('domain-does-not-import-id-libraries', 'src/main/features/orders/domain/order-id.ts')}`,
         [
           'src/main/features/orders/domain/order-total.ts must not depend on pg',
-          ` through src/main/shared/database.ts. ${reach}${route}`,
+          ` through src/main/shared/database.ts. ${reach}${guidance}`,
+          route(
+            'domain-does-not-reach-io-through-shared',
+            'src/main/features/orders/domain/order-total.ts',
+          ),
         ].join(''),
       ],
     });

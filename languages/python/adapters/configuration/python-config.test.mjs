@@ -124,8 +124,8 @@ describe('python config validation', () => {
       '"python.exceptions[0].rule" is "function-lines-limit", a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead',
     ],
     [
-      { exceptions: [{ rule: 'structure/changed-branch-coverage', paths: ['a'], reason: 'r' }] },
-      '"python.exceptions[0].rule" is "structure/changed-branch-coverage", a rule that every preset reports with a function or a path',
+      { exceptions: [{ rule: 'coverage-py/changed-branch-coverage', paths: ['a'], reason: 'r' }] },
+      '"python.exceptions[0].rule" is "coverage-py/changed-branch-coverage", a rule that every preset reports with a function or a path',
     ],
     [
       { exceptions: [{ rule: 'E501', paths: ['a'], reason: 'r' }] },

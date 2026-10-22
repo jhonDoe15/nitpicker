@@ -1,7 +1,12 @@
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { isUnder, matcherOf } from '../policy-scope.mjs';
-import { globsCovering, globsOfSubject, subjectLabel, subjectsOf } from './exception-scopes.mjs';
+import {
+  globsCovering,
+  globsOfSubject,
+  subjectLabel,
+  subjectsOf,
+} from './exceptions/exception-scopes.mjs';
 import { keyedExclusions, testRootReclassifier } from './hiding.mjs';
 import { duplicateFolderExclusions } from './duplicate-folders.mjs';
 

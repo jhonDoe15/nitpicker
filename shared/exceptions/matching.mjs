@@ -1,5 +1,4 @@
 import { globMatcher } from '../paths/glob.mjs';
-import { RENAMED_IDENTITY_PREFIX } from '../rules/duplicates.mjs';
 
 /** A test for a path against any of `globs`. */
 export function pathMatcher(globs) {
@@ -28,6 +27,8 @@ export function functionNameOf(finding) {
   }
   return finding.tool === 'pit' ? pitFunctionName(finding.symbol) : finding.symbol;
 }
+
+export const RENAMED_IDENTITY_PREFIX = 'renamed:';
 
 const PAIR_END = /:(?:fragment|occurrence):/;
 

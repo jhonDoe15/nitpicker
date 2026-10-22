@@ -70,7 +70,7 @@ export function hintFor(finding) {
   return RULE_HINTS.find((hint) => matches(hint, finding));
 }
 
-export const PYTHON_EXCEPTIONS_KEY = 'python.exceptions';
+const PYTHON_EXCEPTIONS_KEY = 'python.exceptions';
 
 export function describeRuleFinding(rule, subject, libraries = DEFAULT_LIBRARIES) {
   return RULE_HINTS.find((hint) => hint.tool === RULES_TOOL && hint.rules.includes(rule)).describe(

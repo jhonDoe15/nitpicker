@@ -4,12 +4,16 @@ import path from 'node:path';
 import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
 import { withLegacyInventory } from '../../../shared/legacy-inventory.mjs';
 import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
-import { GRADLE_PRESETS, PROJECT_TOOL_CONFIGS, precedenceToolNames } from './gradle-presets.mjs';
 import {
-  JAVA_FINDING_TOOLS,
+  GRADLE_PRESETS,
+  JAVA_TOOLS,
+  PROJECT_TOOL_CONFIGS,
+  precedenceToolNames,
+} from './gradle-presets.mjs';
+import {
   isJavaFindingRule,
   validateJavaFindingRule,
-} from './java-finding-rules.mjs';
+} from './exception-rules/java-finding-rules.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
 import { JAVA_LINE_LENGTH, JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
@@ -76,7 +80,7 @@ function validateJavaExceptionRule(entry, label) {
   }
   if (!isJavaFindingRule(rule)) {
     throw configError(
-      `"${label}" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${JAVA_EXCEPTION_RULES.join(', ')}. Tools: ${JAVA_FINDING_TOOLS.join(', ')}`,
+      `"${label}" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${JAVA_EXCEPTION_RULES.join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}`,
     );
   }
   validateJavaFindingRule(entry, label);

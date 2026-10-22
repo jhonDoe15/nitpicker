@@ -37,13 +37,13 @@ describe('exceptions in the differential gate', () => {
     expect(enforceable(result)).toEqual([]);
   });
 
-  it('keeps a legacy finding unchanged when the change narrows the exception', () => {
+  it('keeps a legacy finding unchanged when the change narrows a whole-file exception to its function', () => {
     const root = typescriptRepository({
       'src/main/a.ts': WIDE,
-      'nitpicker.config.json': config(lifted),
+      'nitpicker.config.json': config({ ...lifted, function: undefined }),
     });
     writeFiles(root, {
-      'nitpicker.config.json': config({ ...lifted, function: 'other' }),
+      'nitpicker.config.json': config(lifted),
       'src/main/b.ts': 'export const b = 1;\n',
     });
     commit(root, 'narrow the exception');
@@ -52,6 +52,23 @@ describe('exceptions in the differential gate', () => {
 
     expect(result.exitCode, result.text).toBe(0);
     expect(enforceable(result)).toEqual([]);
+  });
+
+  it('reports an exception moved to another function as a loosening of the base policy', () => {
+    const root = typescriptRepository({
+      'src/main/a.ts': WIDE,
+      'nitpicker.config.json': config(lifted),
+    });
+    writeFiles(root, {
+      'nitpicker.config.json': config({ ...lifted, function: 'other' }),
+      'src/main/b.ts': 'export const b = 1;\n',
+    });
+    commit(root, 'retarget the exception');
+
+    const result = runTypescript(root, ['structure']);
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(enforceable(result)).toEqual([['policy-loosened', undefined]]);
   });
 
   it('reports an exception added with the code it lifts as a loosening of the base policy', () => {

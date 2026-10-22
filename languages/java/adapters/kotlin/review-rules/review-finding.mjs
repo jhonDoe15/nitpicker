@@ -1,6 +1,9 @@
 import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import { createIdentityCounter } from '../../../../../shared/ingest/common.mjs';
-import { appendSentence, hasExceptionRoute } from '../../../../../shared/messages/exception-sentence.mjs';
+import {
+  appendSentence,
+  hasExceptionRoute,
+} from '../../../../../shared/messages/exception-sentence.mjs';
 
 export const REVIEW_TOOL = 'pmd';
 

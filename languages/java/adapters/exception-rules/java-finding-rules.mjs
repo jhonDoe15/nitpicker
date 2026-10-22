@@ -1,21 +1,13 @@
-import { configError } from '../../../shared/config.mjs';
-import { checkstyleRuleName } from '../messages/rule-messages.mjs';
-
-export const JAVA_FINDING_TOOLS = [
-  'pmd',
-  'spotbugs',
-  'errorprone',
-  'archunit',
-  'checkstyle',
-  'spring',
-];
+import { configError } from '../../../../shared/config.mjs';
+import { checkstyleRuleName } from '../../messages/rule-messages.mjs';
+import { JAVA_TOOLS } from '../gradle-presets.mjs';
 
 const KOTLIN_PATH = /\.kts?$/u;
 
 /** Whether `rule` is `<tool>/<rule>` of a tool whose findings name their own rules. */
 export function isJavaFindingRule(rule) {
   const [tool] = rule.split('/');
-  return JAVA_FINDING_TOOLS.includes(tool) && rule.length > tool.length + 1;
+  return JAVA_TOOLS.includes(tool) && rule.length > tool.length + 1;
 }
 
 /** Throws when an `exceptions` entry names a Java finding in a way that can never lift one. */
