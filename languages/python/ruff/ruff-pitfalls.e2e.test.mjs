@@ -204,7 +204,9 @@ describe.skipIf(!enabled)('the shipped Ruff pitfall selection', () => {
   });
 
   it('applies the families to test files too', () => {
-    expect(testFiles).toContain('banned/tests/test_pitfalls.py');
+    expect(testFiles.filter((file) => file.startsWith('banned/'))).toEqual([
+      'banned/tests/test_pitfalls.py',
+    ]);
     expect(pitfallsBy(findings, 'banned')['tests/test_pitfalls.py']).toEqual(['DTZ001', 'PLW0129']);
   });
 
