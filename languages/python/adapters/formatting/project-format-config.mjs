@@ -171,11 +171,14 @@ function filesOf(read, start, names) {
   }
 }
 
+export function ruffConfigFiles(start) {
+  return filesOf(readRuffConfig, start, RUFF_FILES);
+}
+
+export function blackConfigFiles(start) {
+  return filesOf(readBlackConfig, start, [PYPROJECT]);
+}
+
 export function projectFormatConfigFiles(start) {
-  return [
-    ...new Set([
-      ...filesOf(readRuffConfig, start, RUFF_FILES),
-      ...filesOf(readBlackConfig, start, [PYPROJECT]),
-    ]),
-  ];
+  return [...new Set([...ruffConfigFiles(start), ...blackConfigFiles(start)])];
 }

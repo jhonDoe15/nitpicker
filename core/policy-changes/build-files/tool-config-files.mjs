@@ -7,6 +7,7 @@ import { readInside } from '../../../shared/conventions/read-inside.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
+import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
@@ -100,12 +101,20 @@ function isOptedIn(tool, config) {
   );
 }
 
+function sideFingerprints(tool, side, gitBlobId) {
+  if (!PYTHON_TOOLS.includes(tool)) {
+    return fingerprints(tool, { root: side.root, files: candidates(tool, side) }, gitBlobId);
+  }
+  const entries = side.config.preset === 'python' ? pythonConfigEntries(tool, side.root) : [];
+  return new Map(entries.map(([file, text]) => [file, gitBlobId(text)]));
+}
+
 export function readToolConfigs(base, head, gitBlobId) {
-  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier']
+  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', ...PYTHON_TOOLS]
     .filter((tool) => isOptedIn(tool, base.config) && isOptedIn(tool, head.config))
     .map((tool) => ({
       tool,
-      base: fingerprints(tool, { root: base.root, files: candidates(tool, base) }, gitBlobId),
-      head: fingerprints(tool, { root: head.root, files: candidates(tool, head) }, gitBlobId),
+      base: sideFingerprints(tool, base, gitBlobId),
+      head: sideFingerprints(tool, head, gitBlobId),
     }));
 }
