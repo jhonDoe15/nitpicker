@@ -1,3 +1,5 @@
+import { isBooleanLiteral } from '../support/literals.mjs';
+
 const NAMED_EXPORT = 'ExportNamedDeclaration';
 const IDENTIFIER = 'Identifier';
 const EXPORT_PARENTS = new Set([NAMED_EXPORT, 'ExportDefaultDeclaration']);
@@ -17,10 +19,6 @@ function isBooleanType(parameter) {
   return (
     type.type === 'TSUnionType' && type.types.some(({ type: kind }) => kind === 'TSBooleanKeyword')
   );
-}
-
-function isBooleanLiteral(node) {
-  return node?.type === 'Literal' && typeof node.value === 'boolean';
 }
 
 function flagName(parameter) {

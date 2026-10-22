@@ -4,6 +4,7 @@ import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../adapters/style
 import { SOURCE_RULE_IDS } from '../adapters/kotlin/rules/kotlin-rules.mjs';
 
 export const CATALOG_TOOLS = ['pmd', 'checkstyle', 'spotbugs'];
+const DETEKT = 'detekt';
 const CATALOGS = new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)]));
 const ERROR_PRONE_CERTAIN_BUGS = readCertainBugs();
 const ROUTED = new Set([
@@ -14,7 +15,7 @@ const ROUTED = new Set([
   'duplicates',
   'coupling/package-cycle',
   'coupling/test-only-export',
-  'detekt',
+  DETEKT,
   'dependencies',
   'spring',
   'pit',
@@ -69,12 +70,12 @@ export function withRuleMessage(finding, { preset = 'java', testRoots = [], java
 function exceptionRuleFor(finding, preset) {
   const qualified = `${finding.tool}/${finding.rule}`;
   if (preset === 'kotlin') {
-    if (finding.tool === 'detekt' && SOURCE_RULE_IDS.includes(finding.rule)) {
+    if (finding.tool === DETEKT && SOURCE_RULE_IDS.includes(finding.rule)) {
       return finding.rule;
     }
     return qualified === 'coupling/test-only-export' ? qualified : undefined;
   }
-  return preset === 'java' && finding.tool !== 'detekt' ? qualified : undefined;
+  return preset === 'java' && finding.tool !== DETEKT ? qualified : undefined;
 }
 
 function isCertainBug(finding, testRoots) {

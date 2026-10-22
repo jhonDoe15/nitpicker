@@ -1,11 +1,8 @@
+import { isBooleanLiteral } from '../rules/support/literals.mjs';
 import { isTestFunctionChain } from '../test-quality/test-calls.mjs';
 
 const CONDITIONAL_SKIPS = new Set(['skipIf', 'runIf']);
 const TOKEN_MESSAGES = new Map([['todo', 'todo']]);
-
-function isBooleanLiteral(node) {
-  return node?.type === 'Literal' && typeof node.value === 'boolean';
-}
 
 export const rule = {
   meta: {

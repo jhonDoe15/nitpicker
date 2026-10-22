@@ -19,7 +19,8 @@ import { StringDecoder } from 'node:string_decoder';
 const CHUNK_BYTES = 1024 * 1024;
 const JDEPS_OUTPUT = 'jdeps-output.txt';
 const EDGE = /^\s+(\S+)\s+->\s+\S+/u;
-const SKIPPED_CLASSES = new Set(['module-info.class', 'package-info.class']);
+const MODULE_DESCRIPTOR = 'module-info.class';
+const SKIPPED_CLASSES = new Set([MODULE_DESCRIPTOR, 'package-info.class']);
 
 export function classNamesIn(directory) {
   return existsSync(directory)
@@ -75,7 +76,7 @@ function runJdepsCommand({ command, cwd, directories, outputFile }) {
 
 function runJdeps(context) {
   if (
-    !context.directories.some((directory) => existsSync(path.join(directory, 'module-info.class')))
+    !context.directories.some((directory) => existsSync(path.join(directory, MODULE_DESCRIPTOR)))
   ) {
     runJdepsCommand(context);
     return;
@@ -90,7 +91,7 @@ function runJdeps(context) {
       }
       cpSync(directory, target, {
         recursive: true,
-        filter: (file) => path.basename(file) !== 'module-info.class',
+        filter: (file) => path.basename(file) !== MODULE_DESCRIPTOR,
       });
       return target;
     });

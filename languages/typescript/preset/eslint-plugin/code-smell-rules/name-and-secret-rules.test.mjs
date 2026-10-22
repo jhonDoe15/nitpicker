@@ -2,6 +2,8 @@ import { rule as genericNames } from '../rules/code-smells/generic-names.mjs';
 import { rule as hardcodedSecret } from '../rules/code-smells/hardcoded-secret.mjs';
 import { cases, typescriptRuleTester } from '../test-support/rule-tester.mjs';
 
+const PRIVATE_KEY_HEADER = ['-----BEGIN RSA', 'PRIVATE KEY-----'].join(' ');
+
 const ruleTester = typescriptRuleTester();
 
 const inFile = (filename, code = 'export const a = 1;') => ({ filename, code });
@@ -141,7 +143,7 @@ const secretCases = {
     ["const token = ready ? 'abc123def456' : undefined;", 'hardcoded'],
     ["const id = 'AKIAIOSFODNN7EXAMPLE';", 'credentialShape'],
     ["const id = 'ghp_abcdefghijklmnopqrstuvwxyz0123456789';", 'credentialShape'],
-    ["use('-----BEGIN RSA PRIVATE KEY-----');", 'credentialShape'],
+    [`use('${PRIVATE_KEY_HEADER}');`, 'credentialShape'],
     ["logger.info({ password }, 'login');", 'logged'],
     ['logger.error({ token: user.token });', 'logged'],
     ['console.log(`token ${token}`);', 'logged'],
