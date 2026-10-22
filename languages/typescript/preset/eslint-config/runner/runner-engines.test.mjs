@@ -83,9 +83,9 @@ const FILES = {
   ],
 };
 
-let root = '';
-let eslintFindings = {};
-let oxlintFindings = {};
+let root;
+let eslintFindings;
+let oxlintFindings;
 
 function located(results) {
   const byFile = {};

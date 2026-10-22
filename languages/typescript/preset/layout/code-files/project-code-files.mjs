@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { filesUnder } from '../../../../../shared/filesystem.mjs';
 export const DEPENDENCY_PATH_PATTERN = '(?:^|/)node_modules(?:/|$)';
 const DEPENDENCY_PATH = new RegExp(DEPENDENCY_PATH_PATTERN);
 

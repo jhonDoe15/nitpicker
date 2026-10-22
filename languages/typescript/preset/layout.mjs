@@ -4,8 +4,8 @@ import {
   codeFilesUnder,
   existingRoots,
   DEPENDENCY_PATH_PATTERN,
-} from './layout/project-code-files.mjs';
-export { existingRoots, DEPENDENCY_PATH_PATTERN } from './layout/project-code-files.mjs';
+} from './layout/code-files/project-code-files.mjs';
+export { existingRoots, DEPENDENCY_PATH_PATTERN } from './layout/code-files/project-code-files.mjs';
 import { escapeRegExp, globMatcher, globToRegExpSource } from '../../../shared/paths/glob.mjs';
 import {
   isJavascriptPolicy,
@@ -173,6 +173,17 @@ function excludedGlobsFor(layout, exclude) {
   };
 }
 
+function extensionFacts(javascript) {
+  const extensions = javascript ? javascriptProjectExtensionNames : codeExtensionNames;
+  return {
+    extensions,
+    entryExtensions: javascript
+      ? [...JAVASCRIPT_EXTENSIONS, ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT]
+      : ['ts'],
+    formatExtensions: javascript ? extensions : typescriptFormatExtensionNames,
+  };
+}
+
 export function resolveLayout(
   layout = {},
   exclude = [],
@@ -180,7 +191,8 @@ export function resolveLayout(
 ) {
   const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
   const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
-  const extensions = javascript ? javascriptProjectExtensionNames : codeExtensionNames;
+  const extensionFields = extensionFacts(javascript);
+  const { extensions } = extensionFields;
   const extensionGlob = `{${extensions.join(',')}}`;
   const colocatedTests = layout.colocatedTests === true;
   const patterns = filePatterns({ sourceRoots, testRoots, extensions, colocatedTests });
@@ -197,11 +209,7 @@ export function resolveLayout(
     testFiles,
     javascript,
     colocatedTests,
-    extensions,
-    entryExtensions: javascript
-      ? [...JAVASCRIPT_EXTENSIONS, ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT]
-      : ['ts'],
-    formatExtensions: javascript ? extensions : typescriptFormatExtensionNames,
+    ...extensionFields,
     sourceRoots,
     sourceRoot: sourceRoots[0] ?? defaultSourceRoots[0],
     testRoots,
