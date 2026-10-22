@@ -182,13 +182,8 @@ describe('applyFindingPolicy on a finding about two files', () => {
   it('lifts the rule when an exception glob matches either file', () => {
     const lift = (glob) =>
       applyFindingPolicy(all, { exceptions: [{ rule: 'duplicate-clone', paths: [glob] }] });
-    const routed = {
-      ...clone,
-      message: `${clone.message} If this is intended, add {"rule":"duplicate-clone","paths":["src/a/Left.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
-    };
-
     expect(lift('src/a/**')).toEqual(sizes);
     expect(lift('src/b/**')).toEqual(sizes);
-    expect(lift('src/c/**')).toEqual([routed, ...sizes]);
+    expect(lift('src/c/**')).toEqual(all);
   });
 });

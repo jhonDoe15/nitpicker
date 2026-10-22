@@ -75,9 +75,9 @@ describe('exceptions with "preset": "python"', () => {
     expect(enforceable(result)).toEqual([]);
   });
 
-  it('keeps a legacy print unchanged when the change removes the exceptions entry that lifted it', () => {
+  it('keeps a legacy print unchanged when the change removes the python.exceptions entry that lifted it', () => {
     const lintedConfig = (...entries) =>
-      `${JSON.stringify(validateConfig({ preset: 'python', exceptions: entries }))}\n`;
+      `${JSON.stringify(validateConfig({ preset: 'python', python: { exceptions: entries } }))}\n`;
     const root = pythonRepository({
       'nitpicker.config.json': lintedConfig({
         rule: 'T201',

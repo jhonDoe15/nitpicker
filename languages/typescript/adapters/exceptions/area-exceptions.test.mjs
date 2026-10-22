@@ -53,7 +53,6 @@ const ROUTED = [
   ['dependency-architecture', 'no-production-cycles'],
   ['dependency-architecture', 'domain-does-not-import-adapters'],
   ['mutation', 'mutant-survived'],
-  ['duplicates', 'duplicate-clone'],
   ['coupling', 'stability-direction'],
   ['dead-code', 'files'],
 ];
@@ -76,6 +75,18 @@ describe('applyAreaExceptions', () => {
       ]);
     },
   );
+
+  it('lifts a duplicate-clone finding and leaves its message to the exclude route', () => {
+    const found = finding('duplicates', 'duplicate-clone');
+    withExceptions([
+      { rule: 'duplicate-clone', paths: ['src/main/**'], reason: 'A reviewed reason.' },
+    ]);
+
+    expect(applyAreaExceptions([found])).toEqual([]);
+
+    withExceptions([]);
+    expect(applyAreaExceptions([found])).toEqual([found]);
+  });
 
   it('accepts the rule as the finding prints it, tool first', () => {
     withExceptions([

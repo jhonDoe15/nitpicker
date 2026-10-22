@@ -121,12 +121,14 @@ describe('nitpicker with "preset": "python"', () => {
       ],
     ]);
   });
-  it('lifts a rule for some paths with exceptions and lists the exception', () => {
+  it('lifts a rule for some paths with python.exceptions and lists the exception', () => {
     const root = pythonRepository();
     writeFiles(root, {
       'nitpicker.config.json': JSON.stringify({
         preset: 'python',
-        exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
+        python: {
+          exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
+        },
       }),
       'violations.txt': `${LEGACY_VIOLATION}T201|scripts/run.py|\`print\` found\n`,
     });
@@ -146,7 +148,7 @@ describe('nitpicker with "preset": "python"', () => {
     writeFiles(root, {
       'nitpicker.config.json': JSON.stringify({
         preset: 'python',
-        exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'scripts' }],
+        python: { exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'scripts' }] },
       }),
       'violations.txt': `${LEGACY_VIOLATION}T201|src/demo/a.py|\`print\` found\n`,
     });

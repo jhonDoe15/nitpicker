@@ -94,7 +94,7 @@ describe('analyzing a Python snapshot', () => {
       path: 'src/demo/a.py',
       identity: 'fp:nitpicker/subject=`os` imported but unused',
       message:
-        '`os` imported but unused. If a reviewer agrees this is intended, add {"rule":"F401","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        '`os` imported but unused. To allow it for some paths, add a "python.exceptions" entry for F401 in nitpicker.config.json.',
       classification: 'enforceable',
       location: { line: 1, column: 1 },
     });
@@ -148,9 +148,9 @@ describe('analyzing a Python snapshot', () => {
       'python-rules frozen-dataclass Order',
     ]);
     expect(findings.map(({ message }) => message)).toEqual([
-      '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If a reviewer agrees this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-      'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. If a reviewer agrees this is intended, add {"rule":"return-value","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-      'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. If a reviewer agrees this is intended, add {"rule":"frozen-dataclass","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
+      'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for return-value in nitpicker.config.json.',
+      'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. To allow it for some paths, add a "python.exceptions" entry for frozen-dataclass in nitpicker.config.json.',
     ]);
   });
 
@@ -212,7 +212,7 @@ describe('analyzing a Python snapshot', () => {
         identity: 'f|1→2#1',
         symbol: 'f',
         message:
-          'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"function":"f","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 2 },
       },

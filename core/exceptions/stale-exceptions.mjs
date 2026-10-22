@@ -9,10 +9,12 @@ import { RULE_IDS } from '../../shared/policy.mjs';
 const PACKAGE_PRESETS = ['java', 'kotlin'];
 
 function listedExceptions(config) {
-  return (config.exceptions ?? []).map((entry, index) => ({
-    entry,
-    label: `exceptions[${index}]`,
-  }));
+  const listed = (entries, name) =>
+    (entries ?? []).map((entry, index) => ({ entry, label: `${name}[${index}]` }));
+  return [
+    ...listed(config.exceptions, 'exceptions'),
+    ...listed(config.python?.exceptions, 'python.exceptions'),
+  ];
 }
 
 function headFiles(projectRoot) {

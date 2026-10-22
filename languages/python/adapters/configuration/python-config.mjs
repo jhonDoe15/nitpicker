@@ -83,7 +83,7 @@ function validateSettings(settings) {
     validateEntryPoints(settings.entryPoints);
   }
   if (settings.exceptions !== undefined) {
-    validateExceptions(settings.exceptions, 'python.exceptions');
+    validateExceptions(settings.exceptions, 'python.exceptions', { functionOptional: true });
     validateRuleIds(settings.exceptions);
   }
 }

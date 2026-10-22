@@ -241,7 +241,7 @@ describe('readKotlinCrapFindings', () => {
 
     expect(uncovered.map(({ symbol }) => symbol)).toEqual(['Counter.wide.<lambda>']);
     expect(uncovered[0].message).toBe(
-      'Counter.wide.<lambda> has CRAP 6.00; score must be below 2.1. Test its uncovered branches, or split a branchy part into its own function.',
+      'Counter.wide.<lambda> has CRAP 6.00; score must be below 2.1. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/kotlin/demo/Tiers.kt"],"function":"Counter.wide.<lambda>","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

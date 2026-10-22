@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { applyJavaPolicy } from './java-policy.mjs';
+import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
+import { javaRouteRule } from './java-policy.mjs';
 
 const finding = (tool, file) => ({
   tool,
@@ -10,12 +11,12 @@ const finding = (tool, file) => ({
   classification: 'enforceable',
 });
 
-describe('exception routes of applyJavaPolicy', () => {
+describe('exception routes of the Java route rule', () => {
   it('names an ArchUnit finding as <tool>/<rule> and leaves a PMD finding to the rule catalog', () => {
     const archunit = finding('archunit', 'src/main/java/app/A.java');
     const pmd = finding('pmd', 'src/main/java/app/B.java');
 
-    expect(applyJavaPolicy([archunit, pmd], {})).toEqual([
+    expect(applyFindingPolicy([archunit, pmd], { routeRule: javaRouteRule })).toEqual([
       {
         ...archunit,
         message:
@@ -29,7 +30,8 @@ describe('exception routes of applyJavaPolicy', () => {
     const archunit = finding('archunit', 'src/main/java/app/A.java');
 
     expect(
-      applyJavaPolicy([archunit], {
+      applyFindingPolicy([archunit], {
+        routeRule: javaRouteRule,
         exceptions: [{ rule: 'archunit/Rule', paths: ['src/main/java/app/**'] }],
       }),
     ).toEqual([]);

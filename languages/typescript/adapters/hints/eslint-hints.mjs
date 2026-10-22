@@ -58,15 +58,15 @@ const DISABLED_TEST_TAIL =
   /\s*-\s*if you want to skip a test(?: suite)? temporarily, use \.todo\(\) instead$/u;
 
 const DISABLED_TEST_HINT =
-  '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`. A justified exception goes in nitpicker.config.json.';
+  '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`.';
 
 const BACKTICKED_MATCHER = /`([\w.]+)`/u;
 
 const PREFER_CALLED_WITH_TEXT =
-  'A bare `toHaveBeenCalled()` passes for a call with any arguments. Assert them with `toHaveBeenCalledWith(...)`. If the arguments cannot be pinned, add an exception for vitest/prefer-called-with in nitpicker.config.json.';
+  'A bare `toHaveBeenCalled()` passes for a call with any arguments. Assert them with `toHaveBeenCalledWith(...)`. An exception fits only when the arguments cannot be pinned.';
 
 const THROW_MESSAGE_TEXT =
-  "A bare `toThrow()` passes for any error. Pass the expected message: `toThrow('the message')`. If the message cannot be pinned, add an exception for vitest/require-to-throw-message in nitpicker.config.json.";
+  "A bare `toThrow()` passes for any error. Pass the expected message: `toThrow('the message')`. An exception fits only when the message cannot be pinned.";
 const EXPECT_THROWS_HINT =
   ' In a test, assert a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)` instead of asserting inside a `catch`.';
 

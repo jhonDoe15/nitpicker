@@ -30,11 +30,13 @@ describe('staleExceptionLines', () => {
     const root = repository(['src/app.py']);
     const config = {
       preset: 'python',
-      exceptions: [entry('T201', ['scripts/**']), entry('T201', ['src/*.py'])],
+      exceptions: [entry('file-lines-limit', ['gone/**']), entry('file-lines-limit', ['src/*.py'])],
+      python: { exceptions: [entry('T201', ['scripts/**']), entry('T201', ['src/*.py'])] },
     };
 
     expect(staleExceptionLines(config, root)).toEqual([
-      'exceptions[0] (T201) matches no file: scripts/**',
+      'exceptions[0] (file-lines-limit) matches no file: gone/**',
+      'python.exceptions[0] (T201) matches no file: scripts/**',
     ]);
   });
 
