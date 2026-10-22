@@ -317,6 +317,45 @@ Base: ${repository.baseRef} (argument)
     );
     expect(output.stdoutText).toMatch(/Fixed files:\nlib\/changed.ts\nBase:/);
   });
+  it('fixes with the ESLint project config the project opted into', () => {
+    const repository = createRepository({
+      'nitpicker.config.json': `${JSON.stringify({
+        tools: { eslint: { precedence: ['nitpicker', 'project'] } },
+      })}\n`,
+      'eslint.config.mjs': "export default [{ rules: { 'object-shorthand': 'error' } }];\n",
+      'src/main/changed.ts': 'export const changed = 1;\n',
+      'tests/placeholder.ts': 'export const placeholder = true;\n',
+    });
+    symlinkSync(
+      path.join(fileURLToPath(new URL('../', import.meta.url)), '../node_modules'),
+      path.join(repository.root, 'node_modules'),
+      'dir',
+    );
+    writeFiles(repository.root, {
+      'src/main/changed.ts': 'const changed = 1;\nexport const holder = { changed: changed };\n',
+    });
+    const output = captureOutput();
+    const exitCode = runCli({
+      arguments_: [
+        '--fix',
+        '--base',
+        repository.baseRef,
+        '--analyzer',
+        'prettier-format',
+        '--output',
+        makeOutputRoot(),
+      ],
+      currentProjectRoot: repository.root,
+      environment: isolatedCache(),
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+
+    expect(exitCode, output.stdoutText + output.stderrText).toBe(0);
+    expect(readFileSync(path.join(repository.root, 'src/main/changed.ts'), 'utf8')).toBe(
+      'const changed = 1;\nexport const holder = { changed };\n',
+    );
+  });
   it('rejects --fix combined with --all', () => {
     const output = captureOutput();
     expect(

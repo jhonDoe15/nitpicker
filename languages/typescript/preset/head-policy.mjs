@@ -25,6 +25,7 @@ import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
+import { eslintProjectFacts } from './eslint-project/project-config.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -72,7 +73,6 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 }
 
 function withProjectFacts(policy, config, projectRoot) {
-  const prettier = policy.tools?.prettier;
   return {
     ...policy,
     ...(SCOPED_PRESETS.includes(config.preset)
@@ -81,13 +81,19 @@ function withProjectFacts(policy, config, projectRoot) {
           libraries: detectLibraries(projectRoot, excludedPathMatcher(policy)),
         }
       : {}),
+    ...(policy.tools === undefined ? {} : { tools: withToolFacts(policy.tools, projectRoot) }),
+  };
+}
+
+function withToolFacts(tools, projectRoot) {
+  const { prettier, eslint } = tools;
+  return {
+    ...tools,
     ...(usesProjectConfig(prettier?.precedence ?? [])
-      ? {
-          tools: {
-            ...policy.tools,
-            prettier: { ...prettier, projectConfigDigest: projectFilesDigest(projectRoot) },
-          },
-        }
+      ? { prettier: { ...prettier, projectConfigDigest: projectFilesDigest(projectRoot) } }
+      : {}),
+    ...(usesProjectConfig(eslint?.precedence ?? [])
+      ? { eslint: { ...eslint, ...eslintProjectFacts(projectRoot) } }
       : {}),
   };
 }
@@ -149,12 +155,17 @@ function picked(source, keys) {
   );
 }
 
-function headPrettierDigest(policy, headPolicy) {
-  const digest = headPolicy.tools?.prettier?.projectConfigDigest;
-  const prettier = policy.tools?.prettier;
-  return digest === undefined || !usesProjectConfig(prettier?.precedence ?? [])
-    ? {}
-    : { tools: { ...policy.tools, prettier: { ...prettier, projectConfigDigest: digest } } };
+function headToolFacts(policy, headPolicy) {
+  const tools = { ...policy.tools };
+  for (const [tool, keys] of [
+    ['prettier', ['projectConfigDigest']],
+    ['eslint', ['projectConfigFile', 'projectConfigDigest']],
+  ]) {
+    if (usesProjectConfig(tools[tool]?.precedence ?? [])) {
+      tools[tool] = { ...tools[tool], ...picked(headPolicy.tools?.[tool] ?? {}, keys) };
+    }
+  }
+  return policy.tools === undefined ? {} : { tools };
 }
 
 function headTestPlacement(policy, headPolicy) {
@@ -174,7 +185,7 @@ export function withHeadCheckoutFacts(policy, headPolicy = {}) {
         { ...policy[scope], ...picked(headPolicy[scope], keys) },
       ]),
     ),
-    ...headPrettierDigest(policy, headPolicy),
+    ...headToolFacts(policy, headPolicy),
   };
 }
 
