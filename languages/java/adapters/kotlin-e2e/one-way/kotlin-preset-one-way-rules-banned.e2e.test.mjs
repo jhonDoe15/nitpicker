@@ -5,7 +5,8 @@ import {
   fixturePath,
   kotlinRuleCases,
 } from '../../kotlin/rules/test-support/kotlin-rule-cases.mjs';
-import { SUPPRESSION_RULE, addOneWayHint } from '../../kotlin/rules/kotlin-rules.mjs';
+import { withKotlinRuleMessage } from '../../kotlin/rules/kotlin-messages.mjs';
+import { SUPPRESSION_RULE } from '../../kotlin/rules/kotlin-rules.mjs';
 import {
   detektFindingsOf,
   git,
@@ -39,10 +40,12 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
       const [finding] = detektFindingsOf(result.newEnforceable, testCase).filter(
         ({ rule }) => rule === testCase.rule,
       );
-      const recorded = addOneWayHint({
+      const recorded = withKotlinRuleMessage({
         tool: 'detekt',
         rule: testCase.rule,
+        path: finding.path,
         message: expectedMessage(testCase, 'banned'),
+        classification: 'enforceable',
       });
 
       expect(finding.message).toBe(recorded.message);

@@ -18,6 +18,7 @@
   "languages/java/adapters/spring/e2e/java-spring-console.e2e.test.mjs": 150,
   "languages/java/adapters/spring/e2e/java-spring-review.e2e.test.mjs": 88,
   "languages/java/adapters/spring/e2e/java-spring-rules.e2e.test.mjs": 29,
+  "languages/java/adapters/spring/e2e/spring-arch.e2e.test.mjs": 100,
   "languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs": 94,
   "languages/java/guards/guards.e2e.test.mjs": 160,
   "languages/java/maven/errorprone/maven-errorprone.e2e.test.mjs": 20,
@@ -29,5 +30,6 @@
   "languages/java/maven/preset/maven-preset-integration.e2e.test.mjs": 63,
   "languages/java/maven/preset/maven-preset-parity.e2e.test.mjs": 93,
   "languages/java/maven/preset/maven-preset-reactor.e2e.test.mjs": 124,
+  "languages/java/maven/preset/maven-preset-spring-arch.e2e.test.mjs": 110,
   "languages/java/messages/rule-catalog.e2e.test.mjs": 6
 }
