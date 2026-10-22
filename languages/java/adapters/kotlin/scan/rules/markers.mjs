@@ -61,6 +61,12 @@ const CODE_SHAPES = [
 const SENTENCE = /^[A-Z][a-z]+ [a-z]+ [a-z]+/;
 const FENCE = /^(?:```|~~~)/;
 const NOT_CODE = /^(?:@|https?:|TODO\b|FIXME\b|[-*>#]|\{@)/;
+const EXAMPLE_HEADING = /^(?:e\.g\.|example|examples|usage|sample|for example)\b/i;
+const STRING_LITERAL = /"(?:\\.|[^"\\\n])*"/g;
+const WORD_RUN = /\b[a-z]{2,}\s+[a-z]{2,}\b/;
+const KOTLIN_WORDS =
+  /\b(?:if|else|when|try|catch|is|in|as|by|to|and|or|shl|shr|ushr|xor|until|downTo|step|object|return|throw|null|true|false|this|super|new|it|var|val|fun|const|lateinit)\b/g;
+const VALUE_SHAPES = new Set([0, 2]);
 
 export function generatedFile(scanned) {
   const header = scanned.comments.find(({ start }) => scanned.code.slice(0, start).trim() === '');
@@ -147,21 +153,27 @@ function commentGroups(scanned) {
   return groups;
 }
 
+function readsAsProse(text) {
+  return WORD_RUN.test(text.replaceAll(STRING_LITERAL, '""').replaceAll(KOTLIN_WORDS, ' '));
+}
+
 function isCodeLine(text) {
   if (text === '' || SENTENCE.test(text) || NOT_CODE.test(text)) {
     return false;
   }
-  return CODE_SHAPES.some((shape) => shape.test(text));
+  const shape = CODE_SHAPES.findIndex((candidate) => candidate.test(text));
+  return shape !== -1 && !(VALUE_SHAPES.has(shape) && readsAsProse(text));
 }
 
 function firstCodeLine(lines) {
-  let fenced = false;
+  let documented = false;
   return lines.findIndex((line) => {
     if (FENCE.test(line)) {
-      fenced = !fenced;
+      documented = !documented;
       return false;
     }
-    return !fenced && isCodeLine(line);
+    documented = documented || EXAMPLE_HEADING.test(line);
+    return !documented && isCodeLine(line);
   });
 }
 
