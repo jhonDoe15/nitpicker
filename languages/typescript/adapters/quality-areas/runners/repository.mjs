@@ -24,7 +24,7 @@ import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
 import { renamedDuplicatesReport } from '../../../preset/duplicates/renamed.mjs';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mjs';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mjs';
-import { baselinePathsOf } from '../base-paths.mjs';
+import { baselinePathsOf } from '../../../../../shared/rules/facts/baseline.mjs';
 
 export async function runCodingStandards(options) {
   const checker = await importPolicyModule(

@@ -62,7 +62,7 @@ describe('analyzer cache keys', () => {
         ),
       ]),
     ).toEqual([]);
-    expect(missing('dependency-architecture', ['shared/glob.mjs'])).toEqual([]);
+    expect(missing('dependency-architecture', ['shared/paths/glob.mjs'])).toEqual([]);
     expect(
       missing('dead-code', [
         'languages/typescript/adapters/quality-areas/reporting/dead-code.mjs',
