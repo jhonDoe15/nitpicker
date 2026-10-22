@@ -17,6 +17,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/exceptions.mjs',
   'languages/typescript/preset/eslint-config/policies/error-wrapping-policy.mjs',
   'languages/typescript/preset/eslint-config/strict.mjs',
+  'languages/typescript/preset/eslint-config/concurrency/atomic-updates.mjs',
   'languages/typescript/preset/eslint-config/strict/strict-control-flow.mjs',
   'languages/typescript/preset/eslint-config/policy/production-policy.mjs',
   'languages/typescript/preset/eslint-config/policy/security-facts.mjs',

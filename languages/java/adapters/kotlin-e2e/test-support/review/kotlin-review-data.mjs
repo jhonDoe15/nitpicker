@@ -101,6 +101,34 @@ class WaitingTest {
 }
 `;
 
+const LEDGER = `package demo.orders
+
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+interface Balances {
+    suspend fun fetch(): Int
+}
+
+class Ledger(private val balances: Balances) {
+    private val mutex = Mutex()
+    var total = 0
+
+    suspend fun add() {
+        total += balances.fetch()
+    }
+
+    suspend fun addAfterAwaiting() {
+        val delta = balances.fetch()
+        total += delta
+    }
+
+    suspend fun addSerialized() {
+        mutex.withLock { total += balances.fetch() }
+    }
+}
+`;
+
 const SPRING_BOOT_TEST = `package org.springframework.boot.test.context
 
 annotation class SpringBootTest(val webEnvironment: String = "MOCK")
@@ -144,6 +172,7 @@ export const REVIEW_RULE_FILES = {
   [`${MAIN}/Clock.kt`]: CLOCK,
   [`${MAIN}/Settlement.kt`]: SETTLEMENT,
   [`${MAIN}/Formatting.kt`]: FORMATTING,
+  [`${MAIN}/Ledger.kt`]: LEDGER,
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
   [`${SPRING}/boot/test/context/SpringBootTest.kt`]: SPRING_BOOT_TEST,
@@ -158,6 +187,7 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'FixedSleepInTest WaitingTest.iterates',
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in add',
   'SingularAndPluralMember Query.tags',
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
