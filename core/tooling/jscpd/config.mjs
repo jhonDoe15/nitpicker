@@ -6,7 +6,7 @@ import { missingProjectConfig } from '../../../shared/conventions/tool-precedenc
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
 export const JSCPD_PROJECT_FILE = '.jscpd.json';
-export const JSCPD_PROJECT_KEYS = [
+const JSCPD_PROJECT_KEYS = [
   'minTokens',
   'minLines',
   'maxLines',
@@ -49,7 +49,9 @@ function parsedProjectConfig(text) {
 }
 
 export function resolveJscpdPolicy(settings, projectRoot) {
-  if (!settings?.precedence?.includes('project')) return settings;
+  if (!settings?.precedence?.includes('project')) {
+    return settings;
+  }
   const text = readFileSync(projectFile(projectRoot), 'utf8');
   return {
     ...settings,
@@ -59,7 +61,9 @@ export function resolveJscpdPolicy(settings, projectRoot) {
 }
 
 function listOf(value) {
-  if (value === undefined) return [];
+  if (value === undefined) {
+    return [];
+  }
   return Array.isArray(value) ? value : [value];
 }
 
