@@ -13,7 +13,10 @@ import {
 } from '../test-run.mjs';
 import { loadFailureReport, reportFromMocha } from './mocha-report.mjs';
 import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
+
+const UNIQUE_FILES = path.join(import.meta.dirname, 'mocha-files.config.mjs');
 
 const OPTIONS_NITPICKER_SETS = {
   flags: ['--watch', '-w', '--forbid-only', '--bail', '-b'],
@@ -57,6 +60,8 @@ export async function runMocha(options, command) {
       environment: { ...coverage.environment, ...testConsole.environment },
       arguments_: [
         ...withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
+        '--require',
+        UNIQUE_FILES,
         ...(testConsole.enabled ? ['--require', consoleProducerPath(options, 'mocha')] : []),
         '--reporter',
         'json',
