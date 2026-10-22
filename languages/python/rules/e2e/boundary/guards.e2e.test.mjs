@@ -27,7 +27,7 @@ describe.skipIf(!enabled)('handwritten-boundary-guard', () => {
       [
         'an Any parameter',
         'from typing import Any\n\n\ndef parse(value: Any):\n    return isinstance(value, str)\n',
-        ['explicit-any:4 parse.typing.Any', 'handwritten-boundary-guard:5 isinstance(value, str)'],
+        ['explicit-any:4 parse(value)', 'handwritten-boundary-guard:5 isinstance(value, str)'],
       ],
       [
         'yaml.safe_load',
@@ -37,7 +37,7 @@ describe.skipIf(!enabled)('handwritten-boundary-guard', () => {
       [
         'a TypeGuard over Any',
         'from typing import Any, TypeGuard\n\n\ndef is_order(value: Any) -> TypeGuard[dict[str, int]]:\n    return True\n',
-        ['explicit-any:4 is_order.typing.Any', 'handwritten-boundary-guard:4 is_order'],
+        ['explicit-any:4 is_order(value)', 'handwritten-boundary-guard:4 is_order'],
       ],
       [
         'a TypeIs over object',
@@ -82,7 +82,7 @@ describe.skipIf(!enabled)('handwritten-boundary-guard through other forms', () =
     };
 
     expect(findingsOf(files, { sourceRoots: ['src'] })).toEqual([
-      'explicit-any src/shop/decode.py:5 decode.typing.Any',
+      'explicit-any src/shop/decode.py:5 decode(return)',
       'handwritten-boundary-guard src/shop/guards.py:13 isinstance(payload, dict)',
       'handwritten-boundary-guard src/shop/guards.py:17 isinstance(decode(), dict)',
       'handwritten-boundary-guard src/shop/guards.py:22 isinstance(data, list)',
@@ -92,7 +92,7 @@ describe.skipIf(!enabled)('handwritten-boundary-guard through other forms', () =
       'handwritten-boundary-guard src/shop/guards.py:41 match(json.loads())',
       'handwritten-boundary-guard src/shop/guards.py:49 type(data)',
       'handwritten-boundary-guard src/shop/guards.py:54 hasattr(data)',
-      'explicit-any src/shop/guards.py:57 parameter.typing.Any',
+      'explicit-any src/shop/guards.py:57 parameter(payload)',
       'handwritten-boundary-guard src/shop/guards.py:58 isinstance(payload, int)',
       'handwritten-boundary-guard src/shop/guards.py:62 isinstance(payload, int)',
       'handwritten-boundary-guard src/shop/guards.py:65 is_order',

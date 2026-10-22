@@ -612,35 +612,34 @@ are listed at the end.
 | Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
 
-`type-cast` rejects calls resolved to `typing.cast` or `typing_extensions.cast`;
-`explicit-any` rejects explicit references to those modules' `Any` in source and tests,
-including imported names, renamed imports and quoted annotations. Use a concrete type or
-`object` and narrow with a runtime check, or parse untrusted input in an adapter. Both
-rules accept reviewed `python.exceptions` entries with paths and a reason. Existing
-`any-in-domain` and `pydantic-any-field` findings take precedence on the same line.
+`type-cast` rejects `typing.cast` (and `typing_extensions.cast`) as a call or as a value
+(`partial(cast, int)`); `explicit-any` rejects every explicit `Any` of those modules. Both apply in
+source and in tests, as the TypeScript preset bans `as` and `any` in tests too. The finding is named
+by what it types: `f(a)`, `f(return)`, `Model.field`, `Alias`, or `cast(str) in f`, so a finding
+added above another does not renumber it; one annotation gives one finding however many `Any` it holds
+(`dict[str, Any] | list[Any]`), and `cast(Any, value)` is one `type-cast` finding. The allowed forms
+are the concrete type, a `Protocol`, a `TypeVar`, a `ParamSpec` for a wrapper's `*args` and `**kwargs`,
+and `object` narrowed with `isinstance` or `match` (`dict[str, object]`, `Callable[..., object]`);
+untrusted input is parsed once in `adapters/` (the cast message names it when the target is a
+container). Both rules take `python.exceptions` entries with paths and a reason. ruff's `ANN401` is
+not selected, since `explicit-any` covers the same `Any` in every position.
 
-Resolution is lexical and conservative: a reassigned or ambiguous imported name is not
-assumed to refer to typing. Dynamic imports, wildcard imports, re-exports and arbitrary
-assignment aliases are not followed. Annotation strings are parsed as expressions;
-`Literal` string values and `Annotated` metadata are data, not type references. Unused
-imports alone do not produce these findings (ruff handles unused imports).
-
-`type-cast` rejects calls resolved to `typing.cast` or `typing_extensions.cast`;
-`explicit-any` rejects every explicit reference to those modules' `Any`, in source and in tests (as the
-TypeScript preset bans `as` and `any` in tests too), including imported names, renamed imports, quoted
-annotations and type aliases. The messages name the allowed forms: the concrete type, a `Protocol`, a
-`TypeVar`, a `ParamSpec` for the `*args` and `**kwargs` of a wrapper, `object` narrowed with `isinstance`
-or `match`, and, for untrusted input such as JSON, a model parsed once in `adapters/` instead of
-`dict[str, Any]` (`dict[str, object]` for a value only passed through). Both rules take `python.exceptions`
-entries with paths and a reason. `cast(Any, value)` is one `type-cast` finding, and an `Any` on a line
-that `any-in-domain` or `pydantic-any-field` already reports is not reported twice. ruff's `ANN401` is not
-selected, since `explicit-any` covers the same `Any` in every position.
-
-Resolution is lexical and conservative: a reassigned or ambiguous imported name is not assumed to refer
-to typing. Dynamic imports, wildcard imports (ruff `F403` bans them), re-exports and arbitrary assignment
-aliases are not followed. Annotation strings are parsed as expressions; `Literal` string values and
-`Annotated` metadata are data, not type references. Unused imports alone do not produce these findings
-(ruff handles unused imports), and standalone `.pyi` stubs are not read.
+- An `Any` inside a node that `any-in-domain` or `pydantic-any-field` already reports (the whole
+  annotation, also over several lines) is not reported again, so one exception for the first rule
+  covers the `explicit-any` on that node too.
+- The implementation signature of a function that has `@overload` siblings is not checked: callers
+  see the overloads, which are.
+- `__getattr__`, `Callable[..., Any]` and test mocks are reported like any other `Any`; write
+  `Callable[..., object]` and a typed fake.
+- Resolution is lexical and conservative: a reassigned or ambiguous imported name (a comprehension
+  variable, a `match` capture, a parameter) is not assumed to refer to typing, while `typing` and
+  `typing_extensions` count as the same module (`try: from typing import cast` /
+  `except ImportError: from typing_extensions import cast`). Dynamic imports, wildcard imports (ruff
+  `F403` bans them), re-exports and arbitrary assignment aliases are not followed.
+- Annotation strings are parsed as expressions; `Literal` string values and `Annotated` metadata are
+  data, not type references. PEP 695/696 type-parameter bounds and defaults, class keywords and
+  subscript targets are read. Unused imports alone do not produce these findings (ruff handles unused
+  imports), and standalone `.pyi` stubs are not read.
 
 Details that are decisions rather than the table:
 

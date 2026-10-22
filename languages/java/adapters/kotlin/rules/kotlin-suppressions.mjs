@@ -48,15 +48,10 @@ function filesOf(projectRoot, roots) {
 }
 
 export function readSuppressionFindings(projectRoot, { sourceRoots, testRoots = [] }) {
-  const compiled = new Set(filesOf(projectRoot, sourceRoots));
   return filesOf(projectRoot, [...sourceRoots, ...testRoots]).flatMap((file) => {
     const next = createIdentityCounter();
     return suppressionTokens(readFileSync(path.join(projectRoot, file), 'utf8'))
-      .filter(
-        (token) =>
-          isBannedSuppression(token) &&
-          (compilerWarningRule(token) === undefined || compiled.has(file)),
-      )
+      .filter(isBannedSuppression)
       .map((token) => suppressionFinding(file, token, next(`suppress:${token}`)));
   });
 }

@@ -176,7 +176,7 @@ describe('readSuppressionFindings', () => {
     ]);
   });
 
-  it('bans compiler-warning tokens in main sources only, which the kotlinc lint compiles, and rule tokens everywhere', () => {
+  it('bans compiler-warning tokens in main and test sources, which the kotlinc lint compiles, and rule tokens everywhere', () => {
     const suppressed =
       '@Suppress("UNCHECKED_CAST", "DEPRECATION", "MagicNumber")\nfun a(value: Any) = value as List<String>\n';
     const root = projectWith({
@@ -193,6 +193,8 @@ describe('readSuppressionFindings', () => {
       'src/main/kotlin/A.kt suppress:UNCHECKED_CAST',
       'src/main/kotlin/A.kt suppress:DEPRECATION',
       'src/main/kotlin/A.kt suppress:MagicNumber',
+      'src/test/kotlin/ATest.kt suppress:UNCHECKED_CAST',
+      'src/test/kotlin/ATest.kt suppress:DEPRECATION',
       'src/test/kotlin/ATest.kt suppress:MagicNumber',
     ]);
   });

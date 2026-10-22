@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { hash, nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
 import { braceDepths, lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
+import { CAST_MESSAGES, unsafeCasts } from './rules/casts.mjs';
 import { CALL_MESSAGES, ioInLoops, logTemplates, shellCommands } from './rules/calls.mjs';
 import { CATCH_MESSAGES, booleanFlags, catchOnlyLogs } from './rules/catches.mjs';
 import { DECLARATION_MESSAGES, genericNames, mutableModuleState } from './rules/declarations.mjs';
@@ -30,6 +31,7 @@ const MESSAGES = {
   ...MARKER_MESSAGES,
   ...DECLARATION_MESSAGES,
   ...CALL_MESSAGES,
+  ...CAST_MESSAGES,
   ...CATCH_MESSAGES,
   ...SECRET_MESSAGES,
   ...TEST_MESSAGES,
@@ -50,6 +52,7 @@ const MAIN_RULES = [
   logTemplates,
   shellCommands,
   ioInLoops,
+  unsafeCasts,
   catchOnlyLogs,
   booleanFlags,
   hardcodedSecrets,
@@ -62,7 +65,7 @@ const MAIN_RULES = [
   httpWithoutTimeout,
   unsafeDeserialization,
 ];
-const TEST_RULES = [testClassesWithoutTests];
+const TEST_RULES = [testClassesWithoutTests, unsafeCasts];
 
 const TOP_LEVEL_MAIN = /(?<![\w.])fun\s+main\s*\(/g;
 const ROOT_MARKERS = [

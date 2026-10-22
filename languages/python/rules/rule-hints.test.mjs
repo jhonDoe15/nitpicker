@@ -362,3 +362,31 @@ describe('hints follow the libraries of the project', () => {
     expect(message).toContain(list);
   });
 });
+
+describe('type laundering messages', () => {
+  const cast = (subject, libraries) =>
+    withHint(
+      { ...sample({ tool: 'python-rules', rule: 'type-cast' }), subject, message: 'x' },
+      libraries,
+    ).message;
+
+  it('names the parse at the boundary only for a container target', () => {
+    expect(cast('cast(str) in convert')).toBe(
+      `x. Narrow the value with \`isinstance\` or \`match\`, or give it the correct type at its source. ${route('type-cast')}`,
+    );
+    expect(cast('cast(dict[str, int])')).toContain(
+      'Parse untrusted input once in `adapters/` with',
+    );
+  });
+
+  it('keeps the allowed form of an explicit Any to one sentence', () => {
+    const { message } = withHint({
+      ...sample({ tool: 'python-rules', rule: 'explicit-any' }),
+      subject: 'f(a)',
+    });
+
+    expect(message).toBe(
+      `The base message. Write the concrete type, a \`Protocol\`, a \`TypeVar\`, a \`ParamSpec\` or \`object\` (\`dict[str, object]\`, \`Callable[..., object]\`). ${route('explicit-any')}`,
+    );
+  });
+});

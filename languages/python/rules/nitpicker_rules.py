@@ -171,7 +171,9 @@ def main(arguments):
     results.findings.sort(
         key=lambda item: (item["path"], item["line"], item["rule"], item["subject"])
     )
-    write_json(out_file, results.findings)
+    write_json(
+        out_file, [{k: v for k, v in item.items() if k != "end"} for item in results.findings]
+    )
     allowed = sorted(
         results.allowances, key=lambda item: (item["path"], item["line"], item["rule"])
     )

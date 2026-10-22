@@ -22,6 +22,7 @@
   "languages/python/rules/e2e/boundary/library-rules.e2e.test.mjs": 2,
   "languages/python/rules/e2e/boundary/paths.e2e.test.mjs": 1,
   "languages/python/rules/e2e/boundary/state.e2e.test.mjs": 1,
+  "languages/python/rules/e2e/boundary/type-laundering.e2e.test.mjs": 3,
   "languages/python/rules/e2e/boundary/types.e2e.test.mjs": 1,
   "languages/python/rules/e2e/environment/commands.e2e.test.mjs": 1,
   "languages/python/rules/e2e/environment/environment.e2e.test.mjs": 8,

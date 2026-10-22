@@ -37,8 +37,17 @@ export const ONE_WAY_RULES = [
       'Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug.',
   },
   { name: 'CastNullableToNonNullableType', ruleset: 'potential-bugs' },
-  { name: 'CastToNullableType', ruleset: 'potential-bugs' },
-  { name: 'DontDowncastCollectionTypes', ruleset: 'potential-bugs' },
+  {
+    name: 'CastToNullableType',
+    ruleset: 'potential-bugs',
+    allowed: 'Use `as? T` and handle the null; `as T?` still throws when the type is wrong.',
+  },
+  {
+    name: 'DontDowncastCollectionTypes',
+    ruleset: 'potential-bugs',
+    allowed:
+      'Copy it with `toMutableList()`, `toMutableMap()` or `toMutableSet()`, or ask for the mutable type at its source.',
+  },
   {
     name: 'TooGenericExceptionCaught',
     ruleset: 'exceptions',

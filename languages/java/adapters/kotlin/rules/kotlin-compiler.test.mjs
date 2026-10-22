@@ -84,10 +84,57 @@ describe('readCompilerFindings', () => {
         rule: 'lint-not-run',
         path: '.',
         identity: 'lint-not-run',
-        message: `No kotlinc lint report from the lint compile (src/main/kotlin/demo/A.kt:3:1: error: [UNRESOLVED_REFERENCE] Unresolved reference 'serializer'.), so unchecked casts, deprecated calls and redundant casts were not checked. Fix what that compile reports (the main sources, the compile class path and the compiler plugins). ${exceptionHint('kotlinc/lint-not-run', '**')}`,
+        message: `No kotlinc lint report from the lint compile of the main sources (src/main/kotlin/demo/A.kt:3:1: error: [UNRESOLVED_REFERENCE] Unresolved reference 'serializer'.), so unchecked casts, deprecated calls and redundant casts were not checked there. Fix what that compile reports (the main sources, the compile class path and the compiler plugins). ${exceptionHint('kotlinc/lint-not-run', '**')}`,
         classification: 'descriptive',
       },
     ]);
+  });
+
+  it('reads the test report apart from the main one, so each root set keeps its own warnings', () => {
+    const root = projectWith({ exitCode: 0, output: OUTPUT });
+    writeFileSync(
+      path.join(root, 'reports/kotlinc-test.json'),
+      JSON.stringify({
+        exitCode: 0,
+        output:
+          "src/test/kotlin/demo/ATest.kt:4:9: warning: [UNCHECKED_CAST] Unchecked cast of 'Any' to 'List<String>'.\nsrc/main/kotlin/demo/A.kt:8:19: warning: [USELESS_CAST] Cast is redundant.",
+      }),
+    );
+
+    const findings = readCompilerFindings(
+      path.join(root, 'reports'),
+      ['src/main/kotlin'],
+      ['src/test/kotlin'],
+    );
+
+    expect(findings.map(({ rule, path: file }) => `${rule} ${file}`)).toEqual([
+      'deprecation src/main/kotlin/demo/A.kt',
+      'cast src/main/kotlin/demo/A.kt',
+      'unchecked src/main/kotlin/demo/A.kt',
+      'unchecked src/main/kotlin/demo/A.kt',
+      'unchecked src/test/kotlin/demo/ATest.kt',
+    ]);
+  });
+
+  it('reports a failed test lint compile as not run on its own identity', () => {
+    const root = projectWith({ exitCode: 0, output: '' });
+    writeFileSync(
+      path.join(root, 'reports/kotlinc-test.json'),
+      JSON.stringify({ exitCode: 1, output: 'error: the class path could not be resolved: x' }),
+    );
+
+    const [notRun] = readCompilerFindings(
+      path.join(root, 'reports'),
+      ['src/main/kotlin'],
+      ['src/test/kotlin'],
+    );
+
+    expect([notRun.rule, notRun.identity, notRun.classification]).toEqual([
+      'lint-not-run',
+      'lint-not-run:test',
+      'descriptive',
+    ]);
+    expect(notRun.message).toContain('the lint compile of the test sources (error: the class path');
   });
 
   it('reports nothing without a report', () => {
