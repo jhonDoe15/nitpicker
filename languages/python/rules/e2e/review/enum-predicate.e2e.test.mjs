@@ -56,6 +56,39 @@ describe.skipIf(!enabled)('exhaustive-enum-predicate', () => {
       [['f Kind', { union: 'Kind' }]],
     ],
     [
+      'an augmented assignment',
+      'def f(s: Status, ok: bool) -> bool:\n    ok |= s == Status.NEW or s == Status.PAID\n    return ok\n',
+      [['f Status', { union: 'Status' }]],
+    ],
+    [
+      'a nested enum',
+      'class Order:\n    class Kind(enum.Enum):\n        A = 1\n        B = 2\n        C = 3\n\n\ndef f(k: Order.Kind) -> bool:\n    return k in (Order.Kind.A, Order.Kind.B)\n',
+      [['f Kind', { union: 'Kind' }]],
+    ],
+    [
+      'an enum deriving from a project enum base',
+      'class Base(enum.Enum):\n    pass\n\n\nclass Color(Base):\n    RED = 1\n    GREEN = 2\n    BLUE = 3\n\n\ndef f(c: Color) -> bool:\n    return c is Color.RED or c is Color.BLUE\n',
+      [['f Color', { union: 'Color' }]],
+    ],
+    [
+      'a Flag, also through a project base',
+      'class Perm(enum.Flag):\n    R = 1\n    W = 2\n    X = 4\n\n\nclass Base(enum.IntFlag):\n    pass\n\n\nclass Bits(Base):\n    A = 1\n    B = 2\n    C = 4\n\n\ndef f(p: Perm, b: Bits) -> bool:\n    return (p == Perm.R or p == Perm.W) and (b == Bits.A or b == Bits.B)\n',
+      [],
+    ],
+    [
+      'a predicate method of the enum itself',
+      'class Stage(enum.Enum):\n    A = 1\n    B = 2\n    C = 3\n\n    def is_early(self) -> bool:\n        return self in (Stage.A, Stage.B)\n\n    def is_open(self, s: Status) -> bool:\n        return s in (Status.NEW, Status.PAID)\n',
+      [['Stage.is_open Status', { union: 'Status' }]],
+    ],
+    [
+      'an Annotated or string Literal annotation',
+      'from typing import Annotated, Literal\nKind = Literal["a", "b", "c"]\ndef f(k: Annotated[Kind, "doc"], m: "Kind") -> bool:\n    one = k == "a" or k == "b"\n    two = m == "a" or m == "c"\n    return one and two\n',
+      [
+        ['f Kind', { union: 'Kind' }],
+        ['f Kind', { union: 'Kind' }],
+      ],
+    ],
+    [
       'an if condition',
       'def f(s: Status) -> int:\n    if s == Status.NEW or s == Status.PAID:\n        return 1\n    return 0\n',
       [],
@@ -103,5 +136,20 @@ describe.skipIf(!enabled)('exhaustive-enum-predicate', () => {
           'from shop import status\nfrom .status import Status\n\n\ndef f(s: Status) -> bool:\n    return s is status.Status.NEW or s is Status.PAID\n',
       }),
     ).toEqual(['exhaustive-enum-predicate shop/orders.py:6 f Status']);
+  });
+
+  it('follows a Literal alias through a module attribute and re-exports', () => {
+    expect(
+      dataOf('exhaustive-enum-predicate', {
+        'shop/__init__.py': '',
+        'shop/kinds.py': 'from typing import Literal\nMode = Literal["a", "b", "c"]\n',
+        'shop/types.py': 'from shop.kinds import Mode\n',
+        'shop/api.py':
+          'from shop import types as st\nfrom shop.types import Mode\n\n\ndef f(m: st.Mode, n: Mode) -> bool:\n    one = m == "a" or m == "b"\n    two = n == "a" or n == "c"\n    return one and two\n',
+      }),
+    ).toEqual([
+      ['f Mode', { union: 'Mode' }],
+      ['f Mode', { union: 'Mode' }],
+    ]);
   });
 });
