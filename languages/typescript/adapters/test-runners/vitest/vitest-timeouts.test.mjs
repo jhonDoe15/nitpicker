@@ -72,16 +72,21 @@ expect(task.timeout).toBe(6000); });`,
     expect([run.failed, run.report.numTotalTests]).toEqual([false, 1]);
   });
 
-  it('rejects external native projects only when timeout configuration is requested', () => {
-    expect(() =>
-      runProject(
-        {
-          'vitest.config.mjs': `export default { test: { projects: ['./vitest.project.config.mjs'] } };`,
-          'vitest.project.config.mjs': `export default { test: { include: ['tests/**/*.test.mjs'] } };`,
-          'tests/a.test.mjs': `import { test } from 'vitest'; test('a', () => {});`,
-        },
-        { defaults: { testTimeoutMs: 2000 } },
-      ),
-    ).toThrow('inline Vitest projects');
+  it('applies configured deadlines to external native projects', () => {
+    const { root, run } = runProject(
+      {
+        'src/value.mjs': 'export const value = 42;',
+        'setup.mjs': 'globalThis.nativeSetup = true;',
+        'vitest.config.mjs': `export default { test: { projects: ['./vitest.project.config.mjs'] } };`,
+        'vitest.project.config.mjs': `export default { test: { include: ['tests/**/*.test.mjs'], setupFiles: ['./setup.mjs'] } };`,
+        'tests/a.test.mjs': `import { test, expect } from 'vitest';
+import { value } from '../src/value.mjs';
+test('a', ({ task }) => { expect(value).toBe(42);
+expect(globalThis.nativeSetup).toBe(true); expect(task.timeout).toBe(2000); });`,
+      },
+      { defaults: { testTimeoutMs: 2000 } },
+    );
+    expect([run.failed, run.report.numTotalTests]).toEqual([false, 1]);
+    expect(existsSync(path.join(root, 'reports/quality/coverage/coverage-final.json'))).toBe(true);
   });
 });

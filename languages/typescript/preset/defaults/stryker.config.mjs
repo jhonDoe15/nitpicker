@@ -8,6 +8,7 @@ const {
   testRoots,
   sourceRoots,
   sourceTestDirectoryGlobs,
+  testSupportGlobs,
 } = readLayout();
 
 export default {
@@ -15,6 +16,7 @@ export default {
     ...sourceGlobs,
     ...runtimeExcludedGlobs.map((glob) => `!${glob}`),
     ...sourceTestDirectoryGlobs.map((glob) => `!${glob}`),
+    ...testSupportGlobs.map((glob) => `!${glob}`),
     ...testGlobs.map((glob) => `!${glob}`),
   ],
   plugins: ['@stryker-mutator/vitest-runner', '@stryker-mutator/typescript-checker'].map((name) =>

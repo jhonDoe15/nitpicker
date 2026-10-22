@@ -242,8 +242,11 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
       writeFileSync(path.join(directory, 'listing.txt'), 'deep.py');
 
       const result = spawnSync(
-        'python3',
+        'sh',
         [
+          '-c',
+          'ulimit -s 8192 && exec python3 "$@"',
+          'python3',
           script,
           path.join(directory, STRUCTURE_REPORT),
           directory,
@@ -463,7 +466,7 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
           rule: 'function-control-nesting-limit',
           symbol: 'deep',
           message:
-            'deep nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch.',
+            'deep nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch. If this is intended, add {"rule":"function-control-nesting-limit","paths":["sample.py"],"function":"deep","reason":"..."} to "exceptions" in nitpicker.config.json.',
         },
       ]);
     });

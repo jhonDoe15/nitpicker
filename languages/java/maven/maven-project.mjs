@@ -3,9 +3,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childAt, childrenAt, childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
+import { kotlinSourceRoots } from './configuration/kotlin-roots.mjs';
 
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
 const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
+const SPRING_JAR = /^spring-(?:context|boot)-.*\.jar$/u;
 const TEST_COMPILE_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'test']);
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
@@ -133,6 +135,10 @@ function describeModule(project, basedir) {
   const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
   const reports = reportsDirectory(plugins.get(SUREFIRE), 'test');
   const failsafeReports = reportsDirectory(plugins.get(FAILSAFE), 'integration-test');
+  const sourceRoots = [
+    resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
+    ...helperRoots(plugins.get(BUILD_HELPER), 'add-source', basedir),
+  ];
   return {
     basedir,
     coordinates: coordinates(project),
@@ -143,10 +149,8 @@ function describeModule(project, basedir) {
     testOutputDirectory:
       resolvedText(build, basedir, 'testOutputDirectory') ??
       path.join(buildDirectory, 'test-classes'),
-    sourceRoots: [
-      resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
-      ...helperRoots(plugins.get(BUILD_HELPER), 'add-source', basedir),
-    ],
+    sourceRoots,
+    kotlinSourceRoots: kotlinSourceRoots(plugins, basedir, sourceRoots),
     testSourceRoots: [
       resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
       ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
@@ -282,4 +286,8 @@ export function moduleClasspaths(module, dependencies) {
       ...dependencies.map((entry) => entry.file),
     ],
   };
+}
+
+export function usesSpring(classpaths) {
+  return classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
 }
