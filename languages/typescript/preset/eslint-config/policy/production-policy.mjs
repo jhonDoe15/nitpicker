@@ -66,6 +66,7 @@ function productionRules({ react, routeHandlers }) {
     'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
     'no-restricted-properties': ['error', ...productionRestrictedProperties],
     'nitpicker/naming-convention': namingConvention({ react, routeHandlers }),
+    'nitpicker/no-accumulating-spread': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {

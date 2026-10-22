@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { directReducerCheck, ownedNativeMessage } from './native/owned-native-rules.mjs';
 import { reportedRuleKey } from './oxlint-translation.mjs';
 
 const SENTINEL_HINT = / Unused [a-z ]+ should match \/\[\^\\s\\S\]\/\./gu;
@@ -18,12 +19,22 @@ export function eslintShapedResults(stage, diagnostics, naming) {
   const byFile = Map.groupBy(reported, (diagnostic) => diagnostic.filename);
   return [...byFile].map(([filename, fileDiagnostics]) => {
     const filePath = filename.replaceAll('\\', '/');
-    const locate = byteLocator(readFileSync(path.join(stage, filename)));
+    const bytes = readFileSync(path.join(stage, filename));
+    const locate = byteLocator(bytes);
     const neutralized = naming.neutralized.get(filePath) ?? new Set();
+    const converted = fileDiagnostics.map((diagnostic) =>
+      eslintMessage(diagnostic, naming, locate),
+    );
+    const isDirectReducer = converted.some(({ needsDirectReducer }) => needsDirectReducer)
+      ? directReducerCheck(filePath, bytes.toString('utf8'))
+      : undefined;
     return {
       filePath,
-      messages: fileDiagnostics
-        .map((diagnostic) => eslintMessage(diagnostic, naming, locate))
+      messages: converted
+        .filter(
+          ({ message, needsDirectReducer }) => !needsDirectReducer || isDirectReducer(message),
+        )
+        .map(({ message }) => message)
         .filter((message) => !isNeutralizerWhitespace(message, neutralized)),
     };
   });
@@ -62,7 +73,7 @@ function isUnusedEslintDirective(diagnostic) {
   return diagnostic.code === undefined && diagnostic.message.startsWith('Unused eslint-');
 }
 
-function eslintMessage(diagnostic, { ruleNames, messageIdOf }, locate) {
+function eslintMessage(diagnostic, { ruleNames, messageIdOf, ruleMessages = {} }, locate) {
   const span = diagnostic.labels?.[0]?.span ?? { offset: 0, length: 0 };
   const start = locate(span.offset);
   const end = locate(span.offset + span.length);
@@ -74,10 +85,12 @@ function eslintMessage(diagnostic, { ruleNames, messageIdOf }, locate) {
     endColumn: end.column,
   };
   if (isUnusedEslintDirective(diagnostic)) {
-    return { ruleId: undefined, message: diagnostic.message, severity: 1, ...position };
+    return {
+      message: { ruleId: undefined, message: diagnostic.message, severity: 1, ...position },
+    };
   }
   if (key === undefined) {
-    return { fatal: true, message: diagnostic.message, severity: 2, ...position };
+    return { message: { fatal: true, message: diagnostic.message, severity: 2, ...position } };
   }
   const ruleId = ruleNames.get(key);
   if (ruleId === undefined) {
@@ -85,8 +98,18 @@ function eslintMessage(diagnostic, { ruleNames, messageIdOf }, locate) {
       `oxlint reported ${diagnostic.code}: ${diagnostic.message} ${diagnostic.help ?? ''}`.trim(),
     );
   }
+  const owned = ownedNativeMessage({ ruleId, diagnostic, ruleMessages });
+  if (owned !== undefined) {
+    const { messageId, message, needsDirectReducer } = owned;
+    return {
+      message: { ruleId, messageId, message, severity: 2, ...position },
+      needsDirectReducer,
+    };
+  }
   const message = withoutSentinelHint(configuredMessage(diagnostic, ruleId));
-  return { ruleId, messageId: messageIdOf(ruleId, message), message, severity: 2, ...position };
+  return {
+    message: { ruleId, messageId: messageIdOf(ruleId, message), message, severity: 2, ...position },
+  };
 }
 
 function configuredMessage(diagnostic, ruleId) {

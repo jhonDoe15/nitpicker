@@ -310,6 +310,22 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   of unknown depth moves to `adapters/`, which passes `domain/` the flat result.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
+- `nitpicker/no-accumulating-spread`: an accumulator is not spread into its own next value, in all
+  production code (not in tests). It reports `...acc` in the callback passed straight to `reduce`
+  or `reduceRight` when `acc` is the callback's first of exactly two parameters
+  (`xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {})`, `xs.reduce((acc, x) => [...acc, x], [])`),
+  and a `let` accumulator declared outside a loop whose first reassignment, inside the loop, spreads
+  it into an array or object literal (`out = [...out, x]`). Each step copies everything collected so
+  far. Allowed forms, which `domain/` can use too: build the result in one pass with
+  `Object.fromEntries(xs.map((x) => [x.key, x.value]))`, `Object.groupBy`,
+  `new Map(xs.map((x) => [x.key, x]))`, `Object.assign({}, ...parts)`, `flatMap`, `map` or
+  `filter`; outside `domain/`, a `const` array or object declared before a `for...of` loop that the
+  loop pushes onto or sets keys of. A reducer passed by name (`xs.reduce(addInvoice, none)`), a
+  spread of the current element (`{ ...x, total }`), a spread inside a function nested in the reducer
+  and a callback with one or three parameters are not reported. In `domain/` the loop form is already reported by
+  the loop ban and `functional/no-let`, so this rule does not report it a second time. A spread in
+  `map` that adds a field (`items.map((item) => ({ ...item, done: true }))`) is the allowed immutable
+  update and is not reported: copying one element per step is linear.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate
   fire-and-forget is written `void job();`, typescript-eslint's own form; `.then()` and `.catch()`

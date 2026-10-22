@@ -18,6 +18,7 @@ export const strictEslintRuleIds = [
   'functional/prefer-immutable-types',
   'nitpicker/exhaustive-union-predicate',
   'nitpicker/hermetic-git-in-tests',
+  'nitpicker/no-accumulating-spread',
   'nitpicker/naming-convention',
   'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',
