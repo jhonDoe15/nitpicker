@@ -3,6 +3,7 @@ import { readLayout } from '../preset/head-policy.mjs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { parseArguments } from './quality-areas/arguments.mjs';
+import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
 import { hasProjectTests } from './test-runners/test-run.mjs';
 
 export async function runQualityArea(options) {
@@ -32,7 +33,7 @@ export async function runQualityArea(options) {
       return [];
     }
   }
-  return await runner(options);
+  return applyAreaExceptions(await runner(options));
 }
 
 const invokedPath = process.argv[1];

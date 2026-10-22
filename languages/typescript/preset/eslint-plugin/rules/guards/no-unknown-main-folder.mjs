@@ -81,11 +81,11 @@ export const rule = {
     ],
     messages: {
       looseFile:
-        "'{{folder}}' sits directly in src/main/, which holds only features/, shared/ and the composition root (composition-root.ts, main.ts, server.ts) and index.ts. Move it into the feature that uses it, or into shared/ when several features need it. If the file is deliberate, add an exception for this rule in nitpicker.config.json.",
+        "'{{folder}}' sits directly in src/main/, which holds only features/, shared/ and the composition root (composition-root.ts, main.ts, server.ts) and index.ts. Move it into the feature that uses it, or into shared/ when several features need it. An exception fits only when the file is deliberate.",
       unknownFolder:
-        "'{{folder}}/' is not a layer of this layout. Under src/main/ put code in features/<name>/ (domain/ for pure logic, adapters/ for I/O), in shared/ when several features need it, or in the composition root. If this folder is deliberate, add an exception for this rule in nitpicker.config.json.",
-      unknownFeatureFolder: `'{{folder}}/' is not a layer of a feature. A feature holds domain/ for pure logic and adapters/ for I/O${UI}, and its public index.ts. If this folder is deliberate, add an exception for this rule in nitpicker.config.json.`,
-      looseFeatureFile: `'{{folder}}' sits directly in a feature folder, which holds only its public index.ts besides domain/ and adapters/${UI}. Move it into domain/ if it is pure logic or adapters/ if it does I/O. If the file is deliberate, add an exception for this rule in nitpicker.config.json.`,
+        "'{{folder}}/' is not a layer of this layout. Under src/main/ put code in features/<name>/ (domain/ for pure logic, adapters/ for I/O), in shared/ when several features need it, or in the composition root. An exception fits only when this folder is deliberate.",
+      unknownFeatureFolder: `'{{folder}}/' is not a layer of a feature. A feature holds domain/ for pure logic and adapters/ for I/O${UI}, and its public index.ts. An exception fits only when this folder is deliberate.`,
+      looseFeatureFile: `'{{folder}}' sits directly in a feature folder, which holds only its public index.ts besides domain/ and adapters/${UI}. Move it into domain/ if it is pure logic or adapters/ if it does I/O. An exception fits only when the file is deliberate.`,
     },
   },
   create(context) {

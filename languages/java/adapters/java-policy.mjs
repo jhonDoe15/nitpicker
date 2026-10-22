@@ -1,10 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import {
-  EXCEPTION_SEPARATOR,
-  parseRunnerArguments,
-} from '../../../core/tooling/runner-arguments.mjs';
+import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
 import { withLegacyInventory } from '../../../shared/legacy-inventory.mjs';
 import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
 import {
@@ -13,10 +10,16 @@ import {
   PROJECT_TOOL_CONFIGS,
   precedenceToolNames,
 } from './gradle-presets.mjs';
+import {
+  isJavaFindingRule,
+  validateJavaFindingRule,
+} from './exception-rules/java-finding-rules.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
 import { JAVA_LINE_LENGTH, JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
-import { checkstyleRuleName } from '../messages/rule-messages.mjs';
+import { sharedRouteRule } from '../../../shared/exceptions/routes.mjs';
+import { INLINE_SUPPRESSION_RULE } from './suppressions/java-suppressions.mjs';
+import { canonicalRule } from '../../../shared/exceptions/rule-names.mjs';
 
 const FILE_LIMIT_THRESHOLDS = [
   'fileLines',
@@ -56,7 +59,7 @@ export function validateJavaConfig(config) {
   }
   if (config.preset === 'java' && Array.isArray(config.exceptions)) {
     for (const [index, entry] of config.exceptions.entries()) {
-      validateJavaExceptionRule(entry?.rule, `exceptions[${String(index)}].rule`);
+      validateJavaExceptionRule(entry, `exceptions[${String(index)}].rule`);
     }
   }
   if (config.thresholds?.lineLength !== undefined) {
@@ -66,22 +69,21 @@ export function validateJavaConfig(config) {
   }
 }
 
-function validateJavaExceptionRule(rule, label) {
-  if (typeof rule !== 'string' || rule === '' || JAVA_EXCEPTION_RULES.includes(rule)) {
+function validateJavaExceptionRule(entry, label) {
+  const rule = entry?.rule;
+  if (
+    typeof rule !== 'string' ||
+    rule === '' ||
+    JAVA_EXCEPTION_RULES.includes(canonicalRule(rule))
+  ) {
     return;
   }
-  const [tool] = rule.split('/');
-  const checkstyleRule = rule.slice('checkstyle/'.length);
-  if (tool === 'checkstyle' && checkstyleRuleName(checkstyleRule) !== checkstyleRule) {
-    throw configError(
-      `"${label}" names a Checkstyle check by class; findings print the check's name, so write "checkstyle/${checkstyleRuleName(checkstyleRule)}"`,
-    );
-  }
-  if (!JAVA_TOOLS.includes(tool) || rule.length <= tool.length + 1) {
+  if (!isJavaFindingRule(rule)) {
     throw configError(
       `"${label}" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${JAVA_EXCEPTION_RULES.join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}`,
     );
   }
+  validateJavaFindingRule(entry, label);
 }
 
 function runnerArguments({
@@ -103,9 +105,7 @@ function runnerArguments({
     ...(testConsole.allow === undefined
       ? []
       : ['--test-console-allow', JSON.stringify(testConsole.allow)]),
-    ...exceptions.flatMap(({ rule, paths }) =>
-      paths.flatMap((glob) => ['--exception', `${rule}${EXCEPTION_SEPARATOR}${glob}`]),
-    ),
+    ...exceptions.flatMap((exception) => ['--exception', exceptionArgument(exception)]),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
     ...(duplicates.skippedFolders === undefined
@@ -161,6 +161,14 @@ export function configureJavaAnalyzer(analyzer, options) {
     : withLegacyInventory(configured, legacyInventory);
 }
 
+function exceptionArgument({ rule, paths, function: functionName }) {
+  return JSON.stringify({
+    rule,
+    paths,
+    ...(functionName === undefined ? {} : { function: functionName }),
+  });
+}
+
 function hashWithProjectConfigs(configurationHash, policyRoot, { directories, files }) {
   const hash = createHash('sha256').update(configurationHash);
   const named = [
@@ -202,4 +210,12 @@ function hashWithArguments(configurationHash, adapterArguments) {
         .update(configurationHash)
         .update(JSON.stringify(adapterArguments))
         .digest('hex');
+}
+
+const LINT_TOOLS = ['archunit'];
+
+export function javaRouteRule(finding) {
+  return LINT_TOOLS.includes(finding.tool) && finding.rule !== INLINE_SUPPRESSION_RULE
+    ? `${finding.tool}/${finding.rule}`
+    : sharedRouteRule(finding);
 }

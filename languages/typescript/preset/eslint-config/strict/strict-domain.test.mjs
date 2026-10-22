@@ -59,7 +59,7 @@ export function total(lines: readonly Line[]) {
   it('keeps react and other UI frameworks out of domain/', () => {
     const messageFor = (source) =>
       `domain/ does not import a UI framework or UI state library (\`${source}\`): components, hooks and stores live in adapters/ (or shared/ui) and call the logic in domain/, which takes and returns plain values. ` +
-      'If a framework requires this file in domain/, add an exception for this rule for those paths in nitpicker.config.json.';
+      'An exception fits only when a framework requires this file in domain/.';
     const banned = [
       ['react', "import { useState } from 'react'; export const y = useState;"],
       [
@@ -339,7 +339,7 @@ describe('readonly types and mutation of domain values', () => {
       '11 nitpicker/no-mutating-method-in-domain',
     ]);
     expect(findings.find(({ line }) => line === 11).message).toBe(
-      'domain/ code does not mutate values, and URLSearchParams.append changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta). If this mutation is intended, add an exception for this rule in nitpicker.config.json.',
+      'domain/ code does not mutate values, and URLSearchParams.append changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).',
     );
   });
 

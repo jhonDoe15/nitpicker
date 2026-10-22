@@ -41,11 +41,11 @@ export const rule = {
     schema: [],
     messages: {
       uiFramework:
-        'domain/ does not import a UI framework or UI state library (`{{source}}`): components, hooks and stores live in adapters/ (or shared/ui) and call the logic in domain/, which takes and returns plain values. If a framework requires this file in domain/, add an exception for this rule for those paths in nitpicker.config.json.',
+        'domain/ does not import a UI framework or UI state library (`{{source}}`): components, hooks and stores live in adapters/ (or shared/ui) and call the logic in domain/, which takes and returns plain values. An exception fits only when a framework requires this file in domain/.',
       jsxInDomain:
-        'domain/ does not render: JSX belongs to a component in adapters/ (or shared/ui), which calls the logic in domain/ and renders its plain result. If a framework requires this file in domain/, add an exception for this rule for those paths in nitpicker.config.json.',
+        'domain/ does not render: JSX belongs to a component in adapters/ (or shared/ui), which calls the logic in domain/ and renders its plain result. An exception fits only when a framework requires this file in domain/.',
       uiFrameworkThroughShared:
-        'domain/ does not import a UI framework or UI state library, here `{{framework}}` through `{{source}}`: components, hooks and stores live in adapters/ (or shared/ui) and call the logic in domain/, which takes and returns plain values. If a framework requires this file in domain/, add an exception for this rule for those paths in nitpicker.config.json.',
+        'domain/ does not import a UI framework or UI state library, here `{{framework}}` through `{{source}}`: components, hooks and stores live in adapters/ (or shared/ui) and call the logic in domain/, which takes and returns plain values. An exception fits only when a framework requires this file in domain/.',
     },
   },
   create(context) {

@@ -95,7 +95,7 @@ export const rule = {
     schema: [],
     messages: {
       mutatingMethod:
-        'domain/ code does not mutate values, and {{owner}}.{{method}} changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta). If this mutation is intended, add an exception for this rule in nitpicker.config.json.',
+        'domain/ code does not mutate values, and {{owner}}.{{method}} changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta).',
     },
   },
   create(context) {

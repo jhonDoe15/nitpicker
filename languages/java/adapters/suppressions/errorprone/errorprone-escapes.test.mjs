@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { fileFindings } from '../java-suppressions.mjs';
+import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import { ERROR_PRONE_MESSAGE } from './errorprone-escapes.mjs';
+
+const ROUTE = exceptionRoute({ rule: 'errorprone/InlineSuppression', path: 'A.java' });
 
 const found = (source) =>
   fileFindings(source, 'A.java').map((finding) => [
@@ -23,8 +26,18 @@ describe('Error Prone escapes that are annotations', () => {
     ].join('\n');
 
     expect(found(source)).toEqual([
-      ['errorprone', 'InlineSuppression', 2, `${ERROR_PRONE_MESSAGE} Found: @NullUnmarked.`],
-      ['errorprone', 'InlineSuppression', 4, `${ERROR_PRONE_MESSAGE} Found: @NullUnmarked.`],
+      [
+        'errorprone',
+        'InlineSuppression',
+        2,
+        `${ERROR_PRONE_MESSAGE} Found: @NullUnmarked. ${ROUTE}`,
+      ],
+      [
+        'errorprone',
+        'InlineSuppression',
+        4,
+        `${ERROR_PRONE_MESSAGE} Found: @NullUnmarked. ${ROUTE}`,
+      ],
     ]);
   });
 
@@ -43,7 +56,7 @@ describe('Error Prone escapes that are annotations', () => {
       '  @com.google.errorprone.annotations.CanIgnoreReturnValue A put() { return this; }',
       '}',
     ].join('\n');
-    const message = `${ERROR_PRONE_MESSAGE} Found: @CanIgnoreReturnValue declared by the project.`;
+    const message = `${ERROR_PRONE_MESSAGE} Found: @CanIgnoreReturnValue declared by the project. ${ROUTE}`;
 
     expect([found(own), found(errorPrones)]).toEqual([
       [
