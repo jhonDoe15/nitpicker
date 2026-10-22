@@ -17,6 +17,7 @@ import {
 } from './project-rules/source-rules.mjs';
 import { HYGIENE_EXCEPTION_RULES, HYGIENE_RULES } from './project-rules/hygiene-rules.mjs';
 import { sharedFactExceptionRules, withLanguageColumns } from './project-rules/fact-rules.mjs';
+import { DESIGN_RULE_IDS, designRules } from './project-rules/design-rules.mjs';
 
 import {
   BASE_GREW_MESSAGES,
@@ -60,6 +61,7 @@ export const RULE_IDS = {
   testConsoleOutput: 'test-console-output',
   docCommentContent: 'doc-comment-content',
   ...SOURCE_RULE_IDS,
+  ...DESIGN_RULE_IDS,
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -266,6 +268,7 @@ const CATALOG = [
   ...HYGIENE_RULES,
   testConsoleRule(RULE_IDS),
   docCommentRule(RULE_IDS),
+  ...designRules(DESIGN_RULE_IDS),
 ];
 
 export const RULES = CATALOG.map((rule) => withLanguageColumns(rule, LANGUAGES));
