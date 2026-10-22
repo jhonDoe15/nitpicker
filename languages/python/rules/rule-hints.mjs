@@ -1,5 +1,5 @@
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
-import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { COMMON_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
@@ -93,7 +93,7 @@ function canBeLifted(finding) {
     finding.classification === 'enforceable' &&
     typeof finding.rule === 'string' &&
     finding.rule !== '' &&
-    !FUNCTION_EXCEPTION_RULES.includes(finding.rule) &&
+    !COMMON_EXCEPTION_RULES.includes(finding.rule) &&
     finding.path !== '.'
   );
 }

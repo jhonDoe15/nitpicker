@@ -27,9 +27,13 @@ function listed(members) {
     : shown;
 }
 
-function runtimeEdges({ modules, imports }) {
+function runtimeEdges({ modules, imports }, skipped) {
+  const fileOf = new Map(modules.map(({ module, file }) => [module, file]));
   return importEdges(modules, imports).filter(
-    ({ source, target, kind }) => kind === 'runtime' && source !== target,
+    ({ source, target, kind }) =>
+      kind === 'runtime' &&
+      source !== target &&
+      !skipped.has(`${fileOf.get(source)}\0${fileOf.get(target)}`),
   );
 }
 
@@ -83,8 +87,8 @@ function moduleCycles(modules, edges) {
   );
 }
 
-export function cycleFindings(report) {
-  const edges = runtimeEdges(report);
+export function cycleFindings(report, skippedFileEdges = new Set()) {
+  const edges = runtimeEdges(report, skippedFileEdges);
   return [...packageCycles(report.modules, edges), ...moduleCycles(report.modules, edges)];
 }
 

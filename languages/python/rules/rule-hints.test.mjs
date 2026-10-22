@@ -158,6 +158,11 @@ describe('hints', () => {
   it.each([
     ['coverage-py', 'changed-branch-coverage'],
     ['mutmut', 'mutant-survived'],
+    ['test-runtime', 'slow-test'],
+    ['coupling', 'feature-internal-import'],
+    ['coupling', 'shared-imports-feature'],
+    ['coupling', 'feature-cycle'],
+    ['coupling', 'shared-used-by-one-feature'],
   ])('leave a %s %s finding to the shared exception route', (tool, rule) => {
     const finding = sample({ tool, rule });
 

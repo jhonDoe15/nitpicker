@@ -59,9 +59,14 @@ function relativeBase(importer, { level, module }) {
     .join('.');
 }
 
-function importedModules(importer, statement, known) {
+const WHOLE_MODULE = '*';
+
+export function statementTargets(importer, statement, known) {
   if (statement.level === 0 && statement.module === null) {
-    return statement.names.map((name) => longestKnownPrefix(name, known));
+    return statement.names.map((name) => ({
+      target: longestKnownPrefix(name, known),
+      name: WHOLE_MODULE,
+    }));
   }
   const base = statement.level === 0 ? statement.module : relativeBase(importer, statement);
   if (base === undefined) {
@@ -69,7 +74,9 @@ function importedModules(importer, statement, known) {
   }
   return statement.names.map((name) => {
     const submodule = base === '' ? name : `${base}.${name}`;
-    return known.has(submodule) ? submodule : longestKnownPrefix(base, known);
+    return known.has(submodule)
+      ? { target: submodule, name: WHOLE_MODULE }
+      : { target: longestKnownPrefix(base, known), name };
   });
 }
 
@@ -77,7 +84,8 @@ export function importEdges(modules, imports) {
   const known = new Set(modules.map(({ module }) => module));
   return modules.flatMap((importer) =>
     (imports[importer.file] ?? []).flatMap((statement) =>
-      importedModules(importer, statement, known)
+      statementTargets(importer, statement, known)
+        .map(({ target }) => target)
         .filter((target) => target !== undefined)
         .map((target) => ({
           source: importer.module,
