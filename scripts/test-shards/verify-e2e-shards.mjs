@@ -8,7 +8,8 @@ import { createVitest, parseCLI } from 'vitest/node';
 import { assignShards, readDurations } from './sequencer.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const EXPECTED_CASES = { java: 76, kotlin: 54 };
+const JVM_LANGUAGES = ['java', 'kotlin'];
+const E2E_FILE_FILTER = '.e2e.test.';
 const VITEST_CONFIG = path.join(root, 'vitest.config.mts');
 
 function discover(language, args) {
@@ -22,13 +23,35 @@ function discover(language, args) {
     },
   );
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  return JSON.parse(result.stdout);
+  return JSON.parse(result.stdout).map(({ file, name }) => ({
+    file: path.relative(root, file),
+    name,
+  }));
 }
 
 function scriptCases(language) {
   const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
   const command = pkg.scripts[`test:${language}`].split(' ');
   return discover(language, command.slice(command.indexOf('run') + 1));
+}
+
+function caseIds(cases) {
+  return cases.map(({ file, name }) => `${file} > ${name}`).toSorted();
+}
+
+function gatedCaseIds(language) {
+  const filter = ['--config', VITEST_CONFIG, E2E_FILE_FILTER];
+  const otherSuite = JVM_LANGUAGES.find((other) => other !== language);
+  const ungated = new Set(caseIds(discover(otherSuite, filter)));
+  return caseIds(discover(language, filter)).filter((id) => !ungated.has(id));
+}
+
+function assertScriptSelectsGatedCases(language, cases) {
+  assert.deepEqual(
+    caseIds(cases),
+    gatedCaseIds(language),
+    `test:${language} must select exactly the cases that its E2E flag enables`,
+  );
 }
 
 function readProfile(profile, files) {
@@ -71,21 +94,21 @@ async function assertShardPartition({ files, durations, shards, matrix }) {
 
 async function verifyLanguage(language) {
   const cases = scriptCases(language);
-  const files = [...new Set(cases.map(({ file }) => path.relative(root, file)))].toSorted();
+  assertScriptSelectsGatedCases(language, cases);
+  const files = [...new Set(cases.map(({ file }) => file))].toSorted();
   const durations = readProfile(path.join(import.meta.dirname, `${language}-e2e.json`), files);
   const workflowFile = path.join(root, `.github/workflows/${language}-e2e.yml`);
   const matrix = readMatrix(workflowFile, language);
   const shards = assignShards(files, durations, matrix.length);
   await assertShardPartition({ files, durations, shards, matrix });
-  assert.equal(cases.length, EXPECTED_CASES[language], 'behavioral case coverage changed');
   const loads = shards.map((shard) => shard.reduce((sum, file) => sum + durations.get(file), 0));
   return { cases, files, matrix, loads };
 }
 
 function requestedLanguages(args) {
-  const languages = args.length > 0 ? args : Object.keys(EXPECTED_CASES);
-  const unknown = languages.filter((language) => !Object.hasOwn(EXPECTED_CASES, language));
-  assert.deepEqual(unknown, [], `the JVM suites are ${Object.keys(EXPECTED_CASES).join(' and ')}`);
+  const languages = args.length > 0 ? args : JVM_LANGUAGES;
+  const unknown = languages.filter((language) => !JVM_LANGUAGES.includes(language));
+  assert.deepEqual(unknown, [], `the JVM suites are ${JVM_LANGUAGES.join(' and ')}`);
   return languages;
 }
 

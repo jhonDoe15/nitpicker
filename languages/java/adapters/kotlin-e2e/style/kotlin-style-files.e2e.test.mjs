@@ -15,10 +15,13 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import { GRADLE_STEP_TIMEOUT_MS } from '../../test-support/gradle-e2e.mjs';
-import { kotlinGradleArguments, kotlinStyleFile, resolveKotlinTools } from '../kotlin-tools.mjs';
+import {
+  kotlinGradleArguments,
+  kotlinStyleFile,
+  resolveKotlinTools,
+} from '../../kotlin/kotlin-tools.mjs';
+import { gradle, kotlinE2eEnabled } from '../test-support/kotlin-e2e-project.mjs';
 
-const enabled = process.env.NITPICKER_JAVA_E2E === '1';
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixture = fileURLToPath(new URL('../../fixtures/kotlin-style-project', import.meta.url));
 const roots = [];
 const WORKSPACE = 'build/tmp/nitpickerKotlinStyleWorkspace';
@@ -91,7 +94,7 @@ const MIRRORED = [
   'src/main/kotlin/demo/A.kt',
 ];
 
-describe.skipIf(!enabled)('the files the init script writes for ktlint and detekt', () => {
+describe.skipIf(!kotlinE2eEnabled)('the files the init script writes for ktlint and detekt', () => {
   it('mirrors the sources under a root .editorconfig of its own and layers nothing by default', () => {
     const outcome = runStyleTasks(copyOfFixture(), {});
 
