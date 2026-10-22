@@ -126,6 +126,50 @@ describe('test console output on a Mocha project', () => {
     ]);
   });
 
+  it.each(['mocha', 'mocha --parallel'])(
+    'gives the running test what a server a root hook started prints while it handles the test (%s)',
+    async (script) => {
+      const project = mochaProject(
+        {
+          '.mocharc.json': { require: ['./test/setup.mjs'] },
+          'test/setup.mjs': [
+            "import { createServer } from 'node:http';",
+            'export const mochaHooks = {',
+            '  async beforeAll() {',
+            '    globalThis.server = createServer((request, response) => {',
+            '      console.error(`handler failed for ${request.url}`);',
+            '      response.writeHead(500).end();',
+            '    });',
+            '    await new Promise((resolve) => globalThis.server.listen(0, resolve));',
+            '  },',
+            '  async afterAll() {',
+            '    await new Promise((resolve) => globalThis.server.close(resolve));',
+            '  },',
+            '};',
+            '',
+          ].join('\n'),
+          'test/api.test.js': testFile([
+            "it('reports a broken route', async () => {",
+            '  const { port } = globalThis.server.address();',
+            '  const response = await fetch(`http://127.0.0.1:${port}/broken`);',
+            '  assert.equal(response.status, 500);',
+            "  assert.equal(pick(true) + pick(false), 'yesno');",
+            '});',
+          ]),
+        },
+        script,
+      );
+
+      expect(await consoleOutput(project)).toEqual([
+        [
+          'test-console-output',
+          'test/api.test.js',
+          '"handler failed for broken" (test "reports a broken route")',
+        ],
+      ]);
+    },
+  );
+
   it('names the test in a parallel run', async () => {
     const project = mochaProject(
       {

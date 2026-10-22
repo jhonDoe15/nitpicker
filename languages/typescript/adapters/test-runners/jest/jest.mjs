@@ -113,10 +113,25 @@ function consoleArguments(options, testConsole) {
     : [];
 }
 
+function passedEverything(report) {
+  return (
+    report?.success === true &&
+    report.snapshot?.failure !== true &&
+    report.numFailedTests === 0 &&
+    report.numFailedTestSuites === 0 &&
+    report.numRuntimeErrorTestSuites === 0 &&
+    report.wasInterrupted !== true
+  );
+}
+
 function withoutForcedLateLogExit(result, { report, printsDirectly, testConsole }) {
   const ownRunPrints = printsDirectly || report?.numTotalTestSuites === 1;
   const forced =
-    testConsole.enabled && ownRunPrints && result.status === 1 && result.stderr.includes(LATE_LOG);
+    testConsole.enabled &&
+    ownRunPrints &&
+    passedEverything(report) &&
+    result.status === 1 &&
+    result.stderr.includes(LATE_LOG);
   return forced ? { ...result, status: 0 } : result;
 }
 

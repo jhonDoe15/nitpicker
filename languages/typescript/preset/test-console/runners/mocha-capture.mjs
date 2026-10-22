@@ -109,7 +109,7 @@ export function trackMocha(mochaClass, storage = new AsyncLocalStorage()) {
   return function place() {
     const { current } = tracking.state;
     const origin = storage.getStore() ?? current;
-    return origin.file === current.file ? current : NO_PLACE;
+    return origin.file === '' || origin.file === current.file ? current : NO_PLACE;
   };
 }
 

@@ -9,7 +9,10 @@ export const REPORT_VARIABLE = 'NITPICKER_TEST_CONSOLE_REPORT';
 
 export const ROOT_VARIABLE = 'NITPICKER_TEST_CONSOLE_ROOT';
 
-export { LINES_VARIABLE } from '../../adapters/test-runners/v8-coverage/loaded-sources.cjs';
+export {
+  LINES_VARIABLE,
+  RUNNER_VARIABLE,
+} from '../../adapters/test-runners/v8-coverage/loaded-sources.cjs';
 
 const EMPTY_LINE = '<empty line>';
 
