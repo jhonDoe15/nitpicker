@@ -1999,6 +1999,35 @@ TypeScript `shared/` folder.
 | `spring-controller-repository` | a `@Controller` or `@RestController` depends on a repository (`@Repository`, or a type extending Spring Data's `Repository`) or on data access directly (`JdbcTemplate`, `NamedParameterJdbcTemplate`, `JdbcClient`, `SimpleJdbcInsert`, R2DBC `DatabaseClient`, `JdbcAggregateTemplate`, `R2dbcEntityTemplate`, `MongoTemplate`, `EntityManager`, `EntityManagerFactory`, Hibernate `Session`, `DataSource`, or their interfaces), in a field, parameter, return type or call                                                                                                                                                                                                          |
 | `spring-controller-entity`     | a request-mapping or `@ModelAttribute` method of a controller takes or returns an `@Entity` type, also inside a generic such as `List<Customer>`; methods declared on implemented interfaces (the OpenAPI-generator layout) and inherited from base controllers count                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `spring-service-web`           | a `@Service` or repository depends on the web layer: a controller or `@ControllerAdvice`, `ResponseEntity` in its own field, method or constructor signatures (not a `RestTemplate` or `RestClient` result it unwraps), or the `jakarta.servlet`, `javax.servlet`, `org.springframework.web.bind`, `org.springframework.web.servlet`, `org.springframework.web.multipart`, `org.springframework.web.context.request` (`RequestContextHolder`, `WebRequest`), `org.springframework.web.server` (`ServerWebExchange`, `ResponseStatusException`), `org.springframework.web.reactive` or `org.springframework.http.server` packages, so servlet and WebFlux apps are held to the same rule |
+| `spring-controller-controller` | a controller holds another controller: a field, constructor or method parameter of that type, also inside a generic. Naming another controller's class in a link (`methodOn(OrderController.class)`) is fine                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `spring-repository-service`    | a repository depends on a `@Service`: a field, parameter, return type or call. A repository depending on a controller or the web layer is `spring-service-web`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+
+Roles come from Spring's stereotypes, read through composed annotations (`@RestController`, a
+project's own annotation carrying `@Service`). A project whose classes carry other role markers maps
+them with the `spring.roles` config key: `{ "spring": { "roles": { "service": ["com.example.UseCase"] } } }`
+gives every class annotated with `@UseCase` (directly or through a composed annotation), or extending
+or implementing `com.example.UseCase`, the service role on top of its stereotypes. Keys are
+`controller`, `service` and `repository`. A mapping only adds roles, so it never lifts a finding; a
+small application that keeps a controller calling a repository on purpose uses an exception. When a
+layering rule and `spring-feature-boundary` both report the same class and dependency (a controller
+using `orders.internal.OrderRepository` from `billing`), only the layering finding is kept: the call
+to a service it asks for removes both.
+
+**Bean lifetimes.**
+
+| Rule                   | Fails when                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `spring-scope-capture` | a singleton bean (a `@Component` class or a `@Bean` method without `@Scope`, or with `singleton` or `application` scope) takes a request-, session-, `websocket`-, Spring Batch `step`- or `job`-scoped bean without a scoped proxy: in a constructor or `@Bean` method parameter, an `@Autowired`, `@Inject` or `@Resource` field or method, also as `Optional<T>`, an array or a collection or map of them |
+
+The scope is read from `@Scope` on the class or `@Bean` method, directly or through a composed
+annotation such as `@RequestScope` (whose own `proxyMode`, `TARGET_CLASS` by default, wins over the
+`@Scope` it carries). A scoped proxy (`proxyMode` `TARGET_CLASS` or `INTERFACES`), an
+`ObjectProvider<T>`, `ObjectFactory<T>` or `Provider<T>`, and a `@Lazy` injection point are fine:
+each resolves the bean per use. The injected type is matched against every bean the module
+declares; the rule claims only when all of them have such a scope. So a prototype bean (one
+instance per injection point, often meant), a custom scope it cannot model (`@Scope("tenant")`,
+`thread`), a type with no bean in the module (one from a library or registered in code) or a
+`@ComponentScan(scopedProxy = ...)` default it cannot resolve to one mode is never a finding.
 
 **Tests that start a Spring context.** A concrete test class counts when it, an enclosing class or
 one of its superclasses (`class X extends AbstractIntegrationTest`) is annotated, directly or

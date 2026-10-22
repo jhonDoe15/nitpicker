@@ -12,6 +12,7 @@ import {
 } from '../../shared/config.mjs';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
+import { validateSpringOptions } from '../../languages/java/adapters/spring-arch/spring-roles.mjs';
 import {
   PYTHON_TOP_LEVEL_EXCEPTION_RULES,
   validatePythonConfig,
@@ -66,6 +67,7 @@ export const KEYS = [
   'tools',
   'testConsole',
   'kotlin',
+  'spring',
   'conventions',
 ];
 
@@ -116,6 +118,7 @@ function validateScalars(config) {
   }
   validateJavascriptConfig(config);
   validateKotlinOptions(config);
+  validateSpringOptions(config);
   validatePythonConfig(
     config,
     liftsOnlyRules(config.exceptions, PYTHON_TOP_LEVEL_EXCEPTION_RULES)

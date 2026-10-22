@@ -7,12 +7,16 @@ export const SPRING_ARCH_FIXTURE = path.join(
   'spring-arch-project',
 );
 
+export const SPRING_ARCH_ROLES = { service: ['shop.carts.UseCase'] };
+
 export const SPRING_ARCH_VIOLATIONS = [
+  'spring-controller-controller shop.carts.CartController shop.orders.OrderController',
   'spring-controller-entity shop.orders.OrderController all:shop.orders.Order',
   'spring-controller-entity shop.orders.OrderController create:shop.orders.Order',
   'spring-controller-entity shop.orders.OrdersApiController list:shop.orders.Order',
   'spring-controller-entity shop.orders.ReportController base:shop.orders.Order',
   'spring-controller-entity shop.orders.ReportController model:shop.orders.Order',
+  'spring-controller-repository shop.carts.CartController shop.catalog.internal.CatalogRepository',
   'spring-controller-repository shop.customers.CustomerController shop.orders.OrderRepository',
   'spring-controller-repository shop.customers.CustomerReport jakarta.persistence.EntityManager',
   'spring-controller-repository shop.customers.CustomerReport org.springframework.jdbc.core.JdbcTemplate',
@@ -31,6 +35,12 @@ export const SPRING_ARCH_VIOLATIONS = [
   'spring-layout shop.util.Strings util',
   'spring-no-dirties-context shop.OrderFlowTest ',
   'spring-no-dirties-context shop.orders.integration.CheckoutIT ',
+  'spring-repository-service shop.carts.CartRepository shop.carts.CartService',
+  'spring-repository-service shop.carts.CartRepository shop.carts.CheckoutUseCase',
+  'spring-scope-capture shop.carts.CartConfig request:shop.carts.Basket',
+  'spring-scope-capture shop.carts.CartConfig request:shop.carts.Receipt',
+  'spring-scope-capture shop.carts.CartService request:shop.carts.Basket',
+  'spring-scope-capture shop.carts.CartService request:shop.carts.Visit',
   'spring-service-web shop.billing.BillingService org.springframework.http.ResponseEntity',
   'spring-service-web shop.billing.Refunds org.springframework.http.server.reactive.ServerHttpRequest',
   'spring-service-web shop.billing.Refunds org.springframework.web.server.ResponseStatusException',

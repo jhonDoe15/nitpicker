@@ -71,6 +71,18 @@ describe('readSpringArchFindings messages', () => {
       'Take and return a record (DTO) in Ctrl.all and map it in the service: the entity Customer stays out of controller signatures.',
     ],
     [
+      violation('spring-controller-controller', 'com.shop.web.Ctrl', 'com.shop.web.OtherCtrl'),
+      'Move what Ctrl needs from OtherCtrl into a service both controllers call: a controller handles its own requests and does not hold another controller.',
+    ],
+    [
+      violation('spring-repository-service', 'com.shop.data.Repo', 'com.shop.core.Pricing'),
+      'Have the service call Repo and pass it what it needs from Pricing: a repository only reads and writes data and depends on no service.',
+    ],
+    [
+      violation('spring-scope-capture', 'com.shop.core.Svc', 'request:com.shop.web.Cart'),
+      "Inject ObjectProvider<Cart> into Svc and call getObject() where it is used, or give Cart a scoped proxy (proxyMode = ScopedProxyMode.TARGET_CLASS, which @RequestScope and @SessionScope set): Svc is a singleton, so it gets one Cart when it is created: outside a request that fails, and inside one it keeps that request's bean for every later caller.",
+    ],
+    [
       violation(
         'spring-service-web',
         'com.shop.core.Svc',
