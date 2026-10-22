@@ -138,16 +138,21 @@ describe('the shared fact rules', () => {
   });
 
   it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
-    const python = ['duplicate-definition', 'exported-name-collision', 'test-only-export', CONSOLE];
+    const python = [
+      'duplicate-definition',
+      'exported-name-collision',
+      'sibling-copy-edit',
+      'test-only-export',
+      'doc-comment-content',
+      CONSOLE,
+    ];
     expect(sharedFactExceptionRules()).toEqual(python);
     expect(registeredFactRules('python')).toEqual(python);
-    withLanguageRegistered('doc-comment-content', 'python', () => {
+    withLanguageRegistered('shared-used-by-one-feature', 'kotlin', () => {
       expect(sharedFactExceptionRules()).toEqual([
-        'duplicate-definition',
-        'exported-name-collision',
-        'test-only-export',
-        'doc-comment-content',
-        CONSOLE,
+        ...python.slice(0, 3),
+        'shared-used-by-one-feature',
+        ...python.slice(3),
       ]);
     });
   });

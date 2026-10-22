@@ -105,6 +105,7 @@ const SHAPES = {
     name: isNonEmpty,
     qualifier: optional(isNonEmpty),
     lines: isStrings,
+    detailed: optional(isBoolean),
   },
   console: { file: isRootOrPath, test: isString, messages: isStrings },
 };

@@ -183,12 +183,13 @@ export function factsBundle({ modules, scanned, isTest, published = false, entry
     definitions: files.flatMap((file) => definitionFacts(file, context)),
     imports: files.flatMap((file) => importFacts(file, context)),
     docComments: files.flatMap((file) =>
-      scanned[file].docComments.map(({ line, name, qualifiedName, lines }) => ({
+      scanned[file].docComments.map(({ line, name, qualifier, lines, detailed }) => ({
         file,
         line,
         name,
-        qualifiedName,
+        qualifier,
         lines,
+        detailed,
       })),
     ),
   };

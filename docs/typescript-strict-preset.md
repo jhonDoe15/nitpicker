@@ -531,7 +531,10 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   drops stopwords (`the`, `a`, `of`, `get`, `returns`, `component`, `class`, `value`...), and reports when
   every remaining description word, with a crude `ing`/`ed`/`es`/`s` stem, is a word of the name
   (`/** Gets the user name. */ getUserName`, `/** The order id */ orderId`, `/** Button component */
-Button`). `@param`, `@returns` and other tag lines are not part of the description. Write the
+Button`). `@param`, `@returns` and other tag lines are not part of the description, but a tag
+  with text (`@param id the account`, `@returns the login name`, `@throws {RangeError} when ...`)
+  says more, so a comment with one is not reported as restating; a tag with only a name or a
+  type (`@param {string} id`, `@returns {string}`) is not text. Write the
   unit, the limit, the edge case or the reason (`/** Price in cents, rounded down. */`). A
   description longer than 5 lines, tag lines, blank lines and code examples not counted (a fenced
   ` ``` ` or `~~~` block, or the body of an `@example` tag; a fence that is never closed counts as prose), is reported too; bullets and

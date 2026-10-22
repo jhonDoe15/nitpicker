@@ -1,19 +1,5 @@
 export const REVIEW_RULE_CASES = [
   {
-    name: 'a docstring that restates the name names what to say instead',
-    fixture: 'restating-docstring',
-    tool: 'python-rules',
-    rule: 'restating-docstring',
-    mention: 'say what the name cannot',
-  },
-  {
-    name: 'a long docstring names putting the rest in names and types',
-    fixture: 'long-docstring',
-    tool: 'python-rules',
-    rule: 'long-docstring',
-    mention: 'put the rest in names and types',
-  },
-  {
     name: 'singular and plural fields name the one-element list',
     fixture: 'singular-and-plural-field',
     tool: 'python-rules',

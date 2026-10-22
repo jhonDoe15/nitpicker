@@ -221,7 +221,9 @@ describe('the Python facts bundle', () => {
   });
 
   it('lists doc comments with their file', () => {
-    const docComments = [{ line: 2, name: 'add', qualifiedName: 'Cart.add', lines: ['Adds.'] }];
+    const docComments = [
+      { line: 2, name: 'add', qualifier: 'Cart.add', lines: ['Adds.'], detailed: true },
+    ];
 
     expect(bundle({ 'src/shop/orders/cart.py': file({ docComments }) }).docComments).toEqual([
       { file: 'src/shop/orders/cart.py', ...docComments[0] },

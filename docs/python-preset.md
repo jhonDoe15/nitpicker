@@ -151,14 +151,15 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `inheritanceDepth`, and the [slow test](#slow-tests) budgets `unitTestSeconds` and
 `integrationTestSeconds`), `testConsole` (see [new console output](#new-console-output-from-tests)), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
-below. `layout` stays a config error with this preset until it runs the rule that reads it
-(`shared-used-by-one-feature`). The
+below. `layout` stays a config error with this preset: the Python preset has no feature layout
+(no `features/` and `shared/` folders to read), so it does not register the one rule that reads it,
+`shared-used-by-one-feature`. The
 top-level `exceptions` is accepted only for the file and size limits shared with the other languages
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
 `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it, the
 [dependency and repository checks](usage.md#dependency-and-repository-checks) and the
 [fact rules](../spec/checks.md#custom-rules) every preset shares (`test-console-output`, `test-only-export`, `duplicate-definition`,
-`exported-name-collision`), which the Python preset runs over its facts scan; the Python equivalent of
+`exported-name-collision`, `sibling-copy-edit`, `doc-comment-content`), which the Python preset runs over its facts scan; the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
 Where each kind of finding is lifted for some paths:
 
@@ -168,6 +169,7 @@ Where each kind of finding is lifted for some paths:
 | `python-rules` ids (`sleep-in-test`, `unused-option`, `no-inline-suppression`, ...)                                         | `python.exceptions`         |
 | one third-party console message                                                                                             | `testConsole.allow`         |
 | `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `test-runtime/slow-test`, `test-console/test-console-output` | top-level `exceptions` only |
+| the fact rules (`facts/test-only-export`, `facts/doc-comment-content`, `facts/sibling-copy-edit`, ...)                      | top-level `exceptions` only |
 
 ```json
 {
@@ -448,7 +450,7 @@ through the real tools.
 | an `enum.Enum` / `StrEnum`                      | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
 | fixing the code                                 | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                         | `no-inline-suppression`                                    |
 | annotated code the checkers read                | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside                     | `no-type-check`, `not-type-checking`, `stub-beside-source` |
-| a docstring that says what the name cannot      | a docstring that restates the name, or over 5 lines                          | `restating-docstring`, `long-docstring`                    |
+| a docstring that says what the name cannot      | a docstring that restates the name, or over 5 lines                          | `doc-comment-content` (top-level `exceptions`)             |
 | one plural input, a one-element list            | optional `tag` beside optional `tags: list[...]`                             | `singular-and-plural-field`                                |
 | `match` or `if`/`elif` ending in `assert_never` | `x == E.A or x == E.B` over some members of an enum                          | `exhaustive-enum-predicate`                                |
 | calling (or importing) the target directly      | a module-level function that only forwards to another                        | `forwarding-wrapper`                                       |
@@ -868,24 +870,35 @@ sources only, never test files, as in TypeScript (its production scope) and Java
 test helper that forwards, a fixture factory with `tag` and `tags`, or a test that compares a few
 members is not reported.
 
-- `restating-docstring` and `long-docstring` (TypeScript: the `no-comments` doc-comment checks).
+- `doc-comment-content` (TypeScript: the `no-comments` doc-comment checks), the shared rule the
+  facts scan feeds; it replaces the earlier `restating-docstring` and `long-docstring` rules, and a
+  `python.exceptions` entry that still names either is a config error that says to move it to the
+  top-level `exceptions` as `doc-comment-content`. Findings have the tool `facts` and the identity
+  `doc-comment:<qualified name>:restating` or `:long`, so a growing docstring keeps its identity.
   The Python preset does not ban comments or docstrings; only these two contents are checked, on
   the docstring of every function, method and class (not modules). A docstring restates the name
-  when every word of its description, apart from the filler words of the TypeScript rule (`the`,
-  `returns`, `function`, `method`, ...), is a word of the name or a plural, `-ed` or `-ing` form of
-  one (`load_users`: "Returns the loaded user."), and nothing else in the docstring says more: a
-  section, field or example with text keeps it. That last part differs from TypeScript on purpose:
-  PEP 257 and pydocstyle ask every docstring for a summary line, so a docstring whose `Args:` or
-  `Returns:` section carries the information cannot drop the summary that restates the name, and
-  reporting it would leave no allowed form. The description ends at the first `:param`-style
-  field, Google section (`Args:`, `Returns:`, `Raises:`, `Examples:`, ..., also a single-line one
-  such as `Returns: the id`, `Raises ValueError: ...` or `Note: ...`) or numpy section (a title over
-  a `---` line). A docstring whose description has more than 5 non-empty lines is reported with its
-  count. As in TypeScript, bullet items and the body of a directive such as `.. note::` count; only
-  code examples do not: a reST literal block after a line ending in `::`, the body of a code
-  directive (`.. code-block::`, `.. code::`, `.. sourcecode::`, `.. doctest::`, `.. testcode::`,
-  `.. testoutput::`), fenced code, and a doctest block (`>>>` lines up to the next blank line). The
-  subject is the qualified name, so a growing docstring keeps its identity.
+  when every word of its description, apart from the filler words of the shared rule (`the`,
+  `returns`, `function`, `method`, `class`, ...), is a word of the name or a plural, `-ed` or `-ing`
+  form of one (`load_users`: "Returns the loaded user."), and nothing else in the docstring says
+  more: a section, field or example with text keeps it. Every preset that runs the rule reads tags
+  the same way: a JSDoc `@param id the account`, `@returns the login` or `@throws {E} when ...` with
+  text keeps a restating summary too, while a tag with only a name or a type (`@param {string} id`)
+  does not. PEP 257 and pydocstyle ask every docstring for a summary line, so a docstring whose
+  `Args:` or `Returns:` section carries the information cannot drop the summary that restates the
+  name, and reporting it would leave no allowed form. The description ends at the first
+  `:param`-style field, Google section (`Args:`, `Returns:`, `Raises:`, `Examples:`, ..., also a
+  single-line one such as `Returns: the id`, `Raises ValueError: ...` or `Note: ...`) or numpy
+  section (a title over a `---` line). A docstring whose description has more than 5 non-empty
+  lines is reported with its count. As in TypeScript, bullet items and the body of a directive such
+  as `.. note::` count; only code examples do not: a reST literal block after a line ending in `::`,
+  the body of a code directive (`.. code-block::`, `.. code::`, `.. sourcecode::`, `.. doctest::`,
+  `.. testcode::`, `.. testoutput::`), fenced code, and a doctest block (`>>>` lines up to the next
+  blank line).
+- `sibling-copy-edit`, the shared rule over the facts of both checkouts: on the head run of a
+  change the facts step also scans the base checkout, and a module-level function or class of at
+  least 20 tokens that the change edits so that it drifts from a same-named copy in another module,
+  while that copy is left as it was, is reported. A file the change moves is matched to its base
+  path through the moves file the head run receives.
 - `singular-and-plural-field` (TypeScript: `nitpicker/no-singular-and-plural-prop`): an optional
   `tag: T` beside an optional `tags` whose element type is `T` (`list`, `Sequence`, `set`,
   `frozenset`, `Iterable`, `tuple[T, ...]` and the `typing` names; `Optional`, `| None`,
