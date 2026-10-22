@@ -5,6 +5,8 @@ import { rule as boundedContainerTeardown } from './rules/testing/lifecycle/boun
 import { rule as noFixedSleepSynchronization } from './rules/testing/lifecycle/no-fixed-sleep-synchronization.mjs';
 import { rule as noIntervalPollingInTests } from './rules/testing/lifecycle/no-interval-polling-in-tests.mjs';
 import { rule as noManagedResourceConstructionOutsideCompositionRoots } from './rules/boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
+import { rule as contractInfrastructureType } from './rules/contracts/contract-infrastructure-type.mjs';
+import { rule as handlerEntityType } from './rules/handlers/handler-entity-type.mjs';
 import { rule as noBranchInCompositionRoot } from './rules/boundaries/no-branch-in-composition-root.mjs';
 import { rule as noHandwrittenBoundaryGuard } from './rules/boundaries/no-handwritten-boundary-guard.mjs';
 import { rule as noModuleLevelLet } from './rules/modules/no-module-level-let.mjs';
@@ -92,6 +94,8 @@ export const nitpickerRules = {
     'preserve-error-cause': preserveErrorCause,
     'no-internal-module-mocks': noInternalModuleMocks,
     'integration-test-uses-approved-harness': integrationTestUsesApprovedHarness,
+    'contract-infrastructure-type': contractInfrastructureType,
+    'handler-entity-type': handlerEntityType,
     'no-branch-in-composition-root': noBranchInCompositionRoot,
     'no-handwritten-boundary-guard': noHandwrittenBoundaryGuard,
     'no-managed-resource-construction-outside-composition-roots':
