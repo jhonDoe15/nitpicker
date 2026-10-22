@@ -2,7 +2,7 @@ import { wordsOf } from '../support/identifier-words.mjs';
 import { isPushedForConcurrency } from './concurrent-batches.mjs';
 import { enclosingLoop, isPagingLoop, isRetryAttempt } from './loop-shapes.mjs';
 
-const BUILT_IN_MODULES = /^(?:node:)?(?:fs|fs\/promises|http|https|http2|net|dns|child_process)$/;
+const BUILT_IN_MODULES = /^(?:node:)?(?:http|https|http2|net|dns|child_process)$/;
 const PACKAGE_MODULES = new RegExp(
   `^(?:${[
     'axios',
@@ -149,7 +149,7 @@ export const rule = {
   meta: {
     type: 'problem',
     docs: {
-      description: 'Do not call a database, HTTP, file or repository API once per loop item',
+      description: 'Do not call a database, HTTP or repository API once per loop item',
     },
     schema: [],
     messages: {
@@ -158,7 +158,7 @@ export const rule = {
         'Batch it: fetch or write all items at once (`findByIds`, `WHERE id IN (...)`, one batched request),',
         'or run the calls together with `Promise.all(items.map(...))` when there is no batch API.',
         'Paging, cursor and retry loops are fine.',
-        'If a call per item is intended (for example one file read per source file),',
+        'If a call per item is intended (an API with no batch form and a rate limit),',
         'add an exception for nitpicker/no-io-in-loop in nitpicker.config.json.',
       ].join(' '),
     },

@@ -152,7 +152,7 @@ return (
   </rule>
 
   <rule name="IoCallInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This calls a database, HTTP, file or repository API once per loop item (one query or request per item). Batch it: fetch or write all items at once (findAllById, saveAll, deleteAll, WHERE id IN (...), one batched request). Paging, polling and retry loops are fine.">
+        message="This calls a database, HTTP or repository API once per loop item (one query or request per item). Batch it: fetch or write all items at once (findAllById, saveAll, deleteAll, WHERE id IN (...), one batched request). Paging, polling and retry loops are fine.">
     <priority>2</priority>
     <properties>
       <property name="springData" type="Boolean" value="false"
@@ -200,10 +200,7 @@ let $ioTypes := '(Repository|Dao|DAO|Client|EntityManager|JdbcTemplate|RestTempl
 return
 (
   $calls[
-    self::ConstructorCall[ClassType[@SimpleName = ('FileReader', 'FileInputStream', 'FileWriter', 'FileOutputStream', 'RandomAccessFile')]]
-    or self::MethodCall[*[1][self::TypeExpression][ClassType[@SimpleName = 'Files']]]
-         [not(@MethodName = ('exists', 'notExists', 'isDirectory', 'isRegularFile', 'isReadable', 'isWritable', 'isExecutable', 'isSymbolicLink', 'isHidden', 'isSameFile'))]
-    or self::MethodCall[not(@MethodName = ('hashCode', 'toString', 'equals', 'getClass', 'close', 'clear', $batches))]
+    self::MethodCall[not(@MethodName = ('hashCode', 'toString', 'equals', 'getClass', 'close', 'clear', $batches))]
          [not(matches(@MethodName, '^(is|has|get)[A-Z]') and not(matches(@MethodName, '^get(By|All|One|Reference|For)')))]
          [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $ioNames]
             or *[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
