@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
-import { LAYERED_FILES, ORDER_TOTAL } from './test-support/python-preset-data.mjs';
+import { FEATURE_FILES, LAYERED_FILES, ORDER_TOTAL } from './test-support/python-preset-data.mjs';
 import {
   commitBranch,
   gate,
@@ -12,6 +12,10 @@ import {
   write,
 } from './test-support/python-e2e-support.mjs';
 
+const INTERNAL = 'feature-internal-import';
+const SHARED = 'shared-imports-feature';
+const CYCLE = 'feature-cycle';
+const FEATURE_RULES = [INTERNAL, SHARED, CYCLE, 'package-cycle'];
 const IMPORT_LINTER_OFF_CONFIG =
   '{ "preset": "python", "disable": ["mutation"], "python": { "importLinter": false } }\n';
 
@@ -43,6 +47,7 @@ describe.skipIf(!pythonE2eEnabled)(
       commitBranch(project, 'upward-import', {
         'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
       });
+      commitBranch(project, 'features', FEATURE_FILES);
       commitBranch(project, 'contracts-off', {
         'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
         'nitpicker.config.json': IMPORT_LINTER_OFF_CONFIG,
@@ -107,6 +112,26 @@ describe.skipIf(!pythonE2eEnabled)(
             'contract:Domain is pure:shop.domain.pricing -> shop.web.views -> shop.infra.store',
         },
       ]);
+    });
+    it('fails internal feature imports, shared code importing a feature and a feature cycle', () => {
+      const result = gate(project, 'features');
+      const features = 'src/shop/features';
+      const found = enforceable(result).filter(({ rule }) => FEATURE_RULES.includes(rule));
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(found.map(({ rule, path: file, identity }) => [rule, file, identity])).toEqual([
+        [
+          INTERNAL,
+          `${features}/shipping/fees.py`,
+          `feature-internal:${features}/billing/_rates.py`,
+        ],
+        [CYCLE, `${features}/shipping/fees.py`, `${features}/billing|${CYCLE}`],
+        [SHARED, 'src/shop/shared/money.py', `${features}/billing|${SHARED}`],
+        [CYCLE, `${features}/billing/invoice.py`, `${features}/shipping|${CYCLE}`],
+      ]);
+      expect(found[0].message).toMatch(
+        /^Import feature billing only through its public face, .* to "exceptions" in nitpicker\.config\.json\.$/u,
+      );
     });
     it('does not run the contracts when the config turns import-linter off', () => {
       const digest = acceptedDigest(['python.importLinter: not set -> false'], {
