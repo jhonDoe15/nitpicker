@@ -64,8 +64,13 @@ const NOT_CODE = /^(?:@|https?:|TODO\b|FIXME\b|[-*>#]|\{@)/;
 const EXAMPLE_HEADING = /^(?:e\.g\.|example|examples|usage|sample|for example)\b/i;
 const STRING_LITERAL = /"(?:\\.|[^"\\\n])*"/g;
 const WORD_RUN = /\b[a-z]{2,}\s+[a-z]{2,}\b/;
-const KOTLIN_WORDS =
-  /\b(?:if|else|when|try|catch|is|in|as|by|to|and|or|shl|shr|ushr|xor|until|downTo|step|object|return|throw|null|true|false|this|super|new|it|var|val|fun|const|lateinit)\b/g;
+const KOTLIN_WORD_LIST = [
+  ...['if', 'else', 'when', 'try', 'catch', 'is', 'in', 'as', 'by', 'to', 'and', 'or'],
+  ...['shl', 'shr', 'ushr', 'xor', 'until', 'downTo', 'step', 'object', 'return', 'throw'],
+  ...['null', 'true', 'false', 'this', 'super', 'new', 'it', 'var', 'val', 'fun', 'const'],
+  'lateinit',
+];
+const KOTLIN_WORDS = new RegExp(String.raw`\b(?:${KOTLIN_WORD_LIST.join('|')})\b`, 'g');
 const VALUE_SHAPES = new Set([0, 2]);
 
 export function generatedFile(scanned) {

@@ -2,17 +2,24 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
+import { listEntriesOf, MERGED_LISTS } from './detekt-lists.mjs';
 
-const CONFIG = parse(
-  readFileSync(path.resolve(import.meta.dirname, '../../../detekt/nitpicker-detekt.yml'), 'utf8'),
+const TEXT = readFileSync(
+  path.resolve(import.meta.dirname, '../../../detekt/nitpicker-detekt.yml'),
+  'utf8',
 );
-const RULE = CONFIG.style.ForbiddenComment;
+const RULE = parse(TEXT).style.ForbiddenComment;
+const COMMENTS = listEntriesOf(TEXT, {
+  ruleset: 'style',
+  rule: 'ForbiddenComment',
+  list: 'comments',
+});
 
 function javaRegex(pattern) {
   return new RegExp(pattern.replaceAll('(?m)', '').replaceAll('(?-i)', ''), 'm');
 }
 
-const FORBIDDEN = javaRegex(RULE.comments[0].value);
+const FORBIDDEN = javaRegex(COMMENTS[0].value);
 const ALLOWED = javaRegex(RULE.allowedPatterns);
 
 function commentText(comment) {
