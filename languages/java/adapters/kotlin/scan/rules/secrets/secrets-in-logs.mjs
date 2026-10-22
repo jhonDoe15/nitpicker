@@ -2,8 +2,8 @@ import { logCalls } from '../../log-calls.mjs';
 import { isSecretName } from './secret-names.mjs';
 
 const TEMPLATE_REFERENCE = /\$(?:\{([^{}]*)\}|([A-Za-z_]\w*))/g;
-const CHAIN = /^[A-Za-z_]\w*(?:\s*[?!]*\.\s*[A-Za-z_]\w*)*\s*(?:\(\s*\))?\s*!*$/;
-const CONVERTED = /\s*\.\s*(?:toString|toCharArray)\s*\(\s*\)\s*$/;
+const CHAIN = /^[A-Za-z_]\w*(?:[?!]*\.[A-Za-z_]\w*)*(?:\(\))?!*$/;
+const CONVERTED = /\.(?:toString|toCharArray)\(\)$/;
 const GETTER = /^get(?:Password|Secret|Token|ApiKey|PrivateKey|Credentials?)$/;
 const CONSTANT = /^[A-Z][A-Z0-9_]*$/;
 const STATUS = /^(?:has|is)[A-Z_]/;
@@ -11,17 +11,14 @@ const KEY_VALUE_CALLS = new Set(['kv', 'keyValue', 'value', 'append', 'entry', '
 const CALL_BEFORE = /([A-Za-z_]\w*)\s*\(\s*$/;
 
 function lastName(expression) {
-  const text = expression.replace(CONVERTED, '').trim();
+  const text = expression.replaceAll(/\s+/g, '').replace(CONVERTED, '');
   if (!CHAIN.test(text)) {
     return undefined;
   }
-  const name = text.replace(/\s*\(\s*\)\s*!*$/, '').replace(/!+$/, '');
-  const call = name !== text.replace(/!+$/, '');
-  const last = name
-    .split(/[?!]*\./)
-    .at(-1)
-    .trim();
-  return call && !GETTER.test(last) ? undefined : last;
+  const bare = text.replace(/!+$/, '');
+  const name = bare.replace(/\(\)$/, '');
+  const last = name.split(/[?!]*\./).at(-1);
+  return name !== bare && !GETTER.test(last) ? undefined : last;
 }
 
 function isLoggedSecret(name) {

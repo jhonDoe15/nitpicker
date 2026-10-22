@@ -15,19 +15,15 @@ function continues(code, newline) {
   return CONTINUATION.test(code.slice(newline + 1).replace(/^\s*/, ''));
 }
 
-export function expressionEnd(code, from) {
+function expressionEnd(code, from) {
   let depth = 0;
-  for (let index = from; index < code.length; index += 1) {
-    const char = code[index];
-    if (OPENERS.includes(char)) {
-      depth += 1;
-    } else if (CLOSERS.includes(char)) {
-      depth -= 1;
-    }
+  for (const [offset, char] of [...code.slice(from)].entries()) {
+    depth += OPENERS.includes(char) ? 1 : 0;
+    depth -= CLOSERS.includes(char) ? 1 : 0;
     const ends = (char === ',' || char === ';') && depth === 0;
-    const wrapped = char === '\n' && depth === 0 && !continues(code, index);
+    const wrapped = char === '\n' && depth === 0 && !continues(code, from + offset);
     if (ends || wrapped || depth < 0) {
-      return index;
+      return from + offset;
     }
   }
   return code.length;
@@ -35,15 +31,15 @@ export function expressionEnd(code, from) {
 
 function enclosingCall(code, from, at) {
   let depth = 0;
-  for (let index = at - 1; index >= from; index -= 1) {
-    if (CLOSERS.includes(code[index])) {
-      depth += 1;
-    } else if (OPENERS.includes(code[index])) {
-      if (depth === 0) {
-        return { bracket: code[index], name: CALL_NAME.exec(code.slice(from, index))?.[1] };
-      }
-      depth -= 1;
+  const reversed = [...code.slice(from, at)].toReversed().entries();
+  for (const [back, char] of reversed) {
+    const index = at - 1 - back;
+    depth += CLOSERS.includes(char) ? 1 : 0;
+    const opens = OPENERS.includes(char);
+    if (opens && depth === 0) {
+      return { bracket: char, name: CALL_NAME.exec(code.slice(from, index))?.[1] };
     }
+    depth -= opens ? 1 : 0;
   }
   return undefined;
 }
@@ -71,10 +67,10 @@ function isFallbackPosition(code, from, literal) {
   );
 }
 
-function chainFrom(scanned, outer, head, limit) {
+function chainFrom({ code, outer, head, limit }) {
   const parts = [head];
   for (const next of outer) {
-    const gap = scanned.code.slice(parts.at(-1).end, next.start);
+    const gap = code.slice(parts.at(-1).end, next.start);
     if (next.start >= limit || !/^\s*\+\s*$/.test(gap) || next.template) {
       break;
     }
@@ -89,7 +85,7 @@ export function fallbackLiterals(scanned, from) {
   const inside = scanned.literals.filter(({ start, end }) => start >= from && end <= limit);
   const outer = inside.filter((literal) => !inside.some((other) => contains(other, literal)));
   return outer.flatMap((head, index) => {
-    const chain = chainFrom(scanned, outer.slice(index + 1), head, limit);
+    const chain = chainFrom({ code, outer: outer.slice(index + 1), head, limit });
     const last = chain.at(-1);
     const joinedBefore = /\+\s*$/.test(code.slice(from, head.start));
     const stable =
