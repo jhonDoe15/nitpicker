@@ -1,5 +1,6 @@
-export const EXCEPTION_HINT =
-  'If this is intended, add {exception} to "exceptions" in nitpicker.config.json.';
+import { exceptionSentence } from './exception-sentence.mjs';
+
+export const EXCEPTION_HINT = exceptionSentence('{exception}');
 
 export const UNUSED_OPTION_TEXT =
   'Option {name} is never set. Remove it, or set it from a real call ({scope}).';

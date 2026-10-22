@@ -1,0 +1,73 @@
+import com.tngtech.archunit.core.domain.JavaAnnotation;
+import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.domain.JavaModifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+
+final class TestRules {
+  static final String PLACEMENT = "spring-test-placement";
+  static final String DIRTIES_CONTEXT = "spring-no-dirties-context";
+  private static final String DIRTIES = "org.springframework.test.annotation.DirtiesContext";
+  private static final String EXTEND_WITH = "org.junit.jupiter.api.extension.ExtendWith";
+  private static final List<String> CONTEXT_ANNOTATIONS =
+      Arrays.asList(
+          "org.springframework.test.context.BootstrapWith",
+          "org.springframework.test.context.ContextConfiguration",
+          "org.springframework.test.context.junit.jupiter.SpringJUnitConfig",
+          "org.testcontainers.junit.jupiter.Testcontainers");
+
+  private TestRules() {}
+
+  static void check(JavaClasses unitTests, JavaClasses otherTests, Set<Found> sink) {
+    for (JavaClass type : unitTests) {
+      if (isConcreteClass(type) && startsContext(type)) {
+        Found.add(sink, PLACEMENT, type, "");
+      }
+    }
+    for (JavaClasses tests : List.of(unitTests, otherTests)) {
+      for (JavaClass type : tests) {
+        if (dirtiesContext(type)) {
+          Found.add(sink, DIRTIES_CONTEXT, type, "");
+        }
+      }
+    }
+  }
+
+  private static boolean isConcreteClass(JavaClass type) {
+    return !type.isAnnotation() && !type.isInterface() && !type.getModifiers().contains(JavaModifier.ABSTRACT);
+  }
+
+  private static boolean startsContext(JavaClass type) {
+    List<JavaClass> hierarchy = new ArrayList<>();
+    hierarchy.add(type);
+    hierarchy.addAll(type.getAllRawSuperclasses());
+    return hierarchy.stream().anyMatch(TestRules::declaresContext);
+  }
+
+  private static boolean declaresContext(JavaClass type) {
+    return CONTEXT_ANNOTATIONS.stream().anyMatch(type::isMetaAnnotatedWith) || extendsWithSpring(type);
+  }
+
+  private static boolean extendsWithSpring(JavaClass type) {
+    for (JavaAnnotation<JavaClass> annotation : type.getAnnotations()) {
+      if (annotation.getRawType().getName().equals(EXTEND_WITH) && names(annotation).contains("SpringExtension")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static String names(JavaAnnotation<JavaClass> annotation) {
+    Object value = annotation.get("value").orElse("");
+    return value instanceof Object[] ? Arrays.toString((Object[]) value) : String.valueOf(value);
+  }
+
+  private static boolean dirtiesContext(JavaClass type) {
+    return type.isMetaAnnotatedWith(DIRTIES)
+        || type.getMethods().stream().anyMatch((JavaMethod method) -> method.isMetaAnnotatedWith(DIRTIES));
+  }
+}

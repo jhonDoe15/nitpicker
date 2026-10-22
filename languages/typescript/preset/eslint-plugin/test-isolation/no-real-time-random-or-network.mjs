@@ -98,11 +98,10 @@ export const rule = {
     ],
     messages: {
       clock:
-        'The real clock makes the test depend on when it runs. Pass the time in, or fake it with `vi.useFakeTimers()` and `vi.setSystemTime(...)`. A justified exception goes in nitpicker.config.json.',
+        'The real clock makes the test depend on when it runs. Pass the time in, or fake it with `vi.useFakeTimers()` and `vi.setSystemTime(...)`.',
       random:
-        'Real randomness makes the test fail on some runs. Pass a seeded or fixed value in, or fix it with `vi.spyOn(Math, "random")`. A justified exception goes in nitpicker.config.json.',
-      network:
-        'A unit test must not reach the network. Inject the client and fake it. A justified exception goes in nitpicker.config.json.',
+        'Real randomness makes the test fail on some runs. Pass a seeded or fixed value in, or fix it with `vi.spyOn(Math, "random")`.',
+      network: 'A unit test must not reach the network. Inject the client and fake it.',
     },
   },
   create(context) {

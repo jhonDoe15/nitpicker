@@ -153,9 +153,9 @@ export const rule = {
     schema: [],
     messages: {
       forwardingWrapper:
-        '`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Delete it and export `{{ target }}` in its place with `export { {{ target }} as {{ exported }} }`, or call `{{ target }}` directly. If the wrapper is intentional, add an exception for this rule in nitpicker.config.json.',
+        '`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Delete it and export `{{ target }}` in its place with `export { {{ target }} as {{ exported }} }`, or call `{{ target }}` directly.',
       forwardingWrapperLocal:
-        '`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Call `{{ target }}` directly where `{{ name }}` is used and delete the wrapper. If the wrapper is intentional, add an exception for this rule in nitpicker.config.json.',
+        '`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Call `{{ target }}` directly where `{{ name }}` is used and delete the wrapper.',
     },
   },
   create(context) {

@@ -2,6 +2,7 @@ import { existsSync, globSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { firstFileIn, pathInside } from '../../../../shared/filesystem.mjs';
+import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
 import { propertyName } from '../syntax/property-names.mjs';
 
@@ -162,7 +163,7 @@ function hasTestScript(manifest) {
 
 function uncollectedFinding(analyzerName, packageDirectory, count) {
   const files = `${String(count)} test file${count === 1 ? '' : 's'}`;
-  const fix = `Add a \`test\` script to its package.json, or add the package to the root test config's \`projects\`. If its tests run some other way, add an exception for ${RULE} with the path ${packageDirectory}/package.json in nitpicker.config.json.`;
+  const fix = `Add a \`test\` script to its package.json, or add the package to the root test config's \`projects\`. ${exceptionRoute({ rule: RULE, path: `${packageDirectory}/package.json` })}`;
   return {
     tool: analyzerName,
     rule: RULE,

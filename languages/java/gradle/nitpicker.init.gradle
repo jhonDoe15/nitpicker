@@ -9,6 +9,7 @@ def pinned = [
     pitest          : '1.17.4',
     pitestJunit5    : '1.2.1',
     pitestTestng    : '1.0.0',
+    archunit        : '1.5.1',
     detekt          : '1.23.8',
     detektKotlin    : '2.0.21',
     ktlint          : '1.8.0',
@@ -144,6 +145,7 @@ allprojects {
             nitpickerSpotbugs { canBeConsumed = false }
             nitpickerFormat { canBeConsumed = false }
             nitpickerPit { canBeConsumed = false }
+            nitpickerSpringArch { canBeConsumed = false }
             nitpickerPitJunit5 { canBeConsumed = false }
             nitpickerPitTestng { canBeConsumed = false }
             nitpickerCheckstyle { canBeConsumed = false }
@@ -159,6 +161,7 @@ allprojects {
                 nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"
             }
             nitpickerCheckstyle "com.puppycrawl.tools:checkstyle:${pinned.checkstyle}"
+            nitpickerSpringArch "com.tngtech.archunit:archunit:${pinned.archunit}"
         }
         dependencies {
             nitpickerPit "org.pitest:pitest-command-line:${pinned.pitest}"
@@ -422,6 +425,69 @@ allprojects {
             }
         }
 
+        tasks.register('nitpickerSpringArch') {
+            group = 'nitpicker'
+            dependsOn { lintedClassesTasks() }
+            onlyIf { usesSpring() }
+            def ruleSources = new File(initScriptDir, 'archunit').listFiles()
+                .findAll { it.name.endsWith('.java') }.sort()
+            doLast {
+                def directory = reportDir.get().dir('spring-arch').asFile
+                directory.deleteDir()
+                directory.mkdirs()
+                def existing = { Collection<File> files -> files.findAll { it.exists() } }
+                def mainClasses = existing(sourceSets.main.output.classesDirs.files)
+                def unitTestSet = sourceSets.findByName('test')
+                def testClasses = existing(testSourceSets().collectMany { it.output.classesDirs.files })
+                def unitTestClasses = existing(unitTestSet == null ? [] : unitTestSet.output.classesDirs.files)
+                def otherTestClasses = testClasses - unitTestClasses
+                def libraries = existing(configurations.nitpickerSpringArch.files)
+                def projectPath = existing(mainClasses + testClasses + sourceSets.main.compileClasspath.files
+                    + testSourceSets().collectMany { it.compileClasspath.files })
+                def argumentFile = { String name, Collection<File> entries ->
+                    def file = new File(directory, name)
+                    def joined = entries.unique()*.absolutePath.join(File.pathSeparator).replace('\\', '\\\\')
+                    file.text = "-cp\n\"${joined}\"\n"
+                    "@${file.absolutePath}".toString()
+                }
+                def run = { List<String> command ->
+                    def process = new ProcessBuilder(command).directory(projectDir).redirectErrorStream(true).start()
+                    def log = process.inputStream.getText('UTF-8')
+                    if (process.waitFor() != 0) {
+                        throw new GradleException("Spring architecture rules failed: ${log.trim()}")
+                    }
+                }
+                def bin = { String name -> new File(System.getProperty('java.home'), "bin/${name}").absolutePath }
+                def digest = java.security.MessageDigest.getInstance('SHA-256')
+                ruleSources.each { digest.update(it.bytes) }
+                def jdk = "${System.getProperty('java.vendor')}|${System.getProperty('java.version')}"
+                digest.update("${pinned.archunit}|${jdk}".getBytes('UTF-8'))
+                def cacheRoot = new File(gradle.gradleUserHomeDir, 'caches/nitpicker/spring-arch')
+                def classes = new File(cacheRoot, digest.digest().encodeHex().toString())
+                if (!classes.isDirectory()) {
+                    def staging = new File(cacheRoot, "${classes.name}.${UUID.randomUUID()}")
+                    staging.mkdirs()
+                    run([bin('javac'), '-proc:none', '-nowarn', '-d', staging.absolutePath,
+                         argumentFile('compile.args', libraries)] + ruleSources*.absolutePath)
+                    try {
+                        java.nio.file.Files.move(staging.toPath(), classes.toPath(),
+                            java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+                    } catch (java.nio.file.FileSystemException raced) {
+                        staging.deleteDir()
+                        if (!classes.isDirectory()) {
+                            throw raced
+                        }
+                    }
+                }
+                def output = reportDir.get().file('spring-arch.json').asFile
+                output.delete()
+                run([bin('java'), argumentFile('run.args', [classes] + libraries + projectPath), 'ArchRules',
+                     output.absolutePath, mainClasses*.absolutePath.join(File.pathSeparator),
+                     unitTestClasses*.absolutePath.join(File.pathSeparator),
+                     otherTestClasses*.absolutePath.join(File.pathSeparator)])
+            }
+        }
+
         // PIT mutates the project's main classes and runs its tests (JUnit 5 through the plugin, or
         // JUnit 4) against each mutant. It needs a green test run to start, so a failing test suite
         // fails the task like it fails `test`. Everything under the main classes is a target.
@@ -596,7 +662,7 @@ allprojects {
             description = 'Runs PMD, SpotBugs, Error Prone, the formatter check, JaCoCo, Checkstyle, ' +
                 'ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
             dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerErrorProne', 'nitpickerFormat',
-                'nitpickerJacoco', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
+                'nitpickerJacoco', 'nitpickerArchunit', 'nitpickerSpringArch', 'nitpickerStructure', 'nitpickerPit'
             dependsOn {
                 ([sourceSets.main] + testSourceSets())
                     .collect { tasks.findByName(it.getTaskName('checkstyle', null)) }.findAll { it != null }
@@ -619,11 +685,23 @@ allprojects {
                 def roots = mainSources.files.collect { relativeToRoot(it) }
                 def testRoots = testSourceDirectories().collect { relativeToRoot(it) }
                 def resourceRoots = sourceSets.main.resources.srcDirs.collect { relativeToRoot(it) }
-                def buildPath = layout.buildDirectory.get().asFile.toPath()
+                def generatedRoot = layout.buildDirectory.get().asFile.toPath()
+                def sourceDirsOf = { set ->
+                    def languages = set instanceof ExtensionAware
+                        ? ['kotlin', 'groovy'].collect { set.extensions.findByName(it) } : []
+                    (set.allJava.srcDirs + languages.findAll { it instanceof SourceDirectorySet }
+                        .collectMany { it.srcDirs })
+                        .findAll { it.exists() && !it.toPath().startsWith(generatedRoot) }.unique()
+                }
+                def runTestClassDirs = tasks.withType(Test).findAll { it.name != 'nitpickerArchunit' }
+                    .collectMany { it.testClassesDirs.files }
+                def unrunTestSourceSets = testSourceSets()
+                    .findAll { set -> !set.output.classesDirs.files.any { runTestClassDirs.contains(it) } }
+                    .collect { set -> [name: set.name, roots: sourceDirsOf(set).collect { relativeToRoot(it) }] }
                 def kotlinRoots = []
                 if (project.plugins.hasPlugin('org.jetbrains.kotlin.jvm')) {
                     kotlinRoots = project.kotlin.sourceSets.main.kotlin.srcDirs.findAll {
-                        it.exists() && it.toPath().startsWith(projectDir.toPath()) && !it.toPath().startsWith(buildPath)
+                        it.exists() && it.toPath().startsWith(projectDir.toPath()) && !it.toPath().startsWith(generatedRoot)
                     }.sort().collect { relativeToRoot(it) }
                 }
                 reportDir.get().file('manifest.json').asFile.text = groovy.json.JsonOutput.toJson([
@@ -634,10 +712,12 @@ allprojects {
                     testSourceRoots: testRoots,
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
+                    springArch     : usesSpring(),
                     guava          : hasGuava(sourceSets.main),
                     testGuava      : hasGuava(sourceSets.test),
                     testAwaitility : hasAwaitility(),
                     published      : project.extensions.findByName('publishing')?.publications?.isEmpty() == false,
+                    unrunTestSourceSets: unrunTestSourceSets,
                 ])
             }
         }
@@ -978,6 +1058,10 @@ allprojects {
                     }
                 }
                 // --- end kotlin structure ---
+
+                project.ext.nitpickerKotlinFiles = kotlinFiles
+                project.ext.nitpickerKotlinJdkHome = detektJdkHome
+                project.apply from: new File(initScriptDir, 'kotlin/kotlin-lint.gradle')
 
                 // Reports a skipped tool would have written, so the Nitpicker side reads the same files for
                 // every module; and the Kotlin entries of the manifest. The Java source roots stay Java-only.

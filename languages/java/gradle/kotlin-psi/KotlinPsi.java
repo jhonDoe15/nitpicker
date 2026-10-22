@@ -17,6 +17,7 @@ import nitpicker.kotlinpsi.common.Json;
 import nitpicker.kotlinpsi.facts.FactsCollector;
 import nitpicker.kotlinpsi.metrics.FileClasses;
 import nitpicker.kotlinpsi.metrics.MetricsCollector;
+import nitpicker.kotlinpsi.metrics.Types;
 import org.jetbrains.kotlin.cli.FrontendConfigurationKeysKt;
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector;
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles;
@@ -39,8 +40,9 @@ import org.jetbrains.kotlin.psi.KtFile;
  * <pre>java -Dnitpicker.kotlinCompiler=VERSION -cp COMPILER_JARS:CLASSES nitpicker.kotlinpsi.KotlinPsi
  *     METRICS.json FACTS.json PROJECT_DIR ROOT...</pre>
  *
- * A root prefixed {@code test:} holds test sources. The metrics report (functions and class names, see
- * {@link MetricsCollector}) covers the other roots only; the facts report ({@link FactsCollector}) covers all.
+ * A root prefixed {@code test:} holds test sources. The metrics report (functions, class names and types, see
+ * {@link MetricsCollector} and {@link Types}) covers the other roots only; the facts report
+ * ({@link FactsCollector}) covers all.
  * A syntax error ends the run: the sources compiled, so the pinned compiler does not read them.
  */
 public final class KotlinPsi {
@@ -78,6 +80,7 @@ public final class KotlinPsi {
     Map<Path, Boolean> files = sources(projectDir, List.of(args).subList(3, args.length));
     List<String> functions = new ArrayList<>();
     List<String> classes = new ArrayList<>();
+    List<String> types = new ArrayList<>();
     List<Object> facts = new ArrayList<>();
     Set<String> claimedFacades = new HashSet<>();
     Disposable disposable = Disposer.newDisposable();
@@ -92,6 +95,7 @@ public final class KotlinPsi {
         if (!test) {
           new MetricsCollector(parsed, text, relative, functions).collect();
           classes.add(FileClasses.describe(parsed, relative, claimedFacades));
+          Types.collect(parsed, text, relative, types);
         }
         facts.add(factsOf(parsed, text, relative, test));
       }
@@ -100,7 +104,8 @@ public final class KotlinPsi {
     }
     Files.writeString(
         metricsOutput,
-        "{\"functions\":[" + String.join(",", functions) + "],\"files\":[" + String.join(",", classes) + "]}\n",
+        "{\"functions\":[" + String.join(",", functions) + "],\"files\":[" + String.join(",", classes)
+            + "],\"types\":[" + String.join(",", types) + "]}\n",
         StandardCharsets.UTF_8);
     Files.writeString(factsOutput, Json.of(Map.of("files", facts)) + "\n", StandardCharsets.UTF_8);
   }

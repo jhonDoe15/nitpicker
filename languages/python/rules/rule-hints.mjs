@@ -1,4 +1,5 @@
-import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
+import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
+import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
@@ -68,9 +69,7 @@ export function hintFor(finding) {
   return RULE_HINTS.find((hint) => matches(hint, finding));
 }
 
-export function exceptionSentence(rule) {
-  return `To allow it for some paths, add a "python.exceptions" entry for ${rule} in nitpicker.config.json.`;
-}
+const PYTHON_EXCEPTIONS_KEY = 'python.exceptions';
 
 export function describeRuleFinding(
   rule,
@@ -98,6 +97,7 @@ function canBeLifted(finding) {
     finding.classification === 'enforceable' &&
     typeof finding.rule === 'string' &&
     finding.rule !== '' &&
+    !FUNCTION_EXCEPTION_RULES.includes(finding.rule) &&
     finding.path !== '.'
   );
 }
@@ -109,10 +109,11 @@ export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
     return rest;
   }
   const routed = hint?.exception === false || RULES_ROUTED_BY_A_SETTING.has(rest.rule);
-  const lifted =
-    hint?.exception === 'top-level'
-      ? exceptionHint(rest.rule, rest.path)
-      : exceptionSentence(rest.rule);
+  const lifted = exceptionRoute({
+    rule: rest.rule,
+    path: rest.path,
+    key: hint?.exception === 'top-level' ? 'exceptions' : PYTHON_EXCEPTIONS_KEY,
+  });
   const sentences = [
     `${rest.message.replace(/\.$/, '')}.`,
     ...(hint?.allowed === undefined ? [] : [allowedText(hint, subject, libraries)]),

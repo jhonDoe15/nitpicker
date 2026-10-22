@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 export const ERROR_PRONE_MESSAGE =
   'Do not silence Error Prone or NullAway inline: fix the finding (for NullAway, annotate what ' +
-  'may be null with @Nullable), or add an exception for errorprone/<check> in nitpicker.config.json.';
+  'may be null with @Nullable).';
 const ERROR_PRONE_NAMES = new Set(
   JSON.parse(
     readFileSync(new URL('../../../gradle/errorprone/checks.json', import.meta.url), 'utf8'),

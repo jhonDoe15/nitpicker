@@ -82,7 +82,7 @@ describe('python config validation', () => {
     expect(() => {
       validate({ preset: 'python', python: { exceptions } });
     }).toThrow(
-      '"python.exceptions[0].rule" is "test-console-output", a rule shared by every preset: lift it in the top-level "exceptions" instead',
+      '"python.exceptions[0].rule" is "test-console-output", a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead',
     );
   });
 
@@ -105,7 +105,7 @@ describe('python config validation', () => {
     [{ exceptions: ['T201'] }, '"python.exceptions[0]" must be an object'],
     [
       { exceptions: [{ rule: 'T201', paths: ['a'], reason: 'r', why: 'x' }] },
-      'unknown key "why" in "python.exceptions[0]". Allowed keys: rule, paths, packages, reason',
+      'unknown key "why" in "python.exceptions[0]". Allowed keys: rule, paths, packages, function, name, reason',
     ],
     [
       { exceptions: [{ paths: ['a'], reason: 'r' }] },
@@ -125,7 +125,17 @@ describe('python config validation', () => {
     ],
     [
       { exceptions: [{ rule: 'folder-files-limit', paths: ['a'], reason: 'r' }] },
-      'a rule shared by every preset: lift it in the top-level "exceptions" instead',
+      '"python.exceptions[0].rule" is "folder-files-limit", a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead',
+    ],
+    [
+      {
+        exceptions: [{ rule: 'function-lines-limit', paths: ['a'], function: 'run', reason: 'r' }],
+      },
+      '"python.exceptions[0].rule" is "function-lines-limit", a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead',
+    ],
+    [
+      { exceptions: [{ rule: 'coverage-py/changed-branch-coverage', paths: ['a'], reason: 'r' }] },
+      '"python.exceptions[0].rule" is "coverage-py/changed-branch-coverage", a rule that every preset reports with a function or a path',
     ],
     [
       { exceptions: [{ rule: 'E501', paths: ['a'], reason: 'r' }] },
@@ -145,11 +155,11 @@ describe('python config validation', () => {
     ]),
     [
       { exceptions: [{ rule: 'unused-option', paths: ['a'], reason: 'r' }] },
-      'a rule shared by every preset: lift it in the top-level "exceptions" instead',
+      'a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead',
     ],
     [
       { exceptions: [{ rule: 'doc-comment-content', paths: ['a'], reason: 'r' }] },
-      'a rule shared by every preset: lift it in the top-level "exceptions" instead',
+      'a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead',
     ],
     [
       {

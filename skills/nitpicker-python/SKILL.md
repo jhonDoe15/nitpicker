@@ -23,8 +23,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
      tool missing from the environment) and rerun. Exit 2 is never a pass. If it says another run
      is in progress, wait for that run; never kill it.
 4. Never suppress: no `# noqa`, `# type: ignore`, `# pragma: no mutate`, `do_not_mutate`, config
-   `exclude`/`disable`, legacy entries, or weakened tests (`-x`, `-k`, `--deselect` and reruns in
-   `addopts` are ignored anyway). If a finding seems wrong, stop and ask. Never pass
+   `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests (`-x`, `-k`, `--deselect` and
+   reruns in `addopts` are ignored anyway). If a finding seems wrong, stop and ask. Never pass
    `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
    `nitpicker-config/policy-loosened` finding is for a person to accept.
 
@@ -65,12 +65,16 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
-  `nitpicker.config.json` with an entry such as
+  `nitpicker.config.json`. A ruff, type-checker, `python-rules`, import-linter, duplicate or coupling
+  finding goes under `python.exceptions`, with an entry such as
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
-  message, under the key the message names: `python.exceptions` for most rules, the top-level
-  `exceptions` for the rules every preset shares (the file and size limits, `slow-test`,
-  `test-console-output`, `unused-option` and the other fact rules), and `testConsole.allow` for one
-  third-party console message. Don't add one to get past the gate: stop and ask.
+  message. A function, CRAP, changed-branch coverage, mutation, file or size finding, and
+  `slow-test`, `test-console-output`, `unused-option` and the other rules every preset shares, go
+  under the top-level `exceptions`
+  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`), and
+  one third-party console message goes in `testConsole.allow`. Each message ends with the entry and
+  the list that takes it; each list rejects the other's rules. Don't add one to get past the gate:
+  stop and ask.
 
 ## Repository files
 
@@ -85,7 +89,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   CRAP score of a function must stay below 9.
 - Each `elif` and `except` adds a nesting level: `if`/`elif`/`elif` is already too deep. Return
   early, look the value up in a dict, or move a branch into a helper.
-- A new clone of at least 5 lines and 50 tokens (`duplicate-clone`) fails: extract a function. A
+- A new clone of at least 5 lines and 50 tokens (`duplicate-clone`) fails: extract a function, also when the copy has other names and literals. A
   package must not depend on a less stable one (`stability-direction`).
 - A class has at most 20 methods and 10 fields, and at most 3 project base classes above it
   (`Exception` or `models.Model` add none). A package sits at most 4 levels below the root package. Modules and packages must not import

@@ -1,15 +1,17 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
 import { RULE_CASES } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
   describeRuleFinding,
-  exceptionSentence,
   hintFor,
   RULE_HINTS,
   withHint,
 } from './rule-hints.mjs';
+
+const route = (rule) => exceptionRoute({ rule, path: 'src/a.py', key: 'python.exceptions' });
 
 const sample = ({ tool, rule, data }) => ({
   tool,
@@ -51,9 +53,7 @@ describe('every message names the allowed form', () => {
   it.each(RULE_CASES.filter((testCase) => hintFor(sample(testCase)).exception === undefined))(
     'tells how to add an exception for $tool $rule',
     (testCase) => {
-      expect(withHint(sample(testCase)).message).toMatch(
-        new RegExp(`${exceptionSentence(testCase.rule)}$`),
-      );
+      expect(withHint(sample(testCase)).message.endsWith(route(testCase.rule))).toBe(true);
     },
   );
 
@@ -71,7 +71,7 @@ describe('every message names the allowed form', () => {
     const { message } = withHint(sample({ tool: 'python-rules', rule: 'no-inline-suppression' }));
 
     expect(message).toBe(
-      'The base message. Remove the comment and fix the code. To allow it for some paths, add a "python.exceptions" entry for no-inline-suppression in nitpicker.config.json.',
+      'The base message. Remove the comment and fix the code. If this is intended, add {"rule":"no-inline-suppression","paths":["src/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -84,7 +84,7 @@ describe('every message names the allowed form', () => {
     ['basedpyright', 'reportMissingModuleSource'],
   ])('sends the missing import %s %s to installing the package', (tool, rule) => {
     expect(withHint(sample({ tool, rule })).message).toBe(
-      `The base message. Install the package, or its \`types-\` stubs, in the project environment. ${exceptionSentence(rule)}`,
+      `The base message. Install the package, or its \`types-\` stubs, in the project environment. ${route(rule)}`,
     );
   });
 
@@ -99,13 +99,13 @@ describe('every message names the allowed form', () => {
     ['ruff', 'BLE001'],
   ])('tells a test to use pytest.raises for %s %s', (tool, rule) => {
     expect(withHint(sample({ tool, rule })).message).toBe(
-      `The base message. Catch the specific exception and handle it, or re-raise it with its cause (\`raise DomainError(...) from error\`); \`contextlib.suppress(SpecificError)\` ignores one expected error. In a test, use \`pytest.raises(SpecificError)\` (\`self.assertRaises\` in unittest). ${exceptionSentence(rule)}`,
+      `The base message. Catch the specific exception and handle it, or re-raise it with its cause (\`raise DomainError(...) from error\`); \`contextlib.suppress(SpecificError)\` ignores one expected error. In a test, use \`pytest.raises(SpecificError)\` (\`self.assertRaises\` in unittest). ${route(rule)}`,
     );
   });
 
   it('keeps the type error boilerplate short', () => {
     expect(withHint(sample({ tool: 'mypy', rule: 'return-value' })).message).toBe(
-      `The base message. Fix the type; inline ignores are banned. ${exceptionSentence('return-value')}`,
+      `The base message. Fix the type; inline ignores are banned. ${route('return-value')}`,
     );
   });
 });
@@ -115,7 +115,7 @@ describe('hints', () => {
     expect(withHint(sample({ tool: 'ruff', rule: 'T201' }))).toEqual({
       ...sample({ tool: 'ruff', rule: 'T201' }),
       message:
-        'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
+        'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
     });
   });
 
@@ -163,9 +163,16 @@ describe('hints', () => {
     ['ruff', 'invalid-syntax'],
   ])('end a %s %s finding without an allowed form with the exception route', (tool, rule) => {
     expect(hintFor(sample({ tool, rule }))).toBeUndefined();
-    expect(withHint(sample({ tool, rule })).message).toBe(
-      `The base message. ${exceptionSentence(rule)}`,
-    );
+    expect(withHint(sample({ tool, rule })).message).toBe(`The base message. ${route(rule)}`);
+  });
+
+  it.each([
+    ['coverage-py', 'changed-branch-coverage'],
+    ['mutmut', 'mutant-survived'],
+  ])('leave a %s %s finding to the shared exception route', (tool, rule) => {
+    const finding = sample({ tool, rule });
+
+    expect(withHint(finding)).toEqual(finding);
   });
 
   it('keep every other field of the finding', () => {
@@ -182,7 +189,7 @@ describe('hints', () => {
 describe('hints follow the libraries of the project', () => {
   const advice = (rule, libraries, tool = 'ruff', subject) =>
     withHint({ ...sample({ tool, rule }), subject }, libraries).message;
-  const expected = (rule, allowed) => `The base message. ${allowed} ${exceptionSentence(rule)}`;
+  const expected = (rule, allowed) => `The base message. ${allowed} ${route(rule)}`;
 
   it.each([
     [
