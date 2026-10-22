@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { globToRegExp } from '../../../shared/glob.mjs';
+import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
 import { failedCases, failingTestsError, freshReports } from '../builds/test-failures.mjs';
 
@@ -21,7 +21,7 @@ export function archunitMatcher(includes = DEFAULT_ARCHUNIT_INCLUDES) {
     .split(',')
     .map((pattern) => pattern.trim())
     .filter(Boolean)
-    .map((pattern) => globToRegExp(pattern));
+    .map((pattern) => globMatcher(pattern));
   return (className) => {
     const file = `${className.replaceAll('.', '/').replace(/\$.*$/u, '')}.class`;
     return patterns.some((pattern) => pattern.test(file));

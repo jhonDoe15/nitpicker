@@ -18,14 +18,23 @@ export function sourceRules(ids, enforcedBy) {
       check: 'structure',
       limit:
         'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
-      enforcedBy,
+      enforcedBy: { ...enforcedBy, javascript: 'partial' },
     },
     {
       id: ids.javascriptInTypescriptProject,
       check: 'structure',
       limit:
         'a `.js`, `.mjs`, `.cjs` or `.jsx` file under the source or test roots of a project with a `tsconfig.json` (at the root, in a package or referenced from one), except files under a `fixtures/` or `__fixtures__/` folder in a test location',
-      enforcedBy,
+      enforcedBy: { ...enforcedBy, javascript: false },
     },
   ];
+}
+
+export function docCommentRule(ids) {
+  return {
+    id: ids.docCommentContent,
+    check: 'coding-standards',
+    limit:
+      'a doc comment that only restates its declaration name, or a description longer than 5 lines, code examples not counted (TypeScript and JavaScript report it as `nitpicker/no-comments`)',
+  };
 }
