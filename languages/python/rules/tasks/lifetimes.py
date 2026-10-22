@@ -122,7 +122,9 @@ class Lifetimes:
         handed = coroutine_handed(call.args[0]) if call.args else set()
         owners = [e for e in reversed(stack) if e.kind != "group" and e.name in handed]
         if owners and not (task and used_after(task, owners[0].block, call)):
-            subject = f"{owners[0].name} passed to {dotted_name(call.func, self.aliases)}"
+            subject = (
+                f"{owners[0].name} passed to {dotted_name(call.func, self.aliases)}"
+            )
             self.findings.append(finding(self.context.path, RULE, subject, call))
 
 
