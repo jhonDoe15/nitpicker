@@ -15,12 +15,14 @@ import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mjs';
+import { readSpringArchFindings } from '../spring-arch/spring-arch.mjs';
 import { javaMethodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
+import { readUnrunTestFindings } from '../test-runs/unrun-tests.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
@@ -138,6 +140,7 @@ function readModuleFindings(context, crapLimit) {
     ...checkstyleFindings(context),
     ...jacocoFindings(context, jacoco),
     ...archunitFindings(context),
+    ...springArchFindings(context),
     ...crapFindings(context, jacoco, crapLimit),
     ...pitFindings(context),
     ...readJavaStructureFindings(reportRoot, projectRoot, context.reactorRoot),
@@ -150,6 +153,12 @@ function readModuleFindings(context, crapLimit) {
     }),
     ...readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),
     ...readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
+    ...readUnrunTestFindings({
+      reportRoot,
+      projectRoot,
+      manifest: context.manifest,
+      modulePath: context.testTimes.modulePath,
+    }),
   ];
 }
 
@@ -198,6 +207,25 @@ function jacocoFindings(context, jacoco) {
   );
 }
 
+function classLocator({ projectRoot, sourceRoots, manifest }) {
+  return sourceLocator(projectRoot, [
+    ...sourceRoots,
+    ...(manifest.testSourceRoots ?? []),
+    ...(manifest.kotlinSourceRoots ?? []),
+    ...(manifest.kotlinTestSourceRoots ?? []),
+  ]);
+}
+
+function springArchFindings(context) {
+  if (context.manifest.springArch !== true) {
+    return [];
+  }
+  const locate = classLocator(context);
+  return readSpringArchFindings(context.reportRoot, {
+    resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
+  });
+}
+
 function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
   const archunitRoot = path.join(reportRoot, 'archunit');
   const archunitReports = existsSync(archunitRoot)
@@ -205,12 +233,7 @@ function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
         .filter((name) => name.endsWith('.xml'))
         .sort()
     : [];
-  const locate = sourceLocator(projectRoot, [
-    ...sourceRoots,
-    ...(manifest.testSourceRoots ?? []),
-    ...(manifest.kotlinSourceRoots ?? []),
-    ...(manifest.kotlinTestSourceRoots ?? []),
-  ]);
+  const locate = classLocator({ projectRoot, sourceRoots, manifest });
   return archunitReports.flatMap(
     (name) =>
       ingestArchunit(readFileSync(path.join(archunitRoot, name), 'utf8'), {

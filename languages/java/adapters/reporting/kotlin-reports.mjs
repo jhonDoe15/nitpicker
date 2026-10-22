@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
 import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
+import { readKotlinClassLimitFindings } from '../kotlin/kotlin-class-limits.mjs';
 import { readSarifReport } from './sarif/sarif-reports.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
@@ -9,12 +10,16 @@ import {
   readKotlinMetrics,
   readKotlinStructureFindings,
 } from '../kotlin/kotlin-metrics.mjs';
-import { addOneWayHint, appendSentence } from '../kotlin/rules/kotlin-rules.mjs';
+import { readCompilerFindings } from '../kotlin/rules/kotlin-compiler.mjs';
+import { applyKotlinRuleMessages } from '../kotlin/rules/kotlin-messages.mjs';
+import { appendSentence, ONE_WAY_RULE_IDS } from '../kotlin/rules/kotlin-rules.mjs';
 import {
   readCatchLogFindings,
   readTestAssertionFindings,
 } from '../kotlin/rules/kotlin-source-rules.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
+import { withFrameworkAllowances } from '../kotlin/scan/framework-allowances.mjs';
+import { readKotlinSourceFindings } from '../kotlin/scan/kotlin-scan.mjs';
 import { readKotlinReviewFindings } from '../kotlin/review-rules/review-findings.mjs';
 
 const DETEKT_TOOL = 'detekt';
@@ -32,10 +37,6 @@ export function requireKotlinManifest(manifest) {
       'The kotlin preset needs a Gradle project that applies org.jetbrains.kotlin.jvm; this one does not',
     );
   }
-}
-
-export function kotlinLintedRoots({ kotlinSourceRoots, kotlinTestSourceRoots = [] }) {
-  return [...new Set([...kotlinSourceRoots, ...kotlinTestSourceRoots])];
 }
 
 export function jacocoSourceRoots({ sourceRoots, manifest, kotlin }) {
@@ -100,14 +101,30 @@ export function readKotlinFindings(context, crapLimit) {
   const metrics = readKotlinMetrics(reportRoot);
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
   const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
+  const ruleFindings = applyKotlinRuleMessages([
+    ...withFrameworkAllowances(detektFindings(reportRoot, formatAdvice), {
+      projectRoot,
+      spring: manifest.spring === true,
+      testRoots,
+    }),
+    ...readKotlinSourceFindings(projectRoot, manifest),
+    ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),
+  ]);
   return [
-    ...detektFindings(reportRoot, formatAdvice),
-    ...readSuppressionFindings(projectRoot, kotlinLintedRoots(manifest)),
-    ...readCatchLogFindings(projectRoot, kotlinLintedRoots(manifest)),
+    ...ruleFindings,
+    ...readSuppressionFindings(projectRoot, {
+      sourceRoots: manifest.kotlinSourceRoots ?? [],
+      testRoots,
+    }),
+    ...readCatchLogFindings(projectRoot, {
+      sourceRoots: manifest.kotlinSourceRoots ?? [],
+      testRoots,
+    }),
     ...readTestAssertionFindings(projectRoot, testRoots, helpers),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
     ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
     ...readKotlinStructureFindings(metrics, projectRoot),
+    ...readKotlinClassLimitFindings(metrics, context.classLimits),
     ...readKotlinCrapFindings(metrics, {
       projectRoot,
       jacoco,
@@ -138,9 +155,8 @@ function readSarif(reportRoot, file) {
 }
 
 function withProjectConfigRoute(finding, advice) {
-  const hinted = addOneWayHint(finding);
-  return hinted !== finding || advice.detekt === undefined
-    ? hinted
+  return advice.detekt === undefined || ONE_WAY_RULE_IDS.includes(finding.rule)
+    ? finding
     : { ...finding, message: appendSentence(finding.message, advice.detekt) };
 }
 
