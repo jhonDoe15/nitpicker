@@ -6,7 +6,6 @@ import {
   failedCases,
   failingTestsError,
   failingTestsNote,
-  failureNoteOf,
   freshReports,
 } from './test-failures.mjs';
 
@@ -79,12 +78,10 @@ describe('failingTestsNote', () => {
     ]);
   });
 
-  it('is kept for the error of the same failures only', () => {
+  it('is kept on the error of the same failures without changing how it compares', () => {
     const error = failingTestsError('/repo', ['shop.T.t: no']);
 
-    expect([failureNoteOf(error), failureNoteOf(new Error('x'))]).toEqual([
-      'Tests fail in /repo:\n  shop.T.t: no',
-      undefined,
-    ]);
+    expect(error.detail).toBe('Tests fail in /repo:\n  shop.T.t: no');
+    expect(Object.keys(error)).toEqual([]);
   });
 });
