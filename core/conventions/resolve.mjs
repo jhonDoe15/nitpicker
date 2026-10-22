@@ -6,7 +6,7 @@ import {
   isValidChoice,
 } from '../../shared/conventions/settings.mjs';
 import { isJavascriptPolicy } from '../../languages/javascript/preset/javascript-preset.mjs';
-import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
+import { resolveProjectHeadPolicy } from '../configuration/project-head-policy.mjs';
 import {
   builtInExcludedGlobs,
   prettierPatterns,
@@ -45,7 +45,7 @@ export function publishHeadPolicy(config, projectRoot) {
   return followConventions({
     config,
     projectRoot,
-    headPolicy: resolveHeadPolicy(config, projectRoot),
+    headPolicy: resolveProjectHeadPolicy(config, projectRoot),
     commit: () => headCommit(projectRoot),
   });
 }

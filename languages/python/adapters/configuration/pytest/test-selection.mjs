@@ -1,7 +1,12 @@
 import { readInside } from '../../../../../shared/conventions/read-inside.mjs';
 import { listProductionModules } from '../../analysis/python-sources.mjs';
 import { mutmutDoNotMutate } from '../../mutation/mutation-markers.mjs';
-import { isTestFile, matchesGlob, testFileOptions, underTestPath } from './collection-options.mjs';
+import {
+  isCollectedTestFile,
+  matchesGlob,
+  testFileOptions,
+  underTestPath,
+} from './collection-options.mjs';
 
 const PYTEST_FILES = [
   'pytest.toml',
@@ -36,20 +41,19 @@ function testpathsEntry(projectRoot, options) {
     label: 'pytest testpaths',
     roots: testpaths.length === 0 ? undefined : testpaths,
     contains: (file, root) => underTestPath(file.split('/'), [root]),
-    applies: (file) => isTestFile(file, { ...options, testpaths: [] }),
+    applies: (file) => isCollectedTestFile(file, options),
   };
 }
 
 function ignoredEntry(projectRoot, options) {
-  const patterns = [...options.ignored, ...options.ignoredGlobs, ...options.deselected];
+  const patterns = [...options.ignored, ...options.ignoredGlobs];
   return {
     type: 'excludes',
     key: 'pytest:addopts-ignore',
     file: configFileWith(projectRoot, 'addopts'),
-    label: 'pytest addopts --ignore, --ignore-glob and --deselect',
+    label: 'pytest addopts --ignore and --ignore-glob',
     patterns,
-    covers: (file, pattern) =>
-      isTestFile(file, { ...options, testpaths: [] }) && ignoredPath(file, pattern),
+    covers: (file, pattern) => isCollectedTestFile(file, options) && ignoredPath(file, pattern),
   };
 }
 

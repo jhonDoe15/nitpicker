@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { gradleStatements } from './gradle-script.mjs';
-import { excludeCovers } from './source-patterns.mjs';
+import { taskFilter } from './gradle-tasks.mjs';
+import { excludeCovers, includeScope } from './source-patterns.mjs';
 
 const QUOTED = /"([^"\n]*)"|'([^'\n]*)'/gu;
 const SOURCE_SET_NAME =
@@ -11,17 +12,6 @@ const REPLACES_ROOTS = /\bsrcDirs\s*=(?!=)|\bsetSrcDirs\s*\(/u;
 const ADDS_ONLY = /\bsrcDirs?\s*\+=/u;
 const ROOT_PREFIX = /^\$\{?(?:project\.)?(?:projectDir|rootDir)\}?\/?/u;
 const ROOT_DIRECTORY = /^\$\{?rootDir\}?/u;
-const TEST_TASK_HEADERS = [
-  /^(?:tasks\.)?(?:test|\w*Test)$/u,
-  /withType\s*[(<]\s*Test\b/u,
-  /(?:named|register|create|getByName)\s*(?:<\s*Test\s*>\s*)?\(\s*["']\w*[tT]est\w*["']/u,
-  /^task\s+\w*[tT]est\w*\s*\(.*type\s*:\s*Test/u,
-];
-const EXCLUDE = /^(?:[\w.]+\.)?(?:exclude|setExcludes)\b(?!\s*(?:group|module)\s*[:=])/u;
-const EXCLUDES_ASSIGNED = /^(?:[\w.]+\.)?excludes\s*\+?=/u;
-const NAME_EXCLUDE = /^(?:[\w.]+\.)?excludeTestsMatching\b/u;
-const TAG_EXCLUDE = /^(?:[\w.]+\.)?(?:excludeTags|excludeEngines|excludeCategories)\b/u;
-const DISABLED = /^(?:enabled|isEnabled)\s*=\s*false$/u;
 const DEFAULT_SETS = ['main', 'test'];
 const LANGUAGES = ['java', 'kotlin'];
 
@@ -111,49 +101,29 @@ function rootsEntries(module, file, statements) {
   });
 }
 
-function isTestTask(headers) {
-  return headers.some((header) => TEST_TASK_HEADERS.some((pattern) => pattern.test(header)));
-}
-
-function excludeKind({ path: headers, text }) {
-  const inSourceSets = headers.some((header) => /^(?:\w+\.)?sourceSets\b/u.test(header));
-  if (inSourceSets && (EXCLUDE.test(text) || EXCLUDES_ASSIGNED.test(text))) {
-    return 'source';
-  }
-  if (!isTestTask(headers)) {
-    return undefined;
-  }
-  if (EXCLUDE.test(text) || EXCLUDES_ASSIGNED.test(text)) {
-    return 'test';
-  }
-  if (NAME_EXCLUDE.test(text)) {
-    return 'name';
-  }
-  return TAG_EXCLUDE.test(text) || DISABLED.test(text) ? 'tag' : undefined;
-}
-
-function excludesOf(statements) {
+function filtersOf(statements) {
   const found = new Map();
   for (const statement of statements) {
-    const kind = excludeKind(statement);
-    if (kind !== undefined) {
-      const patterns = DISABLED.test(statement.text)
-        ? ['enabled = false']
-        : quotedValues(statement.text);
-      found.set(kind, [...(found.get(kind) ?? []), ...patterns]);
+    const filter = taskFilter(statement);
+    if (filter !== undefined) {
+      const key = [filter.action, filter.group, filter.kind].join(':');
+      const patterns = filter.disabled === true ? ['enabled = false'] : quotedValues(filter.text);
+      const known = found.get(key) ?? { ...filter, patterns: [] };
+      found.set(key, { ...known, patterns: [...known.patterns, ...patterns] });
     }
   }
-  return found;
+  return [...found];
 }
 
-function excludeEntries({ module, file, statements }, entries) {
-  return [...excludesOf(statements)].map(([kind, patterns]) => ({
-    type: 'excludes',
-    key: `gradle:${module}:exclude:${kind}`,
+function filterEntries({ module, file, statements }, entries) {
+  return filtersOf(statements).map(([key, filter]) => ({
+    type: filter.action === 'exclude' ? 'excludes' : 'includes',
+    key: `gradle:${module}:${key}`,
     file,
-    label: `Gradle ${kind === 'source' ? 'source set' : 'test'} excludes in ${file}`,
-    patterns: [...new Set(patterns)],
-    covers: excludeCovers(kind, entries),
+    label: `Gradle ${filter.group} ${filter.action}s in ${file}`,
+    patterns: [...new Set(filter.patterns)],
+    covers: excludeCovers(filter.kind, entries),
+    ...(filter.action === 'include' ? includeScope(filter.kind, entries) : {}),
   }));
 }
 
@@ -164,6 +134,6 @@ export function readGradleSources(files, readFile) {
       const module = path.posix.dirname(file);
       const statements = gradleStatements(readFile(file));
       const roots = rootsEntries(module, file, statements);
-      return [...roots, ...excludeEntries({ module, file, statements }, roots)];
+      return [...roots, ...filterEntries({ module, file, statements }, roots)];
     });
 }

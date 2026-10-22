@@ -95,4 +95,53 @@ describe('Java and Kotlin', () => {
       'exclude and layout.excludedGlobs hide code this change adds or moves that production code imports: src/main/kotlin/gen/Render.kt (imported by src/main/kotlin/app/Main.kt)',
     ]);
   });
+
+  it('skips a same-package type that an explicit import shadows, and counts it when used', () => {
+    const javaConfig = { preset: 'java', exclude: ['**/*Legacy.java'] };
+    const javaBase = {
+      'build.gradle': "plugins { id 'java' }\n",
+      'src/main/java/a/Service.java':
+        'package a;\nimport org.lib.Config;\nclass Service { Config c; }\n',
+      'src/main/java/a/OldLegacy.java': 'package a;\nclass OldLegacy {}\n',
+    };
+    const legacy = {
+      'src/main/java/a/ConfigLegacy.java': 'package a;\nclass ConfigLegacy {}\nclass Config {}\n',
+    };
+    const unshadowed = {
+      ...javaBase,
+      ...legacy,
+      'src/main/java/a/Service.java': 'package a;\nclass Service { Config c; }\n',
+    };
+
+    expect(
+      loosenings({ base: javaBase, head: { ...javaBase, ...legacy }, config: javaConfig }),
+    ).toEqual([]);
+    expect(loosenings({ base: javaBase, head: unshadowed, config: javaConfig })).toEqual([
+      `${HEADING} that production code imports: src/main/java/a/ConfigLegacy.java (imported by src/main/java/a/Service.java)`,
+    ]);
+  });
+
+  it('matches a same-package top-level Kotlin function only on calls without a receiver', () => {
+    const kotlin = { preset: 'kotlin', exclude: ['**/*Legacy.kt'] };
+    const kotlinBase = {
+      'build.gradle.kts': 'plugins { kotlin("jvm") }\n',
+      'src/main/kotlin/app/Main.kt': 'package app\nfun main() { println("%d".format(1)) }\n',
+      'src/main/kotlin/app/OldLegacy.kt': 'package app\nclass OldLegacy\n',
+    };
+    const legacy = {
+      'src/main/kotlin/app/TextLegacy.kt': 'package app\nfun format(x: Int) = x.toString()\n',
+    };
+    const bare = {
+      ...kotlinBase,
+      ...legacy,
+      'src/main/kotlin/app/Main.kt': 'package app\nfun main() { println(format(1)) }\n',
+    };
+
+    expect(
+      loosenings({ base: kotlinBase, head: { ...kotlinBase, ...legacy }, config: kotlin }),
+    ).toEqual([]);
+    expect(loosenings({ base: kotlinBase, head: bare, config: kotlin })).toEqual([
+      `${HEADING} that production code imports: src/main/kotlin/app/TextLegacy.kt (imported by src/main/kotlin/app/Main.kt)`,
+    ]);
+  });
 });

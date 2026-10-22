@@ -2,6 +2,7 @@ import { isUnder } from '../policy-scope.mjs';
 
 const LISTED_FILES = 3;
 const NOTHING_NEW = 'covers no checked file it did not cover before';
+const NOTHING_LEFT_OUT = 'leaves out no checked file it did not leave out before';
 
 function listed(files, limit) {
   const more = files.length > limit ? `, and ${files.length - limit} more` : '';
@@ -16,35 +17,69 @@ function within(entry, file) {
   return entry.roots.some((root) => contains(file, root));
 }
 
-function lostText(base, lost, limit) {
-  return `${base.label} no longer includes checked code: ${listed(lost, limit)}`;
-}
-
-function familyOf(entry) {
-  return entry.key.split(':')[0];
+function lostText(label, lost, limit) {
+  return `${label} no longer includes checked code: ${listed(lost, limit)}`;
 }
 
 function rootsChange(base, head, { scope, headEntries }) {
-  const family = headEntries.filter(
-    (entry) => entry.type === 'roots' && familyOf(entry) === familyOf(base),
-  );
+  const headRoots = headEntries.filter((entry) => entry.type === 'roots');
   const applies = head?.applies ?? base.applies ?? (() => true);
   const lost = scope.keptCode.filter(
-    (file) => applies(file) && within(base, file) && !family.some((entry) => within(entry, file)),
+    (file) =>
+      applies(file) &&
+      within(base, file) &&
+      !headRoots.some((entry) => (entry.applies?.(file) ?? true) && within(entry, file)),
   );
+  return lostChange({ label: base.label, file: (head ?? base).file, lost });
+}
+
+function lostChange({ label, file, lost }) {
   if (lost.length === 0) {
     return { loosened: [], changed: [] };
   }
-  const file = (head ?? base).file;
   return {
     loosened: [
       {
-        text: lostText(base, lost, LISTED_FILES),
-        key: lostText(base, lost, lost.length),
+        text: lostText(label, lost, LISTED_FILES),
+        key: lostText(label, lost, lost.length),
         files: [file, ...lost],
       },
     ],
     changed: [],
+  };
+}
+
+function admitted(entry, file) {
+  return entry === undefined || entry.patterns.some((pattern) => entry.admits(file, pattern));
+}
+
+function includesChange(base, head, scope) {
+  const before = base?.patterns ?? [];
+  const added = (head?.patterns ?? []).filter((pattern) => !before.includes(pattern));
+  const removed = before.filter((pattern) => !(head?.patterns ?? []).includes(pattern));
+  const removedText = removed.map((pattern) => `${base.label} removed: ${pattern}`);
+  if (head === undefined) {
+    return { loosened: [], changed: removedText };
+  }
+  const lost = scope.keptCode.filter(
+    (file) => head.inScope(file) && admitted(base, file) && !admitted(head, file),
+  );
+  const addedText = added.map((pattern) => `${head.label} added: ${pattern}`);
+  if (lost.length === 0) {
+    return {
+      loosened: [],
+      changed: [...addedText.map((text) => `${text} (${NOTHING_LEFT_OUT})`), ...removedText],
+    };
+  }
+  return {
+    loosened: [
+      {
+        text: `${head.label} leave out checked code: ${listed(lost, LISTED_FILES)}`,
+        key: `${head.label} leave out checked code: ${listed(lost, lost.length)}`,
+        files: [head.file, ...lost],
+      },
+    ],
+    changed: removedText,
   };
 }
 
@@ -81,6 +116,9 @@ function entryChange({ base, head, headEntries, scope }) {
   }
   if (head?.type === 'excludes') {
     return excludesChange(base, head, scope);
+  }
+  if (head?.type === 'includes' || base?.type === 'includes') {
+    return includesChange(base, head, scope);
   }
   const removed = base?.type === 'excludes' ? base.patterns : [];
   return { loosened: [], changed: removed.map((pattern) => `${base.label} removed: ${pattern}`) };

@@ -3,8 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { withHeadCheckoutFacts } from '../../../typescript/preset/head-policy.mjs';
-import { resolveHeadPolicy } from '../../../typescript/preset/head-policy.mjs';
+import {
+  resolveHeadPolicy,
+  withHeadCheckoutFacts,
+} from '../../../typescript/preset/head-policy.mjs';
+import { resolveProjectHeadPolicy } from '../../../../core/configuration/project-head-policy.mjs';
 import { declaresSpring, javaHeadFacts } from './head-facts.mjs';
 import { analyzeJavaSnapshot, readRunnerPolicy } from '../java-runner.mjs';
 
@@ -107,14 +110,24 @@ describe('javaHeadFacts', () => {
       'build.gradle.kts':
         'plugins { kotlin("jvm"); id("org.springframework.boot") }\ndependencies { ktfmt("x") }\n',
     }).root;
-    const head = resolveHeadPolicy({ preset: 'kotlin' }, root);
+    const head = resolveProjectHeadPolicy({ preset: 'kotlin' }, root);
     const base = withHeadCheckoutFacts(
-      resolveHeadPolicy({ preset: 'kotlin', kotlin: { formatter: 'none' } }),
+      resolveProjectHeadPolicy({ preset: 'kotlin', kotlin: { formatter: 'none' } }),
       head,
     );
 
     expect([head.spring, head.kotlin]).toEqual([true, { formatter: 'ktfmt' }]);
     expect([base.spring, base.kotlin]).toEqual([true, { formatter: 'ktfmt' }]);
+  });
+
+  it('leaves the facts out of the TypeScript head policy, whose policy copy has no Java modules', () => {
+    const root = createGitRepository({
+      'build.gradle': "plugins { id 'org.springframework.boot' }\n",
+    }).root;
+
+    expect(resolveHeadPolicy({ preset: 'java' }, root).spring).toBeUndefined();
+    expect(resolveProjectHeadPolicy({ preset: 'java' }, root).spring).toBe(true);
+    expect(resolveProjectHeadPolicy({ preset: 'typescript' }, root).spring).toBeUndefined();
   });
 
   it('reaches the runner policy from the policy file', () => {

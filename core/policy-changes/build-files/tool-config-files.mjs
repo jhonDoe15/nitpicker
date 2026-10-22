@@ -6,6 +6,7 @@ import {
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
+import { toolConfigText } from './tool-config-text.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
@@ -23,13 +24,13 @@ function prettierKey(content) {
   }
 }
 
-function fingerprintOf(projectRoot, file, gitBlobId) {
+function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   const content = readInside(projectRoot, file);
   if (content === undefined) {
     return undefined;
   }
   if (file !== PACKAGE_JSON) {
-    return gitBlobId(content);
+    return gitBlobId(toolConfigText(tool, file, content.toString('utf8')));
   }
   const key = prettierKey(content);
   if (key.malformed === true) {
@@ -38,17 +39,17 @@ function fingerprintOf(projectRoot, file, gitBlobId) {
   return key.prettier === undefined ? undefined : gitBlobId(JSON.stringify(key.prettier));
 }
 
-function fingerprints(projectRoot, files, gitBlobId) {
+function fingerprints(tool, projectRoot, files, gitBlobId) {
   return new Map(
     files.flatMap((file) => {
-      const fingerprint = fingerprintOf(projectRoot, file, gitBlobId);
+      const fingerprint = fingerprintOf(tool, { projectRoot, file }, gitBlobId);
       return fingerprint === undefined ? [] : [[file, fingerprint]];
     }),
   );
 }
 
-function underDirectory(files, directory) {
-  return files.filter((file) => file.startsWith(`${directory}/`));
+function rulesUnder(files, directory) {
+  return files.filter((file) => file.startsWith(`${directory}/`) && file.endsWith('.xml'));
 }
 
 function styleFilesOf(tool, side) {
@@ -88,7 +89,7 @@ function candidates(tool, side) {
   }
   const configured = PROJECT_TOOL_CONFIGS.get(tool);
   return GRADLE_PRESETS.includes(config.preset) && configured !== undefined
-    ? underDirectory(files, path.posix.dirname(configured))
+    ? rulesUnder(files, path.posix.dirname(configured))
     : [];
 }
 
@@ -104,7 +105,7 @@ export function readToolConfigs(base, head, gitBlobId) {
     .filter((tool) => isOptedIn(tool, base.config) && isOptedIn(tool, head.config))
     .map((tool) => ({
       tool,
-      base: fingerprints(base.root, candidates(tool, base), gitBlobId),
-      head: fingerprints(head.root, candidates(tool, head), gitBlobId),
+      base: fingerprints(tool, base.root, candidates(tool, base), gitBlobId),
+      head: fingerprints(tool, head.root, candidates(tool, head), gitBlobId),
     }));
 }

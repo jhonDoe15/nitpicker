@@ -585,8 +585,12 @@ identity when the value changes: editing such a line counts as a resolved plus a
   no test runs it or it is annotated `@Generated`.
 - **JaCoCo filters.** The project's own JaCoCo settings (`jacocoTestReport.classDirectories`
   excludes, `test.jacoco` includes and excludes) are reset, so a class cannot leave the coverage
-  report through `build.gradle`. JaCoCo and PIT still skip code annotated `@Generated`; on
-  hand-written code that annotation is the `pmd/GeneratedOnHandWrittenCode` finding. Only violations are findings; the
+  report through `build.gradle`. JaCoCo and PIT still skip code annotated `@Generated`. An
+  annotation whose value names a known generator (MapStruct, Dagger, AutoValue, Immutables and the
+  others the generated-sources check lists) makes the whole file generated, so its findings are
+  dropped and no `pmd/GeneratedOnHandWrittenCode` is reported; adding one to a file the base checked
+  is a policy loosening. Any other `@Generated` is the `pmd/GeneratedOnHandWrittenCode` finding.
+  Only violations are findings; the
   per-function metric findings of the TypeScript check are not produced.
 - **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
   enclosing classes, method and parameter types (`signature` in `structure.json`), never a line;

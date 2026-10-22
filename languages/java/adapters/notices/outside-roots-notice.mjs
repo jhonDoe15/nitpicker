@@ -1,5 +1,5 @@
 import { outsideRootsNotice } from '../../../../shared/notices/outside-roots-message.mjs';
-import { globToRegExp } from '../../../../shared/glob.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
 
 const CONVENTIONAL_SOURCE_SET = /(?:^|\/)src\/[^/]+\/(?:java|kotlin)\//u;
 const HIDDEN_FOLDER = /(?:^|\/)\.[^/]+\//u;
@@ -13,7 +13,7 @@ function isUnder(file, root) {
 
 export function jvmOutsideRootsNotices(changedFiles, project) {
   const { preset, declaredRoots = [], exclude = [] } = project;
-  const excluded = exclude.map((glob) => globToRegExp(glob));
+  const excluded = exclude.map((glob) => globMatcher(glob));
   const outside = [...changedFiles]
     .map((file) => file.replaceAll('\\', '/'))
     .filter(
