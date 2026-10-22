@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../shared/filesystem.mjs';
-import { globToRegExp } from '../../shared/glob.mjs';
+import { globMatcher } from '../../shared/paths/glob.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
 import { readBuildSources } from '../../languages/java/builds/narrowing/build-sources.mjs';
@@ -37,7 +37,7 @@ export function gitBlobId(content) {
 }
 
 export function matcherOf(globs = []) {
-  const patterns = globs.map(globToRegExp);
+  const patterns = globs.map(globMatcher);
   return (file) => patterns.some((pattern) => pattern.test(file));
 }
 
