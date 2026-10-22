@@ -1,14 +1,10 @@
+import { ancestors } from './model/kotlin-declarations.mjs';
 import { CHECKED_EXCEPTIONS, JDK_ENUMS, REPOSITORY_ROOTS } from './names/spring-types.mjs';
 
 function qualifiedName(file, declaration) {
-  const parts = [];
-  const pending = [declaration];
-  for (const current of pending) {
-    parts.unshift(current.name);
-    if (current.parent !== undefined) {
-      pending.push(current.parent);
-    }
-  }
+  const parts = ancestors(declaration)
+    .map(({ name }) => name)
+    .reverse();
   return [file.packageName, ...parts].filter((part) => part !== '').join('.');
 }
 

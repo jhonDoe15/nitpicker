@@ -2,6 +2,16 @@ import { annotationsOf, modifiersOf } from '../syntax/kotlin-annotations.mjs';
 import { identifierOf, kid, kids } from '../syntax/kotlin-tree.mjs';
 import { typeOf } from '../syntax/kotlin-types.mjs';
 
+export function ancestors(declaration) {
+  const chain = [declaration];
+  for (const current of chain) {
+    if (current.parent !== undefined) {
+      chain.push(current.parent);
+    }
+  }
+  return chain;
+}
+
 function parameterOf(source, node) {
   return {
     node,

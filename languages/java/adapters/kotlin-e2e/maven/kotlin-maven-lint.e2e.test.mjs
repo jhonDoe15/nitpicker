@@ -39,6 +39,26 @@ const SPOTLESS_KTFMT = `<plugin>
   </configuration>
 </plugin>`;
 
+const BOUND_CHECKS = `<plugin>
+  <groupId>com.github.gantsign.maven</groupId>
+  <artifactId>ktlint-maven-plugin</artifactId>
+  <version>3.5.0</version>
+  <configuration>
+    <sourceRoots><sourceRoot>\${project.basedir}/src/main/kotlin</sourceRoot></sourceRoots>
+  </configuration>
+  <executions>
+    <execution><id>lint</id><phase>validate</phase><goals><goal>check</goal></goals></execution>
+  </executions>
+</plugin>
+<plugin>
+  <groupId>com.github.ozsie</groupId>
+  <artifactId>detekt-maven-plugin</artifactId>
+  <version>1.23.8</version>
+  <executions>
+    <execution><id>detect</id><phase>validate</phase><goals><goal>check</goal></goals></execution>
+  </executions>
+</plugin>`;
+
 function mavenLintBranches(project) {
   const pom = readFileSync(path.join(project.root, 'pom.xml'), 'utf8');
   return {
@@ -50,7 +70,14 @@ function mavenLintBranches(project) {
         '<formatter>com.facebook:ktfmt</formatter><ktlint.rules>ktlint</ktlint.rules></properties>',
       ),
     },
-    'ktfmt-named': { 'pom.xml': pom.replace('<plugins>', `<plugins>${SPOTLESS_KTFMT}`) },
+    'bound-checks': {
+      [`${kotlinSources}/Bad.kt`]: BAD,
+      'pom.xml': pom.replace('<plugins>', `<plugins>${BOUND_CHECKS}`),
+    },
+    'ktfmt-named': {
+      [`${kotlinSources}/Bad.kt`]: BAD,
+      'pom.xml': pom.replace('<plugins>', `<plugins>${SPOTLESS_KTFMT}`),
+    },
   };
 }
 
@@ -122,6 +149,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: detekt, ktlint and k
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_DETEKT_FINDINGS].sort());
     expect(result.newFindings.filter(({ tool }) => ['ktlint', 'ktfmt'].includes(tool))).toEqual([]);
   });
+  it("skips the project's own ktlint and detekt checks bound to the build, which would fail it", () => {
+    const result = mavenDiffOf(fixture.project, 'bound-checks');
+
+    expect(result.failed).toBe(true);
+    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_DETEKT_FINDINGS].sort());
+    expect(ktlintRules(result.newEnforceable)).toEqual(BAD_KTLINT_RULES);
+  });
   it('checks formatting with ktfmt when configured, accepting code in its style', () => {
     const result = mavenDiffOf(fixture.project, 'ktfmt', {
       policy: { preset: 'kotlin', kotlinFormatter: 'ktfmt' },
@@ -141,12 +175,12 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: detekt, ktlint and k
       maven,
       policy: withHeadPolicy(kotlinPolicy, head),
     });
-    const formatters = new Set(
-      findings.filter(({ rule }) => rule === 'format').map(({ tool }) => tool),
-    );
+    const formats = findings
+      .filter(({ rule }) => rule === 'format')
+      .map(({ tool, path: file }) => `${tool} format ${path.basename(file)}`);
 
     expect(head.kotlin).toEqual({ formatter: 'ktfmt', build: 'maven', ktfmtStyle: 'kotlinlang' });
-    expect([...formatters]).toEqual(['ktfmt']);
+    expect(formats).toEqual(['ktfmt format Bad.kt']);
   });
   it('gates a Kotlin-only module, where the Java tools have nothing to analyze', () => {
     const result = mavenDiffOf(fixture.kotlinOnlyProject, 'kotlin-only-violation');
