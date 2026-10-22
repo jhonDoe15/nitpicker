@@ -56,6 +56,25 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
     expect(timed[0].message).toMatch(/until\(\(\) -> !thread\.isAlive\(\)\)/u);
   });
 
+  it('names the call and the class that loads it in a class-load effect', () => {
+    const effects = runs.maven.filter(({ rule }) => rule === 'ClassLoadEffect');
+
+    expect(
+      effects
+        .map(({ message }) => /^.*?: (`[^`]+` runs while \w+ loads)/u.exec(message)?.[1])
+        .sort(),
+    ).toEqual([
+      '`DriverManager.getConnection(...)` runs while Ledger loads',
+      '`DriverManager.getConnection(...)` runs while Warehouse loads',
+      '`Executors.newFixedThreadPool(...)` runs while Warehouse loads',
+      '`Files.exists(...)` runs while Warehouse loads',
+      '`Files.exists(...)` runs while WarehouseConfig loads',
+    ]);
+    expect(effects.find(({ path: file }) => file.endsWith('Warehouse.java'))?.message).toMatch(
+      /If this is intended, add \{"rule":"pmd\/ClassLoadEffect","paths":\["src\/main\/java\/shop\/Warehouse\.java"\]/u,
+    );
+  });
+
   it('reports the main classes only tests use and spares the Spring service', () => {
     const testOnly = (findings) =>
       findings

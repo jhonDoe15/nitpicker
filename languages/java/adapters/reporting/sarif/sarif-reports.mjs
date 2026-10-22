@@ -8,6 +8,7 @@ import {
 import { ingestSarif, prepareSarif } from '../../../../../shared/ingest/sarif.mjs';
 import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.mjs';
 import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
+import { withLoadEffectCalls } from '../../../messages/load-effects.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const EMPTY_SARIF = { version: '2.1.0', runs: [] };
@@ -33,19 +34,22 @@ export function sarifFindings(context) {
   );
   const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
   return [
-    ...withWaitAdvice(
-      dropSleepsInFakes(
-        dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
-          projectRoot,
-          sourceRoots: allSourceRoots,
-        }),
-        {
-          rule: FIXED_SLEEP_RULE,
-          projectRoot,
-          mainRoots: [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])],
-        },
+    ...withLoadEffectCalls(
+      withWaitAdvice(
+        dropSleepsInFakes(
+          dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
+            projectRoot,
+            sourceRoots: allSourceRoots,
+          }),
+          {
+            rule: FIXED_SLEEP_RULE,
+            projectRoot,
+            mainRoots: [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])],
+          },
+        ),
+        { manifest: context.manifest, projectRoot },
       ),
-      { manifest: context.manifest, projectRoot },
+      { projectRoot },
     ),
     ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
       tool: 'spotbugs',
