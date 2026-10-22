@@ -123,6 +123,13 @@ describe.skipIf(!enabled)('the files the init script writes for ktlint and detek
     });
   });
 
+  it('writes the line length as a ktlint default and as a detekt MaxLineLength layer', () => {
+    const outcome = runStyleTasks(copyOfFixture(), { conventions: { 'kotlin.lineLength': '120' } });
+
+    expect(outcome.defaults).toBe('[*.{kt,kts}]\nmax_line_length = 120\n');
+    expect(outcome.conventionLayer).toBe('style:\n  MaxLineLength:\n    maxLineLength: 120\n');
+  });
+
   it.each([
     [
       ['project', 'nitpicker'],
