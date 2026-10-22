@@ -1,52 +1,36 @@
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
 import { failure, run } from '../execution/python-process.mjs';
 import {
   NO_TESTS_EXIT,
   testCommand,
+  testDirectory,
   testEnvironment,
   testsRan,
 } from '../execution/python-test-runner.mjs';
 import { insideProject } from '../../libraries/project-files.mjs';
-import { isDjangoProject } from '../configuration/pytest/collection-options.mjs';
+import { writeCoverageConfig } from '../configuration/coverage-config/python-coverage-config.mjs';
 import { failedTests, readJunit } from './junit-results.mjs';
 import { unittestFailures } from './test-failures.mjs';
 import { consoleReportEnvironment } from '../test-results/console-output.mjs';
 
 export const COVERAGE_REPORT = 'coverage.json';
-const COVERAGE_CONFIG = 'coveragerc';
+const COVERAGE_DATA = '.coverage';
 const TESTS_FAILED_EXIT = 1;
-const UNTESTABLE_LINES = [
-  String.raw`^\s*if (typing\.)?TYPE_CHECKING:`,
-  String.raw`^\s*if __name__ == .__main__.:`,
-  String.raw`^\s*@(typing\.)?overload\b`,
-  String.raw`^\s*raise NotImplementedError\b`,
-];
-const TEST_FILES = ['test_*.py', '*_test.py', 'conftest.py', '*/tests/*', '*/test/*', 'testing/*'];
-const DJANGO_TEST_FILES = ['*_tests.py', '*/tests.py', '*/tests_*.py'];
 const EMPTY_COVERAGE_REPORT = '{"files":{}}';
 
 function coverageSources({ projectRoot, project }) {
   return project.sourceRoots.filter((root) => existsSync(insideProject(projectRoot, root)));
 }
 
-function indented(entries) {
-  return entries.map((entry) => `    ${entry}`).join('\n');
-}
-
-function coverageConfig(sources, django) {
-  return [
-    '[run]',
-    'branch = True',
-    'parallel = False',
-    `source =\n${indented(sources)}`,
-    `omit =\n${indented([...TEST_FILES, ...(django ? DJANGO_TEST_FILES : [])])}`,
-    '[report]',
-    `exclude_lines =\n${indented(UNTESTABLE_LINES)}`,
-    'partial_branches =',
-    '',
-  ].join('\n');
+function combineCoverageData(context, config) {
+  const parallel = readdirSync(context.reportRoot).some((name) =>
+    name.startsWith(`${COVERAGE_DATA}.`),
+  );
+  if (parallel) {
+    run(context, ['coverage', 'combine', '--rcfile', config], { rule: 'coverage-failed' });
+  }
 }
 
 function failuresOf(context, { command, result }) {
@@ -65,16 +49,17 @@ function failuresOf(context, { command, result }) {
 
 export function test(context, outcome) {
   const sources = coverageSources(context);
-  const config = path.join(context.reportRoot, COVERAGE_CONFIG);
-  writeFileSync(config, coverageConfig(sources, isDjangoProject(context.projectRoot)));
+  const config = writeCoverageConfig(context, sources);
   const command = ['coverage', 'run', '--rcfile', config, ...testCommand(context)];
   const result = run(context, command, {
     accepted: [0, TESTS_FAILED_EXIT, NO_TESTS_EXIT],
     rule: TESTS_FAILED_RULE,
     env: { ...testEnvironment(context), ...consoleReportEnvironment(context) },
+    cwd: testDirectory(context),
   });
   outcome.testsRan = testsRan(result);
   outcome.testFailures = failuresOf(context, { command, result });
+  combineCoverageData(context, config);
   writeCoverageReport(context, { config, measured: sources.length > 0 });
 }
 

@@ -1,18 +1,13 @@
-import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { runGit } from '../../../../core/diff/git/repository/command.mjs';
+import { diffFromBase } from '../../../../core/tooling/git/base-diff.mjs';
 import { collectImports, importEdges } from '../analysis/python-coupling.mjs';
 import { META_SUFFIX, MUTANTS_DIRECTORY, metaFiles } from './python-mutation-data.mjs';
 import { run } from '../execution/python-process.mjs';
+import { TEST_PATH } from '../execution/python-test-files.mjs';
 
-const TEST_FILE = /(?:^|\/)(?:tests?_[^/]*|[^/]*_tests?|tests|conftest)\.py$/u;
-const TEST_DIRECTORY = /(?:^|\/)tests?\/|^testing\//u;
 const REUSABLE_STATUSES = ['M', 'A'];
-
-function gitOutput(cwd, arguments_) {
-  const result = spawnSync('git', arguments_, { cwd, encoding: 'utf8' });
-  return result.status === 0 ? result.stdout : undefined;
-}
 
 function parseNameStatus(listing) {
   const fields = listing.split('\0').filter((field) => field !== '');
@@ -21,25 +16,28 @@ function parseNameStatus(listing) {
   );
 }
 
-function changesSinceBase({ baselineRoot, projectRoot }) {
-  const baseCommit = gitOutput(baselineRoot, ['rev-parse', 'HEAD'])?.trim();
-  const prefix = gitOutput(projectRoot, ['rev-parse', '--show-prefix'])?.trim();
-  const listing =
-    baseCommit === undefined
-      ? undefined
-      : gitOutput(projectRoot, [
-          'diff',
-          '--name-status',
-          '--no-renames',
-          '-z',
-          baseCommit,
-          'HEAD',
-          '--',
-          ':/',
-        ]);
-  return listing === undefined || prefix === undefined
-    ? undefined
-    : parseNameStatus(listing).map((change) => ({ ...change, prefix }));
+function gitListing({ baselineRoot, projectRoot }) {
+  try {
+    return {
+      listing: diffFromBase({
+        runGit,
+        baselineRoot,
+        projectRoot,
+        args: ['--name-status', '--no-renames', '-z'],
+        pathspec: ['--', ':/'],
+      }),
+      prefix: runGit(projectRoot, ['rev-parse', '--show-prefix']).trim(),
+    };
+  } catch (error) {
+    return { error };
+  }
+}
+
+function changesSinceBase(roots) {
+  const { listing, prefix, error } = gitListing(roots);
+  return error === undefined
+    ? parseNameStatus(listing).map((change) => ({ ...change, prefix }))
+    : undefined;
 }
 
 function isMutatedSourceChange({ status, file, prefix }, sourceRoots) {
@@ -49,8 +47,7 @@ function isMutatedSourceChange({ status, file, prefix }, sourceRoots) {
   const relative = file.slice(prefix.length);
   return (
     relative.endsWith('.py') &&
-    !TEST_FILE.test(relative) &&
-    !TEST_DIRECTORY.test(relative) &&
+    !TEST_PATH.test(relative) &&
     sourceRoots.some((root) => root === '.' || relative.startsWith(`${root}/`))
   );
 }

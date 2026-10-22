@@ -5,12 +5,13 @@ import {
   validateStringArray,
 } from '../../../shared/config.mjs';
 import { hasSpecificText } from '../../../shared/console/console-messages.mjs';
+import { GRADLE_PRESETS } from '../../../languages/java/adapters/gradle-presets.mjs';
 
 const TEST_CONSOLE_KEYS = ['allow'];
 
 const ALLOW_KEYS = ['contains', 'paths', 'reason'];
 
-const TEST_CONSOLE_PRESETS = ['typescript', 'javascript', 'python'];
+const TEST_CONSOLE_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 
 export function validateScope(name, scope, keys) {
   if (scope === undefined) {
