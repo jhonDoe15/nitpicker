@@ -1,11 +1,11 @@
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../adapters/java-diff.mjs';
-import { codeSmellRules } from '../../adapters/test-support/code-smell-rules.mjs';
+import { codeSmellRules } from '../../adapters/test-support/code-smells/code-smell-rules.mjs';
 import {
   expectedViolations,
   reportedViolations,
-} from '../../adapters/test-support/violation-markers.mjs';
+} from '../../adapters/test-support/code-smells/violation-markers.mjs';
 import { temporaryCopies, withoutGradle } from '../test-support/maven-e2e-projects.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';

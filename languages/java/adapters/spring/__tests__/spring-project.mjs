@@ -4,7 +4,10 @@ import path from 'node:path';
 
 import { runJavaDiff } from '../../java-diff.mjs';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
-import { expectedViolations, reportedViolations } from '../../test-support/violation-markers.mjs';
+import {
+  expectedViolations,
+  reportedViolations,
+} from '../../test-support/code-smells/violation-markers.mjs';
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const maven = process.env.NITPICKER_MAVEN;
