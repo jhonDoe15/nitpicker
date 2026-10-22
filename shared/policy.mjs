@@ -7,8 +7,7 @@ import {
   sizeRules,
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
-import { couplingRules } from './project-rules/coupling-rules.mjs';
-import { reuseRules } from './project-rules/reuse-rules.mjs';
+import { couplingRules, reuseRules } from './project-rules/reuse-rules.mjs';
 import { testConsoleRule } from './project-rules/test-runtime-rules.mjs';
 import {
   docCommentRule,
