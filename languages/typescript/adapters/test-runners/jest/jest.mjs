@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
 import { readTestReport } from '../../quality-areas/reporting/test-report.mjs';
@@ -70,13 +71,19 @@ function withoutRelatedFiles(tokens) {
   return kept;
 }
 
+function scriptArguments(command) {
+  return withoutOptions(withoutRelatedFiles(command.arguments_), OPTIONS_NITPICKER_SETS);
+}
+
 export function jestArguments(command, nitpickerArguments, { leading, trailing }) {
-  return [
-    ...leading,
-    ...withoutOptions(withoutRelatedFiles(command.arguments_), OPTIONS_NITPICKER_SETS),
-    ...nitpickerArguments,
-    ...trailing,
-  ];
+  return [...leading, ...scriptArguments(command), ...nitpickerArguments, ...trailing];
+}
+
+function rerunPaths(options, command) {
+  const named = new Set(
+    scriptArguments(command).map((token) => path.resolve(options.projectRoot, token)),
+  );
+  return options.rerun.files.filter((file) => !named.has(file));
 }
 
 function workerArguments(options, tokens) {
@@ -132,7 +139,7 @@ export function runJest(options, command) {
               '--testNamePattern',
               options.rerun.namePattern,
               '--runTestsByPath',
-              ...options.rerun.files,
+              ...rerunPaths(options, command),
             ]),
         '--json',
         `--outputFile=${reportPath}`,

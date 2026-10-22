@@ -1,11 +1,10 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { createRequire } from 'node:module';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import {
   LINES_VARIABLE,
   recordConsole,
 } from '../../../adapters/test-runners/v8-coverage/loaded-sources.cjs';
+import { loadMochaClass } from '../../../adapters/test-runners/mocha/mocha-files.config.mjs';
 
 const EACH_HOOK_LISTS = ['_beforeEach', '_afterEach'];
 const ALL_HOOK_EVENTS = ['beforeAll', 'afterAll'];
@@ -120,9 +119,7 @@ export async function captureMocha({ environment, script, target = globalThis.co
     return { capturing: false };
   }
   try {
-    const entry = createRequire(path.resolve(script)).resolve('mocha');
-    const { default: mochaClass } = await import(pathToFileURL(entry).href);
-    recordConsole(linesPath, trackMocha(mochaClass), { target });
+    recordConsole(linesPath, trackMocha(await loadMochaClass(script)), { target });
     return { capturing: true };
   } catch (error) {
     return { unavailable: error };
