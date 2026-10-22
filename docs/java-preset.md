@@ -1817,13 +1817,20 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   generated config, not inline suppressions. The messages are rewritten to name the allowed form.
 - **javac lint.** The `nitpickerLint` task writes `guards-plan.json` (the main sources, the
   compile class path, the processor path, the compiler, its release, source, target, encoding and
-  arguments, the classes directory and the generated-sources directory) and runs node on it
+  arguments, the classes directory and the generated-sources directory, and the same for the test
+  sources under `test`) and runs node on it
   (`-Pnitpicker.node`, the head run also passing the base project as `-Pnitpicker.lintBaseline`),
   so the lint of several projects runs in parallel when Gradle does; it compiles the main sources
   once more with
   `-Xlint:rawtypes,unchecked,deprecation,removal,cast` and writes the warnings to
-  `javac-lint.txt` in the report directory (tool `javac`, rule = lint category). The same runner
-  serves Maven. It compiles a copy in which every `@SuppressWarnings(...)` is blanked out (same
+  `javac-lint.txt` in the report directory (tool `javac`, rule = lint category). It then lints
+  the test sources the same way, as a second compile with the test compile class path (the main
+  classes on it), the test processor path and the test compiler settings, into
+  `javac-lint-test.txt`, so a raw type or unchecked cast in a test is reported as in main code (the
+  TypeScript preset bans `as` and `any` in tests too); the test lint keeps its own base cache in
+  `nitpicker-lint/test/`, and a failed test lint compile is a `javac/lint-not-run` notice with the
+  identity `test-lint-not-run` scoped to the test source roots. The same runner serves Maven, which
+  passes the module's test sources, test output directory and `testCompile` settings. It compiles a copy in which every `@SuppressWarnings(...)` is blanked out (same
   lines and columns), with the project's compiler, release (or `-source`/`-target` from the source
   and target compatibility when no release is set) and compiler arguments (without `-Werror`,
   `-nowarn`, `-Xlint`, `-Xdiags`, `-XD`, `-Xplugin`, processor options and class or module paths),
@@ -1856,7 +1863,8 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   with other compile inputs the head lints every file. When the lint compile fails the run goes on:
   the report says so in a descriptive `javac/lint-not-run` notice that quotes the first error, and
   javac warnings are not checked in that run. When only the base failed, the head's javac findings
-  under that module's main source roots are reported but do not fail the gate: with no base report,
+  under that module's main source roots (test source roots for the test lint) are reported but do
+  not fail the gate: with no base report,
   nothing tells which of them the change added, and each one says so. When only the head failed, the
   run fails with a tool error: the change broke the lint compile. The notice says to fix what the
   lint compile reports, and ends with the exception route for `javac/lint-not-run` with the path
@@ -2005,7 +2013,9 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   parameter, an `HttpSecurity` bean method that throws `Exception`, a main-code rule in a test and
   a test rule's pattern in main code, the Spring Security methods that throw `Exception`, a generic
   cast after `instanceof`, a `try (lines)` on a variable, a `fail` guard and `assertEquals(a, a)`.
-  The test also checks one message's exception route, and runs `guards-compile-modes`: PMD on its
+  `TypesTest` holds the javac lint's test-source case: raw types, unchecked operations and a
+  redundant cast under a bare `@SuppressWarnings`, all reported (`maven-parity.e2e.test.mjs`
+  expects the same five on Maven). The test also checks one message's exception route, and runs `guards-compile-modes`: PMD on its
   `legacy` module, compiled for Java 11 through `options.release`, and its `arguments` module,
   compiled for Java 11 through `--release` in the compiler arguments, where `InstanceofThenCast`
   and `CollectorsToList` must not fire, and the lint on modules with a javac plug-in (`-Xplugin`),
@@ -2149,7 +2159,10 @@ arguments are not plain string literals, as `pmd/InlineSuppression` (Node side,
 and strings and comments skipped first). The one accepted marker is
 `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a method: native SQL is sometimes needed, and
 the decision belongs on that one method rather than in a config exception that covers paths.
-Compiler-only warnings such as `"unchecked"` and `"rawtypes"` are not affected.
+Compiler-only warnings such as `"unchecked"`, `"rawtypes"` and `"cast"` are not reported by this
+scan, and do not hide anything either: the javac lint compiles a copy of the main and test sources
+with every `@SuppressWarnings(...)` blanked out, so a bare `@SuppressWarnings("unchecked")` added
+over an unchecked operation leaves its `javac/unchecked` finding in place.
 
 SpotBugs has no switch to ignore its annotations, so the same scan reports every annotation
 SpotBugs honors as `spotbugs/InlineSuppression`: any name ending in `SuppressFBWarnings`, any
