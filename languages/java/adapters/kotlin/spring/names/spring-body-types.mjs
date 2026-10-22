@@ -174,3 +174,31 @@ export const ITERABLES = set(
   'kotlin.sequences.Sequence',
   'kotlin.Array',
 );
+
+export const MAP_TYPES = set(
+  ...under('kotlin.collections', 'Map', 'MutableMap', 'HashMap', 'LinkedHashMap'),
+  ...under(UTIL, 'Map', 'HashMap', 'LinkedHashMap', 'TreeMap', 'concurrent.ConcurrentHashMap'),
+);
+export const WRAPPER_TYPES = set(
+  ...under(
+    'kotlin.collections',
+    'Iterable',
+    'Collection',
+    'List',
+    'Set',
+    'MutableList',
+    'MutableSet',
+  ),
+  ...under(UTIL, 'Collection', 'List', 'Set', 'Optional', 'concurrent.CompletableFuture'),
+  ...under(`${SPRING}.http`, 'HttpEntity', 'ResponseEntity'),
+  'java.util.concurrent.CompletionStage',
+  'org.reactivestreams.Publisher',
+  ...under('reactor.core.publisher', 'Flux', 'Mono'),
+  'kotlin.sequences.Sequence',
+  'kotlinx.coroutines.flow.Flow',
+);
+export const ANY_TYPES = set('java.lang.Object', 'kotlin.Any');
+export const JSON_NODES = set(
+  'com.fasterxml.jackson.databind.JsonNode',
+  'tools.jackson.databind.JsonNode',
+);

@@ -127,9 +127,13 @@ export function functionContexts(file) {
     }));
 }
 
+function hasName(names, name) {
+  return typeof names === 'function' ? names(name) : names.has(name);
+}
+
 export function persistenceCalls({ context, targets, names }) {
   return callsIn(context.file.source, context.body)
-    .filter((call) => names.has(call.name))
+    .filter((call) => hasName(names, call.name))
     .filter((call) => receiverMatches(context, call, targets));
 }
 

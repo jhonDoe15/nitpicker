@@ -33,15 +33,21 @@ const SPRING_VERSIONS = {
   data: '3.5.3',
   boot: '3.5.5',
   security: '6.5.3',
+  netty: '1.2.9',
 };
 
 const PROVIDED = [
   ['org.springframework', 'spring-context', SPRING_VERSIONS.context],
   ['org.springframework', 'spring-tx', SPRING_VERSIONS.context],
   ['org.springframework', 'spring-web', SPRING_VERSIONS.context],
+  ['org.springframework', 'spring-webflux', SPRING_VERSIONS.context],
+  ['org.springframework', 'spring-jdbc', SPRING_VERSIONS.context],
+  ['io.projectreactor.netty', 'reactor-netty-http', SPRING_VERSIONS.netty],
   ['org.springframework.data', 'spring-data-jpa', SPRING_VERSIONS.data],
   ['org.springframework.boot', 'spring-boot-autoconfigure', SPRING_VERSIONS.boot],
   ['org.springframework.security', 'spring-security-crypto', SPRING_VERSIONS.security],
+  ['org.springframework.security', 'spring-security-config', SPRING_VERSIONS.security],
+  ['org.springframework.security', 'spring-security-web', SPRING_VERSIONS.security],
   ['jakarta.persistence', 'jakarta.persistence-api', '3.1.0'],
   ['jakarta.validation', 'jakarta.validation-api', '3.0.2'],
   ['jakarta.transaction', 'jakarta.transaction-api', '2.0.1'],

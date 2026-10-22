@@ -116,3 +116,51 @@ export const PERSISTENCE_EXCEPTIONS = set(
     'QueryTimeoutException',
   ),
 );
+
+export const JDK_ENUMS = set(
+  ...under('java.time', 'DayOfWeek', 'Month'),
+  'java.util.concurrent.TimeUnit',
+  'java.math.RoundingMode',
+);
+export const CHECKED_EXCEPTIONS = set(
+  ...under(
+    'java.lang',
+    'Exception',
+    'Throwable',
+    'InterruptedException',
+    'ClassNotFoundException',
+    'CloneNotSupportedException',
+    'IllegalAccessException',
+    'InstantiationException',
+    'NoSuchMethodException',
+    'NoSuchFieldException',
+    'ReflectiveOperationException',
+  ),
+  ...under('kotlin', 'Exception', 'Throwable'),
+  ...under(
+    'java.io',
+    'IOException',
+    'FileNotFoundException',
+    'EOFException',
+    'UnsupportedEncodingException',
+  ),
+  ...under('java.util.concurrent', 'TimeoutException', 'ExecutionException'),
+  ...under('java.net', 'URISyntaxException', 'MalformedURLException'),
+  ...under('java.security', 'GeneralSecurityException', 'NoSuchAlgorithmException'),
+  'java.sql.SQLException',
+  'java.text.ParseException',
+  'java.lang.reflect.InvocationTargetException',
+);
+
+export const ERROR_LEAK_EXCEPTIONS = set(
+  ...BROAD_EXCEPTIONS,
+  ...PERSISTENCE_EXCEPTIONS,
+  ...under(
+    'java.lang',
+    'IllegalArgumentException',
+    'IllegalStateException',
+    'NullPointerException',
+  ),
+  ...under('java.io', 'IOException', 'UncheckedIOException'),
+  'java.sql.SQLException',
+);

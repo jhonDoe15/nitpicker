@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
 import { readKotlinFile } from './model/kotlin-file.mjs';
-import { repositoryTypesOf } from './project-types.mjs';
+import { checkedExceptionsOf, enumTypesOf, repositoryTypesOf } from './project-types.mjs';
 import { KOTLIN_SPRING_RULES } from './spring-rules.mjs';
 import { lineOf } from './syntax/kotlin-tree.mjs';
 
@@ -12,7 +12,7 @@ function findingOf({ file, rule, hit, occurrences }) {
   const key = `${file.source.file}\0${rule.name}\0${hit.symbol}`;
   const occurrence = nextOccurrence(occurrences, key);
   return {
-    tool: 'spring',
+    tool: 'pmd',
     rule: rule.name,
     path: file.source.file,
     identity:
@@ -27,7 +27,11 @@ function findingOf({ file, rule, hit, occurrences }) {
 }
 
 function springFindingsOf(files) {
-  const project = { repositoryTypes: repositoryTypesOf(files) };
+  const project = {
+    repositoryTypes: repositoryTypesOf(files),
+    enumTypes: enumTypesOf(files),
+    checkedExceptions: checkedExceptionsOf(files),
+  };
   const occurrences = new Map();
   return files.flatMap((file) =>
     KOTLIN_SPRING_RULES.flatMap((rule) =>
@@ -48,7 +52,9 @@ function sourceTextOf(projectRoot, file) {
 export function readKotlinSpringFindings({ projectRoot, reportRoot }) {
   const report = path.join(reportRoot, SYNTAX_REPORT);
   if (!existsSync(report)) {
-    return [];
+    throw new Error(
+      `The Kotlin syntax report ${report} is missing, so the Spring rules cannot run`,
+    );
   }
   const { files } = JSON.parse(readFileSync(report, 'utf8'));
   return springFindingsOf(

@@ -1,4 +1,6 @@
 import { argumentValue } from '../syntax/kotlin-annotations.mjs';
+import { enclosingFunction } from '../syntax/expressions/kotlin-scope.mjs';
+import { identifierOf } from '../syntax/kotlin-tree.mjs';
 
 export function classSymbolOf(declaration) {
   const parts = [];
@@ -115,7 +117,7 @@ export function isTrueArgument(annotation, name) {
 export function defineRule(name, text, check) {
   return {
     name,
-    message: `${text} If it is right here, add an exception for spring/${name} in nitpicker.config.json.`,
+    message: `${text} If it is right here, add an exception for pmd/${name} in nitpicker.config.json.`,
     check,
   };
 }
@@ -146,4 +148,27 @@ export function symbolAround(declaration, node) {
     (member) => member.node.s <= node.s && node.e <= member.node.e,
   );
   return inside === undefined ? classSymbolOf(declaration) : memberSymbolOf(inside);
+}
+
+export function symbolAtNode(file, ancestors) {
+  const declaration = enclosingFunction(file, ancestors);
+  if (declaration !== undefined) {
+    return memberSymbolOf(declaration);
+  }
+  const owner = ancestors
+    .toReversed()
+    .map((node) => file.classes.find((candidate) => candidate.node === node))
+    .find((candidate) => candidate !== undefined);
+  const property = ancestors.findLast((node) => node.t === 'PROPERTY');
+  return [
+    owner === undefined ? '' : classSymbolOf(owner),
+    property === undefined ? '' : (identifierOf(file.source, property) ?? ''),
+  ]
+    .filter((part) => part !== '')
+    .join('.');
+}
+
+export function arityRange(member) {
+  const required = member.params.filter((parameter) => !parameter.defaulted).length;
+  return [required, member.params.length];
 }

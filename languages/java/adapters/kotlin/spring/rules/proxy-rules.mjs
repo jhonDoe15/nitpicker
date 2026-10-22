@@ -14,6 +14,7 @@ import { COMPLETABLE_FUTURE } from '../names/spring-body-types.mjs';
 import { BROAD_EXCEPTIONS, PERSISTENCE_EXCEPTIONS } from '../names/spring-types.mjs';
 import {
   argumentMatches,
+  arityRange,
   defineRule,
   hasAnnotation,
   hitAt,
@@ -44,11 +45,6 @@ const methodVisibility = defineRule(
       })
       .map(hitAt),
 );
-
-function arityRange(member) {
-  const required = member.params.filter((parameter) => !parameter.defaulted).length;
-  return [required, member.params.length];
-}
 
 function proxiedCallees(file, declaration, call) {
   return (declaration.owner?.functions ?? []).filter((candidate) => {
