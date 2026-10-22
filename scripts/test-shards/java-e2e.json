@@ -26,7 +26,7 @@
   "languages/java/maven/preset/maven-preset-integration.e2e.test.mjs": 63,
   "languages/java/maven/preset/maven-preset-parity.e2e.test.mjs": 93,
   "languages/java/maven/preset/maven-preset-reactor.e2e.test.mjs": 124,
-  "languages/java/maven/preset/maven-red-base.e2e.test.mjs": 150,
   "languages/java/maven/preset/maven-preset-spring-arch.e2e.test.mjs": 110,
+  "languages/java/maven/preset/red-base/maven-red-base.e2e.test.mjs": 150,
   "languages/java/messages/rule-catalog.e2e.test.mjs": 6
 }
