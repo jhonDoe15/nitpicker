@@ -7,6 +7,24 @@ export function reuseRules(ids, reactEnforcedBy) {
         'a module under a shared root (`layout.sharedRoots`) that exactly one feature reaches and nothing else uses',
     },
     {
+      id: ids.featureInternalImport,
+      check: 'coupling',
+      limit:
+        'a production module outside a feature (`layout.featureRoots`) that imports a module behind its public face (Python: other than `__init__.py` and the modules directly in the feature folder not named `_*`); TypeScript and JavaScript: dependency-cruiser `feature-internals-only-through-index`, `features-do-not-import-other-feature-internals`',
+    },
+    {
+      id: ids.sharedImportsFeature,
+      check: 'coupling',
+      limit:
+        'a production module under a shared root (`layout.sharedRoots`) that imports a feature module; TypeScript and JavaScript: dependency-cruiser `shared-does-not-import-features`',
+    },
+    {
+      id: ids.featureCycle,
+      check: 'coupling',
+      limit:
+        'a runtime import between two features that closes a cycle of features (imports only for the type checker do not count); TypeScript and JavaScript: dependency-cruiser `no-production-cycles`, which reports every module cycle',
+    },
+    {
       id: ids.duplicateDefinition,
       check: 'structure',
       limit:

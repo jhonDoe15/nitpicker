@@ -1,22 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { cycleFindings, outsideRootsFindings, stronglyConnected } from './python-import-rules.mjs';
+import { cycleFindings, outsideRootsFindings } from './python-import-rules.mjs';
 
 const module = (file, name, isPackage = false) => ({ file, module: name, isPackage });
 const from = (name, names) => ({ level: 0, module: name, names });
 
 describe('import cycles', () => {
-  it('finds the strongly connected groups of more than one node', () => {
-    expect(
-      stronglyConnected(
-        ['a', 'b', 'c', 'd'],
-        [
-          { source: 'a', target: 'b' },
-          { source: 'b', target: 'a' },
-          { source: 'b', target: 'c' },
-        ],
-      ),
-    ).toEqual([['a', 'b']]);
-  });
   it('reports a package cycle on each package anchor and ignores type-only imports', () => {
     const modules = [
       module('src/app/orders/__init__.py', 'app.orders', true),

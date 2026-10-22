@@ -44,7 +44,7 @@ describe('feature layout keys', () => {
   const layout = { sharedRoots: ['**/common'], featureRoots: ['src/main/java/com/acme/features'] };
   const RULE = 'shared-used-by-one-feature';
 
-  it.each([['typescript'], ['javascript']])(
+  it.each([['typescript'], ['javascript'], ['python']])(
     'are valid with the %s preset and reach the analyzers',
     (preset) => {
       expect(validateConfig({ preset, layout })).toEqual({ preset, layout });
@@ -52,7 +52,7 @@ describe('feature layout keys', () => {
     },
   );
 
-  it.each([['python'], ['java'], ['kotlin']])(
+  it.each([['java'], ['kotlin']])(
     'are rejected with the %s preset until it runs the rule that reads them',
     (preset) => {
       expect(() => validateConfig({ preset, layout })).toThrow(
@@ -62,9 +62,9 @@ describe('feature layout keys', () => {
   );
 
   it('are accepted by a preset once its language registers the rule', () => {
-    const config = { preset: 'python', layout };
+    const config = { preset: 'java', layout };
 
-    expect(withLanguageRegistered(RULE, 'python', () => validateConfig(config))).toEqual(config);
+    expect(withLanguageRegistered(RULE, 'java', () => validateConfig(config))).toEqual(config);
     expect(resolveHeadPolicy(config).layout).toEqual(layout);
   });
 
@@ -102,14 +102,18 @@ describe('feature layout keys', () => {
     expect(validateConfig(config)).toEqual(config);
   });
 
-  it.each([['python'], ['java'], ['kotlin']])(
+  it.each([
+    ['python', 'sharedRoots, featureRoots'],
+    ['java', 'none yet'],
+    ['kotlin', 'none yet'],
+  ])(
     'rejects the TypeScript source folders with the %s preset and names the keys it takes',
-    (preset) => {
+    (preset, keys) => {
       expect(() => validateConfig({ preset, layout: { sourceRoots: ['src'] } })).toThrow(
-        `"layout.sourceRoots" is not supported with "preset": "${preset}": it describes TypeScript source folders. Layout keys with ${preset}: none yet`,
+        `"layout.sourceRoots" is not supported with "preset": "${preset}": it describes TypeScript source folders. Layout keys with ${preset}: ${keys}`,
       );
       expect(() => validateConfig({ preset, layout: { roots: ['src'] } })).toThrow(
-        'unknown layout key "roots". Allowed layout keys: none yet',
+        `unknown layout key "roots". Allowed layout keys: ${keys}`,
       );
     },
   );
