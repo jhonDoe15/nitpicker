@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { presetAnalyzers } from '../../../core/configuration/preset-analyzers.mjs';
+import { createHygieneAnalyzers } from '../../../shared/hygiene/analyzers.mjs';
 import {
   applyLayout,
   applyThresholds,
@@ -16,6 +17,8 @@ import { resolveLayout, resolveLayoutFor } from '../../typescript/preset/layout.
 import { createQualityChecks } from '../../typescript/preset/quality-checks.mjs';
 import { isJavascriptPolicy } from './javascript-preset.mjs';
 import { fileURLToPath } from 'node:url';
+
+const cliPath = fileURLToPath(new URL('../../../core/cli.mjs', import.meta.url));
 
 const packageRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const javascriptPolicy = resolveHeadPolicy({ preset: 'javascript' });
@@ -42,17 +45,25 @@ function prettierPatterns(layout) {
 
 describe('preset selection', () => {
   it('runs the TypeScript analyzers for the typescript preset and for no preset', () => {
-    expect(fingerprint(presetAnalyzers({ preset: 'typescript' }))).toEqual(
-      fingerprint(packageAnalyzers),
-    );
-    expect(fingerprint(presetAnalyzers({}))).toEqual(fingerprint(packageAnalyzers));
+    const expected = fingerprint([...packageAnalyzers, ...createHygieneAnalyzers(cliPath)]);
+
+    expect(fingerprint(presetAnalyzers({ preset: 'typescript' }))).toEqual(expected);
+    expect(fingerprint(presetAnalyzers({}))).toEqual(expected);
   });
 
   it('runs the JavaScript analyzer set for the javascript preset', () => {
     const selected = fingerprint(presetAnalyzers({ preset: 'javascript' }));
 
-    expect(selected).toEqual(fingerprint(javascriptPackageAnalyzers));
+    expect(selected).toEqual(
+      fingerprint([...javascriptPackageAnalyzers, ...createHygieneAnalyzers(cliPath)]),
+    );
     expect(selected).not.toEqual(fingerprint(packageAnalyzers));
+  });
+
+  it('adds the repository hygiene checks to every preset', () => {
+    for (const preset of ['typescript', 'javascript', 'java', 'kotlin', 'python']) {
+      expect(analyzerNames(presetAnalyzers({ preset })).at(-1)).toBe('repository-hygiene');
+    }
   });
 
   it('prefers injected analyzers over any preset', () => {
@@ -107,11 +118,15 @@ describe('javascript layout', () => {
       'src/**/__tests__/**/*.{ts,mts,cts,js,mjs,cjs}',
       'test/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
       'tests/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
+      '__tests__/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
+      'e2e/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
     ]);
     expect(resolveLayout({}, []).unitTestGlobs).toEqual([
       'src/**/__tests__/**/*.ts',
       'test/unit/**/*.ts',
       'tests/unit/**/*.ts',
+      '__tests__/unit/**/*.ts',
+      'e2e/unit/**/*.ts',
     ]);
   });
 
@@ -160,12 +175,16 @@ describe('javascript prettier patterns', () => {
       'src/**/*.{ts,mts,cts,js,mjs,cjs,json,yaml,yml}',
       'test/**/*.{ts,mts,cts,js,mjs,cjs,json}',
       'tests/**/*.{ts,mts,cts,js,mjs,cjs,json}',
+      '__tests__/**/*.{ts,mts,cts,js,mjs,cjs,json}',
+      'e2e/**/*.{ts,mts,cts,js,mjs,cjs,json}',
       '*.{ts,mts,cts,js,mjs,cjs,json}',
     ]);
     expect(prettierPatterns(resolveLayout())).toEqual([
       'src/**/*.{ts,tsx,mts,mjs,json,yaml,yml}',
       'test/**/*.{ts,tsx,mts,mjs,json}',
       'tests/**/*.{ts,tsx,mts,mjs,json}',
+      '__tests__/**/*.{ts,tsx,mts,mjs,json}',
+      'e2e/**/*.{ts,tsx,mts,mjs,json}',
       '*.{ts,tsx,mts,mjs,json}',
     ]);
   });

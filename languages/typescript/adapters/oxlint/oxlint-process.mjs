@@ -1,6 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { CONFIG_FILE_NAME } from '../../../../shared/config.mjs';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 
 const MAX_OUTPUT_BYTES = 200 * 1024 * 1024;
@@ -27,10 +29,21 @@ export function tsgolintBinary() {
   }
 }
 
+export function withEngineHint(detail) {
+  return detail.includes(CONFIG_FILE_NAME) ? detail : `${detail}\n${ENGINE_HINT}`;
+}
+
+export function withCompileCache(environment) {
+  return {
+    NODE_COMPILE_CACHE: path.join(tmpdir(), 'nitpicker-node-compile-cache'),
+    ...environment,
+  };
+}
+
 export function spawnJson(argumentList, { cwd, env, context, timeoutMs, acceptedStatuses = [0] }) {
   const result = spawnSync(process.execPath, argumentList, {
     cwd,
-    env,
+    env: withCompileCache(env),
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
     timeout: timeoutMs,
@@ -40,7 +53,7 @@ export function spawnJson(argumentList, { cwd, env, context, timeoutMs, accepted
   }
   if (!acceptedStatuses.includes(result.status)) {
     const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`${context} exited with ${String(result.status)}: ${detail}\n${ENGINE_HINT}`);
+    throw new Error(`${context} exited with ${String(result.status)}: ${withEngineHint(detail)}`);
   }
   try {
     return JSON.parse(result.stdout);

@@ -33,4 +33,5 @@ dependencies {
     compileOnly 'jakarta.validation:jakarta.validation-api:3.0.2'
     compileOnly 'jakarta.transaction:jakarta.transaction-api:2.0.1'
     compileOnly 'jakarta.inject:jakarta.inject-api:2.0.1'
+    checkstyle 'com.puppycrawl.tools:checkstyle:12.3.1'
 }

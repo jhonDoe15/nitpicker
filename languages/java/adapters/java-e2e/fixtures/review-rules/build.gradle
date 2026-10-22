@@ -1,0 +1,30 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    implementation platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
+    implementation 'org.springframework.boot:spring-boot-starter'
+    testImplementation platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
+    testCompileOnly platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.awaitility:awaitility'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
+    testAnnotationProcessor 'org.projectlombok:lombok'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}

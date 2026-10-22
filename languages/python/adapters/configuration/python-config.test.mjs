@@ -25,7 +25,7 @@ describe('python config validation', () => {
       validate({
         preset: 'python',
         python: {
-          typeChecker: 'pyright',
+          typeChecker: 'basedpyright',
           exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
         },
       });
@@ -43,9 +43,14 @@ describe('python config validation', () => {
     'frozen-dataclass',
     'no-inline-suppression',
     'stub-beside-source',
+    'swallowed-exception',
+    'blind-suppress',
     'arg-type',
     'import-not-found',
     'reportReturnType',
+    'reportAny',
+    'reportImplicitOverride',
+    'reportUnusedCallResult',
   ])('accepts the exception rule %s', (rule) => {
     expect(() => {
       validate({
@@ -84,13 +89,13 @@ describe('python config validation', () => {
       'unknown key "interpreter" in "python". Allowed keys: environment',
     ],
     [{ formatter: 'yapf' }, '"python.formatter" must be one of: ruff, black'],
-    [{ testRunner: 'nose' }, '"python.testRunner" must be one of: pytest, unittest'],
-    [{ typeChecker: 'pytype' }, '"python.typeChecker" must be one of: mypy, pyright'],
+    [{ testRunner: 'nose' }, '"python.testRunner" must be one of: pytest, unittest, django, nose2'],
+    [{ typeChecker: 'pytype' }, '"python.typeChecker" must be one of: mypy, pyright, basedpyright'],
     [{ exceptions: {} }, '"python.exceptions" must be an array'],
     [{ exceptions: ['T201'] }, '"python.exceptions[0]" must be an object'],
     [
       { exceptions: [{ rule: 'T201', paths: ['a'], reason: 'r', why: 'x' }] },
-      'unknown key "why" in "python.exceptions[0]". Allowed keys: rule, paths, reason',
+      'unknown key "why" in "python.exceptions[0]". Allowed keys: rule, paths, packages, reason',
     ],
     [
       { exceptions: [{ paths: ['a'], reason: 'r' }] },
@@ -110,7 +115,7 @@ describe('python config validation', () => {
     ],
     [
       { exceptions: [{ rule: 'folder-files-limit', paths: ['a'], reason: 'r' }] },
-      'a file limit shared by every preset: lift it in the top-level "exceptions" instead',
+      'a rule shared by every preset: lift it in the top-level "exceptions" instead',
     ],
     [
       { exceptions: [{ rule: 'E501', paths: ['a'], reason: 'r' }] },
@@ -119,6 +124,10 @@ describe('python config validation', () => {
     [
       { exceptions: [{ rule: 'B008', paths: ['a'], reason: 'r' }] },
       'names no rule nitpicker reports: "B008"',
+    ],
+    [
+      { exceptions: [{ rule: 'S110', paths: ['a'], reason: 'r' }] },
+      'names no rule nitpicker reports: "S110"; ruff S110 was replaced by "swallowed-exception": rename the entry to "swallowed-exception"',
     ],
     [
       {

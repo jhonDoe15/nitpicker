@@ -1,117 +1,175 @@
 #!/usr/bin/env node
-// Stand-in for `gradle -I nitpicker.init.gradle nitpickerJava` in tests that run without Java.
-// In the project directory (cwd): a file `GRADLE_FAIL` makes the run fail with its text, a file
-// `NO_REPORTS` makes it succeed without reports (a root project the plugin is not applied to), and each
-// line of `violations.txt` becomes one PMD violation in src/main/java/demo/A.java. With
-// `-Pnitpicker.kotlin=true` each line of `detekt.txt` becomes one detekt result in
-// src/main/kotlin/demo/K.kt (rule `detekt.style.MagicNumber`, or the part before ` :: ` in the line),
-// each line of `ktlint.txt` (`rule|message`) one ktlint result there and each line of
-// `kotlin-format.txt` a file ktfmt would change, a file `kotlin-metrics.json` is the Kotlin metrics
-// report as it is, a file `jacoco.xml` becomes the JaCoCo report and a file `mutations.xml` the PIT
-// report. The arguments are kept in build/nitpicker/gradle-args.json.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
+import path from 'node:path';
+
+if (existsSync('GRADLE_STDOUT')) {
+  process.stdout.write(readFileSync('GRADLE_STDOUT', 'utf8'));
+}
 
 if (existsSync('GRADLE_FAIL')) {
   process.stderr.write(`${readFileSync('GRADLE_FAIL', 'utf8')}\n`);
   process.exit(1);
 }
-if (existsSync('NO_REPORTS')) {
-  process.exit(0);
-}
+const reportBase = process.argv
+  .find((argument) => argument.startsWith('-Pnitpicker.reportDir='))
+  ?.split('=')[1];
 const lines = (file) =>
   existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean) : [];
-const violations = lines('violations.txt');
-mkdirSync('build/nitpicker', { recursive: true });
 const sarif = (name, results) =>
   JSON.stringify({ runs: [{ tool: { driver: { name } }, results }] });
 const kotlin = process.argv.includes('-Pnitpicker.kotlin=true');
 const formatterArgument = process.argv.find((argument) =>
   argument.startsWith('-Pnitpicker.kotlin.formatter='),
 );
-writeFileSync('build/nitpicker/gradle-args.json', JSON.stringify(process.argv.slice(2)));
-writeFileSync(
-  'build/nitpicker/manifest.json',
-  JSON.stringify({
-    versions: {},
-    sourceRoots: ['src/main/java'],
-    ...(kotlin && {
-      kotlin: true,
-      kotlinSourceRoots: ['src/main/kotlin'],
-      kotlinFormatter: formatterArgument?.split('=')[1] ?? 'none',
-    }),
-  }),
-);
-if (kotlin) {
+
+function resultAt(uri, index, fields) {
+  return {
+    ...fields,
+    locations: [
+      { physicalLocation: { artifactLocation: { uri }, region: { startLine: index + 3 } } },
+    ],
+  };
+}
+
+function writeKotlinReports(report, { kotlinFile, inside }) {
   writeFileSync(
-    'build/nitpicker/detekt.sarif',
+    report('detekt.sarif'),
     sarif(
       'detekt',
-      lines('detekt.txt').map((line, index) => ({
-        ruleId: line.includes(' :: ') ? line.split(' :: ')[0] : 'detekt.style.MagicNumber',
-        level: 'warning',
-        message: { text: line.includes(' :: ') ? line.split(' :: ')[1] : line },
-        locations: [
-          {
-            physicalLocation: {
-              artifactLocation: { uri: 'src/main/kotlin/demo/K.kt' },
-              region: { startLine: index + 3 },
-            },
-          },
-        ],
-      })),
+      lines('detekt.txt').map((line, index) =>
+        resultAt(kotlinFile, index, {
+          ruleId: line.includes(' :: ') ? line.split(' :: ')[0] : 'detekt.style.MagicNumber',
+          level: 'warning',
+          message: { text: line.includes(' :: ') ? line.split(' :: ')[1] : line },
+        }),
+      ),
     ),
   );
   writeFileSync(
-    'build/nitpicker/ktlint.sarif',
+    report('ktlint.sarif'),
     sarif(
       'ktlint',
-      lines('ktlint.txt').map((line, index) => ({
-        ruleId: line.split('|')[0],
-        level: 'error',
-        message: { text: line.split('|')[1] },
-        locations: [
-          {
-            physicalLocation: {
-              artifactLocation: { uri: 'src/main/kotlin/demo/K.kt' },
-              region: { startLine: index + 3 },
-            },
-          },
-        ],
-      })),
+      lines('ktlint.txt').map((line, index) =>
+        resultAt(kotlinFile, index, {
+          ruleId: line.split('|')[0],
+          level: 'error',
+          message: { text: line.split('|')[1] },
+        }),
+      ),
     ),
   );
-  writeFileSync('build/nitpicker/ktfmt.txt', lines('kotlin-format.txt').join('\n'));
-  if (existsSync('kotlin-metrics.json')) {
-    writeFileSync('build/nitpicker/kotlin-metrics.json', readFileSync('kotlin-metrics.json'));
+  writeFileSync(report('ktfmt.txt'), lines('kotlin-format.txt').join('\n'));
+  const metrics = [inside('kotlin-metrics.json'), 'kotlin-metrics.json'].find((file) =>
+    existsSync(file),
+  );
+  if (metrics !== undefined) {
+    writeFileSync(report('kotlin-metrics.json'), readFileSync(metrics));
   }
 }
-writeFileSync(
-  'build/nitpicker/pmd.sarif',
-  sarif(
-    'PMD',
-    violations.map((text, index) => ({
-      ruleId: 'UnusedPrivateField',
-      message: { text },
-      locations: [
-        {
-          physicalLocation: {
-            artifactLocation: { uri: 'src/main/java/demo/A.java' },
-            region: { startLine: index + 3 },
-          },
-        },
-      ],
-    })),
-  ),
-);
-writeFileSync('build/nitpicker/spotbugs.sarif', sarif('SpotBugs', []));
-writeFileSync('build/nitpicker/format.txt', '');
-writeFileSync('build/nitpicker/checkstyle.xml', '<checkstyle version="10.21.1"></checkstyle>');
-writeFileSync(
-  'build/nitpicker/jacoco.xml',
-  existsSync('jacoco.xml') ? readFileSync('jacoco.xml') : '<report name="demo"></report>',
-);
-if (existsSync('mutations.xml')) {
-  mkdirSync('build/nitpicker/pit', { recursive: true });
-  writeFileSync('build/nitpicker/pit/mutations.xml', readFileSync('mutations.xml'));
+
+function writeModule({ key, dir }) {
+  const report = (name) => {
+    const file = path.join(reportBase, key, name);
+    mkdirSync(path.dirname(file), { recursive: true });
+    return file;
+  };
+  const inside = (file) => (dir === '' ? file : `${dir}/${file}`);
+  writeFileSync(
+    report('manifest.json'),
+    JSON.stringify({
+      versions: {},
+      sourceRoots: [inside('src/main/java')],
+      ...(kotlin && {
+        kotlin: true,
+        kotlinSourceRoots: [inside('src/main/kotlin')],
+        kotlinFormatter: formatterArgument?.split('=')[1] ?? 'none',
+      }),
+    }),
+  );
+  if (lines('EMPTY_MODULES').includes(dir)) {
+    return;
+  }
+  if (kotlin) {
+    writeKotlinReports(report, { kotlinFile: inside('src/main/kotlin/demo/K.kt'), inside });
+  }
+  writeFileSync(
+    report('pmd.sarif'),
+    sarif(
+      'PMD',
+      lines('violations.txt').map((text, index) =>
+        resultAt(inside('src/main/java/demo/A.java'), index, {
+          ruleId: 'UnusedPrivateField',
+          message: { text },
+        }),
+      ),
+    ),
+  );
+  writeFileSync(report('spotbugs.sarif'), sarif('SpotBugs', []));
+  writeFileSync(report('format.txt'), '');
+  writeFileSync(
+    report('checkstyle.xml'),
+    existsSync('checkstyle-report.xml')
+      ? readFileSync('checkstyle-report.xml')
+      : '<checkstyle version="10.21.1"></checkstyle>',
+  );
+  if (!lines('NO_JACOCO_IN').includes(dir === '' ? '.' : dir)) {
+    writeFileSync(
+      report('jacoco.xml'),
+      existsSync('jacoco.xml') ? readFileSync('jacoco.xml') : '<report name="demo"></report>',
+    );
+  }
+  if (existsSync('MAIN_CLASSES')) {
+    writeFileSync(report('jdeps-classes.txt'), 'demo.A\n');
+  }
+  for (const name of ['jdeps.txt', 'jdeps-classes.txt', 'jdeps-test.txt']) {
+    const source = [inside(name), inside(`jdeps/${name}`)].find((file) => existsSync(file));
+    if (source !== undefined) {
+      writeFileSync(report(name), readFileSync(source));
+    }
+  }
+  if (existsSync(inside('test-results'))) {
+    cpSync(inside('test-results'), path.join(reportBase, key, 'test-results'), { recursive: true });
+  }
+  if (existsSync('mutations.xml')) {
+    writeFileSync(report('pit/mutations.xml'), readFileSync('mutations.xml'));
+  }
+  writeFileSync(report('structure.json'), '[]');
+  writeFileSync(report('classes.json'), '{"files":{},"classes":[]}');
 }
-writeFileSync('build/nitpicker/structure.json', '[]');
+
+const modules = existsSync('NO_REPORTS')
+  ? []
+  : [
+      { key: 'root', path: ':', dir: '' },
+      ...lines('modules.txt').map((dir) => ({ key: `module-${dir}`, path: `:${dir}`, dir })),
+    ];
+mkdirSync(reportBase, { recursive: true });
+mkdirSync('build', { recursive: true });
+writeFileSync('build/gradle-args.json', JSON.stringify(process.argv.slice(2)));
+appendFileSync('build/gradle-calls.jsonl', `${JSON.stringify(process.argv.slice(2))}\n`);
+const exportArgument = process.argv.find((argument) =>
+  argument.startsWith('-Pnitpicker.checkstyle.exportConfig='),
+);
+if (exportArgument !== undefined) {
+  writeFileSync(exportArgument.slice(exportArgument.indexOf('=') + 1), '<module name="Checker"/>');
+}
+const styleFileArgument = process.argv.find((argument) =>
+  argument.startsWith('-Pnitpicker.kotlin.styleFile='),
+);
+if (styleFileArgument !== undefined) {
+  writeFileSync(
+    'build/style-file.json',
+    readFileSync(styleFileArgument.slice(styleFileArgument.indexOf('=') + 1)),
+  );
+}
+writeFileSync(path.join(reportBase, 'modules.json'), JSON.stringify(modules));
+for (const module of modules) {
+  writeModule(module);
+}

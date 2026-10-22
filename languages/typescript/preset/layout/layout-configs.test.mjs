@@ -2,11 +2,13 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { resolveHeadPolicy } from '../head-policy.mjs';
 import { globToRegExp, resolveLayout } from '../layout.mjs';
 import {
   isCustomLayout,
   layoutJscpdConfig,
   layoutKnipConfig,
+  layoutStrykerTsconfig,
   layoutTransformFor,
   layoutTsconfig,
 } from '../tool-configs.mjs';
@@ -20,6 +22,19 @@ import {
 afterAll(removeTemporaryRoots);
 
 describe('resolveLayout', () => {
+  it('marks the layout colocated only when no test root exists in the project', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-colocated-policy-'));
+    trackTemporaryRoot(root);
+    expect(resolveHeadPolicy({}, root).layout).toEqual({ colocatedTests: true });
+    expect(resolveHeadPolicy({ layout: { testRoots: ['spec'] } }, root).layout).toEqual({
+      testRoots: ['spec'],
+      colocatedTests: true,
+    });
+    mkdirSync(path.join(root, 'tests'));
+    expect(resolveHeadPolicy({}, root).layout).toEqual({});
+    expect(resolveHeadPolicy({}).layout).toEqual({});
+  });
+
   it('derives globs, roots and predicates from custom roots', () => {
     expect(customLayout.sourceGlobs).toEqual(['lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
     expect(customLayout.testGlobs).toEqual([
@@ -38,7 +53,20 @@ describe('resolveLayout', () => {
     expect(customLayout.isRunnableTestFile('spec/helper.ts')).toBe(false);
     expect(customLayout.isTestFixture('/repo/spec/fixtures/app.ts')).toBe(true);
     expect(customLayout.isTestFixture('/repo/tests/fixtures/app.ts')).toBe(false);
+    expect(customLayout.isTestFixture('/repo/lib/__tests__/fixtures/app.ts')).toBe(true);
+    expect(customLayout.isTestFixture('/repo/lib/fixtures/app.ts')).toBe(false);
     expect(customLayout.sourceRootOf('/repo/lib/a.ts')).toBe('lib');
+  });
+  it('counts test-support/ under the source roots as test code only in a colocated layout', () => {
+    const colocated = resolveLayout({ sourceRoots: ['lib'], colocatedTests: true });
+    expect(colocated.testSupportGlobs).toEqual(['lib/**/test-support/**']);
+    expect(colocated.isTestFile('lib/feature/test-support/make.ts')).toBe(true);
+    expect(colocated.isSourceFile('lib/feature/test-support/make.ts')).toBe(false);
+    expect(colocated.isRunnableTestFile('lib/feature/test-support/make.ts')).toBe(false);
+    expect(colocated.isSourceFile('lib/feature/support/make.ts')).toBe(true);
+    expect(customLayout.testSupportGlobs).toEqual([]);
+    expect(customLayout.isSourceFile('lib/feature/test-support/make.ts')).toBe(true);
+    expect(customLayout.isTestFile('lib/feature/test-support/make.ts')).toBe(false);
   });
   it('treats exclude globs as excluded from source, test and graph analysis', () => {
     expect(customLayout.isExcluded('lib/legacy/old.ts')).toBe(true);
@@ -47,15 +75,14 @@ describe('resolveLayout', () => {
     expect(customLayout.isSourceUnderRoot('lib/legacy/old.ts', 'lib')).toBe(false);
     expect(customLayout.isSourceUnderRoot('lib/live/new.ts', 'lib')).toBe(true);
     expect([...new Set(customLayout.excludedGlobs)].sort()).toEqual([
-      '**/*.d.ts',
-      '**/build/**',
-      '**/coverage/**',
-      '**/dist/**',
-      '**/generated/**',
       '**/node_modules/**',
-      '**/reports/**',
-      '**/target/**',
+      'build/**',
+      'coverage/**',
+      'dist/**',
+      'generated/**',
       'lib/legacy/**',
+      'reports/**',
+      'target/**',
     ]);
     expect(new RegExp(customLayout.excludePattern).test('lib/legacy/old.ts')).toBe(true);
     expect(new RegExp(customLayout.excludePattern).test('lib/live/new.ts')).toBe(false);
@@ -64,13 +91,7 @@ describe('resolveLayout', () => {
   it('lists project code files under the roots without excluded files', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-layout-test-'));
     trackTemporaryRoot(root);
-    for (const file of [
-      'lib/a.ts',
-      'lib/legacy/b.ts',
-      'spec/a.test.ts',
-      'src/ignored.ts',
-      'lib/dist/c.ts',
-    ]) {
+    for (const file of ['lib/a.ts', 'lib/legacy/b.ts', 'spec/a.test.ts', 'src/ignored.ts']) {
       const filePath = path.join(root, file);
       mkdirSync(path.dirname(filePath), { recursive: true });
       writeFileSync(filePath, 'export {};\n');
@@ -80,8 +101,8 @@ describe('resolveLayout', () => {
   it('keeps the default layout identical to the previous fixed roots', () => {
     const layout = resolveLayout();
     expect(layout.sourceRoots).toEqual(['src']);
-    expect(layout.testRoots).toEqual(['test', 'tests']);
-    expect(layout.graphIncludeOnly).toBe('^(src|test|tests)(?:/|$)');
+    expect(layout.testRoots).toEqual(['test', 'tests', '__tests__', 'e2e']);
+    expect(layout.graphIncludeOnly).toBe('^(src|test|tests|__tests__|e2e)(?:/|$)');
   });
 });
 describe('globToRegExp', () => {
@@ -108,9 +129,13 @@ describe('layout-aware tool configurations', () => {
   const sorted = (values) => [...values].sort();
   const defaultLayout = resolveLayout();
   it('reproduce the shipped JSON configurations for the default layout', () => {
-    for (const name of ['tsconfig.quality.json', 'tsconfig.stryker.json']) {
+    const rewrites = {
+      'tsconfig.quality.json': layoutTsconfig,
+      'tsconfig.stryker.json': layoutStrykerTsconfig,
+    };
+    for (const [name, rewrite] of Object.entries(rewrites)) {
       const base = readDefault(name);
-      const rewritten = layoutTsconfig(base, defaultLayout);
+      const rewritten = rewrite(base, defaultLayout);
       expect(sorted(rewritten.include)).toEqual(sorted(base.include));
       expect(rewritten.exclude).toEqual(base.exclude);
     }
@@ -133,15 +158,14 @@ describe('layout-aware tool configurations', () => {
     const tsconfig = layoutTsconfig(readDefault('tsconfig.quality.json'), customLayout);
     expect(tsconfig.include).toEqual(['lib/**/*', 'spec/**/*', 'vitest*.ts']);
     expect([...new Set(tsconfig.exclude)].sort()).toEqual([
-      '**/*.d.ts',
-      '**/build/**',
-      '**/coverage/**',
-      '**/dist/**',
-      '**/generated/**',
       '**/node_modules/**',
-      '**/reports/**',
-      '**/target/**',
+      'build/**',
+      'coverage/**',
+      'dist/**',
+      'generated/**',
       'lib/legacy/**',
+      'reports/**',
+      'target/**',
     ]);
 
     const knip = layoutKnipConfig(readDefault('knip.json'), customLayout);
@@ -169,7 +193,6 @@ describe('layout-aware tool configurations', () => {
       '.stryker-tmp/**',
       'coverage/**',
       'lib/**/*.d.ts',
-      'lib/**/dist/**',
       'lib/legacy/**',
       'reports/**',
     ]);
@@ -179,14 +202,14 @@ describe('layout-aware tool configurations', () => {
     expect([...new Set(jscpd.ignore)].sort()).toEqual([
       '**/*.d.ts',
       '**/.stryker-tmp/**',
-      '**/build/**',
-      '**/coverage/**',
-      '**/dist/**',
-      '**/generated/**',
       '**/node_modules/**',
-      '**/reports/**',
-      '**/target/**',
+      'build/**',
+      'coverage/**',
+      'dist/**',
+      'generated/**',
       'lib/legacy/**',
+      'reports/**',
+      'target/**',
     ]);
   });
   it('add the configured entry points to the knip entries', () => {

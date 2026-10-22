@@ -33,7 +33,24 @@ function dependency(coordinates, exclusions = []) {
   ].join('');
 }
 
-export function toolDependencies(pinned, launcherVersions = []) {
+export function formatTool(javaStyle, pinned) {
+  if (javaStyle === 'none') {
+    return [];
+  }
+  const palantir = javaStyle === 'palantir';
+  return [
+    {
+      name: palantir ? 'format-palantir' : 'format',
+      coordinates: [
+        palantir
+          ? `com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}`
+          : `com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`,
+      ],
+    },
+  ];
+}
+
+export function toolDependencies(pinned, launcherVersions = [], extraTools = []) {
   return {
     pmd: [
       dependency(`net.sourceforge.pmd:pmd-cli:${pinned.pmd}`),
@@ -43,22 +60,30 @@ export function toolDependencies(pinned, launcherVersions = []) {
     spotbugsPlugins: [
       dependency(`com.h3xstream.findsecbugs:findsecbugs-plugin:${pinned.findSecBugs}`),
     ],
-    format: [
-      dependency(`com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`),
-    ],
     checkstyle: [dependency(`com.puppycrawl.tools:checkstyle:${pinned.checkstyle}`)],
+    errorprone: [
+      dependency(`com.google.errorprone:error_prone_core:${pinned.errorProne}`),
+      dependency(`com.uber.nullaway:nullaway:${pinned.nullAway}`),
+    ],
     jacoco: [dependency(`org.jacoco:org.jacoco.cli:${pinned.jacoco}:nodeps`)],
-    pit: [
-      dependency(`org.pitest:pitest-command-line:${pinned.pitest}`),
+    pit: [dependency(`org.pitest:pitest-command-line:${pinned.pitest}`)],
+    'pit-junit5': [
       dependency(
         `org.pitest:pitest-junit5-plugin:${pinned.pitestJunit5}`,
         JUNIT_PLATFORM_EXCLUSIONS,
       ),
     ],
+    'pit-testng': [dependency(`org.pitest:pitest-testng-plugin:${pinned.pitestTestng}`)],
     ...Object.fromEntries(
       launcherVersions.map((version) => [
         `launcher-${version}`,
         [dependency(`org.junit.platform:junit-platform-launcher:${version}`)],
+      ]),
+    ),
+    ...Object.fromEntries(
+      extraTools.map(({ name, coordinates }) => [
+        name,
+        coordinates.map((entry) => dependency(entry)),
       ]),
     ),
   };
@@ -112,8 +137,8 @@ function cacheDirectory(key) {
   return path.join(root, `maven-tools-${key}`);
 }
 
-export function resolveTools({ projectRoot, maven, pinned, launcherVersions }) {
-  const tools = toolDependencies(pinned, launcherVersions);
+export function resolveTools({ projectRoot, maven, pinned, launcherVersions, extraTools }) {
+  const tools = toolDependencies(pinned, launcherVersions, extraTools);
   const key = createHash('sha256').update(JSON.stringify(tools)).digest('hex').slice(0, 16);
   const directory = cacheDirectory(key);
   const cached = readClasspaths(directory, Object.keys(tools));
