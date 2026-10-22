@@ -5,13 +5,12 @@ import { javaCommand, runJava, runMaven } from './maven-command.mjs';
 import { runCheckstyle, runFormat, runSpotbugs, runPmd } from './maven-lint.mjs';
 import { runGuards } from './guards/maven-guards.mjs';
 import { runJdeps as runGuardJdeps } from './coupling/maven-jdeps.mjs';
+import { lifecycleArgs, readReactor } from './maven-project.mjs';
 import {
-  lifecycleArgs,
   moduleClasspaths,
   parseDependencyList,
-  readReactor,
   usesSpring,
-} from './maven-project.mjs';
+} from './configuration/maven-classpaths.mjs';
 import {
   archunitMatcher,
   collectTestResults,
@@ -236,6 +235,15 @@ function missingLauncherVersions(analyzed) {
   return [...new Set(versions.filter((version) => version !== undefined))];
 }
 
+function extraTools({ modules, analyzed, policy, pinned }) {
+  const spring = analyzed.some(({ classpaths }) => usesSpring(classpaths));
+  return [
+    ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
+    ...formatTool(policy.javaStyle, pinned),
+    ...archunitTool(spring, pinned),
+  ];
+}
+
 export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
   if (policy.preset === 'kotlin') {
     throw new Error(
@@ -257,14 +265,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
       maven,
       pinned,
       launcherVersions: missingLauncherVersions(analyzed),
-      extraTools: [
-        ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
-        ...formatTool(policy.javaStyle, pinned),
-        ...archunitTool(
-          analyzed.some(({ classpaths }) => usesSpring(classpaths)),
-          pinned,
-        ),
-      ],
+      extraTools: extraTools({ modules, analyzed, policy, pinned }),
     });
     const project = guardProject(projectRoot, policy, modules);
     for (const { module, classpaths } of analyzed) {
