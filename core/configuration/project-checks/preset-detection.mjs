@@ -16,7 +16,11 @@ const PROJECT_MARKERS = [
       'settings.gradle.kts',
     ],
   },
-  { preset: 'python', label: 'Python', files: ['pyproject.toml', 'setup.py', 'setup.cfg'] },
+  {
+    preset: 'python',
+    label: 'Python',
+    files: ['pyproject.toml', 'setup.py', 'setup.cfg', 'Pipfile', 'requirements.txt'],
+  },
 ];
 const SCRIPT_FILE = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/u;
 const KOTLIN_FILE = /\.kts?$/u;

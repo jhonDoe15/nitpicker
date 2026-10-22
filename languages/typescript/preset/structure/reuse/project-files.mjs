@@ -5,8 +5,8 @@ import { filesUnder } from '../../../../../shared/filesystem.mjs';
 import { existingRoots } from '../../layout.mjs';
 import { isNonProductionFolder, isReuseProductionPath } from './reuse-paths.mjs';
 import { fileDefinitions } from './syntax/definitions.mjs';
-import { fileDynamicImports, fileExports, fileImports } from './syntax/module-facts.mjs';
-import { jsxTagNames, referencePositions } from './syntax/references.mjs';
+import { fileDynamicImports, fileExports, fileImports } from '../../syntax/module-facts.mjs';
+import { jsxTagNames, referencePositions } from '../../syntax/references.mjs';
 
 function manifestDirectory(projectRoot, file) {
   const directory = path.posix.dirname(file);
@@ -36,9 +36,37 @@ function usedLocally(definition, references) {
   return (references.get(definition.name) ?? []).some((at) => at < start || at >= end);
 }
 
+function insideRoot(root, file) {
+  const base = path.resolve(root);
+  const full = path.resolve(base, file);
+  if (!full.startsWith(`${base}${path.sep}`)) {
+    throw new Error(`${file} is outside ${root}`);
+  }
+  return full;
+}
+
+function parsedFile(projectRoot, file) {
+  const text = readFileSync(insideRoot(projectRoot, file), 'utf8');
+  return ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+}
+
+export function baselineFileReader({ projectRoot, baselineRoot, baselinePaths }) {
+  const unknown = { unchanged: false, definitions: [] };
+  return (file) => {
+    const baselinePath = baselinePaths.get(file) ?? file;
+    const baselineFull = insideRoot(baselineRoot, baselinePath);
+    if (!existsSync(baselineFull)) {
+      return unknown;
+    }
+    const unchanged =
+      readFileSync(baselineFull, 'utf8') === readFileSync(insideRoot(projectRoot, file), 'utf8');
+    const definitions = unchanged ? [] : fileDefinitions(parsedFile(baselineRoot, baselinePath));
+    return { unchanged, definitions };
+  };
+}
+
 function fileFacts(projectRoot, file, packageRoot) {
-  const text = readFileSync(path.join(projectRoot, file), 'utf8');
-  const sourceFile = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const sourceFile = parsedFile(projectRoot, file);
   const references = referencePositions(sourceFile);
   return {
     path: file,

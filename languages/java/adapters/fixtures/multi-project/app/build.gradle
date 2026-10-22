@@ -2,6 +2,9 @@ sourceSets {
     integrationTest {
         java.srcDir 'src/integrationTest/java'
     }
+    jmh {
+        java.srcDir 'src/jmh/java'
+    }
 }
 
 dependencies {

@@ -1,7 +1,7 @@
 import ts from 'typescript';
 import { hash } from '../../../../../../shared/rules/finding-helpers.mjs';
-import { fileImports } from './module-facts.mjs';
-import { declaredNames, referencedNames } from './references.mjs';
+import { fileImports } from '../../../syntax/module-facts.mjs';
+import { declaredNames, referencedNames } from '../../../syntax/references.mjs';
 import { leafTexts, normalizedTexts } from './tokens.mjs';
 
 export function declarationParts(node) {

@@ -1,6 +1,5 @@
 import { execFile } from 'node:child_process';
 import { globSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { ESLint } from 'eslint';
@@ -23,7 +22,7 @@ async function listedNativeRules() {
   const { stdout } = await promisify(execFile)(
     process.execPath,
     [oxlintBinary(), '--rules', '--format', 'json'],
-    { cwd: tmpdir(), maxBuffer: MAX_LISTING_BYTES },
+    { cwd: import.meta.dirname, maxBuffer: MAX_LISTING_BYTES },
   );
   return JSON.parse(stdout);
 }

@@ -1,6 +1,8 @@
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
+import { exactText } from '../../../diff/reporting/test-support/output-expectations.mjs';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
@@ -72,13 +74,18 @@ export function useGradleFixtures(runNitpickerCli) {
         error: {
           rule: 'gradle-failure',
           message: (snapshot) =>
-            `Java preset failed in ${snapshot}: Execution failed for task :compileJava`,
+            gradleFailureMessage(
+              `Java preset failed in ${snapshot}: Execution failed for task :compileJava`,
+            ),
         },
       },
       missingBinary: {
         variable: 'NITPICKER_GRADLE',
         rule: 'gradle-failure',
-        message: (binary) => `spawnSync ${binary} ENOENT`,
+        message: (binary) =>
+          expect.stringMatching(
+            exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nspawnSync ${binary} ENOENT`,
+          ),
       },
     },
   };
@@ -142,4 +149,10 @@ export function useMavenFixtures(runNitpickerCli) {
 export function unusedFieldMessage(name, file = 'src/main/java/demo/A.java') {
   const { fix } = readCatalog('pmd').UnusedPrivateField;
   return `Avoid unused field: ${name}. ${fix} ${exceptionHint('pmd/UnusedPrivateField', file)}`;
+}
+
+export function gradleFailureMessage(detail) {
+  const suffix = /[A-Za-z0-9]{6}/;
+  return expect.stringMatching(exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${suffix}/gradle.log
+${detail}`);
 }

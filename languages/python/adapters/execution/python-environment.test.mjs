@@ -231,7 +231,17 @@ describe('opening an environment', () => {
     setEnvironment('PATH', temporaryRoot());
 
     expect(() => openEnvironment({ kind: 'poetry' }, root)).toThrow(
-      /poetry could not run for .*ENOENT/,
+      `poetry is not installed, so its environment for ${root} cannot be found: install poetry with \`pipx install poetry\` or \`pip install poetry\`, or set "python.environment"`,
+    );
+  });
+
+  it('names how to install uv when it is missing and has no environment', () => {
+    const root = temporaryRoot();
+    setEnvironment('UV_PROJECT_ENVIRONMENT', '');
+    setEnvironment('PATH', temporaryRoot());
+
+    expect(() => openEnvironment({ kind: 'uv' }, root)).toThrow(
+      `uv has no environment at ${path.join(root, '.venv')}: run \`uv sync\` first (or set UV_PROJECT_ENVIRONMENT, or set "python.environment"); uv is not installed, install uv with \`curl -LsSf https://astral.sh/uv/install.sh | sh\` or \`pip install uv\``,
     );
   });
 });
