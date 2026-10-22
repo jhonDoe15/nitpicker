@@ -137,6 +137,7 @@ const HEAD_CHECKOUT_FACTS = [
   'libraries',
 ];
 const SCOPE_FACTS = [
+  ['layout', ['colocatedTests']],
   ['react', ['enabled', 'iconPackage', 'major', 'styling', 'autoCleanup']],
   ['i18n', ['enabled']],
 ];
