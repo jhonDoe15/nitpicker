@@ -1,7 +1,7 @@
 import { rule } from './handler-entity-type.mjs';
 import { typedProject } from '../contracts/test-support/typed-project.mjs';
 
-const { write, tester } = typedProject('nitpicker-handler-entity-');
+const { write, tester, folder } = typedProject('nitpicker-handler-entity-');
 
 write(
   'src/main/features/users/user.entity.ts',
@@ -32,11 +32,8 @@ const ENTITIES =
 const NEST = "import { Body, Controller, Get, Post } from '@nestjs/common';\n";
 const EXPRESS = "import type { Request, Response } from 'express';\n";
 
-let counter = 0;
-
 function source(code, { file = 'handler.ts', errors } = {}) {
-  counter += 1;
-  const filename = write(`src/main/features/h${String(counter)}/${file}`, code);
+  const filename = write(`src/main/features/${folder('h')}/${file}`, code);
   return { filename, code, ...(errors === undefined ? {} : { errors }) };
 }
 

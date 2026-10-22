@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createIdentityCounter } from '../../../../shared/ingest/common.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { isIntegrationTest } from '../test-times/integration-tests.mjs';
-import { CONTRACT_RULE, contractEntry, keepsContract } from './contract-types.mjs';
+import { CONTRACT_RULE, contractEntry, keepsContract, simpleName } from './contract-types.mjs';
 
 export const SPRING_ARCH_REPORT = 'spring-arch.json';
 const TOOL = 'archunit';
@@ -34,10 +34,6 @@ const MESSAGES = {
 };
 
 const PLACEMENT = 'spring-test-placement';
-
-function simpleName(name) {
-  return name.slice(name.lastIndexOf('.') + 1);
-}
 
 function packageOf(name) {
   return name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : '';

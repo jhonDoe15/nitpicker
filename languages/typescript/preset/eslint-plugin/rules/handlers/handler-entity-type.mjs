@@ -11,7 +11,7 @@ const HTTP_VERBS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OP
 const SEND_METHODS = new Set(['json', 'send']);
 const STATIC_SENDERS = new Set(['NextResponse', 'Response']);
 
-function reportEntities(context, { node, site, types, checker }) {
+function reportEntities({ context, checker }, { node, site, types }) {
   const reported = new Set();
   for (const entity of types.flatMap((type) => entitiesIn(checker, type))) {
     if (!reported.has(entity.name)) {
@@ -85,72 +85,94 @@ function routeExportName(node) {
     : undefined;
 }
 
-function createVisitors(context, services) {
-  const checker = services.program.getTypeChecker();
-  const tsNode = (node) => services.esTreeNodeToTSNodeMap.get(node);
-  const routeFile = ROUTE_FILE.test(path.basename(context.filename));
-  function routeHandler(node, declaration) {
-    const name = routeExportName(node);
-    const exported =
-      node.parent?.type === 'ExportNamedDeclaration' ||
-      node.parent?.parent?.type === 'ExportNamedDeclaration';
-    if (routeFile && exported && HTTP_VERBS.has(name)) {
-      reportEntities(context, {
-        node: node.id,
-        site: name,
-        types: signatureTypes(checker, declaration),
-        checker,
-      });
-    }
+function tsNode(scope, node) {
+  return scope.services.esTreeNodeToTSNodeMap.get(node);
+}
+
+function isExported(node) {
+  return (
+    node.parent?.type === 'ExportNamedDeclaration' ||
+    node.parent?.parent?.type === 'ExportNamedDeclaration'
+  );
+}
+
+function routeHandler(scope, node, declaration) {
+  const name = routeExportName(node);
+  if (scope.routeFile && isExported(node) && HTTP_VERBS.has(name)) {
+    reportEntities(scope, {
+      node: node.id,
+      site: name,
+      types: signatureTypes(scope.checker, declaration),
+    });
   }
+}
+
+function visitMethod(scope, node) {
+  const method = tsNode(scope, node);
+  if (nestRoute(scope.checker, method)) {
+    reportEntities(scope, {
+      node: node.key,
+      site: `${method.parent.name?.text ?? 'controller'}.${method.name.getText()}`,
+      types: signatureTypes(scope.checker, method),
+    });
+  }
+}
+
+function visitVariable(scope, node) {
+  const initializer = node.init === null ? undefined : tsNode(scope, node.init);
+  if (initializer !== undefined && ts.isFunctionLike(initializer)) {
+    routeHandler(scope, node, initializer);
+  }
+}
+
+function visitCall(scope, node) {
+  const call = tsNode(scope, node);
+  if (call.arguments.length > 0 && sendTarget(scope.checker, call)) {
+    reportEntities(scope, {
+      node: node.arguments[0],
+      site: `${call.expression.getText()}(...)`,
+      types: [scope.checker.getTypeAtLocation(call.arguments[0])],
+    });
+  }
+}
+
+function visitAssignment(scope, node) {
+  const left = tsNode(scope, node.left);
+  if (
+    ts.isPropertyAccessExpression(left) &&
+    left.name.text === 'body' &&
+    isTransportObject(scope.checker, left.expression)
+  ) {
+    reportEntities(scope, {
+      node: node.right,
+      site: `${left.getText()} =`,
+      types: [scope.checker.getTypeAtLocation(tsNode(scope, node.right))],
+    });
+  }
+}
+
+function createVisitors(context, services) {
+  const scope = {
+    context,
+    services,
+    checker: services.program.getTypeChecker(),
+    routeFile: ROUTE_FILE.test(path.basename(context.filename)),
+  };
   return {
     MethodDefinition(node) {
-      const method = tsNode(node);
-      if (nestRoute(checker, method)) {
-        const site = `${method.parent.name?.text ?? 'controller'}.${method.name.getText()}`;
-        reportEntities(context, {
-          node: node.key,
-          site,
-          types: signatureTypes(checker, method),
-          checker,
-        });
-      }
+      visitMethod(scope, node);
     },
     FunctionDeclaration(node) {
-      routeHandler(node, tsNode(node));
+      routeHandler(scope, node, tsNode(scope, node));
     },
     VariableDeclarator(node) {
-      const initializer = node.init === null ? undefined : tsNode(node.init);
-      if (initializer !== undefined && ts.isFunctionLike(initializer)) {
-        routeHandler(node, initializer);
-      }
+      visitVariable(scope, node);
     },
     CallExpression(node) {
-      const call = tsNode(node);
-      if (call.arguments.length > 0 && sendTarget(checker, call)) {
-        const site = `${call.expression.getText()}(...)`;
-        reportEntities(context, {
-          node: node.arguments[0],
-          site,
-          types: [checker.getTypeAtLocation(call.arguments[0])],
-          checker,
-        });
-      }
+      visitCall(scope, node);
     },
     AssignmentExpression(node) {
-      const left = tsNode(node.left);
-      if (
-        ts.isPropertyAccessExpression(left) &&
-        left.name.text === 'body' &&
-        isTransportObject(checker, left.expression)
-      ) {
-        reportEntities(context, {
-          node: node.right,
-          site: `${left.getText()} =`,
-          types: [checker.getTypeAtLocation(tsNode(node.right))],
-          checker,
-        });
-      }
+      visitAssignment(scope, node);
     },
   };
 }

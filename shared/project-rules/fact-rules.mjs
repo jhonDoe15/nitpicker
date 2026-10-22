@@ -64,7 +64,7 @@ export function registeredFactRules(language) {
     .map(([rule]) => rule);
 }
 
-export const OWN_RULE_SETTINGS = {
+const OWN_RULE_SETTINGS = {
   'contract-infrastructure-type': {
     languages: ['java', 'kotlin', 'python'],
     settings: FEATURE_LAYOUT_SETTINGS,
