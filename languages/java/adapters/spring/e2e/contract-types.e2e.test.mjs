@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

@@ -21,7 +21,7 @@ const KINDS = {
     `Take plain values and return a record (DTO) or a domain type in ${owner}: ${type} is a web request or response object, so every caller of this ${face} needs a live HTTP exchange. Read it in the controller or adapter and pass the values in.`,
 };
 
-function simpleName(name) {
+export function simpleName(name) {
   return name.slice(name.lastIndexOf('.') + 1);
 }
 

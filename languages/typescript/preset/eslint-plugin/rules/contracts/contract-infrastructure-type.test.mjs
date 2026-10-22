@@ -1,17 +1,14 @@
 import { rule } from './contract-infrastructure-type.mjs';
 import { typedProject } from './test-support/typed-project.mjs';
 
-const { write, tester } = typedProject('nitpicker-contract-types-');
+const { write, tester, folder } = typedProject('nitpicker-contract-types-');
 
 const PRISMA = "import type { Prisma, PrismaClient } from '@prisma/client';\n";
 const KNEX = "import type { Knex } from 'knex';\n";
 const EXPRESS = "import type { Request, Response } from 'express';\n";
 
-let counter = 0;
-
-function feature(index, siblings = {}, leaks = undefined, indexName = 'index.ts') {
-  counter += 1;
-  const name = `f${String(counter)}`;
+function feature(index, { siblings = {}, leaks, indexName = 'index.ts' } = {}) {
+  const name = folder('f');
   for (const [file, content] of Object.entries(siblings)) {
     write(`src/main/features/${name}/${file}`, content);
   }
@@ -42,7 +39,7 @@ tester.run('contract-infrastructure-type', rule, {
       `${PRISMA}import type { User } from '@prisma/client';\nexport declare function owner(): User;`,
     ),
     feature("export { OrderView } from './view';", {
-      'view.ts': 'export type OrderView = { id: string };\n',
+      siblings: { 'view.ts': 'export type OrderView = { id: string };\n' },
     }),
     {
       filename: write(
@@ -58,49 +55,39 @@ tester.run('contract-infrastructure-type', rule, {
   invalid: [
     feature(
       `${PRISMA}export function findUsers(db: PrismaClient): Promise<string[]> { return Promise.resolve([String(db)]); }`,
-      {},
-      [['persistence', 'findUsers', 'PrismaClient', '@prisma/client']],
+      { leaks: [['persistence', 'findUsers', 'PrismaClient', '@prisma/client']] },
     ),
     feature(
       `${KNEX}type Tx = Knex.Transaction;\nexport const orders = { inTransaction(run: (tx: Tx) => Promise<void>): Promise<void> { return Promise.resolve(String(run)).then(() => undefined); } };`,
-      {},
-      [['persistence', 'orders.inTransaction', 'Transaction', 'knex']],
+      { leaks: [['persistence', 'orders.inTransaction', 'Transaction', 'knex']] },
     ),
-    feature(
-      "export { OrderService } from './service';",
-      {
+    feature("export { OrderService } from './service';", {
+      siblings: {
         'service.ts': `${PRISMA}${KNEX}export class OrderService {\n  constructor(private readonly db: PrismaClient) {}\n  transaction(): Prisma.TransactionClient { return this.db; }\n  list(): Promise<Map<string, Knex.QueryBuilder<string>[]>> { return Promise.resolve(new Map()); }\n}\n`,
       },
-      [
+      leaks: [
         ['persistence', 'OrderService.transaction', 'TransactionClient', '@prisma/client'],
         ['persistence', 'OrderService.list', 'QueryBuilder', 'knex'],
       ],
-    ),
+    }),
     feature(
       `${EXPRESS}export function sendOrder(id: string, res: Response): void { res.json(id); }`,
-      {},
-      [['transport', 'sendOrder', 'Response', 'express']],
+      { leaks: [['transport', 'sendOrder', 'Response', 'express']] },
     ),
-    feature(
-      "export * from './api';",
-      { 'api.ts': `${EXPRESS}export declare function current(id: string): Request;\n` },
-      [['transport', 'current', 'Request', 'express']],
-    ),
+    feature("export * from './api';", {
+      siblings: { 'api.ts': `${EXPRESS}export declare function current(id: string): Request;\n` },
+      leaks: [['transport', 'current', 'Request', 'express']],
+    }),
     feature(
       `${PRISMA}export function createOrders(db: PrismaClient) { return { tx(): Prisma.TransactionClient { return db; }, list(): string[] { return []; } }; }`,
-      {},
-      [['persistence', 'createOrders().tx', 'TransactionClient', '@prisma/client']],
+      { leaks: [['persistence', 'createOrders().tx', 'TransactionClient', '@prisma/client']] },
     ),
     feature(
       "/** @param {import('knex').Knex.Transaction} tx\n * @returns {Promise<void>} */\nexport function commit(tx) { return tx.commit(); }",
-      {},
-      [['persistence', 'commit', 'Transaction', 'knex']],
-      'index.js',
+      { leaks: [['persistence', 'commit', 'Transaction', 'knex']], indexName: 'index.js' },
     ),
-    feature(
-      `${KNEX}export interface OrderStore { session(): Knex.Transaction; count(): number }`,
-      {},
-      [['persistence', 'OrderStore.session', 'Transaction', 'knex']],
-    ),
+    feature(`${KNEX}export interface OrderStore { session(): Knex.Transaction; count(): number }`, {
+      leaks: [['persistence', 'OrderStore.session', 'Transaction', 'knex']],
+    }),
   ],
 });

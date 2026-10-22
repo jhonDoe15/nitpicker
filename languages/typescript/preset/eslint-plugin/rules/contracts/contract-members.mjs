@@ -9,7 +9,7 @@ function resolved(checker, symbol) {
   return (symbol.flags & ts.SymbolFlags.Alias) !== 0 ? checker.getAliasedSymbol(symbol) : symbol;
 }
 
-export function infrastructureIn(checker, type) {
+function infrastructureIn(checker, type) {
   return findInType(checker, type, (candidate) =>
     typeSymbols(candidate)
       .map((symbol) => infrastructureOf(symbol))
@@ -60,7 +60,6 @@ function memberLeaks(checker, members, { label, allowTransport }) {
   );
 }
 
-
 function classLeaks(checker, symbol, label) {
   const declaration = symbol.declarations.find(ts.isClassLike);
   const allowTransport = declaration !== undefined && isNestController(checker, declaration);
@@ -103,20 +102,40 @@ function typeLeaks(checker, type, label) {
   ];
 }
 
-export function exportLeaks(checker, exported, label = exported.name) {
-  const symbol = resolved(checker, exported);
+const OWN_LEAKS = ts.SymbolFlags.Class | ts.SymbolFlags.Function | ts.SymbolFlags.Variable;
+const TYPE_LEAKS = ts.SymbolFlags.Interface | ts.SymbolFlags.TypeAlias;
+
+function symbolLeaks(checker, symbol, label) {
   if ((symbol.flags & ts.SymbolFlags.Class) !== 0) {
     return classLeaks(checker, symbol, label);
   }
   if ((symbol.flags & (ts.SymbolFlags.Function | ts.SymbolFlags.Variable)) !== 0) {
     return typeLeaks(checker, checker.getTypeOfSymbol(symbol), label);
   }
-  if ((symbol.flags & (ts.SymbolFlags.Interface | ts.SymbolFlags.TypeAlias)) !== 0) {
-    return typeLeaks(checker, checker.getDeclaredTypeOfSymbol(symbol), label);
-  }
-  return (symbol.flags & ts.SymbolFlags.ValueModule) === 0
+  return (symbol.flags & TYPE_LEAKS) === 0
     ? []
-    : checker
-        .getExportsOfModule(symbol)
-        .flatMap((inner) => exportLeaks(checker, inner, `${label}.${inner.name}`));
+    : typeLeaks(checker, checker.getDeclaredTypeOfSymbol(symbol), label);
+}
+
+function isNamespace(symbol) {
+  return (
+    (symbol.flags & ts.SymbolFlags.ValueModule) !== 0 &&
+    (symbol.flags & (OWN_LEAKS | TYPE_LEAKS)) === 0
+  );
+}
+
+export function exportLeaks(checker, exported) {
+  const leaks = [];
+  const seen = new Set();
+  const pending = [{ entry: exported, label: exported.name }];
+  for (const { entry, label } of pending) {
+    const symbol = resolved(checker, entry);
+    if (!seen.has(symbol)) {
+      seen.add(symbol);
+      leaks.push(...symbolLeaks(checker, symbol, label));
+      const inner = isNamespace(symbol) ? checker.getExportsOfModule(symbol) : [];
+      pending.push(...inner.map((child) => ({ entry: child, label: `${label}.${child.name}` })));
+    }
+  }
+  return leaks;
 }

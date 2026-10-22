@@ -11,15 +11,17 @@ const COMMENTS = /\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|(?:^|[ \t])(?:\/\/|#)[^\n]*/g
 
 function projectFiles(projectRoot) {
   try {
-    return runGit(projectRoot, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])
-      .split('\0')
-      .filter((file) => file.length > 0);
+    return {
+      files: runGit(projectRoot, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])
+        .split('\0')
+        .filter((file) => file.length > 0),
+    };
   } catch {
-    return [];
+    return { files: [] };
   }
 }
 
-export function declaresSpring(projectRoot, files = projectFiles(projectRoot)) {
+export function declaresSpring(projectRoot, files = projectFiles(projectRoot).files) {
   return files
     .filter((file) => BUILD_FILE.test(file))
     .some((file) =>
@@ -33,7 +35,7 @@ export function hasFeatureFolders(files, layout) {
 }
 
 export function javaHeadFacts(projectRoot, config) {
-  const files = projectFiles(projectRoot);
+  const { files } = projectFiles(projectRoot);
   return {
     ...(declaresSpring(projectRoot, files) ? { spring: true } : {}),
     ...(hasFeatureFolders(files, config.layout) ? { featureFolders: true } : {}),

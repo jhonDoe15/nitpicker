@@ -8,7 +8,7 @@ const PERSISTENCE = [
   ['mongoose', /^(?:Connection|ClientSession|Model|Query)$/u],
   [
     'typeorm',
-    /^(?:DataSource|Connection|EntityManager|QueryRunner|Repository|TreeRepository|MongoRepository|SelectQueryBuilder)$/u,
+    /^(?:DataSource|Connection|EntityManager|QueryRunner|(?:Tree|Mongo)?Repository|SelectQueryBuilder)$/u,
   ],
   ['sequelize', /^(?:Sequelize|Transaction)$/u],
   ['drizzle-orm', /(?:Database|Transaction)$/u],

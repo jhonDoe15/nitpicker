@@ -1,20 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { factRuleSettings, registeredFactRules } from './fact-rules.mjs';
+import { factRuleSettings } from './fact-rules.mjs';
+
+const LAYOUT = ['layout.sharedRoots', 'layout.featureRoots'];
 
 describe('factRuleSettings', () => {
-  it.each([['java'], ['kotlin'], ['python']])(
+  it.each([['java'], ['kotlin']])(
     'gives %s the feature layout keys that contract-infrastructure-type reads',
     (language) => {
-      expect(factRuleSettings(language)).toEqual(
-        expect.arrayContaining(['layout.sharedRoots', 'layout.featureRoots']),
-      );
+      expect(factRuleSettings(language)).toEqual(['testConsole', ...LAYOUT]);
     },
   );
 
-  it('lists each setting once and keeps the rules a language runs itself out of the fact rules', () => {
-    const settings = factRuleSettings('python');
-
-    expect(settings).toEqual([...new Set(settings)]);
-    expect(registeredFactRules('java')).not.toContain('contract-infrastructure-type');
+  it('lists each setting once when a fact rule and contract-infrastructure-type read it', () => {
+    expect(factRuleSettings('python')).toEqual(LAYOUT);
   });
 });

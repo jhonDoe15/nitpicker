@@ -87,8 +87,17 @@ export function typedProject(prefix) {
   afterAll(() => {
     rmSync(root, { recursive: true, force: true });
   });
+  const folders = new Map();
+  function folder(prefix) {
+    const next = (folders.get(prefix) ?? 0) + 1;
+    folders.set(prefix, next);
+    return `${prefix}${String(next)}`;
+  }
   function write(relative, content) {
-    const file = path.join(root, relative);
+    const file = path.resolve(root, relative);
+    if (!file.startsWith(`${root}${path.sep}`)) {
+      throw new Error(`${relative} is outside ${root}`);
+    }
     mkdirSync(path.dirname(file), { recursive: true });
     writeFileSync(file, content);
     return file;
@@ -98,5 +107,5 @@ export function typedProject(prefix) {
     write(relative, content);
   }
   const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
-  return { root, write, tester };
+  return { root, write, tester, folder };
 }
