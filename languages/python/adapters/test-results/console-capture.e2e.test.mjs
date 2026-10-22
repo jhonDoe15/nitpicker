@@ -193,7 +193,7 @@ def test_logged():
           'print(plugin.relative_to_root("D:\\\\cache\\\\mod.py"))',
         ].join('\n'),
       ],
-      { encoding: 'utf8' },
+      { encoding: 'utf8', timeout: 60_000 },
     );
 
     expect(result.stdout.trim()).toBe(String.raw`D:\cache\mod.py`);

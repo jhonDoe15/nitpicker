@@ -288,12 +288,7 @@ export const RULES = [
   testConsoleRule(RULE_IDS, withKotlin({ ...TYPESCRIPT_ONLY, python: true }, false)),
 ];
 
-/**
- * Project-level TypeScript checks that take `exceptions` entries although no ESLint rule has their
- * id: the rules of the TypeScript structure, coupling, dead-code and test-console checks that Java
- * does not share. The Python preset validates its own: it takes `test-console-output` both in the
- * top-level `exceptions` and in `python.exceptions` (`PYTHON_TOP_LEVEL_EXCEPTION_RULES`).
- */
+/** Rules of the TypeScript-only structure, coupling, dead-code and test-console checks, lifted by `exceptions`. */
 export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
   ({ id, check, enforcedBy }) =>
     ['structure', 'coupling', 'dead-code', 'test-console'].includes(check) &&

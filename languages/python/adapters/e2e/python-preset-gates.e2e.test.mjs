@@ -284,10 +284,18 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
       'test-console test-console-output test_runtime.py',
       'test-runtime slow-test test_runtime.py',
     ]);
-    expect(result.text).toMatch(
-      /"WARNING demo: cache is cold for key <n>" \(test "test_value_is_cached"\)/,
+    const messages = Object.fromEntries(
+      result
+        .json('new-findings.json')
+        .filter(({ path: file }) => file === 'tests/test_runtime.py')
+        .map(({ rule, message }) => [rule, message.replace(/took 0\.\d+ s/, 'took <s> s')]),
     );
-    expect(result.text).toMatch(/test_value_is_cached took 0\.\d s; a unit test may take 0\.2 s/);
+    expect(messages['test-console-output']).toBe(
+      'Tests print new console output: "WARNING demo: cache is cold for key <n>" (test "test_value_is_cached"). Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json. If this is intended, add {"rule":"test-console-output","paths":["tests/test_runtime.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
+    expect(messages['slow-test']).toBe(
+      'test_value_is_cached took <s> s; a unit test may take 0.2 s. Remove time.sleep and other waits (patch the clock) and fake network, database and disk access, or move it to an integration test (an integration or e2e folder, or an integration or e2e marker registered in the pytest config) if it is one. If this is intended, add {"rule":"slow-test","paths":["tests/test_runtime.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
     for (const branch of ['test-run-lifted', 'test-run-python-lifted']) {
       const asked = gate(project, branch);
       expect(new Set(enforceable(asked).map((summary) => summary.split(' ')[0]))).toEqual(
