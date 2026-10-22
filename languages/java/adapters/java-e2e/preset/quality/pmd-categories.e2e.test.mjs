@@ -129,6 +129,7 @@ describe.skipIf(!enabled)('pinned PMD additional categories', () => {
         .map(({ rule }) => rule)
         .sort(),
     ).toEqual([
+      'AvoidFileStream',
       'DontCallThreadRun',
       'HardCodedCryptoKey',
       'InsecureCryptoIv',

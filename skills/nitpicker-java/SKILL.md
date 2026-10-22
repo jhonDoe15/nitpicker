@@ -87,14 +87,17 @@ Before you change code other modules use, or fix a bug, read
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
 - nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
-  security and a broad-catch rule) and Google checks. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
-  when `nitpicker.config.json` opts in under `tools`; then read it too.
+  security and a broad-catch rule) and Google checks. A project's `config/pmd/ruleset.xml` or
+  `config/checkstyle/checkstyle.xml` counts only when `nitpicker.config.json` opts in under
+  `tools`; then read it too.
 
 ## Errors
 
-- Avoid redundant string copies and loop string concatenation; use a local StringBuilder. Start
-  threads with start() or an owned executor, use immutable java.time formatters, and load crypto
-  keys externally. Generate an appropriate fresh IV for encryption; preserve stored IVs for decryption.
+- No `new String(s)`, `s.toString()` on a String or `+=` on a String in a loop (use a local
+  `StringBuilder`). Open files with `Files.newInputStream`/`Files.newBufferedReader`, not
+  `FileInputStream`. Lock with a private final `ReentrantLock` released in `finally` (or an atomic
+  or concurrent collection), not `synchronized`. Start threads with `start()` or an executor, use
+  `java.time.format.DateTimeFormatter`, and load crypto keys and fresh IVs at run time.
 - Never swallow: no empty `catch` (PMD `EmptyCatchBlock` and Checkstyle both fail it). A `catch`
   returns a failure value, logs and recovers, or rethrows with the cause:
   `throw new IllegalStateException("bad quantity " + text, e);` (`PreserveStackTrace`).

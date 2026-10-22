@@ -111,19 +111,19 @@
     </properties>
   </rule>
   <rule ref="category/java/performance.xml">
-    <!-- Allocation is not proven reusable; hoisting per-item state can change behavior. -->
+    <!-- A loop that needs a distinct object per item is correct; hoisting changes it. -->
     <exclude name="AvoidInstantiatingObjectsInLoops"/>
-    <!-- Branch count does not establish a performance defect; exhaustive small switches are valid. -->
+    <!-- A small exhaustive switch is valid. -->
     <exclude name="TooFewBranchesForSwitch"/>
-    <!-- The stream-finalizer premise is obsolete on the supported Java 21 runtime. -->
-    <exclude name="AvoidFileStream"/>
+    <!-- A capacity hint is a micro-optimization; asking for one only adds magic numbers. -->
+    <exclude name="InsufficientStringBufferDeclaration"/>
   </rule>
   <rule ref="category/java/multithreading.xml">
-    <!-- Volatile is a valid visibility/publication primitive; its presence is not a defect. -->
+    <!-- volatile is a valid visibility primitive. -->
     <exclude name="AvoidUsingVolatile"/>
-    <!-- J2EE container restrictions do not apply to every supported Java application. -->
+    <!-- The J2EE container restriction does not apply to most applications. -->
     <exclude name="DoNotUseThreads"/>
-    <!-- A Map declaration does not establish concurrent access; local HashMaps are valid. -->
+    <!-- A Map declaration does not show concurrent access. -->
     <exclude name="UseConcurrentHashMap"/>
   </rule>
   <rule ref="category/java/security.xml"/>

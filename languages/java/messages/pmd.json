@@ -136,11 +136,11 @@
     "mayBeIntended": true
   },
   "AvoidSynchronizedAtMethodLevel": {
-    "fix": "Limit locking to the shared-state operation with a private ReentrantLock, released in finally.",
+    "fix": "Use a private final ReentrantLock released in finally, an atomic or a concurrent collection instead of a synchronized method.",
     "mayBeIntended": true
   },
   "AvoidSynchronizedStatement": {
-    "fix": "Use a private ReentrantLock released in finally when monitor pinning matters; review intentional monitor protocols explicitly.",
+    "fix": "Use a private final ReentrantLock released in finally, an atomic or a concurrent collection instead of a synchronized block.",
     "mayBeIntended": true
   },
   "AvoidThreadGroup": {
