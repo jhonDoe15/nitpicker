@@ -9,11 +9,14 @@
         message="This string literal is repeated three times or more in the file. Name it once as a constant (private static final String NAME) and use the constant.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//StringLiteral[not(ancestor::Annotation or ancestor::SwitchLabel)][string-length(@ConstValue) >= 5][matches(@ConstValue, '[A-Za-z0-9]')]
+let $literals := //StringLiteral
+  [not(ancestor::Annotation or ancestor::SwitchLabel)][string-length(@ConstValue) >= 5][matches(@ConstValue, '[A-Za-z0-9]')]
   [not(empty(preceding-sibling::*) and parent::ArgumentList/parent::MethodCall/@MethodName = ('getMessage', 'getString'))]
-  [let $value := @ConstValue
-   return count(preceding::StringLiteral[@ConstValue = $value][not(ancestor::Annotation or ancestor::SwitchLabel)]
-     [not(empty(preceding-sibling::*) and parent::ArgumentList/parent::MethodCall/@MethodName = ('getMessage', 'getString'))]) >= 2]
+  [not(parent::ArgumentList/parent::MethodCall
+      [@MethodName = ('put', 'putIfAbsent') or (@MethodName = ('of', 'entry') and (TypeExpression/ClassType/@SimpleName, AmbiguousName/@Name) = 'Map')]
+    and (count(preceding-sibling::*) mod 2 = 0
+      or preceding-sibling::*[1][self::StringLiteral]/@ConstValue = ('type', 'kind', 'tag', 'variant')))]
+return $literals[let $value := @ConstValue, $literal := . return count($literals[@ConstValue = $value][. << $literal]) >= 2]
 ]]></value></property></properties>
   </rule>
 

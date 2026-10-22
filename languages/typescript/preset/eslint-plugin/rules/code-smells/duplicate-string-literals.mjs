@@ -14,7 +14,7 @@ const MODULE_SOURCE_PARENTS = new Set([
 ]);
 const PROPERTY = 'Property';
 const KEY_PARENTS = new Set([PROPERTY, 'PropertyDefinition', 'MethodDefinition']);
-const DISCRIMINANT_KEYS = new Set(['type', 'kind', 'tag', 'variant']);
+export const DISCRIMINANT_KEYS = new Set(['type', 'kind', 'tag', 'variant']);
 const TRANSLATION_CALLS = new Set([
   't',
   '$t',

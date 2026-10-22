@@ -10,6 +10,7 @@ import { codeSmellRules } from '../test-support/code-smells/code-smell-rules.mjs
 import { withRuleMessage } from '../../messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { GENERIC_NAME_WORDS, LOG_LEVEL_METHODS } from '../../../../shared/naming/smell-words.mjs';
+import { DISCRIMINANT_KEYS } from '../../../typescript/preset/eslint-plugin/rules/code-smells/duplicate-string-literals.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const fixture = path.join(import.meta.dirname, '..', 'fixtures', 'code-smells-project', 'src');
@@ -78,6 +79,13 @@ describe('the Java code smell ruleset', () => {
       type: ruleText('GenericTypeName').split(`(${typeWords.join('|')})$`).length,
       package: ruleText('GenericPackageName').includes(`(${GENERIC_NAME_WORDS.join('|')})(`),
     }).toEqual({ catch: true, type: 3, package: true });
+  });
+
+  it('skips the discriminant values the TypeScript rule skips, after a map key', () => {
+    const xpath = xpathOf('RepeatedStringLiteral');
+    const listed = /\[self::StringLiteral\]\/@ConstValue = \(([^)]*)\)/.exec(xpath)[1];
+
+    expect(listed.split(', ').map((word) => word.slice(1, -1))).toEqual([...DISCRIMINANT_KEYS]);
   });
 
   it('leaves to the Spring rules exactly the writes and flushes they report', () => {
