@@ -358,23 +358,40 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   Hooks (`useToggle(initial)`), setters (`setOpen(open)`), `with*` builders, `of`/`from`
   factories, constructors, type predicates, destructured options and a boolean that is only passed
   on or stored are not reported.
-- `nitpicker/no-io-in-loop` (all production code): a database, HTTP or repository call once
-  per item of a loop or an iteration callback (`map`, `forEach`, `flatMap`, `filter`, `reduce`,
-  `some`, `every`, `find`) is reported: `fetch`, anything imported from `node:http`,
-  `axios`, `pg`, `@prisma/client` and similar, and `find*`/`save*`/`query*`-style methods
-  (`get` itself, `getById`, `getAll`) on a receiver whose name ends in the word `repo`,
-  `repository`, `dao`, `db`, `prisma`, `client`, `pool`, `api`, `gateway` and similar
-  (`userRepository`, `httpClient`, not `platform` or `queryClient.getQueryData`). Batch it: fetch
-  or write all items at once, or run the calls together with `Promise.all(items.map(...))`, which
-  is the allowed form when there is no batch API; so are a `const` holding `items.map(...)` that
-  is only passed to `Promise.all`, `allSettled`, `any` or `race`, and an array the loop only
-  `push`es un-awaited calls into before passing it to one of them. Paging, cursor and polling
-  loops (the loop condition reads a variable the body assigns, as in
-  `do { page = await repo.findPage(cursor); cursor = page.next; } while (cursor)`; stepping an
-  index with `i += 1`, `i++` or `i = i + 1` does not count) and retries (a `try` directly in the loop body that
-  returns or breaks on success, with a `catch` that lets the loop go on) are not reported, and
-  neither are file system calls (`node:fs`, `node:fs/promises`): one read or write per file has no
-  batch form, as in the Python and Java presets.
+- `nitpicker/no-io-in-loop` (all production code): a database query or a remote request once per
+  item of a loop or an iteration callback (`map`, `forEach`, `flatMap`, `filter`, `reduce`, `some`,
+  `every`, `find`) is reported. Calls are recognized with the type checker first: a call whose
+  receiver type or declaration comes from a database package (`pg`, `mysql2`, `mongodb`, `mongoose`,
+  `redis`, `ioredis`, `typeorm`, `sequelize`, `knex`, `drizzle-orm`, `@prisma/client`,
+  `better-sqlite3`, `@aws-sdk/client-dynamodb` and similar) is a query, and one from `fetch`,
+  `node:http`/`https`, `axios`, `got`, `undici`, `ky`, `superagent`, `@grpc/grpc-js` or another
+  `@aws-sdk` client is a request, when it returns a promise or takes a callback (so
+  `repository.create(...)`, which only builds an entity, is not one). Sequelize association getters
+  (`order.getCustomer()`) are typed by `sequelize` and count as queries. A call to a project
+  function or method counts when its body does, through up to four helpers, and the message names
+  the path (`` `loadOrder()`, which calls `pool.query()` ``); a method declared on a type
+  (`type OrderStore = { find(...) }`) is judged by the classes and object literals that implement it. Only
+  where the type is unknown (`any`, an untyped module, a file the type checker does not see) are
+  the receiver names used: `find*`/`save*`/`query*`-style methods (`get` itself, `getById`,
+  `getAll`) on a receiver whose name ends in `repo`, `repository`, `dao`, `db`, `prisma`, `pool`,
+  `connection`, `redis` (a query), `client` (a query for SQL-style methods such as `query`,
+  otherwise a request), `http`, `api` or `gateway` (a request); a project type named like a
+  repository whose method does no I/O is not reported. A query is reported also inside
+  `Promise.all(items.map(...))`, a `const` holding `items.map(...)` that is only passed to
+  `Promise.all`, `allSettled`, `any` or `race`, or an array the loop only `push`es un-awaited calls
+  into before passing it to one of them: running them concurrently still sends one query per item.
+  Fetch or write them in one query (`findByIds`, `findAllById`, `createMany`, `insertMany`,
+  `WHERE id IN (...)`). A request is reported in a sequential loop only; use the API's batch
+  endpoint, or bounded concurrency (`p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over
+  fixed-size chunks). Broker publishes and job enqueues (`kafkajs`, `amqplib`, SQS `SendMessage`,
+  SNS `Publish`, `@google-cloud/pubsub`, `nats`, BullMQ `queue.add`) are not reported: one publish
+  per item is the protocol. Paging, cursor and polling loops (the loop condition reads a variable
+  the body assigns, as in
+  `do { page = await repo.findPage(cursor); cursor = page.next; } while (cursor)`; stepping an index with `i += 1`, `i++` or `i = i + 1` does not count) and retries (a
+  `try` directly in the loop body that returns or breaks on success, with a `catch` that lets the
+  loop go on) are not reported, and neither are file system calls (`node:fs`, `node:fs/promises`):
+  one read or write per file has no batch form, as in the Python and Java presets. One chain
+  (`db.select().from(t).where(...)`) is reported once.
 - `nitpicker/no-accumulator-spread-in-reduce` (all production code): `reduce` callbacks do not
   spread their accumulator (`{ ...acc, [id]: x }`, `[...acc, x]`): each step copies it, so the work
   grows with the square of the list. Use `Object.fromEntries(xs.map(...))`, `Object.groupBy`,
