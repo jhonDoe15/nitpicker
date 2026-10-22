@@ -1,5 +1,6 @@
-export const EXCEPTION_HINT =
-  'If this is intended, add {exception} to "exceptions" in nitpicker.config.json.';
+import { exceptionSentence } from './exception-sentence.mjs';
+
+export const EXCEPTION_HINT = exceptionSentence('{exception}');
 
 export const BASE_MESSAGES = {
   functionStructure: '{name} has {value} {metric}; limit is {limit}',

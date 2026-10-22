@@ -68,11 +68,6 @@ export const failureMessageCases = [
       'fix the type error',
     ],
     [
-      'eslint-disable names the config exception',
-      '// eslint-disable-next-line no-console\nconst value = 1;',
-      'nitpicker config file',
-    ],
-    [
       'line comment names descriptive code',
       '// increments the counter\nconst value = 1;',
       'descriptive identifier',
@@ -164,7 +159,6 @@ export const failureMessageCases = [
   ...[
     ['partial union test names the switch', 'switch'],
     ['partial union test names the Record lookup', 'Record<Union, boolean>'],
-    ['partial union test names the config exception', 'nitpicker.config.json'],
   ].map(([name, allowed]) => ({
     name,
     config: typedStrictConfig,
@@ -176,7 +170,6 @@ export const failureMessageCases = [
   ...[
     ['forwarding wrapper names the direct call', 'call `fetchOne` directly'],
     ['forwarding wrapper names the re-export', 'export { fetchOne as readOne }'],
-    ['forwarding wrapper names the config exception', 'nitpicker.config.json'],
   ].map(([name, allowed]) => ({
     name,
     config: typedStrictConfig,
@@ -218,11 +211,11 @@ export const failureMessageCases = [
     allowed: "feature's adapters/",
   },
   {
-    name: 'composition-root branch names the exception in the config file',
+    name: 'composition-root branch names when an exception fits',
     config: strictCompositionRootConfig,
     filename: 'src/main/composition-root.ts',
     banned: 'export function titleOf(book) { return book?.title ?? "none"; }',
-    allowed: 'exception for this rule in nitpicker.config.json',
+    allowed: 'An exception fits only when this branch belongs here',
   },
   {
     name: 'construction in a factory-named file names the composition root',
@@ -252,13 +245,6 @@ export const failureMessageCases = [
     filename: 'src/fixture.ts',
     banned: 'export function pick(a: boolean) { if (a) { return 1; } return 0; }',
     allowed: 'smaller named functions',
-  },
-  {
-    name: 'cognitive complexity names the exception in the config file',
-    config: cognitiveComplexityConfig,
-    filename: 'src/fixture.ts',
-    banned: 'export function pick(a: boolean) { if (a) { return 1; } return 0; }',
-    allowed: 'exception for this rule in nitpicker.config.json',
   },
   ...reactFailureMessageCases,
   ...codeSmellFailureMessageCases,

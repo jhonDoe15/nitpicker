@@ -52,7 +52,7 @@ export const rule = {
     schema: compositionRootOptionsSchema,
     messages: {
       branch:
-        "The composition root only wires features: it passes things in and does not branch, loop or default a missing value (`??`, `||`). Move this lookup or decision into the feature's adapters/ or domain/. A guard that only throws may stay: `const container = document.getElementById('root'); if (container === null) { throw new Error('#root is missing'); }` and then `createRoot(container)`. If this branch belongs here, add an exception for this rule in nitpicker.config.json.",
+        "The composition root only wires features: it passes things in and does not branch, loop or default a missing value (`??`, `||`). Move this lookup or decision into the feature's adapters/ or domain/. A guard that only throws may stay: `const container = document.getElementById('root'); if (container === null) { throw new Error('#root is missing'); }` and then `createRoot(container)`. An exception fits only when this branch belongs here.",
     },
   },
   create(context) {

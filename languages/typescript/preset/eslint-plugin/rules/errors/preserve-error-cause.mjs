@@ -125,7 +125,7 @@ function causeReport(sourceCode, { wrapper, node, handler }) {
 }
 
 const EXCEPTION_ROUTE =
-  ' If the original failure is deliberately dropped, add an exception for this rule in nitpicker.config.json.';
+  ' An exception fits only when the original failure is deliberately dropped.';
 
 export const rule = {
   meta: {

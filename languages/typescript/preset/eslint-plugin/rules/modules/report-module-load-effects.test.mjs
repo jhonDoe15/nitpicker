@@ -48,7 +48,7 @@ describe('module-load messages name the entry point exception', () => {
       topLevelControl: `Top-level {{kind}} executes control flow during module loading.${hint}`,
       topLevelExpression: `Top-level expression executes work during module loading.${hint}`,
       importTimeEffect:
-        '`{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. If it must run at import, add an exception for this rule in nitpicker.config.json.',
+        '`{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. An exception fits only when it must run at import.',
     });
   });
 });

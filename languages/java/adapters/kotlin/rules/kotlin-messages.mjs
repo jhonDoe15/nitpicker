@@ -1,8 +1,11 @@
 import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { KOTLIN_SOURCE_RULES } from '../scan/kotlin-scan.mjs';
-import { appendSentence, withAllowedForm } from './kotlin-rules.mjs';
+import {
+  appendSentence,
+  hasExceptionRoute,
+} from '../../../../../shared/messages/exception-sentence.mjs';
+import { withAllowedForm } from './kotlin-rules.mjs';
 
-const CONFIG_FILE = 'nitpicker.config.json';
 const DETEKT_RULE = /^detekt\.[a-z-]+\.[A-Z][A-Za-z0-9]*$/;
 const KOTLINC_RULES = [
   'kotlinc/deprecation',
@@ -34,8 +37,9 @@ function exceptionRuleOf(finding) {
 function liftable(finding) {
   return (
     finding.classification === 'enforceable' &&
+    typeof finding.path === 'string' &&
     isKotlinFindingRule(exceptionRuleOf(finding)) &&
-    !finding.message.includes(CONFIG_FILE)
+    !hasExceptionRoute(finding.message)
   );
 }
 

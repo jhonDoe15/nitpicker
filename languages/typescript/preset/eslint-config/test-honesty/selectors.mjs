@@ -5,19 +5,19 @@ const GLOBAL_OBJECT = '/^(?:globalThis|global|window|self)$/';
 const strykerMessage =
   'A test must not look at the mutation harness (`__stryker__`, `STRYKER_*`, `activeMutant`): a test that behaves differently under mutation hides every mutant. Test the behaviour only.';
 const globalByKeyMessage =
-  'Read a global by its name (`globalThis.name`) so the test shows which global it depends on. A justified exception for no-restricted-syntax goes in nitpicker.config.json.';
+  'Read a global by its name (`globalThis.name`) so the test shows which global it depends on.';
 
 export const testHonestySelectors = [
   {
     selector: "CallExpression[callee.name='expect'][arguments.0.type='Literal']",
     message:
-      'A literal passed to `expect` can never fail. Pass the value the code under test returns. A justified exception for no-restricted-syntax goes in nitpicker.config.json.',
+      'A literal passed to `expect` can never fail. Pass the value the code under test returns.',
   },
   {
     selector:
       "CallExpression[callee.object.name='expect'][callee.property.name='soft'][arguments.0.type='Literal']",
     message:
-      'A literal passed to `expect.soft` can never fail. Pass the value the code under test returns. A justified exception for no-restricted-syntax goes in nitpicker.config.json.',
+      'A literal passed to `expect.soft` can never fail. Pass the value the code under test returns.',
   },
   { selector: `Identifier[name=${STRYKER_NAME}]`, message: strykerMessage },
   { selector: `Literal[value=${STRYKER_TEXT}]`, message: strykerMessage },

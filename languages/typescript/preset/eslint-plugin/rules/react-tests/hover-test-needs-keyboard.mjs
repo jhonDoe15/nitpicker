@@ -90,7 +90,7 @@ export const rule = {
     schema: [],
     messages: {
       hoverWithoutKeyboard:
-        'Every hover behavior needs a keyboard equivalent. Add a test that tabs to the element (`await user.tab()`) and asserts the same state. If this element is hover-only by design, add an exception for this rule in nitpicker.config.json.',
+        'Every hover behavior needs a keyboard equivalent. Add a test that tabs to the element (`await user.tab()`) and asserts the same state.',
     },
   },
   create: inReactTestFilesOnly((context) => {

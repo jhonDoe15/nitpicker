@@ -78,10 +78,25 @@ describe('config file', () => {
       preset: 'python',
       exceptions,
     });
+    const functionException = {
+      rule: 'crap-score-limit',
+      paths: ['src/a.py'],
+      function: 'Service.wide',
+      reason: 'Legacy',
+    };
+    expect(
+      validateConfig({ preset: 'python', exceptions: [functionException] }).exceptions,
+    ).toEqual([functionException]);
     expect(() =>
       validateConfig({
         preset: 'python',
         exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
+      }),
+    ).toThrow('"exceptions" is not supported with "preset": "python"');
+    expect(() =>
+      validateConfig({
+        preset: 'python',
+        exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
       }),
     ).toThrow('"exceptions" is not supported with "preset": "python"');
   });

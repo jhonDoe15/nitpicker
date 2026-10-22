@@ -123,7 +123,7 @@ export const rule = {
     type: 'problem',
     schema: [],
     messages: {
-      uninjectableDelay: `{{timer}} waits {{name}} ({{value}} ms), a module constant that exported "{{owner}}" cannot override, so a test must wait it out or fake timers. Accept the delay as an option with {{name}} as its default, for example "{ delayMs = {{name}} } = {}". If the delay is deliberately fixed, add an exception for this rule in nitpicker.config.json.`,
+      uninjectableDelay: `{{timer}} waits {{name}} ({{value}} ms), a module constant that exported "{{owner}}" cannot override, so a test must wait it out or fake timers. Accept the delay as an option with {{name}} as its default, for example "{ delayMs = {{name}} } = {}". An exception fits only when the delay is deliberately fixed.`,
     },
   },
   create(context) {

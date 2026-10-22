@@ -1,9 +1,8 @@
 import { annotationNamed, bareType } from '../kotlin-facts.mjs';
-import { exceptionSentence } from '../review-finding.mjs';
 
 export const SINGULAR_PLURAL_RULE = 'SingularAndPluralMember';
 
-const MESSAGE = `A member and its plural (tag and tags) are two ways to pass the same data. Keep the plural and pass one item as a one-element list. If both are intended, ${exceptionSentence(SINGULAR_PLURAL_RULE)}`;
+const MESSAGE = `A member and its plural (tag and tags) are two ways to pass the same data. Keep the plural and pass one item as a one-element list.`;
 const CONFIGURATION_PROPERTIES = new Set(['ConfigurationProperties']);
 const COLLECTION =
   /^(?:kotlin\.collections\.|java\.util\.)?(?:Mutable)?(?:List|Set|Collection|Iterable|SortedSet)<(?:out)?(.+)>$/u;

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { RULE_IDS } from '../../policy.mjs';
-import { exceptionMatcher, exceptionText } from '../exceptions.mjs';
+import { escapeGlob, exceptionEntryText } from '../../messages/exception-sentence.mjs';
+import { exceptionMatcher } from '../exceptions.mjs';
 import { TEST_DATA_FOLDER, messagesFor, ratchetedFinding } from '../file-limits.mjs';
 
 export function folderDepthFindings(files, options) {
@@ -29,7 +30,10 @@ function depthOfChecked(file, { depthOf, isExcepted }) {
 
 function depthFinding({ analyzerName, limit, wording }, key, { depth: value, files }) {
   const [folder, kind] = key.split('\0');
-  const exception = exceptionText(RULE_IDS.folderDepth, `${folder}/**`);
+  const exception = exceptionEntryText({
+    rule: RULE_IDS.folderDepth,
+    glob: `${escapeGlob(folder)}/**`,
+  });
   const values = {
     ...wording,
     advice: wording.advice(limit),

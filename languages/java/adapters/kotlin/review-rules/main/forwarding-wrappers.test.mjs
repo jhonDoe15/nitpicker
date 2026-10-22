@@ -39,7 +39,7 @@ describe('forwarding wrapper in Kotlin', () => {
     expect(summary(findings)).toEqual([`${FORWARDING_RULE} price 3`]);
     expect(findings[0].tool).toBe('pmd');
     expect(routeOf(findings[0].message)).toBe(
-      'add an exception for pmd/StaticForwardingWrapper in nitpicker.config.json.',
+      'If this is intended, add {"rule":"pmd/StaticForwardingWrapper","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

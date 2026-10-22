@@ -50,7 +50,6 @@ function messageIdFor(method, state) {
 }
 
 const RESTORE_TIMERS = 'Restore them: `afterEach(() => { vi.useRealTimers(); });`.';
-const EXCEPTION = 'A justified exception goes in nitpicker.config.json.';
 
 export const rule = {
   meta: {
@@ -64,10 +63,10 @@ export const rule = {
       },
     ],
     messages: {
-      unrestored: `Fake timers stay on for the tests that follow. ${RESTORE_TIMERS} ${EXCEPTION}`,
-      unrestoredWithUserEvent: `Fake timers stay on for the tests that follow. ${RESTORE_TIMERS} With user-event, create the user with \`userEvent.setup({ advanceTimers: vi.advanceTimersByTime })\` or its clicks wait forever. ${EXCEPTION}`,
-      unrestoredGlobal: `This stubbed global stays stubbed for the tests that follow. Restore it: \`afterEach(() => { vi.unstubAllGlobals(); });\`, or stub it once in a setup file. ${EXCEPTION}`,
-      unrestoredEnv: `This stubbed environment variable stays set for the tests that follow. Restore it: \`afterEach(() => { vi.unstubAllEnvs(); });\`. ${EXCEPTION}`,
+      unrestored: `Fake timers stay on for the tests that follow. ${RESTORE_TIMERS}`,
+      unrestoredWithUserEvent: `Fake timers stay on for the tests that follow. ${RESTORE_TIMERS} With user-event, create the user with \`userEvent.setup({ advanceTimers: vi.advanceTimersByTime })\` or its clicks wait forever.`,
+      unrestoredGlobal: `This stubbed global stays stubbed for the tests that follow. Restore it: \`afterEach(() => { vi.unstubAllGlobals(); });\`, or stub it once in a setup file.`,
+      unrestoredEnv: `This stubbed environment variable stays set for the tests that follow. Restore it: \`afterEach(() => { vi.unstubAllEnvs(); });\`.`,
     },
   },
   create(context) {

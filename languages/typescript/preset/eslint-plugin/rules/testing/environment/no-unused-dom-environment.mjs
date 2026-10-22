@@ -7,7 +7,7 @@ const layout = readLayout();
 const DOM_ENVIRONMENTS = new Set(['jsdom', 'happy-dom']);
 const ENVIRONMENT_DIRECTIVE = /@(vitest|jest)-environment\s+([\w-]+)\b/u;
 const EXCEPTION_HINT =
-  'If it uses the DOM in a way nitpicker cannot see, add an exception for nitpicker/no-unused-dom-environment.';
+  'An exception fits only when the file uses the DOM in a way nitpicker cannot see.';
 const ALIAS_FIND = {
   anyOf: [
     { type: 'string' },

@@ -1,6 +1,5 @@
 import path from 'node:path';
 import { FACT_RULE_SETTINGS, factRuleSettings } from './project-rules/fact-rules.mjs';
-import { PACKAGE_EXCEPTION_RULES } from './project-rules/hygiene-rules.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
@@ -35,8 +34,6 @@ const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'inheritanceDepth',
 ]);
 
-const EXCEPTION_KEYS = ['rule', 'paths', 'packages', 'reason'];
-
 export const FEATURE_LAYOUT_KEYS = ['sharedRoots', 'featureRoots'];
 
 export const TYPESCRIPT_ONLY_KEYS = ['exceptions', 'react', 'i18n', 'tools'];
@@ -57,22 +54,6 @@ export function validateStringArray(value, name) {
   if (!Array.isArray(value) || !value.every(isNonEmptyString)) {
     throw configError(`"${name}" must be an array of non-empty strings`);
   }
-}
-
-const PRINTED_RULES = new Map([['test-runtime/slow-test', 'slow-test']]);
-
-export function withCanonicalRules(config) {
-  if (!isPlainObject(config) || !Array.isArray(config.exceptions)) {
-    return config;
-  }
-  return {
-    ...config,
-    exceptions: config.exceptions.map((entry) =>
-      isPlainObject(entry) && PRINTED_RULES.has(entry.rule)
-        ? { ...entry, rule: PRINTED_RULES.get(entry.rule) }
-        : entry,
-    ),
-  };
 }
 
 export function validateThresholds(thresholds, preset = 'typescript') {
@@ -132,11 +113,6 @@ function validateSkippedFolders(folders) {
   }
 }
 
-/** Whether every `exceptions` entry lifts one of `rules` (the file limits a non-ESLint preset honours). */
-export function liftsOnlyRules(exceptions, rules) {
-  return Array.isArray(exceptions) && exceptions.every((entry) => rules.includes(entry?.rule));
-}
-
 export function validateProjectRelativePath(value, name) {
   if (!isNonEmptyString(value)) {
     throw configError(`"${name}" must be a non-empty string`);
@@ -147,71 +123,21 @@ export function validateProjectRelativePath(value, name) {
   }
 }
 
-export function validateExceptions(exceptions, name = 'exceptions', matchesOwnGlobs = () => true) {
-  if (!Array.isArray(exceptions)) {
-    throw configError(`"${name}" must be an array`);
-  }
-  for (const [index, entry] of exceptions.entries()) {
-    validateException(entry, `${name}[${String(index)}]`, matchesOwnGlobs);
-  }
-}
-
-function validateException(entry, label, matchesOwnGlobs) {
-  if (!isPlainObject(entry)) {
-    throw configError(`"${label}" must be an object`);
-  }
-  for (const key of Object.keys(entry)) {
-    if (!EXCEPTION_KEYS.includes(key)) {
-      throw configError(
-        `unknown key "${key}" in "${label}". Allowed keys: ${EXCEPTION_KEYS.join(', ')}`,
-      );
-    }
-  }
-  if (!isNonEmptyString(entry.rule)) {
-    throw configError(`"${label}.rule" must be a non-empty rule id`);
-  }
-  validateExceptionPaths(entry, label, matchesOwnGlobs);
-  if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
-    throw configError(`"${label}.reason" is required: say why the rule is lifted for these paths`);
-  }
-  if (entry.packages !== undefined) {
-    validatePackages(entry, label);
-  }
-}
-
-function validateExceptionPaths(entry, label, matchesOwnGlobs) {
-  validateStringArray(entry.paths, `${label}.paths`);
-  if (entry.paths.length === 0) {
-    throw configError(`"${label}.paths" needs at least one path glob`);
-  }
-  if (matchesOwnGlobs(entry.rule)) {
-    validateGlobs(entry.paths, `${label}.paths`, filesFix);
-  }
-}
-
-function validatePackages(entry, label) {
-  if (!PACKAGE_EXCEPTION_RULES.includes(entry.rule)) {
-    throw configError(
-      `"${label}.packages" is only for the rules ${PACKAGE_EXCEPTION_RULES.join(', ')}`,
-    );
-  }
-  validateStringArray(entry.packages, `${label}.packages`);
-  if (entry.packages.length === 0) {
-    throw configError(`"${label}.packages" needs at least one package name`);
-  }
-}
-
 export function validateFileGlobs(globs, label) {
   validateGlobs(globs, label, filesFix);
 }
 
 function hasUnclosedBrace(glob) {
   let depth = 0;
+  let escaped = false;
   for (const character of glob) {
-    if (character === '{') {
+    if (escaped) {
+      escaped = false;
+    } else if (character === '\\') {
+      escaped = true;
+    } else if (character === '{') {
       depth += 1;
-    }
-    if (character === '}' && depth > 0) {
+    } else if (character === '}' && depth > 0) {
       depth -= 1;
     }
   }
@@ -228,7 +154,7 @@ const GLOB_PROBLEMS = [
   [hasUnclosedBrace, 'a "{" is never closed'],
 ];
 
-function validateGlobs(globs, label, fix) {
+export function validateGlobs(globs, label, fix) {
   for (const glob of globs) {
     const [, problem] = GLOB_PROBLEMS.find(([matches]) => matches(glob)) ?? [];
     if (problem !== undefined) {
@@ -243,7 +169,7 @@ function folderFix(glob) {
   return JSON.stringify(glob.replace(/\/+$/u, ''));
 }
 
-function filesFix(glob) {
+export function filesFix(glob) {
   return JSON.stringify(`${glob}**`);
 }
 

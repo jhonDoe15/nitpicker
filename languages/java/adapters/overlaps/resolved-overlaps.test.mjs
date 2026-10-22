@@ -135,7 +135,7 @@ describe('overlaps after policy', () => {
   const resolve = (findings) => withoutOverlaps(findings);
 
   it('report the secondary when the primary is excepted or not run', () => {
-    const exceptions = [{ rule: 'errorprone/DefaultCharset', glob: 'src/A.java' }];
+    const exceptions = [{ rule: 'errorprone/DefaultCharset', paths: ['src/A.java'] }];
 
     expect(applyFindingPolicy([primary, secondary], {}, resolve)).toStrictEqual([primary]);
     expect(applyFindingPolicy([primary, secondary], { exceptions }, resolve)).toStrictEqual([

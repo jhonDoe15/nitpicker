@@ -44,7 +44,7 @@ export const rule = {
     schema: [],
     messages: {
       copiedTest:
-        'This test repeats the body of {{count}} others and differs only in its literals. Write one `it.each` table with a row per case. A justified exception goes in nitpicker.config.json.',
+        'This test repeats the body of {{count}} others and differs only in its literals. Write one `it.each` table with a row per case.',
     },
   },
   create(context) {

@@ -10,9 +10,9 @@ export const rule = {
     docs: { description: 'Ban test forms that switch a test off' },
     schema: [],
     messages: {
-      todo: 'Do not leave a `todo` test: write the test, or delete the stub. A justified exception goes in nitpicker.config.json.',
+      todo: 'Do not leave a `todo` test: write the test, or delete the stub.',
       literalCondition:
-        'A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === "win32"` is allowed. A justified exception goes in nitpicker.config.json.',
+        'A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === "win32"` is allowed.',
     },
   },
   create(context) {
