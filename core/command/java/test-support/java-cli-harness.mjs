@@ -1,20 +1,25 @@
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { exactText } from '../../../diff/reporting/test-support/output-expectations.mjs';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import {
+  FAKE_JDK_TOOLS,
+  runFakeJdk,
+} from '../../../../languages/java/maven/test-support/fake-jdk.mjs';
+import { runFakeMaven } from '../../../../languages/java/maven/test-support/fake-maven.mjs';
 
-const fakeMavenTools = path.resolve(
-  import.meta.dirname,
-  '../../../../languages/java/maven/fixtures/fake-tools',
-);
-export const fakeMaven = path.join(fakeMavenTools, 'fake-maven.mjs');
-const fakeJdk = path.join(fakeMavenTools, 'fake-jdk.mjs');
-const FAKE_JDK_TOOLS = ['java', 'jdeps', 'jar'];
+const EXECUTABLE_MODE = 0o755;
+function fakeToolsUrl(name) {
+  return pathToFileURL(
+    path.resolve(import.meta.dirname, '../../../../languages/java/maven/test-support', name),
+  ).href;
+}
 
 export const fakeGradle = path.resolve(
   import.meta.dirname,
@@ -80,7 +85,7 @@ export function useGradleFixtures(runNitpickerCli) {
         },
       },
       missingBinary: {
-        variable: 'NITPICKER_GRADLE',
+        stub: (binary) => vi.stubEnv('NITPICKER_GRADLE', binary),
         rule: 'gradle-failure',
         message: (binary) =>
           expect.stringMatching(
@@ -91,12 +96,19 @@ export function useGradleFixtures(runNitpickerCli) {
   };
 }
 
+function writeFakeTool(file, runner, moduleName, leadingArguments = []) {
+  const source = `import { ${runner.name} } from "${fakeToolsUrl(moduleName)}"; process.exitCode = ${runner.name}(process.argv.slice(1), process);`;
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(
+    file,
+    `#!/bin/sh\nexec "${process.execPath}" --input-type=module -e '${source}' -- ${leadingArguments.join(' ')} "$@"\n`,
+  );
+  chmodSync(file, EXECUTABLE_MODE);
+}
+
 function writeFakeJdk(directory) {
   for (const name of FAKE_JDK_TOOLS) {
-    const file = path.join(directory, 'bin', name);
-    mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, `#!/bin/sh\nexec "${process.execPath}" "${fakeJdk}" ${name} "$@"\n`);
-    chmodSync(file, 0o755);
+    writeFakeTool(path.join(directory, 'bin', name), runFakeJdk, 'fake-jdk.mjs', [name]);
   }
 }
 
@@ -110,7 +122,9 @@ export function useMavenFixtures(runNitpickerCli) {
   beforeEach(() => {
     const jdk = fixtures.temporaryRoot('nitpicker-fake-jdk-');
     writeFakeJdk(jdk);
-    vi.stubEnv('NITPICKER_MAVEN', fakeMaven);
+    const maven = path.join(fixtures.temporaryRoot('nitpicker-fake-maven-'), 'mvn');
+    writeFakeTool(maven, runFakeMaven, 'fake-maven.mjs');
+    vi.stubEnv('NITPICKER_MAVEN', maven);
     vi.stubEnv('JAVA_HOME', jdk);
     vi.stubEnv('XDG_CACHE_HOME', fixtures.temporaryRoot('nitpicker-fake-cache-'));
   });
@@ -137,7 +151,7 @@ export function useMavenFixtures(runNitpickerCli) {
         },
       },
       missingBinary: {
-        variable: 'NITPICKER_MAVEN',
+        stub: (binary) => vi.stubEnv('NITPICKER_MAVEN', binary),
         rule: 'maven-failure',
         message: (binary) =>
           `${binary} was not found. Add the Maven wrapper (mvnw) to the project, put mvn on the PATH, or set NITPICKER_MAVEN`,

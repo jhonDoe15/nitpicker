@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
@@ -282,7 +282,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
   });
   it('reports a missing build tool binary as a tool error', () => {
     const binary = path.join(temporaryRoot('nitpicker-java-none-'), 'no-build-tool');
-    vi.stubEnv(build.missingBinary.variable, binary);
+    build.missingBinary.stub(binary);
     const root = repository();
 
     const result = run(root);
