@@ -6,12 +6,15 @@ import {
 } from '../../../../../shared/messages/exception-sentence.mjs';
 
 export const REVIEW_TOOL = 'pmd';
+export const SOURCE_TOOL = 'kotlin-source';
+
+const PRINTED_TOOLS = new Set([REVIEW_TOOL, SOURCE_TOOL]);
 
 function withRoute({ tool, rule, file, message }) {
   if (hasExceptionRoute(message)) {
     return message;
   }
-  const exceptionRule = tool === REVIEW_TOOL ? `${tool}/${rule}` : rule;
+  const exceptionRule = PRINTED_TOOLS.has(tool) ? `${tool}/${rule}` : rule;
   return appendSentence(message, exceptionRoute({ rule: exceptionRule, path: file }));
 }
 

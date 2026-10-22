@@ -2,6 +2,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  COROUTINE_FILES,
+  EXPECTED_COROUTINE_FINDINGS,
+} from './test-support/review/kotlin-coroutine-data.mjs';
+import {
   EXPECTED_REVIEW_FINDINGS,
   REVIEW_RULE_FILES,
   runtimeSerializationFiles,
@@ -17,11 +21,19 @@ import {
 } from './test-support/kotlin-e2e-project.mjs';
 
 const REVIEW_TOOLS = new Set(['pmd']);
+const COROUTINE_RULES = new Set(['SuspendFunInFinallySection', 'ChildCoroutineOutlivesResource']);
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
 
 function reviewFindings(findings) {
   return findings
     .filter(({ tool, rule }) => REVIEW_TOOLS.has(tool) || rule === 'unused-option')
+    .map(({ rule, symbol }) => `${rule} ${symbol}`)
+    .sort();
+}
+
+function coroutineFindings(findings) {
+  return findings
+    .filter(({ tool, rule }) => tool === 'kotlin-source' && COROUTINE_RULES.has(rule))
     .map(({ rule, symbol }) => `${rule} ${symbol}`)
     .sort();
 }
@@ -32,6 +44,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
   beforeAll(() => {
     project = initializeProject();
     commitBranch(project, 'review-rules', REVIEW_RULE_FILES);
+    commitBranch(project, 'coroutine-lifetimes', COROUTINE_FILES);
   });
   afterAll(() => {
     removeProject(project);
@@ -80,5 +93,30 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     expect(reviewFindings(result.newEnforceable)).toEqual(
       EXPECTED_REVIEW_FINDINGS.filter((entry) => entry !== 'unused-option Envelope.retries'),
     );
+  });
+
+  it('fails suspending cleanup and a child coroutine that outlives its use block, and spares the allowed forms', () => {
+    const result = diffOf(project, 'coroutine-lifetimes');
+
+    expect(result.failed).toBe(true);
+    expect(coroutineFindings(result.newEnforceable)).toEqual(EXPECTED_COROUTINE_FINDINGS);
+  });
+
+  it('lifts the coroutine rules for some paths with the exception their messages name', () => {
+    const result = diffOf(project, 'coroutine-lifetimes', {
+      policy: {
+        ...kotlinPolicy,
+        exceptions: [
+          {
+            rule: 'kotlin-source/SuspendFunInFinallySection',
+            glob: 'src/main/kotlin/demo/lifetimes/Teardown.kt',
+          },
+        ],
+      },
+    });
+
+    expect(coroutineFindings(result.newEnforceable)).toEqual([
+      'ChildCoroutineOutlivesResource Copier.detached:reader:launch',
+    ]);
   });
 });

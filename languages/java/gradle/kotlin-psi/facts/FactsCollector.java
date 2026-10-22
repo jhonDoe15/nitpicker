@@ -6,6 +6,7 @@ import static nitpicker.kotlinpsi.common.Psi.nameOf;
 import java.util.List;
 import java.util.Map;
 import nitpicker.kotlinpsi.common.Frame;
+import nitpicker.kotlinpsi.facts.lifetimes.Lifetimes;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
@@ -15,6 +16,7 @@ public final class FactsCollector {
   private final Declarations declarations;
   private final Calls calls;
   private final Predicates predicates;
+  private final Lifetimes lifetimes;
 
   public FactsCollector(KtFile file, String text, String relative, boolean test) {
     this.file = file;
@@ -22,6 +24,7 @@ public final class FactsCollector {
     this.declarations = new Declarations(state);
     this.calls = new Calls(state);
     this.predicates = new Predicates(state);
+    this.lifetimes = new Lifetimes(file, state::lineOf);
   }
 
   public void collect() {
@@ -29,7 +32,14 @@ public final class FactsCollector {
   }
 
   public Map<String, Object> result() {
-    return state.result();
+    Map<String, Object> result = state.result();
+    if (!lifetimes.cleanupCalls().isEmpty()) {
+      result.put("cleanupCalls", lifetimes.cleanupCalls());
+    }
+    if (!lifetimes.useLaunches().isEmpty()) {
+      result.put("useLaunches", lifetimes.useLaunches());
+    }
+    return result;
   }
 
   private void walk(PsiElement element, Frame frame) {
@@ -85,7 +95,10 @@ public final class FactsCollector {
       declarations.declareProperty((KtProperty) element, frame);
     } else if (element instanceof KtTypeAlias) {
       declarations.declareTypeAlias((KtTypeAlias) element);
+    } else if (element instanceof KtTryExpression) {
+      lifetimes.tryExpression((KtTryExpression) element, frame);
     } else if (element instanceof KtCallExpression) {
+      lifetimes.call((KtCallExpression) element, frame);
       calls.call((KtCallExpression) element, frame);
     } else if (element instanceof KtSuperTypeCallEntry) {
       KtSuperTypeCallEntry entry = (KtSuperTypeCallEntry) element;

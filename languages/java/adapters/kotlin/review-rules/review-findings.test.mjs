@@ -9,12 +9,14 @@ import { readKotlinReviewFindings } from './review-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mjs';
 import {
   call,
+  cleanupCall,
   file,
   fn,
   klass,
   parameter,
   testFile,
   testMethod,
+  useLaunch,
   wait,
 } from './test-support/facts.mjs';
 
@@ -77,6 +79,29 @@ describe('readKotlinReviewFindings', () => {
     expect(findings.map(({ tool, rule }) => `${tool}/${rule}`).sort()).toEqual([
       'pmd/FixedSleepInTest',
       'structure/unused-option',
+    ]);
+    expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
+  });
+});
+
+describe('readKotlinReviewFindings for coroutine lifetimes', () => {
+  it('reads the cleanup and use-block facts of a file into kotlin-source findings the schema accepts', () => {
+    const facts = {
+      files: [
+        file({
+          imports: [{ path: 'kotlinx.coroutines', all: true }],
+          cleanupCalls: [cleanupCall('delay')],
+          useLaunches: [useLaunch()],
+        }),
+      ],
+    };
+    const { root, reportRoot } = projectWith(facts);
+
+    const findings = readKotlinReviewFindings({ reportRoot, projectRoot: root, manifest: {} });
+
+    expect(findings.map(({ tool, rule }) => `${tool}/${rule}`).sort()).toEqual([
+      'kotlin-source/ChildCoroutineOutlivesResource',
+      'kotlin-source/SuspendFunInFinallySection',
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
   });
@@ -161,6 +186,8 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/StaticForwardingWrapper',
       'pmd/SingularAndPluralMember',
       'unused-option',
+      'kotlin-source/SuspendFunInFinallySection',
+      'kotlin-source/ChildCoroutineOutlivesResource',
     ]);
     for (const rule of KOTLIN_REVIEW_EXCEPTION_RULES) {
       expect(KOTLIN_EXCEPTION_RULES).toContain(rule);
