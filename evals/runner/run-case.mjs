@@ -75,7 +75,7 @@ export function installedWorkdir({ tarball, manifest }) {
       tarball,
       manifest,
       files: Object.fromEntries(loadTree(caseDefinition.fixtureDirectory)),
-      packageJson: { devDependencies: caseDefinition.devDependencies },
+      packageJson: { dependencies: caseDefinition.dependencies },
     });
     checked(workdir, 'git', ['switch', '-c', 'feature']);
   };

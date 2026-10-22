@@ -6,6 +6,18 @@ export function skippedFolderGlobs(folders) {
   return folders.map((name) => `**/${name}/**`);
 }
 
+function rootGlob(root) {
+  return root.replace(/^\.\//u, '').replace(/\/+$/u, '');
+}
+
+export function rootsPattern(roots) {
+  const folders = [...new Set(roots.map(rootGlob))];
+  if (folders.some((folder) => folder === '.' || folder === '')) {
+    return '**/*';
+  }
+  return folders.length === 1 ? `${folders[0]}/**/*` : `{${folders.join(',')}}/**/*`;
+}
+
 function rootFolderGlobs(folders) {
   return folders.map((name) => `${name}/**`);
 }

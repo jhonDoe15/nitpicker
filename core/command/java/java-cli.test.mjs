@@ -1,23 +1,23 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
 import {
-  gradleFailureMessage,
   unusedFieldMessage,
   useGradleFixtures,
+  useMavenFixtures,
 } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { acceptedDigest } from '../test-support/accepted-digest.mjs';
 
-const { gradleRepository, kotlinRepository, run, runCli, temporaryRoot } =
-  useGradleFixtures(nitpickerCli);
+const EMPTY_JDEPS = { 'jdeps/jdeps.txt': '', 'jdeps/jdeps-classes.txt': '' };
 const EXCEPTION_ENTRY = /\{"rule":"[^"]+","paths":\[[^\]]+\],"reason":"\.\.\."\}/u;
+const TEST_SOURCE = { 'src/test/java/demo/ATest.java': 'package demo;\n\nfinal class ATest {}\n' };
 const TEST_REPORTS = {
-  'src/test/java/demo/ATest.java': 'package demo;\n\nfinal class ATest {}\n',
+  MAIN_CLASSES: '',
   'jdeps/jdeps-classes.txt': 'demo.A\n',
   'jdeps/jdeps.txt': '',
   'jdeps/jdeps-test.txt': '   demo.ATest -> demo.A   classes\n',
@@ -28,7 +28,12 @@ const TEST_REPORTS = {
 const LIFTABLE_RULES = ['test-only-export', 'test-console-output'];
 const addedField = unusedFieldMessage('added');
 const xmlText = (text) =>
-  text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
+  text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
 
 const CLONE_MESSAGE = [
   'This code repeats src/main/java/demo/Second.java:3 (30 lines).',
@@ -46,9 +51,14 @@ Quality gate summary
 Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
 
-describe('nitpicker with "preset": "java"', () => {
+describe.each([
+  ['a Gradle build', useGradleFixtures, true],
+  ['a Maven build', useMavenFixtures, false],
+])('nitpicker with "preset": "java" on %s', (_name, useFixtures, subprocess) => {
+  const { build, run, runCli, temporaryRoot, ...fixtures } = useFixtures(nitpickerCli);
+  const repository = (files = {}) => fixtures.repository({ ...EMPTY_JDEPS, ...files });
   it('passes when the change adds no finding and keeps the legacy one baselined', () => {
-    const root = gradleRepository();
+    const root = repository();
     writeFiles(root, {
       'src/main/java/demo/A.java': 'package demo;\n\n\n\npublic final class A {}\n',
     });
@@ -63,13 +73,13 @@ describe('nitpicker with "preset": "java"', () => {
     ]);
   });
   it('fails on a new enforceable finding and reports it in text, JSON, SARIF and JUnit', () => {
-    const root = gradleRepository();
+    const root = repository();
     writeFiles(root, {
       'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
     });
     commit(root, 'add violation');
 
-    const result = run(root, [], { subprocess: true });
+    const result = run(root, [], { subprocess });
 
     expect({ exitCode: result.exitCode, output: result.text }).toEqual({
       exitCode: 1,
@@ -151,7 +161,7 @@ describe('nitpicker with "preset": "java"', () => {
     );
   });
   it('honours exclude from nitpicker.config.json', () => {
-    const root = gradleRepository();
+    const root = repository();
     writeFiles(root, {
       'nitpicker.config.json': '{ "preset": "java", "exclude": ["src/main/java/demo/**"] }\n',
       'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
@@ -175,7 +185,7 @@ describe('nitpicker with "preset": "java"', () => {
     ).join('\n');
     const source = (name) =>
       `package demo;\n\npublic final class ${name} {\n  int run(int a, int b) {\n    int total = 0;\n${body}\n    return total;\n  }\n}\n`;
-    const root = gradleRepository({ 'src/main/java/demo/First.java': source('First') });
+    const root = repository({ 'src/main/java/demo/First.java': source('First') });
     writeFiles(root, { 'src/main/java/demo/Second.java': source('Second') });
     commit(root, 'copy the class');
 
@@ -208,9 +218,9 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
       },
     ]);
   });
-  it('reports a Gradle failure on head as a tool error with exit 2 instead of throwing', () => {
-    const root = gradleRepository();
-    writeFiles(root, { GRADLE_FAIL: 'Execution failed for task :compileJava\n' });
+  it('reports a build failure on head as a tool error with exit 2 instead of throwing', () => {
+    const root = repository();
+    writeFiles(root, build.failure.files);
     fixtureGit(root, ['rm', '-q', 'violations.txt']);
     commit(root, 'break the build');
 
@@ -223,17 +233,65 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
       {
         tool: 'java',
         snapshot: 'head',
-        rule: 'gradle-failure',
+        rule: build.failure.error.rule,
         path: '.',
-        message: gradleFailureMessage(
-          'Java preset failed in head: Execution failed for task :compileJava',
-        ),
+        message: build.failure.error.message('head'),
       },
     ]);
   });
-  it('reports a missing gradle binary as a tool error', () => {
-    vi.stubEnv('NITPICKER_GRADLE', path.join(temporaryRoot('nitpicker-java-none-'), 'no-gradle'));
-    const root = gradleRepository();
+  it('reports a build failure on base as a tool error with exit 2', () => {
+    const root = repository(build.failure.files);
+    fixtureGit(root, ['rm', '-q', ...Object.keys(build.failure.files)]);
+    commit(root, 'fix the build');
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.json('summary.json').overallStatus).toBe('tool-error');
+    expect(result.json('tool-errors.json')).toEqual([
+      {
+        tool: 'java',
+        snapshot: 'base',
+        rule: build.failure.error.rule,
+        path: '.',
+        message: build.failure.error.message('base'),
+      },
+    ]);
+  });
+  it('lets an exception entry for the rule and path allow a new finding', () => {
+    const root = repository();
+    const config = `${JSON.stringify({
+      preset: 'java',
+      exceptions: [
+        {
+          rule: 'pmd/UnusedPrivateField',
+          paths: ['src/main/java/demo/A.java'],
+          reason: 'generated holder',
+        },
+      ],
+    })}\n`;
+    writeFiles(root, {
+      'nitpicker.config.json': config,
+      'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
+    });
+    commit(root, 'add a violation with an exception');
+
+    const digest = acceptedDigest(
+      ['exception added: pmd/UnusedPrivateField for src/main/java/demo/A.java (generated holder)'],
+      {
+        'nitpicker.config.json': config,
+        'src/main/java/demo/A.java': 'package demo;\n\npublic final class A {}\n',
+      },
+    );
+    const result = run(root, [`--accept-policy-change=${digest}`], { interactive: true });
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(result.json('new-findings.json')).toEqual([]);
+  });
+  it('reports a missing build tool binary as a tool error', () => {
+    const binary = path.join(temporaryRoot('nitpicker-java-none-'), 'no-build-tool');
+    build.missingBinary.stub(binary);
+    const root = repository();
 
     const result = run(root);
 
@@ -241,15 +299,13 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
     expect(result.json('tool-errors.json')[0]).toEqual({
       tool: 'java',
       snapshot: 'base',
-      rule: 'gradle-failure',
+      rule: build.missingBinary.rule,
       path: '.',
-      message: expect.stringMatching(
-        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nspawnSync ${tmpdir()}/nitpicker-java-none-${/[A-Za-z0-9]{6}/}/no-gradle ENOENT`,
-      ),
+      message: build.missingBinary.message(binary),
     });
   });
   it('gates a snapshot with --all', () => {
-    const root = gradleRepository();
+    const root = repository();
     const reports = path.join(temporaryRoot('nitpicker-java-snapshot-'), 'reports');
     const out = { text: '' };
 
@@ -267,15 +323,20 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         'Nitpicker quality snapshot',
         'Status: violations',
         'Enforceable findings: 1',
-        'Descriptive findings: 0',
+        'Descriptive findings: 3',
         'Tool errors: 0',
         '',
         'Per-tool counts:',
-        'java: total=1 enforceable=1 descriptive=0',
+        'java: total=4 enforceable=1 descriptive=3',
         'repository-hygiene: total=0 enforceable=0 descriptive=0',
         '',
         'Enforceable findings:',
         `pmd/UnusedPrivateField src/main/java/demo/A.java:3 ${unusedFieldMessage('legacy')}`,
+        '',
+        'Descriptive findings:',
+        'coupling/coupling . dependencies summary',
+        'coupling/coupling . modules summary',
+        'coupling/coupling . packages summary',
         '',
       ].join('\n'),
     );
@@ -283,37 +344,43 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
 });
 
 describe.each([
-  ['java', gradleRepository],
-  ['kotlin', kotlinRepository],
-])('the exception a %s finding message suggests', (preset, repository) => {
-  function liftableFindings(root) {
-    writeFiles(root, TEST_REPORTS);
-    commit(root, 'add a test-only class and console output');
-    const result = run(root);
-    return {
-      result,
-      found: result.json('new-findings.json').filter(({ rule }) => LIFTABLE_RULES.includes(rule)),
-    };
-  }
-  it('is accepted by the preset and lifts the finding', () => {
-    const { found } = liftableFindings(repository());
-    const exceptions = found.map(({ message }) => ({
-      ...JSON.parse(EXCEPTION_ENTRY.exec(message)[0]),
-      reason: 'Loaded by name from a plugin descriptor of another build.',
-    }));
-    const config = JSON.parse(readFileSync(path.join(repository(), 'nitpicker.config.json')));
+  ['java', 'a Gradle build', useGradleFixtures, 'repository'],
+  ['java', 'a Maven build', useMavenFixtures, 'repository'],
+  ['kotlin', 'a Gradle build', useGradleFixtures, 'kotlinRepository'],
+])(
+  'the exception a %s finding message suggests on %s',
+  (preset, _build, useFixtures, repositoryName) => {
+    const fixtures = useFixtures(nitpickerCli);
+    const repository = (files = {}) => fixtures[repositoryName]({ ...TEST_SOURCE, ...files });
+    function liftableFindings(root) {
+      writeFiles(root, TEST_REPORTS);
+      commit(root, 'add test-only use and console output');
+      const result = fixtures.run(root);
+      return {
+        result,
+        found: result.json('new-findings.json').filter(({ rule }) => LIFTABLE_RULES.includes(rule)),
+      };
+    }
+    it('is accepted by the preset and lifts the finding', () => {
+      const { found } = liftableFindings(repository());
+      const exceptions = found.map(({ message }) => ({
+        ...JSON.parse(EXCEPTION_ENTRY.exec(message)[0]),
+        reason: 'Loaded by name from a plugin descriptor of another build.',
+      }));
+      const config = JSON.parse(readFileSync(path.join(repository(), 'nitpicker.config.json')));
 
-    const { result, found: lifted } = liftableFindings(
-      repository({
-        'nitpicker.config.json': `${JSON.stringify({ ...config, exceptions })}\n`,
-      }),
-    );
+      const { result, found: lifted } = liftableFindings(
+        repository({
+          'nitpicker.config.json': `${JSON.stringify({ ...config, exceptions })}\n`,
+        }),
+      );
 
-    expect(found.map(({ rule }) => rule).toSorted()).toEqual(LIFTABLE_RULES.toSorted());
-    expect({ exitCode: result.exitCode, lifted }, result.text).toEqual({
-      exitCode: 0,
-      lifted: [],
+      expect(found.map(({ rule }) => rule).toSorted()).toEqual(LIFTABLE_RULES.toSorted());
+      expect({ exitCode: result.exitCode, lifted }, result.text).toEqual({
+        exitCode: 0,
+        lifted: [],
+      });
+      expect(preset).toBe(config.preset);
     });
-    expect(preset).toBe(config.preset);
-  });
-});
+  },
+);

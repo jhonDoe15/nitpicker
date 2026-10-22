@@ -16,7 +16,8 @@ import {
 } from './syntax.mjs';
 import {
   growthAdviceFor,
-  eslintMessageWithHint,
+  metricWorseMessage,
+  routedEslintMessage,
   withoutFatalDirectives,
 } from '../hints/eslint-hints.mjs';
 import { requiredString, positiveInteger } from './arguments.mjs';
@@ -140,7 +141,7 @@ function withRatchets(findings, plans) {
       ratchet: {
         key: `metric:occurrence:${String(occurrence)}`,
         value: plan.value,
-        worseMessage: `${finding.symbol ?? 'This function'} ${plan.label} grew from {base} to ${String(plan.value)}. Put new code in a new function.`,
+        worseMessage: metricWorseMessage(finding, plan),
       },
     };
   });
@@ -210,7 +211,7 @@ function locateReport(sourceFile, { sourcePosition, endPosition }) {
 }
 
 function hintedMessage({ ruleId, messageText, relativePath, comment, locatedNode, sourceFile }) {
-  return eslintMessageWithHint({
+  return routedEslintMessage({
     ruleId,
     text: messageText,
     relativePath,

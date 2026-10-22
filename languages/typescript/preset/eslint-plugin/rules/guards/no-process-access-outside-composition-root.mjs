@@ -179,9 +179,9 @@ export const rule = {
     ],
     messages: {
       envOutsideRoot:
-        'Read environment variables only in the composition root: parse the environment once with a zod schema there and pass the typed config down as a parameter. If this module is a config loader or a script, add an exception for this rule in nitpicker.config.json.',
+        'Read environment variables only in the composition root: parse the environment once with a zod schema there and pass the typed config down as a parameter. An exception fits only when this module is a config loader or a script.',
       exitOutsideRoot:
-        'process.exit stops the whole process from inside library code. Return a result or throw an Error subclass, and call process.exit only in the composition root or a main guard (`if (import.meta.main)`). If this module is an entry script, add an exception for this rule in nitpicker.config.json.',
+        'process.exit stops the whole process from inside library code. Return a result or throw an Error subclass, and call process.exit only in the composition root or a main guard (`if (import.meta.main)`). An exception fits only when this module is an entry script.',
     },
   },
   create(context) {

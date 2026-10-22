@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globToRegExp } from '../../../../shared/glob.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
 
 const GENERATED_FILE_GLOBS = [
   '**/*.generated.ts',
@@ -15,7 +15,7 @@ const GENERATED_FILE_GLOBS = [
   '**/*.ngfactory.ts',
   '**/*.ngsummary.ts',
   '**/*.ngtypecheck.ts',
-].map((glob) => ({ source: 'default', kind: 'path', rule: glob, pattern: globToRegExp(glob) }));
+].map((glob) => ({ source: 'default', kind: 'path', rule: glob, pattern: globMatcher(glob) }));
 
 const GENERATED_MARKERS = [
   '@generated',
@@ -69,7 +69,7 @@ function isAnalyzable(relative, extensions) {
 
 function userGlobRule(glob) {
   const normalized = glob.replaceAll('\\', '/').replace(/^\.\//u, '');
-  const pattern = globToRegExp(normalized.includes('/') ? normalized : `**/${normalized}`);
+  const pattern = globMatcher(normalized.includes('/') ? normalized : `**/${normalized}`);
   return { source: 'user', kind: 'path', rule: glob, pattern };
 }
 

@@ -10,7 +10,7 @@ import {
   untrackTemporaryPath,
 } from '../../../core/tooling/temporary-files.mjs';
 import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
-import { applyPythonExceptions } from './configuration/python-exceptions.mjs';
+import { applyPythonExceptions, pythonRouteRule } from './configuration/python-exceptions.mjs';
 import { mutationFindings } from './mutation/python-mutation.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { readPythonFindings } from './python-reports.mjs';
@@ -33,8 +33,9 @@ function toolError({ rule, message }, part = PYTHON_ANALYZER_NAME) {
   };
 }
 
-function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
+function toolContext({ projectRoot, liveRoot, settings, policy, spawn }, reportRoot) {
   return createToolContext({
+    spawn,
     projectRoot,
     liveRoot,
     settings: { ...settings, testSeconds: policy?.testSeconds },
@@ -67,15 +68,19 @@ function collectMutationFindings(options) {
         applyRuleHints(mutationFindings(toolContext(options, reportRoot))),
         options.settings?.exceptions,
       ),
-      { exclude: options.policy?.exclude },
+      {
+        exclude: options.policy?.exclude,
+        exceptions: options.policy?.exceptions,
+        routeRule: pythonRouteRule,
+      },
     ),
   );
 }
 
-function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
+function collectPythonFindings({ projectRoot, liveRoot, settings, policy, spawn }) {
   return withReportRoot((reportRoot) => {
     const failures = runPythonTools(
-      toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot),
+      toolContext({ projectRoot, liveRoot, settings, policy, spawn }, reportRoot),
     );
     if (failures.length > 0) {
       return failures.map((failure) => toolError(failure));
@@ -89,6 +94,7 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
     return applyFindingPolicy(applyPythonExceptions(findings, settings.exceptions), {
       ...policy,
       inventoryTool: PYTHON_ANALYZER_NAME,
+      routeRule: pythonRouteRule,
     });
   });
 }
@@ -144,16 +150,21 @@ export function parsePythonArguments(arguments_) {
   };
 }
 
-function main(arguments_) {
-  const { part, projectRoot, liveRoot, settings, policy } = parsePythonArguments(arguments_);
+export function runPython(runnerArguments, { spawn } = {}) {
+  const { part, projectRoot, liveRoot, settings, policy } = parsePythonArguments(runnerArguments);
   const conventions = readHeadPolicyFile().conventions;
-  const report = analyzePythonSnapshot({
+  return analyzePythonSnapshot({
     part,
     projectRoot: realpathSync(projectRoot),
     liveRoot: realpathSync(liveRoot),
     settings,
     policy: { ...policy, conventions },
+    spawn,
   });
+}
+
+function main(runnerArguments) {
+  const report = runPython(runnerArguments);
   process.stdout.write(`${JSON.stringify(report)}\n`);
 }
 

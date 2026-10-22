@@ -27,7 +27,8 @@ jobs:
   python-shard:
     name: python shard ${{ matrix.shard }}/${{ strategy.job-total }}
     if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
-    runs-on: ubuntu-latest
+    # setup-python has no Python 3.9 build for the newer ubuntu-latest image.
+    runs-on: ubuntu-24.04
     # Every runner owns its project environments; two files at a time bound provisioning/tool load.
     timeout-minutes: 45
     strategy:
@@ -69,13 +70,30 @@ jobs:
           path: reports/python-e2e/
           if-no-files-found: warn
 
+  # Lists the suite without provisioning a Python project: test:python must select every case its E2E flag enables,
+  # and the timing profile and the matrix above must split those files with none missing or repeated.
+  python-shard-plan:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: node scripts/test-shards/verify-e2e-shards.mjs python
+
   python-e2e:
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
-    needs: python-shard
+    needs: [python-shard-plan, python-shard]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Every Python end-to-end shard passed
+      - name: Every Python end-to-end shard passed and the shard plan holds
         env:
+          PLAN: ${{ needs.python-shard-plan.result }}
           RESULT: ${{ needs.python-shard.result }}
-        run: test "$RESULT" = success
+        run: test "$PLAN" = success && test "$RESULT" = success

@@ -35,9 +35,9 @@ export const rule = {
       },
     ],
     messages: {
-      casing: `File name "{{name}}" is not {{casing}}, which this project uses for file names. Rename it, pin a different casing with ${PIN_EXAMPLE} in nitpicker.config.json, or add an "exceptions" entry for nitpicker/file-name-casing.`,
+      casing: `File name "{{name}}" is not {{casing}}, which this project uses for file names. Rename it, pin a different casing with ${PIN_EXAMPLE} in nitpicker.config.json. An exception fits only when the name is deliberate.`,
       folderCasing:
-        'File name "{{name}}" is not {{casing}}, which most other files in this folder use. Rename it, or add an "exceptions" entry for nitpicker/file-name-casing.',
+        'File name "{{name}}" is not {{casing}}, which most other files in this folder use. Rename it. An exception fits only when the name is deliberate.',
     },
   },
   create(context) {

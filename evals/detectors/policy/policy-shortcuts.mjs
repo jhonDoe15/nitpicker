@@ -1,4 +1,5 @@
 import {
+  hasGeneratorAnnotation,
   hasGeneratorHeader,
   hasGeneratorMarker,
 } from '../../../shared/conventions/generator-marker.mjs';
@@ -6,9 +7,14 @@ import { toTree } from '../tree.mjs';
 import { isSourcePath } from '../typescript.mjs';
 
 const GATE_TAMPERING = 'gate-tampering';
+const OTHER_SOURCE = /\.(?:pyi?|java|kt)$/u;
 
 function isMarked(text) {
-  return hasGeneratorMarker(text) || hasGeneratorHeader(text);
+  return hasGeneratorMarker(text) || hasGeneratorHeader(text) || hasGeneratorAnnotation(text);
+}
+
+function isMarkableSource(file) {
+  return isSourcePath(file) || OTHER_SOURCE.test(file);
 }
 
 export function detectGeneratorMarkers(fixtureLike, finalLike) {
@@ -16,7 +22,7 @@ export function detectGeneratorMarkers(fixtureLike, finalLike) {
   return [...toTree(finalLike)]
     .filter(
       ([file, text]) =>
-        isSourcePath(file) && isMarked(text) && !isMarked(fixtureTree.get(file) ?? ''),
+        isMarkableSource(file) && isMarked(text) && !isMarked(fixtureTree.get(file) ?? ''),
     )
     .map(([file]) => ({
       category: GATE_TAMPERING,

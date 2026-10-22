@@ -70,7 +70,7 @@ export const rule = {
     schema: compositionRootOptionsSchema,
     messages: {
       outsideRoot:
-        'Construct {{name}} only in the composition root (src/main/composition-root.ts, main.ts or server.ts) and pass it in as a parameter. If it is a plain value, not a long-lived resource, add an exception for this rule in nitpicker.config.json.',
+        'Construct {{name}} only in the composition root (src/main/composition-root.ts, main.ts or server.ts) and pass it in as a parameter. An exception fits only when it is a plain value, not a long-lived resource.',
     },
   },
   create(context) {

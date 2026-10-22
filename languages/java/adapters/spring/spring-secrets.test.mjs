@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isLiteralSecret, secretVariable } from './spring-secrets.mjs';
+import { credentialUrl, isLiteralSecret, secretVariable } from './spring-secrets.mjs';
 
 describe('isLiteralSecret: keys', () => {
   it.each([
@@ -21,6 +21,18 @@ describe('isLiteralSecret: keys', () => {
     'app.credentials',
     'server.ssl.key-store-password',
     'app.passwords[0].password',
+    'jwt.signing-key',
+    'security.jwt.signingKey',
+    'app.encryption-key',
+    'app.hmac-key',
+    'app.jwt-key',
+    'app.encryption.key',
+    'stripe.api.key',
+    'security.jwt.key',
+    'app.signing.key',
+    'app.db.passphrase',
+    'app.passwd',
+    'app.credential',
   ])('flags a literal under %s', (key) => {
     expect(isLiteralSecret(key, 'hunter2')).toBe(true);
   });
@@ -38,6 +50,12 @@ describe('isLiteralSecret: keys', () => {
     'app.passwordless',
     'app.tokens[0]',
     'app.secret.header',
+    'spring.data.redis.key',
+    'app.cache.key',
+    'app.key-prefix',
+    'app.rabbit.routing-key',
+    'app.cache.partitionKey',
+    'key',
     '',
   ])('does not treat %s as a secret key', (key) => {
     expect(isLiteralSecret(key, 'hunter2')).toBe(false);
@@ -88,6 +106,9 @@ describe('isLiteralSecret: values', () => {
     '${DB_PASS:3600}',
     '${A}${B}',
     '${A}-suffix',
+    'classpath:certs/private.pem',
+    'file:/etc/keys/jwt.pem',
+    'classpath*:keys/*.pem',
   ])('does not flag %s', (value) => {
     expect(isLiteralSecret(key, value)).toBe(false);
   });
@@ -101,6 +122,61 @@ describe('isLiteralSecret: values', () => {
       isLiteralSecret('app.password', 'header'),
       isLiteralSecret('app.client-secret', 'header'),
     ]).toEqual([false, false, true, true, true, true]);
+  });
+
+  it('skips algorithm and identifier values for an owner key, not for a named secret key', () => {
+    expect([
+      isLiteralSecret('jwt.key', 'RS256'),
+      isLiteralSecret('encryption.key', 'AES256'),
+      isLiteralSecret('api.key', 'read'),
+      isLiteralSecret('signing.key', 'SECRET_KEY_ID'),
+      isLiteralSecret('jwt.key', 'c2VjcmV0LWtleS0xMjM0NTY3ODkw'),
+      isLiteralSecret('app.api-key', 'read'),
+      isLiteralSecret('app.api-key', 'AKIAIOSFODNN7EXAMPLE'),
+    ]).toEqual([false, false, false, false, true, true, true]);
+  });
+});
+
+describe('credentialUrl', () => {
+  it.each([
+    'jdbc:postgresql://db:5432/shop?user=shop&password=Sup3rS3cret',
+    'jdbc:mysql://db/shop?PASSWORD=x&useSSL=false',
+    'jdbc:sqlserver://db;databaseName=shop;pwd=Sup3rS3cret',
+    'mongodb://app:Sup3rS3cret@mongo:27017',
+    'amqp://:Sup3rS3cret@broker',
+    'https://example.com/hook?token=abc123',
+    '${DB_URL:jdbc:postgresql://db/shop?password=Sup3rS3cret}',
+    'https://api.example.com/v1?access_token=abc123',
+    'https://login.example.com/token?client_secret=abc123',
+    'jdbc:postgresql://db/shop?sslpassword=abc123',
+    'jdbc:oracle:thin:scott/tiger@db:1521:orcl',
+    'jdbc:oracle:thin:scott/tiger@//db:1521/shop',
+    'https://maps.example.com/api/geocode/json?key=AIzaSyA1234567890abcdefghijklmnopq',
+    'https://api.example.com/v1?api_key=abc123',
+  ])('flags %s', (value) => {
+    expect(credentialUrl(value)).toBe(true);
+  });
+
+  it.each([
+    '',
+    'jdbc:postgresql://db:5432/shop',
+    'jdbc:postgresql://db/shop?password=${DB_PASSWORD}',
+    'mongodb://app:${PASSWORD}@mongo',
+    'https://user@example.com/path',
+    'https://example.com:8443/path',
+    'https://example.com/a?passwordless=true',
+    'password=abc',
+    'https://api.example.com/v1?token={token}',
+    'https://api.example.com/v1?token=%s',
+    'https://api.example.com/v1?api_key=<api-key>',
+    'https://user:{0}@example.com',
+    'https://api.example.com/v1?token_type=bearer',
+    'jdbc:oracle:thin:@db:1521:orcl',
+    'jdbc:oracle:thin:@//db:1521/shop',
+    'https://cache.example.com/get?key=orders',
+    'https://cache.example.com/get?key={key}&region=eu-west-1-primary',
+  ])('does not flag %j', (value) => {
+    expect(credentialUrl(value)).toBe(false);
   });
 });
 

@@ -470,7 +470,26 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   timers, a `...Sync` call from `fs`, `child_process`, `crypto` or `zlib` such as `readFileSync`
   (a project's own `buildTableSync()` is fine), any `process.*` call, `new Date()` with no
   argument, `new Worker`, `new WebSocket`) and any top-level `await`. Pure initialisers
-  (`z.object(...)`, `new RegExp(...)`, `path.dirname(...)`) are fine.
+  (`z.object(...)`, `new RegExp(...)`, `path.dirname(...)`) are fine. A main guard is not module
+  load work: an `if` with no `else` runs its body only when the file is started as a script, so
+  neither the `if` nor what it runs is reported, when its condition is exactly one of
+  `import.meta.main`, `require.main === module`, or `import.meta.url` compared with
+  `process.argv[1]`, `pathToFileURL(process.argv[1]).href`,
+  `pathToFileURL(realpathSync(process.argv[1])).href` or `` `file://${process.argv[1]}` ``,
+  optionally joined by `&&` with `process.argv[1]` or `process.argv[1] !== undefined`. The allowed
+  form, which also holds when the script is started through a symlink, is:
+
+  ```js
+  if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
+    await run();
+  }
+  ```
+
+  `process`, `require`, `module` and `undefined` must be the globals (an import of `node:process`
+  counts) and `pathToFileURL` and `realpathSync` the imports from `node:url` and `node:fs`, not a
+  local binding of the same name. Any other condition, such as `import.meta.env.DEV`, a bare
+  `import.meta.url`, a call or a comma expression inside the comparison, is still reported.
+
 - `nitpicker/no-production-console` also reports `console['error']` and, outside the composition
   root, `process.stdout.write` and `process.stderr.write`.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
@@ -530,17 +549,24 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `expectTypeOf(fn).parameter(0).not.toExtend<Value>()`, which counts as an assertion. Coverage and
   mutation ignore comments (`istanbul ignore`, `c8 ignore`, `v8 ignore`, `Stryker disable`) are
   suppressions too: `nitpicker/no-comments` reports them, and code that truly cannot be tested
-  gets a reviewed exception for that rule in `nitpicker.config.json`.
+  gets a reviewed exception for that rule in `nitpicker.config.json`. Even with that exception the
+  comments never take effect: the coverage run strips `istanbul`/`c8`/`v8 ignore` hints before it
+  measures, and a mutant a `Stryker disable` comment would hide is reported as an enforceable
+  `mutation/mutant-ignored` finding that asks for the comment to go. Code that must stay out of
+  mutation testing gets an `exceptions` entry for `mutant-ignored` with its paths instead.
+- Test files get the suppression half of that rule: `noInlineConfig` is on, and `eslint-disable`,
+  `@ts-*`, coverage and `Stryker` comments are reported. Ordinary comments stay allowed in tests.
 - A doc comment has to say something the name does not. `nitpicker/no-comments` reports a doc
   comment on an exported declaration or exported type member whose description only restates the
   name: it splits the name into words (camelCase, PascalCase, snake_case, kebab-case, digits),
-  drops stopwords (`the`, `a`, `of`, `get`, `returns`, `component`, `value`...), and reports when
+  drops stopwords (`the`, `a`, `of`, `get`, `returns`, `component`, `class`, `value`...), and reports when
   every remaining description word, with a crude `ing`/`ed`/`es`/`s` stem, is a word of the name
   (`/** Gets the user name. */ getUserName`, `/** The order id */ orderId`, `/** Button component */
 Button`). `@param`, `@returns` and other tag lines are not part of the description. Write the
   unit, the limit, the edge case or the reason (`/** Price in cents, rounded down. */`). A
-  description longer than 5 lines, tag lines and blank lines not counted (an `@example` block is a
-  tag), is reported too: keep the non-obvious point and move the rest into names and types. Both
+  description longer than 5 lines, tag lines, blank lines and code examples not counted (a fenced
+  ` ``` ` or `~~~` block, or the body of an `@example` tag; a fence that is never closed counts as prose), is reported too; bullets and
+  other prose count: keep the non-obvious point and move the rest into names and types. Both
   checks are skipped in the JavaScript preset's JSDoc mode, which already bans JSDoc prose, and a
   doc comment that is needed as written gets an exception for the rule.
 
@@ -594,8 +620,10 @@ for a file takes that file out of the rule, so a pair of copies that must both s
   rename detection: at least 50% of the content kept, within git's rename limit of 20000 files) is
   read at its old path, so a moved copy counts as edited or untouched like any other; a rename that
   detection misses leaves the copy new. The token comparison stops as soon as 80% can no longer be
-  reached, so large functions with scattered small edits are compared; a pair is skipped only when
-  what lies between its shared start and shared end is more than 20,000 tokens in the two together.
+  reached, so large functions with scattered small edits are compared. A pair is skipped when what
+  lies between its shared start and shared end is more than 20,000 tokens in the two together, or
+  when it is large enough to be costly and its comparison passes a per-pair work cap or the run's work
+  budget; a pair of up to about 2,000 tokens a side is always compared in full.
   Only the edited copy is reported, naming the untouched ones, so copies that are all edited, in the
   same way or differently, report nothing. Only the head snapshot reports it, as it reads the base
   checkout; the identity is the name and file. It covers the same files as `duplicate-definition`,
@@ -605,7 +633,9 @@ for a file takes that file out of the rule, so a pair of copies that must both s
   module that aliases every colliding import (`import { handler as getUser }`, `import type`,
   `export { x as y }`) is not reported. Both defining modules are reported. Re-exports
   (`export { x } from`, `export *`, an imported name exported again) resolve to the module that
-  defines the name, so a feature's `index.ts` is not a second definition. Imports resolve through relative paths,
+  defines the name, so a feature's `index.ts` is not a second definition. That includes a default
+  export re-exported under a name (`export { default as Button } from './button'`): two such
+  `Button`s a module imports are two different exports and are reported. Imports resolve through relative paths,
   `tsconfig.json` `paths` and `baseUrl`, and a workspace package linked into `node_modules` resolves
   to its source; installed packages are skipped. Rename one, or alias both imports.
 
@@ -621,6 +651,16 @@ The `duplicates` check scans test files too, but between two test files it repor
 that defines a named function (a copied helper: keep one in a non-test file such as
 `test/support/` and import it). Repeated expected values and assertions between tests are left
 alone.
+
+The `duplicates` check also runs jscpd over a copy of the sources where every name, string, number and
+comment is the same token, with at least 100 tokens and 5 lines, so a copy-pasted function whose
+locals and literals were renamed fails too (`duplicate-clone`, identity starting `renamed:`).
+Imports and re-exports, `interface`, `type` and `enum` declarations, literal-only objects and
+arrays, field declarations and JSX markup (tags, attributes, text and plain `{name}` holders) are
+left out of that copy, and so are generated files, so test tables, import lists and components that
+only share markup structure are not clones, and neither is code that only repeats one or two
+statements (constructor mappers, enum `switch` tables); handlers and conditions inside the markup count. The
+message names the same route as for any clone: add either file of the pair to `exclude`. Between two test files it points at a helper or a table-driven test.
 
 Every runnable test imports production code at runtime
 (`nitpicker/test-must-use-production-runtime`), directly or through a relative test helper that
@@ -753,6 +793,68 @@ hop, and type-only imports do not count.
   typescript-eslint's `no-explicit-any` and `no-non-null-assertion`. Like the other bans, these are
   strict rules: a finding on a line a change edits, or in a new test file, fails the run. An exception for
   `no-restricted-syntax` lifts all the syntax bans for those paths.
+- Weak assertions pass whatever the code returns, so `vitest/no-restricted-matchers` bans
+  `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `not.toBeNull` and `not.toBeUndefined` (also after
+  `.resolves`/`.rejects`): assert the value with `toBe` or `toEqual`. `vitest/prefer-called-with`
+  rejects a bare `toHaveBeenCalled()` (pass the arguments), `vitest/require-to-throw-message`
+  rejects `toThrow()` without a message or class, and `no-restricted-syntax` rejects a literal
+  subject (`expect(true)`). `nitpicker/no-partial-output-assertion` also rejects `toMatch` with a
+  string or a pattern that is not anchored `^...$`; an anchored pattern pins the whole value.
+- `nitpicker/no-shared-test-state`: no `let` with a value at module level or directly in a `describe`
+  callback. Keep the state in the test, or declare it without a value and set it in `beforeEach`.
+- `nitpicker/no-copy-pasted-tests`: three `it`/`test` calls in one block whose callbacks are the same
+  once literals are ignored are reported from the third on. Write one `it.each` table.
+- `nitpicker/fake-timers-require-restore`: a file that calls `vi.useFakeTimers()` needs
+  `vi.useRealTimers()` in `afterEach`/`afterAll` (`afterEach(vi.useRealTimers)` counts), in an
+  `onTestFinished` callback or in a `finally`. Otherwise the fake clock leaks into the next tests,
+  which then time out. With `@testing-library/user-event`, create the user with
+  `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })`. In a `*.test.*`/`*.spec.*` file the
+  rule does the same for `vi.stubGlobal` (restore with `vi.unstubAllGlobals()`) and `vi.stubEnv`
+  (`vi.unstubAllEnvs()`); a setup file may stub a global for every test, as jsdom setups do. A
+  project whose Vitest config sets `unstubGlobals: true` or `unstubEnvs: true` restores that kind of
+  stub itself, so it is not checked there: the flag is read as a literal from the root config, from
+  an inline `test.projects` entry (for the files under its `root`) and from the config of a path or
+  glob `test.projects` entry (for the files under that package).
+- `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
+  already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
+  A real condition such as `skipIf(process.platform === 'win32')` is allowed, and so is `it.fails`,
+  which runs and documents a known bug: it starts failing once the bug is fixed.
+- `slow-test` (coverage check, head only): an added or edited test fails above 5 s, or 30 s in an integration/e2e test folder. All supported runners share this policy. Suspected slow tests are rerun without coverage instrumentation, using the existing head policy's thresholds and reviewed exceptions; unchanged test calls do not add findings.
+- `nitpicker/no-real-time-random-or-network`: in tests, no `Date.now()`, `new Date()` without an
+  argument or `Math.random()` (fake the clock with `vi.useFakeTimers()` and `vi.setSystemTime`, or
+  spy on `Math.random`; either one anywhere in the file lifts the check), and in unit tests
+  (`__tests__/`, `<testRoot>/unit/` and `*.test.*` next to sources) no `fetch`, `http`/`https`
+  `request`/`get`, `net.connect` or `new WebSocket`. Inject the client instead.
+- `nitpicker/no-uncollected-tests`: a file in the test area that is not named `*.test.*` or `*.spec.*`
+  (or `*.test-d.*`/`*.spec-d.*`, Vitest's type tests) but defines `describe`/`it`/`test` at its top
+  level is never run by Vitest. Rename it. The structure check reports the same rule on the
+  `package.json` of a workspace package (npm, yarn or pnpm workspaces) that has test files but no
+  `test` script, when the root test config does not include it either: a root Vitest config's
+  `test.projects` (read as literals; a glob or a path to the package or its config counts), its
+  `test.include`, Jest's `projects`, or a root `test` script that runs Vitest or Jest itself. The
+  finding counts the package's test files and is held while the count does not grow, so a new
+  package or a new test file in such a package fails. Add a `test` script or a `projects` entry, or
+  add an exception for `nitpicker/no-uncollected-tests` with the package.json path.
+- `nitpicker/no-test-helpers-in-source`: a file under a source root that sits in a `testing/`,
+  `test-utils/`, `test-helpers/`, `test-support/`, `fixtures/` or `__mocks__/` folder, or is named
+  `test-utils`, `test-helpers`, `test-support` or `*.fixtures`, is a test helper. Placed in
+  production source it is mutation-tested and shipped. When the project has a test root on disk
+  (`layout.testRoots`, `test/` or `tests/` by default), move it under that root, for example
+  `test/test-support/`; a `test-support/` folder under a source root is reported too. When no test
+  root exists and the tests sit next to the code, a `test-support/` folder beside the code it
+  serves is the allowed place for test-only modules and is not reported; the other helper folders
+  and names are. The layout then counts those files as test code, so coverage, CRAP and mutation
+  leave them out.
+- `nitpicker/no-internal-module-mocks` also reports `vi.spyOn(namespace, ...)` on a namespace import
+  (`import * as domain`) of production code.
+- `nitpicker/no-production-imports-in-setup-files`: a file the project's Vitest or Vite config lists in
+  `setupFiles` or `globalSetup` may not import production code (a setup file runs before every test
+  file, so calls made there would count as covered). The setup files are read from the config text as
+  string literals, so a computed `setupFiles` value (built from a variable) is not checked. A test
+  may not mention `__stryker__`,
+  `STRYKER_*` or `activeMutant` either (`no-restricted-syntax`): behaviour that depends on the
+  mutation harness hides every mutant. For the same reason a test reads a global by its name
+  (`globalThis.name`), not by a computed key (`Reflect.get(globalThis, key)`, `globalThis[key]`).
 - `vitest/no-conditional-expect` (from the vitest recommended set) reports an `expect` inside a `catch` or a branch; the message adds that a test asserts a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)`.
 - `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
   inside a test body. Give each outcome its own `it.each` table row instead of branching on it.
@@ -1442,8 +1544,17 @@ from a real caller) and the `exceptions` entry that lifts it.
   (`nitpicker/no-ui-framework-in-domain`), used to be `no-restricted-syntax` selectors. An existing
   `no-restricted-syntax` exception no longer lifts them; add an entry for the new rule id with the
   same paths.
-- The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) and `slow-test` take exceptions the
-  same way; each failure message spells out the entry that would lift it.
+- The rules nitpicker adds are not ESLint rules, but the same `exceptions` key accepts them:
+  `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `function-lines-limit`,
+  `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`,
+  `folder-depth-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
+  `mutant-nocoverage`, `stability-direction`, and the dead-code findings `files`,
+  `exports` and `types`, plus the reuse rules (`shared-used-by-one-feature`, `duplicate-definition`,
+  `sibling-copy-edit`, `exported-name-collision`, `redefined-library-component`, `new-icon-asset`),
+  the unused-API rules and `component-story-missing`, which come from the `coupling` and `structure` checks, not from
+  ESLint; the JavaScript preset runs them too. The structure, CRAP and coverage rules take an optional `function`
+  (required for `changed-branch-coverage`) that limits the entry to one function. The message of
+  each finding prints the entry. See [Exceptions for rules nitpicker adds](usage.md#exceptions-for-rules-nitpicker-adds).
 - `folder-depth-limit`: code may sit at most one folder below `features/<feature>/<layer>/` (a file in
   `domain/orders/x.ts` is fine, one in `domain/orders/rules/x.ts` is not), so nesting cannot dodge
   the 6-files-per-folder limit. `thresholds.folderDepth` changes the one folder. `__tests__` and `__mocks__` folders do not
@@ -1453,7 +1564,9 @@ from a real caller) and the `exceptions` entry that lifts it.
   `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
   `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
   JavaScript preset runs them too.
-
+- `layout.sharedRoots` and `layout.featureRoots` (folder globs, default `<sourceRoot>/main/shared` and
+  `<sourceRoot>/main/features`) change which folders `shared-used-by-one-feature` treats as shared and
+  as features; `[]` in `featureRoots` turns it off. The ESLint boundary rules keep the default layout.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders only, so
   `src/crypto/e2e/` stays production code; a missing one is ignored). Type checking, duplicate

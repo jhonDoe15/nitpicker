@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { globToRegExpSource } from '../../../../shared/glob.mjs';
+import { globToRegExpSource } from '../../../../shared/paths/glob.mjs';
 import { EMPTY_FILE, followed, shellCommand } from './format-options.mjs';
 
 const EMPTY_CONFIG = 'nitpicker-black.toml';

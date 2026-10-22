@@ -1,7 +1,7 @@
 // Regenerates the parts of the repository that come from shared/policy.mjs: the custom-rules table
 // in spec/checks.md and the jscpd mode in languages/typescript/preset/defaults/jscpd.json. `--check` writes nothing and
 // exits 1 when a file is stale.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { applyGeneratedBlock, applyJscpdMode } from '../shared/checks-catalog.mjs';
@@ -21,7 +21,7 @@ export function staleFiles() {
   ).map(({ file }) => file);
 }
 
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   if (process.argv.includes('--check')) {
     const stale = staleFiles();
     if (stale.length > 0) {
