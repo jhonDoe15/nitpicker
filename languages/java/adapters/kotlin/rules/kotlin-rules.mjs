@@ -37,6 +37,8 @@ export const ONE_WAY_RULES = [
       'Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug.',
   },
   { name: 'CastNullableToNonNullableType', ruleset: 'potential-bugs' },
+  { name: 'CastToNullableType', ruleset: 'potential-bugs' },
+  { name: 'DontDowncastCollectionTypes', ruleset: 'potential-bugs' },
   {
     name: 'TooGenericExceptionCaught',
     ruleset: 'exceptions',

@@ -145,6 +145,10 @@ class TypeLaundering(ast.NodeVisitor):
         target = self.resolve(node.func)
         if target in {f"{module}.cast" for module in TYPING_MODULES}:
             self.report("type-cast", node, target)
+            self.visit(node.func)
+            for argument in node.args[1:] + [k.value for k in node.keywords if k.arg != "typ"]:
+                self.visit(argument)
+            return
         self.generic_visit(node)
 
     def annotation(self, node):

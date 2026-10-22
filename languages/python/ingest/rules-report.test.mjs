@@ -75,6 +75,7 @@ describe('rules script report', () => {
     ],
     ['type-cast', 'typing.cast', '`typing.cast` asserts a type without checking the value'],
     ['explicit-any', 'typing.Any', '`typing.Any` disables type checking with an explicit Any'],
+    ['type-cast', 'convert.typing.cast', '`typing.cast` asserts a type without checking the value'],
     ['any-in-domain', 'total', '`total` uses `Any` in domain code'],
     ['pydantic-any-field', 'Payload.body', 'The pydantic field `Payload.body` is typed `Any`'],
     ['pydantic-extra-allow', 'Payload', 'The pydantic model `Payload` accepts unknown fields'],

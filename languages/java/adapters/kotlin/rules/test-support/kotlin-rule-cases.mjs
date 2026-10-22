@@ -24,6 +24,22 @@ export const kotlinRuleCases = [
     allowed: 'fun text(value: Any?): String = value as? String ?: "none"\n',
   },
   {
+    id: 'nullableCast',
+    rule: 'detekt.potential-bugs.CastToNullableType',
+    message: "Use the safe cast ('as? String') instead of 'as String?'.",
+    allowedForm: 'as? String',
+    banned: 'fun text(value: Any): String? = value as String?\n',
+    allowed: 'fun text(value: Any): String? = value as? String\n',
+  },
+  {
+    id: 'collectionDowncast',
+    rule: 'detekt.potential-bugs.DontDowncastCollectionTypes',
+    message: 'Down-casting from type List to MutableList is risky. Use `toMutableList()` instead.',
+    allowedForm: 'toMutableList',
+    banned: 'fun grow(items: List<String>): MutableList<String> = items as MutableList<String>\n',
+    allowed: 'fun grow(items: List<String>): MutableList<String> = items.toMutableList()\n',
+  },
+  {
     id: 'broadCatch',
     rule: 'detekt.exceptions.TooGenericExceptionCaught',
     message:

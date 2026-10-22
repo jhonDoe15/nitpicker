@@ -22,6 +22,18 @@ potential-bugs:
     excludes: []
     ignoreAnnotated: []
     includes: []
+  CastToNullableType:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  DontDowncastCollectionTypes:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
 
 exceptions:
   active: true
