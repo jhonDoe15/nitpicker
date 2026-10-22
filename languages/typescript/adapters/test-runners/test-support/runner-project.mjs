@@ -2,6 +2,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
+import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
 import { parseArguments } from '../../quality-areas/arguments.mjs';
 import { runQualityArea } from '../../quality-areas-runner.mjs';
 
@@ -72,8 +74,30 @@ export const UNCOVERED_ELSE =
 
 const PRINTED = /^Tests print new console output: (.*?)\. Fix the cause/u;
 
-export async function newConsoleOutput(projectRoot) {
-  await runArea('coverage', projectRoot);
-  const findings = await runArea('test-console', projectRoot);
+async function consoleFindings(projectRoot) {
+  const failures = (await runArea('coverage', projectRoot)).filter(
+    ({ rule }) => rule === TESTS_FAILED_RULE,
+  );
+  if (failures.length > 0) {
+    throw new Error(failures.map(({ message }) => message).join('\n'));
+  }
+  return runArea('test-console', projectRoot);
+}
+
+function printedRows(findings) {
   return findings.map(({ rule, path: file, message }) => [rule, file, PRINTED.exec(message)?.[1]]);
 }
+
+export async function consoleOutput(projectRoot) {
+  return printedRows(await consoleFindings(projectRoot));
+}
+
+export async function newConsoleOutput({ base, head }) {
+  const { newFindings } = compareFindings({
+    baseFindings: await consoleFindings(base),
+    headFindings: await consoleFindings(head),
+  });
+  return printedRows(newFindings);
+}
+
+export const JAVASCRIPT_PRESET = { preset: 'javascript' };

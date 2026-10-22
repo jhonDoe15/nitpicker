@@ -2,14 +2,9 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  PLACE_FILE_VARIABLE,
-  PLACE_TEST_VARIABLE,
-  REPORT_VARIABLE,
-  ROOT_VARIABLE,
-} from '../console-report.mjs';
+import { LINES_VARIABLE, REPORT_VARIABLE, ROOT_VARIABLE } from '../console-report.mjs';
 import testConsoleReporter from './jest-reporter.config.mjs';
-import { mochaHooks } from './mocha-hooks.config.mjs';
+import { mochaHooks } from './mocha-capture.config.mjs';
 
 describe('the files the test runners load by path', () => {
   let directory;
@@ -41,13 +36,11 @@ describe('the files the test runners load by path', () => {
     });
   });
 
-  it('gives Mocha hooks that name the running test in the environment', () => {
-    vi.stubEnv(PLACE_TEST_VARIABLE, '');
-    const hooks = mochaHooks();
+  it('gives Mocha a root hook plugin that adds no hooks and leaves the console without a lines file', async () => {
+    vi.stubEnv(LINES_VARIABLE, '');
+    const { warn } = console;
 
-    hooks.beforeEach.call({ currentTest: { fullTitle: () => 'works' } });
-
-    expect(process.env[PLACE_TEST_VARIABLE]).toBe('works');
-    expect(process.env[PLACE_FILE_VARIABLE]).toBe('');
+    expect(await mochaHooks()).toEqual({});
+    expect(console.warn).toBe(warn);
   });
 });

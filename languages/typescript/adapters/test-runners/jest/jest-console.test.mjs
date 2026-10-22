@@ -1,41 +1,56 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  JAVASCRIPT_PRESET,
   PICK_JS_SOURCE,
   PICK_SOURCE,
+  consoleOutput,
   createRunnerProjects,
   newConsoleOutput,
 } from '../test-support/runner-project.mjs';
 
 const projects = createRunnerProjects();
 
+const COMMON_JS_PICK = PICK_JS_SOURCE.replace('export function', 'function').concat(
+  'module.exports = { pick };\n',
+);
+
 const TYPESCRIPT = {
   extension: 'ts',
   source: PICK_SOURCE,
   jest: { preset: 'ts-jest', testEnvironment: 'node', verbose: true, silent: true },
   import: "import { pick } from '../src/main/pick';",
+  config: {},
 };
 
 const JAVASCRIPT = {
   extension: 'js',
-  source: PICK_JS_SOURCE.replace('export function', 'function').concat(
-    'module.exports = { pick };\n',
-  ),
+  source: COMMON_JS_PICK,
   jest: { testEnvironment: 'node', verbose: true, silent: true },
   import: "const { pick } = require('../src/main/pick');",
+  config: { 'nitpicker.config.json': JAVASCRIPT_PRESET },
 };
 
-function jestProject(language, warning) {
-  const call = warning === undefined ? '' : `  console.warn('${warning}');\n`;
+function jestProject(language, tests, script = 'jest') {
   return projects.project({
-    'package.json': {
-      name: 'p',
-      private: true,
-      scripts: { test: 'jest' },
-      jest: language.jest,
-    },
+    'package.json': { name: 'p', private: true, scripts: { test: script }, jest: language.jest },
     'tsconfig.json': { compilerOptions: { strict: true, types: ['jest', 'node'] } },
     [`src/main/pick.${language.extension}`]: language.source,
-    [`test/pick.test.${language.extension}`]: `${language.import}\nit('says yes', () => {\n${call}  expect(pick(true)).toBe('yes');\n});\n`,
+    ...language.config,
+    ...Object.fromEntries(
+      Object.entries(tests).map(([name, body]) => [
+        `test/${name}.test.${language.extension}`,
+        `${language.import}\n${body}\n`,
+      ]),
+    ),
+  });
+}
+
+function pickTest(language, [first, second]) {
+  return jestProject(language, {
+    pick: [
+      `it('one', () => {\n${first}  expect(pick(true)).toBe('yes');\n});`,
+      `it('two', () => {\n${second}  expect(pick(false)).toBe('no');\n});`,
+    ].join('\n'),
   });
 }
 
@@ -45,12 +60,56 @@ afterEach(() => {
 
 describe('test console output on a Jest project', () => {
   it.each([TYPESCRIPT, JAVASCRIPT])(
-    'reports a $extension warning the head prints and the base does not, by file',
+    'reports only the $extension output the head prints and the base does not, by file',
     async (language) => {
-      expect(await newConsoleOutput(jestProject(language, undefined))).toEqual([]);
-      expect(await newConsoleOutput(jestProject(language, 'Warning: leaked timer'))).toEqual([
-        ['test-console-output', `test/pick.test.${language.extension}`, '"Warning: leaked timer"'],
+      const old = "  console.warn('old warning about the cart');\n";
+      const base = pickTest(language, [old, '']);
+      const head = pickTest(language, ['', `${old}  console.error('brand new error');\n`]);
+
+      expect(await newConsoleOutput({ base, head })).toEqual([
+        ['test-console-output', `test/pick.test.${language.extension}`, '"brand new error"'],
       ]);
     },
   );
+
+  it.each([
+    { jest: { testEnvironment: 'node', silent: true }, script: 'jest -i', files: ['a', 'b'] },
+    { jest: { testEnvironment: 'node' }, script: 'jest', files: ['a'] },
+  ])(
+    'passes a run in band whose timer logs after its file, and does not see that log ($script)',
+    async ({ jest, script, files }) => {
+      const body = [
+        "it('leaves a timer', () => {",
+        "  setTimeout(() => console.warn('after the file'), 100);",
+        "  expect(pick(true) + pick(false)).toBe('yesno');",
+        '});',
+      ].join('\n');
+      const project = jestProject(
+        { ...JAVASCRIPT, jest },
+        Object.fromEntries(files.map((file) => [file, body])),
+        script,
+      );
+
+      expect(await consoleOutput(project)).toEqual([]);
+    },
+  );
+
+  it('words a failed assert as the other runners do and reads a grouped call whole', async () => {
+    const project = jestProject(JAVASCRIPT, {
+      pick: [
+        "it('asserts', () => {",
+        "  console.assert(pick(true) === 'no', 'expected no');",
+        "  console.group('door');",
+        "  console.warn('at the door');",
+        '  console.groupEnd();',
+        "  expect(pick(false)).toBe('no');",
+        '});',
+      ].join('\n'),
+    });
+
+    expect(await consoleOutput(project)).toEqual([
+      ['test-console-output', 'test/pick.test.js', '"Assertion failed: expected no"'],
+      ['test-console-output', 'test/pick.test.js', '"at the door"'],
+    ]);
+  });
 });

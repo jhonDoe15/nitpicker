@@ -3,18 +3,13 @@ import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { stripAnsi } from '../../../../shared/rules/console/ansi.mjs';
+import { MAX_CONTENT_LENGTH } from '../../adapters/test-runners/v8-coverage/loaded-sources.cjs';
 
 export const REPORT_VARIABLE = 'NITPICKER_TEST_CONSOLE_REPORT';
 
 export const ROOT_VARIABLE = 'NITPICKER_TEST_CONSOLE_ROOT';
 
-export const LINES_VARIABLE = 'NITPICKER_TEST_CONSOLE_LINES';
-
-export const PLACE_FILE_VARIABLE = 'NITPICKER_TEST_CONSOLE_FILE';
-
-export const PLACE_TEST_VARIABLE = 'NITPICKER_TEST_CONSOLE_TEST';
-
-const MAX_CONTENT_LENGTH = 4000;
+export { LINES_VARIABLE } from '../../adapters/test-runners/v8-coverage/loaded-sources.cjs';
 
 const EMPTY_LINE = '<empty line>';
 
@@ -64,8 +59,13 @@ function isMessageLine(line) {
   return /[\p{L}\p{N}]/u.test(line) && !STACK_LINE.test(line) && line.trim() !== EMPTY_LINE;
 }
 
+function withoutGroupIndent(lines) {
+  const indent = /^\s*/u.exec(lines[0])[0];
+  return lines.map((line) => (line.startsWith(indent) ? line.slice(indent.length) : line));
+}
+
 export function consoleMessagesOf(content) {
-  return blocksOf(stripAnsi(content).split(/\r?\n/u))
+  return blocksOf(withoutGroupIndent(stripAnsi(content).split(/\r?\n/u)))
     .map((block) => block.filter((line) => isMessageLine(line)).map((line) => line.trim()))
     .filter((lines) => lines.length > 0)
     .map((lines) => lines.join(' '));

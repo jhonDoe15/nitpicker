@@ -124,6 +124,16 @@ describe('splitting one console flush into messages', () => {
     expect(consoleMessagesOf('\u001B[33mWarning\u001B[39m\n<empty line>')).toEqual(['Warning']);
   });
 
+  it('reads a call inside console.group like the same call outside it', () => {
+    const grouped = '    Error: at the door\n        at run (/a/b.js:1:2)\n    next line';
+
+    expect(consoleMessagesOf(grouped)).toEqual(
+      consoleMessagesOf('Error: at the door\n    at run (/a/b.js:1:2)\nnext line'),
+    );
+    expect(consoleMessagesOf('  at the door')).toEqual(['at the door']);
+    expect(consoleMessagesOf('  in two\nlines')).toEqual(['in two', 'lines']);
+  });
+
   it('gives nothing for a flush without any letter or digit', () => {
     expect(consoleMessagesOf('{\n}\n')).toEqual([]);
   });

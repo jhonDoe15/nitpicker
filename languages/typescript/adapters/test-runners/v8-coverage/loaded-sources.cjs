@@ -1,15 +1,17 @@
 'use strict';
 
 const { createHash } = process.getBuiltinModule('node:crypto');
-const { appendFileSync, readFileSync, writeFileSync } = process.getBuiltinModule('node:fs');
+const { openSync, readFileSync, writeFileSync, writeSync } = process.getBuiltinModule('node:fs');
 const { Session } = process.getBuiltinModule('node:inspector');
 const path = process.getBuiltinModule('node:path');
 const { fileURLToPath, pathToFileURL } = process.getBuiltinModule('node:url');
 const { format } = process.getBuiltinModule('node:util');
 
 const directory = process.env.NITPICKER_LOADED_SOURCES ?? '';
-const consoleLines = process.env.NITPICKER_TEST_CONSOLE_LINES ?? '';
-const MAX_CONSOLE_LENGTH = 4000;
+const LINES_VARIABLE = 'NITPICKER_TEST_CONSOLE_LINES';
+const RUNNER_VARIABLE = 'NITPICKER_TEST_CONSOLE_RUNNER';
+const MAX_CONTENT_LENGTH = 4000;
+const NO_PLACE = { file: '', test: '' };
 const PROJECT_SCRIPT = /^(?:file:\/\/|\/|[A-Za-z]:\\)/u;
 const DEPENDENCY = /[\\/]node_modules[\\/]/u;
 const OWN_URLS = new Set([__filename, pathToFileURL(__filename).href]);
@@ -77,81 +79,125 @@ function loadInChildProcesses() {
   }
 }
 
-function formatted(values = []) {
-  return Reflect.apply(format, undefined, values);
+function openedLines(linesPath = '') {
+  try {
+    return { descriptor: openSync(linesPath, 'a') };
+  } catch (error) {
+    return { unavailable: error };
+  }
 }
 
-function appendLine(linesPath = '', place = { file: '', test: '' }, content = '') {
-  const line = { ...place, content: content.slice(0, MAX_CONSOLE_LENGTH) };
-  appendFileSync(linesPath, `${JSON.stringify(line)}\n`);
+function writtenText(descriptor = -1, text = '') {
+  try {
+    writeSync(descriptor, text);
+    return { written: true };
+  } catch (error) {
+    return { failed: error };
+  }
 }
 
-function wrapConsole(linesPath = '', locate = () => ({ file: '', test: '' })) {
-  const target = globalThis.console;
-  const original = {
-    error: target.error.bind(target),
-    warn: target.warn.bind(target),
-    trace: target.trace.bind(target),
-    assert: target.assert.bind(target),
-  };
-  target.error = (...values) => {
-    appendLine(linesPath, locate(), formatted(values));
-    Reflect.apply(original.error, undefined, values);
-  };
-  target.warn = (...values) => {
-    appendLine(linesPath, locate(), formatted(values));
-    Reflect.apply(original.warn, undefined, values);
-  };
-  target.trace = (...values) => {
-    const text = values.length === 0 ? 'Trace' : `Trace: ${formatted(values)}`;
-    appendLine(linesPath, locate(), text);
-    Reflect.apply(original.trace, undefined, values);
-  };
-  target.assert = (...values) => {
-    if (!values[0]) {
-      const text =
-        values.length === 1
-          ? 'Assertion failed'
-          : `Assertion failed: ${formatted(values.slice(1))}`;
-      appendLine(linesPath, locate(), text);
+function lineWriter(linesPath = '', events = process) {
+  const { descriptor } = openedLines(linesPath);
+  const state = { pending: '' };
+  function flush() {
+    if (descriptor !== undefined && writtenText(descriptor, state.pending).written) {
+      state.pending = '';
     }
-    Reflect.apply(original.assert, undefined, values);
+  }
+  if (descriptor !== undefined) {
+    events.on('exit', flush);
+  }
+  return function write(line = '') {
+    state.pending += line;
+    flush();
   };
 }
 
-function nodeTestPlace() {
-  const { beforeEach, afterEach } = process.getBuiltinModule('node:test');
-  const active = [''];
-  const file = path.resolve(process.argv[1] ?? '');
+function recordedLine(locate = () => NO_PLACE, values = []) {
+  try {
+    const { file, test } = locate();
+    if (file === '') {
+      return { skipped: true };
+    }
+    const content = Reflect.apply(format, undefined, values).slice(0, MAX_CONTENT_LENGTH);
+    return { line: `${JSON.stringify({ file, test, content })}\n` };
+  } catch (error) {
+    return { failed: error };
+  }
+}
+
+function recordConsole(
+  linesPath = '',
+  locate = () => NO_PLACE,
+  { target = globalThis.console, events = process } = {},
+) {
+  const write = lineWriter(linesPath, events);
+  const original = { error: target.error.bind(target), warn: target.warn.bind(target) };
+  function recording(print = original.warn) {
+    return (...values) => {
+      const { line } = recordedLine(locate, values);
+      if (line !== undefined) {
+        write(line);
+      }
+      Reflect.apply(print, undefined, values);
+    };
+  }
+  target.error = recording(original.error);
+  target.warn = recording(original.warn);
+}
+
+function nodeTestApi() {
+  return process.getBuiltinModule('node:test');
+}
+
+function trackedTests(file = '', { after, afterEach, beforeEach } = nodeTestApi()) {
+  const running = [''];
+  const state = { finished: false };
   beforeEach((context) => {
-    active.push(context.fullName);
+    running.push(context.fullName);
   });
   afterEach((context) => {
-    const index = active.lastIndexOf(context.fullName);
-    if (index !== -1) {
-      active.splice(index, 1);
+    const index = running.lastIndexOf(context.fullName);
+    if (index > 0) {
+      running.splice(index, 1);
     }
   });
+  after(() => {
+    setImmediate(() => {
+      state.finished = true;
+    });
+  });
   return function place() {
-    return { file, test: active.at(-1) ?? '' };
+    return state.finished ? NO_PLACE : { file, test: running.at(-1) ?? '' };
   };
 }
 
-function namedPlace() {
-  return function place() {
-    return {
-      file: process.env.NITPICKER_TEST_CONSOLE_FILE ?? '',
-      test: process.env.NITPICKER_TEST_CONSOLE_TEST ?? '',
-    };
-  };
-}
-
-function recordConsole(linesPath = '') {
-  const context = process.env.NODE_TEST_CONTEXT ?? '';
-  const isTestFile = context.startsWith('child') && process.argv[1] !== undefined;
-  if (context === '' || isTestFile) {
-    wrapConsole(linesPath, isTestFile ? nodeTestPlace() : namedPlace());
+function captureNodeTest({
+  environment = process.env,
+  script = '',
+  testRunner = false,
+  processId = 0,
+  parentId = 0,
+  testApi = nodeTestApi,
+  target = globalThis.console,
+  events = process,
+} = {}) {
+  const linesPath = environment[LINES_VARIABLE] ?? '';
+  const context = environment.NODE_TEST_CONTEXT ?? '';
+  if (linesPath === '') {
+    return { capturing: false };
   }
+  if (context === '' && testRunner) {
+    environment[RUNNER_VARIABLE] = String(processId);
+  }
+  const isTestFile =
+    context.startsWith('child') &&
+    script !== '' &&
+    environment[RUNNER_VARIABLE] === String(parentId);
+  if (isTestFile) {
+    recordConsole(linesPath, trackedTests(path.resolve(script), testApi()), { target, events });
+  }
+  return { capturing: isTestFile };
 }
 
 if (directory !== '') {
@@ -159,6 +205,18 @@ if (directory !== '') {
   connectAndRecord();
 }
 
-if (consoleLines !== '') {
-  recordConsole(consoleLines);
-}
+captureNodeTest({
+  environment: process.env,
+  script: process.argv[1] ?? '',
+  testRunner: process.execArgv.includes('--test'),
+  processId: process.pid,
+  parentId: process.ppid,
+});
+
+module.exports = {
+  LINES_VARIABLE,
+  MAX_CONTENT_LENGTH,
+  RUNNER_VARIABLE,
+  captureNodeTest,
+  recordConsole,
+};
