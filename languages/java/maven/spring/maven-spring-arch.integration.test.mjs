@@ -94,7 +94,7 @@ afterEach(() => {
 });
 
 describe('runSpringArch', () => {
-  it('does nothing for a module that does not use Spring', () => {
+  it('does nothing for a module that runs no architecture rules', () => {
     const { reportDir } = run({ rules: rulesWith(RECORDING_RULES), archRules: false });
 
     expect([readdirSync(reportDir), readdirSync(process.env.XDG_CACHE_HOME)]).toEqual([[], []]);

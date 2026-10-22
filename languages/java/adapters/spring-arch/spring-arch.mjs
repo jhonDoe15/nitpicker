@@ -41,7 +41,7 @@ const MESSAGES = {
     `Refer to ${detail} by its identifier or an Association<${detail}, ID> in ${simple}: ${detail} is the root of another aggregate, and holding it lets one aggregate change another outside its consistency boundary.`,
   'ddd-foreign-entity': ({ simple, detail }) => {
     const [aggregate, entity] = detail.split(':');
-    return `Keep ${entity} inside one aggregate and reach it from ${simple} through its root, by the root's identifier: an entity belongs to exactly one aggregate, and ${entity} is also part of ${aggregate}.`;
+    return `Refer to ${aggregate} by its identifier in ${simple} instead of holding ${entity}: ${entity} belongs to the aggregate ${aggregate}, and an entity belongs to exactly one aggregate.`;
   },
   'ddd-value-object-reference': ({ simple, detail }) =>
     `Hold the identifier of ${detail} in ${simple}, not the object: a value object is compared by its values, and ${detail} is an entity with an identity and lifecycle of its own.`,

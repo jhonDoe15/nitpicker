@@ -15,6 +15,7 @@ const ROLES = { controller: ['shop.wiring.Endpoint'], repository: ['shop.wiring.
 const EXPECTED = [
   'ddd-aggregate-reference shop.sales.Order shop.sales.Customer Sales.kt',
   'ddd-foreign-entity shop.sales.Order shop.sales.Cart:shop.sales.CartLine Sales.kt',
+  'ddd-value-object-reference shop.sales.Receipt shop.sales.Order Sales.kt',
   'spring-controller-controller shop.carts.CartController shop.orders.OrderController CartController.kt',
   'spring-controller-controller shop.wiring.HealthController shop.wiring.StatusEndpoint Wiring.kt',
   'spring-controller-entity shop.orders.OrderController all:shop.orders.Order OrderController.kt',

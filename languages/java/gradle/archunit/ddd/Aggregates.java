@@ -16,22 +16,25 @@ final class Aggregates {
       checkMember(model, member.getKey(), member.getValue(), sink);
     }
     for (JavaClass value : model.values()) {
-      DddModel.heldTypes(value).stream()
+      model.heldTypes(value).stream()
           .filter(model::isIdentifiable)
           .forEach(target -> Found.add(sink, VALUE_REFERENCE, value, target.getName()));
     }
   }
 
   private static void checkMember(DddModel model, JavaClass member, Set<JavaClass> aggregates, Set<Found> sink) {
-    for (JavaClass held : DddModel.heldTypes(member)) {
+    for (JavaClass held : model.heldTypes(member)) {
       if (held.equals(member)) {
         continue;
       }
-      if (model.isRoot(held) && !aggregates.contains(held)) {
-        Found.add(sink, AGGREGATE_REFERENCE, member, held.getName());
+      if (model.isRoot(held)) {
+        if (!DddModel.sameAggregate(aggregates, held)) {
+          Found.add(sink, AGGREGATE_REFERENCE, member, held.getName());
+        }
+        continue;
       }
       for (JavaClass owner : model.ownersOf(held)) {
-        if (!aggregates.contains(owner) && !model.isRoot(held)) {
+        if (!DddModel.sameAggregate(aggregates, owner)) {
           Found.add(sink, FOREIGN_ENTITY, member, owner.getName() + ":" + held.getName());
         }
       }
