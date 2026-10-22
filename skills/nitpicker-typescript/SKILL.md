@@ -138,6 +138,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.
+- Keep an assertion unless another test covers the same behaviour.
 - A test run that prints new `console.error` or `console.warn` output fails
   (`test-console-output`): cancel the timer or subscription in the cleanup.
 - Test features through their `index.ts` with fakes: plain functions returning
@@ -149,7 +150,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
   Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
   not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
-- A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`.
+- Tests assert exact values and are deterministic and fast; each finding names the allowed form.
+- A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`, or in a `test-support/` folder beside the code when the tests sit next to it.
   When an existing test defines the same helper, make it import the shared one.
 - Test roots are `test/`, `tests/`, `__tests__/` and `e2e/` at the repo root. A Playwright or Cypress
   spec in `e2e/` imports no production code and is not mutated; a Jest `__tests__/` goes in `exclude`.
