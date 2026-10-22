@@ -1,4 +1,4 @@
-import { closingIndex, enclosingOpen } from '../kotlin-source.mjs';
+import { closingIndex, enclosingOpen, inImport } from '../kotlin-source.mjs';
 
 const REQUEST_BUILDER = /\bHttpRequest\s*\.\s*newBuilder\s*\(/g;
 const CHAINED_CALL = /^\s*\??\.\s*([A-Za-z_]\w*)\s*(?:<[^<>()]*>\s*)?\(/;
@@ -94,7 +94,9 @@ export function httpWithoutTimeout(scanned) {
 
 export function unsafeDeserialization(scanned) {
   return UNSAFE_READERS.flatMap((pattern) =>
-    [...scanned.code.matchAll(pattern)].map(({ index }) => index),
+    [...scanned.code.matchAll(pattern)]
+      .map(({ index }) => index)
+      .filter((index) => !inImport(scanned.code, index)),
   )
     .toSorted((left, right) => left - right)
     .map((offset) => ({ rule: 'UnsafeDeserialization', offset }));

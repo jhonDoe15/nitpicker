@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
@@ -155,43 +154,16 @@ describe('nitpicker-detekt.yml', () => {
 
   it('pins every ruleset and rule against a project config that switches it off or narrows it', () => {
     const pinned = { active: 'true', excludes: '[]', ignoreAnnotated: '[]', includes: '[]' };
-    const mainOnly = new Set(ONE_WAY_RULES.filter((rule) => rule.mainOnly).map(({ name }) => name));
     for (const { settings, rules } of Object.values(rulesets)) {
       expect(settings).toEqual(pinned);
-      for (const [name, rule] of Object.entries(rules)) {
+      for (const rule of Object.values(rules)) {
         const { active, excludes, ignoreAnnotated, includes, severity } = rule;
         expect({ active, excludes, ignoreAnnotated, includes, severity }).toEqual({
           ...pinned,
-          excludes: mainOnly.has(name) ? undefined : '[]',
           severity: 'warning',
         });
       }
     }
-  });
-});
-
-describe('the rules on main sources only', () => {
-  it('keep detekt test globs as their excludes', () => {
-    const config = createRequire(import.meta.url)('yaml').parse(
-      readFileSync(
-        path.resolve(import.meta.dirname, '../../../detekt/nitpicker-detekt.yml'),
-        'utf8',
-      ),
-    );
-    const mainOnly = ONE_WAY_RULES.filter((rule) => rule.mainOnly);
-
-    expect(mainOnly.map(({ ruleset, name }) => config[ruleset][name].excludes)).toEqual(
-      mainOnly.map(() => [
-        '**/test/**',
-        '**/androidTest/**',
-        '**/commonTest/**',
-        '**/jvmTest/**',
-        '**/androidUnitTest/**',
-        '**/androidInstrumentedTest/**',
-        '**/jsTest/**',
-        '**/iosTest/**',
-      ]),
-    );
   });
 });
 

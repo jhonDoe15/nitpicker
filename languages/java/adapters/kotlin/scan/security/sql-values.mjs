@@ -43,6 +43,7 @@ const INERT_TYPES = new Set([
   'ZonedDateTime',
 ]);
 const ENUM = /\benum\s+class\s+([A-Z]\w*)/g;
+const INITIALIZER_MARK = /[()[\]{}\n;]/g;
 const PROPERTY = /\b(?:val|var)\s+([A-Za-z_]\w*)\s*:\s*([A-Za-z_][\w.]*)/g;
 
 function unescaped(text, raw) {
@@ -113,9 +114,22 @@ function placeholders(expression) {
   return PLACEHOLDER_FORMS.some((form) => PLACEHOLDER_TEXT.test(form.exec(expression)?.[1] ?? ''));
 }
 
+function initializerEnd(code, offset) {
+  let depth = 0;
+  for (const { index, 0: mark } of code.slice(offset).matchAll(INITIALIZER_MARK)) {
+    if ('([{'.includes(mark)) {
+      depth += 1;
+    } else if (')]}'.includes(mark) && depth > 0) {
+      depth -= 1;
+    } else if (depth === 0) {
+      return offset + index;
+    }
+  }
+  return code.length;
+}
+
 function initializerAt(scanned, offset) {
-  const newline = scanned.code.indexOf('\n', offset);
-  const end = newline === -1 ? scanned.code.length : newline;
+  const end = initializerEnd(scanned.code, offset);
   return {
     code: scanned.code.slice(offset, end).trim(),
     source: scanned.source.slice(offset, end).trim(),
@@ -144,6 +158,25 @@ function isInertInitializer(scanned, offset) {
     return initializer.source.match(/"[^"]*"/g).every((text) => !text.includes('$'));
   }
   return isInertValue(initializer.source);
+}
+
+export function isConstantExpression(expression, scanned) {
+  if (NUMBER.test(expression) || PLAIN_LITERAL.test(expression) || CONSTANT.test(expression)) {
+    return true;
+  }
+  if (!/^[A-Za-z_]\w*$/.test(expression)) {
+    return false;
+  }
+  const constants = [
+    ...scanned.code.matchAll(
+      new RegExp(String.raw`\bconst\s+val\s+${expression}\s*(?::\s*[\w.]+\s*)?=(?!=)\s*`, 'g'),
+    ),
+  ];
+  return (
+    constants.length > 0 &&
+    constants.length === nameDeclarations(scanned, expression).assigned.length &&
+    constants.every((match) => isInertInitializer(scanned, match.index + match[0].length))
+  );
 }
 
 function nameDeclarations(scanned, name) {

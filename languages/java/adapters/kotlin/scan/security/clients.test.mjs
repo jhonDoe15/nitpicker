@@ -125,6 +125,10 @@ describe('unsafeDeserialization', () => {
       ],
     ],
     ['Kryo with registration', ['kryo.isRegistrationRequired = true']],
+    [
+      'an import of the class id',
+      ['import com.fasterxml.jackson.annotation.JsonTypeInfo.Id.CLASS'],
+    ],
   ])('passes %s', (_name, lines) => {
     expect(found(unsafeDeserialization, lines)).toEqual([]);
   });

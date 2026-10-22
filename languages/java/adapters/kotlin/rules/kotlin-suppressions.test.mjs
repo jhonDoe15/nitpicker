@@ -105,7 +105,7 @@ describe('readSuppressionFindings', () => {
         '@Suppress("UnsafeCallOnNullableType", "unused")\nfun a() = 1\n@Suppress("all")\nfun b() = 2\n',
     });
 
-    expect(readSuppressionFindings(root, ['src/main/kotlin'])).toEqual([
+    expect(readSuppressionFindings(root, { sourceRoots: ['src/main/kotlin'] })).toEqual([
       {
         tool: 'detekt',
         rule: 'inline-suppression',
@@ -134,10 +134,9 @@ describe('readSuppressionFindings', () => {
     });
 
     expect(
-      readSuppressionFindings(root, ['src/main/kotlin']).map(({ path: file_, identity }) => [
-        file_,
-        identity,
-      ]),
+      readSuppressionFindings(root, { sourceRoots: ['src/main/kotlin'] }).map(
+        ({ path: file_, identity }) => [file_, identity],
+      ),
     ).toEqual([
       ['src/main/kotlin/A.kt', 'suppress:style'],
       ['src/main/kotlin/A.kt', 'suppress:style#2'],
@@ -156,9 +155,10 @@ describe('readSuppressionFindings', () => {
     });
 
     expect(
-      readSuppressionFindings(root, ['src/main/kotlin', 'src/main/java', 'src/main/kotlin']).map(
-        ({ path: found }) => found,
-      ),
+      readSuppressionFindings(root, {
+        sourceRoots: ['src/main/kotlin', 'src/main/java'],
+        testRoots: ['src/main/kotlin'],
+      }).map(({ path: found }) => found),
     ).toEqual(['src/main/java/Mixed.kt', 'src/main/kotlin/A.kt', 'src/main/kotlin/z/Deep.kt']);
   });
 
@@ -168,9 +168,32 @@ describe('readSuppressionFindings', () => {
     });
 
     expect(
-      readSuppressionFindings(root, ['src/main/kotlin']).map(({ message }) => message),
+      readSuppressionFindings(root, { sourceRoots: ['src/main/kotlin'] }).map(
+        ({ message }) => message,
+      ),
     ).toEqual([
       `Suppressing "UNCHECKED_CAST" inline is not allowed. Fix the code the compiler warns about. ${exceptionHint('kotlinc/unchecked', file)}`,
+    ]);
+  });
+
+  it('bans compiler-warning tokens in main sources only, which the kotlinc lint compiles, and rule tokens everywhere', () => {
+    const suppressed =
+      '@Suppress("UNCHECKED_CAST", "DEPRECATION", "MagicNumber")\nfun a(value: Any) = value as List<String>\n';
+    const root = projectWith({
+      'src/main/kotlin/A.kt': suppressed,
+      'src/test/kotlin/ATest.kt': suppressed,
+    });
+
+    expect(
+      readSuppressionFindings(root, {
+        sourceRoots: ['src/main/kotlin'],
+        testRoots: ['src/test/kotlin'],
+      }).map(({ path: found, identity }) => `${found} ${identity}`),
+    ).toEqual([
+      'src/main/kotlin/A.kt suppress:UNCHECKED_CAST',
+      'src/main/kotlin/A.kt suppress:DEPRECATION',
+      'src/main/kotlin/A.kt suppress:MagicNumber',
+      'src/test/kotlin/ATest.kt suppress:MagicNumber',
     ]);
   });
 
@@ -179,6 +202,8 @@ describe('readSuppressionFindings', () => {
       [file]: '@Suppress("unused", "UNUSED_PARAMETER")\nfun a() = 42\n// @Suppress("all")\n',
     });
 
-    expect(readSuppressionFindings(root, ['src/main/kotlin', 'src/main/missing'])).toEqual([]);
+    expect(
+      readSuppressionFindings(root, { sourceRoots: ['src/main/kotlin', 'src/main/missing'] }),
+    ).toEqual([]);
   });
 });

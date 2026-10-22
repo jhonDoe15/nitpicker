@@ -1,5 +1,7 @@
-import { closingIndex, literalAt, literalsIn } from '../kotlin-source.mjs';
+import { literalAt, literalsIn } from '../kotlin-source.mjs';
 import { logCalls } from '../log-calls.mjs';
+import { isConstantExpression, templatePieces } from '../security/sql-values.mjs';
+import { isPagingLoop, loopBodies, retryAttempts } from '../loops.mjs';
 
 const SHELLS = new Set([
   'sh',
@@ -22,36 +24,7 @@ const SHELLS = new Set([
 const SHELL_FLAGS = new Set(['-c', '/c', '/C', '-Command', '-command']);
 const LITERAL_PAIR = /"\s*,\s*"/g;
 const FORMATTED = /(?:\bString\s*\.\s*format|"\s*\.\s*format(?:ted)?)\s*\(/;
-const CONCATENATED = /"\s*\+|\+\s*"/;
 
-const LOOP_HEADER = /\b(?:for|while)\s*\(/g;
-const LOOP_VARIABLES = /^\s*(?:\(([^)]*)\)|([A-Za-z_]\w*))/;
-const DO_LOOP = /\bdo\s*\{/g;
-const ITERATING_FUNCTIONS = [
-  'forEach',
-  'forEachIndexed',
-  'map',
-  'mapNotNull',
-  'mapIndexed',
-  'flatMap',
-  'filter',
-  'filterNot',
-  'onEach',
-  'associate',
-  'associateBy',
-  'associateWith',
-  'sumOf',
-  'any',
-  'all',
-  'none',
-  'count',
-  'groupBy',
-  'partition',
-];
-const ITERATING_LAMBDA = new RegExp(
-  String.raw`\.\s*(?:${ITERATING_FUNCTIONS.join('|')})\s*(?:\([^()]*\)\s*)?\{`,
-  'g',
-);
 const IO_RECEIVER_NAMES = [
   'repo',
   'repository',
@@ -98,60 +71,54 @@ const BATCH_METHODS = new Set([
   'findAllById',
 ]);
 const MEMBER_CALL = /\b([A-Za-z_]\w*)\s*\.\s*([A-Za-z_]\w*)\s*\(/g;
-const FILE_METHODS = [
-  'readText',
-  'readLines',
-  'readBytes',
-  'writeText',
-  'writeBytes',
-  'appendText',
-  'forEachLine',
-  'useLines',
-  'bufferedReader',
-  'bufferedWriter',
-  'inputStream',
-  'outputStream',
-  'openStream',
-  'openConnection',
-];
-const FILES_CHECKS = [
-  'exists',
-  'notExists',
-  'isDirectory',
-  'isRegularFile',
-  'isReadable',
-  'isWritable',
-  'isExecutable',
-  'isSymbolicLink',
-  'isHidden',
-  'isSameFile',
-];
-const FILE_OBJECT_CALL = String.raw`\b(?:File|Path|URL)\s*\([^()]*(?:\([^()]*\)[^()]*)*\)`;
-const FILE_CALL = new RegExp(
-  [
-    String.raw`${FILE_OBJECT_CALL}\s*\.\s*(?:${FILE_METHODS.join('|')})\b`,
-    String.raw`\bFiles\s*\.\s*(?!(?:${FILES_CHECKS.join('|')})\b)[a-z]\w*\s*\(`,
-  ].join('|'),
-  'g',
-);
-
+const MESSAGE_LEVELS = new Set(['info', 'warn', 'error', 'log', 'config', 'warning', 'severe']);
+const OPERAND_MARK = /[()[\]{}+]/g;
 export const CALL_MESSAGES = {
   LogStringConcatenation:
     'Pass values as placeholders (`log.info("user {}", user)`), or give a lambda logger the message (`logger.info { "user $user" }`), not a message built with a string template, `+` or `format`.',
   ShellCommand:
     'Run the program directly with an argument list (`ProcessBuilder("git", "log", ref)`), not through a shell with `-c`.',
   IoCallInLoop:
-    'Fetch or write all items at once (`findAllById`, `saveAll`, `deleteAll`, `WHERE id IN (...)`, one batched request): this calls a database, HTTP, file or repository API once per loop item. Paging, polling and retry loops are fine.',
+    'Fetch or write all items at once (`findAllById`, `saveAll`, `deleteAll`, `WHERE id IN (...)`, one batched request): this calls a database, HTTP or repository API once per loop item. Paging, polling and retry loops are fine.',
 };
+
+function operands(code, start, end) {
+  const parts = [];
+  let depth = 0;
+  let from = start;
+  for (const { index, 0: mark } of code.slice(start, end).matchAll(OPERAND_MARK)) {
+    if (mark === '+' && depth === 0) {
+      parts.push({ start: from, end: start + index });
+      from = start + index + 1;
+    } else if (mark !== '+') {
+      depth += '([{'.includes(mark) ? 1 : -1;
+    }
+  }
+  return [...parts, { start: from, end }];
+}
+
+function isConstantOperand(scanned, operand) {
+  const text = scanned.code.slice(operand.start, operand.end);
+  const start = operand.start + text.length - text.trimStart().length;
+  const literal = literalAt(scanned, start);
+  if (literal !== undefined && literal.end - start === text.trim().length) {
+    return templatePieces(literal).every(
+      (piece) => piece.text !== undefined || isConstantExpression(piece.expression, scanned),
+    );
+  }
+  return isConstantExpression(scanned.source.slice(operand.start, operand.end).trim(), scanned);
+}
 
 function builtMessage(scanned, argument) {
   const text = scanned.code.slice(argument.start, argument.end);
-  const literals = literalsIn(scanned, argument.start, argument.end);
-  if (literals.length === 0) {
+  if (literalsIn(scanned, argument.start, argument.end).length === 0) {
     return false;
   }
   return (
-    literals.some(({ template }) => template) || FORMATTED.test(text) || CONCATENATED.test(text)
+    FORMATTED.test(text) ||
+    operands(scanned.code, argument.start, argument.end).some(
+      (operand) => !isConstantOperand(scanned, operand),
+    )
   );
 }
 
@@ -162,7 +129,9 @@ function messageOf(call) {
 export function logTemplates(scanned) {
   return logCalls(scanned.code).flatMap((call) => {
     const message = messageOf(call);
-    return message !== undefined && builtMessage(scanned, message)
+    return MESSAGE_LEVELS.has(call.method) &&
+      message !== undefined &&
+      builtMessage(scanned, message)
       ? [{ rule: 'LogStringConcatenation', offset: call.start }]
       : [];
   });
@@ -181,55 +150,37 @@ export function shellCommands(scanned) {
   });
 }
 
-function loopVariables(code, match) {
-  if (match[0].startsWith('while')) {
+function isIoCall(receiver, method) {
+  return (
+    IO_RECEIVER.test(receiver) &&
+    IO_METHOD.test(method) &&
+    !BATCH_METHODS.has(method) &&
+    !(/^(?:is|has|get)[A-Z]/.test(method) && !/^get(?:By|All|One|Reference|For)/.test(method))
+  );
+}
+
+function readsIo(text) {
+  return [...text.matchAll(MEMBER_CALL)].some(([, receiver, method]) => isIoCall(receiver, method));
+}
+
+function ioCalls(code, loop, isRetryAttempt) {
+  if (isPagingLoop(code, loop, readsIo)) {
     return [];
   }
-  const open = match.index + match[0].length - 1;
-  const names = LOOP_VARIABLES.exec(code.slice(open + 1, closingIndex(code, open)));
-  return (names?.[1] ?? names?.[2] ?? '').split(',').map((name) => name.trim());
-}
-
-function loopBodies(code) {
-  const loops = [...code.matchAll(LOOP_HEADER)].flatMap((match) => {
-    const headerOpen = match.index + match[0].length - 1;
-    const headerClose = closingIndex(code, headerOpen);
-    const brace = /^\s*\{/.exec(code.slice(headerClose + 1));
-    if (brace === null) {
-      return [];
-    }
-    const open = headerClose + brace[0].length;
-    return [{ open, close: closingIndex(code, open), variables: loopVariables(code, match) }];
-  });
-  const doLoops = [...code.matchAll(DO_LOOP)].map((match) => {
-    const open = match.index + match[0].length - 1;
-    return { open, close: closingIndex(code, open), variables: [] };
-  });
-  const lambdas = [...code.matchAll(ITERATING_LAMBDA)].map((match) => {
-    const open = match.index + match[0].length - 1;
-    const parameters = /^\{([\w\s,()]*)->/.exec(code.slice(open));
-    const variables =
-      parameters === null ? ['it'] : parameters[1].split(/[\s,()]+/).filter((name) => name !== '');
-    return { open, close: closingIndex(code, open), variables };
-  });
-  return [...loops, ...doLoops, ...lambdas];
-}
-
-function ioCalls(code, loop) {
   const body = code.slice(loop.open, loop.close);
-  const members = [...body.matchAll(MEMBER_CALL)].filter(([, receiver, method]) => {
-    const looksLikeIo =
-      IO_RECEIVER.test(receiver) &&
-      IO_METHOD.test(method) &&
-      !BATCH_METHODS.has(method) &&
-      !(/^(?:is|has|get)[A-Z]/.test(method) && !/^get(?:By|All|One|Reference|For)/.test(method));
-    return looksLikeIo && !loop.variables.includes(receiver);
-  });
-  return [...members, ...body.matchAll(FILE_CALL)].map(({ index }) => loop.open + index);
+  return [...body.matchAll(MEMBER_CALL)]
+    .filter(
+      ([, receiver, method]) => isIoCall(receiver, method) && !loop.variables.includes(receiver),
+    )
+    .map(({ index }) => loop.open + index)
+    .filter((offset) => !isRetryAttempt(loop, offset));
 }
 
 export function ioInLoops(scanned) {
-  const offsets = new Set(loopBodies(scanned.code).flatMap((loop) => ioCalls(scanned.code, loop)));
+  const isRetryAttempt = retryAttempts(scanned.code);
+  const offsets = new Set(
+    loopBodies(scanned.code).flatMap((loop) => ioCalls(scanned.code, loop, isRetryAttempt)),
+  );
   return [...offsets]
     .toSorted((left, right) => left - right)
     .map((offset) => ({

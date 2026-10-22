@@ -14,7 +14,10 @@ function body(lines) {
 describe('logTemplates', () => {
   it.each([
     ['a string template', 'log.info("user $user")'],
-    ['a template expression', 'logger.debug("user ${user.trim()}")'],
+    ['a template expression', 'logger.info("user ${user.trim()}")'],
+    ['a warn level', 'log.warn("user $user")'],
+    ['a JUL config level', 'log.config("user $user")'],
+    ['a constant next to a runtime value', 'log.info("$APP user " + user)'],
     ['a concatenation', 'LOGGER.warn("user " + user)'],
     ['a format call', 'log.error(String.format("user %s", user))'],
     ['a format extension', 'log.info("user %s".format(user))'],
@@ -34,8 +37,22 @@ describe('logTemplates', () => {
     ['a call on something that is not a logger', 'catalog.info("user $user")'],
     ['a print, which detekt reports', 'println("user $user")'],
     ['a template in a comment', '// log.info("user $user")'],
+    ['a debug level, which GuardLogStatement covers in Java', 'log.debug("cache miss for $user")'],
+    ['a trace level', 'log.trace("user $user")'],
+    ['an Android level', 'Log.d(TAG, "user $user")'],
   ])('passes %s', (_name, line) => {
     expect(found(logTemplates, body([line]))).toEqual([]);
+  });
+
+  it.each([
+    ['a concatenated const val', 'log.info("Starting " + APP)'],
+    ['a const val in a template', 'log.info("Starting $APP")'],
+    ['a lowercase const val in a template', 'log.info("Starting ${name}")'],
+    ['an object constant', 'log.info("Starting " + Names.APP + " " + 2)'],
+  ])('passes %s, a compile-time constant', (_name, line) => {
+    const source = `private const val APP = "orders"\nprivate const val name = "orders"\n${body([line])}`;
+
+    expect(found(logTemplates, source)).toEqual([]);
   });
 });
 
@@ -62,8 +79,28 @@ describe('ioInLoops', () => {
   it.each([
     ['a repository call in a for loop', ['for (item in items) {', '    repo.save(item)', '}']],
     ['a repository call in forEach', ['items.forEach { repository.findById(it) }']],
-    ['a file read in map', ['items.map { java.io.File(it).readText() }']],
-    ['a Files call in a while loop', ['while (true) {', '    Files.readString(path)', '}']],
+    [
+      'a call in a while loop whose condition the call does not feed',
+      [
+        'var index = 0',
+        'while (index < items.size) {',
+        '    repo.save(items[index])',
+        '    index++',
+        '}',
+      ],
+    ],
+    [
+      'a call in a try of a loop that never leaves it',
+      [
+        'for (item in items) {',
+        '    try {',
+        '        repo.save(item)',
+        '    } catch (e: IOException) {',
+        '        failed.add(item)',
+        '    }',
+        '}',
+      ],
+    ],
   ])('flags %s', (_name, lines) => {
     expect(found(ioInLoops, body(lines)).map(([rule]) => rule)).toEqual(['IoCallInLoop']);
   });
@@ -79,6 +116,60 @@ describe('ioInLoops', () => {
       ['val all = repo.findAll()', 'for (item in all) {', '    check(item != "")', '}'],
     ],
     ['a call on the loop item', ['for (item in items) {', '    item.trim()', '}']],
+    [
+      'a paging loop that breaks on an empty page',
+      [
+        'var page = 0',
+        'while (true) {',
+        '    val batch = repository.findAll(PageRequest.of(page, 100))',
+        '    if (batch.isEmpty) break',
+        '    page++',
+        '}',
+      ],
+    ],
+    [
+      'a cursor loop whose condition reads what the call returned',
+      [
+        'var cursor: String? = null',
+        'do {',
+        '    val response = client.fetch(cursor)',
+        '    cursor = response.next',
+        '} while (cursor != null)',
+      ],
+    ],
+    [
+      'a polling loop',
+      [
+        'var done = false',
+        'while (!done) {',
+        '    val status = client.get(job)',
+        '    done = status.finished',
+        '}',
+      ],
+    ],
+    [
+      'a loop that leaves on a null page',
+      [
+        'while (true) {',
+        '    val page = api.fetchPage(token) ?: break',
+        '    token = page.next',
+        '}',
+      ],
+    ],
+    [
+      'a retry loop',
+      [
+        'for (attempt in 1..3) {',
+        '    try {',
+        '        return client.send(request, BodyHandlers.ofString()).body()',
+        '    } catch (e: java.io.IOException) {',
+        '        log.warn("attempt {} failed", attempt, e)',
+        '    }',
+        '}',
+      ],
+    ],
+    ['a file read per item', ['items.map { Files.readString(Path.of(it)) }']],
+    ['a file read in a loop', ['for (item in items) {', '    java.io.File(item).readText()', '}']],
   ])('passes %s', (_name, lines) => {
     expect(found(ioInLoops, body(lines))).toEqual([]);
   });

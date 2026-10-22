@@ -2,6 +2,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { runJavaDiff } from '../java-diff.mjs';
+import { SOURCE_RULE_IDS } from '../kotlin/rules/kotlin-rules.mjs';
 import {
   commitBranch,
   diffOf,
@@ -15,6 +16,9 @@ import {
 
 const PACKAGE = 'package demo.guards\n\n';
 const LOGGER = `${PACKAGE}import java.util.logging.Logger\n\n`;
+const LEVELS = `${PACKAGE}import java.util.logging.Level\nimport java.util.logging.Logger\n\n`;
+const parser = (handling) =>
+  `${LEVELS}class Parser(private val logger: Logger) {\n    fun parse(text: String): Result<Int> {\n        try {\n            return Result.success(text.toInt())\n        } catch (e: NumberFormatException) {\n            ${handling}\n            return Result.failure(e)\n        }\n    }\n}\n`;
 const methods = Array.from(
   { length: 21 },
   (_, index) => `    fun m${String(index)}(): String = "m${String(index)}"`,
@@ -29,6 +33,7 @@ const BANNED_GUARDS = {
   'Shell.kt': `${PACKAGE}fun list(dir: String): Process = ProcessBuilder("sh", "-c", "ls " + dir).start()\n`,
   'Loader.kt': `${LOGGER}class Loader(private val logger: Logger) {\n    fun load(file: java.io.File): String? {\n        try {\n            return file.readText()\n        } catch (e: java.io.IOException) {\n            logger.warning("load failed")\n            return null\n        }\n    }\n}\n`,
   'Flags.kt': `${PACKAGE}fun render(text: String, bold: Boolean): String = if (bold) "<b>$text</b>" else text\n`,
+  'Parser.kt': parser('logger.log(Level.WARNING, "parse failed")'),
   'Secrets.kt': `${PACKAGE}val password = "hunter22x"\n`,
   'OrderHelper.kt': `${PACKAGE}class OrderHelper {\n    fun total(): Int = 1\n}\n`,
   'Commented.kt': `${PACKAGE}fun subtotal(): Int {\n    // val discount = compute(1)\n    return 1\n}\n`,
@@ -49,6 +54,7 @@ const ALLOWED_GUARDS = {
   'Shell.kt': `${PACKAGE}fun list(dir: String): Process = ProcessBuilder("ls", dir).start()\n`,
   'Loader.kt': `${PACKAGE}class Loader {\n    fun load(file: java.io.File): String {\n        try {\n            return file.readText()\n        } catch (e: java.io.IOException) {\n            throw IllegalStateException("load failed", e)\n        }\n    }\n}\n`,
   'Flags.kt': `${PACKAGE}fun plain(text: String): String = text\n\nfun bold(text: String): String = "<b>$text</b>"\n`,
+  'Parser.kt': parser('logger.log(Level.WARNING, "parse failed", e)'),
   'Secrets.kt': `${PACKAGE}data class Credentials(val password: String)\n`,
   'PriceRounder.kt': `${PACKAGE}class PriceRounder {\n    fun round(cents: Int): Int = cents\n}\n`,
   'Commented.kt': `${PACKAGE}// Totals are in cents, so rounding stays exact.\nfun subtotal(): Int = 1\n`,
@@ -77,6 +83,7 @@ const EXPECTED_BANNED = [
   'kotlin-source/LogStringConcatenation Audit.kt',
   'kotlin-source/ShellCommand Shell.kt',
   'kotlin-source/CatchOnlyLogsOrReturnsDefault Loader.kt',
+  'detekt/catch-log-without-exception Parser.kt',
   'kotlin-source/BooleanFlagParameter Flags.kt',
   'kotlin-source/HardcodedSecret Secrets.kt',
   'kotlin-source/GenericTypeName OrderHelper.kt',
@@ -97,10 +104,19 @@ const CLASS_RULES = new Set([
   'inheritance-depth-limit',
 ]);
 
+const DETEKT_SOURCE_RULES = new Set(SOURCE_RULE_IDS);
+
 function guardFindings(findings) {
   return findings.filter(
-    ({ tool, rule }) => GUARD_TOOLS.has(tool) || (tool === 'structure' && CLASS_RULES.has(rule)),
+    ({ tool, rule }) =>
+      GUARD_TOOLS.has(tool) ||
+      (tool === 'structure' && CLASS_RULES.has(rule)) ||
+      (tool === 'detekt' && DETEKT_SOURCE_RULES.has(rule)),
   );
+}
+
+function printedRule({ tool, rule }) {
+  return tool === 'structure' || tool === 'detekt' ? rule : `${tool}/${rule}`;
 }
 
 function summary(findings) {
@@ -141,10 +157,9 @@ describe.skipIf(!kotlinE2eEnabled)(
 
     it('ends each finding with the exception sentence of the rule it prints', () => {
       const wrong = guardFindings(banned.newEnforceable)
-        .filter(({ tool, rule, path: file, message }) => {
-          const printed = tool === 'structure' ? rule : `${tool}/${rule}`;
-          return !message.endsWith(exceptionHint(printed, file));
-        })
+        .filter(
+          (finding) => !finding.message.endsWith(exceptionHint(printedRule(finding), finding.path)),
+        )
         .map(({ tool, rule }) => `${tool}/${rule}`);
 
       expect(wrong).toEqual([]);

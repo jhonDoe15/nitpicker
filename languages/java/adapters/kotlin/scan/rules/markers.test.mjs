@@ -12,13 +12,44 @@ describe('annotationMarkers', () => {
     ['@Generated', 'GeneratedOnHandWrittenCode'],
     ['@javax.annotation.processing.Generated("x")', 'GeneratedOnHandWrittenCode'],
     ['@lombok.Generated', 'GeneratedOnHandWrittenCode'],
-    ['@ExcludeFromJacocoGeneratedReport', 'GeneratedOnHandWrittenCode'],
-    ['@get:Generated', 'GeneratedOnHandWrittenCode'],
     ['@DoNotMutate', 'MutationIgnoreMarker'],
     ['@com.arcmutate.DoNotMutate', 'MutationIgnoreMarker'],
     ['@CoverageIgnore', 'MutationIgnoreMarker'],
   ])('flags %s on hand-written code', (annotation, rule) => {
     expect(found(annotationMarkers, `${annotation}\nfun keep() = 1\n`)).toEqual([[rule, 1]]);
+  });
+
+  it.each([
+    ['a class', '@Generated(value = ["gen"])\n@JvmInline\nvalue class Id(val raw: Long)\n'],
+    ['a data class behind modifiers', '@Generated internal data class Order(val id: Long)\n'],
+    ['an object', '@Generated\nobject Registry\n'],
+    ['a function', '@Generated\n@JvmStatic\nprivate suspend fun load() = 1\n'],
+    ['a constructor', 'class Order @Generated constructor(val id: Long)\n'],
+    ['a getter', 'class Order {\n  @get:Generated\n  val id: Long = 1\n}\n'],
+  ])('flags @Generated on %s', (_name, source) => {
+    expect(found(annotationMarkers, source).map(([rule]) => rule)).toEqual([
+      'GeneratedOnHandWrittenCode',
+    ]);
+  });
+
+  it('passes JPA and Hibernate generated values on properties and other names that contain Generated', () => {
+    const source = [
+      '@Entity',
+      'class Order(',
+      '  @Id @GeneratedValue(strategy = GenerationType.IDENTITY)',
+      '  val id: Long? = null,',
+      '  @org.hibernate.annotations.Generated val version: Long = 0,',
+      '  @CreationTimestamp val createdAt: Instant? = null,',
+      ') {',
+      '  @Generated',
+      '  var total: Long = 0',
+      '}',
+      '@file:Generated',
+      '@ExcludeFromGeneratedReport',
+      'fun keep() = 1',
+    ].join('\n');
+
+    expect(found(annotationMarkers, source)).toEqual([]);
   });
 
   it('passes other annotations and markers in comments or strings', () => {

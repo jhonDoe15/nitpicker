@@ -285,3 +285,8 @@ export function enclosingOpen(code, offset) {
   }
   return open.at(-1) ?? -1;
 }
+
+export function inImport(code, offset) {
+  const start = code.lastIndexOf('\n', offset - 1) + 1;
+  return /^[ \t]*import\s/.test(code.slice(start, offset + 1));
+}
