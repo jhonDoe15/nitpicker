@@ -71,7 +71,7 @@ describe('ESLint analyzer versions', () => {
     );
   });
 
-  it('names the test runner and its version for coverage and mutation', () => {
+  it('names the test runner and its version for coverage, test console and mutation', () => {
     const resolve = fakeResolver({
       vitest: '4.1.11',
       jest: '30.5.2',
@@ -79,6 +79,10 @@ describe('ESLint analyzer versions', () => {
     });
 
     expect(resolveAnalyzerVersion('coverage', '/project', { resolve })).toBe('vitest@4.1.11');
+    expect(resolveAnalyzerVersion('test-console', '/project', { resolve })).toBe('vitest@4.1.11');
+    expect(
+      testRunnerAnalyzerVersion('test-console', '/project', { resolve, configuredRunner: 'jest' }),
+    ).toBe('jest@30.5.2');
     expect(
       testRunnerAnalyzerVersion('mutation', '/project', { resolve, configuredRunner: 'jest' }),
     ).toBe('10.0.0;jest@30.5.2');

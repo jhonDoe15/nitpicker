@@ -17,7 +17,6 @@ const TOOL_BY_ANALYZER = {
   structure: 'typescript',
   duplicates: 'jscpd',
   'dead-code': 'knip',
-  'test-console': 'vitest',
   crap: 'typescript',
 };
 const PACKAGE_ANALYZERS = new Set(['structure', 'crap']);
@@ -72,7 +71,7 @@ export function testRunnerAnalyzerVersion(
   { resolve = resolveTool, configuredRunner } = {},
 ) {
   const runnerVersion = testRunnerVersion(liveProjectRoot, resolve, configuredRunner);
-  if (analyzerName === 'coverage') {
+  if (analyzerName !== 'mutation') {
     return runnerVersion;
   }
   return `${resolve('@stryker-mutator/core', { projectRoot: liveProjectRoot }).version};${runnerVersion}`;
@@ -89,7 +88,7 @@ export function resolveAnalyzerVersion(
   liveProjectRoot,
   { resolve = resolveTool, bundled = TYPESCRIPT_API.bundled } = {},
 ) {
-  if (analyzerName === 'coverage' || analyzerName === 'mutation') {
+  if (['coverage', 'mutation', 'test-console'].includes(analyzerName)) {
     return testRunnerAnalyzerVersion(analyzerName, liveProjectRoot, { resolve });
   }
   const toolName = analyzerName.startsWith('eslint-') ? 'eslint' : TOOL_BY_ANALYZER[analyzerName];
