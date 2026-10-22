@@ -34,7 +34,7 @@ function folderPattern(root) {
   return root.replace(/^\.\//u, '').replace(/\/+$/u, '');
 }
 
-function underTestPath(parts, testpaths) {
+export function underTestPath(parts, testpaths) {
   const folders = parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join('/'));
   return testpaths.some((root) =>
     folders.some((folder) => matchesGlob(folder, folderPattern(root))),
@@ -57,6 +57,12 @@ export function isTestFile(file, { pythonFiles, testpaths = [], django = false }
     (broad && underTestPath(parts, testpaths)) ||
     matchesAny(name, patterns)
   );
+}
+
+export function isCollectedTestFile(file, { pythonFiles, django = false }) {
+  const name = file.split('/').at(-1) ?? '';
+  const patterns = [...pythonFiles, ...(django ? DJANGO_TEST_FILES : [])];
+  return name === 'conftest.py' || matchesAny(name, patterns);
 }
 
 export function isDjangoProject(projectRoot, config = readPytestConfig(projectRoot)) {
@@ -83,12 +89,12 @@ function flagValues(words, flag) {
   });
 }
 
-function keywordExpressions(words) {
+function shortValues(words, flag) {
   return words.flatMap((word, index) => {
-    if (word === '-k') {
+    if (word === flag) {
       return words[index + 1] === undefined ? [] : [words[index + 1]];
     }
-    return word.startsWith('-k') && !word.startsWith('--') ? [word.slice(2)] : [];
+    return word.startsWith(flag) && !word.startsWith('--') ? [word.slice(2)] : [];
   });
 }
 
@@ -105,6 +111,7 @@ export function collectionOptions(config) {
     deselected,
     ignored,
     ignoredGlobs,
-    keywords: keywordExpressions(config.addopts),
+    keywords: shortValues(config.addopts, '-k'),
+    marks: shortValues(config.addopts, '-m'),
   };
 }

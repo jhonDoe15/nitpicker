@@ -50,6 +50,10 @@ const UNCOLLECTED_ADVICE = [
     'Remove the `-k` expression in `addopts` that hides the test, or mark it `@pytest.mark.skip(reason="...")` so the skip is visible.',
   ],
   [
+    '(-m)',
+    'Remove the `-m` marker expression in `addopts` that hides the test, or mark it `@pytest.mark.skip(reason="...")` so the skip is visible.',
+  ],
+  [
     '(python_classes)',
     'Name the class the way `python_classes` collects it (`Test*` by default), or derive it from `unittest.TestCase`.',
   ],
