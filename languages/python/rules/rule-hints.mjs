@@ -18,7 +18,6 @@ const HINTED_TOOLS = [
   'coupling',
   'import-linter',
   'dependencies',
-  'test-runtime',
   'mutmut',
 ];
 
