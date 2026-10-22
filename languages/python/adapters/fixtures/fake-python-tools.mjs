@@ -274,7 +274,8 @@ function python() {
     return;
   }
   if (args.some((argument) => argument.endsWith('import-scan.py'))) {
-    process.stdout.write(read('import-scan.json', '{}'));
+    const request = JSON.parse(readFileSync(args.at(-1), 'utf8'));
+    process.stdout.write(request.facts === true ? '{}' : read('import-scan.json', '{}'));
     return;
   }
   if (args.some((argument) => argument.endsWith('distribution-scan.py'))) {

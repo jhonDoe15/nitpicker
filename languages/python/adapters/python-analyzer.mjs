@@ -5,6 +5,7 @@ import { importClosure } from '../../../shared/import-closure.mjs';
 import { RULES_TOOL } from '../rules/rule-hints.mjs';
 import { createToolContext, mutationVersions, toolVersions } from './python-tools.mjs';
 import { TEST_CONSOLE_TOOL } from './test-results/console-output.mjs';
+import { FACTS_TOOL } from './facts/python-facts.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
 export const MUTATION_ANALYZER_NAME = 'mutation';
@@ -96,6 +97,7 @@ export function createPythonAnalyzer(settings = {}) {
       'tests',
       'test-runtime',
       TEST_CONSOLE_TOOL,
+      FACTS_TOOL,
       'dependencies',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,

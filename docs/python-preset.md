@@ -157,7 +157,8 @@ top-level `exceptions` is accepted only for the file and size limits shared with
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
 `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it, the
 [dependency and repository checks](usage.md#dependency-and-repository-checks) and the
-[fact rules](../spec/checks.md#custom-rules) every preset shares (`test-console-output`, `test-only-export`); the Python equivalent of
+[fact rules](../spec/checks.md#custom-rules) every preset shares (`test-console-output`, `test-only-export`, `duplicate-definition`,
+`exported-name-collision`), which the Python preset runs over its facts scan; the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
 Where each kind of finding is lifted for some paths:
 

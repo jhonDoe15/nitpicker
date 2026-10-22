@@ -124,7 +124,7 @@ describe('config keys the python preset shares', () => {
   it('names what python does not support and what it shares', () => {
     expect(() => validateConfig({ preset: 'python', react: {} })).toThrow(
       new Error(
-        'nitpicker.config.json: "react" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: exceptions, react, i18n, except exceptions for file-lines-limit, line-length-limit, folder-files-limit, slow-test, committed-env-file, committed-private-key, committed-binary, large-file, committed-build-output, test-only-export, test-console-output, folder-depth-limit, class-methods-limit, class-fields-limit, inheritance-depth-limit. Shared by all presets: thresholds, exclude, legacyInventory',
+        'nitpicker.config.json: "react" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: exceptions, react, i18n, except exceptions for file-lines-limit, line-length-limit, folder-files-limit, slow-test, committed-env-file, committed-private-key, committed-binary, large-file, committed-build-output, duplicate-definition, exported-name-collision, test-only-export, test-console-output, folder-depth-limit, class-methods-limit, class-fields-limit, inheritance-depth-limit. Shared by all presets: thresholds, exclude, legacyInventory',
       ),
     );
   });
