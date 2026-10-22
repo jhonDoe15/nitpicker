@@ -1,0 +1,99 @@
+from design.annotations import project_type, type_text
+from design.callfacts import call_facts
+from design.decisions import decisions
+from design.entries import is_entry
+from design.fields import own_fields, owner_field_names, returned_field
+from design.published import is_published
+from design.reads import reads
+from design.typefacts import is_exported, klass_exported
+from design.uses import forward_fact, param_uses
+
+
+def type_reference(index, module, annotation, owner):
+    found = project_type(index, module, annotation, owner)
+    return found.id if found is not None else type_text(index, module, annotation)
+
+
+def param_fact(scope, parameter):
+    fact = {"name": parameter.name}
+    if parameter.annotation is not None:
+        fact["type"] = type_reference(
+            scope.index, scope.module, parameter.annotation, scope.owner
+        )
+    if parameter.variadic:
+        fact["variadic"] = True
+    if parameter.optional:
+        fact["optional"] = True
+    return fact
+
+
+def callable_kind(function):
+    if function.owner is None:
+        return "function"
+    if function.name == "__init__":
+        return "constructor"
+    return "accessor" if function.is_property else "method"
+
+
+def callable_exported(function):
+    if function.owner is None:
+        return is_exported(function.module, function.name)
+    private = function.name.startswith("_") and not (
+        function.name.startswith("__") and function.name.endswith("__")
+    )
+    return klass_exported(function.owner) and not private
+
+
+def callable_fact(index, function):
+    scope = index.scope_of(function)
+    fact = {
+        "id": function.id,
+        "file": function.module.path,
+        "name": function.name,
+        "line": function.node.lineno,
+        "kind": callable_kind(function),
+        "exported": callable_exported(function),
+        "owner": function.owner.id if function.owner else function.module.id,
+    }
+    if is_entry(index, function):
+        fact["entry"] = True
+    if function.owner is None and is_published(index, function.module, function.name):
+        fact["published"] = True
+    fact["params"] = [param_fact(scope, p) for p in scope.params]
+    if function.node.returns is not None:
+        fact["returns"] = type_reference(
+            index, function.module, function.node.returns, scope.owner
+        )
+    forward = forward_fact(scope)
+    if forward is not None:
+        fact["forward"] = forward
+    fact["calls"] = call_facts(scope)
+    add_optional(fact, scope, function)
+    return fact
+
+
+def add_optional(fact, scope, function):
+    names = owner_field_names(scope.index, function)
+    uses = param_uses(scope)
+    if uses:
+        fact["paramUses"] = dedupe_forwards(uses)
+    owned = own_fields(scope, names)
+    if owned:
+        fact["ownFields"] = owned
+    returned = returned_field(scope, names)
+    if returned is not None:
+        fact["returnsField"] = returned
+    for key, build in (("decisions", decisions), ("reads", reads)):
+        found = build(scope)
+        if found:
+            fact[key] = found
+
+
+def dedupe_forwards(uses):
+    for use in uses:
+        unique = []
+        for forward in use["forwards"]:
+            if forward not in unique:
+                unique.append(forward)
+        use["forwards"] = unique
+    return uses

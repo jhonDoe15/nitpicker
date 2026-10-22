@@ -115,22 +115,29 @@ def run_check(module, context, step="check"):
 
 
 class Results:
-    def __init__(self, findings, allowances, support):
+    def __init__(self, findings, allowances, support, project):
         self.findings = findings
         self.allowances = allowances
         self.support = support
+        self.project = project
 
 
-def check_all(paths, options, modules):
-    from checks.comments import stub_findings
+def build_project(paths, options):
     from index.project import Project
-    from security.support import support_files
 
     project = Project(options, paths)
     parsed = {path: parse_file(path) for path in paths}
     for path, source in parsed.items():
         if source is not None:
             project.add(FileContext(path, source[0], source[1], project))
+    return project
+
+
+def check_all(paths, options, modules):
+    from checks.comments import stub_findings
+    from security.support import support_files
+
+    project = build_project(paths, options)
     findings = [item for path in paths for item in stub_findings(path)]
     allowances = []
     for context in project.contexts.values():
@@ -140,7 +147,7 @@ def check_all(paths, options, modules):
             findings.extend(found + failures + allowance_failures)
             allowances.extend(allowed)
     support = project.memo("security-support-files", support_files)
-    return Results(findings, allowances, sorted(support))
+    return Results(findings, allowances, sorted(support), project)
 
 
 def read_options(arguments):
@@ -180,6 +187,10 @@ def main(arguments):
     )
     allowances = {"supportFiles": results.support, "allowed": allowed}
     write_json(os.path.join(os.path.dirname(out_file), ALLOWANCES_REPORT), allowances)
+    if "designFiles" in options:
+        from design.report import write_design
+
+        write_design(results.project, options, os.path.dirname(out_file))
 
 
 if __name__ == "__main__":

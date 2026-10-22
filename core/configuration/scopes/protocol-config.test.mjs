@@ -9,6 +9,7 @@ describe('protocols config', () => {
   it.each([
     [{ protocols: [] }],
     [{ protocols: [session, { ...session, type: 'Lock', steps: ['write'], reason: 'one owner' }] }],
+    [{ preset: 'python', protocols: [session] }],
   ])('accepts %j', (config) => {
     expect(validateConfig(config)).toEqual(config);
   });
@@ -28,8 +29,8 @@ describe('protocols config', () => {
     [{ protocols: [{ ...session, reason: 3 }] }, /"protocols\[0\].reason" must be a non-empty/],
     [{ protocols: [session, { ...session, close: ['end'] }] }, /"protocols\[1\].type" repeats/],
     [
-      { preset: 'python', protocols: [session] },
-      /"protocols" is not supported with "preset": "python"/,
+      { preset: 'java', protocols: [session] },
+      /"protocols" is not supported with "preset": "java"/,
     ],
   ])('rejects %j', (config, message) => {
     expect(() => validateConfig(config)).toThrow(message);
