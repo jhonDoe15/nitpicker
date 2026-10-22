@@ -5,6 +5,7 @@ import { pathInside } from '../../../shared/filesystem.mjs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { DUPLICATES_MODE } from '../../../shared/policy.mjs';
 import { RENAMED_SETTINGS, withNormalizedTree } from '../../../shared/renamed-clones/tree.mjs';
+import { trackTemporaryPath, untrackTemporaryPath } from '../temporary-files.mjs';
 import { resolveTool } from '../tool-resolution.mjs';
 import { rootsPattern } from './skipped-folders.mjs';
 
@@ -90,7 +91,13 @@ function runRenamedJscpd({ cwd, roots, renamed, reportFile, ignore, reportRoot, 
   const ignored = ignore.map((glob) => globMatcher(glob));
   const files = renamed.files.filter((file) => !ignored.some((pattern) => pattern.test(file)));
   const runs = withNormalizedTree(
-    { projectRoot: cwd, files, syntaxOf: () => renamed.syntax, scratchRoot: reportRoot },
+    {
+      projectRoot: cwd,
+      files,
+      syntaxOf: () => renamed.syntax,
+      scratchRoot: reportRoot,
+      temporaryPaths: { track: trackTemporaryPath, untrack: untrackTemporaryPath },
+    },
     ({ tree }) =>
       runGroups({
         ...tool,

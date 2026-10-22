@@ -2,11 +2,16 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { removeTrackedTemporaryPaths } from '../../core/tooling/temporary-files.mjs';
+import {
+  removeTrackedTemporaryPaths,
+  trackTemporaryPath,
+  untrackTemporaryPath,
+} from '../../core/tooling/temporary-files.mjs';
 import { sourceFilesUnder } from './files.mjs';
 import { withNormalizedTree } from './tree.mjs';
 
 const roots = [];
+const temporaryPaths = { track: trackTemporaryPath, untrack: untrackTemporaryPath };
 
 function project(files) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-renamed-tree-'));
@@ -41,6 +46,7 @@ describe('the normalized copy of a project', () => {
         files: Object.keys(files),
         syntaxOf: () => 'python',
         scratchRoot: path.join(root, 'reports'),
+        temporaryPaths,
       },
       ({ tree }) => {
         seen = {
@@ -63,6 +69,7 @@ describe('the normalized copy of a project', () => {
         files: ['src/gone.py', 'src/a.py', '../outside.py'],
         syntaxOf: () => 'python',
         scratchRoot: path.join(root, 'reports'),
+        temporaryPaths,
       },
       (directories) => {
         scratch = directories.scratch;
@@ -79,7 +86,13 @@ describe('the normalized copy of a project', () => {
 
     expect(() =>
       withNormalizedTree(
-        { projectRoot: root, files: [], syntaxOf: () => 'python', scratchRoot: root },
+        {
+          projectRoot: root,
+          files: [],
+          syntaxOf: () => 'python',
+          scratchRoot: root,
+          temporaryPaths,
+        },
         (directories) => {
           scratch = directories.scratch;
           throw new Error('jscpd failed');
@@ -95,7 +108,13 @@ describe('the normalized copy of a project', () => {
     let seen;
 
     withNormalizedTree(
-      { projectRoot: root, files: ['src/a.py'], syntaxOf: () => 'python', scratchRoot },
+      {
+        projectRoot: root,
+        files: ['src/a.py'],
+        syntaxOf: () => 'python',
+        scratchRoot,
+        temporaryPaths,
+      },
       ({ scratch }) => {
         const inside = path.dirname(scratch) === scratchRoot;
         removeTrackedTemporaryPaths();
