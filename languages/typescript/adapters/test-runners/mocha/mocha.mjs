@@ -13,6 +13,10 @@ import {
 } from '../test-run.mjs';
 import { loadFailureReport, reportFromMocha } from './mocha-report.mjs';
 import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
+
+const UNIQUE_FILES = path.join(import.meta.dirname, 'mocha-files.config.mjs');
 
 const OPTIONS_NITPICKER_SETS = {
   flags: ['--watch', '-w', '--forbid-only', '--bail', '-b'],
@@ -45,6 +49,7 @@ function mochaReport({ options, mochaReportPath, result, testFiles }) {
 export async function runMocha(options, command) {
   const testFiles = options.rerun?.files ?? runnableTestFiles(options);
   const mochaReportPath = temporaryProjectPath(options, 'mocha-output.json');
+  const testConsole = startTestConsole(options, { collectsLines: true });
   const coverage =
     options.rerun === undefined ? startV8Coverage(options, command) : uncoveredRun(command);
   try {
@@ -52,9 +57,12 @@ export async function runMocha(options, command) {
       options,
       relativeToolPath: 'mocha/bin/mocha.js',
       nodeArguments: [...coverage.nodeArguments, ...command.nodeArguments],
-      environment: coverage.environment,
+      environment: { ...coverage.environment, ...testConsole.environment },
       arguments_: [
         ...withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
+        '--require',
+        UNIQUE_FILES,
+        ...(testConsole.enabled ? ['--require', consoleProducerPath(options, 'mocha')] : []),
         '--reporter',
         'json',
         '--reporter-option',
@@ -65,6 +73,7 @@ export async function runMocha(options, command) {
         ...testFiles,
       ],
     });
+    testConsole.finish();
     const run = finishedRun({
       report: mochaReport({ options, mochaReportPath, result, testFiles }),
       result,
@@ -76,6 +85,7 @@ export async function runMocha(options, command) {
     return run;
   } finally {
     removeTemporary(mochaReportPath);
+    testConsole.remove();
     coverage.remove();
   }
 }
