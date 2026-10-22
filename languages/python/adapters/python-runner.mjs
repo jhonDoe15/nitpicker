@@ -45,6 +45,7 @@ function toolContext({ projectRoot, liveRoot, settings, policy, spawn }, reportR
     snapshot: policy?.snapshot,
     baselineRoot: policy?.baselineRoot,
     conventions: policy?.conventions,
+    layout: policy?.layout,
     policyRoot: policy?.policyRoot,
     toolPrecedence: policy?.toolPrecedence,
     pytestAddopts: process.env.PYTEST_ADDOPTS,
