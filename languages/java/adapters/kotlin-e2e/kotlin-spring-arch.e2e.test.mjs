@@ -10,6 +10,10 @@ const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixture = path.resolve(import.meta.dirname, '../fixtures/spring-arch-kotlin-project');
 
 const EXPECTED = [
+  'contract-infrastructure-type shop.accounts.AccountHandle feature|persistence|getSource:javax.sql.DataSource AccountService.kt',
+  'contract-infrastructure-type shop.accounts.AccountService service|persistence|rows:java.sql.ResultSet AccountService.kt',
+  'contract-infrastructure-type shop.accounts.AccountServiceKt feature|persistence|connect:java.sql.Connection AccountService.kt',
+  'contract-infrastructure-type shop.accounts.AccountServiceKt feature|persistence|connect:javax.sql.DataSource AccountService.kt',
   'spring-controller-entity shop.orders.OrderController all:shop.orders.Order OrderController.kt',
   'spring-controller-repository shop.customers.CustomerReport org.springframework.jdbc.core.JdbcTemplate CustomerReport.kt',
   'spring-controller-repository shop.orders.OrderController shop.orders.OrderRepository OrderController.kt',
@@ -52,7 +56,7 @@ describe.skipIf(!enabled)('Spring architecture rules on a Kotlin Spring project'
     }
   });
 
-  it('reports the Kotlin classes against their .kt files, and no file facade of top-level functions', () => {
+  it('reports the Kotlin classes against their .kt files, with type aliases resolved and data class accessors skipped', () => {
     const report = JSON.parse(
       readFileSync(path.join(projectRoot, 'build', 'nitpicker', 'spring-arch.json'), 'utf8'),
     );

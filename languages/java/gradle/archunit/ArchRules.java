@@ -28,6 +28,7 @@ public final class ArchRules {
       Layout.check(main, root, found);
     }
     Layers.check(main, found);
+    Contracts.check(main, root, found);
     TestRules.check(unitTests, otherTests, found);
     String json =
         "{\"root\":" + (root == null ? "null" : "\"" + root + "\"") + ",\"violations\":["
