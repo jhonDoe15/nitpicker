@@ -85,7 +85,7 @@ function writeArguments(
   return [file];
 }
 
-export function runErrorProne({ module, reportDir, tools, classpaths }) {
+export function runErrorProne({ module, reportDir, tools, classpaths, spawn }) {
   const report = path.join(reportDir, 'errorprone.json');
   const work = path.join(reportDir, 'errorprone');
   rmSync(work, { recursive: true, force: true });
@@ -122,7 +122,8 @@ export function runErrorProne({ module, reportDir, tools, classpaths }) {
     settings.compilerArgs.includes('--enable-preview'),
   );
   runJava({
-    java: errorProneJava({ preview }),
+    java: errorProneJava({ preview, spawn }),
+    spawn,
     tool: 'Error Prone',
     jvmArgs: JVM_FLAGS,
     args: [

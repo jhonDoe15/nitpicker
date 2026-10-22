@@ -21,7 +21,7 @@ export function jacocoExecFiles(module) {
   return [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
 }
 
-function runStructure(module, reportDir) {
+function runStructure(module, reportDir, spawn) {
   const roots = module.sourceRoots
     .filter((root) => existsSync(root))
     .map((root) => relativeTo(module.basedir, root));
@@ -36,16 +36,18 @@ function runStructure(module, reportDir) {
     ],
     cwd: module.basedir,
     accept: (result) => result.status === 0,
+    spawn,
   });
 }
 
-function runJdeps(module, reportDir) {
+function runJdeps(module, reportDir, spawn) {
   writeJdepsReports({
     command: javaCommand('jdeps'),
     cwd: module.basedir,
     mainDirectory: module.outputDirectory,
     testDirectory: module.testOutputDirectory,
     reportDir,
+    spawn,
   });
 }
 
@@ -83,33 +85,36 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
   return testsRan;
 }
 
-function runCoverage({ module, reportDir, tools, classpaths, pinned, since, testsRan, spring }) {
+function runCoverage(options) {
+  const { module, reportDir, tools, classpaths, pinned, since, testsRan, spring, spawn } = options;
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const execFiles = jacocoExecFiles(module);
-  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan });
-  runPit({ module, reportDir, tools, classpaths, isArchunit });
-  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring });
+  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, spawn });
+  runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
+  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, spawn });
 }
 
-function runSourceTools({ module, reportDir, tools, classpaths, configs, pinned, kotlin, style }) {
-  runPmd({ module, reportDir, tools, classpaths, configs, spring: kotlin.spring });
+function runSourceTools(options) {
+  const { module, reportDir, tools, classpaths, configs, pinned, kotlin, style, spawn } = options;
+  runPmd({ module, reportDir, tools, classpaths, configs, spring: kotlin.spring, spawn });
   runSpotbugs({
     module: kotlin.spotbugsModule,
     reportDir,
     tools,
     auxClasspath: kotlin.auxClasspath,
+    spawn,
   });
-  runErrorProne({ module, reportDir, tools, classpaths });
-  runFormat({ module, reportDir, tools, javaStyle: style.javaStyle });
-  runCheckstyle({ module, reportDir, tools, configs, pinned, style });
+  runErrorProne({ module, reportDir, tools, classpaths, spawn });
+  runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, spawn });
+  runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn });
 }
 
 function analyzeSources(options) {
   const { module, reportDir } = options;
   const kotlin = analyzeKotlinModule({ ...options, options: options.kotlinOptions });
   runSourceTools({ ...options, kotlin: { ...kotlin, spring: options.spring } });
-  runStructure(module, reportDir);
-  runJdeps(module, reportDir);
+  runStructure(module, reportDir, options.spawn);
+  runJdeps(module, reportDir, options.spawn);
   return kotlin;
 }
 

@@ -30,10 +30,10 @@ export function declaresSpring(projectRoot) {
   );
 }
 
-function effectivePomOf(projectRoot, maven) {
+function effectivePomOf(projectRoot, { maven, spawn }) {
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-head-pom-'));
   try {
-    return { text: readEffectivePom(projectRoot, maven, work) };
+    return { text: readEffectivePom({ projectRoot, maven, work, spawn }) };
   } catch (error) {
     return { failure: error.message };
   } finally {
@@ -41,10 +41,10 @@ function effectivePomOf(projectRoot, maven) {
   }
 }
 
-function kotlinFacts(projectRoot, config, { maven }) {
+function kotlinFacts(projectRoot, config, host) {
   const configured = config.kotlin?.formatter;
   const { text: effectivePom } =
-    detectJavaBuild(projectRoot) === 'maven' ? effectivePomOf(projectRoot, maven) : {};
+    detectJavaBuild(projectRoot) === 'maven' ? effectivePomOf(projectRoot, host) : {};
   return effectivePom === undefined
     ? { formatter: kotlinFormatterOf(projectRoot, configured) }
     : mavenKotlinFacts(projectRoot, configured, effectivePom);

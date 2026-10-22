@@ -37,6 +37,7 @@ function runKtlint({ module, reportDir, tools, options, files }) {
       mainClass: 'com.pinterest.ktlint.Main',
       args: ktlintArguments({ module, report, defaultsFile }),
       cwd,
+      spawn: options.spawn,
       accept: (result) => result.status <= KTLINT_FAILURE_CODE && existsSync(report),
     }),
   );
@@ -50,6 +51,7 @@ function ktfmtResult({ module, tools, options, files }) {
       mainClass: 'com.facebook.ktfmt.cli.Main',
       args: ktfmtArguments({ module, options, files }),
       cwd,
+      spawn: options.spawn,
       accept: (outcome) => outcome.status === 0 && !outcome.stderr.includes(KTFMT_ERROR),
     });
   }

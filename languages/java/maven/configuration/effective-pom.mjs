@@ -3,11 +3,12 @@ import path from 'node:path';
 import { runMaven } from '../maven-command.mjs';
 import { MAVEN_PLUGINS } from '../maven-tools.mjs';
 
-export function readEffectivePom(projectRoot, maven, work) {
+export function readEffectivePom({ projectRoot, maven, work, spawn }) {
   const output = path.join(work, 'effective-pom.xml');
   runMaven({
     projectRoot,
     maven,
+    spawn,
     args: ['--quiet', `${MAVEN_PLUGINS.help}:effective-pom`, `-Doutput=${output}`],
   });
   return readFileSync(output, 'utf8');
