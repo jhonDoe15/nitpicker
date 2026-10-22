@@ -42,9 +42,7 @@ describe('withWaitAdvice', () => {
       /^A fixed wait .* with Awaitility, which the project's tests use: /u,
     );
     expect(advised.message).toMatch(/not pollDelay\(\.\.\.\)\.until\(\(\) -> true\)/u);
-    expect(advised.message).toMatch(
-      /exception for pmd\/FixedSleepInTest in nitpicker\.config\.json\.$/u,
-    );
+    expect(advised.message).toMatch(/A sleep in a mock answer or a thread body is allowed\.$/u);
     expect(untouched).toBe(other);
   });
 

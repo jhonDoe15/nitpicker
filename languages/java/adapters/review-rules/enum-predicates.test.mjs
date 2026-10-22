@@ -158,4 +158,14 @@ describe('withProjectEnumPredicates', () => {
 
     expect(withProjectEnumPredicates([other], project({}))).toEqual([other]);
   });
+
+  it('keeps a finding of a Kotlin file, which the Kotlin reader has already resolved', () => {
+    const kotlin = {
+      ...finding(1, 1),
+      path: 'src/main/kotlin/shop/Orders.kt',
+      message: 'These comparisons list only some entries of Status.',
+    };
+
+    expect(withProjectEnumPredicates([kotlin], project({}))).toEqual([kotlin]);
+  });
 });

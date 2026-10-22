@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { escapeRegExp } from '../../../../shared/glob.mjs';
+import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 
 const TEST_FUNCTIONS = new Set(['it', 'test', 'specify', 'fit', 'xit', 'ftest', 'xtest']);
 const SUITE_FUNCTIONS = new Set(['describe', 'suite', 'context', 'fdescribe', 'xdescribe']);

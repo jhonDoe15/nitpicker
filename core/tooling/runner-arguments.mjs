@@ -1,10 +1,8 @@
 import { realpathSync } from 'node:fs';
 
-export const EXCEPTION_SEPARATOR = ':';
-
 const BASE_USAGE =
   ' --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
-  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
+  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <json>]... [--legacy-inventory <path>]' +
   ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>]';
 
 function usageOf(runner, choices, precedenceTools) {
@@ -16,11 +14,21 @@ function usageOf(runner, choices, precedenceTools) {
 }
 
 function parseException(value, usage) {
-  const separator = value.indexOf(EXCEPTION_SEPARATOR);
-  if (separator <= 0 || separator === value.length - 1) {
+  let entry;
+  try {
+    entry = JSON.parse(value);
+  } catch (error) {
+    throw new Error(usage, { cause: error });
+  }
+  const isValid =
+    typeof entry?.rule === 'string' &&
+    Array.isArray(entry.paths) &&
+    entry.paths.every((glob) => typeof glob === 'string') &&
+    (entry.function === undefined || typeof entry.function === 'string');
+  if (!isValid) {
     throw new Error(usage);
   }
-  return { rule: value.slice(0, separator), glob: value.slice(separator + 1) };
+  return entry;
 }
 
 function parseSkippedFolders(value) {
