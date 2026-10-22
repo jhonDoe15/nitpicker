@@ -1,4 +1,4 @@
-import { globToRegExp } from '../glob.mjs';
+import { globMatcher } from '../paths/glob.mjs';
 import { applyInventoryToFindings, readOptionalInventory } from '../legacy-inventory.mjs';
 import { evaluateBaselineExpansions } from '../rules/baseline-expansion.mjs';
 import { clonePartnerPath } from '../rules/duplicates.mjs';
@@ -33,8 +33,8 @@ export function applyFindingPolicy(
   } = {},
   resolveOverlaps = (reported) => reported,
 ) {
-  const excluders = exclude.map((glob) => globToRegExp(glob));
-  const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globToRegExp(glob) }));
+  const excluders = exclude.map((glob) => globMatcher(glob));
+  const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globMatcher(glob) }));
   const kept = resolveOverlaps(
     findings.filter(
       (finding) =>
