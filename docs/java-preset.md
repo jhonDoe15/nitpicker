@@ -452,11 +452,18 @@ classpath and its `test` task, and adds no test library to the project.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
-- **Tests.** `core/command/java/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`)
+- **Tests.** `core/command/java/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`),
   and with a fake `mvn` plus a fake JDK (`core/command/java/test-support/`), so it runs without Java:
   pass, new finding in text/JSON/SARIF/JUnit, build failure on head and on base, an exception entry,
-  missing binary, `--all`, the same cases for both builds. The real Gradle run stays behind `NITPICKER_JAVA_E2E=1`
-  (`npm run test:java`), unchanged.
+  missing binary, `--all`, the same cases for both builds. The Gradle fake runs in the test process: `runFakeGradle({ args, cwd })`
+  (`languages/java/adapters/test-support/fake-gradle/`) is a pure function, `fixtures/fake-gradle.mjs`
+  is the program that calls it, and `spawnFakeGradle` (`languages/java/adapters/test-support/in-process-gradle.mjs`),
+  passed as `spawn` through `analyzeJavaSnapshot` and `runGradle`, answers the supervisor call for the fake's
+  path, so no Node process starts per Gradle call. Output past `maxBuffer` is answered as `ENOBUFS` and an
+  exception of the fake as a failed run; the process-tree deadline is not modelled and stays covered by
+  `gradle-process.test.mjs`, and `subprocess: true` tests run the real supervisor. The fake Maven and JDK are
+  shell shims that start a Node process per call, because the Maven preset has no `spawn` option. The real Gradle run stays
+  behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`), unchanged.
 
 ## Slice 1: tools, reports and identities
 

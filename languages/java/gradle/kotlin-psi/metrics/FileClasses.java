@@ -35,8 +35,15 @@ public final class FileClasses {
         classes.add(prefix + facadeName);
       }
     }
+    List<String> imports = new ArrayList<>();
+    for (KtImportDirective directive : file.getImportDirectives()) {
+      if (directive.getImportedFqName() != null) {
+        imports.add(Json.quote(directive.getImportedFqName().asString() + (directive.isAllUnder() ? ".*" : "")));
+      }
+    }
     return "{\"file\":" + Json.quote(relative) + ",\"package\":" + Json.quote(packageName) + ",\"classes\":["
-        + classes.stream().map(Json::quote).collect(Collectors.joining(",")) + "]}";
+        + classes.stream().map(Json::quote).collect(Collectors.joining(",")) + "],\"imports\":["
+        + String.join(",", imports) + "]}";
   }
 
   private static boolean multifile(KtFile file) {
