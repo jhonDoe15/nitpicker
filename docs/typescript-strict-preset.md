@@ -593,7 +593,13 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `expectTypeOf(fn).parameter(0).not.toExtend<Value>()`, which counts as an assertion. Coverage and
   mutation ignore comments (`istanbul ignore`, `c8 ignore`, `v8 ignore`, `Stryker disable`) are
   suppressions too: `nitpicker/no-comments` reports them, and code that truly cannot be tested
-  gets a reviewed exception for that rule in `nitpicker.config.json`.
+  gets a reviewed exception for that rule in `nitpicker.config.json`. Even with that exception the
+  comments never take effect: the coverage run strips `istanbul`/`c8`/`v8 ignore` hints before it
+  measures, and a mutant a `Stryker disable` comment would hide is reported as an enforceable
+  `mutation/mutant-ignored` finding that asks for the comment to go. Code that must stay out of
+  mutation testing gets an `exceptions` entry for `mutant-ignored` with its paths instead.
+- Test files get the suppression half of that rule: `noInlineConfig` is on, and `eslint-disable`,
+  `@ts-*`, coverage and `Stryker` comments are reported. Ordinary comments stay allowed in tests.
 - A doc comment has to say something the name does not. `nitpicker/no-comments` reports a doc
   comment on an exported declaration or exported type member whose description only restates the
   name: it splits the name into words (camelCase, PascalCase, snake_case, kebab-case, digits),
@@ -816,6 +822,68 @@ hop, and type-only imports do not count.
   typescript-eslint's `no-explicit-any` and `no-non-null-assertion`. Like the other bans, these are
   strict rules: a finding on a line a change edits, or in a new test file, fails the run. An exception for
   `no-restricted-syntax` lifts all the syntax bans for those paths.
+- Weak assertions pass whatever the code returns, so `vitest/no-restricted-matchers` bans
+  `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `not.toBeNull` and `not.toBeUndefined` (also after
+  `.resolves`/`.rejects`): assert the value with `toBe` or `toEqual`. `vitest/prefer-called-with`
+  rejects a bare `toHaveBeenCalled()` (pass the arguments), `vitest/require-to-throw-message`
+  rejects `toThrow()` without a message or class, and `no-restricted-syntax` rejects a literal
+  subject (`expect(true)`). `nitpicker/no-partial-output-assertion` also rejects `toMatch` with a
+  string or a pattern that is not anchored `^...$`; an anchored pattern pins the whole value.
+- `nitpicker/no-shared-test-state`: no `let` with a value at module level or directly in a `describe`
+  callback. Keep the state in the test, or declare it without a value and set it in `beforeEach`.
+- `nitpicker/no-copy-pasted-tests`: three `it`/`test` calls in one block whose callbacks are the same
+  once literals are ignored are reported from the third on. Write one `it.each` table.
+- `nitpicker/fake-timers-require-restore`: a file that calls `vi.useFakeTimers()` needs
+  `vi.useRealTimers()` in `afterEach`/`afterAll` (`afterEach(vi.useRealTimers)` counts), in an
+  `onTestFinished` callback or in a `finally`. Otherwise the fake clock leaks into the next tests,
+  which then time out. With `@testing-library/user-event`, create the user with
+  `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })`. In a `*.test.*`/`*.spec.*` file the
+  rule does the same for `vi.stubGlobal` (restore with `vi.unstubAllGlobals()`) and `vi.stubEnv`
+  (`vi.unstubAllEnvs()`); a setup file may stub a global for every test, as jsdom setups do. A
+  project whose Vitest config sets `unstubGlobals: true` or `unstubEnvs: true` restores that kind of
+  stub itself, so it is not checked there: the flag is read as a literal from the root config, from
+  an inline `test.projects` entry (for the files under its `root`) and from the config of a path or
+  glob `test.projects` entry (for the files under that package).
+- `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
+  already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
+  A real condition such as `skipIf(process.platform === 'win32')` is allowed, and so is `it.fails`,
+  which runs and documents a known bug: it starts failing once the bug is fixed.
+- `slow-test` (coverage check, head only): an added or edited test fails above 5 s, or 30 s in an integration/e2e test folder. All supported runners share this policy. Suspected slow tests are rerun without coverage instrumentation, using the existing head policy's thresholds and reviewed exceptions; unchanged test calls do not add findings.
+- `nitpicker/no-real-time-random-or-network`: in tests, no `Date.now()`, `new Date()` without an
+  argument or `Math.random()` (fake the clock with `vi.useFakeTimers()` and `vi.setSystemTime`, or
+  spy on `Math.random`; either one anywhere in the file lifts the check), and in unit tests
+  (`__tests__/`, `<testRoot>/unit/` and `*.test.*` next to sources) no `fetch`, `http`/`https`
+  `request`/`get`, `net.connect` or `new WebSocket`. Inject the client instead.
+- `nitpicker/no-uncollected-tests`: a file in the test area that is not named `*.test.*` or `*.spec.*`
+  (or `*.test-d.*`/`*.spec-d.*`, Vitest's type tests) but defines `describe`/`it`/`test` at its top
+  level is never run by Vitest. Rename it. The structure check reports the same rule on the
+  `package.json` of a workspace package (npm, yarn or pnpm workspaces) that has test files but no
+  `test` script, when the root test config does not include it either: a root Vitest config's
+  `test.projects` (read as literals; a glob or a path to the package or its config counts), its
+  `test.include`, Jest's `projects`, or a root `test` script that runs Vitest or Jest itself. The
+  finding counts the package's test files and is held while the count does not grow, so a new
+  package or a new test file in such a package fails. Add a `test` script or a `projects` entry, or
+  add an exception for `nitpicker/no-uncollected-tests` with the package.json path.
+- `nitpicker/no-test-helpers-in-source`: a file under a source root that sits in a `testing/`,
+  `test-utils/`, `test-helpers/`, `test-support/`, `fixtures/` or `__mocks__/` folder, or is named
+  `test-utils`, `test-helpers`, `test-support` or `*.fixtures`, is a test helper. Placed in
+  production source it is mutation-tested and shipped. When the project has a test root on disk
+  (`layout.testRoots`, `test/` or `tests/` by default), move it under that root, for example
+  `test/test-support/`; a `test-support/` folder under a source root is reported too. When no test
+  root exists and the tests sit next to the code, a `test-support/` folder beside the code it
+  serves is the allowed place for test-only modules and is not reported; the other helper folders
+  and names are. The layout then counts those files as test code, so coverage, CRAP and mutation
+  leave them out.
+- `nitpicker/no-internal-module-mocks` also reports `vi.spyOn(namespace, ...)` on a namespace import
+  (`import * as domain`) of production code.
+- `nitpicker/no-production-imports-in-setup-files`: a file the project's Vitest or Vite config lists in
+  `setupFiles` or `globalSetup` may not import production code (a setup file runs before every test
+  file, so calls made there would count as covered). The setup files are read from the config text as
+  string literals, so a computed `setupFiles` value (built from a variable) is not checked. A test
+  may not mention `__stryker__`,
+  `STRYKER_*` or `activeMutant` either (`no-restricted-syntax`): behaviour that depends on the
+  mutation harness hides every mutant. For the same reason a test reads a global by its name
+  (`globalThis.name`), not by a computed key (`Reflect.get(globalThis, key)`, `globalThis[key]`).
 - `vitest/no-conditional-expect` (from the vitest recommended set) reports an `expect` inside a `catch` or a branch; the message adds that a test asserts a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)`.
 - `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
   inside a test body. Give each outcome its own `it.each` table row instead of branching on it.

@@ -76,7 +76,11 @@ export const NEGATIVE_CASES = [
       },
       {
         overlay: 'loosen-assertion',
-        outcome: 'shortcut',
+        outcome: 'gate-findings',
+        flaggedBy: {
+          analyzers: ['eslint-lint'],
+          finding: 'eslint-lint/vitest/no-restricted-matchers',
+        },
         expected: [{ category: 'weakened-tests', kind: 'weakened-assertion' }],
       },
       {

@@ -67,6 +67,14 @@ export const SHARED_EXCEPTION_RULES = [
   ...HYGIENE_EXCEPTION_RULES,
 ];
 
+export const TEST_RUN_EXCEPTION_RULES = [RULE_IDS.slowTest];
+
+export const MUTATION_EXCEPTION_RULES = [
+  'mutant-ignored',
+  RULE_IDS.mutantSurvived,
+  RULE_IDS.mutantNoCoverage,
+];
+
 /** `{exception}` is the `exceptions` entry that would lift the finding, as JSON. */
 export const EXCEPTION_HINT =
   'If this is intended, add {exception} to "exceptions" in nitpicker.config.json.';
