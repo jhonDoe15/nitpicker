@@ -31,6 +31,9 @@ node scripts/measure-shard-weights.mjs --blend self.json consumer.json generated
 # or measure any real project: --project <git root on a feature branch> --base main
 ```
 
+`--keep <dir>` builds the fixture in that folder instead of a temporary one and leaves it there for
+inspection.
+
 Fixtures:
 
 | Fixture     | What it is                                                                                                                                                                             |
