@@ -99,8 +99,7 @@ def review_findings(project):
     from review.project.unused_options import unused_option_findings
 
     options = project.options
-    trees = {path: context.tree for path, context in project.contexts.items()}
-    index = ProjectIndex(trees, options.get("modules", {}), project.test_files)
+    index = ProjectIndex(project)
     checks = {
         "forwarding-wrapper": lambda: forwarding_findings(index),
         "exhaustive-enum-predicate": lambda: enum_predicate_findings(index),
