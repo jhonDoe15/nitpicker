@@ -86,7 +86,11 @@ describe.skipIf(!enabled)('Spring architecture rules on Maven builds', () => {
     expect(
       fromMaven.violations.map(({ rule, className, detail }) => `${rule} ${className} ${detail}`),
     ).toEqual(SPRING_ARCH_VIOLATIONS);
-    expect([manifest.spring, manifest.springArch]).toEqual([true, true]);
+    expect([manifest.spring, manifest.springArch, manifest.runsFailsafe]).toEqual([
+      true,
+      true,
+      false,
+    ]);
     expect(
       findings
         .filter((finding) => finding.rule === 'spring-layout')

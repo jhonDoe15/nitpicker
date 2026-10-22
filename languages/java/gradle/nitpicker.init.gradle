@@ -637,6 +637,19 @@ allprojects {
                 def roots = mainSources.files.collect { relativeToRoot(it) }
                 def testRoots = testSourceDirectories().collect { relativeToRoot(it) }
                 def resourceRoots = sourceSets.main.resources.srcDirs.collect { relativeToRoot(it) }
+                def generatedRoot = layout.buildDirectory.get().asFile.toPath()
+                def sourceDirsOf = { set ->
+                    def languages = set instanceof ExtensionAware
+                        ? ['kotlin', 'groovy'].collect { set.extensions.findByName(it) } : []
+                    (set.allJava.srcDirs + languages.findAll { it instanceof SourceDirectorySet }
+                        .collectMany { it.srcDirs })
+                        .findAll { it.exists() && !it.toPath().startsWith(generatedRoot) }.unique()
+                }
+                def runTestClassDirs = tasks.withType(Test).findAll { it.name != 'nitpickerArchunit' }
+                    .collectMany { it.testClassesDirs.files }
+                def unrunTestSourceSets = testSourceSets()
+                    .findAll { set -> !set.output.classesDirs.files.any { runTestClassDirs.contains(it) } }
+                    .collect { set -> [name: set.name, roots: sourceDirsOf(set).collect { relativeToRoot(it) }] }
                 reportDir.get().file('manifest.json').asFile.text = groovy.json.JsonOutput.toJson([
                     versions       : pinned,
                     moduleKey      : moduleKey,
@@ -649,6 +662,7 @@ allprojects {
                     testGuava      : hasGuava(sourceSets.test),
                     testAwaitility : hasAwaitility(),
                     published      : project.extensions.findByName('publishing')?.publications?.isEmpty() == false,
+                    unrunTestSourceSets: unrunTestSourceSets,
                 ])
             }
         }

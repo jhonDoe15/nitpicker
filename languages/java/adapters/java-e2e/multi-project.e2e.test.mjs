@@ -90,6 +90,12 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
     expect(existsSync(path.join(root, 'app/build/classes/java/jmh'))).toBe(false);
   });
 
+  it('reports the tests of the integrationTest source set, which no test task runs', () => {
+    expect(located(findings, 'test-runtime', 'test-not-run')).toEqual([
+      'app/src/integrationTest/java/demo/app/GreeterFlowTest.java',
+    ]);
+  });
+
   it('times every test of the test task from its JUnit XML, under the module path', () => {
     expect(
       findings
