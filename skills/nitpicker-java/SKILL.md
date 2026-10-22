@@ -76,6 +76,8 @@ Before you change code other modules use, or fix a bug, read
   not both; one item is a one-element list.
 - A main class only tests use belongs in the test sources (`coupling/test-only-export`).
 - Resources: try-with-resources for anything `Closeable`. No `finally` that returns or throws.
+  Wait for a task that uses a resource inside its try block (`get()`/`join()`, or declare the executor as a later
+  resource); `pmd/TaskOutlivesTryResource` reports a task that can outlive the close.
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
   `*ArchitectureTest`); read them before importing across packages. A package must not depend on a

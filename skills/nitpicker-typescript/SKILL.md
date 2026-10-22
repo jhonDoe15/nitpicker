@@ -96,6 +96,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
+  Await every task that uses a `using` or `finally`-closed resource before its block ends (no `void` call,
+  timer callback or un-awaited async call on it): `nitpicker/no-task-outliving-resource`.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 
 ## Production rules

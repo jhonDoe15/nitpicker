@@ -427,14 +427,64 @@ declarations, across all modules of the build; a call that cannot be tied to one
 an unclear case is not flagged. A file nested deeper than even the large stack of that program allows is
 skipped with a note on stderr.
 
-| Rule id                                  | Where                                       | Flags                                                                                                                                                                  |
-| ---------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during` |
-| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                        |
-| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                           |
-| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                           |
-| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                   |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                               |
+| Rule id                                                 | Where                                           | Flags                                                                                                                                                                  |
+| ------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FixedSleepInTest`, `NegativeWaitInTest`                | `review-rules/tests/test-waits.mjs`             | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during` |
+| `StaticForwardingWrapper`                               | `review-rules/main/forwarding-wrappers.mjs`     | a function whose body only passes its parameters, in order, to another function                                                                                        |
+| `SingularAndPluralMember`                               | `review-rules/main/member-names.mjs`            | a member and its plural form (`tag` and `tags`) in one class                                                                                                           |
+| `SpringUnusedContext`                                   | `review-rules/tests/spring-context.mjs`         | a `@SpringBootTest` class that uses nothing from the context                                                                                                           |
+| `ExhaustiveEnumPredicate`                               | `review-rules/main/enum-predicates.mjs`         | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                   |
+| `unused-option` (tool `structure`)                      | `review-rules/main/unused-options.mjs`          | a defaulted parameter of a private or internal function or constructor that no call sets                                                                               |
+| `SuspendFunInFinallySection` (tool `kotlin-source`)     | `review-rules/coroutines/suspend-cleanup.mjs`   | a suspending call in a `finally` block, or in a `catch (CancellationException)` block, outside `withContext(NonCancellable)`                                           |
+| `ChildCoroutineOutlivesResource` (tool `kotlin-source`) | `review-rules/coroutines/resource-lifetime.mjs` | `launch` or `async` in an outer scope inside `x.use { }`, reading the resource, with no join in the block                                                              |
+
+Two of these rules, `SuspendFunInFinallySection` and `ChildCoroutineOutlivesResource`, are cancellation and
+lifetime rules for coroutines. They print the tool `kotlin-source`, so their exceptions name
+`kotlin-source/SuspendFunInFinallySection` and `kotlin-source/ChildCoroutineOutlivesResource`; they cover main and
+test sources of the Gradle Kotlin build (the Kotlin preset is Gradle only; a Maven project with a Kotlin module uses
+the Java preset, which does not read Kotlin sources, so there is nothing to apply there).
+
+- **`SuspendFunInFinallySection`** (detekt's rule of that name, built as an owned check). A suspending call in a
+  `finally` block, or in a `catch` of `CancellationException`, throws at once when the coroutine is cancelled, so the
+  rest of the cleanup is skipped and the resource stays open. Recognized without type resolution: `suspend`
+  functions declared in the same file (unqualified, through `this`, through a receiver whose declared type is a class
+  of the file, or a parameter or property of a `suspend` function type), the `kotlinx.coroutines` functions `delay`,
+  `yield`, `withContext`, `withTimeout`, `withTimeoutOrNull`, `coroutineScope`, `supervisorScope`,
+  `awaitCancellation`, `suspendCancellableCoroutine`, `suspendCoroutine` and, as extensions, `awaitAll`, `joinAll`,
+  `cancelAndJoin` and `Mutex.withLock`, each only when the file imports it from the package that defines it (an
+  alias counts, a same-named function of the file or another package does not), and the suspending members of a
+  receiver whose declared type or constructor call is `Job`, `Deferred`, `CompletableDeferred`, `Mutex`,
+  `Semaphore`, `Channel`, `SendChannel`, `ReceiveChannel`, `MutableSharedFlow`, `FlowCollector`, `Flow` or their
+  kin (`launch`/`async` results are typed `Job`/`Deferred`). `withContext` is reported only when its context is
+  built from `Dispatchers.*`, `CoroutineName(...)` and `EmptyCoroutineContext`; a context held in a variable could be
+  `NonCancellable`, so it is left alone. A call inside `withContext(NonCancellable) { ... }` (or any call with a
+  lambda and a `NonCancellable` argument, such as `launch(NonCancellable) { }`), or in a `try` that is itself inside
+  such a block, passes, and so does non-suspending cleanup. A `catch (CancellationException)` of a `try` that calls
+  `withTimeout` is skipped, because a timeout is a `CancellationException` that leaves the coroutine alive. Calls in
+  lambdas are read only for the inline scope functions (`let`, `run`, `also`, `apply`, `with`, `use`, `runCatching`,
+  `repeat`, `forEach`, `map`, `synchronized`, ...); a call in a `launch`, a stored lambda or a local function is not.
+  The message does not prescribe unbounded shielding: it asks for a non-suspending release, or
+  `withContext(NonCancellable) { withTimeout(5.seconds) { ... } }` around the release only, in the scope that opened
+  the resource.
+- **`ChildCoroutineOutlivesResource`** (Kotlin side of the lifetime rule). In `x.use { r -> ... }` a `launch` or
+  `async` whose lambda reads `r` (or `it`, or the name `use` was called on) and whose scope outlives the block: an
+  explicit receiver declared outside the block with type `CoroutineScope` (or `CoroutineScope(...)`/`MainScope()`, or
+  a class of the file that implements `CoroutineScope`), `GlobalScope`, or the implicit scope of an enclosing
+  coroutine builder, a class implementing `CoroutineScope` or a `CoroutineScope` extension function. It passes when the block
+  contains a `join`, `await`, `joinAll`, `awaitAll` or `cancelAndJoin`, when the launch sits in `coroutineScope`,
+  `supervisorScope`, `runBlocking`, `withContext` or `withTimeout` inside the block and uses their implicit scope,
+  when the scope is created inside the block, when the lambda does not read the resource, and when the resource is
+  opened inside the child (`scope.launch { x.use { } }`). Not modeled, so never reported: a scope of a type the file
+  cannot tie to `CoroutineScope`, `with(scope) { launch { } }`, a try/finally that closes a resource
+  (Kotlin's `use` is the form the preset asks for), and a job handed to another owner.
+
+**detekt version decision.** The preset pins detekt 1.23.8 (it embeds Kotlin 2.0.21 and runs on the Java 21 Gradle JVM the preset
+requires, with the project analysed as Kotlin 2.4.21). Upstream `SuspendFunInFinallySection` first appears in detekt 2.0.0-alpha.0 and is in every
+2.0 alpha; as of October 2026 the newest published build is `dev.detekt:detekt-cli:2.0.0-alpha.6` (Maven Central),
+there is no stable 2.0, the 1.23 catalog does not contain the rule, and the 2.0 rule needs the Kotlin Analysis API
+(type resolution) and a 2.4 Kotlin compiler (`kotlin-compiler:2.4.10`). An upgrade would change the group id, every rule id and the config
+schema, so it is not made for one rule; the owned check above is the equivalent without type resolution, and it
+does not depend on the detekt version. Revisit when a stable detekt 2 ships.
 
 Limits, all chosen to flag less rather than guess:
 
