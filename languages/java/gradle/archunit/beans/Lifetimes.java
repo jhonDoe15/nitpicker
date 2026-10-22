@@ -2,7 +2,6 @@ import com.tngtech.archunit.core.domain.JavaAnnotation;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaCodeUnit;
-import com.tngtech.archunit.core.domain.JavaEnumConstant;
 import com.tngtech.archunit.core.domain.JavaField;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaModifier;
@@ -86,9 +85,7 @@ final class Lifetimes {
         main.stream()
             .flatMap(type -> type.getAnnotations().stream())
             .filter(annotation -> annotation.getRawType().getName().equals(COMPONENT_SCAN))
-            .map(annotation -> annotation.get("scopedProxy"))
-            .map(mode -> mode.filter(JavaEnumConstant.class::isInstance).map(value -> ((JavaEnumConstant) value).name()))
-            .map(mode -> mode.orElse("DEFAULT"))
+            .map(annotation -> BeanScope.enumName(annotation.get("scopedProxy")))
             .filter(mode -> !mode.equals("DEFAULT"))
             .collect(Collectors.toSet());
     return modes.isEmpty() ? "NO" : modes.size() == 1 ? modes.iterator().next() : "DEFAULT";

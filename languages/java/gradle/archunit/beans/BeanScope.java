@@ -56,12 +56,15 @@ final class BeanScope {
     return value.isEmpty() ? (String) annotation.get("scopeName").orElse("") : value;
   }
 
+  static String enumName(Optional<Object> value) {
+    return value
+        .filter(JavaEnumConstant.class::isInstance)
+        .map(constant -> ((JavaEnumConstant) constant).name())
+        .orElse(UNRESOLVED_PROXY);
+  }
+
   private static String proxyMode(JavaAnnotation<?> annotation, String defaultProxy) {
-    String mode =
-        annotation.get("proxyMode")
-            .filter(JavaEnumConstant.class::isInstance)
-            .map(value -> ((JavaEnumConstant) value).name())
-            .orElse(UNRESOLVED_PROXY);
+    String mode = enumName(annotation.get("proxyMode"));
     return mode.equals(UNRESOLVED_PROXY) ? defaultProxy : mode;
   }
 

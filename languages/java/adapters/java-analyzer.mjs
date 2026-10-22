@@ -38,19 +38,21 @@ const RESOURCE_FILES = [
   'languages/java/messages/spotbugs.json',
 ];
 
-function javaSourcesUnder(directory) {
-  return readdirSync(path.join(packageRoot, directory), { recursive: true })
+function javaSources(directory, entries) {
+  return entries
     .filter((entry) => entry.endsWith('.java'))
     .map((entry) => `${directory}/${entry.replaceAll(path.sep, '/')}`);
 }
 
 function configurationContents() {
+  const kotlinPsi = readdirSync(path.join(packageRoot, KOTLIN_PSI_DIRECTORY), { recursive: true });
+  const archunit = readdirSync(path.join(packageRoot, ARCHUNIT_DIRECTORY), { recursive: true });
   return importClosure(
     [
       ...ENTRY_FILES,
       ...RESOURCE_FILES,
-      ...javaSourcesUnder(KOTLIN_PSI_DIRECTORY),
-      ...javaSourcesUnder(ARCHUNIT_DIRECTORY),
+      ...javaSources(KOTLIN_PSI_DIRECTORY, kotlinPsi),
+      ...javaSources(ARCHUNIT_DIRECTORY, archunit),
     ],
     packageRoot,
   );
