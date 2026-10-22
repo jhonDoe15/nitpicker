@@ -5,8 +5,7 @@ const FUNCTION_TYPES = new Set([
   'FunctionExpression',
   'ArrowFunctionExpression',
 ]);
-const EXCEPTION_ROUTE =
-  ' If the recursion is bounded and deliberate, add an exception for this rule in nitpicker.config.json.';
+const EXCEPTION_ROUTE = ' An exception fits only when the recursion is bounded and deliberate.';
 const DOMAIN_PATH = /(?:^|\/)features\/[^/]+\/domain\//;
 
 function boundFunction(definition) {

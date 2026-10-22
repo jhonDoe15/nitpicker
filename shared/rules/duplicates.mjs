@@ -40,21 +40,6 @@ function cloneMetrics({ analyzerName, sides, clone, pair, occurrence }) {
   return metrics;
 }
 
-const PAIR_END = /:(?:fragment|occurrence):/;
-
-export function clonePartnerPath(finding) {
-  const prefix = `pair:${finding.path}|`;
-  if (
-    !['duplicate-clone', 'duplicate-clone-size'].includes(finding.rule) ||
-    !finding.identity.startsWith(prefix)
-  ) {
-    return undefined;
-  }
-  const rest = finding.identity.slice(prefix.length);
-  const end = rest.search(PAIR_END);
-  return end < 0 ? undefined : rest.slice(0, end);
-}
-
 export function evaluateDuplicates(clones, analyzerName) {
   const findings = [];
   const occurrences = new Map();

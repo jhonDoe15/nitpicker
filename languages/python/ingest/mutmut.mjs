@@ -232,7 +232,7 @@ function withIdentities(mutants) {
   const counts = new Map();
   return mutants.map((mutant) => {
     const base = `${mutant.symbol}|${mutant.original ?? '?'}→${mutant.replacement ?? '?'}`;
-    const group = `${mutant.status}\0${base}`;
+    const group = `${mutant.status}\0${mutant.path}\0${base}`;
     const occurrence = (counts.get(group) ?? 0) + 1;
     counts.set(group, occurrence);
     return { ...mutant, identity: `${base}#${String(occurrence)}` };

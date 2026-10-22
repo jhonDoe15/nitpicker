@@ -1,17 +1,10 @@
-import { globToRegExp } from '../../../shared/glob.mjs';
+import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { isUnder, matcherOf } from '../policy-scope.mjs';
 import { duplicateFolderExclusions } from './duplicate-folders.mjs';
+import { globsCovering, subjectLabel, subjectsOf } from './exceptions/exception-scopes.mjs';
 
 const EXCLUSIONS = 'exclude and layout.excludedGlobs';
-
-export function exceptionPathsByRule(exceptions = []) {
-  const byRule = new Map();
-  for (const { rule, paths } of exceptions) {
-    byRule.set(rule, [...(byRule.get(rule) ?? []), ...paths]);
-  }
-  return byRule;
-}
 
 export function keyedExclusions(config) {
   const layout = resolveLayoutFor(config);
@@ -42,8 +35,8 @@ export function testRootReclassifier(config) {
 }
 
 function globSet(label, [baseGlobs, headGlobs], importable) {
-  const base = baseGlobs.map((glob) => globToRegExp(glob));
-  const head = headGlobs.map((glob) => globToRegExp(glob));
+  const base = baseGlobs.map((glob) => globMatcher(glob));
+  const head = headGlobs.map((glob) => globMatcher(glob));
   return {
     label,
     importable,
@@ -56,9 +49,12 @@ function globSet(label, [baseGlobs, headGlobs], importable) {
 }
 
 function exceptionSets(label, [baseExceptions, headExceptions]) {
-  const base = exceptionPathsByRule(baseExceptions);
-  return [...exceptionPathsByRule(headExceptions)].map(([rule, paths]) =>
-    globSet(`${label} for ${rule}`, [base.get(rule) ?? [], paths], false),
+  return subjectsOf(headExceptions).map((subject) =>
+    globSet(
+      `${label} for ${subjectLabel(subject)}`,
+      [globsCovering(baseExceptions, subject), subject.paths],
+      false,
+    ),
   );
 }
 

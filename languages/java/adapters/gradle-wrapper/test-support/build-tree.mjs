@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 function runBuildTree({ depth, exitOnTerm, output, stop }) {
@@ -14,7 +15,7 @@ function runBuildTree({ depth, exitOnTerm, output, stop }) {
   setInterval(() => {}, 1_000);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   runBuildTree({
     depth: Number(process.argv[2] ?? 0),
     exitOnTerm: process.argv[3] === 'exit',
