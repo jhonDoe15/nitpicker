@@ -175,6 +175,8 @@ nitpicker aggregate --input-root <dir> --shard-count <n>
           [--output <dir>] [--policy-root <dir>]
 nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>]
+nitpicker explain <tool/rule>...
+nitpicker rules [--preset <name>] [--tool <name>]
 ```
 
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
@@ -199,6 +201,29 @@ nitpicker cache publish [--analyzer <name>]...
 - `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
   cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
   everything was uploaded and 2 otherwise.
+- `nitpicker explain <tool/rule>...`: print what the [rule reference](rules/README.md) says about
+  each rule: the presets and analyzers that report it, why it is on, the allowed form and the
+  `nitpicker.config.json` entry that accepts it. Name a rule as a finding prints it
+  (`eslint-lint/no-undef`, `pmd/UnusedLocalVariable`) or by its bare name (`F401`). A name the
+  reference does not know is reported with the closest rules and exits 1.
+- `nitpicker rules [--preset <name>] [--tool <name>]`: list the rules, one line each. It lists the
+  preset of the project's `nitpicker.config.json` (`typescript` without a config) and leaves out the
+  rules of analyzers listed in `disable`; `--preset` lists another preset in full, and `--tool`
+  keeps one tool.
+
+### Rule reference
+
+[docs/rules](rules/README.md) has one entry for every rule that can fail the gate, for all presets:
+the tool and rule id, the presets that report it, why it is on, the allowed form and the exact
+`exceptions` entry that accepts it. The pages are generated from the rule catalogs with
+`npm run gen:rules`, and a test fails when they are stale. Report-only measurements and tool errors
+are not rules and have no entry.
+
+Each entry has a stable anchor, and the places that show a finding link to it: the SARIF report
+sets `helpUri` (and a `shortDescription`) on each rule it lists, `new-findings.json` carries an
+optional `helpUri` on each finding whose rule has an entry, and `report.txt` ends its new findings
+with a link to the reference. The links point at the `main` branch of the repository named in
+`package.json`.
 
 ### Findings cache
 

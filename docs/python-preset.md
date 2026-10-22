@@ -16,6 +16,8 @@ of doing each thing. That "one way" lives in the code and architecture rules (sl
 which tools a project uses, so the preset detects the tools a project already has (uv, poetry,
 pipenv, hatch, conda or a plain virtualenv; ruff or black; pytest, unittest, Django's `manage.py test` or nose2) and never makes adoption depend on switching.
 
+Every rule the preset can report has an entry in the [rule reference](rules/README.md): [ruff](rules/python-ruff.md), [nitpicker's own rules](rules/python-nitpicker.md) and [the type checkers and import contracts](rules/python-types.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
+
 ## How it works
 
 ```

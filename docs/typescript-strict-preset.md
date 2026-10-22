@@ -10,6 +10,8 @@ only in the nitpicker config file, where it changes the policy hash and appears 
 Existing code that violates a rule is baselined by the differential gate. New and touched code must
 comply.
 
+Every rule the preset can report has an entry in the [rule reference](rules/README.md): [nitpicker's ESLint rules](rules/typescript-nitpicker.md), [ESLint core and typescript-eslint](rules/typescript-eslint.md), [the plugin rules](rules/typescript-plugins.md) and [the static checks](rules/typescript-static.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
+
 The rules are modeled on publicly described "one paved road" conventions, such as Lauren Tan's talks
 on her Dune conventions: one allowed form per construct, repeated review feedback turned into lint
 rules, mechanically enforced boundaries, and exceptions handled as reviewed changes. No code is

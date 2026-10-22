@@ -9,6 +9,8 @@ findings, fail only on new enforceable findings. It is not a second implementati
 Gradle init script, the runner, the ingesters, the failure policy and the cache with the Java
 preset, and adds Kotlin tools next to the Java ones.
 
+Every rule the preset can report has an entry in the [rule reference](rules/README.md): [detekt](rules/kotlin-detekt.md), [the Kotlin source checks, compiler warnings and format checks](rules/kotlin-nitpicker.md), and the [Java rules](rules/java-pmd.md) that run on Java sources. `nitpicker explain <tool/rule>` prints an entry.
+
 ## Selection
 
 `"preset": "kotlin"` in `nitpicker.config.json`. Like `java`, it is explicit and never
