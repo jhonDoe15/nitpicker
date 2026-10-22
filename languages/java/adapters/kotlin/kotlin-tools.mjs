@@ -224,7 +224,9 @@ export function kotlinStyleFiles({ tools = {}, kotlin = {} }, policyRoot) {
     ['ktlint', 'ktfmt'].includes(formatter) && optedIn(toolPrecedence, formatter);
   return [
     ...(editorconfigs ? projectEditorconfigs(policyRoot).files : []),
-    ...(formatter === 'ktfmt' && editorconfigs ? existingInside(policyRoot, [...BUILD_FILES, POM]) : []),
+    ...(formatter === 'ktfmt' && editorconfigs
+      ? existingInside(policyRoot, [...BUILD_FILES, POM])
+      : []),
     ...(optedIn(toolPrecedence, 'detekt') ? existingInside(policyRoot, DETEKT_CONFIGS) : []),
     ...(kotlin.detektConfig === undefined ? [] : existingInside(policyRoot, [kotlin.detektConfig])),
   ];

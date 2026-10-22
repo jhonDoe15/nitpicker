@@ -5,12 +5,20 @@ export const FIXTURE = path.resolve(import.meta.dirname, '../../../fixtures/kotl
 
 const MARKER = /\/\/ violation: (.*)$/;
 
+function fixtureSource(sources, name) {
+  const full = path.resolve(sources, name);
+  if (!full.startsWith(sources + path.sep)) {
+    throw new Error(`Fixture source ${name} is outside ${sources}`);
+  }
+  return readFileSync(full, 'utf8');
+}
+
 export function markedViolations() {
   const sources = path.join(FIXTURE, 'src/main/kotlin/demo');
   return readdirSync(sources)
     .toSorted()
     .flatMap((name) =>
-      readFileSync(path.join(sources, name), 'utf8')
+      fixtureSource(sources, name)
         .split('\n')
         .flatMap((line, index) =>
           (MARKER.exec(line)?.[1].split(', ') ?? []).map(
@@ -43,7 +51,7 @@ const PROVIDED = [
 
 const ARCHUNIT = ['com.tngtech.archunit', 'archunit-junit5', '1.4.1'];
 
-export const GRADLE_BUILD = `plugins {
+const GRADLE_BUILD = `plugins {
     kotlin("jvm") version "2.4.21"
 }
 
@@ -67,7 +75,7 @@ function dependency([group, artifact, version], scope) {
   return `    <dependency><groupId>${group}</groupId><artifactId>${artifact}</artifactId><version>${version}</version>${scope === undefined ? '' : `<scope>${scope}</scope>`}</dependency>`;
 }
 
-export const MAVEN_POM = `<?xml version="1.0" encoding="UTF-8"?>
+const MAVEN_POM = `<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion>
   <groupId>demo</groupId>
@@ -110,7 +118,7 @@ ${dependency(ARCHUNIT, 'test')}
 </project>
 `;
 
-export const CLOCK = `package demo
+const CLOCK = `package demo
 
 import java.util.Date
 
@@ -119,7 +127,7 @@ class Clock {
 }
 `;
 
-export const CLOCK_TEST = `package demo
+const CLOCK_TEST = `package demo
 
 import kotlin.test.Test
 import kotlin.test.assertNotNull
@@ -132,7 +140,7 @@ class ClockTest {
 }
 `;
 
-export const ARCHITECTURE_TEST = `package demo
+const ARCHITECTURE_TEST = `package demo
 
 import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.junit.AnalyzeClasses
@@ -149,7 +157,7 @@ class ArchitectureTest {
 }
 `;
 
-export const APPLICATION_PROPERTIES = 'spring.jpa.hibernate.ddl-auto=create\n';
+const APPLICATION_PROPERTIES = 'spring.jpa.hibernate.ddl-auto=create\n';
 
 export function writeKotlinSpringProject(root, build) {
   cpSync(path.join(FIXTURE, 'src'), path.join(root, 'src'), { recursive: true });

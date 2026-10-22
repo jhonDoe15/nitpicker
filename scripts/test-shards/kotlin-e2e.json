@@ -9,9 +9,17 @@
   "languages/java/adapters/kotlin-e2e/lint/kotlin-preset-lint-detekt-config.e2e.test.mjs": 113,
   "languages/java/adapters/kotlin-e2e/lint/kotlin-preset-lint-formatters.e2e.test.mjs": 110,
   "languages/java/adapters/kotlin-e2e/lint/kotlin-preset-lint-java.e2e.test.mjs": 114,
+  "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-coverage.e2e.test.mjs": 240,
+  "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-lint.e2e.test.mjs": 270,
+  "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-one-way-rules.e2e.test.mjs": 150,
+  "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-test-sources.e2e.test.mjs": 120,
+  "languages/java/adapters/kotlin-e2e/maven/project/kotlin-maven-build-config.e2e.test.mjs": 140,
+  "languages/java/adapters/kotlin-e2e/maven/project/kotlin-maven-modules.e2e.test.mjs": 200,
+  "languages/java/adapters/kotlin-e2e/maven/project/kotlin-maven-spring.e2e.test.mjs": 120,
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-allowed.e2e.test.mjs": 81,
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-banned.e2e.test.mjs": 128,
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-hostile-config.e2e.test.mjs": 81,
+  "languages/java/adapters/kotlin-e2e/spring/kotlin-spring.e2e.test.mjs": 90,
   "languages/java/adapters/kotlin-e2e/test-sources/kotlin-test-sources.e2e.test.mjs": 94,
   "languages/java/adapters/kotlin-metrics.e2e.test.mjs": 14
 }

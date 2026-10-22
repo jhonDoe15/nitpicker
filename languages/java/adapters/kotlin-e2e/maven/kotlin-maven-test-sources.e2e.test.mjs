@@ -5,18 +5,21 @@ import {
   LEGACY_TEST_MOVED,
   SHOUTING_TEST,
   SUPPRESSED_TEST,
-} from '../../../adapters/kotlin-e2e/test-sources/test-support/test-sources.mjs';
+} from '../test-sources/test-support/test-sources.mjs';
 import {
   commitBranch,
   git,
   initializeMavenProject,
   kotlinE2eEnabled,
   kotlinPolicy,
-  mavenDiffOf,
+  mavenDiffRunner,
   removeProject,
   summarize,
   writeAll,
 } from './test-support/kotlin-maven-project.mjs';
+
+const maven = process.env.NITPICKER_MAVEN;
+const mavenDiffOf = mavenDiffRunner(maven);
 
 const TESTS = 'src/test/kotlin/demo';
 

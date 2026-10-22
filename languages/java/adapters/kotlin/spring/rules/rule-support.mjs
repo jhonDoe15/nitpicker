@@ -1,15 +1,19 @@
 import { argumentValue } from '../syntax/kotlin-annotations.mjs';
 
-function classSymbol(declaration) {
+export function classSymbolOf(declaration) {
   const parts = [];
-  for (let current = declaration; current !== undefined; current = current.parent) {
+  const pending = [declaration];
+  for (const current of pending) {
     parts.unshift(current.name);
+    if (current.parent !== undefined) {
+      pending.push(current.parent);
+    }
   }
   return parts.join('.');
 }
 
 function ownerSymbol(owner) {
-  return owner === undefined ? '' : `${classSymbol(owner)}.`;
+  return owner === undefined ? '' : `${classSymbolOf(owner)}.`;
 }
 
 function parameterSites(file, parameters, scope) {
@@ -38,12 +42,12 @@ function sitesOf(file, kind, { declarations, symbolOf }) {
   );
 }
 
-export function annotationSites(file) {
+function annotationSites(file) {
   const constructors = file.classes.flatMap((declaration) =>
     declaration.constructors.map((constructed) => ({ ...constructed, owner: declaration })),
   );
   return [
-    ...sitesOf(file, 'class', { declarations: file.classes, symbolOf: classSymbol }),
+    ...sitesOf(file, 'class', { declarations: file.classes, symbolOf: classSymbolOf }),
     ...sitesOf(file, 'property', {
       declarations: file.properties.filter((property) => !property.fromConstructor),
       symbolOf: (property) => `${ownerSymbol(property.owner)}${property.name}`,
@@ -54,7 +58,7 @@ export function annotationSites(file) {
     }),
     ...sitesOf(file, 'constructor', {
       declarations: constructors,
-      symbolOf: (constructed) => `${classSymbol(constructed.owner)}.<init>`,
+      symbolOf: (constructed) => `${classSymbolOf(constructed.owner)}.<init>`,
     }),
     ...file.functions.flatMap((declaration) =>
       parameterSites(file, declaration.params, {
@@ -65,13 +69,13 @@ export function annotationSites(file) {
     ...constructors.flatMap((constructed) =>
       parameterSites(file, constructed.params, {
         owner: constructed.owner,
-        symbol: `${classSymbol(constructed.owner)}.<init>`,
+        symbol: `${classSymbolOf(constructed.owner)}.<init>`,
       }),
     ),
   ];
 }
 
-export function isAnnotation(site, names) {
+function isAnnotation(site, names) {
   return site.file.resolver.matches(site.annotation.name, names);
 }
 
@@ -95,7 +99,7 @@ export function hitAt(site) {
   return { node: site.annotation.node, symbol: `${site.symbol}@${site.annotation.name}` };
 }
 
-export function argumentText(annotation, name) {
+function argumentText(annotation, name) {
   return argumentValue(annotation, name)?.text;
 }
 
@@ -106,10 +110,6 @@ export function argumentMatches(annotation, name, pattern) {
 
 export function isTrueArgument(annotation, name) {
   return argumentText(annotation, name) === 'true';
-}
-
-export function classSymbolOf(declaration) {
-  return classSymbol(declaration);
 }
 
 export function defineRule(name, text, check) {
@@ -125,9 +125,13 @@ export function hitOn(node, symbol) {
 }
 
 export function isWithin(declaration, ancestor) {
-  for (let current = declaration; current !== undefined; current = current.parent) {
+  const pending = [declaration];
+  for (const current of pending) {
     if (current === ancestor) {
       return true;
+    }
+    if (current.parent !== undefined) {
+      pending.push(current.parent);
     }
   }
   return false;
@@ -141,5 +145,5 @@ export function symbolAround(declaration, node) {
   const inside = declaration.functions.find(
     (member) => member.node.s <= node.s && node.e <= member.node.e,
   );
-  return inside === undefined ? classSymbol(declaration) : memberSymbolOf(inside);
+  return inside === undefined ? classSymbolOf(declaration) : memberSymbolOf(inside);
 }

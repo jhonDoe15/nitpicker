@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
 import { withoutImportOnlyClones } from '../../../../core/tooling/jscpd/import-only.mjs';
@@ -27,6 +27,7 @@ export function runJavaDuplicates(
   const roots = (manifest[rootsKey] ?? []).filter((root) =>
     existsSync(path.join(projectRoot, root)),
   );
+  mkdirSync(reportRoot, { recursive: true });
   runJscpd({
     cwd: projectRoot,
     roots,

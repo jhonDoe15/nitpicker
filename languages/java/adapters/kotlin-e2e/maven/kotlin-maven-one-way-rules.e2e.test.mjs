@@ -1,31 +1,33 @@
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { runJavaDiff } from '../../../adapters/java-diff.mjs';
+import { runJavaDiff } from '../../java-diff.mjs';
 import {
   EXTRA_SOURCES,
   HOSTILE_DETEKT_CONFIG,
   ruleFixtures,
-} from '../../../adapters/kotlin-e2e/test-support/kotlin-one-way-data.mjs';
+} from '../test-support/kotlin-one-way-data.mjs';
 import {
   expectedMessage,
   fixturePath,
   kotlinRuleCases,
-} from '../../../adapters/kotlin/rules/test-support/kotlin-rule-cases.mjs';
-import { SUPPRESSION_RULE, addOneWayHint } from '../../../adapters/kotlin/rules/kotlin-rules.mjs';
+} from '../../kotlin/rules/test-support/kotlin-rule-cases.mjs';
+import { SUPPRESSION_RULE, addOneWayHint } from '../../kotlin/rules/kotlin-rules.mjs';
 import {
   commitBranch,
   detektFindingsOf,
-  mavenDiffOf,
   fromTool,
   git,
   initializeMavenProject,
-  maven,
+  kotlinE2eEnabled,
   kotlinPolicy,
   kotlinPolicyWithProjectDetekt,
-  kotlinE2eEnabled,
+  mavenDiffRunner,
   removeProject,
   summarize,
 } from './test-support/kotlin-maven-project.mjs';
+
+const maven = process.env.NITPICKER_MAVEN;
+const mavenDiffOf = mavenDiffRunner(maven);
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: one-way rules', () => {
   let project;

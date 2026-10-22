@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { copyJavaClasses } from './kotlin-classes.mjs';
 import { runDetekt } from './tools/kotlin-detekt.mjs';
-import { relativeTo } from './tools/kotlin-files.mjs';
+import { relativeRoots } from './tools/kotlin-files.mjs';
 import { runKotlinFormatter } from './tools/kotlin-format.mjs';
 import { runKotlinMetrics, runKotlinSyntax } from './tools/kotlin-programs.mjs';
 
@@ -10,10 +10,6 @@ const JAVA_TEST_CLASSES = 'java-test-classes';
 
 export function isKotlinModule(module) {
   return module.kotlin !== undefined;
-}
-
-function relativeRoots(module, roots) {
-  return roots.map((root) => relativeTo(module.basedir, root));
 }
 
 function kotlinManifest(module, options) {

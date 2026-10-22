@@ -5,32 +5,33 @@ import { isKotlinModule } from './kotlin-module.mjs';
 import { writeDetektLists } from '../../adapters/kotlin/detekt/detekt-lists.mjs';
 import { kotlinStyleFile, resolveKotlinTools } from '../../adapters/kotlin/kotlin-tools.mjs';
 import { kotlinFormatAdvice } from '../../adapters/kotlin/style/kotlin-format-advice.mjs';
-import {
-  detektConventionLayer,
-  detektLayers,
-} from '../../adapters/kotlin/style/kotlin-style-files.mjs';
+import { detektLayers } from '../../adapters/kotlin/style/kotlin-style-files.mjs';
 
 const LISTS_FILE = 'detekt-lists.yml';
-const CONVENTIONS_FILE = 'followed-conventions.yml';
+const LAYER_FILES = {
+  conventions: 'followed-conventions.yml',
+  enforced: 'enforced-conventions.yml',
+};
 const NO_KOTLIN = { extraTools: [], options: undefined };
 
-function detektSettings({ tools, conventions, configRoot, work }) {
+function detektSettings({ tools, style, configRoot, work }) {
   const projectConfig =
     tools.detektConfig === undefined ? undefined : path.join(configRoot, tools.detektConfig);
-  const conventionLayer = detektConventionLayer(conventions, {
-    nitpickerFirst: tools.detektNitpickerFirst,
-  });
+  const layerTexts = { conventions: style.detektConventions, enforced: style.detektEnforced };
   const layers = detektLayers({
-    conventionLayer,
+    conventionLayer: layerTexts.conventions,
+    enforcedLayer: layerTexts.enforced,
     projectConfig,
     nitpickerFirst: tools.detektNitpickerFirst,
   });
   mkdirSync(work, { recursive: true });
-  const conventionsFile = path.join(work, CONVENTIONS_FILE);
-  if (conventionLayer !== undefined) {
-    writeFileSync(conventionsFile, conventionLayer);
+  const files = { project: projectConfig };
+  for (const [name, text] of Object.entries(layerTexts)) {
+    if (text !== undefined) {
+      files[name] = path.join(work, LAYER_FILES[name]);
+      writeFileSync(files[name], text);
+    }
   }
-  const files = { conventions: conventionsFile, project: projectConfig };
   return {
     detektLayers: layers.map((name) => files[name]),
     detektLists:
@@ -51,14 +52,16 @@ function resolveKotlinOptions({ projectRoot, policy, effectivePom, work }) {
     toolPrecedence: policy.toolPrecedence,
     effectivePom,
   });
+  const style = kotlinStyleFile(tools, conventions) ?? {};
   return {
     projectRoot,
     formatter: tools.formatter,
     ktfmtStyle: tools.ktfmtStyle,
+    ktfmtMaxWidth: tools.ktfmtMaxWidth,
     ktfmtEditorconfig: tools.ktfmtEditorconfig === true,
-    style: kotlinStyleFile(tools, conventions) ?? {},
+    style,
     advice: kotlinFormatAdvice(tools),
-    ...detektSettings({ tools, conventions, configRoot: policy.policyRoot ?? projectRoot, work }),
+    ...detektSettings({ tools, style, configRoot: policy.policyRoot ?? projectRoot, work }),
   };
 }
 

@@ -6,7 +6,7 @@ import { repositoryTypesOf } from './project-types.mjs';
 import { KOTLIN_SPRING_RULES } from './spring-rules.mjs';
 import { lineOf } from './syntax/kotlin-tree.mjs';
 
-export const SYNTAX_REPORT = 'kotlin-syntax.json';
+const SYNTAX_REPORT = 'kotlin-syntax.json';
 
 function findingOf({ file, rule, hit, occurrences }) {
   const key = `${file.source.file}\0${rule.name}\0${hit.symbol}`;
@@ -26,7 +26,7 @@ function findingOf({ file, rule, hit, occurrences }) {
   };
 }
 
-export function springFindingsOf(files) {
+function springFindingsOf(files) {
   const project = { repositoryTypes: repositoryTypesOf(files) };
   const occurrences = new Map();
   return files.flatMap((file) =>
@@ -34,6 +34,15 @@ export function springFindingsOf(files) {
       rule.check(file, project).map((hit) => findingOf({ file, rule, hit, occurrences })),
     ),
   );
+}
+
+function sourceTextOf(projectRoot, file) {
+  const base = path.resolve(projectRoot);
+  const full = path.resolve(base, file);
+  if (!full.startsWith(base + path.sep)) {
+    throw new Error(`Kotlin syntax report names ${file}, which is outside the project`);
+  }
+  return readFileSync(full, 'utf8');
 }
 
 export function readKotlinSpringFindings({ projectRoot, reportRoot }) {
@@ -44,7 +53,7 @@ export function readKotlinSpringFindings({ projectRoot, reportRoot }) {
   const { files } = JSON.parse(readFileSync(report, 'utf8'));
   return springFindingsOf(
     files.map(({ file, tree }) =>
-      readKotlinFile({ file, tree, text: readFileSync(path.join(projectRoot, file), 'utf8') }),
+      readKotlinFile({ file, tree, text: sourceTextOf(projectRoot, file) }),
     ),
   );
 }

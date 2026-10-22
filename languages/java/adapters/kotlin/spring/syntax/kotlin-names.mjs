@@ -28,13 +28,13 @@ export function createResolver({ imports, packageName }) {
   );
   const stars = imports.filter(({ star }) => star).map(({ star }) => star);
   const locals = [packageName, ...stars, ...DEFAULT_PACKAGES].filter((value) => value !== '');
-  const candidates = (written) => {
+  function candidates(written) {
     const [head, ...rest] = written.split('.');
     if (explicit.has(head)) {
       return [[explicit.get(head), ...rest].join('.')];
     }
     return rest.length > 0 ? [written] : locals.map((prefix) => `${prefix}.${written}`);
-  };
+  }
   return {
     candidates,
     matches: (written, names) => candidates(written).some((candidate) => names.has(candidate)),

@@ -16,7 +16,9 @@ function utf8(text) {
 
 function u16(...values) {
   const buffer = Buffer.alloc(2 * values.length);
-  values.forEach((value, index) => buffer.writeUInt16BE(value, 2 * index));
+  for (const [index, value] of values.entries()) {
+    buffer.writeUInt16BE(value, 2 * index);
+  }
   return buffer;
 }
 
@@ -77,10 +79,11 @@ describe('sourceFileOf', () => {
 });
 
 describe('copyJavaClasses', () => {
-  it('copies only the classes compiled from Java sources, keeping their directories', () => {
+  it('copies the classes compiled from Java sources, with or without debug information, keeping their directories', () => {
     const root = tree({
       'classes/demo/Bridge.class': classFile({ sourceFile: 'Bridge.java' }),
       'classes/demo/Bridge$Inner.class': classFile({ sourceFile: 'Bridge.java' }),
+      'classes/demo/Plain.class': classFile({}),
       'classes/demo/Greeter.class': classFile({ sourceFile: 'Greeter.kt' }),
       'classes/demo/notes.txt': 'text',
     });
@@ -91,11 +94,24 @@ describe('copyJavaClasses', () => {
     expect(copied.map((file) => path.relative(path.join(root, 'classes'), file)).sort()).toEqual([
       'demo/Bridge$Inner.class',
       'demo/Bridge.class',
+      'demo/Plain.class',
     ]);
     expect(readdirSync(path.join(target, 'demo')).sort()).toEqual([
       'Bridge$Inner.class',
       'Bridge.class',
+      'Plain.class',
     ]);
+  });
+
+  it('names the class file it cannot read', () => {
+    const broken = classFile({ sourceFile: 'Broken.java' });
+    broken[10] = 99;
+    const root = tree({ 'classes/demo/Broken.class': broken });
+    const file = path.join(root, 'classes/demo/Broken.class');
+
+    expect(() => copyJavaClasses(path.join(root, 'classes'), path.join(root, 'out'))).toThrow(
+      new Error(`nitpicker cannot read the class file ${file}: unknown constant pool tag 99`),
+    );
   });
 
   it('leaves nothing behind for a missing class directory', () => {

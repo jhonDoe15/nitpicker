@@ -1,8 +1,8 @@
 const FAT_JAR = ['*'];
 
-export const KOTLIN_COMPILER_TOOL = 'kotlin-compiler';
-export const DETEKT_TOOL = 'detekt';
-export const DETEKT_STDLIB_TOOL = 'detekt-stdlib';
+const KOTLIN_COMPILER_TOOL = 'kotlin-compiler';
+const DETEKT_TOOL = 'detekt';
+const DETEKT_STDLIB_TOOL = 'detekt-stdlib';
 
 const FORMATTER_TOOLS = {
   ktlint: (pinned) => ({

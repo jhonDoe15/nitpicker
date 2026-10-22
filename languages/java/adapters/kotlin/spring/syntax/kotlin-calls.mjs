@@ -3,17 +3,10 @@ import { kid, kids, textOf } from './kotlin-tree.mjs';
 const QUALIFIED = new Set(['DOT_QUALIFIED_EXPRESSION', 'SAFE_ACCESS_EXPRESSION']);
 
 export function walk(root) {
-  const nodes = [];
-  const pending = [{ node: root, ancestors: [] }];
-  while (pending.length > 0) {
-    const { node, ancestors } = pending.pop();
-    nodes.push({ node, ancestors });
+  const nodes = [{ node: root, ancestors: [] }];
+  for (const [index, { node, ancestors }] of nodes.entries()) {
     const next = [...ancestors, node];
-    pending.push(
-      ...kids(node)
-        .toReversed()
-        .map((child) => ({ node: child, ancestors: next })),
-    );
+    nodes.splice(index + 1, 0, ...kids(node).map((child) => ({ node: child, ancestors: next })));
   }
   return nodes;
 }

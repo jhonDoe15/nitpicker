@@ -23,7 +23,7 @@ import { failingTestsOf } from './gradle-reports/failing-tests.mjs';
 import { runMavenPreset } from '../maven/maven-build.mjs';
 import { MAVEN_REPORT_DIRECTORY } from '../maven/module/maven-module.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
-import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
+import { mergedRoots, readModuleFindings } from '../builds/java-modules.mjs';
 import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
@@ -177,13 +177,15 @@ function mavenFindings(projectRoot, options) {
     policy: options.policy,
     configs: toolConfigChoices(projectRoot, options.policy),
   });
-  for (const moduleDir of moduleDirs) {
-    const { reportBase, report } = moduleReport(moduleDir, MAVEN_REPORT_DIRECTORY);
-    runJavaDuplicates(moduleDir, {
-      reportRoot: reportBase,
-      manifest: report.manifest,
-      skippedFolders: options.policy?.duplicateSkippedFolders,
-    });
+  const preset = options.policy?.preset ?? 'java';
+  const duplicates = {
+    reportRoot: path.join(projectRoot, MAVEN_REPORT_DIRECTORY),
+    manifest: mergedRoots(projectRoot, moduleDirs, MAVEN_REPORT_DIRECTORY),
+    skippedFolders: options.policy?.duplicateSkippedFolders,
+  };
+  runJavaDuplicates(projectRoot, duplicates);
+  if (preset === 'kotlin') {
+    runKotlinDuplicates(projectRoot, duplicates);
   }
   return readModuleFindings(projectRoot, moduleDirs, {
     ...readOptions(options.policy),

@@ -1,10 +1,10 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readPinnedTools } from '../../../builds/java-build.mjs';
 import { toolDependencies } from '../../maven-tools.mjs';
-import { detektArguments, detektClasspath } from './kotlin-detekt.mjs';
+import { detektArguments, detektClasspath, jdkHome } from './kotlin-detekt.mjs';
 import { kotlinTools } from './kotlin-dependencies.mjs';
 import { ktfmtArguments, ktlintArguments } from './kotlin-format.mjs';
 import { programArguments } from './kotlin-programs.mjs';
@@ -70,11 +70,11 @@ describe('detekt arguments', () => {
     ]);
   });
 
-  it('runs on the nitpicker config alone when the project has none, and without a JDK home when unknown', () => {
+  it('runs on the nitpicker config alone when the project has none', () => {
     const detekt = path.resolve(import.meta.dirname, '../../../detekt');
 
     expect(
-      detektArguments({ module, report: 'r.sarif', options: {}, classpath: [], home: undefined }),
+      detektArguments({ module, report: 'r.sarif', options: {}, classpath: [], home: '/jdk' }),
     ).toEqual([
       ...['--input', '/work/app/src/main/java,/work/app/src/main/kotlin,/work/app/src/test/kotlin'],
       ...['--includes', '**/*.kt'],
@@ -83,6 +83,7 @@ describe('detekt arguments', () => {
       '--build-upon-default-config',
       ...['--config', `${detekt}/nitpicker-detekt.yml,${detekt}/detekt-validation.yml`],
       ...['--classpath', ''],
+      ...['--jdk-home', '/jdk'],
     ]);
   });
 
@@ -158,6 +159,13 @@ describe('formatter and metrics arguments', () => {
     expect(
       ktfmtArguments({ module, options: { ktfmtStyle: 'meta', ktfmtEditorconfig: false }, files }),
     ).toEqual(['--meta-style', '--dry-run', 'src/main/kotlin/A.kt']);
+    expect(
+      ktfmtArguments({
+        module,
+        options: { ktfmtStyle: 'meta', ktfmtMaxWidth: 120, ktfmtEditorconfig: false },
+        files,
+      }),
+    ).toEqual(['--meta-style', '--dry-run', '--max-width=120', 'src/main/kotlin/A.kt']);
   });
 
   it('runs a PSI program on the module, with the roots relative to it', () => {
@@ -225,5 +233,46 @@ describe('Kotlin tools', () => {
       'detekt',
       'detekt-stdlib',
     ]);
+  });
+});
+
+describe('the JDK detekt resolves types against', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  function toolchainHome() {
+    const home = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-jdk-'));
+    roots.push(home);
+    mkdirSync(path.join(home, '.m2'));
+    writeFileSync(
+      path.join(home, '.m2', 'toolchains.xml'),
+      '<toolchains><toolchain><type>jdk</type><provides><version>17</version></provides><configuration><jdkHome>/jdks/17</jdkHome></configuration></toolchain></toolchains>',
+    );
+    return home;
+  }
+
+  function runningJdk() {
+    const home = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-running-jdk-'));
+    roots.push(home);
+    mkdirSync(path.join(home, 'bin'));
+    writeFileSync(
+      path.join(home, 'bin', 'java'),
+      '#!/bin/sh\necho "    java.home = /running/jdk" >&2\n',
+      { mode: 0o755 },
+    );
+    return home;
+  }
+
+  it('is the toolchain the build selects', () => {
+    expect(jdkHome({ jdkToolchain: { version: '17' } }, { home: toolchainHome() })).toBe(
+      '/jdks/17',
+    );
+  });
+
+  it('is the JDK the build runs on when no toolchain is selected', () => {
+    vi.stubEnv('JAVA_HOME', runningJdk());
+
+    expect(jdkHome({})).toBe('/running/jdk');
   });
 });

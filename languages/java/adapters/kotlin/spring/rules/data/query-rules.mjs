@@ -40,9 +40,12 @@ const BASE_METHODS = new Set([
 ]);
 
 function isSuppressed(site, rule) {
-  const declarations = [];
-  for (let current = site.decl; current !== undefined; current = current.parent ?? current.owner) {
-    declarations.push(current);
+  const declarations = [site.decl];
+  for (const current of declarations) {
+    const next = current.parent ?? current.owner;
+    if (next !== undefined) {
+      declarations.push(next);
+    }
   }
   return declarations
     .flatMap((declaration) => declaration.annotations)

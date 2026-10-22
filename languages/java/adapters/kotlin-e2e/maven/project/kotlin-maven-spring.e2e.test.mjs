@@ -2,14 +2,16 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../../adapters/java-diff.mjs';
+import { collectJavaFindings } from '../../../java-diff.mjs';
 import {
   EXPECTED_CONFIG_AND_ARCHITECTURE,
   MAVEN_FILES,
   markedViolations,
   writeKotlinSpringProject,
-} from '../../../adapters/kotlin/spring/test-support/kotlin-spring-projects.mjs';
-import { kotlinE2eEnabled, kotlinPolicy, maven } from './test-support/kotlin-maven-project.mjs';
+} from '../../../kotlin/spring/test-support/kotlin-spring-projects.mjs';
+import { kotlinE2eEnabled, kotlinPolicy } from '../test-support/kotlin-maven-project.mjs';
+
+const maven = process.env.NITPICKER_MAVEN;
 
 const SPRING_RULE = /^(?:Spring|Jpa)/;
 

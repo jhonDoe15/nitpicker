@@ -80,8 +80,8 @@ const immutableBeans = defineRule(
 
 function locatorTypes(file, declaration) {
   const owner = classSymbolOf(declaration);
-  const parameters = (members, scope) =>
-    members.flatMap((member) =>
+  function parameters(members, scope) {
+    return members.flatMap((member) =>
       member.params
         .filter((parameter) => !parameter.property)
         .map((parameter) => ({
@@ -89,6 +89,7 @@ function locatorTypes(file, declaration) {
           symbol: `${owner}.${scope(member)}.${parameter.name}`,
         })),
     );
+  }
   return [
     ...declaration.properties.map((property) => ({
       type: property.type,

@@ -1,4 +1,10 @@
 export const SPRING = 'org.springframework';
 export const PERSISTENCE = 'jakarta.persistence';
-export const set = (...names) => new Set(names);
-export const under = (prefix, ...names) => names.map((name) => `${prefix}.${name}`);
+
+export function set(...names) {
+  return new Set(names);
+}
+
+export function under(prefix, ...names) {
+  return names.map((name) => `${prefix}.${name}`);
+}
