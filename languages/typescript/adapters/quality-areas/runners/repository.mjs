@@ -178,10 +178,15 @@ function runDuplicatesReport(options, config, outputDirectory) {
   const configName = '.nitpicker-diff-jscpd.json';
   const configPath = path.join(options.projectRoot, configName);
   trackTemporaryPath(configPath);
-  writeFileSync(
-    configPath,
-    `${JSON.stringify({ ...config, path: ['.'], pattern: rootsPattern(config.path), absolute: false, reporters: ['json'], output: outputDirectory })}\n`,
-  );
+  const settings = {
+    ...config,
+    path: ['.'],
+    pattern: rootsPattern(config.path),
+    absolute: false,
+    reporters: ['json'],
+    output: outputDirectory,
+  };
+  writeFileSync(configPath, `${JSON.stringify(settings)}\n`);
   try {
     runJscpd({ configPath: configName });
     const report = JSON.parse(
