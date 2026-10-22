@@ -79,6 +79,29 @@ describe('functionUnits', () => {
     ]);
   });
 
+  it('numbers the second and later anonymous functions of one unit, so a name stays one function', () => {
+    expect(
+      unitsOf(
+        [
+          'function run() {',
+          '  [1].map((value) => value);',
+          '  [2].map((value) => value);',
+          '  [3].map(function () { return 1; });',
+          '}',
+          'setTimeout(() => {});',
+          'setTimeout(() => {});',
+        ].join('\n'),
+      ),
+    ).toEqual([
+      'function 1 run',
+      'function 2 run.<anonymous>',
+      'function 3 run.<anonymous#2>',
+      'function 4 run.<anonymous#3>',
+      'function 6 <anonymous>',
+      'function 7 <anonymous#2>',
+    ]);
+  });
+
   it('makes a class field initializer and a static block units of their class', () => {
     expect(
       unitsOf(

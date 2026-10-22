@@ -11,7 +11,7 @@ const LAMBDA = /^lambda\$(.+)\$\d+$/u;
 function pitFunctionName(symbol) {
   const separator = symbol.indexOf('#');
   if (separator === -1) {
-    return undefined;
+    return symbol;
   }
   const className = symbol.slice(symbol.slice(0, separator).lastIndexOf('.') + 1, separator);
   const classNames = className.split('$');

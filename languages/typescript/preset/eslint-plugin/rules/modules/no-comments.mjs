@@ -116,7 +116,7 @@ export const rule = {
         'Fix the type error or narrow the value; TypeScript suppression comments ({{directive}}) are not allowed. ' +
         'To test that a type rejects a value, assert `expectTypeOf(fn).parameter(0).not.toExtend<Value>()`.',
       eslintSuppression:
-        'Fix the violation; inline ESLint disables are not allowed. A reviewed exception belongs in the nitpicker config file.',
+        'Fix the violation; inline ESLint disables are not allowed.',
       coverageSuppression:
         'Test this code instead; coverage and mutation ignore comments ({{directive}}) hide untested code. An exception fits only when it truly cannot be tested.',
       comment:

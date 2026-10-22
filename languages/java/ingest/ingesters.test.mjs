@@ -257,6 +257,18 @@ describe('pit', () => {
     expect(identityAtLine(swapped, 9)).toBe(identityAtLine(fixture('pit-mutations.xml'), 9));
   });
 
+  it('names the declaration a lambda of an initializer sits in, not the constructor', () => {
+    const report = (method) =>
+      `<mutations><mutation detected='false' status='SURVIVED'><sourceFile>Wide.java</sourceFile><mutatedClass>demo.Wide</mutatedClass><mutatedMethod>${method}</mutatedMethod><methodDescription>()I</methodDescription><lineNumber>7</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.ConditionalsBoundaryMutator</mutator><description>changed conditional boundary</description></mutation></mutations>`;
+    const symbolOf = (method, functionAt) =>
+      ingestPit(report(method), { resolvePath: resolveMainPath, functionAt }).findings[0].symbol;
+    const functionAt = (file, line) => `${file}:${String(line)}:Wide.field`;
+
+    expect(symbolOf('lambda$new$0', functionAt)).toBe('src/main/java/demo/Wide.java:7:Wide.field');
+    expect(symbolOf('lambda$new$0')).toBe('demo.Wide#lambda$new$0()I');
+    expect(symbolOf('lambda$run$0', functionAt)).toBe('demo.Wide#lambda$run$0()I');
+  });
+
   it('summarizes status counts as descriptive metrics and skips unresolvable sources', () => {
     expect(
       summary('mutation-summary').map((finding) => [finding.metric.name, finding.metric.value]),

@@ -36,7 +36,7 @@ describe('test honesty rules', () => {
 
     expect(found).toEqual([
       "'/* eslint-disable */' has no effect because you have 'noInlineConfig' setting in your config.",
-      'Fix the violation; inline ESLint disables are not allowed. A reviewed exception belongs in the nitpicker config file.',
+      'Fix the violation; inline ESLint disables are not allowed.',
       'Shared mutable state makes tests depend on their order. Keep `calls` inside the test, or declare it without a value and set it in `beforeEach`.',
     ]);
   });

@@ -161,6 +161,7 @@ describe('the hygiene configuration hash', () => {
       'hygiene/rules.mjs',
       'hygiene/runner.mjs',
       'hygiene/tracked-files.mjs',
+      'messages/exception-sentence.mjs',
       'paths/glob.mjs',
       'project-rules/hygiene-rules.mjs',
       'traversal.mjs',

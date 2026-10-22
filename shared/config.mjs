@@ -56,22 +56,6 @@ export function validateStringArray(value, name) {
   }
 }
 
-const PRINTED_RULES = new Map([['test-runtime/slow-test', 'slow-test']]);
-
-export function withCanonicalRules(config) {
-  if (!isPlainObject(config) || !Array.isArray(config.exceptions)) {
-    return config;
-  }
-  return {
-    ...config,
-    exceptions: config.exceptions.map((entry) =>
-      isPlainObject(entry) && PRINTED_RULES.has(entry.rule)
-        ? { ...entry, rule: PRINTED_RULES.get(entry.rule) }
-        : entry,
-    ),
-  };
-}
-
 export function validateThresholds(thresholds, preset = 'typescript') {
   if (!isPlainObject(thresholds)) {
     throw configError('"thresholds" must be an object');

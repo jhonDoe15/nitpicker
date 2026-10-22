@@ -17,7 +17,7 @@ import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { methodText, readStructureFunctions } from '../../../../shared/ingest/structure-report.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
-import { hash } from '../../../../shared/rules/finding-helpers.mjs';
+import { enclosingFunctionName, hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { javaDeclarationUnits } from '../../ingest/declarations/java-declaration-units.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
@@ -233,23 +233,46 @@ function pitFindings(context) {
   const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
   const { findings } = ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
+    functionAt: functionLocator(context),
   });
   return context.kotlin ? reportOnlyKotlinMutants(findings) : findings;
 }
 
+function structureFunctions({ reportRoot, kotlin }) {
+  return [
+    ...readStructureFunctions(reportRoot),
+    ...(kotlin ? readKotlinMetrics(reportRoot).functions : []),
+  ];
+}
+
+function declarationUnits(file, text) {
+  return file.endsWith('.java') ? javaDeclarationUnits(file, text) : [];
+}
+
+function sourceTextReader(projectRoot) {
+  return (file) => {
+    const absolute = path.join(projectRoot, file);
+    return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
+  };
+}
+
+function functionLocator(context) {
+  const functions = structureFunctions(context);
+  const sourceText = sourceTextReader(context.projectRoot);
+  return (file, line) => {
+    const text = sourceText(file);
+    const units = text === undefined ? [] : declarationUnits(file, text);
+    return enclosingFunctionName([...functions, ...units], file, line);
+  };
+}
+
 function branchFindings(context, jacoco) {
-  const { projectRoot, reportRoot } = context;
+  const { projectRoot } = context;
   return ingestJacocoBranches(jacoco, {
-    functions: [
-      ...readStructureFunctions(reportRoot),
-      ...(context.kotlin ? readKotlinMetrics(reportRoot).functions : []),
-    ],
-    units: (file, text) => (file.endsWith('.java') ? javaDeclarationUnits(file, text) : []),
+    functions: structureFunctions(context),
+    units: declarationUnits,
     locate: sourceLocator(projectRoot, jacocoSourceRoots(context)),
-    sourceText: (file) => {
-      const absolute = path.join(projectRoot, file);
-      return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
-    },
+    sourceText: sourceTextReader(projectRoot),
   }).findings;
 }
 

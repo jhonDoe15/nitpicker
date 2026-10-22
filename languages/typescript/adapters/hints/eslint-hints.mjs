@@ -219,10 +219,12 @@ const NO_ROUTE_RULES = new Set([
   'eslint/inline-config-disabled',
 ]);
 
-function withEslintRoute(text, { rule, path: relativePath }) {
-  return NO_ROUTE_RULES.has(rule)
-    ? text
-    : appendSentence(text, exceptionRoute({ rule, path: relativePath }));
+export function eslintRoute({ rule, path: relativePath }) {
+  return NO_ROUTE_RULES.has(rule) ? undefined : exceptionRoute({ rule, path: relativePath });
+}
+
+function withEslintRoute(text, finding) {
+  return appendSentence(text, eslintRoute(finding));
 }
 
 export function metricWorseMessage(finding, plan) {

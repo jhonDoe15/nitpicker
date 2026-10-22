@@ -54,11 +54,18 @@ export function staleExceptionLines(config, projectRoot) {
     );
 }
 
+function staleNote(lines) {
+  if (lines.length === 0) {
+    return '';
+  }
+  const count = lines.length;
+  const noun = count === 1 ? 'exception' : 'exceptions';
+  const pronoun = count === 1 ? 'it' : 'them';
+  const listed = lines.map((line) => `  ${line}`).join('\n');
+  return `Note: ${String(count)} ${noun} matching no file (not failing; remove or fix ${pronoun}):\n${listed}\n`;
+}
+
 export function renderClosingSections({ options, config, currentProjectRoot }, report) {
-  const lines = staleExceptionLines(config, currentProjectRoot);
-  const note =
-    lines.length === 0
-      ? ''
-      : `Note: ${String(lines.length)} ${lines.length === 1 ? 'exception' : 'exceptions'} matching no file (not failing; remove or fix ${lines.length === 1 ? 'it' : 'them'}):\n${lines.map((line) => `  ${line}`).join('\n')}\n`;
+  const note = staleNote(staleExceptionLines(config, currentProjectRoot));
   return `${renderRuleFilterSection(report, options.ruleFilters)}${note}`;
 }

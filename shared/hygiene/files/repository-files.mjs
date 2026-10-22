@@ -3,7 +3,12 @@ import { lstatSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../filesystem.mjs';
 import { HYGIENE_RULE_IDS, LARGE_FILE_BYTES } from '../../project-rules/hygiene-rules.mjs';
-import { exceptionEntry, exceptionHint } from '../rules.mjs';
+import {
+  escapeGlob,
+  exceptionEntryText,
+  exceptionSentence,
+} from '../../messages/exception-sentence.mjs';
+import { exceptionHint } from '../rules.mjs';
 import { committedSizes } from '../tracked-files.mjs';
 import { buildOutputFolders } from './build-output.mjs';
 import { holdsOnlyPublicValues, isEnvFileName } from './env-files.mjs';
@@ -53,7 +58,10 @@ function outputProblem({ folder, anchor }) {
     rule,
     path: anchor ?? `${folder}/`,
     identity: `${folder}|build-output`,
-    message: outputMessage(folder, exceptionEntry(rule, `${folder}/**`)),
+    message: outputMessage(
+      folder,
+      exceptionSentence(exceptionEntryText({ rule, glob: `${escapeGlob(folder)}/**` })),
+    ),
     classification: 'enforceable',
     exceptionPaths: [folder, `${folder}/`],
   };
@@ -92,8 +100,8 @@ function binaryMessage(file) {
   return `${file} is a compiled or archived binary. Build it in CI or fetch it from a registry instead of committing it.`;
 }
 
-function outputMessage(folder, entry) {
-  return `${folder}/ looks like build output tracked in git. If it holds sources or build scripts, add ${entry} to "exceptions" in nitpicker.config.json, or rename it. Otherwise untrack it with \`git rm -r --cached ${folder}\`, add \`${folder}/\` to .gitignore, and let CI produce it.`;
+function outputMessage(folder, route) {
+  return `${folder}/ looks like build output tracked in git. Untrack it with \`git rm -r --cached ${folder}\`, add \`${folder}/\` to .gitignore, and let CI produce it; if it holds sources or build scripts, rename it. ${route}`;
 }
 
 function largeMessage(file, size) {

@@ -16,7 +16,7 @@ function messageSources() {
 }
 
 describe('Python finding messages', () => {
-  it('get their exception route only from exceptionSentence in rule-hints.mjs', () => {
+  it('get their exception route only from the shared sentence that rule-hints.mjs calls', () => {
     const handWritten = messageSources()
       .filter((file) => file !== ROUTE_SOURCE)
       .flatMap((file) =>
@@ -30,9 +30,9 @@ describe('Python finding messages', () => {
     expect(handWritten).toEqual([]);
   });
 
-  it('read the one route from the file that writes it', () => {
-    expect(readFileSync(path.join(packageRoot, PYTHON_PACKAGE, ROUTE_SOURCE), 'utf8')).toMatch(
-      HAND_WRITTEN_ROUTE,
+  it('read the one route from the shared sentence that rule-hints.mjs calls', () => {
+    expect(readFileSync(path.join(packageRoot, PYTHON_PACKAGE, ROUTE_SOURCE), 'utf8')).toContain(
+      'key: PYTHON_EXCEPTIONS_KEY',
     );
   });
 });

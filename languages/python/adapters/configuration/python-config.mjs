@@ -5,15 +5,14 @@ import {
   validateProjectRelativePath,
   validateStringArray,
 } from '../../../../shared/config.mjs';
+import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 import { validateExceptions } from '../../../../shared/exceptions/validation.mjs';
-import { COMMON_EXCEPTION_RULES, FILE_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { COMMON_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { PYTHON_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
+import { ruleIdProblem } from './python-rule-ids.mjs';
 
 /** The rules the top-level "exceptions" lift; python.exceptions lifts every other rule. */
 export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
-
-const PYTHON_PATH_ONLY_EXCEPTION_RULES = [...FILE_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
-import { ruleIdProblem } from './python-rule-ids.mjs';
 
 const ENVIRONMENTS = ['uv', 'poetry', 'path', 'pipenv', 'hatch', 'conda'];
 const FORMATTERS = ['ruff', 'black'];
@@ -83,16 +82,22 @@ function validateSettings(settings) {
     validateEntryPoints(settings.entryPoints);
   }
   if (settings.exceptions !== undefined) {
-    validateExceptions(settings.exceptions, 'python.exceptions', { functionOptional: true });
     validateRuleIds(settings.exceptions);
+    validateExceptions(settings.exceptions, 'python.exceptions', { preset: 'python' });
   }
 }
 
 function validateRuleIds(exceptions) {
+  if (!Array.isArray(exceptions)) {
+    return;
+  }
   for (const [index, { rule }] of exceptions.entries()) {
-    if (PYTHON_PATH_ONLY_EXCEPTION_RULES.includes(rule)) {
+    if (typeof rule !== 'string') {
+      continue;
+    }
+    if (PYTHON_TOP_LEVEL_EXCEPTION_RULES.includes(canonicalRule(rule))) {
       throw configError(
-        `"python.exceptions[${String(index)}].rule" is "${rule}", a rule shared by every preset: lift it in the top-level "exceptions" instead`,
+        `"python.exceptions[${String(index)}].rule" is "${rule}", a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead`,
       );
     }
     const problem = ruleIdProblem(rule);

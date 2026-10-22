@@ -1,4 +1,6 @@
 import { Linter } from 'eslint';
+import { appendSentence } from '../../../../../shared/messages/exception-sentence.mjs';
+import { eslintRoute } from '../../../adapters/hints/eslint-hints.mjs';
 
 const linter = new Linter();
 
@@ -7,7 +9,9 @@ export function lintFixture({ config, filename, code }) {
 }
 
 export function failureMessagesFor({ config, filename, code }) {
-  return lintFixture({ config, filename, code }).map((message) => message.message);
+  return lintFixture({ config, filename, code }).map((message) =>
+    appendSentence(message.message, eslintRoute({ rule: message.ruleId, path: filename })),
+  );
 }
 
 export function checkFailureMessageCase({ config, filename = 'src/fixture.ts', banned, allowed }) {

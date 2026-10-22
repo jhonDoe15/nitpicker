@@ -17,8 +17,11 @@ export function normalizeFunctionName(name) {
   return bare === '' ? name : bare;
 }
 
-/** The sentence that names the config entry which accepts a finding of `rule` in `path`. */
-export function exceptionRoute({ rule, path, function: functionName, name }) {
+/** The sentence that names the config entry which accepts a finding of `rule` in `path`; none for a finding without a path. */
+export function exceptionRoute({ rule, path, function: functionName, name, key }) {
+  if (typeof path !== 'string') {
+    return undefined;
+  }
   return exceptionSentence(
     exceptionEntryText({
       rule,
@@ -26,6 +29,7 @@ export function exceptionRoute({ rule, path, function: functionName, name }) {
       name,
       ...(functionName === undefined ? {} : { function: normalizeFunctionName(functionName) }),
     }),
+    key,
   );
 }
 

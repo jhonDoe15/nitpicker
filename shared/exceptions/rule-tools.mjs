@@ -1,4 +1,5 @@
 import { DEAD_CODE_RULES, FUNCTION_STRUCTURE_LIMITS, RULE_IDS } from '../policy.mjs';
+import { HYGIENE_RULE_IDS, PACKAGE_RULE_IDS } from '../project-rules/hygiene-rules.mjs';
 import { SIZE_RULE_IDS } from '../project-rules/size-rules.mjs';
 
 const STRUCTURE_RULES = [
@@ -26,6 +27,8 @@ export const DEPENDENCY_RULES = [
   'domain-does-not-import-network-or-database-clients',
   'domain-does-not-import-the-logger',
   'domain-does-not-import-module-state',
+  'domain-does-not-import-id-libraries',
+  'domain-does-not-reach-io-through-shared',
 ];
 
 const RULE_TOOLS = new Map([
@@ -38,6 +41,9 @@ const RULE_TOOLS = new Map([
   [RULE_IDS.duplicateClone, ['duplicates']],
   [RULE_IDS.stabilityDirection, ['coupling']],
   ...DEAD_CODE_RULES.map((rule) => [rule, ['dead-code']]),
+  ...Object.values(HYGIENE_RULE_IDS).map((rule) => [rule, ['repository-hygiene']]),
+  ...Object.values(PACKAGE_RULE_IDS).map((rule) => [rule, ['dead-code']]),
+  [RULE_IDS.slowTest, ['test-runtime']],
   [RULE_IDS.noProductionRuntime, ['test-runtime']],
   [RULE_IDS.typeOnlyProductionDependency, ['test-runtime']],
   [RULE_IDS.publicAlternativeBypass, ['entry-points']],
@@ -70,6 +76,7 @@ export function toolsOf(rule) {
 
 const TYPESCRIPT_TOOLS = [
   'structure',
+  'repository-hygiene',
   'crap',
   'coverage',
   'mutation',
@@ -81,13 +88,14 @@ const TYPESCRIPT_TOOLS = [
   'coding-standards',
   'dependency-architecture',
 ];
-const JAVA_TOOLS = ['structure', 'crap', 'jacoco', 'pit', 'duplicates', 'coupling'];
+const SHARED_TOOLS = ['structure', 'test-runtime', 'repository-hygiene'];
+const JVM_ANALYZER_TOOLS = [...SHARED_TOOLS, 'crap', 'jacoco', 'pit', 'duplicates', 'coupling'];
 
 /** The tools of each preset that print rules an `exceptions` entry can name. */
 export const PRESET_TOOLS = {
   typescript: TYPESCRIPT_TOOLS,
   javascript: TYPESCRIPT_TOOLS,
-  java: JAVA_TOOLS,
-  kotlin: JAVA_TOOLS,
-  python: ['structure', 'crap', 'coverage-py', 'mutmut', 'duplicates', 'coupling'],
+  java: JVM_ANALYZER_TOOLS,
+  kotlin: JVM_ANALYZER_TOOLS,
+  python: [...SHARED_TOOLS, 'crap', 'coverage-py', 'mutmut', 'duplicates', 'coupling'],
 };

@@ -104,12 +104,22 @@ function objectScope(sourceFile, node, scope) {
   return { scope: name === undefined ? scope : [...scope, name] };
 }
 
-function functionScope(sourceFile, node, scope) {
+function uniqueName(name, scope, anonymousCounts) {
+  if (name !== ANONYMOUS) {
+    return name;
+  }
+  const key = scope.join('.');
+  const count = (anonymousCounts.get(key) ?? 0) + 1;
+  anonymousCounts.set(key, count);
+  return count === 1 ? name : `<anonymous#${String(count)}>`;
+}
+
+function functionScope(sourceFile, node, scope, anonymousCounts) {
   if (!isFunctionLike(node)) {
     return undefined;
   }
   return {
-    scope: [...scope, localName(sourceFile, node)],
+    scope: [...scope, uniqueName(localName(sourceFile, node), scope, anonymousCounts)],
     unit: { kind: 'function', range: node },
   };
 }
@@ -137,9 +147,9 @@ function staticBlockScope(sourceFile, node, scope) {
 
 const SCOPES = [classScope, objectScope, functionScope, fieldScope, staticBlockScope];
 
-function enter(sourceFile, node, scope) {
+function enter(sourceFile, node, scope, anonymousCounts) {
   for (const scopeOf of SCOPES) {
-    const entered = scopeOf(sourceFile, node, scope);
+    const entered = scopeOf(sourceFile, node, scope, anonymousCounts);
     if (entered !== undefined) {
       return entered;
     }
@@ -159,9 +169,10 @@ function unitEntry(sourceFile, node, { scope, unit }) {
 
 export function functionUnits(sourceFile) {
   const found = [];
+  const anonymousCounts = new Map();
   const pending = [{ node: sourceFile, scope: [] }];
   for (const { node, scope } of pending) {
-    const entered = enter(sourceFile, node, scope);
+    const entered = enter(sourceFile, node, scope, anonymousCounts);
     if (entered.unit !== undefined) {
       found.push(unitEntry(sourceFile, node, entered));
     }

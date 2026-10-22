@@ -4,19 +4,18 @@ import path from 'node:path';
 import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
 import { withLegacyInventory } from '../../../shared/legacy-inventory.mjs';
 import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
+import { GRADLE_PRESETS, PROJECT_TOOL_CONFIGS, precedenceToolNames } from './gradle-presets.mjs';
 import {
-  GRADLE_PRESETS,
-  JAVA_TOOLS,
-  PROJECT_TOOL_CONFIGS,
-  precedenceToolNames,
-} from './gradle-presets.mjs';
+  JAVA_FINDING_TOOLS,
+  isJavaFindingRule,
+  validateJavaFindingRule,
+} from './java-finding-rules.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
 import { JAVA_LINE_LENGTH, JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { sharedRouteRule } from '../../../shared/exceptions/routes.mjs';
 import { INLINE_SUPPRESSION_RULE } from './suppressions/java-suppressions.mjs';
 import { canonicalRule } from '../../../shared/exceptions/rule-names.mjs';
-import { checkstyleRuleName } from '../messages/rule-messages.mjs';
 
 const FILE_LIMIT_THRESHOLDS = [
   'fileLines',
@@ -56,7 +55,7 @@ export function validateJavaConfig(config) {
   }
   if (config.preset === 'java' && Array.isArray(config.exceptions)) {
     for (const [index, entry] of config.exceptions.entries()) {
-      validateJavaExceptionRule(entry?.rule, `exceptions[${String(index)}].rule`);
+      validateJavaExceptionRule(entry, `exceptions[${String(index)}].rule`);
     }
   }
   if (config.thresholds?.lineLength !== undefined) {
@@ -66,7 +65,8 @@ export function validateJavaConfig(config) {
   }
 }
 
-function validateJavaExceptionRule(rule, label) {
+function validateJavaExceptionRule(entry, label) {
+  const rule = entry?.rule;
   if (
     typeof rule !== 'string' ||
     rule === '' ||
@@ -74,18 +74,12 @@ function validateJavaExceptionRule(rule, label) {
   ) {
     return;
   }
-  const [tool] = rule.split('/');
-  const checkstyleRule = rule.slice('checkstyle/'.length);
-  if (tool === 'checkstyle' && checkstyleRuleName(checkstyleRule) !== checkstyleRule) {
+  if (!isJavaFindingRule(rule)) {
     throw configError(
-      `"${label}" names a Checkstyle check by class; findings print the check's name, so write "checkstyle/${checkstyleRuleName(checkstyleRule)}"`,
+      `"${label}" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${JAVA_EXCEPTION_RULES.join(', ')}. Tools: ${JAVA_FINDING_TOOLS.join(', ')}`,
     );
   }
-  if (!JAVA_TOOLS.includes(tool) || rule.length <= tool.length + 1) {
-    throw configError(
-      `"${label}" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${JAVA_EXCEPTION_RULES.join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}`,
-    );
-  }
+  validateJavaFindingRule(entry, label);
 }
 
 function runnerArguments({

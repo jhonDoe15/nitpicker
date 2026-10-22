@@ -2,16 +2,9 @@ import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { isUnder, matcherOf } from '../policy-scope.mjs';
 import { duplicateFolderExclusions } from './duplicate-folders.mjs';
+import { globsCovering, subjectLabel, subjectsOf } from './exception-scopes.mjs';
 
 const EXCLUSIONS = 'exclude and layout.excludedGlobs';
-
-export function exceptionPathsByRule(exceptions = []) {
-  const byRule = new Map();
-  for (const { rule, paths } of exceptions) {
-    byRule.set(rule, [...(byRule.get(rule) ?? []), ...paths]);
-  }
-  return byRule;
-}
 
 export function keyedExclusions(config) {
   const layout = resolveLayoutFor(config);
@@ -56,9 +49,12 @@ function globSet(label, [baseGlobs, headGlobs], importable) {
 }
 
 function exceptionSets(label, [baseExceptions, headExceptions]) {
-  const base = exceptionPathsByRule(baseExceptions);
-  return [...exceptionPathsByRule(headExceptions)].map(([rule, paths]) =>
-    globSet(`${label} for ${rule}`, [base.get(rule) ?? [], paths], false),
+  return subjectsOf(headExceptions).map((subject) =>
+    globSet(
+      `${label} for ${subjectLabel(subject)}`,
+      [globsCovering(baseExceptions, subject), subject.paths],
+      false,
+    ),
   );
 }
 

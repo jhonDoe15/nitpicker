@@ -1,4 +1,7 @@
-import { normalizeFunctionName } from './rule-names.mjs';
+import { RULE_IDS } from '../policy.mjs';
+import { HYGIENE_RULE_IDS } from '../project-rules/hygiene-rules.mjs';
+import { SIZE_RULE_IDS } from '../project-rules/size-rules.mjs';
+import { canonicalRule, normalizeFunctionName } from './rule-names.mjs';
 import { findingPaths, functionNameOf, pathMatcher } from './matching.mjs';
 
 /** True when `wanted` is the function `symbol`, whatever its parameter list (overloads agree). */
@@ -36,10 +39,33 @@ export function applyFindingExceptions(findings, exceptions = []) {
   return findings.filter((finding) => !entries.some((entry) => lifts(entry, finding)));
 }
 
-/** The exceptions that lift at least one of `findings`' paths: those that match nothing are stale. */
+const FOLDER_RULES = [
+  RULE_IDS.folderFiles,
+  SIZE_RULE_IDS.folderDepth,
+  RULE_IDS.duplicateClone,
+  HYGIENE_RULE_IDS.committedBuildOutput,
+];
+
+function foldersOf(paths) {
+  const folders = new Set();
+  for (const path of paths) {
+    const parts = path.split('/').slice(0, -1);
+    for (let length = 1; length <= parts.length; length += 1) {
+      folders.add(parts.slice(0, length).join('/'));
+    }
+  }
+  return [...folders].flatMap((folder) => [folder, `${folder}/`]);
+}
+
+/**
+ * The exceptions that match none of the project's `paths`: the stale ones. A rule that is about a
+ * folder (a file count, a depth, a build output) may name the folder itself.
+ */
 export function exceptionsMatchingNoPath(exceptions, paths) {
-  return exceptions.filter(({ paths: globs }) => {
+  const withFolders = [...paths, ...foldersOf(paths)];
+  return exceptions.filter(({ rule, paths: globs }) => {
     const matches = pathMatcher(globs);
-    return !paths.some((path) => matches(path));
+    const candidates = FOLDER_RULES.includes(canonicalRule(rule)) ? withFolders : paths;
+    return !candidates.some((path) => matches(path));
   });
 }

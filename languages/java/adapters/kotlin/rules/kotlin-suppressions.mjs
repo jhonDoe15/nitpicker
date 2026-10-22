@@ -1,5 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
+import { appendSentence } from '../../../../../shared/messages/exception-sentence.mjs';
 import { createIdentityCounter } from '../../../../../shared/ingest/common.mjs';
 import { LITERAL_MARK, maskKotlinSource } from './kotlin-literals.mjs';
 import { isBannedSuppression, SUPPRESSION_RULE } from './kotlin-rules.mjs';
@@ -29,7 +31,10 @@ function suppressionFinding(file, token, identity) {
     rule: SUPPRESSION_RULE,
     path: file,
     identity,
-    message: `Suppressing "${token}" inline is not allowed. Fix the code the rule flags. To lift a one-way rule for some paths, add an "exceptions" entry for it in nitpicker.config.json; to skip generated code, add it to "exclude" there.`,
+    message: appendSentence(
+      `Suppressing "${token}" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json.`,
+      exceptionRoute({ rule: SUPPRESSION_RULE, path: file }),
+    ),
     classification: 'enforceable',
   };
 }

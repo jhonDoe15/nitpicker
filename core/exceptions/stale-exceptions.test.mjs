@@ -47,6 +47,25 @@ describe('staleExceptionLines', () => {
     expect(staleExceptionLines(config, root)).toEqual([]);
   });
 
+  it('lets a rule about a folder name the folder itself', () => {
+    const root = repository(['src/big/a.ts', 'src/big/b.ts', 'svc/build/out.js', 'src/x.ts']);
+    const config = {
+      exceptions: [
+        entry('folder-files-limit', ['src/big']),
+        entry('folder-files-limit', ['src/big/']),
+        entry('folder-files-limit', ['src/gone']),
+        entry('committed-build-output', ['svc/build']),
+        entry('committed-build-output', ['svc/build/**']),
+        entry('file-lines-limit', ['src/big']),
+      ],
+    };
+
+    expect(staleExceptionLines(config, root)).toEqual([
+      'exceptions[2] (folder-files-limit) matches no file: src/gone',
+      'exceptions[5] (file-lines-limit) matches no file: src/big',
+    ]);
+  });
+
   it('has nothing to say without exceptions', () => {
     expect(staleExceptionLines({}, repository(['a.ts']))).toEqual([]);
   });
