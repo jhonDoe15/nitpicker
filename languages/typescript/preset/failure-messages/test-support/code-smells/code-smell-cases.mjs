@@ -49,6 +49,16 @@ export const codeSmellFailureMessageCases = [
       'let all = []; for (const x of xs) { all = [...all, x]; }',
       'push into an array',
     ],
+    [
+      'remote call in a transaction names the outbox',
+      'await prisma.$transaction(async (tx) => { await tx.order.create({}); await fetch(url); });',
+      'outbox row',
+    ],
+    [
+      'remote call under a lock names releasing it first',
+      'await mutex.runExclusive(async () => { await fetch(url); });',
+      'after releasing it',
+    ],
     ['generic file name names the exception', 'export const a = 1;', EXCEPTION, GENERIC_FILE],
     [
       'generic file name names the shared folder',

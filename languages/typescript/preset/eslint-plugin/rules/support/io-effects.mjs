@@ -45,7 +45,7 @@ function untypedEffects(call, sourceCode) {
   return directEffects(kind ?? namedKind(view), pkg, view);
 }
 
-function callEffects(call, context) {
+export function callEffects(call, context) {
   const services = typeServices(context);
   return services === undefined
     ? untypedEffects(call, context.sourceCode)

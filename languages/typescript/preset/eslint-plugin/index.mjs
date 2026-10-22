@@ -75,6 +75,8 @@ import { rule as noBooleanFlagParameter } from './rules/code-smells/boolean-flag
 import { rule as noIoInLoop } from './rules/loops/no-io-in-loop.mjs';
 import { rule as noAccumulatorSpreadInReduce } from './rules/loops/no-accumulator-spread-in-reduce.mjs';
 import { rule as noLazyRelationInLoop } from './rules/effects/no-lazy-relation-in-loop.mjs';
+import { rule as noRemoteCallInTransaction } from './rules/effects/no-remote-call-in-transaction.mjs';
+import { rule as noRemoteCallUnderLock } from './rules/effects/no-remote-call-under-lock.mjs';
 import { testAssertionRules } from './test-assertions/rules.mjs';
 import { rule as noTestHelpersInSource } from './test-placement/no-test-helpers-in-source.mjs';
 import { testIsolationRules } from './test-isolation/rules.mjs';
@@ -165,6 +167,8 @@ export const nitpickerRules = {
     'no-io-in-loop': noIoInLoop,
     'no-accumulator-spread-in-reduce': noAccumulatorSpreadInReduce,
     'no-lazy-relation-in-loop': noLazyRelationInLoop,
+    'no-remote-call-in-transaction': noRemoteCallInTransaction,
+    'no-remote-call-under-lock': noRemoteCallUnderLock,
     'no-test-helpers-in-source': noTestHelpersInSource,
     ...testAssertionRules,
     ...testIsolationRules,

@@ -53,6 +53,8 @@ helpers.
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `nitpicker/no-io-in-loop`                   | a database query per loop item (also inside `Promise.all`), a remote request per item of a sequential loop |
 | `nitpicker/no-lazy-relation-in-loop`        | a lazy TypeORM relation awaited per item of a `find`/`getMany` result that does not fetch it               |
+| `nitpicker/no-remote-call-in-transaction`   | a remote call, direct or through helpers, inside a transaction that also runs a query                      |
+| `nitpicker/no-remote-call-under-lock`       | a remote call, direct or through helpers, while a mutex or distributed lock is held                        |
 | `nitpicker/no-accumulator-spread-in-reduce` | an accumulator copied on every step of `reduce` or of a loop (`acc = [...acc, x]`, `acc.concat(x)`)        |
 
 ## Entry points

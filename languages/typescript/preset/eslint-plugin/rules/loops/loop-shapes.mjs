@@ -36,7 +36,7 @@ function ancestorsOf(node) {
   return ancestors;
 }
 
-function childrenOf(node, visitorKeys) {
+export function childrenOf(node, visitorKeys) {
   return (visitorKeys[node.type] ?? []).flatMap((key) => [node[key]].flat()).filter(Boolean);
 }
 
