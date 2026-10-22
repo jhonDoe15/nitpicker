@@ -46,6 +46,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/CpdReport.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
+  'languages/java/gradle/kotlin/kotlin-lint.gradle',
   'languages/java/gradle/errorprone/checks.json',
   'languages/java/adapters/overlaps/overlap-pairs.json',
   'languages/java/gradle/errorprone/ErrorProneReport.java',
@@ -54,6 +55,12 @@ const RESOURCE_FILES = [
   'languages/java/messages/pmd.json',
   'languages/java/messages/checkstyle.json',
   'languages/java/messages/spotbugs.json',
+  'languages/java/gradle/archunit/ArchRules.java',
+  'languages/java/gradle/archunit/Found.java',
+  'languages/java/gradle/archunit/Layers.java',
+  'languages/java/gradle/archunit/Layout.java',
+  'languages/java/gradle/archunit/Spring.java',
+  'languages/java/gradle/archunit/TestRules.java',
 ];
 
 function kotlinPsiFiles() {
@@ -88,7 +95,7 @@ function hashConfiguration() {
   return hash.digest('hex');
 }
 
-const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
+const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt', 'kotlin-source', 'kotlinc'];
 
 export function createJavaAnalyzer({ kotlin = false } = {}) {
   const budget = javaExecutionBudget();

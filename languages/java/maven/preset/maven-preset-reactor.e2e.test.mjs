@@ -53,9 +53,11 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
     expect(
       findings
         .filter((finding) => finding.tool === 'test-runtime')
-        .map(({ rule, path: file, identity }) => `${rule} ${file} ${identity}`),
+        .map(({ rule, path: file, identity }) => `${rule} ${file} ${identity}`)
+        .sort(),
     ).toEqual([
       'slow-test core/src/test/java/demo/core/AdderTest.java test:demo.core.AdderTest#adds',
+      'test-not-run checks/src/test/java/demo/checks/AdderIT.java AdderIT',
     ]);
     expect(
       existsSync(

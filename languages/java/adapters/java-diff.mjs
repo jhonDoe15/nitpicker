@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
@@ -17,7 +17,7 @@ import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs'
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
-import { toolConfigChoices, toolConfigProperties } from './tool-config/tool-config-choices.mjs';
+import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { javaFindingOptions } from './reporting/finding-options.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
@@ -28,13 +28,11 @@ import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
 import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
-import { javaStyleProperties } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
+import { gradleOptions, gradleStages } from './gradle-wrapper/gradle-stages.mjs';
 
-const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
 const CLOCK_SLACK_MS = 2000;
-const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
 const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache'];
 
 export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
@@ -56,18 +54,6 @@ function assertSucceeded(result, projectRoot, { reportBase, since }) {
   throw withGradleLog(failure, result);
 }
 
-function exportArguments(common, { initScript, directory, policy }) {
-  mkdirSync(directory, { recursive: true });
-  return [
-    ...common,
-    ...javaStyleProperties(policy),
-    `-Pnitpicker.checkstyle.exportConfig=${path.join(directory, CHECKSTYLE_EXPORT)}`,
-    '-I',
-    initScript,
-    'nitpickerCheckstyleConfig',
-  ];
-}
-
 function commonArguments({ reportBase, policy, kotlinArguments }) {
   return [
     ...GRADLE_FLAGS,
@@ -77,17 +63,11 @@ function commonArguments({ reportBase, policy, kotlinArguments }) {
   ];
 }
 
-function headFactProperties(policy) {
-  return [
-    ...javaStyleProperties(policy),
-    ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
-  ];
-}
-
 function runJavaPreset(
   projectRoot,
   {
     gradle,
+    spawn,
     initScript = INIT_SCRIPT,
     policy = {},
     reportBase,
@@ -98,32 +78,16 @@ function runJavaPreset(
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
   const directory = path.join(reportBase, 'tool-config');
   const since = Date.now() - CLOCK_SLACK_MS;
-  const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
   withKotlin((kotlinArguments) => {
     const common = commonArguments({ reportBase, policy, kotlinArguments });
-    const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
-    const stages = [
-      ...(layersCheckstyle
-        ? [() => exportArguments(common, { initScript, directory, policy })]
-        : []),
-      () => [
-        ...common,
-        ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
-        ...headFactProperties(policy),
-        '-I',
-        initScript,
-        'nitpickerJava',
-      ],
-    ];
+    const stages = gradleStages(common, { projectRoot, initScript, policy, directory });
     for (const stage of stages) {
       const target = gradleTarget({ projectRoot, configured: gradle, args: stage() });
-      const result = runGradle(target.command, target.args, {
-        cwd: projectRoot,
-        encoding: 'utf8',
-        maxBuffer: MAX_OUTPUT_BYTES,
-        shell: target.shell,
-        timeout: budget.commandTimeoutMs,
-      });
+      const result = runGradle(
+        target.command,
+        target.args,
+        gradleOptions(target, { projectRoot, budget, spawn }),
+      );
       assertSucceeded(result, projectRoot, { reportBase, since });
     }
   });
@@ -272,6 +236,7 @@ export function runJavaDiff({
   includeWorkingTree = false,
   gradle,
   maven,
+  spawn,
   initScript,
   policy,
 }) {
@@ -283,7 +248,7 @@ export function runJavaDiff({
     repositoryRoot,
     projectRelativePath,
     comparison,
-    options: { gradle, maven, initScript },
+    options: { gradle, maven, spawn, initScript },
     policy,
   });
   const result = compareAcrossMoves(
