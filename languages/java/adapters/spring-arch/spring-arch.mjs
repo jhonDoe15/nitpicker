@@ -31,8 +31,9 @@ const MESSAGES = {
   'spring-repository-service': ({ simple, detail }) =>
     `Have the service call ${simple} and pass it what it needs from ${detail}: a repository only reads and writes data and depends on no service.`,
   'spring-scope-capture': ({ simple, detail }) => {
-    const [method, scope, bean] =
-      detail.split(':').length === 3 ? detail.split(':') : ['', ...detail.split(':')];
+    const parts = detail.split(':');
+    const [scope, bean] = parts.slice(parts.length - 2);
+    const method = parts.length > 2 ? parts[0] : '';
     const consumer = method === '' ? simple : `the bean ${simple}.${method}`;
     return `Inject ObjectProvider<${bean}> into ${consumer} and call getObject() per use, or give ${bean} a scoped proxy (proxyMode = ScopedProxyMode.TARGET_CLASS): a singleton gets one ${bean} when it is created, which fails outside a ${scope} and otherwise keeps the first ${scope}'s bean.`;
   },
@@ -69,17 +70,21 @@ function targetOf(detail, root) {
   return { packageName, rootPackage: `${root}.${segment}` };
 }
 
+function violationPath(resolvePath, { className, fileName }) {
+  return resolvePath(className, fileName === '' ? undefined : fileName);
+}
+
 function dependencyKey({ className, detail }) {
   return `${className}|${detail}`;
 }
 
-function shownDependencies(violations, filePathOf, isExcepted) {
+function shownDependencies(violations, resolvePath, isExcepted) {
   return new Set(
     violations
       .filter(
         (violation) =>
           DEPENDENCY_RULES.has(violation.rule) &&
-          !isExcepted(`${TOOL}/${violation.rule}`, filePathOf(violation)),
+          !isExcepted(`${TOOL}/${violation.rule}`, violationPath(resolvePath, violation)),
       )
       .map(dependencyKey),
   );
@@ -91,13 +96,11 @@ export function readSpringArchFindings(reportRoot, { resolvePath, isExcepted = (
     throw new Error(`The Spring architecture report ${SPRING_ARCH_REPORT} is missing`);
   }
   const { root, violations } = JSON.parse(readFileSync(file, 'utf8'));
-  const filePathOf = ({ className, fileName }) =>
-    resolvePath(className, fileName === '' ? undefined : fileName);
-  const shown = shownDependencies(violations, filePathOf, isExcepted);
+  const shown = shownDependencies(violations, resolvePath, isExcepted);
   const counters = new Map();
   return violations.flatMap((violation) => {
     const { rule, className, detail } = violation;
-    const filePath = filePathOf(violation);
+    const filePath = violationPath(resolvePath, violation);
     const describe = MESSAGES[rule];
     if (describe === undefined) {
       throw new Error(`Unknown Spring architecture rule ${rule} in ${SPRING_ARCH_REPORT}`);
