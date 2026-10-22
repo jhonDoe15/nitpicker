@@ -1,6 +1,7 @@
 import ast
 
 from checks.common import finding, walk_statements
+from effects.sites import outer_calls
 from effects.tables import DATABASE, REMOTE, WRITE
 from smells.io_index import IoScope, io_index
 from transactions.scopes import held_scopes
@@ -11,14 +12,7 @@ RULES = {"transaction": TRANSACTION_RULE, "lock": LOCK_RULE}
 
 
 def calls_in(body):
-    nodes = [node for node in walk_statements(body) if isinstance(node, ast.Call)]
-    receivers = {
-        id(node.func.value) for node in nodes if isinstance(node.func, ast.Attribute)
-    }
-    return sorted(
-        (node for node in nodes if id(node) not in receivers),
-        key=lambda node: (node.lineno, node.col_offset),
-    )
+    return outer_calls(walk_statements(body))
 
 
 def holds_connection(effects_by_call):

@@ -47,6 +47,16 @@ export const RULES_CASES = [
   ...rulesCases('remote-under-lock', [
     ['remote-call-under-lock', 'releasing', 'requests.get()|LOCK'],
   ]),
+  ...rulesCases('retry-without-idempotency', [
+    [
+      'retry-without-idempotency',
+      'idempotency key',
+      'stripe.PaymentIntent.create()|payment|@retry',
+    ],
+  ]),
+  ...rulesCases('dual-write', [
+    ['dual-write-without-outbox', 'outbox', 'place|repository.save()|producer.send()'],
+  ]),
   ...rulesCases('todo-without-issue', [['todo-without-issue', '# todo(#123)']]),
   ...rulesCases('skipped-test', [['skipped-test-without-reason', 'reason=']]),
   ...rulesCases('sleep-in-test', [['sleep-in-test', 'fake clock']]),

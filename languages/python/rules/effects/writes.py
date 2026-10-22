@@ -69,7 +69,7 @@ NOT_MODELS = {
 }
 
 
-def leading_text(node):
+def full_text(node):
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
     if isinstance(node, ast.JoinedStr):
@@ -77,11 +77,14 @@ def leading_text(node):
             part.value if isinstance(part, ast.Constant) else "?"
             for part in node.values
         )
-    if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Mod)):
-        return leading_text(node.left)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left, right = full_text(node.left), full_text(node.right)
+        return None if left is None else left + (right or "?")
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mod):
+        return full_text(node.left)
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
         if node.func.attr == "format":
-            return leading_text(node.func.value)
+            return full_text(node.func.value)
     return None
 
 
@@ -112,7 +115,7 @@ def is_write(call, names, kind, receiver_kind, context, imports_django):
     if method in WRITE_METHODS and database:
         return True
     if method in SQL_METHODS and database and call.args:
-        text = leading_text(call.args[0])
+        text = full_text(call.args[0])
         if text is not None and SQL_WRITE.match(text):
             return True
         return construct_root(call.args[0], context.aliases) in CONSTRUCT_WRITES

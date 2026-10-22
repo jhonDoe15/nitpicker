@@ -1,5 +1,5 @@
 import { RULES_TOOL } from '../tool.mjs';
-import { parseEffect, pathPhrase } from './subject.mjs';
+import { parseEffect, pathPhrase } from '../effects/subject.mjs';
 
 const OUTBOX =
   'when the remote side effect must match the transaction outcome, write an outbox row inside the transaction and send it from a worker instead of moving the call without thinking about consistency';
