@@ -104,6 +104,44 @@ describe('project tool configs the project opted into', () => {
       }).policyLoosenings,
     ).toEqual(['prettier project config changed: package.json']);
   });
+
+  it.each([undefined, 'javascript'])(
+    'counts an edit of the knip config a %s project opted into, and only its key in package.json',
+    (preset) => {
+      const config = { ...(preset === undefined ? {} : { preset }), tools: { knip: PROJECT } };
+      const at = (files) => ({ 'src/a.ts': 'export const a = 1;\n', ...files });
+      const manifest = (extra) => JSON.stringify({ name: 'x', ...extra });
+      const base = at({
+        'knip.ts': 'export default { ignore: [] };\n',
+        'package.json': manifest(),
+      });
+
+      expect(
+        between({
+          base,
+          head: at({
+            'knip.ts': "export default { ignore: ['src/**'] };\n",
+            'package.json': manifest({ version: '2.0.0' }),
+          }),
+          config,
+        }).policyLoosenings,
+      ).toEqual(['knip project config changed: knip.ts']);
+      expect(
+        between({
+          base,
+          head: at({ ...base, 'package.json': manifest({ knip: { ignore: ['src/**'] } }) }),
+          config,
+        }).policyLoosenings,
+      ).toEqual(['knip project config changed: package.json']);
+      expect(
+        between({
+          base,
+          head: at({ ...base, 'knip.json': '{"ignore":["src/**"]}' }),
+          config: { tools: {} },
+        }).policyLoosenings,
+      ).toEqual([]);
+    },
+  );
 });
 
 describe('what counts as an edit of a project tool config', () => {

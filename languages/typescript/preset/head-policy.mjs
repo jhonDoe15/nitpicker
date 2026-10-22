@@ -25,6 +25,10 @@ import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
+import {
+  headProjectToolFacts,
+  withProjectToolConfigs,
+} from './project-tools/project-tool-policy.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -73,8 +77,10 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 
 function withProjectFacts(policy, config, projectRoot) {
   const prettier = policy.tools?.prettier;
+  const tools = withProjectToolConfigs(policy.tools, projectRoot);
   return {
     ...policy,
+    ...(tools === undefined ? {} : { tools }),
     ...(SCOPED_PRESETS.includes(config.preset)
       ? {
           ...withDetectedScopes(policy, projectRoot),
@@ -84,7 +90,7 @@ function withProjectFacts(policy, config, projectRoot) {
     ...(usesProjectConfig(prettier?.precedence ?? [])
       ? {
           tools: {
-            ...policy.tools,
+            ...tools,
             prettier: { ...prettier, projectConfigDigest: projectFilesDigest(projectRoot) },
           },
         }
@@ -149,12 +155,17 @@ function picked(source, keys) {
   );
 }
 
-function headPrettierDigest(policy, headPolicy) {
+function headToolFacts(policy, headPolicy) {
+  const tools = headProjectToolFacts(policy.tools, headPolicy.tools);
   const digest = headPolicy.tools?.prettier?.projectConfigDigest;
-  const prettier = policy.tools?.prettier;
-  return digest === undefined || !usesProjectConfig(prettier?.precedence ?? [])
+  const prettier = tools.prettier;
+  const withDigest =
+    digest === undefined || !usesProjectConfig(prettier?.precedence ?? [])
+      ? tools
+      : { ...tools, prettier: { ...prettier, projectConfigDigest: digest } };
+  return policy.tools === undefined && Object.keys(withDigest).length === 0
     ? {}
-    : { tools: { ...policy.tools, prettier: { ...prettier, projectConfigDigest: digest } } };
+    : { tools: withDigest };
 }
 
 function headTestPlacement(policy, headPolicy) {
@@ -174,7 +185,7 @@ export function withHeadCheckoutFacts(policy, headPolicy = {}) {
         { ...policy[scope], ...picked(headPolicy[scope], keys) },
       ]),
     ),
-    ...headPrettierDigest(policy, headPolicy),
+    ...headToolFacts(policy, headPolicy),
   };
 }
 

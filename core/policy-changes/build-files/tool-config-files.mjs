@@ -6,19 +6,25 @@ import {
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
+import {
+  PACKAGE_JSON_KEYS,
+  PROJECT_CONFIG_FILES,
+  projectConfigCandidates,
+} from '../../../languages/typescript/preset/project-tools/project-config-files.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
-const PRETTIER_PRESETS = new Set([undefined, 'typescript', 'javascript']);
+const SCRIPT_PRESETS = new Set([undefined, 'typescript', 'javascript']);
+const PACKAGE_KEYS = new Map([['prettier', 'prettier'], ...PACKAGE_JSON_KEYS]);
 
 function usesProjectConfig(config, tool) {
   return (config.tools?.[tool]?.precedence ?? []).includes('project');
 }
 
-function prettierKey(content) {
+function packageKey(content, key) {
   try {
-    return { prettier: JSON.parse(content.toString('utf8')).prettier };
+    return { section: JSON.parse(content.toString('utf8'))[key] };
   } catch {
     return { malformed: true };
   }
@@ -32,11 +38,11 @@ function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   if (file !== PACKAGE_JSON) {
     return gitBlobId(toolConfigText(tool, file, content.toString('utf8')));
   }
-  const key = prettierKey(content);
+  const key = packageKey(content, PACKAGE_KEYS.get(tool));
   if (key.malformed === true) {
     return gitBlobId(content);
   }
-  return key.prettier === undefined ? undefined : gitBlobId(JSON.stringify(key.prettier));
+  return key.section === undefined ? undefined : gitBlobId(JSON.stringify(key.section));
 }
 
 function fingerprints(tool, { root: projectRoot, files }, gitBlobId) {
@@ -85,7 +91,10 @@ function candidates(tool, side) {
     return config.preset === 'kotlin' ? kotlinFiles(tool, side) : [];
   }
   if (tool === 'prettier') {
-    return PRETTIER_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
+    return SCRIPT_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
+  }
+  if (PROJECT_CONFIG_FILES.has(tool)) {
+    return SCRIPT_PRESETS.has(config.preset) ? projectConfigCandidates(tool) : [];
   }
   const configured = PROJECT_TOOL_CONFIGS.get(tool);
   return GRADLE_PRESETS.includes(config.preset) && configured !== undefined
@@ -101,7 +110,7 @@ function isOptedIn(tool, config) {
 }
 
 export function readToolConfigs(base, head, gitBlobId) {
-  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier']
+  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', ...PROJECT_CONFIG_FILES.keys()]
     .filter((tool) => isOptedIn(tool, base.config) && isOptedIn(tool, head.config))
     .map((tool) => ({
       tool,

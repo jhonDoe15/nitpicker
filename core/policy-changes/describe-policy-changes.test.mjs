@@ -377,6 +377,17 @@ describe('describePolicyChanges', () => {
     expect(precedence('pmd', ['nitpicker', 'project'], ['project'])).toEqual([
       'tools.pmd.precedence: ["nitpicker","project"] -> ["project"]',
     ]);
+    const script = (before, after) =>
+      loosened(
+        { tools: { knip: { precedence: before } } },
+        { tools: { knip: { precedence: after } } },
+      );
+    expect(script(['nitpicker'], ['nitpicker', 'project'])).toEqual([
+      'tools.knip.precedence: ["nitpicker"] -> ["nitpicker","project"]',
+    ]);
+    expect(script(['nitpicker', 'project'], ['project'])).toHaveLength(1);
+    expect(script(['project'], ['project', 'nitpicker'])).toEqual([]);
+    expect(script(['project', 'nitpicker'], ['nitpicker', 'project'])).toEqual([]);
     expect(precedence('checkstyle', ['project'], ['nitpicker'])).toEqual([]);
     expect(precedence('checkstyle', ['nitpicker'], ['project'])).toEqual([
       'tools.checkstyle.precedence: ["nitpicker"] -> ["project"]',
