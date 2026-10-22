@@ -178,6 +178,17 @@ def own_nodes(root):
             pending.extend(ast.iter_child_nodes(node))
 
 
+def walk_statements(statements):
+    pending = list(statements)
+    while pending:
+        node = pending.pop()
+        yield node
+        if not isinstance(
+            node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
+        ):
+            pending.extend(ast.iter_child_nodes(node))
+
+
 def words_of(name):
     spaced = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", name)
     spaced = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", spaced)

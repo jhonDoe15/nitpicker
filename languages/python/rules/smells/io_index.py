@@ -11,6 +11,7 @@ from effects.clients import (
     static_names,
     task_names,
 )
+from effects.writes import write_tags
 from effects.tables import (
     DATABASE,
     GETTER_LOOKUPS,
@@ -113,7 +114,14 @@ class IoIndex:
 def scope_facts(context):
     paths = imported_module_paths(context.tree)
     clients, partials = static_names(context, paths)
-    return imported_kinds(context.tree), clients, partials, message_methods(paths)
+    django = any(path.startswith("django.db") for path in paths)
+    return (
+        imported_kinds(context.tree),
+        clients,
+        partials,
+        message_methods(paths),
+        django,
+    )
 
 
 class IoScope:
@@ -124,7 +132,7 @@ class IoScope:
         facts = context.project.memo(
             ("io-facts", context.path), lambda _: scope_facts(context)
         )
-        self.imported, self.clients, self.partials, self.methods = facts
+        self.imported, self.clients, self.partials, self.methods, self.django = facts
         self.tasks = task_names(context.project)
 
     def client_spec(self, names):
@@ -209,10 +217,16 @@ class IoScope:
         text = ".".join(names) + "()"
         found = self.callable_effects(call.func, names, text)
         found = found or self.self_effects(call, names, text)
-        if found:
-            return found
-        kind = name_kind(names)
-        return {kind: (text,)} if kind is not None else {}
+        if not found:
+            kind = name_kind(names)
+            found = {kind: (text,)} if kind is not None else {}
+        return {**self.direct_tags(call, names, text), **found}
+
+    def direct_tags(self, call, names, text):
+        spec = self.client_spec(names)
+        kind = self.direct_kind(names) or name_kind(names)
+        receiver = spec.default if spec is not None else None
+        return write_tags(call, names, kind, receiver, self.context, self.django, text)
 
     def map_effects(self, call):
         if not (

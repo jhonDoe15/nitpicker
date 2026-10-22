@@ -41,6 +41,12 @@ export const RULES_CASES = [
   ...rulesCases('lazy-relation-sqlalchemy', [
     ['lazy-relation-in-loop', 'selectinload', 'Order.customer|sqlalchemy|select(Order)'],
   ]),
+  ...rulesCases('remote-in-transaction', [
+    ['remote-call-in-transaction', 'outbox', 'requests.post()|transaction.atomic()'],
+  ]),
+  ...rulesCases('remote-under-lock', [
+    ['remote-call-under-lock', 'releasing', 'requests.get()|LOCK'],
+  ]),
   ...rulesCases('todo-without-issue', [['todo-without-issue', '# todo(#123)']]),
   ...rulesCases('skipped-test', [['skipped-test-without-reason', 'reason=']]),
   ...rulesCases('sleep-in-test', [['sleep-in-test', 'fake clock']]),

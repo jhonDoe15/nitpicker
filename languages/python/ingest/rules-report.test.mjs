@@ -101,6 +101,16 @@ describe('rules script report', () => {
       'Order.customer|django|Order.objects.all()',
       '`Order.customer` is a lazy relationship: `Order.objects.all()` fetches the `Order` rows without it, so each item of the loop runs one more query',
     ],
+    [
+      'remote-call-in-transaction',
+      'requests.post()|transaction.atomic()',
+      '`requests.post()` makes a remote call while `transaction.atomic()` holds a database transaction: the connection stays checked out for the remote latency, which can exhaust the pool, and the remote side effect cannot roll back with the transaction',
+    ],
+    [
+      'remote-call-under-lock',
+      'notify() > requests.post()|self._lock',
+      '`notify()` (which calls `requests.post()`) makes a remote call while `self._lock` is held: every other caller waits for the remote latency, and a slow or hung remote service blocks them all',
+    ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
       'skipped-test-without-reason',

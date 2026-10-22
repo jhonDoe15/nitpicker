@@ -55,6 +55,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Per-item input or output: one query or one batch request for all items, not one call per item; a `gather` over repository calls still runs one query per item. Without a batch endpoint, bound the fan-out with `asyncio.Semaphore` or fixed-size chunks.
 - Accumulating: append to one list (or fill one dict) in the loop, or use a comprehension or `itertools.chain.from_iterable`; `acc = acc + [x]`, `[*acc, x]` and `{**acc, k: v}` copy the whole accumulator on every step.
 - Related rows in a loop: fetch the relation in the query (`select_related`, `prefetch_related`, `selectinload`, `joinedload`) instead of reading `order.customer` or `order.lines.all()` for each row.
+- Transactions and locks: no HTTP, cloud SDK or other remote call inside `transaction.atomic()`, `session.begin()` or `with lock:`; call before, or after the commit, or write an outbox row inside the transaction and send it from a worker.
 - Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
   test honesty) reports the allowed form in its message: follow the form the message names.
 - Tests: use the project's runner (pytest, unittest, Django or nose2). Every test asserts something. Every branch you add needs a test, and a
