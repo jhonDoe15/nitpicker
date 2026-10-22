@@ -448,6 +448,16 @@ describe('clonePartnerPath', () => {
     ]);
   });
 
+  it('names the other file of the pair for a renamed clone', () => {
+    expect(
+      clonePartnerPath({
+        rule: 'duplicate-clone',
+        path: 'a.py',
+        identity: 'renamed:pair:a.py|b.py:fragment:x:occurrence:1',
+      }),
+    ).toBe('b.py');
+  });
+
   it('has no partner for other findings', () => {
     expect(
       clonePartnerPath({ rule: 'duplicate-clone', path: 'a.java', identity: 'something' }),

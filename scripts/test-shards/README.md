@@ -85,15 +85,42 @@ measurements. The existing duration recorder uses Vitest module diagnostics, whi
 execution in the module duration, and writes sorted whole-second profiles. Record enabled suites
 with the same package filters and flags after obtaining an isolated timing sample.
 
-`node scripts/test-shards/verify-e2e-shards.mjs` collects through the real package scripts,
-checks the 76/54 discovered case counts, resolves CLI shard
-options through Vitest, and exercises the configured sequencer. It requires the profile to cover
+`node scripts/test-shards/verify-e2e-shards.mjs [java|kotlin|python]` collects through the real
+package scripts. It first lists every `.e2e.test.` file, and every other test file that reads a
+`NITPICKER_*_E2E` flag itself or through a module it imports, once with no suite flag and once with
+each suite's flag. Each of those files must be gated by exactly one suite flag (cases listed with it
+and not without any flag), and the flag it reads must be that one: a file gated by two flags, by
+none, or by a flag no suite sets fails the check. Each package script must then select exactly the
+cases its flag gates, so the expected cases are derived rather than counted by hand and a gated
+file that a script leaves out fails. It checks the workflow wiring: the shard job runs the package
+script with `--shard`, the plan job runs this verifier for its language, and the one aggregate job
+always runs, needs both and checks both results. It resolves CLI shard options through Vitest and
+exercises the configured sequencer with the language's profile. It requires the profile to cover
 every selected file exactly and each matrix shard to be nonempty, with every selected file in
 exactly one shard. Vitest list itself does not apply sharding, so its `--shard` output alone is
-insufficient to verify the partition.
+insufficient to verify the partition. The script's own main guard resolves `process.argv[1]`
+through `realpathSync`, so a run through a symlinked path checks rather than exiting silently.
 
 Fixture Git trees, generated reports and build outputs remain local to each runner. The existing
 Maven/Gradle actions cache dependencies; mutable fixture builds are not shared between shards.
 The aggregate `java` and `kotlin` checks retain their names and require matrix success: a failed,
 cancelled or unexpectedly skipped matrix cannot turn green. Unrelated PR labels still skip the
 workflows' test jobs as before.
+
+The Kotlin style file test (`kotlin-e2e/style/kotlin-style-files.e2e.test.mjs`, nine cases) was
+gated on the Java flag but selected by neither suite. It runs the init script's two Kotlin style
+tasks against a stand-in Kotlin plugin, so it now sits under `kotlin-e2e/`, is gated on the Kotlin
+flag and runs in the Kotlin suite with a planning weight of 120 seconds (about 64 to 85 seconds
+locally). Its first run showed two expectations older than the enforcement of the followed base
+values: a project `.editorconfig` that sets another value gets the followed one appended, and a
+project-first detekt precedence gets the enforced layer last. The Kotlin review rules file
+(`kotlin-e2e/kotlin-preset-review-rules.e2e.test.mjs`) weighs 170 seconds: its shard in
+[run 39777693542](https://github.com/jhonDoe15/nitpicker/actions/runs/39777693542) took 291 seconds
+together with a file of about 120. Each language workflow runs the verifier in its own shard-plan
+job; it lists tests without starting a JVM build or a Python project, and the aggregate check
+requires it.
+
+Four Python files (`ruff/ruff-rules`, `ruff/ruff-groups`, `adapters/formatting/format-scope` and
+`adapters/configuration/python-ruff-config`, six cases) were gated on the Python flag but selected
+by no script. They are now in `test:python` with a weight of one second each: they only run the
+installed ruff and black, and took under four seconds together locally.

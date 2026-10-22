@@ -57,8 +57,8 @@ export function readJavaFindings(projectRoot, options = {}) {
     findings: applyRuleMessages(
       [
         ...moduleFindings,
-        ...readDuplicateFindings(reportBase),
-        ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
+        ...readDuplicateFindings(reportBase, { projectRoot }),
+        ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase, projectRoot) : []),
         ...(projectWide
           ? projectWideFindings(projectRoot, {
               projects: modules.map((module) => ({
