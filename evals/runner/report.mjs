@@ -15,6 +15,8 @@ function summarize(records) {
     meanIterationsToGreen: mean(defined(records.map((record) => record.gate.iterationsToGreen))),
     meanCostUsd: mean(defined(records.map((record) => record.agent.costUsd))),
     totalCostUsd: sum(defined(records.map((record) => record.agent.costUsd))),
+    meanTotalTokens: mean(defined(records.map((record) => record.agent.totalTokens))),
+    totalTokens: sum(defined(records.map((record) => record.agent.totalTokens))),
     meanWallTimeMs: mean(records.map((record) => record.wallTimeMs)),
   };
 }
@@ -78,6 +80,7 @@ function countBy(records) {
 
 const percent = (value) => (value === null ? 'n/a' : `${(value * 100).toFixed(0)}%`);
 const fixed = (value, digits = 1) => (value === null ? 'n/a' : value.toFixed(digits));
+const tokens = (value) => (value === null ? 'n/a' : Math.round(value).toLocaleString('en-US'));
 const dollars = (value) => (value === null ? 'n/a' : `$${value.toFixed(4)}`);
 const seconds = (milliseconds) => (milliseconds === null ? 'n/a' : fixed(milliseconds / 1000));
 
@@ -94,9 +97,17 @@ export function renderMarkdown(records) {
     fixed(row.meanIterations),
     fixed(row.meanIterationsToGreen),
     dollars(row.meanCostUsd),
+    tokens(row.meanTotalTokens),
     seconds(row.meanWallTimeMs),
   ];
-  const metricHeader = ['Pass rate', 'Gate runs', 'To green', 'Cost per run', 'Seconds per run'];
+  const metricHeader = [
+    'Pass rate',
+    'Gate runs',
+    'To green',
+    'Cost per run',
+    'Tokens per run',
+    'Seconds per run',
+  ];
   const sections = ['# Nitpicker eval report', '', `Runs: ${report.runs}`];
 
   sections.push(
@@ -104,8 +115,13 @@ export function renderMarkdown(records) {
     '## Pass rate per tier',
     '',
     table(
-      ['Tier', ...metricHeader, 'Total cost'],
-      report.tiers.map((row) => [row.tier, ...metrics(row), dollars(row.totalCostUsd)]),
+      ['Tier', ...metricHeader, 'Total cost', 'Total tokens'],
+      report.tiers.map((row) => [
+        row.tier,
+        ...metrics(row),
+        dollars(row.totalCostUsd),
+        tokens(row.totalTokens),
+      ]),
     ),
   );
   sections.push(

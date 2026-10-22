@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { DEFAULT_PRESET, gitignoreOf, peerDependencies } from './presets.mjs';
 
 // npm 10.9 crashes resolving vitest's optional peers ("reading 'edgesOut'"), so the consumer
 // install is pinned to a newer npm.
@@ -27,8 +28,8 @@ export function command(cwd, executable, args, { env = {}, timeout = 180_000, in
   };
 }
 
-export function checked(cwd, executable, args) {
-  const result = command(cwd, executable, args);
+export function checked(cwd, executable, args, options) {
+  const result = command(cwd, executable, args, options);
   if (result.status !== 0) {
     throw new Error(`${executable} ${args.join(' ')} exited ${result.status}\n${result.output}`);
   }
@@ -57,7 +58,9 @@ export function packNitpicker(packageRoot) {
  * Creates a git consumer project in `root` that has the packed tarball installed, and commits it on
  * `main`. `files` (path to text) are written before the install and committed with it.
  * `packageJson` adds fields to the consumer manifest; its devDependencies are merged with the
- * tarball and the peers taken from `manifest` (the nitpicker package.json).
+ * tarball and the peers of `preset` taken from `manifest` (the nitpicker package.json). A script
+ * preset needs vitest and TypeScript installed; Python and the JVM presets need nothing but
+ * nitpicker, because their tools come from the project's own environment or build.
  */
 export function createConsumer({
   root,
@@ -65,11 +68,12 @@ export function createConsumer({
   manifest,
   files = {},
   packageJson = {},
+  preset = DEFAULT_PRESET,
   strategy,
   commitMessage = 'clean baseline',
 }) {
   checked(root, 'git', ['init', '-b', 'main']);
-  write(root, '.gitignore', 'node_modules/\nreports/\n');
+  write(root, '.gitignore', gitignoreOf(preset, files['.gitignore']));
   write(
     root,
     'package.json',
@@ -81,10 +85,7 @@ export function createConsumer({
         ...packageJson,
         devDependencies: {
           nitpicker: `file:${tarball}`,
-          vitest: manifest.devDependencies.vitest,
-          '@vitest/coverage-v8': manifest.devDependencies['@vitest/coverage-v8'],
-          typescript: manifest.devDependencies.typescript,
-          '@types/node': manifest.devDependencies['@types/node'],
+          ...peerDependencies(preset, manifest),
           ...packageJson.devDependencies,
         },
       },
@@ -92,7 +93,9 @@ export function createConsumer({
       2,
     ) + '\n',
   );
-  for (const [relative, contents] of Object.entries(files)) write(root, relative, contents);
+  for (const [relative, contents] of Object.entries(files)) {
+    if (relative !== '.gitignore') write(root, relative, contents);
+  }
   // The lockfile is committed so the merge-base worktree can `npm ci`.
   checked(root, 'npx', [
     '--yes',
