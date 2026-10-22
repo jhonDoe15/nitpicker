@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { lifecycleArgs, readReactor, runsArchRules, usesSpring } from './maven-project.mjs';
+import { lifecycleArgs, readReactor } from './maven-project.mjs';
 
 const roots = [];
 
@@ -463,36 +463,5 @@ describe('describeModule publishing', () => {
         `<packaging>bundle</packaging>${DISTRIBUTION}`,
       ].map((inner) => soloModule(inner).published),
     ).toEqual([true, true, false, false, true]);
-  });
-});
-
-describe('usesSpring', () => {
-  const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
-
-  it('is true for spring-context and spring-boot jars on the main compile classpath', () => {
-    expect([
-      usesSpring(classpaths('spring-context-6.2.10.jar')),
-      usesSpring(classpaths('guava.jar', 'spring-boot-3.5.5.jar')),
-    ]).toEqual([true, true]);
-  });
-
-  it('is false for other jars, other Spring modules and no jars', () => {
-    expect([
-      usesSpring(classpaths('spring-web-6.2.10.jar', 'spring-boot-starter.jar.sha1')),
-      usesSpring(classpaths()),
-    ]).toEqual([false, false]);
-  });
-});
-
-describe('runsArchRules', () => {
-  const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
-
-  it('is true for Spring and for jmolecules-ddd on the main compile classpath', () => {
-    expect([
-      runsArchRules(classpaths('spring-context-6.2.10.jar')),
-      runsArchRules(classpaths('jmolecules-ddd-2.0.1.jar')),
-      runsArchRules(classpaths('jmolecules-layered-architecture-2.0.1.jar')),
-      runsArchRules(classpaths()),
-    ]).toEqual([true, true, false, false]);
   });
 });
