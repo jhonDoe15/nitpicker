@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { KOTLIN_EXCEPTION_RULES } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
@@ -37,7 +38,7 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
           path: 'src/main/kotlin/demo/K.kt',
           identity: `fp:nitpicker/subject=${forbidden}`,
           location: { line: 4 },
-          message: `${forbidden} If this is intended, add {"rule":"${callRule}","paths":["src/main/kotlin/demo/K.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
+          message: `${forbidden} ${exceptionHint(callRule, 'src/main/kotlin/demo/K.kt')}`,
           classification: 'enforceable',
         },
       ]);
@@ -61,18 +62,16 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
 
       expect(result.exitCode, result.text).toBe(1);
     });
-    it('rejects an exception for a rule that is not a one-way rule', () => {
+    it('rejects an exception for a rule that no kotlin finding prints', () => {
       const root = kotlinRepository({
-        'nitpicker.config.json': withExceptions([
-          { ...exception, rule: 'detekt.style.MagicNumber' },
-        ]),
+        'nitpicker.config.json': withExceptions([{ ...exception, rule: 'MagicNumber' }]),
       });
 
       const result = run(root);
 
       expect(result.exitCode).toBe(2);
       expect(result.output.err).toBe(
-        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "detekt.style.MagicNumber", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}, and, for the Java sources of the project, a finding as it is printed, "<tool>/<rule>" (for example "pmd/UnusedPrivateField"; tools: ${JAVA_TOOLS.join(', ')}). Tune any other detekt rule in config/detekt/detekt.yml\n`,
+        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "MagicNumber", which is not a rule with exceptions. Write the rule as the finding prints it; rules with exceptions for the kotlin preset: detekt.<ruleset>.<Rule>, ${KOTLIN_EXCEPTION_RULES.join(', ')}, and, for the Java sources of the project, a finding as it is printed, "<tool>/<rule>" (for example "pmd/UnusedPrivateField"; tools: ${JAVA_TOOLS.join(', ')})\n`,
       );
     });
   });
