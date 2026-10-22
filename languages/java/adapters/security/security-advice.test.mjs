@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { pinnedJavaTools } from '../../../../core/licensing/test-support/dependency-licenses.mjs';
+import { readPinnedTools } from '../../builds/java-build.mjs';
 import { ADVICE_GROUPS } from './advice-groups.mjs';
 import {
   enclosingMethod,
@@ -195,17 +195,10 @@ const excluded = [...excludeFilter.matchAll(/pattern="([^"]*)"/g)].flatMap(([, l
   list.split(','),
 );
 
-const initScript = readFileSync(
-  path.join(path.dirname(fileURLToPath(import.meta.url)), '../../gradle/nitpicker.init.gradle'),
-  'utf8',
-);
-
 describe('find-sec-bugs advice', () => {
   it('lists the patterns of the version the init script pins', () => {
-    const pinned = pinnedJavaTools(initScript).find(({ tool }) => tool === 'findSecBugs');
-
     expect(
-      pinned?.version,
+      readPinnedTools().findSecBugs,
       `FIND_SEC_BUGS_PATTERNS is the list of find-sec-bugs ${LISTED_VERSION} but the init script pins another version. Regenerate it: unzip the findsecbugs-plugin jar, list the <BugPattern type=...> values of findbugs.xml, update the list and LISTED_VERSION, then give each new pattern advice in advice-groups.mjs or exclude it in gradle/security/exclude.xml.`,
     ).toBe(LISTED_VERSION);
   });

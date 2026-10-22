@@ -71,7 +71,7 @@ const RANK = { [REJECTED]: 0, [WEAK_COPYLEFT]: 1, [PERMISSIVE]: 2 };
 function baseIdentifier(identifier) {
   return identifier
     .trim()
-    .replace(/\s+WITH\s+.*$/i, '')
+    .split(/\s+WITH\s+/i)[0]
     .replace(/(?:-only|-or-later|\+)$/i, '');
 }
 
