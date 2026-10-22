@@ -1,6 +1,7 @@
 import { inImport } from '../kotlin-source.mjs';
 
 const CAST_OPERATOR = /(?<![\w.$`])as(?![\w?$`])(?<target>\s*(?:[\w.]+)\??)?/g;
+const NULL_WINDOW = 20;
 const NULL_BEFORE = /\bnull\s*$/;
 const ANY_OR_NULL = /^\s*(?:kotlin\.)?Any\?$/;
 
@@ -15,7 +16,7 @@ export function unsafeCasts(scanned) {
       if (inImport(scanned.code, index)) {
         return false;
       }
-      const before = scanned.code.slice(Math.max(0, index - 20), index);
+      const before = scanned.code.slice(Math.max(0, index - NULL_WINDOW), index);
       return !NULL_BEFORE.test(before) && !ANY_OR_NULL.test(groups.target ?? '');
     })
     .map(({ index }) => ({ rule: 'UnsafeCastOperator', offset: index }));

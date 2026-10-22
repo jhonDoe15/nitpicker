@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { unsafeCasts } from './casts.mjs';
+import { unsafeCasts } from './unsafe-casts.mjs';
 
 function found(source) {
   const scanned = scanKotlinSource(source);

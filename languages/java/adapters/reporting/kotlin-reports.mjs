@@ -20,7 +20,7 @@ import {
 } from '../kotlin/rules/kotlin-source-rules.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
 import { withFrameworkAllowances } from '../kotlin/scan/framework-allowances.mjs';
-import { withoutCoveredCasts } from '../kotlin/scan/cast-precedence.mjs';
+import { withoutCoveredCasts } from '../kotlin/scan/casts/cast-precedence.mjs';
 import { readKotlinSourceFindings } from '../kotlin/scan/kotlin-scan.mjs';
 import { readKotlinReviewFindings } from '../kotlin/review-rules/review-findings.mjs';
 
