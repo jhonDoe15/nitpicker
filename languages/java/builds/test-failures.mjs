@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { childrenNamed, parseXml } from '../ingest/common.mjs';
+import { childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
 
 const MAX_LISTED_FAILURES = 10;
 const TEST_REPORT = /^TEST-.*\.xml$/u;

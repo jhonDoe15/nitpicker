@@ -3,6 +3,9 @@ import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { codeExtensions, defaultResolvedLayout } from '../layout.mjs';
 import { promiseChainRule, testControlFlowSelectors } from './strict/strict-control-flow.mjs';
 import { typeAssertionSelectors } from './strict/strict-escape-hatches.mjs';
+import { testHonestySelectors } from './test-honesty/selectors.mjs';
+
+const processTimeoutRules = { 'nitpicker/require-test-process-timeout': 'error' };
 
 export const strictTestRules = {
   'nitpicker/no-git-repository-per-test': 'error',
@@ -10,17 +13,22 @@ export const strictTestRules = {
   'nitpicker/no-node-process-per-test': 'error',
   'nitpicker/no-server-or-worker-per-test': 'error',
   'nitpicker/no-raised-test-timeout': 'error',
+  ...processTimeoutRules,
   'nitpicker/no-first-test-charged-setup': 'error',
   'nitpicker/test-tsconfig-pins-lib-and-types': 'error',
 };
 
-const testRestrictedSyntax = [...typeAssertionSelectors, ...testControlFlowSelectors];
+const testRestrictedSyntax = [
+  ...typeAssertionSelectors,
+  ...testControlFlowSelectors,
+  ...testHonestySelectors,
+];
 
 export const strictTestHelperRules = {
   'nitpicker/no-process-globals-outside-main-guard': 'error',
 };
 
-function testAreaGlobsFor(layout) {
+export function testAreaGlobsFor(layout) {
   return [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs];
 }
 
@@ -41,6 +49,12 @@ export function strictTestConfigFor(layout = defaultResolvedLayout) {
       ignores: [...layout.excludedGlobs, `**/*.{test,spec}.${codeExtensions}`],
       plugins: { nitpicker: nitpickerRules },
       rules: strictTestHelperRules,
+    },
+    {
+      files: layout.sourceRoots.map((root) => `${root}/**/test-support/**/*.${codeExtensions}`),
+      ignores: layout.excludedGlobs,
+      plugins: { nitpicker: nitpickerRules },
+      rules: processTimeoutRules,
     },
   ];
 }

@@ -1,83 +1,30 @@
-import { existsSync, readdirSync } from 'node:fs';
-import path from 'node:path';
-import { parseIni } from '../adapters/configuration/mypy-config.mjs';
-import { isDirectory, readProjectFile, toml } from './project-files.mjs';
+import { parseIni } from '../adapters/configuration/ini-parser.mjs';
+import {
+  dependencyEntry,
+  groupOf,
+  isDevelopmentGroup,
+  normalizeRequirementName,
+  requirementEntries,
+  requirementName,
+} from './dependencies/requirement-names.mjs';
+import { requirementFiles } from './dependencies/requirement-files.mjs';
+import { readSetupPy } from './dependencies/setup-py.mjs';
+import { readProjectFile, toml } from './project-files.mjs';
 
 const PYPROJECT = 'pyproject.toml';
 const PIPFILE = 'Pipfile';
 const SETUP_CFG = 'setup.cfg';
-const REQUIREMENT_DIRECTORY = 'requirements';
-const REQUIREMENT_FILE = /^requirements.*\.(?:txt|in)$/u;
-const DEV_WORDS = [
-  'dev',
-  'develop',
-  'development',
-  'test',
-  'tests',
-  'testing',
-  'lint',
-  'linting',
-  'docs?',
-  'typing',
-  'types',
-  'ci',
-  'tox',
-  'check',
-  'qa',
-  'format',
-  'local',
-];
-const DEV_NAME = new RegExp(`(?:^|[-_.])(?:${DEV_WORDS.join('|')})(?:$|[-_.])`, 'u');
-const REQUIREMENT_NAME = /^\s*([A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?)/u;
-const EGG_NAME = /#egg=([A-Za-z0-9._-]+)/u;
+const SETUP_PY = 'setup.py';
 const PYTHON_ENTRY = 'python';
 
-/** PEP 503 normalized name: lower case, runs of `-`, `_` and `.` as one `-`. */
-export function normalizeRequirementName(name) {
-  return name.toLowerCase().replaceAll(/[-_.]+/gu, '-');
-}
-
-/** The distribution a requirement line names (`Django>=4 ; python_version>"3.8"` is Django). */
-export function requirementName(line) {
-  const text = line.replace(/\s+#.*$/u, '').trim();
-  if (text === '' || text.startsWith('#')) {
-    return undefined;
-  }
-  if (text.startsWith('-')) {
-    return undefined;
-  }
-  if (/^[a-z+]+:\/\//iu.test(text)) {
-    return EGG_NAME.exec(text)?.[1];
-  }
-  return REQUIREMENT_NAME.exec(text)?.[1];
-}
-
-function entry(name, group, file) {
-  return { name, normalized: normalizeRequirementName(name), group, file };
-}
-
-function requirementEntries(list, group, file) {
-  return (Array.isArray(list) ? list : [])
-    .map((line) => requirementName(String(line)))
-    .filter((name) => name !== undefined)
-    .map((name) => entry(name, group, file));
-}
-
-/** Whether a group, extra or requirements-file suffix names development tooling (dev, test, lint, docs...). */
-export function isDevelopmentGroup(name) {
-  return DEV_NAME.test(String(name).toLowerCase());
-}
-
-function groupOf(name, fallback) {
-  return isDevelopmentGroup(name) ? 'dev' : fallback;
-}
+export { isDevelopmentGroup, normalizeRequirementName, requirementName };
 
 function tableEntries(table, group, file) {
   return Object.keys(table ?? {})
     .filter((name) => name.toLowerCase() !== PYTHON_ENTRY)
     .map((name) => {
       const optional = typeof table[name] === 'object' && table[name]?.optional === true;
-      return entry(name, optional && group === 'production' ? 'optional' : group, file);
+      return dependencyEntry(name, optional && group === 'production' ? 'optional' : group, file);
     });
 }
 
@@ -85,8 +32,8 @@ function poetryEntries(poetry = {}, file) {
   return [
     ...tableEntries(poetry.dependencies, 'production', file),
     ...tableEntries(poetry['dev-dependencies'], 'dev', file),
-    ...Object.values(poetry.group ?? {}).flatMap((group) =>
-      tableEntries(group?.dependencies, 'dev', file),
+    ...Object.entries(poetry.group ?? {}).flatMap(([name, group]) =>
+      tableEntries(group?.dependencies, name === 'main' ? 'production' : 'dev', file),
     ),
   ];
 }
@@ -172,33 +119,9 @@ function readSetupCfg(projectRoot) {
   };
 }
 
-function requirementFiles(projectRoot) {
-  const directory = path.join(projectRoot, REQUIREMENT_DIRECTORY);
-  return [
-    ...readdirSync(projectRoot).filter((name) => REQUIREMENT_FILE.test(name)),
-    ...(isDirectory(directory)
-      ? readdirSync(directory)
-          .filter((name) => /\.(?:txt|in)$/u.test(name))
-          .map((name) => `${REQUIREMENT_DIRECTORY}/${name}`)
-      : []),
-  ].sort();
-}
-
-function requirementGroup(file) {
-  const base = path.posix
-    .basename(file)
-    .replace(/\.(?:txt|in)$/u, '')
-    .replace(/^requirements/u, '');
-  return groupOf(base, 'production');
-}
-
 function readRequirements(projectRoot) {
-  return requirementFiles(projectRoot).flatMap((file) =>
-    requirementEntries(
-      (readProjectFile(projectRoot, file) ?? '').split(/\r?\n/u),
-      requirementGroup(file),
-      file,
-    ),
+  return requirementFiles(projectRoot).flatMap(({ file, group, lines }) =>
+    requirementEntries(lines, group, file),
   );
 }
 
@@ -216,30 +139,33 @@ function manifestOf(sources, dependencies) {
 /**
  * `runtime` and `development` are the normalized names (optional extras count as runtime);
  * `dependencies` lists each declaration `{ name, normalized, group: 'production' | 'dev' |
- * 'optional', file }`; `complete` says the production list is fully declared (not dynamic or in
- * setup.py); `manifest` is the file new production dependencies go in.
+ * 'optional', file }`; `complete` says the production list is fully declared (not dynamic or
+ * computed in setup.py); `manifest` is the file new production dependencies go in.
  */
 export function readPythonDependencies(projectRoot) {
   const pyproject = readPyproject(projectRoot);
   const pipfile = readPipfile(projectRoot);
   const setupCfg = readSetupCfg(projectRoot);
+  const setupPy = readSetupPy(projectRoot);
   const requirements = readRequirements(projectRoot);
   const dependencies = [
     ...(pyproject?.entries ?? []),
     ...(pipfile?.entries ?? []),
     ...(setupCfg?.entries ?? []),
+    ...(setupPy?.entries ?? []),
     ...requirements,
   ];
   const declaresProduction =
-    [pyproject, pipfile, setupCfg].some((source) => source?.declares === true) ||
+    [pyproject, pipfile, setupCfg, setupPy].some((source) => source?.declares === true) ||
     requirements.some(({ group }) => group === 'production');
   const opaque =
     (pyproject?.dynamic === true && requirements.length === 0) ||
-    (existsSync(path.join(projectRoot, 'setup.py')) && !declaresProduction);
+    (setupPy !== undefined && !declaresProduction);
   const development = dependencies.filter(({ group }) => group === 'dev');
+  const runtime = uniqueNames(dependencies.filter(({ group }) => group !== 'dev'));
   return {
-    runtime: uniqueNames(dependencies.filter(({ group }) => group !== 'dev')),
-    development: uniqueNames(development),
+    runtime,
+    development: uniqueNames(development).filter((name) => !runtime.includes(name)),
     dependencies,
     complete: declaresProduction && !opaque,
     declaresDev: development.length > 0,
@@ -248,6 +174,7 @@ export function readPythonDependencies(projectRoot) {
         pyproject && { ...pyproject, file: PYPROJECT },
         pipfile && { ...pipfile, file: PIPFILE },
         setupCfg && { ...setupCfg, file: SETUP_CFG },
+        setupPy && { ...setupPy, file: SETUP_PY },
       ],
       dependencies,
     ),

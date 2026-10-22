@@ -1,6 +1,17 @@
 #!/usr/bin/env node
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
+
+if (existsSync('GRADLE_STDOUT')) {
+  process.stdout.write(readFileSync('GRADLE_STDOUT', 'utf8'));
+}
 
 if (existsSync('GRADLE_FAIL')) {
   process.stderr.write(`${readFileSync('GRADLE_FAIL', 'utf8')}\n`);
@@ -102,7 +113,12 @@ function writeModule({ key, dir }) {
   );
   writeFileSync(report('spotbugs.sarif'), sarif('SpotBugs', []));
   writeFileSync(report('format.txt'), '');
-  writeFileSync(report('checkstyle.xml'), '<checkstyle version="10.21.1"></checkstyle>');
+  writeFileSync(
+    report('checkstyle.xml'),
+    existsSync('checkstyle-report.xml')
+      ? readFileSync('checkstyle-report.xml')
+      : '<checkstyle version="10.21.1"></checkstyle>',
+  );
   if (!lines('NO_JACOCO_IN').includes(dir === '' ? '.' : dir)) {
     writeFileSync(
       report('jacoco.xml'),
@@ -137,6 +153,22 @@ const modules = existsSync('NO_REPORTS')
 mkdirSync(reportBase, { recursive: true });
 mkdirSync('build', { recursive: true });
 writeFileSync('build/gradle-args.json', JSON.stringify(process.argv.slice(2)));
+appendFileSync('build/gradle-calls.jsonl', `${JSON.stringify(process.argv.slice(2))}\n`);
+const exportArgument = process.argv.find((argument) =>
+  argument.startsWith('-Pnitpicker.checkstyle.exportConfig='),
+);
+if (exportArgument !== undefined) {
+  writeFileSync(exportArgument.slice(exportArgument.indexOf('=') + 1), '<module name="Checker"/>');
+}
+const styleFileArgument = process.argv.find((argument) =>
+  argument.startsWith('-Pnitpicker.kotlin.styleFile='),
+);
+if (styleFileArgument !== undefined) {
+  writeFileSync(
+    'build/style-file.json',
+    readFileSync(styleFileArgument.slice(styleFileArgument.indexOf('=') + 1)),
+  );
+}
 writeFileSync(path.join(reportBase, 'modules.json'), JSON.stringify(modules));
 for (const module of modules) {
   writeModule(module);

@@ -184,14 +184,14 @@ Status: implemented. The consumer installs one npm dev dependency and runs `npx 
   own config, and a config change that checks less fails until a person accepts it.
 - Tools nitpicker owns are exact-pinned dependencies, loaded from its own package, and must match
   the pinned versions. Neither the base nor the head tree can choose them.
-- `vitest`, `@vitest/coverage-v8`, and `typescript` are required peer dependencies from the
-  consumer. The head can change them; the report records the version that ran, which makes such a
+- `typescript` and the project's test runner (`vitest` with `@vitest/coverage-v8`, `jest` or
+  `mocha`; `node:test` comes with Node) are peer dependencies from the consumer. The head can change them; the report records the version that ran, which makes such a
   change visible but does not prevent it.
 - nitpicker behaves like any other dependency. It does not check the consumer's setup up front:
   if a peer or the consumer's install is missing or incompatible, the affected tool fails the way
   it would when run directly, and the report shows that as a tool error. A committed
   `node_modules/` is used like any project's, and tools that cache under `node_modules` write to
-  the consumer's install. Single-package npm projects are the tested setup.
+  the consumer's install. Single-package npm projects are the tested setup; the base's own frozen install also supports pnpm, Yarn and Bun (see [usage](usage.md#what-it-compares)).
 - The `policy-tests` analyzer, which runs nitpicker's own test suite, is not in the default set.
 - Default file globs cover common layouts (`src/`, `test/`, `tests/`, `__tests__/`, `e2e/`) instead of only `src/main`
   and `tests`. The config file can change them.

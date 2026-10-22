@@ -4,7 +4,6 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { collectJavaFindings } from '../java-diff.mjs';
-import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -174,74 +173,58 @@ describe.skipIf(!enabled)('Error Prone on a Lombok project', () => {
     for (const directory of projects.splice(0)) rmSync(directory, { recursive: true, force: true });
   });
 
-  it(
-    'compiles @Data, @Builder, @RequiredArgsConstructor and @Slf4j classes on Gradle and reports only the written code',
-    () => {
-      const root = project({
-        'settings.gradle': "rootProject.name = 'shop'\n",
-        'build.gradle': BUILD_GRADLE,
-      });
-      const findings = collectJavaFindings(root, { gradle, policy: {} });
-      const [ignored] = findings.filter(({ tool }) => tool === 'errorprone');
-      const hint = exceptionHint('errorprone/ReturnValueIgnored', 'src/main/java/shop/Basket.java');
+  it('compiles @Data, @Builder, @RequiredArgsConstructor and @Slf4j classes on Gradle and reports only the written code', () => {
+    const root = project({
+      'settings.gradle': "rootProject.name = 'shop'\n",
+      'build.gradle': BUILD_GRADLE,
+    });
+    const findings = collectJavaFindings(root, { gradle, policy: {} });
+    const [ignored] = findings.filter(({ tool }) => tool === 'errorprone');
+    const hint = exceptionHint('errorprone/ReturnValueIgnored', 'src/main/java/shop/Basket.java');
 
-      expect(errorProneAndToolErrors(findings)).toEqual(ONLY_THE_WRITTEN_CODE);
-      expect(ignored.message.split(hint)).toEqual([
-        expect.not.stringContaining('nitpicker.config.json'),
-        '',
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(errorProneAndToolErrors(findings)).toEqual(ONLY_THE_WRITTEN_CODE);
+    expect(ignored.message.split(hint)).toEqual([
+      expect.not.stringContaining('nitpicker.config.json'),
+      '',
+    ]);
+  }, 180_000);
 
-  it(
-    'does the same with lombok.addSuppressWarnings = false, turning off the checks that fail on generated code',
-    () => {
-      const root = project({
-        'settings.gradle': "rootProject.name = 'shop'\n",
-        'build.gradle': BUILD_GRADLE,
-        'lombok.config': 'config.stopBubbling = true\nlombok.addSuppressWarnings = false\n',
-      });
+  it('does the same with lombok.addSuppressWarnings = false, turning off the checks that fail on generated code', () => {
+    const root = project({
+      'settings.gradle': "rootProject.name = 'shop'\n",
+      'build.gradle': BUILD_GRADLE,
+      'lombok.config': 'config.stopBubbling = true\nlombok.addSuppressWarnings = false\n',
+    });
 
-      expect(errorProneAndToolErrors(collectJavaFindings(root, { gradle, policy: {} }))).toEqual(
-        ONLY_THE_WRITTEN_CODE,
-      );
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(errorProneAndToolErrors(collectJavaFindings(root, { gradle, policy: {} }))).toEqual(
+      ONLY_THE_WRITTEN_CODE,
+    );
+  }, 180_000);
 
-  it(
-    'keeps every check on the sources a lombok.addSuppressWarnings = false config does not govern',
-    () => {
-      const root = project({
-        'settings.gradle': "rootProject.name = 'shop'\n",
-        'build.gradle': BUILD_GRADLE,
-        'src/main/java/shop/legacy/lombok.config': 'lombok.addSuppressWarnings = false\n',
-        'src/main/java/shop/legacy/Old.java':
-          'package shop.legacy;\n\n@lombok.Data\npublic class Old {\n  private String label = "";\n}\n',
-        'src/main/java/shop/Plain.java':
-          'package shop;\n\nimport java.util.List;\n\npublic class Plain {\n' +
-          '  public java.util.List<String> names() {\n    return List.of("a");\n  }\n}\n',
-      });
+  it('keeps every check on the sources a lombok.addSuppressWarnings = false config does not govern', () => {
+    const root = project({
+      'settings.gradle': "rootProject.name = 'shop'\n",
+      'build.gradle': BUILD_GRADLE,
+      'src/main/java/shop/legacy/lombok.config': 'lombok.addSuppressWarnings = false\n',
+      'src/main/java/shop/legacy/Old.java':
+        'package shop.legacy;\n\n@lombok.Data\npublic class Old {\n  private String label = "";\n}\n',
+      'src/main/java/shop/Plain.java':
+        'package shop;\n\nimport java.util.List;\n\npublic class Plain {\n' +
+        '  public java.util.List<String> names() {\n    return List.of("a");\n  }\n}\n',
+    });
 
-      expect(errorProneAndToolErrors(collectJavaFindings(root, { gradle, policy: {} }))).toEqual([
-        ONLY_THE_WRITTEN_CODE[0],
-        ['errorprone', 'UnnecessarilyFullyQualified', 'src/main/java/shop/Plain.java', 6],
-        ONLY_THE_WRITTEN_CODE[1],
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(errorProneAndToolErrors(collectJavaFindings(root, { gradle, policy: {} }))).toEqual([
+      ONLY_THE_WRITTEN_CODE[0],
+      ['errorprone', 'UnnecessarilyFullyQualified', 'src/main/java/shop/Plain.java', 6],
+      ONLY_THE_WRITTEN_CODE[1],
+    ]);
+  }, 180_000);
 
-  it(
-    'does the same on Maven, with Lombok in annotationProcessorPaths',
-    () => {
-      const root = project({ 'pom.xml': POM });
+  it('does the same on Maven, with Lombok in annotationProcessorPaths', () => {
+    const root = project({ 'pom.xml': POM });
 
-      expect(errorProneAndToolErrors(collectJavaFindings(root, { maven, policy: {} }))).toEqual(
-        ONLY_THE_WRITTEN_CODE,
-      );
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(errorProneAndToolErrors(collectJavaFindings(root, { maven, policy: {} }))).toEqual(
+      ONLY_THE_WRITTEN_CODE,
+    );
+  }, 180_000);
 });

@@ -16,13 +16,16 @@ export function maskTextBlocks(text) {
     .join('\n');
 }
 
-export function javaLineLengthFindings(files, { analyzerName, exceptions }) {
+export function javaLineLengthFindings(
+  files,
+  { analyzerName, exceptions, lineLength = JAVA_LINE_LENGTH },
+) {
   return evaluateFileLimits(
     files.map((file) => ({ ...file, text: maskTextBlocks(file.text) })),
     {
       analyzerName,
       exceptions,
-      thresholds: { lineLength: JAVA_LINE_LENGTH },
+      thresholds: { lineLength },
       checks: ['lineLength'],
     },
   );
