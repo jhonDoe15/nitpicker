@@ -102,7 +102,7 @@ function readOptions(policy = {}) {
     testSeconds: policy.testSeconds,
     testConsoleAllow: policy.testConsoleAllow,
     javaStyle: policy.javaStyle,
-    featureRoots: policy.layout?.featureRoots,
+    featureLayout: policy.layout,
     baselineRoot: policy.baselineRoot,
     baseline: { snapshot: policy.snapshot, baselineRoot: policy.baselineRoot },
   };

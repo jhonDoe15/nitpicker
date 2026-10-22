@@ -49,7 +49,7 @@ describe.skipIf(!enabled)('Contract rules on a Java project without Spring', () 
     const findings = readSpringArchFindings(path.join(projectRoot, 'build', 'nitpicker'), {
       resolvePath: (className) => `src/main/java/${className.replaceAll('.', '/')}.java`,
       spring: false,
-      isFeatureFace: featureFaceMatcher({ modulePath: '' }),
+      isFeatureFace: featureFaceMatcher({ layout: {}, modulePath: '' }),
     });
 
     expect(findings.map(({ path: file, identity }) => `${file} ${identity}`)).toEqual([

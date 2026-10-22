@@ -3,6 +3,7 @@ import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { collectJavaFindings } from './java-diff.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
+import { featureLayout } from '../../../shared/rules/features/feature-roles.mjs';
 import { javaStyle } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 
@@ -66,9 +67,7 @@ export function readRunnerPolicy(runnerArguments, environment = process.env) {
       javaStyle: javaStyle(conventions),
       ...(spring === true ? { spring } : {}),
       ...(featureFolders === true ? { featureFolders } : {}),
-      ...(layout?.featureRoots === undefined
-        ? {}
-        : { layout: { featureRoots: layout.featureRoots } }),
+      ...(layout === undefined ? {} : { layout: featureLayout(layout) }),
       kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
     },
   };

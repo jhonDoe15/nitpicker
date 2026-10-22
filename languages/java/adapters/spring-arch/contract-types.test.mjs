@@ -86,7 +86,7 @@ describe('contract-infrastructure-type findings', () => {
           'package|persistence|entities:jakarta.persistence.EntityManager',
         ),
       ],
-      { isFeatureFace: featureFaceMatcher({ modulePath: '' }) },
+      { isFeatureFace: featureFaceMatcher({ layout: {}, modulePath: '' }) },
     );
 
     expect(findings.map((finding) => finding.symbol)).toEqual(['OrderStore']);
@@ -121,25 +121,28 @@ describe('contract-infrastructure-type findings', () => {
 
 describe('featureFaceMatcher', () => {
   it.each([
-    [{}, 'app/src/main/java/com/acme/features/orders/OrderStore.java', true],
-    [{}, 'app/src/main/java/com/acme/features/orders/internal/Jdbc.java', false],
-    [{}, 'app/src/main/java/com/acme/features/Root.java', false],
-    [{ modulePath: 'app' }, 'src/main/kotlin/com/acme/features/orders/Orders.kt', true],
+    [{}, '', 'app/src/main/java/com/acme/features/orders/OrderStore.java', true],
+    [{}, '', 'app/src/main/java/com/acme/features/orders/internal/Jdbc.java', false],
+    [{}, '', 'app/src/main/java/com/acme/features/Root.java', false],
+    [{}, '', 'app/src/main/java/com/acme/features/shared/Clock.java', false],
+    [{}, 'app', 'src/main/kotlin/com/acme/features/orders/Orders.kt', true],
     [
-      { featureRoots: ['app/src/main/java/com/acme/modules'], modulePath: 'app' },
+      { featureRoots: ['app/src/main/java/com/acme/modules'] },
+      'app',
       'src/main/java/com/acme/modules/orders/A.java',
       true,
     ],
     [
-      { featureRoots: ['other/features'], modulePath: 'app' },
+      { featureRoots: ['other/features'] },
+      'app',
       'src/main/java/com/acme/features/orders/A.java',
       false,
     ],
-    [{ featureRoots: [] }, 'src/main/java/com/acme/features/orders/A.java', false],
+    [{ featureRoots: [] }, '', 'src/main/java/com/acme/features/orders/A.java', false],
   ])(
-    'reads the feature roots against the project-relative path: %j %s',
-    (layout, file, expected) => {
-      expect(featureFaceMatcher(layout)(file)).toBe(expected);
+    'reads the feature roots against the project-relative path: %j %s %s',
+    (layout, modulePath, file, expected) => {
+      expect(featureFaceMatcher({ layout, modulePath })(file)).toBe(expected);
     },
   );
 });

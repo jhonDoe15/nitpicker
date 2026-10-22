@@ -116,7 +116,7 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
         baseline: options.baseline,
         modulePath,
       },
-      featureLayout: { featureRoots: options.featureRoots, modulePath },
+      featureLayout: { layout: options.featureLayout, modulePath },
       testConsole: {
         allow: options.testConsoleAllow,
         exceptions: options.exceptions,
