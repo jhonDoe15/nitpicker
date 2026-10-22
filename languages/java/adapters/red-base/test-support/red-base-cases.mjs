@@ -2,53 +2,48 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { runGitIn, summarize } from '../../test-support/gradle-e2e.mjs';
+import { commitBranch, runGitIn, summarize } from '../../test-support/gradle-e2e.mjs';
 import { runJavaDiff } from '../../java-diff.mjs';
 
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixtures = path.resolve(import.meta.dirname, '../../fixtures');
+
+function contained(base, name) {
+  const full = path.resolve(base, name);
+  if (!full.startsWith(base + path.sep)) {
+    throw new Error(`${name} is outside ${base}`);
+  }
+  return full;
+}
 
 export function createRepository({ fixture, ignored, files }) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-red-base-e2e-'));
-  cpSync(path.join(fixtures, fixture), root, { recursive: true });
-  writeAll(root, { '.gitignore': ignored, ...files });
+  cpSync(contained(fixtures, fixture), root, { recursive: true });
+  writeFileSync(path.join(root, '.gitignore'), ignored);
+  for (const [file, content] of Object.entries(files)) {
+    const target = contained(root, file);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, content);
+  }
   runGitIn(root, 'init', '-q', '-b', 'main');
   runGitIn(root, 'add', '-A');
   runGitIn(root, 'commit', '-q', '-m', 'main');
   return root;
 }
 
-function writeAll(root, files) {
-  for (const [file, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), content);
-  }
-}
-
-function branchFrom(root, { name, from, files }) {
-  runGitIn(root, 'checkout', '-q', '-b', name, from);
-  writeAll(root, files);
-  runGitIn(root, 'add', '-A');
-  runGitIn(root, 'commit', '-q', '-m', name);
-}
-
 export function addRedBaseBranches(root, { testPath, bad }) {
-  const passing = readFileSync(path.join(root, testPath), 'utf8');
-  branchFrom(root, {
-    name: 'red-base',
-    from: 'main',
-    files: { [testPath]: passing.replace('"Hello, Ada!"', '"Hi, Ada!"') },
-  });
-  branchFrom(root, { name: 'repaired', from: 'red-base', files: { [testPath]: passing } });
-  branchFrom(root, { name: 'repaired-with-violation', from: 'repaired', files: bad });
+  const passing = readFileSync(contained(root, testPath), 'utf8');
+  const failing = passing.replace('"Hello, Ada!"', '"Hi, Ada!"');
+  commitBranch(root, 'red-base', { [testPath]: failing }, 'main');
+  commitBranch(root, 'repaired', { [testPath]: passing }, 'red-base');
+  commitBranch(root, 'repaired-with-violation', bad, 'repaired');
 }
 
-function diffOf(root, branch, policy) {
+function diffOf(root, branch, { gradle, policy }) {
   runGitIn(root, 'checkout', '-q', branch);
   return runJavaDiff({ repositoryRoot: root, requestedBaseRef: 'red-base', gradle, policy });
 }
 
-export function redBaseCases({ setup, policy, expected }) {
+export function redBaseCases({ setup, gradle, policy, expected }) {
   let root;
 
   beforeAll(() => {
@@ -60,7 +55,7 @@ export function redBaseCases({ setup, policy, expected }) {
   });
 
   it('does not block a change that repairs the failing base tests, and keeps comparing the other checks with the base', () => {
-    const result = diffOf(root, 'repaired', policy);
+    const result = diffOf(root, 'repaired', { gradle, policy });
 
     expect({
       failed: result.failed,
@@ -76,7 +71,7 @@ export function redBaseCases({ setup, policy, expected }) {
   });
 
   it('still fails a new violation next to a failing base', () => {
-    const result = diffOf(root, 'repaired-with-violation', policy);
+    const result = diffOf(root, 'repaired-with-violation', { gradle, policy });
 
     expect({ failed: result.failed, newEnforceable: summarize(result.newEnforceable) }).toEqual({
       failed: true,

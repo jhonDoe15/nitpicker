@@ -11,11 +11,13 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+const COMMAND_TIMEOUT_MS = 60_000;
+const GATE_TIMEOUT_MS = 5 * 60_000;
 const TSCONFIG =
   '{"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"Bundler","strict":true,"lib":["ES2022"],"types":[]},"include":["src","test"]}\n';
 
 function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, encoding: 'utf8' });
+  const result = spawnSync(command, args, { cwd, encoding: 'utf8', timeout: COMMAND_TIMEOUT_MS });
   if (command === 'git' && result.status !== 0) {
     throw new Error(`git ${args.join(' ')} failed: ${result.stderr}`);
   }
@@ -70,7 +72,7 @@ function runGate({ project, branch, options }) {
       path.join(project.packageRoot, 'core/cli.mjs'),
       ...['--base', base, ...analyzerArguments, ...extraArguments, '--output', outputRoot],
     ],
-    { cwd: project.root, encoding: 'utf8' },
+    { cwd: project.root, encoding: 'utf8', timeout: GATE_TIMEOUT_MS },
   );
   return {
     exitCode: result.status,

@@ -5,6 +5,8 @@ import {
   redBaseCases,
 } from '../../red-base/test-support/red-base-cases.mjs';
 
+const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
+
 const KOTLIN_BAD = `package demo
 
 class Bad {
@@ -21,6 +23,7 @@ describe.skipIf(process.env.NITPICKER_KOTLIN_E2E !== '1')(
   'Kotlin preset on a base whose tests fail',
   () => {
     redBaseCases({
+      gradle,
       policy: { preset: 'kotlin' },
       setup: () => {
         const root = createRepository({

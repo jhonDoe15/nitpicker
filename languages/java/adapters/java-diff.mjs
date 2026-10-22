@@ -51,6 +51,18 @@ function exportArguments(common, { initScript, directory, policy }) {
   ];
 }
 
+function runStage({ args, projectRoot, gradle, budget, reportBase, since }) {
+  const target = gradleTarget({ projectRoot, configured: gradle, args });
+  const result = runGradle(target.command, target.args, {
+    cwd: projectRoot,
+    encoding: 'utf8',
+    maxBuffer: MAX_OUTPUT_BYTES,
+    shell: target.shell,
+    timeout: budget.commandTimeoutMs,
+  });
+  assertGradleSucceeded(result, projectRoot, { reportBase, since });
+}
+
 function runJavaPreset(
   projectRoot,
   {
@@ -91,15 +103,7 @@ function runJavaPreset(
       ],
     ];
     for (const stage of stages) {
-      const target = gradleTarget({ projectRoot, configured: gradle, args: stage() });
-      const result = runGradle(target.command, target.args, {
-        cwd: projectRoot,
-        encoding: 'utf8',
-        maxBuffer: MAX_OUTPUT_BYTES,
-        shell: target.shell,
-        timeout: budget.commandTimeoutMs,
-      });
-      assertGradleSucceeded(result, projectRoot, { reportBase, since });
+      runStage({ args: stage(), projectRoot, gradle, budget, reportBase, since });
     }
   });
 }

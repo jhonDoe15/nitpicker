@@ -5,6 +5,8 @@ import {
   redBaseCases,
 } from '../../red-base/test-support/red-base-cases.mjs';
 
+const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
+
 const JAVA_LEGACY = `package demo;
 
 public final class Legacy {
@@ -33,6 +35,7 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
   'Java preset on a base whose tests fail',
   () => {
     redBaseCases({
+      gradle,
       policy: { preset: 'java' },
       setup: () => {
         const root = createRepository({

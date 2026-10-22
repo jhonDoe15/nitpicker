@@ -1,7 +1,6 @@
 import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
 import { withGradleLog } from '../gradle-wrapper/diagnostics/failure-log.mjs';
 import { condenseFailure } from '../gradle-wrapper/diagnostics/failure-text.mjs';
-import { failureNoteOf } from '../../builds/test-failures.mjs';
 import { failingTestsOf } from '../gradle-reports/failing-tests.mjs';
 
 const TEST_TASK_FAILED =
@@ -57,7 +56,7 @@ export function assertGradleSucceeded(result, projectRoot, { reportBase, since }
     result.error ?? reported ?? gradleFailure(projectRoot, detail || 'no diagnostic output', raw);
   throw Object.assign(withGradleLog(failure, result), {
     testsFailed: reported !== undefined || failure.testsFailed === true,
-    detail: reported === undefined ? failure.detail : failureNoteOf(reported),
+    detail: failure.detail,
   });
 }
 

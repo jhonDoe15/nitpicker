@@ -47,12 +47,6 @@ export function failingTestsNote(where, failures) {
   return [`Tests fail in ${where}:`, ...listedFailures(failures)].join('\n');
 }
 
-const NOTES = new WeakMap();
-
-export function failureNoteOf(error) {
-  return NOTES.get(error);
-}
-
 export function failingTestsError(where, failures) {
   const error = new Error(
     [
@@ -60,6 +54,5 @@ export function failingTestsError(where, failures) {
       ...listedFailures(failures),
     ].join('\n'),
   );
-  NOTES.set(error, failingTestsNote(where, failures));
-  return error;
+  return Object.defineProperty(error, 'detail', { value: failingTestsNote(where, failures) });
 }
