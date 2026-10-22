@@ -88,6 +88,33 @@ describe('nitpicker with "preset": "python" running the project', () => {
       expect(testRun.cwd).not.toBe(root);
     }
   });
+  it.each([
+    ['in the test process', false],
+    ['as a child process', true],
+  ])(
+    'passes the followed conventions to the formatter when the runner runs %s',
+    (_where, subprocess) => {
+      const calls = callsLog();
+      const wide = [110, 115].map((width) => `x = ${'a'.repeat(width - 4)}\n`).join('');
+      const root = pythonRepository({
+        'pyproject.toml': '[project]\nname = "demo"\nversion = "0.1.0"\n\n[tool.black]\n',
+        'src/demo/wide.py': wide,
+      });
+      writeFiles(root, { 'src/demo/b.py': 'x = 1\n' });
+      commit(root, 'change');
+
+      const result = run(root, [], { subprocess });
+
+      expect(result.exitCode, result.text).toBe(0);
+      const checks = calls()
+        .filter(({ tool, args }) => tool === 'black' && args[0] === '--check')
+        .map(({ args }) => [...args.slice(0, 1), ...args.slice(3)]);
+      expect(checks).toEqual([
+        ['--check', '--line-length', '120', '--target-version', 'py38', '.'],
+        ['--check', '--line-length', '120', '--target-version', 'py38', '.'],
+      ]);
+    },
+  );
   it('rejects the TypeScript-only config keys', () => {
     const root = pythonRepository({
       'nitpicker.config.json': '{ "preset": "python", "layout": { "sourceRoots": ["src"] } }\n',

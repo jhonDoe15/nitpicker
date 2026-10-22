@@ -15,7 +15,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head; Maven builds: see below)
-  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, errorprone.json, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, classes.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
+  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, errorprone.json, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, spring-arch.json, structure.json, classes.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/reporting/java-reports.mjs       (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -103,6 +103,12 @@ by field. Per snapshot:
    tasks (PMD's auxiliary classpath is the main and test compile classpaths plus both class
    directories). The versions are read from the init script's `pinned` map, so both builds always
    run the same tools.
+   A module that uses Spring (`spring-context` or `spring-boot` on its main compile classpath) also
+   runs the Spring architecture rules: ArchUnit is resolved with the other tools, but only when some
+   module uses Spring, and the rule classes are compiled once into
+   `$XDG_CACHE_HOME/nitpicker/spring-arch/<hash>` (else `~/.cache/nitpicker/spring-arch/<hash>`, private
+   to the user; the hash is computed like Gradle's, but the cache is separate from Gradle's) and run in
+   one extra JVM per module (`languages/java/maven/spring/maven-spring-arch.mjs`).
 
 - **Integration tests.** Failsafe runs in a module whose effective POM (`<build><plugins>`, so
   neither `<pluginManagement>` alone nor an inactive profile) binds maven-failsafe-plugin's
@@ -268,7 +274,11 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
   descriptive `mutant-timeout`, `mutant-runtimeerror`, `mutant-compileerror`, `mutant-ignored`;
   killed mutants produce no finding. `mutation-summary` carries one descriptive count per status
   (`path` `.`, identity `status:<Status>`).
-- **Identity.** `<mutated class>|<method><descriptor>|<mutator>|<description>#<n>`. There is no
+- **Identity.** `<mutated class>|<method><descriptor>|<mutator>|<description>#<n>`, with every
+  package left out: the class is its simple name, `Lcom/shop/Order;` in the descriptor becomes
+  `LOrder;` and `com/shop/Order::total` in the description becomes `Order::total` (the symbol
+  likewise). The path already tells classes apart, and the gate maps a renamed path to its base
+  counterpart, so moving a class to another package keeps its legacy mutants matched. There is no
   line number: `n` is the mutant's position among those with the same key and status, ordered by
   line and then block index, so the numbering follows source order and not PIT's (multi-threaded)
   report order. Edits above a mutant keep it; a second identical mutation in the same method is a
@@ -433,8 +443,14 @@ classpath and its `test` task, and adds no test library to the project.
   ships.
 - **Tests.** `core/command/java/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`),
   so it runs without Java: pass, new finding in text/JSON/SARIF/JUnit, Gradle failure on head and
-  on base, missing binary, `--all`. The real Gradle run stays behind `NITPICKER_JAVA_E2E=1`
-  (`npm run test:java`), unchanged.
+  on base, missing binary, `--all`. The fake runs in the test process: `runFakeGradle({ args, cwd })`
+  (`languages/java/adapters/test-support/fake-gradle/`) is a pure function, `fixtures/fake-gradle.mjs`
+  is the program that calls it, and `spawnFakeGradle` (`languages/java/adapters/test-support/in-process-gradle.mjs`),
+  passed as `spawn` through `analyzeJavaSnapshot` and `runGradle`, answers the supervisor call for the fake's
+  path, so no Node process starts per Gradle call. Output past `maxBuffer` is answered as `ENOBUFS` and an
+  exception of the fake as a failed run; the process-tree deadline is not modelled and stays covered by
+  `gradle-process.test.mjs`, and `subprocess: true` tests run the real supervisor. The real Gradle run stays
+  behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`), unchanged.
 
 ## Slice 1: tools, reports and identities
 
@@ -701,11 +717,14 @@ resolved plus a new finding, as in the TypeScript check.
   [Python](python-preset.md#slow-tests); the finding prints the bare id `slow-test`, and
   `test-runtime/slow-test` is accepted in `exceptions` as the same rule. Integration tests are those
   of a test task other than `test` (Maven's `surefire` counts as `test`), classes named `*IT`,
-  `*ITCase`, `*IntegrationTest(s)`, `*IntegrationSpec` or `*ISpec`, and classes annotated `@SpringBootTest`, also through a
+  `*ITCase`, `*IntegrationTest(s)`, `*IntegrationSpec` or `*ISpec`, classes in a package with an
+  `integration`, `it` or `e2e` segment (the same rule `archunit/spring-test-placement` uses), and
+  classes annotated `@SpringBootTest`, also through a
   superclass or an annotation of their own that carries it, when that type's source is in a test root.
   The message names the budget, the measured time, the fixes (no `Thread.sleep` or other waits, a
-  smaller Spring context or a test slice, or moving it to an integration test source set; on Maven,
-  making it an integration test that Failsafe runs, `*IT`) and the exception route.
+  smaller Spring context or a test slice, or, for an integration test, an `*IT` name or an
+  integration test source set; on Maven, an `*IT` name so that Failsafe runs it) and the exception
+  route. Both keep the test's package, so package-private classes stay visible.
   Nitpicker runs only the tests its run needs: on Gradle the `test` task and any test task the build
   makes it depend on, on Maven the `test` phase, so a test moved out of them is not timed.
 - **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
@@ -745,6 +764,35 @@ resolved plus a new finding, as in the TypeScript check.
 - **Tests.** `adapters/test-times/slow-tests.test.mjs` (sample Gradle, Surefire and Failsafe XML,
   module-path baseline), `builds/java-modules.test.mjs`, `maven/results/maven-test-results.test.mjs`
   and the multi-module and `failsafe` Maven e2e fixtures.
+
+## Tests that never run
+
+A test class that the build compiles but no test task runs is an enforceable `test-not-run`
+finding (tool `test-runtime`, `languages/java/adapters/test-runs/unrun-tests.mjs`), on Java, Kotlin
+and Groovy test sources alike. A class counts as a test when its source declares one (`@Test`,
+`@ParameterizedTest`, `@RepeatedTest`, `@TestFactory`, `@TestTemplate`, a Spock `Specification` or
+a Kotest spec) and it is not abstract, an interface or an annotation.
+
+- **Maven.** Surefire skips the classes Failsafe's default includes name (`IT*`, `*IT`, `*ITCase`).
+  In a module where Failsafe does not run (see [Maven builds](#maven-builds); the manifest says
+  `runsFailsafe`), such a class under the test source roots (and `src/test/kotlin` next to
+  `src/test/java`) that has no report in `test-results/` (Surefire was not set up to run it) is
+  reported: "Bind the integration-test and verify goals of maven-failsafe-plugin in this module so
+  OrderIT runs: ...". The correct forms are a module that binds Failsafe, or test classes Surefire
+  runs.
+- **Gradle.** A test task runs every class of its source set whatever its name, so `*IT` in
+  `src/test/java` runs under `test`. The silent skip is a test source set (a source set other than `main` whose name contains `test`, such as `integrationTest`) that no `Test` task takes its
+  classes from: the init script lists those source sets with their Java, Kotlin and Groovy source
+  directories as `unrunTestSourceSets` in the manifest, and each test class in them is reported:
+  "Register a Test task for the integrationTest source set (testClassesDirs = ..., classpath = ...)
+  so OrderSliceTest runs: ...". A source set that holds no tests (`testFixtures`, helpers) is
+  quiet.
+
+Every message ends with the shared exception sentence, naming
+`{ "rule": "test-runtime/test-not-run", "paths": ["<file>"], "reason": "..." }`. Tests:
+`adapters/test-runs/unrun-tests.test.mjs`, the Gradle `multi-project` fixture (an
+`integrationTest` source set without a test task) and the Maven `multi-module` fixture (an `*IT`
+class in a module without Failsafe).
 
 ## Console output of tests
 
@@ -1859,8 +1907,8 @@ level, and `SpringNoPostConstructIo` does not follow a repository call through a
 converter in another file needs an exception. `SpringPermitAllAnyRequest` does not resolve a
 pattern held in a variable (`var all = "/**"`) or an `access(...)` that allows everyone.
 `SpringCsrfDisabled` and `SpringPermitAllAnyRequest` match a chain by the name of its starting
-variable within one method. Layering, entities in controller signatures and test
-placement need a cross-class view and come with nitpicker's ArchUnit rules.
+variable within one method. Layering, entities in controller signatures and test placement need a
+cross-class view, which PMD does not have; they are nitpicker's own ArchUnit rules, described next.
 
 **Tests.** `spring/java-spring.e2e.test.mjs` (gated like the other Java e2e tests and part of
 `npm run test:java`) runs PMD through the init script on `adapters/fixtures/spring-project`, whose
@@ -1871,6 +1919,81 @@ accept. It also runs Error Prone on the fixture and asserts its `FieldCanBeFinal
 `ProductRepository` and the one plain utility class, but no `FieldCanBeFinal` in the JPA entities
 and no `PrivateConstructorForUtilityClass` on the application or configuration classes. The other
 Error Prone checks fire on the deliberate violations the Spring rule examples hold.
+
+## Spring architecture rules
+
+Spring projects (same detection as the Spring ruleset: `spring-context` or `spring-boot` on the
+compile classpath, `spring: true` in the manifest) also get nitpicker's own ArchUnit rules. They are
+separate from the project's own `*ArchTest` classes of slice 4 and need nothing from the project:
+the init script's `nitpickerSpringArch` task resolves ArchUnit 1.5.1 (Apache-2.0, pinned in the
+`pinned` map) into its own configuration, compiles the rule classes in
+[`languages/java/gradle/archunit/`](../languages/java/gradle/archunit/) with the JDK that runs Gradle
+and runs them once, in one separate JVM, over the compiled main and test classes. That is one extra
+JVM per side (base and head), a few seconds. The compiled rule classes are cached in the Gradle
+user home (`caches/nitpicker/spring-arch/<hash>`, keyed by the rule sources, the ArchUnit version
+and the JDK), so `javac` runs only the first time. The report is `build/nitpicker/spring-arch.json`
+(format in [internals.md](internals.md)); the manifest then says `springArch: true`, and a
+manifest that says so without the report is a tool error. Maven builds run these rules too (see
+[Maven builds](#maven-builds)) and write the report to `target/nitpicker/spring-arch.json`.
+
+Findings print as `archunit/<rule>`, one per rule, offending class and dependency, on the class's
+source file (a nested class counts as its outermost class). The identity is the simple class name
+plus the simple name of the dependency or method involved, never a package or a line: a second bad
+dependency in an already violating class is new, while moving code, or moving the file to another
+package (the move `spring-layout` asks for, tracked as a rename), keeps its legacy findings matched. Every message leads with the allowed form and ends with the
+shared exception sentence: add `{ "rule": "archunit/<rule>", "paths": ["<file>"], "reason": "..." }` to
+`exceptions` in `nitpicker.config.json`. Repeats of one identity are numbered `#n` per file, so a
+same-named class in another package never shifts them.
+
+**Layout: package by feature, as in the TypeScript preset.** The root package is the package of the
+`@SpringBootApplication` class (the common prefix when there are several; without one the layout
+rules are skipped and the rest still runs). Its direct sub-packages are features, plus `shared` for
+pure utilities. Every root sub-package that is not `shared` and not a layer name counts as a
+feature, including technical ones such as `config` or `security`: their sub-packages are internal
+to them. Layer names cover the layered and the hexagonal (ports and adapters) layouts, so such an
+app gets one `spring-layout` finding per class, naming the feature package to use, and no
+`spring-feature-boundary` finding for its normal port edges. The layout mirrors the TypeScript one: `features/<f>/` with an `index.ts` becomes
+`<root>.<feature>` whose top-level classes are the feature's public face, and `shared` is the
+TypeScript `shared/` folder.
+
+| Rule                      | Fails when                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `spring-layout`           | a class sits directly in the root package (only `@SpringBootApplication`, `@Configuration` and `@ConfigurationProperties` classes and a `SpringBootServletInitializer` subclass may), or in a root sub-package named by layer: `controller(s)`, `service(s)`, `repository`/`repositories`, `entity`/`entities`, `model(s)`, `dto(s)`, `dao(s)`, `util(s)`, `common`, `web`, `api`, `rest`, `resource(s)`, `persistence`, `domain`, `mapper(s)`, `exception(s)`, `adapter(s)`, `application`, `infrastructure`, `infra`, `port(s)`, `usecase(s)`, `helper(s)` |
+| `spring-feature-boundary` | a class uses a class from a sub-package of another root package (`orders.internal.X` from `billing`); the classes directly in the other package are fine                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `spring-shared-pure`      | a `shared` class is a Spring bean (`@Component` and its stereotypes, `@Configuration`) or an `@Entity`, or depends on a class in any other root package                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+**Layering.**
+
+| Rule                           | Fails when                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spring-controller-repository` | a `@Controller` or `@RestController` depends on a repository (`@Repository`, or a type extending Spring Data's `Repository`) or on data access directly (`JdbcTemplate`, `NamedParameterJdbcTemplate`, `JdbcClient`, `SimpleJdbcInsert`, R2DBC `DatabaseClient`, `JdbcAggregateTemplate`, `R2dbcEntityTemplate`, `MongoTemplate`, `EntityManager`, `EntityManagerFactory`, Hibernate `Session`, `DataSource`, or their interfaces), in a field, parameter, return type or call                                                                                                                                                                                                          |
+| `spring-controller-entity`     | a request-mapping or `@ModelAttribute` method of a controller takes or returns an `@Entity` type, also inside a generic such as `List<Customer>`; methods declared on implemented interfaces (the OpenAPI-generator layout) and inherited from base controllers count                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `spring-service-web`           | a `@Service` or repository depends on the web layer: a controller or `@ControllerAdvice`, `ResponseEntity` in its own field, method or constructor signatures (not a `RestTemplate` or `RestClient` result it unwraps), or the `jakarta.servlet`, `javax.servlet`, `org.springframework.web.bind`, `org.springframework.web.servlet`, `org.springframework.web.multipart`, `org.springframework.web.context.request` (`RequestContextHolder`, `WebRequest`), `org.springframework.web.server` (`ServerWebExchange`, `ResponseStatusException`), `org.springframework.web.reactive` or `org.springframework.http.server` packages, so servlet and WebFlux apps are held to the same rule |
+
+**Tests that start a Spring context.** A concrete test class counts when it, an enclosing class or
+one of its superclasses (`class X extends AbstractIntegrationTest`) is annotated, directly or
+through a composed annotation, with `@SpringBootTest`, any slice test (`@DataJpaTest`, `@WebMvcTest`, ...; all carry
+`@BootstrapWith`), `@ContextConfiguration`, `@SpringJUnitConfig`, `@Testcontainers`, or
+`@ExtendWith(SpringExtension.class)`. Annotation types (a composed `@IntegrationTest`) and abstract
+base classes are not tests themselves and are never placed.
+
+| Rule                        | Fails when                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spring-test-placement`     | such a test is in the unit test source set (`test` on Gradle, the one test source directory on Maven) and is not an integration test by the shared rule of the [slow-test check](#slow-tests): a class named `*IT`, `*ITCase`, `*IntegrationTest(s)`, `*IntegrationSpec` or `*ISpec`, or a package with an `integration`, `it` or `e2e` segment. The message offers the forms that keep the package (an `*IT` name, an integration test source set), so a slice test of a package-private controller still compiles; plain unit tests live anywhere |
+| `spring-no-dirties-context` | a test class or method has `@DirtiesContext`, anywhere                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+
+`spring-no-dirties-context` reads every test source set, a separate one such as
+`src/integrationTest/java` included; `spring-test-placement` reads only the unit one, since every
+other test source set is an integration one. A test that sleeps is covered by the test-honesty rules for
+Java, not here.
+
+**Limits.** The rules read bytecode, so generated classes without a source file are skipped (no
+finding can be placed), and a use of another package's compile-time constant (`static final` of a
+primitive or `String`) is invisible, because `javac` inlines its value. Each Gradle project and Maven module that uses Spring is checked on its own,
+over its main and test classes. Kotlin modules run the same rules on their compiled classes, and the
+findings point at the `.kt` files; the file facade of top-level functions (`ShopApplicationKt`, with
+`fun main`) next to the application or a `@Configuration` class in the root package is not a
+`spring-layout` finding, as the class it sits beside is allowed there.
 
 ## Spring configuration files
 
@@ -2186,7 +2309,7 @@ in it against the catalogs and Error Prone's check list.
   text, the exception route, and the shape of every catalog entry.
 - `languages/java/messages/rule-catalog.e2e.test.mjs`: gated like the other e2e tests. The catalogs
   name exactly the rules of the pinned tool versions.
-- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `languages/java/maven/maven-preset.e2e.test.mjs`, `languages/java/adapters/errorprone/error-prone.e2e.test.mjs`, the other Error Prone e2e tests and `rule-catalog.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle, Maven and network access to Maven Central; about 85 seconds
+- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `spring/e2e/spring-arch.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `languages/java/maven/maven-preset.e2e.test.mjs`, `languages/java/adapters/errorprone/error-prone.e2e.test.mjs`, the other Error Prone e2e tests and `rule-catalog.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle, Maven and network access to Maven Central; about 85 seconds
   warm. `.github/workflows/java-e2e.yml` runs it (Temurin 21, Gradle 8.14.3, Maven 3.9.11) on a push to `main` that changes `languages/java/**`, `core/**`, `shared/**`, `package.json`, `package-lock.json`, `vitest.config.mts` or the workflow, by hand (`workflow_dispatch`), and on a pull request when the `run-ci` label is added. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset

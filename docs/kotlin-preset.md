@@ -772,7 +772,9 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
 [one-way rules](#one-way-rules), `catch-log-without-exception` and `test-without-assertion`
-([source scans](#source-scans)), the six `pmd/` ids and `unused-option` of the [review rules](#review-rules), the file limits, `slow-test` (or `test-runtime/slow-test`), the
+([source scans](#source-scans)), the six `pmd/` ids and `unused-option` of the [review rules](#review-rules), the file limits
+`file-lines-limit` and `folder-files-limit`, `slow-test` (or `test-runtime/slow-test`), `test-runtime/test-not-run` (a test
+source set no test task runs, see [java-preset.md](java-preset.md#tests-that-never-run)), the
 [dependency and repository checks](usage.md#dependency-and-repository-checks), stability, and the
 mutants of Java classes per path, and the structure, CRAP and coverage rules per function. Java rule
 ids are accepted for the Java sources of the project. `layout` is a config error until the Kotlin
