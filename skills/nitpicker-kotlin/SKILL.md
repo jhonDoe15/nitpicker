@@ -113,7 +113,23 @@ Before you change code other modules use, or fix a bug, read
   assert the result. A sleep in a mock answer, a thread or `launch` body, or a test fake that
   implements or extends a main class is fine. To show that something does not happen, give the
   code a clock the test moves forward, not `after(ms).never()`, `during(...)` or kotest
-  `continually` (`pmd/NegativeWaitInTest`).
+  `continually` (`pmd/NegativeWaitInTest`). Inside `runTest`, `delay` must run on the test scheduler:
+  a `delay` in `withContext(Dispatchers.IO)`, `Dispatchers.Default` or a thread-pool dispatcher, and a
+  `delay` in a Kotest body outside `runTest`, waits for real (`pmd/FixedSleepInTest`); pass the test
+  dispatcher to the code instead.
+- Do not skip or focus tests (`pmd/DisabledTest`, `pmd/FocusedTest`): no `@Disabled`, `@Ignore`, Kotest
+  `xtest`, `xcontext`, `xdescribe`, `xit`, `.config(enabled = false)` or constant false `@EnabledIf`; no
+  `f:` name prefix, `ftest`, `fcontext`, `fit`. Fix the test or delete it; limit it to an environment with
+  `@EnabledOnOs` or an assumption when it cannot run elsewhere.
+- Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion inside an `if`, a `when`, or a loop
+  over a literal list of cases. Split the cases into separate tests or a parameterized test
+  (`@ParameterizedTest` with `@MethodSource` or `@CsvSource`, Kotest `withData`), and narrow a type with
+  `assertIs` instead of an `if`. A loop over the results of the code under test is fine.
+- A test owns the coroutines it starts (`pmd/CoroutineEscapesTest`): do not `launch` or `async` on
+  `CoroutineScope(...)`, a scope field or a `TestScope` outside `runTest` and leave it running. Run the
+  body in `runTest`, launch from there (`backgroundScope.launch` for work that ends with the test), or
+  keep the job and `join()` it or `await()` the deferred; a scope the class cancels in `@AfterEach` or
+  Kotest `afterSpec` is owned too.
 - A `@SpringBootTest` class uses its context: it injects a bean or a `MockMvc`, `WebTestClient` or
   `TestRestTemplate`, or it starts a web server port. Otherwise create the class with its
   constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).

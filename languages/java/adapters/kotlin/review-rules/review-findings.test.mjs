@@ -82,6 +82,28 @@ describe('readKotlinReviewFindings', () => {
   });
 });
 
+describe('readKotlinReviewFindings on the test sources', () => {
+  it('reads the Kotlin test sources of the manifest, next to the facts', () => {
+    const { root, reportRoot } = projectWith({ files: [testFile()] });
+    mkdirSync(path.join(root, 'src/test/kotlin'), { recursive: true });
+    writeFileSync(
+      path.join(root, 'src/test/kotlin/SkippedTest.kt'),
+      'class SkippedTest {\n    @Test\n    @Disabled\n    fun later() { assertEquals(1, 1) }\n}\n',
+    );
+
+    const findings = readKotlinReviewFindings({
+      reportRoot,
+      projectRoot: root,
+      manifest: { kotlinTestSourceRoots: ['src/test/kotlin'] },
+    });
+
+    expect(
+      findings.map(({ tool, rule, path: file, location }) => [tool, rule, file, location.line]),
+    ).toEqual([['pmd', 'DisabledTest', 'src/test/kotlin/SkippedTest.kt', 3]]);
+    expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
+  });
+});
+
 describe('readKotlinReviewFindings across the project', () => {
   function twoModules(own, sibling) {
     const first = projectWith(own);
@@ -156,6 +178,10 @@ describe('Kotlin exception rules for the review rules', () => {
     expect(KOTLIN_REVIEW_EXCEPTION_RULES).toEqual([
       'pmd/FixedSleepInTest',
       'pmd/NegativeWaitInTest',
+      'pmd/DisabledTest',
+      'pmd/FocusedTest',
+      'pmd/AssertionInControlFlow',
+      'pmd/CoroutineEscapesTest',
       'pmd/SpringUnusedContext',
       'pmd/ExhaustiveEnumPredicate',
       'pmd/StaticForwardingWrapper',
