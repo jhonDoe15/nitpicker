@@ -64,6 +64,7 @@ tester.run('report-module-load-effects for main guards', rule, {
       '{ for (const name of names) { await check(name); } }',
     ].join(' '),
     'if (require.main === module) { run(); }',
+    'if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) { run(); }',
   ].map((code) => ({ filename: script, code })),
   invalid: [
     {
@@ -78,6 +79,15 @@ tester.run('report-module-load-effects for main guards', rule, {
         { messageId: 'topLevelAwait' },
       ],
     },
+    ...[
+      'if (import.meta.url) { await connect(); }',
+      'if (import.meta.url.endsWith(name)) { await connect(); }',
+      'if (require.main) { await connect(); }',
+      'if (ready && import.meta.main) { await connect(); }',
+    ].map((code) => ({
+      code,
+      errors: [{ messageId: 'topLevelControl' }, { messageId: 'topLevelAwait' }],
+    })),
     {
       code: 'if (import.meta.main) { run(); }\nsetup();',
       errors: [{ messageId: 'topLevelExpression' }],
