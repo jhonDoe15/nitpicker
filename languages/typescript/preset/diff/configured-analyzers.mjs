@@ -145,7 +145,7 @@ export function applyLayout(analyzers, headPolicy) {
   );
 }
 
-const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation']);
+const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation', 'test-console']);
 
 export function applyTestRunner(analyzers, headPolicy = {}) {
   const configured = headPolicy.tools?.tests?.runner;
