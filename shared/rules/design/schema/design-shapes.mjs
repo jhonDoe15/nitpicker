@@ -51,7 +51,7 @@ const NESTED = {
     line: isLine,
     otherwise: optional(isBoolean),
   },
-  reads: { type: isNonEmpty, fields: isStrings, decides: isBoolean, line: isLine },
+  reads: { type: isNonEmpty, fields: isStrings, decided: optional(isStrings), line: isLine },
   forward: {
     target: isNonEmpty,
     arguments: (value) => Array.isArray(value) && value.every(isArgumentIndex),
