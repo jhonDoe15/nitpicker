@@ -454,6 +454,21 @@ describe('hints for the production policy rules', () => {
       "Assignment to function parameter 'n'.",
       "Assignment to function parameter 'n'. Declare a new const with another name instead of reassigning the parameter. An exception fits only when the reassignment is deliberate.",
     ],
+    [
+      '@typescript-eslint/no-unused-vars',
+      "'context' is defined but never used. Allowed unused args must match /^_/u.",
+      "'context' is defined but never used. Remove the parameter and update the callers. One that an override or a callback signature requires starts with `_` (`_context`).",
+    ],
+    [
+      '@typescript-eslint/no-unused-vars',
+      "Parameter 'context' is declared but never used. Unused parameters should start with a '_'.",
+      "Parameter 'context' is declared but never used. Remove the parameter and update the callers. One that an override or a callback signature requires starts with `_` (`_context`).",
+    ],
+    [
+      '@typescript-eslint/no-unused-vars',
+      "'total' is assigned a value but never used.",
+      "'total' is assigned a value but never used.",
+    ],
   ])('names the allowed form for %s', (ruleId, text, expected) => {
     expect(hint(ruleId, text)).toBe(expected);
   });

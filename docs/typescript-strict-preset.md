@@ -292,6 +292,13 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
 
 ## Everywhere
 
+- `@typescript-eslint/no-unused-vars` checks every parameter of production code, not only the ones
+  after the last used one (`args: 'all'`), and it is a strict rule: a parameter list you edit
+  must not leave one unused. Remove the parameter and update the callers. A parameter that an
+  override or a callback signature requires starts with `_` (`(_event, context) => context`); that
+  is the one marker, and `nitpicker/naming-convention` already accepts it. A key destructured only
+  to leave it out of a rest object (`const { a, ...rest } = options`) is not reported. Tests keep
+  ESLint's default (trailing unused parameters). The JavaScript preset uses the same options.
 - `nitpicker/no-self-recursion`: no function that calls itself or refers to itself
   (`xs.flatMap(flatten)` inside `flatten`), and no functions of one file that call each other
   (`evens` and `odds`), in all production code (`domain/`, `adapters/`, the composition root and

@@ -8,6 +8,7 @@ import { reactRuleIds, reactTestRuleIds } from './eslint-config/react/react-rule
 export const strictEslintRuleIds = [
   '@typescript-eslint/explicit-module-boundary-types',
   '@typescript-eslint/no-floating-promises',
+  '@typescript-eslint/no-unused-vars',
   '@typescript-eslint/only-throw-error',
   '@typescript-eslint/switch-exhaustiveness-check',
   'curly',

@@ -135,6 +135,8 @@ line) is a finding.
   extract a function, also when the copy has other names and literals.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
+- Remove a parameter the body does not read. One that a callback or override signature requires
+  starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
