@@ -349,3 +349,46 @@ describe('duplicates whose names and literals were renamed', () => {
     expect(clonesOf(context)).toEqual([]);
   });
 });
+
+const SHAPE_NAMES = (
+  'id name email phone street city zip country role plan bio score level owner locale avatar ' +
+  'status created updated timezone'
+).split(' ');
+const OTHER_NAMES = (
+  'code total tax note carrier weight items paid buyer method coupon refund channel house ' +
+  'invoice placed shipped tracking discount currency'
+).split(' ');
+
+const IRREGULAR = '3141592653589793238462643383279502884197';
+
+const shapes = {
+  mapper: (names) =>
+    `def to_dto(source):\n    return Dto(\n${names.map((name) => `        ${name}=source.${name},`).join('\n')}\n    )\n`,
+  enumeration: (names) => {
+    const values = ['"x"', '1', 'auto()'];
+    const members = [...names, ...names.map((name) => `${name}_old`)].map(
+      (name, index) => `    ${name.toUpperCase()} = ${values[Number(IRREGULAR[index]) % 3]}`,
+    );
+    return `from enum import Enum, auto\n\n\nclass Kind(Enum):\n${members.join('\n')}\n`;
+  },
+  enumMap: (names) =>
+    `NAMES = {\n${names.map((name) => `    Status.${name.toUpperCase()}: "${name}",`).join('\n')}\n}\n`,
+  arguments: (names) => {
+    const calls = names.map(
+      (name, index) =>
+        `    parser.add_argument("--${name}", type=int, default=${String(index)}, help="${name}")`,
+    );
+    return `def parse():\n    parser = argparse.ArgumentParser()\n${calls.join('\n')}\n    return parser.parse_args()\n`;
+  },
+};
+
+describe('code that only shares a shape with other code', () => {
+  it.each(Object.keys(shapes))('stays quiet for a renamed %s', (shape) => {
+    const context = project({
+      'src/app/left.py': shapes[shape](SHAPE_NAMES),
+      'src/app/right.py': shapes[shape](OTHER_NAMES),
+    });
+
+    expect(clonesOf(context)).toEqual([]);
+  });
+});

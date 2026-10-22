@@ -44,6 +44,39 @@ describe('clones of declarations only', () => {
         'SECOND("b", 2);',
       ],
     ],
+    [
+      'python',
+      'an enum class of members',
+      ['class Kind(Enum):', '    FIRST = "first"', '    SECOND = auto()', '    THIRD = 3'],
+    ],
+    [
+      'kotlin',
+      'a data class whose typed defaults call functions',
+      [
+        'data class View(',
+        '    val tags: List<String> = emptyList(),',
+        '    val at: Instant = Instant.now(),',
+        '    val counts: MutableMap<String, Int> = mutableMapOf(),',
+        ')',
+      ],
+    ],
+    [
+      'java',
+      'a bean of fields, a constructor and accessors',
+      [
+        'public class Point {',
+        '    private final int x;',
+        '    private String label = "";',
+        '    public Point(int x) {',
+        '        this.x = x;',
+        '    }',
+        '    @Override',
+        '    public int getX() {',
+        '        return x;',
+        '    }',
+        '}',
+      ],
+    ],
   ])('treats %s %s as boilerplate', (syntax, _, lines) => {
     expect(isBoilerplate(lines, syntax)).toBe(true);
   });
@@ -53,6 +86,9 @@ describe('clones of declarations only', () => {
     ['typescript', ['  get value(): number {', '    return this.x + 1;', '  }']],
     ['python', ['class Record:', '    def total(self):', '        return sum(self.items)']],
     ['kotlin', ['data class Person(', '    val name: String = "",', ')', 'println(name)']],
+    ['kotlin', ['fun total() {', '    val sum = compute(items)', '    return sum', '}']],
+    ['python', ['TOTAL = compute(items)', 'print(TOTAL)']],
+    ['java', ['public int total() {', '    int sum = compute(items);', '    return sum;', '}']],
   ])('treats %s code with logic as code', (syntax, lines) => {
     expect(isBoilerplate(lines, syntax)).toBe(false);
   });

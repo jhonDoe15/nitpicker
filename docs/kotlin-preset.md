@@ -627,7 +627,8 @@ where names, strings, numbers and comments are one token each, `package` and `im
 literal-only `listOf`, `mapOf` and `Pair` calls are blanked and generated files are left out, so a
 copy with renamed locals and changed literals fails too, with `duplicate-clone` and an identity
 starting `renamed:`. It replaces a plain clone over the same two ranges, and drops clones made of
-declarations only (data class fields, enum constants). PMD CPD would not do this better: the
+declarations only (data class fields, also with defaults that call a function, enum constants) and
+clones that only repeat one or two statements (DTO mappers, `when` tables, `if` ladders). PMD CPD would not do this better: the
 `pmd-kotlin` lexer ignores the identifier and literal flags. The message names the same route as for
 any clone: add either file of the pair to `exclude`.
 

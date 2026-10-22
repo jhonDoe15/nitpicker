@@ -1,6 +1,7 @@
 import { evaluateDuplicates, RENAMED_IDENTITY_PREFIX } from '../rules/duplicates.mjs';
 import { isBoilerplate } from './boilerplate.mjs';
 import { readProjectFile } from './files.mjs';
+import { isRepeatingShape } from './repetition.mjs';
 
 const WHITESPACE = /\s+/gu;
 const CLONE_MESSAGE = /^This code repeats (\S+?)(?::\d+)? \(\d+ lines\)\./u;
@@ -52,6 +53,7 @@ export function renamedClones(clones, { projectRoot, syntax }) {
   return clones
     .map((clone) => ordered({ ...clone, fragment: (clone.fragment ?? '').replace(WHITESPACE, '') }))
     .filter((clone) => !touches(...spans(clone)))
+    .filter((clone) => !isRepeatingShape(clone.fragment))
     .map((clone) => ({ ...clone, lines: clone.lines ?? 1 }))
     .map((clone) => ({ ...clone, original: originalLines(projectRoot, clone.first, clone.lines) }))
     .filter((clone) => !isBoilerplate(clone.original, syntax))

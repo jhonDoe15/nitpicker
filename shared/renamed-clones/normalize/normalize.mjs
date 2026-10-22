@@ -8,6 +8,7 @@ export function normalizeSource({ text, fileName, syntax, typescript }) {
       return normalizeTypescript(text, path.basename(fileName), typescript);
     case 'python':
     case 'kotlin':
+    case 'java':
       return normalizeScanned(text, syntax);
     default:
       throw new TypeError(`Unknown syntax ${String(syntax)}`);

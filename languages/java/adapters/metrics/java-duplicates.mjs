@@ -30,7 +30,7 @@ export function runJavaDuplicates(
     rootsKey = 'sourceRoots',
     reportFile = DUPLICATES_REPORT,
     skippedFolders = JVM_SKIPPED_FOLDERS,
-    renamedExtensions,
+    renamedExtensions = ['.java'],
   },
 ) {
   const roots = (manifest[rootsKey] ?? []).filter((root) =>
@@ -43,14 +43,7 @@ export function runJavaDuplicates(
     ignore: skippedFolderGlobs(skippedFolders),
     reportRoot,
     reportFile,
-    ...(renamedExtensions === undefined
-      ? {}
-      : {
-          renamed: {
-            syntax: format,
-            files: sourceFilesUnder(projectRoot, roots, renamedExtensions),
-          },
-        }),
+    renamed: { syntax: format, files: sourceFilesUnder(projectRoot, roots, renamedExtensions) },
   });
 }
 

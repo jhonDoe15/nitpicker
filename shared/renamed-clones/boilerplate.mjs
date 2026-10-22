@@ -6,6 +6,9 @@ const KOTLIN_MODIFIERS =
 const TYPE_TEXT = String.raw`[\w<>?,. [\]]+`;
 const TS_MODIFIERS = String.raw`(?:(?:public|private|protected|static|readonly)\s+)*`;
 const KOTLIN_TYPES = 'data|sealed|open|abstract|enum|annotation|inline|value|private|internal';
+const JAVA_MODIFIERS =
+  '(?:(?:public|private|protected|static|final|abstract|transient|volatile|default)\\s+)*';
+const JAVA_TYPE = String.raw`[\w<>?,. [\]]+`;
 
 const PATTERNS = {
   typescript: [
@@ -27,6 +30,7 @@ const PATTERNS = {
     /^(?:pass|\.\.\.)$/u,
     /^\w+: [^=]+(?:=.*)?$/u,
     /^super\(\)\.__init__\(.*\)$/u,
+    /^[A-Z][A-Z0-9_]* = .+$/u,
   ],
   kotlin: [
     BRACKETS_ONLY,
@@ -35,10 +39,26 @@ const PATTERNS = {
       `^${KOTLIN_MODIFIERS}(?:val|var)\\s+\\w+(?: ?: ${TYPE_TEXT})?(?: ?= ?[^({]*)?,?$`,
       'u',
     ),
+    new RegExp(`^${KOTLIN_MODIFIERS}(?:val|var)\\s+\\w+ ?: ${TYPE_TEXT} ?= ?.+,$`, 'u'),
     new RegExp(`^(?:(?:${KOTLIN_TYPES})\\s+)*(?:class|interface|object)\\s+\\w.*[({]?$`, 'u'),
     /^[A-Z][A-Z0-9_]*(?:\(.*\))?[,;]?$/u,
     /^return\s+\w+$/u,
     /^this\.\w+ = \w+$/u,
+  ],
+  java: [
+    BRACKETS_ONLY,
+    /^@[\w.]+(?:\(.*\))?$/u,
+    /^(?:package|import)\s.+;$/u,
+    new RegExp(`^${JAVA_MODIFIERS}${JAVA_TYPE} \\w+(?: = [^(]*)?;$`, 'u'),
+    new RegExp(
+      `^${JAVA_MODIFIERS}(?:${JAVA_TYPE} )?\\w+\\([^)]*\\)(?: throws [\\w., ]+)? ?\\{$`,
+      'u',
+    ),
+    new RegExp(`^${JAVA_MODIFIERS}(?:class|interface|enum|record)\\s+\\w.*\\{$`, 'u'),
+    /^return\s+(?:this\.)?\w+;$/u,
+    /^this\.\w+ = \w+;$/u,
+    /^super\([^)]*\);$/u,
+    /^[A-Z][A-Z0-9_]*(?:\(.*\))?[,;]?$/u,
   ],
 };
 
