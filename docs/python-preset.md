@@ -902,7 +902,15 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   tests run from.
   When they make coverage.py write one data file per process, the files are combined before the
   report. Its `exclude_lines`, `exclude_also`, `partial_branches`, `branch` and `source` are
-  dropped, so the gate judges every project's code the same way. Test files are not scored for
+  dropped, so the gate judges every project's code the same way, until
+  `"tools": { "coverage": { "precedence": ["project", "nitpicker"] } }` opts the config in: then its
+  `exclude_lines`, `exclude_also`, `partial_branches` and `partial_also` are added to nitpicker's
+  (a project that lists `pragma: no cover` gets its pragma back), and its `timid`, `cover_pylib`,
+  `dynamic_context`, `sigterm`, `disable_warnings` and `core` apply; `branch`, `parallel`,
+  `source`, `include`, `data_file`, `[paths]` and the report settings stay nitpicker's.
+  `["nitpicker", "project"]` takes only those run options and keeps nitpicker's exclusions. The
+  opted-in config is read from the head checkout for both sides, and an edit of its coverage
+  settings is a policy change a person reviews. Test files are not scored for
   CRAP either, and a source file the project omits has unknown coverage
   (`crap-coverage-unknown`). Exit status 5 (no tests collected) is accepted; any other
   non-zero status is a tool error. A snapshot where no test ran has an enforceable
@@ -1114,7 +1122,8 @@ or remove it if it can't happen. If this is intended, add
   test changes which branches are covered on head.
 - **Exceptions.** `# pragma: no cover` and `# pragma: no branch` are not honored (the generated
   `exclude_lines` does not list them and `partial_branches` is empty), and the project's own
-  report settings are ignored, so the one measurement is the same everywhere. Only idioms that are
+  report settings are ignored, so the one measurement is the same everywhere (unless
+  `tools.coverage` opts the project's exclusions in, see the test step). Only idioms that are
   never testable are excluded, with the same list on every coverage.py version: `if TYPE_CHECKING:`
   (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`)
   and `raise NotImplementedError`. A branch of a function that legitimately cannot be tested is

@@ -163,3 +163,103 @@ describe('the coverage settings of the project', () => {
     );
   });
 });
+
+describe('the project coverage config under tools.coverage', () => {
+  const PYPROJECT = [
+    '[tool.coverage.run]',
+    'timid = true',
+    'branch = false',
+    'source = ["elsewhere"]',
+    'omit = ["src/gen/*"]',
+    '[tool.coverage.report]',
+    'exclude_lines = ["pragma: no cover"]',
+    'exclude_also = ["def __repr__"]',
+    'partial_branches = ["pragma: no branch"]',
+    'fail_under = 100',
+    '',
+  ].join('\n');
+
+  function written(precedence, { files = { 'pyproject.toml': PYPROJECT }, policyFiles } = {}) {
+    const projectRoot = project(files);
+    const policyRoot = policyFiles === undefined ? projectRoot : project(policyFiles);
+    const context = {
+      projectRoot,
+      policyRoot,
+      reportRoot: project({}),
+      toolPrecedence: precedence === undefined ? undefined : { coverage: precedence },
+    };
+    const text = readFileSync(writeCoverageConfig(context, ['src']), 'utf8');
+    return { text, projectRoot, lines: text.split('\n').map((line) => line.trim()) };
+  }
+
+  it('reads only omit and the process options without the opt-in', () => {
+    const { lines } = written(['nitpicker']);
+
+    expect(lines).not.toContain('timid = True');
+    expect(lines).not.toContain('pragma: no cover');
+    expect(lines).toContain('partial_branches =');
+  });
+
+  it('adds the project exclusions and run options when the project is listed first', () => {
+    for (const precedence of [['project', 'nitpicker'], ['project']]) {
+      const { text, projectRoot } = written(precedence);
+
+      expect(text).toContain('timid = True');
+      expect(text).toContain(`    ${path.join(projectRoot, 'src/gen/*')}`);
+      expect(text).toContain(
+        [
+          'exclude_lines =',
+          String.raw`    ^\s*if (typing\.)?TYPE_CHECKING:`,
+          String.raw`    ^\s*if __name__ == .__main__.:`,
+          String.raw`    ^\s*@(typing\.)?overload\b`,
+          String.raw`    ^\s*raise NotImplementedError\b`,
+          '    pragma: no cover',
+          '    def __repr__',
+          'partial_branches =',
+          '    pragma: no branch',
+        ].join('\n'),
+      );
+      expect(text).toContain('branch = True\nparallel = False\nsource =');
+      expect(text).not.toContain('elsewhere');
+      expect(text).not.toContain('fail_under');
+    }
+  });
+
+  it('keeps the nitpicker exclusions alone when nitpicker is listed first', () => {
+    const { lines } = written(['nitpicker', 'project']);
+
+    expect(lines).toContain('timid = True');
+    expect(lines).not.toContain('pragma: no cover');
+    expect(lines).toContain('partial_branches =');
+  });
+
+  it('reads the config of the head checkout and resolves omit in the checked snapshot', () => {
+    const { text, projectRoot } = written(['project', 'nitpicker'], {
+      files: { '.coveragerc': '[report]\nexclude_lines = base only\n' },
+      policyFiles: { 'pyproject.toml': PYPROJECT },
+    });
+
+    expect(text).toContain('    pragma: no cover');
+    expect(text).not.toContain('base only');
+    expect(text).toContain(`    ${path.join(projectRoot, 'src/gen/*')}`);
+  });
+
+  it('reads regexes one per line from an ini file, commas included', () => {
+    const { text } = written(['project'], {
+      files: {
+        'setup.cfg': '[coverage:report]\nexclude_also =\n    raise AssertionError(.*, .*)\n',
+      },
+    });
+
+    expect(text).toContain('    raise AssertionError(.*, .*)\n');
+  });
+
+  it('fails when the project is listed without a coverage config, or with one that does not parse', () => {
+    expect(() => written(['project'], { files: { 'pyproject.toml': '[project]\n' } })).toThrow(
+      /"tools\.coverage\.precedence" lists "project" but a coverage config .* is missing/,
+    );
+    expect(() => written(['project'], { files: { 'pyproject.toml': '[tool.coverage\n' } })).toThrow(
+      /The coverage config pyproject\.toml could not be parsed/,
+    );
+  });
+});

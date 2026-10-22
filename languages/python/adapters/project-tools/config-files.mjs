@@ -3,7 +3,15 @@ import path from 'node:path';
 import { projectFormatConfigFiles } from '../formatting/project-format-config.mjs';
 import { PYRIGHT_JSON, readProjectPyright } from './pyright/pyright-project-config.mjs';
 
-const TYPE_CONFIG_FILES = [PYRIGHT_JSON, 'pyproject.toml', 'mypy.ini', '.mypy.ini', 'setup.cfg'];
+const TOOL_CONFIG_FILES = [
+  PYRIGHT_JSON,
+  'pyproject.toml',
+  'mypy.ini',
+  '.mypy.ini',
+  'setup.cfg',
+  '.coveragerc',
+  'tox.ini',
+];
 const MUTATION_CONFIG_FILES = ['pyproject.toml', 'setup.cfg'];
 const PYRIGHT_CHECKERS = ['pyright', 'basedpyright'];
 
@@ -15,7 +23,7 @@ export function pythonConfigFiles(root) {
   return [
     ...new Set([
       ...projectFormatConfigFiles(root),
-      ...existing(root, TYPE_CONFIG_FILES),
+      ...existing(root, TOOL_CONFIG_FILES),
       ...PYRIGHT_CHECKERS.flatMap(
         (checker) => readProjectPyright(root, checker, { upward: true })?.files ?? [],
       ),

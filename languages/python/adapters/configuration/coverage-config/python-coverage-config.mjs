@@ -5,6 +5,11 @@ import { toml } from '../../../libraries/project-files.mjs';
 import { parseIni } from '../ini-parser.mjs';
 import { coverageTestOmits } from '../../execution/python-test-files.mjs';
 import { isDjangoProject } from '../pytest/collection-options.mjs';
+import {
+  attempt,
+  requireProjectConfig,
+  toolLayers,
+} from '../../project-tools/project-tool-layers.mjs';
 
 const COVERAGE_CONFIG = 'coveragerc';
 const UNTESTABLE_LINES = [
@@ -14,6 +19,20 @@ const UNTESTABLE_LINES = [
   String.raw`^\s*raise NotImplementedError\b`,
 ];
 const CARRIED_KEYS = ['concurrency', 'patch', 'plugins'];
+const OPTED_RUN_KEYS = [
+  'timid',
+  'cover_pylib',
+  'dynamic_context',
+  'sigterm',
+  'disable_warnings',
+  'core',
+];
+const LIST_RUN_KEYS = new Set(['disable_warnings']);
+const EXCLUDED_LINE_KEYS = ['exclude_lines', 'exclude_also'];
+const PARTIAL_BRANCH_KEYS = ['partial_branches', 'partial_also'];
+export const COVERAGE_TOOL = 'coverage';
+const LOOKED =
+  'a coverage config (.coveragerc, or setup.cfg or tox.ini with a [coverage:run] or [coverage:report] section, or pyproject.toml with a [tool.coverage] table)';
 const PROJECT_FILES = [
   { name: '.coveragerc', prefixes: ['coverage:', ''] },
   { name: 'setup.cfg', prefixes: ['coverage:'] },
@@ -69,14 +88,25 @@ function absoluteOmits(projectRoot, value) {
   );
 }
 
-export function readProjectCoverage(projectRoot) {
-  const { run = {}, report = {} } =
-    readFileEntries(
-      projectRoot,
-      PROJECT_FILES.map(({ name }) => name),
-    )
-      .map(settingsOf)
-      .find((found) => found !== undefined) ?? {};
+export function readCoverageSettings(root) {
+  const names = PROJECT_FILES.map(({ name }) => name);
+  for (const [name, text] of readFileEntries(root, names)) {
+    const settings = settingsOf([name, text]);
+    if (settings !== undefined) {
+      return { file: name, ...settings };
+    }
+  }
+  return undefined;
+}
+
+export function optInKeys({ run, report }) {
+  return [
+    ...OPTED_RUN_KEYS.filter((key) => run[key] !== undefined),
+    ...[...EXCLUDED_LINE_KEYS, ...PARTIAL_BRANCH_KEYS].filter((key) => report[key] !== undefined),
+  ];
+}
+
+function carriedOf({ run = {}, report = {} }, projectRoot) {
   const carried = CARRIED_KEYS.map((key) => [key, listValue(run[key] ?? [])]).filter(
     ([, values]) => values.length > 0,
   );
@@ -87,12 +117,71 @@ export function readProjectCoverage(projectRoot) {
   };
 }
 
+export function readProjectCoverage(configRoot, projectRoot = configRoot) {
+  return carriedOf(readCoverageSettings(configRoot) ?? {}, projectRoot);
+}
+
+function regexList(value) {
+  return [value]
+    .flat()
+    .flatMap((entry) => String(entry).split('\n'))
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== '');
+}
+
+function runValue(key, value) {
+  if (LIST_RUN_KEYS.has(key)) {
+    return listValue(value);
+  }
+  return typeof value === 'boolean' ? (value ? 'True' : 'False') : String(value);
+}
+
+function projectSettings(context) {
+  const layers = toolLayers(context, COVERAGE_TOOL);
+  const { value, error } = attempt(() => readCoverageSettings(layers.configRoot));
+  if (!layers.optedIn) {
+    if (error !== undefined) {
+      throw error;
+    }
+    return { layers, found: value };
+  }
+  const found = requireProjectConfig(
+    error === undefined ? value : { file: 'pyproject.toml', unreadable: error.message },
+    { tool: COVERAGE_TOOL, looked: LOOKED, configRoot: layers.configRoot },
+  );
+  return { layers, found };
+}
+
+function optedSettings({ layers, found }) {
+  if (!layers.optedIn) {
+    return { run: [], excluded: [], partial: [] };
+  }
+  const { run, report } = found;
+  const listed = (keys) =>
+    layers.nitpickerFirst ? [] : keys.flatMap((key) => regexList(report[key] ?? []));
+  return {
+    run: OPTED_RUN_KEYS.filter((key) => run[key] !== undefined).map((key) => [
+      key,
+      runValue(key, run[key]),
+    ]),
+    excluded: listed(EXCLUDED_LINE_KEYS),
+    partial: listed(PARTIAL_BRANCH_KEYS),
+  };
+}
+
 function indented(entries) {
   return entries.map((entry) => `    ${entry}`).join('\n');
 }
 
-function coverageConfig(projectRoot, sources) {
-  const { run, omit, reportOmit } = readProjectCoverage(projectRoot);
+function listSetting(key, values) {
+  return values.length === 0 ? `${key} =` : `${key} =\n${indented(values)}`;
+}
+
+function coverageConfig(context, sources) {
+  const { projectRoot } = context;
+  const settings = projectSettings(context);
+  const { run, omit, reportOmit } = carriedOf(settings.found ?? {}, projectRoot);
+  const opted = optedSettings(settings);
   return [
     '[run]',
     'branch = True',
@@ -100,16 +189,19 @@ function coverageConfig(projectRoot, sources) {
     `source =\n${indented(sources.map((source) => path.join(projectRoot, source)))}`,
     `omit =\n${indented([...coverageTestOmits(isDjangoProject(projectRoot)), ...omit])}`,
     ...Object.entries(run).map(([key, values]) => `${key} =\n${indented(values)}`),
+    ...opted.run.map(([key, value]) =>
+      Array.isArray(value) ? listSetting(key, value) : `${key} = ${value}`,
+    ),
     '[report]',
     ...(reportOmit.length === 0 ? [] : [`omit =\n${indented(reportOmit)}`]),
-    `exclude_lines =\n${indented(UNTESTABLE_LINES)}`,
-    'partial_branches =',
+    listSetting('exclude_lines', [...new Set([...UNTESTABLE_LINES, ...opted.excluded])]),
+    listSetting('partial_branches', [...new Set(opted.partial)]),
     '',
   ].join('\n');
 }
 
-export function writeCoverageConfig({ projectRoot, reportRoot }, sources) {
-  const config = path.join(reportRoot, COVERAGE_CONFIG);
-  writeFileSync(config, coverageConfig(projectRoot, sources));
+export function writeCoverageConfig(context, sources) {
+  const config = path.join(context.reportRoot, COVERAGE_CONFIG);
+  writeFileSync(config, coverageConfig(context, sources));
   return config;
 }
