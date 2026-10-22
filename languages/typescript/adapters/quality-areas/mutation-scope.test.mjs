@@ -5,7 +5,7 @@ import {
   fixtureGit,
   useGitFixtures,
 } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { isSourceFile } from '../../preset/layout.mjs';
+import { isSourceFile, resolveLayout } from '../../preset/layout.mjs';
 import { mutationTargets } from './runners/mutation-scope.mjs';
 
 const layout = { isSourceFile };
@@ -84,6 +84,19 @@ describe('mutationTargets', () => {
     });
 
     expect(headTargets(roots)).toEqual([]);
+  });
+
+  it('mutates no test-support/ helper in a colocated layout', () => {
+    const roots = snapshots({
+      headChanges: {
+        'src/math.ts': 'export const one = 2;\n',
+        'src/feature/test-support/make.ts': 'export const make = () => 1;\n',
+      },
+    });
+    const colocated = resolveLayout({ colocatedTests: true });
+
+    expect(mutationTargets({ snapshot: 'head', ...roots }, colocated)).toEqual(['src/math.ts:1-1']);
+    expect(headTargets(roots)).toEqual(['src/feature/test-support/make.ts:1-1', 'src/math.ts:1-1']);
   });
 
   it('mutates nothing in a renamed file except its edited lines', () => {

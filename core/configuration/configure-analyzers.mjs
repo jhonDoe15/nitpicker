@@ -14,6 +14,7 @@ import {
 import {
   applyLayout,
   applyLegacyInventory,
+  applyTestRunner,
   applyThresholds,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { applyDisable } from './config.mjs';
@@ -22,9 +23,12 @@ export function configureAnalyzers(analyzers, config, headPolicy) {
   return applyLegacyInventory(
     addCustomAnalyzers(
       applyJavaConfig(
-        applyThresholds(
-          applyLayout(applyDisable(analyzers, config), headPolicy),
-          config.thresholds,
+        applyTestRunner(
+          applyThresholds(
+            applyLayout(applyDisable(analyzers, config), headPolicy),
+            config.thresholds,
+            headPolicy,
+          ),
           headPolicy,
         ),
         config,
@@ -56,12 +60,17 @@ function applyJavaConfig(analyzers, config) {
       ? configureJavaAnalyzer(analyzer, {
           kotlin: config.kotlin,
           tools: config.tools,
+          testConsole: config.testConsole,
           styleFiles: styleFilesOf(config, analyzer.name),
           exclude: config.exclude,
           legacyInventory: config.legacyInventory ?? DEFAULT_LEGACY_INVENTORY,
           ...(analyzer.name === MUTATION_ANALYZER_NAME
             ? { thresholds: { crapLimit: config.thresholds?.crapLimit } }
-            : { thresholds: config.thresholds, exceptions: config.exceptions }),
+            : {
+                thresholds: config.thresholds,
+                exceptions: config.exceptions,
+                duplicates: config.duplicates,
+              }),
         })
       : analyzer,
   );

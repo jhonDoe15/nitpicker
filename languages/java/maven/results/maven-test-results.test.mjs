@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { archunitMatcher } from '../maven-tests.mjs';
-import { copyTestResults } from './maven-test-results.mjs';
+import { copyTestResults, requireTestngRun } from './maven-test-results.mjs';
 
 const roots = [];
 const since = Date.now() - 2000;
@@ -97,11 +97,95 @@ describe('copyTestResults', () => {
     expect(copied(reportDir, 'surefire')).toEqual(['TEST-shop.OrderTest.xml']);
   });
 
+  it('copies the output files of redirected test output, except stale and ArchUnit ones', () => {
+    const surefire = tree({
+      'TEST-shop.OrderTest.xml': '<a/>',
+      'shop.OrderTest-output.txt': 'WARN late',
+      'shop.OldTest-output.txt': 'old',
+      'shop.ArchTest-output.txt': 'rules',
+    });
+    stale(surefire, 'shop.OldTest-output.txt');
+    const reportDir = tree({});
+
+    copy({ surefireReports: surefire, failsafeReports: path.join(reportDir, 'none') }, reportDir);
+
+    expect(copied(reportDir, 'surefire')).toEqual([
+      'TEST-shop.OrderTest.xml',
+      'shop.OrderTest-output.txt',
+    ]);
+  });
+
   it('writes nothing when no report directory exists', () => {
     const reportDir = tree({});
 
     copy({ surefireReports: '/missing/a', failsafeReports: '/missing/b' }, reportDir);
 
     expect(readdirSync(reportDir)).toEqual([]);
+  });
+});
+
+describe('requireTestngRun', () => {
+  const PLATFORM_TESTNG = ['/m2/testng-7.10.2.jar', '/m2/junit-platform-engine-1.11.4.jar'];
+
+  function moduleWith(reports) {
+    const basedir = tree({
+      'target/test-classes/shop/OrderTest.class': '',
+      'target/test-classes/shop/LayerArchTest.class': '',
+      ...Object.fromEntries(
+        reports.map((name) => [
+          `target/surefire-reports/${name}`,
+          `<testsuite><testcase classname="${name.replace(/^TEST-|\.xml$/gu, '')}" name="test"/></testsuite>`,
+        ]),
+      ),
+    });
+    return {
+      basedir,
+      testOutputDirectory: path.join(basedir, 'target/test-classes'),
+      surefireReports: path.join(basedir, 'target/surefire-reports'),
+      failsafeReports: path.join(basedir, 'target/surefire-reports'),
+    };
+  }
+
+  const check = (module, testRuntime) => () => {
+    requireTestngRun({ module, since, isArchunit: archunitMatcher(), testRuntime });
+    return 'passed';
+  };
+
+  it('fails when the JUnit Platform ran only the ArchUnit classes of a TestNG module', () => {
+    const module = moduleWith(['TEST-shop.LayerArchTest.xml']);
+
+    expect(check(module, PLATFORM_TESTNG)).toThrow(
+      new Error(
+        `Surefire ran none of the tests in ${module.basedir} but the ArchUnit classes: the JUnit Platform on its ` +
+          'test classpath makes Surefire use its JUnit Platform provider, which runs TestNG tests only through ' +
+          'the TestNG engine. Add org.junit.support:testng-engine to the test dependencies, or run TestNG in ' +
+          'a Surefire execution of its own',
+      ),
+    );
+  });
+
+  it('rejects a non-ArchUnit report whose suite contains no test cases', () => {
+    const module = moduleWith(['TEST-shop.LayerArchTest.xml', 'TEST-shop.OrderTest.xml']);
+    writeFileSync(
+      path.join(module.surefireReports, 'TEST-shop.OrderTest.xml'),
+      '<testsuite name="shop.OrderTest" tests="0"/>',
+    );
+    expect(check(module, PLATFORM_TESTNG)).toThrow('Surefire ran none of the tests');
+  });
+
+  it('passes when TestNG ran, the TestNG engine is there, or no Platform hides TestNG', () => {
+    const archunitOnly = moduleWith(['TEST-shop.LayerArchTest.xml']);
+
+    expect(
+      [
+        check(
+          moduleWith(['TEST-shop.LayerArchTest.xml', 'TEST-shop.OrderTest.xml']),
+          PLATFORM_TESTNG,
+        ),
+        check(archunitOnly, [...PLATFORM_TESTNG, '/m2/testng-engine-1.0.5.jar']),
+        check(archunitOnly, ['/m2/testng-7.10.2.jar']),
+        check(archunitOnly, ['/m2/junit-platform-engine-1.11.4.jar']),
+      ].map((run) => run()),
+    ).toEqual(['passed', 'passed', 'passed', 'passed']);
   });
 });

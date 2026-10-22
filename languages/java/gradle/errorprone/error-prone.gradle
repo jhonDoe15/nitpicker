@@ -1,4 +1,4 @@
-// Error Prone, with the NullAway plugin, over the main and test Java sources. nitpicker.init.gradle applies
+// Error Prone, with the NullAway plugin, over the main Java sources and those of every test source set. nitpicker.init.gradle applies
 // this script to each java project after setting nitpickerErrorProneVersions and nitpickerReportDir.
 // ErrorProneReport.java runs javac with Error Prone as its plugin, in a JDK 21 or newer, into a
 // throwaway directory, and writes build/nitpicker/errorprone.json. checks.json turns checks on and off.
@@ -91,7 +91,8 @@ def writeArguments = { String name, JavaCompile compile, Collection<File> errorP
     def classes = workDir.get().dir("classes/${name}").asFile
     def generated = workDir.get().dir("generated/${name}").asFile
     [classes, generated]*.mkdirs()
-    def own = sourceSets.main.output.classesDirs.files + (test ? sourceSets.test.output.classesDirs.files : [])
+    def own = sourceSets.main.output.classesDirs.files +
+        (test ? sourceSets.getByName(name).output.classesDirs.files : [])
     def lines = ['-d', classes.absolutePath, '-s', generated.absolutePath,
                  '-classpath', compile.classpath.files.collect { it.absolutePath }.join(File.pathSeparator),
                  '-processorpath', (errorProne + processors).collect { it.absolutePath }.join(File.pathSeparator),
@@ -107,21 +108,24 @@ tasks.register('nitpickerErrorProne') {
     group = 'nitpicker'
     description = 'Compiles the main and test Java sources with Error Prone into build/nitpicker/errorprone; ' +
         'findings go to build/nitpicker/errorprone.json.'
-    dependsOn tasks.named('classes'), tasks.named('testClasses')
+    dependsOn {
+        [tasks.named('classes')] + project.ext.nitpickerTestSourceSets().collect { tasks.named(it.classesTaskName) }
+    }
     def runner = new File(scriptDir, 'ErrorProneReport.java')
     doLast {
         project.delete(workDir)
         workDir.get().asFile.mkdirs()
         def report = reportFile.get().asFile
         report.delete()
-        def compiles = [main: tasks.named('compileJava').get(), test: tasks.named('compileTestJava').get()]
+        def compiles = [main: tasks.named('compileJava').get()] + project.ext.nitpickerTestSourceSets()
+            .collectEntries { [(it.name): tasks.named(it.compileJavaTaskName).get()] }
         if (compiles.values().every { it.source.isEmpty() }) {
             report.text = '[]\n'
             return
         }
         def errorProne = errorProneClasspath()
         def argumentFiles = compiles.collect { name, compile ->
-            writeArguments(name, compile, errorProne, name == 'test')
+            writeArguments(name, compile, errorProne, name != 'main')
         }
             .findAll { it != null }
         def java = runnerJava(compiles.values().findAll { !it.source.isEmpty() })
