@@ -62,6 +62,13 @@ function exportArguments(common, { initScript, directory, policy }) {
   ];
 }
 
+function headFactProperties(policy) {
+  return [
+    ...javaStyleProperties(policy),
+    ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
+  ];
+}
+
 function runJavaPreset(
   projectRoot,
   {
@@ -92,9 +99,8 @@ function runJavaPreset(
         : []),
       () => [
         ...common,
-        ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
         ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
-        ...javaStyleProperties(policy),
+        ...headFactProperties(policy),
         '-I',
         initScript,
         'nitpickerJava',
