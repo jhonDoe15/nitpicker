@@ -129,6 +129,34 @@ describe.skipIf(!enabled)('generic-name', () => {
         [],
       ],
       ['a test helper', inFile('tests/helpers.py', 'X = 1\n'), []],
+      [
+        'a plural managers module',
+        inFile('order_managers.py', 'X = 1\n'),
+        ['generic-name:1 order_managers'],
+      ],
+      [
+        'a miscellaneous module',
+        inFile('miscellaneous.py', 'X = 1\n'),
+        ['generic-name:1 miscellaneous'],
+      ],
+      ['a common word before a noun', inFile('common_prefix.py', 'X = 1\n'), []],
+      [
+        'a function named for its job',
+        inFile('orders.py', 'def get_common_ancestor():\n    pass\n'),
+        [],
+      ],
+      [
+        'a generic word before a container noun',
+        inFile('helper_module.py', 'X = 1\n'),
+        ['generic-name:1 helper_module'],
+      ],
+      ['a lock manager', inFile('locks.py', 'class ModuleLockManager:\n    pass\n'), []],
+      ['a session manager', inFile('sessions.py', 'class SessionManager:\n    pass\n'), []],
+      [
+        'an order manager',
+        inFile('orders.py', 'class OrderManager:\n    pass\n'),
+        ['generic-name:1 OrderManager'],
+      ],
     ]);
     expect(actual).toEqual(expected);
   });
@@ -433,11 +461,14 @@ describe.skipIf(!enabled)('todo-without-issue', () => {
         '# handle refunds later TODO\nX = 1\n',
         ['todo-without-issue:1 handle refunds later TODO'],
       ],
+      ['a number reference', '# TODO(#0): handle refunds\nX = 1\n', []],
       [
-        'issue zero',
-        '# TODO(#0): handle refunds\nX = 1\n',
-        ['todo-without-issue:1 TODO(#0): handle refunds'],
+        'a hash without a number',
+        '# TODO(#): handle refunds\nX = 1\n',
+        ['todo-without-issue:1 TODO(#): handle refunds'],
       ],
+      ['prose that starts with Hack', '# Hack to embed the traceback text\nX = 1\n', []],
+      ['prose that starts with xxx', '# xxx is a placeholder name here\nX = 1\n', []],
       [
         'a docstring',
         'def f():\n    """TODO: implement this properly."""\n    return 1\n',

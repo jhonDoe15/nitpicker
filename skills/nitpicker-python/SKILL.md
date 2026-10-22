@@ -52,6 +52,10 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   parsed once; pass frozen dataclasses on from there.
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
+- Names and comments: name files, packages and classes for their job (`price_rounding.py`), never
+  `utils`, `helpers`, `common`, `misc` or `*Manager`; pure logic shared between features goes in
+  `shared/` under such a name. No commented-out code, and a `TODO` or `FIXME` carries an issue
+  (`# TODO(#123): ...`, `# TODO PROJ-123: ...` or a link).
 - Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
   test honesty) reports the allowed form in its message: follow the form the message names.
 - Tests: use the project's runner (pytest, unittest, Django or nose2). Every test asserts something. Every branch you add needs a test, and a

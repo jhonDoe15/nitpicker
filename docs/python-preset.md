@@ -765,9 +765,15 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - `repeated-string-literal` counts a string of five characters or more used three times or more in
   a file (not tests) and reports it at its first use. Annotations, f-string parts, dictionary keys,
   docstrings and bare strings, `Literal[...]` subscripts and translation calls are not counted.
-- `generic-name` reports a file, a folder or a top-level class whose last word is `util`, `utils`,
-  `helper`, `helpers`, `manager`, `common`, `misc` and the like; a class that extends a type with the
-  same ending (`class SessionManager(CacheManager)`) is not reported.
+- `generic-name` reports a file, a folder or a class (nested ones too) whose last word is `util`,
+  `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `managers`, `common`, `commons`,
+  `misc` or `miscellaneous` (the same list as every preset), or a generic word followed by a container
+  word (`util_functions`, `helper_module`, `OrderHelperMixin`); a word elsewhere in the name
+  (`common_prefix`, `get_common_ancestor`) is not reported. Test files are skipped. A class that extends a
+  type with the same ending (`class SessionManager(CacheManager)`), a `managers.py` that holds
+  a framework manager (`models.Manager`), `context_manager` and the roles `Authentication`,
+  `Transaction`, `Cache`, `Entity`, `Session`, `Connection`, `Lock` and `Resource` before `Manager`
+  are not reported.
 - `hardcoded-secret` reports a secret-looking string (six characters or more with letters and
   digits, or three character classes) assigned to a name ending in `password`, `token`, `secret`,
   `api_key`, `credentials` and similar, also as a parameter default, keyword argument, dictionary
@@ -778,12 +784,15 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
   comprehension; `asyncio.gather` over a comprehension, a paging loop (the condition reads a
   variable the body assigns) and a retry (a `try` in the loop that returns on success) are not.
-- `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
-  comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
-  `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and
-  Java presets do not.
+- `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` (in comments and docstrings) when it
+  is in capitals, or followed by `:` or `(`, or is a `todo` or `fixme` that opens the comment, and
+  is not directly followed by an issue reference: `#123`, a key such as `PROJ-123` (not `SHA-1`,
+  `UTF-8`, `RFC-7231` and similar standards) or an `http(s)` link, the definition every preset
+  uses. Prose that starts with `Hack` or `xxx` is not a marker. `TD` and `FIX` from ruff are not
+  used, because they ask for an author and a date, which the TypeScript and Java presets do not.
 - `ERA001` finds commented-out code by a heuristic: a comment that parses as a statement. Prose
-  that happens to parse is reported too; reword it.
+  that happens to parse is reported too (a label such as `Contact: someone`, a formula, a bare
+  `name: value` note); reword it, or add an exception for the file.
 - The `S` group is selected by code, without the rules left off below; `S324`, `S501`,
   `S113`, `S301`, `S302`, `S506`, `S307`, `S102`, `S202`, `S201`, `S306`, `S108`, the XML rules
   `S313`-`S319`, the TLS rules `S323`, `S502`-`S505`, `S507`-`S509`, `S701`, `S702`, `S704`, `S308`
