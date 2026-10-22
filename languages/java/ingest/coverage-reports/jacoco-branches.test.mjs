@@ -5,6 +5,7 @@ import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-sc
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { parseChangedLines } from '../../../../core/diff/git/patches/changed-lines.mjs';
 import { isStrictRule } from '../../../typescript/preset/strict-rules.mjs';
+import { javaDeclarationUnits } from '../declarations/java-declaration-units.mjs';
 import { ingestJacocoBranches } from './jacoco-branches.mjs';
 
 const xml = readFileSync(
@@ -42,10 +43,19 @@ describe('ingestJacocoBranches', () => {
   it('reports every line with branch coverage below 95%, and only those', () => {
     const findings = ingest();
 
-    expect(findings.map((finding) => [finding.location.line, finding.message])).toEqual([
-      [4, 'Branch coverage is 50.00%; minimum is 95%'],
-      [8, 'Branch coverage is 0.00%; minimum is 95%'],
-      [14, 'Branch coverage is 0.00%; minimum is 95%'],
+    expect(findings.map((f) => [f.location.line, f.message])).toEqual([
+      [
+        4,
+        'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+      ],
+      [
+        8,
+        'Branch coverage is 0.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+      ],
+      [
+        14,
+        'Branch coverage is 0.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+      ],
     ]);
     expect(
       findings.every(
@@ -57,6 +67,38 @@ describe('ingestJacocoBranches', () => {
       ),
     ).toBe(true);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
+  });
+
+  it('names the function that holds a branch and the exception entry that accepts it', () => {
+    const functions = [
+      { file: FILE, name: 'Pick.pick', start: 3, end: 9 },
+      { file: FILE, name: 'Pick.inner', start: 4, end: 5 },
+      { file: 'src/main/java/com/acme/Other.java', name: 'Other.run', start: 1, end: 20 },
+    ];
+
+    const findings = ingest(SOURCE, { functions });
+
+    expect(findings.map(({ location, symbol }) => [location.line, symbol])).toEqual([
+      [4, 'Pick.inner'],
+      [8, 'Pick.pick'],
+      [14, undefined],
+    ]);
+    expect(findings[1].message).toBe(
+      'Branch coverage is 0.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
+  });
+
+  it('names the field whose initializer holds a branch no method holds', () => {
+    const findings = ingest(SOURCE, { units: javaDeclarationUnits });
+
+    expect(findings.map(({ location, symbol }) => [location.line, symbol])).toEqual([
+      [4, 'Pick.a'],
+      [8, 'Pick.x'],
+      [14, 'Pick.x'],
+    ]);
+    expect(findings[0].message).toBe(
+      'Branch coverage is 50.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.a","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
   });
 
   it('honors the minimum option and skips files without source', () => {

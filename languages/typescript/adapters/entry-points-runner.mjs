@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { toEntryPointDiffFindings } from './entry-points.mjs';
+import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
 import { PACKAGE_ROOT, SNAPSHOT_DIRECTORY_NAMES } from '../../../core/tooling/tool-resolution.mjs';
 import { existingRoots } from '../preset/layout.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
@@ -17,8 +18,10 @@ try {
   const { analyzeEntryPoints } = await loadPolicyModules(options.policyRoot);
   const layout = readLayout();
   const graphFor = graphLoader(options, layout);
-  const findings = options.sourceRoots.flatMap((sourceRoot) =>
-    toEntryPointDiffFindings(analyzeEntryPoints(graphFor(sourceRoot), sourceRoot, { layout })),
+  const findings = applyAreaExceptions(
+    options.sourceRoots.flatMap((sourceRoot) =>
+      toEntryPointDiffFindings(analyzeEntryPoints(graphFor(sourceRoot), sourceRoot, { layout })),
+    ),
   );
   process.stdout.write(`${JSON.stringify({ findings })}\n`);
 } catch (error) {

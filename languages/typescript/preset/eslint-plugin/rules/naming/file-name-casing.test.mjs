@@ -147,13 +147,13 @@ describe('file-name-casing messages', () => {
 
   it('names the casing and both ways out', () => {
     expect(messageFor('src/userProfile.ts')).toBe(
-      'File name "userProfile.ts" is not kebab-case, which this project uses for file names. Rename it, pin a different casing with "conventions": { "typescript.fileNames": "camelCase" } in nitpicker.config.json, or add an "exceptions" entry for nitpicker/file-name-casing.',
+      'File name "userProfile.ts" is not kebab-case, which this project uses for file names. Rename it, pin a different casing with "conventions": { "typescript.fileNames": "camelCase" } in nitpicker.config.json. An exception fits only when the name is deliberate.',
     );
   });
 
   it('names the folder casing and the exception', () => {
     expect(messageFor(path.join(snakeFolder, 'g-h.ts'))).toBe(
-      'File name "g-h.ts" is not snake_case, which most other files in this folder use. Rename it, or add an "exceptions" entry for nitpicker/file-name-casing.',
+      'File name "g-h.ts" is not snake_case, which most other files in this folder use. Rename it. An exception fits only when the name is deliberate.',
     );
   });
 });

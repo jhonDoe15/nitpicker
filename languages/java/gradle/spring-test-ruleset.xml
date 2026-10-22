@@ -8,7 +8,7 @@
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker Spring rules for test sources.</description>
   <rule name="SpringUnusedContext" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This @SpringBootTest starts the whole application context but uses nothing from it: no injected or mock bean, no MockMvc, WebTestClient, TestRestTemplate, CapturedOutput or ApplicationEvents, and no web server port. Make it a unit test that creates the class with new, or use a slice such as @WebMvcTest for one layer; @SpringBootTest is for integration and component tests. If the context is needed, add an exception for pmd/SpringUnusedContext in nitpicker.config.json.">
+        message="This @SpringBootTest starts the whole application context but uses nothing from it: no injected or mock bean, no MockMvc, WebTestClient, TestRestTemplate, CapturedOutput or ApplicationEvents, and no web server port. Make it a unit test that creates the class with new, or use a slice such as @WebMvcTest for one layer; @SpringBootTest is for integration and component tests.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration[not(ExtendsList)]
@@ -29,7 +29,7 @@
          'org.springframework.beans.factory.annotation.Value',
          'org.springframework.beans.factory.annotation.Qualifier',
          'jakarta.inject.Inject', 'javax.inject.Inject', 'jakarta.annotation.Resource', 'javax.annotation.Resource',
-         'jakarta.persistence.PersistenceContext',
+         'jakarta.persistence.PersistenceContext', 'javax.persistence.PersistenceContext',
          'org.springframework.boot.test.mock.mockito.MockBean', 'org.springframework.boot.test.mock.mockito.SpyBean',
          'org.springframework.test.context.bean.override.mockito.MockitoBean',
          'org.springframework.test.context.bean.override.mockito.MockitoSpyBean',

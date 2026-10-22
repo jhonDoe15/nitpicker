@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
@@ -14,9 +14,11 @@ import { condenseFailure } from './gradle-wrapper/diagnostics/failure-text.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
+import { javaRouteRule } from './java-policy.mjs';
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
+import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
-import { toolConfigChoices, toolConfigProperties } from './tool-config/tool-config-choices.mjs';
+import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
 import { failingTestsOf } from './gradle-reports/failing-tests.mjs';
@@ -26,13 +28,11 @@ import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
 import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
-import { javaStyleProperties } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
+import { gradleOptions, gradleStages } from './gradle-wrapper/gradle-stages.mjs';
 
-const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
 const CLOCK_SLACK_MS = 2000;
-const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
 
 function assertSucceeded(result, projectRoot, { reportBase, since }) {
   if (result.error === undefined && result.status === 0) {
@@ -49,22 +49,11 @@ function assertSucceeded(result, projectRoot, { reportBase, since }) {
   throw withGradleLog(failure, result);
 }
 
-function exportArguments(common, { initScript, directory, policy }) {
-  mkdirSync(directory, { recursive: true });
-  return [
-    ...common,
-    ...javaStyleProperties(policy),
-    `-Pnitpicker.checkstyle.exportConfig=${path.join(directory, CHECKSTYLE_EXPORT)}`,
-    '-I',
-    initScript,
-    'nitpickerCheckstyleConfig',
-  ];
-}
-
 function runJavaPreset(
   projectRoot,
   {
     gradle,
+    spawn,
     initScript = INIT_SCRIPT,
     policy = {},
     reportBase,
@@ -75,7 +64,6 @@ function runJavaPreset(
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
   const directory = path.join(reportBase, 'tool-config');
   const since = Date.now() - CLOCK_SLACK_MS;
-  const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
   withKotlin((kotlinArguments) => {
     const common = [
       '--console=plain',
@@ -84,29 +72,14 @@ function runJavaPreset(
       `-Pnitpicker.reportDir=${reportBase}`,
       ...kotlinArguments,
     ];
-    const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
-    const stages = [
-      ...(layersCheckstyle
-        ? [() => exportArguments(common, { initScript, directory, policy })]
-        : []),
-      () => [
-        ...common,
-        ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
-        ...javaStyleProperties(policy),
-        '-I',
-        initScript,
-        'nitpickerJava',
-      ],
-    ];
+    const stages = gradleStages(common, { projectRoot, initScript, policy, directory });
     for (const stage of stages) {
       const target = gradleTarget({ projectRoot, configured: gradle, args: stage() });
-      const result = runGradle(target.command, target.args, {
-        cwd: projectRoot,
-        encoding: 'utf8',
-        maxBuffer: MAX_OUTPUT_BYTES,
-        shell: target.shell,
-        timeout: budget.commandTimeoutMs,
-      });
+      const result = runGradle(
+        target.command,
+        target.args,
+        gradleOptions(target, { projectRoot, budget, spawn }),
+      );
       assertSucceeded(result, projectRoot, { reportBase, since });
     }
   });
@@ -173,6 +146,7 @@ function withGradleReports(projectRoot, options) {
 function mavenFindings(projectRoot, options) {
   const moduleDirs = runMavenPreset(projectRoot, {
     maven: options.maven,
+    spawn: options.spawn,
     policy: options.policy,
     configs: toolConfigChoices(projectRoot, options.policy),
   });
@@ -202,11 +176,14 @@ export function collectJavaFindings(root, options = {}) {
   }
   return applyFindingPolicy(
     withoutFollowedImports(
-      withProjectEnumPredicates(parseAnalyzerReport({ findings }, preset).findings, projectRoot),
+      withProjectEnumPredicates(
+        withoutGeneratedSources(parseAnalyzerReport({ findings }, preset).findings, projectRoot),
+        projectRoot,
+      ),
       options.policy?.conventions,
       readSource,
     ),
-    { ...options.policy, inventoryTool: preset },
+    { ...options.policy, inventoryTool: preset, routeRule: javaRouteRule },
     (reported) => withoutOverlaps(reported, { readSource }),
   );
 }
@@ -248,6 +225,7 @@ export function runJavaDiff({
   includeWorkingTree = false,
   gradle,
   maven,
+  spawn,
   initScript,
   policy,
 }) {
@@ -265,7 +243,7 @@ export function runJavaDiff({
     repositoryRoot,
     projectRelativePath,
     comparison,
-    options: { gradle, maven, initScript },
+    options: { gradle, maven, spawn, initScript },
     policy,
   });
   const touchedCode = {

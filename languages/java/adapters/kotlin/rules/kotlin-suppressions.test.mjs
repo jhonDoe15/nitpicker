@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { readSuppressionFindings, suppressionTokens } from './kotlin-suppressions.mjs';
 
 const roots = [];
@@ -101,17 +102,17 @@ describe('readSuppressionFindings', () => {
   it('reports each banned token with its rule, a line-free identity and a message that names the fix', () => {
     const root = projectWith({
       [file]:
-        '@Suppress("UnsafeCallOnNullableType", "UNCHECKED_CAST")\nfun a() = 1\n@Suppress("all")\nfun b() = 2\n',
+        '@Suppress("UnsafeCallOnNullableType", "unused")\nfun a() = 1\n@Suppress("all")\nfun b() = 2\n',
     });
 
-    expect(readSuppressionFindings(root, ['src/main/kotlin'])).toEqual([
+    expect(readSuppressionFindings(root, { sourceRoots: ['src/main/kotlin'] })).toEqual([
       {
         tool: 'detekt',
         rule: 'inline-suppression',
         path: file,
         identity: 'suppress:UnsafeCallOnNullableType',
         message:
-          'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags. To lift a one-way rule for some paths, add an "exceptions" entry for it in nitpicker.config.json; to skip generated code, add it to "exclude" there.',
+          'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. If this is intended, add {"rule":"inline-suppression","paths":["src/main/kotlin/demo/A.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
       {
@@ -120,7 +121,7 @@ describe('readSuppressionFindings', () => {
         path: file,
         identity: 'suppress:all',
         message:
-          'Suppressing "all" inline is not allowed. Fix the code the rule flags. To lift a one-way rule for some paths, add an "exceptions" entry for it in nitpicker.config.json; to skip generated code, add it to "exclude" there.',
+          'Suppressing "all" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. If this is intended, add {"rule":"inline-suppression","paths":["src/main/kotlin/demo/A.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);
@@ -133,10 +134,9 @@ describe('readSuppressionFindings', () => {
     });
 
     expect(
-      readSuppressionFindings(root, ['src/main/kotlin']).map(({ path: file_, identity }) => [
-        file_,
-        identity,
-      ]),
+      readSuppressionFindings(root, { sourceRoots: ['src/main/kotlin'] }).map(
+        ({ path: file_, identity }) => [file_, identity],
+      ),
     ).toEqual([
       ['src/main/kotlin/A.kt', 'suppress:style'],
       ['src/main/kotlin/A.kt', 'suppress:style#2'],
@@ -155,17 +155,55 @@ describe('readSuppressionFindings', () => {
     });
 
     expect(
-      readSuppressionFindings(root, ['src/main/kotlin', 'src/main/java', 'src/main/kotlin']).map(
-        ({ path: found }) => found,
-      ),
+      readSuppressionFindings(root, {
+        sourceRoots: ['src/main/kotlin', 'src/main/java'],
+        testRoots: ['src/main/kotlin'],
+      }).map(({ path: found }) => found),
     ).toEqual(['src/main/java/Mixed.kt', 'src/main/kotlin/A.kt', 'src/main/kotlin/z/Deep.kt']);
+  });
+
+  it('reports a suppressed compiler warning with the exception route of its kotlinc rule', () => {
+    const root = projectWith({
+      [file]: '@Suppress("UNCHECKED_CAST")\nfun a(value: Any) = value as List<String>\n',
+    });
+
+    expect(
+      readSuppressionFindings(root, { sourceRoots: ['src/main/kotlin'] }).map(
+        ({ message }) => message,
+      ),
+    ).toEqual([
+      `Suppressing "UNCHECKED_CAST" inline is not allowed. Fix the code the compiler warns about. ${exceptionHint('kotlinc/unchecked', file)}`,
+    ]);
+  });
+
+  it('bans compiler-warning tokens in main sources only, which the kotlinc lint compiles, and rule tokens everywhere', () => {
+    const suppressed =
+      '@Suppress("UNCHECKED_CAST", "DEPRECATION", "MagicNumber")\nfun a(value: Any) = value as List<String>\n';
+    const root = projectWith({
+      'src/main/kotlin/A.kt': suppressed,
+      'src/test/kotlin/ATest.kt': suppressed,
+    });
+
+    expect(
+      readSuppressionFindings(root, {
+        sourceRoots: ['src/main/kotlin'],
+        testRoots: ['src/test/kotlin'],
+      }).map(({ path: found, identity }) => `${found} ${identity}`),
+    ).toEqual([
+      'src/main/kotlin/A.kt suppress:UNCHECKED_CAST',
+      'src/main/kotlin/A.kt suppress:DEPRECATION',
+      'src/main/kotlin/A.kt suppress:MagicNumber',
+      'src/test/kotlin/ATest.kt suppress:MagicNumber',
+    ]);
   });
 
   it('reports nothing for allowed suppressions, comments and missing source roots', () => {
     const root = projectWith({
-      [file]: '@Suppress("UNCHECKED_CAST", "unused")\nfun a() = 42\n// @Suppress("all")\n',
+      [file]: '@Suppress("unused", "UNUSED_PARAMETER")\nfun a() = 42\n// @Suppress("all")\n',
     });
 
-    expect(readSuppressionFindings(root, ['src/main/kotlin', 'src/main/missing'])).toEqual([]);
+    expect(
+      readSuppressionFindings(root, { sourceRoots: ['src/main/kotlin', 'src/main/missing'] }),
+    ).toEqual([]);
   });
 });

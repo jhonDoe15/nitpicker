@@ -16,8 +16,8 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         .filter((finding) => finding.tool === 'structure')
         .map(({ message }) => message),
     ).toEqual([
-      'Wide.deep nests control flow 3 deep (limit 2). Return early instead of nesting.',
-      'Wide.nested nests control flow 3 deep (limit 2). Return early instead of nesting.',
+      'Wide.deep nests control flow 3 deep (limit 2). Return early instead of nesting. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/java/demo/Wide.java"],"function":"Wide.deep","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'Wide.nested nests control flow 3 deep (limit 2). Return early instead of nesting. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/java/demo/Wide.java"],"function":"Wide.nested","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
     expect(fixture.structureOf(result.unchangedFindings)).toEqual([
       'function-parameters-limit Wide.sum',

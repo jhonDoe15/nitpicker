@@ -31,9 +31,9 @@ export const rule = {
     schema: [],
     messages: {
       bothValues:
-        'Pass either `value` (controlled, with `onChange`) or `defaultValue` (uncontrolled), not both. If a form library needs both on this field, add an exception for this rule in nitpicker.config.json.',
+        'Pass either `value` (controlled, with `onChange`) or `defaultValue` (uncontrolled), not both. An exception fits only when a form library needs both on this field.',
       noHandler:
-        'A field with `value` or `checked` and no `onChange` cannot be edited. Add `onChange`, use `defaultValue`, or mark it `readOnly`. If a form library handles the change events, add an exception for this rule in nitpicker.config.json.',
+        'A field with `value` or `checked` and no `onChange` cannot be edited. Add `onChange`, use `defaultValue`, or mark it `readOnly`. An exception fits only when a form library handles the change events.',
     },
   },
   create(context) {

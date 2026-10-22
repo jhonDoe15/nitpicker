@@ -15,13 +15,7 @@ const CHECKS = JSON.parse(
 );
 const CERTAIN_BUGS = new Set(CHECKS.certainBugs);
 
-export function readErrorProneFindings({
-  reportRoot,
-  roots,
-  lintedRoots,
-  manifest = {},
-  kotlin = false,
-}) {
+export function readErrorProneFindings({ reportRoot, roots, lintedRoots, manifest = {} }) {
   const reportPath = path.join(reportRoot, ERROR_PRONE_REPORT);
   if (!existsSync(reportPath)) {
     return [];
@@ -34,7 +28,7 @@ export function readErrorProneFindings({
       guava: (file) => (inRoots(file, testRoots) ? manifest.testGuava : manifest.guava) !== false,
     },
   );
-  return kotlin ? findings : findings.map((finding) => withExceptionRoute(finding, testRoots));
+  return findings.map((finding) => withExceptionRoute(finding, testRoots));
 }
 
 function withoutExemptCode(json, readSource) {

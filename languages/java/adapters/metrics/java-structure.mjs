@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globToRegExp } from '../../../../shared/glob.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import {
   readStructureFindings,
   STRUCTURE_TOOL,
@@ -27,7 +27,7 @@ function rootsOf(manifest, kind, kotlin) {
 }
 
 function projectCodeFiles(projectRoot, { manifest, kotlin, exclude = [] }) {
-  const excluders = exclude.map((glob) => globToRegExp(glob));
+  const excluders = exclude.map((glob) => globMatcher(glob));
   return [
     ...codeFiles(projectRoot, {
       roots: rootsOf(manifest, 'source', kotlin),
