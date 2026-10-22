@@ -27,7 +27,7 @@ function mutationFactsOf(project, roots = ['src']) {
   const result = spawnSync(
     path.join(java, 'bin/java'),
     [
-      `-Dnitpicker.kotlinCompiler=${pinnedKotlinCompiler}`,
+      `-Dnitpicker.kotlinCompiler=${pinnedKotlinCompiler()}`,
       '-cp',
       `${classpath}${path.delimiter}${classes}`,
       'nitpicker.kotlinpsi.KotlinPsi',

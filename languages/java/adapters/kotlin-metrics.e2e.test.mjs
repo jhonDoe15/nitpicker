@@ -41,7 +41,7 @@ import {
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-const pinned = pinnedKotlinCompiler;
+const pinned = pinnedKotlinCompiler();
 
 const FORCE_OTHER_KOTLIN = `
 configurations.matching { it.name == "nitpickerKotlinCompiler" }.configureEach {
