@@ -37,7 +37,11 @@ export const UNUSED_API_RULES = [
     id: UNUSED_API_RULE_IDS.unusedOption,
     check: 'structure',
     limit:
-      'a property of the options parameter of an exported function that no call sets (a non-literal argument sets all); Kotlin: a defaulted parameter of a private or internal function or constructor that no call names or fills by position',
+      'an optional input that no call sets, where tests count as callers only for a published package or module ' +
+      'or a private or internal Kotlin declaration: TypeScript, a property of the options parameter of an ' +
+      'exported function (a non-literal argument sets all); Kotlin, a defaulted parameter of a function or ' +
+      'constructor that no call names or fills by position, counting calls across the build (only its own ' +
+      'module for a private or internal one)',
     enforcedBy: TYPESCRIPT_AND_KOTLIN,
   },
   {
