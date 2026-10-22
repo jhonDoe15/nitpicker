@@ -1,8 +1,9 @@
 package demo;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,9 +33,14 @@ public class Allowed {
     values.put(value, value);
     return values;
   }
+  public String describe(List<String> names) {
+    StringBuilder text = new StringBuilder();
+    for (String name : names) { text.append(name).append(", and more text than sixteen chars"); }
+    return text.toString();
+  }
   public String choice(int value) {
     return switch (value) { case 0 -> "zero"; default -> "other"; };
   }
-  public InputStream open(String file) throws IOException { return new FileInputStream(file); }
+  public InputStream open(Path file) throws IOException { return Files.newInputStream(file); }
   public Object published() { return published; }
 }
