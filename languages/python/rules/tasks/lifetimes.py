@@ -1,7 +1,8 @@
 import ast
 
 from checks.common import dotted_name, finding
-from tasks.handed import coroutine_handed, loaded_names, spawn_handed
+from tasks.bindings import DEFINITIONS, SCOPES, Bindings
+from tasks.handed import coroutine_handed, free_names, spawn_handed
 
 RULE = "task-outlives-resource"
 GROUPS = {
@@ -26,8 +27,6 @@ NOT_RESOURCES = GROUPS | {
 SPAWNERS = {"start_soon", "start", "create_task"}
 BARE_TASKS = {"asyncio.create_task", "asyncio.ensure_future"}
 WITHS = (ast.With, ast.AsyncWith)
-DEFINITIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
-SCOPES = DEFINITIONS + (ast.ClassDef, ast.Lambda)
 
 
 class Entry:
@@ -37,17 +36,21 @@ class Entry:
         self.block = block
 
 
-def entries_of(node, aliases):
+def entries_of(node, aliases, bindings):
     found = []
     for item in node.items:
         expression, target = item.context_expr, item.optional_vars
+        value = bindings.resolve(expression, node)
         called = (
-            dotted_name(expression.func, aliases)
-            if isinstance(expression, ast.Call)
-            else None
+            dotted_name(value.func, aliases) if isinstance(value, ast.Call) else None
         )
-        if called in GROUPS and isinstance(target, ast.Name):
-            found.append(Entry("group", target.id, node))
+        if called in GROUPS:
+            names = [expression, target]
+            found.extend(
+                Entry("group", name.id, node)
+                for name in names
+                if isinstance(name, ast.Name)
+            )
         elif called in NOT_RESOURCES:
             continue
         elif isinstance(target, ast.Name):
@@ -76,27 +79,28 @@ class Lifetimes:
     def __init__(self, context):
         self.context = context
         self.aliases = context.aliases
+        self.bindings = Bindings(context)
         self.findings = []
 
     def scan(self, statements, stack, closures):
         for statement in statements:
             if isinstance(statement, DEFINITIONS):
                 resources = {e.name for e in stack if e.kind != "group"}
-                closures[statement.name] = loaded_names(statement) & resources
+                closures[statement.name] = free_names(statement) & resources
             elif isinstance(statement, WITHS):
-                inner = stack + entries_of(statement, self.aliases)
+                inner = stack + entries_of(statement, self.aliases, self.bindings)
                 self.scan(statement.body, inner, closures)
             elif not isinstance(statement, SCOPES):
                 self.statement(statement, stack, closures)
 
     def statement(self, statement, stack, closures):
         for call in calls_in(statement):
-            self.group_spawn(call, stack, closures)
+            self.group_spawn(call, statement, stack, closures)
         self.bare_task(statement, stack)
         for block in blocks_of(statement):
             self.scan(block, stack, closures)
 
-    def group_spawn(self, call, stack, closures):
+    def group_spawn(self, call, statement, stack, closures):
         func = call.func
         if not (isinstance(func, ast.Attribute) and func.attr in SPAWNERS):
             return
@@ -109,11 +113,20 @@ class Lifetimes:
         ]
         if not groups:
             return
-        inside = {e.name for e in stack[groups[-1] + 1 :] if e.kind == "resource"}
-        handed = spawn_handed(call, closures, self.aliases) & inside
-        if handed:
-            subject = f"{sorted(handed)[0]} passed to {func.value.id}.{func.attr}"
-            self.findings.append(finding(self.context.path, RULE, subject, call))
+        inside = [e for e in stack[groups[-1] + 1 :] if e.kind == "resource"]
+        handed = spawn_handed(call, closures, self.aliases)
+        owners = [e for e in reversed(inside) if e.name in handed]
+        held, task = task_call(statement)
+        if owners and not (
+            held is call and task and used_after(task, owners[0].block, call)
+        ):
+            self.report(call, owners[0].name, func.attr)
+
+    def report(self, call, resource, method):
+        function = self.bindings.function_name(call)
+        where = f" in {function}" if function else ""
+        subject = f"{resource} passed to {method}{where}"
+        self.findings.append(finding(self.context.path, RULE, subject, call))
 
     def bare_task(self, statement, stack):
         call, task = task_call(statement)
@@ -122,10 +135,7 @@ class Lifetimes:
         handed = coroutine_handed(call.args[0]) if call.args else set()
         owners = [e for e in reversed(stack) if e.kind != "group" and e.name in handed]
         if owners and not (task and used_after(task, owners[0].block, call)):
-            subject = (
-                f"{owners[0].name} passed to {dotted_name(call.func, self.aliases)}"
-            )
-            self.findings.append(finding(self.context.path, RULE, subject, call))
+            self.report(call, owners[0].name, dotted_name(call.func, self.aliases))
 
 
 def task_call(statement):

@@ -5,24 +5,32 @@ from checks.common import dotted_name
 PARTIAL = "functools.partial"
 
 
-def loaded_names(node, skip=()):
+def loaded_names(node):
     return {
         part.id
         for part in ast.walk(node)
-        if isinstance(part, ast.Name)
-        and isinstance(part.ctx, ast.Load)
-        and part.id not in skip
+        if isinstance(part, ast.Name) and isinstance(part.ctx, ast.Load)
     }
 
 
-def lambda_names(node):
+def local_names(node):
     arguments = node.args
-    own = {
+    names = {
         argument.arg
         for argument in arguments.posonlyargs + arguments.args + arguments.kwonlyargs
     }
-    own.update(a.arg for a in (arguments.vararg, arguments.kwarg) if a)
-    return loaded_names(node.body, own)
+    names.update(a.arg for a in (arguments.vararg, arguments.kwarg) if a)
+    for part in ast.walk(node):
+        if isinstance(part, ast.Name) and isinstance(part.ctx, (ast.Store, ast.Del)):
+            names.add(part.id)
+        elif isinstance(part, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(part.name)
+    return names
+
+
+def free_names(node):
+    body = node.body if isinstance(node, ast.Lambda) else ast.Module(node.body, [])
+    return loaded_names(body) - local_names(node)
 
 
 def callable_names(node, closures, aliases):
@@ -31,7 +39,7 @@ def callable_names(node, closures, aliases):
     if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
         return {node.value.id}
     if isinstance(node, ast.Lambda):
-        return lambda_names(node)
+        return free_names(node)
     if isinstance(node, ast.Call) and dotted_name(node.func, aliases) == PARTIAL:
         values = node.args[1:] + [keyword.value for keyword in node.keywords]
         return {value.id for value in values if isinstance(value, ast.Name)}

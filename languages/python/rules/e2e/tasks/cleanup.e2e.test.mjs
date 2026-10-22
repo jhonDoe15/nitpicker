@@ -25,17 +25,17 @@ describe.skipIf(!enabled)('unshielded-cleanup-await under Trio and AnyIO', () =>
       [
         'finally',
         cleanupCode(`${FINALLY}    await resource.aclose()`),
-        found(8, 'await resource.aclose() in finally'),
+        found(8, 'await resource.aclose() in finally of run'),
       ],
       [
         'trio.Cancelled handler',
         cleanupCode('except trio.Cancelled:\n    await resource.aclose()\n    raise'),
-        found(8, 'await resource.aclose() in except trio.Cancelled'),
+        found(8, 'await resource.aclose() in except trio.Cancelled of run'),
       ],
       [
         'tuple with a cancellation class',
         cleanupCode('except (ValueError, trio.Cancelled):\n    await resource.aclose()\n    raise'),
-        found(8, 'await resource.aclose() in except (ValueError, trio.Cancelled)'),
+        found(8, 'await resource.aclose() in except (ValueError, trio.Cancelled) of run'),
       ],
       [
         'AnyIO cancellation class',
@@ -43,39 +43,39 @@ describe.skipIf(!enabled)('unshielded-cleanup-await under Trio and AnyIO', () =>
           'except anyio.get_cancelled_exc_class():\n    await resource.aclose()\n    raise',
           'import anyio',
         ),
-        found(8, 'await resource.aclose() in except expression'),
+        found(8, 'await resource.aclose() in except anyio.get_cancelled_exc_class() of run'),
       ],
       [
         'aliased import',
         cleanupCode(`${FINALLY}    await resource.aclose()`, 'import trio as t'),
-        found(8, 'await resource.aclose() in finally'),
+        found(8, 'await resource.aclose() in finally of run'),
       ],
       [
         'async with in finally',
         cleanupCode(`${FINALLY}    async with lock:\n        pass`),
-        found(8, 'async with lock in finally'),
+        found(8, 'async with lock in finally of run'),
       ],
       [
         'async for in finally',
         cleanupCode(`${FINALLY}    async for item in resource:\n        pass`),
-        found(8, 'async for resource in finally'),
+        found(8, 'async for resource in finally of run'),
       ],
       [
         'deadline without a shield',
         cleanupCode(`${FINALLY}    with trio.move_on_after(5):\n        await resource.aclose()`),
-        found(9, 'await resource.aclose() in finally'),
+        found(9, 'await resource.aclose() in finally of run'),
       ],
       [
         'shield only around other code',
         cleanupCode(
           `${FINALLY}    with trio.move_on_after(5, shield=True):\n        resource.flush()\n    await resource.aclose()`,
         ),
-        found(10, 'await resource.aclose() in finally'),
+        found(10, 'await resource.aclose() in finally of run'),
       ],
       [
         'first await only',
         cleanupCode(`${FINALLY}    await first()\n    await second()`),
-        found(8, 'await first() in finally'),
+        found(8, 'await first() in finally of run'),
       ],
     ];
     const [actual, expected] = outcomes(cases);
@@ -183,6 +183,66 @@ describe.skipIf(!enabled)('unshielded-cleanup-await under Trio and AnyIO', () =>
 
     expect(actual).toEqual(expected);
   });
+
+  it('resolves aliases, stored values and cancellation evidence', () => {
+    const body = (imports, middle) =>
+      `${imports}\n\n\nasync def run(resource, work):\n    try:\n        await work()\n    ${middle}\n        await resource.aclose()\n        raise\n`;
+    const cases = [
+      [
+        'aliased trio.Cancelled',
+        body('import trio as t', 'except t.Cancelled:'),
+        found(8, 'await resource.aclose() in except trio.Cancelled of run'),
+      ],
+      [
+        'imported cancellation class function',
+        body('from anyio import get_cancelled_exc_class', 'except get_cancelled_exc_class():'),
+        found(8, 'await resource.aclose() in except anyio.get_cancelled_exc_class() of run'),
+      ],
+      [
+        'stored cancellation class',
+        body('import anyio\ncancelled = anyio.get_cancelled_exc_class()', 'except cancelled:'),
+        found(9, 'await resource.aclose() in except anyio.get_cancelled_exc_class() of run'),
+      ],
+      [
+        'aliased shield factory',
+        'from trio import CancelScope as Scope\n\n\nasync def run(resource, work):\n    try:\n        await work()\n    finally:\n        with Scope(shield=True):\n            await resource.aclose()\n',
+        [],
+      ],
+      [
+        'shield scope held in a variable',
+        'import trio\n\n\nasync def run(resource, work):\n    scope = trio.CancelScope(shield=True)\n    try:\n        await work()\n    finally:\n        with scope:\n            await resource.aclose()\n',
+        [],
+      ],
+      [
+        'shield constant',
+        'import trio\n\nSHIELD = True\n\n\nasync def run(resource, work):\n    try:\n        await work()\n    finally:\n        with trio.move_on_after(5, shield=SHIELD):\n            await resource.aclose()\n',
+        [],
+      ],
+      [
+        'unshielded scope held in a variable',
+        'import trio\n\n\nasync def run(resource, work):\n    scope = trio.CancelScope(shield=False)\n    try:\n        await work()\n    finally:\n        with scope:\n            await resource.aclose()\n',
+        found(10, 'await resource.aclose() in finally of run'),
+      ],
+      [
+        'AnyIO used only for threads',
+        'import anyio\n\n\nasync def run(resource, work):\n    try:\n        await anyio.to_thread.run_sync(work)\n    finally:\n        await resource.aclose()\n',
+        [],
+      ],
+      [
+        'AnyIO with a task group',
+        'import anyio\n\n\nasync def run(resource, work):\n    try:\n        async with anyio.create_task_group() as tg:\n            tg.start_soon(work)\n    finally:\n        await resource.aclose()\n',
+        found(9, 'await resource.aclose() in finally of run'),
+      ],
+      [
+        'async comprehension in finally',
+        'import trio\n\n\nasync def run(resource, work):\n    try:\n        await work()\n    finally:\n        items = [item async for item in resource]\n',
+        found(8, 'async for resource in finally of run'),
+      ],
+    ];
+    const [actual, expected] = outcomes(cases);
+
+    expect(actual).toEqual(expected);
+  });
 });
 
 describe.skipIf(!enabled)('unshielded-cleanup-await reporting', () => {
@@ -198,7 +258,7 @@ describe.skipIf(!enabled)('unshielded-cleanup-await reporting', () => {
     expect(verdict).toEqual({
       ok: true,
       messages: [
-        '`await resource.aclose() in finally` can be cancelled before the cleanup finishes, so the resource may stay open. Run the cleanup in a shielded scope with a deadline: `with trio.move_on_after(5, shield=True): await resource.aclose()` (`anyio.move_on_after(5, shield=True)` in AnyIO), or `await trio.aclose_forcefully(resource)` when graceful close is not needed. Prefer a deadline: a shield without one can hang shutdown. If this is intended, add {"rule":"unshielded-cleanup-await","paths":["worker.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        '`await resource.aclose() in finally of run` can be cancelled before the cleanup finishes, so the resource may stay open. Run the cleanup in a shielded scope with a deadline: `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()` (`anyio.CancelScope(deadline=anyio.current_time() + 5, shield=True)` in AnyIO; `move_on_after(5, shield=True)` needs Trio 0.27 or later). A shield without a deadline can hang shutdown. If this is intended, add {"rule":"unshielded-cleanup-await","paths":["worker.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       ],
     });
   });
