@@ -73,7 +73,10 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
   side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
   Descriptive findings and metric changes are reported only.
 - **Mutation testing** in a comparison mutates, for TypeScript, only the source lines the change
-  adds or edits on the head side, so every surviving mutant it reports is new. Python's mutmut
+  adds or edits on the head side, so every surviving mutant it reports is new. When the change
+  edits or deletes a test, the production modules that test imports are mutated whole on head, and
+  a mutant there fails only if the base tests caught it and head's tests no longer do ("This change
+  weakened the tests of ..."). Python's mutmut
   works per function, not per line: head reuses the base results for the modules the change did
   not edit and that import no edited module, and runs every other mutant (all of them when a test
   or any other file changed). Only mutants that are new on head fail, whichever way the results
@@ -763,7 +766,14 @@ new and touched code must comply.
   per case), no `forEach`, no `.then()/.catch()/.finally()` chains, and no `as` (except `as const`)
   or `<Type>value`. `nitpicker/no-partial-output-assertion` also rejects `toMatchObject` and
   `expect.objectContaining`, `expect.stringContaining` and `expect.arrayContaining` inside
-  `toEqual`/`toStrictEqual`: assert the whole value.
+  `toEqual`/`toStrictEqual`, and `toMatch` with a string or an unanchored pattern: assert the whole
+  value. Assertions must pin the value: `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `not.toBeNull`,
+  `not.toBeUndefined`, a bare `toHaveBeenCalled()`, `toThrow()` without a message and `expect(true)`
+  are rejected. Tests do not use inline lint disables, `@ts-*` or coverage and mutation ignore
+  comments; keep no mutable `let` shared between tests; write `it.each` instead of three copies of a
+  test; restore fake timers in `afterEach`; leave out `it.todo`, `fails`, `skipIf(true)`, the real
+  clock and `Math.random`, and the network in unit tests. A file that defines tests but is not named
+  `*.test.*` never runs, and a setup file may not import production code.
 - **Layout**: features live in `src/main/features/<name>/` and are imported only through their
   `index.ts`; shared code does not import features; features do not import the composition root
   (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
@@ -853,7 +863,11 @@ own tools do:
   with the project's `tsconfig.json` as it is.
 - **Coverage and mutation tests** load the project's `vitest.config.*` or `vite.config.*` (the
   first found, `.ts`, `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files,
-  aliases and plugins apply. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and
+  aliases and plugins apply. The options that decide whether a run passes are fixed by nitpicker
+  whatever the project sets: no retries, no `bail`, no `.only`, no passing without tests, test and
+  hook timeouts of 10 s, unhandled errors fail the run, and snapshots are never written (a snapshot
+  must be committed, or the test fails). `vi.stubEnv` and `vi.stubGlobal` are undone after each
+  test. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and
   test roots, ignores the project's `test.dir`, and owns the coverage settings, so the project's
   coverage thresholds never decide nitpicker's findings.
 
@@ -916,10 +930,12 @@ not timeout declaration ceilings. A shard's total execution time is also separat
 several cases and shared builds. Give shared build hooks their own measured allowance rather
 than raising every unit test's limit.
 
-Vitest applies the resolved deadlines per file while retaining inline project setup and coverage.
+Vitest applies the resolved deadlines per file while retaining project setup and coverage.
+Inline projects and external project configuration files, directories and globs are supported;
+external references are expanded into inline projects before applying deadlines. Unresolved or
+unsupported project entries fail rather than silently leaving those projects unconfigured.
 Other JavaScript runners reject scoped or independent hook settings they cannot faithfully
-represent. Explicit timeout policy with external Vitest project references is rejected rather
-than silently leaving those projects unconfigured. Native Gradle/Maven/pytest execution settings
+represent. Native Gradle/Maven/pytest execution settings
 are separate integrations; this option currently belongs to the JavaScript test harness.
 
 Increasing a resolved deadline or declaration ceiling, expanding a suite's membership, or removing
