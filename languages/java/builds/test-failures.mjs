@@ -5,6 +5,8 @@ import { childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
 const MAX_LISTED_FAILURES = 10;
 const ROOT_MODULE = '.';
 const TEST_REPORT = /^TEST-.*\.xml$/u;
+const EXCEPTION_PREFIX = /^(?:[\w$]+\.)*[\w$]*(?:Error|Exception|Failure): /u;
+const PARAMETER_LIST = /\(\)$/u;
 
 export function failedCases(file) {
   const root = parseXml(readFileSync(file, 'utf8'));
@@ -20,8 +22,9 @@ export function failedCases(file) {
           ...childrenNamed(testCase, 'failure'),
           ...childrenNamed(testCase, 'error'),
         ][0];
-        const message = (problem.attrs.message ?? problem.attrs.type ?? '').split('\n')[0];
-        return `${testCase.attrs.classname ?? suite.attrs.name}.${testCase.attrs.name}: ${message}`;
+        const raw = (problem.attrs.message ?? problem.attrs.type ?? '').split('\n')[0];
+        const name = testCase.attrs.name.replace(PARAMETER_LIST, '');
+        return `${testCase.attrs.classname ?? suite.attrs.name}.${name}: ${raw.replace(EXCEPTION_PREFIX, '')}`;
       }),
   );
 }

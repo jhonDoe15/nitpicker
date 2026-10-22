@@ -25,6 +25,19 @@ const SUITE = `<testsuite name="shop.CartTest">
 </testsuite>`;
 
 describe('failedCases', () => {
+  it('drops the parameter list and the exception class from a JUnit 5 case', () => {
+    const root = directory();
+    const file = path.join(root, 'TEST-demo.GreeterTest.xml');
+    writeFileSync(
+      file,
+      `<testsuite name="demo.GreeterTest"><testcase classname="demo.GreeterTest" name="greetsByName()"><failure message="org.opentest4j.AssertionFailedError: expected: &lt;Hi&gt; but was: &lt;Hello&gt;"/></testcase></testsuite>`,
+    );
+
+    expect(failedCases(file)).toEqual([
+      'demo.GreeterTest.greetsByName: expected: <Hi> but was: <Hello>',
+    ]);
+  });
+
   it('names each failing or erroring test with the first line of its message', () => {
     const root = directory();
     writeFileSync(path.join(root, 'TEST-shop.CartTest.xml'), SUITE);
