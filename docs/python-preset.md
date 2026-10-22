@@ -601,7 +601,7 @@ are listed at the end.
 | Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                      | `generic-name` (script)                                                                                                                              |
 | Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
 | Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
-| Input or output per item | one batch call, or `asyncio.gather`                                                                                                              | `io-in-loop` (script)                                                                                                                                |
+| Input or output per item | one batch call; no batch endpoint: a bounded fan-out (`asyncio.Semaphore`, `CapacityLimiter`, fixed-size chunks)                                 | `io-in-loop` (script)                                                                                                                                |
 | Task markers             | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
 | Commented-out code       | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
 | Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                         | ruff `S` (see below)                                                                                                                                 |
@@ -775,9 +775,23 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   or Slack token, a private key header, a URL with `user:password@` or a `Bearer` value anywhere;
   `secret-in-log` reports such a name passed to a logger call. Placeholders, environment variable
   names, header names and URLs are not secrets.
-- `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
-  comprehension; `asyncio.gather` over a comprehension, a paging loop (the condition reads a
-  variable the body assigns) and a retry (a `try` in the loop that returns on success) are not.
+- `io-in-loop` reports a call with the kind `database` or `remote` once per item of a `for`, `while` or
+  comprehension, or in a `map(...)`. The kind comes from the imports and client factories of the file
+  (`requests`, `httpx`, `aiohttp`, `sqlite3`, `psycopg`, `asyncpg`, `pymongo`, `redis`, `boto3` clients by
+  service, `Session` of SQLAlchemy), from the project's helper functions (a function has the kinds of the
+  calls in its body and of the project functions it calls, so the finding names the path: `fetch_order()`,
+  which calls `requests.get()`), and, where no import tells, from the receiver name (`repo`, `db`,
+  `session`, `cursor`, `conn`, `client`, `api`) with a method that reads or writes (`find_*`, `get_by_*`,
+  `save`, `execute`). A `database` call is reported also inside `asyncio.gather`, a task group or tasks
+  that are gathered later: running one query per item concurrently is still one query per item, so fetch
+  them in one query (`WHERE id IN (...)`, `in_bulk`, `bulk_create`, `executemany`). A `remote` call in
+  those concurrent forms is the fan-out rule's business and not reported here; in a sequential loop it is
+  reported, and the message names a batch endpoint or, without one, bounded concurrency
+  (`asyncio.Semaphore` or `CapacityLimiter` inside the task, or fixed-size chunks of the items). A
+  `message` call (Kafka `send` and `produce`, pika `basic_publish`, aio-pika, SQS `send_message`, SNS
+  `publish`, Pub/Sub, NATS, Celery `delay`, `apply_async` and `send_task`) is not reported: one publish
+  per item is the protocol. A paging loop (the condition reads a variable the body assigns) and a
+  retry (a `try` in the loop that returns on success) are not reported either.
 - `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
   comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
   `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and

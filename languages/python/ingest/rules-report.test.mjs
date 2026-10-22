@@ -81,7 +81,16 @@ describe('rules script report', () => {
     ['hardcoded-secret', 'API_TOKEN', '`API_TOKEN` holds a hardcoded secret'],
     ['credential-shape', 'credential', 'A string has the shape of a credential'],
     ['secret-in-log', 'token', '`token` is a secret and is passed to a log call'],
-    ['io-in-loop', 'requests.get()', '`requests.get()` runs once per item of a loop'],
+    [
+      'io-in-loop',
+      'requests.get()|remote',
+      '`requests.get()` sends a remote request once per item of a loop',
+    ],
+    [
+      'io-in-loop',
+      'load_order() > repo.find_by_id()|database|concurrent',
+      '`load_order()` (which calls `repo.find_by_id()`) sends a database query once per item of a loop, started concurrently',
+    ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
       'skipped-test-without-reason',
@@ -219,5 +228,19 @@ describe('rules script report', () => {
 
   it('reads an empty report', () => {
     expect(ingestRulesReport('[]')).toEqual([]);
+  });
+});
+
+describe('io-in-loop identity', () => {
+  it('keeps the callee as the identity whatever the kind and path', () => {
+    const report = [
+      { rule: 'io-in-loop', path: 'a.py', subject: 'load() > requests.get()|remote', line: 3 },
+      { rule: 'io-in-loop', path: 'a.py', subject: 'repo.get()|database|concurrent', line: 5 },
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ identity }) => identity)).toEqual([
+      'load()',
+      'repo.get()',
+    ]);
   });
 });

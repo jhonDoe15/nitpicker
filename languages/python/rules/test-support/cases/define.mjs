@@ -1,10 +1,11 @@
 function withDefaults(tool, fixture, rows) {
-  return rows.map(([rule, mention]) => ({
+  return rows.map(([rule, mention, subject]) => ({
     name: `${rule} names "${mention}"`,
     fixture,
     tool,
     rule,
     mention,
+    subject,
   }));
 }
 

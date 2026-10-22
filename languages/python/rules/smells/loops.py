@@ -1,9 +1,10 @@
 import ast
 
-from checks.common import dotted_name, finding
+from checks.common import finding
+from effects.concurrency import is_concurrent, map_is_concurrent
+from effects.tables import DATABASE, REMOTE
 from smells.io_index import IoScope, chain_names, io_index
 
-CONCURRENT_COMBINATORS = {"asyncio.gather", "asyncio.wait", "asyncio.as_completed"}
 COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
 FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 PAGING_PASSES = 3
@@ -42,16 +43,6 @@ def enclosing_loop(node, parents):
         ):
             return parent
     return None
-
-
-def is_concurrent(comprehension, parents, aliases):
-    node = parents.get(id(comprehension))
-    if isinstance(node, ast.Starred):
-        node = parents.get(id(node))
-    return (
-        isinstance(node, ast.Call)
-        and dotted_name(node.func, aliases) in CONCURRENT_COMBINATORS
-    )
 
 
 def assigned_pairs(loop):
@@ -149,39 +140,66 @@ def is_retry_attempt(call, loop, parents):
     return False
 
 
+def reported_kind(effects, concurrent):
+    if DATABASE in effects:
+        return DATABASE
+    if REMOTE in effects and not concurrent:
+        return REMOTE
+    return None
+
+
+def subject_of(effects, kind, concurrent):
+    parts = [" > ".join(effects[kind]), kind]
+    return "|".join(parts + (["concurrent"] if concurrent else []))
+
+
+def inner_call_ids(tree):
+    return {
+        id(node.func.value)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+    }
+
+
 def check(context):
     if context.tests:
         return []
     scope = IoScope(context, io_index(context.project))
-    parents = context.parents
     found = []
-    inner_calls = {
-        id(node.func.value)
-        for node in ast.walk(context.tree)
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-    }
+    inner_calls = inner_call_ids(context.tree)
     for node in ast.walk(context.tree):
         if not isinstance(node, ast.Call) or id(node) in inner_calls:
             continue
-        if scope.maps_io(node):
-            callee = ".".join(chain_names(node.args[0]))
-            found.append(finding(context.path, "io-in-loop", f"{callee}()", node))
+        mapped = scope.map_effects(node)
+        if mapped:
+            concurrent = map_is_concurrent(node, context)
+            kind = reported_kind(mapped, concurrent)
+            if kind is not None:
+                found.append(
+                    finding(
+                        context.path,
+                        "io-in-loop",
+                        subject_of(mapped, kind, concurrent),
+                        node,
+                    )
+                )
             continue
-        if not scope.is_io(node):
-            continue
-        loop = enclosing_loop(node, parents)
+        effects = scope.effects(node)
+        loop = enclosing_loop(node, context.parents) if effects else None
         if loop is None:
             continue
-        if isinstance(loop, COMPREHENSIONS) and is_concurrent(
-            loop, parents, context.aliases
-        ):
+        concurrent = is_concurrent(node, loop, context)
+        kind = reported_kind(effects, concurrent)
+        if kind is None or skipped_loop(node, loop, scope, context.parents):
             continue
-        if (
-            is_paging_loop(loop, scope)
-            or is_retry_attempt(node, loop, parents)
-            or runs_each_item(node, loop)
-        ):
-            continue
-        callee = ".".join(chain_names(node.func))
-        found.append(finding(context.path, "io-in-loop", f"{callee}()", node))
+        subject = subject_of(effects, kind, concurrent)
+        found.append(finding(context.path, "io-in-loop", subject, node))
     return found
+
+
+def skipped_loop(call, loop, scope, parents):
+    return (
+        is_paging_loop(loop, scope)
+        or is_retry_attempt(call, loop, parents)
+        or runs_each_item(call, loop)
+    )
