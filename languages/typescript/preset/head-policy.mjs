@@ -1,7 +1,7 @@
-import { resolveJscpdPolicy } from '../../../core/tooling/jscpd/config.mjs';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { resolveJscpdPolicy } from '../../../core/tooling/jscpd/config.mjs';
 import {
   readHeadPolicyFile,
   resolveHeadPolicy as resolveSharedHeadPolicy,
