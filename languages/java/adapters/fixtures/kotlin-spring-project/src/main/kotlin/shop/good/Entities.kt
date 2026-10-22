@@ -65,3 +65,14 @@ class Line(
     @ManyToOne(fetch = FetchType.LAZY) var shipment: Shipment? = null,
     var quantity: Int = 0,
 ) : AuditedEntity()
+
+@Entity
+class Parcel(
+    @Enumerated(EnumType.STRING) var status: Status = Status.OPEN,
+    var weight: Int = 0,
+) : AuditedEntity() {
+    val derivedStatus: Status
+        get() = if (weight > 0) status else Status.VOID
+
+    val cachedStatus: Status by lazy { Status.OPEN }
+}

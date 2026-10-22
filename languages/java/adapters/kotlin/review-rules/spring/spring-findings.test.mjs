@@ -91,6 +91,19 @@ const EXPECTED = [
   'bad/Data.kt:62 SpringDataFilterInQuery InvoiceService.anyOpen.findAll',
   'bad/Data.kt:65 SpringDataFilterInQuery InvoiceService.unpaid.findAll',
   'bad/Data.kt:68 SpringDataFilterInQuery InvoiceService.total.findAll',
+  'bad/Data.kt:76 SpringDataQueryTextBlock ArchiveRepository.openOnes',
+  'bad/Data.kt:94 SpringDataNamedParameters ArchiveRepository.longPositional',
+  'bad/Data.kt:111 SpringDataQueryTextBlock ArchiveRepository.longJoined',
+  'bad/Data.kt:116 SpringDataNoSaveInLoop saveEach.save',
+  'bad/Data.kt:120 SpringDataNoSaveInLoop saveLoop.save',
+  'bad/Data.kt:125 SpringDataNoSaveInLoop persistAll.persist',
+  'bad/Data.kt:132 SpringDataNoSaveInLoop BatchService.importBatch.save',
+  'bad/Data.kt:133 SpringDataNoSaveInLoop BatchService.importBatch.save',
+  'bad/Data.kt:134 SpringDataNoSaveInLoop BatchService.importBatch.save',
+  'bad/Data.kt:135 SpringDataNoSaveInLoop BatchService.importBatch.save',
+  'bad/Data.kt:137 SpringDataNoSaveInLoop BatchService.importBatch.save',
+  'bad/Data.kt:138 SpringDataNoSaveInLoop BatchService.importBatch.save',
+  'bad/Data.kt:139 SpringDataSaveInLoopHelper BatchService.importBatch.keep',
   'bad/Defaults.kt:17 SpringValueSecretDefault JwtProps.secret',
   'bad/Defaults.kt:23 SpringNoServiceLocator Receipts.context',
   'bad/Defaults.kt:26 SpringProxySelfCall Receipts.issue.record',
@@ -125,6 +138,8 @@ const EXPECTED = [
   'bad/Entities.kt:40 JpaIdentityHashCode Invoice.hashCode',
   'bad/Entities.kt:46 JpaVersion BaseEntity',
   'bad/Entities.kt:49 JpaSequenceIds BaseEntity.id',
+  'bad/Entities.kt:61 JpaEnumString Refund.state',
+  'bad/Entities.kt:62 JpaEnumString Refund.priority',
   'bad/Handlers.kt:19 SpringTypedResponse InferredController.inferred',
   'bad/Handlers.kt:22 SpringTypedRequestBody InferredController.echo.body',
   'bad/Handlers.kt:22 SpringTypedResponse InferredController.echo',
@@ -246,6 +261,8 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'good/Data.kt:51 SpringProxyMethodVisibility ShipmentService.touch',
       'good/Data.kt:54 SpringProxyMethodVisibility ShipmentService.open',
       'good/Data.kt:57 SpringProxyMethodVisibility ShipmentService.openCount',
+      'good/Data.kt:73 SpringProxyMethodVisibility StockService.retire',
+      'good/Data.kt:84 SpringProxyMethodVisibility StockService.reopen',
       'good/Defaults.kt:23 SpringProxyMethodVisibility Accounts.duplicate',
       'good/Defaults.kt:32 SpringProxyMethodVisibility Accounts.helper',
       'good/Defaults.kt:43 SpringProxyMethodVisibility Accounts.onFailure',
@@ -262,6 +279,7 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'good/Entities.kt:48 JpaEntityClass Tag',
       'good/Entities.kt:51 JpaEntityClass Shipment',
       'good/Entities.kt:64 JpaEntityClass Line',
+      'good/Entities.kt:70 JpaEntityClass Parcel',
       'good/Proxies.kt:14 SpringProxyMethodVisibility Billing.charge',
       'good/Proxies.kt:26 SpringProxyMethodVisibility Billing.record',
       'good/Proxies.kt:31 SpringProxyMethodVisibility Billing.report',
@@ -274,7 +292,7 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
 });
 
 describe('Kotlin Spring rules that read the rest of the project', () => {
-  it('finds a repository declared in Java by reading its source under the Java roots', () => {
+  it('finds a repository or an enum declared in Java by reading its source under the Java roots', () => {
     const viaJava = summary(
       findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN }, { javaRoots: [] }),
     );
@@ -283,6 +301,7 @@ describe('Kotlin Spring rules that read the rest of the project', () => {
       'bad/Clients.kt:41 SpringNoPostConstructIo Loader.warm.findAll',
       'bad/Clients.kt:53 SpringNoPostConstructIo Ledger.prime.count',
       'bad/Clients.kt:58 SpringTransactionalReadOnlyWrite Ledger.total.deleteAll',
+      'bad/Entities.kt:62 JpaEnumString Refund.priority',
     ]);
   });
 

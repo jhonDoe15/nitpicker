@@ -1,5 +1,5 @@
 import { WRITE_VERB } from '../rules/transactions.mjs';
-import { isSelfCall, ownerOf, report, symbolOf } from '../spring-scopes.mjs';
+import { acceptsArguments, isSelfCall, ownerOf, report, symbolOf } from '../spring-scopes.mjs';
 import { BATCH_WRITES, ENTITY_WRITES, QUERY_TYPES, STANDARD_WRITES } from './data-types.mjs';
 import {
   entityReceiver,
@@ -114,7 +114,7 @@ function helperCalled(view, helpers, invocation) {
     (fn) =>
       fn.name === invocation.name &&
       fn.owner === ownerOf(view, invocation) &&
-      (invocation.reference === true || fn.parameters.length === invocation.arguments.length),
+      (invocation.reference === true || acceptsArguments(fn, invocation.arguments.length)),
   );
 }
 
