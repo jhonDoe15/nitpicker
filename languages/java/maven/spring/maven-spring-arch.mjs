@@ -10,8 +10,8 @@ const RULES_DIRECTORY = path.join(GRADLE_DIRECTORY, 'archunit');
 const TOOL = 'Spring architecture rules';
 const PROPERTY_SEPARATOR = ' = ';
 
-function jdkIdentity() {
-  const result = spawnSync(javaCommand('java'), ['-XshowSettings:properties', '-version'], {
+function jdkIdentity(spawn) {
+  const result = spawn(javaCommand('java'), ['-XshowSettings:properties', '-version'], {
     encoding: 'utf8',
   });
   if (result.error !== undefined || result.status !== 0) {
@@ -37,12 +37,12 @@ function ruleSources(rulesDirectory) {
     .map((name) => path.join(rulesDirectory, name));
 }
 
-function cacheKey({ sources, archunit }) {
+function cacheKey({ sources, archunit, spawn }) {
   const digest = createHash('sha256');
   for (const source of sources) {
     digest.update(readFileSync(source));
   }
-  digest.update(`${archunit}|${jdkIdentity()}`);
+  digest.update(`${archunit}|${jdkIdentity(spawn)}`);
   return digest.digest('hex');
 }
 
@@ -57,7 +57,7 @@ function publish(staging, classes) {
   }
 }
 
-function compileRules({ classes, sources, libraries, cwd }) {
+function compileRules({ classes, sources, libraries, cwd, spawn }) {
   if (existsSync(classes)) {
     return;
   }
@@ -71,6 +71,7 @@ function compileRules({ classes, sources, libraries, cwd }) {
       classpath: libraries,
       args: sources,
       cwd,
+      spawn,
       accept: (result) => result.status === 0,
     });
   } catch (error) {
@@ -84,7 +85,7 @@ function existing(entries) {
   return entries.filter((entry) => existsSync(entry));
 }
 
-function runRules({ module, classpaths, libraries, locations }) {
+function runRules({ module, classpaths, libraries, locations, spawn }) {
   const { classes, output } = locations;
   const projectPath = [
     module.outputDirectory,
@@ -98,12 +99,13 @@ function runRules({ module, classpaths, libraries, locations }) {
     mainClass: 'ArchRules',
     args: [output, module.outputDirectory, module.testOutputDirectory],
     cwd: module.basedir,
+    spawn,
     accept: (result) => result.status === 0,
   });
 }
 
 export function runSpringArch(options) {
-  const { module, reportDir, tools, classpaths, pinned, spring } = options;
+  const { module, reportDir, tools, classpaths, pinned, spring, spawn = spawnSync } = options;
   if (!spring) {
     return;
   }
@@ -112,8 +114,8 @@ export function runSpringArch(options) {
   const sources = ruleSources(options.rules ?? RULES_DIRECTORY);
   const root = cacheDirectory('spring-arch');
   mkdirSync(root, { recursive: true });
-  const classes = path.join(root, cacheKey({ sources, archunit: pinned.archunit }));
+  const classes = path.join(root, cacheKey({ sources, archunit: pinned.archunit, spawn }));
   const libraries = existing(tools.archunit);
-  compileRules({ classes, sources, libraries, cwd: module.basedir });
-  runRules({ module, classpaths, libraries, locations: { classes, output } });
+  compileRules({ classes, sources, libraries, cwd: module.basedir, spawn });
+  runRules({ module, classpaths, libraries, locations: { classes, output }, spawn });
 }
