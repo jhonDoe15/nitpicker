@@ -17,8 +17,12 @@ export function declarationUnits(file, text) {
 }
 
 export function sourceTextReader(projectRoot) {
+  const root = path.resolve(projectRoot);
   return (file) => {
-    const absolute = path.join(projectRoot, file);
+    const absolute = path.resolve(root, file);
+    if (!absolute.startsWith(root + path.sep)) {
+      return undefined;
+    }
     return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
   };
 }
