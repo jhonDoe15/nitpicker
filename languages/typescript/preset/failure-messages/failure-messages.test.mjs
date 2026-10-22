@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { checkFailureMessageCase } from './test-support/harness.mjs';
-import { failureMessageCases } from './test-support/cases.mjs';
+import { failureMessageCases as baseCases } from './test-support/cases.mjs';
+import { testHonestyFailureMessageCases } from './test-support/honesty/test-honesty-cases.mjs';
+
+const failureMessageCases = [...baseCases, ...testHonestyFailureMessageCases];
 
 describe('banned forms name the allowed form in their failure message', () => {
   it.each(failureMessageCases.map((testCase) => [testCase.name, testCase]))(

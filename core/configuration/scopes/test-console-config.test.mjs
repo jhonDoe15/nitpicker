@@ -13,6 +13,9 @@ describe('testConsole config', () => {
     [{ testConsole: { allow: [] } }],
     [{ testConsole: { allow: [allowed, { ...allowed, paths: ['test/legacy/**'] }] } }],
     [{ testConsole: { allow: [{ ...allowed, paths: ['src/app/[id]/**'] }] } }],
+    ...['typescript', 'javascript', 'java', 'kotlin'].map((preset) => [
+      { preset, testConsole: { allow: [allowed] } },
+    ]),
   ])('accepts %j', (config) => {
     expect(validateConfig(config)).toEqual(config);
   });
@@ -46,7 +49,7 @@ describe('testConsole config', () => {
     expect(validateConfig(config)).toEqual(config);
   });
 
-  it.each([['python'], ['java'], ['kotlin']])(
+  it.each([['python']])(
     'is rejected with the %s preset until it runs test-console-output',
     (preset) => {
       expect(() => validateConfig({ preset, testConsole: { allow: [allowed] } })).toThrow(
@@ -56,10 +59,10 @@ describe('testConsole config', () => {
   );
 
   it('is accepted by a preset once its language registers test-console-output', () => {
-    const config = { preset: 'java', testConsole: { allow: [allowed] } };
+    const config = { preset: 'python', testConsole: { allow: [allowed] } };
 
     expect(
-      withLanguageRegistered('test-console-output', 'java', () => validateConfig(config)),
+      withLanguageRegistered('test-console-output', 'python', () => validateConfig(config)),
     ).toEqual(config);
   });
 

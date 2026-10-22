@@ -236,6 +236,44 @@ not a rule with `exceptions`.
 - Type resolution reports less where a library is built with a newer Kotlin than detekt's (above);
   `!!` on a value of such a type is not seen.
 
+## Source scans
+
+Two checks read the `.kt` files themselves, after masking comments and string literals (the same
+mask as `inline-suppression`), and report as tool `detekt`. Both can flag legitimate code, so both
+take an `exceptions` entry per path.
+
+**`catch-log-without-exception`.** A `catch (e: ...)` block that logs a failure must pass the caught
+exception itself to the logger, so the stack trace is kept: `log.error("what failed", e)` (SLF4J, Log4j2),
+`logger.error(e) { "what failed" }` or `logger.atError { cause = e }` (kotlin-logging),
+`logger.log(Level.SEVERE, "what failed", e)` (java.util.logging), `Log.e(TAG, "what failed", e)` (Android).
+`e.message`, `e.toString()` and a string template of the exception do not count, and neither does a log
+call without the exception. Only the failure levels are checked: `warn` and `error` (and `fatal`), JUL
+`warning`, `severe` and `log(Level.SEVERE | WARNING, ...)`, Android `Log.w`, `Log.e` and `Log.wtf`;
+`debug`, `info` and `trace` logs in a catch are not findings. These pass as well: the SLF4J 2 fluent API
+with the exception anywhere in the chain (`atError().setCause(e).log(...)`, `withThrowable(e)`), a cast of
+the exception (`e as Throwable`), and a catch that rethrows `e` or throws a new exception with `e` as an
+argument (its cause) after logging. A call is a log call when its receiver (also as `logger?.error(...)`) is
+declared from `KotlinLogging.logger`, `LoggerFactory.getLogger`, `LogManager.getLogger` or
+`getFormatterLogger`, `Logger.getLogger` or `System.getLogger`, or its name is `log` or `logger` (any case) or ends in one at a
+camelCase or underscore boundary (`auditLog`, `appLogger`, `AUDIT_LOG`, `audit_log`; `dialog` and `catalog` are not loggers). The list lives in `languages/java/source/loggers.mjs`. The
+innermost catch is the one checked, and a catch of `_`, `ignored...`, `expected...` or `unused...` is left
+alone. Main and test sources are scanned. One finding per log call, identified by
+`catch-log:<receiver>.<level>`.
+
+**`test-without-assertion`.** A test method (`@Test`, `@ParameterizedTest`, `@RepeatedTest`,
+`@TestTemplate`, block or expression body, backtick names) that calls no assertion. A call counts when its
+name is `assert`, `check`, `verify`, `coVerify`, `expect` or `should` alone or followed by a capital
+(`assertEquals`, `assertFailsWith`, `assertThrows`, `verifyOrder`, `expectThat`, `shouldThrow`; Kotest infix
+`x shouldBe y` too), or `confirmVerified`, `fail`, `andExpect` or `forAll`. Variables (`expected`) and calls on
+a receiver (`checkoutService.run()`) do not count. A test that is `@Test(expected = ...)` is skipped.
+The project's own helpers are learned: the convention `kotlin.assertionHelpers` lists the names that end
+the last statement of enabled tests without a known assertion in at least three test files, read like
+an assertion (`ensure...`, `must...`, `validate...`, `is...`, `has...`, `await...`) and are defined in a test
+or test-support source as a function whose body asserts or throws; pin a list of names in `conventions`
+to set it yourself. `@Disabled` and `@Ignore` tests are skipped. Kotest specs written as `"name" { ... }` have no `@Test`
+and are not scanned. The test sources are the Kotlin directories of the `test` source set.
+One finding per test, identified by `test:<name>`.
+
 ## Format check: ktlint, ktfmt or none
 
 The format check runs only for a project that uses a Kotlin formatter: Nitpicker does not make a
@@ -266,7 +304,7 @@ override there.
   only the topmost one gets `root = true`, and the conventions are ktlint defaults below them. The
   opt-in needs an `.editorconfig` at the project root or above, else it is a tool error that says to
   create one or remove `"project"`. `["nitpicker", "project"]` is a config error for ktlint, since
-  ktlint always reads its `.editorconfig` first. The run prints once what ktlint runs with and what
+  ktlint always reads its `.editorconfig` first. The conventions (`kotlin.lineLength`, `kotlin.indentation` and the others) take their values from the detekt, ktlint and ktfmt configs of the merge base in a comparison, and from the branch only when the base has no Kotlin sources, so a pull request cannot raise its own limit by editing them. The same values are enforced in the run: the followed `indent_size`, `max_line_length`, trailing-comma and wildcard-import values are appended after the matching section of every mirrored `.editorconfig` (nested and parent ones too) that sets them differently, and the followed detekt conventions are layered last in a file of their own, so an edited width in the branch changes neither the run nor the printed line. The run prints once what ktlint runs with and what
   to do to lift a rule, and one `Ignoring .editorconfig; opt in with ...` line when a project
   `.editorconfig` exists and is not used. Each violation is one finding: rule
   `ktlint.<ruleset>:<rule>` (for example `ktlint.standard:no-wildcard-imports`), the line, and
@@ -281,9 +319,13 @@ Two styles are equally valid in each of these, so the preset follows the project
 | `kotlin.indentation`     | `indent_size`                    | style `meta` (2) or `kotlinlang` (4) | not offered  | -                               |
 | `kotlin.trailingCommas`  | `ij_kotlin_allow_trailing_comma` | not offered (ktfmt always adds them) | not offered  | -                               |
 | `kotlin.wildcardImports` | disables `no-wildcard-imports`   | -                                    | -            | `WildcardImport: active: false` |
+| `kotlin.lineLength`      | `max_line_length`                | `--max-width`                        | not offered  | `MaxLineLength: maxLineLength`  |
 
+`kotlin.lineLength` is any number of columns (`100`, `120` and `140` are the measured ones; an `.editorconfig` or detekt width such as 110 is followed as it is) and has no default. It is measured like `python.lineLength`: the
+longest line that could have been wrapped, against the shortest join of a wrapped argument list, and
+else the lines that run past 100 or 120. With no clear answer each tool keeps its own width.
 An id the formatter cannot apply is neither measured nor printed, and pinning it is a config error.
-`java.indentation` (google-java-format `2` or `--aosp` 4) is the Java twin of `kotlin.indentation` and
+`java.indentation` (google-java-format `2` or `--aosp` 4, or `tab`; palantir-java-format is always 4, see `java.formatter` and `java.lineLength` in the [Java preset](java-preset.md#style)) is the Java twin of `kotlin.indentation` and
 applies to the Java sources of the same project; the difference is the default: `java.indentation`
 falls back to 2 (google-java-format's), while `kotlin.indentation` has none, because ktfmt's default
 is 2 and ktlint's is 4, so with no clear majority the tool keeps its own. For ktlint the choices are a
@@ -292,13 +334,16 @@ the project's `detekt.yml`. The scope-function rules do not change. With the pro
 project sets wins for every tool and the run prints it as "from your .editorconfig", "from your detekt
 config" or "from your build file" instead of "used by N of M measured files".
 
-- **ktfmt.** `--dry-run` lists the files that would change. By default the style is
+- **ktfmt.** `--dry-run` lists the files that would change. The style is the one the build names
+  (`kotlinLangStyle()`, `googleStyle()` or `metaStyle()`), with or without the ktfmt opt-in: which
+  formatter a project uses, and the style it declares for it, are facts about the project, like the
+  Java preset's declared formatter, so they are read from the build files at the merge base and
+  indent `kotlin.indentation` accordingly ("from your build file"). Without a named style it is
   `--kotlinlang-style` when most Kotlin files indent by 4 (`kotlin.indentation`), else ktfmt's
-  default (Meta), no `.editorconfig` is read, and it runs in the project, without a copy of the
-  sources. A build that names `kotlinLangStyle()` or `googleStyle()` and an `.editorconfig` are used
-  only with `"tools": { "ktfmt": { "precedence": ["project", "nitpicker"] } }`, which then passes the
-  build's style (read from the head checkout) and `--enable-editorconfig`, and runs in a copy of the
-  sources with the same mirrored `.editorconfig` files as ktlint. `["nitpicker", "project"]` is a
+  default (Meta). Config files are different: an `.editorconfig` is read only with
+  `"tools": { "ktfmt": { "precedence": ["project", "nitpicker"] } }`, which passes
+  `--enable-editorconfig` and runs in a copy of the sources with the same mirrored `.editorconfig`
+  files as ktlint; without it ktfmt runs in the project, without a copy of the sources. `["nitpicker", "project"]` is a
   config error for ktfmt, as ktfmt has no flag to ignore the `.editorconfig` once enabled. One
   `format` finding per file, tool `ktfmt`, identity `format`, whose message refers to the
   `Format with ktfmt` command printed at the start of the run; a file that already failed on the base
@@ -385,9 +430,10 @@ classes, including the Java classes of a mixed module; for a class whose source 
 are descriptive, next to the `mutation-summary` counts. The reason is measured, below. The
 Arcmutate Kotlin plugin, which exists for this problem, is a paid product and is not used.
 
-**What runs.** The Java preset's `nitpickerPit` (PIT 1.17.4, `pitest-junit5-plugin` 1.2.1, default
-mutators, the project's own tests) now mutates `sourceSets.main.output.classesDirs`, which holds the
-Kotlin classes next to the Java ones; the other class tools keep to `compileJava`'s output. The
+**What runs.** The Java preset's `nitpickerPit` (PIT 1.17.4 with the test plugins the project's
+framework needs, `pitest-junit5-plugin` 1.2.1 for Kotest and JUnit 5, default mutators, the
+project's own tests) now mutates `sourceSets.main.output.classesDirs`, which holds the Kotlin
+classes next to the Java ones; the other class tools keep to `compileJava`'s output. The
 ingester finds a class's source file under both kinds of source root from PIT's `sourceFile`
 (also when the directory does not match the package, as for coverage).
 PIT's built-in `FKOTLIN` filter (on by default) removes only mutants at line 0 of a `.kt` file,
@@ -489,13 +535,17 @@ the wrong lines.
 | complexity          | 1 plus each `if`, `for`, `while`, `do`, `when` branch other than `else`, `catch`, `&&`, `\|\|` and `?:`. It is the CRAP input, below.                                                                                                                                                                 |
 
 A unit is a function with a body, a property accessor with a body, a secondary constructor with a
-block body, an `init` block with statements, or a property whose initializer is a lambda or an
-anonymous function or whose delegate takes a lambda (`val handler = { x -> ... }`,
-`val f = fun(x: Int) { ... }`, `val v by lazy { ... }`, `val o by Delegates.observable(0) { ... }`),
-the way an arrow-function constant is a unit in TypeScript; the body is the lambda's and the unit is
-named after the property. Any other property initializer is a unit when it holds a block (a lambda
-such as `run { ... }` or `map { ... }`, or the braces of `if`, `try` and `when`) or branches
-(`if`, `when`, `&&`, `?:` and the like); `val x = a + 1` and `val s = "text"` are not. Each `init`
+block body, an `init` block with statements, a lambda, an anonymous function or a local function, or
+a property whose initializer is a lambda or an anonymous function or a call with a lambda, or whose
+delegate takes a lambda (`val handler = { x -> ... }`, `val f = fun(x: Int) { ... }`,
+`val v by lazy { ... }`, `val o by Delegates.observable(0) { ... }`, `val m = n.let { ... }`,
+`val l = list.map { ... }`), the way an arrow-function constant is a unit in TypeScript; the body is
+the lambda's and the unit is named after the property. Any other lambda is a unit named after the
+unit that holds it and `<lambda>` (`Class.bump.<lambda>`, `Class.bump.<lambda>.<lambda>` for one
+inside it), or, for a local property or local function, after that name (`Class.bump.scale`,
+`Class.bump.clamp`). Any other property initializer is a unit when it holds the braces of `if`, `try`
+or `when`, or branches (`if`, `when`, `&&`, `?:` and the like) outside its lambdas, and so is a call
+with a lambda whose other parts branch; `val x = a + 1` and `val s = "text"` are not. Each `init`
 block is a unit named after its class, `Class.<init>` (an empty block is not a unit). A class's
 blocks share the name, so a finding on one is numbered only among the blocks of that class with the
 same text that are over the same limit: inserting, deleting or reordering other blocks, or adding
@@ -503,9 +553,11 @@ an empty `init {}`, never makes a legacy block new. An edited block is held by t
 `init` block or a property initializer says to move the nested part into its own function, because
 neither can `return` early. To accept such a unit, drop its file with `exclude`, as for any structure
 or CRAP finding; the unit name (`Class.<init>`, `Class.property`) is the one that a per-function
-exception would name. Lambdas and local functions inside a function count towards
-the function that contains them; members of nested, local and anonymous classes and objects are
-units of their own. Primary constructors and functions without a body (abstract, interface,
+exception would name. Lambdas, anonymous functions and local functions, and the members of
+nested, local and anonymous classes and objects, are units of their own and do not count towards
+the function that contains them: its statements, control nesting and complexity leave them out (as
+TypeScript's analyzer does for its callbacks), while `lines` is its physical span, which includes
+theirs. A unit inside an `inline` function is `inline` too. Primary constructors and functions without a body (abstract, interface,
 `expect`) are not units. Names are `function` (top level), `Class.function`,
 `Class.Receiver.function` for an extension, `Class.property.get` for an accessor, `Class.property`
 for a property unit, `Class.<init>` for an `init` block, `Class.Class` for a secondary
@@ -534,11 +586,13 @@ nested classes and `DefaultImpls` of one file are all that file's methods. The k
 `package` statement of the file and its file name, not from its directory, so a file outside the
 directory of its package (`src/main/kotlin/Flat.kt` with `package demo`) gets its coverage. A JaCoCo
 method belongs to the function whose line range holds its first line, unless it lies inside a unit of its own (a member
-of a class declared in the function). So the getter `getDoubled` belongs to `val doubled get() = ...`,
-the lambda `bump$lambda$0` and a local function belong to the function that declares them, and their
-lines and branches are summed into its coverage. The synthetic `name$default` method that Kotlin
+of a class declared in the function, a lambda, a local function). So the getter `getDoubled` belongs to `val doubled get() = ...`,
+the lambda `bump$lambda$0` and a local function belong to their own units, not to the function that declares them. A lambda that
+the compiler inlined (`let { }`, `map { }`, a lambda passed to an `inline` function) has no method of its own: it
+is scored from the source lines of its range in JaCoCo's per-line data, as an `init` block is, and the function around it is
+scored without those lines, unless nothing is left to measure. The synthetic `name$default` method that Kotlin
 generates for default arguments is ignored: it has no source of its own and delegates to the function.
-An `init` block and a property initializer that is not a lambda or delegate lambda run inside the
+An `init` block and a property initializer that is not a lambda or a call with a lambda run inside the
 class constructor or the static initializer, whose JaCoCo method starts on the class line, outside
 the unit. Their coverage is therefore read from the source lines of the unit in JaCoCo's per-file
 line data (covered lines, covered branches), minus the lines of a unit nested in them; the lower of
@@ -562,8 +616,8 @@ The Java sources of a mixed module get their complexity from `StructureMetrics.j
 ## Duplicates
 
 The shared duplicates rule runs on Kotlin: jscpd (the version of the TypeScript preset, mode `mild`)
-with `--format kotlin` over each Kotlin source root from the manifest, ignoring `build`, `generated`,
-`target` and `out`. Any new clone fails with `duplicate-clone`, tool `duplicates`, identity from the file pair,
+with `--format kotlin` over each Kotlin source root from the manifest, ignoring the folders named `build`, `generated`,
+`target` and `out` (replaced by `duplicates.skippedFolders`). Clones made only of `package` and `import` lines are not reported. Its message names both files and tells to add either to `exclude`; a glob that matches either file of the pair lifts the finding. Any new clone fails with `duplicate-clone`, tool `duplicates`, identity from the file pair,
 the cloned text and the n-th occurrence, never a line. Clones are found within one source root and
 within the Kotlin files; a clone between a `.kt` and a `.java` file, or between two source roots, is not
 (the same as for several Java roots).
@@ -595,20 +649,21 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 
 ## Config keys
 
-`base`, `disable`, `analyzers`, `thresholds`, `exclude`, `legacyInventory` as for the Java preset
+`base`, `disable`, `analyzers`, `thresholds`, `exclude`, `duplicates`, `legacyInventory` as for the Java preset
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
-[one-way rules](#one-way-rules), the file limits `file-lines-limit` and `folder-files-limit` and
-`test-runtime/slow-test` per path. `layout` and `testConsole` are a config error until the Kotlin
-preset runs the rules that read them (`shared-used-by-one-feature`, `test-console-output`).
+[one-way rules](#one-way-rules), `catch-log-without-exception` and `test-without-assertion`
+([source scans](#source-scans)), the file limits `file-lines-limit` and `folder-files-limit` and
+`slow-test` (or `test-runtime/slow-test`) and the [dependency and repository checks](usage.md#dependency-and-repository-checks) per path. `layout` is a config error until the Kotlin
+preset runs the rule that reads it (`shared-used-by-one-feature`).
 
 ## Slow tests
 
 As for Java ([slow tests](java-preset.md#slow-tests)): a test the change adds or edits fails over 5 s
 as a unit test or 30 s as an integration test (`thresholds.unitTestSeconds`,
-`thresholds.integrationTestSeconds`), measured on head from the JUnit XML of the test tasks. A Kotlin
-test named with backticks is found by its name.
+`thresholds.integrationTestSeconds`), measured on head from the JUnit XML of the test tasks, once and
+without a rerun (see Java). A Kotlin test named with backticks is found by its name.
 
 ## File limits
 
@@ -621,8 +676,8 @@ below the root package (the longest package prefix all the code shares) fail `fo
 (`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`) apply to the `.java` files of a
 Kotlin project, with `classMethods`, `classFields` and `inheritanceDepth`; Kotlin classes are not measured. The `java.indentation` convention (`"4"`) switches the Java sources' format check
 to 4 spaces. The Kotlin files' line length is
-detekt's `MaxLineLength` (120 by default, set in `config/detekt/detekt.yml`), the `.java` files keep
-nitpicker's fixed 100 characters (`line-length-limit`, which an exception lifts for some paths), and
+detekt's `MaxLineLength` (120 by default, set in `config/detekt/detekt.yml`), the `.java` files use
+the width of the Java formatter (100 for google-java-format, 120 for palantir-java-format, or the width of the project's Checkstyle `LineLength`, see the Java preset; `line-length-limit`, which an exception lifts for some paths), and
 `thresholds.lineLength` is a config error with this preset. A file or folder already over a limit
 fails only when it grows, and a package folder moved to a new path is matched to its old path.
 

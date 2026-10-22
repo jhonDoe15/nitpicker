@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
-import { readStructureFindings } from '../../../java/adapters/metrics/java-structure.mjs';
+import { readStructureFindings } from '../../../../shared/ingest/structure-report.mjs';
 import { run } from '../execution/python-process.mjs';
 import { functionText, testFileMatcher, writeSourceListing } from './python-sources.mjs';
 import { isGeneratedPython } from '../../libraries/generated-files.mjs';
@@ -39,6 +39,7 @@ export function readPythonStructureFindings(reportRoot, projectRoot) {
   return readStructureFindings(reportRoot, projectRoot, {
     textOf: functionText,
     hints: STRUCTURE_HINTS,
+    numberedAmongSameSource: true,
   });
 }
 

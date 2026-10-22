@@ -1,6 +1,14 @@
-import { DEFAULT_CRAP_SCORE_LIMIT, FILE_LIMIT_DEFAULTS } from '../../shared/policy.mjs';
+import {
+  DEFAULT_CRAP_SCORE_LIMIT,
+  FILE_LIMIT_DEFAULTS,
+  TEST_TIME_DEFAULTS,
+} from '../../shared/policy.mjs';
 
-export const THRESHOLD_DEFAULTS = { crapLimit: DEFAULT_CRAP_SCORE_LIMIT, ...FILE_LIMIT_DEFAULTS };
+export const THRESHOLD_DEFAULTS = {
+  crapLimit: DEFAULT_CRAP_SCORE_LIMIT,
+  ...FILE_LIMIT_DEFAULTS,
+  ...TEST_TIME_DEFAULTS,
+};
 const DEFAULT_PRESET = 'typescript';
 const STRICTER_PRESET = new Map([['javascript', 'typescript']]);
 const DEFAULT_PRECEDENCE = ['nitpicker'];

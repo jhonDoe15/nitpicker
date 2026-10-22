@@ -6,6 +6,7 @@ import {
   liftsOnlyRules,
   validateStringArray,
   validateThresholds,
+  validateDuplicates,
   validateExceptions,
   TYPESCRIPT_ONLY_KEYS,
   validateProjectRelativePath,
@@ -30,6 +31,25 @@ import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
 import path from 'node:path';
 
+const OPTIONAL_VALIDATORS = [
+  [
+    'thresholds',
+    (thresholds, _key, preset) => {
+      validateThresholds(thresholds, preset);
+    },
+  ],
+  ['exclude', validateStringArray],
+  [
+    'layout',
+    (layout, _key, preset) => {
+      validateLayout(layout, preset);
+    },
+  ],
+  ['exceptions', validateProjectExceptions],
+  ['legacyInventory', validateProjectRelativePath],
+  ['duplicates', validateDuplicates],
+  ['analyzers', validateCustomAnalyzers],
+];
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 
 export const KEYS = [
@@ -44,6 +64,7 @@ export const KEYS = [
   'i18n',
   'analyzers',
   'legacyInventory',
+  'duplicates',
   'python',
   'tools',
   'testConsole',
@@ -118,11 +139,25 @@ function validateScalars(config) {
   );
 }
 
+const JAVASCRIPT_UNSUPPORTED_KEYS = [
+  [
+    'react',
+    'React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',
+  ],
+  [
+    'i18n',
+    'the message rules check react-intl messages and the text in JSX, which belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a project with translated messages',
+  ],
+];
+
 function validateJavascriptConfig(config) {
-  if (config.preset === 'javascript' && config.react !== undefined) {
-    throw configError(
-      '"react" is not supported with "preset": "javascript": React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',
-    );
+  if (config.preset !== 'javascript') {
+    return;
+  }
+  for (const [key, reason] of JAVASCRIPT_UNSUPPORTED_KEYS) {
+    if (config[key] !== undefined) {
+      throw configError(`"${key}" is not supported with "preset": "javascript": ${reason}`);
+    }
   }
 }
 
@@ -143,30 +178,13 @@ function validateDisable(disable) {
 }
 
 function validateOptional(config) {
-  if (config.thresholds !== undefined) {
-    validateThresholds(config.thresholds, config.preset);
-  }
-  if (config.exclude !== undefined) {
-    validateStringArray(config.exclude, 'exclude');
-  }
-  if (config.layout !== undefined) {
-    validateLayout(config.layout, config.preset);
+  for (const [key, validate] of OPTIONAL_VALIDATORS) {
+    if (config[key] !== undefined) {
+      validate(config[key], key, config.preset);
+    }
   }
   if (config.exceptions !== undefined) {
-    validateExceptions(
-      config.exceptions,
-      'exceptions',
-      TYPESCRIPT_PRESETS.includes(config.preset)
-        ? (rule) => NITPICKER_RULE_IDS.has(rule)
-        : undefined,
-    );
     validateTypescriptExceptionRules(config.exceptions, config.preset);
-  }
-  if (config.legacyInventory !== undefined) {
-    validateProjectRelativePath(config.legacyInventory, 'legacyInventory');
-  }
-  if (config.analyzers !== undefined) {
-    validateCustomAnalyzers(config.analyzers);
   }
   if (config.tools !== undefined) {
     validateTools(config.tools, config.preset);
@@ -197,6 +215,14 @@ function exceptionRuleProblem(rule, preset) {
   return native === undefined
     ? undefined
     : `which the ${preset ?? 'typescript'} preset reports as ${native}: name "${native}" instead`;
+}
+
+function validateProjectExceptions(exceptions, key, preset) {
+  validateExceptions(
+    exceptions,
+    key,
+    TYPESCRIPT_PRESETS.includes(preset) ? (rule) => NITPICKER_RULE_IDS.has(rule) : undefined,
+  );
 }
 
 function validateTypescriptExceptionRules(exceptions, preset) {
