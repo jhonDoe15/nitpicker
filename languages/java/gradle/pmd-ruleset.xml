@@ -109,5 +109,54 @@
       </property>
     </properties>
   </rule>
+  <rule name="TaskOutlivesTryResource" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This task uses a try-with-resources resource but nothing waits for it before the block ends, so the resource is closed while the task can still run. Wait for it inside the block (get() or join() on the future, or awaitTermination on the executor), declare the executor as a later resource of the same try so it closes first and waits, or open the resource inside the task.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall
+  [@MethodName = ('submit', 'execute', 'schedule', 'scheduleAtFixedRate', 'scheduleWithFixedDelay')
+      and *[1][pmd-java:typeIs('java.util.concurrent.Executor')
+        or pmd-java:typeIs('java.util.concurrent.CompletionService') or pmd-java:typeIs('java.util.Timer')]
+    or @MethodName = ('supplyAsync', 'runAsync')
+      and *[1][self::TypeExpression][pmd-java:typeIs('java.util.concurrent.CompletableFuture')]
+    or @MethodName = ('thenApplyAsync', 'thenAcceptAsync', 'thenRunAsync', 'thenComposeAsync',
+                      'whenCompleteAsync', 'handleAsync')
+      and *[1][pmd-java:typeIs('java.util.concurrent.CompletionStage')]
+    or @MethodName = 'startVirtualThread' and *[1][self::TypeExpression][pmd-java:typeIs('java.lang.Thread')]
+    or @MethodName = 'start' and *[1][self::ConstructorCall][pmd-java:typeIs('java.lang.Thread')]
+    or @MethodName = 'start' and *[1][self::MethodCall][pmd-java:typeIs('java.lang.Thread.Builder')]]
+  [let $s := .
+   return some $block in ancestor::Block[parent::TryStatement[ResourceList]]
+   satisfies
+     (let $receiver := *[1][self::VariableAccess]/@Name,
+          $arguments := (ArgumentList/*, *[1][self::ConstructorCall]/ArgumentList/*),
+          $resources := $block/parent::TryStatement/ResourceList/Resource,
+          $captured := $resources[
+            let $name := (LocalVariableDeclaration/VariableDeclarator/VariableId/@Name, VariableAccess/@Name)
+            return exists($arguments[self::LambdaExpression or self::MethodReference
+                                     or self::ConstructorCall[AnonymousClassDeclaration]]
+                            //VariableAccess[@Name = $name])
+              or exists($arguments[self::ConstructorCall]/ArgumentList/VariableAccess[@Name = $name])],
+          $chain := $s/ancestor-or-self::MethodCall[
+            every $step in ($s/ancestor::* intersect ./descendant::*) satisfies $step/self::MethodCall],
+          $top := $chain[1],
+          $holder := ($top/parent::VariableDeclarator/VariableId/@Name,
+                      $top/parent::AssignmentExpression[*[2] is $top]/*[1][self::VariableAccess]/@Name),
+          $uses := $block//VariableAccess[@Name = $holder][not(parent::AssignmentExpression and . is ../*[1])]
+      return exists($captured)
+        and not(ancestor::*[self::LambdaExpression or self::AnonymousClassDeclaration][. >> $block])
+        and not($chain[@MethodName = ('get', 'join', 'getNow', 'resultNow', 'awaitTermination')])
+        and ($top/parent::ExpressionStatement or $top/parent::ReturnStatement
+             or (exists($holder) and (every $use in $uses satisfies $use/parent::ReturnStatement)))
+        and (some $resource in $captured satisfies empty($resource/following-sibling::Resource[
+               (LocalVariableDeclaration/VariableDeclarator/VariableId/@Name, VariableAccess/@Name) = $receiver]))
+        and empty($block//MethodCall[@MethodName = ('awaitTermination', 'close')]
+                                    [*[1][self::VariableAccess/@Name = $receiver]]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
 </ruleset>
