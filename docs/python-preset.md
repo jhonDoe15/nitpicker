@@ -151,22 +151,22 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `inheritanceDepth`, and the [slow test](#slow-tests) budgets `unitTestSeconds` and
 `integrationTestSeconds`), `testConsole` (see [new console output](#new-console-output-from-tests)), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
-below. `layout` describes TypeScript source roots and stays a config error with this preset. The
+below. `layout` stays a config error with this preset until it runs the rule that reads it
+(`shared-used-by-one-feature`). The
 top-level `exceptions` is accepted only for the file and size limits shared with the other languages
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
 `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it, the
-[dependency and repository checks](usage.md#dependency-and-repository-checks) and
-`test-console-output`, whose check the other presets share; the Python equivalent of
+[dependency and repository checks](usage.md#dependency-and-repository-checks) and the
+[fact rules](../spec/checks.md#custom-rules) every preset shares (`test-console-output`, `test-only-export`); the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
 Where each kind of finding is lifted for some paths:
 
-| Findings                                                                                     | Lifted by                                                       |
-| -------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| ruff codes (or a prefix such as `PTH`), mypy codes, pyright and basedpyright `report*` rules | `python.exceptions`                                             |
-| `python-rules` ids (`sleep-in-test`, `unused-option`, `no-inline-suppression`, ...)          | `python.exceptions`                                             |
-| `test-console/test-console-output`                                                           | top-level `exceptions` or `python.exceptions` (the same filter) |
-| one third-party console message                                                              | `testConsole.allow`                                             |
-| `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `test-runtime/slow-test`      | top-level `exceptions` only                                     |
+| Findings                                                                                                                    | Lifted by                   |
+| --------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| ruff codes (or a prefix such as `PTH`), mypy codes, pyright and basedpyright `report*` rules                                | `python.exceptions`         |
+| `python-rules` ids (`sleep-in-test`, `unused-option`, `no-inline-suppression`, ...)                                         | `python.exceptions`         |
+| one third-party console message                                                                                             | `testConsole.allow`         |
+| `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `test-runtime/slow-test`, `test-console/test-console-output` | top-level `exceptions` only |
 
 ```json
 {
@@ -963,8 +963,8 @@ is defined.
   reported once per test file, and a message that differs from a base message by one random-looking
   word matches it. `testConsole.allow` drops a third-party message the project cannot fix
   (`{ "contains": "old client is deprecated", "paths": ["tests/legacy/**"], "reason": "..." }`), and
-  an `exceptions` entry for `test-console-output` lifts the rule for some test files, in the
-  top-level `exceptions` as with TypeScript or in `python.exceptions` with the other Python rules.
+  an entry for `test-console-output` in the top-level `exceptions`, as with the other presets,
+  lifts the rule for some test files.
   The message names `testConsole.allow` and the top-level route.
 - **Measurement.** nitpicker's console plugin (`test-runs/pytest_console.py`, which the timed pytest
   run of [slow tests](#slow-tests) loads) records the messages in the run that measures coverage,

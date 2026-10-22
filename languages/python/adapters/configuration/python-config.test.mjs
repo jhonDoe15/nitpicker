@@ -76,12 +76,14 @@ describe('python config validation', () => {
     }).toThrow('only supported with "preset": "python"');
   });
 
-  it('accepts test-console-output in python.exceptions', () => {
+  it('sends test-console-output to the top-level exceptions', () => {
     const exceptions = [{ rule: 'test-console-output', paths: ['tests/legacy/**'], reason: 'r' }];
 
     expect(() => {
       validate({ preset: 'python', python: { exceptions } });
-    }).not.toThrow();
+    }).toThrow(
+      '"python.exceptions[0].rule" is "test-console-output", a rule shared by every preset: lift it in the top-level "exceptions" instead',
+    );
   });
 
   it.each(TYPESCRIPT_ONLY)('rejects %s instead of ignoring it', (key) => {
