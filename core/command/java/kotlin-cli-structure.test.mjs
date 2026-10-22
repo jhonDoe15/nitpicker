@@ -133,12 +133,10 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
         tool: 'duplicates',
         rule: 'duplicate-clone',
         path: 'src/main/kotlin/demo/Left.kt',
-        identity: expect.stringMatching(
-          /^renamed:pair:src\/main\/kotlin\/demo\/Left\.kt\|src\/main\/kotlin\/demo\/Right\.kt:/u,
-        ),
-        message: expect.stringContaining(
-          'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicates/duplicate-clone","paths":["src/main/kotlin/demo/Left.kt"]',
-        ),
+        identity:
+          'renamed:pair:src/main/kotlin/demo/Left.kt|src/main/kotlin/demo/Right.kt:fragment:178b2d0c97b8470f68e5ec7d:occurrence:1',
+        message:
+          'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicates/duplicate-clone","paths":["src/main/kotlin/demo/Left.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 3 },
       },
@@ -155,12 +153,19 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(1);
-    const found = newEnforceable(result, 'duplicates');
-    expect(found.map(({ path, rule }) => `${rule} ${path}`)).toEqual([
-      'duplicate-clone src/main/kotlin/demo/Invoice.kt',
+    expect(newEnforceable(result, 'duplicates')).toEqual([
+      {
+        tool: 'duplicates',
+        rule: 'duplicate-clone',
+        path: 'src/main/kotlin/demo/Invoice.kt',
+        identity:
+          'renamed:pair:src/main/kotlin/demo/Invoice.kt|src/main/kotlin/demo/Parcel.kt:fragment:5ce5c62d2497fde3b14189bb:occurrence:1',
+        message:
+          'This code repeats src/main/kotlin/demo/Parcel.kt:3 (17 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicates/duplicate-clone","paths":["src/main/kotlin/demo/Invoice.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        classification: 'enforceable',
+        location: { line: 3 },
+      },
     ]);
-    expect(found[0].identity).toMatch(/^renamed:pair:/u);
-    expect(found[0].message).toContain('Keep one copy and call it from both places. If this is');
   });
   it('lifts a renamed Kotlin clone with an exception for duplicates/duplicate-clone', () => {
     const root = kotlinRepository({

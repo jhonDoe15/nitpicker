@@ -178,7 +178,7 @@ function readRuns(reportRoot, reportFile) {
   return runs.flatMap(({ root, report }) => jscpdClones(report, [root]));
 }
 
-function duplicateFindings(plain, { reportRoot, reportFile, projectRoot, syntax }) {
+export function duplicateFindings(plain, { reportRoot, reportFile, projectRoot, syntax }) {
   const renamedFile = renamedReportFile(reportFile);
   const renamed =
     syntax !== undefined && existsSync(path.resolve(reportRoot, renamedFile))

@@ -259,16 +259,19 @@ describe('duplicates whose names and literals were renamed', () => {
 
     const clones = clonesOf(context);
 
-    expect(clones).toHaveLength(1);
-    expect(clones[0]).toMatchObject({
-      path: 'src/app/invoice.py',
-      identity: expect.stringMatching(
-        /^renamed:pair:src\/app\/invoice\.py\|src\/app\/parcel\.py:/u,
-      ),
-      message: expect.stringMatching(
-        /^This code repeats src\/app\/parcel\.py:1 \(\d+ lines\)\. Keep one copy/u,
-      ),
-    });
+    expect(clones).toEqual([
+      {
+        tool: 'duplicates',
+        rule: 'duplicate-clone',
+        path: 'src/app/invoice.py',
+        identity:
+          'renamed:pair:src/app/invoice.py|src/app/parcel.py:fragment:0c4f7b418409de01cec2e906:occurrence:1',
+        message:
+          'This code repeats src/app/parcel.py:1 (17 lines). Keep one copy and call it from both places.',
+        classification: 'enforceable',
+        location: { line: 1 },
+      },
+    ]);
   });
 
   it('ends the message with the python.exceptions route', () => {
@@ -277,8 +280,10 @@ describe('duplicates whose names and literals were renamed', () => {
       'src/app/parcel.py': renamedFunction(PARCEL),
     });
 
-    expect(withHint(clonesOf(context)[0]).message).toMatch(
-      /Keep one copy and call it from both places\. To allow it for some paths, add a "python\.exceptions" entry for duplicate-clone in nitpicker\.config\.json\.$/u,
+    expect(withHint(clonesOf(context)[0]).message).toBe(
+      'This code repeats src/app/parcel.py:1 (17 lines). Keep one copy and call it from both places. ' +
+        'To allow it for some paths, add a "python.exceptions" entry for duplicate-clone in ' +
+        'nitpicker.config.json.',
     );
   });
 
