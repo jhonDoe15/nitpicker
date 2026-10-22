@@ -8,11 +8,12 @@ import {
   klass,
   loaded,
   routeOf,
+  routed,
   run,
   segment,
   testFile,
 } from '../test-support/facts.mjs';
-import { KNOWN_TYPES } from './load-effect-types.mjs';
+import { knownTypes } from './load-effect-types.mjs';
 import { loadEffectFindings } from './load-effects.mjs';
 
 const RULESET = path.resolve(import.meta.dirname, '../../../../gradle/pmd-main-ruleset.xml');
@@ -32,6 +33,18 @@ const args = (...texts) => texts.map((text) => argument(text));
 const lines = (findings) =>
   findings.map(({ symbol, location }) => `${symbol} ${String(location.line)}`);
 const findingsOf = (overrides, options = {}) => run(loadEffectFindings, [file(overrides)], options);
+const expected = (callText, place) =>
+  routed(
+    [
+      'Do this work in a function that main or the framework calls after startup',
+      '(a @Bean method, an ApplicationRunner, a Ktor module) and pass the result in,',
+      `or defer it with by lazy: \`${callText}\` runs while ${place},`,
+      'so it connects, starts threads or touches files in whatever order classes load,',
+      'and in every test that touches it. Constants, loggers, Regex and collections can stay,',
+      'and a file with fun main is not checked.',
+    ].join(' '),
+    'ClassLoadEffect',
+  );
 
 describe('class-load effects in Kotlin: what is reported', () => {
   it('reports a JDBC connection opened by a top-level property, with the call, place and route', () => {
@@ -46,8 +59,8 @@ describe('class-load effects in Kotlin: what is reported', () => {
     });
 
     expect(lines(findings)).toEqual(['database 3']);
-    expect(findings[0].message).toMatch(
-      /^Do this work in a function that main or the framework calls after startup .* or defer it with by lazy: `DriverManager\.getConnection\(\.\.\.\)` runs while Sample\.kt loads \(top-level database\), so it connects/u,
+    expect(findings[0].message).toBe(
+      expected('DriverManager.getConnection(...)', 'Sample.kt loads (top-level database)'),
     );
     expect(routeOf(findings[0].message)).toBe(
       'If this is intended, add {"rule":"pmd/ClassLoadEffect","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
@@ -159,7 +172,7 @@ describe('class-load effects in Kotlin: what is reported', () => {
       loads: [call('getConnection', [segment('DriverManager')], { context })],
     });
 
-    expect(findings[0].message).toContain(`runs while ${place}, so`);
+    expect(findings[0].message).toBe(expected('DriverManager.getConnection()', place));
   });
 });
 
@@ -258,11 +271,10 @@ describe('class-load effects in Kotlin and Java', () => {
   ]);
 
   it('knows every type the PMD rule knows, or says why not', () => {
-    const missing = [...javaTypes].filter((type) => !KNOWN_TYPES.has(type) && !JAVA_ONLY.has(type));
+    const known = new Set(knownTypes());
+    const missing = [...javaTypes].filter((type) => !known.has(type) && !JAVA_ONLY.has(type));
 
-    const stale = [...JAVA_ONLY.keys()].filter(
-      (type) => KNOWN_TYPES.has(type) || !javaTypes.has(type),
-    );
+    const stale = [...JAVA_ONLY.keys()].filter((type) => known.has(type) || !javaTypes.has(type));
 
     expect(javaTypes.size).toBeGreaterThan(30);
     expect(missing).toEqual([]);

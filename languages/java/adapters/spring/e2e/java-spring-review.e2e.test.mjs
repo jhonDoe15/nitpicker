@@ -70,8 +70,13 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
       '`Files.exists(...)` runs while Warehouse loads',
       '`Files.exists(...)` runs while WarehouseConfig loads',
     ]);
-    expect(effects.find(({ path: file }) => file.endsWith('Warehouse.java'))?.message).toMatch(
-      /If this is intended, add \{"rule":"pmd\/ClassLoadEffect","paths":\["src\/main\/java\/shop\/Warehouse\.java"\]/u,
+    const warehouse = effects.find(({ path: file }) => file.endsWith('Warehouse.java'))?.message;
+
+    expect(warehouse?.slice(warehouse.indexOf('If this is intended'))).toBe(
+      [
+        'If this is intended, add {"rule":"pmd/ClassLoadEffect","paths":["src/main/java/shop/Warehouse.java"],',
+        '"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      ].join(''),
     );
   });
 
