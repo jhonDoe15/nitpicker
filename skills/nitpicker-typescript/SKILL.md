@@ -122,9 +122,13 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
 - A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it
   `Readonly<Date>`.
-- Count by a union as `Readonly<Record<Status, number>>` with one `reduce` from a literal with every
-  member (`xs.reduce((c, x) => ({ ...c, [x.status]: c[x.status] + 1 }), { paid: 0, ... })`), so a
-  new member fails to compile. Group by key with `[...new Set(xs.map(key))]` and `filter`.
+- Count by a union as `Readonly<Record<Status, number>>` written as a literal with every member,
+  from one `Object.groupBy` (`const byStatus = Object.groupBy(xs, (x) => x.status);` then
+  `{ paid: byStatus.paid?.length ?? 0, ... }`), so a new member fails to compile. Group by key with
+  `[...new Set(xs.map(key))]` and `filter`.
+- Build a result that grows with the input in one pass (`Object.fromEntries`, `flatMap`,
+  `Object.groupBy`), never by spreading the accumulator (`({ ...acc, [k]: v })`, `[...acc, x]`):
+  the gate reports that in an inline `reduce` callback, but not in a reducer passed by name.
 - Variants of one union share one array type (`readonly Share[]` in each).
 
 ## Errors

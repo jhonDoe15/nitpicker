@@ -170,7 +170,11 @@ line) is a finding.
   const none = { paid: 0, open: 0, void: 0 };
   return invoices.reduce(addInvoice, none);
   ```
-  Group by key with `[...new Set(xs.map(key))]` and `filter`.
+  `addInvoice` returns a new record of the same fixed keys; a result that grows with the input is
+  built in one pass (`Object.fromEntries`, `flatMap`, `Object.groupBy`), never by spreading the
+  accumulator (`({ ...acc, [k]: v })`, `[...acc, x]`): the gate reports that in an inline `reduce`
+  callback, but not in a reducer passed by name. Group by key with `[...new Set(xs.map(key))]` and
+  `filter`.
 - Variants of one union share one array type (`readonly Share[]` in each).
 - `module.exports` assignment is not mutation and may stay; every other property assignment is.
 

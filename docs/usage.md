@@ -933,7 +933,10 @@ new and touched code must comply.
   `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
   `JSON.stringify` replacer); no comments except doc comments on exported API, no inline lint disables, no `@ts-ignore`,
   `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
-  `while`, `do...while` or `forEach`), `async`/`await` with no `.then()/.catch()/.finally()` chains
+  `while`, `do...while` or `forEach`), no accumulator spread into its own next value
+  (`xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {})` or `out = [...out, x]` in a loop: build the
+  result in one pass with `Object.fromEntries`, `Object.groupBy`, `flatMap` or `map`),
+  `async`/`await` with no `.then()/.catch()/.finally()` chains
   and no floating promises, and `===`/`!==` only. Config files are exempt from the loop and chain
   bans.
 - **Tests** follow the same construct bans: `for...of` is the only loop (use `it.each` for one test
@@ -1281,6 +1284,13 @@ The lint analyzers apply nitpicker's ESLint policy, but by default they run it o
 natively, type-aware rules run on its TypeScript 7 checker, and every other rule (nitpicker's own,
 and plugins oxlint lacks) runs inside oxlint through the original ESLint plugin. The few type-aware
 plugin rules oxlint cannot run still run on ESLint, for those rules only.
+
+oxlint also has rules of its own that no ESLint plugin provides. nitpicker runs one only when it
+owns an ESLint rule that reports the same code: oxlint then runs its native rule, ESLint runs
+nitpicker's, and both report under the nitpicker rule id with the same message, location and
+finding identity, so an `exceptions` entry or a switch of engine changes nothing. With the pinned
+oxlint 1.87.0 that is `nitpicker/no-accumulating-spread` (oxlint's `oxc/no-accumulating-spread`).
+oxlint's other native rules, including whole categories such as `perf` or `pedantic`, stay off.
 
 Findings match ESLint's with these known differences:
 
