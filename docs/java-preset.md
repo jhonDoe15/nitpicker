@@ -414,8 +414,11 @@ classpath and its `test` task, and adds no test library to the project.
     `class-fields-limit` and `inheritance-depth-limit` rules and the
     [dependency and repository checks](usage.md#dependency-and-repository-checks) are named as they are. Each exception is listed
     in the report and changes the configuration hash.
-  - `layout` and `tools` configure TypeScript source roots and tool configs; they have no Java
-    meaning and stay a config error with `"preset": "java"` instead of being ignored.
+  - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
+    keys are TypeScript only, and `layout.sharedRoots` and `layout.featureRoots` are accepted once the
+    Java preset registers the rule that reads them (`shared-used-by-one-feature`) in
+    `shared/project-rules/fact-rules.mjs`. `testConsole` is accepted because the registry lists Java and
+    Kotlin for `test-console-output`. `tools` takes `pmd` and `checkstyle`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
@@ -743,11 +746,14 @@ resolved plus a new finding, as in the TypeScript check.
   with `redirectTestOutputToFile`) are copied too and read with the stdout rule. The init script
   sets `outputPerTestCase` on every test task, so Gradle names the test that printed a line as
   Surefire does; a test name loses its parameter list (`totals()` is `totals`).
-- **Normalization.** As in TypeScript: ANSI colors, absolute paths (kept as the last segment),
+- **Normalization.** The TypeScript preset's normalizer (`shared/rules/console/console-messages.mjs`), so
+  `testConsole.allow` matches the same way in every preset: ANSI colors, absolute paths (kept as the last segment),
   timestamps and clock times, hex values, UUIDs, random-looking words and numbers (with their
   units) are replaced, so `cache miss for order 42` and `... 43` are the same message. The thread
   name of a Spring Boot (`--- [main]`) or Logback (`[main] WARN`) log line is replaced too: Gradle
-  runs tests on `Test worker`, Surefire on `main`.
+  runs tests on `Test worker`, Surefire on `main`. The same normalizer also covers the escaped and
+  replaced characters of Gradle and Surefire reports, `java.util.logging` clock lines, durations and
+  the random parts of Mockito, ByteBuddy and proxy class names.
 - **Keyed per module, not per file.** The finding's path is the module directory (`.` for the
   root) and its identity a hash of the normalized message. The JVM shares state across test
   classes: Spring caches one application context for every test class that asks for it, and a
