@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { globToRegExp, resolveLayout } from '../layout.mjs';
+import { resolveHeadPolicy } from '../head-policy.mjs';
+import { globMatcher, resolveLayout } from '../layout.mjs';
 import {
   isCustomLayout,
   layoutJscpdConfig,
@@ -21,6 +22,19 @@ import {
 afterAll(removeTemporaryRoots);
 
 describe('resolveLayout', () => {
+  it('marks the layout colocated only when no test root exists in the project', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-colocated-policy-'));
+    trackTemporaryRoot(root);
+    expect(resolveHeadPolicy({}, root).layout).toEqual({ colocatedTests: true });
+    expect(resolveHeadPolicy({ layout: { testRoots: ['spec'] } }, root).layout).toEqual({
+      testRoots: ['spec'],
+      colocatedTests: true,
+    });
+    mkdirSync(path.join(root, 'tests'));
+    expect(resolveHeadPolicy({}, root).layout).toEqual({});
+    expect(resolveHeadPolicy({}).layout).toEqual({});
+  });
+
   it('derives globs, roots and predicates from custom roots', () => {
     expect(customLayout.sourceGlobs).toEqual(['lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
     expect(customLayout.testGlobs).toEqual([
@@ -42,6 +56,17 @@ describe('resolveLayout', () => {
     expect(customLayout.isTestFixture('/repo/lib/__tests__/fixtures/app.ts')).toBe(true);
     expect(customLayout.isTestFixture('/repo/lib/fixtures/app.ts')).toBe(false);
     expect(customLayout.sourceRootOf('/repo/lib/a.ts')).toBe('lib');
+  });
+  it('counts test-support/ under the source roots as test code only in a colocated layout', () => {
+    const colocated = resolveLayout({ sourceRoots: ['lib'], colocatedTests: true });
+    expect(colocated.testSupportGlobs).toEqual(['lib/**/test-support/**']);
+    expect(colocated.isTestFile('lib/feature/test-support/make.ts')).toBe(true);
+    expect(colocated.isSourceFile('lib/feature/test-support/make.ts')).toBe(false);
+    expect(colocated.isRunnableTestFile('lib/feature/test-support/make.ts')).toBe(false);
+    expect(colocated.isSourceFile('lib/feature/support/make.ts')).toBe(true);
+    expect(customLayout.testSupportGlobs).toEqual([]);
+    expect(customLayout.isSourceFile('lib/feature/test-support/make.ts')).toBe(true);
+    expect(customLayout.isTestFile('lib/feature/test-support/make.ts')).toBe(false);
   });
   it('treats exclude globs as excluded from source, test and graph analysis', () => {
     expect(customLayout.isExcluded('lib/legacy/old.ts')).toBe(true);
@@ -80,7 +105,7 @@ describe('resolveLayout', () => {
     expect(layout.graphIncludeOnly).toBe('^(src|test|tests|__tests__|e2e)(?:/|$)');
   });
 });
-describe('globToRegExp', () => {
+describe('globMatcher', () => {
   it.each([
     ['lib/legacy/**', 'lib/legacy/a/b.ts', true],
     ['lib/legacy/**', 'lib/legacy', false],
@@ -96,7 +121,7 @@ describe('globToRegExp', () => {
     ['a?.ts', 'ab.ts', true],
     ['a.b/**', 'aXb/c.ts', false],
   ])('%s against %s is %s and agrees with path.matchesGlob', (glob, value, expected) => {
-    expect(globToRegExp(glob).test(value)).toBe(expected);
+    expect(globMatcher(glob).test(value)).toBe(expected);
     expect(path.posix.matchesGlob(value, glob)).toBe(expected);
   });
 });

@@ -49,7 +49,7 @@ function enumBody(text, from) {
   return open < 0 || text.slice(from, open).includes(';') ? undefined : text.slice(open + 1);
 }
 
-function readEnums(projectRoot) {
+export function readEnums(projectRoot) {
   const enums = new Map();
   for (const file of javaFilesUnder(projectRoot)) {
     const text = readJavaSource(file);
@@ -165,10 +165,18 @@ function lazy(read) {
   };
 }
 
+function isKotlinFile(file) {
+  return file.endsWith('.kt');
+}
+
 export function withProjectEnumPredicates(findings, projectRoot) {
   const context = { projectRoot, enums: lazy(() => readEnums(projectRoot)) };
   return findings.flatMap((finding) => {
-    if (finding.tool !== 'pmd' || finding.rule !== ENUM_PREDICATE_RULE) {
+    if (
+      finding.tool !== 'pmd' ||
+      finding.rule !== ENUM_PREDICATE_RULE ||
+      isKotlinFile(finding.path)
+    ) {
       return [finding];
     }
     const type = partialEnum(finding, context);

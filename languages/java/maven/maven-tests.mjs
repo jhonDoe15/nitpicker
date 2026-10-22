@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
-import { globToRegExp } from '../../../shared/glob.mjs';
+import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
 import { failedCases, failingTestsError, freshReports } from '../builds/test-failures.mjs';
 
@@ -21,7 +21,7 @@ export function archunitMatcher(includes = DEFAULT_ARCHUNIT_INCLUDES) {
     .split(',')
     .map((pattern) => pattern.trim())
     .filter(Boolean)
-    .map((pattern) => globToRegExp(pattern));
+    .map((pattern) => globMatcher(pattern));
   return (className) => {
     const file = `${className.replaceAll('.', '/').replace(/\$.*$/u, '')}.class`;
     return patterns.some((pattern) => pattern.test(file));
@@ -86,7 +86,7 @@ export function freshExecFiles(execFiles, since) {
   );
 }
 
-export function runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan }) {
+export function runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, spawn }) {
   const report = path.join(reportDir, 'jacoco.xml');
   if (classFiles(module.outputDirectory).length === 0) {
     writeFileSync(report, `<?xml version="1.0"?><report name="${module.coordinates}"></report>`);
@@ -116,6 +116,7 @@ export function runJacocoReport({ module, reportDir, tools, execFiles, since, te
     ],
     cwd: module.basedir,
     accept: (result) => result.status === 0,
+    spawn,
   });
 }
 
@@ -183,7 +184,7 @@ export function pitClasspath(tools, testRuntime) {
   ];
 }
 
-export function runPit({ module, reportDir, tools, classpaths, isArchunit }) {
+export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn }) {
   const pitDir = path.join(reportDir, 'pit');
   rmSync(pitDir, { recursive: true, force: true });
   mkdirSync(pitDir, { recursive: true });
@@ -221,6 +222,7 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit }) {
     ],
     cwd: module.basedir,
     accept: (result) => result.status === 0,
+    spawn,
   });
   if (!existsSync(report)) {
     writeFileSync(report, '<mutations/>');

@@ -148,7 +148,7 @@ export const rule = {
     schema: [],
     messages: {
       randomKey:
-        'Do not build a `key` from `{{call}}()`: it changes on every render and remounts the row. Use a stable id from the item (`key={todo.id}`) and generate ids when the item is created. If remounting on every render is intended, add an exception for this rule in nitpicker.config.json.',
+        'Do not build a `key` from `{{call}}()`: it changes on every render and remounts the row. Use a stable id from the item (`key={todo.id}`) and generate ids when the item is created. An exception fits only when remounting on every render is intended.',
     },
   },
   create(context) {

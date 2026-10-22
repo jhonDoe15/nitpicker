@@ -6,14 +6,19 @@ const KOTLIN_DUPLICATES = {
   format: 'kotlin',
   rootsKey: 'kotlinSourceRoots',
   reportFile: 'kotlin-duplicates.json',
+  renamedExtensions: ['.kt', '.kts'],
 };
 
 export function runKotlinDuplicates(projectRoot, { reportRoot, manifest, skippedFolders }) {
   runJavaDuplicates(projectRoot, { ...KOTLIN_DUPLICATES, reportRoot, manifest, skippedFolders });
 }
 
-export function readKotlinDuplicateFindings(reportRoot) {
+export function readKotlinDuplicateFindings(reportRoot, projectRoot) {
   return existsSync(path.join(reportRoot, KOTLIN_DUPLICATES.reportFile))
-    ? readDuplicateFindings(reportRoot, KOTLIN_DUPLICATES.reportFile, KOTLIN_DUPLICATES.format)
+    ? readDuplicateFindings(reportRoot, {
+        reportFile: KOTLIN_DUPLICATES.reportFile,
+        format: KOTLIN_DUPLICATES.format,
+        projectRoot,
+      })
     : [];
 }
