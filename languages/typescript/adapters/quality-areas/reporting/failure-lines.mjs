@@ -1,4 +1,4 @@
-import { stripAnsi } from '../../../preset/test-console/ansi.mjs';
+import { stripAnsi } from '../../../../../shared/rules/console/ansi.mjs';
 
 const MAX_ASSERTION_LINE_LENGTH = 200;
 

@@ -284,6 +284,93 @@ describe('mocking the subject under test', () => {
   });
 });
 
+describe('it.each tables', () => {
+  const file = (lines) => ({
+    'a.test.ts': spec(
+      [
+        "import { describeCount } from './count';",
+        "describe('describeCount', () => {",
+        ...lines,
+        '});',
+      ].join('\n'),
+    ),
+  });
+  const plain = file([
+    "  it('pluralizes zero', () => { expect(describeCount(0)).toBe('0 names'); });",
+    "  it('uses the singular for one', () => { expect(describeCount(1)).toBe('1 name'); });",
+    "  it('pluralizes many', () => { expect(describeCount(2)).toBe('2 names'); });",
+  ]);
+  const check = 'expect(describeCount(input)).toBe(expected);';
+  const table = (rows, title = 'describes %i as %s') =>
+    file([`  it.each([${rows}])('${title}', (input, expected) => { ${check} });`]);
+  const named = (zero) =>
+    file([
+      '  it.each([',
+      `    { name: 'pluralizes zero', input: 0, expected: ${zero} },`,
+      "    { name: 'uses the singular for one', input: 1, expected: '1 name' },",
+      "    { name: 'pluralizes many', input: 2, expected: '2 names' },",
+      `  ])('$name', ({ input, expected }) => { ${check} });`,
+    ]);
+  const allRows = "[0, '0 names'], [1, '1 name'], [2, '2 names']";
+  const twoRows = "[0, '0 names'], [2, '2 names']";
+
+  it.each([
+    ['an array table matched by its rows', table(allRows)],
+    [
+      'a table defined in a const',
+      file([
+        `  const cases = [${allRows}] as const;`,
+        `  it.each(cases)('%i', (input, expected) => { ${check} });`,
+      ]),
+    ],
+    ['object rows titled by $name', named("'no names'")],
+    [
+      'a template-literal table',
+      file([
+        '  it.each`',
+        '    input | expected',
+        "    ${0} | ${'0 names'}",
+        "    ${1} | ${'1 name'}",
+        "    ${2} | ${'2 names'}",
+        `  \`('describes $input', ({ input, expected }) => { ${check} });`,
+      ]),
+    ],
+  ])('does not report tests converted to %s', (_name, final) => {
+    expect(detect(plain, final)).toEqual([]);
+  });
+
+  it('reports a test whose row is missing from the table', () => {
+    expect(detect(plain, table(twoRows))).toMatchObject([
+      {
+        kind: 'deleted-test',
+        line: 5,
+        detail: 'test removed: describeCount > uses the singular for one',
+      },
+    ]);
+  });
+
+  it('reports a row dropped from an existing table', () => {
+    expect(detect(table(allRows), table(twoRows))).toMatchObject([
+      { kind: 'deleted-test', detail: 'test removed: describeCount > describes 1 as 1 name' },
+    ]);
+  });
+
+  it('reports a row whose expectation is loosened', () => {
+    const before = table(allRows, 'describes %i');
+    const after = table("[0, expect.anything()], [1, '1 name'], [2, '2 names']", 'describes %i');
+    expect(detect(before, after)).toMatchObject([
+      {
+        kind: 'weakened-assertion',
+        detail: 'describeCount > describes 0: more toBe(expect.anything()) than before',
+      },
+    ]);
+  });
+
+  it('reports a test converted to a row with a loosened expectation', () => {
+    expect(kinds(detect(plain, named('expect.anything()')))).toEqual(['weakened-assertion']);
+  });
+});
+
 describe('structure handling', () => {
   it('handles it.each and nested describes', () => {
     const fixture = {
@@ -298,7 +385,8 @@ describe('structure handling', () => {
       ),
     };
     expect(detect(fixture, final)).toMatchObject([
-      { kind: 'removed-assertion', detail: 'a > b > c %s: assertions 1 -> 0' },
+      { kind: 'removed-assertion', detail: 'a > b > c 1: assertions 1 -> 0' },
+      { kind: 'removed-assertion', detail: 'a > b > c 2: assertions 1 -> 0' },
     ]);
   });
 

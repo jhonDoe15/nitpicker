@@ -1,4 +1,4 @@
-import { escapeRegExp } from '../../../../shared/glob.mjs';
+import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 
 const TEST_SUPPORT_DIRECTORY = 'test-support';
 
