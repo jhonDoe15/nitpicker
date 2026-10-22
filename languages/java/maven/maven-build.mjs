@@ -8,13 +8,11 @@ import {
   moduleClasspaths,
   parseDependencyList,
   readReactor,
-  usesSpring,
-  runsArchRules,
 } from './maven-project.mjs';
 import {
   archunitMatcher,
   collectTestResults,
-  junitLauncherVersion,
+  missingLauncherVersions,
   runJacocoReport,
   runPit,
 } from './maven-tests.mjs';
@@ -28,6 +26,7 @@ import {
   resolveTools,
 } from './maven-tools.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
+import { buildRunsArchRules, springFacts, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
@@ -126,7 +125,6 @@ function hasJar(classpath, jar) {
 }
 
 export function moduleManifest({ module, classpaths, pinned }) {
-  const spring = usesSpring(classpaths);
   return {
     versions: pinned,
     build: 'maven',
@@ -134,8 +132,7 @@ export function moduleManifest({ module, classpaths, pinned }) {
     kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
     resourceRoots: relativeRoots(module, module.resourceRoots),
-    spring,
-    springArch: runsArchRules(classpaths),
+    ...springFacts(classpaths),
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
     testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
     testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
@@ -156,11 +153,6 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
   requireTestngRun({ module, since, isArchunit, testRuntime });
   copyTestResults({ module, reportDir, since, isArchunit });
   return testsRan;
-}
-
-function withDeclaredSpring(manifest, declared) {
-  const spring = declared === true || manifest.spring;
-  return { ...manifest, spring, springArch: spring || manifest.springArch };
 }
 
 function analyzeSources(options) {
@@ -246,19 +238,11 @@ function readModules(run) {
   return modules;
 }
 
-function missingLauncherVersions(analyzed) {
-  const versions = analyzed.map(({ classpaths }) => junitLauncherVersion(classpaths.testRuntime));
-  return [...new Set(versions.filter((version) => version !== undefined))];
-}
-
 function extraTools({ modules, analyzed, policy, pinned }) {
   return [
     ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     ...formatTool(policy.javaStyle, pinned),
-    ...archunitTool(
-      policy.spring === true || analyzed.some(({ classpaths }) => runsArchRules(classpaths)),
-      pinned,
-    ),
+    ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
   ];
 }
 
