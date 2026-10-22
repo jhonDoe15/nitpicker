@@ -14,6 +14,7 @@ final class State {
   final List<Object> functions = new ArrayList<>();
   final List<Object> properties = new ArrayList<>();
   final List<Object> waits = new ArrayList<>();
+  final List<Object> timeouts = new ArrayList<>();
   final List<Object> predicates = new ArrayList<>();
   final Set<String> calls = new LinkedHashSet<>();
   final Set<String> references = new LinkedHashSet<>();
@@ -22,6 +23,7 @@ final class State {
   private final String relative;
   private final Lines lines;
   private final Map<String, String> waitImports = new HashMap<>();
+  private final Map<String, String> timeoutBlocks = new HashMap<>();
 
   State(KtFile file, String text, String relative, boolean test) {
     this.file = file;
@@ -36,8 +38,18 @@ final class State {
         if (Calls.WAIT_NAMES.contains(simple)) {
           waitImports.put(path.getAlias() == null ? simple : path.getAlias().asString(), full);
         }
+        if (Timeouts.BLOCKS.contains(simple) && path.getAlias() != null) {
+          timeoutBlocks.put(path.getAlias().asString(), simple);
+        }
       }
     }
+  }
+
+  String timeoutBlock(String name) {
+    if (timeoutBlocks.containsKey(name)) {
+      return timeoutBlocks.get(name);
+    }
+    return Timeouts.BLOCKS.contains(name) ? name : null;
   }
 
   String importedPath(String name) {
@@ -52,7 +64,7 @@ final class State {
     return m(
         "file", relative, "test", test, "package", file.getPackageFqName().asString(),
         "imports", imports(), "classes", classes, "functions", functions, "properties", properties,
-        "waits", waits, "predicates", predicates, "typeAliases", typeAliases,
+        "waits", waits, "timeouts", timeouts, "predicates", predicates, "typeAliases", typeAliases,
         "calls", new ArrayList<Object>(calls.stream().map(Json.Raw::new).toList()),
         "references", new ArrayList<Object>(references));
   }
