@@ -2,13 +2,15 @@ import { createScripts } from './python-script-helpers.mjs';
 
 export function createProjectScripts() {
   const scripts = createScripts();
-  const only = (rule, files) =>
-    scripts.findingsOf(files).filter((finding) => finding.startsWith(`${rule} `));
-  const dataOf = (rule, files) =>
-    scripts
+  function only(rule, files) {
+    return scripts.findingsOf(files).filter((finding) => finding.startsWith(`${rule} `));
+  }
+  function dataOf(rule, files) {
+    return scripts
       .reportOf(files)
       .filter((entry) => entry.rule === rule)
       .map(({ subject, data }) => [subject, data]);
+  }
   return { ...scripts, only, dataOf };
 }
 

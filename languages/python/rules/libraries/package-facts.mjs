@@ -9,8 +9,7 @@ const PRIVATE_CLASSIFIER = 'Private :: Do Not Upload';
 const PYPROJECT = 'pyproject.toml';
 const SETUP_CFG = 'setup.cfg';
 const SETUP_PY = 'setup.py';
-const OBJECT_REFERENCE =
-  /^\s*([A-Za-z_][\w.]*)\s*(?::\s*([A-Za-z_][\w.]*))?\s*(?:\[[^\]]*\]\s*)?$/u;
+const OBJECT_REFERENCE = /^([A-Za-z_][\w.]*)(?:\s*:\s*([A-Za-z_][\w.]*))?(?:\s*\[[^\]]*\])?$/u;
 const DECLARED_ENTRY = /^\s*[^=[#\s][^=[#]*=(.*)$/u;
 const STRING_LITERAL = /(["'])((?:\\.|(?!\1)[^\\\n])*)\1/gu;
 const SETUP_CALL = /\bsetup\s*\(/u;
@@ -79,7 +78,8 @@ function setupPublished({ sections, setupPy = '', setupCfg = '' }) {
 
 function referencesOf(texts) {
   return texts
-    .map((text) => (typeof text === 'string' ? OBJECT_REFERENCE.exec(text) : null))
+    .filter((text) => typeof text === 'string')
+    .map((text) => OBJECT_REFERENCE.exec(text.trim()))
     .filter((match) => match !== null);
 }
 

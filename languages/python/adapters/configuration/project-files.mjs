@@ -37,13 +37,6 @@ export function parseToml(text) {
   }
 }
 
-export function tomlProblem(error) {
-  const [summary] = String(error?.message ?? error).split('\n');
-  return error?.line === undefined
-    ? summary
-    : `${summary} (line ${String(error.line)}, column ${String(error.column)})`;
-}
-
 export function tomlTable(projectRoot, name) {
   const text = readProjectFile(projectRoot, name);
   const parsed = text === undefined ? undefined : parseToml(text);
