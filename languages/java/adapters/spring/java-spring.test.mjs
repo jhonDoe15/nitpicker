@@ -46,7 +46,7 @@ describe('readSpringConfigFindings', () => {
 
     expect(
       applyFindingPolicy(findings, {
-        exceptions: [{ rule: 'spring/open-in-view', glob: 'src/main/resources/**' }],
+        exceptions: [{ rule: 'spring/open-in-view', paths: ['src/main/resources/**'] }],
       }),
     ).toEqual([]);
   });

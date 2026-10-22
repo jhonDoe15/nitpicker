@@ -20,6 +20,12 @@ import { readSpringArchFindings } from '../spring-arch/spring-arch.mjs';
 import { javaMethodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
+import {
+  declarationUnits,
+  functionLocator,
+  sourceTextReader,
+  structureFunctions,
+} from './function-locator.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
@@ -266,6 +272,7 @@ function pitFindings(context) {
   const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
   const { findings } = ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
+    functionAt: functionLocator(context),
   });
   return context.kotlin ? reportOnlyKotlinMutants(findings) : findings;
 }
@@ -273,11 +280,10 @@ function pitFindings(context) {
 function branchFindings(context, jacoco) {
   const { projectRoot } = context;
   return ingestJacocoBranches(jacoco, {
+    functions: structureFunctions(context),
+    units: declarationUnits,
     locate: sourceLocator(projectRoot, jacocoSourceRoots(context)),
-    sourceText: (file) => {
-      const absolute = path.join(projectRoot, file);
-      return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
-    },
+    sourceText: sourceTextReader(projectRoot),
   }).findings;
 }
 

@@ -152,11 +152,16 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
 below. `layout` and `testConsole` stay a config error with this preset until it runs the rules
 that read them (`shared-used-by-one-feature`, `test-console-output`). The
-top-level `exceptions` is accepted only for the file and size limits shared with the other languages
+top-level `exceptions` is accepted only for the rules shared with the other languages: the file and size limits
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
-`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it, and
-the [dependency and repository checks](usage.md#dependency-and-repository-checks); the Python equivalent of
-`exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
+`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), the function rules
+(`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
+`function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`,
+`mutant-survived`, `mutant-nocoverage`, which take `function` to name one function), whose messages
+name it, and the [dependency and repository checks](usage.md#dependency-and-repository-checks); the
+Python equivalent of `exceptions` for every other rule is `python.exceptions`. Each list rejects the
+other's rules (a function or file rule in `python.exceptions`, or a ruff code in `exceptions`, is a
+config error that names the right list). `python` is an error with any other preset.
 
 ```json
 {
@@ -227,8 +232,8 @@ yours to fix (generated code) is dropped with `exclude`.
 
 There is no inline disable: `# noqa`, `# type: ignore`, `# pyright: ignore` and the other comments
 in the table below are findings themselves. The way out is `python.exceptions` in
-`nitpicker.config.json`, the Python counterpart of the TypeScript `exceptions` key and of the same
-shape: `rule` (the id printed in the finding, for example `T201`, `PTH118`, `frozen-dataclass`,
+`nitpicker.config.json` (the top-level `exceptions` for the function, file and size rules, below),
+the same shape as in every preset: `rule` (the id printed in the finding, for example `T201`, `PTH118`, `frozen-dataclass`,
 `return-value`, `reportReturnType`), `paths` (a non-empty array of globs relative to the project)
 and `reason` (required text). It lifts that rule for those paths, in the base and in the head
 snapshot alike, and every exception is listed in the report's config overrides. The id is checked
@@ -237,6 +242,15 @@ when the config loads: a ruff code (or a prefix such as `PTH`, which covers ever
 error, not a silent no-op. Prefer fixing the code; an exception is for code that is
 legitimately outside the rule, such as a command line entry point that prints or a module that
 must keep a mutable dataclass.
+
+**Per-function exceptions.** The function size limits, CRAP and changed-branch coverage take an
+optional `function` in an entry of the top-level `exceptions`: the name the finding prints
+(`Service.run`, `outer.inner`), matched exactly. For `changed-branch-coverage` it is required, and the entry accepts the uncovered
+branches inside that function only, so the rest of the file keeps every other check; a branch in no
+function (module level) can only be lifted with `exclude`. The branch is attributed to the narrowest
+function of `structure.json` that holds its line. Branch coverage is enforced by default; this is
+the escape hatch for a branch that cannot be tested. A `function` on any other rule is a config
+error.
 
 `exclude` is the other way out: it drops every finding under the globs, and the paths are not
 handed to ruff or black either. The rules most likely to flag code that is right for its place are
@@ -337,7 +351,7 @@ pytest section (`[pytest]`, `[tool:pytest]`, `[tool.pytest.ini_options]`) names 
 
 The purpose of this slice is the "one way" for each construct. Every finding message names the
 allowed form, and, because any rule can flag legitimate code, ends with how to add the exception.
-Every enforceable finding of ruff, the type checkers, the rules, coverage, duplicates, coupling, import-linter, the dependency checks, the test times and mutmut ends with the one `python.exceptions` sentence (`To allow it for some paths, add a "python.exceptions" entry for <rule> in nitpicker.config.json.`), except mypy `unused-ignore` (delete the comment), `no-import-outside-roots` (whose way out is `python.sourceRoots`), findings on `.` and the shared file and size limits, whose message names the top-level `exceptions` entry instead. The allowed forms live in `languages/python/rules/hints/` and the route in one place, `exceptionSentence` in `languages/python/rules/rule-hints.mjs`, which assembles them and applies them to both analyzers' findings with `applyRuleHints`; `languages/python/rules/exception-sentences.test.mjs` fails on any other Python file that writes a route of its own, and a test checks that each rule's message
+Every enforceable finding of ruff, the type checkers, the rules, coverage, duplicates, coupling, import-linter, the dependency checks, the test times and mutmut ends with the one exception sentence (`If this is intended, add {"rule":"<rule>","paths":["<path>"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`), except mypy `unused-ignore` (delete the comment), `no-import-outside-roots` (whose way out is `python.sourceRoots`), findings on `.`, the shared file and size limits and the function rules (the function limits, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`), whose message names the top-level `exceptions` entry, with `function` for the function rules, instead. The allowed forms live in `languages/python/rules/hints/` and the route in one place, `exceptionSentence` in `languages/python/rules/rule-hints.mjs`, which assembles them and applies them to both analyzers' findings with `applyRuleHints`; `languages/python/rules/exception-sentences.test.mjs` fails on any other Python file that writes a route of its own, and a test checks that each rule's message
 names its allowed form, and an opt-in test runs a banned and an allowed fixture of every rule
 through the real tools.
 
@@ -560,7 +574,7 @@ Details that are decisions rather than the table:
 ### The shared one-way rules
 
 These rules bring the Python preset to the rules the TypeScript and Java presets enforce. Each
-finding names the allowed form first and ends with the usual `python.exceptions` sentence. The
+finding names the allowed form first and ends with the usual exception sentence (`python.exceptions`, or `exceptions` for the shared rules). The
 rules marked "script" are `python-rules` findings of `nitpicker_rules.py` (one module per concern
 under `languages/python/rules/`: `checks`, `boundary`, `smells`, `honesty`); the others are ruff
 rules. Rules that are not enforced because they flag idiomatic code with no clean alternative
@@ -926,8 +940,12 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   `spec/checks.md` is regenerated. A function that already breaks a limit on the base and is edited
   fails only when the change makes that metric worse, exactly as for the other languages (the
   `ratchet` field of the finding, handled by the core comparison); a new function over a limit, or
-  one the change pushes over it, fails as usual. Exceptions are the usual ones: `exclude` in
-  `nitpicker.config.json` for a path, or the legacy inventory; there is no inline disable.
+  one the change pushes over it, fails as usual. Exceptions are the usual ones: an
+  `exceptions` entry for the rule (optionally with `function`, see below), `exclude` in
+  `nitpicker.config.json` for a path, or the legacy inventory; there is no inline disable. Each
+  message ends with the entry that accepts it, for example
+  `{"rule":"function-lines-limit","paths":["src/demo/a.py"],"function":"Service.run","reason":"..."}`;
+  the shared rules append it.
 - **Structure metrics (decision to review).** `languages/python/metrics/structure_metrics.py` parses
   the source files with the standard library `ast` module (parse only, nothing is imported or run)
   and writes one object per function to `structure.json`. It is run by the project's own Python
@@ -1076,9 +1094,13 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   matters only when the branch line itself is also changed.
   Editing the line changes both the identity and the changed range, so it is new.
 - **Message.** `Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it,
-or remove it if it can't happen. To allow it for some paths, add a "python.exceptions" entry for changed-branch-coverage in nitpicker.config.json.` It
-  names where the untaken outcomes lead; those line numbers are only in the message, never in the
-  identity.
+or remove it if it can't happen. If this is intended, add
+{"rule":"changed-branch-coverage","paths":["src/demo/a.py"],"function":"value","reason":"..."} to
+"exceptions" in nitpicker.config.json.`
+  It names where the untaken outcomes lead (those line numbers are only in the message, never in the
+  identity) and the entry that accepts the branch for its function; a branch in no function points at
+  `exclude` instead.
+
 - **Granularity and limits.** A line with several outcomes (`while`, `for`, `if`/`else` chains,
   `match` cases) is judged on all of them together. coverage.py does not track conditional
   expressions or `and`/`or` operands, nor the arms of `try`/`except`/`else`/`finally`, only jumps
@@ -1091,9 +1113,11 @@ or remove it if it can't happen. To allow it for some paths, add a "python.excep
   report settings are ignored, so the one measurement is the same everywhere. Only idioms that are
   never testable are excluded, with the same list on every coverage.py version: `if TYPE_CHECKING:`
   (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`)
-  and `raise NotImplementedError`. Anything else that legitimately cannot be tested is lifted with
-  `exclude` in `nitpicker.config.json` (a path glob), which drops every finding for that file, not
-  only this rule's. Test files are not measured, so a `.` source root does not gate them.
+  and `raise NotImplementedError`. A branch of a function that legitimately cannot be tested is
+  accepted with an `exceptions` entry for `changed-branch-coverage` that names the function
+  (`"function": "Service.wide"`), which keeps every other finding of the file. Only a branch in no
+  function (module-level code) is lifted with `exclude` in `nitpicker.config.json` (a path glob),
+  which drops every finding for that file, not only this rule's. Test files are not measured, so a `.` source root does not gate them.
 - **Tests.** `languages/python/ingest/coverage-reports/coverage-branches.test.mjs` (the ingester on a recorded
   coverage.py report, identity stability, baselined / touched / added cases through
   `compareFindings`); `core/command/python/python-cli-*.test.mjs` (the CLI with fake tools); the gated e2e test adds
@@ -1162,8 +1186,8 @@ the source root detection already does.
   the enforceable `stability-direction` (`<package> depends on less stable package <package>`),
   tool name `coupling`, identity `package-edge:<source>-><target>`. Its path is the source
   package's `__init__.py` (the package's first file when it has none), and the message says to
-  depend on an abstraction in a more stable package, or to add that file to `exclude` when the
-  inversion is intended. An edge can appear without anyone touching it, because package
+  depend on an abstraction in a more stable package, and ends with the `python.exceptions` entry for that
+  file, for when the inversion is intended. An edge can appear without anyone touching it, because package
   instability moves when other packages change. As in Java, packages are flat
   (`a.b` and `a.b.c` are different packages) and fan-in and fan-out count distinct files. A file
   that does not parse with the interpreter is left out of the graph (ruff already reports syntax
@@ -1271,8 +1295,10 @@ location.
   patterns still count as `mutant-ignored`, listed or not); `["nitpicker", "project"]` is the
   unlisted behavior. A project listed without a table is a tool error.
 - **Equivalent mutants.** mutmut also mutates strings and logging, so some survivors cannot be
-  killed by any test. The way out is a `python.exceptions` entry for `mutant-survived` (or
-  `mutant-ignored`, below) with the path, or `exclude` (the mutants of the file are dropped).
+  killed by any test. The ways out are an `exceptions` entry for `mutant-survived` or
+  `mutant-nocoverage` (with `function` to name one function; the message prints the entry), a
+  `python.exceptions` entry for `mutant-ignored` (below) with the path, or `exclude` (the mutants of
+  the file are dropped).
 - **Code hidden from mutmut.** Like a Stryker disable comment in the TypeScript preset, what hides
   production code from mutmut is an enforceable `mutmut/mutant-ignored` finding
   (`languages/python/adapters/mutation/mutation-markers.mjs`): each `# pragma: no mutate`
@@ -1608,7 +1634,7 @@ and CRAP rules.
   (`languages/python/rules/fixtures/<case>/{banned,allowed}`) through the real ruff, python3, mypy,
   pyright and basedpyright from the `PATH`; the second drives `nitpicker_rules.py` over edge cases (test files,
   nested classes, comment forms), and `swallowing.e2e.test.mjs` does the same for `swallowed-exception` and `blind-suppress`. The preset e2e test also gates type errors with mypy and pyright,
-  the one-way rules and `python.exceptions` end to end; `languages/python/adapters/e2e/` holds the
+  the one-way rules and `exceptions` end to end; `languages/python/adapters/e2e/` holds the
   basedpyright e2e (a configured and a weakened `[tool.basedpyright]` table) and the `if TYPE_CHECKING:`
   one (no stability inversion, import-linter still sees it), which share `helpers.mjs` with the preset e2e.
 - `languages/python/ruff/ruff-rules.e2e.test.mjs` and `ruff-groups.e2e.test.mjs`: gated behind

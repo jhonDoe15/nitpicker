@@ -122,7 +122,8 @@ describe('nitpicker with "preset": "kotlin"', () => {
         rule: 'changed-branch-coverage',
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'branch-source:2523a9a20c75ac9a',
-        message: 'Branch coverage is 50.00%; minimum is 95%',
+        message:
+          'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 5 },
       },
@@ -178,7 +179,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/java/demo/A.java',
         identity: 'A|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
         message:
-          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.',
+          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/A.java"],"function":"A.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'A#fee(I)I',
         location: { line: 3 },

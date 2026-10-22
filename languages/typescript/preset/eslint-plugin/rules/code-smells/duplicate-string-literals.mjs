@@ -107,7 +107,7 @@ export const rule = {
     schema: [],
     messages: {
       repeated:
-        "The string '{{text}}' is repeated in this file. Name it once as a constant (`const NAME = '{{text}}'`) and use the constant. If repeating it is intended, add an exception for nitpicker/no-duplicate-string-literals in nitpicker.config.json.",
+        "The string '{{text}}' is repeated in this file. Name it once as a constant (`const NAME = '{{text}}'`) and use the constant. An exception fits only when repeating it is intended.",
     },
   },
   create(context) {

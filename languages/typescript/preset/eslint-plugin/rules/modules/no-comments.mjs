@@ -18,8 +18,6 @@ const coverageSuppression = /^[\s*]*((?:istanbul|c8|v8)\s+ignore|stryker\s+(?:di
 const exportDeclarations = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
 const typeMembers = new Set(['TSPropertySignature', 'TSMethodSignature']);
 const validationName = validationBehavior(readHeadPolicy().libraries).name;
-const JSDOC_EXCEPTION =
-  'If this is legitimate, add an exception for nitpicker/no-comments in nitpicker.config.json.';
 const TOOL_DIRECTIVES = [
   'eslint\\b',
   'prettier-ignore',
@@ -130,25 +128,24 @@ export const rule = {
       typescriptSuppression:
         'Fix the type error or narrow the value; TypeScript suppression comments ({{directive}}) are not allowed. ' +
         'To test that a type rejects a value, assert `expectTypeOf(fn).parameter(0).not.toExtend<Value>()`.',
-      eslintSuppression:
-        'Fix the violation; inline ESLint disables are not allowed. A reviewed exception belongs in the nitpicker config file.',
+      eslintSuppression: 'Fix the violation; inline ESLint disables are not allowed.',
       coverageSuppression:
-        'Test this code instead; coverage and mutation ignore comments ({{directive}}) hide untested code. If it truly cannot be tested, add an exception for nitpicker/no-comments in nitpicker.config.json.',
+        'Test this code instead; coverage and mutation ignore comments ({{directive}}) hide untested code. An exception fits only when it truly cannot be tested.',
       comment:
         'Remove the comment and put the intent in code: a descriptive identifier, a named function, or a type. Only non-suppression tool directives may be comments.',
       jsdocProse:
         'JSDoc holds types only: remove the description text and put the intent in a descriptive identifier or a named function.',
-      jsdocUnsupportedTag: `The JSDoc tag @{{tag}} is not allowed: JSDoc holds types only (@param, @returns, @type, @typedef, @template, @import). ${JSDOC_EXCEPTION}`,
+      jsdocUnsupportedTag: `The JSDoc tag @{{tag}} is not allowed: JSDoc holds types only (@param, @returns, @type, @typedef, @template, @import).`,
       jsdocMalformed: 'Write the JSDoc tag as `{{usage}}`.',
-      jsdocAnyType: `Do not use \`any\`, \`*\` or a bare \`?\` in a JSDoc type. Use \`unknown\` and parse it into a specific type at the boundary with ${validationName}, or write the specific type. ${JSDOC_EXCEPTION}`,
-      jsdocNullType: `Use \`undefined\` for an absent value; \`null\` and the \`?T\` and \`T?\` forms are not allowed in a JSDoc type. Type it as optional with \`undefined\`. ${JSDOC_EXCEPTION}`,
-      jsdocCast: `Do not assert with a JSDoc cast (\`/** @type {T} */ (value)\`). Narrow the value (a discriminated union check or a ${validationName} parse) or give it the correct type at its source. \`/** @type {const} */\` is allowed. ${JSDOC_EXCEPTION}`,
-      todoWithoutIssue: `A TODO or FIXME needs an issue reference: write \`TODO(#123): ...\` or \`TODO PROJ-123: ...\`, or do the work now. ${JSDOC_EXCEPTION}`,
-      commentedOutCode: `Delete the commented-out code; version control keeps it. ${JSDOC_EXCEPTION}`,
+      jsdocAnyType: `Do not use \`any\`, \`*\` or a bare \`?\` in a JSDoc type. Use \`unknown\` and parse it into a specific type at the boundary with ${validationName}, or write the specific type.`,
+      jsdocNullType: `Use \`undefined\` for an absent value; \`null\` and the \`?T\` and \`T?\` forms are not allowed in a JSDoc type. Type it as optional with \`undefined\`.`,
+      jsdocCast: `Do not assert with a JSDoc cast (\`/** @type {T} */ (value)\`). Narrow the value (a discriminated union check or a ${validationName} parse) or give it the correct type at its source. \`/** @type {const} */\` is allowed.`,
+      todoWithoutIssue: `A TODO or FIXME needs an issue reference: write \`TODO(#123): ...\` or \`TODO PROJ-123: ...\`, or do the work now.`,
+      commentedOutCode: `Delete the commented-out code; version control keeps it.`,
       restatingDocComment:
-        'This doc comment only restates {{name}}. Delete it, or say what the name cannot: a unit, a limit, an edge case or why. If it is needed as written, add an exception for nitpicker/no-comments in nitpicker.config.json.',
+        'This doc comment only restates {{name}}. Delete it, or say what the name cannot: a unit, a limit, an edge case or why.',
       longDocComment:
-        "This doc comment's description is {{lines}} lines (limit {{limit}}). Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types. If it must be longer, add an exception for nitpicker/no-comments in nitpicker.config.json.",
+        "This doc comment's description is {{lines}} lines (limit {{limit}}). Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types.",
       internalDocComment:
         'Doc comments are allowed only on exported declarations and the members of exported types. Remove this one and put the intent in code: a descriptive identifier, a named function, or a type.',
     },

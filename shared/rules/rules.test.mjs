@@ -3,7 +3,6 @@ import { evaluateBaselineExpansions } from './baseline-expansion.mjs';
 import { branchCoverageFindings } from './branch-coverage.mjs';
 import { computeCoupling, evaluateCoupling } from './coupling.mjs';
 import { crapFindings } from './crap.mjs';
-import { evaluateDuplicates } from './duplicates.mjs';
 import { mutantFindings } from './mutation.mjs';
 import { evaluateStructure } from './structure.mjs';
 import { evaluateTestRuntime } from './test-runtime.mjs';
@@ -30,7 +29,8 @@ describe('structure rule on neutral function metrics', () => {
       expect.objectContaining({
         rule: 'function-lines-limit',
         path: 'src/A.java',
-        message: 'run has 80 lines; limit is 50',
+        message:
+          'run has 80 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/A.java"],"function":"run","reason":"..."} to "exceptions" in nitpicker.config.json.',
         symbol: 'run',
         location: { line: 10 },
       }),
@@ -41,6 +41,18 @@ describe('structure rule on neutral function metrics', () => {
       'maxControlNesting',
       'parameters',
     ]);
+  });
+
+  it('names the exception entry in the failure and in the worse message', () => {
+    const [finding] = evaluateStructure({ functions: [fn({ lines: 51 })] }, 'structure').filter(
+      (candidate) => candidate.classification === 'enforceable',
+    );
+    const route =
+      'If this is intended, add {"rule":"function-lines-limit","paths":["src/A.java"],"function":"run","reason":"..."} to "exceptions" in nitpicker.config.json.';
+    expect(finding.message).toBe(`run has 51 lines; limit is 50. ${route}`);
+    expect(finding.ratchet.worseMessage).toBe(
+      `run grew from {base} to 51 lines (limit 50). Put new code in a new function. ${route}`,
+    );
   });
 
   it('does not fail a metric exactly at its limit', () => {
@@ -141,7 +153,7 @@ describe('coupling rule on neutral module and package metrics', () => {
       {
         tool: 'coupling',
         rule: 'stability-direction',
-        path: '.',
+        path: 'a',
         identity: 'package-edge:a->b',
         message: 'a depends on less stable package b',
         classification: 'enforceable',
@@ -185,118 +197,6 @@ describe('test-runtime rule on neutral findings', () => {
   });
 });
 
-describe('duplicates rule on neutral clones', () => {
-  const clone = (first, second, extra = {}) => ({
-    first: { file: first, line: 3 },
-    second: { file: second, line: 8 },
-    fragment: 'x',
-    lines: 6,
-    tokens: 60,
-    ...extra,
-  });
-
-  it('orders the pair by path and numbers repeated pairs', () => {
-    const findings = evaluateDuplicates(
-      [clone('b.java', 'a.java'), clone('a.java', 'b.java')],
-      'duplicates',
-    );
-    const failures = byRule(findings, 'duplicate-clone');
-    expect(failures.map((finding) => [finding.path, finding.message])).toEqual([
-      [
-        'a.java',
-        'This code repeats b.java:3 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java or b.java to "exclude" in nitpicker.config.json.',
-      ],
-      [
-        'a.java',
-        'This code repeats b.java:8 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java or b.java to "exclude" in nitpicker.config.json.',
-      ],
-    ]);
-    expect(failures[0].identity).toMatch(
-      /^pair:a\.java\|b\.java:fragment:[0-9a-f]{24}:occurrence:1$/,
-    );
-    expect(failures[1].identity).toMatch(/:occurrence:2$/);
-    expect(failures[0].location).toEqual({ line: 8 });
-  });
-
-  it('keeps the identity of one clone when another clone between the same files goes or comes', () => {
-    const identities = (...fragments) =>
-      byRule(
-        evaluateDuplicates(
-          fragments.map((fragment) => clone('a.java', 'b.java', { fragment })),
-          'duplicates',
-        ),
-        'duplicate-clone',
-      ).map((finding) => finding.identity);
-
-    const both = identities('x', 'y');
-
-    expect(identities('y')).toEqual([both[1]]);
-    expect(identities('z', 'x', 'y')).toEqual([expect.any(String), ...both]);
-  });
-
-  it('ratchets each clone on its file pair and token count', () => {
-    const [failure] = byRule(
-      evaluateDuplicates([clone('b.java', 'a.java')], 'duplicates'),
-      'duplicate-clone',
-    );
-    const [byLines] = byRule(
-      evaluateDuplicates([clone('a.java', 'b.java', { tokens: undefined })], 'duplicates'),
-      'duplicate-clone',
-    );
-
-    expect(failure.ratchet).toEqual({
-      key: 'pair:a.java|b.java:clone',
-      value: 60,
-      divisible: true,
-      mustKeepUnchangedLines: [
-        { path: 'a.java', startLine: 8, endLine: 13 },
-        { path: 'b.java', startLine: 3, endLine: 8 },
-      ],
-    });
-    expect(byLines.ratchet.value).toBe(6);
-  });
-
-  it('names the file once when a file repeats itself', () => {
-    const [failure] = byRule(
-      evaluateDuplicates([clone('a.java', 'a.java')], 'duplicates'),
-      'duplicate-clone',
-    );
-    expect(failure.message).toBe(
-      'This code repeats a.java:8 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java to "exclude" in nitpicker.config.json.',
-    );
-  });
-
-  it('adds size metrics and omits a location for an unusable line', () => {
-    const findings = evaluateDuplicates(
-      [clone('a.java', 'b.java', { first: { file: 'a.java' } })],
-      'duplicates',
-    );
-    expect(byRule(findings, 'duplicate-clone-size').map((finding) => finding.metric)).toEqual([
-      { name: 'lines', value: 6 },
-      { name: 'tokens', value: 60 },
-    ]);
-    expect(byRule(findings, 'duplicate-clone')[0]).not.toHaveProperty('location');
-    expect(byRule(findings, 'duplicate-clone')[0].ratchet).not.toHaveProperty(
-      'mustKeepUnchangedLines',
-    );
-  });
-
-  it('takes the end of a cloned range from the reported end line before the line count', () => {
-    const [failure] = byRule(
-      evaluateDuplicates(
-        [clone('a.java', 'b.java', { first: { file: 'a.java', line: 3, endLine: 20 } })],
-        'duplicates',
-      ),
-      'duplicate-clone',
-    );
-
-    expect(failure.ratchet.mustKeepUnchangedLines).toEqual([
-      { path: 'a.java', startLine: 3, endLine: 20 },
-      { path: 'b.java', startLine: 8, endLine: 13 },
-    ]);
-  });
-});
-
 describe('baseline-expansion rule on neutral sites', () => {
   const site = { file: 'src/a.ts', rule: 'any', source: 'x as any', count: 1 };
 
@@ -337,12 +237,25 @@ describe('crapFindings', () => {
         path: 'a.ts',
         identity: 'function:f',
         message:
-          'f has CRAP 9.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+          'f has CRAP 9.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["a.ts"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'f',
         location: { line: 3 },
       },
     ]);
+  });
+
+  it('names the exception entry in the unknown-coverage and ratchet messages', () => {
+    const [unknown] = crapFindings([{ ...fn, line: undefined }], {
+      tool: 'crap',
+    });
+    expect(unknown.message).toBe(
+      'f has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["a.ts"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
+    const [ratcheted] = crapFindings([{ ...fn, ratchetKey: 'f:crap', crap: 12 }], { tool: 'crap' });
+    expect(ratcheted.ratchet.worseMessage).toBe(
+      'f CRAP rose from {base} to 12 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["a.ts"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
   });
 
   it('reports unknown coverage when there is no finite score', () => {
@@ -376,11 +289,23 @@ describe('branchCoverageFindings', () => {
     expect(findings.map((finding) => finding.identity)).toEqual(['k:1', 'k:2', 'k:1']);
     expect(findings[0]).toMatchObject({
       rule: 'changed-branch-coverage',
-      message: 'Branch coverage is 50.00%; minimum is 95%',
+      message:
+        'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
       classification: 'enforceable',
       location: { line: 1 },
     });
     expect(findings[2]).not.toHaveProperty('location');
+  });
+
+  it('names the per-function exception when the branch knows its function', () => {
+    const [finding] = branchCoverageFindings(
+      [{ path: 'src/a.py', key: 'k', percent: 50, symbol: 'Store.save', arms: ['the exit'] }],
+      { tool: 'cov', identify },
+    );
+    expect(finding.message).toBe(
+      'Branch coverage is 50.00%; minimum is 95%. Not taken: the exit. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/a.py"],"function":"Store.save","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
+    expect(finding.symbol).toBe('Store.save');
   });
 
   it('passes a branch at the minimum', () => {

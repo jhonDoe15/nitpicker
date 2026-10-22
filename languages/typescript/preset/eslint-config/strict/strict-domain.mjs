@@ -9,8 +9,7 @@ export function domainGlobsFor(sourceRoots) {
 
 const domainGlobs = domainGlobsFor(['src']);
 
-const EXCEPTION_ROUTE =
-  ' If it is deliberate, add an exception for this rule in nitpicker.config.json.';
+const EXCEPTION_ROUTE = ' An exception fits only when it is deliberate.';
 const CLOCK_AND_RANDOM_MESSAGE = `domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/.${EXCEPTION_ROUTE}`;
 const IO_GLOBAL_MESSAGE = `domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter.${EXCEPTION_ROUTE}`;
 const DATE_FNS_CLOCK_FUNCTIONS = [

@@ -154,11 +154,11 @@ export const rule = {
     schema: [],
     messages: {
       unvalidatedField:
-        '{{factory}}() as a field only checks that the key exists and hands the value on unchecked. Validate the field in the schema, e.g. z.string().trim().min(1) or z.email(). If the field is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
+        '{{factory}}() as a field only checks that the key exists and hands the value on unchecked. Validate the field in the schema, e.g. z.string().trim().min(1) or z.email(). An exception fits only when the field is genuinely opaque.',
       customWithoutValidator:
-        'z.custom() without a check function is a cast, not a validator. Pass the check, z.custom<T>((value) => ...), or build the schema from validating parts. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
+        'z.custom() without a check function is a cast, not a validator. Pass the check, z.custom<T>((value) => ...), or build the schema from validating parts. An exception fits only when the value is genuinely opaque.',
       looseObject:
-        'z.looseObject(), .loose() and .passthrough() let unknown keys through unvalidated, and .catchall(z.unknown()) does the same. Use z.object({...}), which drops unknown keys, or z.strictObject({...}) to reject them. If the extra keys are genuinely opaque, add an exception for this rule in nitpicker.config.json.',
+        'z.looseObject(), .loose() and .passthrough() let unknown keys through unvalidated, and .catchall(z.unknown()) does the same. Use z.object({...}), which drops unknown keys, or z.strictObject({...}) to reject them. An exception fits only when the extra keys are genuinely opaque.',
     },
   },
   create(context) {

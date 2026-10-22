@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { clonePartnerPath, evaluateDuplicates } from './duplicates.mjs';
+import { evaluateDuplicates } from '../rules/duplicates.mjs';
+import { clonePartnerPath } from './matching.mjs';
 
 describe('clonePartnerPath', () => {
   it('names the other file of the pair for a clone and its size metrics', () => {

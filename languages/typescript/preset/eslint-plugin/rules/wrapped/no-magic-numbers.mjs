@@ -35,7 +35,7 @@ const LOWEST_STATUS = 100;
 const HIGHEST_STATUS = 599;
 
 const HINT =
-  ' Name it with a module-level constant: `const SECONDS_PER_DAY = 24 * 60 * 60;` (-1, 0, 1, 2, 10, 100 and 1000, an HTTP status code such as `res.status(404)` and the digits of `toFixed(2)` are allowed). If the number is clear where it is, add an exception for this rule in nitpicker.config.json.';
+  ' Name it with a module-level constant: `const SECONDS_PER_DAY = 24 * 60 * 60;` (-1, 0, 1, 2, 10, 100 and 1000, an HTTP status code such as `res.status(404)` and the digits of `toFixed(2)` are allowed). An exception fits only when the number is clear where it is.';
 
 function isModuleLevelConstant(declarator) {
   const declaration = declarator.parent;

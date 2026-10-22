@@ -204,9 +204,9 @@ export const rule = {
     schema: compositionRootOptionsSchema,
     messages: {
       moduleState:
-        "Module-level '{{name}}' is mutated, which is hidden shared state. Build a lookup table inside a function and return it, create shared state in the composition root and pass it in, or return a new value instead of mutating. If it is a deliberate per-process singleton, add an exception for this rule in nitpicker.config.json.",
+        "Module-level '{{name}}' is mutated, which is hidden shared state. Build a lookup table inside a function and return it, create shared state in the composition root and pass it in, or return a new value instead of mutating. An exception fits only when it is a deliberate per-process singleton.",
       exportedState:
-        "Module-level '{{name}}' is an exported mutable collection that any importer can change. If importers only read it, annotate it with a readonly type (`ReadonlySet<T>`, `ReadonlyMap<K, V>`, `readonly number[]`); otherwise build it inside a function and return it, or create it in the composition root and pass it in. If it is a deliberate per-process singleton, add an exception for this rule in nitpicker.config.json.",
+        "Module-level '{{name}}' is an exported mutable collection that any importer can change. If importers only read it, annotate it with a readonly type (`ReadonlySet<T>`, `ReadonlyMap<K, V>`, `readonly number[]`); otherwise build it inside a function and return it, or create it in the composition root and pass it in. An exception fits only when it is a deliberate per-process singleton.",
     },
   },
   create(context) {

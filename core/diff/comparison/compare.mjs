@@ -8,6 +8,7 @@ import {
   ratchetKey,
 } from './ratchet/hold-ratchets.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
+import { insertBeforeRoute } from '../../../shared/messages/exception-sentence.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -100,7 +101,10 @@ function withGrowthAdvice({ findings, baseFindings, renames, directories }) {
       ? finding
       : {
           ...finding,
-          message: `${finding.message} ${advice.replaceAll('{base}', String(baseValue))}`,
+          message: insertBeforeRoute(
+            finding.message,
+            advice.replaceAll('{base}', String(baseValue)),
+          ),
         };
   });
 }

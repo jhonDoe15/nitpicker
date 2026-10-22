@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { hasExceptionRoute } from '../../../shared/messages/exception-sentence.mjs';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../adapters/style/java-style.mjs';
 import { SOURCE_RULE_IDS } from '../adapters/kotlin/rules/kotlin-rules.mjs';
@@ -18,13 +19,12 @@ const ROUTED = new Set([
   DETEKT,
   'dependencies',
   'spring',
-  'pit',
   'comments',
 ]);
 const CHECKSTYLE_CHECK =
   /^com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?$/u;
 const SENTENCE_END = /[.!?;:]$/u;
-const CONFIG_FILE = 'nitpicker.config.json';
+const EXCLUDE_ROUTE = /to "exclude" in nitpicker\.config\.json\.$/u;
 
 export function readCatalog(tool) {
   return JSON.parse(readFileSync(new URL(`./${tool}.json`, import.meta.url), 'utf8'));
@@ -73,7 +73,8 @@ function exceptionRuleFor(finding, preset) {
     if (finding.tool === DETEKT && SOURCE_RULE_IDS.includes(finding.rule)) {
       return finding.rule;
     }
-    return qualified === 'coupling/test-only-export' ? qualified : undefined;
+    const javaSource = finding.path.endsWith('.java') && finding.tool !== 'detekt';
+    return javaSource || qualified === 'coupling/test-only-export' ? qualified : undefined;
   }
   return preset === 'java' && finding.tool !== DETEKT ? qualified : undefined;
 }
@@ -92,7 +93,7 @@ export function applyRuleMessages(findings, options) {
 
 function ruleMessage(finding, entry, { liftable, javaStyle, exceptionRule }) {
   const message = finding.message.trim();
-  if (message.includes(CONFIG_FILE)) {
+  if (hasExceptionRoute(message) || EXCLUDE_ROUTE.test(message)) {
     return message;
   }
   const fix = entry?.layout === true ? layoutFix(javaStyle) : entry?.fix;
