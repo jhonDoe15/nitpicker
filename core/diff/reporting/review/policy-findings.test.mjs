@@ -31,4 +31,12 @@ describe('policy findings', () => {
     expect(isPolicyChangeAccepted([], 'd1e2f3a4b5c6', 'd1e2f3a4b5c6')).toBe(false);
     expect(isPolicyChangeAccepted(loosenings, 'd1e2f3a4b5c6', undefined)).toBe(false);
   });
+
+  it('accepts a digest listed among several, one per project of a monorepo', () => {
+    expect(policyFindings(loosenings, 'd1e2f3a4b5c6', 'aaaaaaaaaaaa,d1e2f3a4b5c6')).toEqual([]);
+    expect(isPolicyChangeAccepted(loosenings, 'd1e2f3a4b5c6', 'aaaaaaaaaaaa,bbbbbbbbbbbb')).toBe(
+      false,
+    );
+    expect(isPolicyChangeAccepted(loosenings, 'd1e2f3a4b5c6', 'd1e2f3a4b5c6extra')).toBe(false);
+  });
 });

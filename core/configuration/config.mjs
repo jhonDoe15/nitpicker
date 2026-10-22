@@ -1,33 +1,18 @@
-import path from 'node:path';
-import { CONFIG_FILE_NAME, configError } from '../../shared/config.mjs';
-import { withCanonicalRules } from '../../shared/exceptions/validation.mjs';
-import { existsSync, readFileSync } from 'node:fs';
-import { validateConfig, KEYS } from './validate.mjs';
+import { configError } from '../../shared/config.mjs';
+import { KEYS } from './validate.mjs';
+import { readLayeredConfig } from './layers/read-layered.mjs';
 import { rejectUnreadableSources } from './project-checks/project-config.mjs';
 import { rejectUndeclaredPreset } from './project-checks/preset-detection.mjs';
 
-export function loadConfig(projectRoot) {
-  const config = readConfigFile(projectRoot);
+export function loadConfig(projectRoot, options) {
+  const config = readConfigFile(projectRoot, options);
   rejectUnreadableSources(config, projectRoot);
   rejectUndeclaredPreset(config, projectRoot);
   return config;
 }
 
-export function readConfigFile(projectRoot) {
-  const configPath = path.join(projectRoot, CONFIG_FILE_NAME);
-  if (!existsSync(configPath)) {
-    return {};
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(readFileSync(configPath, 'utf8'));
-  } catch (error) {
-    throw new Error(
-      `${CONFIG_FILE_NAME} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
-      { cause: error },
-    );
-  }
-  return validateConfig(withCanonicalRules(parsed));
+export function readConfigFile(projectRoot, options) {
+  return readLayeredConfig(projectRoot, options);
 }
 
 export function describeConfigOverrides(config) {

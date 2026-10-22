@@ -83,7 +83,7 @@ export function parseArguments(arguments_) {
 
 export const USAGE_TEXT =
   'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix]' +
-  ' [--analyzer <name>]... [--rule <substring>]...' +
+  ' [--analyzer <name>]... [--rule <substring>]... [--project <path>]...' +
   ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help]\n' +
   '       nitpicker aggregate --input-root <directory> --shard-count <count>' +
   ' [--output <directory>] [--policy-root <directory>]\n' +

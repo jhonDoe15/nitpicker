@@ -1,4 +1,10 @@
-const VALUE_OPTIONS = new Set(['--analyzer', '--rule', '--shard-count', '--shard-index']);
+const VALUE_OPTIONS = new Set([
+  '--analyzer',
+  '--rule',
+  '--project',
+  '--shard-count',
+  '--shard-index',
+]);
 
 export function takeOptionValue(remaining, argument) {
   const { value } = remaining.next();
@@ -36,6 +42,7 @@ export function parseDrillDownOptions(arguments_) {
   return {
     analyzerNames,
     ruleFilters: valuesOf(entries, '--rule'),
+    projectPaths: valuesOf(entries, '--project'),
     shardCount,
     shardIndex,
     deferExit: entries.some(([argument]) => argument === '--defer-exit'),
