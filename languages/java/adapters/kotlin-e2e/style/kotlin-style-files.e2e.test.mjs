@@ -136,7 +136,7 @@ describe.skipIf(!kotlinE2eEnabled)('the files the init script writes for ktlint 
   it.each([
     [
       ['project', 'nitpicker'],
-      ['conventions', 'project'],
+      ['conventions', 'project', 'enforced'],
     ],
     [
       ['nitpicker', 'project'],
@@ -149,22 +149,37 @@ describe.skipIf(!kotlinE2eEnabled)('the files the init script writes for ktlint 
       toolPrecedence: { detekt: precedence },
     });
 
-    const named = { [path.join(root, 'config/detekt/detekt.yml')]: 'project' };
+    const named = {
+      [path.join(root, 'config/detekt/detekt.yml')]: 'project',
+      [path.join(root, LAYERS, 'followed-conventions.yml')]: 'conventions',
+      [path.join(root, LAYERS, 'enforced-conventions.yml')]: 'enforced',
+    };
     expect(
       layers
         .trim()
         .split('\n')
-        .map((layer) => named[layer] ?? 'conventions'),
+        .map((layer) => named[layer] ?? layer),
     ).toEqual(order);
   });
 
   it('keeps the project .editorconfig of the head checkout in the workspace when ktlint lists it', () => {
     const outcome = runStyleTasks(copyOfFixture(), {
-      conventions: FOLLOWED,
+      conventions: { 'kotlin.trailingCommas': 'never', 'kotlin.wildcardImports': 'wildcard' },
       toolPrecedence: { ktlint: ['project', 'nitpicker'] },
     });
 
     expect(outcome.editorconfig).toBe('root = true\n\nroot = true\n\n[*.kt]\nindent_size = 8\n');
+  });
+
+  it('appends the followed value after a project .editorconfig of the head checkout that changes it', () => {
+    const outcome = runStyleTasks(copyOfFixture(), {
+      conventions: FOLLOWED,
+      toolPrecedence: { ktlint: ['project', 'nitpicker'] },
+    });
+
+    expect(outcome.editorconfig).toBe(
+      'root = true\n\nroot = true\n\n[*.kt]\nindent_size = 8\n\n[*.{kt,kts}]\nindent_size = 2\n',
+    );
   });
 
   it('mirrors the nested and the ancestor .editorconfig files at their repository paths, root = true on the top one', () => {

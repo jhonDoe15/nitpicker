@@ -459,11 +459,25 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   (a project's own `buildTableSync()` is fine), any `process.*` call, `new Date()` with no
   argument, `new Worker`, `new WebSocket`) and any top-level `await`. Pure initialisers
   (`z.object(...)`, `new RegExp(...)`, `path.dirname(...)`) are fine. A main guard is not module
-  load work: an `if` with no `else` whose condition is `import.meta.main`, `import.meta.url` compared
-  with `process.argv[1]` (`if (import.meta.url === pathToFileURL(process.argv[1]).href) { await run(); }`)
-  or `require.main === module`, optionally joined by `&&` with a check on `process.argv[1]`, runs its
-  body only when the file is started as a script, so neither the `if` nor what it runs is reported.
-  Any other condition, such as `import.meta.env.DEV` or a bare `import.meta.url`, is still reported.
+  load work: an `if` with no `else` runs its body only when the file is started as a script, so
+  neither the `if` nor what it runs is reported, when its condition is exactly one of
+  `import.meta.main`, `require.main === module`, or `import.meta.url` compared with
+  `process.argv[1]`, `pathToFileURL(process.argv[1]).href`,
+  `pathToFileURL(realpathSync(process.argv[1])).href` or `` `file://${process.argv[1]}` ``,
+  optionally joined by `&&` with `process.argv[1]` or `process.argv[1] !== undefined`. The allowed
+  form, which also holds when the script is started through a symlink, is:
+
+  ```js
+  if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
+    await run();
+  }
+  ```
+
+  `process`, `require`, `module` and `undefined` must be the globals (an import of `node:process`
+  counts) and `pathToFileURL` and `realpathSync` the imports from `node:url` and `node:fs`, not a
+  local binding of the same name. Any other condition, such as `import.meta.env.DEV`, a bare
+  `import.meta.url`, a call or a comma expression inside the comparison, is still reported.
+
 - `nitpicker/no-production-console` also reports `console['error']` and, outside the composition
   root, `process.stdout.write` and `process.stderr.write`.
 - Named functions use the `function` keyword; arrow functions only as callbacks.

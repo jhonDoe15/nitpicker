@@ -97,8 +97,10 @@ The timeout lint rule remains active for these suites. These are bounded executi
 separate from slow-test thresholds and measured shard duration; see [timeout tiers](docs/usage.md#test-timeout-tiers).
 
 After moving E2E files or changing their package-script filters, verify real Vitest discovery
-(each script selects exactly the cases its E2E flag enables), profile coverage and the configured
-matrix partition without starting JVM builds (CI runs the same check in each JVM workflow):
+(every E2E test file is gated by exactly one suite flag, and each script selects exactly the cases
+its flag enables), profile coverage, the workflow wiring and the configured matrix partition
+without starting a JVM build or a Python project (CI runs the same check in the shard-plan job of the
+Java, Kotlin and Python workflows):
 
 ```sh
 node scripts/test-shards/verify-e2e-shards.mjs
