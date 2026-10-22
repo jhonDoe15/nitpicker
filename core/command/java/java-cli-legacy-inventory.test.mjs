@@ -21,14 +21,19 @@ describe.each([
     count,
   });
   const inventory = (...sites) => `${JSON.stringify({ sites })}\n`;
-  it('baselines a site the inventory allows and still fails an unlisted one', () => {
+  it('baselines a site the inventory allows', () => {
     const root = repository({ 'nitpicker.legacy.json': inventory(site('added', 1)) });
     writeFiles(root, {
       'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
     });
     commit(root, 'add a baselined violation');
     expect(run(root).exitCode).toBe(0);
-
+  });
+  it('still fails a site the inventory does not list', () => {
+    const root = repository({
+      'nitpicker.legacy.json': inventory(site('added', 1)),
+      'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
+    });
     writeFiles(root, {
       'violations.txt':
         'Avoid unused field: legacy\nAvoid unused field: added\nAvoid unused field: other\n',

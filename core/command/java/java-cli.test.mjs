@@ -13,9 +13,11 @@ import {
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { acceptedDigest } from '../test-support/accepted-digest.mjs';
 
+const EMPTY_JDEPS = { 'jdeps/jdeps.txt': '', 'jdeps/jdeps-classes.txt': '' };
 const EXCEPTION_ENTRY = /\{"rule":"[^"]+","paths":\[[^\]]+\],"reason":"\.\.\."\}/u;
+const TEST_SOURCE = { 'src/test/java/demo/ATest.java': 'package demo;\n\nfinal class ATest {}\n' };
 const TEST_REPORTS = {
-  'src/test/java/demo/ATest.java': 'package demo;\n\nfinal class ATest {}\n',
+  MAIN_CLASSES: '',
   'jdeps/jdeps-classes.txt': 'demo.A\n',
   'jdeps/jdeps.txt': '',
   'jdeps/jdeps-test.txt': '   demo.ATest -> demo.A   classes\n',
@@ -48,7 +50,8 @@ describe.each([
   ['a Gradle build', useGradleFixtures],
   ['a Maven build', useMavenFixtures],
 ])('nitpicker with "preset": "java" on %s', (_name, useFixtures) => {
-  const { build, repository, run, runCli, temporaryRoot } = useFixtures(nitpickerCli);
+  const { build, run, runCli, temporaryRoot, ...fixtures } = useFixtures(nitpickerCli);
+  const repository = (files = {}) => fixtures.repository({ ...EMPTY_JDEPS, ...files });
   it('passes when the change adds no finding and keeps the legacy one baselined', () => {
     const root = repository();
     writeFiles(root, {
@@ -315,34 +318,39 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         'Nitpicker quality snapshot',
         'Status: violations',
         'Enforceable findings: 1',
-        `Descriptive findings: ${String(build.descriptive.length)}`,
+        'Descriptive findings: 3',
         'Tool errors: 0',
         '',
         'Per-tool counts:',
-        `java: total=${String(1 + build.descriptive.length)} enforceable=1 descriptive=${String(build.descriptive.length)}`,
+        'java: total=4 enforceable=1 descriptive=3',
         'repository-hygiene: total=0 enforceable=0 descriptive=0',
         '',
         'Enforceable findings:',
         `pmd/UnusedPrivateField src/main/java/demo/A.java:3 ${unusedFieldMessage('legacy')}`,
         '',
-        ...(build.descriptive.length === 0
-          ? []
-          : ['Descriptive findings:', ...build.descriptive, '']),
+        'Descriptive findings:',
+        'coupling/coupling . dependencies summary',
+        'coupling/coupling . modules summary',
+        'coupling/coupling . packages summary',
+        '',
       ].join('\n'),
     );
   });
 });
 
-describe('the exceptions of a Gradle build', () => {
-  const { gradleRepository, kotlinRepository, run } = useGradleFixtures(nitpickerCli);
-  describe.each([
-    ['java', gradleRepository],
-    ['kotlin', kotlinRepository],
-  ])('the exception a %s finding message suggests', (preset, repository) => {
+describe.each([
+  ['java', 'a Gradle build', useGradleFixtures, 'repository'],
+  ['java', 'a Maven build', useMavenFixtures, 'repository'],
+  ['kotlin', 'a Gradle build', useGradleFixtures, 'kotlinRepository'],
+])(
+  'the exception a %s finding message suggests on %s',
+  (preset, _build, useFixtures, repositoryName) => {
+    const fixtures = useFixtures(nitpickerCli);
+    const repository = (files = {}) => fixtures[repositoryName]({ ...TEST_SOURCE, ...files });
     function liftableFindings(root) {
       writeFiles(root, TEST_REPORTS);
-      commit(root, 'add a test-only class and console output');
-      const result = run(root);
+      commit(root, 'add test-only use and console output');
+      const result = fixtures.run(root);
       return {
         result,
         found: result.json('new-findings.json').filter(({ rule }) => LIFTABLE_RULES.includes(rule)),
@@ -369,5 +377,5 @@ describe('the exceptions of a Gradle build', () => {
       });
       expect(preset).toBe(config.preset);
     });
-  });
-});
+  },
+);

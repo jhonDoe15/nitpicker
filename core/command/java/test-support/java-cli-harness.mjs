@@ -1,25 +1,16 @@
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { exactText } from '../../../diff/reporting/test-support/output-expectations.mjs';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import {
-  FAKE_JDK_TOOLS,
-  runFakeJdk,
-} from '../../../../languages/java/maven/test-support/fake-jdk.mjs';
-import { runFakeMaven } from '../../../../languages/java/maven/test-support/fake-maven.mjs';
+import { fakeJdk } from './fake-jdk.mjs';
+import { fakeMaven } from './fake-maven.mjs';
 
 const EXECUTABLE_MODE = 0o755;
-function fakeToolsUrl(name) {
-  return pathToFileURL(
-    path.resolve(import.meta.dirname, '../../../../languages/java/maven/test-support', name),
-  ).href;
-}
 
 export const fakeGradle = path.resolve(
   import.meta.dirname,
@@ -73,7 +64,6 @@ export function useGradleFixtures(runNitpickerCli) {
     runCli: fixtures.runCli,
     repository: (files = {}) => fixtures.repository(files),
     build: {
-      descriptive: [],
       failure: {
         files: { GRADLE_FAIL: 'Execution failed for task :compileJava\n' },
         error: {
@@ -96,8 +86,8 @@ export function useGradleFixtures(runNitpickerCli) {
   };
 }
 
-function writeFakeTool(file, runner, moduleName, leadingArguments = []) {
-  const source = `import { ${runner.name} } from "${fakeToolsUrl(moduleName)}"; process.exitCode = ${runner.name}(process.argv.slice(1), process);`;
+function writeFakeTool(file, exportName, moduleUrl, leadingArguments = []) {
+  const source = `import { ${exportName} } from "${moduleUrl}"; process.exitCode = ${exportName}.run(process.argv.slice(1), process);`;
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(
     file,
@@ -107,8 +97,8 @@ function writeFakeTool(file, runner, moduleName, leadingArguments = []) {
 }
 
 function writeFakeJdk(directory) {
-  for (const name of FAKE_JDK_TOOLS) {
-    writeFakeTool(path.join(directory, 'bin', name), runFakeJdk, 'fake-jdk.mjs', [name]);
+  for (const name of fakeJdk.tools) {
+    writeFakeTool(path.join(directory, 'bin', name), 'fakeJdk', fakeJdk.url, [name]);
   }
 }
 
@@ -123,7 +113,7 @@ export function useMavenFixtures(runNitpickerCli) {
     const jdk = fixtures.temporaryRoot('nitpicker-fake-jdk-');
     writeFakeJdk(jdk);
     const maven = path.join(fixtures.temporaryRoot('nitpicker-fake-maven-'), 'mvn');
-    writeFakeTool(maven, runFakeMaven, 'fake-maven.mjs');
+    writeFakeTool(maven, 'fakeMaven', fakeMaven.url);
     vi.stubEnv('NITPICKER_MAVEN', maven);
     vi.stubEnv('JAVA_HOME', jdk);
     vi.stubEnv('XDG_CACHE_HOME', fixtures.temporaryRoot('nitpicker-fake-cache-'));
@@ -137,11 +127,6 @@ export function useMavenFixtures(runNitpickerCli) {
     runCli: fixtures.runCli,
     repository: (files = {}) => fixtures.repository(files),
     build: {
-      descriptive: [
-        'coupling/coupling . dependencies summary',
-        'coupling/coupling . modules summary',
-        'coupling/coupling . packages summary',
-      ],
       failure: {
         files: { MAVEN_FAIL: 'COMPILATION ERROR in A.java\n' },
         error: {
