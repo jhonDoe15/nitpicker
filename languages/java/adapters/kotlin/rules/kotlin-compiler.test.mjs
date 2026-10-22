@@ -129,12 +129,14 @@ describe('readCompilerFindings', () => {
       ['src/test/kotlin'],
     );
 
-    expect([notRun.rule, notRun.identity, notRun.classification]).toEqual([
-      'lint-not-run',
-      'lint-not-run:test',
-      'descriptive',
-    ]);
-    expect(notRun.message).toContain('the lint compile of the test sources (error: the class path');
+    expect(notRun).toEqual({
+      tool: 'kotlinc',
+      rule: 'lint-not-run',
+      path: '.',
+      identity: 'lint-not-run:test',
+      message: `No kotlinc lint report from the lint compile of the test sources (error: the class path could not be resolved: x), so unchecked casts, deprecated calls and redundant casts were not checked there. Fix what that compile reports (the test sources, the compile class path and the compiler plugins). ${exceptionHint('kotlinc/lint-not-run', '**')}`,
+      classification: 'descriptive',
+    });
   });
 
   it('reports nothing without a report', () => {

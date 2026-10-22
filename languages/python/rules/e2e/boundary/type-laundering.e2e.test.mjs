@@ -4,9 +4,7 @@ import { createScripts } from '../../test-support/python-script-helpers.mjs';
 const { cleanup, outcomes, findingsOf } = createScripts();
 afterEach(cleanup);
 
-const describeE2e = describe.skipIf(process.env.NITPICKER_PYTHON_E2E !== '1');
-
-describeE2e('Python type laundering', () => {
+describe.skipIf(process.env.NITPICKER_PYTHON_E2E !== '1')('Python type laundering', () => {
   it('checks quoted aliases and lambda defaults while leaving ordinary indexing alone', () => {
     const [actual, expected] = outcomes([
       [

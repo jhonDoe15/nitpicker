@@ -374,8 +374,8 @@ describe('type laundering messages', () => {
     expect(cast('cast(str) in convert')).toBe(
       `x. Narrow the value with \`isinstance\` or \`match\`, or give it the correct type at its source. ${route('type-cast')}`,
     );
-    expect(cast('cast(dict[str, int])')).toContain(
-      'Parse untrusted input once in `adapters/` with',
+    expect(cast('cast(dict[str, int])')).toBe(
+      `x. Narrow the value with \`isinstance\` or \`match\`, or give it the correct type at its source. Parse untrusted input once in \`adapters/\` with pydantic (\`Model.model_validate(data)\`). ${route('type-cast')}`,
     );
   });
 

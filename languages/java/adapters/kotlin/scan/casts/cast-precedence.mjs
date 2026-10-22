@@ -7,7 +7,9 @@ const COVERING_RULES = new Set([
   'kotlinc/cast',
 ]);
 
-const lineKey = ({ path, location }) => `${path}:${String(location?.line)}`;
+function lineKey({ path, location }) {
+  return `${path}:${String(location?.line)}`;
+}
 
 export function withoutCoveredCasts(findings) {
   const covered = new Set(
