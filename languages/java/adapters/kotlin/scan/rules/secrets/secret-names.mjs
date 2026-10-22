@@ -38,9 +38,8 @@ function lettersOf(name) {
 }
 
 function withoutValueSuffixes(words) {
-  return words.length > 1 && VALUE_SUFFIXES.has(words.at(-1))
-    ? withoutValueSuffixes(words.slice(0, -1))
-    : words;
+  const kept = words.findLastIndex((word) => !VALUE_SUFFIXES.has(word)) + 1;
+  return words.slice(0, Math.max(1, kept));
 }
 
 export function isSecretName(name) {
