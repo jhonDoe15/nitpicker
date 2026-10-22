@@ -1,3 +1,4 @@
+import { findingPaths } from '../../../../shared/findings/finding-policy.mjs';
 import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { RUFF_SELECTOR } from './python-rule-ids.mjs';
 
@@ -17,7 +18,8 @@ export function applyPythonExceptions(findings, exceptions = []) {
     (finding) =>
       !lifted.some(
         ({ rule, matchers }) =>
-          covers(rule, finding) && matchers.some((matcher) => matcher.test(finding.path)),
+          covers(rule, finding) &&
+          matchers.some((matcher) => findingPaths(finding).some((file) => matcher.test(file))),
       ),
   );
 }

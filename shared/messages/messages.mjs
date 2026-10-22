@@ -27,7 +27,7 @@ export const BASE_MESSAGES = {
   testOnlyFile: `Module {name} is only used by tests. Move it beside the tests as a test helper, or use it from production code. ${EXCEPTION_HINT}`,
   restatingDocComment: `This doc comment only restates {name}. Delete it, or say what the name cannot: a unit, a limit, an edge case or why. ${EXCEPTION_HINT}`,
   longDocComment: `This doc comment's description is {lines} lines (limit {limit}). Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types. ${EXCEPTION_HINT}`,
-  slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
+  slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. {fix}. ${EXCEPTION_HINT}`,
   sharedUsedByOneFeature: `{path} is used only by feature {feature}. Move it into {directory}. ${EXCEPTION_HINT}`,
   duplicateDefinition: `{name} is also defined with {same} in {others}. {fix} ${EXCEPTION_HINT}`,
   siblingCopyEdit: `{name} is edited here but not in {others}, where it has almost the same code. Edit it there too, or merge the copies. ${EXCEPTION_HINT}`,

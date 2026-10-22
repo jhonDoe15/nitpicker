@@ -1,50 +1,17 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatcher } from '../../../../shared/paths/glob.mjs';
+import {
+  readStructureFindings,
+  STRUCTURE_TOOL,
+} from '../../../../shared/ingest/structure-report.mjs';
 import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
-import { hash } from '../../../../shared/rules/finding-helpers.mjs';
-import { evaluateStructure } from '../../../../shared/rules/structure.mjs';
 import { javaFolderDepthFindings } from '../size/folder-depth.mjs';
 import { javaLineLengthFindings } from '../size/line-length.mjs';
-
-const STRUCTURE_REPORT = 'structure.json';
-const STRUCTURE_TOOL = 'structure';
+import { javaLineLength } from '../style/java-style.mjs';
 
 export function readJavaStructureFindings(reportRoot, projectRoot) {
   return readStructureFindings(reportRoot, projectRoot);
-}
-
-export function readStructureFindings(reportRoot, projectRoot, options) {
-  const report = path.join(reportRoot, STRUCTURE_REPORT);
-  if (!existsSync(report)) {
-    return [];
-  }
-  return structureFindings(JSON.parse(readFileSync(report, 'utf8')), projectRoot, options);
-}
-
-export function structureFindings(entries, projectRoot, { textOf = methodText, hints } = {}) {
-  const sources = new Map();
-  const functions = entries.map((entry) => ({
-    ...entry,
-    sourceHash: hash(textOf(sources, projectRoot, entry)),
-  }));
-  return evaluateStructure({ functions }, STRUCTURE_TOOL, { hints }).filter(
-    (finding) => finding.classification === 'enforceable',
-  );
-}
-
-export function sourceLines(sources, projectRoot, file) {
-  if (!sources.has(file)) {
-    sources.set(file, readFileSync(path.join(projectRoot, file), 'utf8').split(/\r?\n/));
-  }
-  return sources.get(file);
-}
-
-export function methodText(sources, projectRoot, { file, start, end }) {
-  return sourceLines(sources, projectRoot, file)
-    .slice(start - 1, end)
-    .map((line) => line.trim())
-    .join('\n');
 }
 
 const SOURCE_ROOT_KEYS = { source: 'sourceRoots', test: 'testSourceRoots' };
@@ -87,7 +54,10 @@ export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = fals
       ...options,
       checks: ['fileLines', 'folderFiles'],
     }),
-    ...javaLineLengthFindings(javaFiles(projectRoot, entries), options),
+    ...javaLineLengthFindings(javaFiles(projectRoot, entries), {
+      ...options,
+      lineLength: javaLineLength(policy.conventions),
+    }),
     ...javaFolderDepthFindings(entries, { ...options, rootEntries }),
   ];
 }

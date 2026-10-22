@@ -17,6 +17,7 @@ export function resolveHeadPolicy(config = {}) {
     ...(config.i18n === undefined ? {} : { i18n: config.i18n }),
     ...(POLICY_PRESETS.includes(config.preset) ? { preset: config.preset } : {}),
     ...(config.tools === undefined ? {} : { tools: config.tools }),
+    ...(config.duplicates === undefined ? {} : { duplicates: config.duplicates }),
     ...(config.testConsole === undefined ? {} : { testConsole: config.testConsole }),
   };
 }

@@ -44,6 +44,9 @@ const GENERATED_CLASS_ID_PATTERN =
 
 const COUNTER_PATTERN = /(?<![A-Za-z0-9_$./-])([a-z]{3,})\d+(?![A-Za-z0-9])/gu;
 
+const LOG_THREAD_PATTERN =
+  /(?<=--- )\[[^\]\n]*\]|\[[^\]\n]*\](?= +(?:TRACE|DEBUG|INFO|WARN|ERROR)\b)/gu;
+
 const HEX_PATTERN = /\b0x[0-9a-fA-F]+\b/gu;
 
 const UUID_PATTERN = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/giu;
@@ -62,7 +65,7 @@ const TEMPORARY_DIRECTORY_PATTERN = /^(?:<tmp>|\/(?:var\/)?tmp)(?:[\\/]|$)/u;
 const RANDOM_SUFFIX_NAME_PATTERN =
   /^(?:[\w.@+~$%-]*[-_.][A-Za-z0-9]{6}|(?=[a-z]*[A-Z0-9])[A-Za-z0-9]{6})$/u;
 
-const PLACEHOLDER_PATTERN = /<(?:time|duration|hex|uuid|id|n|root|tmp|home)>/gu;
+const PLACEHOLDER_PATTERN = /<(?:time|duration|thread|hex|uuid|id|n|root|tmp|home)>/gu;
 
 const MIN_SPECIFIC_CHARACTERS = 3;
 
@@ -94,6 +97,7 @@ function withTimePlaceholders(line) {
 export function normalizeConsoleMessage(line) {
   return withTimePlaceholders(
     withoutBuildEscapes(line)
+      .replaceAll(LOG_THREAD_PATTERN, '[<thread>]')
       .replaceAll(ABSOLUTE_PATH_PATTERN, lastSegment)
       .replaceAll(TEMPORARY_NAME_PATTERN, '<id>'),
   )

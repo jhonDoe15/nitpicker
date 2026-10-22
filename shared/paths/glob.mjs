@@ -12,7 +12,7 @@ function globToken(glob, index) {
   const character = glob[index];
   if (character === '*' && glob[index + 1] === '*') {
     return glob[index + 2] === '/'
-      ? { kind: 'directories', length: 3, source: '(?:.*/)?' }
+      ? { kind: 'directories', length: 3, source: '(?:|.*/)' }
       : { kind: 'repeat', test: isNotLineTerminator, length: 2, source: '.*' };
   }
   if (character === '*') {

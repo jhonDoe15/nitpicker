@@ -1,4 +1,4 @@
-import { childrenNamed } from '../common.mjs';
+import { childrenNamed } from '../../../../shared/ingest/common.mjs';
 
 function lineUnit(line) {
   const number = Number.parseInt(line.attrs.nr, 10);

@@ -55,7 +55,7 @@ describe('the shared fact rules', () => {
     ).toThrow(/test-console-output is not registered for cobol/u);
   });
 
-  it.each([['python'], ['java'], ['kotlin'], ['typscript']])(
+  it.each([['python'], ['typscript']])(
     'fails for %s, which registers no rule yet, instead of finding nothing',
     (language) => {
       expect(() => sharedFactFindings({}, { language, analyzerName: 'facts' })).toThrow(
@@ -138,10 +138,15 @@ describe('the shared fact rules', () => {
   });
 
   it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
-    expect(sharedFactExceptionRules()).toEqual([]);
-    withLanguageRegistered(CONSOLE, 'java', () => {
-      expect(sharedFactExceptionRules()).toEqual([CONSOLE]);
-      expect(registeredFactRules('java')).toEqual([CONSOLE]);
+    expect(sharedFactExceptionRules()).toEqual(['test-only-export', CONSOLE]);
+    expect(registeredFactRules('python')).toEqual([]);
+    withLanguageRegistered('doc-comment-content', 'python', () => {
+      expect(sharedFactExceptionRules()).toEqual([
+        'test-only-export',
+        'doc-comment-content',
+        CONSOLE,
+      ]);
+      expect(registeredFactRules('python')).toEqual(['doc-comment-content']);
     });
   });
 });

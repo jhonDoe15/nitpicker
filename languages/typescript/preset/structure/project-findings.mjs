@@ -3,6 +3,7 @@ import { componentStoryFindings } from './component-stories.mjs';
 import { typescriptFileLimitFindings } from './limits/file-limits.mjs';
 import { javascriptFileFindings } from './sources/javascript-files.mjs';
 import { reuseFindings } from './reuse/reuse-findings.mjs';
+import { uncollectedWorkspaceTestFindings } from './workspace-tests.mjs';
 
 export function typescriptStructureProjectFindings(
   { projectRoot, liveProjectRoot, analyzerName, snapshot, baselineRoot, baselinePaths },
@@ -29,5 +30,9 @@ export function typescriptStructureProjectFindings(
       },
       environment,
     ),
+    ...uncollectedWorkspaceTestFindings(projectRoot, {
+      analyzerName,
+      exceptions: policy.exceptions,
+    }),
   ];
 }

@@ -19,6 +19,21 @@ const CASES = [
   { glob: 'a}b,c', matching: ['a}b,c'], other: ['ab'] },
   { glob: 'src/app/[id]/**', matching: ['src/app/[id]/page.tsx'], other: ['src/app/i/page.tsx'] },
   { glob: '$x.(1)', matching: ['$x.(1)'], other: ['ax.(1)'] },
+  {
+    glob: 'tests/**/*legacy*',
+    matching: ['tests/legacy.ts', 'tests/unit/old-legacy.test.ts'],
+    other: ['tests/current.ts', 'src/legacy.ts'],
+  },
+  {
+    glob: 'src/**/legacy.ts',
+    matching: ['src/legacy.ts', 'src/a/b/legacy.ts'],
+    other: ['src/current.ts', 'src/legacy.tsx', 'other/src/legacy.ts'],
+  },
+  {
+    glob: 'src/**/test/**/legacy.{ts,js}',
+    matching: ['src/test/legacy.ts', 'src/a/test/b/legacy.js'],
+    other: ['src/test/legacy.tsx', 'src/a/legacy.ts'],
+  },
 ];
 
 describe('globMatcher', () => {
@@ -33,6 +48,7 @@ describe('globMatcher', () => {
         paths.map((path) => pattern.test(path)),
       );
       expect(matching.map((path) => matcher.test(path))).toEqual(matching.map(() => true));
+      expect(other.map((path) => matcher.test(path))).toEqual(other.map(() => false));
     },
   );
 

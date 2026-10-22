@@ -1,12 +1,11 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { jscpdVersion } from './metrics/java-duplicates.mjs';
+import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
 import { importClosure } from '../../../shared/import-closure.mjs';
+import { javaExecutionBudget } from './java-runner.mjs';
 
-const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
-const ANALYZER_TIMEOUT_MS = GRADLE_TIMEOUT_MS + 60 * 1000;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
 const ENTRY_FILES = [
@@ -14,10 +13,15 @@ const ENTRY_FILES = [
   'languages/java/adapters/java-runner.mjs',
 ];
 const RESOURCE_FILES = [
+  'languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs',
   'languages/java/gradle/nitpicker.init.gradle',
   'languages/java/gradle/checkstyle-suppressions.xml',
+  'languages/java/gradle/checkstyle-suppressions-unformatted.xml',
   'languages/java/gradle/pmd-ruleset.xml',
+  'languages/java/gradle/pmd-main-ruleset.xml',
   'languages/java/gradle/spring-ruleset.xml',
+  'languages/java/gradle/pmd-test-ruleset.xml',
+  'languages/java/gradle/spring-test-ruleset.xml',
   'languages/java/gradle/StructureMetrics.java',
   'languages/java/gradle/KotlinMetrics.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
@@ -60,13 +64,14 @@ function hashConfiguration() {
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
 
 export function createJavaAnalyzer({ kotlin = false } = {}) {
+  const budget = javaExecutionBudget();
   return {
     name: kotlin ? 'kotlin' : 'java',
     version: readPinnedVersions(),
     configurationHash: hashConfiguration(),
     exclusions: [],
     reportedTools: kotlin ? [...JAVA_TOOLS, ...KOTLIN_TOOLS] : JAVA_TOOLS,
-    timeoutMs: ANALYZER_TIMEOUT_MS,
+    timeoutMs: budget.analyzerTimeoutMs,
     createInvocation({ projectRoot, toolRoot }) {
       return {
         command: process.execPath,

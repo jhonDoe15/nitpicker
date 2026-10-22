@@ -7,10 +7,11 @@ import {
   sizeRules,
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
-import { reuseRules } from './rules/reuse-rules.mjs';
+import { reuseRules } from './project-rules/reuse-rules.mjs';
+import { testConsoleRule } from './project-rules/test-runtime-rules.mjs';
 import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
-import { testConsoleRule } from './rules/console/console-rule.mjs';
-import { docCommentRule } from './rules/doc-comments/doc-comment-rule.mjs';
+import { docCommentRule } from './project-rules/doc-comment-rules.mjs';
+import { HYGIENE_EXCEPTION_RULES, HYGIENE_RULES } from './project-rules/hygiene-rules.mjs';
 import { sharedFactExceptionRules, withLanguageColumns } from './rules/facts/registry.mjs';
 
 import {
@@ -72,7 +73,17 @@ export const SHARED_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
+  RULE_IDS.slowTest,
+  ...HYGIENE_EXCEPTION_RULES,
   ...sharedFactExceptionRules(),
+];
+
+export const TEST_RUN_EXCEPTION_RULES = [RULE_IDS.slowTest];
+
+export const MUTATION_EXCEPTION_RULES = [
+  'mutant-ignored',
+  RULE_IDS.mutantSurvived,
+  RULE_IDS.mutantNoCoverage,
 ];
 
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
@@ -216,8 +227,9 @@ const CATALOG = [
     id: RULE_IDS.slowTest,
     check: 'test-runtime',
     limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
-    enforcedBy: withKotlin({ ...ALL, typescript: false }, true),
+    enforcedBy: withKotlin(ALL, true),
   },
+  ...HYGIENE_RULES,
   testConsoleRule(RULE_IDS),
   docCommentRule(RULE_IDS),
 ];
