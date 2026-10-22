@@ -52,18 +52,14 @@ function lineStart(code, offset) {
 }
 
 function labelStart(code, arrow) {
-  let start = lineStart(code, arrow);
-  while (start > 0) {
-    const previous = lineStart(code, start - 1);
-    if (
-      !code
-        .slice(previous, start - 1)
-        .trimEnd()
-        .endsWith(',')
-    ) {
+  const arrowLine = lineStart(code, arrow);
+  const earlier = code.slice(0, arrowLine).split('\n').slice(0, -1).toReversed();
+  let start = arrowLine;
+  for (const line of earlier) {
+    if (!line.trimEnd().endsWith(',')) {
       break;
     }
-    start = previous;
+    start -= line.length + 1;
   }
   return start;
 }
