@@ -53,7 +53,7 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring }
   const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
   );
-  if (javaFiles(linted).length === 0) {
+  if (linted.length === 0 || (module.kotlin !== undefined && javaFiles(linted).length === 0)) {
     writeFileSync(report, EMPTY_SARIF);
     return;
   }

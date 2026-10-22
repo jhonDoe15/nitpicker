@@ -7,6 +7,7 @@ import { kotlinStyleFile, resolveKotlinTools } from '../../adapters/kotlin/kotli
 import { kotlinFormatAdvice } from '../../adapters/kotlin/style/kotlin-format-advice.mjs';
 import { detektLayers } from '../../adapters/kotlin/style/kotlin-style-files.mjs';
 
+const PSI_CLASSES = 'kotlin-psi-classes';
 const LISTS_FILE = 'detekt-lists.yml';
 const LAYER_FILES = {
   conventions: 'followed-conventions.yml',
@@ -55,6 +56,7 @@ function resolveKotlinOptions({ projectRoot, policy, effectivePom, work }) {
   const style = kotlinStyleFile(tools, conventions) ?? {};
   return {
     projectRoot,
+    psiClasses: path.join(work, PSI_CLASSES),
     formatter: tools.formatter,
     ktfmtStyle: tools.ktfmtStyle,
     ktfmtMaxWidth: tools.ktfmtMaxWidth,

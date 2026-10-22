@@ -53,7 +53,7 @@ cases in total. Their unchanged files use measured module durations from success
 and 99 seconds for Kotest ([run 39408625035](https://github.com/jhonDoe15/nitpicker/actions/runs/39408625035)).
 These measured weights are integrated into the same deterministic partition.
 
-The Kotlin-on-Maven end-to-end files add fifty Kotlin cases, giving 76/104 cases in total. Their
+The Kotlin-on-Maven end-to-end files add fifty-three Kotlin cases, giving 76/107 cases in total. Their
 weights in `kotlin-e2e.json` are planning estimates until a CI run records them.
 
 The split-file weights remain planning estimates, not measurements of the new split. Unchanged files
@@ -85,7 +85,7 @@ execution in the module duration, and writes sorted whole-second profiles. Recor
 with the same package filters and flags after obtaining an isolated timing sample.
 
 `npm run verify:e2e-shards` (optionally followed by `-- java` or `-- kotlin`) collects through the real package scripts,
-checks the 76/104 discovered case counts, resolves CLI shard
+checks the 76/107 discovered case counts, resolves CLI shard
 options through Vitest, and exercises the configured sequencer. It requires the profile to cover
 every selected file exactly and each matrix shard to be nonempty, with every selected file in
 exactly one shard. Vitest list itself does not apply sharding, so its `--shard` output alone is

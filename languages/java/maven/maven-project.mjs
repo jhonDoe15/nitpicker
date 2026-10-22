@@ -4,10 +4,12 @@ import path from 'node:path';
 import { childAt, childrenAt, childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
 import { executionsWithGoal, pluginsOf, textAt } from './configuration/pom-elements.mjs';
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
+import { kotlinSourceRoots } from './configuration/kotlin-roots.mjs';
 import { kotlinRoots } from './kotlin/kotlin-roots.mjs';
 
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
 const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
+const MAIN_RUNTIME_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'runtime']);
 const TEST_COMPILE_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'test']);
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
@@ -116,6 +118,10 @@ function describeModule(project, basedir) {
   const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
   const reports = reportsDirectory(plugins.get(SUREFIRE), 'test');
   const failsafeReports = reportsDirectory(plugins.get(FAILSAFE), 'integration-test');
+  const sourceRoots = [
+    resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
+    ...helperRoots(plugins.get(BUILD_HELPER), 'add-source', basedir),
+  ];
   return {
     basedir,
     coordinates: coordinates(project),
@@ -126,10 +132,8 @@ function describeModule(project, basedir) {
     testOutputDirectory:
       resolvedText(build, basedir, 'testOutputDirectory') ??
       path.join(buildDirectory, 'test-classes'),
-    sourceRoots: [
-      resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
-      ...helperRoots(plugins.get(BUILD_HELPER), 'add-source', basedir),
-    ],
+    sourceRoots,
+    kotlinSourceRoots: kotlinSourceRoots(plugins, basedir, sourceRoots),
     testSourceRoots: [
       resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
       ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
@@ -262,6 +266,7 @@ function filesIn(dependencies, scopes) {
 export function moduleClasspaths(module, dependencies) {
   return {
     mainCompile: filesIn(dependencies, MAIN_COMPILE_SCOPES),
+    mainRuntime: filesIn(dependencies, MAIN_RUNTIME_SCOPES),
     testCompile: filesIn(dependencies, TEST_COMPILE_SCOPES),
     testRuntime: [
       module.testOutputDirectory,

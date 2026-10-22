@@ -12,6 +12,7 @@
   "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-coverage.e2e.test.mjs": 240,
   "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-lint.e2e.test.mjs": 270,
   "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-one-way-rules.e2e.test.mjs": 150,
+  "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-review-rules.e2e.test.mjs": 330,
   "languages/java/adapters/kotlin-e2e/maven/kotlin-maven-test-sources.e2e.test.mjs": 120,
   "languages/java/adapters/kotlin-e2e/maven/project/kotlin-maven-build-config.e2e.test.mjs": 140,
   "languages/java/adapters/kotlin-e2e/maven/project/kotlin-maven-modules.e2e.test.mjs": 200,
