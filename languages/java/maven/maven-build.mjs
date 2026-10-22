@@ -31,7 +31,7 @@ import {
   relativeTo,
   withDeclaredSpring,
   writeManifest,
-} from './maven-manifest.mjs';
+} from './manifest/maven-manifest.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
