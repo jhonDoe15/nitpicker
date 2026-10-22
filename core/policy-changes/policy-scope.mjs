@@ -28,6 +28,7 @@ import { isMarkedGenerated } from '../../languages/typescript/preset/layout/gene
 const GRADLE_EXTENSIONS = ['java', 'kt', 'kts'];
 const PRESET_EXTENSIONS = new Map([
   ['python', ['py']],
+  ['go', ['go']],
   ['java', GRADLE_EXTENSIONS],
   ['kotlin', GRADLE_EXTENSIONS],
 ]);

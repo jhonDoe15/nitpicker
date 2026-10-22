@@ -6,8 +6,8 @@
 
 Flexible languages offer many ways to write the same thing, and coding agents use all of them.
 Agents also repeat the same mistakes: swallowed errors, casts instead of checks, tests that cannot
-fail, giant functions, tangled imports. nitpicker narrows TypeScript, JavaScript, Python, Java and
-Kotlin to roughly one allowed way of doing each thing and checks every change against it, so the
+fail, giant functions, tangled imports. nitpicker narrows TypeScript, JavaScript, Python, Java,
+Kotlin and Go to roughly one allowed way of doing each thing and checks every change against it, so the
 quickest way to a green build is the right way. Only what a change adds can fail, so it works on
 an existing codebase.
 
@@ -82,6 +82,7 @@ For another language, put the preset in `nitpicker.config.json`, for example
 | [Python](docs/python-preset.md)                                       | `python`               | `nitpicker-python`     |
 | [Java](docs/java-preset.md)                                           | `java`                 | `nitpicker-java`       |
 | [Kotlin](docs/kotlin-preset.md)                                       | `kotlin`               | `nitpicker-kotlin`     |
+| [Go](docs/go-preset.md)                                               | `go`                   | `nitpicker-go`         |
 
 Then teach your agent the allowed forms. Install the skill for your preset with
 [skills](https://skills.sh), which works with Claude Code, Cursor, Codex and other agents:
