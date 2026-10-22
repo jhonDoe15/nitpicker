@@ -70,7 +70,7 @@ for (const language of process.argv.slice(2).length ? process.argv.slice(2) : ['
   }
   delete process.env[`NITPICKER_${language.toUpperCase()}_E2E`];
   assert.deepEqual(actual.flat().toSorted(), files, 'every file must occur exactly once');
-  assert.equal(cases.length, language === 'java' ? 99 : 54, 'behavioral case coverage changed');
+  assert.equal(cases.length, language === 'java' ? 103 : 54, 'behavioral case coverage changed');
   const loads = shards.map((shard) => shard.reduce((sum, file) => sum + durations.get(file), 0));
   console.log(
     JSON.stringify({

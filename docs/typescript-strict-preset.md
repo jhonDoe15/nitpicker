@@ -358,9 +358,9 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   Hooks (`useToggle(initial)`), setters (`setOpen(open)`), `with*` builders, `of`/`from`
   factories, constructors, type predicates, destructured options and a boolean that is only passed
   on or stored are not reported.
-- `nitpicker/no-io-in-loop` (all production code): a database, HTTP, file or repository call once
+- `nitpicker/no-io-in-loop` (all production code): a database, HTTP or repository call once
   per item of a loop or an iteration callback (`map`, `forEach`, `flatMap`, `filter`, `reduce`,
-  `some`, `every`, `find`) is reported: `fetch`, anything imported from `node:fs`, `node:http`,
+  `some`, `every`, `find`) is reported: `fetch`, anything imported from `node:http`,
   `axios`, `pg`, `@prisma/client` and similar, and `find*`/`save*`/`query*`-style methods
   (`get` itself, `getById`, `getAll`) on a receiver whose name ends in the word `repo`,
   `repository`, `dao`, `db`, `prisma`, `client`, `pool`, `api`, `gateway` and similar
@@ -372,7 +372,9 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   loops (the loop condition reads a variable the body assigns, as in
   `do { page = await repo.findPage(cursor); cursor = page.next; } while (cursor)`; stepping an
   index with `i += 1`, `i++` or `i = i + 1` does not count) and retries (a `try` directly in the loop body that
-  returns or breaks on success, with a `catch` that lets the loop go on) are not reported.
+  returns or breaks on success, with a `catch` that lets the loop go on) are not reported, and
+  neither are file system calls (`node:fs`, `node:fs/promises`): one read or write per file has no
+  batch form, as in the Python and Java presets.
 - `nitpicker/no-accumulator-spread-in-reduce` (all production code): `reduce` callbacks do not
   spread their accumulator (`{ ...acc, [id]: x }`, `[...acc, x]`): each step copies it, so the work
   grows with the square of the list. Use `Object.fromEntries(xs.map(...))`, `Object.groupBy`,

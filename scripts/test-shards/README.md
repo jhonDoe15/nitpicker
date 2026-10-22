@@ -99,4 +99,6 @@ and 54 Kotlin cases. The Failsafe cases stay in the existing split Maven integra
 than running the moved copy a second time. The new Gradle guards, Maven CPD and guard-parity
 files have planning weights of 160, 40 and 150 seconds, respectively. These are explicit
 estimates for deterministic assignment until isolated CI module timings are collected; they
-are not measurements of the new shards. The verifier checks the updated 99/54 discovered counts.
+are not measurements of the new shards. The code smell rules add four cases (the Gradle and
+Maven code smell files, planned at 60 seconds each, and a Spring Data case in the Spring rules
+file), for 103 Java cases. The verifier checks the updated 103/54 discovered counts.

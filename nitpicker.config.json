@@ -60,34 +60,6 @@
   "disable": ["typescript-typecheck", "coverage", "crap", "mutation"],
   "exceptions": [
     {
-      "rule": "nitpicker/no-io-in-loop",
-      "paths": [
-        "languages/java/adapters/comments/java-comments.mjs",
-        "languages/java/adapters/test-support/violation-markers.mjs",
-        "languages/java/adapters/gradle-reports/report-modules.mjs",
-        "languages/java/adapters/jpa/jpa-source-filters.mjs",
-        "languages/java/adapters/reporting/java-reports.mjs",
-        "languages/java/adapters/test-times/slow-tests.mjs",
-        "languages/java/adapters/test-times/spring-boot-tests.mjs",
-        "languages/java/builds/project-wide.mjs",
-        "languages/java/builds/lint/javac-lint-runner.mjs",
-        "languages/java/builds/lint/lint-arguments.mjs",
-        "languages/java/builds/lint/lint-baseline.mjs",
-        "languages/java/builds/lint/lint-staging.mjs",
-        "languages/java/builds/lint/test-support/lint-project.mjs",
-        "languages/java/builds/rulesets/pmd-rulesets.mjs",
-        "languages/java/maven/guards/maven-guards.mjs",
-        "languages/java/maven/guards/maven-pmd.mjs",
-        "languages/java/maven/maven-lint.mjs",
-        "languages/java/maven/results/maven-test-results.mjs",
-        "languages/java/maven/coupling/maven-jdeps.mjs",
-        "languages/java/maven/maven-tests.mjs",
-        "languages/java/guards/test-support/guard-project.mjs",
-        "languages/java/maven/test-support/maven-e2e-projects.mjs"
-      ],
-      "reason": "Each reads, checks, writes or copies every distinct local file or directory exactly once (report files, class files, source files, source roots, classpath entries); the file system has no batched call to use."
-    },
-    {
       "rule": "nitpicker/no-node-process-per-test",
       "paths": ["languages/typescript/preset/duplicates/duplicates-policy.test.mjs"],
       "reason": "jscpd ships only as a native executable behind a launcher script with no importable API, and the file checks its exit status and report for a missing config, so the process boundary is the thing under test."
