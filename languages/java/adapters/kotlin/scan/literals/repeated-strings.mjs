@@ -10,6 +10,7 @@ import { braceDepths, closingIndex } from '../kotlin-source.mjs';
 const SHOWN_LENGTH = 30;
 const BEFORE_WINDOW = 300;
 const AFTER_WINDOW = 100;
+const LABEL_WINDOW = 2000;
 const ALPHANUMERIC = /[A-Za-z0-9]/;
 const ANNOTATION = /(?<![\w`])@(?:[A-Za-z_]\w*:)?[A-Za-z_][\w.]*\s*\(/g;
 const WHEN_SUBJECT = /\bwhen\s*\(/g;
@@ -57,17 +58,18 @@ function continuedLabelStart(code, start, floor) {
   if (start <= floor || code[start - 1] !== '\n') {
     return start;
   }
-  const previous = lineStart(code, start - 1);
-  if (
-    previous < floor ||
-    !code
-      .slice(previous, start - 1)
-      .trimEnd()
-      .endsWith(',')
-  ) {
-    return start;
+  const lines = code
+    .slice(Math.max(floor, start - LABEL_WINDOW), start)
+    .split('\n')
+    .slice(0, -1);
+  let continued = start;
+  for (const line of lines.toReversed()) {
+    if (!line.trimEnd().endsWith(',')) {
+      break;
+    }
+    continued -= line.length + 1;
   }
-  return continuedLabelStart(code, previous, floor);
+  return continued;
 }
 
 function branchLabels(code, depths, open) {

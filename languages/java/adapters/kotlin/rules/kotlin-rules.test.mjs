@@ -128,10 +128,13 @@ describe('repeated string message', () => {
       classification: 'enforceable',
     });
 
-    expect(shaped.message).toContain('`private const val NAME = "..."`');
-    expect(
-      shaped.message.endsWith(exceptionHint('kotlin-source/RepeatedStringLiteral', path)),
-    ).toBe(true);
+    expect(shaped.message).toBe(
+      [
+        'The string "pending" is repeated three times or more in the file.',
+        'Name it once as a constant (`private const val NAME = "..."`) and use the constant.',
+        exceptionHint('kotlin-source/RepeatedStringLiteral', path),
+      ].join(' '),
+    );
   });
 });
 

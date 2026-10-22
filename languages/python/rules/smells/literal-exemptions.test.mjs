@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import {
   DISCRIMINANT_KEYS,
   IDIOMATIC_TEXTS,
+  MAXIMUM_USES,
+  MINIMUM_LENGTH,
   MIME_TYPE_PATTERN,
   TIME_FORMAT_PATTERN,
   TRANSLATION_CALLS,
@@ -37,6 +39,8 @@ describe('repeated string exemptions shared with the other presets', () => {
   });
 
   it('uses the shared minimum length and number of allowed uses', () => {
-    expect(source).toContain('MINIMUM_LENGTH = 5\nMAXIMUM_USES = 2\n');
+    const constants = /^MINIMUM_LENGTH = (\d+)\nMAXIMUM_USES = (\d+)$/mu.exec(source);
+
+    expect(constants?.slice(1).map(Number)).toEqual([MINIMUM_LENGTH, MAXIMUM_USES]);
   });
 });
