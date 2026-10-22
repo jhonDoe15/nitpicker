@@ -185,10 +185,10 @@ describe('unknown coverage text', () => {
     const [root] = normalizeCrap(report('src/main/composition-root.ts'), 'crap');
 
     expect(domain.message).toBe(
-      'greet has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
+      'greet has unknown coverage and no CRAP score: no test runs it. Add a test that calls it. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/features/greeting/domain/greet.ts"],"function":"greet","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(root.message).toBe(
-      'greet has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
+      'greet has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/composition-root.ts"],"function":"greet","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 });

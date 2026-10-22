@@ -10,6 +10,7 @@ import { runTypecheck } from './static-checks/typescript.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
 import { existingRoots } from '../preset/layout.mjs';
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
+import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
 import {
   REACH_THROUGH_SHARED_RULE,
   sharedReachPath,
@@ -63,7 +64,7 @@ function runArchitecture(options) {
     includeOnly: options.includeOnly,
     configRelativePath: options.configRelativePath,
   });
-  return normalizeArchitectureViolations(report, options.analyzerName);
+  return applyAreaExceptions(normalizeArchitectureViolations(report, options.analyzerName));
 }
 
 function reportedViolations(report) {

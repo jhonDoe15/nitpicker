@@ -1,9 +1,11 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
+import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { hash, nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import { ERROR_PRONE_MESSAGE, errorProneEscapes } from './errorprone/errorprone-escapes.mjs';
 
-const INLINE_SUPPRESSION_RULE = 'InlineSuppression';
+export const INLINE_SUPPRESSION_RULE = 'InlineSuppression';
 export const INLINE_SUPPRESSIBLE_RULES = ['PMD.SpringDataNativeQuery'];
 
 const LITERALS_AND_COMMENTS =
@@ -31,9 +33,8 @@ const ANNOTATION = /@[\w.]+(?:\s*\([^()]*\))?/g;
 const LITERAL_ARGUMENTS = /^\s*(?:value\s*=)?[\s{},"]*$/;
 const PMD_WARNING_NAMES = new Set(['all', 'unused', 'serial', 'fallthrough']);
 const MESSAGE =
-  'Do not silence PMD inline: fix the finding, or add an exception for its rule in nitpicker.config.json. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
-const SPOTBUGS_MESSAGE =
-  'Do not silence SpotBugs inline: fix the bug, or add an exception for spotbugs/<bug pattern> in nitpicker.config.json.';
+  'Do not silence PMD inline: fix the finding. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
+const SPOTBUGS_MESSAGE = 'Do not silence SpotBugs inline: fix the bug.';
 const MESSAGES = { pmd: MESSAGE, spotbugs: SPOTBUGS_MESSAGE, errorprone: ERROR_PRONE_MESSAGE };
 
 export function readInlineSuppressionFindings(projectRoot, sourceRoots) {
@@ -76,6 +77,7 @@ export function fileFindings(source, filePath) {
     ...spotbugsSuppressions(views, spotbugsOwnsSuppressWarnings),
   ].sort((left, right) => left.offset - right.offset);
   return suppressions.map(({ tool, offset, found }) => {
+    const route = exceptionRoute({ rule: `${tool}/${INLINE_SUPPRESSION_RULE}`, path: filePath });
     const key = `${found}\0${declarationAfter(views.code, offset)}\0${lineText(views.code, offset)}`;
     const occurrence = nextOccurrence(occurrences, `${tool}\0${key}`);
     return {
@@ -83,7 +85,7 @@ export function fileFindings(source, filePath) {
       rule: INLINE_SUPPRESSION_RULE,
       path: filePath,
       identity: `${INLINE_SUPPRESSION_RULE}:${hash(key)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
-      message: `${MESSAGES[tool]} Found: ${found}.`,
+      message: appendSentence(`${MESSAGES[tool]} Found: ${found}.`, route),
       classification: 'enforceable',
       location: { line: lineOf(views.code, offset) },
     };

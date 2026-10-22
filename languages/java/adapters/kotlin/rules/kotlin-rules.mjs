@@ -1,4 +1,5 @@
 import { CATCH_LOG_RULE } from '../../../source/catch-logging.mjs';
+import { appendSentence } from '../../../../../shared/messages/exception-sentence.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const COMPILER_WARNINGS = new Map([
@@ -87,10 +88,6 @@ export function isBannedSuppression(token) {
 
 export function compilerWarningRule(token) {
   return COMPILER_WARNINGS.get(token);
-}
-
-export function appendSentence(message, sentence) {
-  return `${message.replace(/\.?\s*$/, '')}. ${sentence}`;
 }
 
 export function withAllowedForm(finding) {

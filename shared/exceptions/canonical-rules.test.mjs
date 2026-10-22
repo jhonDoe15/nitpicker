@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { withCanonicalRules } from './config.mjs';
+import { withCanonicalRules } from './validation.mjs';
 
 const exception = (rule) => ({ rule, paths: ['tests/**'], reason: 'real database' });
 
