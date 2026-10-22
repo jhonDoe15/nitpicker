@@ -51,8 +51,17 @@ export function analyzeJavaSnapshot(
 
 export function readRunnerPolicy(runnerArguments, environment = process.env) {
   const { projectRoot, policy } = parseJavaRunnerArguments(runnerArguments);
-  const { conventions } = readHeadPolicyFile(environment);
-  return { projectRoot, policy: { ...policy, conventions, javaStyle: javaStyle(conventions) } };
+  const { conventions, spring, kotlin } = readHeadPolicyFile(environment);
+  return {
+    projectRoot,
+    policy: {
+      ...policy,
+      conventions,
+      javaStyle: javaStyle(conventions),
+      ...(spring === true ? { spring } : {}),
+      kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
+    },
+  };
 }
 
 function main(arguments_) {
