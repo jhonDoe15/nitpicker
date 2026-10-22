@@ -10,6 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { collectJavaFindings } from '../java-diff.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -55,6 +56,7 @@ const coverage = (findings) =>
 const mutations = (findings) =>
   findings.filter(({ tool }) => tool === 'pit').map(({ rule, identity }) => `${rule} ${identity}`);
 
+const LAYER_TEST = 'src/integrationTest/java/demo/LayerArchTest.java';
 const FULL_COVERAGE = ['line-coverage 100% (3/3)'];
 const WITHOUT_FAREWELL = [
   'line-coverage 66.67% (2/3)',
@@ -148,7 +150,7 @@ describe.skipIf(!enabled)('integration tests on Gradle and Maven', () => {
         .filter(({ tool }) => tool === 'archunit')
         .map(({ rule, path: file, message }) => `${rule} ${file}: ${message}`),
     ).toEqual([
-      'layersHold() src/integrationTest/java/demo/LayerArchTest.java: ArchUnit rule layersHold() failed without reporting violations',
+      `layersHold() ${LAYER_TEST}: ArchUnit rule layersHold() failed without reporting violations. ${exceptionHint('archunit/layersHold()', LAYER_TEST)}`,
     ]);
   });
 
