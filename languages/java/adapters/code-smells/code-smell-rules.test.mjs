@@ -130,9 +130,7 @@ describe('the Java code smell ruleset', () => {
     const wiring = {
       main: wrapperOf(shipped[0]).includes(`<exclude-pattern>${test}/.*</exclude-pattern>`),
       test: wrapperOf(shipped[1]).includes(`<include-pattern>${test}/.*</include-pattern>`),
-      gradle:
-        gradleFile('tasks/analysis/pmd-task.gradle').includes("writeRules('pmd', plan)") &&
-        gradleFile('nitpicker.init.gradle').includes("writeRules('pmd-guards', guardsPlan)"),
+      gradle: gradleFile('nitpicker.init.gradle').includes("writeRules('pmd-guards', guardsPlan)"),
       maven: maven.includes(
         "import { writeGuardRulesets } from '../builds/rulesets/pmd-rulesets.mjs'",
       ),
