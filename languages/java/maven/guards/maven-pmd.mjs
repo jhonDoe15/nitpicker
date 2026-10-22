@@ -9,7 +9,7 @@ const CPD_SKIPPED = 'cpd-skipped.txt';
 
 export { runPmd } from '../maven-lint.mjs';
 
-function launchCpd({ module, tools }, command) {
+function launchCpd({ module, tools, spawn }, command) {
   try {
     return runJava({
       tool: 'PMD CPD',
@@ -17,13 +17,14 @@ function launchCpd({ module, tools }, command) {
       mainClass: command.launcher,
       args: command.args,
       cwd: module.basedir,
+      spawn,
     });
   } catch (error) {
     return { signal: error.code ?? error.name, stderr: error.message };
   }
 }
 
-export function runCpd({ module, reportDir, tools }) {
+export function runCpd({ module, reportDir, tools, spawn }) {
   const report = path.join(reportDir, CPD_REPORT);
   const failure = path.join(reportDir, CPD_FAILURE);
   for (const stale of [report, failure, path.join(reportDir, CPD_SKIPPED)]) {
@@ -36,7 +37,7 @@ export function runCpd({ module, reportDir, tools }) {
     return;
   }
   const command = toolCommand('cpd', { report, directories });
-  const result = launchCpd({ module, tools }, command);
+  const result = launchCpd({ module, tools, spawn }, command);
   if (!command.accepts(result.status)) {
     rmSync(report, { force: true });
     writeFileSync(failure, `${String(result.status ?? result.signal)}\n${result.stderr}`);

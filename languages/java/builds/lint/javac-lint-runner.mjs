@@ -42,7 +42,8 @@ function compileForLint({ plan, work, args, files }) {
     argumentFile,
     [...args, ...files].map((token) => argumentFileToken(token)).join('\n'),
   );
-  const result = spawnSync(plan.javac, [...ENGLISH_OUTPUT, `@${argumentFile}`], {
+  const spawn = plan.spawn ?? spawnSync;
+  const result = spawn(plan.javac, [...ENGLISH_OUTPUT, `@${argumentFile}`], {
     cwd: plan.basedir,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,

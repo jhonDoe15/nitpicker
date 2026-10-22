@@ -11,8 +11,8 @@ export const LINT_CACHE = 'javac-lint.txt';
 export const LINT_FINGERPRINT = 'javac-lint-fingerprint.txt';
 const WARNING_FILE = /^(.+\.java):\d+: warning: \[/u;
 const NO_REUSE = { unchanged: new Set(), kept: '' };
-function javacVersion(javac) {
-  const result = spawnSync(javac, ['-version'], { encoding: 'utf8' });
+function javacVersion(javac, spawn = spawnSync) {
+  const result = spawn(javac, ['-version'], { encoding: 'utf8' });
   const lines = [result.stdout, result.stderr].join('').split(/\r?\n/u);
   return lines.filter((line) => line.startsWith('javac')).join('\n');
 }
@@ -55,7 +55,7 @@ function digests(root, entries) {
 export function lintFingerprint(plan) {
   const sources = plan.sources.filter((source) => insideRoot(plan.root, source));
   const inputs = {
-    javac: javacVersion(plan.javac),
+    javac: javacVersion(plan.javac, plan.spawn),
     level: languageLevel(lintCompiler(plan)),
     encoding: plan.compiler.encoding ?? 'UTF-8',
     args: lintCompatible(lintCompiler(plan).args).map((arg) => arg.replaceAll(plan.root, '<root>')),
