@@ -140,6 +140,14 @@ export const STRUCTURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['atomic-update-across-await'],
+    describe: (subject) =>
+      `\`${subject}\` is updated from a value read before an \`await\`: another task can change it while this one is suspended, and the write then overwrites that change`,
+    allowed:
+      'Await the new value into a local first and read and write the shared state in one step with no `await` between them (`delta = await fetch()` then `self.total += delta`), or serialize the whole update with a lock (`async with self.lock:` around an `asyncio.Lock()`).',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['unsafe-path-join'],
     describe: (subject) =>
       `\`${subject}()\` builds a file path from its input without a containment check`,

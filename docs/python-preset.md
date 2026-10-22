@@ -593,6 +593,7 @@ are listed at the end.
 | Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                       | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
 | Pure domain              | clock, ids and random values passed in; ports implemented in `adapters/`                                                                         | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
 | Module state             | state in an object made in the composition root                                                                                                  | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
+| Updates across `await`   | `delta = await fetch()`, then `self.total += delta`, or one lock around the whole update                                                         | `atomic-update-across-await` (script)                                                                                                                |
 | Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
 | Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                     | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
 | Deprecated APIs          | the replacement the deprecation notice names                                                                                                     | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
@@ -752,6 +753,30 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   container that a function changes (item assignment, `del`, `append`, `update`, ...), once, at its
   definition; a collection that is only read, a local of the same name and a module-level change
   are fine. `PLW0603` covers rebinding with `global`.
+- `atomic-update-across-await` reports a lost update in an `async def`: an assignment or augmented
+  assignment to shared state whose value reads that same state before an `await` in the same
+  statement (`self.total += await fetch()`, `self.total = self.total + await fetch()`,
+  `self.total = await fetch(self.total)`, `cache[key] = cache[key] + await load()`,
+  `self.counts[key] = self.counts.get(key, 0) + await load()`), or that uses a local saved from the
+  state before an earlier `await` (`current = self.total`, `delta = await fetch()`,
+  `self.total = current + delta`). Shared state is an attribute chain or subscript rooted at the
+  method's `self` or `cls` (also from a nested function), at a module-level name (a dict, an
+  object, a class), or a bare name declared `global` or `nonlocal`. awaiting into a local first, a local, a parameter object, in-place mutation (`self.items.append(await fetch())`), a
+  read after the `await` (`self.total = await fetch() + self.total`), a check then set
+  (`if key not in self.items: self.items[key] = await fetch()`) and a saved value restored after
+  the location was deliberately set (save `self.state`, set it, `await`, put the saved value back) pass. An update inside `async with` on a lock passes: a name assigned from
+  `asyncio.Lock`, `Semaphore`, `BoundedSemaphore`, `Condition`, or the `anyio` and `trio`
+  equivalents in the same file (import aliases followed), or any name containing `lock`, `mutex`,
+  `semaphore` or `limiter`; a read saved before the lock was taken is still stale. Source and test
+  files are checked. Differences from the TypeScript `require-atomic-updates`: it follows `self`
+  and `cls`, it does not treat a parameter object as shared, it needs the same location to be read
+  (`req.user = await verify(req.headers.token)` is not a finding) and it ignores a lazy
+  initialization. Not covered: a local alias of shared state (`state = self.state`, then an update of `state.total`), `yield`, an `await` hidden in a helper the statement calls, and a lock taken by
+  hand (`await lock.acquire()`); lift a serialized path with a `python.exceptions` entry. On a module
+  dict the line also gets `module-level-mutable-state`, which asks where the state lives; the two
+  findings are different failures and both apply. No ruff rule covers this hazard (checked against ruff 0.16.9). Run over the 215 files with `await` in the standard library and the installed `anyio`, `httpx`, `httpcore`,
+  `mcp`, `starlette` and `uvicorn` packages it reported nothing, which measures false positives
+  only.
 - `unsafe-path-join` follows the parameters of a function through `/`, `Path(...)`,
   `os.path.join`, `joinpath` and f-strings into file operations (`open`, `read_text`, `unlink`,
   `shutil.*`, `send_file`, ...). It stays quiet when the function checks containment

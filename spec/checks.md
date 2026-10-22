@@ -42,6 +42,22 @@ number about a function (`nitpicker/cognitive-complexity`, `complexity`, `max-li
 | `eslint-logging`        | production source (tests excluded) | `languages/typescript/preset/eslint-config/policies/logging.config.mjs`        | enforceable |
 | `eslint-module-effects` | production source (tests excluded) | `languages/typescript/preset/eslint-config/policies/module-effects.config.mjs` | enforceable |
 
+## Updates across a suspension
+
+A statement reads shared state, suspends, then writes a value derived from the stale read, so
+concurrent calls overwrite each other's updates. Each async preset checks it with its own tool and a
+reviewed `exceptions` entry for state that is already serialized.
+
+| Language                  | Rule                                      | Implementation                                                           | Status         |
+| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------ | -------------- |
+| TypeScript and JavaScript | `eslint-lint` `require-atomic-updates`    | ESLint core rule with `allowProperties: false`, run by the Oxlint bridge | enforceable    |
+| Python                    | `python-rules/atomic-update-across-await` | `languages/python/rules/concurrency/atomic_updates.py`                   | enforceable    |
+| Kotlin                    | `pmd/NonAtomicUpdateAcrossSuspension`     | `review-rules/main/suspended-updates.mjs` over the `kotlin-psi` facts    | enforceable    |
+| Java                      | not applicable                            | a Java expression cannot suspend                                         | not applicable |
+
+See [TypeScript](../docs/typescript-strict-preset.md), [Python](../docs/python-preset.md) and
+[Kotlin](../docs/kotlin-preset.md#review-rules) for what each recognizes and what it leaves alone.
+
 ## Entry points
 
 | Check          | Rule                        | Threshold                                         | Status      |

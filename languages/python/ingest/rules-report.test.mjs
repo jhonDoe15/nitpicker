@@ -64,6 +64,11 @@ describe('rules script report', () => {
     ['io-in-domain', 'requests', '`requests` does input or output in domain code'],
     ['module-level-mutable-state', 'ITEMS', '`ITEMS` changes a module-level collection'],
     [
+      'atomic-update-across-await',
+      'self.total',
+      '`self.total` is updated from a value read before an `await`: another task can change it while this one is suspended, and the write then overwrites that change',
+    ],
+    [
       'unsafe-path-join',
       'read',
       '`read()` builds a file path from its input without a containment check',
