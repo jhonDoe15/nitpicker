@@ -1,13 +1,16 @@
 import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
-import { readSpringDocuments, stripBracketsAndQuotes, usesJpa } from './spring-config-files.mjs';
+import { readSpringDocuments, usesJpa } from './spring-config-files.mjs';
+import { ACTUATOR_RULE } from './config-rules/actuator.mjs';
+import { DIAGNOSTIC_RULES } from './config-rules/diagnostics.mjs';
+import { isPlaceholder, isTest, isTestOrLocal, isTrue } from './config-rules/profiles.mjs';
 import { relaxKey } from './spring-config-parser.mjs';
 import { readTestProfiles, withProfileKinds } from './spring-profiles.mjs';
-import { isLiteralSecret, secretVariable } from './spring-secrets.mjs';
+import { credentialUrl, isLiteralSecret, secretVariable } from './spring-secrets.mjs';
+import { springWiringProblems } from './wiring/spring-wiring.mjs';
 
 const SPRING_TOOL = 'spring';
 const DEFAULT_RESOURCE_ROOTS = ['src/main/resources'];
-const TRUE_SPELLINGS = new Set(['true', 'on', 'yes', '1']);
 const OPEN_IN_VIEW = 'spring.jpa.open-in-view';
 const DDL_MODE_NAMES = [
   'spring.jpa.hibernate.ddl-auto',
@@ -22,23 +25,7 @@ const STARTUP_FLAG_NAMES = [
 ];
 const STARTUP_FLAGS = new Set(STARTUP_FLAG_NAMES.map(relaxKey));
 const OPEN_IN_VIEW_MESSAGE =
-  'Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries. Set spring.jpa.open-in-view=false.';
-
-function isTest(document) {
-  return document.testOnly;
-}
-
-function isTestOrLocal(document) {
-  return document.testOrLocalOnly;
-}
-
-function isTrue(entry) {
-  return TRUE_SPELLINGS.has(entry.value.toLowerCase());
-}
-
-function isPlaceholder(entry) {
-  return entry.value.startsWith('${');
-}
+  'Set spring.jpa.open-in-view=false. Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries.';
 
 const ENTRY_RULES = [
   {
@@ -51,39 +38,29 @@ const ENTRY_RULES = [
     exempt: isTest,
     problem: (entry, key) =>
       STARTUP_FLAGS.has(key) && isTrue(entry)
-        ? `${displayName(key, STARTUP_FLAG_NAMES)}=true hides wiring problems instead of fixing them. Remove it, or restructure the beans.`
+        ? `Remove ${displayName(key, STARTUP_FLAG_NAMES)}=true and restructure the beans; the flag hides wiring problems instead of fixing them.`
         : undefined,
   },
-  {
-    rule: 'actuator-exposure',
-    exempt: isTestOrLocal,
-    lists: true,
-    problem: (entry, key) =>
-      key === relaxKey('management.endpoints.web.exposure.include') && exposesAll(entry.value)
-        ? 'management.endpoints.web.exposure.include=* exposes every actuator endpoint. List the endpoints you need, for example health,info.'
-        : undefined,
-  },
-  {
-    rule: 'error-details',
-    exempt: isTestOrLocal,
-    problem: (entry, key) =>
-      key === relaxKey('server.error.include-stacktrace') &&
-      ['always', 'on-param', 'on_param'].includes(entry.value.toLowerCase())
-        ? 'server.error.include-stacktrace sends stack traces to clients. Use never.'
-        : undefined,
-  },
+  ACTUATOR_RULE,
+  ...DIAGNOSTIC_RULES,
   {
     rule: 'literal-secret',
     exempt: isTestOrLocal,
     problem: (entry) =>
-      isLiteralSecret(entry.key, entry.value) ? secretProblem(entry) : undefined,
+      isLiteralSecret(entry.key, entry.value) ? secretProblem(entry) : urlProblem(entry),
   },
 ];
 
 function secretProblem(entry) {
   return entry.value.trim().startsWith('${')
-    ? `${entry.key} falls back to a literal secret. Drop the default from the placeholder.`
-    : `${entry.key} holds a literal secret. Remove it and set ${secretVariable(entry.key)} in the environment, or read it from a secret store.`;
+    ? `Drop the default from the placeholder of ${entry.key}, so a missing secret fails at startup; it falls back to a literal secret.`
+    : `Set ${secretVariable(entry.key)} in the environment, or read it from a secret store, and remove the literal secret from ${entry.key}.`;
+}
+
+function urlProblem(entry) {
+  return credentialUrl(entry.value)
+    ? `Supply the credential in ${entry.key} from the environment, for example through a placeholder without a default, and take it out of the URL.`
+    : undefined;
 }
 
 function ddlProblem(entry, key) {
@@ -93,22 +70,16 @@ function ddlProblem(entry, key) {
   if (DDL_MODES.has(key)) {
     const mode = entry.value.toLowerCase();
     return mode !== '' && mode !== 'none' && mode !== 'validate'
-      ? `${displayName(key, DDL_MODE_NAMES)} lets Hibernate change the schema. Manage the schema with Flyway or Liquibase and use none or validate.`
+      ? `Manage the schema with Flyway or Liquibase and set ${displayName(key, DDL_MODE_NAMES)} to none or validate; other modes let Hibernate change the schema.`
       : undefined;
   }
   return key === GENERATE_DDL && isTrue(entry)
-    ? 'spring.jpa.generate-ddl lets Hibernate change the schema. Manage the schema with Flyway or Liquibase and keep it false.'
+    ? 'Manage the schema with Flyway or Liquibase and keep spring.jpa.generate-ddl false; true lets Hibernate change the schema.'
     : undefined;
 }
 
 function displayName(key, names) {
   return names.find((name) => relaxKey(name) === key) ?? key;
-}
-
-function exposesAll(value) {
-  return stripBracketsAndQuotes(value)
-    .split(',')
-    .some((item) => item.trim() === '*');
 }
 
 function allowance(rule, path) {
@@ -119,18 +90,36 @@ export function readSpringConfigFindings(
   projectRoot,
   { sourceRoots = [], resourceRoots, testSourceRoots, baselineRoot } = {},
 ) {
-  const read = readSpringDocuments(
-    projectRoot,
-    Array.isArray(resourceRoots) ? resourceRoots : DEFAULT_RESOURCE_ROOTS,
-  );
-  if (read.length === 0) {
-    return [];
-  }
-  const documents = withProfileKinds(
-    read,
-    readTestProfiles(baselineRoot ?? projectRoot, testSourceRoots),
-  );
+  const resources = Array.isArray(resourceRoots) ? resourceRoots : DEFAULT_RESOURCE_ROOTS;
+  const read = readSpringDocuments(projectRoot, resources);
   const occurrences = new Map();
+  return [
+    ...springWiringProblems(projectRoot, sourceRoots, resources).map(
+      ({ path: file, line, key, message }) =>
+        buildFinding({
+          rule: 'missing-enable',
+          document: { path: file },
+          entry: { line },
+          key,
+          message,
+          occurrences,
+        }),
+    ),
+    ...(read.length === 0
+      ? []
+      : documentFindings({
+          projectRoot,
+          sourceRoots,
+          documents: withProfileKinds(
+            read,
+            readTestProfiles(baselineRoot ?? projectRoot, testSourceRoots),
+          ),
+          occurrences,
+        })),
+  ];
+}
+
+function documentFindings({ projectRoot, sourceRoots, documents, occurrences }) {
   return [
     ...(usesJpa(projectRoot, sourceRoots) ? openInViewFindings(documents, occurrences) : []),
     ...ENTRY_RULES.flatMap((rule) => entryFindings(documents, rule, occurrences)),
@@ -184,10 +173,18 @@ function entryFindings(documents, { rule, exempt, problem, lists = false }, occu
         .filter((entry) => lists || !entry.list)
         .map((entry) => ({ entry, message: problem(entry, relaxKey(entry.key)) }))
         .filter(({ message }) => message !== undefined)
+        .filter(
+          ({ entry }, index, found) =>
+            found.findIndex((other) => sameLine(other.entry, entry)) === index,
+        )
         .map(({ entry, message }) =>
           buildFinding({ rule, document, entry, key: relaxKey(entry.key), message, occurrences }),
         ),
     );
+}
+
+function sameLine(left, right) {
+  return left.line === right.line && relaxKey(left.key) === relaxKey(right.key);
 }
 
 function buildFinding({ rule, document, entry, key, message, occurrences }) {
