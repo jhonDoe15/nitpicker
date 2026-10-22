@@ -2,7 +2,13 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { forbiddenMethodsOf, mergeForbiddenMethods, writeDetektLists } from './detekt-lists.mjs';
+import {
+  forbiddenMethodsOf,
+  listEntriesOf,
+  MERGED_LISTS,
+  mergeForbiddenMethods,
+  writeDetektLists,
+} from './detekt-lists.mjs';
 
 const temporaryRoots = [];
 
@@ -30,12 +36,14 @@ function written(config) {
 }
 
 describe('the preset list', () => {
-  it('holds the four calls of the one-way rules, each with its reason', () => {
-    expect(NITPICKER.map(({ value }) => value)).toEqual([
+  it('holds the calls of the one-way rules, the console prints among them, each with its reason', () => {
+    expect(NITPICKER.map(({ value }) => value).slice(0, 6)).toEqual([
       'kotlin.run',
       'kotlin.with',
       'kotlin.also',
       'kotlinx.coroutines.runBlocking',
+      'kotlin.io.print',
+      'kotlin.io.println',
     ]);
     expect(NITPICKER.every(({ reason }) => typeof reason === 'string')).toBe(true);
   });
@@ -146,12 +154,13 @@ describe('writeDetektLists', () => {
     excludes: ['**/*.kt']
     methods:
       - 'kotlin.io.println'
+      - 'java.lang.System.exit'
       - value: 'kotlin.run'
         reason: 'The project allows run.'
 `);
 
     expect(target).toBe(path.join(root, 'build/nitpicker/detekt-lists.yml'));
-    expect(methods).toEqual([...NITPICKER, { value: 'kotlin.io.println' }]);
+    expect(methods).toEqual([...NITPICKER, { value: 'java.lang.System.exit' }]);
   });
 
   it('carries only the list, so the pins of the preset stay in force', () => {
@@ -208,5 +217,41 @@ style:
     );
 
     expect(methods.at(-1)).toEqual({ value: 'a.b', reason: "Use: 'x'\n# not a comment" });
+  });
+
+  it('merges the project entries of every list detekt replaces instead of merging', () => {
+    const { target } = written(`style:
+  ForbiddenImport:
+    imports:
+      - value: 'org.legacy.Client'
+        reason: 'Use the new client.'
+  ForbiddenComment:
+    comments: ['STOPSHIP']
+  UseDataClass:
+    excludeAnnotatedClasses: ['Projection', 7]
+`);
+    const text = readFileSync(target, 'utf8');
+    const [, imports, comments, annotated] = MERGED_LISTS;
+
+    expect(forbiddenMethodsOf(text)).toEqual([]);
+    expect(listEntriesOf(text, imports).at(-1)).toEqual({
+      value: 'org.legacy.Client',
+      reason: 'Use the new client.',
+    });
+    expect(listEntriesOf(text, imports).length).toBeGreaterThan(1);
+    expect(
+      listEntriesOf(text, comments)
+        .map(({ value }) => value)
+        .at(-1),
+    ).toBe('STOPSHIP');
+    expect(listEntriesOf(text, annotated).map(({ value }) => value)).toEqual([
+      'Entity',
+      'Embeddable',
+      'MappedSuperclass',
+      'Document',
+      'Table',
+      'Node',
+      'Projection',
+    ]);
   });
 });

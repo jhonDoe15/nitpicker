@@ -295,12 +295,13 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
     );
 
     expect(metrics.files).toEqual([
-      { file: 'src/Flat.kt', package: 'demo.flat', classes: ['demo.flat.FlatKt'] },
-      { file: 'src/Root.kt', package: '', classes: ['RootKt'] },
+      { file: 'src/Flat.kt', package: 'demo.flat', classes: ['demo.flat.FlatKt'], imports: [] },
+      { file: 'src/Root.kt', package: '', classes: ['RootKt'], imports: [] },
       {
         file: 'src/Units.kt',
         package: 'demo.units',
         classes: ['demo.units.Holder', 'demo.units.UnitsKt'],
+        imports: [],
       },
     ]);
   });
