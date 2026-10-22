@@ -284,10 +284,10 @@ resolved: an unresolved call is not listed in `calls`, it makes the uses it touc
     member names or literal texts without quotes); `otherwise` (default false) says the decision
     has a `default`, `else` or wildcard arm.
   - `reads` (default `[]`): per value of a project `class` or `data` type other than the owner
-    itself (a parameter, a local or a field of the owner): `{ type, fields, decides, line }`, with
-    `fields` the members read on it and `decides` true when at least one of them is part of a
-    branch condition (`if`, `while`, a ternary, `switch`/`when`/`match` subject, a `&&`/`||`
-    operand). `line` is the first read.
+    itself (a parameter, a local or a field of the owner): `{ type, fields, decided, line }`, with
+    `fields` the members read on it, `decided` (default `[]`) those of `fields` that are part of a
+    branch condition (`if`, `while`, a ternary, a `switch`/`when`/`match` subject, a `&&`/`||`
+    operand of a condition), and `line` the first read.
 
 ### Design rules
 
