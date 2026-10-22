@@ -71,8 +71,9 @@ before relying on them.
   [memory]
 - Relation to nitpicker: this is the closest standard. Nitpicker's key plays the role of a partial
   fingerprint, with explicit rename remapping, and its `classification` has no SARIF equivalent
-  (SARIF `level` is severity, not enforcement). Emitting SARIF from nitpicker with `baselineState`
-  set from the comparison would be a natural export; it is not implemented.
+  (SARIF `level` is severity, not enforcement). Nitpicker writes SARIF with `baselineState`
+  set from the comparison (`new` and `unchanged`; fixed findings are not written as `absent`
+  results, see [Reports](usage.md#reports)).
 
 ## reviewdog
 

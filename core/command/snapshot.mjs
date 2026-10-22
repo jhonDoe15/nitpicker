@@ -44,7 +44,7 @@ export function runSnapshotCli({
       runTasks,
     }),
   );
-  report.text = writeSnapshotReports(outputRoot, report);
+  report.text = writeSnapshotReports(outputRoot, report, { projectRoot: currentProjectRoot });
   stdout.write(report.text);
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
   if (report.summary.enforceableFindings > 0) {

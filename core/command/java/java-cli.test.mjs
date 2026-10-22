@@ -115,6 +115,11 @@ describe.each([
           ]
         }
       },
+      "originalUriBaseIds": {
+        "%SRCROOT%": {
+          "uri": "${/file:\/\/\/[^"]+\//}"
+        }
+      },
       "invocations": [
         {
           "executionSuccessful": true,
@@ -125,6 +130,7 @@ describe.each([
         {
           "ruleId": "pmd/UnusedPrivateField",
           "level": "error",
+          "baselineState": "new",
           "message": {
             "text": ${JSON.stringify(addedField)}
           },
@@ -132,7 +138,8 @@ describe.each([
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/main/java/demo/A.java"
+                  "uri": "src/main/java/demo/A.java",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
                   "startLine": 4

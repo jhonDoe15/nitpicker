@@ -66,7 +66,7 @@ export function aggregateShardReports({
     changedMetrics: sortByToolAndPath(changedMetrics),
     toolErrors: sortByToolAndPath(toolErrors),
   };
-  report.text = writeDiffReports(outputRoot, report);
+  report.text = writeDiffReports(outputRoot, report, { projectRoot: liveProjectRoot });
   return report;
 }
 
