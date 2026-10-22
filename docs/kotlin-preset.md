@@ -50,7 +50,8 @@ formatter, ktfmt style and detekt config to use is decided on the Nitpicker side
 properties; the style texts (the `.editorconfig` files to mirror, the ktlint defaults, the detekt
 convention layer) are generated on the Nitpicker side into one JSON file in a temporary folder, whose
 path is the property `nitpicker.kotlin.styleFile`, and only written out by the init script
-(`kotlin-style-files.e2e.test.mjs` runs its two small tasks against a stand-in Kotlin plugin).
+(`kotlin-e2e/style/kotlin-style-files.e2e.test.mjs`, in `npm run test:kotlin`, runs its two small tasks
+against a stand-in Kotlin plugin).
 
 ## What runs on what
 
@@ -730,6 +731,16 @@ the cloned text and the n-th occurrence, never a line. Clones are found within o
 within the Kotlin files; a clone between a `.kt` and a `.java` file, or between two source roots, is not
 (the same as for several Java roots).
 
+A second jscpd run (100 tokens, 5 lines) goes over a normalized copy of the `.kt` and `.kts` files,
+where names, strings, numbers and comments are one token each, `package` and `import` lines and
+literal-only `listOf`, `mapOf` and `Pair` calls are blanked and generated files are left out, so a
+copy with renamed locals and changed literals fails too, with `duplicate-clone` and an identity
+starting `renamed:`. It replaces a plain clone over the same two ranges, and drops clones made of
+declarations only (data class fields, also with defaults that call a function, enum constants) and
+clones that only repeat one or two statements (DTO mappers, `when` tables, `if` ladders). PMD CPD would not do this better: the
+`pmd-kotlin` lexer ignores the identifier and literal flags. The message names the same route as for
+any clone: add either file of the pair to `exclude`.
+
 ## Coupling
 
 The stability-direction rule runs on Kotlin. `nitpickerJdeps` runs the JDK's `jdeps` over every main
@@ -911,8 +922,10 @@ the comparison and exiting with 2. On Maven it is `kotlin/maven-failure`, with t
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
 [one-way rules](#one-way-rules), `catch-log-without-exception` and `test-without-assertion`
-([source scans](#source-scans)), the six `pmd/` ids and `unused-option` of the [review rules](#review-rules), the file limits `file-lines-limit` and `folder-files-limit` and
-`slow-test` (or `test-runtime/slow-test`) and the [dependency and repository checks](usage.md#dependency-and-repository-checks) per path. `layout` is a config error until the Kotlin
+([source scans](#source-scans)), the six `pmd/` ids and `unused-option` of the [review rules](#review-rules), the file limits
+`file-lines-limit` and `folder-files-limit`, `slow-test` (or `test-runtime/slow-test`), `test-runtime/test-not-run` (a test
+source set no test task runs, see [java-preset.md](java-preset.md#tests-that-never-run)) and the
+[dependency and repository checks](usage.md#dependency-and-repository-checks) per path. `layout` is a config error until the Kotlin
 preset runs the rule that reads it (`shared-used-by-one-feature`).
 
 ## Slow tests

@@ -150,15 +150,14 @@ describe('config file', () => {
       });
     });
 
-    it('accepts an exception for a file limit or a slow test and leaves line length to detekt', () => {
+    it('accepts an exception for a file limit, a slow or an unrun test and leaves line length to detekt', () => {
       const fileLimit = { ...exception, rule: 'folder-files-limit' };
       const lineLength = { ...exception, rule: 'line-length-limit' };
       const slowTest = { ...exception, rule: 'test-runtime/slow-test' };
+      const notRun = { ...exception, rule: 'test-runtime/test-not-run' };
       const config = { preset: 'kotlin', thresholds: { unitTestSeconds: 2.5 } };
-      expect(validateConfig({ ...config, exceptions: [fileLimit, lineLength, slowTest] })).toEqual({
-        ...config,
-        exceptions: [fileLimit, lineLength, slowTest],
-      });
+      const exceptions = [fileLimit, lineLength, slowTest, notRun];
+      expect(validateConfig({ ...config, exceptions })).toEqual({ ...config, exceptions });
       expect(() => validateConfig({ preset: 'kotlin', thresholds: { lineLength: 140 } })).toThrow(
         '"kotlin.lineLength" (any number of columns) sets it for ktlint, ktfmt and detekt',
       );

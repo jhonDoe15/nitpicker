@@ -55,10 +55,12 @@ describe('moduleManifest', () => {
       testSourceRoots: ['src/test/java'],
       resourceRoots: ['src/main/resources'],
       spring: true,
+      springArch: true,
       guava: false,
       testGuava: false,
       testAwaitility: false,
       published: false,
+      runsFailsafe: false,
     });
   });
 
@@ -71,9 +73,9 @@ describe('moduleManifest', () => {
     (jars, spring) => {
       const classpaths = { mainCompile: jars, testCompile: ['/m2/spring-boot-test-3.3.5.jar'] };
 
-      expect(moduleManifest({ module: singleModule(), classpaths, pinned: {} }).spring).toBe(
-        spring,
-      );
+      const manifest = moduleManifest({ module: singleModule(), classpaths, pinned: {} });
+
+      expect([manifest.spring, manifest.springArch]).toEqual([spring, spring]);
     },
   );
 
