@@ -1,0 +1,139 @@
+import { describe, expect, it } from 'vitest';
+import { pythonUsable } from '../../metrics/python-helpers.mjs';
+import { designFacts, factsById } from './test-support/design-harness.mjs';
+
+const MODELS = 'shop/models.py';
+
+function typeIn(facts, id) {
+  return factsById(facts).type(id);
+}
+
+function type(kind, name, line, extra = {}) {
+  return { id: `${MODELS}#${name}`, file: MODELS, name, line, kind, exported: true, ...extra };
+}
+
+describe.skipIf(!pythonUsable())('the Python design producer type facts', () => {
+  const facts = designFacts('kinds');
+
+  it('lists one module type per file and a type per class, nested class and Literal alias', () => {
+    expect(facts.types.map((entry) => entry.id)).toEqual([
+      'shop/__init__.py',
+      MODELS,
+      `${MODELS}#Mode`,
+      `${MODELS}#Status`,
+      `${MODELS}#Level`,
+      `${MODELS}#Item`,
+      `${MODELS}#Point`,
+      `${MODELS}#Payload`,
+      `${MODELS}#Customer`,
+      `${MODELS}#Plain`,
+      `${MODELS}#Cart`,
+      `${MODELS}#Repo`,
+      `${MODELS}#Store`,
+      `${MODELS}#Outer`,
+      `${MODELS}#Outer.Inner`,
+      `${MODELS}#_Hidden`,
+    ]);
+  });
+
+  it('gives a module its top-level state as fields, private unless __all__ exports it', () => {
+    expect(typeIn(facts, MODELS)).toEqual({
+      id: MODELS,
+      file: MODELS,
+      name: 'models',
+      line: 1,
+      kind: 'module',
+      exported: true,
+      fields: [
+        { name: 'REGISTRY', mutable: true },
+        { name: '_CACHE', mutable: true, private: true },
+        { name: 'LIMIT', private: true },
+        { name: 'LABELS', private: true },
+        { name: 'PLAIN', mutable: true, private: true },
+      ],
+    });
+    expect(typeIn(facts, 'shop/__init__.py').fields).toEqual([]);
+  });
+
+  it.each([
+    ['Enum subclass', 'Status', 18, ['OPEN', 'PAID']],
+    ['IntEnum subclass', 'Level', 26, ['LOW', 'HIGH']],
+    ['Literal alias', 'Mode', 10, ['fast', 'slow']],
+  ])('reads a %s as an enum with its cases', (_label, name, line, cases) => {
+    expect(typeIn(facts, `${MODELS}#${name}`)).toEqual(type('enum', name, line, { cases }));
+  });
+
+  it.each([
+    ['dataclass', 'Item', 32, [{ name: 'name' }, { name: 'tags', mutable: true }, { name: 'qty' }]],
+    ['NamedTuple', 'Point', 39, [{ name: 'x' }, { name: 'y' }]],
+    ['TypedDict', 'Payload', 44, [{ name: 'body' }]],
+    ['pydantic model', 'Customer', 48, [{ name: 'name' }, { name: 'history', mutable: true }]],
+    [
+      'class with only attributes and dunder methods',
+      'Plain',
+      57,
+      [{ name: 'name' }, { name: '_secret', mutable: true, private: true }],
+    ],
+  ])('reads a %s as data with its declared fields', (_label, name, line, fields) => {
+    expect(typeIn(facts, `${MODELS}#${name}`)).toEqual(type('data', name, line, { fields }));
+  });
+
+  it('reads a behavioural class with class-level and self attributes, mutable by assigned value', () => {
+    expect(typeIn(facts, `${MODELS}#Cart`)).toEqual(
+      type('class', 'Cart', 70, {
+        fields: [
+          { name: 'registry', mutable: true },
+          { name: 'limit' },
+          { name: '_items', mutable: true, private: true },
+          { name: 'owner' },
+          { name: 'index' },
+          { name: 'names', mutable: true },
+          { name: 'status' },
+          { name: 'copy', mutable: true },
+        ],
+      }),
+    );
+  });
+
+  it.each([
+    ['Protocol', 'Repo', 92],
+    ['abstract base class', 'Store', 96],
+  ])('reads a %s as an interface', (_label, name, line) => {
+    expect(typeIn(facts, `${MODELS}#${name}`)).toEqual(
+      type('interface', name, line, { fields: [] }),
+    );
+  });
+
+  it('keeps nested classes as their own types and marks underscore names unexported', () => {
+    expect(typeIn(facts, `${MODELS}#Outer.Inner`)).toEqual(
+      type('class', 'Inner', 103, { id: `${MODELS}#Outer.Inner`, fields: [] }),
+    );
+    expect(typeIn(facts, `${MODELS}#_Hidden`)).toEqual(
+      type('class', '_Hidden', 111, { exported: false, fields: [] }),
+    );
+  });
+});
+
+describe.skipIf(!pythonUsable())('the Python design producer published surface', () => {
+  const facts = designFacts('published');
+
+  function publishedIds(list) {
+    return list.filter((entry) => entry.published === true).map((entry) => entry.id);
+  }
+
+  it('marks the public module-level names of a published distribution, limited by __all__', () => {
+    expect(publishedIds(facts.types)).toEqual(['src/lib/api.py#Mode', 'src/lib/api.py#Client']);
+    expect(publishedIds(facts.callables)).toEqual(['src/lib/api.py#connect']);
+  });
+
+  it.each([
+    ['a name __all__ leaves out', 'src/lib/__init__.py#helper'],
+    ['an underscore name', 'src/lib/api.py#_secret'],
+    ['a name in an underscore module', 'src/lib/_impl.py#run'],
+    ['a script outside the packages', 'scripts/build.py#main'],
+    ['a package of a nested distribution without a build backend', 'plugins/plug/__init__.py#hook'],
+    ['a method, which counts through its published owner', 'src/lib/api.py#Client.send'],
+  ])('does not mark %s', (_label, id) => {
+    expect(factsById(facts).callable(id).published).toBeUndefined();
+  });
+});

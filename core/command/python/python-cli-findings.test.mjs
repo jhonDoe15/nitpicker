@@ -222,4 +222,18 @@ describe('nitpicker with "preset": "python"', () => {
       ['python', 'types-failed', 'head'],
     ]);
   });
+  it('reports an error of the design facts producer as one tool error instead of passing', () => {
+    const root = pythonRepository();
+    writeFiles(root, {
+      'design-facts.json': JSON.stringify({ error: 'RecursionError (calls.py:12)' }),
+    });
+    commit(root, 'add a file the producer cannot read');
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(2);
+    expect(
+      result.json('tool-errors.json').map(({ tool, rule, snapshot }) => [tool, rule, snapshot]),
+    ).toEqual([['python', 'design-failed', 'head']]);
+  });
 });

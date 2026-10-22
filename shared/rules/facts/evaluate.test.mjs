@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LANGUAGES, RULES } from '../../policy.mjs';
 import { exceptionHint } from '../exceptions.mjs';
+import { DESIGN_RULES } from '../../project-rules/design/design-rules.mjs';
 import { sharedFactFindings } from './evaluate.mjs';
 import {
   FACT_RULE_LANGUAGES,
@@ -55,7 +56,7 @@ describe('the shared fact rules', () => {
     ).toThrow(/test-console-output is not registered for cobol/u);
   });
 
-  it.each([['python'], ['typscript']])(
+  it.each([['cobol'], ['typscript']])(
     'fails for %s, which registers no rule yet, instead of finding nothing',
     (language) => {
       expect(() => sharedFactFindings({}, { language, analyzerName: 'facts' })).toThrow(
@@ -150,15 +151,16 @@ describe('the shared fact rules', () => {
   });
 
   it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
-    expect(sharedFactExceptionRules()).toEqual(['test-only-export', CONSOLE]);
-    expect(registeredFactRules('python')).toEqual([]);
-    withLanguageRegistered('doc-comment-content', 'python', () => {
+    expect(sharedFactExceptionRules()).toEqual(['test-only-export', CONSOLE, ...DESIGN_RULES]);
+    expect(registeredFactRules('cobol')).toEqual([]);
+    withLanguageRegistered('doc-comment-content', 'cobol', () => {
       expect(sharedFactExceptionRules()).toEqual([
         'test-only-export',
         'doc-comment-content',
         CONSOLE,
+        ...DESIGN_RULES,
       ]);
-      expect(registeredFactRules('python')).toEqual(['doc-comment-content']);
+      expect(registeredFactRules('cobol')).toEqual(['doc-comment-content']);
     });
   });
 });
