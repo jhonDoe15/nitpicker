@@ -162,7 +162,7 @@ describe.skipIf(!enabled)('integration tests on Gradle and Maven', () => {
     expect(coverage(runs.afterSkip)).toEqual(WITHOUT_FAREWELL);
     expect(slowTests(runs.afterSkip)).toEqual([]);
     expect(mutations(runs.afterSkip)).toEqual([
-      'mutant-nocoverage demo.Greeter|farewell(Ljava/lang/String;)Ljava/lang/String;|EmptyObjectReturnValsMutator|replaced return value with "" for demo/Greeter::farewell#1',
+      'mutant-nocoverage Greeter|farewell(LString;)LString;|EmptyObjectReturnValsMutator|replaced return value with "" for Greeter::farewell#1',
       'mutation-summary status:NoCoverage',
       'mutation-summary status:Killed',
     ]);
