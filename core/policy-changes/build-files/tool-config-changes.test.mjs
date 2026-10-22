@@ -106,6 +106,74 @@ describe('project tool configs the project opted into', () => {
   });
 });
 
+describe('the ESLint flat config the project opted into', () => {
+  const at = (config, rules = "export default { 'no-console': 'error' };\n") => ({
+    'eslint.config.mjs': config,
+    'eslint/rules.mjs': rules,
+    'eslint/unused.mjs': 'export default {};\n',
+    'src/a.ts': 'export const a = 1;\n',
+  });
+  const CONFIG = "import rules from './eslint/rules.mjs';\nexport default [{ rules }];\n";
+
+  it.each([
+    ['typescript', ['project', 'nitpicker']],
+    ['javascript', ['project']],
+    ['typescript', ['nitpicker', 'project']],
+  ])(
+    'counts an edit of the %s config or a local file it imports, listing %j',
+    (preset, precedence) => {
+      const config = { preset, tools: { eslint: { precedence } } };
+      const base = at(CONFIG);
+
+      expect(
+        between({ base, head: at(`// house rules\n${CONFIG}`), config }).policyLoosenings,
+      ).toEqual([]);
+      expect(
+        between({ base, head: at(CONFIG.replace('[{', '[{ ignores: ["src/**"] }, {')), config })
+          .policyLoosenings,
+      ).toEqual(['eslint project config changed: eslint.config.mjs']);
+      expect(
+        between({ base, head: at(CONFIG, "export default { 'no-console': 'off' };\n"), config })
+          .policyLoosenings,
+      ).toEqual(['eslint project config changed: eslint/rules.mjs']);
+      expect(
+        between({ base, head: { ...base, 'eslint/unused.mjs': 'export default 1;\n' }, config })
+          .policyLoosenings,
+      ).toEqual([]);
+    },
+  );
+
+  it('stays quiet while the project has not opted in, and lists a removed config', () => {
+    const optedIn = { tools: { eslint: { precedence: ['project', 'nitpicker'] } } };
+    const base = at(CONFIG);
+    const edited = at(CONFIG, "export default { 'no-console': 'off' };\n");
+
+    expect(between({ base, head: edited, config: { tools: {} } }).policyLoosenings).toEqual([]);
+    expect(
+      changesOf(between({ base, head: without(base, 'eslint.config.mjs'), config: optedIn })),
+    ).toEqual({
+      policyLoosenings: [],
+      policyChanges: [
+        'eslint project config removed: eslint.config.mjs',
+        'eslint project config removed: eslint/rules.mjs',
+      ],
+    });
+  });
+
+  it('follows the config file ESLint itself loads first', () => {
+    const optedIn = { tools: { eslint: { precedence: ['project'] } } };
+    const both = (javascript) => ({ ...at(CONFIG), 'eslint.config.js': javascript });
+
+    expect(
+      between({
+        base: both('export default [];\n'),
+        head: both('export default [{}];\n'),
+        config: optedIn,
+      }).policyLoosenings,
+    ).toEqual(['eslint project config changed: eslint.config.js']);
+  });
+});
+
 describe('what counts as an edit of a project tool config', () => {
   const java = { preset: 'java', tools: { checkstyle: PROJECT } };
   const checkstyle = (rules, extra = {}) => ({

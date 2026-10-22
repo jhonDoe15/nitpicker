@@ -9,6 +9,8 @@ import {
 import { PACKAGE_EXCEPTION_RULES } from '../../../../shared/project-rules/hygiene-rules.mjs';
 import { strictBoundaryRules } from '../architecture/strict-boundary-rules.mjs';
 
+export const RULE_EXCEPTION_ENTRY = 'nitpicker/rule-exception';
+
 const boundaryRuleNames = strictBoundaryRules.map(({ name }) => name);
 
 const NON_ESLINT_EXCEPTION_RULES = [
@@ -35,7 +37,11 @@ export function applyRuleExceptions(configEntries, allExceptions = []) {
   }
   return [
     ...configEntries,
-    ...exceptions.map(({ rule, paths }) => ({ files: paths, rules: { [rule]: 'off' } })),
+    ...exceptions.map(({ rule, paths }) => ({
+      name: RULE_EXCEPTION_ENTRY,
+      files: paths,
+      rules: { [rule]: 'off' },
+    })),
   ];
 }
 

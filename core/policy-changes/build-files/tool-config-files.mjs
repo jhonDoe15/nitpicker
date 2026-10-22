@@ -6,11 +6,12 @@ import {
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
+import { eslintConfigFiles } from '../../../languages/typescript/preset/eslint-project/project-config.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
-const PRETTIER_PRESETS = new Set([undefined, 'typescript', 'javascript']);
+const SCRIPT_PRESETS = new Set([undefined, 'typescript', 'javascript']);
 
 function usesProjectConfig(config, tool) {
   return (config.tools?.[tool]?.precedence ?? []).includes('project');
@@ -85,7 +86,10 @@ function candidates(tool, side) {
     return config.preset === 'kotlin' ? kotlinFiles(tool, side) : [];
   }
   if (tool === 'prettier') {
-    return PRETTIER_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
+    return SCRIPT_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
+  }
+  if (tool === 'eslint') {
+    return SCRIPT_PRESETS.has(config.preset) ? eslintConfigFiles(side.root) : [];
   }
   const configured = PROJECT_TOOL_CONFIGS.get(tool);
   return GRADLE_PRESETS.includes(config.preset) && configured !== undefined
@@ -101,7 +105,7 @@ function isOptedIn(tool, config) {
 }
 
 export function readToolConfigs(base, head, gitBlobId) {
-  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier']
+  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', 'eslint']
     .filter((tool) => isOptedIn(tool, base.config) && isOptedIn(tool, head.config))
     .map((tool) => ({
       tool,

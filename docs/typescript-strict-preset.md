@@ -1482,6 +1482,10 @@ from a real caller) and the `exceptions` entry that lifts it.
   `no-unsafe-type-assertion` (the `as`, class and member bans cover them), and `no-explicit-any` and
   `no-non-null-assertion` are off in production code because the strict selectors report the same
   sites with a message that names the allowed form.
+- A project that opts in with `tools.eslint.precedence` has its own `eslint.config.*` layered over these
+  configs (`layeredPolicy` in `languages/typescript/adapters/lint-engine/project-layer.mjs`), on both lint
+  engines and for the JavaScript preset too. It can tune and add rules but never switch a strict rule off;
+  see [ESLint configs](usage.md#eslint-configs-typescript-and-javascript-presets).
 - `no-restricted-syntax` is one rule with one list per scope. ESLint flat config replaces a rule's
   options when several config objects match the same file, so each scope carries the complete list:
   `restrictedSyntaxByScope` in `eslint-config/strict.mjs` has `source`, `configFile`, `domain` and `adapters`, and
