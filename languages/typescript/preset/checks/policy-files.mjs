@@ -96,6 +96,7 @@ export const POLICY_FILES = [
   'languages/typescript/conventions/measures/typescript-syntax.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-silent-catch.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/report-module-load-effects.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/modules/entry/main-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/structured-catch-logging.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/assertions/test-must-use-production-runtime.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/test-code-analysis.mjs',
