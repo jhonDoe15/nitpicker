@@ -30,13 +30,13 @@ function readArgumentFile(argument) {
     .map((token) => token.slice(1, -1).replaceAll('\\"', '"').replaceAll('\\\\', '\\'));
 }
 
-function pmd({ after }) {
-  const source = path.join(process.cwd(), 'src/main/java/demo/A.java');
+function pmd({ after, cwd }) {
+  const source = path.join(cwd, 'src/main/java/demo/A.java');
   put(
     after('--report-file'),
     sarif(
       'PMD',
-      lines('violations.txt').map((text, index) => ({
+      lines(path.join(cwd, 'violations.txt')).map((text, index) => ({
         ruleId: 'UnusedPrivateField',
         message: { text },
         locations: [
@@ -64,27 +64,30 @@ const HANDLERS = {
   'com.puppycrawl.tools.checkstyle.Main'({ after }) {
     put(after('-o'), '<checkstyle version="10.21.1"></checkstyle>');
   },
-  'org.jacoco.cli.internal.Main'({ after }) {
-    copyOrWrite(after('--xml'), 'jacoco.xml', '<report name="demo"></report>');
+  'org.jacoco.cli.internal.Main'({ after, cwd }) {
+    copyOrWrite(after('--xml'), path.join(cwd, 'jacoco.xml'), '<report name="demo"></report>');
   },
-  'org.pitest.mutationtest.commandline.MutationCoverageReport'({ after }) {
-    copyOrWrite(path.join(after('--reportDir'), 'mutations.xml'), 'mutations.xml', '<mutations/>');
+  'org.pitest.mutationtest.commandline.MutationCoverageReport'({ after, cwd }) {
+    copyOrWrite(
+      path.join(after('--reportDir'), 'mutations.xml'),
+      path.join(cwd, 'mutations.xml'),
+      '<mutations/>',
+    );
   },
   'com.google.googlejavaformat.java.Main'() {},
 };
 
-function java(rawArguments, io) {
-  const tokens = rawArguments[0]?.startsWith('@')
-    ? readArgumentFile(rawArguments[0])
-    : rawArguments;
+function java({ args, cwd }) {
+  const tokens = args[0]?.startsWith('@') ? readArgumentFile(args[0]) : args;
   function after(name) {
     return tokens[tokens.indexOf(name) + 1];
   }
   const mainClass = tokens.find((token) => /^[a-z][\w]*(?:\.[\w$]+)+$/u.test(token));
   const script = tokens.find((token) => token.endsWith('.java'));
-  if (rawArguments[0] === '-version') {
-    io.stderr.write('openjdk version "21.0.1" 2023-10-17\n');
-  } else if (script?.endsWith('StructureMetrics.java')) {
+  if (args[0] === '-version') {
+    return { stderr: 'openjdk version "21.0.1" 2023-10-17\n' };
+  }
+  if (script?.endsWith('StructureMetrics.java')) {
     put(tokens[tokens.indexOf(script) + 1], '[]');
     put(tokens[tokens.indexOf(script) + 2], '{"files":{},"classes":[]}');
   } else if (script?.endsWith('ErrorProneReport.java')) {
@@ -94,26 +97,27 @@ function java(rawArguments, io) {
     if (handler === undefined) {
       throw new Error(`fake java does not know how to run: ${tokens.join(' ')}`);
     }
-    handler({ after });
+    handler({ after, cwd });
   }
+  return {};
 }
 
-function jdeps(_rawArguments, io) {
-  const reports = ['jdeps.txt', 'jdeps/jdeps.txt', 'jdeps/jdeps-test.txt'].filter((file) =>
-    existsSync(file),
-  );
-  io.stdout.write(reports.map((file) => readFileSync(file, 'utf8')).join(''));
+function jdeps({ cwd }) {
+  const reports = ['jdeps.txt', 'jdeps/jdeps.txt', 'jdeps/jdeps-test.txt']
+    .map((file) => path.join(cwd, file))
+    .filter((file) => existsSync(file));
+  return { stdout: reports.map((file) => readFileSync(file, 'utf8')).join('') };
 }
 
-function jar() {
-  put('google_checks.xml', GOOGLE_CHECKS);
+function jar({ cwd }) {
+  put(path.join(cwd, 'google_checks.xml'), GOOGLE_CHECKS);
+  return {};
 }
 
 const TOOLS = { java, jdeps, jar };
 
-function runFakeJdk([tool, ...rawArguments], io) {
-  TOOLS[tool](rawArguments, io);
-  return 0;
-}
+export const fakeJdkTools = Object.keys(TOOLS);
 
-export const fakeJdk = { url: import.meta.url, tools: Object.keys(TOOLS), run: runFakeJdk };
+export function runFakeJdk({ tool, args, cwd }) {
+  return { status: 0, stdout: '', stderr: '', ...TOOLS[tool]({ args, cwd }) };
+}

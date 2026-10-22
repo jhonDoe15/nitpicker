@@ -1,5 +1,3 @@
-import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { exactText } from '../../../diff/reporting/test-support/output-expectations.mjs';
@@ -12,10 +10,7 @@ import { runTasksInProcess } from '../../../diff/execution/test-support/in-proce
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { fakeJdk } from './fake-jdk.mjs';
-import { fakeMaven } from './fake-maven.mjs';
-
-const EXECUTABLE_MODE = 0o755;
+import { fakeMavenRun, spawnFakeMaven } from './in-process-maven.mjs';
 
 export { fakeGradle, fakeGradleRun };
 
@@ -92,20 +87,8 @@ export function useGradleFixtures(runNitpickerCli) {
   };
 }
 
-function writeFakeTool(file, exportName, moduleUrl, leadingArguments = []) {
-  const source = `import { ${exportName} } from "${moduleUrl}"; process.exitCode = ${exportName}.run(process.argv.slice(1), process);`;
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(
-    file,
-    `#!/bin/sh\nexec "${process.execPath}" --input-type=module -e '${source}' -- ${leadingArguments.join(' ')} "$@"\n`,
-  );
-  chmodSync(file, EXECUTABLE_MODE);
-}
-
-function writeFakeJdk(directory) {
-  for (const name of fakeJdk.tools) {
-    writeFakeTool(path.join(directory, 'bin', name), 'fakeJdk', fakeJdk.url, [name]);
-  }
+function runTasksWithFakeMaven(tasks, headPolicyFile, options) {
+  return runTasksInProcess(tasks, headPolicyFile, { ...options, spawn: spawnFakeMaven });
 }
 
 export function useMavenFixtures(runNitpickerCli) {
@@ -113,15 +96,10 @@ export function useMavenFixtures(runNitpickerCli) {
     runCli: runNitpickerCli,
     name: 'java',
     templateFiles: MAVEN_TEMPLATE_FILES,
-    runOptions: { runTasks: runTasksInProcess },
+    runOptions: { runTasks: runTasksWithFakeMaven },
   });
   beforeEach(() => {
-    const jdk = fixtures.temporaryRoot('nitpicker-fake-jdk-');
-    writeFakeJdk(jdk);
-    const maven = path.join(fixtures.temporaryRoot('nitpicker-fake-maven-'), 'mvn');
-    writeFakeTool(maven, 'fakeMaven', fakeMaven.url);
-    vi.stubEnv('NITPICKER_MAVEN', maven);
-    vi.stubEnv('JAVA_HOME', jdk);
+    vi.stubEnv('NITPICKER_MAVEN', fakeMavenRun.maven);
     vi.stubEnv('XDG_CACHE_HOME', fixtures.temporaryRoot('nitpicker-fake-cache-'));
   });
   afterEach(() => {

@@ -47,9 +47,9 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
 `);
 
 describe.each([
-  ['a Gradle build', useGradleFixtures],
-  ['a Maven build', useMavenFixtures],
-])('nitpicker with "preset": "java" on %s', (_name, useFixtures) => {
+  ['a Gradle build', useGradleFixtures, true],
+  ['a Maven build', useMavenFixtures, false],
+])('nitpicker with "preset": "java" on %s', (_name, useFixtures, subprocess) => {
   const { build, run, runCli, temporaryRoot, ...fixtures } = useFixtures(nitpickerCli);
   const repository = (files = {}) => fixtures.repository({ ...EMPTY_JDEPS, ...files });
   it('passes when the change adds no finding and keeps the legacy one baselined', () => {
@@ -74,7 +74,7 @@ describe.each([
     });
     commit(root, 'add violation');
 
-    const result = run(root, [], { subprocess: true });
+    const result = run(root, [], { subprocess });
 
     expect({ exitCode: result.exitCode, output: result.text }).toEqual({
       exitCode: 1,
