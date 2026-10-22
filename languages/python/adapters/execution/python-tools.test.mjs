@@ -261,7 +261,7 @@ describe('running the tools', () => {
     const root = project({ 'unformatted.txt': 'src/demo/a.py\n' });
     writeFileSync(
       path.join(root, '.venv/bin/ruff'),
-      `#!/bin/sh\nif [ "$1" = format ]; then echo 'something unexpected'; exit 1; fi\nexec "${process.execPath}" "${path.join(fileURLToPath(new URL('../', import.meta.url)), 'fixtures/fake-python-tools.cjs')}" ruff "$@"\n`,
+      `#!/bin/sh\nif [ "$1" = format ]; then echo 'something unexpected'; exit 1; fi\nexec "${process.execPath}" "${path.join(fileURLToPath(new URL('../', import.meta.url)), 'fixtures/fake-python-tools.mjs')}" ruff "$@"\n`,
     );
     const { context } = contextFor(root);
 

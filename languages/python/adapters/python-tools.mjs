@@ -63,6 +63,7 @@ export function createToolContext({
   policyRoot,
   toolPrecedence,
   probes = new Map(),
+  spawn,
   pytestAddopts,
 }) {
   const launcher = openSnapshotEnvironment({
@@ -84,6 +85,7 @@ export function createToolContext({
     policyRoot,
     toolPrecedence,
     probes,
+    spawn,
     launcher,
     exclude,
     duplicateSkippedFolders,

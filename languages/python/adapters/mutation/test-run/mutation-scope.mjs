@@ -1,5 +1,5 @@
 import { TESTS_FAILED_SKIPPED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
-import { probe, run } from '../../execution/python-process.mjs';
+import { execute, run } from '../../execution/python-process.mjs';
 import { pytestCommand } from '../../execution/python-test-runner.mjs';
 import { failingModules, readJunit } from '../../test-runs/junit-results.mjs';
 import { snapshotScope } from '../../test-runs/test-failures.mjs';
@@ -26,7 +26,7 @@ function mutmutError(rule, message) {
 }
 
 function pythonVersion(context) {
-  const result = probe(context, PYTHON_VERSION_PROBE);
+  const result = execute(context, PYTHON_VERSION_PROBE);
   const output = result.status === 0 ? result.stdout.trim() : '';
   const [, major, minor] = VERSION.exec(output) ?? [];
   return major === undefined ? undefined : [Number(major), Number(minor)];

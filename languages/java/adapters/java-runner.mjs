@@ -16,7 +16,12 @@ export function javaExecutionBudget(environment = process.env) {
 
 export function analyzeJavaSnapshot(
   projectRoot,
-  { gradle = process.env.NITPICKER_GRADLE, maven = process.env.NITPICKER_MAVEN, policy } = {},
+  {
+    gradle = process.env.NITPICKER_GRADLE,
+    maven = process.env.NITPICKER_MAVEN,
+    policy,
+    spawn,
+  } = {},
 ) {
   try {
     return {
@@ -24,6 +29,7 @@ export function analyzeJavaSnapshot(
         gradle: gradle || undefined,
         maven: maven || undefined,
         policy,
+        spawn,
         budget: javaExecutionBudget(),
       }),
     };
@@ -55,11 +61,13 @@ export function readRunnerPolicy(runnerArguments, environment = process.env) {
   return { projectRoot, policy: { ...policy, conventions, javaStyle: javaStyle(conventions) } };
 }
 
-function main(arguments_) {
-  const { projectRoot, policy } = readRunnerPolicy(arguments_);
-  process.stdout.write(
-    `${JSON.stringify(analyzeJavaSnapshot(realpathSync(projectRoot), { policy }))}\n`,
-  );
+export function runJava(runnerArguments, { spawn } = {}) {
+  const { projectRoot, policy } = readRunnerPolicy(runnerArguments);
+  return analyzeJavaSnapshot(realpathSync(projectRoot), { policy, spawn });
+}
+
+function main(runnerArguments) {
+  process.stdout.write(`${JSON.stringify(runJava(runnerArguments))}\n`);
 }
 
 if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.meta.filename) {

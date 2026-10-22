@@ -61,10 +61,38 @@ function exportArguments(common, { initScript, directory, policy }) {
   ];
 }
 
+function gradleOptions(target, { projectRoot, budget, spawn }) {
+  return {
+    cwd: projectRoot,
+    encoding: 'utf8',
+    maxBuffer: MAX_OUTPUT_BYTES,
+    shell: target.shell,
+    timeout: budget.commandTimeoutMs,
+    spawn,
+  };
+}
+
+function gradleStages(common, { projectRoot, initScript, policy, directory }) {
+  const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
+  const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
+  return [
+    ...(layersCheckstyle ? [() => exportArguments(common, { initScript, directory, policy })] : []),
+    () => [
+      ...common,
+      ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
+      ...javaStyleProperties(policy),
+      '-I',
+      initScript,
+      'nitpickerJava',
+    ],
+  ];
+}
+
 function runJavaPreset(
   projectRoot,
   {
     gradle,
+    spawn,
     initScript = INIT_SCRIPT,
     policy = {},
     reportBase,
@@ -75,7 +103,6 @@ function runJavaPreset(
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
   const directory = path.join(reportBase, 'tool-config');
   const since = Date.now() - CLOCK_SLACK_MS;
-  const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
   withKotlin((kotlinArguments) => {
     const common = [
       '--console=plain',
@@ -84,29 +111,14 @@ function runJavaPreset(
       `-Pnitpicker.reportDir=${reportBase}`,
       ...kotlinArguments,
     ];
-    const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
-    const stages = [
-      ...(layersCheckstyle
-        ? [() => exportArguments(common, { initScript, directory, policy })]
-        : []),
-      () => [
-        ...common,
-        ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
-        ...javaStyleProperties(policy),
-        '-I',
-        initScript,
-        'nitpickerJava',
-      ],
-    ];
+    const stages = gradleStages(common, { projectRoot, initScript, policy, directory });
     for (const stage of stages) {
       const target = gradleTarget({ projectRoot, configured: gradle, args: stage() });
-      const result = runGradle(target.command, target.args, {
-        cwd: projectRoot,
-        encoding: 'utf8',
-        maxBuffer: MAX_OUTPUT_BYTES,
-        shell: target.shell,
-        timeout: budget.commandTimeoutMs,
-      });
+      const result = runGradle(
+        target.command,
+        target.args,
+        gradleOptions(target, { projectRoot, budget, spawn }),
+      );
       assertSucceeded(result, projectRoot, { reportBase, since });
     }
   });
@@ -248,6 +260,7 @@ export function runJavaDiff({
   includeWorkingTree = false,
   gradle,
   maven,
+  spawn,
   initScript,
   policy,
 }) {
@@ -265,7 +278,7 @@ export function runJavaDiff({
     repositoryRoot,
     projectRelativePath,
     comparison,
-    options: { gradle, maven, initScript },
+    options: { gradle, maven, spawn, initScript },
     policy,
   });
   const touchedCode = {
