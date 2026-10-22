@@ -82,6 +82,75 @@ describe('readKotlinReviewFindings', () => {
   });
 });
 
+describe('readKotlinReviewFindings across the project', () => {
+  function twoModules(own, sibling) {
+    const first = projectWith(own);
+    const second = projectWith(sibling);
+    return {
+      first,
+      modules: [
+        { reportRoot: first.reportRoot, manifest: { sourceRoots: [] } },
+        { reportRoot: second.reportRoot, manifest: { sourceRoots: [] } },
+      ],
+    };
+  }
+
+  it('reads a test fake of a class declared in a sibling module as a fake of a main class', () => {
+    const fake = testFile({
+      classes: [klass('SampleTest'), klass('FakeClock', { supers: ['Clock'] })],
+      functions: [testMethod()],
+      waits: [
+        wait('sleep', {
+          scopes: [
+            { k: 'fun', name: 'now' },
+            { k: 'class', name: 'FakeClock', qualified: 'FakeClock', supers: ['Clock'] },
+          ],
+        }),
+      ],
+    });
+    const { first, modules } = twoModules(
+      { files: [fake] },
+      { files: [file({ classes: [klass('Clock', { kind: 'interface' })] })] },
+    );
+    const context = { reportRoot: first.reportRoot, projectRoot: first.root, manifest: {} };
+
+    expect(readKotlinReviewFindings(context)).toHaveLength(1);
+    expect(readKotlinReviewFindings({ ...context, modules })).toEqual([]);
+  });
+
+  it('does not stop at a Kotlin name that is not a valid pattern when it scans Java sources', () => {
+    const { root, reportRoot } = projectWith({
+      files: [
+        file({
+          functions: [
+            fn('weird (name', {
+              visibility: 'private',
+              parameters: [parameter('a', 'Int'), parameter('b', 'Int', { default: true })],
+            }),
+          ],
+          calls: [call('weird (name', { positional: 1 })],
+        }),
+      ],
+    });
+    mkdirSync(path.join(root, 'src/main/java'), { recursive: true });
+    writeFileSync(path.join(root, 'src/main/java/A.java'), 'class A {}\n');
+
+    const findings = readKotlinReviewFindings({
+      reportRoot,
+      projectRoot: root,
+      manifest: { sourceRoots: ['src/main/java'] },
+    });
+
+    expect(findings).toHaveLength(1);
+  });
+
+  it('leaves a file whose collection was skipped out of the facts', () => {
+    const { reportRoot } = projectWith({ files: [{ file: 'a.kt', test: false, skipped: true }] });
+
+    expect(readKotlinFacts(reportRoot)).toEqual({ files: [] });
+  });
+});
+
 describe('Kotlin exception rules for the review rules', () => {
   it('lists each rule as it is printed and accepts an exception for it', () => {
     expect(KOTLIN_REVIEW_EXCEPTION_RULES).toEqual([

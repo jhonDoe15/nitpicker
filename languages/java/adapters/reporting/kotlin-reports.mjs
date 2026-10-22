@@ -106,7 +106,7 @@ export function readKotlinFindings(context, crapLimit) {
     ...readCatchLogFindings(projectRoot, kotlinLintedRoots(manifest)),
     ...readTestAssertionFindings(projectRoot, testRoots, helpers),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
-    ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest }),
+    ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
     ...readKotlinStructureFindings(metrics, projectRoot),
     ...readKotlinCrapFindings(metrics, {
       projectRoot,

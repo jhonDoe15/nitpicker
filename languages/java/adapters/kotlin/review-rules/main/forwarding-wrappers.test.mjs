@@ -123,4 +123,50 @@ describe('forwarding wrapper in Kotlin', () => {
 
     expect(run(forwardingWrapperFindings, files)).toEqual([]);
   });
+
+  it('reports a function that passes its parameters to a library function through a type name', () => {
+    const absOf = fn('absOf', {
+      line: 4,
+      parameters: params('x'),
+      forward: forward('abs', ['x'], { qualifier: 'Math' }),
+    });
+    const constant = fn('read', {
+      parameters: params('x'),
+      forward: forward('abs', ['x'], { qualifier: 'INSTANCE' }),
+    });
+
+    expect(summary(findingsFor([absOf, constant]))).toEqual([`${FORWARDING_RULE} absOf 4`]);
+  });
+
+  it('reports a forward to a companion function through the type that owns the companion', () => {
+    const owner = klass('Foo');
+    const companion = klass('Companion', { qualified: 'Foo.Companion', kind: 'companion' });
+    const make = fn('make', {
+      owner: 'Foo.Companion',
+      parameters: [parameter('name', 'String')],
+      returnType: 'Foo',
+    });
+    const create = fn('create', {
+      line: 9,
+      parameters: [parameter('name', 'String')],
+      returnType: 'Foo',
+      forward: forward('make', ['name'], { qualifier: 'Foo' }),
+    });
+
+    expect(summary(findingsFor([create, make], [owner, companion]))).toEqual([
+      `${FORWARDING_RULE} create 9`,
+    ]);
+  });
+
+  it('skips a function whose enclosing class carries a Spring stereotype', () => {
+    const service = klass('Service', { kind: 'object', annotations: [{ name: 'Component' }] });
+    const inner = klass('Inner', { qualified: 'Service.Inner', kind: 'companion' });
+    const twice = fn('twice', {
+      owner: 'Service.Inner',
+      parameters: params('a'),
+      forward: forward('abs', ['a'], { qualifier: 'Math' }),
+    });
+
+    expect(findingsFor([twice], [service, inner])).toEqual([]);
+  });
 });

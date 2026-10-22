@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { hasAwaitility } from '../../../messages/wait-advice.mjs';
 import { pathInside, sourceFilesUnder } from '../../review-rules/java-sources.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
@@ -10,6 +11,8 @@ import { findingFactory } from './review-finding.mjs';
 import { springContextFindings } from './tests/spring-context.mjs';
 import { testWaitFindings } from './tests/test-waits.mjs';
 
+const IDENTIFIER = /[\p{L}_$][\p{L}\p{N}_$]*/gu;
+
 function javaSourceText(projectRoot, manifest) {
   const roots = [...(manifest.sourceRoots ?? []), ...(manifest.testSourceRoots ?? [])];
   return roots
@@ -19,31 +22,50 @@ function javaSourceText(projectRoot, manifest) {
 }
 
 function javaMentions(projectRoot, manifest) {
-  let text;
+  let identifiers;
   return (name) => {
-    text ??= javaSourceText(projectRoot, manifest);
-    return new RegExp(String.raw`\b${name}\b`, 'u').test(text);
+    identifiers ??= new Set(javaSourceText(projectRoot, manifest).match(IDENTIFIER));
+    return identifiers.has(name);
   };
 }
 
-export function readKotlinReviewFindings({ reportRoot, projectRoot, manifest }) {
-  const { files } = readKotlinFacts(reportRoot);
-  if (files.length === 0) {
+function projectView({ reportRoot, projectRoot, manifest, modules = [] }) {
+  const own = readKotlinFacts(reportRoot).files;
+  const siblings = modules.filter((module) => module.reportRoot !== reportRoot);
+  const projectFiles = [
+    ...own,
+    ...siblings.flatMap((module) => readKotlinFacts(module.reportRoot).files),
+  ];
+  const javaRoots = [
+    ...new Set(
+      [manifest, ...siblings.map((module) => module.manifest)].flatMap(
+        (entry) => entry.sourceRoots ?? [],
+      ),
+    ),
+  ];
+  return { own, projectFiles, javaRoots, projectRoot };
+}
+
+export function readKotlinReviewFindings(context) {
+  const { manifest, projectRoot } = context;
+  const { own, projectFiles, javaRoots } = projectView(context);
+  if (own.length === 0) {
     return [];
   }
   const finding = findingFactory();
-  const javaRoots = manifest.sourceRoots ?? [];
   return [
-    ...testWaitFindings(files, {
+    ...testWaitFindings(own, {
       finding,
-      isProduction: productionTypeResolver({ files, projectRoot, javaRoots }),
+      awaitility: hasAwaitility({ manifest, projectRoot }),
+      isProduction: productionTypeResolver({ files: projectFiles, projectRoot, javaRoots }),
     }),
-    ...springContextFindings(files, { finding }),
-    ...enumPredicateFindings(files, { finding, projectRoot }),
-    ...forwardingWrapperFindings(files, { finding }),
-    ...singularPluralFindings(files, { finding }),
-    ...unusedOptionFindings(files, {
+    ...springContextFindings(own, { finding }),
+    ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
+    ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
+    ...singularPluralFindings(own, { finding }),
+    ...unusedOptionFindings(own, {
       finding,
+      serialization: manifest.kotlinSerialization === true,
       mentionedInJava: javaMentions(projectRoot, manifest),
     }),
   ];

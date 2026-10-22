@@ -1,9 +1,9 @@
-import { annotationNamed } from '../kotlin-facts.mjs';
+import { annotationNamed, append, compactType } from '../kotlin-facts.mjs';
 import { exceptionSentence } from '../review-finding.mjs';
 
 export const FORWARDING_RULE = 'StaticForwardingWrapper';
 
-const MESSAGE = `This function only passes its parameters, in order, to another function with the same parameters. Call that function directly where this one is used and delete the wrapper. Factories named of or from are allowed. If the wrapper is intended (a public alias, or a name a framework looks up), ${exceptionSentence(FORWARDING_RULE)}`;
+const MESSAGE = `This function only passes its parameters, in order, to another function. Call that function directly where this one is used and delete the wrapper. Factories named of or from and copies such as List.copyOf are allowed. If the wrapper is intended (a public alias, or a name a framework looks up), ${exceptionSentence(FORWARDING_RULE)}`;
 const SPRING_STEREOTYPES = new Set([
   'Component',
   'Service',
@@ -27,15 +27,17 @@ const SKIPPED_MODIFIERS = new Set([
   'expect',
 ]);
 const COPY_PREFIX = /^(?:copyOf|unmodifiable|synchronized|checked)/u;
-const TYPE_QUALIFIER = /^[A-Z]\w*(?:\.[A-Z]\w*)*$/u;
+const TYPE_NAME = String.raw`[A-Z][A-Z0-9_]*[a-z]\w*`;
+const TYPE_QUALIFIER = new RegExp(`^${TYPE_NAME}(?:\\.${TYPE_NAME})*$`, 'u');
 const STATIC_OWNERS = new Set(['object', 'companion']);
-
-function normalized(type) {
-  return (type ?? '').replaceAll(/\s+/gu, '');
-}
 
 function ownerKinds(file) {
   return new Map(file.classes.map((klass) => [klass.qualified, klass]));
+}
+
+function ancestorsOf(qualified) {
+  const parts = qualified.split('.');
+  return parts.map((_, index) => parts.slice(0, index + 1).join('.'));
 }
 
 function isStaticLike(fn, owners) {
@@ -46,7 +48,9 @@ function isStaticLike(fn, owners) {
   return (
     owner !== undefined &&
     STATIC_OWNERS.has(owner.kind) &&
-    !annotationNamed(owner.annotations, SPRING_STEREOTYPES)
+    !ancestorsOf(fn.owner).some((qualified) =>
+      annotationNamed(owners.get(qualified)?.annotations ?? [], SPRING_STEREOTYPES),
+    )
   );
 }
 
@@ -91,7 +95,7 @@ function targetsOf(files) {
     for (const fn of file.functions.filter(
       (entry) => !entry.local && isStaticLike(entry, owners),
     )) {
-      targets.set(fn.name, [...(targets.get(fn.name) ?? []), fn]);
+      append(targets, fn.name, fn);
     }
   }
   return targets;
@@ -103,26 +107,32 @@ function sameSignature(fn, target) {
     target.receiver === undefined &&
     target.parameters.length === fn.parameters.length &&
     target.parameters.every(
-      (parameter, index) => normalized(parameter.type) === normalized(fn.parameters[index].type),
+      (parameter, index) => compactType(parameter.type) === compactType(fn.parameters[index].type),
     ) &&
     (fn.returnType === undefined ||
       target.returnType === undefined ||
-      normalized(fn.returnType) === normalized(target.returnType))
+      compactType(fn.returnType) === compactType(target.returnType))
   );
+}
+
+function ownerNames(target) {
+  const parts = target.owner.split('.');
+  return parts.at(-1) === 'Companion' ? [parts.slice(0, -1).at(-1), 'Companion'] : [parts.at(-1)];
 }
 
 function forwardsTo(fn, targets) {
   const qualifier = fn.forward.qualifier?.split('.').at(-1);
-  return (targets.get(fn.forward.name) ?? []).some(
-    (target) =>
-      sameSignature(fn, target) &&
-      (qualifier === undefined || target.owner.split('.').at(-1) === qualifier),
+  const named = (targets.get(fn.forward.name) ?? []).filter(
+    (target) => qualifier === undefined || ownerNames(target).includes(qualifier),
   );
+  return qualifier !== undefined && named.length === 0
+    ? true
+    : named.some((target) => sameSignature(fn, target));
 }
 
-export function forwardingWrapperFindings(files, { finding }) {
+export function forwardingWrapperFindings(files, { finding, declaredIn = files }) {
   const main = files.filter(({ test }) => !test);
-  const targets = targetsOf(main);
+  const targets = targetsOf(declaredIn.filter(({ test }) => !test));
   return main.flatMap((file) => {
     const owners = ownerKinds(file);
     return file.functions

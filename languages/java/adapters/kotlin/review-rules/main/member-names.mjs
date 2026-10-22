@@ -1,4 +1,4 @@
-import { annotationNamed } from '../kotlin-facts.mjs';
+import { annotationNamed, bareType } from '../kotlin-facts.mjs';
 import { exceptionSentence } from '../review-finding.mjs';
 
 export const SINGULAR_PLURAL_RULE = 'SingularAndPluralMember';
@@ -16,12 +16,8 @@ const PRIMITIVE_ARRAYS = new Map(
 );
 const NULLABLE = /\?$/u;
 
-function normalized(type) {
-  return (type ?? '').replaceAll(/\s+/gu, '').replace(NULLABLE, '');
-}
-
 function elementOf(type) {
-  const text = normalized(type);
+  const text = bareType(type);
   const element = COLLECTION.exec(text)?.[1] ?? ARRAY.exec(text)?.[1] ?? PRIMITIVE_ARRAYS.get(text);
   return element === undefined ? undefined : element.replace(NULLABLE, '');
 }
@@ -59,7 +55,7 @@ function pluralFindings(members) {
         (other) =>
           other !== plural &&
           pluralsOf(other.name).includes(plural.name) &&
-          normalized(other.type) === elementOf(plural.type),
+          bareType(other.type) === elementOf(plural.type),
       ),
     );
 }

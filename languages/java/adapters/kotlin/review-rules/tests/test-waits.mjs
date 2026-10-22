@@ -1,15 +1,17 @@
-import { FIXED_SLEEP_RULE } from '../../../../messages/wait-advice.mjs';
+import {
+  AWAITILITY_ADVICE,
+  FIXED_SLEEP_RULE,
+  timedWaitAdvice,
+} from '../../../../messages/wait-advice.mjs';
 import { importsFrom, insideClass } from '../kotlin-facts.mjs';
 import { exceptionSentence } from '../review-finding.mjs';
 
 export const NEGATIVE_WAIT_RULE = 'NegativeWaitInTest';
 
 const SLEEP_MESSAGE =
-  'A fixed wait makes the test slow and flaky: Thread.sleep, TimeUnit sleep or parkNanos outside a polling loop, after(ms) with a check that could pass sooner, or pollDelay(...).until { true }. Wait on the condition: a loop that checks it against a deadline (a sleep inside that loop is allowed), Awaitility until, or verify(mock, timeout(1000)) for a mock. A sleep in a mock answer, a thread body or a test fake that implements or extends a main class is allowed. If a real wait is unavoidable, ';
+  'A fixed wait makes the test slow and flaky: Thread.sleep, TimeUnit sleep or parkNanos outside a polling loop, after(ms) with a check that could pass sooner, or pollDelay(...).until { true }. Wait on the condition: a loop that checks it against a deadline (a sleep inside that loop is allowed), or verify(mock, timeout(1000)) for a mock. A sleep in a mock answer, a thread body or a test fake that implements or extends a main class is allowed. If a real wait is unavoidable, ';
 const DELAY_MESSAGE =
   'delay inside runBlocking waits for real, so the test is slow and flaky. Use runTest, where delay runs in virtual time and advanceTimeBy or advanceUntilIdle moves it, or wait on the condition in a loop against a deadline. A delay in a launch, async or flow body, a mock answer or a test fake that implements or extends a main class is allowed. If a real wait is unavoidable, ';
-const TIMED_MESSAGE =
-  'A timed wait, join(ms) or wait(ms), returns as soon as the thread ends or is notified, so it does not slow a passing test, but it also returns when the time runs out, and the test then goes on as if the wait had succeeded. Check the outcome: assertTrue(thread.join(Duration.ofSeconds(5))) for a thread, or assert the result of CountDownLatch.await(5, SECONDS); call wait(ms) only in a loop that checks its condition against a deadline. If going on after the timeout is intended, ';
 const NEGATIVE_MESSAGE =
   'Do not prove that something does not happen by waiting out a delay: after(ms).never(), during(...) and kotest continually pass only after the full wait, so the test is slow and depends on the timing. Give the code a Clock or a scheduler the test controls, move it past the delay and assert at once. If a real wait is unavoidable, ';
 
@@ -42,8 +44,12 @@ const SPARED_HOSTS = new Set([
 const VIRTUAL_TIME_HOSTS = new Set(['runTest', 'runBlockingTest']);
 const THREAD_TYPES = new Set(['Thread', 'Runnable']);
 const NEGATIVE_FOLLOWERS = new Set(['never', 'atMost', 'atMostOnce']);
-const CLOCK =
-  /nanoTime|currentTimeMillis|Instant\.now|markNow|elapsedNow|TimeSource|Clock\b|measureTime/u;
+const IMPORTED_SLEEP = /^(?:java\.lang\.)?Thread\.sleep$/u;
+const IMPORTED_PARK = /(?:^|\.)LockSupport\.parkNanos$/u;
+const DURATION_ARGUMENT = /Duration|\.(?:nano|micro|milli)?seconds?\b|\.minutes?\b|\.hours?\b/u;
+const DELAY_ARGUMENT =
+  /^(?:\d[\d_]*L?|[A-Z][A-Z0-9_]*|\w*(?:ms|[Mm]illis|[Tt]imeout|[Dd]elay)\w*|.+\.toLong\(\))$/u;
+const MOCKITO_QUALIFIER = /^(?:org\.mockito\.)?Mockito$/u;
 const THREAD_QUALIFIER = /^(?:java\.lang\.)?Thread$/u;
 const TIME_UNIT_QUALIFIER = /(?:^|\.)TimeUnit\.[A-Z]+$/u;
 const LOCK_SUPPORT = /(?:^|\.)LockSupport$/u;
@@ -80,6 +86,14 @@ function isZeroTimes(outer) {
   return outer?.name === 'times' && outer.arguments.length === 1 && outer.arguments[0].text === '0';
 }
 
+function isMilliseconds(text) {
+  return !DURATION_ARGUMENT.test(text) && DELAY_ARGUMENT.test(text);
+}
+
+function isDelay(wait) {
+  return wait.arguments.length === 1 && DELAY_ARGUMENT.test(wait.arguments[0].text);
+}
+
 function isNegativeFollower(outer) {
   return NEGATIVE_FOLLOWERS.has(outer?.name) || isZeroTimes(outer);
 }
@@ -87,15 +101,23 @@ function isNegativeFollower(outer) {
 function threadSleep(wait, context) {
   const qualifier = wait.qualifier ?? '';
   const known =
-    THREAD_QUALIFIER.test(qualifier) || TIME_UNIT_QUALIFIER.test(qualifier) || context.timeUnit;
+    THREAD_QUALIFIER.test(qualifier) ||
+    TIME_UNIT_QUALIFIER.test(qualifier) ||
+    context.timeUnit ||
+    (context.unqualified && IMPORTED_SLEEP.test(wait.imported ?? ''));
   return wait.arguments.length <= SLEEP_ARGUMENTS && known ? fixed('sleep', true) : undefined;
 }
 
 const CLASSIFIERS = {
   sleep: threadSleep,
-  parkNanos: (wait) => (LOCK_SUPPORT.test(wait.qualifier ?? '') ? fixed('sleep', true) : undefined),
+  parkNanos: (wait) =>
+    LOCK_SUPPORT.test(wait.qualifier ?? '') || IMPORTED_PARK.test(wait.imported ?? '')
+      ? fixed('sleep', true)
+      : undefined,
   join: (wait, context) =>
-    wait.arguments.length === 1 && wait.statement && !context.shadowed
+    wait.arguments.length === 1 &&
+    (wait.statement || isMilliseconds(wait.arguments[0].text)) &&
+    !context.shadowed
       ? fixed('timed', true)
       : undefined,
   wait: (wait, context) =>
@@ -103,7 +125,8 @@ const CLASSIFIERS = {
   delay: (_wait, context) =>
     context.unqualified && !context.shadowed ? fixed('delay', true) : undefined,
   after: (wait, context) => {
-    if (!context.mockito || context.shadowed) {
+    const mockitoCall = context.unqualified || MOCKITO_QUALIFIER.test(wait.qualifier ?? '');
+    if (!context.mockito || context.shadowed || !mockitoCall || !isDelay(wait)) {
       return undefined;
     }
     return isNegativeFollower(wait.outer) ? negative : fixed('sleep');
@@ -111,7 +134,8 @@ const CLASSIFIERS = {
   waitForTimeout: (_wait, context) => (context.playwright ? fixed('sleep') : undefined),
   until: (wait, context) =>
     context.awaitility && wait.lambda === 'true' ? fixed('sleep') : undefined,
-  during: (_wait, context) => (context.awaitility ? negative : undefined),
+  during: (wait, context) =>
+    context.awaitility && wait.arguments.length === 1 ? negative : undefined,
   continually: (_wait, context) => (context.kotest && context.unqualified ? negative : undefined),
 };
 
@@ -120,7 +144,7 @@ function classify(wait, file, declared) {
 }
 
 function isPolling(loop) {
-  return loop.condition !== 'true' || CLOCK.test(loop.text);
+  return loop.condition !== 'true' || loop.clock === true;
 }
 
 function runsInRunBlocking(wait) {
@@ -169,14 +193,19 @@ function isSpared(wait, file, isProduction) {
   );
 }
 
-export function waitMessage(found) {
-  const { rule } = found;
+export function waitMessage(found, awaitility = false) {
+  const { rule, kind } = found;
   const tail = exceptionSentence(rule);
   if (rule === NEGATIVE_WAIT_RULE) {
     return `${NEGATIVE_MESSAGE}${tail}`;
   }
-  const messages = { sleep: SLEEP_MESSAGE, delay: DELAY_MESSAGE, timed: TIMED_MESSAGE };
-  return `${messages[found.kind]}${tail}`;
+  if (kind === 'timed') {
+    return timedWaitAdvice(awaitility);
+  }
+  if (kind === 'sleep' && awaitility) {
+    return AWAITILITY_ADVICE;
+  }
+  return `${kind === 'sleep' ? SLEEP_MESSAGE : DELAY_MESSAGE}${tail}`;
 }
 
 function symbolOf(wait) {
@@ -199,7 +228,7 @@ function isReported(found, wait, context) {
   return !(found.exemptable && isSpared(wait, context.file, context.isProduction));
 }
 
-export function testWaitFindings(files, { isProduction, finding }) {
+export function testWaitFindings(files, { isProduction, finding, awaitility = false }) {
   const declared = projectFunctionNames(files);
   return files
     .filter(({ test }) => test)
@@ -217,7 +246,7 @@ export function testWaitFindings(files, { isProduction, finding }) {
             line: wait.line,
             symbol,
             key: `${symbol}:${wait.name}`,
-            message: waitMessage(found),
+            message: waitMessage(found, awaitility),
           }),
         ];
       }),

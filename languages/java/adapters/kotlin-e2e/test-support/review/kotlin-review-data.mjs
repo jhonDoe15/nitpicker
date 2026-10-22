@@ -26,6 +26,12 @@ fun isFinal(status: Status): Boolean =
         Status.SHIPPED, Status.CANCELLED -> true
     }
 
+val Status.isLive: Boolean get() = this == Status.NEW || this == Status.PAID
+
+fun weight(status: Status) = if (status == Status.NEW || status == Status.PAID) 1 else 0
+
+fun absOf(value: Int) = Math.abs(value)
+
 fun total(cents: Int) = scaled(cents)
 
 fun scaled(cents: Int): Int = cents * 2
@@ -68,6 +74,14 @@ class WaitingTest {
     fun sleeps() {
         Thread.sleep(1)
         runBlocking { delay(1) }
+        assertEquals(1L, SlowClock().now())
+    }
+
+    @Test
+    fun iterates() {
+        for (name in listOf("a", "b")) {
+            Thread.sleep(1)
+        }
         assertEquals(1L, SlowClock().now())
     }
 
@@ -135,12 +149,16 @@ export const REVIEW_RULE_FILES = {
 };
 
 export const EXPECTED_REVIEW_FINDINGS = [
+  'ExhaustiveEnumPredicate isLive',
   'ExhaustiveEnumPredicate isOpen',
   'ExhaustiveEnumPredicate isSettled',
+  'ExhaustiveEnumPredicate weight',
+  'FixedSleepInTest WaitingTest.iterates',
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
   'SingularAndPluralMember Query.tags',
   'SpringUnusedContext UnusedContextTest',
+  'StaticForwardingWrapper absOf',
   'StaticForwardingWrapper total',
   'unused-option Mailer.retries',
   'unused-option pad.width',

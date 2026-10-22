@@ -16,7 +16,7 @@ const IMPORT = {
   path: 'org.springframework.boot.test.context.SpringBootTest',
   all: false,
 };
-const bootTest = (text = '@SpringBootTest') => ({ name: 'SpringBootTest', text });
+const bootTest = (...args) => ({ name: 'SpringBootTest', arguments: args });
 
 function contextTest({ annotations = [bootTest()], ...rest } = {}) {
   const {
@@ -93,13 +93,17 @@ describe('unused Spring test context in Kotlin', () => {
         ],
       },
     ],
-    [
-      'a class-level @MockBean',
-      { annotations: [bootTest(), { name: 'MockBean', text: '@MockBean' }] },
-    ],
+    ['a class-level @MockBean', { annotations: [bootTest(), { name: 'MockBean', arguments: [] }] }],
     [
       'a web environment with a port',
-      { annotations: [bootTest('@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)')] },
+      {
+        annotations: [
+          bootTest(
+            { name: 'properties', text: '["a=b"]' },
+            { name: 'webEnvironment', text: 'WebEnvironment.RANDOM_PORT' },
+          ),
+        ],
+      },
     ],
     ['a superclass', { classOverrides: { superCall: true, supers: ['BaseTest'] } }],
   ])('allows %s', (_name, options) => {
