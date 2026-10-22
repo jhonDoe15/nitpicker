@@ -316,18 +316,38 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   do not count. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
   `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
   async function returns directly.
-- Shared read/modify/write operations across `await` are rejected (`require-atomic-updates`,
-  ESLint 10.9.1, `allowProperties: false`) in production and test code, including the JavaScript
-  dialect. Await the new value before reading shared state, or serialize the entire operation.
-  Invocation-local values pass. The rule is explicitly enabled in `eslint-lint`; Oxlint 1.87.0
-  has no native equivalent, so the existing JavaScript plugin bridge runs the ESLint rule.
-  Findings use the standard ESLint semantic identity and reviewed `exceptions` entries
-  (`rule: "require-atomic-updates"`, `paths`, `reason`). Other immutability rules can independently
-  reject mutation; this rule specifically identifies stale reads across suspension.
-  This is bounded upstream analysis, not proof of race freedom: a local alias of a shared object
-  can escape detection, and a property write after an unrelated property read can be conservative.
-  Already serialized access can use a reviewed path exception. The pinned `allowProperties: true`
-  option disables property checks and is deliberately not the preset default.
+- Shared read/modify/write operations across `await` are rejected (`require-atomic-updates`, ESLint
+  10.9.1, `allowProperties: false`) in production and test code, including the JavaScript dialect:
+  `state.total += await load()`, `total = total + (await load())` on a binding that closures or
+  other calls share, `state.items = [...state.items, await load()]`, and a value read into a local
+  before the `await` and written back after it. Await the new value into a local first and read
+  and write the shared state in one step with no `await` between them, or serialize the whole
+  operation (a lock, a queue). A value that only one call can observe (a local, an object the
+  function creates) passes, and so does `state.items.push(await load())`, which mutates in place.
+  The rule is a strict rule, so a violation on a line you touch is new even when the base has it.
+  It is enabled explicitly in `eslint-lint` (`eslint.configs.recommended` and
+  `strictTypeChecked` do not include it); Oxlint 1.87.0 has no native equivalent, so the existing
+  JavaScript plugin bridge runs the ESLint rule, and the finding keeps the standard ESLint semantic
+  identity. The message adds the failure mechanism and the allowed forms to ESLint's evidence, and a
+  reviewed `exceptions` entry (`rule: "require-atomic-updates"`, `paths`, `reason`) is the route
+  for state that is already serialized or confined to one task. Other immutability rules can
+  independently reject mutation; this rule specifically identifies stale reads across suspension.
+  The `allowProperties: true` option would disable the property check and is deliberately not the
+  preset default.
+  Limits of the upstream analysis, measured and not assumed: it does not follow `this`
+  (`this.total += await load()` passes; the preset bans classes outside `Error` subclasses, so
+  this mostly concerns tests, object-literal methods and framework classes), a local alias of a
+  shared object escapes detection (`const alias = state; alias.total += await load()`), a
+  parameter object is treated as shared, so `req.user = await verify(req.headers.token)` and
+  `order.items = await load(order.id)` report although they write a different property than they
+  read, and a lazy initialization (`cached ??= await load()`, or `if (cached === undefined) {
+cached = await load(); }` on a module binding) reports because two calls can both initialize.
+  Run over real code, the rule reported nothing: Nitpicker's own `.mjs` sources (1,808 files, 201
+  of them with `await`), the TypeScript sources of `@stryker-mutator`, `zod`, `rxjs` and
+  `typed-inject` (843 files, 157 with `await`) and the JavaScript of `vitest`, `vite`, `knip`,
+  `execa`, `eslint` and `@stryker-mutator/core` (1,475 files, 209 with `await`). That sample says
+  nothing about recall; the false-positive classes above come from probes written for them, not
+  from that corpus.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
 - Identifier casing (`nitpicker/naming-convention`, which wraps

@@ -78,7 +78,6 @@ const presetConfig = defineConfig(
       nitpicker: nitpickerRules,
     },
     rules: {
-      'require-atomic-updates': ['error', { allowProperties: false }],
       '@typescript-eslint/consistent-type-imports': [
         'error',
         { disallowTypeAnnotations: false, fixStyle: typeImportFixStyle(policy.conventions) },
