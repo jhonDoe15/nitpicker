@@ -53,6 +53,10 @@ cases in total. Their unchanged files use measured module durations from success
 and 99 seconds for Kotest ([run 39408625035](https://github.com/jhonDoe15/nitpicker/actions/runs/39408625035)).
 These measured weights are integrated into the same deterministic partition.
 
+The Kotlin parity guards file and the added one-way rules bring the Kotlin total to 71 cases, and the
+Kotlin review rules file (three cases) and the added `kotlin-psi` cases to 79; the guards and review
+rules files are planning estimates of 100 and 110 seconds for their single builds.
+
 The split-file weights remain planning estimates, not measurements of the new split. Unchanged files
 use the successful isolated-shard log totals, including hooks. Split case groups sum their
 measured case times plus original hook time and a conservative 25-second allowance for the
