@@ -1,0 +1,274 @@
+{
+  "modules": [
+    {
+      "file": "app/orders/pricing.py",
+      "role": "production"
+    },
+    {
+      "file": "app/billing/pricing.py",
+      "role": "production"
+    },
+    {
+      "file": "app/orders/views.py",
+      "role": "production"
+    },
+    {
+      "file": "app/billing/invoice.py",
+      "role": "production"
+    },
+    {
+      "file": "app/orders/format.py",
+      "role": "production"
+    },
+    {
+      "file": "app/billing/format.py",
+      "role": "production"
+    },
+    {
+      "file": "app/report.py",
+      "role": "production"
+    },
+    {
+      "file": "tests/test_pricing.py",
+      "role": "test"
+    }
+  ],
+  "packages": [],
+  "definitions": [
+    {
+      "file": "app/orders/pricing.py",
+      "name": "TAX_RATE",
+      "kind": "const",
+      "line": 3,
+      "exported": true,
+      "tokens": ["TAX_RATE", "=", "0.2"],
+      "literal": true
+    },
+    {
+      "file": "app/orders/pricing.py",
+      "name": "round_total",
+      "kind": "function",
+      "line": 6,
+      "exported": true,
+      "tokens": [
+        "def",
+        "round_total",
+        "(",
+        "items",
+        ",",
+        "tax",
+        ")",
+        ":",
+        "subtotal",
+        "=",
+        "sum",
+        "(",
+        "item",
+        ".",
+        "price",
+        "for",
+        "item",
+        "in",
+        "items",
+        ")",
+        "taxed",
+        "=",
+        "subtotal",
+        "*",
+        "(",
+        "1",
+        "+",
+        "tax",
+        ")",
+        "return",
+        "round",
+        "(",
+        "taxed",
+        ",",
+        "2",
+        ")"
+      ],
+      "lines": 4
+    },
+    {
+      "file": "app/billing/pricing.py",
+      "name": "TAX_RATE",
+      "kind": "const",
+      "line": 1,
+      "exported": true,
+      "tokens": ["TAX_RATE", "=", "0.2"],
+      "literal": true
+    },
+    {
+      "file": "app/billing/pricing.py",
+      "name": "round_total",
+      "kind": "function",
+      "line": 4,
+      "exported": true,
+      "tokens": [
+        "def",
+        "round_total",
+        "(",
+        "items",
+        ",",
+        "tax",
+        ")",
+        ":",
+        "subtotal",
+        "=",
+        "sum",
+        "(",
+        "item",
+        ".",
+        "price",
+        "for",
+        "item",
+        "in",
+        "items",
+        ")",
+        "taxed",
+        "=",
+        "subtotal",
+        "*",
+        "(",
+        "1",
+        "+",
+        "tax",
+        ")",
+        "return",
+        "round",
+        "(",
+        "taxed",
+        ",",
+        "2",
+        ")"
+      ],
+      "lines": 4
+    },
+    {
+      "file": "app/orders/format.py",
+      "name": "format",
+      "kind": "function",
+      "line": 1,
+      "exported": true,
+      "tokens": ["def", "format", "(", "value", ")", ":", "return", "f'{value:.2f}'"],
+      "lines": 2
+    },
+    {
+      "file": "app/billing/format.py",
+      "name": "format",
+      "kind": "function",
+      "line": 1,
+      "exported": true,
+      "tokens": [
+        "def",
+        "format",
+        "(",
+        "value",
+        ")",
+        ":",
+        "return",
+        "str",
+        "(",
+        "value",
+        ")",
+        ".",
+        "upper",
+        "(",
+        ")"
+      ],
+      "lines": 2
+    },
+    {
+      "file": "tests/test_pricing.py",
+      "name": "round_total",
+      "kind": "function",
+      "line": 1,
+      "exported": true,
+      "tokens": [
+        "def",
+        "round_total",
+        "(",
+        "items",
+        ",",
+        "tax",
+        ")",
+        ":",
+        "subtotal",
+        "=",
+        "sum",
+        "(",
+        "item",
+        ".",
+        "price",
+        "for",
+        "item",
+        "in",
+        "items",
+        ")",
+        "taxed",
+        "=",
+        "subtotal",
+        "*",
+        "(",
+        "1",
+        "+",
+        "tax",
+        ")",
+        "return",
+        "round",
+        "(",
+        "taxed",
+        ",",
+        "2",
+        ")"
+      ],
+      "lines": 4
+    }
+  ],
+  "imports": [
+    {
+      "from": "app/orders/views.py",
+      "to": "app/orders/pricing.py",
+      "names": [
+        {
+          "name": "TAX_RATE"
+        },
+        {
+          "name": "round_total"
+        }
+      ]
+    },
+    {
+      "from": "app/billing/invoice.py",
+      "to": "app/billing/pricing.py",
+      "names": [
+        {
+          "name": "TAX_RATE"
+        },
+        {
+          "name": "round_total"
+        }
+      ]
+    },
+    {
+      "from": "app/report.py",
+      "to": "app/orders/format.py",
+      "names": [
+        {
+          "name": "format"
+        }
+      ]
+    },
+    {
+      "from": "app/report.py",
+      "to": "app/billing/format.py",
+      "names": [
+        {
+          "name": "format",
+          "alias": "billing_format"
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { RULE_IDS } from '../../../../../../shared/policy.mjs';
-import { reuseFinding } from '../finding.mjs';
+import { reuseFinding } from '../../../../../../shared/rules/reuse/reuse-finding.mjs';
 
 const ICON_SIZE_LIMIT = 48;
 const FRAMEWORK_ICON = /^(?:favicon|icon|apple-icon)\.svg$/iu;
