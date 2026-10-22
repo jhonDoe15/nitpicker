@@ -132,7 +132,7 @@ describe('coverage on a node:test project', () => {
     const findings = await runArea('coverage', root);
 
     expect(changedBranchMessages(findings)).toEqual([
-      "Branch coverage is 50.00%; minimum is 95%. Not taken: the right side of ?? at 1:62. Test it, or remove it if it can't happen.",
+      'Branch coverage is 50.00%; minimum is 95%. Not taken: the right side of ?? at 1:62. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/fallback.ts"],"function":"fallback","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
@@ -175,7 +175,7 @@ describe('coverage on a node:test project', () => {
     const findings = await runArea('coverage', root);
 
     expect(changedBranchMessages(findings)).toEqual([
-      "Branch coverage is 0.00%; minimum is 95%. Not taken: the true arm of the if at 2:3; the false arm of the if (or its else) at 2:3. Test it, or remove it if it can't happen.",
+      'Branch coverage is 0.00%; minimum is 95%. Not taken: the true arm of the if at 2:3; the false arm of the if (or its else) at 2:3. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/pick.ts"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 });

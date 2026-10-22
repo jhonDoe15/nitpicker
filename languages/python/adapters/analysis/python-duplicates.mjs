@@ -2,13 +2,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdClones } from '../../../../core/tooling/jscpd/jscpd-clones.mjs';
 import { withoutImportOnlyClones } from '../../../../core/tooling/jscpd/import-only.mjs';
-import {
-  DUPLICATES_REPORT,
-  DUPLICATES_TOOL,
-  runJscpd,
-} from '../../../../core/tooling/jscpd/run-jscpd.mjs';
-import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
-import { existingSourceRoots, nonProductionGlobs } from './python-sources.mjs';
+import { DUPLICATES_REPORT, runJscpd } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
+import { duplicateFindings } from '../../../java/adapters/metrics/java-duplicates.mjs';
+import { isGeneratedPython } from '../../libraries/generated-files.mjs';
+import { existingSourceRoots, nonProductionGlobs, pythonSourceFiles } from './python-sources.mjs';
 
 const DUPLICATES_FAILED_RULE = 'duplicates-failed';
 
@@ -25,6 +22,12 @@ export function runDuplicates(context) {
       ),
       reportRoot: context.reportRoot,
       together: true,
+      renamed: {
+        syntax: 'python',
+        files: pythonSourceFiles(context.projectRoot, context.project.sourceRoots).filter(
+          (file) => !isGeneratedPython(context.projectRoot, file),
+        ),
+      },
     });
   } catch (error) {
     throw Object.assign(new Error(error.message, { cause: error }), {
@@ -33,8 +36,13 @@ export function runDuplicates(context) {
   }
 }
 
-export function readDuplicateFindings(reportRoot) {
+export function readDuplicateFindings(reportRoot, projectRoot) {
   const { runs } = JSON.parse(readFileSync(path.join(reportRoot, DUPLICATES_REPORT), 'utf8'));
   const clones = runs.flatMap(({ root, report }) => jscpdClones(report, [root]));
-  return evaluateDuplicates(withoutImportOnlyClones(clones, 'python'), DUPLICATES_TOOL);
+  return duplicateFindings(withoutImportOnlyClones(clones, 'python'), {
+    reportRoot,
+    reportFile: DUPLICATES_REPORT,
+    projectRoot,
+    syntax: 'python',
+  });
 }

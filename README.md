@@ -34,13 +34,13 @@ nitpicker fails the change and says what to write instead:
 $ npx nitpicker
 ✖ 4 new enforceable violations
   eslint-errors/nitpicker/no-silent-catch src/main/features/greeting/adapters/load-names.ts:8
-    This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. If dropping it is intended, add an exception for this rule in nitpicker.config.json.
+    This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. An exception fits only when dropping it is intended. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
   eslint-lint/nitpicker/no-handwritten-boundary-guard src/main/features/greeting/adapters/load-names.ts:6
-    Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`. If the text is trusted and already typed, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.
+    Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`. An exception fits only when the text is trusted and already typed. If this is intended, add {"rule":"nitpicker/no-handwritten-boundary-guard","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
   eslint-lint/no-restricted-syntax src/main/features/greeting/adapters/load-names.ts:6
-    Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.
+    Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed. If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
   mutation/mutant-survived src/main/features/greeting/adapters/load-names.ts:9
-    Survived ArrayDeclaration at column 12: replacing `[]` with `["Stryker was here"]` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.
+    Survived ArrayDeclaration at column 12: replacing `[]` with `["Stryker was here"]` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
 ```
 
 The messages name zod, the default validation library; in a project that depends on another one
@@ -105,8 +105,8 @@ example `fetch-depth: 0`). It exits non-zero when a change adds a problem.
 
 ## Disagree with a rule?
 
-If a rule flags code that is right, its message says how to add an exception in
-`nitpicker.config.json`: the rule, the paths and a reason. Review sees it, and every report lists
+If a rule flags code that is right, its message ends with the entry to add to
+`exceptions` in `nitpicker.config.json`: the rule, the paths and a reason a reviewer fills in. Review sees it, and every report lists
 it. If a rule flags right code often, [open an issue](https://github.com/jhonDoe15/nitpicker/issues):
 the fix is a narrower rule, not a rule that is off. [Mindset](docs/mindset.md) explains how rules
 are chosen.

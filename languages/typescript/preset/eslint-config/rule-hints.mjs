@@ -1,7 +1,5 @@
-export const EXCEPTION_HINT = 'add an exception for this rule in nitpicker.config.json.';
-export const GENERAL_HINT = ` If this is intentional, ${EXCEPTION_HINT}`;
 export const SYNTAX_EXCEPTION_HINT =
-  ' If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.';
+  ' An exception fits only when a framework or library requires it.';
 
 export function withReportFilter(rule, filterFor) {
   return {

@@ -7,7 +7,7 @@ import {
   positiveInteger,
 } from '../../../../../shared/rules/finding-helpers.mjs';
 import { branchCoverageFindings } from '../../../../../shared/rules/branch-coverage.mjs';
-import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
+import { DEFAULT_CRAP_SCORE_LIMIT, MESSAGES } from '../../../../../shared/policy.mjs';
 import { crapFindings } from '../../../../../shared/rules/crap.mjs';
 import { mutantFindings } from '../../../../../shared/rules/mutation.mjs';
 
@@ -36,15 +36,19 @@ function addFileCoverage(findings, coverage, { analyzerName, relativePath }) {
     metricName: 'branches',
     value: coveragePercent(branchOutcomes),
   });
-  const branches = branchEntries.map(([branchId, outcomes]) => ({
-    path: relativePath,
-    key:
-      coverage.branchSourceHashes?.[branchId] ??
-      hash(JSON.stringify(coverage.branchMap?.[branchId] ?? { branchId })),
-    percent: coveragePercent(outcomes),
-    line: coverage.branchMap?.[branchId]?.loc?.start?.line,
-    arms: coverage.uncoveredArms?.[branchId],
-  }));
+  const branches = branchEntries.map(([branchId, outcomes]) => {
+    const line = coverage.branchMap?.[branchId]?.loc?.start?.line;
+    return {
+      path: relativePath,
+      key:
+        coverage.branchSourceHashes?.[branchId] ??
+        hash(JSON.stringify(coverage.branchMap?.[branchId] ?? { branchId })),
+      percent: coveragePercent(outcomes),
+      line,
+      arms: coverage.uncoveredArms?.[branchId],
+      symbol: coverage.branchFunctions?.[branchId],
+    };
+  });
   findings.push(
     ...branchCoverageFindings(branches, {
       tool: analyzerName,
@@ -73,6 +77,14 @@ function addTestEfficiency(findings, analyzerName, { coveredBranchOutcomes, test
     metricName: 'testCount',
     value: testCount,
   });
+}
+
+const COMPOSITION_ROOT_FILE = /(?:^|\/)(?:main|server|composition-root)\.[cm]?[jt]sx?$/u;
+
+export function crapUnknownMessage(sourcePath) {
+  return COMPOSITION_ROOT_FILE.test(sourcePath)
+    ? MESSAGES.crapCoverageUnknown
+    : MESSAGES.crapCoverageUnknownPlain;
 }
 
 export function normalizeCrap(
@@ -129,7 +141,7 @@ function addCrapFunction(
           crap: entry.crap,
         },
       ],
-      { tool: analyzerName, limit: scoreLimit },
+      { tool: analyzerName, limit: scoreLimit, unknownMessage: crapUnknownMessage(entry.source) },
     ),
   );
   const values = {
@@ -197,7 +209,9 @@ function neutralMutant(mutant, { filePath, status, occurrences }) {
     path: filePath,
     identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
     status,
+    ...(status === 'Ignored' ? { hiddenByComment: true } : {}),
     label: mutant.mutatorName ?? 'mutant',
+    ...(mutant.functionName === undefined ? {} : { symbol: mutant.functionName }),
     line: mutant.location?.start?.line,
     ...(positiveInteger(mutant.location?.start?.column) === undefined
       ? {}

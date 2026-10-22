@@ -233,30 +233,26 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
       expect(metrics.map(({ file, name }) => `${file} ${name}`)).toEqual(['ok.py f']);
     });
 
-    it('reports parser recursion failure instead of silently skipping the file', () => {
+    it('fails with a clear message on a file too deeply nested for the parser instead of skipping it', () => {
       const directory = scratchDirectory();
-      writeFileSync(path.join(directory, 'deep.py'), 'X = 1 + 1\n');
+      writeFileSync(
+        path.join(directory, 'deep.py'),
+        `X = ${Array.from({ length: 60_000 }, () => '1').join(' + ')}\n`,
+      );
       writeFileSync(path.join(directory, 'listing.txt'), 'deep.py');
 
       const result = spawnSync(
-        'python3',
+        'sh',
         [
           '-c',
-          [
-            'import ast, pathlib, runpy, sys',
-            'def exhausted_parser(*args, **kwargs):',
-            '    raise RecursionError("parser budget exhausted")',
-            'ast.parse = exhausted_parser',
-            'sys.argv = sys.argv[1:]',
-            'sys.path.insert(0, str(pathlib.Path(sys.argv[0]).parent))',
-            'runpy.run_path(sys.argv[0], run_name="__main__")',
-          ].join('\n'),
+          'ulimit -s 8192 && exec python3 "$@"',
+          'python3',
           script,
           path.join(directory, STRUCTURE_REPORT),
           directory,
           path.join(directory, 'listing.txt'),
         ],
-        { encoding: 'utf8', timeout: 10_000 },
+        { encoding: 'utf8' },
       );
 
       expect([result.status, result.stderr]).toEqual([
@@ -470,7 +466,7 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
           rule: 'function-control-nesting-limit',
           symbol: 'deep',
           message:
-            'deep nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch.',
+            'deep nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch. If this is intended, add {"rule":"function-control-nesting-limit","paths":["sample.py"],"function":"deep","reason":"..."} to "exceptions" in nitpicker.config.json.',
         },
       ]);
     });

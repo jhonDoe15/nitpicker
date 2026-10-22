@@ -6,6 +6,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
+import { functionUnits, isFunctionLike } from './units/function-units.mjs';
 
 function parseSource(source, filename) {
   const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
@@ -22,31 +23,6 @@ function location(sourceFile, node) {
   const start = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
   const end = sourceFile.getLineAndCharacterOfPosition(node.getEnd()).line + 1;
   return { start, end, lines: end - start + 1 };
-}
-
-function nodeName(sourceFile, node) {
-  if (node.name !== undefined) {
-    return node.name.getText(sourceFile);
-  }
-  if (ts.isConstructorDeclaration(node)) {
-    return 'constructor';
-  }
-  if (ts.isVariableDeclaration(node.parent) || ts.isPropertyDeclaration(node.parent)) {
-    return node.parent.name.getText(sourceFile);
-  }
-  return '<anonymous>';
-}
-
-function isFunctionNode(node) {
-  return (
-    ts.isFunctionDeclaration(node) ||
-    ts.isFunctionExpression(node) ||
-    ts.isArrowFunction(node) ||
-    ts.isMethodDeclaration(node) ||
-    ts.isConstructorDeclaration(node) ||
-    ts.isGetAccessorDeclaration(node) ||
-    ts.isSetAccessorDeclaration(node)
-  );
 }
 
 function isControlNode(node) {
@@ -74,14 +50,14 @@ function functionBodyMetrics(functionNode) {
     return node !== functionNode && isControlNode(node) && !isElseIf(node, parent);
   }
   function children({ node, depth, parent }) {
-    if (node !== functionNode && isFunctionNode(node)) return [];
+    if (node !== functionNode && isFunctionLike(node)) return [];
     const nextDepth = opensLevel(node, parent) ? depth + 1 : depth;
     return syntaxChildren(node).map((child) => ({ node: child, depth: nextDepth, parent: node }));
   }
   if (functionNode.body === undefined) return { statements, maxControlNesting };
   const root = { node: functionNode.body, depth: 0, parent: functionNode };
   for (const { node, depth, parent } of depthFirst(root, children)) {
-    if (node !== functionNode && isFunctionNode(node)) continue;
+    if (node !== functionNode && isFunctionLike(node)) continue;
     if (node !== functionNode && ts.isStatement(node) && !ts.isBlock(node)) statements += 1;
     const nextDepth = opensLevel(node, parent) ? depth + 1 : depth;
     maxControlNesting = Math.max(maxControlNesting, nextDepth);
@@ -91,14 +67,15 @@ function functionBodyMetrics(functionNode) {
 
 export function analyzeSource(source, filename) {
   const sourceFile = parseSource(source, filename);
+  const { names } = functionUnits(sourceFile);
   const functions = [];
   const classes = [];
 
   for (const node of depthFirst(sourceFile, syntaxChildren)) {
-    if (isFunctionNode(node)) {
+    if (isFunctionLike(node)) {
       functions.push({
         source: normalizePath(filename),
-        function: nodeName(sourceFile, node),
+        function: names.get(node),
         ...location(sourceFile, node),
         parameters: node.parameters.length,
         ...functionBodyMetrics(node),

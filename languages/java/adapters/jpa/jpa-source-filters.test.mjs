@@ -86,10 +86,10 @@ class Order {
 });
 
 describe('withExposureAdvice', () => {
-  it('names the copy and the exception route for exposure findings only', () => {
+  it('names the copy and when an exception fits for exposure findings only', () => {
     const advised = withExposureAdvice({ rule: 'EI_EXPOSE_REP2', message: 'May expose' });
     expect(advised.message).toBe(
-      'May expose. Copy on the way in and out (List.copyOf, Map.copyOf), or use a record. If it is right here, add an exception for spotbugs/EI_EXPOSE_REP2 in nitpicker.config.json.',
+      'May expose. Copy on the way in and out (List.copyOf, Map.copyOf), or use a record. An exception fits only when it is right here.',
     );
     const other = { rule: 'DLS_DEAD_LOCAL_STORE', message: 'Dead store' };
     expect(withExposureAdvice(other)).toBe(other);
