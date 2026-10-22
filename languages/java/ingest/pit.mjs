@@ -49,9 +49,10 @@ function groupMutants(mutants, resolvePath) {
       mutator(mutant.mutator),
       withoutPackages(mutant.description),
     ].join('|');
-    const group = groups.get(`${status}\0${key}`) ?? [];
+    const groupKey = `${status}\0${filePath}\0${key}`;
+    const group = groups.get(groupKey) ?? [];
     group.push({ mutant, status, key, filePath });
-    groups.set(`${status}\0${key}`, group);
+    groups.set(groupKey, group);
   }
   return { groups, statusCounts };
 }

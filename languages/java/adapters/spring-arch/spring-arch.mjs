@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createIdentityCounter } from '../../../../shared/ingest/common.mjs';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { isIntegrationTest } from '../test-times/integration-tests.mjs';
 
 export const SPRING_ARCH_REPORT = 'spring-arch.json';
 const TOOL = 'archunit';
@@ -8,31 +10,29 @@ const TOOL = 'archunit';
 const MESSAGES = {
   'spring-layout': ({ simple, detail, root }) =>
     detail === ''
-      ? `${simple} sits in the root package ${root}. Put it in a feature package (${root}.<feature>); the root package holds only the application and @Configuration classes.`
-      : `${simple} is in the layer package "${detail}". Group by feature instead: ${root}.<feature> holds its controller, service and repository together, and pure utilities go to ${root}.shared.`,
+      ? `Put ${simple} in a feature package ${root}.<feature>: the root package ${root} holds only the application, @Configuration and @ConfigurationProperties classes.`
+      : `Put ${simple} in the feature package it belongs to, ${root}.<feature>, which holds that feature's controller, service and repository together (pure utilities go to ${root}.shared); "${detail}" is a layer package.`,
   'spring-feature-boundary': ({ simple, detail, target, root }) =>
-    `${simple} uses ${detail} from ${target.packageName}, inside another root package ${target.rootPackage}. Depend only on the classes directly in ${target.rootPackage}, or move what both need to ${root}.shared.`,
-  'spring-shared-pure': ({ simple, detail, target }) =>
+    `Have ${simple} use only the classes directly in ${target.rootPackage}, or move what both need to ${root}.shared: ${detail} is internal to that feature (${target.packageName}).`,
+  'spring-shared-pure': ({ simple, detail, target, root }) =>
     detail === ''
-      ? `${simple} is a Spring bean or entity in the shared package. shared holds pure utilities; move it into the feature that owns it.`
-      : `${simple} depends on ${detail} in ${target.rootPackage}. shared holds pure utilities and depends on no other root package; move the code into the package that uses it.`,
+      ? `Move ${simple} into the feature that owns it: ${root}.shared holds only pure utilities, not Spring beans or entities.`
+      : `Move ${simple} into the package that uses it, or drop its use of ${detail}: ${root}.shared holds pure utilities and depends on no feature package such as ${target.rootPackage}.`,
   'spring-controller-repository': ({ simple, detail }) =>
-    `${simple} depends on repository ${detail}. Controllers call services only; inject a service and let it use the repository.`,
+    `Have ${simple} call a service that uses ${detail}: controllers call services only, not repositories or data access.`,
   'spring-controller-entity': ({ simple, detail }) => {
     const [method, entity] = detail.split(':');
-    return `${simple}.${method} exposes the entity ${entity} in its signature. Take and return a record (DTO) and map it in the service.`;
+    return `Take and return a record (DTO) in ${simple}.${method} and map it in the service: the entity ${entity} stays out of controller signatures.`;
   },
   'spring-service-web': ({ simple, detail }) =>
-    `${simple} depends on ${detail}, a web type. Services and repositories do not know the web layer; pass plain values and map them in the controller.`,
-  'spring-test-placement': ({ simple, packageName }) =>
-    `${simple} starts a Spring context outside an integration package. Move it to ${packageName}.integration (a package named integration or it), or test the class directly with new and mocks.`,
+    `Keep ${simple} free of web types: take and return plain values, throw a domain exception for errors, and map them to and from ${detail} in the controller or a @ControllerAdvice.`,
+  'spring-test-placement': ({ simple }) =>
+    `Test ${simple} with new and mocks, or run it as an integration test: name it ${simple.replace(/Tests?$/u, '')}IT (Failsafe runs *IT on Maven) or put it in an integration test source set. Both keep its package, so package-private classes stay visible; a package named integration or it also counts.`,
   'spring-no-dirties-context': ({ simple }) =>
-    `${simple} uses @DirtiesContext, which rebuilds the context and slows the suite. Remove it: reset state in the test, or test the class without a context.`,
+    `Reset state in ${simple} itself, or test the class without a Spring context: @DirtiesContext rebuilds the context and slows the suite.`,
 };
 
-function exceptionRoute(rule) {
-  return `If it is right here, add an exception for ${TOOL}/${rule} in nitpicker.config.json.`;
-}
+const PLACEMENT = 'spring-test-placement';
 
 function simpleName(name) {
   return name.slice(name.lastIndexOf('.') + 1);
@@ -60,16 +60,21 @@ export function readSpringArchFindings(reportRoot, { resolvePath }) {
     throw new Error(`The Spring architecture report ${SPRING_ARCH_REPORT} is missing`);
   }
   const { root, violations } = JSON.parse(readFileSync(file, 'utf8'));
-  const unique = createIdentityCounter();
+  const counters = new Map();
   return violations.flatMap(({ rule, className, fileName, detail }) => {
     const filePath = resolvePath(className, fileName === '' ? undefined : fileName);
     const describe = MESSAGES[rule];
     if (describe === undefined) {
       throw new Error(`Unknown Spring architecture rule ${rule} in ${SPRING_ARCH_REPORT}`);
     }
-    if (filePath === undefined) {
+    if (
+      filePath === undefined ||
+      (rule === PLACEMENT && isIntegrationTest({ className, unitSource: true }))
+    ) {
       return [];
     }
+    const unique = counters.get(filePath) ?? createIdentityCounter();
+    counters.set(filePath, unique);
     const simple = simpleName(className);
     const short = shortDetail(detail);
     const message = describe({
@@ -77,7 +82,6 @@ export function readSpringArchFindings(reportRoot, { resolvePath }) {
       detail: short,
       root,
       target: root === null ? undefined : targetOf(detail, root),
-      packageName: packageOf(className),
     });
     return [
       {
@@ -87,7 +91,7 @@ export function readSpringArchFindings(reportRoot, { resolvePath }) {
         identity: unique(`${rule}:${short === '' ? simple : `${simple}|${short}`}`).slice(
           rule.length + 1,
         ),
-        message: `${message} ${exceptionRoute(rule)}`,
+        message: `${message} ${exceptionHint(`${TOOL}/${rule}`, filePath)}`,
         classification: 'enforceable',
         symbol: simple,
       },

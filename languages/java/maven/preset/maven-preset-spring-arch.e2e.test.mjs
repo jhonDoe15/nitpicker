@@ -19,9 +19,27 @@ import {
 
 const SPRING_LAYOUT_FINDINGS = [
   'src/main/java/shop/Helper.java Helper',
+  'src/main/java/shop/adapter/in/web/PaymentController.java PaymentController|adapter',
+  'src/main/java/shop/adapter/out/persistence/PaymentJpaAdapter.java PaymentJpaAdapter|adapter',
+  'src/main/java/shop/application/port/in/PayUseCase.java PayUseCase|application',
+  'src/main/java/shop/application/port/out/PaymentStore.java PaymentStore|application',
+  'src/main/java/shop/application/service/PayService.java PayService|application',
+  'src/main/java/shop/domain/model/Payment.java Payment|domain',
+  'src/main/java/shop/exception/OrderNotFound.java OrderNotFound|exception',
   'src/main/java/shop/service/Legacy.java Legacy|service',
   'src/main/java/shop/util/Strings.java Strings|util',
 ];
+const SPRING_TEST_PLACEMENT_FINDINGS = [
+  'src/test/java/shop/OrderFlowTest.java',
+  'src/test/java/shop/orders/ComposedTest.java',
+  'src/test/java/shop/orders/ExtendedTest.java',
+  'src/test/java/shop/orders/InheritedTest.java',
+  'src/test/java/shop/orders/RepositoryTest.java',
+];
+
+function rulePaths(findings, rule) {
+  return findings.filter((finding) => finding.rule === rule).map((finding) => finding.path);
+}
 
 function withoutRunnableTests(root) {
   const tests = path.join(root, 'src/test/java');
@@ -74,5 +92,10 @@ describe.skipIf(!enabled)('Spring architecture rules on Maven builds', () => {
         .filter((finding) => finding.rule === 'spring-layout')
         .map((finding) => `${finding.path} ${finding.identity}`),
     ).toEqual(SPRING_LAYOUT_FINDINGS);
+    expect(rulePaths(findings, 'spring-test-placement')).toEqual(SPRING_TEST_PLACEMENT_FINDINGS);
+    expect(rulePaths(findings, 'spring-feature-boundary')).toEqual([
+      'src/main/java/shop/billing/BillingService.java',
+      'src/main/java/shop/billing/Invoices.java',
+    ]);
   }, 180_000);
 });

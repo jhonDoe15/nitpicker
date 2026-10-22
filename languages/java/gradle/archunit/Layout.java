@@ -19,7 +19,10 @@ final class Layout {
   private static final Set<String> LAYER_PACKAGES =
       Set.of(
           "controller", "controllers", "service", "services", "repository", "repositories",
-          "entity", "entities", "model", "models", "dto", "dtos", "dao", "util", "utils", "common");
+          "entity", "entities", "model", "models", "dto", "dtos", "dao", "daos", "util", "utils", "common",
+          "web", "api", "rest", "resource", "resources", "persistence", "domain", "mapper", "mappers",
+          "exception", "exceptions", "adapter", "adapters", "application", "infrastructure", "infra",
+          "port", "ports", "usecase", "usecases", "helper", "helpers");
 
   private Layout() {}
 

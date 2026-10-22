@@ -19,18 +19,20 @@ final class TestRules {
           "org.springframework.test.context.ContextConfiguration",
           "org.springframework.test.context.junit.jupiter.SpringJUnitConfig",
           "org.testcontainers.junit.jupiter.Testcontainers");
-  private static final Set<String> INTEGRATION_SEGMENTS = Set.of("integration", "it");
 
   private TestRules() {}
 
-  static void check(JavaClasses test, Set<Found> sink) {
-    for (JavaClass type : test) {
-      JavaClass owner = Spring.owner(type);
-      if (isConcreteClass(type) && startsContext(type) && !inIntegrationPackage(owner)) {
+  static void check(JavaClasses unitTests, JavaClasses otherTests, Set<Found> sink) {
+    for (JavaClass type : unitTests) {
+      if (isConcreteClass(type) && startsContext(type)) {
         Found.add(sink, PLACEMENT, type, "");
       }
-      if (dirtiesContext(type)) {
-        Found.add(sink, DIRTIES_CONTEXT, type, "");
+    }
+    for (JavaClasses tests : List.of(unitTests, otherTests)) {
+      for (JavaClass type : tests) {
+        if (dirtiesContext(type)) {
+          Found.add(sink, DIRTIES_CONTEXT, type, "");
+        }
       }
     }
   }
@@ -62,10 +64,6 @@ final class TestRules {
   private static String names(JavaAnnotation<JavaClass> annotation) {
     Object value = annotation.get("value").orElse("");
     return value instanceof Object[] ? Arrays.toString((Object[]) value) : String.valueOf(value);
-  }
-
-  private static boolean inIntegrationPackage(JavaClass type) {
-    return Arrays.stream(type.getPackageName().split("\\.")).anyMatch(INTEGRATION_SEGMENTS::contains);
   }
 
   private static boolean dirtiesContext(JavaClass type) {

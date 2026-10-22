@@ -14,19 +14,21 @@ public final class ArchRules {
   private ArchRules() {}
 
   public static void main(String[] args) throws IOException {
-    if (args.length != 3) {
-      System.err.println("usage: ArchRules <output.json> <main-class-dirs> <test-class-dirs>");
+    if (args.length < 3 || args.length > 4) {
+      System.err.println(
+          "usage: ArchRules <output.json> <main-class-dirs> <unit-test-class-dirs> [<other-test-class-dirs>]");
       System.exit(2);
     }
     JavaClasses main = importDirectories(args[1]);
-    JavaClasses test = importDirectories(args[2]);
+    JavaClasses unitTests = importDirectories(args[2]);
+    JavaClasses otherTests = importDirectories(args.length == 4 ? args[3] : "");
     Set<Found> found = Found.newSet();
     String root = Layout.rootPackage(main);
     if (root != null) {
       Layout.check(main, root, found);
     }
     Layers.check(main, found);
-    TestRules.check(test, found);
+    TestRules.check(unitTests, otherTests, found);
     String json =
         "{\"root\":" + (root == null ? "null" : "\"" + root + "\"") + ",\"violations\":["
             + found.stream().map(Found::toJson).collect(Collectors.joining(",")) + "]}\n";

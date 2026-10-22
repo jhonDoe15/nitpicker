@@ -28,35 +28,35 @@ function violation(rule, className, detail = '', fileName = '') {
   return { rule, className, fileName, detail };
 }
 
-function exceptionRoute(rule) {
-  return `If it is right here, add an exception for archunit/${rule} in nitpicker.config.json.`;
+function exceptionRoute(rule, file) {
+  return `If this is intended, add {"rule":"archunit/${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 }
 
 describe('readSpringArchFindings messages', () => {
   it.each([
     [
       violation('spring-layout', 'com.shop.Helper'),
-      'Helper sits in the root package com.shop. Put it in a feature package (com.shop.<feature>); the root package holds only the application and @Configuration classes.',
+      'Put Helper in a feature package com.shop.<feature>: the root package com.shop holds only the application, @Configuration and @ConfigurationProperties classes.',
     ],
     [
       violation('spring-layout', 'com.shop.service.CustomerService', 'service'),
-      'CustomerService is in the layer package "service". Group by feature instead: com.shop.<feature> holds its controller, service and repository together, and pure utilities go to com.shop.shared.',
+      'Put CustomerService in the feature package it belongs to, com.shop.<feature>, which holds that feature\'s controller, service and repository together (pure utilities go to com.shop.shared); "service" is a layer package.',
     ],
     [
       violation(
         'spring-feature-boundary',
         'com.shop.billing.Rules',
-        'com.shop.web.internal.Formats',
+        'com.shop.catalog.internal.Formats',
       ),
-      'Rules uses Formats from com.shop.web.internal, inside another root package com.shop.web. Depend only on the classes directly in com.shop.web, or move what both need to com.shop.shared.',
+      'Have Rules use only the classes directly in com.shop.catalog, or move what both need to com.shop.shared: Formats is internal to that feature (com.shop.catalog.internal).',
     ],
     [
       violation('spring-shared-pure', 'com.shop.shared.Slug'),
-      'Slug is a Spring bean or entity in the shared package. shared holds pure utilities; move it into the feature that owns it.',
+      'Move Slug into the feature that owns it: com.shop.shared holds only pure utilities, not Spring beans or entities.',
     ],
     [
       violation('spring-shared-pure', 'com.shop.shared.Slug', 'com.shop.orders.Total'),
-      'Slug depends on Total in com.shop.orders. shared holds pure utilities and depends on no other root package; move the code into the package that uses it.',
+      'Move Slug into the package that uses it, or drop its use of Total: com.shop.shared holds pure utilities and depends on no feature package such as com.shop.orders.',
     ],
     [
       violation(
@@ -64,32 +64,32 @@ describe('readSpringArchFindings messages', () => {
         'com.shop.web.Ctrl',
         'com.shop.data.CustomerRepository',
       ),
-      'Ctrl depends on repository CustomerRepository. Controllers call services only; inject a service and let it use the repository.',
+      'Have Ctrl call a service that uses CustomerRepository: controllers call services only, not repositories or data access.',
     ],
     [
       violation('spring-controller-entity', 'com.shop.web.Ctrl', 'all:com.shop.data.Customer'),
-      'Ctrl.all exposes the entity Customer in its signature. Take and return a record (DTO) and map it in the service.',
+      'Take and return a record (DTO) in Ctrl.all and map it in the service: the entity Customer stays out of controller signatures.',
     ],
     [
       violation(
         'spring-service-web',
         'com.shop.core.Svc',
-        'jakarta.servlet.http.HttpServletRequest',
+        'org.springframework.web.server.ServerWebExchange',
       ),
-      'Svc depends on HttpServletRequest, a web type. Services and repositories do not know the web layer; pass plain values and map them in the controller.',
+      'Keep Svc free of web types: take and return plain values, throw a domain exception for errors, and map them to and from ServerWebExchange in the controller or a @ControllerAdvice.',
     ],
     [
       violation('spring-test-placement', 'com.shop.orders.FlowTest'),
-      'FlowTest starts a Spring context outside an integration package. Move it to com.shop.orders.integration (a package named integration or it), or test the class directly with new and mocks.',
+      'Test FlowTest with new and mocks, or run it as an integration test: name it FlowIT (Failsafe runs *IT on Maven) or put it in an integration test source set. Both keep its package, so package-private classes stay visible; a package named integration or it also counts.',
     ],
     [
       violation('spring-no-dirties-context', 'com.shop.orders.FlowTest'),
-      'FlowTest uses @DirtiesContext, which rebuilds the context and slows the suite. Remove it: reset state in the test, or test the class without a context.',
+      'Reset state in FlowTest itself, or test the class without a Spring context: @DirtiesContext rebuilds the context and slows the suite.',
     ],
-  ])('words %j with the allowed form and the exception route', (input, message) => {
+  ])('leads %j with the allowed form and ends with the exception route', (input, message) => {
     const [finding] = read([input]);
 
-    expect(finding.message).toBe(`${message} ${exceptionRoute(input.rule)}`);
+    expect(finding.message).toBe(`${message} ${exceptionRoute(input.rule, finding.path)}`);
     expect(finding.rule).toBe(input.rule);
   });
 });
@@ -159,6 +159,38 @@ describe('readSpringArchFindings findings', () => {
     expect(identity('com.shop.audit.AuditService', 'com.shop.web.AuditController')).toEqual(
       identity('com.shop.service.AuditService', 'com.shop.controller.AuditController'),
     );
+  });
+
+  it('numbers repeated findings per file, so same-named classes in other packages keep theirs', () => {
+    const findings = (withOrders) =>
+      read([
+        ...(withOrders
+          ? [violation('spring-service-web', 'com.shop.orders.Mapper', 'a.web.Request')]
+          : []),
+        violation('spring-service-web', 'com.shop.billing.Mapper', 'b.web.Request'),
+      ]).filter((finding) => finding.path === 'src/com.shop.billing.Mapper.java');
+
+    expect(findings(true).map((finding) => finding.identity)).toEqual(['Mapper|Request']);
+    expect(findings(false)).toEqual(findings(true));
+  });
+
+  it('leaves out the context tests the shared integration-test rule accepts', () => {
+    const placed = read(
+      [
+        'com.shop.orders.OrderControllerIT',
+        'com.shop.orders.OrderIntegrationTest',
+        'com.shop.orders.integration.OrderControllerTest',
+        'com.shop.it.SliceTest',
+        'com.shop.e2e.CheckoutTest',
+        'com.shop.orders.OrderControllerTest',
+        'com.shop.iterators.IteratorTest',
+      ].map((className) => violation('spring-test-placement', className)),
+    );
+
+    expect(placed.map((finding) => finding.path)).toEqual([
+      'src/com.shop.orders.OrderControllerTest.java',
+      'src/com.shop.iterators.IteratorTest.java',
+    ]);
   });
 
   it('asks the resolver for the file name the class was compiled from, or none', () => {
