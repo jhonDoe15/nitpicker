@@ -9,9 +9,20 @@ export const UNUSED_API_SCOPES = {
   published: 'tests, stories and examples of this package count',
 };
 
-const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false, kotlin: false };
-const TYPESCRIPT_AND_KOTLIN = { typescript: true, java: false, python: false, kotlin: true };
-const TYPESCRIPT_AND_JVM = { typescript: true, java: true, python: false, kotlin: true };
+const TYPESCRIPT_ONLY = {
+  typescript: true,
+  javascript: false,
+  java: false,
+  python: false,
+  kotlin: false,
+};
+const TYPESCRIPT_AND_KOTLIN = {
+  typescript: true,
+  javascript: false,
+  java: false,
+  python: false,
+  kotlin: true,
+};
 
 /** The catalog entries of `RULES` (see `shared/policy.mjs`) for the unused public surface rules. */
 export const UNUSED_API_RULES = [
@@ -34,6 +45,5 @@ export const UNUSED_API_RULES = [
     check: 'dead-code',
     limit:
       'an export, module or main class that only tests use; a re-export is not an import (a published package or library counts its own tests as callers, so it is not judged)',
-    enforcedBy: TYPESCRIPT_AND_JVM,
   },
 ];

@@ -409,18 +409,16 @@ describe('budgets', () => {
     );
   });
 
-  it('rejects when the budgets file is not valid', async () => {
-    for (const content of [
-      'not json',
-      '{"budgets":"x"}',
-      '{"budgets":[{"month":"2024-03"}]}',
-      '[]',
-    ]) {
+  it.each(['not json', '{"budgets":"x"}', '{"budgets":[{"month":"2024-03"}]}', '[]'])(
+    'rejects when the budgets file holds %s',
+    async (content) => {
       const disk = createDisk({ 'data/budgets.json': content });
       const tracker = open(createExpenseTracker, disk);
-      await expect(tracker.setBudget('2024-03', 'Food', 100)).rejects.toThrow();
-      await expect(tracker.report('2024-03')).rejects.toThrow();
+      await expect(tracker.setBudget('2024-03', 'Food', 100)).rejects.toThrow(
+        'Cannot read data/budgets.json',
+      );
+      await expect(tracker.report('2024-03')).rejects.toThrow('Cannot read data/budgets.json');
       expect(disk.files.get('data/budgets.json')).toBe(content);
-    }
-  });
+    },
+  );
 });

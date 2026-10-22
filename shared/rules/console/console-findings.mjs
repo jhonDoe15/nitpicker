@@ -1,13 +1,13 @@
-import { globToRegExp } from '../../../../../../shared/glob.mjs';
-import { MESSAGES, RULE_IDS, renderMessage } from '../../../../../../shared/policy.mjs';
-import { exceptionMatcher, exceptionText } from '../../../../../../shared/rules/exceptions.mjs';
-import { hash } from '../../../../../../shared/rules/finding-helpers.mjs';
+import { globMatcher } from '../../paths/glob.mjs';
+import { MESSAGES, RULE_IDS, renderMessage } from '../../policy.mjs';
+import { exceptionMatcher, exceptionText } from '../exceptions.mjs';
+import { hash } from '../finding-helpers.mjs';
 import { normalizeConsoleMessage } from './console-messages.mjs';
 
-function allowMatcher(allow) {
+export function consoleAllowMatcher(allow) {
   const entries = allow.map(({ contains, paths }) => ({
     needle: normalizeConsoleMessage(contains),
-    paths: paths?.map((glob) => globToRegExp(glob)),
+    paths: paths?.map((glob) => globMatcher(glob)),
   }));
   return (file, message) =>
     entries.some(
@@ -33,7 +33,10 @@ function entryMessages(entry, { isAllowed, isExcepted }) {
 }
 
 function newMessages(report, { allow, exceptions }) {
-  const context = { isAllowed: allowMatcher(allow), isExcepted: exceptionMatcher(exceptions) };
+  const context = {
+    isAllowed: consoleAllowMatcher(allow),
+    isExcepted: exceptionMatcher(exceptions),
+  };
   const messages = new Map();
   for (const found of report.entries.flatMap((entry) => entryMessages(entry, context))) {
     const key = `${found.file}\0${found.message}`;
