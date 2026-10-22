@@ -54,7 +54,7 @@ function identifierKind(ref) {
   return named || (ref.imported === 'default' && spec.callable === true) ? spec.kind : undefined;
 }
 
-export function isIoCall(call, context) {
+export function ioKind(call, context) {
   const callee = skipped(call.callee);
   if (callee.type === 'ArrowFunctionExpression' || callee.type === 'FunctionExpression') {
     return undefined;
