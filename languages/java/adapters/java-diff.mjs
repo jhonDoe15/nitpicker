@@ -15,6 +15,7 @@ import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
+import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { toolConfigChoices, toolConfigProperties } from './tool-config/tool-config-choices.mjs';
 import { javaFindingOptions } from './reporting/finding-options.mjs';
@@ -34,6 +35,7 @@ const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
 const CLOCK_SLACK_MS = 2000;
 const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
+const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache'];
 
 export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
   return snapshot === 'head' && baselineRoot !== undefined
@@ -45,10 +47,8 @@ function assertSucceeded(result, projectRoot, { reportBase, since }) {
   if (result.error === undefined && result.status === 0) {
     return;
   }
-  const detail = condenseFailure(
-    result.stderr?.trim() ? result.stderr : (result.stdout ?? ''),
-    MAX_FAILURE_LENGTH,
-  );
+  const output = result.stderr?.trim() ? result.stderr : (result.stdout ?? '');
+  const detail = condenseFailure(output, MAX_FAILURE_LENGTH);
   const failure =
     result.error ??
     failingTestsOf(projectRoot, { reportBase, since }) ??
@@ -70,12 +70,17 @@ function exportArguments(common, { initScript, directory, policy }) {
 
 function commonArguments({ reportBase, policy, kotlinArguments }) {
   return [
-    '--console=plain',
-    '--quiet',
-    '--no-configuration-cache',
+    ...GRADLE_FLAGS,
     `-Pnitpicker.reportDir=${reportBase}`,
     ...lintBaselineProperties(policy),
     ...kotlinArguments,
+  ];
+}
+
+function headFactProperties(policy) {
+  return [
+    ...javaStyleProperties(policy),
+    ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
   ];
 }
 
@@ -104,7 +109,7 @@ function runJavaPreset(
       () => [
         ...common,
         ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
-        ...javaStyleProperties(policy),
+        ...headFactProperties(policy),
         '-I',
         initScript,
         'nitpickerJava',
@@ -198,7 +203,10 @@ export function collectJavaFindings(root, options = {}) {
   }
   return applyFindingPolicy(
     withoutFollowedImports(
-      withProjectEnumPredicates(parseAnalyzerReport({ findings }, preset).findings, projectRoot),
+      withProjectEnumPredicates(
+        withoutGeneratedSources(parseAnalyzerReport({ findings }, preset).findings, projectRoot),
+        projectRoot,
+      ),
       options.policy?.conventions,
       readSource,
     ),

@@ -28,17 +28,20 @@ function cloneMetrics({ analyzerName, sides, clone, pair, occurrence }) {
 }
 
 const PAIR_END = /:(?:fragment|occurrence):/;
+export const RENAMED_IDENTITY_PREFIX = 'renamed:';
+const IDENTITY_KIND_PREFIXES = [RENAMED_IDENTITY_PREFIX, 'cpd:'];
 
 export function clonePartnerPath(finding) {
-  const kind = finding.identity.startsWith('cpd:') ? 'cpd:' : '';
-  const prefix = `${kind}pair:${finding.path}|`;
+  const prefix = `pair:${finding.path}|`;
+  const kind = IDENTITY_KIND_PREFIXES.find((candidate) => finding.identity.startsWith(candidate));
+  const identity = finding.identity.slice(kind?.length ?? 0);
   if (
     !['duplicate-clone', 'duplicate-clone-size'].includes(finding.rule) ||
-    !finding.identity.startsWith(prefix)
+    !identity.startsWith(prefix)
   ) {
     return undefined;
   }
-  const rest = finding.identity.slice(prefix.length);
+  const rest = identity.slice(prefix.length);
   const end = rest.search(PAIR_END);
   return end < 0 ? undefined : rest.slice(0, end);
 }
