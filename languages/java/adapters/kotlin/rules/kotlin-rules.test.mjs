@@ -156,10 +156,11 @@ describe('nitpicker-detekt.yml', () => {
     const pinned = { active: 'true', excludes: '[]', ignoreAnnotated: '[]', includes: '[]' };
     for (const { settings, rules } of Object.values(rulesets)) {
       expect(settings).toEqual(pinned);
-      for (const rule of Object.values(rules)) {
+      for (const [name, rule] of Object.entries(rules)) {
         const { active, excludes, ignoreAnnotated, includes, severity } = rule;
         expect({ active, excludes, ignoreAnnotated, includes, severity }).toEqual({
           ...pinned,
+          ignoreAnnotated: name === 'UnusedParameter' ? undefined : pinned.ignoreAnnotated,
           severity: 'warning',
         });
       }
@@ -191,23 +192,19 @@ describe('isBannedSuppression', () => {
     'UNCHECKED_CAST',
     'DEPRECATION',
     'TYPEALIAS_EXPANSION_DEPRECATION',
+    'unused',
+    'UNUSED_PARAMETER',
+    'UNUSED_VARIABLE',
   ])('bans %s', (token) => {
     expect(isBannedSuppression(token)).toBe(true);
   });
 
-  it.each([
-    'UNUSED_VARIABLE',
-    'unchecked',
-    'unused',
-    'unchecked_cast',
-    'rawtypes',
-    'allowed',
-    'detector',
-    'ktlinter',
-    '',
-  ])('allows the compiler diagnostic or unrelated token %s', (token) => {
-    expect(isBannedSuppression(token)).toBe(false);
-  });
+  it.each(['unchecked', 'unchecked_cast', 'rawtypes', 'allowed', 'detector', 'ktlinter', ''])(
+    'allows the compiler diagnostic or unrelated token %s',
+    (token) => {
+      expect(isBannedSuppression(token)).toBe(false);
+    },
+  );
 });
 
 describe('compilerWarningRule', () => {
