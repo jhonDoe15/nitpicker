@@ -48,7 +48,8 @@ formatter, ktfmt style and detekt config to use is decided on the Nitpicker side
 properties; the style texts (the `.editorconfig` files to mirror, the ktlint defaults, the detekt
 convention layer) are generated on the Nitpicker side into one JSON file in a temporary folder, whose
 path is the property `nitpicker.kotlin.styleFile`, and only written out by the init script
-(`kotlin-style-files.e2e.test.mjs` runs its two small tasks against a stand-in Kotlin plugin).
+(`kotlin-e2e/style/kotlin-style-files.e2e.test.mjs`, in `npm run test:kotlin`, runs its two small tasks
+against a stand-in Kotlin plugin).
 
 ## What runs on what
 
@@ -370,7 +371,9 @@ line, so a moved block is not a new finding.
 
 The format check runs only for a project that uses a Kotlin formatter: Nitpicker does not make a
 project adopt ktlint's style. `kotlin.formatter` (`"ktlint"`, `"ktfmt"` or `"none"`) overrides the
-detection, and every format finding names it.
+detection, and every format finding names it. The head checkout's choice
+is read once and handed to the base run through the head policy, so a change that adds ktlint or
+ktfmt checks the base with the same formatter and legacy formatting is not a new finding.
 
 1. `"kotlin": { "formatter": "ktlint" | "ktfmt" | "none" }` in `nitpicker.config.json`.
 2. Otherwise the build files (`build.gradle(.kts)`, `settings.gradle(.kts)`,
@@ -713,6 +716,16 @@ with `--format kotlin` over each Kotlin source root from the manifest, ignoring 
 the cloned text and the n-th occurrence, never a line. Clones are found within one source root and
 within the Kotlin files; a clone between a `.kt` and a `.java` file, or between two source roots, is not
 (the same as for several Java roots).
+
+A second jscpd run (100 tokens, 5 lines) goes over a normalized copy of the `.kt` and `.kts` files,
+where names, strings, numbers and comments are one token each, `package` and `import` lines and
+literal-only `listOf`, `mapOf` and `Pair` calls are blanked and generated files are left out, so a
+copy with renamed locals and changed literals fails too, with `duplicate-clone` and an identity
+starting `renamed:`. It replaces a plain clone over the same two ranges, and drops clones made of
+declarations only (data class fields, also with defaults that call a function, enum constants) and
+clones that only repeat one or two statements (DTO mappers, `when` tables, `if` ladders). PMD CPD would not do this better: the
+`pmd-kotlin` lexer ignores the identifier and literal flags. The message names the same route as for
+any clone: add either file of the pair to `exclude`.
 
 ## Coupling
 
