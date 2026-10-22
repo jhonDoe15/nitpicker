@@ -88,6 +88,10 @@ def is_secret_assignment(text, name):
 def folded_text(node):
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
+    if isinstance(node, ast.Constant) and isinstance(node.value, bytes):
+        return node.value.decode("latin-1")
+    if is_text_conversion(node):
+        return folded_text(node.func.value if is_encode(node) else node.args[0])
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
         left, right = folded_text(node.left), folded_text(node.right)
         return left + right if left is not None and right is not None else None
@@ -95,6 +99,25 @@ def folded_text(node):
         parts = [folded_text(v) for v in node.values if isinstance(v, ast.Constant)]
         return "".join(parts) if parts and all(p is not None for p in parts) else None
     return None
+
+
+def is_encode(node):
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "encode"
+    )
+
+
+def is_text_conversion(node):
+    if is_encode(node):
+        return True
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in {"str", "bytes"}
+        and len(node.args) >= 1
+    )
 
 
 def wrapped_value(node, aliases):
@@ -131,7 +154,25 @@ def target_name(target):
         return target.id
     if isinstance(target, ast.Attribute):
         return target.attr
+    if isinstance(target, ast.Subscript):
+        return string_key(target.slice)
     return None
+
+
+def string_key(node):
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
+
+
+def keyed_default(call):
+    key = string_key(call.args[0]) if call.args else None
+    if key is None:
+        return None
+    default = [k.value for k in call.keywords if k.arg == "default"]
+    if default:
+        return key, default[0]
+    return (key, call.args[1]) if len(call.args) == 2 else None
 
 
 def assignments(tree):
@@ -143,6 +184,9 @@ def assignments(tree):
             yield target_name(node.target), node.value, node
         elif isinstance(node, ast.keyword) and node.arg:
             yield node.arg, node.value, node.value
+        elif isinstance(node, ast.Call) and keyed_default(node) is not None:
+            key, default = keyed_default(node)
+            yield key, default, default
         elif isinstance(node, ast.Dict):
             for key, value in zip(node.keys, node.values):
                 if isinstance(key, ast.Constant) and isinstance(key.value, str):
@@ -174,7 +218,14 @@ def hardcoded_findings(context):
         for text, literal in literal_strings(value, context.aliases):
             if is_secret_assignment(text, name):
                 found.append(finding(context.path, "hardcoded-secret", name, literal))
-    return found + wrapped_secret_findings(context)
+    return unique(found + wrapped_secret_findings(context))
+
+
+def unique(findings):
+    seen = {}
+    for item in findings:
+        seen.setdefault((item["line"], item["subject"]), item)
+    return list(seen.values())
 
 
 def wrapped_secret_findings(context):

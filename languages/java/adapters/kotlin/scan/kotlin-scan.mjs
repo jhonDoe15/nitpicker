@@ -12,12 +12,9 @@ import {
   commentedOutCode,
   generatedFile,
 } from './rules/markers.mjs';
-import {
-  SECRET_MESSAGES,
-  credentialLiterals,
-  hardcodedSecrets,
-  secretsInLogs,
-} from './rules/secrets.mjs';
+import { credentialLiterals, hardcodedSecrets } from './rules/secrets/hardcoded-secrets.mjs';
+import { SECRET_MESSAGES } from './rules/secrets/secret-names.mjs';
+import { secretsInLogs } from './rules/secrets/secrets-in-logs.mjs';
 import { TEST_MESSAGES, testClassesWithoutTests, testHelpersInSource } from './rules/tests.mjs';
 import { CLIENT_MESSAGES, httpWithoutTimeout, unsafeDeserialization } from './security/clients.mjs';
 import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security/crypto.mjs';
