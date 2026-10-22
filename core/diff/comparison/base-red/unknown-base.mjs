@@ -2,6 +2,7 @@ import { RULE_IDS } from '../../../../shared/policy.mjs';
 import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_RULES,
+  TESTS_FAILED_SCOPE_SEPARATOR,
 } from '../../../../shared/rules/finding-helpers.mjs';
 
 const TEST_RESULT_RULES = [
@@ -30,7 +31,9 @@ export function unknownOnBaseFor(failures, touchedCode) {
   if (touchedCode?.testsRemoved === true || failures.length === 0) {
     return undefined;
   }
-  const modules = failures.map(({ symbol }) => symbol ?? '.');
+  const modules = failures.flatMap(({ symbol }) =>
+    (symbol ?? '.').split(TESTS_FAILED_SCOPE_SEPARATOR),
+  );
   return (finding) =>
     isTestResultFinding(finding) && modules.some((module) => isUnder(module, finding.path));
 }

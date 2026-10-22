@@ -7,6 +7,7 @@ import {
   isBaseTestFailure,
   runOrNoteFailingTests,
   testsFailedFinding,
+  withRootSourceRoots,
   withTestsFailures,
 } from './tests-failed.mjs';
 
@@ -220,5 +221,36 @@ describe('withTestsFailures', () => {
       withTestsFailures(findings, 'java', undefined),
       withTestsFailures(findings, 'java', failures).map(({ rule, symbol }) => `${rule} ${symbol}`),
     ]).toEqual([findings, ['x undefined', 'tests-failed .', 'tests-failed core']]);
+  });
+});
+
+describe('the scope of a failing root project', () => {
+  const modules = [
+    { dir: '', manifest: { sourceRoots: ['src/main/java'], testSourceRoots: ['src/test/java'] } },
+    { dir: 'api', manifest: { sourceRoots: ['api/src/main/java'] } },
+  ];
+
+  it('is the root project own source directories, not the whole build', () => {
+    const failures = withRootSourceRoots(
+      [
+        { module: '.', tests: ['a: no'] },
+        { module: 'api', tests: ['b: no'] },
+      ],
+      modules,
+    );
+
+    expect(failures.map((failure) => testsFailedFinding('java', failure).symbol)).toEqual([
+      'src/main/java,src/test/java',
+      'api',
+    ]);
+  });
+
+  it('falls back to the whole analyzer when the root declares no source directory', () => {
+    const failures = withRootSourceRoots(
+      [{ module: '.', tests: ['a: no'] }],
+      [{ dir: '', manifest: {} }],
+    );
+
+    expect(testsFailedFinding('java', failures[0]).symbol).toBe('.');
   });
 });

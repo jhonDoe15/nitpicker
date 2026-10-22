@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -18,7 +18,7 @@ import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs'
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
-import { toolConfigChoices, toolConfigProperties } from './tool-config/tool-config-choices.mjs';
+import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
 import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs';
@@ -26,38 +26,23 @@ import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
 import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
 import { runGradleStage } from './red-base/gradle-stage.mjs';
-import { runOrNoteFailingTests, withTestsFailures } from './red-base/tests-failed.mjs';
+import {
+  runOrNoteFailingTests,
+  withRootSourceRoots,
+  withTestsFailures,
+} from './red-base/tests-failed.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
-import { javaStyleProperties } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
+import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
 
 const CLOCK_SLACK_MS = 2000;
-const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
-
-function exportArguments(common, { initScript, directory, policy }) {
-  mkdirSync(directory, { recursive: true });
-  return [
-    ...common,
-    ...javaStyleProperties(policy),
-    `-Pnitpicker.checkstyle.exportConfig=${path.join(directory, CHECKSTYLE_EXPORT)}`,
-    '-I',
-    initScript,
-    'nitpickerCheckstyleConfig',
-  ];
-}
-
-function headFactProperties(policy) {
-  return [
-    ...javaStyleProperties(policy),
-    ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
-  ];
-}
 
 function runJavaPreset(
   projectRoot,
   {
     gradle,
+    spawn,
     initScript = INIT_SCRIPT,
     policy = {},
     reportBase,
@@ -69,7 +54,6 @@ function runJavaPreset(
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
   const directory = path.join(reportBase, 'tool-config');
   const since = Date.now() - CLOCK_SLACK_MS;
-  const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
   withKotlin((kotlinArguments) => {
     const common = [
       '--console=plain',
@@ -79,25 +63,15 @@ function runJavaPreset(
       `-Pnitpicker.reportDir=${reportBase}`,
       ...kotlinArguments,
     ];
-    const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
-    const stages = [
-      ...(layersCheckstyle
-        ? [() => exportArguments(common, { initScript, directory, policy })]
-        : []),
-      () => [
-        ...common,
-        ...(testsFailedModules.length > 0
-          ? [`-Pnitpicker.testsFailed=${testsFailedModules.join(',')}`]
-          : []),
-        ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
-        ...headFactProperties(policy),
-        '-I',
-        initScript,
-        'nitpickerJava',
-      ],
-    ];
+    const stages = gradleStages(common, {
+      projectRoot,
+      initScript,
+      policy,
+      directory,
+      testsFailedModules,
+    });
     for (const stage of stages) {
-      runGradleStage({ args: stage(), projectRoot, gradle, budget, reportBase, since });
+      runGradleStage({ args: stage(), projectRoot, gradle, budget, reportBase, since, spawn });
     }
   });
 }
@@ -149,7 +123,7 @@ function gradleFindings(projectRoot, options, reportBase) {
       reportBase,
       report,
     }).findings,
-    testsFailures,
+    testsFailures: withRootSourceRoots(testsFailures, report.modules),
   };
 }
 
@@ -257,6 +231,7 @@ export function runJavaDiff({
   includeWorkingTree = false,
   gradle,
   maven,
+  spawn,
   initScript,
   policy,
 }) {
@@ -275,7 +250,7 @@ export function runJavaDiff({
     repositoryRoot,
     projectRelativePath,
     comparison,
-    options: { gradle, maven, initScript },
+    options: { gradle, maven, spawn, initScript },
     policy,
   });
   const touchedCode = {

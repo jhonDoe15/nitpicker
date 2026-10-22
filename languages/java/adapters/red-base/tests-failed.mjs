@@ -1,7 +1,28 @@
-import { TESTS_FAILED_RULE, testsFailOnBase } from '../../../../shared/rules/finding-helpers.mjs';
+import {
+  TESTS_FAILED_RULE,
+  TESTS_FAILED_SCOPE_SEPARATOR,
+  testsFailOnBase,
+} from '../../../../shared/rules/finding-helpers.mjs';
 
 const ROOT_MODULE = '.';
 const MAX_MESSAGE_LENGTH = 4000;
+const OWN_ROOT_LISTS = [
+  'sourceRoots',
+  'kotlinSourceRoots',
+  'testSourceRoots',
+  'kotlinTestSourceRoots',
+];
+
+export function ownSourceRoots(manifest) {
+  return OWN_ROOT_LISTS.flatMap((list) => manifest?.[list] ?? []);
+}
+
+export function withRootSourceRoots(failures, modules) {
+  const roots = ownSourceRoots(modules.find(({ dir }) => dir === '')?.manifest);
+  return failures.map((failure) =>
+    failure.module === ROOT_MODULE ? { ...failure, roots } : failure,
+  );
+}
 
 export function isBaseTestFailure(error, policy) {
   return error?.failures?.length > 0 && policy?.snapshot === 'base';
@@ -23,7 +44,7 @@ export function runOrNoteFailingTests(run, projectRoot, options) {
   }
 }
 
-export function testsFailedFinding(preset, { module, tests }) {
+export function testsFailedFinding(preset, { module, tests, roots = [] }) {
   const message = testsFailOnBase(tests, module === ROOT_MODULE ? '' : ` in ${module}`);
   return {
     tool: preset,
@@ -33,7 +54,10 @@ export function testsFailedFinding(preset, { module, tests }) {
     message:
       message.length > MAX_MESSAGE_LENGTH ? `${message.slice(0, MAX_MESSAGE_LENGTH)}...` : message,
     classification: 'tool-error',
-    symbol: module,
+    symbol:
+      module === ROOT_MODULE && roots.length > 0
+        ? roots.join(TESTS_FAILED_SCOPE_SEPARATOR)
+        : module,
   };
 }
 

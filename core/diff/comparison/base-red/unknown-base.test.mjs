@@ -230,6 +230,19 @@ describe('unknownOnBaseFor', () => {
     expect(unknown(inModule('api/src/A.java'))).toBe(true);
   });
 
+  it('covers only the listed directories when a root project fails', () => {
+    const unknown = unknownOnBaseFor(
+      [{ ...testsFailed, symbol: 'src/main/java,src/test/java' }],
+      undefined,
+    );
+
+    expect([
+      unknown(inModule('src/main/java/A.java')),
+      unknown(inModule('src/test/java/ATest.java')),
+      unknown(inModule('api/src/main/java/B.java')),
+    ]).toEqual([true, true, false]);
+  });
+
   it('knows nothing about the base when the change removes tests', () => {
     expect(unknownOnBaseFor([testsFailed], { testsRemoved: true })).toBeUndefined();
   });

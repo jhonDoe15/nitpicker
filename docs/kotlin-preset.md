@@ -65,6 +65,9 @@ against a stand-in Kotlin plugin).
 | PIT                                                            | yes          | report-only    | Mutants of Kotlin classes are descriptive and never fail; see [Mutation](#mutation-report-only-for-kotlin).             |
 | Structure limits, CRAP, jscpd duplicates                       | yes          | yes            | Kotlin through the `kotlin-psi` program and jscpd's `kotlin` format. See below.                                         |
 | jdeps (stability direction)                                    | yes          | yes            | Reads the Java and the Kotlin classes of the module together, one module per source file. See [Coupling](#coupling).    |
+| Kotlin source checks                                           |              | yes            | A source scan on the Node side; tool `kotlin-source`. See [Source checks](#source-checks).                              |
+| kotlinc lint                                                   |              | yes            | The pinned Kotlin compiler on the main sources; tool `kotlinc`. See [Compiler warnings](#compiler-warnings).            |
+| Class limits                                                   |              | yes            | Methods, fields and inheritance depth from the `kotlin-psi` program. See [Class limits](#class-limits).                 |
 
 **PMD and SpotBugs on Kotlin (decision).** PMD has no Kotlin analysis, so it keeps running on the Java files of a
 mixed module only; the review rules that PMD runs on Java (`pmd/FixedSleepInTest` and the others) are
@@ -135,9 +138,12 @@ Kotlin classes (see [Mutation](#mutation-report-only-for-kotlin)), and jdeps rea
   nesting depth), so a legacy finding that improves or stays the same stays baselined and only a
   finding that is new fails. A legacy finding whose value gets worse is not new either; limits on
   size and complexity are the structure analyzer's job (KT3).
-- **Exceptions.** For a rule that is not a one-way rule: turn it off or tune it in the detekt config,
-  or drop findings under a path with `exclude` in `nitpicker.config.json`. Both are files in the
-  repository, so a lifted rule shows up in review. One-way rules have `exceptions` (below).
+- **Exceptions.** Two routes, as in the Java preset. Every detekt finding, one-way rule or not, ends
+  with the shared exception sentence for its rule as the finding prints it (`If this is intended, add {"rule":"detekt.style.MagicNumber","paths":[...],"reason":"..."} to "exceptions" in nitpicker.config.json.`),
+  the same sentence the Java and TypeScript findings end with: an `exceptions` entry lifts that rule
+  for the paths it names. A rule that is not a one-way rule has a second route, the project's detekt
+  config, where it can be turned off or tuned; a one-way rule has only the first, because the preset
+  pins it (see [Owned by Nitpicker](#one-way-rules)). `exclude` drops findings under a path.
 
 ## One-way rules
 
@@ -149,24 +155,45 @@ ends with the exception route, which the gate appends to all of them. The `inlin
 message names the fix and both routes. Each rule has a banned and an allowed fixture in
 `languages/java/adapters/kotlin/rules/test-support/kotlin-rule-cases.mjs`.
 
-| Spot              | Banned                                | Allowed                                                           | Rule (detekt)                                                            |
-| ----------------- | ------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Scope functions   | `run`, `with`, `also`                 | `let` (`value?.let { ... }`) and `apply` (configure an object)    | `style.ForbiddenMethodCall` (`kotlin.run`, `kotlin.with`, `kotlin.also`) |
-|                   | `let` or `apply` that changes nothing | call the member directly                                          | `style.UnnecessaryLet`, `style.UnnecessaryApply`                         |
-| Nullable handling | `!!`                                  | `?:`, `?.let`, `checkNotNull(value) { "why" }`                    | `potential-bugs.UnsafeCallOnNullableType`                                |
-|                   | `value as String` on a nullable value | handle null first, or `as?`                                       | `potential-bugs.CastNullableToNonNullableType`                           |
-|                   | `if (x == null) null else ...`        | `x?.let { ... }`                                                  | `style.UseLet`                                                           |
-| Coroutines        | `GlobalScope`                         | `coroutineScope { launch { ... } }`, or a scope its owner cancels | `coroutines.GlobalCoroutineUsage`                                        |
-|                   | `runBlocking`                         | a `suspend` caller (`suspend fun main()`); `runTest` in a test    | `style.ForbiddenMethodCall` (`kotlinx.coroutines.runBlocking`)           |
-| Exceptions        | `catch (e: Exception)`, `Throwable`   | catch the specific exception type; `assertFailsWith` in a test    | `exceptions.TooGenericExceptionCaught`                                   |
-| Records           | a class that only holds `val`s        | `data class`                                                      | `style.UseDataClass` (`allowVars: true`)                                 |
-|                   | a `data class` with a `var`           | `val` and `copy(...)`                                             | `style.DataClassShouldBeImmutable`                                       |
+| Spot              | Banned                                                                                                                                            | Allowed                                                                                                                      | Rule (detekt)                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Scope functions   | `run`, `with`, `also`                                                                                                                             | `let` (`value?.let { ... }`) and `apply` (configure an object)                                                               | `style.ForbiddenMethodCall` (`kotlin.run`, `kotlin.with`, `kotlin.also`)                           |
+|                   | `let` or `apply` that changes nothing                                                                                                             | call the member directly                                                                                                     | `style.UnnecessaryLet`, `style.UnnecessaryApply`                                                   |
+| Nullable handling | `!!`                                                                                                                                              | `?:`, `?.let`, `checkNotNull(value) { "why" }`                                                                               | `potential-bugs.UnsafeCallOnNullableType`                                                          |
+|                   | `value as String` on a nullable value                                                                                                             | handle null first, or `as?`                                                                                                  | `potential-bugs.CastNullableToNonNullableType`                                                     |
+|                   | `if (x == null) null else ...`                                                                                                                    | `x?.let { ... }`                                                                                                             | `style.UseLet`                                                                                     |
+| Coroutines        | `GlobalScope`                                                                                                                                     | `coroutineScope { launch { ... } }`, or a scope its owner cancels                                                            | `coroutines.GlobalCoroutineUsage`                                                                  |
+|                   | `runBlocking`                                                                                                                                     | a `suspend` caller (`suspend fun main()`); `runTest` in a test                                                               | `style.ForbiddenMethodCall` (`kotlinx.coroutines.runBlocking`)                                     |
+| Exceptions        | `catch (e: Exception)`, `Throwable`                                                                                                               | catch the specific exception type; `assertFailsWith` in a test                                                               | `exceptions.TooGenericExceptionCaught`                                                             |
+| Records           | a class that only holds `val`s                                                                                                                    | `data class`                                                                                                                 | `style.UseDataClass` (`allowVars: true`)                                                           |
+|                   | a `data class` with a `var`                                                                                                                       | `val` and `copy(...)`                                                                                                        | `style.DataClassShouldBeImmutable`                                                                 |
+| Output            | `print`, `println`                                                                                                                                | the application logger (`logger.info(...)`)                                                                                  | `style.ForbiddenMethodCall` (`kotlin.io.print`, `kotlin.io.println`)                               |
+| Configuration     | `System.getenv` outside the composition root                                                                                                      | read once into a config class in the file with `fun main`, the `@SpringBootApplication` class or a Ktor `Application` module | `style.ForbiddenMethodCall` (`java.lang.System.getenv`)                                            |
+| Time              | `Instant.now()`, `LocalDate.now()` and the other `java.time` `now()`, `System.currentTimeMillis()`, `kotlinx.datetime.Clock.System.now()`         | an injected `java.time.Clock`: `Instant.now(clock)`, `clock.millis()`                                                        | `style.ForbiddenMethodCall`                                                                        |
+| Randomness        | `Random.nextInt()` on the default generator, `items.random()`, `shuffled()`, `Math.random()`, `ThreadLocalRandom.current()`, `java.util.Random()` | an injected `kotlin.random.Random` (`Random(seed)` in tests)                                                                 | `style.ForbiddenMethodCall`, `style.ForbiddenImport` (`java.util.Random`)                          |
+| Blocking          | `Thread.sleep`, `TimeUnit.sleep`                                                                                                                  | schedule the work (`ScheduledExecutorService`) or wait on the condition                                                      | `style.ForbiddenMethodCall`                                                                        |
+| Threads           | `Thread(...).start()`, `thread { }`                                                                                                               | a coroutine in a scope its owner cancels, or an injected `ExecutorService`                                                   | `style.ForbiddenMethodCall`                                                                        |
+| Processes         | `Runtime.exec`, every overload (the argument-array ones too)                                                                                      | `ProcessBuilder("git", "log", ref)` with an argument list                                                                    | `style.ForbiddenMethodCall` (all overloads)                                                        |
+| Deserialization   | `ObjectInputStream(...)`                                                                                                                          | JSON or another data format (kotlinx.serialization)                                                                          | `style.ForbiddenMethodCall` (`java.io.ObjectInputStream.<init>`)                                   |
+| Date and time     | `java.util.Date`, `Calendar`, `GregorianCalendar`, `TimeZone`, `SimpleDateFormat`                                                                 | `java.time`; convert a `Date` another API returns with `toInstant()`                                                         | `style.ForbiddenImport`, `style.ForbiddenMethodCall` (the constructors and `Calendar.getInstance`) |
+| Comments          | `TODO`, `FIXME`, `XXX`, `HACK` or `STOPSHIP` without an issue (`// TODO fix`)                                                                     | `TODO(#123): ...`, `TODO PROJ-123: ...` or a link                                                                            | `style.ForbiddenComment`                                                                           |
+| Literals          | a string literal of 5 or more characters used three times in a file (main sources)                                                                | one `private const val`                                                                                                      | `complexity.StringLiteralDuplication`                                                              |
 
 Rule ids in findings are `detekt.<ruleset>.<Rule>`. Test sources are analyzed with the same rules, so
 `runBlocking` in a test is a finding too; its message points to `runTest`. A broad catch in a test
 (`catch (error: Exception)`) is a finding as well: assert on the specific exception with
 `assertFailsWith`, or catch the specific type. No variable name lifts the rule (`catch (ignored:
-Exception)` is a finding too); the only exit is an `exceptions` entry with a reason.
+Exception)` is a finding too); the only exit is an `exceptions` entry with a reason. The calls from
+`System.getenv` down to the legacy date classes (legacy date and time, the clock, sleeping,
+`Runtime.exec`, Java deserialization, starting threads) each name their allowed form first and count in
+main sources only, and so does the literal duplication: both are dropped on `kotlinTestSourceRoots`
+after detekt runs, not by a path glob, so a `test` package inside the main sources is still checked.
+`Runtime.exec` is banned in every overload, the `String[]` ones included: they skip the shell, but
+`ProcessBuilder` is the one way to start a process. Randomness and
+`System.currentTimeMillis` are banned in Kotlin as well, and a shell run through
+`ProcessBuilder("sh", "-c", ...)` is a [source check](#source-checks). The environment ban is lifted
+in the composition root by the gate (a file with a top-level `fun main`, an `@SpringBootApplication`
+class or a Ktor `fun Application.module()`), see [Frameworks](#frameworks).
 
 **Why these allowed forms (decision).** One function per job: `let` binds a value to a name for a
 block (and is the null-handling form), `apply` configures an object and returns it. `run` and `with`
@@ -179,21 +206,22 @@ each rule `severity: warning`, so a project cannot switch these rules off, lower
 (which the gate reads as descriptive) or skip paths or annotated classes in `detekt.yml`; paths are
 lifted only by `exceptions`. A
 test keeps the rule keys of the file equal to the rules the gate knows. Other rules and keys in the
-project's config work as before. The one list the preset sets, `ForbiddenMethodCall.methods`, is
-merged: detekt replaces a list instead of merging it, so Nitpicker reads the project's detekt file
-and the effective list is the preset's four calls followed by the project's own entries (strings or
-`value`/`reason` entries; a call both list keeps the preset's reason). A project can add forbidden
-calls, for example `java.lang.Thread.sleep`, but never drop one of ours. An entry is a method name
-with an optional parameter list (`java.lang.Thread.sleep` or `java.lang.Thread.sleep(long)`); an
-entry of any other shape, a `methods` key that is not a list or a file that does not parse adds
-nothing. Findings for a
-project's own entry have the rule `detekt.style.ForbiddenMethodCall` as well, so they are one-way
-and an exception lifts them the same way. `ForbiddenImport` is not set by the preset, so a project's
-own `ForbiddenImport.imports` works as it does in detekt. The one narrowing that stays with
-the project is detekt's own `excludeAnnotatedClasses` for `UseDataClass`, for example
-`excludeAnnotatedClasses: ['Entity']` for JPA entities, whose equality must not become value equality.
+project's config work as before. The lists the preset sets are merged: detekt replaces a list
+instead of merging it, so Nitpicker reads the project's detekt file and the effective list is the
+preset's entries followed by the project's own (strings or `value`/`reason` entries; an entry both
+list keeps the preset's reason). That holds for `ForbiddenMethodCall.methods`,
+`ForbiddenImport.imports`, `ForbiddenComment.comments` and `UseDataClass.excludeAnnotatedClasses`.
+A project can add forbidden calls, imports or comment markers, but never drop one of ours. A method
+entry is a method name with an optional parameter list (`java.lang.System.exit` or
+`java.lang.Thread.sleep(long)`); an entry of any other shape, a key that is not a list or a file
+that does not parse adds nothing. Findings for a project's own entry have the preset's rule id as
+well, so an exception lifts them the same way. `UseDataClass` skips classes annotated `@Entity`,
+`@Embeddable`, `@MappedSuperclass`, `@Document`, `@Table` or `@Node` (JPA, Spring Data), whose
+equality must not become value equality, and a project adds its own annotations to that list.
 `UseDataClass` has `allowVars: true`, because `DataClassShouldBeImmutable` bans the `var` in a data
-class.
+class. Detekt's `ForbiddenClassName` and `PackageNaming` are not used for generic names: the first
+matches substrings and the second takes one pattern, which would replace the project's own; the
+[source checks](#source-checks) apply the Java preset's generic-name rules instead.
 
 **Exceptions.** A rule that flags legitimate code is lifted for paths with the same `exceptions` key as
 the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
@@ -211,12 +239,15 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 }
 ```
 
-`rule` is one of the ids above, or one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
+`rule` is the rule as the finding prints it: any `detekt.<ruleset>.<Rule>`, a
+`kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
+`kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
-`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `unused-option`); anything else is a config
-error naming them. Findings of that rule
-under the globs are dropped on both snapshots, like `exclude`, and the exception changes the
-analyzer's cache key. The rule is lifted for the whole file, so one exception for
+`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `unused-option`), a class limit, a file
+limit or `test-runtime/slow-test` (anything else is a config error naming them). Every enforceable Kotlin
+finding ends with that entry in the shared exception sentence. Findings of that rule under the globs are
+dropped on both snapshots, like `exclude`, and the exception changes the analyzer's cache key. The rule is
+lifted for the whole file, so one exception for
 `kotlin.run` also lifts `kotlin.with`, `kotlin.also` and `runBlocking` there (they share a
 detekt rule).
 
@@ -224,8 +255,11 @@ detekt rule).
 example `@get:Suppress`, and `names = [...]`) would hide a finding from the report, so a source scan
 fails every token that targets a detekt or ktlint rule: `all`, anything starting with `detekt`,
 `detekt.`, `detekt:`, `ktlint`, `ktlint.` or `ktlint:`, a detekt ruleset (`style`, `naming`, ...) and a
-PascalCase rule id (`MagicNumber`). Kotlin compiler diagnostics stay allowed: `UNCHECKED_CAST`,
-`DEPRECATION`, `unused`, `unchecked`. Rule `inline-suppression`, tool `detekt`, one finding per
+PascalCase rule id (`MagicNumber`), and the compiler warnings the [kotlinc lint](#compiler-warnings)
+reports: `UNCHECKED_CAST`, `DEPRECATION`, `TYPEALIAS_EXPANSION_DEPRECATION` and `USELESS_CAST`, whose
+message gives the exception route of the `kotlinc/<rule>` it hides. Those four are banned in main
+sources only: the kotlinc lint compiles the main sources, so in a test they hide nothing. Other compiler diagnostics stay
+allowed (`unused`, `UNUSED_PARAMETER`). Rule `inline-suppression`, tool `detekt`, one finding per
 token, identified by the token. detekt's own `ForbiddenSuppress` is not used: it cannot report
 `all` or `style`, because the suppression hides its report too. The scan reads the string literals of
 those annotations in `.kt` files of the Kotlin source roots, after masking comments (including
@@ -242,6 +276,57 @@ not a rule with `exceptions`.
   another name (`import kotlinx.coroutines.GlobalScope as G`) is not seen by detekt's rule.
 - Type resolution reports less where a library is built with a newer Kotlin than detekt's (above);
   `!!` on a value of such a type is not seen.
+
+## Source checks
+
+A scan of the Kotlin sources on the Node side (`languages/java/adapters/kotlin/scan/`) applies the
+preset's source checks, under the tool `kotlin-source`, rule
+`<Rule>`; the exception names it `kotlin-source/<Rule>`. It reads the code with comments and string
+bodies masked in place, so lines keep their numbers and a rule never matches inside a string or a
+comment (the comment rules read the comments). Identity is the rule and a hash of the subject (the
+declaration name, or the line text), numbered per file, so a moved finding stays baselined. A file
+whose first comment says it is generated (`@generated`, "generated ... do not edit") is skipped.
+
+| Rule                            | Flags                                                                                                                                                                                                                                                                                                                                                           | Allowed form                                                                                    |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `GeneratedOnHandWrittenCode`    | an annotation named `Generated` (any package, also `@get:`/`@set:`) on a class, object, interface, function or constructor (JaCoCo and PIT skip it), as the Java rule; `@GeneratedValue` and `@Generated` on a property pass                                                                                                                                    | remove it                                                                                       |
+| `MutationIgnoreMarker`          | `@DoNotMutate`, `@CoverageIgnore`                                                                                                                                                                                                                                                                                                                               | remove it and kill the mutants with a test                                                      |
+| `CommentedOutCode`              | a run of line comments, or a block comment, whose first code-shaped line is a declaration, call, assignment, control header, `fun`, `class`, import or return                                                                                                                                                                                                   | delete it                                                                                       |
+| `MutableModuleState`            | a top-level `var`, or a mutable collection, array, atomic or `MutableStateFlow` in a top-level `val`, or either in an `object` or companion object                                                                                                                                                                                                              | state in an instance the composition root creates and passes in                                 |
+| `GenericTypeName`               | a class, interface or object named `*Util(s)`, `*Utility`, `*Utilities`, `*Helper`, `*Manager`, `*Common(s)`, `*Misc`; framework roles and a type that extends one with the same ending are skipped                                                                                                                                                             | a name for the job (`PriceRounder`)                                                             |
+| `GenericPackageName`            | a package segment `util`, `utils`, `utility`, `helpers`, `manager`, `common`, `commons`, `misc`                                                                                                                                                                                                                                                                 | a package named for what it holds; shared pure logic in `shared`                                |
+| `LogStringConcatenation`        | an `info`, `warn`, `error`, `log`, `config`, `warning` or `severe` call on a logger (the levels of the Java rule) whose message is a string template, `+` or `format` with a value that is not a compile-time constant (a literal, a `CONSTANT_CASE` name or a `const val` is one)                                                                              | placeholders (`log.info("user {}", user)`) or a lambda message (`logger.info { "user $user" }`) |
+| `ShellCommand`                  | a shell and its command flag as consecutive literals (`"sh", "-c"`, `"bash", "-c"`, `"cmd", "/c"`, `"powershell", "-Command"`)                                                                                                                                                                                                                                  | the program with an argument list (`ProcessBuilder("git", "log", ref)`)                         |
+| `IoCallInLoop`                  | a repository, DAO, JDBC or HTTP client call in a `for`, `while` or `do` body or an iterating lambda (`forEach`, `map`, `filter` and similar); paging and polling loops (a `while` or `do` whose condition, `if (...) break` or `?: break` reads what the call returned) and retries (the call in a `try` that leaves the loop) pass; file calls are not checked | fetch or write all items at once (`findAllById`, `saveAll`)                                     |
+| `CatchOnlyLogsOrReturnsDefault` | a `catch` that neither throws, nor uses the exception, nor answers with an error response; log calls and `printStackTrace` do not count (so it is the one finding for a catch that only logs); an interrupt and a retry loop are skipped                                                                                                                        | rethrow with the cause, or `Result.failure(e)`                                                  |
+| `BooleanFlagParameter`          | an unannotated `Boolean` parameter of a public function that is the condition of an `if`, `when` or `while`; private, `override`, setters, `with*`, `of`/`from`/`valueOf` are skipped                                                                                                                                                                           | two functions, an enum or a data class                                                          |
+| `HardcodedSecret`               | a secret-looking literal assigned to a name like `*password`, `*secret`, `*token`, `*apiKey`, also as a named argument, a `"key" to "value"` pair or a `"key", "value"` argument pair                                                                                                                                                                           | read it from the environment or a secrets manager                                               |
+| `CredentialLiteral`             | an AWS key, a GitHub or Slack token, a `sk_live_`/`sk-proj-` key, a private key header, a password in a URL or a `Bearer`/`Basic` value                                                                                                                                                                                                                         | the same                                                                                        |
+| `SecretInLog`                   | a secret-named value passed to a log call (any level, Android `Log.d` too) or `print`, directly, in a `+`, in a template or in a lambda message (`logger.info { "token $token" }`)                                                                                                                                                                              | log that it is set, or a masked tail                                                            |
+| `SqlStringBuilding`             | SQL text built from a runtime value with a string template, `+`, `String.format` or `.format`: text that starts like a statement or clause in capitals (`SELECT ... FROM`, `UPDATE ... SET`, `AND name =`), or any case when it reaches a JDBC, Spring `JdbcTemplate`, JPA or R2DBC query call directly or through a `val`                                      | bind parameters (`?`, `:id`) or a query DSL                                                     |
+| `WeakHash`                      | `MessageDigest`, `Signature`, `DigestUtils` with MD2, MD4, MD5 or SHA-1 (a literal, a constant in the file or a commons-codec constant), commons-codec, Spring, Guava and Okio MD5/SHA-1 helpers, and HMAC-MD5 (`Mac`, `KeyGenerator`, `HmacUtils`, its own message); HMAC-SHA1 passes                                                                          | SHA-256 or stronger, `HmacSHA256`, Argon2 or bcrypt for passwords                               |
+| `TlsVerificationOff`            | an empty `checkServerTrusted`, a host-name verifier or trust strategy that returns `true`, `NoopHostnameVerifier`, `TrustAllStrategy`, `TrustSelfSignedStrategy`, Netty's `InsecureTrustManagerFactory` (its use, not its import)                                                                                                                               | trust the CA through a `KeyStore` and `TrustManagerFactory`, or OkHttp `HandshakeCertificates`  |
+| `HttpWithoutTimeout`            | a `java.net.http` request built without `.timeout(...)`, an `HttpURLConnection` from an HTTP URL whose block never sets `readTimeout`, `URL(...).readText()`/`readBytes()`/`openStream()`, `RestTemplate()`, `HttpClients.createDefault()`; OkHttp and Ktor pass (their engines set timeouts)                                                                   | a request timeout, connection timeouts, or a client configured with them                        |
+| `UnsafeDeserialization`         | `XMLDecoder`, Jackson `enableDefaultTyping`, `activateDefaultTyping` with `LaissezFaireSubTypeValidator`, `JsonTypeInfo.Id.CLASS`/`MINIMAL_CLASS`, `SerializationUtils.deserialize`, Kryo without class registration (`ObjectInputStream` is detekt's `ForbiddenMethodCall`)                                                                                    | JSON into a concrete type (kotlinx.serialization, Jackson), polymorphism by a logical name      |
+| `TestHelperInSource`            | a main source that imports JUnit, kotlin.test, Kotest, MockK, Mockito, AssertJ, Truth, Strikt or Hamcrest                                                                                                                                                                                                                                                       | move the helper to the test sources                                                             |
+| `TestClassWithoutTestCases`     | (test sources) a class named `*Test`, `*Tests`, `*TestCase` or `*IT` with no test annotation in it; abstract and open classes, Kotest specs and classes with a superclass, suites and `@Nested` are skipped                                                                                                                                                     | add tests, or rename the helper                                                                 |
+| `DetachedTestCase`              | (test sources) a public no-argument function with a block body and no return type (or `: Unit`) named like a test (backticks, `test*`, `should*`) without an annotation, in a class that has tests; a helper or data provider that returns a value passes                                                                                                       | annotate it with `@Test`, or make it private                                                    |
+
+A `TODO` without an issue is detekt's `ForbiddenComment` (a one-way rule), and a repeated literal is
+`StringLiteralDuplication`. The forbidden-API entries of `ForbiddenMethodCall` and `ForbiddenImport`
+count in main sources only (`framework-allowances.mjs` drops them on `kotlinTestSourceRoots`): a sleep in
+a test is `pmd/FixedSleepInTest` of the [review rules](#review-rules), so each sleep is reported once, and
+real time and randomness in unit tests wait for the test-honesty rules.
+
+The security checks are the Kotlin side of the TypeScript and Python sinks. A value in SQL text is
+fine when it cannot change the statement: a number literal, a constant (`$TABLE`, `${Tables.ORDERS}`,
+a `val` holding a plain literal), `.size` or `.length`, a name whose every declaration in the file
+has a number, `Boolean`, `UUID`, date or enum type, a member whose every declaration in the main
+sources has one (`${order.id}` with `val id: Long`), placeholders built from placeholders alone
+(`ids.joinToString(", ") { "?" }`, `List(n) { "?" }.joinToString(",")`, `"?, ".repeat(n)`), a
+`mutableListOf` that only ever receives plain literals joined with a literal separator, and an
+`if (...) "..." else "..."` of plain literals. The enums and property types come from every main
+Kotlin file of the module.
 
 ## Source scans
 
@@ -264,7 +349,11 @@ declared from `KotlinLogging.logger`, `LoggerFactory.getLogger`, `LogManager.get
 `getFormatterLogger`, `Logger.getLogger` or `System.getLogger`, or its name is `log` or `logger` (any case) or ends in one at a
 camelCase or underscore boundary (`auditLog`, `appLogger`, `AUDIT_LOG`, `audit_log`; `dialog` and `catalog` are not loggers). The list lives in `languages/java/source/loggers.mjs`. The
 innermost catch is the one checked, and a catch of `_`, `ignored...`, `expected...` or `unused...` is left
-alone. Main and test sources are scanned. One finding per log call, identified by
+alone. Main and test sources are scanned. In main sources a catch that does nothing but log is
+`kotlin-source/CatchOnlyLogsOrReturnsDefault` and only that (logging alone is not handling, as in the
+Python preset), so this check looks at the catches that also handle the error some other way (throw,
+return a failure, answer with an error response); in test sources, where that rule does not run, every
+catch is checked. One finding per log call, identified by
 `catch-log:<receiver>.<level>`.
 
 **`test-without-assertion`.** A test method (`@Test`, `@ParameterizedTest`, `@RepeatedTest`,
@@ -280,6 +369,36 @@ or test-support source as a function whose body asserts or throws; pin a list of
 to set it yourself. `@Disabled` and `@Ignore` tests are skipped. Kotest specs written as `"name" { ... }` have no `@Test`
 and are not scanned. The test sources are the Kotlin directories of the `test` source set.
 One finding per test, identified by `test:<name>`.
+
+## Compiler warnings
+
+The task `nitpickerKotlinLint` (`languages/java/gradle/kotlin/kotlin-lint.gradle`) compiles the main
+Kotlin sources, generated ones included, with the pinned compiler into a throwaway directory, with the
+module's compile classpath, its compiled Java classes, its language and API version, JVM target,
+opt-ins, free compiler arguments and compiler plugins, and `-Xrender-internal-diagnostic-names`. The
+arguments that silence warnings (`-nowarn`, `-Werror`, `-Xsuppress-warning`, `-Xwarning-level`) are
+dropped, so a build setting cannot hide them. Three groups of warnings are findings of the tool
+`kotlinc`, on the source roots only, each message naming the allowed form first:
+
+| Rule          | Kotlin diagnostics                               | Allowed form                                                               |
+| ------------- | ------------------------------------------------ | -------------------------------------------------------------------------- |
+| `deprecation` | `DEPRECATION`, `TYPEALIAS_EXPANSION_DEPRECATION` | the replacement the deprecation names (`ReplaceWith`, or the Java Javadoc) |
+| `unchecked`   | `UNCHECKED_CAST`                                 | a typed API, a checked conversion (`as? List<*>`) or a reified function    |
+| `cast`        | `USELESS_CAST`                                   | remove the cast                                                            |
+
+Like `-Werror` on changed code: a new warning fails, a legacy one stays baselined (the identity is
+the rule and the message with numbers replaced, not the line). Their `@Suppress` is an
+`inline-suppression` finding. A lint compile that fails (a compiler plugin it could not load, for
+example) is one descriptive `kotlinc/lint-not-run` finding naming the first error.
+
+## Frameworks
+
+Spring is detected from the compile classpath (`spring-context` or `spring-boot`), Ktor from the
+source (`fun Application.module()`). What they require is not flagged: the composition root (the file
+with `fun main`, the `@SpringBootApplication` class or a Ktor module) may read `System.getenv`;
+`runApplication<App>(*args)` and `SpringApplication.run(App::class.java, *args)` are not
+`SpreadOperator` findings in a Spring project; JPA and Spring Data entities are not asked to become
+data classes; parameters with an annotation (`@RequestParam`, `@PathVariable`) are not boolean flags.
 
 ## Review rules
 
@@ -318,7 +437,8 @@ Limits, all chosen to flag less rather than guess:
   (in any module of the build) is allowed. A sleep in an inline lambda (`run`, `let`, `also`, `apply`, `with`,
   `repeat`, `takeIf`, `takeUnless`, `use`, `synchronized`, `forEach`, `forEachIndexed`, `onEach`) is judged by
   the loop or body around that lambda. A `for` over a collection is not a polling loop, as in the Java rule.
-  `delay` is judged only inside `runBlocking`; `runTest` runs it in virtual time.
+  `delay` is judged only inside `runBlocking`; `runTest` runs it in virtual time. Only test sources are
+  read: a sleep in main sources is `detekt.style.ForbiddenMethodCall` (see [One-way rules](#one-way-rules)).
 - Which calls are waits: `Thread.sleep`, `TimeUnit.X.sleep` and `LockSupport.parkNanos`, also through an
   import or an alias of an import (`import java.lang.Thread.sleep as nap`); `join(ms)` and `wait(ms)` on any
   receiver, and `join(Duration)` as a statement; `after(ms)` from Mockito and `during(...)` and `until`
@@ -665,6 +785,18 @@ error means the pinned compiler (2.4.21) does not know the syntax the project us
 with the file, the line and the pinned version instead of reporting wrong numbers; bump
 `kotlinCompiler` in the init script. A leading byte order mark is ignored.
 
+### Class limits
+
+`kotlin-psi` also lists every named class, interface, object and companion object with its
+member functions, its fields and its superclass (the supertype with a constructor call), and each
+file's imports. A class with more than 20 functions (`class-methods-limit`), more than 10 fields
+(`class-fields-limit`: constructor `val`/`var` parameters and properties with a backing field; computed,
+abstract and `const` properties do not count) or more than 3 superclasses (`inheritance-depth-limit`:
+a superclass outside the project counts as one level) fails under the tool `structure`, with the Java
+preset's thresholds, messages and ratchet (the shared `classLimitFindings`): a class already over a
+limit fails only when it grows, and a `data class` is measured by its components, like a Java record.
+Each finding ends with the exception sentence for its rule.
+
 ## CRAP
 
 Kotlin functions get the shared CRAP rule: `crap-score-limit` at a score of 9 or more
@@ -747,23 +879,42 @@ facade belong to that file. A class that no file lists is its own module.
 
 ## Failure policy
 
-As for Java: a Gradle failure on either snapshot (Kotlin does not compile, a test fails, a tool
-crashes, a tool jar cannot be downloaded, no `gradle` on the PATH) is one `kotlin/gradle-failure`
-finding with classification `tool-error`, which the comparison reports for that snapshot, skipping
-the comparison and exiting with 2. Nothing is silently skipped and nothing throws.
+As for Java: a Gradle failure on either snapshot (Kotlin does not compile, a tool crashes, a tool
+jar cannot be downloaded, no `gradle` on the PATH) is one `kotlin/gradle-failure` finding with
+classification `tool-error`, which the comparison reports for that snapshot, skipping the
+comparison and exiting with 2. Nothing is silently skipped and nothing throws.
+
+**A base whose tests fail (decision).** Failing tests are not a Gradle failure on the base when the
+fresh test reports of a `Test` task name them. The base runs with `--continue`, then once more
+with `-Pnitpicker.testsFailed=<project dirs>`: the init script skips `test`, JaCoCo and PIT of the
+failing Gradle projects and sets `testsFailed` in their manifest, and the other checks (detekt,
+ktlint, PMD, SpotBugs, structure, duplicates, coupling) run as usual. The failing projects get one
+`kotlin/tests-failed` tool error each, which the core reads as a red base and writes to
+`notes.json` instead of exiting with 2. The coverage-dependent results of the Kotlin sources of
+those projects (`changed-branch-coverage`, `crap-score-limit`, `crap-coverage-unknown`, `mutant-*`,
+`slow-test`, `test-console-output`) are unknown on the base: a head finding of them is new when
+the change adds or edits its lines, else unchanged. A failing root project covers only its own
+source and test directories, so the other Gradle projects keep their comparison. A project that
+does not compile, a run that exits non-zero without a named failing test and a run that times out
+stay `kotlin/gradle-failure`. A change that deletes tests, or removes more test lines than it
+adds, gets no help from the red base. A head whose tests fail stays a `kotlin/gradle-failure`.
+See "A base whose tests fail" in `usage.md`.
 
 ## Config keys
 
 `base`, `disable`, `analyzers`, `thresholds`, `exclude`, `duplicates`, `legacyInventory` as for the Java preset
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
-`kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
-[one-way rules](#one-way-rules), `catch-log-without-exception` and `test-without-assertion`
-([source scans](#source-scans)), the six `pmd/` ids and `unused-option` of the [review rules](#review-rules), the file limits
-`file-lines-limit` and `folder-files-limit`, `slow-test` (or `test-runtime/slow-test`), `test-runtime/test-not-run` (a test
-source set no test task runs, see [java-preset.md](java-preset.md#tests-that-never-run)) and the
-[dependency and repository checks](usage.md#dependency-and-repository-checks) per path. `layout` is a config error until the Kotlin
-preset runs the rule that reads it (`shared-used-by-one-feature`).
+`kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts any detekt rule,
+the [one-way rules](#one-way-rules), the [source checks](#source-checks), the
+[source scans](#source-scans) (`catch-log-without-exception` and `test-without-assertion`), the
+[compiler warnings](#compiler-warnings), the six `pmd/` ids and `unused-option` of the
+[review rules](#review-rules), the [class limits](#class-limits), the file limits
+`file-lines-limit` and `folder-files-limit`, `slow-test` (or `test-runtime/slow-test`),
+`test-runtime/test-not-run` (a test source set no test task runs, see
+[java-preset.md](java-preset.md#tests-that-never-run)) and the
+[dependency and repository checks](usage.md#dependency-and-repository-checks) per path. `layout` is
+a config error until the Kotlin preset runs the rule that reads it (`shared-used-by-one-feature`).
 
 ## Slow tests
 
@@ -781,7 +932,7 @@ folder. The thresholds are `fileLines`, `testFileLines` and `folderFiles`. Packa
 below the root package (the longest package prefix all the code shares) fail `folder-depth-limit`,
 `thresholds.folderDepth` and an exception for that rule change it. The Java class limits
 (`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`) apply to the `.java` files of a
-Kotlin project, with `classMethods`, `classFields` and `inheritanceDepth`; Kotlin classes are not measured. The `java.indentation` convention (`"4"`) switches the Java sources' format check
+Kotlin project, with `classMethods`, `classFields` and `inheritanceDepth`; the Kotlin classes get the same limits (see [Class limits](#class-limits)). The `java.indentation` convention (`"4"`) switches the Java sources' format check
 to 4 spaces. The Kotlin files' line length is
 detekt's `MaxLineLength` (120 by default, set in `config/detekt/detekt.yml`), the `.java` files use
 the width of the Java formatter (100 for google-java-format, 120 for palantir-java-format, or the width of the project's Checkstyle `LineLength`, see the Java preset; `line-length-limit`, which an exception lifts for some paths), and
@@ -852,8 +1003,19 @@ fails only when it grows, and a package folder moved to a new path is matched to
   stability-direction violation between Kotlin packages, new and baselined. These cases share one
   head commit and one diff, and the project forces another Kotlin version onto the compiler
   configuration. It needs network access to Maven Central for the Kotlin compiler as well.
-- `kotlin-psi` on a fixture (units, lambda properties, package, multifile parts, byte order
-  mark, parse error, very deep nesting, test roots) is tested in the same opt-in suite, so a bump of the pinned compiler is checked
+- `languages/java/adapters/kotlin/scan/**/*.test.mjs`: each source check on its banned forms and on
+  the correct code next to them (aliases, comments, strings, framework annotations), the
+  position-keeping scanner, the composition root and the framework allowances.
+  `kotlin/rules/kotlin-messages.test.mjs`: every enforceable Kotlin finding ends with the shared
+  exception sentence for the rule it prints, the config accepts that rule, and no Kotlin message
+  file writes a route of its own except the suppression scan. `kotlin-compiler.test.mjs` and
+  `kotlin-class-limits.test.mjs`: the kotlinc lint reader and the class limits.
+- `languages/java/adapters/kotlin-e2e/kotlin-preset-guards.e2e.test.mjs`: real Gradle on the source
+  checks, the compiler warnings and the class limits, banned and allowed, with their exception route
+  and an exception for one path.
+- `kotlin-psi` on a fixture (units, lambda properties, package, multifile parts, byte
+  order mark, parse error, very deep nesting, test roots) is tested in the same opt-in suite, so a bump of
+  the pinned compiler is checked
   with `npm run test:kotlin`.
 
 ## Remaining slices
@@ -887,3 +1049,8 @@ fails only when it grows, and a package folder moved to a new path is matched to
   unresolved.
 - ArchUnit rule tests written in Kotlin run with the other tests, but the resolution of their
   findings to source files is only verified for Java.
+- The kotlinc lint compiles the sources a second time with the pinned compiler, so it adds a
+  compile's time to the run, and a compiler plugin that the module applies some other way than
+  through the Kotlin Gradle plugin is not loaded (the run is then `kotlinc/lint-not-run`).
+- The source checks read code shapes, not types: a logger or repository under another name, an I/O
+  call behind a helper, or a secret read through a constant is not seen.
