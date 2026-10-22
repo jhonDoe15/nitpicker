@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-const DOM_DIRECTIVE = /@(?:vitest|jest)-environment\s+\S*(?:jsdom|happy-dom)/u;
+const ENVIRONMENT_DIRECTIVE = /@(?:vitest|jest)-environment\s+([\w-]+)\b/u;
+const DOM_ENVIRONMENT_NAME = /jsdom|happy-dom/u;
 
 export function projectText(projectRoot, file) {
   const absolute = path.resolve(projectRoot, file);
@@ -12,7 +13,8 @@ export function projectText(projectRoot, file) {
 }
 
 export function hasDomDirective(projectRoot, file) {
-  return DOM_DIRECTIVE.test(projectText(projectRoot, file));
+  const name = ENVIRONMENT_DIRECTIVE.exec(projectText(projectRoot, file))?.[1] ?? '';
+  return DOM_ENVIRONMENT_NAME.test(name);
 }
 
 export function hasDomDirectiveTests(layout, projectRoot) {

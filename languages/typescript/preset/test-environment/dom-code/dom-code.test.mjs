@@ -133,4 +133,10 @@ describe('DOM environment directives in test files', () => {
       hasDomDirectiveTests(layout, projectWith({ 'tests/a.test.js': "it('a', () => {});\n" })),
     ).toBe(false);
   });
+
+  it('reads the first environment directive in the file, as Vitest does', () => {
+    const nodeFirst = `${directive('vitest', 'node')}const text = '@vitest-environment jsdom';\n`;
+
+    expect(hasDomDirectiveTests(layout, projectWith({ 'tests/a.test.js': nodeFirst }))).toBe(false);
+  });
 });

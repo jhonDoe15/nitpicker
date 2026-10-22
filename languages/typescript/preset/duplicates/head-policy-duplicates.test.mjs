@@ -4,7 +4,7 @@ import {
   withHeadPolicyFile,
   readHeadPolicy,
   readLayout,
-} from './head-policy.mjs';
+} from '../head-policy.mjs';
 
 describe('head policy duplicates key', () => {
   it('is left out of the policy until the config sets it and read back as an empty object', () => {
