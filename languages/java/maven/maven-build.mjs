@@ -156,9 +156,9 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
   return testsRan;
 }
 
-function withDeclaredSpring(manifest, declared) {
+export function withHeadFacts(manifest, { spring: declared, featureFolders }) {
   const spring = declared === true || manifest.spring;
-  return { ...manifest, spring, springArch: spring };
+  return { ...manifest, spring, springArch: spring || featureFolders === true };
 }
 
 function analyzeSources(options) {
@@ -173,7 +173,7 @@ function analyzeSources(options) {
 }
 
 function analyzeTests(options) {
-  const { module, reportDir, classpaths, tools, pinned, since, spring } = options;
+  const { module, reportDir, classpaths, tools, pinned, since, springArch } = options;
   const { isArchunit, testsRan, spawn } = options;
   runJacocoReport({
     module,
@@ -185,22 +185,19 @@ function analyzeTests(options) {
     spawn,
   });
   runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
-  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, spawn });
+  runSpringArch({ module, reportDir, tools, classpaths, pinned, springArch, spawn });
 }
 
 function analyzeModule(options) {
   const { module, classpaths, pinned, since } = options;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const manifest = withDeclaredSpring(
-    moduleManifest({ module, classpaths, pinned }),
-    options.spring,
-  );
-  const { spring } = manifest;
+  const manifest = withHeadFacts(moduleManifest({ module, classpaths, pinned }), options);
+  const { spring, springArch } = manifest;
   const testRuntime = classpaths.testRuntime;
   const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
   analyzeSources({ ...options, reportDir, spring });
-  analyzeTests({ ...options, reportDir, spring, isArchunit, testsRan });
+  analyzeTests({ ...options, reportDir, springArch, isArchunit, testsRan });
   writeFileSync(path.join(reportDir, 'manifest.json'), JSON.stringify(manifest));
 }
 
@@ -245,7 +242,8 @@ function extraTools({ modules, analyzed, policy, pinned }) {
     ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     ...formatTool(policy.javaStyle, pinned),
     ...archunitTool(
-      analyzed.some(({ classpaths }) => usesSpring(classpaths)),
+      [policy.spring, policy.featureFolders].includes(true) ||
+        analyzed.some(({ classpaths }) => usesSpring(classpaths)),
       pinned,
     ),
   ];
@@ -289,6 +287,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
           indentation: checkstyleIndentation(policy.conventions),
         },
         spring: policy.spring,
+        featureFolders: policy.featureFolders,
       });
     }
     return modules.map((module) => module.basedir);

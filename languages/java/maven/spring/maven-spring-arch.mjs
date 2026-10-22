@@ -31,7 +31,7 @@ function jdkIdentity(spawn) {
 }
 
 function ruleSources(rulesDirectory) {
-  return readdirSync(rulesDirectory)
+  return readdirSync(rulesDirectory, { recursive: true })
     .filter((name) => name.endsWith('.java'))
     .sort()
     .map((name) => path.join(rulesDirectory, name));
@@ -105,8 +105,8 @@ function runRules({ module, classpaths, libraries, locations, spawn }) {
 }
 
 export function runSpringArch(options) {
-  const { module, reportDir, tools, classpaths, pinned, spring, spawn = spawnSync } = options;
-  if (!spring) {
+  const { module, reportDir, tools, classpaths, pinned, springArch, spawn = spawnSync } = options;
+  if (!springArch) {
     return;
   }
   const output = path.join(reportDir, 'spring-arch.json');

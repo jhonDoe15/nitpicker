@@ -26,14 +26,20 @@ describe('nitpickerSpringArch in the init script', () => {
     ]);
   });
 
-  it('runs only for Spring projects, so other projects skip it', () => {
+  it('runs for Spring projects and for projects with a feature folder, so other projects skip it', () => {
     expect(/onlyIf \{[^}]*\}/.exec(taskBody('nitpickerSpringArch'))[0]).toBe(
-      'onlyIf { usesSpring() }',
+      'onlyIf { runsArchRules() }',
+    );
+    expect(/def runsArchRules = (.+)/.exec(script)[1]).toBe(
+      '{ usesSpring() || featureFoldersDeclared }',
+    );
+    expect(/def featureFoldersDeclared = (.+)/.exec(script)[1]).toBe(
+      "nitpickerArgument('nitpicker.featureFolders') == 'true'",
     );
   });
 
   it('tells the reader through the manifest that the rules ran', () => {
-    expect(/springArch\s*: ([^,\n]+)/.exec(taskBody('nitpickerJava'))[1]).toBe('usesSpring()');
+    expect(/springArch\s*: ([^,\n]+)/.exec(taskBody('nitpickerJava'))[1]).toBe('runsArchRules()');
   });
 
   it('resolves the pinned ArchUnit version', () => {

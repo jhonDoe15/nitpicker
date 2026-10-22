@@ -64,7 +64,7 @@ final class Layout {
     }
   }
 
-  private static boolean isFeature(String name) {
+  static boolean isFeature(String name) {
     return !name.equals(SHARED) && !LAYER_PACKAGES.contains(name);
   }
 

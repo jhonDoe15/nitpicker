@@ -315,9 +315,11 @@ allprojects {
         def mutatedClassDirs = { sourceSets.main.output.classesDirs.files }
 
         def springDeclared = nitpickerArgument('nitpicker.spring') == 'true'
+        def featureFoldersDeclared = nitpickerArgument('nitpicker.featureFolders') == 'true'
         def usesSpring = {
             springDeclared || sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
         }
+        def runsArchRules = { usesSpring() || featureFoldersDeclared }
         def hasGuava = { sourceSet -> sourceSet.compileClasspath.files.any { it.name ==~ /guava-\d.*\.jar/ } }
         def hasAwaitility = { sourceSets.test.compileClasspath.files.any { it.name ==~ /awaitility-\d.*\.jar/ } }
 
@@ -451,9 +453,9 @@ allprojects {
         tasks.register('nitpickerSpringArch') {
             group = 'nitpicker'
             dependsOn { lintedClassesTasks() }
-            onlyIf { usesSpring() }
-            def ruleSources = new File(initScriptDir, 'archunit').listFiles()
-                .findAll { it.name.endsWith('.java') }.sort()
+            onlyIf { runsArchRules() }
+            def ruleSources = fileTree(new File(initScriptDir, 'archunit')) { include '**/*.java' }.files
+                .sort { it.absolutePath }
             doLast {
                 def directory = reportDir.get().dir('spring-arch').asFile
                 directory.deleteDir()
@@ -828,7 +830,7 @@ allprojects {
                     testSourceRoots: testRoots,
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
-                    springArch     : usesSpring(),
+                    springArch     : runsArchRules(),
                     guava          : hasGuava(sourceSets.main),
                     testGuava      : hasGuava(sourceSets.test),
                     testAwaitility : hasAwaitility(),
