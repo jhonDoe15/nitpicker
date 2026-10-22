@@ -100,3 +100,37 @@ export const QUERY_ANNOTATIONS = set(
   `${SPRING}.data.couchbase.repository.Query`,
   `${SPRING}.data.elasticsearch.annotations.Query`,
 );
+
+export const POST_CONSTRUCT = set(
+  'jakarta.annotation.PostConstruct',
+  'javax.annotation.PostConstruct',
+);
+export const SCOPES = set(`${SPRING}.context.annotation.Scope`);
+export const SHORT_LIVED_SCOPES = set(
+  ...under(`${SPRING}.web.context.annotation`, 'RequestScope', 'SessionScope'),
+);
+export const DEFAULT_VALUE = set(`${SPRING}.boot.context.properties.bind.DefaultValue`);
+export const EXCEPTION_HANDLER = set(`${WEB}.ExceptionHandler`);
+export const HANDLER_MAPPINGS = set(
+  ...under(WEB, 'GetMapping', 'PostMapping', 'PutMapping', 'PatchMapping', 'DeleteMapping'),
+  ...REQUEST_MAPPING,
+  ...EXCEPTION_HANDLER,
+);
+export const THROWS = set('kotlin.jvm.Throws', 'kotlin.Throws');
+export const ENUMERATED = set(`${PERSISTENCE}.Enumerated`);
+export const MAP_KEY_ENUMERATED = set(`${PERSISTENCE}.MapKeyEnumerated`);
+export const ELEMENT_COLLECTION = set(`${PERSISTENCE}.ElementCollection`);
+export const ENTITY_OR_EMBEDDABLE = set(
+  ...under(PERSISTENCE, 'Entity', 'Embeddable', 'MappedSuperclass'),
+);
+export const ENUM_OPT_OUTS = set(
+  ...under(PERSISTENCE, 'Transient', 'Convert'),
+  ...under('org.hibernate.annotations', 'JdbcTypeCode', 'JdbcType', 'Type'),
+  'kotlin.jvm.Transient',
+);
+export const CONVERTER = set(`${PERSISTENCE}.Converter`);
+export const BEAN_INITIALIZERS = set(
+  `${SPRING}.beans.factory.InitializingBean`,
+  `${SPRING}.beans.factory.SmartInitializingSingleton`,
+);
+export const SYNCHRONIZED = set('kotlin.jvm.Synchronized', 'kotlin.Synchronized');

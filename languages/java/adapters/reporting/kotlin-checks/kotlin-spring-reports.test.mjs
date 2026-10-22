@@ -33,8 +33,8 @@ function countsByRule(findings) {
 }
 
 describe('readJavaFindings with the kotlin preset: Spring rules', () => {
-  it('reads the syntax report of a Spring project into enforceable spring findings', () => {
-    const findings = kotlinFindings(projectWithSyntax({ spring: true }), 'spring');
+  it('reads the syntax report of a Spring project into enforceable pmd findings', () => {
+    const findings = kotlinFindings(projectWithSyntax({ spring: true }), 'pmd');
 
     expect(countsByRule(findings)).toEqual({
       SpringConstructorInjection: 6,
@@ -53,7 +53,7 @@ describe('readJavaFindings with the kotlin preset: Spring rules', () => {
       SpringDataNoSaveInLoop: 4,
       SpringDataNoFlush: 3,
       JpaLazyFetching: 2,
-      JpaEntityClass: 2,
+      JpaEntityClass: 3,
       JpaManyToManyCascade: 1,
       JpaManyToManySet: 1,
       JpaVersion: 2,
@@ -69,8 +69,29 @@ describe('readJavaFindings with the kotlin preset: Spring rules', () => {
       SpringComposedMapping: 1,
       SpringRestController: 2,
       SpringValidRequestBody: 2,
-      SpringNoCrossOrigin: 1,
+      SpringNoCrossOrigin: 2,
       SpringPasswordEncoder: 2,
+      SpringValueSecretDefault: 3,
+      SpringTypedResponse: 5,
+      SpringTypedRequestBody: 4,
+      SpringTransactionalReadOnlyWrite: 5,
+      SpringTransactionalCheckedRollback: 2,
+      SpringQueryConcatenation: 6,
+      SpringPermitAllAnyRequest: 4,
+      SpringNoPostConstructIo: 3,
+      SpringNoErrorLeak: 4,
+      SpringHttpClientTimeouts: 8,
+      SpringHttpClientPerCall: 2,
+      SpringHardcodedUser: 2,
+      SpringDataSaveInLoopHelper: 2,
+      SpringDataRowWriteInLoop: 3,
+      SpringDataFilterInQuery: 4,
+      SpringDataBatchOfOne: 3,
+      SpringCsrfDisabled: 2,
+      SpringCorsWildcard: 3,
+      SpringBeanCollectionState: 2,
+      JpaIdentityHashCode: 2,
+      JpaEnumString: 4,
     });
     expect(new Set(findings.map(({ classification }) => classification))).toEqual(
       new Set(['enforceable']),
@@ -78,6 +99,6 @@ describe('readJavaFindings with the kotlin preset: Spring rules', () => {
   });
 
   it('reads no Spring rules when the build did not see Spring on the classpath', () => {
-    expect(kotlinFindings(projectWithSyntax({}), 'spring')).toEqual([]);
+    expect(kotlinFindings(projectWithSyntax({}), 'pmd')).toEqual([]);
   });
 });

@@ -29,7 +29,7 @@ class Orders {
         @RequestBody text: String,
         @RequestBody ids: List<Long>,
         @RequestBody items: List<OrderDto>, // violation: SpringValidRequestBody
-        @RequestBody raw: Map<String, Any>,
+        @RequestBody raw: Map<String, Any>, // violation: SpringTypedRequestBody
     ) {}
 }
 
