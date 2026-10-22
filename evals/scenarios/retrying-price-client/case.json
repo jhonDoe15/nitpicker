@@ -7,7 +7,7 @@
   "acceptance": {
     "command": ["npx", "--no-install", "vitest", "run", "test/prices.acceptance.test.ts"]
   },
-  "devDependencies": {
+  "dependencies": {
     "zod": "4.6.5"
   }
 }
