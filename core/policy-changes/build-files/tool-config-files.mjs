@@ -4,6 +4,7 @@ import {
   PROJECT_TOOL_CONFIGS,
 } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
+import { JSCPD_PROJECT_FILE } from '../../tooling/jscpd/config.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
@@ -87,6 +88,9 @@ function candidates(tool, side) {
   if (tool === 'prettier') {
     return PRETTIER_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
   }
+  if (tool === 'jscpd') {
+    return [JSCPD_PROJECT_FILE];
+  }
   const configured = PROJECT_TOOL_CONFIGS.get(tool);
   return GRADLE_PRESETS.includes(config.preset) && configured !== undefined
     ? rulesUnder(files, path.posix.dirname(configured))
@@ -101,7 +105,7 @@ function isOptedIn(tool, config) {
 }
 
 export function readToolConfigs(base, head, gitBlobId) {
-  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier']
+  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', 'jscpd']
     .filter((tool) => isOptedIn(tool, base.config) && isOptedIn(tool, head.config))
     .map((tool) => ({
       tool,
