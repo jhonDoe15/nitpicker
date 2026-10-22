@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -8,6 +16,7 @@ import {
   BOM,
   BROKEN,
   CRLF,
+  DEEP_CHAIN,
   FLAT,
   INITIALIZERS,
   MULTIFILE_A,
@@ -17,15 +26,15 @@ import {
   UNITS,
 } from './test-support/kotlin-metrics-sources.mjs';
 
-// Runs KotlinMetrics.java, the PSI program behind Kotlin structure, CRAP and coupling, on source
-// files. It needs Java 21, Gradle and network access to Maven Central (for the Kotlin compiler the
-// init script pins), so it only runs with NITPICKER_KOTLIN_E2E=1 (`npm run test:kotlin`). A bump
+// Compiles and runs kotlin-psi, the PSI program behind Kotlin structure, CRAP, coupling and the
+// review rules, on source files. It needs Java 21, Gradle and network access to Maven Central (for
+// the Kotlin compiler the init script pins), so it only runs with NITPICKER_KOTLIN_E2E=1 (`npm run test:kotlin`). A bump
 // of `kotlinCompiler` in the init script is checked by this test.
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const pinned = /kotlinCompiler\s*:\s*'([^']+)'/.exec(readFileSync(INIT_SCRIPT, 'utf8'))[1];
-const metricsSource = path.resolve(import.meta.dirname, '../gradle/KotlinMetrics.java');
+const psiSources = path.resolve(import.meta.dirname, '../gradle/kotlin-psi');
 
 const PRINT_CLASSPATH = `allprojects {
     plugins.withId('org.jetbrains.kotlin.jvm') {
@@ -52,6 +61,7 @@ configurations.matching { it.name == "nitpickerKotlinCompiler" }.configureEach {
 let workspace;
 let java;
 let classpath;
+let classes;
 
 function gradleClasspath(project) {
   const script = path.join(workspace, 'print.init.gradle');
@@ -86,25 +96,42 @@ function writeSources(name, files) {
   return dir;
 }
 
-function measure(project) {
-  const output = path.join(project, 'metrics.json');
+function compilePsiProgram() {
+  const output = path.join(workspace, 'psi-classes');
+  const sources = readdirSync(psiSources, { recursive: true })
+    .filter((entry) => entry.endsWith('.java'))
+    .map((entry) => path.join(psiSources, entry));
+  const result = spawnSync(
+    path.join(java, 'bin/javac'),
+    ['-proc:none', '-d', output, '-cp', classpath, ...sources],
+    { encoding: 'utf8', timeout: 180_000 },
+  );
+  expect(result.status, result.stderr).toBe(0);
+  return output;
+}
+
+function measure(project, roots = ['src']) {
+  const metricsOutput = path.join(project, 'metrics.json');
+  const factsOutput = path.join(project, 'facts.json');
   const result = spawnSync(
     path.join(java, 'bin/java'),
     [
       `-Dnitpicker.kotlinCompiler=${pinned}`,
       '-cp',
-      classpath,
-      metricsSource,
-      output,
+      `${classpath}${path.delimiter}${classes}`,
+      'nitpicker.kotlinpsi.KotlinPsi',
+      metricsOutput,
+      factsOutput,
       project,
-      'src',
+      ...roots,
     ],
     { cwd: project, encoding: 'utf8', timeout: 180_000 },
   );
   return {
     status: result.status,
     log: result.stdout + result.stderr,
-    metrics: result.status === 0 ? JSON.parse(readFileSync(output, 'utf8')) : undefined,
+    metrics: result.status === 0 ? JSON.parse(readFileSync(metricsOutput, 'utf8')) : undefined,
+    facts: result.status === 0 ? JSON.parse(readFileSync(factsOutput, 'utf8')) : undefined,
   };
 }
 
@@ -120,6 +147,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       `${readFileSync(path.join(project, 'build.gradle.kts'), 'utf8')}${FORCE_OTHER_KOTLIN}`,
     );
     ({ javaHome: java, classpath } = gradleClasspath(project));
+    classes = compilePsiProgram();
   });
 
   afterAll(() => {
@@ -264,5 +292,36 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       'm',
     ).exec(log);
     expect([status, line, version]).toEqual([1, '4', pinned]);
+  });
+
+  it('reads a source file nested far deeper than the default stack allows', () => {
+    const { status, log, metrics, facts } = measure(
+      writeSources('deep', { 'src/Deep.kt': DEEP_CHAIN }),
+    );
+
+    expect([status, log.includes('StackOverflow')]).toEqual([0, false]);
+    expect(metrics.functions[0].name).toBe('nested');
+    expect(facts.files.map(({ file }) => file)).toEqual(['src/Deep.kt']);
+  });
+
+  it('collects facts of test roots without measuring them, and words a test syntax error for tests', () => {
+    const project = writeSources('roots', {
+      'src/main/Main.kt': FLAT,
+      'src/test/Check.kt': 'package demo.check\n\nclass Check { fun go() { Thread.sleep(5) } }\n',
+    });
+    const { metrics, facts } = measure(project, ['src/main', 'test:src/test']);
+    const broken = measure(writeSources('broken-test', { 'src/test/Broken.kt': BROKEN }), [
+      'test:src/test',
+    ]);
+
+    expect(metrics.files.map(({ file }) => file)).toEqual(['src/main/Main.kt']);
+    expect(facts.files.map(({ file, test, waits }) => [file, test, waits.length])).toEqual([
+      ['src/main/Main.kt', false, 0],
+      ['src/test/Check.kt', true, 1],
+    ]);
+    const reported = broken.log.split('\n').find((line) => line.startsWith('src/test/Broken.kt'));
+    expect(reported).toMatch(
+      /^src\/test\/Broken\.kt:4: .*\. This test source is not compiled by this step: .*$/u,
+    );
   });
 });
