@@ -1,11 +1,10 @@
-import { evaluateDuplicates } from '../rules/duplicates.mjs';
+import { evaluateDuplicates, RENAMED_IDENTITY_PREFIX } from '../rules/duplicates.mjs';
 import { isBoilerplate } from './boilerplate.mjs';
 import { readProjectFile } from './files.mjs';
 
-const RENAMED_IDENTITY_PREFIX = 'renamed:';
 const WHITESPACE = /\s+/gu;
 const CLONE_MESSAGE = /^This code repeats (\S+?)(?::\d+)? \(\d+ lines\)\./u;
-const KEEP_ONE_COPY = / Keep one copy.*$/u;
+const KEEP_ONE_COPY = / Keep one copy and call it from both places\./u;
 
 function span(side, lines) {
   return { file: side.file, from: side.line, to: side.line + (lines ?? 1) - 1 };

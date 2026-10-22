@@ -52,9 +52,7 @@ describe('duplicate findings in the quality-area analyzers', () => {
         path: 'src/main/a.ts',
         identity: 'pair:src/main/a.ts|src/main/b.ts:fragment:e3b0c44298fc1c149afbf4c8:occurrence:1',
         message:
-          'This code repeats src/main/b.ts:7 (10 lines). Keep one copy and call it from both places. ' +
-          'If this is intended, add {"rule":"duplicate-clone","paths":["src/main/a.ts"],"reason":"..."} ' +
-          'to "exceptions" in nitpicker.config.json.',
+          'This code repeats src/main/b.ts:7 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/a.ts or src/main/b.ts to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 2 },
       },
@@ -103,9 +101,7 @@ describe('duplicate findings in the quality-area analyzers', () => {
         path: 'src/main/a.ts',
         identity: 'pair:src/main/a.ts|src/main/z.ts:fragment:e3b0c44298fc1c149afbf4c8:occurrence:1',
         message:
-          'This code repeats src/main/z.ts:2 (10 lines). Keep one copy and call it from both places. ' +
-          'If this is intended, add {"rule":"duplicate-clone","paths":["src/main/a.ts"],"reason":"..."} ' +
-          'to "exceptions" in nitpicker.config.json.',
+          'This code repeats src/main/z.ts:2 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/a.ts or src/main/z.ts to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 7 },
       },

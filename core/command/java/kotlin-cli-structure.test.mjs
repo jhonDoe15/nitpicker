@@ -136,7 +136,7 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
         identity:
           'renamed:pair:src/main/kotlin/demo/Left.kt|src/main/kotlin/demo/Right.kt:fragment:178b2d0c97b8470f68e5ec7d:occurrence:1',
         message:
-          'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicates/duplicate-clone","paths":["src/main/kotlin/demo/Left.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/kotlin/demo/Left.kt or src/main/kotlin/demo/Right.kt to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 3 },
       },
@@ -161,28 +161,22 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
         identity:
           'renamed:pair:src/main/kotlin/demo/Invoice.kt|src/main/kotlin/demo/Parcel.kt:fragment:5ce5c62d2497fde3b14189bb:occurrence:1',
         message:
-          'This code repeats src/main/kotlin/demo/Parcel.kt:3 (17 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicates/duplicate-clone","paths":["src/main/kotlin/demo/Invoice.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'This code repeats src/main/kotlin/demo/Parcel.kt:3 (17 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/kotlin/demo/Invoice.kt or src/main/kotlin/demo/Parcel.kt to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 3 },
       },
     ]);
   });
-  it('lifts a renamed Kotlin clone with an exception for duplicates/duplicate-clone', () => {
+  it('lifts a renamed Kotlin clone when either file of the pair is excluded', () => {
     const root = kotlinRepository({
       'nitpicker.config.json': `${JSON.stringify({
         preset: 'kotlin',
-        exceptions: [
-          {
-            rule: 'duplicates/duplicate-clone',
-            paths: ['src/main/kotlin/demo/Invoice.kt'],
-            reason: 'copied on purpose',
-          },
-        ],
+        exclude: ['src/main/kotlin/demo/Parcel.kt'],
       })}\n`,
-      'src/main/kotlin/demo/Invoice.kt': renamedCopy(INVOICE_NAMES, [0, 100, 1000, 10]),
+      'src/main/kotlin/demo/Parcel.kt': renamedCopy(PARCEL_NAMES, [1, 10, 5000, 50]),
     });
     writeFiles(root, {
-      'src/main/kotlin/demo/Parcel.kt': renamedCopy(PARCEL_NAMES, [1, 10, 5000, 50]),
+      'src/main/kotlin/demo/Invoice.kt': renamedCopy(INVOICE_NAMES, [0, 100, 1000, 10]),
     });
     commit(root, 'copy and rename a class');
 

@@ -10,9 +10,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 
 ## Finish with the gate
 
-1. Run the project's tests with its own runner (pytest or unittest). Failing tests are a tool error
-   that names them; coverage and CRAP then come only from the tests that pass, and mutation testing
-   leaves the failing modules out.
+1. Run the project's tests with its own runner (pytest, unittest, `manage.py test` or nose2).
+   Failing tests are a tool error that names them; coverage and CRAP then come only from the tests
+   that pass, and mutation testing leaves the failing modules out.
 2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
    pipe: you need its exit code. It has no `--fix` for Python; format with the "Format with ..." command
    printed at the start of the run (the gate does not read the project's formatter config). It takes minutes and prints a progress line for each slow analyzer.
@@ -54,10 +54,13 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
 - Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
   test honesty) reports the allowed form in its message: follow the form the message names.
-- Tests: use the project's runner (pytest or unittest). Every test asserts something. Every branch
-  you add needs a test, and a surviving mutant fails: assert the exact value, so a changed line
-  breaks a test. A test you add or edit takes at most 5 s, or 30 s under `tests/integration/` or with
-  `@pytest.mark.integration`: no `time.sleep`.
+- Tests: use the project's runner (pytest, unittest, Django or nose2). Every test asserts something. Every branch you add needs a test, and a
+  surviving mutant fails: assert the exact value, so a changed line breaks a test. A test you add
+  or edit takes at most 5 s (`slow-test`), or 30 s under an `integration` or `e2e` folder or with
+  `@pytest.mark.integration` (registered when the project uses `--strict-markers`): patch the clock
+  instead of `time.sleep` and fake network, database and disk access. A test over budget is run
+  again alone without coverage and fails only if it is still over. Lift a legitimate one in the
+  top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.
@@ -66,11 +69,17 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
   message. Don't add one to get past the gate: stop and ask.
 
+## Repository files
+
+- The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
+  the fix. Don't add an `exceptions` entry to get past one: stop and ask.
+
 ## Size
 
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters;
-  past 3 parameters, pass a frozen dataclass. Complex code needs tests: the CRAP score of a
-  function must stay below 9.
+  past 3 parameters, pass a frozen dataclass. A `lambda` is a function of its own with the same
+  limits, counted on its own and not toward the function around it. Complex code needs tests: the
+  CRAP score of a function must stay below 9.
 - Each `elif` and `except` adds a nesting level: `if`/`elif`/`elif` is already too deep. Return
   early, look the value up in a dict, or move a branch into a helper.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`) fails: extract a function, also when the copy has other names and literals. A

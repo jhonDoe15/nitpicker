@@ -13,8 +13,8 @@ and converting them into findings.
 
 The purpose is the same as everywhere else: narrow a flexible language to roughly one allowed way
 of doing each thing. That "one way" lives in the code and architecture rules (slices 2 to 5), not in
-which tools a project uses, so the preset detects the tools a project already has (uv, poetry or a
-plain virtualenv; ruff or black; pytest or unittest) and never makes adoption depend on switching.
+which tools a project uses, so the preset detects the tools a project already has (uv, poetry,
+pipenv, hatch, conda or a plain virtualenv; ruff or black; pytest, unittest, Django's `manage.py test` or nose2) and never makes adoption depend on switching.
 
 ## How it works
 
@@ -22,7 +22,7 @@ plain virtualenv; ruff or black; pytest or unittest) and never makes adoption de
 node languages/python/adapters/python-runner.mjs --part python     (analyzer python, per snapshot)
   -> ruff check  --config nitpicker-ruff.toml      -> ruff.sarif
   -> ruff format --check --diff | black --check    -> format.txt
-  -> coverage run --branch -m pytest | unittest    -> coverage.json  (coverage.py JSON report)
+  -> coverage run -m pytest | unittest | nose2, or manage.py test -> coverage.json (coverage.py JSON)
   -> mypy --strict | pyright | basedpyright (strict) -> type-check.json
   -> python -I nitpicker_rules.py                  -> rules.json     (the small AST checks)
   -> python structure_metrics.py                    -> structure.json  (slice 3; also the CRAP input)
@@ -50,37 +50,51 @@ directory is the contract between the tool runs and the readers; later slices ad
   project's environment (`ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1`), read from the live checkout, and
   the configuration hash covers the Python adapter files, the nitpicker-owned ruff config and the
   `python` settings. Upgrading ruff, or editing the preset, therefore invalidates the base cache.
-- **Ingesters.** Nothing generic was moved. The Java ingesters are reused where they already are:
-  `languages/java/ingest/sarif.mjs` (ruff), `format-check.mjs` (the format check) and `common.mjs`.
+- **Ingesters.** The generic ingesters live in `shared/ingest/` and are shared with the Gradle
+  presets: `sarif.mjs` (ruff, with `prepareSarif`), `format-check.mjs` (the format check), `common.mjs` and
+  `lizard-crap.mjs`.
   The one new ingester is `languages/python/ingest/coverage-reports/coverage-json.mjs` for the coverage.py JSON
-  report. The legacy-inventory and `exclude` handling is Java's `applyJavaPolicy` /
-  `configureJavaAnalyzer`, which are language-neutral and take the tool name for a
-  `baseline-expansion` finding as an option.
+  report. The legacy-inventory and `exclude` handling is `applyFindingPolicy` in
+  `shared/findings/finding-policy.mjs` and Java's `configureJavaAnalyzer`, which are language-neutral and
+  take the tool name for a `baseline-expansion` finding as an option.
 
 ## The project's own environment
 
 The tools run inside the environment the project already has, detected in this order (the first
 that applies wins):
 
-| Order | Detected by                 | The tools run as                                                                                             |
-| ----- | --------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| 0     | `python.environment` is set | `uv`, `poetry` or `path` as named; any other value is a virtualenv directory, inside the project or absolute |
-| 1     | `uv.lock`                   | `uv run --project <checkout> --no-sync -- <tool>`; needs `uv sync` to have run (or `UV_PROJECT_ENVIRONMENT`) |
-| 2     | `poetry.lock`               | the virtualenv `poetry env info --path` reports, first on `PATH`; needs `poetry install` to have run         |
-| 3     | a uv workspace root above   | as 1: an ancestor with a `uv.lock` and a `[tool.uv.workspace]` table; its `.venv` is the environment         |
-| 4     | a `.venv/` directory        | `.venv/bin` first on `PATH`, `VIRTUAL_ENV` set                                                               |
-| 5     | nothing                     | `ruff`, `black`, `coverage`, `mypy`, `pyright`, `basedpyright` and `python3` from the `PATH`                 |
+| Order | Detected by                                                   | The tools run as                                                                                                                                               |
+| ----- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | `python.environment` is set                                   | `uv`, `poetry`, `pipenv`, `hatch`, `conda` or `path` as named; any other value is a virtualenv directory, inside the project or absolute                       |
+| 1     | `uv.lock`                                                     | `uv run --project <checkout> --no-sync -- <tool>`; needs `uv sync` to have run (or `UV_PROJECT_ENVIRONMENT`)                                                   |
+| 2     | `poetry.lock`                                                 | the virtualenv `poetry env info --path` reports, first on `PATH`; needs `poetry install` to have run                                                           |
+| 3     | a uv workspace root above                                     | as 1: an ancestor with a `uv.lock` and a `[tool.uv.workspace]` table; its `.venv` is the environment                                                           |
+| 4     | a `Pipfile` or `Pipfile.lock`                                 | the virtualenv `pipenv --venv` reports, first on `PATH`; needs `pipenv install --dev` to have run                                                              |
+| 5     | `[tool.hatch.envs...]` in `pyproject.toml`, or a `hatch.toml` | the environment `hatch env find` reports (the default one), first on `PATH`; needs `hatch env create`                                                          |
+| 6     | an `environment.yml` or `environment.yaml`                    | the `prefix:` it declares, else the environment `conda env list` finds under its `name:`; tools run by their path in that environment, with `CONDA_PREFIX` set |
+| 7     | a `.venv/` directory                                          | `.venv/bin` first on `PATH`, `VIRTUAL_ENV` set                                                                                                                 |
+| 8     | nothing                                                       | `ruff`, `black`, `coverage`, `mypy`, `pyright`, `basedpyright` and `python3` from the `PATH`                                                                   |
 
-The environment is always the one of the live checkout (the head work tree you run `nitpicker` in).
-It is never created or synced by nitpicker: the uv environment is checked before `uv run --no-sync`
-is called, so a missing `.venv` is an error and not an empty environment created in your checkout.
+An activated conda environment of a project without an `environment.yml` is already served by the
+last row: its `bin` is first on the `PATH`. For pipenv, hatch and conda found by detection, a missing manager command is not an error: the
+detection goes on with the next row, because the tools may be on the `PATH` (a CI job that installed
+them with `pip`). When the manager runs and has no environment for the project, or the setting names
+it and it is not installed, the run stops with an `environment-failed` error that says how to create
+it and how to install the manager (`uv`, `poetry`, `pipenv`, `hatch`, `conda`).
+
+The environment of the head is always the one of the live checkout (the head work tree you run
+`nitpicker` in). It is never created or synced by nitpicker: the uv environment is checked before
+`uv run --no-sync` is called, so a missing `.venv` is an error and not an empty environment created
+in your checkout. The base snapshot gets an environment of its own only when its dependency files
+differ from the head's (next section).
 A virtualenv outside the project (a shared `/opt/venv`, an activated CI environment) is used with
 an absolute `python.environment`. A tool that is
 not installed in the environment but is on the `PATH` (typically `ruff`, which many projects use
-from `pipx` or `uvx`) is used from the `PATH`. `coverage` and `pytest` must be in the environment,
-since pytest imports the project's code and dependencies; the error says so.
+from `pipx` or `uvx`) is used from the `PATH`. `coverage` and the test runner (pytest, Django or
+nose2) must be in the environment, since the runner imports the project's code and dependencies;
+the error says so.
 
-### The base snapshot has no environment of its own
+### The base snapshot and its environment
 
 The base side is a separate git work tree of the merge base, and it has no virtualenv. Running the
 live checkout's environment there would normally import the wrong code: the project is usually
@@ -91,17 +105,39 @@ Decision: **prepend the snapshot's own import roots to `PYTHONPATH`** for every 
 way for base and head. The import root of a source root is the directory itself for a `src/`
 layout, and its parent for a flat package. `PYTHONPATH` entries come before `site-packages` and
 before the `.pth` files and import hooks editable installs use, so the snapshot's sources win.
-Tests run with the snapshot as working directory, so `tests/` and `conftest.py` are the snapshot's
-too, and coverage only measures the snapshot's source roots.
+Tests run with the snapshot as working directory (a Django project's from the directory of its
+`manage.py`), so `tests/`, `tests.py` and `conftest.py` are the snapshot's too, and coverage only measures the snapshot's source roots.
 
-Why not the dependency hook (`languages/typescript/adapters/dependency-graph/dependency-hooks.mjs`)? A hook installs
-a directory into the snapshot (`npm ci` for `node_modules`) and removes it afterwards. For Python
-that means building a second environment per snapshot: minutes of work, network access, and the
-base would be analyzed with the base's pinned tool versions while head uses head's, so every
-upgrade of ruff would show up as new findings. One environment for both sides keeps the tool
-versions identical, which is what a differential gate needs. The cost is that base is analyzed
-with head's dependencies; a change that needs a new dependency to even import its base sources is
-rare, and the CI job that runs the gate has the head environment installed anyway.
+When the change touches the dependencies, the base would still import head's packages, so the base
+snapshot gets its own environment. nitpicker compares the dependency files of the base snapshot
+with the head's: `uv.lock`, `poetry.lock`, `pdm.lock`, `Pipfile`, `Pipfile.lock`, the
+`requirements*.txt` and `constraints*.txt` files at the root and the `*.txt` files of a
+`requirements/` folder (byte for byte), and the dependency tables of `pyproject.toml`
+(`project.dependencies`, `optional-dependencies`, `requires-python`, `dependency-groups`,
+`build-system`, `tool.poetry` dependencies, groups and extras, `tool.uv`, `tool.pdm`
+dev-dependencies and resolution; any other setting is ignored). If nothing differs, the base uses the head's
+environment, as above. If something differs, the project's own tool builds `.venv` inside the
+snapshot, which is deleted with it, and the base tools run from it:
+
+| The base snapshot has | Command run in the snapshot                                                                                  | Skips                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `uv.lock`             | `uv sync --frozen --no-install-project --no-install-workspace`                                               | the project and its workspace members                                    |
+| `poetry.lock`         | `poetry install --no-root --no-interaction`                                                                  | the project                                                              |
+| `pdm.lock`            | `pdm sync --no-self`                                                                                         | the project                                                              |
+| `Pipfile.lock`        | `pipenv sync --dev`                                                                                          | refused when the lock has editable or path packages                      |
+| `requirements*.txt`   | `python3 -m venv .venv`, then `.venv/bin/python -m pip install --prefer-binary -r <copy> [-c <constraints>]` | `-e`, paths, `file:` URLs, includes and constraints outside the snapshot |
+
+`python.environment` picks the tool when it is `uv`, `poetry` or `pipenv`; with it unset the first
+lock file in the order above wins, and requirements files are used when no lock file is there and
+the project declares no pipenv, hatch or conda environment. `path`, `hatch`, `conda`, a directory and an
+absolute path keep the head's environment for the base, because those are environments nitpicker
+cannot rebuild from files. The commands never run the base's own setup code: the project itself is
+not installed, and the requirements copy drops editable and local entries. The packages the
+lock file lists are installed as the tool would install them, so their own build steps run.
+If the install fails, or the tool is not installed, the run stops with an `environment-failed`
+error that names the command and how to install the tool. A tool that the project's dev
+dependencies provide (`ruff`, `mypy`, `pytest`) runs in the base at the version the base locks, so
+a change that upgrades one of them compares the new version's findings against the old version's.
 
 Limits: compiled extension modules of the project itself that are built into the environment are
 not rebuilt for base; and a project whose code does not live under the detected source roots must
@@ -116,9 +152,9 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
 below. `layout` describes TypeScript source roots and stays a config error with this preset. The
 top-level `exceptions` is accepted only for the file and size limits shared with the other languages
-(`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit`,
-`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it;
-the Python equivalent of
+(`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
+`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it, and
+the [dependency and repository checks](usage.md#dependency-and-repository-checks); the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
 
 ```json
@@ -142,16 +178,16 @@ the Python equivalent of
 }
 ```
 
-| Key            | Values                                 | Default                                                                              |
-| -------------- | -------------------------------------- | ------------------------------------------------------------------------------------ |
-| `environment`  | `uv`, `poetry`, `path`, or a directory | detected, see above                                                                  |
-| `formatter`    | `ruff`, `black`                        | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
-| `testRunner`   | `pytest`, `unittest`                   | `pytest` if the project uses it (see below), else `unittest`                         |
-| `typeChecker`  | `mypy`, `pyright`, `basedpyright`      | detected from the project, see below                                                 |
-| `importLinter` | `true`, `false`                        | run when the project has an import-linter config (see slice 5), else not             |
-| `sourceRoots`  | non-empty array of project directories | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
-| `entryPoints`  | array of project-relative globs        | none; see [Composition roots](#the-shared-one-way-rules)                             |
-| `exceptions`   | array of `{ rule, paths, reason }`     | none; see [Exceptions](#exceptions)                                                  |
+| Key            | Values                                                             | Default                                                                              |
+| -------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `environment`  | `uv`, `poetry`, `pipenv`, `hatch`, `conda`, `path`, or a directory | detected, see above                                                                  |
+| `formatter`    | `ruff`, `black`                                                    | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
+| `testRunner`   | `pytest`, `unittest`, `django`, `nose2`                            | `pytest` if the project uses it (see below), else `unittest`                         |
+| `typeChecker`  | `mypy`, `pyright`, `basedpyright`                                  | detected from the project, see below                                                 |
+| `importLinter` | `true`, `false`                                                    | run when the project has an import-linter config (see slice 5), else not             |
+| `sourceRoots`  | non-empty array of project directories                             | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
+| `entryPoints`  | array of project-relative globs                                    | none; see [Composition roots](#the-shared-one-way-rules)                             |
+| `exceptions`   | array of `{ rule, paths, reason }`                                 | none; see [Exceptions](#exceptions)                                                  |
 
 `python.entryPoints` lists the files that start the program, such as a job runner or a worker that
 reads its settings from the environment (see the composition roots below). Adding a file there
@@ -198,8 +234,9 @@ handed to ruff or black either. The rules most likely to flag code that is right
 each item) and `F401` (an `__init__.py` that re-exports): lift them for the path with
 `python.exceptions`, or `exclude` the path, for example
 `"exclude": ["src/demo/cli.py", "**/__init__.py"]`. The project's own ruff configuration
-(`[tool.ruff]`, `ruff.toml`) and `[tool.coverage]` are not read for linting and coverage, so the
-result means the same on every project; there is no override key for them (the coverage settings that are dropped are listed under the test step below).
+(`[tool.ruff]`, `ruff.toml`) is not read for linting, and of the coverage configuration only the
+settings that say how the tests run are kept (see the test step below), so the result means the
+same on every project; there is no override key for them.
 
 The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile`,
 `.pre-commit-config.yaml` or a requirements file (`requirements*.txt`, `requirements/*.txt`) has a
@@ -245,7 +282,7 @@ conventions win instead for ruff; it is a config error for black, whose flags ca
 normalization back on. Listing `"project"` with no config file is a tool error that says to create it
 or remove `"project"` from `tools.<tool>.precedence`. The file is read from the head checkout for
 both sides of the comparison and passed to the formatter as `--config <file>`; the whole `extend`
-chain and the located files are part of the cache key. Which formatter applies which convention:
+chain and the located files are part of the cache key. The line length that the conventions take from the config is read from the merge base in a comparison (its parent-folder configs and `extend`ed files included; the branch's own config only when the base has no Python sources), so a pull request cannot raise its own limit by editing the config. The format command then passes the followed value (`--line-length`, the quote style of ruff, indentation) wherever the head config says another one, and the printed command shows it. Which formatter applies which convention:
 ruff format applies all three; black applies `python.lineLength` and `python.quotes` (it keeps single
 quotes as written, so it accepts both styles) and has no indentation option, so `python.indentation`
 is neither measured nor printed with black, and pinning it is a config error. A file votes a line
@@ -253,12 +290,38 @@ length only from a call or bracket that the formatter left wrapped without a tra
 it would have fit any wider limit), or 120 when two lines pass 100. The run prints the source of each
 convention: the files it measured, the pin in `nitpicker.config.json`, or "from your ruff config".
 
-The test runner is `pytest` when the project shows it uses it: a `[tool.pytest.ini_options]`,
-`[pytest]` or `[tool:pytest]` section, `pytest.ini`, `pytest` or a pytest plugin as a dependency or
-tox command, a `conftest.py`, or test files with top-level `def test_` functions, `import pytest`
-or `Test` classes without a base. It is decided from the project, not from what the environment
-can import, so an environment without pytest is an error (`environment-failed`, naming
-`python.testRunner`) and not a silent run of `unittest` that finds none of the tests.
+The test runner is the first of these the project shows it uses:
+
+1. `pytest`: a `[tool.pytest.ini_options]`, `[pytest]` or `[tool:pytest]` section, `pytest.ini`, or
+   `pytest` or a pytest plugin (`pytest-django` too) as a dependency or tox command.
+2. `django`: a `manage.py` next to a Django dependency, or a `manage.py` that imports `django`,
+   at the project root or in a direct subdirectory (`backend/manage.py`), which the tests then run
+   from. mutmut names modules by their path from the project root, so in the subdirectory case
+   mutation testing is skipped with a descriptive `mutation-skipped` finding
+   (`django-subdirectory`); run nitpicker in that directory to mutate the project.
+3. `nose2`: a `nose2.cfg`, a `unittest.cfg` whose `[unittest]` section lists `plugins`, or `nose2`
+   as a dependency or tox command.
+4. `pytest`: a `conftest.py`, or test files with top-level `def test_` functions, `import pytest` or
+   `Test` classes without a base.
+5. `unittest` otherwise.
+
+It is decided from the project, not from what the environment can import, so an environment
+without the runner is an error (`environment-failed`, naming `python.testRunner`) and not a silent
+run of `unittest` that finds none of the tests (or, for Django, fails them all without the
+project's settings). `python.testRunner` overrides the detection.
+
+| Runner     | Tests run as                                             | Coverage and CRAP need | Mutation testing needs                   |
+| ---------- | -------------------------------------------------------- | ---------------------- | ---------------------------------------- |
+| `pytest`   | `coverage run -m pytest -q`                              | coverage, pytest       | mutmut, pytest                           |
+| `unittest` | `coverage run -m unittest discover`                      | coverage               | mutmut, pytest                           |
+| `django`   | `coverage run manage.py test --noinput`                  | coverage, Django       | mutmut, pytest, pytest-django and Django |
+| `nose2`    | `coverage run -m nose2` (its own config picks the tests) | coverage, nose2        | mutmut, pytest                           |
+
+mutmut 3 runs every suite with pytest (see slice 6), which also runs `unittest.TestCase` classes and
+nose2's test functions; Django's test cases need the pytest-django plugin, and the settings module
+is taken from `manage.py` (an `os.environ.setdefault("DJANGO_SETTINGS_MODULE", ...)` call or an
+`os.environ["DJANGO_SETTINGS_MODULE"] = ...` assignment, commented-out lines skipped) unless a
+pytest section (`[pytest]`, `[tool:pytest]`, `[tool.pytest.ini_options]`) names one.
 
 ## Slice 2: type checking and the one-way rules
 
@@ -377,7 +440,7 @@ through the real tools.
 Details that are decisions rather than the table:
 
 - `frozen-dataclass` and `pydantic-boundary` do not apply to test files (a `tests` or `test`
-  directory, `test_*.py`, `*_test.py`, `conftest.py`), where fakes mutate and tests exercise the
+  directory, `test_*.py`, `*_test.py`, `tests.py`, `conftest.py`), where fakes mutate and tests exercise the
   adapters. `frozen=True` must be the literal `True`.
 - The validation library is the one the project declares, read from `pyproject.toml` (PEP 621
   `dependencies`, `optional-dependencies` and `dependency-groups`; Poetry, uv and pdm tables),
@@ -472,7 +535,7 @@ Details that are decisions rather than the table:
   survive edits above; repeats in a file are numbered. The message says to re-raise it with its
   cause (`raise DomainError(...) from error`), return a failure value built from it or a named
   default, that logging alone is not handling, that `contextlib.suppress(SpecificError)` ignores
-  one expected error, and the `python.exceptions` entry for `swallowed-exception` for a handler that
+  one expected error, that a test uses `pytest.raises(SpecificError)` (`self.assertRaises` in unittest), and the `python.exceptions` entry for `swallowed-exception` for a handler that
   must stay (a lookup that answers `False` for bad input, say). Untested `except` handlers are not
   gated by branch coverage either, since coverage.py emits no arcs for them.
 - `blind-suppress` closes the way around the rule above: `contextlib.suppress(Exception)`,
@@ -481,7 +544,7 @@ Details that are decisions rather than the table:
   stands for. The subject is the call as written with the resolved name, for example
   `contextlib.suppress(Exception)`; a `suppress` imported from anywhere other than `contextlib` is
   not checked. The message points to naming the expected exception, or handling or logging the
-  error, and to the `python.exceptions` entry for `blind-suppress`.
+  error, to `pytest.raises` in a test, and to the `python.exceptions` entry for `blind-suppress`.
 - `ruff check` runs with `--ignore-noqa`, so a `noqa` never hides a finding either.
 
 ### The shared one-way rules
@@ -790,18 +853,29 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - **Tests under coverage.** `coverage run --rcfile <nitpicker> -m pytest -q -o cache_dir=<report
 directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own `discover`, with
   `-s tests` or `-s test` when that directory exists and `-t .` when it is a package, through a
-  `TextTestRunner` whose result records each test's time and writes the JUnit report), then
-  `coverage json`. The project's pytest configuration keeps
+  `TextTestRunner` whose result records each test's time and writes the JUnit report),
+  `manage.py test --noinput` (the project's own settings, from `manage.py`, run from the directory
+  `manage.py` is in) or `-m nose2`, then `coverage json`. The project's pytest configuration keeps
   working: `--no-cov` and `-n0` are added only when pytest-cov or xdist is installed, so
   `--cov=pkg` or `-n 2` in `addopts` cannot replace the outer coverage run or fork it away, and
   `--lf` or `--sw` find their cache in the report directory. The coverage settings are nitpicker's,
   written to the report directory: branch coverage on, `parallel` off, `source` the source roots
   that exist in the snapshot, test files left out of measurement (`test_*.py`, `*_test.py`,
-  `conftest.py`, `*/tests/*`, `*/test/*`), and a fixed `exclude_lines` of the idioms that cannot be
-  tested (see Exceptions under slice 4). The project's own coverage configuration (`.coveragerc`, `setup.cfg`,
-  `tox.ini`, `[tool.coverage]`) is not read, so its `exclude_lines`, `exclude_also`,
-  `partial_branches`, `omit`, plugins and subprocess measurement are all dropped and the gate
-  measures every project the same way. Exit status 5 (no tests collected) is accepted; any other
+  `tests.py`, `conftest.py`, `*/tests/*`, `*/test/*`), and a fixed `exclude_lines` of the idioms that
+  cannot be tested (see Exceptions under slice 4). From the project's own coverage configuration
+  (the first of `.coveragerc`, `setup.cfg` `[coverage:run]`, `tox.ini` `[coverage:run]` and
+  `[tool.coverage.run]` that has coverage settings, the order coverage.py reads them in) the run
+  settings that decide what code gets measured at all are kept: `concurrency` (multiprocessing,
+  gevent, eventlet, ...), `patch` (subprocesses), `plugins`, and the `omit` of the run and of the
+  report section (where projects often list `migrations/*`), added to the test files. Lists may run
+  over several lines with comments and blank lines in between, as coverage.py reads them; relative
+  `omit` patterns and the `source` paths are made absolute, so they match whatever directory the
+  tests run from.
+  When they make coverage.py write one data file per process, the files are combined before the
+  report. Its `exclude_lines`, `exclude_also`, `partial_branches`, `branch` and `source` are
+  dropped, so the gate judges every project's code the same way. Test files are not scored for
+  CRAP either, and a source file the project omits has unknown coverage
+  (`crap-coverage-unknown`). Exit status 5 (no tests collected) is accepted; any other
   non-zero status is a tool error. A snapshot where no test ran has an enforceable
   `python/no-tests-ran` finding: it is new, and so fails, only when the change removed the last
   tests, and a project that has none on both sides is unaffected. coverage.py 7.6 or newer is
@@ -829,7 +903,7 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
 
 - **File limits.** The shared file-limit rule (`shared/rules/file-limits.mjs`) checks every `.py`
   file outside dot, virtualenv (`venv`, `env`), build, `migrations` and `__pycache__` folders: 300 lines per module, 500 per test
-  module (`test_*.py`, `*_test.py`, `conftest.py`, or anything under a `test` or `tests` folder),
+  module (`test_*.py`, `*_test.py`, `tests.py`, `conftest.py`, or anything under a `test` or `tests` folder),
   120 characters per line, and 6 modules (and separately 6 test modules) directly in one folder, where an `__init__.py` is checked but not counted. A
   file or folder already over a limit fails only when it grows, and a folder moved to a new path is
   matched to its old path.
@@ -848,13 +922,19 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   and writes one object per function to `structure.json`. It is run by the project's own Python
   (`python <script> <output> <project> <file list>`), so it needs no dependency and no pin, and it
   parses with the grammar of the interpreter the project uses; a file that does not parse is
-  skipped, as is a file too deeply nested for the parser (`RecursionError`, `MemoryError`); ruff's
-  `E9` rules already report a syntax error. The four limit metrics and the cyclomatic complexity
+  skipped, since ruff's `E9` rules already report a syntax error; a file too deeply nested for the
+  parser (`RecursionError`, `MemoryError`) stops the run with a `structure-failed` tool error that
+  names the file, as an unparsable TypeScript file does, because no other tool reports it and
+  skipping it would leave it outside the structure gate unnoticed. The four limit metrics and the cyclomatic complexity
   (the CRAP input) all come from this one script, like `StructureMetrics.java` for Java; no
   external tool is involved.
 - **Definitions** (the TypeScript analyzer's, applied to Python syntax). Unit: every `def` and
-  `async def` with a body, methods and nested functions alike; named `Outer.method` and
-  `outer.inner`, the qualified names coverage.py uses. `lines`: last line - first line + 1, from the
+  `async def` with a body, methods and nested functions alike, and every `lambda`; named
+  `Outer.method` and `outer.inner`, the qualified names coverage.py uses. A lambda is named after the
+  scope that holds it and the name it is assigned to (`pipeline.score` for `score = lambda v: ...`,
+  also with an annotation), else `<lambda>` (`pipeline.<lambda>`; a lambda in a default argument, a
+  decorator or a base class belongs to the scope around that `def` or `class`); repeated names are
+  numbered by the source, as for the `<init>` blocks of Kotlin. `lines`: last line - first line + 1, from the
   first decorator, without the docstring (it is documentation, like `statements`, so adding one to
   a long legacy function does not make it grow; TypeScript counts comments, Python has no comment
   node to leave out).
@@ -873,9 +953,12 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   `parameters`: positional-only, positional, keyword-only, `*args` and `**kwargs`, one each; the
   `/` and `*` markers are not parameters. The first positional parameter of a method (`self`,
   `cls`, or whatever it is called) is not counted, because the caller does not pass it: a function
-  directly in a class body that is not a `@staticmethod`. Lambdas and comprehensions are part of
-  the function that contains them; nested functions and methods of nested classes are units of
-  their own and do not count towards the function around them.
+  directly in a class body that is not a `@staticmethod`. A lambda has `statements` 1 (its
+  expression), `maxControlNesting` 0 and the parameters of its signature. Comprehensions are part of
+  the function that contains them; lambdas, nested functions and methods of nested classes are
+  units of their own and do not count towards the function around them (`lines` is the physical
+  span, so the lines of a nested unit still count towards the function around it, as in
+  TypeScript).
 - **Which files.** The `.py` files under the source roots (see `sourceRoots`), skipping hidden
   directories, `__pycache__`, `node_modules` and `site-packages`. When the source root is the whole
   project (`.`: no `src/` and no top-level package), the directories source root detection never
@@ -886,8 +969,10 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   outside the default source roots, so they are not gated.
 - **Findings.** Same as Java: `languages/python/adapters/analysis/python-structure.mjs` gives the metrics to
   `evaluateStructure` and keeps the enforceable limit findings (tool `structure`; the descriptive
-  per-function metrics are not emitted). Identity: qualified name, occurrence among equal names in
-  the file, and a hash of the function text with the common indentation removed, so moving or
+  per-function metrics are not emitted). Identity: qualified name, occurrence among the functions of that name and the same text
+  that are over the same limit (so a property getter and setter, or a function defined in two
+  branches, do not renumber each other when another of that name is added above; the CRAP identity
+  numbers the same way, and so do the TypeScript structure and CRAP findings), and a hash of the function text with the common indentation removed, so moving or
   re-indenting a whole function keeps it baselined while changing the nesting of a statement inside
   it counts as an edit (Java trims every line, which would hide that in Python).
 - **Cyclomatic complexity** (`complexity`, the CRAP input). Computed by the same script from the
@@ -899,18 +984,20 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   clause and each `if` clause. The decision points are the McCabe ones of the other presets
   (ESLint's `complexity` rule for TypeScript, the Java and Kotlin metrics programs all
   count `if`, loops, `case` but not `default`, `catch`, `&&`, `||` and `?:`), with two differences
-  in scope: a lambda counts towards the function around it, as in Java and Kotlin but unlike
-  TypeScript, which scores every arrow function and function expression on its own; and each `for`
+  in scope: a lambda is a unit of its own, as every lambda, arrow function and anonymous function is
+  in the other presets, and does not count towards the function around it; and each `for`
   and `if` clause of a comprehension counts, which has no equivalent in the other languages.
   Not counted: `else`, `finally`, the `else` of a loop or a `try`, `with`, `assert`, `try` itself.
-  Lambdas and comprehensions are part of the function around them; nested functions and the
+  Comprehensions are part of the function around them; lambdas, nested functions and the
   methods of nested classes have their own entry and do not count towards it. An
   `@overload` stub (however the decorator is spelled: `overload`, `typing.overload`, `t.overload`)
   gets no CRAP score, and neither does a function whose first body statement starts on the `def`
   line (`def f(): return 1`): its only statement shares a line with the definition, which
   runs when the module is imported, so its coverage cannot be told apart. The script writes `complexity`, `definition` (the `def` line, which differs from
   `start` when the function is decorated) and `bodyStart` (the line of the first body statement)
-  next to the limit metrics, and the CRAP step reads them from `structure.json`; a failing
+  next to the limit metrics, and a lambda entry also carries `lambda: true` and `statementLine` (the first
+  line of the statement that holds it, which is the line coverage.py reports for it). The CRAP step reads
+  them from `structure.json`; a failing
   structure step is the only failure, `structure-failed`, and CRAP then has nothing to score.
 - **Coverage join.** `languages/python/ingest/crap.mjs` takes the per-function entries of the
   coverage.py JSON report PY1 already produces (`files.<path>.functions`, coverage.py 7.6 or newer)
@@ -919,7 +1006,7 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   inside the range from the `def` line to the last line of the function. `start_line` is not used, because only recent coverage.py
   versions report it. Coverage of a function is the lower of its line and branch percentage, as for
   JaCoCo, and CRAP is `ccn^2 * (1 - coverage)^3 + ccn`, shared with Java
-  (`ingestCrapRows` in `languages/java/ingest/crap.mjs`). A function with no statements and no
+  (`ingestCrapRows` in `shared/ingest/lizard-crap.mjs`). A function with no statements and no
   branches counts as fully covered: a docstring-only stub, and a function whose lines coverage.py
   excludes (`# pragma: no cover`, `if TYPE_CHECKING:`, a multi-line `@overload` stub). Definitions
   that share a name in a scope (a `@property` getter and its `@x.setter`, `@singledispatch`
@@ -931,6 +1018,14 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   its empty entry to a branchy one with the same name. A file coverage.py did not report (outside
   the source roots) has unknown coverage and fails with `crap-coverage-unknown`; nothing is
   guessed. `# pragma: no cover` keeps its coverage.py meaning (excluded lines are not statements).
+  A lambda has no coverage.py entry and no line of its own: its body runs on the line of the statement
+  that creates it, so coverage.py cannot tell a lambda that was never called from one that was. A
+  lambda therefore counts as fully covered when that statement ran (`statementLine` of its entry is
+  not in `missing_lines`) and as not covered when it did not, whatever its size; a lambda in a
+  statement that ran is scored by its complexity alone, so only a lambda with 9 or more decisions
+  fails, with the message for a covered function. This is the most coverage.py can tell, and the
+  statement that never ran is already a finding of its own function. Lambdas of the same name in one
+  file are numbered by their source text, as the `<init>` blocks of Kotlin are.
   Identity: qualified name plus the same function-text hash, ratchet key the name, so an edited
   function over the limit fails only when its score rises.
 - **Cache invalidation.** The metrics script, the new adapters, the shared structure and CRAP rule
@@ -982,7 +1077,7 @@ or remove it if it can't happen. To allow it for some paths, add a "python.excep
   test changes which branches are covered on head.
 - **Exceptions.** `# pragma: no cover` and `# pragma: no branch` are not honored (the generated
   `exclude_lines` does not list them and `partial_branches` is empty), and the project's own
-  coverage settings are ignored, so the one measurement is the same everywhere. Only idioms that are
+  report settings are ignored, so the one measurement is the same everywhere. Only idioms that are
   never testable are excluded, with the same list on every coverage.py version: `if TYPE_CHECKING:`
   (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`)
   and `raise NotImplementedError`. Anything else that legitimately cannot be tested is lifted with
@@ -998,10 +1093,12 @@ or remove it if it can't happen. To allow it for some paths, add a "python.excep
 ## Slice 5: duplicates, coupling and import contracts
 
 All three read only the production sources under `python.sourceRoots`. A file is not production
-code when it is `test_*.py`, `*_test.py` or `conftest.py`, or sits under a directory named `tests`,
+code when it is `test_*.py`, `*_test.py`, `tests.py` or `conftest.py`, or sits under a directory named `tests`,
 `test`, `migrations`, `build`, `dist`, `venv`, `site-packages`, `node_modules`, `__pycache__` or a
 hidden one such as `.venv`; the same list feeds jscpd's `--ignore`, the import scan and the module
-list. When the source root is `.` (a flat project without packages, or `python.sourceRoots`
+list. Only the duplicate scan can be changed: `duplicates.skippedFolders` replaces `tests`, `test`,
+`migrations`, `build` and `dist` there (the other names and the test file patterns always apply),
+so a package really called `build` can be scanned for clones. When the source root is `.` (a flat project without packages, or `python.sourceRoots`
 saying so), the top-level `docs`, `doc`, `examples` and `scripts` directories are skipped too, as
 the source root detection already does.
 
@@ -1015,14 +1112,17 @@ the source root detection already does.
   `tokens`), tool name `duplicates`. Identity is the sorted file pair, a hash of the cloned text and
   the n-th occurrence of that pair, never a line, so moving a legacy clone within its files keeps it
   baselined. Clones that consist only of import statements or `__all__` re-export lists are dropped
-  (`importsOnly`); a clone that also carries code is still reported. The finding is on the first
-  file of the pair, and its message tells to add that file to `exclude` when the repetition is
-  intended. A source root of `.` is supported. A second jscpd run (100 tokens, 5 lines,
-  `jscpd-renamed-config.json`) goes over a normalized copy of the project's Python files, where names,
-  strings, numbers and comments are one token each, imports, `__all__` and literal-only lists, dicts
-  and tuples are blanked and generated files are left out, so a copy with renamed locals and changed
-  literals is found: `duplicate-clone` with an identity starting `renamed:`, the same message and the
-  `python.exceptions` sentence. It replaces a plain jscpd clone over the same two ranges and drops
+  (`importsOnly` in `core/tooling/jscpd/import-only/`, the same check the other languages use for
+  their import lines); a clone that also carries code is still reported. The finding is on the first
+  file of the pair, and its message names both files and tells to add either one to `exclude` when
+  the repetition is intended. An `exclude` glob or a `python.exceptions` entry for `duplicate-clone`
+  that matches either file of the pair lifts the finding. A source root of `.` is supported.
+  A second jscpd run (100 tokens, 5 lines, `jscpd-renamed-config.json`) goes over a normalized copy
+  of the project's Python files, where names, strings, numbers and comments are one token each,
+  imports, `__all__` and literal-only lists, dicts and tuples are blanked and generated files are left
+  out, so a copy with renamed locals and changed literals is found: `duplicate-clone` with an
+  identity starting `renamed:`, the same message, lifted by the same `exclude` glob or
+  `python.exceptions` entry. It replaces a plain jscpd clone over the same two ranges and drops
   clones made of class and field declarations only. Findings are mapped back to the original lines
   because the copy keeps every line break.
 - **Coupling.** `python -I languages/python/adapters/import-scan.py` (the project's interpreter,
@@ -1112,7 +1212,8 @@ location.
   analyzer and only when it had no tool error other than failing tests, a skipped dependency check
   or a test time error (`toleratedDependencyErrors` of the analyzer: `tests`, `dependencies`,
   `test-runtime`). When mutmut's first run fails on the project's tests ("failed to collect
-  stats", "Failed to run clean test"), nitpicker runs pytest once with a JUnit report, and runs
+  stats", "Failed to run clean test"), nitpicker runs pytest once with a JUnit report and the
+  options and Django settings mutmut's pytest gets (below), and runs
   mutmut again with `--ignore=<module>` in `PYTEST_ADDOPTS` for each failing or uncollectable test
   module, the Python counterpart of PIT's `--excludedTestClasses`; the `tests/tests-failed` error
   names those modules. When no test module is left, the run is a `mutmut/tests-failed-skipped`
@@ -1120,17 +1221,22 @@ location.
   support, gets one `mutmut/tool-skipped` tool error and nothing else of this analyzer. The
   pinned `PYTEST_ADDOPTS` of [Runner parity](#runner-parity) apply here too. When pytest-xdist is installed the run gets
   `PYTEST_ADDOPTS=-n0` (merged after any value the environment already has), because mutmut runs
-  pytest itself and cannot collect which tests cover which function under `-n`. The snapshot is a
+  pytest itself and cannot collect which tests cover which function under `-n`. When the runner is
+  not pytest, `-o python_files=test*.py` is added the same way, the test file pattern of unittest,
+  Django and nose2, so pytest collects a `tests.py` or `testcalc.py` it would skip by default. The snapshot is a
   disposable work tree; mutmut writes its `mutants/` directory into it. On head the directory is
   removed afterwards. On base it stays, because head reads its results (see below). Keep `mutants/`
-  out of version control in your project, like `.venv/`. A project whose tests collect no test
-  gets no mutation findings (`python/no-tests-ran` already says it).
+  out of version control in your project, like `.venv/`. When pytest collects no test in mutmut's
+  copy of the project ("runner returned 5") the run has no results, and that is a descriptive
+  `mutation-skipped` finding (`no-tests-collected`) naming the file pattern and `also_copy`, never
+  an empty result.
 - **Configuration.** mutmut reads `[tool.mutmut]` in `pyproject.toml` (or `[mutmut]` in
   `setup.cfg`). nitpicker always writes its own `[tool.mutmut]` into the snapshot's `pyproject.toml`
   (never into your checkout; it creates the file if the project has none, and a table the project
   had is removed from the snapshot's copy, so that file is the one thing besides `mutants/` the
   preset writes into the snapshot): `source_paths` is the source roots and `do_not_mutate` skips the
-  test files (`tests/`, `test_*.py`, `*_test.py`, `conftest.py`) and the `exclude` globs, so an
+  test files (`tests/`, `test_*.py`, `*_test.py`, `conftest.py`, and `tests.py`, `tests_*.py` and
+  `*_tests.py` in a Django project) and the `exclude` globs, so an
   excluded file that mutmut cannot parse (a Python 2 leftover) does not fail the run. From the
   project's table only what the run needs is kept: `also_copy`, the process isolation options
   (`process_isolation`, `forkserver_warmup`, `preload_modules_file`, `max_forkserver_restarts`,
@@ -1162,9 +1268,18 @@ location.
   an exception route; the finding's `python.exceptions` sentence for `mutant-ignored` is. The
   project's own table is read whether or not `tools.mutmut` opts it in, before nitpicker writes
   its table.
-- **pytest.** mutmut 3 runs the suite with pytest, which also runs `unittest.TestCase` classes. A
-  project whose runner is `unittest` therefore needs pytest installed for mutation testing; set
-  `"testRunner": "unittest"` if you want coverage.py to keep running `unittest discover`.
+- **pytest.** mutmut 3 runs the suite with pytest, which also runs `unittest.TestCase` classes and
+  plain test functions; nose2's own test kinds (generators, layers, parameterized tests) do not run
+  under pytest, so their mutants are reported as not covered. Every project therefore needs pytest
+  installed for mutation testing, whatever runner coverage.py uses; without it the `mutation`
+  analyzer fails with a `mutation-failed` error that says to install it. A Django project also
+  needs pytest-django: without it mutmut is not run and a descriptive `mutation-skipped` finding
+  (`pytest-django`) says so; with it `DJANGO_SETTINGS_MODULE` is taken from `manage.py` unless the
+  environment or the pytest configuration sets it. Whenever pytest-django is installed (a pytest
+  project that uses it too), `-o django_find_project=false` keeps it from putting the real project
+  (where `manage.py` is) ahead of mutmut's copy on `sys.path`, which would test the unmutated code.
+  Whether pytest-django is installed is part of the cache key for every runner, since the option
+  applies to all of them.
 - **Windows.** mutmut forks processes (`os.fork`), so it does not run on native Windows: run
   nitpicker inside WSL. On Windows the `mutation` analyzer does not run mutmut; it reports a
   descriptive `mutation-skipped` finding that says so (the other analyzer is unaffected).
@@ -1214,7 +1329,7 @@ results when that is safe: the `mutants/*.meta` files of the base work tree are 
 head work tree before `mutmut run`, and mutmut re-tests the mutants of the functions whose code
 changed and the ones it has no result for. This happens when every file changed between the base
 commit and head is an added or modified `.py` file under a source root that is not a test
-(`tests/`, `test/`, `test_*.py`, `*_test.py`, `conftest.py`). Anything else (a test, a dependency
+(`tests/`, `test/`, `test_*.py`, `*_test.py`, `tests.py`, `conftest.py`). Anything else (a test, a dependency
 file, a deleted or renamed file, a file outside the project) runs every mutant. When the base side
 comes from the findings cache, there are no base results to copy and head runs every mutant.
 
@@ -1250,28 +1365,44 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   ids, as Java's `tests/tests-failed` (`test-runs/test-failures.mjs`). unittest failures are read
   from its `FAIL:`/`ERROR:` lines. A run that exits 1 without naming a test stays
   `python/tests-failed`.
-- **Slow tests.** `test-runtime/slow-test`, as for Java and Kotlin, for pytest and unittest
+- **Slow tests.** `slow-test` (tool `test-runtime`; `test-runtime/slow-test` is accepted in
+  `exceptions` as the same rule), as for Java, Kotlin and TypeScript, for pytest and unittest
   projects alike: a test the change adds or edits over 5 s, or 30 s for an integration test, from
-  the JUnit times (`test-runs/slow-tests.mjs`); a parametrized test counts its slowest case over
-  that case's own budget. A test is its decorators, its signature and its body, read by logical
-  line (`test-runs/python-blocks.mjs`: brackets, strings and continuations, so a wrapped signature
-  or decorator is one line), in the file and at the line where it is defined, inside the classes
-  that enclose it. It counts as edited when the base file has no identical block in the same
-  classes; a block that is only in a base test file the change removed or renamed counts as moved,
-  so a test copied next to an original that still exists is new. An inherited test (a mixin or base
-  class in another module, as the usual unittest and Django way to share tests) is also counted
-  when the class that collects it is new or its `class` line changed; a test built by a factory
-  (`test_import = make_case(6)`) when a line that names it is new or changed. pytest runs through
-  `test-runs/pytest_timings.py`, which times the call phase plus the setup of function-scoped
-  fixtures (`setup_method` is one), so a session, module or class fixture's setup (`setup_class`
-  too) is not charged to the first test that uses it, and records each case's marks; unittest
-  times each test from `startTest` to `stopTest` (its `setUp` and `tearDown`, not `setUpClass` or
+  the JUnit times (`test-runs/slow-tests.mjs`). The message is the shared one
+  (`shared/rules/slow-tests/`): the budget, the measured time, the fixes (patch the clock, fake
+  network, database and disk) with the way to move it to an integration test, and the top-level
+  `exceptions` entry that lifts it, `{ "rule": "slow-test", "paths": ["tests/db/**"], "reason":
+"..." }`, not `python.exceptions`. Only passed tests are timed (a failed, errored or skipped case
+  is left out). A parametrized test counts its slowest case over that case's own budget. A test is
+  its decorators, its signature and its body, read by logical line (`test-runs/python-blocks.mjs`:
+  brackets, strings and continuations, so a wrapped signature or decorator is one line), in the
+  file and at the line where it is defined, inside the classes that enclose it. It counts as edited
+  when the base file has no identical block in the same classes; a block that is only in a base
+  test file the change removed or renamed counts as moved, so a test copied next to an original
+  that still exists is new. An inherited test (a mixin or base class in another module, as the
+  usual unittest and Django way to share tests) is also counted when the class that collects it is
+  new or its `class` line changed; a test built by a factory (`test_import = make_case(6)`) when a
+  line that names it is new or changed. pytest runs through `test-runs/pytest_timings.py`, which
+  times the call phase (`junit_duration_report=call`) plus the setup of function-scoped fixtures
+  (`setup_method` is one), so a session, module or class fixture's setup (`setup_class` too) is
+  not charged to the first test that uses it, and records each case's marks; unittest times each
+  test from `startTest` to `stopTest` (its `setUp` and `tearDown`, not `setUpClass` or
   `setUpModule`), as JUnit charges `@BeforeEach` and not `@BeforeAll`. A test is an integration
   test under an `integration`, `integration_tests`, `e2e` or `end_to_end` folder, or with
   `@pytest.mark.integration` or `@pytest.mark.e2e` on that case, as pytest applies it (decorators,
   classes, `pytestmark`, conftest hooks, or `pytest.param(..., marks=...)` for that case only); the
-  unittest message names only the folder. `thresholds.unitTestSeconds` and
+  unittest advice names only the folder, and the pytest advice reminds that a marker must be
+  registered when the project uses `--strict-markers`. `thresholds.unitTestSeconds` and
   `integrationTestSeconds` change the limits. Base snapshots report none.
+  The times are those of the coverage run, so they include coverage's tracing overhead. Each test
+  over its budget is therefore run once more, alone, without coverage (the `retimeSlowTests` step
+  after the tests, `test-runs/slow-retime.mjs`: the node id for pytest, `-k <dotted id>` for
+  unittest, written to `rerun-junit.xml`), and reported only when that run is also over budget,
+  with its time; a second run that fails or does not report the test keeps the first time. When
+  the run that ran tests wrote no JUnit report, one descriptive `test-runtime/slow-test-not-timed`
+  finding says so and never fails the run; the same finding names a test file whose tests could
+  not be read, and the other files are still checked. A failing test run reports `tests-failed`
+  and no slow tests.
 - **Pinned runner options.** Options that let a failing run pass are taken out of the project's
   pytest `addopts` (read from the first of `pytest.toml`, `.pytest.toml`, `pytest.ini`,
   `.pytest.ini`, `pyproject.toml`, `tox.ini`, `setup.cfg`, as pytest does) with `-o addopts=...`,
@@ -1354,7 +1485,7 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
 
 Each slice is one PR, adds one concern, and changes the Python adapters, ingesters or rules, tests,
 and this document. Slice 1 also made the config validation, the preset wiring in `core/` and the
-exclude and legacy-inventory policy (`applyJavaPolicy`) serve more than one language.
+exclude and legacy-inventory policy (`applyFindingPolicy`) serve more than one language.
 
 | #   | Ticket                                                    | Slice                        | Tool and report                                                      | Findings                                                                                          | Status |
 | --- | --------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------ |
