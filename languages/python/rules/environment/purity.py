@@ -9,10 +9,14 @@ from environment.purity_names import (
     INPUT_OUTPUT_MODULES,
     LAYER_DIRECTORY,
     MODULE_LOADERS,
+    NEW_VALUE_FACTORIES,
     NUMPY_FUNCTIONS,
+    PATH_DERIVERS,
     PATH_FACTORIES,
     PATH_METHODS,
+    PATH_PARTS,
     RANDOM_FUNCTIONS,
+    RANDOM_MODULES,
     RANDOM_NAMES,
     SEEDED_FACTORIES,
 )
@@ -38,16 +42,25 @@ def call_rule(name, node):
         return "clock-now" if not node.args else None
     if name in CLOCK_FORMATTERS:
         return "clock-now" if len(node.args) < 2 else None
-    if name in SEEDED_FACTORIES:
+    if name in SEEDED_FACTORIES or name in NEW_VALUE_FACTORIES:
         return "random-in-domain" if not (node.args or node.keywords) else None
     return "io-in-domain" if name in INPUT_OUTPUT_CALLS else None
 
 
-def is_input_output_module(module):
+def is_listed_module(module, listed_modules):
     return any(
-        module == listed or module.startswith(f"{listed}.")
-        for listed in INPUT_OUTPUT_MODULES
+        module == listed or module.startswith(f"{listed}.") for listed in listed_modules
     )
+
+
+def is_input_output_module(module):
+    return is_listed_module(module, INPUT_OUTPUT_MODULES)
+
+
+def import_rule(module):
+    if is_input_output_module(module) or is_adapter_import(module):
+        return "io-in-domain"
+    return "random-in-domain" if is_listed_module(module, RANDOM_MODULES) else None
 
 
 def imported_modules(tree):
@@ -82,8 +95,14 @@ def path_names(scope, aliases):
 
 
 def builds_path(node, aliases):
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+        derived = node.func.attr in PATH_DERIVERS
+        if derived and builds_path(node.func.value, aliases):
+            return True
     if isinstance(node, ast.Call):
         return dotted_name(node.func, aliases) in PATH_FACTORIES
+    if isinstance(node, ast.Attribute) and node.attr in PATH_PARTS:
+        return builds_path(node.value, aliases)
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
         return builds_path(node.left, aliases)
     return False
@@ -144,8 +163,10 @@ def domain_findings(context):
     for node, name in path_method_calls(context):
         found.append(finding(context.path, "io-in-domain", name, node))
     for module, node in imported_modules(context.tree):
-        if is_input_output_module(module) or is_adapter_import(module):
-            found.append(finding(context.path, "io-in-domain", module, node))
+        rule = import_rule(module)
+        if rule is not None:
+            subject = module if rule == "io-in-domain" else f"import {module}"
+            found.append(finding(context.path, rule, subject, node))
     return found
 
 

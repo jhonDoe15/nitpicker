@@ -591,8 +591,9 @@ are listed at the end.
 | Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                  | ruff `N`                                                                                                                                             |
 | Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                      | `handwritten-boundary-guard` (script)                                                                                                                |
 | Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                       | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
-| Pure domain              | clock, ids and random values passed in; ports implemented in `adapters/`                                                                         | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
+| Pure domain              | clock, ids, random values and results passed in; ports implemented in `adapters/`; no logger or module state                                     | `clock-now`, `random-in-domain`, `io-in-domain`, `logger-in-domain`, `module-state-in-domain` (script)                                               |
 | Module state             | state in an object made in the composition root                                                                                                  | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
+| Import-time effects      | work done in a function the composition root calls, or under `if __name__ == "__main__":`                                                        | `import-time-effect` (script)                                                                                                                        |
 | Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
 | Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                     | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
 | Deprecated APIs          | the replacement the deprecation notice names                                                                                                     | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
@@ -744,10 +745,70 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   also through an options dict or `functools.partial`. `jsonpickle.decode`,
   `dill`, `shelve` and `pandas.read_pickle` are `S301` findings already. A pickle round trip used to copy a
   value is an `S301` finding whose advice names `copy.deepcopy(value)`.
-- `clock-now`, `random-in-domain`, `io-in-domain` and `any-in-domain` apply to a directory named
-  `domain` anywhere in the path (not tests). `io-in-domain` reports `open`, `input`, `time.sleep`,
-  `os.system` and imports of `subprocess`, `socket`, `requests`, `httpx`, `urllib.request`,
-  database and cloud clients and similar.
+- `clock-now`, `random-in-domain`, `io-in-domain`, `logger-in-domain`, `module-state-in-domain` and
+  `any-in-domain` apply to a directory named `domain` anywhere in the path (not tests). `io-in-domain`
+  reports `open`, `input`, `time.sleep`, `os.system`, `os.popen`, file methods of a `pathlib.Path`
+  (also one derived with `.parent`, `/`, `with_name`, `joinpath` or `resolve`), imports of
+  `subprocess`, `socket`, `requests`, `httpx`, `urllib.request`, database and cloud clients and
+  similar, and imports of an `adapters` package or module. `random-in-domain` also reports imports
+  of the random-data and id generators `faker`, `mimesis`, `nanoid`, `shortuuid`, `cuid` and `cuid2`,
+  `ulid.ULID()` with no argument and the `uuid6`/`uuid_utils` generators (`ULID.from_str(text)`
+  and `uuid.UUID(text)` parse a value and are fine). `logger-in-domain` reports an import of
+  `logging`, `structlog` or `loguru` (an import under `if TYPE_CHECKING:` is fine): return a result
+  that says what happened, or raise a domain error, and log it in `adapters/`. `module-state-in-domain`
+  reports, once per state, a domain module that imports or reads another module's state: a
+  module-level collection that some production function changes (what `module-level-mutable-state`
+  reports at its definition) or a module-level instance of a project class that is not frozen
+  (`STORE = Store()`), also through a package `__init__` that re-exports it and through
+  `module.NAME`. Constants that nothing changes (`LIMITS = {"default": 10}`) and frozen dataclass
+  instances are fine. These are the TypeScript `domain-does-not-import-*` concerns: adapters,
+  Node I/O and clients are `io-in-domain`, id libraries are `random-in-domain`.
+- The domain rules also follow calls into project helpers outside `domain/` and `adapters/`: a
+  domain call to a function, method or class (its `__init__`) of another production module that
+  reads the clock, draws randomness or does input or output, itself or through further helpers, is
+  reported at that call with the same rule id as the direct effect, and the message shows the path,
+  for example `quote -> shop.shared.prices.fetch -> shop.shared.http.get_json -> requests.get`. The
+  finding's identity is the helper's name (`fetch`), not the path, so a change inside the helper
+  keeps it. Calls are resolved through `import x as y`, `from x import f as g`, relative imports,
+  names re-exported by a package `__init__`, `Class.method`, and `self.method`/`cls.method` inside
+  the same class; recursion between helpers is followed once. A helper that takes the clock,
+  random source or client as a parameter (`def stamp(clock): return clock()`) stays legal, as do
+  importing a helper without calling it, type-only imports and helpers nobody calls. Not followed,
+  so not reported: methods of module-level or injected objects (`client.fetch()`), inherited
+  methods, nested functions and lambdas, `getattr` and other dynamic calls, decorators that wrap
+  a helper, and third-party code beyond the effect lists. Helper effects come from the same lists
+  as the direct rules plus the HTTP (`requests.get`, `httpx.post`, `urlopen`), subprocess, socket,
+  `shutil`, `tempfile`, `glob` and client-factory calls (`sqlite3.connect`, `create_engine`,
+  `requests.Session`, `boto3.client`), and methods called on a client created in the same
+  function. A helper that only logs is not reported; the TypeScript rule
+  `domain-does-not-reach-io-through-shared` also counts reaching a logger package. Calls into
+  another domain module or into `adapters/` are left to that module's own findings and to the
+  import finding, so one cause gives one finding.
+- `import-time-effect` reports an external effect that runs while a production module is imported:
+  top-level statements (also inside top-level `if`, `try`, `for` and `with` blocks and the `else` of
+  a main guard), class bodies, default argument values and decorators. Effects are the input and
+  output calls above (`open`, `Path(...).read_text()`, HTTP requests, subprocesses, sockets,
+  `sqlite3.connect`, `psycopg.connect`, `pymongo.MongoClient`, `os.makedirs`, `time.sleep`), starting
+  a thread, process or scheduler (`threading.Thread(...).start()`, a name bound to one and then
+  started, `ThreadPoolExecutor().submit`, an apscheduler scheduler's `start`, `multiprocessing.Pool`),
+  `asyncio.run`, `uvicorn.run`, a `logging.FileHandler` without `delay=True`, `smtplib.SMTP(host)`,
+  and a method that does I/O on a client bound at module level (`ENGINE.connect()`), directly or
+  through a project helper, function or class constructor (the message shows the path, as above).
+  A bare decorator (`@register`) counts as a call of that function. Allowed: anything under
+  `if __name__ == "__main__":` or `if TYPE_CHECKING:`, function and class definitions, lazy
+  factories (a function defined but not called at import), lambdas, pure constants,
+  `logging.getLogger`, dataclasses and enums, `TypeVar`, `re.compile`, `Path(__file__).resolve()`
+  and other path arithmetic, and creating a lazy client that connects only on first use
+  (`requests.Session()`, `httpx.Client()`, `create_engine(url)`, `redis.Redis()`, `boto3.client`,
+  `smtplib.SMTP()` without a host). Composition roots and bootstrap modules are exempt, as defined
+  for `process-env-access` above (the Django settings module and `manage.py`, `wsgi.py` and
+  `asgi.py` included), so is a file listed in `python.entryPoints`; tests, `conftest.py` and
+  `tests/` folders are out of scope. Reading the environment at import is `process-env-access`
+  and is not reported again; in a `domain` module, input and output at import is reported once,
+  as `io-in-domain`. Differences from the TypeScript `report-module-load-effects`: reading the
+  clock or a random value at import (`Date.now()` there) is not reported, since it is not an
+  external effect (in `domain/` it is `clock-now` or `random-in-domain`), and a top-level
+  expression statement or control flow is not reported on its own, only the effects it runs.
 - `module-level-mutable-state` reports a module-level `dict`, `list`, `set` or `collections`
   container that a function changes (item assignment, `del`, `append`, `update`, ...), once, at its
   definition; a collection that is only read, a local of the same name and a module-level change
