@@ -1220,6 +1220,39 @@ and `force-exclude` (paths resolved against the config file) and its `target-ver
 infer the same target. The other keys the project sets (`skip-magic-trailing-comma`, `line-ending`,
 `docstring-code-format`, `preview`) take effect only with the opt-in.
 
+`tools.ruff` covers `ruff check` too. Without the opt-in the lint runs nitpicker's rules with
+nitpicker's options, whatever `[tool.ruff.lint]` sets, and the run prints the `Ignoring [tool.ruff]`
+line also when black is the formatter. Listing `"project"` merges the config the format check reads
+(the same file and `extend` chain) with nitpicker's:
+
+- **Rules.** The rules the project's `select`, `extend-select`, `ignore` and `extend-ignore` resolve
+  to, the way ruff resolves them (the files of the `extend` chain in order, the more specific
+  selector winning), run next to nitpicker's. As with PMD, listing `"project"` never drops a
+  nitpicker rule: an `ignore` or `per-file-ignores` entry that names one is dropped for that rule,
+  and `python.exceptions` (which then accepts any ruff code) is the way to lift a nitpicker rule
+  for some paths. A rule nitpicker leaves off on purpose (its own `ignore`, such as `B008`) runs when
+  the project selects it with `["project", "nitpicker"]` or `["project"]`, and stays off with
+  `["nitpicker", "project"]`.
+- **Per-file ignores.** `per-file-ignores` and `extend-per-file-ignores` apply to the rules the
+  project adds.
+- **Options.** The rule settings (`[tool.ruff.lint.isort]`, `pydocstyle`, `pep8-naming`, the
+  `flake8-*` tables and the like) and lint keys such as `dummy-variable-rgx`, `typing-modules` and
+  `preview` merge key by key: the project's value wins where both set one when it is listed first,
+  nitpicker's with `["nitpicker", "project"]`, and a list both set is joined (nitpicker's
+  `pep8-naming.ignore-names` keeps the unittest names next to the project's). `line-length`,
+  `indent-width`, `builtins`, `src`, `namespace-packages`, `target-version` and
+  `per-file-target-version` come from the project.
+- **Scope.** The project's `exclude`, `extend-exclude` and `lint.exclude` are added to nitpicker's
+  `exclude` (ruff's default excludes stay); `include`, `extend-include`, `respect-gitignore`,
+  `force-exclude` and the fix, cache and output settings stay nitpicker's.
+
+Paths in the project config are resolved against the folder of the file that sets them, in the
+checkout being checked. The `[tool.ruff.lint.flake8-pytest-style]` options are read with or without
+the opt-in, from the head checkout for both sides (see the
+[Python preset](python-preset.md)). The merged config is written to the report folder as
+`nitpicker-ruff-layered.toml`; listing `"project"` with a ruff whose `ruff rule --all` cannot list
+the rules as JSON is a tool error.
+
 The ids and values: `"kotlin.indentation"` `"2"`/`"4"` (ktfmt `meta`/`kotlinlang`, and ktlint `indent_size`; unlike
 `java.indentation` it has no default: with no clear majority the tools keep their own, ktfmt Meta and
 ktlint 4), `"kotlin.trailingCommas"` `"always"`/`"never"` (ktlint only), `"kotlin.wildcardImports"`

@@ -67,6 +67,17 @@ function formattingLines({ formatter, precedence, conventions, projectRoot }) {
   }
 }
 
+function lintLines({ config, formatter, projectRoot }) {
+  if (formatter === 'ruff' || precedenceLayers(config.tools?.ruff?.precedence).usesProject) {
+    return [];
+  }
+  try {
+    return ignoredConfig('ruff', projectRoot);
+  } catch {
+    return [];
+  }
+}
+
 function unusedFor(formatter) {
   return formatter === 'black' ? { [PYTHON_INDENTATION]: 'black has no indentation setting' } : {};
 }
@@ -100,6 +111,7 @@ export function pythonStyle({
       formatter === 'black' && id === PYTHON_QUOTES && choice === 'single' ? BLACK_NOTE : undefined,
     summary: (conventions) => [
       ...formattingLines({ formatter, precedence, conventions, projectRoot }),
+      ...lintLines({ config, formatter, projectRoot }),
       ...ignoredProjectToolNotices({ config, projectRoot }),
     ],
   };

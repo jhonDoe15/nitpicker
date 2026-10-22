@@ -1,0 +1,122 @@
+import { describe, expect, it } from 'vitest';
+import { pythonE2eEnabled } from '../../e2e/test-support/python-e2e-support.mjs';
+import { realLintFindings } from '../test-support/real-lint.mjs';
+
+const APP = [
+  'def handle(*args):',
+  '    print("ready")',
+  '',
+  '',
+  'class Shop:',
+  '    def visit(self, *args):',
+  '        return 1',
+  '',
+  '',
+  'def badName(items=Shop()):',
+  '    return items',
+  '',
+].join('\n');
+const TEST = 'def test_shop():\n    print("checked")\n';
+const PYPROJECT = [
+  '[tool.poetry]',
+  'name = "shop"',
+  '',
+  '[tool.ruff.lint]',
+  'extend-select = ["D1", "B008"]',
+  'ignore = ["T201", "D107"]',
+  '',
+  '[tool.ruff.lint.per-file-ignores]',
+  '"tests/*" = ["D", "T201"]',
+  '',
+  '[tool.ruff.lint.pep8-naming]',
+  'extend-ignore-names = ["badName"]',
+  '',
+  '[tool.ruff.lint.flake8-unused-arguments]',
+  'ignore-variadic-names = false',
+  '',
+].join('\n');
+const FILES = { 'src/shop/app.py': APP, 'tests/test_shop.py': TEST, 'pyproject.toml': PYPROJECT };
+const NITPICKER_RULES = ['T201 src/shop/app.py', 'T201 tests/test_shop.py'];
+const PROJECT_RULES = [
+  'D100 src/shop/app.py',
+  'D101 src/shop/app.py',
+  'D102 src/shop/app.py',
+  'D103 src/shop/app.py',
+  'D103 src/shop/app.py',
+];
+const UNUSED_VARIADIC = ['ARG001 src/shop/app.py', 'ARG002 src/shop/app.py'];
+
+function findings(precedence, options = {}) {
+  return realLintFindings({
+    files: FILES,
+    toolPrecedence: precedence === undefined ? undefined : { ruff: precedence },
+    ...options,
+  });
+}
+
+describe.skipIf(!pythonE2eEnabled)('ruff lint with the project config end to end', () => {
+  it('runs nitpicker rules and options only, without the opt-in', () => {
+    expect(findings(undefined)).toEqual(['N802 src/shop/app.py', ...NITPICKER_RULES]);
+    expect(findings(['nitpicker'])).toEqual(['N802 src/shop/app.py', ...NITPICKER_RULES]);
+  });
+
+  it('adds the project rules and lets its options win when the project is listed first', () => {
+    const expected = [
+      ...UNUSED_VARIADIC,
+      'B008 src/shop/app.py',
+      ...PROJECT_RULES,
+      ...NITPICKER_RULES,
+    ].toSorted();
+
+    expect(findings(['project', 'nitpicker'])).toEqual(expected);
+    expect(findings(['project'])).toEqual(expected);
+  });
+
+  it('keeps the rules nitpicker ignores off and its option values when nitpicker is first', () => {
+    expect(findings(['nitpicker', 'project'])).toEqual(
+      [...PROJECT_RULES, ...NITPICKER_RULES].toSorted(),
+    );
+  });
+
+  it('reads the config from the head checkout and resolves its paths in the snapshot', () => {
+    const files = { 'src/shop/app.py': APP, 'tests/test_shop.py': TEST };
+
+    expect(
+      findings(['project', 'nitpicker'], { files, policyFiles: { 'pyproject.toml': PYPROJECT } }),
+    ).toEqual(
+      [...UNUSED_VARIADIC, 'B008 src/shop/app.py', ...PROJECT_RULES, ...NITPICKER_RULES].toSorted(),
+    );
+  });
+
+  it('follows the extend chain and adds the project excludes to nitpicker', () => {
+    const files = {
+      'src/shop/app.py': 'print("ready")\n',
+      'src/gen/made.py': 'print("made")\n',
+      'src/legacy/old.py': 'print("old")\n',
+      'ruff.toml': 'extend = "config/shared.toml"\nextend-exclude = ["src/gen"]\n',
+      'config/shared.toml': '[lint]\nextend-select = ["D100"]\n',
+    };
+
+    expect(
+      realLintFindings({
+        files,
+        toolPrecedence: { ruff: ['project', 'nitpicker'] },
+        exclude: ['src/legacy/**'],
+      }),
+    ).toEqual(['D100 src/shop/app.py', 'T201 src/shop/app.py']);
+  });
+
+  it('fails when the project is listed without a ruff config, or with one that does not parse', () => {
+    const files = { 'src/shop/app.py': 'VALUE = 1\n' };
+
+    expect(() =>
+      realLintFindings({ files, toolPrecedence: { ruff: ['project', 'nitpicker'] } }),
+    ).toThrow(/"tools\.ruff\.precedence" lists "project" but a ruff config .* is missing/);
+    expect(() =>
+      realLintFindings({
+        files: { ...files, 'ruff.toml': '[lint\nselect = ["F"]\n' },
+        toolPrecedence: { ruff: ['project'] },
+      }),
+    ).toThrow(/The ruff config .*ruff\.toml could not be parsed/);
+  });
+});

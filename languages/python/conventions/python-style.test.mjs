@@ -22,6 +22,19 @@ describe('the Python formatting summary', () => {
     );
   });
 
+  it('names the ruff config the lint ignores when black formats, until ruff opts in', () => {
+    const projectRoot = scratch.write(scratch.directory(), {
+      'pyproject.toml': '[tool.black]\nline-length = 88\n\n[tool.ruff.lint]\nselect = ["D"]\n',
+    });
+    const linesWith = (tools) =>
+      pythonStyle({ config: { python: { formatter: 'black' }, tools }, projectRoot }).summary({});
+    const notice =
+      'Ignoring [tool.ruff] in pyproject.toml; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }';
+
+    expect(linesWith({})).toContain(notice);
+    expect(linesWith({ ruff: { precedence: ['project'] } })).not.toContain(notice);
+  });
+
   it('names the file when the project config does not parse', () => {
     const { projectRoot, lines } = summaryOf({ 'ruff.toml': 'line-length = \n' }, ['nitpicker']);
 
