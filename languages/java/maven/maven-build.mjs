@@ -76,38 +76,22 @@ function buildAndTest({ projectRoot, maven, work, pinned, modules }) {
   });
 }
 
-function compileMetricsSupport(directory) {
-  runJava({
-    java: javaCommand('javac'),
-    tool: 'MetricsSupport',
-    args: ['-proc:none', '-d', directory, path.join(GRADLE_DIRECTORY, 'MetricsSupport.java')],
-    accept: (result) => result.status === 0,
-  });
-  return directory;
-}
-
 function runStructure(module, reportDir) {
   const roots = module.sourceRoots
     .filter((root) => existsSync(root))
     .map((root) => relativeTo(module.basedir, root));
-  const support = mkdtempSync(path.join(tmpdir(), 'nitpicker-metrics-support-'));
-  try {
-    runJava({
-      tool: 'StructureMetrics',
-      classpath: [compileMetricsSupport(support)],
-      args: [
-        path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
-        path.join(reportDir, 'structure.json'),
-        path.join(reportDir, 'classes.json'),
-        module.basedir,
-        ...roots,
-      ],
-      cwd: module.basedir,
-      accept: (result) => result.status === 0,
-    });
-  } finally {
-    rmSync(support, { recursive: true, force: true });
-  }
+  runJava({
+    tool: 'StructureMetrics',
+    args: [
+      path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
+      path.join(reportDir, 'structure.json'),
+      path.join(reportDir, 'classes.json'),
+      module.basedir,
+      ...roots,
+    ],
+    cwd: module.basedir,
+    accept: (result) => result.status === 0,
+  });
 }
 
 function runJdeps(module, reportDir) {
