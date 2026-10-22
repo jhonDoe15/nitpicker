@@ -26,52 +26,94 @@ function discover(language, extra = []) {
   return JSON.parse(result.stdout);
 }
 
-for (const language of process.argv.slice(2).length ? process.argv.slice(2) : ['java', 'kotlin']) {
+const EXPECTED_JAVA_CASES = 76;
+const EXPECTED_KOTLIN_CASES = 104;
+const EXPECTED_CASES = { java: EXPECTED_JAVA_CASES, kotlin: EXPECTED_KOTLIN_CASES };
+
+function contained(base, ...segments) {
+  const full = path.resolve(base, ...segments);
+  if (!full.startsWith(base + path.sep)) {
+    throw new Error(`${segments.join('/')} is outside ${base}`);
+  }
+  return full;
+}
+
+async function filesOfShard({ files, index, count }) {
+  const { options } = parseCLI(['vitest', 'run', `--shard=${index}/${count}`]);
+  const context = await createVitest('test', {
+    ...options,
+    config: path.join(root, 'vitest.config.mts'),
+  });
+  try {
+    assert.deepEqual(context.config.shard, { index, count });
+    const sequencer = context.config.sequence.sequencer(context);
+    const selected = sequencer.shard(files.map((file) => ({ moduleId: path.join(root, file) })));
+    return selected.map(({ moduleId }) => path.relative(root, moduleId)).toSorted();
+  } finally {
+    await context.close();
+  }
+}
+
+function profileOf(language) {
   const workflow = parse(
-    readFileSync(path.join(root, `.github/workflows/${language}-e2e.yml`), 'utf8'),
+    readFileSync(contained(path.join(root, '.github', 'workflows'), `${language}-e2e.yml`), 'utf8'),
   );
   const matrix = workflow.jobs[`${language}-shard`].strategy.matrix.shard;
   const cases = discover(language);
   const files = [...new Set(cases.map(({ file }) => path.relative(root, file)))].toSorted();
-  const durations = readDurations(path.join(import.meta.dirname, `${language}-e2e.json`));
+  const durations = readDurations(contained(import.meta.dirname, `${language}-e2e.json`));
   assert.deepEqual(
     [...durations.keys()].toSorted(),
     files,
     'timing profile must cover every selected file',
   );
+  return { matrix, cases, files, durations };
+}
+
+async function verifyShards({ language, profile, host }) {
+  const { matrix, files, durations } = profile;
   const shards = assignShards(files, durations, matrix.length);
-  process.env[`NITPICKER_${language.toUpperCase()}_E2E`] = '1';
-  const actual = [];
-  for (const index of matrix) {
-    const { options } = parseCLI(['vitest', 'run', `--shard=${index}/${matrix.length}`]);
-    const context = await createVitest('test', {
-      ...options,
-      config: path.join(root, 'vitest.config.mts'),
-    });
-    let relative;
-    try {
-      assert.deepEqual(context.config.shard, { index, count: matrix.length });
-      const sequencer = context.config.sequence.sequencer(context);
-      const selected = sequencer.shard(files.map((file) => ({ moduleId: path.join(root, file) })));
-      relative = selected.map(({ moduleId }) => path.relative(root, moduleId)).toSorted();
-    } finally {
-      await context.close();
+  const flag = `NITPICKER_${language.toUpperCase()}_E2E`;
+  host.env[flag] = '1';
+  try {
+    const actual = [];
+    for (const index of matrix) {
+      const relative = await filesOfShard({ files, index, count: matrix.length });
+      assert.ok(relative.length > 0, `empty ${language} shard ${index}`);
+      assert.deepEqual(relative, shards[index - 1].toSorted());
+      actual.push(relative);
     }
-    assert.ok(relative.length > 0, `empty ${language} shard ${index}`);
-    assert.deepEqual(relative, shards[index - 1].toSorted());
-    actual.push(relative);
+    assert.deepEqual(actual.flat().toSorted(), files, 'every file must occur exactly once');
+  } finally {
+    Reflect.deleteProperty(host.env, flag);
   }
-  delete process.env[`NITPICKER_${language.toUpperCase()}_E2E`];
-  assert.deepEqual(actual.flat().toSorted(), files, 'every file must occur exactly once');
-  assert.equal(cases.length, language === 'java' ? 76 : 104, 'behavioral case coverage changed');
-  const loads = shards.map((shard) => shard.reduce((sum, file) => sum + durations.get(file), 0));
-  console.log(
-    JSON.stringify({
-      language,
-      cases: cases.length,
-      files: files.length,
-      shards: matrix.length,
-      estimatedSeconds: loads,
-    }),
-  );
+  return shards;
+}
+
+async function verifyLanguage(language, host) {
+  const profile = profileOf(language);
+  const shards = await verifyShards({ language, profile, host });
+  assert.equal(profile.cases.length, EXPECTED_CASES[language], 'behavioral case coverage changed');
+  return {
+    language,
+    cases: profile.cases.length,
+    files: profile.files.length,
+    shards: profile.matrix.length,
+    estimatedSeconds: shards.map((shard) =>
+      shard.reduce((sum, file) => sum + profile.durations.get(file), 0),
+    ),
+  };
+}
+
+export async function main(host) {
+  const requested = host.argv.slice(1);
+  try {
+    for (const language of requested.length > 0 ? requested : ['java', 'kotlin']) {
+      const summary = await verifyLanguage(language, host);
+      host.stdout.write(`${JSON.stringify(summary)}\n`);
+    }
+  } catch (error) {
+    host.stderr.write(`${error.stack}\n`);
+    host.exitCode = 1;
+  }
 }

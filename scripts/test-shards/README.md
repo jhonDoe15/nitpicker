@@ -84,7 +84,7 @@ measurements. The existing duration recorder uses Vitest module diagnostics, whi
 execution in the module duration, and writes sorted whole-second profiles. Record enabled suites
 with the same package filters and flags after obtaining an isolated timing sample.
 
-`node scripts/test-shards/verify-e2e-shards.mjs` collects through the real package scripts,
+`npm run verify:e2e-shards` (optionally followed by `-- java` or `-- kotlin`) collects through the real package scripts,
 checks the 76/104 discovered case counts, resolves CLI shard
 options through Vitest, and exercises the configured sequencer. It requires the profile to cover
 every selected file exactly and each matrix shard to be nonempty, with every selected file in
