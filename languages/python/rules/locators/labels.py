@@ -1,8 +1,9 @@
 import ast
 
-from checks.common import dotted_name
-from locators.model import COMPOSITION_BASES, INSTANCE_LIBRARIES, PROVIDER_LIBRARIES
-from locators.references import reference_of
+from locators.model import INSTANCE_LIBRARIES, PROVIDER_LIBRARIES
+from locators.registrations import in_registration
+from locators.resolve.references import reference_of
+from locators.resolve.symbols import is_composition_class
 
 
 def instance_call_label(func, context):
@@ -16,8 +17,11 @@ def instance_call_label(func, context):
 
 def provider_call_label(func, context):
     reference = reference_of(func.value, context)
-    if reference and reference[0] == "providers" and func.attr in reference[3]:
-        return f"{reference[1]} {reference[2]}.{func.attr}"
+    if reference and reference[0] == "providers":
+        if func.attr in reference[3]:
+            return f"{reference[1]} {reference[2]}.{func.attr}"
+        if func.attr in PROVIDER_LIBRARIES[reference[1]]["class_methods"]:
+            return f"{reference[1]} {reference[2]}.{func.attr}"
     owner = func.value
     reference = (
         reference_of(owner.value, context) if isinstance(owner, ast.Attribute) else None
@@ -49,13 +53,14 @@ def subscript_label(node, context):
 def in_composition_scope(node, context):
     current = context.parents.get(id(node))
     while current is not None:
-        if isinstance(current, ast.ClassDef) and any(
-            dotted_name(base, context.aliases) in COMPOSITION_BASES
-            for base in current.bases
-        ):
+        if isinstance(current, ast.ClassDef) and is_composition_class(current, context):
             return True
         current = context.parents.get(id(current))
     return False
+
+
+def is_allowed_here(node, context):
+    return in_composition_scope(node, context) or in_registration(node, context)
 
 
 def lookup_label(node, context):
@@ -65,4 +70,4 @@ def lookup_label(node, context):
         label = subscript_label(node, context)
     else:
         label = None
-    return None if label is None or in_composition_scope(node, context) else label
+    return None if label is None or is_allowed_here(node, context) else label
