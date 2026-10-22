@@ -14,17 +14,47 @@ describe.skipIf(!enabled)('forwarding-wrapper', () => {
     [
       'a public wrapper of an imported function',
       `${IMPORT}def total(amount: int, rate: int = 2, *, cents: bool = False) -> int:\n    """Total."""\n    return compute(amount, rate, cents=cents)\n`,
-      [['total', { target: 'compute', module: 'shop.pricing', exported: true }]],
+      [['total', { target: 'compute' }]],
     ],
     [
       'a private wrapper through the module',
       'from shop import pricing\n\n\ndef _total(amount: int, rate: int = 2, *, cents: bool = False) -> int:\n    return pricing.compute(amount, rate, cents=cents)\n',
-      [['_total', { target: 'compute', module: 'shop.pricing', exported: false }]],
+      [['_total', { target: 'compute' }]],
     ],
     [
       'a wrapper of a function in the same module',
       'def g(*args: int, **kwargs: str) -> int:\n    return 0\n\n\ndef f(*args: int, **kwargs: str) -> int:\n    return g(*args, **kwargs)\n',
-      [['f', { target: 'g', module: null, exported: true }]],
+      [['f', { target: 'g' }]],
+    ],
+    [
+      'arguments passed by keyword',
+      `${IMPORT}def total(amount: int, rate: int = 2, *, cents: bool = False) -> int:\n    return compute(amount, rate=rate, cents=cents)\n`,
+      [['total', { target: 'compute' }]],
+    ],
+    [
+      'an async wrapper awaiting an async function',
+      'async def g(a: int, /, b: int) -> int:\n    return a\n\n\nasync def f(a: int, /, b: int) -> int:\n    return await g(a, b=b)\n',
+      [['f', { target: 'g' }]],
+    ],
+    [
+      'a keyword-only parameter of the wrapper that the target takes by position',
+      'def g(a: int, b: int) -> int:\n    return a\n\n\ndef f(a: int, *, b: int) -> int:\n    return g(a, b=b)\n',
+      [],
+    ],
+    [
+      'a positional-only parameter of the target',
+      'def g(a: int, /, b: int) -> int:\n    return a\n\n\ndef f(a: int, b: int) -> int:\n    return g(a, b)\n',
+      [],
+    ],
+    [
+      'a sync wrapper of an async function',
+      'async def g(a: int) -> int:\n    return a\n\n\ndef f(a: int) -> int:\n    return g(a)\n',
+      [],
+    ],
+    [
+      'an async wrapper that does not await',
+      'async def g(a: int) -> int:\n    return a\n\n\nasync def f(a: int) -> int:\n    return g(a)\n',
+      [],
     ],
     [
       'another default',

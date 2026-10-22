@@ -8,12 +8,17 @@ function isAbsent(value) {
   return value === undefined || value === null;
 }
 
-function forwardedCall(fn) {
+function returnedValue(fn) {
   if (fn.body.type !== 'BlockStatement') {
     return fn.body;
   }
   const [only, ...rest] = fn.body.body;
   return rest.length === 0 && only?.type === 'ReturnStatement' ? only.argument : undefined;
+}
+
+function forwardedCall(fn) {
+  const value = returnedValue(fn);
+  return fn.async && value?.type === 'AwaitExpression' ? value.argument : value;
 }
 
 function parameterName(parameter) {
@@ -50,7 +55,7 @@ function forwardsOwnParameters(fn, call) {
 }
 
 function isPlainFunction(fn) {
-  return !fn.async && !fn.generator && isAbsent(fn.typeParameters);
+  return !fn.generator && isAbsent(fn.typeParameters);
 }
 
 function isModuleLevel(statement) {

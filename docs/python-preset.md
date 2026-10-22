@@ -926,13 +926,16 @@ members is not reported.
   list of every member is not reported. An alias (`DEFAULT = A`, or a second name with the value
   of an earlier member) is not a member of its own. Enums from libraries are not checked. The allowed form is a `match` with `case _:
 assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(value)`.
-- `forwarding-wrapper` (TypeScript: `nitpicker/no-forwarding-wrapper`): an undecorated, non-async
-  module-level function whose body (after a docstring) is `return target(...)` passing its own
-  parameters in order (`*args` and `**kwargs` as spreads, keyword-only ones as `name=name`), where
-  `target` is a single undecorated function of the project (same module, imported or reached
-  through a module) with the same parameter names, annotations and defaults and the same return
-  annotation. Unannotated functions, methods and library targets are not checked. The message says
-  to call the target directly, or to import or bind it under the old name.
+- `forwarding-wrapper` (TypeScript: `nitpicker/no-forwarding-wrapper`): an undecorated
+  module-level function whose body (after a docstring) is `return target(...)`, or `return await
+  target(...)` in an `async def`, passing its own parameters in order (by position or as
+  `name=name`, `*args` and `**kwargs` as spreads, keyword-only ones as `name=name`), where `target`
+  is a single undecorated function of the project (same module, imported or reached through a
+  module) with the same parameter names, kinds (positional-only, positional or keyword,
+  keyword-only), annotations and defaults, the same return annotation, and the same `async`. A
+  plain function that returns an `async` target's coroutine is not a wrapper. Unannotated
+  functions, methods and library targets are not checked. The message says to call the target
+  directly, or to import or bind it under the old name.
 - `unused-option` (TypeScript: the same rule of the `structure` check): a parameter with a default
   of an undecorated module-level function in production code that no call passes, by keyword, by
   position, or through `*args` (positional parameters) or `**kwargs` (all). Calls are resolved
