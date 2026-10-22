@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolveLayout } from '../layout.mjs';
+import { resolveLayout, resolveLayoutFor } from '../layout.mjs';
 import { layoutJscpdConfig } from '../tool-configs.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -90,6 +90,30 @@ describe('duplicate-code report', () => {
 
     expect(result.status, result.stderr || result.stdout).toBe(0);
     expect(report.duplicates).toEqual([]);
+  });
+
+  it('analyses the folders the project takes off the skipped list', () => {
+    const ignore = layoutJscpdConfig(
+      JSON.parse(readFileSync(path.join(import.meta.dirname, '../defaults/jscpd.json'), 'utf8')),
+      resolveLayoutFor({ duplicates: { skippedFolders: ['dist'] } }),
+    ).ignore;
+    const { result, report } = analyzeFixture('excluded', ['--ignore', ignore.join(',')]);
+
+    expect(result.status, result.stderr || result.stdout).toBe(0);
+    expect(
+      report.duplicates.map(({ firstFile, secondFile }) =>
+        [firstFile, secondFile].map(({ name }) => path.basename(name)).sort(),
+      ),
+    ).toEqual([['fifth.ts', 'fourth.ts']]);
+  });
+
+  it('finds no clone when an exclude takes out either file of the pair', () => {
+    for (const excluded of ['first.ts', 'second.ts']) {
+      const { result, report } = analyzeFixture('clones', ['--ignore', `**/${excluded}`]);
+
+      expect(result.status, result.stderr || result.stdout).toBe(0);
+      expect(report.duplicates).toEqual([]);
+    }
   });
 
   it('keeps analyzer configuration failures visible', () => {

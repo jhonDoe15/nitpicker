@@ -143,7 +143,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         path: 'src/main/value.ts',
         identity: 'function:value:occurrence:1:source:unknown',
         message:
-          'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
+          'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
         classification: 'enforceable',
         symbol: 'value',
         location: { line: 1, endLine: 3 },
@@ -167,7 +167,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         path: 'src/main/value.ts',
         identity: 'function:value:occurrence:1:source:missing',
         message:
-          'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
+          'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
         classification: 'enforceable',
         symbol: 'value',
         location: { line: 1, endLine: 3 },

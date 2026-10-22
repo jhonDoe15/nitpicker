@@ -3,18 +3,23 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
-  readFileSync,
   rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../shared/glob.mjs';
-import { childrenNamed, parseXml } from '../ingest/common.mjs';
 import { runJava } from './maven-command.mjs';
+import {
+  failedCases,
+  failingTestsError,
+  failingTestsNote,
+  freshReports,
+} from '../builds/test-failures.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
-const MAX_LISTED_FAILURES = 10;
+const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
+const TESTNG_JAR = /^testng-\d.*\.jar$/u;
 
 export function archunitMatcher(includes = DEFAULT_ARCHUNIT_INCLUDES) {
   const patterns = includes
@@ -38,15 +43,6 @@ function classFiles(directory) {
     : [];
 }
 
-export function freshReports(directory, since) {
-  return existsSync(directory)
-    ? readdirSync(directory)
-        .filter((name) => /^TEST-.*\.xml$/u.test(name))
-        .map((name) => path.join(directory, name))
-        .filter((file) => statSync(file).mtimeMs >= since)
-    : [];
-}
-
 export function testReportDirectories(module) {
   const surefire = ['surefire', module.surefireReports];
   const shared = path.resolve(module.failsafeReports) === path.resolve(module.surefireReports);
@@ -57,69 +53,29 @@ export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
 
-function failedCases(file) {
-  const root = parseXml(readFileSync(file, 'utf8'));
-  const suites = root.name === 'testsuites' ? childrenNamed(root, 'testsuite') : [root];
-  return suites.flatMap((suite) =>
-    childrenNamed(suite, 'testcase')
-      .filter(
-        (testCase) =>
-          childrenNamed(testCase, 'failure').length + childrenNamed(testCase, 'error').length > 0,
-      )
-      .map((testCase) => {
-        const problem = [
-          ...childrenNamed(testCase, 'failure'),
-          ...childrenNamed(testCase, 'error'),
-        ][0];
-        const message = (problem.attrs.message ?? problem.attrs.type ?? '').split('\n')[0];
-        return `${testCase.attrs.classname ?? suite.attrs.name}.${testCase.attrs.name}: ${message}`;
-      }),
-  );
-}
-
-function listedFailures(failures) {
-  const listed = failures.slice(0, MAX_LISTED_FAILURES).map((failure) => `  ${failure}`);
-  const more =
-    failures.length > MAX_LISTED_FAILURES
-      ? [`  and ${String(failures.length - MAX_LISTED_FAILURES)} more`]
-      : [];
-  return [...listed, ...more];
-}
-
-function failuresOf({ reports, reportDir, isArchunit }) {
-  const archunitDir = path.join(reportDir, 'archunit');
-  return reports.flatMap((report) => {
-    if (!isArchunit(suiteNameOf(report))) {
-      return failedCases(report);
-    }
-    mkdirSync(archunitDir, { recursive: true });
-    copyFileSync(report, path.join(archunitDir, path.basename(report)));
-    return [];
-  });
-}
-
 export function collectTestResults({ module, reportDir, since, isArchunit, tolerateFailures }) {
   const reports = testReportDirectories(module).flatMap(([, directory]) =>
     freshReports(directory, since),
   );
-  const failures = failuresOf({ reports, reportDir, isArchunit });
+  const archunitDir = path.join(reportDir, 'archunit');
+  const failures = [];
+  for (const report of reports) {
+    if (isArchunit(suiteNameOf(report))) {
+      mkdirSync(archunitDir, { recursive: true });
+      copyFileSync(report, path.join(archunitDir, path.basename(report)));
+    } else {
+      failures.push(...failedCases(report));
+    }
+  }
   requireArchunitRun(module, reports, isArchunit);
   const testsRan = reports.length > 0;
   if (failures.length === 0) {
     return { testsRan, testsFailure: undefined };
   }
   if (tolerateFailures === true) {
-    return {
-      testsRan,
-      testsFailure: [`Tests fail in ${module.basedir}:`, ...listedFailures(failures)].join('\n'),
-    };
+    return { testsRan, testsFailure: failingTestsNote(module.basedir, failures) };
   }
-  throw new Error(
-    [
-      `Tests fail in ${module.basedir}; nitpicker needs a passing test suite for coverage and mutation testing:`,
-      ...listedFailures(failures),
-    ].join('\n'),
-  );
+  throw failingTestsError(module.basedir, failures);
 }
 
 function requireArchunitRun(module, reports, isArchunit) {
@@ -219,10 +175,21 @@ export function pitTests(testClassDirectory, isArchunit) {
 
 export function junitLauncherVersion(classpath) {
   const names = classpath.map((entry) => path.basename(entry));
-  const engine = names.find((name) => /^junit-platform-engine-.+\.jar$/u.test(name));
+  const engine = names.find((name) => JUNIT_ENGINE_JAR.test(name));
   return engine === undefined || names.some((name) => name.startsWith('junit-platform-launcher-'))
     ? undefined
     : engine.replace(/^junit-platform-engine-|\.jar$/gu, '');
+}
+
+export function pitClasspath(tools, testRuntime) {
+  const names = testRuntime.map((entry) => path.basename(entry));
+  const launcher = junitLauncherVersion(testRuntime);
+  return [
+    ...tools.pit,
+    ...(names.some((name) => JUNIT_ENGINE_JAR.test(name)) ? tools['pit-junit5'] : []),
+    ...(launcher === undefined ? [] : tools[`launcher-${launcher}`]),
+    ...(names.some((name) => TESTNG_JAR.test(name)) ? tools['pit-testng'] : []),
+  ];
 }
 
 export function runPit({ module, reportDir, tools, classpaths, isArchunit }) {
@@ -233,10 +200,9 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit }) {
   if (classFiles(module.outputDirectory).length === 0) {
     return;
   }
-  const launcher = junitLauncherVersion(classpaths.testRuntime);
   runJava({
     tool: 'PIT',
-    classpath: [...tools.pit, ...(launcher === undefined ? [] : tools[`launcher-${launcher}`])],
+    classpath: pitClasspath(tools, classpaths.testRuntime),
     mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
     args: [
       '--reportDir',

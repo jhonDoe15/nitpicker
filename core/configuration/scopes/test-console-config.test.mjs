@@ -11,6 +11,9 @@ describe('testConsole config', () => {
     [{ testConsole: {} }],
     [{ testConsole: { allow: [] } }],
     [{ testConsole: { allow: [allowed, { ...allowed, paths: ['test/legacy/**'] }] } }],
+    ...['typescript', 'javascript', 'java', 'kotlin'].map((preset) => [
+      { preset, testConsole: { allow: [allowed] } },
+    ]),
   ])('accepts %j', (config) => {
     expect(validateConfig(config)).toEqual(config);
   });

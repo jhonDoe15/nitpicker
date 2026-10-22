@@ -8,7 +8,6 @@ import {
   readKotlinCrapFindings,
   readKotlinMetrics,
   readKotlinStructureFindings,
-  selectKotlinMethods,
 } from './kotlin-metrics.mjs';
 
 const temporaryRoots = [];
@@ -51,7 +50,15 @@ const METRICS = {
       parameters: 2,
     }),
     entry({ name: 'Counter.doubled.get', start: 12, end: 12 }),
-    entry({ name: 'Counter.wide', start: 14, end: 17, complexity: 2, parameters: 4 }),
+    entry({ name: 'Counter.wide', start: 14, end: 17, complexity: 1, parameters: 4 }),
+    entry({
+      name: 'Counter.wide.<lambda>',
+      start: 15,
+      end: 15,
+      complexity: 2,
+      parameters: 1,
+      lambda: true,
+    }),
   ],
   files: [
     {
@@ -62,7 +69,16 @@ const METRICS = {
   ],
 };
 
-function entry({ name, start, end, complexity = 1, statements = 1, nesting = 0, parameters = 0 }) {
+function entry({
+  name,
+  start,
+  end,
+  complexity = 1,
+  statements = 1,
+  nesting = 0,
+  parameters = 0,
+  lambda = false,
+}) {
   return {
     file: 'src/main/kotlin/demo/Tiers.kt',
     name,
@@ -73,6 +89,7 @@ function entry({ name, start, end, complexity = 1, statements = 1, nesting = 0, 
     maxControlNesting: nesting,
     parameters,
     complexity,
+    lambda,
   };
 }
 
@@ -190,65 +207,12 @@ describe('readKotlinStructureFindings', () => {
   });
 });
 
-describe('selectKotlinMethods', () => {
-  const fn = { start: 10, end: 20 };
-  const method = (name, line) => ({ name, line });
-
-  it('takes the methods that start inside the function, lambdas included', () => {
-    const selected = selectKotlinMethods(
-      fn,
-      [method('run', 10), method('run$lambda$0', 15), method('other', 21), method('before', 9)],
-      [fn],
-    );
-
-    expect(selected.map(({ name }) => name)).toEqual(['run', 'run$lambda$0']);
-  });
-
-  it('leaves out the synthetic default-argument bridge', () => {
-    const selected = selectKotlinMethods(fn, [method('run', 10), method('run$default', 10)], [fn]);
-
-    expect(selected.map(({ name }) => name)).toEqual(['run']);
-  });
-
-  it('counts a static bridge of a companion function once, through the method that holds the code', () => {
-    const bridge = { name: 'make', line: 12, className: 'demo/Holder' };
-    const body = { name: 'make', line: 12, className: 'demo/Holder$Companion' };
-
-    expect(selectKotlinMethods(fn, [bridge, body], [fn])).toEqual([body]);
-    expect(
-      selectKotlinMethods(fn, [bridge, { ...bridge, name: 'other' }, body], [fn]).map(
-        ({ name }) => name,
-      ),
-    ).toEqual(['other', 'make']);
-  });
-
-  it('keeps the overloads a function has in one class', () => {
-    const overloads = [
-      { name: 'over', line: 11, className: 'demo/EdgeKt' },
-      { name: 'over', line: 11, className: 'demo/EdgeKt' },
-    ];
-
-    expect(selectKotlinMethods(fn, overloads, [fn])).toEqual(overloads);
-  });
-
-  it('leaves the methods of a function nested inside to that function', () => {
-    const inner = { start: 14, end: 16 };
-
-    expect(
-      selectKotlinMethods(fn, [method('outer', 10), method('inner', 14)], [fn, inner]).map(
-        ({ name }) => name,
-      ),
-    ).toEqual(['outer']);
-    expect(selectKotlinMethods(inner, [method('inner', 14)], [fn, inner])).toHaveLength(1);
-  });
-});
-
 describe('readKotlinCrapFindings', () => {
   it('passes covered functions, whatever class holds them: file facade, class, accessor, lambda', () => {
     expect(crap(FULL)).toEqual([]);
   });
 
-  it('computes the score over the function and its lambda, not over its default-argument bridge', () => {
+  it('computes the score over the function, not over its default-argument bridge', () => {
     const findings = crap({ ...FULL, tier: lines(0, 5) }, { crapLimit: 6 });
 
     expect(
@@ -271,13 +235,66 @@ describe('readKotlinCrapFindings', () => {
     ]);
   });
 
-  it('counts the lines of a lambda towards the function that holds it', () => {
-    const covered = crap({ ...FULL, lambda: lines(0, 1) }, { crapLimit: 2.1 });
+  it('scores a lambda by its own synthetic method and leaves it out of the function that holds it', () => {
+    const uncovered = crap({ ...FULL, lambda: lines(0, 1) }, { crapLimit: 2.1 });
 
-    expect(covered.map(({ symbol }) => symbol)).toEqual(['Counter.wide']);
-    expect(covered[0].message).toBe(
-      'Counter.wide has CRAP 2.15; score must be below 2.1. Test its uncovered branches, or split a branchy part into its own function.',
+    expect(uncovered.map(({ symbol }) => symbol)).toEqual(['Counter.wide.<lambda>']);
+    expect(uncovered[0].message).toBe(
+      'Counter.wide.<lambda> has CRAP 6.00; score must be below 2.1. Test its uncovered branches, or split a branchy part into its own function.',
     );
+  });
+
+  describe('a lambda the compiler inlined, which has no method of its own', () => {
+    const functions = [
+      entry({ name: 'Counter.wide', start: 14, end: 17, complexity: 3 }),
+      entry({ name: 'Counter.wide.<lambda>', start: 15, end: 16, complexity: 2, lambda: true }),
+      entry({ name: 'Counter.wide.<lambda>.<lambda>', start: 16, end: 16, lambda: true }),
+    ];
+    const report = (methodLines, sourceLines) => `<report name="demo"><package name="demo">
+  <class name="demo/Counter" sourcefilename="Tiers.kt">
+    <method name="wide" desc="(IIII)I" line="14">${methodLines}</method>
+  </class>
+  <sourcefile name="Tiers.kt">${sourceLines}</sourcefile>
+</package></report>`;
+    const line = (number, covered, missed) =>
+      `<line nr="${number}" mi="${missed}" ci="${covered}" mb="0" cb="0"/>`;
+    const run = (jacocoReport, crapLimit) => {
+      const { root } = project();
+      return readKotlinCrapFindings(
+        { ...METRICS, functions },
+        { projectRoot: root, jacoco: jacocoReport, crapLimit },
+      ).map(({ symbol, message }) => `${symbol}: ${/CRAP (\d+\.\d+)/.exec(message)[1]}`);
+    };
+
+    it('is scored from the coverage of its source lines, and the function around it is scored without them', () => {
+      const jacocoReport = report(
+        lines(2, 2),
+        [line(14, 1, 0), line(15, 0, 1), line(16, 0, 1), line(17, 1, 0)].join(''),
+      );
+
+      expect(run(jacocoReport, 3.5)).toEqual(['Counter.wide.<lambda>: 6.00']);
+      expect(run(jacocoReport, 2)).toEqual([
+        'Counter.wide: 3.00',
+        'Counter.wide.<lambda>: 6.00',
+        'Counter.wide.<lambda>.<lambda>: 2.00',
+      ]);
+    });
+
+    it('scores the function over everything its method holds when the lambda is all it has', () => {
+      const jacocoReport = report(lines(1, 1), [line(14, 1, 0), line(15, 0, 1)].join(''));
+      const single = [
+        entry({ name: 'Counter.wide', start: 14, end: 15, complexity: 3 }),
+        entry({ name: 'Counter.wide.<lambda>', start: 14, end: 15, complexity: 1, lambda: true }),
+      ];
+      const { root } = project();
+
+      expect(
+        readKotlinCrapFindings(
+          { ...METRICS, functions: single },
+          { projectRoot: root, jacoco: jacocoReport, crapLimit: 3.1 },
+        ).map(({ symbol }) => symbol),
+      ).toEqual(['Counter.wide']);
+    });
   });
 
   it('leaves out inline functions: JaCoCo never sees their body run', () => {
@@ -293,7 +310,11 @@ describe('readKotlinCrapFindings', () => {
       jacoco: '<report name="demo"></report>',
     });
 
-    expect(findings.map(({ symbol }) => symbol)).toEqual(['Counter.doubled.get', 'Counter.wide']);
+    expect(findings.map(({ symbol }) => symbol)).toEqual([
+      'Counter.doubled.get',
+      'Counter.wide',
+      'Counter.wide.<lambda>',
+    ]);
   });
 
   it('reports a function no JaCoCo method belongs to as unknown coverage', () => {
@@ -308,6 +329,7 @@ describe('readKotlinCrapFindings', () => {
       'crap-coverage-unknown tier',
       'crap-coverage-unknown Counter.doubled.get',
       'crap-coverage-unknown Counter.wide',
+      'crap-coverage-unknown Counter.wide.<lambda>',
     ]);
     expect(findings.every(({ classification }) => classification === 'enforceable')).toBe(true);
     expect(findings[0].message).toBe(

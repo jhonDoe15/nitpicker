@@ -12,10 +12,6 @@ import {
   pythonE2eEnabled,
 } from '../test-support/python-e2e-support.mjs';
 
-// End-to-end test of a change that repairs a base whose tests fail, with real tools. It needs
-// python3, uv and network access to PyPI, so it only runs with NITPICKER_PYTHON_E2E=1
-// (`npm run test:python`).
-
 const TEST_PATH = 'tests/test_greeter.py';
 const FAILING_TEST =
   'from demo.greeter import greet\n\n\ndef test_greet():\n    assert greet("Ada") == "Hi, Ada!"\n';
