@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
+import { fakeGradleRun } from '../test-support/in-process-gradle.mjs';
 import { readReportModules } from './report-modules.mjs';
 
-const fakeGradle = path.resolve(import.meta.dirname, '../fixtures/fake-gradle.mjs');
 const roots = [];
 
 afterEach(() => {
@@ -42,7 +42,7 @@ const ROOT_JDEPS = {
   'jdeps.txt': '   demo.a.A -> demo.c.C main\n',
 };
 
-const collect = (root) => collectJavaFindings(root, { gradle: fakeGradle, policy: {} });
+const collect = (root) => collectJavaFindings(root, { ...fakeGradleRun, policy: {} });
 
 describe('a Gradle build with several projects', () => {
   it('reads the findings of every project, with paths from the build root', () => {
@@ -75,7 +75,7 @@ describe('a Gradle build with several projects', () => {
   it('reads the Kotlin reports of every project with the kotlin preset', () => {
     const root = project({ 'modules.txt': 'lib\n', 'detekt.txt': 'Magic number 42\n' });
 
-    const paths = collectJavaFindings(root, { gradle: fakeGradle, policy: { preset: 'kotlin' } })
+    const paths = collectJavaFindings(root, { ...fakeGradleRun, policy: { preset: 'kotlin' } })
       .filter((finding) => finding.tool === 'detekt')
       .map((finding) => finding.path);
 
@@ -170,7 +170,7 @@ describe('a Gradle build with several projects', () => {
       }),
     });
 
-    const coupling = collectJavaFindings(root, { gradle: fakeGradle, policy: { preset: 'kotlin' } })
+    const coupling = collectJavaFindings(root, { ...fakeGradleRun, policy: { preset: 'kotlin' } })
       .filter((finding) => finding.tool === 'coupling' && finding.identity === 'module:fanIn')
       .map((finding) => `${finding.path} ${String(finding.metric.value)}`);
 
