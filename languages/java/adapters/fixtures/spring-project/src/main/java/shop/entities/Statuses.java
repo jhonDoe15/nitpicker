@@ -2,11 +2,13 @@ package shop.entities;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Version;
 import java.time.DayOfWeek;
+import java.util.Set;
 
 enum Status {
   OPEN,
@@ -32,4 +34,5 @@ class Ticket {
   @Version private long version;
   private Status status;
   private DayOfWeek day; // violation: JpaEnumString
+  @ElementCollection private Set<Status> history;
 }

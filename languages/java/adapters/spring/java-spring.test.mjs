@@ -221,7 +221,7 @@ function ddlFinding(key, line, file = MAIN_PROPERTIES, suffix = '') {
     rule: 'ddl-auto',
     file,
     identity: `${key.replaceAll('-', '')}${suffix}`,
-    message: `${key} lets Hibernate change the schema. Manage the schema with Flyway or Liquibase and use none or validate.`,
+    message: `Manage the schema with Flyway or Liquibase and set ${key} to none or validate; other modes let Hibernate change the schema.`,
     line,
   });
 }
@@ -243,7 +243,7 @@ describe('ddl-auto', () => {
         file: MAIN_PROPERTIES,
         identity: 'spring.jpa.generateddl',
         message:
-          'spring.jpa.generate-ddl lets Hibernate change the schema. Manage the schema with Flyway or Liquibase and keep it false.',
+          'Manage the schema with Flyway or Liquibase and keep spring.jpa.generate-ddl false; true lets Hibernate change the schema.',
         line: 3,
       }),
     ]);

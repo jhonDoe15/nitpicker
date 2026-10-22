@@ -34,24 +34,26 @@ const ERROR_DETAILS = [
   {
     key: relaxKey('server.error.include-stacktrace'),
     sensitive: (value) => CLIENT_DETAIL_MODES.has(value),
-    message: 'server.error.include-stacktrace sends stack traces to clients. Use never.',
+    message:
+      'Set server.error.include-stacktrace=never; other values send stack traces to clients.',
   },
   {
     key: relaxKey('server.error.include-message'),
     sensitive: (value) => CLIENT_DETAIL_MODES.has(value),
     message:
-      'server.error.include-message sends exception messages to clients. Use never, and return a fixed ProblemDetail from a @RestControllerAdvice.',
+      'Set server.error.include-message=never and return a fixed ProblemDetail from a @RestControllerAdvice; other values send exception messages to clients.',
   },
   {
     key: relaxKey('server.error.include-binding-errors'),
     sensitive: (value) => CLIENT_DETAIL_MODES.has(value),
     message:
-      'server.error.include-binding-errors sends rejected values to clients. Use never, and report field errors from a @RestControllerAdvice.',
+      'Set server.error.include-binding-errors=never and report field errors from a @RestControllerAdvice; other values send rejected values to clients.',
   },
   {
     key: relaxKey('server.error.include-exception'),
     sensitive: (value) => value === 'true',
-    message: 'server.error.include-exception sends exception class names to clients. Use false.',
+    message:
+      'Set server.error.include-exception=false; true sends exception class names to clients.',
   },
 ];
 
@@ -75,26 +77,26 @@ function diagnosticsProblem(entry, key) {
   const value = effective(entry);
   const enabled = isTrue({ value });
   if (SHOW_SQL.includes(key) && enabled) {
-    return `${entry.key}=true prints SQL to standard output, outside logging. Remove it, and use the logging.level.org.hibernate.SQL logger in a local profile.`;
+    return `Log SQL with the logging.level.org.hibernate.SQL logger in a local profile and remove ${entry.key}=true, which prints SQL to standard output, outside logging.`;
   }
   if (
     key.startsWith('logging.level.') &&
     logsBoundValues(key) &&
     ['trace', 'all'].includes(value)
   ) {
-    return `${entry.key}=${entry.value} logs bound SQL values, including passwords and personal data. Leave the level at its default.`;
+    return `Leave ${entry.key} at its default level; ${entry.value} logs bound SQL values, including passwords and personal data.`;
   }
   if (ALWAYS_VALUES.includes(key) && value === 'always') {
-    return `${entry.key}=always serves internals to every caller. Use when-authorized, or never.`;
+    return `Set ${entry.key} to when-authorized or never; always serves internals to every caller.`;
   }
   return H2_CONSOLE.includes(key) && enabled
-    ? `${entry.key}=true opens the H2 web console. Enable it only in a local profile.`
+    ? `Enable ${entry.key} only in a local profile; it opens the H2 web console.`
     : undefined;
 }
 
 function activeProfileProblem(entry, key) {
   return PROFILE_ADVICE.has(key) && !FROM_ENVIRONMENT.test(entry.value.trim())
-    ? `${entry.key.replace(/\[\d+\]$/, '')} in the packaged main file turns those profiles on in every environment. ${PROFILE_ADVICE.get(key)}`
+    ? `${PROFILE_ADVICE.get(key)} ${entry.key.replace(/\[\d+\]$/, '')} in the packaged main file turns those profiles on in every environment.`
     : undefined;
 }
 
