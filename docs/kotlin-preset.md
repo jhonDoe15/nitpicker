@@ -503,6 +503,8 @@ uses of an `@ExceptionHandler`'s exception.
 | Configuration | `SpringTypedConfiguration` (`@Value` outside `@Configuration` classes, `System.getProperty` of application keys outside `@Configuration`, `@SpringBootApplication`, `EnvironmentPostProcessor`, `ApplicationContextInitializer` and `main`, `Environment.getProperty` in beans), `SpringValueSecretDefault`, `SpringProfileOnConfiguration`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | Proxies       | `SpringProxyMethodVisibility` (a proxied function that is `private`, `protected`, `final`, in an `object` or `companion object`, or in a class the compiler leaves final), `SpringProxySelfCall` (also `this::name` references), `SpringTransactionalAnnotation`, `SpringNoTransactionalController`, `SpringNoRequiresNew`, `SpringNoSwallowedTransactionException` (a broad or persistence `catch` without `throw`, or `runCatching` without `getOrThrow()`, in a `@Transactional` function or a private helper only it calls), `SpringTransactionalCheckedRollback` (`@Throws` of a checked exception, also a project exception extending one, without `rollbackFor`), `SpringTransactionalReadOnlyWrite`, `SpringAsyncExecutor`, `SpringScheduledFixedDelay`                                                                                                                                                                                                                                                                   |
 | Web           | `SpringComposedMapping`, `SpringRestController`, `SpringValidRequestBody`, `SpringTypedResponse` (`Any`, `JsonNode`, `Map<String, Any>`, `ResponseEntity<*>`, a list, `Optional`, `Mono` or `Flux` of those, or `null`), `SpringTypedRequestBody`, `SpringNoErrorLeak` (the stack trace, or the `message`, `localizedMessage` or `toString()` of a generic, JDK or persistence exception or its cause, in a template, concatenation or argument of the response, also through a local `val`; logging it is fine), `SpringNoCrossOrigin`, `SpringCorsWildcard`, `SpringPasswordEncoder`, `SpringPermitAllAnyRequest` (also `authorize(anyRequest, permitAll)` in the Kotlin DSL), `SpringCsrfDisabled` (also `csrf { disable() }`), `SpringHardcodedUser` (also a password held in a local `val` or a property with a string literal)                                                                                                                                                                                              |
+| JPA           | `JpaLazyFetching`, `JpaEntityClass` (a `data class` entity, or a final one: a class neither `open` nor opened by the all-open plugin, checked only when the build reports the plugin's options), `JpaManyToManyCascade`, `JpaManyToManySet` (a `List`, `MutableList` or `Collection` without `@OrderColumn`), `JpaVersion` (an entity without a superclass, or a class with its own `@Id`, and no `@Version`), `JpaSequenceIds`, `JpaEnumString` (a property of an enum declared in the project or a JDK enum, without `@Enumerated(EnumType.STRING)`, also in an `@ElementCollection` and as map keys; an auto-applied `AttributeConverter` exempts its type), `JpaIdentityHashCode` (a `hashCode` reading the `@GeneratedValue` property, or a `data class` entity with a generated id in its constructor)                                                                                                                                                                                                                      |
+| Spring Data   | `SpringDataDerivedQuery`, `SpringDataNativeQuery` (also `EntityManager.createNativeQuery`; `@Suppress("PMD.SpringDataNativeQuery")` on the function or class allows it), `SpringDataModifyingQuery`, `SpringDataNamedParameters`, `SpringDataQueryTextBlock` (strings joined with `+` in `@Query`), `SpringDataNoSaveInLoop`, `SpringDataBatchOfOne` (`saveAll(listOf(x))` in a loop), `SpringDataRowWriteInLoop`, `SpringDataSaveInLoopHelper` (also `forEach(this::helper)`), `SpringDataNoFlush`, `SpringDataFilterInQuery` (`findAll()` followed by `filter`, `count`, `any`, `first`, `find`, `size`, `isEmpty` and the like, or by `stream()` and a stream filter)                                                                                                                                                                                                                                                                                                                                                          |
 
 Kotlin-specific choices:
 
@@ -529,15 +531,22 @@ Kotlin-specific choices:
   `SpringHttpClientPerCall` reports the same line, since the Spring message names the Spring form.
 - `System.getenv` is not part of `SpringTypedConfiguration` here: detekt's `ForbiddenMethodCall`
   already bans it outside the composition root (see [One-way rules](#one-way-rules)).
+- Loops. A call is in a loop inside a `for`, `while` or `do` body, a `forEach`, `forEachIndexed`, `onEach`
+  or `repeat` lambda, or a `map`, `flatMap`, `mapNotNull`, `associate*` lambda on a value whose declared type
+  is a collection, sequence, array, map or stream (or a `listOf(...)` or a range). `map` on a `Mono`,
+  `Optional` or a value of unknown type is not a loop. A `for` or `while` body that also calls
+  `EntityManager.clear()` is a batch and is not flagged, as in the Java rules. Method references
+  (`items.forEach(repository::save)`) count as calls in the loop.
+- One finding per site: `kotlin-source/IoCallInLoop` is dropped where `SpringDataNoSaveInLoop`,
+  `SpringDataBatchOfOne`, `SpringDataRowWriteInLoop` or `SpringDataSaveInLoopHelper` reports the same line.
 
 Not ported:
 
-- The JPA rules (`JpaLazyFetching`, `JpaEntityClass`, `JpaManyToManyCascade`, `JpaManyToManySet`,
-  `JpaVersion`, `JpaSequenceIds`, `JpaEnumString`, `JpaIdentityHashCode`) and the Spring Data rules
-  (`SpringDataDerivedQuery`, `SpringDataNativeQuery`, `SpringDataModifyingQuery`, `SpringDataNoSaveInLoop`,
-  `SpringDataBatchOfOne`, `SpringDataRowWriteInLoop`, `SpringDataSaveInLoopHelper`, `SpringDataFilterInQuery`,
-  `SpringQueryConcatenation`, `SpringDataNoFlush`, `SpringDataNamedParameters`, `SpringDataQueryTextBlock`)
-  do not run on Kotlin yet.
+- `SpringQueryConcatenation`: `kotlin-source/SqlStringBuilding` already flags SQL or JPQL built from runtime
+  values with templates, `+` or `format` when it reaches a JDBC, `JdbcTemplate`, JPA or R2DBC query call,
+  so a second rule would report the same line.
+- The Lombok part of `JpaIdentityHashCode`: Lombok does not process Kotlin; a `data class` entity is the
+  Kotlin form of `@Data` and is reported instead.
 - `SpringUnusedContext` runs on Kotlin tests already (see the table above).
 
 ## Format check: ktlint, ktfmt or none

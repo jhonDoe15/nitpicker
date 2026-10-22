@@ -14,7 +14,7 @@ const OPEN_MODIFIERS = new Set(['open', 'abstract', 'override']);
 const STATIC_OWNERS = new Set(['object', 'companion']);
 const COMPLETABLE_FUTURE = new Set(['java.util.concurrent.CompletableFuture']);
 
-function pluginOpener(view, allOpen) {
+export function pluginOpener(view, allOpen) {
   if (allOpen === undefined) {
     return undefined;
   }
