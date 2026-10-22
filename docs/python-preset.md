@@ -150,7 +150,8 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `lineLength` and `folderFiles`, the size limits `folderDepth`, `classMethods`, `classFields` and
 `inheritanceDepth`, and the test time limits `unitTestSeconds` and `integrationTestSeconds`), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
-below. `layout` describes TypeScript source roots and stays a config error with this preset. The
+below. `layout` and `testConsole` stay a config error with this preset until it runs the rules
+that read them (`shared-used-by-one-feature`, `test-console-output`). The
 top-level `exceptions` is accepted only for the file and size limits shared with the other languages
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
 `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it, and
