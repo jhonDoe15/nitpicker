@@ -10,6 +10,7 @@ export const UNUSED_API_SCOPES = {
 };
 
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false, kotlin: false };
+const TYPESCRIPT_AND_KOTLIN = { typescript: true, java: false, python: false, kotlin: true };
 const TYPESCRIPT_AND_JVM = { typescript: true, java: true, python: false, kotlin: true };
 
 /** The catalog entries of `RULES` (see `shared/policy.mjs`) for the unused public surface rules. */
@@ -25,8 +26,8 @@ export const UNUSED_API_RULES = [
     id: UNUSED_API_RULE_IDS.unusedOption,
     check: 'structure',
     limit:
-      'a property of the options parameter of an exported function that no call sets (a non-literal argument sets all)',
-    enforcedBy: TYPESCRIPT_ONLY,
+      'a property of the options parameter of an exported function that no call sets (a non-literal argument sets all); Kotlin: a defaulted parameter of a private or internal function or constructor that no call names or fills by position',
+    enforcedBy: TYPESCRIPT_AND_KOTLIN,
   },
   {
     id: UNUSED_API_RULE_IDS.testOnlyExport,
