@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
 import { credentialLiterals, hardcodedSecrets, secretsInLogs } from './secrets.mjs';
 
+const PRIVATE_KEY_HEADER = ['-----BEGIN', 'RSA', 'PRIVATE KEY-----'].join(' ');
+
 function found(check, source) {
   const scanned = scanKotlinSource(source);
   return check(scanned).map((reported) => [reported.rule, lineOf(scanned, reported.offset)]);
@@ -39,7 +41,7 @@ describe('credentialLiterals', () => {
     ['a GitHub token', `val t = "ghp_${'a'.repeat(36)}"\n`],
     ['a password in a URL', 'val url = "postgres://app:s3cretpw@db:5432/app"\n'],
     ['a JDBC password', 'val url = "jdbc:mysql://db/app?user=a&password=s3cretpw"\n'],
-    ['a private key header', 'val pem = "-----BEGIN RSA PRIVATE KEY-----"\n'],
+    ['a private key header', `val pem = "${PRIVATE_KEY_HEADER}"\n`],
   ])('flags %s', (_name, source) => {
     expect(found(credentialLiterals, source)).toEqual([['CredentialLiteral', 1]]);
   });
