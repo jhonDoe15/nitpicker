@@ -17,8 +17,9 @@ export function javaExecutionBudget(environment = process.env) {
 export function analyzeJavaSnapshot(
   projectRoot,
   {
-    gradle = process.env.NITPICKER_GRADLE,
-    maven = process.env.NITPICKER_MAVEN,
+    environment = process.env,
+    gradle = environment.NITPICKER_GRADLE,
+    maven = environment.NITPICKER_MAVEN,
     policy,
     spawn,
   } = {},
@@ -28,6 +29,7 @@ export function analyzeJavaSnapshot(
       findings: collectJavaFindings(projectRoot, {
         gradle: gradle || undefined,
         maven: maven || undefined,
+        environment,
         policy,
         spawn,
         budget: javaExecutionBudget(),

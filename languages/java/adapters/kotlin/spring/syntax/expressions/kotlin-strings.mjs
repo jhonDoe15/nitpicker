@@ -33,7 +33,3 @@ export function plainText(source, node) {
     ? undefined
     : entries.map(valueOf).join('');
 }
-
-export function isStringTemplate(node) {
-  return node?.t === 'STRING_TEMPLATE';
-}

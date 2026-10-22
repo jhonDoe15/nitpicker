@@ -105,12 +105,40 @@ function missingLauncherVersions(analyzed) {
   return [...new Set(versions.filter((version) => version !== undefined))];
 }
 
-export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
+function analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin }) {
+  for (const { module, classpaths } of analyzed) {
+    analyzeModule({
+      module,
+      classpaths,
+      tools,
+      pinned,
+      configs,
+      since,
+      style: {
+        javaStyle: policy.javaStyle,
+        indentation: checkstyleIndentation(policy.conventions),
+      },
+      kotlinOptions: kotlin.options,
+      spring: policy.spring,
+    });
+  }
+}
+
+export function runMavenPreset(projectRoot, { maven, policy = {}, configs, environment = {} }) {
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
   try {
     const { modules, effectivePom } = readModules(projectRoot, maven, work);
-    const kotlin = kotlinSetup({ projectRoot, policy, modules, effectivePom, work, pinned, maven });
+    const kotlin = kotlinSetup({
+      projectRoot,
+      policy,
+      modules,
+      effectivePom,
+      work,
+      pinned,
+      maven,
+      environment,
+    });
     const since = Date.now() - 2000;
     buildAndTest({ projectRoot, maven, work, pinned, modules });
     const analyzed = modules.map((module) => ({
@@ -132,22 +160,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
         ),
       ],
     });
-    for (const { module, classpaths } of analyzed) {
-      analyzeModule({
-        module,
-        classpaths,
-        tools,
-        pinned,
-        configs,
-        since,
-        style: {
-          javaStyle: policy.javaStyle,
-          indentation: checkstyleIndentation(policy.conventions),
-        },
-        kotlinOptions: kotlin.options,
-        spring: policy.spring,
-      });
-    }
+    analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin });
     return {
       moduleDirs: modules.map((module) => module.basedir),
       formatAdvice: kotlin.options?.advice,

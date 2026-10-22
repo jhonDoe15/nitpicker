@@ -7,8 +7,6 @@ import { git, kotlinPolicy, writeAll } from '../../test-support/kotlin-e2e-proje
 export {
   commitBranch,
   commitFromBranch,
-  commitFromStructureBase,
-  detektFindingsOf,
   fromTool,
   git,
   kotlinE2eEnabled,

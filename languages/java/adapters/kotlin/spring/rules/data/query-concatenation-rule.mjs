@@ -38,17 +38,29 @@ const LITERALS = new Set([
 const UPPER_CASE = /^[A-Z][A-Z0-9_]*$/;
 
 function unwrap(node) {
-  return node?.t === 'PARENTHESIZED' ? unwrap(kids(node)[0]) : node;
+  let current = node;
+  while (current?.t === 'PARENTHESIZED') {
+    current = kids(current)[0];
+  }
+  return current;
 }
 
 function partsOf(source, node) {
-  const expression = unwrap(node);
-  if (expression?.t === 'BINARY_EXPRESSION' && operatorOf(source, expression) === '+') {
-    return kids(expression)
-      .filter((child) => child.t !== 'OPERATION_REFERENCE')
-      .flatMap((child) => partsOf(source, child));
+  const parts = [];
+  const pending = [node];
+  while (pending.length > 0) {
+    const expression = unwrap(pending.pop());
+    if (expression?.t === 'BINARY_EXPRESSION' && operatorOf(source, expression) === '+') {
+      pending.push(
+        ...kids(expression)
+          .filter((child) => child.t !== 'OPERATION_REFERENCE')
+          .reverse(),
+      );
+    } else {
+      parts.push(expression);
+    }
   }
-  return [expression];
+  return parts;
 }
 
 function nameOf(source, node) {
@@ -81,43 +93,60 @@ function isTypeReference(source, node) {
   return /^[A-Z]/.test(name) && !UPPER_CASE.test(name);
 }
 
-function isConstant(env, node) {
+function fixedLocalParts(env, node) {
+  if (node.t !== 'REFERENCE_EXPRESSION') {
+    return undefined;
+  }
   const { source } = env.file;
-  const expression = unwrap(node);
+  const { declared, assigned } = localValues(env, textOf(source, node));
+  return declared.length > 0 && assigned.length === 0
+    ? declared.flatMap((value) => partsOf(source, value))
+    : undefined;
+}
+
+function constantParts(env, expression) {
+  const { source } = env.file;
   if (expression === undefined) {
-    return false;
+    return undefined;
   }
   if (LITERALS.has(expression.t)) {
-    return true;
+    return [];
   }
   if (expression.t === 'STRING_TEMPLATE') {
-    return templateEntries(source, expression).every(
-      (entry) => !entry.dynamic || entry.text === "${'$'}" || isConstant(env, entry.expression),
-    );
+    return templateEntries(source, expression)
+      .filter((entry) => entry.dynamic && entry.text !== "${'$'}")
+      .map((entry) => entry.expression);
   }
   if (expression.t === 'REFERENCE_EXPRESSION' || expression.t === 'DOT_QUALIFIED_EXPRESSION') {
-    return UPPER_CASE.test(nameOf(source, expression) ?? '') || isFixedLocal(env, expression);
+    return UPPER_CASE.test(nameOf(source, expression) ?? '')
+      ? []
+      : fixedLocalParts(env, expression);
   }
   if (expression.t === 'IF') {
     return kids(expression, 'THEN')
       .concat(kids(expression, 'ELSE'))
-      .every((branch) => plainText(source, kids(branch)[0]) !== undefined);
+      .every((branch) => plainText(source, kids(branch)[0]) !== undefined)
+      ? []
+      : undefined;
   }
-  return false;
+  return undefined;
 }
 
-function isFixedLocal(env, node) {
-  if (node.t !== 'REFERENCE_EXPRESSION') {
-    return false;
+function isConstant(env, node) {
+  const pending = [node];
+  const seen = new Set();
+  for (const current of pending) {
+    const expression = unwrap(current);
+    if (!seen.has(expression)) {
+      seen.add(expression);
+      const parts = constantParts(env, expression);
+      if (parts === undefined) {
+        return false;
+      }
+      pending.push(...parts);
+    }
   }
-  const { declared, assigned } = localValues(env, textOf(env.file.source, node));
-  return (
-    declared.length > 0 &&
-    assigned.length === 0 &&
-    declared.every((value) =>
-      partsOf(env.file.source, value).every((part) => isConstant(env, part)),
-    )
-  );
+  return true;
 }
 
 function isDynamic(env, expression) {

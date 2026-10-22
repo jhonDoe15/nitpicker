@@ -180,7 +180,7 @@ function mutationsOf(file, declaration, name) {
   return [...calls, ...assignments];
 }
 
-function isMutatedAfterStartup(file, declaration, property, startup) {
+function isMutatedAfterStartup(file, { declaration, property }, startup) {
   return declaration.functions
     .filter((member) => member.body !== undefined && !startup.has(member))
     .filter((member) => !hasAnnotation(file, member, SYNCHRONIZED) && !locksInside(file, member))
@@ -199,7 +199,7 @@ const collectionState = defineRule(
         const startup = startupOf(file, declaration);
         return declaration.properties
           .filter((property) => !property.mutable && createsCollection(file, property))
-          .filter((property) => isMutatedAfterStartup(file, declaration, property, startup))
+          .filter((property) => isMutatedAfterStartup(file, { declaration, property }, startup))
           .map((property) =>
             hitOn(property.node, `${classSymbolOf(declaration)}.${property.name}`),
           );

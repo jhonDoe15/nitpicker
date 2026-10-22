@@ -44,16 +44,10 @@ const STANDARD = new Set([
 const READ_NAME = /^(?:find|get|read|count|exists|query|stream|search|load|fetch|list|is|has)/;
 const WRITE_NAME =
   /^(?:update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)/;
-const ITERATION_SINKS = new Set([
-  'forEach',
-  'forEachOrdered',
-  'forEachRemaining',
-  'peek',
-  'onEach',
-]);
 const QUERY_FACTORIES = new Set(['createQuery', 'createNativeQuery', 'createNamedQuery']);
 const QUERY_TYPES = new Set(['jakarta.persistence.Query', 'jakarta.persistence.TypedQuery']);
 const LOOPS = new Set(['FOR', 'WHILE', 'DO_WHILE']);
+const SINK_DEPTH = 3;
 
 function inLoop(context, call) {
   return insideLoopWithoutClear(context, call) || insideIteration(context, call);
@@ -142,8 +136,8 @@ function isUpdateQuery(context, call) {
 }
 
 function sinkReference(call) {
-  const sink = call.ancestors.slice(-3).find((node) => node.t === 'CALL_EXPRESSION');
-  return sink !== undefined && call.reference && call.ancestors.slice(-3).includes(sink);
+  const nearest = call.ancestors.slice(-SINK_DEPTH);
+  return call.reference && nearest.some((node) => node.t === 'CALL_EXPRESSION');
 }
 
 const rowWrite = defineRule(
@@ -170,7 +164,7 @@ function arityFits(member, call) {
   return call.arguments.length >= least && call.arguments.length <= most;
 }
 
-function writesEntity(file, owner, member, project) {
+function writesEntity(file, { owner, member }, project) {
   const context = { file, scope: { owner, fn: member }, body: member.body };
   const targets = new Set([...project.repositoryTypes, ...ENTITY_MANAGER]);
   return persistenceCalls({ context, targets, names: writeCallNames() }).length > 0;
@@ -189,7 +183,7 @@ const saveHelper = defineRule(
               member.name === call.name &&
               member.body !== undefined &&
               (call.reference || arityFits(member, call)) &&
-              writesEntity(file, context.scope.owner, member, project),
+              writesEntity(file, { owner: context.scope.owner, member }, project),
           ),
         )
         .filter((call) => (call.reference ? insideIteration(context, call) : inLoop(context, call)))

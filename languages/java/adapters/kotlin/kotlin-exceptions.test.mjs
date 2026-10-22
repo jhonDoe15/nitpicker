@@ -33,7 +33,7 @@ describe('exceptions of the kotlin preset for Spring', () => {
     expect(() => {
       validateKotlinOptions(exceptionFor('pmd/SpringNoSuchRule'));
     }).toThrow(
-      `"exceptions[0].rule" is "pmd/SpringNoSuchRule", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml`,
+      `nitpicker.config.json: "exceptions[0].rule" is "pmd/SpringNoSuchRule", which is not a rule with exceptions. Write the rule as the finding prints it; rules with exceptions for the kotlin preset: detekt.<ruleset>.<Rule>, ${KOTLIN_EXCEPTION_RULES.join(', ')}`,
     );
   });
 

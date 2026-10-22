@@ -42,25 +42,29 @@ function convertedEnums(file) {
   );
 }
 
+function isEnumType(file, project, candidate) {
+  return typeMatches(file, candidate, project.enumTypes) && candidate !== undefined;
+}
+
 function enumNodes(file, property, project) {
   const { type } = property;
   if (type === undefined) {
     return [];
   }
-  const isEnum = (candidate) =>
-    typeMatches(file, candidate, project.enumTypes) && candidate !== undefined;
   const string = usesStringMapping(file, property, ENUMERATED);
   if (!hasAnnotation(file, property, ELEMENT_COLLECTION)) {
-    return !string && isEnum(type) ? [type] : [];
+    return !string && isEnumType(file, project, type) ? [type] : [];
   }
   if (file.resolver.matches(type.name, MAP_TYPES)) {
     const [key, value] = type.args;
     return [
-      ...(!usesStringMapping(file, property, MAP_KEY_ENUMERATED) && isEnum(key) ? [key] : []),
-      ...(!string && isEnum(value) ? [value] : []),
+      ...(!usesStringMapping(file, property, MAP_KEY_ENUMERATED) && isEnumType(file, project, key)
+        ? [key]
+        : []),
+      ...(!string && isEnumType(file, project, value) ? [value] : []),
     ];
   }
-  return !string && isEnum(type.args[0]) ? [type.args[0]] : [];
+  return !string && isEnumType(file, project, type.args[0]) ? [type.args[0]] : [];
 }
 
 const enumString = defineRule(

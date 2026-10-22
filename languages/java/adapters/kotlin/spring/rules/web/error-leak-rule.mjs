@@ -44,14 +44,11 @@ function exceptionNames(file, declaration) {
 }
 
 function isException(source, names, node) {
-  if (node?.t === 'REFERENCE_EXPRESSION') {
-    return names.has(textOf(source, node));
+  let current = node;
+  while (QUALIFIED.has(current?.t) && CAUSES.has(selectorName(source, current))) {
+    current = kids(current)[0];
   }
-  return (
-    QUALIFIED.has(node?.t) &&
-    CAUSES.has(selectorName(source, node)) &&
-    isException(source, names, kids(node)[0])
-  );
+  return current?.t === 'REFERENCE_EXPRESSION' && names.has(textOf(source, current));
 }
 
 function leakKind(source, names, node) {
@@ -111,7 +108,7 @@ function leaksOf(file, declaration, names) {
   return [...fromNodes, ...fromCalls];
 }
 
-function usesOutsideLogs(file, declaration, local, loggers) {
+function usesOutsideLogs({ file, declaration, loggers }, local) {
   return walk(declaration.body).some(
     ({ node }) =>
       node.t === 'REFERENCE_EXPRESSION' &&
@@ -143,7 +140,7 @@ const errorLeak = defineRule(
           .filter((leak) => !loggers.some((call) => containsNode(call.node, leak.node)))
           .filter((leak) => {
             const local = localNameOf(file, leak);
-            return local === undefined || usesOutsideLogs(file, declaration, local, loggers);
+            return local === undefined || usesOutsideLogs({ file, declaration, loggers }, local);
           })
           .map((leak) => hitOn(leak.node, `${memberSymbolOf(declaration)}@${leak.kind}`));
       }),

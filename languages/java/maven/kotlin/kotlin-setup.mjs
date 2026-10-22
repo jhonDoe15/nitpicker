@@ -78,7 +78,7 @@ export function kotlinSetup({
   work,
   pinned,
   maven,
-  environment = process.env,
+  environment,
 }) {
   if (policy.preset !== 'kotlin') {
     return NO_KOTLIN;

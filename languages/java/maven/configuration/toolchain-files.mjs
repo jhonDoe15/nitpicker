@@ -37,9 +37,9 @@ function optionValue(given, names) {
 function mavenHome(context) {
   try {
     const output = runMaven({ ...context, args: ['--version'] });
-    return MAVEN_HOME_LINE.exec(output)?.[1].trim();
-  } catch {
-    return undefined;
+    return { home: MAVEN_HOME_LINE.exec(output)?.[1].trim() };
+  } catch (error) {
+    return { failure: error.message };
   }
 }
 
@@ -55,7 +55,7 @@ export function globalToolchainsFile(context) {
   if (given !== undefined) {
     return path.resolve(context.projectRoot, given);
   }
-  const home = mavenHome(context);
+  const { home } = mavenHome(context);
   return home === undefined ? undefined : path.join(home, 'conf', 'toolchains.xml');
 }
 
