@@ -2,7 +2,7 @@ import path from 'node:path';
 import { readJson, trackedText } from './known-files.mjs';
 import { holdsSources } from './output-sources.mjs';
 
-const MANIFESTS = new Set([
+export const BUILD_MANIFESTS = new Set([
   'package.json',
   'build.gradle',
   'build.gradle.kts',
@@ -18,7 +18,7 @@ const ACTION_ENTRY = /^\s+(?:main|pre|post):\s*["']?([^"'\s#]+)/gmu;
 
 export function buildOutputFolders(projectRoot, files) {
   const tracked = new Set(files);
-  const manifests = files.filter((file) => MANIFESTS.has(path.posix.basename(file)));
+  const manifests = files.filter((file) => BUILD_MANIFESTS.has(path.posix.basename(file)));
   const projectDirectories = new Set(manifests.map(directoryOf));
   const filesByFolder = new Map();
   for (const file of files) {
