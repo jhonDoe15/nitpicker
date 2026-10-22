@@ -5,7 +5,7 @@ import {
   validateProjectRelativePath,
   validateStringArray,
 } from '../config.mjs';
-import { globToRegExp } from '../glob.mjs';
+import { globMatcher } from '../paths/glob.mjs';
 
 export const TEST_TIMEOUT_CEILING_MS = 10_000;
 export const TEST_TIMEOUT_LANGUAGES = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
@@ -58,7 +58,7 @@ function validateProject(project, label) {
     if (glob.startsWith('!')) {
       throw configError(`"${label}.include" cannot negate a pattern`);
     }
-    globToRegExp(glob);
+    globMatcher(glob);
   }
 }
 
@@ -101,7 +101,7 @@ function matchingProject(projects, context) {
     ([, settings]) =>
       context.file !== undefined &&
       settings.include.some((glob) =>
-        globToRegExp(glob).test(context.file.replaceAll('\\', '/').replace(/^\.\//u, '')),
+        globMatcher(glob).test(context.file.replaceAll('\\', '/').replace(/^\.\//u, '')),
       ),
   );
   if (selected.length > 1) {

@@ -1,0 +1,402 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterAll, describe, expect, it } from 'vitest';
+import { productionTypeResolver } from '../production-types.mjs';
+import {
+  argument,
+  file,
+  fn,
+  klass,
+  routeOf,
+  routed,
+  run,
+  summary,
+  testFile,
+  testMethod,
+  wait,
+} from '../test-support/facts.mjs';
+import { FIXED_SLEEP_RULE } from '../../../../messages/wait-advice.mjs';
+import { NEGATIVE_WAIT_RULE, testWaitFindings, waitMessage } from './test-waits.mjs';
+
+const CLASS_FRAME = {
+  k: 'class',
+  name: 'SampleTest',
+  qualified: 'SampleTest',
+  supers: [],
+  visibility: 'public',
+};
+const FUN_FRAME = { k: 'fun', name: 'waits' };
+function lambda(host) {
+  return { k: 'lambda', host };
+}
+const loop = (condition, clock = false) => ({ k: 'loop', condition, clock });
+const scopes = (...inner) => [...inner, FUN_FRAME, CLASS_FRAME];
+
+const roots = [];
+afterAll(() => {
+  for (const root of roots) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+function waitsIn(waits, extra = {}, options = {}) {
+  const files = [
+    testFile({ classes: [klass('SampleTest')], functions: [testMethod()], waits, ...extra }),
+  ];
+  return run(testWaitFindings, files, {
+    isProduction: productionTypeResolver({ files, projectRoot: '/nonexistent' }),
+    ...options,
+  });
+}
+
+describe('fixed sleeps in Kotlin tests', () => {
+  it('reports Thread.sleep and TimeUnit sleep with the Java rule id and exception route', () => {
+    const findings = waitsIn([
+      wait('sleep'),
+      wait('sleep', { qualifier: 'TimeUnit.SECONDS', line: 6 }),
+      wait('parkNanos', { qualifier: 'LockSupport', line: 7 }),
+    ]);
+
+    expect(summary(findings)).toEqual([
+      `${FIXED_SLEEP_RULE} SampleTest.waits 5`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 6`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 7`,
+    ]);
+    expect(findings[0]).toEqual({
+      tool: 'pmd',
+      rule: FIXED_SLEEP_RULE,
+      path: 'src/test/kotlin/demo/SampleTest.kt',
+      identity: 'FixedSleepInTest:SampleTest.waits:sleep',
+      symbol: 'SampleTest.waits',
+      location: { line: 5 },
+      message: routed(
+        waitMessage({ rule: FIXED_SLEEP_RULE, kind: 'sleep' }),
+        FIXED_SLEEP_RULE,
+        'src/test/kotlin/demo/SampleTest.kt',
+      ),
+      classification: 'enforceable',
+    });
+    expect(routeOf(findings[0].message)).toBe(
+      'If this is intended, add {"rule":"pmd/FixedSleepInTest","paths":["src/test/kotlin/demo/SampleTest.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
+    expect(new Set(findings.map(({ identity }) => identity)).size).toBe(3);
+  });
+
+  it('ignores a sleep method that is not Thread or TimeUnit sleep, and main sources', () => {
+    const findings = waitsIn([wait('sleep', { qualifier: 'clock' })], {}, {});
+    const inMain = run(testWaitFindings, [file({ waits: [wait('sleep')] })], {
+      isProduction: () => false,
+    });
+
+    expect([...findings, ...inMain]).toEqual([]);
+  });
+
+  it('allows a sleep in a polling loop that tests its condition or reads a clock', () => {
+    const polling = loop('!done');
+    const clocked = loop('true', true);
+    const blind = loop('true');
+
+    const findings = waitsIn([
+      wait('sleep', { scopes: scopes(polling), line: 1 }),
+      wait('sleep', { scopes: scopes(clocked), line: 2 }),
+      wait('sleep', { scopes: scopes(blind), line: 3 }),
+    ]);
+
+    expect(summary(findings)).toEqual([`${FIXED_SLEEP_RULE} SampleTest.waits 3`]);
+  });
+
+  it('looks through inline lambdas to the polling loop or thread body around them', () => {
+    const clocked = loop('true', true);
+
+    const findings = waitsIn([
+      wait('sleep', { scopes: scopes(lambda('run'), clocked), line: 1 }),
+      wait('sleep', { scopes: scopes(lambda('let'), lambda('repeat'), clocked), line: 2 }),
+      wait('sleep', { scopes: scopes(lambda('also'), lambda('thread')), line: 3 }),
+      wait('sleep', { scopes: scopes(lambda('run'), loop('true')), line: 4 }),
+      wait('sleep', { scopes: scopes(lambda('apply')), line: 5 }),
+      wait('sleep', { scopes: scopes(lambda('map'), clocked), line: 6 }),
+    ]);
+
+    expect(summary(findings)).toEqual([
+      `${FIXED_SLEEP_RULE} SampleTest.waits 4`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 5`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 6`,
+    ]);
+  });
+
+  it('allows a sleep in a mock answer or a thread body and reports it in other lambdas', () => {
+    const findings = waitsIn([
+      wait('sleep', { scopes: scopes(lambda('answers')), line: 1 }),
+      wait('sleep', { scopes: scopes(lambda('thread')), line: 2 }),
+      wait('sleep', { scopes: scopes(lambda('Thread')), line: 3 }),
+      wait('sleep', { scopes: scopes(lambda('forEach')), line: 4 }),
+    ]);
+
+    expect(summary(findings)).toEqual([`${FIXED_SLEEP_RULE} SampleTest.waits 4`]);
+  });
+
+  it('reports delay inside runBlocking but not in runTest, launch, or outside any coroutine block', () => {
+    const findings = waitsIn([
+      wait('delay', { qualifier: undefined, scopes: scopes(lambda('runBlocking')), line: 1 }),
+      wait('delay', {
+        qualifier: undefined,
+        scopes: scopes(lambda('withContext'), lambda('runBlocking')),
+        line: 2,
+      }),
+      wait('delay', { qualifier: undefined, scopes: scopes(lambda('runTest')), line: 3 }),
+      wait('delay', {
+        qualifier: undefined,
+        scopes: scopes(lambda('launch'), lambda('runBlocking')),
+        line: 4,
+      }),
+      wait('delay', { qualifier: undefined, scopes: scopes(), line: 5 }),
+    ]);
+
+    expect(summary(findings)).toEqual([
+      `${FIXED_SLEEP_RULE} SampleTest.waits 1`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 2`,
+    ]);
+    expect(findings[0].message).toBe(
+      routed(
+        waitMessage({ rule: FIXED_SLEEP_RULE, kind: 'delay' }),
+        FIXED_SLEEP_RULE,
+        'src/test/kotlin/demo/SampleTest.kt',
+      ),
+    );
+  });
+
+  it('reports kotest continually, Mockito after(...).never() and Awaitility during as negative waits', () => {
+    const imports = [
+      { path: 'io.kotest.assertions.timing.continually', all: false },
+      { path: 'org.mockito.Mockito.after', all: false },
+      { path: 'org.awaitility.Awaitility.await', all: false },
+    ];
+    const findings = waitsIn(
+      [
+        wait('continually', { qualifier: undefined, line: 1, arguments: [argument('1.seconds')] }),
+        wait('after', { qualifier: undefined, line: 2, outer: { name: 'never', arguments: [] } }),
+        wait('after', {
+          qualifier: undefined,
+          line: 3,
+          outer: { name: 'times', arguments: [argument('0')] },
+        }),
+        wait('after', { qualifier: undefined, line: 4 }),
+        wait('during', { qualifier: 'await()', line: 5 }),
+        wait('until', { qualifier: 'await().pollDelay(1.seconds)', lambda: 'true', line: 6 }),
+        wait('until', { qualifier: 'await()', lambda: 'ready', line: 7 }),
+      ],
+      { imports },
+    );
+
+    expect(summary(findings)).toEqual([
+      `${NEGATIVE_WAIT_RULE} SampleTest.waits 1`,
+      `${NEGATIVE_WAIT_RULE} SampleTest.waits 2`,
+      `${NEGATIVE_WAIT_RULE} SampleTest.waits 3`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 4`,
+      `${NEGATIVE_WAIT_RULE} SampleTest.waits 5`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 6`,
+    ]);
+    expect(routeOf(findings[0].message)).toBe(
+      'If this is intended, add {"rule":"pmd/NegativeWaitInTest","paths":["src/test/kotlin/demo/SampleTest.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
+  });
+
+  it('needs the library import before it reads continually, after, during or until as a wait', () => {
+    const findings = waitsIn([
+      wait('continually', { qualifier: undefined }),
+      wait('after', { qualifier: undefined }),
+      wait('during', { qualifier: 'await()' }),
+    ]);
+
+    expect(findings).toEqual([]);
+  });
+
+  it('reports a timed join(ms) with advice to assert the outcome, and leaves a declared helper alone', () => {
+    const joined = wait('join', { qualifier: undefined });
+    const findings = waitsIn([joined]);
+    const helper = waitsIn([joined], { functions: [testMethod(), fn('join')] });
+
+    expect(findings[0].message).toBe(
+      routed(
+        waitMessage({ rule: FIXED_SLEEP_RULE, kind: 'timed' }),
+        FIXED_SLEEP_RULE,
+        'src/test/kotlin/demo/SampleTest.kt',
+      ),
+    );
+    expect(helper).toEqual([]);
+  });
+
+  it('allows a sleep in a test fake of a main type and keeps reporting it in a test of one', () => {
+    const files = [
+      file({ classes: [klass('Clock')] }),
+      testFile({
+        classes: [klass('SampleTest'), klass('FakeClock', { supers: ['Clock'] })],
+        functions: [testMethod()],
+        waits: [
+          wait('sleep', {
+            scopes: [
+              { k: 'fun', name: 'now' },
+              {
+                k: 'class',
+                name: 'FakeClock',
+                qualified: 'FakeClock',
+                supers: ['Clock'],
+                visibility: 'public',
+              },
+            ],
+          }),
+          wait('sleep', {
+            line: 9,
+            scopes: [
+              { k: 'fun', name: 'waits' },
+              {
+                k: 'class',
+                name: 'SampleTest',
+                qualified: 'SampleTest',
+                supers: ['Clock'],
+                visibility: 'public',
+              },
+            ],
+          }),
+        ],
+      }),
+    ];
+
+    const findings = run(testWaitFindings, files, {
+      isProduction: productionTypeResolver({ files, projectRoot: '/nonexistent' }),
+    });
+
+    expect(summary(findings)).toEqual([`${FIXED_SLEEP_RULE} SampleTest.waits 9`]);
+  });
+
+  it('resolves a Java main type declared in a main source root', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-waits-'));
+    roots.push(root);
+    mkdirSync(path.join(root, 'src/main/java/demo'), { recursive: true });
+    writeFileSync(
+      path.join(root, 'src/main/java/demo/Port.java'),
+      'package demo; interface Port {}\n',
+    );
+    const files = [
+      testFile({
+        classes: [klass('Fake', { supers: ['Port'] })],
+        waits: [
+          wait('sleep', {
+            scopes: [
+              { k: 'fun', name: 'send' },
+              {
+                k: 'class',
+                name: 'Fake',
+                qualified: 'Fake',
+                supers: ['Port'],
+                visibility: 'public',
+              },
+            ],
+          }),
+        ],
+      }),
+    ];
+
+    const findings = run(testWaitFindings, files, {
+      isProduction: productionTypeResolver({
+        files,
+        projectRoot: root,
+        javaRoots: ['src/main/java'],
+      }),
+    });
+
+    expect(findings).toEqual([]);
+  });
+});
+
+describe('fixed sleeps in Kotlin tests: parity details', () => {
+  const foreach = { k: 'foreach', condition: 'for', clock: false };
+
+  it('does not read a loop over a collection as a polling loop, as the Java rule does', () => {
+    const findings = waitsIn([
+      wait('sleep', { scopes: scopes(foreach), line: 1 }),
+      wait('sleep', { scopes: scopes(loop('for')), line: 2 }),
+    ]);
+
+    expect(summary(findings)).toEqual([`${FIXED_SLEEP_RULE} SampleTest.waits 1`]);
+  });
+
+  it('reports sleep and parkNanos called through an import or an alias of an import', () => {
+    const findings = waitsIn([
+      wait('sleep', { qualifier: undefined, imported: 'java.lang.Thread.sleep', line: 1 }),
+      wait('sleep', { qualifier: undefined, imported: 'com.example.sleep', line: 2 }),
+      wait('sleep', { qualifier: undefined, line: 3 }),
+      wait('parkNanos', {
+        qualifier: undefined,
+        imported: 'java.util.concurrent.locks.LockSupport.parkNanos',
+        line: 4,
+      }),
+    ]);
+
+    expect(summary(findings)).toEqual([
+      `${FIXED_SLEEP_RULE} SampleTest.waits 1`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 4`,
+    ]);
+  });
+
+  it('reports join(ms) wherever it is, and join(Duration) only as a statement', () => {
+    const findings = waitsIn([
+      wait('join', {
+        qualifier: 'worker',
+        statement: false,
+        line: 1,
+        arguments: [argument('1000')],
+      }),
+      wait('join', {
+        qualifier: 'worker',
+        statement: false,
+        line: 2,
+        arguments: [argument('Duration.ofSeconds(1)')],
+      }),
+      wait('join', {
+        qualifier: 'worker',
+        statement: true,
+        line: 3,
+        arguments: [argument('Duration.ofSeconds(1)')],
+      }),
+      wait('join', { qualifier: 'names', statement: false, line: 4, arguments: [argument('sep')] }),
+    ]);
+
+    expect(summary(findings)).toEqual([
+      `${FIXED_SLEEP_RULE} SampleTest.waits 1`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 3`,
+    ]);
+  });
+
+  it('reads after and during only from Mockito or Awaitility, with a delay argument', () => {
+    const imports = [
+      { path: 'org.mockito.Mockito', all: false },
+      { path: 'org.awaitility.Awaitility.await', all: false },
+    ];
+    const findings = waitsIn(
+      [
+        wait('after', { qualifier: 'deadline', line: 1, arguments: [argument('other')] }),
+        wait('after', { qualifier: undefined, line: 2, arguments: [argument('other')] }),
+        wait('after', { qualifier: 'Mockito', line: 3, arguments: [argument('250')] }),
+        wait('during', { qualifier: 'await()', line: 4, arguments: [] }),
+      ],
+      { imports },
+    );
+
+    expect(summary(findings)).toEqual([`${FIXED_SLEEP_RULE} SampleTest.waits 3`]);
+  });
+
+  it('names Awaitility in the sleep and timed advice only when the module has it', () => {
+    const sleep = { rule: FIXED_SLEEP_RULE, kind: 'sleep' };
+    const timed = { rule: FIXED_SLEEP_RULE, kind: 'timed' };
+
+    const names = (message) => message.includes('Awaitility');
+
+    expect([sleep, timed].map((kind) => names(waitMessage(kind)))).toEqual([false, false]);
+    expect([sleep, timed].map((kind) => names(waitMessage(kind, true)))).toEqual([true, true]);
+    expect(waitsIn([wait('sleep')], {}, { awaitility: true })[0].message).toBe(
+      routed(waitMessage(sleep, true), FIXED_SLEEP_RULE, 'src/test/kotlin/demo/SampleTest.kt'),
+    );
+  });
+});

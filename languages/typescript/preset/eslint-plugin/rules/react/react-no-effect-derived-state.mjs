@@ -161,11 +161,11 @@ export const rule = {
     schema: [],
     messages: {
       derivedState:
-        'Do not set state from an effect to mirror props or state. Compute the value during render (`const total = price * quantity;`). If this effect synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
+        'Do not set state from an effect to mirror props or state. Compute the value during render (`const total = price * quantity;`). An exception fits only when this effect synchronizes with an external system.',
       resetState:
-        'Do not reset state from an effect when a prop changes: render the component with that prop as its `key` (`<Form key={userId} />`), so React starts it with fresh state. If this effect synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
+        'Do not reset state from an effect when a prop changes: render the component with that prop as its `key` (`<Form key={userId} />`), so React starts it with fresh state. An exception fits only when this effect synchronizes with an external system.',
       storageState:
-        'Do not copy browser storage into state from an effect: read it during render with `useSyncExternalStore(subscribe, () => localStorage.getItem(key))`, which also follows changes from other tabs. If this effect synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
+        'Do not copy browser storage into state from an effect: read it during render with `useSyncExternalStore(subscribe, () => localStorage.getItem(key))`, which also follows changes from other tabs. An exception fits only when this effect synchronizes with an external system.',
     },
   },
   create(context) {

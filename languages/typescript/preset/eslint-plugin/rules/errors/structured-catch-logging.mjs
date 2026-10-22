@@ -152,9 +152,6 @@ function messageIdFor(shapes) {
   return shapes[0] === 'err-field' ? 'caughtErrorShape' : 'caughtValueShape';
 }
 
-const EXCEPTION =
-  'If this is legitimate, add an exception for nitpicker/structured-catch-logging in nitpicker.config.json.';
-
 export function structuredCatchLoggingRule(rootLibraries) {
   return {
     meta: {
@@ -166,8 +163,8 @@ export function structuredCatchLoggingRule(rootLibraries) {
       messages: {
         caughtErrorShape:
           'Log a caught value as logger.<level>({ err: error, ...context }, message).',
-        caughtValueShape: `Pass the caught value itself to the logger, for example logger.error('message', error), not its message or a template string. ${EXCEPTION}`,
-        caughtEitherShape: `Log a caught value as logger.<level>({ err: error, ...context }, message), or pass the caught value itself, for example logger.error('message', error). ${EXCEPTION}`,
+        caughtValueShape: `Pass the caught value itself to the logger, for example logger.error('message', error), not its message or a template string.`,
+        caughtEitherShape: `Log a caught value as logger.<level>({ err: error, ...context }, message), or pass the caught value itself, for example logger.error('message', error).`,
       },
     },
     create: (context) =>

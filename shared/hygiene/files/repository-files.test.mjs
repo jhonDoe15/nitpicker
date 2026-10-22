@@ -197,10 +197,10 @@ describe('committed build output', () => {
       path: 'package.json',
       identity: 'dist|build-output',
       message:
-        'dist/ looks like build output tracked in git. If it holds sources or build scripts, add ' +
-        '{"rule":"committed-build-output","paths":["dist/**"],"reason":"..."} to "exceptions" in ' +
-        'nitpicker.config.json, or rename it. Otherwise untrack it with `git rm -r --cached dist`, add ' +
-        '`dist/` to .gitignore, and let CI produce it.',
+        'dist/ looks like build output tracked in git. Untrack it with `git rm -r --cached dist`, add ' +
+        '`dist/` to .gitignore, and let CI produce it; if it holds sources or build scripts, rename it. ' +
+        'If this is intended, add {"rule":"committed-build-output","paths":["dist/**"],"reason":"..."} to ' +
+        '"exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
       exceptionPaths: ['dist', 'dist/'],
     });
