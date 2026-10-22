@@ -8,6 +8,7 @@ import { diagnosticMessages } from '../typecheck/compiler-hints.mjs';
 import {
   enclosingSymbol,
   loadTypeScript,
+  nativeProjectTypeScript,
   preEmitDiagnostics,
 } from '../typecheck/typescript-program.mjs';
 import { withAssetImportHint } from '../typecheck/asset-import-hint.mjs';
@@ -23,6 +24,7 @@ export async function runTypecheck(options) {
       engine: typecheckEngine(),
       configPath: installedConfig.targetPath,
       projectRoot: options.projectRoot,
+      projectNative: nativeProjectTypeScript(options.liveProjectRoot),
     });
     const layout = readLayout();
     return normalizeTypeScriptDiagnostics({

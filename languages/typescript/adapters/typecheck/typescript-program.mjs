@@ -3,25 +3,33 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { ts as bundledTypeScript } from '../../typescript-api/typescript-api.mjs';
 import { nativeDiagnostics } from './native-diagnostics.mjs';
 
 const NO_INPUTS_CODE = 18003;
-export function loadTypeScript(projectRoot = PACKAGE_ROOT) {
-  const root = resolveTool('typescript', { projectRoot }).root;
-  const libraryPath = path.join(root, 'lib/typescript.js');
-  if (!existsSync(libraryPath)) {
-    throw new Error(
-      `The type check reads source files with the project's typescript package, which must be 5.7 to 6.x: ` +
-        `${root} has no JavaScript API, which TypeScript 7 does not ship yet.`,
-    );
-  }
-  return createRequire(import.meta.url)(libraryPath);
+
+function projectTypeScriptRoot(projectRoot) {
+  return resolveTool('typescript', { projectRoot }).root;
 }
 
-export async function preEmitDiagnostics({ ts, engine, configPath, projectRoot }) {
+export function loadTypeScript(projectRoot = PACKAGE_ROOT) {
+  const libraryPath = path.join(projectTypeScriptRoot(projectRoot), 'lib/typescript.js');
+  return existsSync(libraryPath) ? createRequire(import.meta.url)(libraryPath) : bundledTypeScript;
+}
+
+export function nativeProjectTypeScript(projectRoot = PACKAGE_ROOT) {
+  const root = projectTypeScriptRoot(projectRoot);
+  return existsSync(path.join(root, 'lib/typescript.js')) ? undefined : root;
+}
+
+export async function preEmitDiagnostics({ ts, engine, configPath, projectRoot, projectNative }) {
   if (engine === 'native') {
     const native = await nativeDiagnostics({ ts, configPath, projectRoot });
     if (native.unsupported !== true) return native.diagnostics;
+  }
+  if (projectNative !== undefined) {
+    const own = await nativeDiagnostics({ ts, configPath, projectRoot, apiRoot: projectNative });
+    return own.diagnostics;
   }
   return projectDiagnostics(ts, configPath, projectRoot);
 }
