@@ -1,11 +1,11 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createScripts } from '../test-support/python-script-helpers.mjs';
-import { createRuleChecker } from '../test-support/python-rule-harness.mjs';
-import { ingestRulesReport } from '../../ingest/rules-report.mjs';
-import { applyPythonExceptions } from '../../adapters/configuration/python-exceptions.mjs';
-import { applyRuleHints } from '../rule-hints.mjs';
+import { createScripts } from '../../test-support/python-script-helpers.mjs';
+import { createRuleChecker } from '../../test-support/python-rule-harness.mjs';
+import { ingestRulesReport } from '../../../ingest/rules-report.mjs';
+import { applyPythonExceptions } from '../../../adapters/configuration/python-exceptions.mjs';
+import { applyRuleHints } from '../../rule-hints.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const { cleanup, outcomes, single } = createScripts();
@@ -24,12 +24,13 @@ function handler(body, caught = 'asyncio.CancelledError', imports = 'import asyn
 }
 
 const lost = ['cancellation-not-propagated:5 except asyncio.CancelledError'];
-const MESSAGE = [
+const BASE_MESSAGE = [
   '`except asyncio.CancelledError` has a path that consumes cancellation or replaces it with another error.',
   'After cleanup, use a bare `raise` or re-raise the unchanged caught cancellation.',
   'Keep intentional cancellation boundaries in the backend’s timeout or cancellation scope; returning a failure result or chaining another error does not propagate cancellation.',
-  'To allow it for some paths, add a "python.exceptions" entry for cancellation-not-propagated in nitpicker.config.json.',
 ].join(' ');
+const messageFor = (file) =>
+  `${BASE_MESSAGE} If this is intended, add {"rule":"cancellation-not-propagated","paths":["${file}"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`;
 
 describe.skipIf(!enabled)('explicit cancellation handlers', () => {
   it('reports lost cancellation paths and avoids swallowed-error duplicates', () => {
@@ -52,6 +53,20 @@ describe.skipIf(!enabled)('explicit cancellation handlers', () => {
       ['nested definition is not propagation', 'def propagate():\n    raise\nreturn', lost],
       ['unreachable re-raise', 'return\nraise', lost],
       ['cleanup then return', 'await cleanup()\nreturn', lost],
+      ['loop that may finish without raising', 'for task in ready:\n    task.cancel()', lost],
+      ['return inside a loop', 'for task in ready:\n    return\nraise', lost],
+      ['break out of a loop only', 'while ready:\n    break\nawait cleanup()', lost],
+      ['loop else falls through', 'for task in ready:\n    pass\nelse:\n    await cleanup()', lost],
+      [
+        'match case returns',
+        'match ready:\n    case 1:\n        return\n    case _:\n        raise',
+        lost,
+      ],
+      [
+        'match case falls through',
+        'match ready:\n    case 1:\n        pass\n    case _:\n        raise',
+        lost,
+      ],
     ].map(([name, body, expected]) => [name, handler(body), expected]);
     const [actual, expected] = outcomes(cases);
 
@@ -72,6 +87,19 @@ describe.skipIf(!enabled)('explicit cancellation handlers', () => {
       ['both branches propagate', handler('if ready:\n    raise\nelse:\n    raise error'), []],
       ['constant dead branch', handler('if False:\n    return\nraise'), []],
       ['unreachable return', handler('raise\nreturn'), []],
+      ['loop then re-raise', handler('for task in ready:\n    task.cancel()\nraise'), []],
+      ['loop break then re-raise', handler('while ready:\n    break\nraise'), []],
+      ['loop continue then re-raise', handler('for task in ready:\n    continue\nraise'), []],
+      [
+        'match with a catch-all re-raises',
+        handler('match ready:\n    case 1:\n        raise\n    case _:\n        raise error'),
+        [],
+      ],
+      [
+        'match without a catch-all is not proof of a lost path',
+        handler('match ready:\n    case 1:\n        raise\n    case 2:\n        raise error'),
+        [],
+      ],
       ['finally propagates', handler('try:\n    cleanup()\nfinally:\n    raise'), []],
       [
         'shielded cleanup then re-raise',
@@ -167,11 +195,59 @@ describe.skipIf(!enabled)('explicit cancellation handlers', () => {
     expect(single(handler('def fallback():\n    return None\nraise'))).toEqual([]);
   });
 
-  it('keeps complex nested exception and loop control outside the initial path model', () => {
+  it('keeps nested exception dispatch outside the path model', () => {
     expect(
       single(handler('try:\n    cleanup()\nexcept ValueError:\n    recover(error)\nraise')),
     ).toEqual([]);
-    expect(single(handler('while ready:\n    await cleanup()\nraise'))).toEqual([]);
+  });
+
+  it('reports a handler that ends the loop it runs in', () => {
+    const source = [
+      'import asyncio',
+      'async def run(queue):',
+      '    while True:',
+      '        try:',
+      '            await queue.get()',
+      '        except asyncio.CancelledError:',
+      '            break',
+      '',
+    ].join('\n');
+
+    expect(single(source)).toEqual([
+      'cancellation-not-propagated src/mod.py:6 except asyncio.CancelledError',
+    ]);
+    expect(single(source.replace('break', 'continue'))).toEqual([
+      'cancellation-not-propagated src/mod.py:6 except asyncio.CancelledError',
+    ]);
+  });
+
+  it('accepts awaiting a task this function cancelled and reports other awaits', () => {
+    const awaiting = (cancel, awaited, extra = '') =>
+      [
+        'import asyncio',
+        'async def stop(task, other):',
+        ...(cancel ? [`    ${cancel}`] : []),
+        '    try:',
+        `        ${extra}await ${awaited}`,
+        '    except asyncio.CancelledError:',
+        '        pass',
+        '',
+      ].join('\n');
+    const reported = (line) => [
+      `cancellation-not-propagated src/mod.py:${String(line)} except asyncio.CancelledError`,
+    ];
+
+    expect(single(awaiting('task.cancel()', 'task'))).toEqual([]);
+    expect(single(awaiting('task.cancel()', 'task', 'result = '))).toEqual([]);
+    expect(single(awaiting('', 'task'))).toEqual(reported(5));
+    expect(single(awaiting('other.cancel()', 'task'))).toEqual(reported(6));
+    expect(single(awaiting('task.cancel()', 'task.result()'))).toEqual(reported(6));
+    const trio = awaiting('task.cancel()', 'task')
+      .replace('import asyncio', 'import trio')
+      .replace('asyncio.CancelledError', 'trio.Cancelled');
+    expect(single(trio)).toEqual([
+      'cancellation-not-propagated src/mod.py:6 except trio.Cancelled',
+    ]);
   });
 
   it('passes the registered banned/allowed fixtures through the full AST adapter', () => {
@@ -184,7 +260,7 @@ describe.skipIf(!enabled)('explicit cancellation handlers', () => {
         rule: 'cancellation-not-propagated',
         mention: 'bare `raise`',
       }),
-    ).toEqual({ ok: true, messages: [MESSAGE] });
+    ).toEqual({ ok: true, messages: [messageFor('worker.py')] });
   });
 
   it('preserves report identity after line movement and applies reviewed path exceptions', () => {
@@ -201,7 +277,7 @@ describe.skipIf(!enabled)('explicit cancellation handlers', () => {
 
     expect(after).toEqual([{ ...before[0], location: { line: 8 } }]);
     expect(before[0].classification).toBe('enforceable');
-    expect(before[0].message).toBe(MESSAGE);
+    expect(before[0].message).toBe(messageFor('src/worker.py'));
     expect(
       applyPythonExceptions(after, [
         { rule: 'cancellation-not-propagated', paths: ['src/worker.py'] },
@@ -214,11 +290,11 @@ describe.skipIf(!enabled)('explicit cancellation handlers', () => {
 
   it('demonstrates cancellation propagation with the exact asyncio fixture functions', () => {
     const banned = readFileSync(
-      new URL('../fixtures/cancellation/banned/worker.py', import.meta.url),
+      new URL('../../fixtures/cancellation/banned/worker.py', import.meta.url),
       'utf8',
     );
     const allowed = readFileSync(
-      new URL('../fixtures/cancellation/allowed/worker.py', import.meta.url),
+      new URL('../../fixtures/cancellation/allowed/worker.py', import.meta.url),
       'utf8',
     );
     const program = [

@@ -874,22 +874,41 @@ by this rule. Deliberate asyncio suppression with `Task.uncancel()` is not infer
 name: review that boundary with a `python.exceptions` entry for `cancellation-not-propagated`,
 paths and a reason. No inline suppression is added.
 
-The initial path model covers straight-line handlers, `if` branches (including literal constant
-branches), terminal statements and `try/finally` completion overrides. Loops, `match` and nested
-exception dispatch remain unknown; unknown paths are not proof of propagation. Context managers
-can suppress raised errors, so a re-raise inside an unknown context manager is not verified. The
-check does not resolve arbitrary helper implementations, `NoReturn` annotations, assigned type
-aliases, runtime monkey patches, broad `BaseException` handlers or exception groups. It is a focused
-source guard, not a proof of cancellation safety. Ordinary calls are assumed able to return;
-helper-based propagation should re-raise explicitly in the handler or use a reviewed exception.
+The path model covers straight-line handlers, `if` branches (including literal constant branches),
+`for`, `async for` and `while` loops (with `break`, `continue` and `else`), `match` statements and
+`try/finally` completion overrides. A loop that can end without running a `raise` leaves a falling
+path, and a `break` or `continue` that leaves the handler itself consumes the cancellation. A
+`match` without a catch-all case, nested `try/except` dispatch and `except*` are unknown: unknown
+paths are not proof of propagation and never become a finding on their own, although a definite
+`return` elsewhere in the handler still does. Context managers can suppress raised errors, so a
+re-raise inside a `with` block is not verified. The check does not resolve arbitrary helper
+implementations, `NoReturn` annotations, assigned type aliases, runtime monkey patches, broad
+`BaseException` handlers or exception groups. It is a focused source guard, not a proof of
+cancellation safety. Ordinary calls are assumed able to return; helper-based propagation should
+re-raise explicitly in the handler or use a reviewed exception. A handler that deliberately
+translates a cancellation it started itself (a hand-written timeout, or a deferred re-raise after
+a loop) also needs that reviewed exception.
 
-Ruff **0.16.8** (the CI pin) has neither ASYNC103 nor ASYNC104; selecting its ASYNC family does not
-supply them. The documented flake8-async ASYNC103/104 behaviors motivated this narrower owned check;
-no flake8-async dependency or source implementation is used. Existing AST parsing, findings,
-line-independent identities, configuration hashing and path exceptions supply the integration.
-Regression fixtures execute actual asyncio task cancellation and statically exercise the explicit
-Trio/AnyIO forms; they do not establish measured precision over a real-project corpus or execute
-those third-party backends.
+Awaiting a task this function cancelled is the documented way to wait for a child to stop, and the
+`CancelledError` it raises belongs to the child. A `try` whose body only awaits tasks by plain name
+(`await task` or `result = await task`), each cancelled with `name.cancel()` earlier in the same
+function, is therefore not reported, and its handler gets no `swallowed-exception` finding either.
+Awaiting any other expression, or a task this function did not cancel, is still reported. This
+asyncio-only allowance cannot tell the child's cancellation from one aimed at the current task;
+Trio and AnyIO handlers have no such allowance.
+
+Ruff **0.16.8** (pinned for the Python end-to-end suite in `.github/python-e2e-constraints.txt`;
+0.16.9 was checked as well) has no ASYNC102, ASYNC103, ASYNC104 or ASYNC111; its `ASYNC` family
+contains only the codes listed in `ruff rule --all`, none of which checks cancellation propagation,
+so nothing is duplicated by the Ruff `ASYNC` selection. Two other Ruff rules can fire on the same
+handler for a different reason and keep their own identity: `TRY203` (a handler that only
+re-raises is pointless) and `B904` (`raise ValueError()` inside an `except` without `from`). The
+documented flake8-async ASYNC103/104 behaviors motivated this narrower owned check; no flake8-async
+dependency or source implementation is used. Existing AST parsing, findings, line-independent
+identities, configuration hashing and path exceptions supply the integration. Regression fixtures
+execute actual asyncio task cancellation and statically exercise the explicit Trio/AnyIO forms;
+they do not establish measured precision over a real-project corpus or execute those third-party
+backends.
 
 ## Slice 1: tools, reports and identities
 
