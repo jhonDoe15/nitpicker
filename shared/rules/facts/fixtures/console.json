@@ -1,0 +1,19 @@
+{
+  "console": [
+    {
+      "file": "src/test/java/com/acme/CartTest.java",
+      "test": "addsItem",
+      "messages": ["WARN  c.a.Cart - stock for item 4711 is negative", ""]
+    },
+    {
+      "file": "tests/test_cart.py",
+      "test": "",
+      "messages": ["DeprecationWarning: datetime.utcnow() is deprecated"]
+    },
+    {
+      "file": "tests/test_legacy.py",
+      "test": "test_old",
+      "messages": ["ERROR legacy path hit"]
+    }
+  ]
+}

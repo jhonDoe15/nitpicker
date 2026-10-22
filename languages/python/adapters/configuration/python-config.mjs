@@ -6,14 +6,13 @@ import {
   validateProjectRelativePath,
   validateStringArray,
 } from '../../../../shared/config.mjs';
-import { RULE_IDS, SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { PYTHON_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
-import { ruleIdProblem } from './python-rule-ids.mjs';
-
-const LIMIT_RULES = [...SHARED_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
 
 /** The shared limits the top-level "exceptions" lift; python.exceptions lifts every other rule. */
-export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...LIMIT_RULES, RULE_IDS.testConsoleOutput];
+export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...SHARED_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
+import { ruleIdProblem } from './python-rule-ids.mjs';
+
 const ENVIRONMENTS = ['uv', 'poetry', 'path', 'pipenv', 'hatch', 'conda'];
 const FORMATTERS = ['ruff', 'black'];
 const TEST_RUNNERS = ['pytest', 'unittest', 'django', 'nose2'];
@@ -89,7 +88,7 @@ function validateSettings(settings) {
 
 function validateRuleIds(exceptions) {
   for (const [index, { rule }] of exceptions.entries()) {
-    if (LIMIT_RULES.includes(rule)) {
+    if (PYTHON_TOP_LEVEL_EXCEPTION_RULES.includes(rule)) {
       throw configError(
         `"python.exceptions[${String(index)}].rule" is "${rule}", a rule shared by every preset: lift it in the top-level "exceptions" instead`,
       );

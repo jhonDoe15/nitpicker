@@ -113,20 +113,6 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
         python: { exceptions: [{ rule: 'sleep-in-test', paths: ['tests/**'], reason: 'fixture' }] },
       }),
     });
-    commitBranch(project, 'test-run-python-lifted', {
-      ...testFiles,
-      'nitpicker.config.json': JSON.stringify({
-        ...testRun,
-        testConsole: { allow: [{ contains: 'cache is cold', reason: 'fixture' }] },
-        exceptions: [{ rule: 'slow-test', paths: ['tests/**'], reason: 'fixture' }],
-        python: {
-          exceptions: [
-            { rule: 'test-console-output', paths: ['tests/test_noisy.py'], reason: 'fixture' },
-            { rule: 'sleep-in-test', paths: ['tests/**'], reason: 'fixture' },
-          ],
-        },
-      }),
-    });
   });
   afterAll(removeRepositories);
   it('passes a change that alters behaviour: base tests run against base code, not the editable head install', () => {
@@ -296,20 +282,18 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     expect(messages['slow-test']).toBe(
       'test_value_is_cached took <s> s; a unit test may take 0.2 s. Remove time.sleep and other waits (patch the clock) and fake network, database and disk access, or move it to an integration test (an integration or e2e folder, or an integration or e2e marker registered in the pytest config) if it is one. If this is intended, add {"rule":"slow-test","paths":["tests/test_runtime.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
-    for (const branch of ['test-run-lifted', 'test-run-python-lifted']) {
-      const asked = gate(project, branch);
-      expect(new Set(enforceable(asked).map((summary) => summary.split(' ')[0]))).toEqual(
-        new Set(['nitpicker-config']),
-      );
-      const lifted = gate(project, branch, {
-        environment: {
-          CI: 'true',
-          NITPICKER_ACCEPT_POLICY_CHANGE: asked.json('summary.json').policyDigest,
-        },
-      });
-      expect(lifted.exitCode, lifted.text).toBe(0);
-      expect(enforceable(lifted)).toEqual([]);
-    }
+    const asked = gate(project, 'test-run-lifted');
+    expect(new Set(enforceable(asked).map((summary) => summary.split(' ')[0]))).toEqual(
+      new Set(['nitpicker-config']),
+    );
+    const lifted = gate(project, 'test-run-lifted', {
+      environment: {
+        CI: 'true',
+        NITPICKER_ACCEPT_POLICY_CHANGE: asked.json('summary.json').policyDigest,
+      },
+    });
+    expect(lifted.exitCode, lifted.text).toBe(0);
+    expect(enforceable(lifted)).toEqual([]);
   });
   it('reports line coverage as a descriptive finding', () => {
     const result = gate(project, 'violation');

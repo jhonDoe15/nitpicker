@@ -5,14 +5,14 @@ import { testConsoleCheckFor } from './test-console.mjs';
 
 const COVERAGE_CONFIGURATION_FILES = [
   'shared/test-timeouts/resolve.mjs',
-  'shared/glob.mjs',
+  'shared/paths/glob.mjs',
   'shared/head-policy.mjs',
   'shared/policy.mjs',
   'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs',
   'languages/typescript/preset/defaults/vitest.quality.config.ts',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
-  'shared/console/ansi.mjs',
+  'shared/rules/console/ansi.mjs',
   'languages/typescript/preset/test-console/vitest-reporter.config.mjs',
   JAVASCRIPT_PRESET_FILE,
 ];
