@@ -1,0 +1,70 @@
+def reportDir = project.ext.nitpickerReportDir
+def pinned = project.ext.nitpickerPinned
+def effectsDirectory = new File(buildscript.sourceFile.parentFile, '../../effects').canonicalFile
+def effectsOptions = { -> (gradle.startParameter.projectProperties['nitpicker.effects.options'] ?: '').toString() }
+
+configurations {
+    nitpickerEffects { canBeConsumed = false }
+}
+dependencies {
+    ['asm', 'asm-tree', 'asm-analysis'].each { nitpickerEffects "org.ow2.asm:${it}:${pinned.asm}" }
+}
+configurations.nitpickerEffects.incoming.beforeResolve {
+    configurations.nitpickerEffects.resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'org.ow2.asm') {
+            details.useVersion(pinned.asm)
+        }
+    }
+}
+
+tasks.register('nitpickerEffects') {
+    group = 'nitpicker'
+    dependsOn tasks.named('classes')
+    doLast {
+        def directory = reportDir.get().asFile
+        directory.mkdirs()
+        def output = new File(directory, 'effects.json')
+        output.delete()
+        def sources = fileTree(effectsDirectory) { include '**/*.java' }.files.sort { it.absolutePath }
+        def libraries = configurations.nitpickerEffects.files.findAll { it.exists() }.sort { it.name }
+        def bin = { String name -> new File(System.getProperty('java.home'), "bin/${name}").absolutePath }
+        def digest = java.security.MessageDigest.getInstance('SHA-256')
+        sources.each { digest.update((effectsDirectory.toPath().relativize(it.toPath()).toString() + '\u0000').bytes) }
+        sources.each { digest.update(it.bytes) }
+        digest.update("${pinned.asm}|${System.getProperty('java.vendor')}|${System.getProperty('java.version')}".bytes)
+        def cacheRoot = new File(gradle.gradleUserHomeDir, 'caches/nitpicker/effects')
+        def classes = new File(cacheRoot, digest.digest().encodeHex().toString())
+        def run = { List<String> command ->
+            def process = new ProcessBuilder(command).directory(projectDir).redirectErrorStream(true).start()
+            def log = process.inputStream.getText('UTF-8')
+            if (process.waitFor() != 0) {
+                throw new GradleException("The effects engine failed: ${log.trim()}")
+            }
+        }
+        def classpath = libraries*.absolutePath.join(File.pathSeparator)
+        if (!classes.isDirectory()) {
+            def staging = new File(cacheRoot, "${classes.name}.${UUID.randomUUID()}")
+            staging.mkdirs()
+            run([bin('javac'), '-proc:none', '-nowarn', '-d', staging.absolutePath, '-cp', classpath] +
+                sources*.absolutePath)
+            try {
+                java.nio.file.Files.move(staging.toPath(), classes.toPath(),
+                    java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+            } catch (java.nio.file.FileSystemException raced) {
+                staging.deleteDir()
+                if (!classes.isDirectory()) {
+                    throw raced
+                }
+            }
+        }
+        def mainClasses = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
+        def input = new File(temporaryDir, 'effects-input.txt')
+        input.text = (mainClasses.collect { "main ${it.absolutePath}" } +
+            sourceSets.main.compileClasspath.files.findAll { it.exists() }.collect { "classpath ${it.absolutePath}" } +
+            effectsOptions().split(',')*.trim().findAll { it }.collect { "option ${it}" })
+            .collect { it + '\n' }.join('')
+        run([bin('java'), '-cp', classes.absolutePath + File.pathSeparator + classpath, 'nitpicker.effects.Effects',
+             output.absolutePath, input.absolutePath])
+    }
+}
+tasks.named('nitpickerJava') { dependsOn 'nitpickerEffects' }

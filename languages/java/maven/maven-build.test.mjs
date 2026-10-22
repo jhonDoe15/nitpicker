@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { moduleManifest } from './maven-build.mjs';
+import { moduleManifest } from './configuration/module-manifest.mjs';
 import { readReactor } from './maven-project.mjs';
 
 const roots = [];
@@ -56,6 +56,7 @@ describe('moduleManifest', () => {
       resourceRoots: ['src/main/resources'],
       spring: true,
       springArch: true,
+      effects: true,
       guava: false,
       testGuava: false,
       testAwaitility: false,

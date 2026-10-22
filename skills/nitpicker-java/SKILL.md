@@ -63,6 +63,9 @@ Before you change code other modules use, or fix a bug, read
   becomes a constant.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
   for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
+- Data access: give every helper that loads or writes one item a sibling that takes the whole
+  list (`loadAll(ids)` next to `load(id)`), so a caller looping over items has a batch form to
+  call; the gate follows helpers to the repository or client they reach.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
