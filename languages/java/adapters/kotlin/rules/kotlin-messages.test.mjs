@@ -43,11 +43,22 @@ describe('applyKotlinRuleMessages', () => {
       finding(
         'detekt',
         'inline-suppression',
-        'Lift it with "exceptions" in nitpicker.config.json.',
+        `Fix the code. ${exceptionHint('inline-suppression', file)}`,
       ),
     ];
 
     expect(applyKotlinRuleMessages(findings)).toEqual(findings);
+  });
+
+  it('keeps the allowed form and adds no route to a finding without a path', () => {
+    const withoutPath = {
+      ...finding('detekt', 'detekt.style.UnnecessaryLet', 'let expression can be omitted'),
+      path: undefined,
+    };
+
+    expect(applyKotlinRuleMessages([withoutPath])[0].message).toBe(
+      'let expression can be omitted. Call the member directly; `let` is for `value?.let { ... }`.',
+    );
   });
 
   it('routes only to rules that nitpicker.config.json accepts as exceptions', () => {
@@ -65,29 +76,18 @@ describe('Kotlin finding messages', () => {
   const kotlinRoot = path.resolve(import.meta.dirname, '..');
   const HAND_WRITTEN_ROUTE =
     /add an exception for|"exceptions" entry for|If it is right here|To allow it here|to "exceptions" in nitpicker/u;
-  const SUPPRESSIONS = 'rules/kotlin-suppressions.mjs';
-  const PMD_CATALOG_ROUTE = 'review-rules/review-finding.mjs';
-  const OWN_ROUTES = [SUPPRESSIONS, PMD_CATALOG_ROUTE];
 
-  it('get their exception route only from the shared sentence, except for the suppression of a rule and the pmd rule ids', () => {
+  it('get their exception route only from the shared sentence', () => {
     const sources = readdirSync(kotlinRoot, { recursive: true })
       .map((entry) => entry.replaceAll('\\', '/'))
       .filter(
         (entry) =>
           entry.endsWith('.mjs') && !entry.includes('.test.') && !entry.includes('test-support/'),
       );
-    const handWritten = sources
-      .filter((entry) => !OWN_ROUTES.includes(entry))
-      .filter((entry) =>
-        HAND_WRITTEN_ROUTE.test(readFileSync(path.join(kotlinRoot, entry), 'utf8')),
-      );
+    const handWritten = sources.filter((entry) =>
+      HAND_WRITTEN_ROUTE.test(readFileSync(path.join(kotlinRoot, entry), 'utf8')),
+    );
 
     expect(handWritten).toEqual([]);
-    for (const entry of OWN_ROUTES) {
-      expect(
-        HAND_WRITTEN_ROUTE.test(readFileSync(path.join(kotlinRoot, entry), 'utf8')),
-        entry,
-      ).toBe(true);
-    }
   });
 });

@@ -10,7 +10,7 @@ import {
   untrackTemporaryPath,
 } from '../../../core/tooling/temporary-files.mjs';
 import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
-import { applyPythonExceptions } from './configuration/python-exceptions.mjs';
+import { applyPythonExceptions, pythonRouteRule } from './configuration/python-exceptions.mjs';
 import { mutationFindings } from './mutation/python-mutation.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { readPythonFindings } from './python-reports.mjs';
@@ -68,7 +68,11 @@ function collectMutationFindings(options) {
         applyRuleHints(mutationFindings(toolContext(options, reportRoot))),
         options.settings?.exceptions,
       ),
-      { exclude: options.policy?.exclude },
+      {
+        exclude: options.policy?.exclude,
+        exceptions: options.policy?.exceptions,
+        routeRule: pythonRouteRule,
+      },
     ),
   );
 }
@@ -90,6 +94,7 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy, spawn 
     return applyFindingPolicy(applyPythonExceptions(findings, settings.exceptions), {
       ...policy,
       inventoryTool: PYTHON_ANALYZER_NAME,
+      routeRule: pythonRouteRule,
     });
   });
 }
