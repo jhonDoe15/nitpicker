@@ -39,6 +39,7 @@ describe('package-owned child configs', () => {
         'lib/**/.*rc.*',
         'lib/**/__tests__/**',
         'lib/**/__tests__/**/*.ts',
+        'lib/**/test-support/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
         'lib/main/features/*/adapters/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
         'lib/main/features/*/domain/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
         'spec/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
@@ -176,6 +177,19 @@ describe('package-owned child configs', () => {
       '.nitpicker-*',
       '!.nitpicker-diff-stryker.*',
       '!.nitpicker-diff-tsconfig.stryker.json',
+    ]);
+  });
+  it('crap.config.mjs and stryker.config.mjs skip test-support/ in a colocated layout', async () => {
+    const colocated = { ...policy, layout: { ...policy.layout, colocatedTests: true } };
+    const crap = await loadConfig('defaults/crap.config.mjs', colocated);
+    const separateCrap = await loadConfig('defaults/crap.config.mjs', policy);
+    expect(crap.excludes.filter((glob) => !separateCrap.excludes.includes(glob))).toEqual([
+      'lib/**/test-support/**',
+    ]);
+    const stryker = await loadConfig('defaults/stryker.config.mjs', colocated);
+    const separateStryker = await loadConfig('defaults/stryker.config.mjs', policy);
+    expect(stryker.mutate.filter((glob) => !separateStryker.mutate.includes(glob))).toEqual([
+      '!lib/**/test-support/**',
     ]);
   });
   it('dependency-cruiser.config.mjs rules and exclusions use the custom roots', async () => {

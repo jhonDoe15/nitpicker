@@ -42,7 +42,24 @@ function readScope(read, root) {
   }
 }
 
-export function projectConfigFor({ formatter, precedence, policyRoot }) {
+const COMPARABLE_QUOTES = {
+  ruff: { double: 'double', single: 'single' },
+  black: { normalize: 'double' },
+};
+
+function agrees({ formatter, conventions }, key, value) {
+  const followedValue = conventions[PYTHON_SETTING_IDS[key]];
+  if (followedValue === undefined) {
+    return true;
+  }
+  if (key === 'quotes') {
+    const comparable = COMPARABLE_QUOTES[formatter][value];
+    return comparable === undefined || comparable === followedValue;
+  }
+  return followedValue === String(value);
+}
+
+export function projectConfigFor({ formatter, precedence, policyRoot, conventions = {} }) {
   const { read, looked } = READERS[formatter];
   const layers = precedenceLayers(precedence);
   if (!layers.usesProject) {
@@ -55,6 +72,9 @@ export function projectConfigFor({ formatter, precedence, policyRoot }) {
   return {
     optedIn: true,
     project,
-    wins: (key) => project.set[key] !== undefined && !layers.nitpickerFirst,
+    wins: (key) =>
+      project.set[key] !== undefined &&
+      !layers.nitpickerFirst &&
+      agrees({ formatter, conventions }, key, project.set[key]),
   };
 }

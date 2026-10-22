@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
-import { createIdentityCounter } from '../../../ingest/common.mjs';
+import { createIdentityCounter } from '../../../../../shared/ingest/common.mjs';
 import { compilerWarningRule } from './kotlin-rules.mjs';
 
 const TOOL = 'kotlinc';
