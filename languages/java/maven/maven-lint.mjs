@@ -187,10 +187,9 @@ function checkstyleJava(reportDir, module) {
 
 export function runCheckstyle({ module, reportDir, tools, configs, pinned, style }) {
   const java = checkstyleJava(reportDir, module);
-  const setup = (test) => ({
-    ...checkstyleSetup({ reportDir, tools, configs, pinned, style, test }),
-    java,
-  });
+  function setup(test) {
+    return { ...checkstyleSetup({ reportDir, tools, configs, pinned, style, test }), java };
+  }
   const context = { module, tools, pinned, setup: setup(false) };
   checkstyleReport({
     ...context,

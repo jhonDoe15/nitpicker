@@ -6,7 +6,10 @@ import { javaCommand } from '../maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { layerCheckstyle } from '../../adapters/tool-config/checkstyle/checkstyle-layers.mjs';
 import { unformattedCheckstyle } from '../../adapters/tool-config/checkstyle/unformatted-checks.mjs';
-import { nitpickerCheckstyleConfig, withGuardChecks } from '../../builds/rulesets/checkstyle-config.mjs';
+import {
+  nitpickerCheckstyleConfig,
+  withGuardChecks,
+} from '../../builds/rulesets/checkstyle-config.mjs';
 
 const LAYOUT_SUPPRESSIONS = 'checkstyle-suppressions.xml';
 const UNFORMATTED_SUPPRESSIONS = 'checkstyle-suppressions-unformatted.xml';

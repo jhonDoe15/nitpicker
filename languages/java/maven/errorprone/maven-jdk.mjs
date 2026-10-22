@@ -83,6 +83,10 @@ function describe(java) {
   return { java, feature: featureVersion(`${result.stderr}${result.stdout}`) };
 }
 
+export function installedJdks() {
+  return jdkHomes().map((home) => ({ home, ...describe(path.join(home, 'bin', 'java')) }));
+}
+
 export function toolJava({ tool, minimum, preview = false }) {
   const project = describe(javaCommand('java'));
   if (project.missing) {
@@ -93,6 +97,5 @@ export function toolJava({ tool, minimum, preview = false }) {
   if (project.feature === undefined) {
     throw new Error(`nitpicker could not read the version of ${project.java} (java -version)`);
   }
-  const installed = jdkHomes().map((jdk) => describe(path.join(jdk, 'bin', 'java')));
-  return chooseToolJdk({ tool, minimum, project, preview, installed });
+  return chooseToolJdk({ tool, minimum, project, preview, installed: installedJdks() });
 }

@@ -72,9 +72,7 @@ function helperRoots(plugin, goal, basedir) {
     plugin === undefined
       ? []
       : executionsWithGoal(plugin, goal).flatMap((execution) =>
-          all(execution, CONFIGURATION, 'sources', 'source').map(
-            (source) => source.text ?? '.',
-          ),
+          all(execution, CONFIGURATION, 'sources', 'source').map((source) => source.text ?? '.'),
         );
   return rootsInside(basedir, sources);
 }

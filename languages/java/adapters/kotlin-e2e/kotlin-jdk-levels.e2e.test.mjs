@@ -1,5 +1,4 @@
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
-import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 import {
   analyzeAtLevel,
   jdkHome,
@@ -11,15 +10,19 @@ import { KOTLIN_POLICY, kotlinLevelFiles } from '../java-e2e/test-support/kotlin
 const kotlinEnabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const gradleOnJdk25 = process.env.NITPICKER_GRADLE_ON_JDK25;
+const roots = [];
 
 function analyzeKotlin(release, runner) {
-  return analyzeAtLevel({
-    release,
-    files: kotlinLevelFiles(release),
-    jdk: runner.jdk,
-    build: { gradle: runner.gradle },
-    policy: KOTLIN_POLICY,
-  });
+  return analyzeAtLevel(
+    {
+      release,
+      files: kotlinLevelFiles(release),
+      jdk: runner.jdk,
+      build: { gradle: runner.gradle },
+      policy: KOTLIN_POLICY,
+    },
+    roots,
+  );
 }
 
 const KOTLIN_EXPECTED = {
@@ -44,7 +47,7 @@ describe.skipIf(!kotlinEnabled)('the Kotlin preset on each supported JDK level',
   });
 
   afterAll(() => {
-    removeLevelProjects();
+    removeLevelProjects(roots);
   });
 
   for (const release of [17, 25]) {
@@ -55,7 +58,7 @@ describe.skipIf(!kotlinEnabled)('the Kotlin preset on each supported JDK level',
           KOTLIN_EXPECTED,
         );
       },
-      GRADLE_STEP_TIMEOUT_MS,
+      180_000,
     );
   }
 
@@ -64,6 +67,6 @@ describe.skipIf(!kotlinEnabled)('the Kotlin preset on each supported JDK level',
     () => {
       expect(analyzeKotlin(25, { gradle: gradleOnJdk25, jdk: 25 })).toEqual(KOTLIN_EXPECTED);
     },
-    GRADLE_STEP_TIMEOUT_MS,
+    180_000,
   );
 });

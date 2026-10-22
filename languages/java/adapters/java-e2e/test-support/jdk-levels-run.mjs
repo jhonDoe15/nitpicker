@@ -1,12 +1,9 @@
-import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { vi } from 'vitest';
 import { collectJavaFindings } from '../../java-diff.mjs';
-import { featureVersion, jdkHomes } from '../../../maven/errorprone/maven-jdk.mjs';
-
-const roots = [];
+import { installedJdks } from '../../../maven/errorprone/maven-jdk.mjs';
 
 export const TESTS_FAILED = {
   tool: 'tests',
@@ -20,18 +17,18 @@ export const TESTS_FAILED = {
 };
 
 export function jdkHome(feature) {
-  return jdkHomes().find((home) => {
-    const result = spawnSync(path.join(home, 'bin', 'java'), ['-version'], { encoding: 'utf8' });
-    return featureVersion(`${result.stderr}${result.stdout}`) === feature;
-  });
+  return installedJdks().find((jdk) => jdk.feature === feature)?.home;
 }
 
 function writeProject(release, files) {
   const root = mkdtempSync(path.join(tmpdir(), `nitpicker-jdk-${String(release)}-`));
-  roots.push(root);
   for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
+    const full = path.resolve(root, file);
+    if (!full.startsWith(root + path.sep)) {
+      throw new Error(`${file} is outside the project`);
+    }
+    mkdirSync(path.dirname(full), { recursive: true });
+    writeFileSync(full, text);
   }
   return root;
 }
@@ -51,12 +48,14 @@ function reportedFindings(findings) {
   ].sort();
 }
 
-export function analyzeAtLevel({ release, files, jdk, build, policy }) {
+export function analyzeAtLevel({ release, files, jdk, build, policy }, roots) {
   const javaHome = jdkHome(jdk);
   if (javaHome !== undefined) {
     vi.stubEnv('JAVA_HOME', javaHome);
   }
-  const findings = collectJavaFindings(writeProject(release, files), { ...build, policy });
+  const root = writeProject(release, files);
+  roots.push(root);
+  const findings = collectJavaFindings(root, { ...build, policy });
   return {
     toolErrors: findings
       .filter((finding) => finding.classification === 'tool-error')
@@ -65,7 +64,7 @@ export function analyzeAtLevel({ release, files, jdk, build, policy }) {
   };
 }
 
-export function removeLevelProjects() {
+export function removeLevelProjects(roots) {
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }

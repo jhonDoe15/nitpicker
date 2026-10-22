@@ -1,6 +1,5 @@
 import { spawnSync } from 'node:child_process';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
-import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 import {
   analyzeAtLevel,
   jdkHome,
@@ -12,6 +11,7 @@ const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const maven = process.env.NITPICKER_MAVEN;
 const gradleOnJdk25 = process.env.NITPICKER_GRADLE_ON_JDK25;
+const roots = [];
 
 const RECORDS = `  public sealed interface Shape permits Circle, Square {}
 
@@ -173,18 +173,21 @@ ${DEPENDENCIES.map(
 };
 
 function analyze(build, release, runner = { gradle, jdk: LEVELS[release].gradleJdk }) {
-  return analyzeAtLevel({
-    release,
-    files: {
-      ...BUILD_FILES[build](release),
-      ...SOURCES,
-      'src/main/java/demo/Shapes.java': LEVELS[release].shapes,
-      'src/main/java/demo/Messy.java': LEVELS[release].messy,
+  return analyzeAtLevel(
+    {
+      release,
+      files: {
+        ...BUILD_FILES[build](release),
+        ...SOURCES,
+        'src/main/java/demo/Shapes.java': LEVELS[release].shapes,
+        'src/main/java/demo/Messy.java': LEVELS[release].messy,
+      },
+      jdk: build === 'maven' ? release : runner.jdk,
+      build: build === 'maven' ? { maven } : { gradle: runner.gradle },
+      policy: { testSeconds: { unitTestSeconds: -1 } },
     },
-    jdk: build === 'maven' ? release : runner.jdk,
-    build: build === 'maven' ? { maven } : { gradle: runner.gradle },
-    policy: { testSeconds: { unitTestSeconds: -1 } },
-  });
+    roots,
+  );
 }
 
 const REPORTED = [
@@ -206,8 +209,8 @@ describe.skipIf(!enabled)('the Java preset on each supported JDK level', () => {
   });
 
   afterAll(() => {
-    spawnSync(gradle, ['--stop'], { stdio: 'ignore' });
-    removeLevelProjects();
+    spawnSync(gradle, ['--stop'], { stdio: 'ignore', timeout: 60_000 });
+    removeLevelProjects(roots);
   });
 
   for (const release of [17, 25]) {
@@ -217,7 +220,7 @@ describe.skipIf(!enabled)('the Java preset on each supported JDK level', () => {
         () => {
           expect(analyze(build, release)).toEqual(EXPECTED[release]);
         },
-        GRADLE_STEP_TIMEOUT_MS,
+        180_000,
       );
     }
   }
@@ -227,6 +230,6 @@ describe.skipIf(!enabled)('the Java preset on each supported JDK level', () => {
     () => {
       expect(analyze('gradle', 25, { gradle: gradleOnJdk25, jdk: 25 })).toEqual(EXPECTED[25]);
     },
-    GRADLE_STEP_TIMEOUT_MS,
+    180_000,
   );
 });

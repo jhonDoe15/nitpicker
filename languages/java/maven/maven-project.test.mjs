@@ -1,24 +1,27 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { jacocoPlugin } from './maven-tools.mjs';
 import { lifecycleArgs, readReactor } from './maven-project.mjs';
+import {
+  failsafe,
+  inBuild,
+  IT_GOAL,
+  plugin,
+  raw,
+  readSoloModule,
+  writeReactor,
+} from './test-support/reactor-poms.mjs';
 
 const roots = [];
 
 function reactor(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-reactor-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
+  return writeReactor(files, roots);
 }
 
-const raw = (artifactId, parent = '') =>
-  `<project>${parent === '' ? '<groupId>demo</groupId>' : `<parent><groupId>${parent}</groupId></parent>`}<artifactId>${artifactId}</artifactId></project>`;
+function soloModule(inner) {
+  return readSoloModule(inner, roots);
+}
 
 function effective(root) {
   return `<?xml version="1.0"?>
@@ -250,30 +253,6 @@ describe('readReactor', () => {
     expect(() => readReactor(root, effectivePom)).toThrow(new Error(message(root)));
   });
 });
-
-const IT_GOAL = '<goals><goal>integration-test</goal></goals>';
-
-function soloModule(inner) {
-  const root = reactor({ 'pom.xml': raw('solo') });
-  const [module] = readReactor(
-    root,
-    `<project><groupId>demo</groupId><artifactId>solo</artifactId>${inner}</project>`,
-  );
-  return module;
-}
-
-function plugin(artifactId, body, groupId = 'org.apache.maven.plugins') {
-  return `<plugin><groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId>${body}</plugin>`;
-}
-
-function failsafe(executions, configuration = '') {
-  return plugin(
-    'maven-failsafe-plugin',
-    `<configuration>${configuration}</configuration><executions>${executions}</executions>`,
-  );
-}
-
-const inBuild = (plugins) => `<build><plugins>${plugins}</plugins></build>`;
 
 describe('lifecycleArgs', () => {
   it('runs verify, with release, publishing and network plugins and JaCoCo checks off, when Failsafe runs', () => {
