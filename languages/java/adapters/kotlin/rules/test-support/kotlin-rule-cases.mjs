@@ -1,4 +1,5 @@
 import { SUPPRESSION_RULE } from '../kotlin-rules.mjs';
+import { kotlinGuardCases } from './kotlin-guard-cases.mjs';
 
 const COROUTINE_IMPORTS =
   'import kotlinx.coroutines.GlobalScope\nimport kotlinx.coroutines.launch\n';
@@ -79,16 +80,6 @@ export const kotlinRuleCases = [
     allowed: 'fun make(): StringBuilder = StringBuilder().apply { append("a") }\n',
   },
   {
-    id: 'legacyDate',
-    rule: 'detekt.style.ForbiddenImport',
-    message:
-      'The import `java.util.Date` has been forbidden: Use java.time (Instant, LocalDate, ZonedDateTime, ZoneId and DateTimeFormatter); convert a Date another API returns with toInstant() in the same expression.',
-    allowedForm: 'java.time',
-    banned: 'import java.util.Date\n\nfun stamp(): Date = Date()\n',
-    allowed:
-      'import java.time.Instant\n\nfun stamp(millis: Long): Instant = Instant.ofEpochMilli(millis)\n',
-  },
-  {
     id: 'unnecessaryLet',
     rule: 'detekt.style.UnnecessaryLet',
     message: 'let expression can be omitted',
@@ -140,6 +131,7 @@ export const kotlinRuleCases = [
       '@Suppress("UnsafeCallOnNullableType")\nfun length(text: String?): Int = text!!.length\n',
     allowed: 'fun length(text: String?): Int = text?.length ?: 0\n',
   },
+  ...kotlinGuardCases,
 ];
 
 const VARIANT_NAMES = { banned: 'Banned', allowed: 'Allowed' };

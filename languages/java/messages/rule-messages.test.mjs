@@ -114,11 +114,25 @@ describe('withRuleMessage', () => {
     );
   });
 
-  it('offers no exception outside the java preset, whose exceptions cannot lift these tools', () => {
+  it('offers the exception route for a Java source of a Kotlin project, as the Kotlin preset lifts Java rule ids there', () => {
     expect(
       withRuleMessage(finding('pmd', 'SystemPrintln', 'Usage of System.out/err'), {
         preset: 'kotlin',
       }).message,
+    ).toBe(
+      `Usage of System.out/err. ${readCatalog('pmd').SystemPrintln.fix} ${hint('pmd/SystemPrintln')}`,
+    );
+  });
+
+  it('offers no exception for a finding in a Kotlin source', () => {
+    expect(
+      withRuleMessage(
+        {
+          ...finding('pmd', 'SystemPrintln', 'Usage of System.out/err'),
+          path: 'src/main/kotlin/A.kt',
+        },
+        { preset: 'kotlin' },
+      ).message,
     ).toBe(`Usage of System.out/err. ${readCatalog('pmd').SystemPrintln.fix}`);
   });
 
@@ -129,8 +143,9 @@ describe('withRuleMessage', () => {
     ).toBe(`Usage of System.out/err. ${readCatalog('pmd').SystemPrintln.fix}`);
   });
 
-  it('gives findings of the guard tools the same exception route, in the java preset only', () => {
+  it('gives findings of the guard tools the same exception route, in a Kotlin project on Java sources only', () => {
     const lint = finding('javac', 'rawtypes', 'found raw type: List. Add the type arguments.');
+    const kotlinLint = { ...lint, path: 'src/main/kotlin/A.kt' };
     const cycle = finding(
       'coupling',
       'package-cycle',
@@ -141,7 +156,7 @@ describe('withRuleMessage', () => {
     expect(
       [
         applyRuleMessages([lint, cycle, stability]),
-        applyRuleMessages([lint], { preset: 'kotlin' }),
+        applyRuleMessages([lint, kotlinLint], { preset: 'kotlin' }),
       ].map((findings) => findings.map(({ message }) => message)),
     ).toEqual([
       [
@@ -149,19 +164,24 @@ describe('withRuleMessage', () => {
         `${cycle.message} ${hint('coupling/package-cycle')}`,
         stability.message,
       ],
-      [lint.message],
+      [`${lint.message} ${hint('javac/rawtypes')}`, lint.message],
     ]);
   });
 
-  it('keeps messages that already name the config file, and findings of other tools', () => {
+  it('keeps messages that already end with the route or the exclude route, and findings of other tools', () => {
     const spring = finding(
       'pmd',
       'SpringConstructorInjection',
-      'Inject through the constructor. If it is right here, add an exception for pmd/SpringConstructorInjection in nitpicker.config.json.',
+      `Inject through the constructor. ${hint('pmd/SpringConstructorInjection')}`,
+    );
+    const clone = finding(
+      'duplicates',
+      'duplicate-clone',
+      'This code repeats B.java:3. Keep one copy and call it from both places. If the repetition is intended, add A.java or B.java to "exclude" in nitpicker.config.json.',
     );
     const archunit = finding('archunit', 'layers', 'Layer violated');
 
-    expect(applyRuleMessages([spring, archunit])).toEqual([spring, archunit]);
+    expect(applyRuleMessages([spring, clone, archunit])).toEqual([spring, clone, archunit]);
   });
 });
 

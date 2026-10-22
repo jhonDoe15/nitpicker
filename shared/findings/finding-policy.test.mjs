@@ -46,7 +46,7 @@ describe('applyFindingPolicy', () => {
 
     expect(
       applyFindingPolicy(findings, {
-        exceptions: [{ rule: 'detekt.style.ForbiddenMethodCall', glob: 'src/Main.kt' }],
+        exceptions: [{ rule: 'detekt.style.ForbiddenMethodCall', paths: ['src/Main.kt'] }],
       }),
     ).toEqual([findings[1], findings[2]]);
   });
@@ -61,9 +61,27 @@ describe('applyFindingPolicy', () => {
 
     expect(
       applyFindingPolicy(findings, {
-        exceptions: [{ rule: 'pmd/Rule', glob: 'src/main/java/legacy/**' }],
+        exceptions: [{ rule: 'pmd/Rule', paths: ['src/main/java/legacy/**'] }],
       }),
     ).toEqual([findings[1], findings[2], findings[3]]);
+  });
+
+  it('drops a finding of a function exception only inside that function', () => {
+    const at = (symbol) => ({
+      ...finding('src/Store.java'),
+      tool: 'jacoco',
+      rule: 'changed-branch-coverage',
+      symbol,
+    });
+    const findings = [at('Store.save'), at('Store.load'), at(undefined)];
+
+    expect(
+      applyFindingPolicy(findings, {
+        exceptions: [
+          { rule: 'changed-branch-coverage', paths: ['src/Store.java'], function: 'Store.save' },
+        ],
+      }),
+    ).toEqual([findings[1], findings[2]]);
   });
 
   it('baselines inventory sites on both snapshots, using the head inventory', () => {
@@ -173,8 +191,7 @@ describe('applyFindingPolicy on a finding about two files', () => {
 
   it('lifts the rule when an exception glob matches either file', () => {
     const lift = (glob) =>
-      applyFindingPolicy(all, { exceptions: [{ rule: 'duplicate-clone', glob }] });
-
+      applyFindingPolicy(all, { exceptions: [{ rule: 'duplicate-clone', paths: [glob] }] });
     expect(lift('src/a/**')).toEqual(sizes);
     expect(lift('src/b/**')).toEqual(sizes);
     expect(lift('src/c/**')).toEqual(all);

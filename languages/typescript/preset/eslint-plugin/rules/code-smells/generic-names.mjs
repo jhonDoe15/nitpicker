@@ -75,11 +75,11 @@ export const rule = {
     docs: { description: 'Name files, folders and types for what they do, not utils or Manager' },
     schema: [],
     messages: {
-      file: "The file name '{{name}}' says nothing about what the file does. Name it for its job (`price-rounding.ts`); pure logic shared between features goes in the shared folder under such a name. If the name is intended, add an exception for nitpicker/no-generic-names in nitpicker.config.json.",
+      file: "The file name '{{name}}' says nothing about what the file does. Name it for its job (`price-rounding.ts`); pure logic shared between features goes in the shared folder under such a name. An exception fits only when the name is intended.",
       folder:
-        "The folder '{{name}}' says nothing about what it holds. Group files by feature, and put pure logic shared between features in the shared folder under a name that says what it does. If the name is intended, add an exception for nitpicker/no-generic-names in nitpicker.config.json.",
+        "The folder '{{name}}' says nothing about what it holds. Group files by feature, and put pure logic shared between features in the shared folder under a name that says what it does. An exception fits only when the name is intended.",
       declaration:
-        "'{{name}}' says nothing about what it does. Name it for its job (`PriceRounder`, `OrderTotals`) instead of Utils, Helper, Manager, Common or Misc. If the name is intended, add an exception for nitpicker/no-generic-names in nitpicker.config.json.",
+        "'{{name}}' says nothing about what it does. Name it for its job (`PriceRounder`, `OrderTotals`) instead of Utils, Helper, Manager, Common or Misc. An exception fits only when the name is intended.",
     },
   },
   create(context) {

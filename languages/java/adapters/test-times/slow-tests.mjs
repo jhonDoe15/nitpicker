@@ -10,17 +10,21 @@ import {
   slowTestBudget,
 } from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
 import { SLOW_TEST_FIXES } from '../../../../shared/rules/slow-tests/slow-test-fixes.mjs';
-import { isSpringBootTest, sourceOf } from './spring-boot-tests.mjs';
+import {
+  isIntegrationTest,
+  isSpringBootTest,
+  isUnitTestTask,
+  sourceOf,
+} from './integration-tests.mjs';
 import { inheritedMethod, superclassOf } from './inherited-tests.mjs';
 import { templateMethods, testMethod } from './test-methods.mjs';
 
 const SLOW_TEST_TOOL = 'test-runtime';
 export const TEST_RESULTS_DIRECTORY = 'test-results';
-const UNIT_TEST_TASKS = new Set(['test', 'surefire']);
-const INTEGRATION_CLASS = /(?:IT|ITCase|IntegrationTests?|IntegrationSpec|ISpec)$/u;
 const MOVE_ADVICE = {
-  gradle: ', or move it to an integration test source set if it is one',
-  maven: ', or make it an integration test that Failsafe runs (*IT) if it is one',
+  gradle:
+    ', or if it is an integration test, name it *IT or move it to an integration test source set',
+  maven: ', or if it is an integration test, name it *IT so that Failsafe runs it',
 };
 const MAVEN_TASKS = new Set(['surefire', 'failsafe']);
 
@@ -63,10 +67,11 @@ function readOptional(root, relative) {
 }
 
 function isIntegration(testCase, text, context) {
-  const simple = testCase.className.split('.').pop().split('$')[0];
   return (
-    !UNIT_TEST_TASKS.has(testCase.task) ||
-    INTEGRATION_CLASS.test(simple) ||
+    isIntegrationTest({
+      className: testCase.className,
+      unitSource: isUnitTestTask(testCase.task),
+    }) ||
     (text !== undefined && isSpringBootTest(text, context))
   );
 }

@@ -6,29 +6,7 @@ import { configurationFiles } from '../adapters/java-analyzer.mjs';
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const JAVA_PACKAGE = 'languages/java/';
 const HAND_WRITTEN_ROUTE =
-  /add an exception for|"exceptions" entry for|If it is right here|To allow it here|to "exceptions" in nitpicker/u;
-const OTHER_RULES_ROUTE = new Map([
-  [
-    'adapters/suppressions/java-suppressions.mjs',
-    'names the route of the rule a suppression hides',
-  ],
-  [
-    'adapters/suppressions/errorprone/errorprone-escapes.mjs',
-    'names the route of the Error Prone check a suppression hides',
-  ],
-  [
-    'adapters/kotlin/rules/kotlin-suppressions.mjs',
-    'names the route of the rule a suppression hides',
-  ],
-  [
-    'adapters/kotlin/rules/kotlin-rules.mjs',
-    'the Kotlin preset, whose exceptions lift detekt rules',
-  ],
-  [
-    'adapters/kotlin/review-rules/review-finding.mjs',
-    'the Kotlin review rules, which the Kotlin preset routes by their own rule',
-  ],
-]);
+  /add an exception for|"exceptions" entry for|If it is right here|To allow it here|If this is intended, add|to "exceptions" in nitpicker/u;
 
 function messageSources() {
   return configurationFiles()
@@ -37,26 +15,15 @@ function messageSources() {
 }
 
 describe('Java finding messages', () => {
-  it('in every file that shapes findings get their exception route only from applyRuleMessages', () => {
-    const handWritten = messageSources()
-      .filter((file) => !OTHER_RULES_ROUTE.has(file))
-      .flatMap((file) =>
-        readFileSync(path.join(packageRoot, JAVA_PACKAGE, file), 'utf8')
-          .split('\n')
-          .flatMap((line, index) =>
-            HAND_WRITTEN_ROUTE.test(line) ? [`${file}:${String(index + 1)}`] : [],
-          ),
-      );
-
-    expect(handWritten).toEqual([]);
-  });
-
-  it('list only files that still hold a route for another rule', () => {
-    const stale = [...OTHER_RULES_ROUTE.keys()].filter(
-      (file) =>
-        !HAND_WRITTEN_ROUTE.test(readFileSync(path.join(packageRoot, JAVA_PACKAGE, file), 'utf8')),
+  it('in every file that shapes findings get their exception route only from the shared sentence', () => {
+    const handWritten = messageSources().flatMap((file) =>
+      readFileSync(path.join(packageRoot, JAVA_PACKAGE, file), 'utf8')
+        .split('\n')
+        .flatMap((line, index) =>
+          HAND_WRITTEN_ROUTE.test(line) ? [`${file}:${String(index + 1)}`] : [],
+        ),
     );
 
-    expect(stale).toEqual([]);
+    expect(handWritten).toEqual([]);
   });
 });

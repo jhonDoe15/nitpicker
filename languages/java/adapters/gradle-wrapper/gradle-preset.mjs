@@ -14,6 +14,7 @@ const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
 const CLOCK_SLACK_MS = 2000;
 const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
+const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache'];
 
 export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
   return snapshot === 'head' && baselineRoot !== undefined
@@ -23,9 +24,7 @@ export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
 
 function commonArguments({ reportBase, policy, kotlinArguments }) {
   return [
-    '--console=plain',
-    '--quiet',
-    '--no-configuration-cache',
+    ...GRADLE_FLAGS,
     `-Pnitpicker.reportDir=${reportBase}`,
     ...lintBaselineProperties(policy),
     ...kotlinArguments,
@@ -59,6 +58,17 @@ function exportArguments(common, { initScript, directory, policy }) {
   ];
 }
 
+function gradleOptions(target, { projectRoot, budget, spawn }) {
+  return {
+    cwd: projectRoot,
+    encoding: 'utf8',
+    maxBuffer: MAX_OUTPUT_BYTES,
+    shell: target.shell,
+    timeout: budget.commandTimeoutMs,
+    spawn,
+  };
+}
+
 function headFactProperties(policy) {
   return [
     ...javaStyleProperties(policy),
@@ -66,10 +76,27 @@ function headFactProperties(policy) {
   ];
 }
 
+function gradleStages(common, { projectRoot, initScript, policy, directory }) {
+  const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
+  const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
+  return [
+    ...(layersCheckstyle ? [() => exportArguments(common, { initScript, directory, policy })] : []),
+    () => [
+      ...common,
+      ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
+      ...headFactProperties(policy),
+      '-I',
+      initScript,
+      'nitpickerJava',
+    ],
+  ];
+}
+
 export function runJavaPreset(
   projectRoot,
   {
     gradle,
+    spawn,
     initScript = INIT_SCRIPT,
     policy = {},
     reportBase,
@@ -80,32 +107,15 @@ export function runJavaPreset(
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
   const directory = path.join(reportBase, 'tool-config');
   const since = Date.now() - CLOCK_SLACK_MS;
-  const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
   withKotlin((kotlinArguments) => {
     const common = commonArguments({ reportBase, policy, kotlinArguments });
-    const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
-    const stages = [
-      ...(layersCheckstyle
-        ? [() => exportArguments(common, { initScript, directory, policy })]
-        : []),
-      () => [
-        ...common,
-        ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
-        ...headFactProperties(policy),
-        '-I',
-        initScript,
-        'nitpickerJava',
-      ],
-    ];
-    for (const stage of stages) {
+    for (const stage of gradleStages(common, { projectRoot, initScript, policy, directory })) {
       const target = gradleTarget({ projectRoot, configured: gradle, args: stage() });
-      const result = runGradle(target.command, target.args, {
-        cwd: projectRoot,
-        encoding: 'utf8',
-        maxBuffer: MAX_OUTPUT_BYTES,
-        shell: target.shell,
-        timeout: budget.commandTimeoutMs,
-      });
+      const result = runGradle(
+        target.command,
+        target.args,
+        gradleOptions(target, { projectRoot, budget, spawn }),
+      );
       assertSucceeded(result, projectRoot, { reportBase, since });
     }
   });

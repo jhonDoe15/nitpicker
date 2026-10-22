@@ -28,7 +28,12 @@ const TEST_REPORTS = {
 const LIFTABLE_RULES = ['test-only-export', 'test-console-output'];
 const addedField = unusedFieldMessage('added');
 const xmlText = (text) =>
-  text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
+  text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
 
 const CLONE_MESSAGE = [
   'This code repeats src/main/java/demo/Second.java:3 (30 lines).',

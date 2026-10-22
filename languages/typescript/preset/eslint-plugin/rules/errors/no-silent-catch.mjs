@@ -104,7 +104,7 @@ export const rule = {
         "Rethrow with the cause (`throw new FeatureError('failed', { cause: error })`),",
         "return a failure result (`return { kind: 'malformed-json' }`, `return { ok: false, error }`)",
         'or report it to the caller (an HTTP error response, an error state shown to the user).',
-        'If dropping it is intended, add an exception for nitpicker/no-silent-catch in nitpicker.config.json.',
+        'An exception fits only when dropping it is intended.',
       ].join(' '),
     },
   },

@@ -150,7 +150,7 @@ Before you change code other modules use, or fix a bug, read
   (500 lines) and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection
   read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply
   to main sources only, as do the enum predicate, forwarding wrapper and singular-and-plural rules.
-  If a PMD rule or an Error Prone check flags test code that is right, add an
+  If a PMD rule or an Error Prone check flags test code that is right, ask a human for a reviewed
   exception for `pmd/<rule>` or `errorprone/<Check>`.
 
 ## Editing existing code
@@ -185,10 +185,13 @@ Before you change code other modules use, or fix a bug, read
 - Code that is right despite a rule gets a reviewed `exceptions` entry in `nitpicker.config.json`
   that names the finding as printed, for example `pmd/UnusedPrivateField`,
   `checkstyle/AbbreviationAsWordInName` or `errorprone/FieldCanBeFinal`, with its paths and a
-  reason. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
+  reason. A structure, CRAP, changed-branch coverage, duplicate or coupling finding ends with its
+  own entry. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
   weaker test, to get past the gate yourself: stop and ask.
 - A violated ArchUnit rule is a finding (`archunit/<rule>`) on the offending class. Run the
-  `*ArchTest` class with the build's test task to read the full violation, and fix the code.
+  `*ArchTest` class with the build's test task to read the full violation, and fix the code. In a Spring
+  project nitpicker's own `archunit/spring-...` rules apply too; their message says what to change
+  (see [spring.md](spring.md)).
 
 ## Kotlin projects
 

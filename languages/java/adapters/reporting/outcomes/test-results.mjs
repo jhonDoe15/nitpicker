@@ -17,6 +17,12 @@ import {
   sourceFileOf,
   sourceLocator,
 } from '../kotlin-reports.mjs';
+import {
+  declarationUnits,
+  functionLocator,
+  sourceTextReader,
+  structureFunctions,
+} from '../function-locator.mjs';
 
 export const TEST_FAILURES_REPORT = 'test-failures.json';
 const TESTS_TOOL = 'tests';
@@ -110,11 +116,6 @@ function isProjectFile(projectRoot, file) {
   return full !== undefined && existsSync(full);
 }
 
-function projectFileText(projectRoot, file) {
-  const full = containedFile(projectRoot, file);
-  return full !== undefined && existsSync(full) ? readFileSync(full, 'utf8') : undefined;
-}
-
 function jacocoFindings(context) {
   const { projectRoot, jacoco } = context;
   return jacocoSourceRoots(context).flatMap((sourceRoot) =>
@@ -146,6 +147,7 @@ function pitFindings(context) {
   const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
   const { findings } = ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
+    functionAt: functionLocator(context),
   });
   return context.kotlin ? reportOnlyKotlinMutants(findings) : findings;
 }
@@ -153,8 +155,10 @@ function pitFindings(context) {
 function branchFindings(context) {
   const { projectRoot } = context;
   return ingestJacocoBranches(context.jacoco, {
+    functions: structureFunctions(context),
+    units: declarationUnits,
     locate: sourceLocator(projectRoot, jacocoSourceRoots(context)),
-    sourceText: (file) => projectFileText(projectRoot, file),
+    sourceText: sourceTextReader(projectRoot),
   }).findings;
 }
 

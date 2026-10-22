@@ -15,10 +15,12 @@ import { readInlineSuppressionFindings } from '../suppressions/java-suppressions
 import { readCommentFindings } from '../comments/java-comments.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mjs';
+import { readSpringArchFindings } from '../spring-arch/spring-arch.mjs';
 import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
+import { readUnrunTestFindings } from '../test-runs/unrun-tests.mjs';
 import { sarifFindings } from './sarif/sarif-reports.mjs';
 import { projectWideFindings } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
@@ -139,6 +141,7 @@ function readModuleFindings(context, crapLimit) {
     ...skippedToolFindings(context),
     ...withoutCheckstyleParseSkips(checkstyleFindings(context), context.testScope),
     ...archunitFindings(context),
+    ...springArchFindings(context),
     ...readJavaStructureFindings(reportRoot, projectRoot, context.reactorRoot),
     ...readClassLimitFindings(reportRoot, context.classLimits),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
@@ -148,6 +151,12 @@ function readModuleFindings(context, crapLimit) {
     }),
     ...testResultFindings(context, crapLimit),
     ...readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
+    ...readUnrunTestFindings({
+      reportRoot,
+      projectRoot,
+      manifest: context.manifest,
+      modulePath: context.testTimes.modulePath,
+    }),
   ];
 }
 
@@ -187,6 +196,25 @@ function springFindings(projectRoot, manifest, options) {
     : [];
 }
 
+function classLocator({ projectRoot, sourceRoots, manifest }) {
+  return sourceLocator(projectRoot, [
+    ...sourceRoots,
+    ...(manifest.testSourceRoots ?? []),
+    ...(manifest.kotlinSourceRoots ?? []),
+    ...(manifest.kotlinTestSourceRoots ?? []),
+  ]);
+}
+
+function springArchFindings(context) {
+  if (context.manifest.springArch !== true) {
+    return [];
+  }
+  const locate = classLocator(context);
+  return readSpringArchFindings(context.reportRoot, {
+    resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
+  });
+}
+
 function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
   const archunitRoot = path.join(reportRoot, 'archunit');
   const archunitReports = existsSync(archunitRoot)
@@ -194,12 +222,7 @@ function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
         .filter((name) => name.endsWith('.xml'))
         .sort()
     : [];
-  const locate = sourceLocator(projectRoot, [
-    ...sourceRoots,
-    ...(manifest.testSourceRoots ?? []),
-    ...(manifest.kotlinSourceRoots ?? []),
-    ...(manifest.kotlinTestSourceRoots ?? []),
-  ]);
+  const locate = classLocator({ projectRoot, sourceRoots, manifest });
   return archunitReports.flatMap(
     (name) =>
       ingestArchunit(readFileSync(path.join(archunitRoot, name), 'utf8'), {

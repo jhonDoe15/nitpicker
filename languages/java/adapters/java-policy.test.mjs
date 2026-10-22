@@ -76,7 +76,7 @@ describe('configureJavaAnalyzer', () => {
     ).toEqual({ classMethods: 25, classFields: 12, inheritanceDepth: 4, folderDepth: 5 });
   });
 
-  it('hands each exception path to the runner as a rule and a glob and changes the hash', () => {
+  it('hands each exception to the runner with its rule, paths and function and changes the hash', () => {
     const analyzer = createJavaAnalyzer({ kotlin: true });
     const exceptions = [
       {
@@ -85,15 +85,21 @@ describe('configureJavaAnalyzer', () => {
         reason: 'Entry point.',
       },
       { rule: 'detekt.style.UseDataClass', paths: ['c/*.kt'], reason: 'Mapped by a framework.' },
+      {
+        rule: 'changed-branch-coverage',
+        paths: ['d/Store.kt'],
+        function: 'Store.save',
+        reason: 'Defensive branch.',
+      },
     ];
     const configured = configureJavaAnalyzer(analyzer, { exceptions });
 
     const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
 
     expect(parsed.policy.exceptions).toEqual([
-      { rule: 'detekt.style.ForbiddenMethodCall', glob: 'a/Main.kt' },
-      { rule: 'detekt.style.ForbiddenMethodCall', glob: 'b/**' },
-      { rule: 'detekt.style.UseDataClass', glob: 'c/*.kt' },
+      { rule: 'detekt.style.ForbiddenMethodCall', paths: ['a/Main.kt', 'b/**'] },
+      { rule: 'detekt.style.UseDataClass', paths: ['c/*.kt'] },
+      { rule: 'changed-branch-coverage', paths: ['d/Store.kt'], function: 'Store.save' },
     ]);
     expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
     expect(
@@ -267,7 +273,7 @@ describe('Java file limits', () => {
 
     expect(parsed.policy.fileLimits).toEqual({ fileLines: 400, folderFiles: 12 });
     expect(parsed.policy.exceptions).toEqual([
-      { rule: 'folder-files-limit', glob: 'src/main/java/icons/**' },
+      { rule: 'folder-files-limit', paths: ['src/main/java/icons/**'] },
     ]);
   });
 
@@ -298,7 +304,7 @@ describe('Java file limits', () => {
 });
 
 const JAVA_USAGE = new Error(
-  'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>] [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none] [--<tool>-precedence <layers>]...',
+  'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <json>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>] [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none] [--<tool>-precedence <layers>]...',
 );
 
 describe('parseJavaRunnerArguments', () => {
@@ -351,20 +357,25 @@ describe('parseJavaRunnerArguments', () => {
     });
   });
 
-  it.each(['nocolon', ':glob/**', 'rule:'])(
-    'rejects the exception %s without a rule or a glob',
-    (value) => {
-      expect(() =>
-        parseJavaRunnerArguments(['--project-root', '/p', '--exception', value]),
-      ).toThrow(JAVA_USAGE);
-    },
-  );
+  it.each([
+    'nojson',
+    '{"paths":["a"]}',
+    '{"rule":"r"}',
+    '{"rule":"r","paths":[1]}',
+    '{"rule":"r","paths":["a"],"function":3}',
+  ])('rejects the exception %s without a rule, paths and a text function', (value) => {
+    expect(() => parseJavaRunnerArguments(['--project-root', '/p', '--exception', value])).toThrow(
+      JAVA_USAGE,
+    );
+  });
 
-  it('keeps a colon inside the glob', () => {
+  it('keeps a colon inside a glob and a function', () => {
+    const entry = { rule: 'r', paths: ['a:b/**'], function: 'Calc::run' };
+
     expect(
-      parseJavaRunnerArguments(['--project-root', '/p', '--exception', 'r:a:b/**']).policy
-        .exceptions,
-    ).toEqual([{ rule: 'r', glob: 'a:b/**' }]);
+      parseJavaRunnerArguments(['--project-root', '/p', '--exception', JSON.stringify(entry)])
+        .policy.exceptions,
+    ).toEqual([entry]);
   });
 
   it('rejects an unknown preset or Kotlin formatter', () => {

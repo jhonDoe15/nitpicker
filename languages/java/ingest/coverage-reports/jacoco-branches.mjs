@@ -1,5 +1,6 @@
 import { MINIMUM_BRANCH_COVERAGE } from '../../../../shared/policy.mjs';
 import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
+import { enclosingFunctionName } from '../../../../shared/rules/finding-helpers.mjs';
 import {
   childrenNamed,
   hashIdentity,
@@ -32,7 +33,11 @@ function sourcefileFindings(sourcefile, pkg, { options, tool, minimum }) {
   return fileFindings(
     sourcefile,
     { path: filePath, lines: text.split(/\r?\n/) },
-    { tool, minimum },
+    {
+      tool,
+      minimum,
+      functions: [...(options.functions ?? []), ...(options.units?.(filePath, text) ?? [])],
+    },
   );
 }
 
@@ -64,10 +69,14 @@ function unresolvedKotlinFinding(sourcefile, pkg, tool) {
   ];
 }
 
-function fileFindings(sourcefile, file, { tool, minimum }) {
+function fileFindings(sourcefile, file, { tool, minimum, functions }) {
   const branches = childrenNamed(sourcefile, 'line')
     .map((line) => lineBranch(line, file))
-    .filter((branch) => branch !== undefined);
+    .filter((branch) => branch !== undefined)
+    .map((branch) => ({
+      ...branch,
+      symbol: enclosingFunctionName(functions, branch.path, branch.line),
+    }));
   return branchCoverageFindings(branches, {
     tool,
     minimum,

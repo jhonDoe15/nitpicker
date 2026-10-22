@@ -26,7 +26,10 @@ export function ingestPit(xml, options = {}) {
     .filter((mutant) => mutant !== undefined);
 
   const { groups, statusCounts } = groupMutants(mutants, resolvePath);
-  const findings = mutantFindings(neutralMutants(groups), { tool, wayOut: PIT_WAY_OUT });
+  const findings = mutantFindings(neutralMutants(groups, options.functionAt), {
+    tool,
+    wayOut: PIT_WAY_OUT,
+  });
   findings.push(...statusSummaries(statusCounts, tool));
   return { findings };
 }
@@ -43,19 +46,29 @@ function groupMutants(mutants, resolvePath) {
       continue;
     }
     const key = [
-      mutant.className,
-      `${mutant.method}${mutant.methodDescription}`,
+      simpleClassName(mutant.className),
+      `${mutant.method}${simpleDescriptor(mutant.methodDescription)}`,
       mutator(mutant.mutator),
-      mutant.description,
+      withoutPackages(mutant.description),
     ].join('|');
-    const group = groups.get(`${status}\0${key}`) ?? [];
+    const groupKey = `${status}\0${filePath}\0${key}`;
+    const group = groups.get(groupKey) ?? [];
     group.push({ mutant, status, key, filePath });
-    groups.set(`${status}\0${key}`, group);
+    groups.set(groupKey, group);
   }
   return { groups, statusCounts };
 }
 
-function neutralMutants(groups) {
+const INITIALIZER_LAMBDA = /^lambda\$new\$\d+$/u;
+
+function mutantSymbol(mutant, filePath, functionAt) {
+  const symbol = `${simpleClassName(mutant.className)}#${mutant.method}${simpleDescriptor(mutant.methodDescription)}`;
+  return INITIALIZER_LAMBDA.test(mutant.method)
+    ? (functionAt?.(filePath, mutant.line) ?? symbol)
+    : symbol;
+}
+
+function neutralMutants(groups, functionAt) {
   const neutral = [];
   for (const group of groups.values()) {
     group.sort((a, b) => a.mutant.line - b.mutant.line || a.mutant.block - b.mutant.block);
@@ -65,7 +78,7 @@ function neutralMutants(groups) {
         identity: `${key}#${String(index + 1)}`,
         status,
         label: `${mutator(mutant.mutator)}: ${mutant.description}`,
-        symbol: `${mutant.className}#${mutant.method}${mutant.methodDescription}`,
+        symbol: mutantSymbol(mutant, filePath, functionAt),
         line: mutant.line,
       });
     }
@@ -83,6 +96,18 @@ function statusSummaries(statusCounts, tool) {
     classification: 'descriptive',
     metric: { name: status, value },
   }));
+}
+
+function simpleClassName(className) {
+  return className.slice(className.lastIndexOf('.') + 1);
+}
+
+function simpleDescriptor(descriptor) {
+  return descriptor.replaceAll(/L(?:[\w$]+\/)+([\w$]+;)/g, 'L$1');
+}
+
+function withoutPackages(text) {
+  return text.replaceAll(/(?:[\w$]+\/)+([\w$]+)/g, '$1');
 }
 
 function mutator(qualifiedName) {

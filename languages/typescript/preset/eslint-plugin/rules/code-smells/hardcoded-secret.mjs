@@ -8,8 +8,7 @@ const MEMBER = 'MemberExpression';
 const LITERAL = 'Literal';
 const DECLARATOR = 'VariableDeclarator';
 const STRING = 'string';
-const EXCEPTION_ROUTE =
-  'If this is not a real secret, add an exception for nitpicker/no-hardcoded-secret in nitpicker.config.json.';
+const EXCEPTION_FIT = 'An exception fits only when this is not a real secret.';
 const SECRET_NAME = new RegExp(
   `(?:${[
     'password',
@@ -173,17 +172,17 @@ export const rule = {
         "'{{name}}' is assigned a hardcoded secret.",
         'Read it from the environment in the composition root (`process.env.NAME`)',
         'or a secrets manager and pass it in.',
-        EXCEPTION_ROUTE,
+        EXCEPTION_FIT,
       ].join(' '),
       credentialShape: [
         'This string looks like a credential (access key, token or private key).',
         'Read it from the environment in the composition root or a secrets manager.',
-        EXCEPTION_ROUTE,
+        EXCEPTION_FIT,
       ].join(' '),
       logged: [
         "'{{name}}' is a secret and must not be logged.",
         'Log that it is set, or a masked tail, instead.',
-        EXCEPTION_ROUTE,
+        EXCEPTION_FIT,
       ].join(' '),
     },
   },

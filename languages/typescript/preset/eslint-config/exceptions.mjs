@@ -1,3 +1,4 @@
+import { canonicalRule, isAddedRule } from '../../../../shared/exceptions/rule-names.mjs';
 import { TYPESCRIPT_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import {
   MUTATION_EXCEPTION_RULES,
@@ -21,7 +22,10 @@ const NON_ESLINT_EXCEPTION_RULES = [
 
 export function applyRuleExceptions(configEntries, allExceptions = []) {
   const exceptions = allExceptions.filter(
-    ({ rule }) => !NON_ESLINT_EXCEPTION_RULES.includes(rule) && !boundaryRuleNames.includes(rule),
+    ({ rule }) =>
+      !isAddedRule(rule) &&
+      !NON_ESLINT_EXCEPTION_RULES.includes(canonicalRule(rule)) &&
+      !boundaryRuleNames.includes(rule),
   );
   const unknown = exceptions.filter(({ rule }) => !isKnownRule(configEntries, rule));
   if (unknown.length > 0) {
