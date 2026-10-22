@@ -76,28 +76,18 @@ describe('Kotlin finding messages', () => {
   const kotlinRoot = path.resolve(import.meta.dirname, '..');
   const HAND_WRITTEN_ROUTE =
     /add an exception for|"exceptions" entry for|If it is right here|To allow it here|to "exceptions" in nitpicker/u;
-  const PMD_CATALOG_ROUTE = 'review-rules/review-finding.mjs';
-  const OWN_ROUTES = [PMD_CATALOG_ROUTE];
 
-  it('get their exception route only from the shared sentence, except for the pmd rule ids', () => {
+  it('get their exception route only from the shared sentence', () => {
     const sources = readdirSync(kotlinRoot, { recursive: true })
       .map((entry) => entry.replaceAll('\\', '/'))
       .filter(
         (entry) =>
           entry.endsWith('.mjs') && !entry.includes('.test.') && !entry.includes('test-support/'),
       );
-    const handWritten = sources
-      .filter((entry) => !OWN_ROUTES.includes(entry))
-      .filter((entry) =>
-        HAND_WRITTEN_ROUTE.test(readFileSync(path.join(kotlinRoot, entry), 'utf8')),
-      );
+    const handWritten = sources.filter((entry) =>
+      HAND_WRITTEN_ROUTE.test(readFileSync(path.join(kotlinRoot, entry), 'utf8')),
+    );
 
     expect(handWritten).toEqual([]);
-    for (const entry of OWN_ROUTES) {
-      expect(
-        HAND_WRITTEN_ROUTE.test(readFileSync(path.join(kotlinRoot, entry), 'utf8')),
-        entry,
-      ).toBe(true);
-    }
   });
 });
