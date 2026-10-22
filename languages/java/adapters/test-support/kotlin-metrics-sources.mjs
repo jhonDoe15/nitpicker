@@ -193,3 +193,29 @@ fun inLoop(values: List<Int>): Int {
     return total
 }
 `;
+
+export const DEEP_CHAIN = `package demo.deep
+
+val sum = ${Array.from({ length: 3000 }, () => '1').join(' + ')}
+
+fun nested() = ${'run { '.repeat(800)}1${' }'.repeat(800)}
+`;
+
+export const PREDICATE_SYMBOLS = `package demo.symbols
+
+enum class Phase { NEW, \`in\`, DONE }
+
+class Holder(val s: Phase) {
+    val k = s == Phase.NEW || s == Phase.DONE
+    val g: Boolean get() = s == Phase.NEW || s == Phase.\`in\`
+    val l = { p: Phase -> p == Phase.NEW || p == Phase.DONE }
+
+    fun f(): Boolean {
+        val local = s == Phase.\`in\` || s == Phase.DONE
+        return local
+    }
+}
+
+val start = Phase.NEW
+val isStart = start == Phase.NEW || start == Phase.\`in\`
+`;

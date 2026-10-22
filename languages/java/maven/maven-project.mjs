@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childAt, childrenAt, childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
+import { kotlinSourceRoots } from './configuration/kotlin-roots.mjs';
 
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
 const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
@@ -133,6 +134,10 @@ function describeModule(project, { basedir, pomFile }) {
   const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
   const reports = reportsDirectory(plugins.get(SUREFIRE), 'test');
   const failsafeReports = reportsDirectory(plugins.get(FAILSAFE), 'integration-test');
+  const sourceRoots = [
+    resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
+    ...helperRoots(plugins.get(BUILD_HELPER), 'add-source', basedir),
+  ];
   return {
     basedir,
     pomFile,
@@ -144,10 +149,8 @@ function describeModule(project, { basedir, pomFile }) {
     testOutputDirectory:
       resolvedText(build, basedir, 'testOutputDirectory') ??
       path.join(buildDirectory, 'test-classes'),
-    sourceRoots: [
-      resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
-      ...helperRoots(plugins.get(BUILD_HELPER), 'add-source', basedir),
-    ],
+    sourceRoots,
+    kotlinSourceRoots: kotlinSourceRoots(plugins, basedir, sourceRoots),
     testSourceRoots: [
       resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
       ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
