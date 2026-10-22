@@ -1,11 +1,14 @@
 basedpyright==1.40.2
 black==26.5.1
 coverage==7.16.2
+django==6.1.2
 import-linter==2.15
 mutmut==3.8.0
 mypy==2.3.1
+nose2==0.16.0
 pyright==1.1.414
 pytest-cov==7.1.0
+pytest-django==4.14.0
 pytest-xdist==3.8.0
 pytest==9.1.1
 ruff==0.16.8

@@ -115,7 +115,8 @@ describe('findings for renamed clones', () => {
         rule: 'duplicate-clone',
         path: 'a.py',
         identity: 'renamed:pair:a.py|b.py:fragment:7bdf085b864988493169ca59:occurrence:1',
-        message: 'This code repeats b.py:1 (8 lines). Keep one copy and call it from both places.',
+        message:
+          'This code repeats b.py:1 (8 lines). Keep one copy and call it from both places. If the repetition is intended, add a.py or b.py to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
       },
@@ -164,8 +165,8 @@ describe('findings for renamed clones', () => {
     );
 
     expect(found.map(({ message }) => message)).toEqual([
-      'This code repeats test/b.test.ts:1 (8 lines). Fold the cases into one table.',
-      'This code repeats test/b.test.ts:1 (8 lines). Keep one copy and call it from both places.',
+      'This code repeats test/b.test.ts:1 (8 lines). Fold the cases into one table. If the repetition is intended, add test/a.test.ts or test/b.test.ts to "exclude" in nitpicker.config.json.',
+      'This code repeats test/b.test.ts:1 (8 lines). Keep one copy and call it from both places. If the repetition is intended, add src/a.ts or test/b.test.ts to "exclude" in nitpicker.config.json.',
     ]);
   });
 });

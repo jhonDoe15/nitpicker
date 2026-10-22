@@ -248,7 +248,6 @@ function foundClones() {
 }
 
 function expectedClone({ file, other, hash, line, lines, advice = 'Keep one copy' }) {
-  const lifted = `{"rule":"duplicate-clone","paths":["${file}"],"reason":"..."}`;
   return {
     tool: 'duplicates',
     rule: 'duplicate-clone',
@@ -256,7 +255,7 @@ function expectedClone({ file, other, hash, line, lines, advice = 'Keep one copy
     identity: `renamed:pair:${file}|${other}:fragment:${hash}:occurrence:1`,
     message:
       `This code repeats ${other}:${String(line)} (${String(lines)} lines). ${advice} and call it from both ` +
-      `places. If this is intended, add ${lifted} to "exceptions" in nitpicker.config.json.`,
+      `places. If the repetition is intended, add ${file} or ${other} to "exclude" in nitpicker.config.json.`,
     classification: 'enforceable',
     location: { line },
   };
@@ -321,17 +320,9 @@ describe('clones whose names and literals were renamed', () => {
   });
 });
 
-describe('the exception route for a clone', () => {
-  it('lifts a clone for the paths of a duplicate-clone exception', () => {
-    const run = analyze(FILES, {
-      exceptions: [
-        {
-          rule: 'duplicate-clone',
-          paths: ['src/renamed/**', 'src/logic/**', 'test/**'],
-          reason: 'copied on purpose',
-        },
-      ],
-    });
+describe('the exclude route for a clone', () => {
+  it('lifts a clone when its files are excluded', () => {
+    const run = analyze(FILES, { exclude: ['src/renamed/**', 'src/logic/**', 'test/**'] });
 
     expect(run.toolErrors).toEqual([]);
     expect(enforceable(run)).toEqual([]);

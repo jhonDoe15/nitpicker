@@ -130,6 +130,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
         'Per-tool counts:',
         'python: total=13 enforceable=1 descriptive=12',
         'mutation: total=0 enforceable=0 descriptive=0',
+        'repository-hygiene: total=0 enforceable=0 descriptive=0',
         '',
         'Enforceable findings:',
         'ruff/F401 src/demo/a.py:1 `os` imported but unused. To allow it for some paths, add a "python.exceptions" entry for F401 in nitpicker.config.json.',

@@ -2,8 +2,9 @@ import { validatorNamed } from '../libraries/library-tables.mjs';
 import { validatorsOf } from '../libraries/project-libraries.mjs';
 import { RULES_TOOL } from './tool.mjs';
 
-const HANDLE_EXCEPTION =
-  'Catch the specific exception and handle it, or re-raise it with its cause (`raise DomainError(...) from error`); `contextlib.suppress(SpecificError)` ignores one expected error.';
+const IN_TEST = 'In a test, use `pytest.raises(SpecificError)` (`self.assertRaises` in unittest).';
+
+const HANDLE_EXCEPTION = `Catch the specific exception and handle it, or re-raise it with its cause (\`raise DomainError(...) from error\`); \`contextlib.suppress(SpecificError)\` ignores one expected error. ${IN_TEST}`;
 
 const CAUGHT_LOG_ADVICE = {
   logging:
@@ -35,8 +36,7 @@ export const STRUCTURE_HINTS = [
     rules: ['swallowed-exception'],
     describe: (subject) =>
       `\`${subject}\` swallows the error: it only logs it or returns a default, and carries on`,
-    allowed:
-      'Re-raise it with its cause (`raise DomainError(...) from error`), return a failure result that carries the error (`return Rejected(str(error))`), or collect it for the caller (`errors.append(error)`); logging alone is not handling. `contextlib.suppress(SpecificError)` ignores one expected error.',
+    allowed: `Re-raise it with its cause (\`raise DomainError(...) from error\`), return a failure result that carries the error (\`return Rejected(str(error))\`), or collect it for the caller (\`errors.append(error)\`); logging alone is not handling. \`contextlib.suppress(SpecificError)\` ignores one expected error. ${IN_TEST}`,
   },
   {
     tool: RULES_TOOL,
@@ -48,8 +48,7 @@ export const STRUCTURE_HINTS = [
     tool: RULES_TOOL,
     rules: ['blind-suppress'],
     describe: (subject) => `\`${subject}\` ignores every error`,
-    allowed:
-      'Name the expected exception: `contextlib.suppress(KeyError)`; or handle it or re-raise it with its cause.',
+    allowed: `Name the expected exception: \`contextlib.suppress(KeyError)\`; or handle it or re-raise it with its cause. ${IN_TEST}`,
   },
   {
     tool: RULES_TOOL,

@@ -1,7 +1,6 @@
-import { jscpdClones } from '../../../../core/tooling/jscpd-clones.mjs';
-import { RULE_IDS } from '../../../../shared/policy.mjs';
+import { withoutImportOnlyClones } from '../../../../core/tooling/jscpd/import-only.mjs';
+import { jscpdClones } from '../../../../core/tooling/jscpd/jscpd-clones.mjs';
 import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
-import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import {
   renamedClones,
   renamedFindings,
@@ -32,15 +31,6 @@ function isRepeatedTestData(clone, isTestFile, text) {
   );
 }
 
-function withExceptionRoute(finding) {
-  return finding.rule === RULE_IDS.duplicateClone && finding.classification === 'enforceable'
-    ? {
-        ...finding,
-        message: `${finding.message} ${exceptionHint(RULE_IDS.duplicateClone, finding.path)}`,
-      }
-    : finding;
-}
-
 export function normalizeDuplicates(
   report,
   analyzerName,
@@ -49,11 +39,13 @@ export function normalizeDuplicates(
     isTestFile = readLayout().isTestFile,
     renamedReport,
     projectRoot = process.cwd(),
-    isExcepted = () => false,
   } = {},
 ) {
-  const plain = jscpdClones(report, configuredPaths).filter(
-    (clone) => !isRepeatedTestData(clone, isTestFile, clone.fragment),
+  const plain = withoutImportOnlyClones(
+    jscpdClones(report, configuredPaths).filter(
+      (clone) => !isRepeatedTestData(clone, isTestFile, clone.fragment),
+    ),
+    'typescript',
   );
   const renamed =
     renamedReport === undefined
@@ -64,13 +56,5 @@ export function normalizeDuplicates(
   return [
     ...evaluateDuplicates(withoutRenamedCopies(plain, renamed), analyzerName),
     ...renamedFindings(renamed, analyzerName, { isTestFile, text: TEST_ADVICE }),
-  ]
-    .filter(
-      (finding) =>
-        !(
-          finding.rule === RULE_IDS.duplicateClone &&
-          isExcepted(RULE_IDS.duplicateClone, finding.path)
-        ),
-    )
-    .map(withExceptionRoute);
+  ];
 }

@@ -2,7 +2,7 @@ import {
   DEFAULT_LEGACY_INVENTORY,
   withLegacyInventory,
 } from '../../../../shared/legacy-inventory.mjs';
-import { resolveAnalyzerVersion } from '../analyzer-versions.mjs';
+import { resolveAnalyzerVersion, testRunnerAnalyzerVersion } from '../analyzer-versions.mjs';
 import { createEntryPointAnalyzer } from '../../adapters/entry-points.mjs';
 import { createEslintAnalyzer } from '../../adapters/eslint/analyzer.mjs';
 import { createQualityAreaAnalyzer } from '../../adapters/quality-areas/analyzer.mjs';
@@ -142,6 +142,24 @@ export function applyLayout(analyzers, headPolicy) {
   );
   return analyzers.map((analyzer) =>
     analyzer.policyFromPackage === true ? (rebuilt.get(analyzer.name) ?? analyzer) : analyzer,
+  );
+}
+
+const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation']);
+
+export function applyTestRunner(analyzers, headPolicy = {}) {
+  const configured = headPolicy.tools?.tests?.runner;
+  if (configured === undefined) {
+    return analyzers;
+  }
+  return analyzers.map((analyzer) =>
+    analyzer.policyFromPackage === true && TEST_RUNNER_ANALYZERS.has(analyzer.name)
+      ? {
+          ...analyzer,
+          resolveVersion: (projectRoot) =>
+            testRunnerAnalyzerVersion(analyzer.name, projectRoot, { configuredRunner: configured }),
+        }
+      : analyzer,
   );
 }
 

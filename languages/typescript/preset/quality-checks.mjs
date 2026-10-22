@@ -1,3 +1,4 @@
+import { DUPLICATES_CONFIGURATION_FILES } from './duplicates/configuration-files.mjs';
 import { EXCLUDED_PATH_PATTERN, prettierPatterns, resolveLayout } from './layout.mjs';
 import { testExecutionChecksFor } from './checks/test-execution.mjs';
 import {
@@ -43,6 +44,7 @@ function checkExclusions(layout) {
     production: [
       ...layout.excludedGlobs,
       ...layout.sourceTestDirectoryGlobs,
+      ...layout.testSupportGlobs,
       ...layout.testGlobs,
       '.stryker-tmp/**',
     ],
@@ -144,6 +146,7 @@ function typeAndArchitectureChecksFor(layout) {
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
         'languages/typescript/preset/tool-configs.mjs',
+        'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
         JAVASCRIPT_PRESET_FILE,
         'languages/typescript/preset/defaults/tsconfig.quality.json',
       ],
@@ -232,26 +235,6 @@ function graphChecksFor(exclusions) {
   ];
 }
 
-const DUPLICATES_CHECK_FILES = [
-  'languages/typescript/preset/defaults/jscpd.json',
-  'languages/typescript/preset/duplicates/normalize.mjs',
-  'languages/typescript/preset/duplicates/renamed.mjs',
-  'languages/typescript/preset/tool-configs.mjs',
-  'shared/policy.mjs',
-  'shared/conventions/generator-marker.mjs',
-  'shared/renamed-clones/boilerplate.mjs',
-  'shared/renamed-clones/files.mjs',
-  'shared/renamed-clones/findings.mjs',
-  'shared/renamed-clones/tree.mjs',
-  'shared/renamed-clones/normalize/normalize.mjs',
-  'shared/renamed-clones/normalize/scanned.mjs',
-  'shared/renamed-clones/normalize/scanner.mjs',
-  'shared/renamed-clones/normalize/typescript.mjs',
-  'shared/rules/duplicates.mjs',
-  'shared/rules/exceptions.mjs',
-  JAVASCRIPT_PRESET_FILE,
-];
-
 function repositoryChecksFor(exclusions) {
   return [
     {
@@ -261,7 +244,7 @@ function repositoryChecksFor(exclusions) {
       exclusions: exclusions.general,
       timeoutMs: MINUTE_MS,
       shardWeight: 2,
-      configurationFiles: DUPLICATES_CHECK_FILES,
+      configurationFiles: [...DUPLICATES_CONFIGURATION_FILES, JAVASCRIPT_PRESET_FILE],
     },
     {
       name: 'dead-code',
@@ -273,6 +256,7 @@ function repositoryChecksFor(exclusions) {
       configurationFiles: [
         'languages/typescript/preset/defaults/knip.json',
         'languages/typescript/preset/tool-configs.mjs',
+        'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
         'languages/typescript/preset/eslint-config/scope-support.mjs',

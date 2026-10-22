@@ -19,6 +19,9 @@ const UNKNOWN_FOLDER_ADVICE =
 const unknownFolder = (file, line) =>
   `eslint-lint/nitpicker/no-unknown-main-folder src/main/${file}:${String(line)} ` +
   `'${file.split('/')[0]}/' is not a layer of this layout. ${UNKNOWN_FOLDER_ADVICE}`;
+const unusedFile = (file) =>
+  `dead-code/files src/main/${file} Unused file: src/main/${file}. ` +
+  'Nothing imports it: delete it, or import it where it is needed.';
 const PLANTED_OUTPUT = [
   'Nitpicker quality snapshot',
   'Status: violations',
@@ -35,18 +38,18 @@ const PLANTED_OUTPUT = [
   'dead-code: total=11 enforceable=11 descriptive=0',
   '',
   'Enforceable findings:',
-  'dead-code/files src/main/billing/adapters/charge.js files: src/main/billing/adapters/charge.js',
-  'dead-code/files src/main/billing/index.js files: src/main/billing/index.js',
-  'dead-code/files src/main/dup/a.js files: src/main/dup/a.js',
-  'dead-code/files src/main/dup/b.js files: src/main/dup/b.js',
-  'dead-code/files src/main/features/greeting/domain/typed.js files: src/main/features/greeting/domain/typed.js',
-  'dead-code/files src/main/format/messy.cjs files: src/main/format/messy.cjs',
-  'dead-code/files src/main/format/messy.js files: src/main/format/messy.js',
-  'dead-code/files src/main/format/unformatted.ts files: src/main/format/unformatted.ts',
-  'dead-code/files src/main/lint/banned.js files: src/main/lint/banned.js',
-  'dead-code/files src/main/lint/mode.ts files: src/main/lint/mode.ts',
-  'dead-code/files src/main/orders/place.js files: src/main/orders/place.js',
-  'duplicates/duplicate-clone src/main/dup/a.js:5 This code repeats src/main/dup/b.js:5 (12 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicate-clone","paths":["src/main/dup/a.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+  unusedFile('billing/adapters/charge.js'),
+  unusedFile('billing/index.js'),
+  unusedFile('dup/a.js'),
+  unusedFile('dup/b.js'),
+  unusedFile('features/greeting/domain/typed.js'),
+  unusedFile('format/messy.cjs'),
+  unusedFile('format/messy.js'),
+  unusedFile('format/unformatted.ts'),
+  unusedFile('lint/banned.js'),
+  unusedFile('lint/mode.ts'),
+  unusedFile('orders/place.js'),
+  'duplicates/duplicate-clone src/main/dup/a.js:5 This code repeats src/main/dup/b.js:5 (12 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/dup/a.js or src/main/dup/b.js to "exclude" in nitpicker.config.json.',
   'entry-points/public-alternative-bypass src/main/orders/place.js Import src/main/billing/adapters/charge.js through src/main/billing/index.js (runtime)',
   unknownFolder('billing/adapters/charge.js', 5),
   unknownFolder('billing/index.js', 1),

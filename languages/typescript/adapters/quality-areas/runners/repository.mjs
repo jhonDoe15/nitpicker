@@ -10,8 +10,8 @@ import {
   normalizeCoupling,
   normalizeTestRuntime,
   normalizeStructure,
-  normalizeDeadCode,
 } from '../reporting/repository.mjs';
+import { normalizeDeadCode } from '../reporting/dead-code.mjs';
 import path from 'node:path';
 import { existsSync, readFileSync, writeFileSync, realpathSync, unlinkSync } from 'node:fs';
 import { existingRoots } from '../../../preset/layout.mjs';
@@ -22,9 +22,9 @@ import { layoutJscpdConfig, layoutKnipConfig } from '../../../preset/tool-config
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
 import { renamedDuplicatesReport } from '../../../preset/duplicates/renamed.mjs';
-import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mjs';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mjs';
+import { baselinePathsOf } from '../base-paths.mjs';
 
 export async function runCodingStandards(options) {
   const checker = await importPolicyModule(
@@ -132,7 +132,7 @@ export async function runStructure(options) {
   );
   return [
     ...functionFindings,
-    ...typescriptStructureProjectFindings(options),
+    ...typescriptStructureProjectFindings({ ...options, baselinePaths: baselinePathsOf(options) }),
     ...(await runUnusedApi(options)),
   ];
 }
@@ -166,7 +166,6 @@ function duplicatesNormalizeOptions(options, renamed) {
   return {
     configuredPaths: [],
     projectRoot: options.projectRoot,
-    isExcepted: exceptionMatcher(readHeadPolicy().exceptions),
     ...(renamed === undefined
       ? {}
       : { renamedReport: withProjectRelativeNames(renamed.report, renamed.root) }),
@@ -261,6 +260,7 @@ export function runDeadCode(options) {
     ...normalizeDeadCode(
       withDeadCodeSourceHashes(normal, options.projectRoot),
       options.analyzerName,
+      { exceptions: readHeadPolicy().exceptions },
     ),
     ...runTestOnlyExports(options, {
       config,
