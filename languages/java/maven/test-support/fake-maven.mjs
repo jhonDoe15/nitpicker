@@ -1,21 +1,12 @@
-#!/usr/bin/env node
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const argumentsList = process.argv.slice(2);
-const valueOf = (prefix) =>
-  argumentsList.find((argument) => argument.startsWith(prefix))?.slice(prefix.length);
-const mentions = (goal) => argumentsList.some((argument) => argument.includes(goal));
-const touch = (file, text = '') => {
+function touch(file, text = '') {
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, text);
-};
-
-function effectivePom() {
-  touch(valueOf('-Doutput='), readFileSync('pom.xml', 'utf8'));
 }
 
-function toolClasspaths() {
+function toolClasspaths(argumentsList) {
   const directory = path.dirname(argumentsList[argumentsList.indexOf('--file') + 1]);
   const jar = path.join(directory, 'fake-tool.jar');
   touch(jar);
@@ -26,10 +17,10 @@ function toolClasspaths() {
   }
 }
 
-function build() {
+function build(valueOf, io) {
   if (existsSync('MAVEN_FAIL')) {
-    process.stdout.write(`[ERROR] ${readFileSync('MAVEN_FAIL', 'utf8')}`);
-    process.exit(1);
+    io.stdout.write(`[ERROR] ${readFileSync('MAVEN_FAIL', 'utf8')}`);
+    return 1;
   }
   const output = valueOf('-DoutputFile=')
     .replace('${project.groupId}', 'demo')
@@ -40,12 +31,22 @@ function build() {
     touch('target/classes/demo/A.class', 'class');
   }
   mkdirSync('target/test-classes', { recursive: true });
+  return 0;
 }
 
-if (mentions(':effective-pom')) {
-  effectivePom();
-} else if (mentions(':build-classpath')) {
-  toolClasspaths();
-} else {
-  build();
+export function runFakeMaven(argumentsList, io) {
+  function valueOf(prefix) {
+    return argumentsList.find((argument) => argument.startsWith(prefix))?.slice(prefix.length);
+  }
+  function mentions(goal) {
+    return argumentsList.some((argument) => argument.includes(goal));
+  }
+  if (mentions(':effective-pom')) {
+    touch(valueOf('-Doutput='), readFileSync('pom.xml', 'utf8'));
+  } else if (mentions(':build-classpath')) {
+    toolClasspaths(argumentsList);
+  } else {
+    return build(valueOf, io);
+  }
+  return 0;
 }

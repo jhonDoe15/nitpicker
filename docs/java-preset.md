@@ -422,7 +422,7 @@ classpath and its `test` task, and adds no test library to the project.
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
 - **Tests.** `core/command/java/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`)
-  and with a fake `mvn` plus a fake JDK (`languages/java/maven/fixtures/fake-tools/`), so it runs without Java:
+  and with a fake `mvn` plus a fake JDK (`languages/java/maven/test-support/`), so it runs without Java:
   pass, new finding in text/JSON/SARIF/JUnit, build failure on head and on base, an exception entry,
   missing binary, `--all`, the same cases for both builds. The real Gradle run stays behind `NITPICKER_JAVA_E2E=1`
   (`npm run test:java`), unchanged.
