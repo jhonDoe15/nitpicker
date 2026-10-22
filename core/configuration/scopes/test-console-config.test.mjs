@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { configuredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { applyDisable, describeConfigOverrides, describeDisableCascade } from '../config.mjs';
+import { withLanguageRegistered } from '../../../shared/rules/facts/test-support/fact-fixtures.mjs';
 import { validateConfig } from '../validate.mjs';
 
 const allowed = { contains: 'is no longer supported', reason: 'react 17 shim' };
@@ -11,6 +12,7 @@ describe('testConsole config', () => {
     [{ testConsole: {} }],
     [{ testConsole: { allow: [] } }],
     [{ testConsole: { allow: [allowed, { ...allowed, paths: ['test/legacy/**'] }] } }],
+    [{ testConsole: { allow: [{ ...allowed, paths: ['src/app/[id]/**'] }] } }],
     ...['typescript', 'javascript', 'java', 'kotlin'].map((preset) => [
       { preset, testConsole: { allow: [allowed] } },
     ]),
@@ -37,9 +39,42 @@ describe('testConsole config', () => {
     [{ testConsole: { allow: [{ ...allowed, paths: 'test/**' }] } }, /paths" must be an array/],
     [{ testConsole: { allow: [{ contains: 'abc' }] } }, /reason" is required/],
     [{ testConsole: { allow: [{ contains: 'abc', reason: ' ' }] } }, /reason" is required/],
-    [{ preset: 'python', testConsole: { allow: [allowed] } }, /"testConsole" is not supported/],
   ])('rejects %j', (config, message) => {
     expect(() => validateConfig(config)).toThrow(message);
+  });
+
+  it('is valid with the javascript preset', () => {
+    const config = { preset: 'javascript', testConsole: { allow: [allowed] } };
+
+    expect(validateConfig(config)).toEqual(config);
+  });
+
+  it.each([['python']])(
+    'is rejected with the %s preset until it runs test-console-output',
+    (preset) => {
+      expect(() => validateConfig({ preset, testConsole: { allow: [allowed] } })).toThrow(
+        `nitpicker.config.json: "testConsole" is not supported with "preset": "${preset}": it configures test-console-output, which the ${preset} preset does not run yet. Remove it`,
+      );
+    },
+  );
+
+  it('is accepted by a preset once its language registers test-console-output', () => {
+    const config = { preset: 'python', testConsole: { allow: [allowed] } };
+
+    expect(
+      withLanguageRegistered('test-console-output', 'python', () => validateConfig(config)),
+    ).toEqual(config);
+  });
+
+  it.each([
+    ['./test/**', 'drop the leading "./": globs match from the project root'],
+    ['test/legacy/', 'drop the trailing "/": write "test/legacy/**"'],
+  ])('rejects the allow path %s, which can never match', (glob, problem) => {
+    const config = { testConsole: { allow: [{ ...allowed, paths: [glob] }] } };
+
+    expect(() => validateConfig(config)).toThrow(
+      `nitpicker.config.json: "testConsole.allow[0].paths" glob ${JSON.stringify(glob)} can never match: ${problem}`,
+    );
   });
 
   it('reaches every analyzer through the head policy and changes the policy hash', () => {
