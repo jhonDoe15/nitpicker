@@ -1,7 +1,7 @@
 {
   "preset": "typescript",
   "layout": {
-    "sourceRoots": ["core", "languages", "shared"],
+    "sourceRoots": ["core", "languages", "shared", "scripts"],
     "entryPoints": [
       "core/diff/cache/http-cache-worker.mjs",
       "core/fix/prettier-base-runner.mjs",
@@ -33,7 +33,9 @@
       "languages/typescript/preset/test-environment/read-environment.mjs",
       "languages/typescript/preset/architecture/public-contract-usage.mjs",
       "languages/typescript/preset/architecture/runtime-dependency-boundaries.mjs",
-      "languages/typescript/preset/coding-standards/check.mjs"
+      "languages/typescript/preset/coding-standards/check.mjs",
+      "languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs",
+      "languages/java/adapters/gradle-wrapper/test-support/build-tree.mjs"
     ]
   },
   "exclude": [
