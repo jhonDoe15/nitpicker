@@ -91,8 +91,8 @@ describe('Spring role mappings', () => {
       policy: { springRoles: ROLES },
       directory: path.join(directory, 'gradle'),
     });
-    expect(stage()).toContain(
+    expect(stage().filter((argument) => argument.startsWith('-Pnitpicker.spring.'))).toEqual([
       `-Pnitpicker.spring.roles=${path.join(directory, 'gradle', 'spring-roles.txt')}`,
-    );
+    ]);
   });
 });

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { GRADLE_PRESETS } from '../gradle-presets.mjs';
 import { configError, isPlainObject } from '../../../../shared/config.mjs';
 
-export const SPRING_ROLES = ['controller', 'service', 'repository'];
+const SPRING_ROLES = ['controller', 'service', 'repository'];
 const SPRING_KEYS = ['roles'];
 const ROLES_FILE = 'spring-roles.txt';
 const BINARY_NAME = /^[\p{L}_$][\p{L}\p{N}_$]*(?:\.[\p{L}_$][\p{L}\p{N}_$]*)+$/u;
