@@ -2034,7 +2034,9 @@ are left to those rules, so each is reported once: the Spring wrapper runs `IoCa
 `reduce`), on any other receiver, or in a project without Spring is reported by `IoCallInLoop`.
 Writes and flushes in a JPA batch loop (one that calls `EntityManager.clear()` inside an `if`
 whose condition uses `%`, as in `if (count % 50 == 0) { em.flush(); em.clear(); }`) are the batch
-form and are reported by neither rule; `clear()` itself is never counted.
+form and are reported by neither rule; `clear()` itself is never counted. A call through one of the project's own helpers
+(`loader.load(id)` where `load` calls the repository) is reported by the
+[effects rules](#effects-rules).
 
 **Comments.** The `comments` tool scans every Java source file, main and test, for two problems:
 `comments/TodoWithoutIssue` (a task marker, an uppercase `TODO`, `FIXME`, `XXX` or `HACK` as a
@@ -2051,6 +2053,55 @@ rule is documented here, names its exception route and has a marked sample, and 
 rulesets both builds run scope both rule sets; the gated `spring/java-spring.e2e.test.mjs` also
 runs the fixture through Gradle, and `maven/guards/maven-code-smells.e2e.test.mjs` through Maven, and both
 expect exactly the marked findings in main and test sources.
+
+## Effects rules
+
+The `effects` tool reads the compiled main classes of every module, with the module's compile
+classpath for supertypes, and reports what source patterns cannot see: I/O reached through the
+project's own helpers ([#435](https://github.com/jhonDoe15/nitpicker/issues/435)). It runs on
+Gradle (`nitpickerEffects`) and Maven alike, and in the Kotlin preset on the Kotlin classes too. A
+call has a kind when its receiver's type, through its supertypes, is a known client:
+
+- `database`: Spring Data repositories (and their Kotlin extensions such as `findByIdOrNull`),
+  `EntityManager` and JPA queries, JDBC `Statement`, `JdbcOperations`, `NamedParameterJdbcOperations`,
+  `JdbcClient`, jOOQ `DSLContext` and records, Hibernate sessions and queries, `MongoOperations` and
+  `MongoCollection`, Spring Data Redis operations, R2DBC `DatabaseClient`, Exposed, DynamoDB;
+- `remote`: `RestOperations`, `RestClient`, `WebClient`, `java.net.http.HttpClient`, OkHttp,
+  Apache HttpClient 4 and 5, Feign, Spring HTTP interface and Retrofit interfaces of the project,
+  gRPC stubs, Ktor's `HttpClient`, every other AWS SDK v2 client;
+- `message`: `KafkaOperations`, Kafka `Producer`, `AmqpTemplate`, RabbitMQ `Channel.basicPublish`,
+  `JmsOperations`, JMS producers, `StreamBridge`, SQS and SNS clients and templates, Pub/Sub
+  publishers, NATS publishes.
+
+A project method has the kinds of the calls in its body, its lambdas and its anonymous classes,
+plus those of the project methods it calls (a fixed point, so `loadOrder()` that calls
+`orderRepository.findById()` is a `database` helper, and so is its caller); an interface or
+abstract method has a kind when every project implementation has it
+([#426](https://github.com/jhonDoe15/nitpicker/issues/426)). File system calls have no kind. Each
+message names the path, as in "calls `OrderLoader.load()`, which calls `OrderRepository.findById()`",
+leads with the allowed form, and ends with the exception route
+`{ "rule": "effects/<Rule>", "paths": [...], "reason": "..." }`.
+
+| Rule                    | Reports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Allowed form                                                                                                                                                                             |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `IoCallInLoop`          | a call to a project helper whose kind is `database` or `remote` once per loop item: in a `for`, `while` or `do` body, in an iterating callback (`forEach`, `map`, `filter`, `flatMap`, `peek`, `reduce` and the other `Stream` steps, `Iterable.forEach`, `Map.forEach`, `removeIf`), also as a method reference (`ids.forEach(loader::load)`); a `database` helper also inside a concurrent per-item form (`parallelStream()`, `parallel()`, `CompletableFuture.supplyAsync`/`runAsync`, an executor `submit`/`execute` per item) | a batch call for all items (`findAllById`, `saveAll`, `WHERE id IN (...)`, a helper that takes the list); for remote calls without a batch endpoint, a bounded executor or a `Semaphore` |
+| `AccumulatorCopyInLoop` | a loop that reassigns a local from a copy of itself (`all = Stream.concat(all.stream(), Stream.of(x)).toList()`, `byId = new HashMap<>(byId)`, `List.copyOf`, `Arrays.copyOf`, Guava `copyOf`, `newArrayList`, `ImmutableList.builder().addAll(acc)`), and a `Stream.reduce` accumulator that returns such a copy of its accumulator ([#440](https://github.com/jhonDoe15/nitpicker/issues/440))                                                                                                                                   | `collect(Collectors.toList())`, `toMap`, `groupingBy`, `flatMap`, or one mutable collection filled in the loop                                                                           |
+
+`IoCallInLoop` here is the helper half of the PMD rule of the same name
+([#328](https://github.com/jhonDoe15/nitpicker/issues/328)): in Java sources a direct call on a
+client stays with PMD's `IoCallInLoop`, and a line that PMD's `IoCallInLoop` or a Spring Data loop
+rule (`SpringDataNoSaveInLoop`, `SpringDataRowWriteInLoop`, `SpringDataSaveInLoopHelper`,
+`SpringDataNoFlush`) already reports is not reported again (`withoutCoveredLines` in
+`languages/java/adapters/effects/effects-findings.mjs`, which keeps the line when an exception
+lifts the covering finding). The same exemptions as PMD's rule apply: paging and polling loops (a
+loop exit whose condition reads what an I/O call in the loop returned, as in
+`do { page = loader.page(n++); } while (page.hasNext())`), retry attempts (a `try` in the loop that
+leaves it on success while its `catch` stays in the loop), batch methods (`saveAll`, `findAllById`,
+`deleteAllById`, `batchUpdate` and similar), chunk calls (the argument is the loop element and
+itself a collection, as in `for (List<Long> chunk : chunks) loader.forget(chunk)`), `Optional`
+callbacks and file calls. `message` calls are never reported: one publish per item is the
+protocol, and the client batches. A remote helper inside a concurrent per-item form is left to the
+fan-out rules.
 
 ## Generated sources
 

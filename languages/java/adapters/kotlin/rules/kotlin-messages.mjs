@@ -1,5 +1,6 @@
 import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { KOTLIN_SOURCE_RULES } from '../scan/kotlin-scan.mjs';
+import { EFFECTS_RULES } from '../../effects/effects-messages.mjs';
 import {
   appendSentence,
   hasExceptionRoute,
@@ -20,6 +21,7 @@ const KOTLIN_CLASS_LIMIT_RULES = [
 ];
 export const KOTLIN_LISTED_RULES = [
   ...KOTLIN_SOURCE_RULES,
+  ...EFFECTS_RULES,
   ...KOTLINC_RULES,
   ...KOTLIN_CLASS_LIMIT_RULES,
 ];

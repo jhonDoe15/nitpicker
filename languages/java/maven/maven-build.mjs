@@ -11,6 +11,7 @@ import {
   parseDependencyList,
   usesSpring,
 } from './configuration/maven-classpaths.mjs';
+import { moduleManifest } from './configuration/module-manifest.mjs';
 import {
   archunitMatcher,
   collectTestResults,
@@ -28,14 +29,13 @@ import {
   resolveTools,
 } from './maven-tools.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
+import { effectsTool, runEffects } from './effects/maven-effects.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 import { writeJdepsReports } from '../builds/classes/jdeps-reports.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
-const GUAVA_JAR = /^guava-\d.*\.jar$/u;
-const AWAITILITY_JAR = /^awaitility-\d.*\.jar$/u;
 const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
   '-Dpmd.skip=true',
@@ -112,33 +112,6 @@ function runJdeps(module, reportDir) {
   });
 }
 
-function relativeRoots(module, roots) {
-  return roots.map((root) => relativeTo(module.basedir, root));
-}
-
-function hasJar(classpath, jar) {
-  return classpath.some((entry) => jar.test(path.basename(entry)));
-}
-
-export function moduleManifest({ module, classpaths, pinned }) {
-  const spring = usesSpring(classpaths);
-  return {
-    versions: pinned,
-    build: 'maven',
-    sourceRoots: relativeRoots(module, module.sourceRoots),
-    kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
-    testSourceRoots: relativeRoots(module, module.testSourceRoots),
-    resourceRoots: relativeRoots(module, module.resourceRoots),
-    spring,
-    springArch: spring,
-    guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
-    testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
-    testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
-    published: module.published,
-    runsFailsafe: module.runsFailsafe,
-  };
-}
-
 function readClasspaths(work, module) {
   const dependencies = parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8'));
   return { ...moduleClasspaths(module, dependencies), dependencies };
@@ -167,6 +140,7 @@ function analyzeSources(context, project) {
   runJdeps(module, reportDir);
   runGuardJdeps(module, reportDir);
   runGuards({ module, reportDir, tools, classpaths }, project);
+  runEffects({ module, reportDir, tools, classpaths, pinned, options: context.effectsOptions });
 }
 
 function analyzeTests(context, testsRan) {
@@ -241,6 +215,7 @@ function extraTools({ modules, analyzed, policy, pinned }) {
     ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     ...formatTool(policy.javaStyle, pinned),
     ...archunitTool(spring, pinned),
+    ...effectsTool(pinned),
   ];
 }
 

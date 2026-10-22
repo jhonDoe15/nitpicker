@@ -27,6 +27,7 @@ export const JAVA_TOOLS = [
   'spotbugs',
   'errorprone',
   'archunit',
+  'effects',
   'google-java-format',
   'palantir-java-format',
   'jacoco',

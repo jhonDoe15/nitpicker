@@ -59,6 +59,7 @@ describe('readPinnedTools', () => {
       'kotlinCompiler',
       'errorProne',
       'nullAway',
+      'asm',
     ]);
   });
 

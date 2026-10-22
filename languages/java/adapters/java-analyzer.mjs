@@ -14,6 +14,7 @@ const ENTRY_FILES = [
   'languages/java/adapters/java-runner.mjs',
 ];
 const KOTLIN_PSI_DIRECTORY = 'languages/java/gradle/kotlin-psi';
+const EFFECTS_DIRECTORY = 'languages/java/gradle/effects';
 const RESOURCE_FILES = [
   'languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs',
   'languages/java/gradle/nitpicker.init.gradle',
@@ -35,6 +36,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/tasks/jdeps-task.gradle',
   'languages/java/gradle/tasks/lint-tasks.gradle',
   'languages/java/gradle/tasks/structure-task.gradle',
+  'languages/java/gradle/tasks/analysis/effects-task.gradle',
   'languages/java/gradle/tasks/pit-task.gradle',
   'languages/java/gradle/tasks/kotlin/kotlin-tasks.gradle',
   'languages/java/builds/rulesets/write-rules.mjs',
@@ -63,14 +65,21 @@ const RESOURCE_FILES = [
   'languages/java/gradle/archunit/TestRules.java',
 ];
 
-function kotlinPsiFiles() {
-  return readdirSync(path.join(packageRoot, KOTLIN_PSI_DIRECTORY), { recursive: true })
+function javaSources(directory, root) {
+  return readdirSync(root, { recursive: true })
     .filter((entry) => entry.endsWith('.java'))
-    .map((entry) => `${KOTLIN_PSI_DIRECTORY}/${entry.replaceAll(path.sep, '/')}`);
+    .map((entry) => `${directory}/${entry.replaceAll(path.sep, '/')}`);
+}
+
+function programFiles() {
+  return [
+    ...javaSources(KOTLIN_PSI_DIRECTORY, path.join(packageRoot, KOTLIN_PSI_DIRECTORY)),
+    ...javaSources(EFFECTS_DIRECTORY, path.join(packageRoot, EFFECTS_DIRECTORY)),
+  ];
 }
 
 function configurationContents() {
-  return importClosure([...ENTRY_FILES, ...RESOURCE_FILES, ...kotlinPsiFiles()], packageRoot);
+  return importClosure([...ENTRY_FILES, ...RESOURCE_FILES, ...programFiles()], packageRoot);
 }
 
 export function configurationFiles() {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { ioInLoops, logTemplates, shellCommands } from './calls.mjs';
+import { logTemplates, shellCommands } from './calls.mjs';
 
 function found(check, source) {
   const scanned = scanKotlinSource(source);
@@ -72,105 +72,5 @@ describe('shellCommands', () => {
     ['a flag that is not -c', 'ProcessBuilder("bash", "--version").start()'],
   ])('passes %s', (_name, line) => {
     expect(found(shellCommands, body([line]))).toEqual([]);
-  });
-});
-
-describe('ioInLoops', () => {
-  it.each([
-    ['a repository call in a for loop', ['for (item in items) {', '    repo.save(item)', '}']],
-    ['a repository call in forEach', ['items.forEach { repository.findById(it) }']],
-    [
-      'a call in a while loop whose condition the call does not feed',
-      [
-        'var index = 0',
-        'while (index < items.size) {',
-        '    repo.save(items[index])',
-        '    index++',
-        '}',
-      ],
-    ],
-    [
-      'a call in a try of a loop that never leaves it',
-      [
-        'for (item in items) {',
-        '    try {',
-        '        repo.save(item)',
-        '    } catch (e: IOException) {',
-        '        failed.add(item)',
-        '    }',
-        '}',
-      ],
-    ],
-  ])('flags %s', (_name, lines) => {
-    expect(found(ioInLoops, body(lines)).map(([rule]) => rule)).toEqual(['IoCallInLoop']);
-  });
-
-  it.each([
-    ['a batch call', ['repo.saveAll(items)']],
-    [
-      'a batch call in a loop',
-      ['for (chunk in items.chunked(10)) {', '    repo.saveAll(chunk)', '}'],
-    ],
-    [
-      'a call outside the loop',
-      ['val all = repo.findAll()', 'for (item in all) {', '    check(item != "")', '}'],
-    ],
-    ['a call on the loop item', ['for (item in items) {', '    item.trim()', '}']],
-    [
-      'a paging loop that breaks on an empty page',
-      [
-        'var page = 0',
-        'while (true) {',
-        '    val batch = repository.findAll(PageRequest.of(page, 100))',
-        '    if (batch.isEmpty) break',
-        '    page++',
-        '}',
-      ],
-    ],
-    [
-      'a cursor loop whose condition reads what the call returned',
-      [
-        'var cursor: String? = null',
-        'do {',
-        '    val response = client.fetch(cursor)',
-        '    cursor = response.next',
-        '} while (cursor != null)',
-      ],
-    ],
-    [
-      'a polling loop',
-      [
-        'var done = false',
-        'while (!done) {',
-        '    val status = client.get(job)',
-        '    done = status.finished',
-        '}',
-      ],
-    ],
-    [
-      'a loop that leaves on a null page',
-      [
-        'while (true) {',
-        '    val page = api.fetchPage(token) ?: break',
-        '    token = page.next',
-        '}',
-      ],
-    ],
-    [
-      'a retry loop',
-      [
-        'for (attempt in 1..3) {',
-        '    try {',
-        '        return client.send(request, BodyHandlers.ofString()).body()',
-        '    } catch (e: java.io.IOException) {',
-        '        log.warn("attempt {} failed", attempt, e)',
-        '    }',
-        '}',
-      ],
-    ],
-    ['a file read per item', ['items.map { Files.readString(Path.of(it)) }']],
-    ['a file read in a loop', ['for (item in items) {', '    java.io.File(item).readText()', '}']],
-  ])('passes %s', (_name, lines) => {
-    expect(found(ioInLoops, body(lines))).toEqual([]);
   });
 });
