@@ -807,6 +807,18 @@ hop, and type-only imports do not count.
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
   A real condition such as `skipIf(process.platform === 'win32')` is allowed, and so is `it.fails`,
   which runs and documents a known bug: it starts failing once the bug is fixed.
+- `nitpicker/no-unowned-async-assertion`: an assertion inside a callback the test hands off must
+  run before the test ends, or its failure is lost or blamed on another test. Reported: a callback
+  passed to `setTimeout`, `setImmediate`, `queueMicrotask` or `process.nextTick` when the test does
+  not advance a fake clock after it (`vi.advanceTimersByTime`, `jest.runAllTimers`, `clock.tick`,
+  `t.mock.timers.tick`, ...); a listener added with `on`, `once`, `addListener` or
+  `addEventListener` as the test's last step (no call or `await` follows it that could fire the
+  event); and an error-first callback (`(err, value) => ...`), which Node-style APIs call later.
+  Allowed: the callback inside an awaited or returned expression (`await new Promise((resolve) =>
+emitter.once('ready', ...))`), a test that takes the runner's `done` callback and calls it, and a
+  test that plans its assertions (`expect.assertions(n)`, `t.plan(n)`). Only callbacks written in
+  the test body are traced; `valid-expect-in-promise` covers promise chains and
+  `no-floating-promises` unawaited promises.
 - `slow-test` (coverage check, head only): an added or edited test fails above 5 s, or 30 s in an integration/e2e test folder. All supported runners share this policy. Suspected slow tests are rerun without coverage instrumentation, using the existing head policy's thresholds and reviewed exceptions; unchanged test calls do not add findings.
 - `nitpicker/no-real-time-random-or-network`: in tests, no `Date.now()`, `new Date()` without an
   argument or `Math.random()` (fake the clock with `vi.useFakeTimers()` and `vi.setSystemTime`, or
