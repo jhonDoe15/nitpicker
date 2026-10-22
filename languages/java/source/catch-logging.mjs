@@ -57,7 +57,7 @@ function rethrows(body, name) {
   );
 }
 
-export function catchLogViolations(code, language) {
+export function catchLogViolations(code, language, { reportedElsewhere = new Set() } = {}) {
   const blocks = catchBlocks(code, language);
   return logCalls(code)
     .filter(isFailureCall)
@@ -65,6 +65,7 @@ export function catchLogViolations(code, language) {
       const block = innermost(blocks, call.index);
       const handled =
         block === undefined ||
+        reportedElsewhere.has(block.open) ||
         passesException(call, block.name) ||
         rethrows(code.slice(block.open, block.close), block.name);
       return handled ? [] : [{ receiver: call.receiver, level: call.level, caught: block.name }];

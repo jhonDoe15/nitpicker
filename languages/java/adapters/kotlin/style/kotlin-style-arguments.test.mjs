@@ -242,7 +242,7 @@ describe('what runs with the project listed', () => {
 
   it("passes the merged forbidden-call list when the project's detekt config lists calls of its own", () => {
     const root = project({
-      'detekt.yml': "style:\n  ForbiddenMethodCall:\n    methods: ['kotlin.io.println']\n",
+      'detekt.yml': "style:\n  ForbiddenMethodCall:\n    methods: ['java.lang.System.exit']\n",
     });
 
     expect(
