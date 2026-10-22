@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { readHeadPolicy } from '../../../../preset/head-policy.mjs';
-import { testConsoleFindings } from '../../reporting/console/console-findings.mjs';
+import { testConsoleFindings } from '../../../../../../shared/rules/console/console-findings.mjs';
 import { TEST_CONSOLE_REPORT_PATH, toolErrorFinding } from '../../reporting/test-report.mjs';
 import { parseReportJson, relativeProjectPath } from '../tooling.mjs';
 
