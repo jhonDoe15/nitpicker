@@ -805,24 +805,27 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   collected) and keeps its own finding.
 - `unshielded-cleanup-await` follows the documented flake8-async ASYNC102 behavior for Trio and
   AnyIO, which cancel again at every checkpoint of a cancelled scope: an `await`, `async with` or
-  `async for` inside `finally:` or inside a handler for `trio.Cancelled`,
-  `anyio.get_cancelled_exc_class()`, `BaseException` or a bare `except:` can be cancelled before
-  the cleanup finishes. The check runs only in a module that imports `trio` or `anyio`, reports the
-  first such checkpoint per block, and allows it inside a shielded scope with a deadline in the
-  block or around the `try`: `trio.move_on_after`, `move_on_at`, `fail_after` and `fail_at`, and
-  `anyio.move_on_after` and `fail_after`, with a literal `shield=True` and a deadline that is not
-  `None` or infinite, and `trio.CancelScope` or `anyio.CancelScope` with `shield=True` and a
-  `deadline`. A shield without a deadline is reported, because a stuck close would hang shutdown;
-  bound the cleanup, or add a reviewed `python.exceptions` entry when the owner guarantees that it
-  ends. `trio.aclose_forcefully(...)` and the `cancel_shielded_checkpoint()` helpers cannot be
-  interrupted and are allowed. A deadline set after the scope is created
-  (`scope.deadline = ...`) is not followed. asyncio cancels a task once (`CancelledError` is raised
-  at the `await` that is waiting, and later awaits run normally unless the task is cancelled again),
-  so the Trio assumption does not carry over: modules that import neither backend are not checked.
-  `asyncio.shield` is not a scope: it protects the inner task but the shielding `await` is still
-  interrupted, and its inner task must be kept referenced; neither is modeled. Ruff 0.16.8 and
-  0.16.9 have no ASYNC102, and no flake8-async code is used; Ruff's `ASYNC100` (a cancel scope
-  without a checkpoint) cannot report the recommended shielded scope, which contains the `await`.
+  `async for` inside `finally:` or inside a handler for `trio.Cancelled` or
+  `anyio.get_cancelled_exc_class()` (import aliases and tuples included) can be cancelled before
+  the cleanup finishes, so the resource may never be released. The check runs only in a module that
+  imports `trio` or `anyio`, reports the first such checkpoint per block, and allows it inside a
+  `with` that sets a literal `shield=True` (`trio.CancelScope`, `trio.move_on_after`, `move_on_at`,
+  `fail_after`, `fail_at`, `anyio.CancelScope`, `anyio.move_on_after`, `anyio.fail_after`), in the
+  block or around the `try`. The message recommends a shielded scope with a deadline
+  (`with trio.move_on_after(5, shield=True): await resource.aclose()`), because a shield without
+  one can hang shutdown on a stuck close; such an unbounded shield is allowed, and the deadline is
+  not checked. `trio.aclose_forcefully(...)` and the `cancel_shielded_checkpoint()` helpers cannot be
+  interrupted and are allowed. A shield set after the scope is created (`scope.shield = True`) is
+  not followed, and `except BaseException` and bare `except:` handlers are not treated as
+  cancellation handlers, because the evidence that they catch a cancellation is missing. asyncio
+  cancels a task once (`CancelledError` is raised at the `await` that is waiting, and later awaits
+  run normally unless the task is cancelled again), so the Trio assumption does not carry over:
+  modules that import neither backend are not checked. `asyncio.shield` is not a scope: it protects
+  the inner task but the shielding `await` is still interrupted, and its inner task must stay
+  referenced; neither is modeled. Ruff 0.16.8 (the version pinned in
+  `.github/python-e2e-constraints.txt`) and 0.16.9 have no ASYNC102, and no flake8-async code is
+  used; Ruff's `ASYNC100` (a cancel scope without a checkpoint) cannot report the recommended
+  shielded scope, which contains the `await`.
 - `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
   comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
   `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and
