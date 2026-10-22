@@ -49,9 +49,10 @@ The `nitpicker/` rules below read one shared notion of a call's effect (`databas
 from receiver names where no type is known. Each finding is enforceable and names the path through
 helpers.
 
-| Rule                      | Reports                                                                                                    |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `nitpicker/no-io-in-loop` | a database query per loop item (also inside `Promise.all`), a remote request per item of a sequential loop |
+| Rule                                        | Reports                                                                                                    |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `nitpicker/no-io-in-loop`                   | a database query per loop item (also inside `Promise.all`), a remote request per item of a sequential loop |
+| `nitpicker/no-accumulator-spread-in-reduce` | an accumulator copied on every step of `reduce` or of a loop (`acc = [...acc, x]`, `acc.concat(x)`)        |
 
 ## Entry points
 

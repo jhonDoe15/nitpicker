@@ -44,6 +44,11 @@ export const codeSmellFailureMessageCases = [
       'xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {});',
       'Object.fromEntries',
     ],
+    [
+      'accumulator copied in a loop names pushing into an array',
+      'let all = []; for (const x of xs) { all = [...all, x]; }',
+      'push into an array',
+    ],
     ['generic file name names the exception', 'export const a = 1;', EXCEPTION, GENERIC_FILE],
     [
       'generic file name names the shared folder',

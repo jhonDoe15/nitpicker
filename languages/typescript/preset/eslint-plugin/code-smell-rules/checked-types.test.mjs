@@ -34,6 +34,28 @@ const FIXTURES = {
     '  );',
     '}',
   ].join('\n'),
+  'fixed-record-loop.ts': [
+    STATUS,
+    ORDER,
+    'type Counts = Readonly<Record<Status, number>>;',
+    'export function count(orders: readonly Order[]): Counts {',
+    "  let counts: Counts = { pending: 0, 'on-hold': 0, shipped: 0 };",
+    '  for (const order of orders) {',
+    '    counts = { ...counts, [order.status]: counts[order.status] + 1 };',
+    '  }',
+    '  return counts;',
+    '}',
+  ].join('\n'),
+  'open-record-loop.ts': [
+    'type Counts = Readonly<Record<string, number>>;',
+    'export function count(words: readonly string[]): Counts {',
+    '  let counts: Counts = {};',
+    '  for (const word of words) {',
+    '    counts = { ...counts, [word]: 1 };',
+    '  }',
+    '  return counts;',
+    '}',
+  ].join('\n'),
   'open-record.ts': [
     'type Counts = Readonly<Record<string, number>>;',
     'export function count(words: readonly string[]): Counts {',
@@ -98,11 +120,16 @@ describe('typed exemptions of the duplicate literal and accumulator spread rules
     expect(await findings('string-values.ts')).toEqual(['nitpicker/duplicates:3']);
   });
 
-  it('accepts spreading an accumulator whose keys are a fixed set', async () => {
-    expect(await findings('fixed-record.ts')).toEqual([]);
-  });
-
-  it('rejects spreading an accumulator that grows with the list', async () => {
-    expect(await findings('open-record.ts')).toEqual(['nitpicker/spread:3', 'nitpicker/spread:6']);
+  it.each([
+    ['spreading an accumulator whose keys are a fixed set', 'fixed-record.ts', []],
+    ['a loop copying an accumulator whose keys are a fixed set', 'fixed-record-loop.ts', []],
+    ['a loop copying an open accumulator', 'open-record-loop.ts', ['nitpicker/spread:5']],
+    [
+      'spreading an open accumulator',
+      'open-record.ts',
+      ['nitpicker/spread:3', 'nitpicker/spread:6'],
+    ],
+  ])('reports %s only when it grows with the list', async (_name, file, expected) => {
+    expect(await findings(file)).toEqual(expected);
   });
 });
