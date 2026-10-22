@@ -1,8 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
-import { ingestSarif } from '../../ingest/sarif.mjs';
+import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
+import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
 import { readKotlinClassLimitFindings } from '../kotlin/kotlin-class-limits.mjs';
+import { readSarifReport } from './sarif/sarif-reports.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
   readKotlinCrapFindings,
@@ -12,6 +13,10 @@ import {
 import { readCompilerFindings } from '../kotlin/rules/kotlin-compiler.mjs';
 import { applyKotlinRuleMessages } from '../kotlin/rules/kotlin-messages.mjs';
 import { appendSentence, ONE_WAY_RULE_IDS } from '../kotlin/rules/kotlin-rules.mjs';
+import {
+  readCatchLogFindings,
+  readTestAssertionFindings,
+} from '../kotlin/rules/kotlin-source-rules.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
 import { withFrameworkAllowances } from '../kotlin/scan/framework-allowances.mjs';
 import { readKotlinSourceFindings } from '../kotlin/scan/kotlin-scan.mjs';
@@ -58,6 +63,15 @@ export function sourceLocator(projectRoot, sourceRoots) {
   };
 }
 
+export function sourceFileOf(locate, className, fileName) {
+  const parts = className.split('.');
+  const simple = parts.pop().split('$')[0];
+  const directory = parts.join('/');
+  return fileName === undefined
+    ? (locate(directory, `${simple}.java`) ?? locate(directory, `${simple}.kt`))
+    : locate(directory, fileName);
+}
+
 function declaredKotlinFiles(projectRoot, sourceRoots) {
   return sourceRoots.flatMap((sourceRoot) => {
     const directory = path.join(projectRoot, sourceRoot);
@@ -88,11 +102,13 @@ export function reportOnlyKotlinMutants(findings) {
 export function readKotlinFindings(context, crapLimit) {
   const { reportRoot, manifest, projectRoot, jacoco, formatAdvice = DEFAULT_ADVICE } = context;
   const metrics = readKotlinMetrics(reportRoot);
+  const testRoots = manifest.kotlinTestSourceRoots ?? [];
+  const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
   const ruleFindings = applyKotlinRuleMessages([
     ...withFrameworkAllowances(detektFindings(reportRoot, formatAdvice), {
       projectRoot,
       spring: manifest.spring === true,
-      testRoots: manifest.kotlinTestSourceRoots ?? [],
+      testRoots,
     }),
     ...readKotlinSourceFindings(projectRoot, manifest),
     ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),
@@ -100,6 +116,8 @@ export function readKotlinFindings(context, crapLimit) {
   return [
     ...ruleFindings,
     ...readSuppressionFindings(projectRoot, kotlinLintedRoots(manifest)),
+    ...readCatchLogFindings(projectRoot, kotlinLintedRoots(manifest)),
+    ...readTestAssertionFindings(projectRoot, testRoots, helpers),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
     ...readKotlinStructureFindings(metrics, projectRoot),
     ...readKotlinClassLimitFindings(metrics, context.classLimits?.thresholds),
@@ -129,7 +147,7 @@ function identifiedBySubject(log) {
 }
 
 function readSarif(reportRoot, file) {
-  return identifiedBySubject(JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8')));
+  return identifiedBySubject(readSarifReport(path.join(reportRoot, file)));
 }
 
 function withProjectConfigRoute(finding, advice) {

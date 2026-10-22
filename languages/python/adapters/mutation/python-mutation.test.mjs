@@ -1,105 +1,31 @@
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { installFakeToolchain } from '../test-support/fake-toolchain.mjs';
 import {
-  MUTATION_FAILED_RULE,
-  MUTATION_SKIPPED_RULE,
-  mutationFindings,
-} from './python-mutation.mjs';
-import { createToolContext } from '../python-tools.mjs';
+  callsLog,
+  contextFor,
+  mutantsData,
+  mutmutCalls,
+  project,
+} from '../test-support/mutmut-project.mjs';
+import {
+  restoreTemporaryState,
+  setEnvironment,
+} from '../execution/test-support/python-tools-project.mjs';
+import { MUTATION_FAILED_RULE, mutationFindings } from './python-mutation.mjs';
+import { MUTATION_SKIPPED_RULE } from './test-run/python-mutation-runner.mjs';
 import { section } from './test-support/mutmut-section.mjs';
 
-const roots = [];
-const savedEnvironment = new Map();
+afterEach(restoreTemporaryState);
 
-function temporaryRoot() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-mutation-')));
-  roots.push(root);
-  return root;
-}
-
-function setEnvironment(name, value) {
-  if (!savedEnvironment.has(name)) {
-    savedEnvironment.set(name, process.env[name]);
-  }
-  if (value === undefined) {
-    Reflect.deleteProperty(process.env, name);
-  } else {
-    process.env[name] = value;
-  }
-}
-
-afterEach(() => {
-  for (const [name, value] of savedEnvironment) {
-    setEnvironment(name, value);
-  }
-  savedEnvironment.clear();
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function write(root, files) {
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-}
+const NOTHING_COLLECTED = {
+  'mutants-data.json': mutantsData(null),
+  'mutmut-exit.txt': '1\n',
+  'mutmut-output.txt': 'no tests ran in 0.08s\nfailed to collect stats. runner returned 5\n',
+};
 
 const read = (root, file) => readFileSync(path.join(root, file), 'utf8');
 
-const MUTATED =
-  'def x_value__mutmut_orig():\n    return 1\n\n\ndef x_value__mutmut_1():\n    return 2\n\n\ndef x_value__mutmut_2():\n    return 3\n';
-
-function mutantsData(...exitCodes) {
-  return JSON.stringify({
-    'src/demo/a.py': {
-      exitCodes: Object.fromEntries(
-        exitCodes.map((code, index) => [`demo.a.x_value__mutmut_${String(index + 1)}`, code]),
-      ),
-      mutated: MUTATED,
-    },
-  });
-}
-
-function project(files = {}) {
-  const root = temporaryRoot();
-  installFakeToolchain(path.join(root, '.venv/bin'));
-  write(root, { 'src/demo/a.py': 'def value():\n    return 1\n', ...files });
-  return root;
-}
-
-function contextFor(root, overrides = {}) {
-  return createToolContext({
-    projectRoot: root,
-    liveRoot: root,
-    reportRoot: temporaryRoot(),
-    ...overrides,
-  });
-}
-
-function callsLog() {
-  const log = path.join(temporaryRoot(), 'calls.jsonl');
-  writeFileSync(log, '');
-  setEnvironment('FAKE_PYTHON_LOG', log);
-  return () =>
-    readFileSync(log, 'utf8')
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => JSON.parse(line));
-}
-
-const mutmutCalls = (calls) => calls().filter(({ tool }) => tool === 'mutmut');
 const summaries = (findings) =>
   findings
     .filter(({ rule }) => rule === 'mutation-summary')
@@ -241,14 +167,20 @@ describe('running mutmut', () => {
     );
   });
 
-  it('reports nothing when the tests collected no test, which the python analyzer already flags', () => {
-    const root = project({
-      'mutants-data.json': mutantsData(null),
-      'mutmut-exit.txt': '1\n',
-      'mutmut-output.txt': 'no tests ran in 0.08s\nfailed to collect stats. runner returned 5\n',
-    });
+  it('says so when pytest collected no test instead of returning nothing', () => {
+    const root = project(NOTHING_COLLECTED);
 
-    expect(mutationFindings(contextFor(root))).toEqual([]);
+    expect(mutationFindings(contextFor(root))).toEqual([
+      {
+        tool: 'mutmut',
+        rule: MUTATION_SKIPPED_RULE,
+        path: '.',
+        identity: 'no-tests-collected',
+        message:
+          'Mutation testing was skipped: pytest, which mutmut runs the tests with, collected no test in its copy of the project. If the tests live outside the copied directories, list them under "also_copy" in [tool.mutmut] of pyproject.toml. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.',
+        classification: 'descriptive',
+      },
+    ]);
   });
 
   it('counts every mutant as uncovered when mutmut finds no test for any of them', () => {

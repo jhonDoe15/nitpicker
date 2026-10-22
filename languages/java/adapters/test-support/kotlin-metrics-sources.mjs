@@ -10,8 +10,18 @@ fun plain(a: Int, b: Int): Int {
 fun Int.double(): Int = this * 2
 
 inline fun twice(block: () -> Unit) {
+    val inside = { block() }
     block()
-    block()
+    inside()
+}
+
+fun callbacks(values: List<Int>): Int {
+    val scale = { x: Int -> if (x > 1) x * 2 else x }
+    fun clamp(x: Int): Int {
+        return if (x > 9 && x < 99) 9 else x
+    }
+    val named = fun(x: Int): Int { return x + 1 }
+    return values.map { v -> if (v > 0) clamp(v) else scale(v) }.sum() + named(1)
 }
 
 class Holder(private val start: Int) {

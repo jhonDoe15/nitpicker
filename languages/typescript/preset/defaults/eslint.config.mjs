@@ -21,11 +21,15 @@ import {
   isReactProject,
   reactScopeConfigFor,
 } from '../eslint-config/react/react-scope.mjs';
+import { testHonestyConfigFor } from '../eslint-config/test-honesty/index.mjs';
+import { setupFilesIn } from '../eslint-config/test-honesty/setup-files.mjs';
+import { stubRestoresIn } from '../eslint-config/test-honesty/stub-restores.mjs';
 import { readDependencyNames } from '../eslint-config/scope-support.mjs';
 import { securityFactsFor } from '../eslint-config/policy/security-facts.mjs';
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { existingRoots } from '../layout.mjs';
 import { fileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
 import { assertionFunctionNames } from '../../conventions/measures/assertion-helpers.mjs';
 import { typeImportFixStyle } from '../../conventions/type-import-style.mjs';
@@ -43,7 +47,11 @@ const react = isReactProject({
   javascript: layout.javascript,
 });
 const routeHandlers = usesRouteHandlerFramework(readDependencyNames(analyzedProjectRoot()));
-const i18n = isI18nProject({ projectRoot: analyzedProjectRoot(), i18n: policy.i18n });
+const i18n = isI18nProject({
+  projectRoot: analyzedProjectRoot(),
+  i18n: policy.i18n,
+  javascript: layout.javascript,
+});
 const security = securityFactsFor(analyzedProjectRoot(), (file) => layout.isSourceFile(file));
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
@@ -89,6 +97,7 @@ const presetConfig = defineConfig(
       nitpicker: nitpickerRules,
     },
     rules: {
+      'nitpicker/no-dev-dependency-in-production': 'error',
       'nitpicker/no-managed-resource-construction-outside-composition-roots': 'error',
       'nitpicker/preserve-error-cause': ['error', errorWrappingPolicy],
     },
@@ -169,6 +178,11 @@ const presetConfig = defineConfig(
     files: unitTestGlobs,
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
+  ...testHonestyConfigFor(layout, {
+    setupFiles: setupFilesIn(analyzedProjectRoot()),
+    stubRestores: stubRestoresIn(analyzedProjectRoot()),
+    testRootsOnDisk: existingRoots(analyzedProjectRoot(), layout.testRoots),
+  }),
   ...testEnvironmentConfigFor(layout, testEnvironmentsFromVariables()),
 );
 

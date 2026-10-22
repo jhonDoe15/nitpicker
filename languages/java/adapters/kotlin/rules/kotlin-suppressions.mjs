@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
-import { createIdentityCounter } from '../../../ingest/common.mjs';
+import { createIdentityCounter } from '../../../../../shared/ingest/common.mjs';
 import { LITERAL_MARK, maskKotlinSource } from './kotlin-literals.mjs';
 import { compilerWarningRule, isBannedSuppression, SUPPRESSION_RULE } from './kotlin-rules.mjs';
 
@@ -15,7 +15,7 @@ export function suppressionTokens(source) {
   );
 }
 
-function kotlinFiles(projectRoot, sourceRoot) {
+export function kotlinFiles(projectRoot, sourceRoot) {
   if (!existsSync(path.join(projectRoot, sourceRoot))) {
     return [];
   }
