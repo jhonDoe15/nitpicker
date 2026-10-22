@@ -193,3 +193,10 @@ fun inLoop(values: List<Int>): Int {
     return total
 }
 `;
+
+export const DEEP_CHAIN = `package demo.deep
+
+val sum = ${Array.from({ length: 3000 }, () => '1').join(' + ')}
+
+fun nested() = ${'run { '.repeat(800)}1${' }'.repeat(800)}
+`;
