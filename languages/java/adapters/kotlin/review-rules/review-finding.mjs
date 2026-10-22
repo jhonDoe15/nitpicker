@@ -19,3 +19,7 @@ export function findingFactory() {
 export function exceptionSentence(rule) {
   return `add an exception for ${REVIEW_TOOL}/${rule} in nitpicker.config.json.`;
 }
+
+export function ifRightHere(rule) {
+  return `If it is right here, ${exceptionSentence(rule)}`;
+}

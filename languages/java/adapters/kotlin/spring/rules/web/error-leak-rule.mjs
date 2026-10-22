@@ -44,11 +44,14 @@ function exceptionNames(file, declaration) {
 }
 
 function isException(source, names, node) {
-  let current = node;
-  while (QUALIFIED.has(current?.t) && CAUSES.has(selectorName(source, current))) {
-    current = kids(current)[0];
+  const chain = [node];
+  for (const current of chain) {
+    if (QUALIFIED.has(current?.t) && CAUSES.has(selectorName(source, current))) {
+      chain.push(kids(current)[0]);
+    }
   }
-  return current?.t === 'REFERENCE_EXPRESSION' && names.has(textOf(source, current));
+  const last = chain.at(-1);
+  return last?.t === 'REFERENCE_EXPRESSION' && names.has(textOf(source, last));
 }
 
 function leakKind(source, names, node) {

@@ -38,24 +38,22 @@ const LITERALS = new Set([
 const UPPER_CASE = /^[A-Z][A-Z0-9_]*$/;
 
 function unwrap(node) {
-  let current = node;
-  while (current?.t === 'PARENTHESIZED') {
-    current = kids(current)[0];
+  const chain = [node];
+  for (const current of chain) {
+    if (current?.t === 'PARENTHESIZED') {
+      chain.push(kids(current)[0]);
+    }
   }
-  return current;
+  return chain.at(-1);
 }
 
 function partsOf(source, node) {
   const parts = [];
   const pending = [node];
-  while (pending.length > 0) {
-    const expression = unwrap(pending.pop());
+  for (const current of pending) {
+    const expression = unwrap(current);
     if (expression?.t === 'BINARY_EXPRESSION' && operatorOf(source, expression) === '+') {
-      pending.push(
-        ...kids(expression)
-          .filter((child) => child.t !== 'OPERATION_REFERENCE')
-          .reverse(),
-      );
+      pending.push(...kids(expression).filter((child) => child.t !== 'OPERATION_REFERENCE'));
     } else {
       parts.push(expression);
     }
@@ -137,14 +135,12 @@ function isConstant(env, node) {
   const seen = new Set();
   for (const current of pending) {
     const expression = unwrap(current);
-    if (!seen.has(expression)) {
-      seen.add(expression);
-      const parts = constantParts(env, expression);
-      if (parts === undefined) {
-        return false;
-      }
-      pending.push(...parts);
+    const parts = seen.has(expression) ? [] : constantParts(env, expression);
+    seen.add(expression);
+    if (parts === undefined) {
+      return false;
     }
+    pending.push(...parts);
   }
   return true;
 }
