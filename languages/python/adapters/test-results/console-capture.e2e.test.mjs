@@ -178,6 +178,96 @@ def test_logged():
     expect(report.entries.map(({ messages }) => messages)).toEqual([['disk almost full']]);
   });
 
+  it('leaves logging.basicConfig to the project and still sees records after dictConfig', () => {
+    const { report } = consoleReport({
+      'tests/conftest.py':
+        'import logging\nimport logging.config\n\n\ndef pytest_configure(config):\n    logging.basicConfig(level=logging.INFO)\n    logging.config.dictConfig({"version": 1, "incremental": True, "root": {"level": "INFO"}})\n',
+      'tests/test_level.py': `import logging
+import sys
+
+
+def test_level():
+    print("root level", logging.getLogger().level, file=sys.stderr)
+
+
+def test_logged():
+    logging.getLogger("shop").warning("cache is cold")
+`,
+    });
+
+    expect(report.entries.map(({ test, messages }) => [test, messages])).toEqual([
+      ['test_level', ['root level 20']],
+      ['test_logged', ['WARNING:shop:cache is cold']],
+    ]);
+  });
+
+  it('keeps recording when the project replaces the root handlers', () => {
+    const { report } = consoleReport({
+      'tests/conftest.py':
+        'import logging.config\n\n\ndef pytest_configure(config):\n    logging.config.dictConfig({"version": 1, "root": {"level": "INFO", "handlers": []}})\n',
+      'tests/test_x.py':
+        'import logging\n\n\ndef test_log():\n    logging.getLogger("svc").warning("kept warning")\n',
+    });
+
+    expect(report.entries.map(({ messages }) => messages)).toEqual([['WARNING svc: kept warning']]);
+  });
+
+  it('gives what a shared fixture prints to the file that defines it, not to the test that ran first', () => {
+    const { root, report } = consoleReport({
+      'tests/conftest.py': `import logging
+import sys
+import warnings
+
+import pytest
+
+
+@pytest.fixture(scope="session")
+def db():
+    logging.getLogger("shop.db").warning("using the in-memory database")
+    print("db ready", file=sys.stderr)
+    warnings.warn("old driver", DeprecationWarning)
+    yield "db"
+    logging.getLogger("shop.db").warning("in-memory database discarded")
+`,
+      'tests/test_a.py': 'def test_a(db):\n    assert db\n',
+      'tests/test_b.py':
+        'import pytest\n\n\n@pytest.fixture(scope="module")\ndef cart():\n    print("cart loaded", file=sys.stderr)\n    return 1\n\n\nimport sys\n\n\ndef test_b(db, cart):\n    print("own output", file=sys.stderr)\n',
+    });
+
+    expect(
+      report.entries.map(({ file, test, messages }) => [path.relative(root, file), test, messages]),
+    ).toEqual([
+      [
+        'tests/conftest.py',
+        '',
+        [
+          'WARNING shop.db: using the in-memory database',
+          'db ready',
+          'DeprecationWarning: old driver',
+          'WARNING shop.db: in-memory database discarded',
+        ],
+      ],
+      ['tests/test_b.py', '', ['cart loaded']],
+      ['tests/test_b.py', 'test_b', ['own output']],
+    ]);
+  });
+
+  it('reports a logger whose stderr handler predates a capsys test once', () => {
+    const { report } = consoleReport({
+      'tests/test_dup.py': `import logging
+
+LOG = logging.getLogger("svc")
+LOG.addHandler(logging.StreamHandler())
+
+
+def test_with_capsys(capsys):
+    LOG.warning("capsys warning")
+`,
+    });
+
+    expect(report.entries.map(({ messages }) => messages)).toEqual([['capsys warning']]);
+  });
+
   it('keeps a warning path on another drive absolute', () => {
     const result = spawnSync(
       'python',

@@ -3,7 +3,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { environmentError } from './python-environment.mjs';
 import { execute, probeVersion, VERSION_PATTERN } from './python-process.mjs';
-import { readOptional, readProjectHints, ROOT_TEST_DIRECTORIES } from './python-project.mjs';
+import {
+  readOptional,
+  readProjectHints,
+  ROOT_TEST_DIRECTORIES,
+  TOP_LEVEL_TEST_DIRECTORIES,
+} from './python-project.mjs';
 import { DJANGO_SCRIPT, readDjangoScript } from './python-django.mjs';
 import { TEST_FILE_NAME } from './python-test-files.mjs';
 import { JUNIT_REPORT } from '../test-runs/junit-results.mjs';
@@ -202,11 +207,25 @@ export function testEnvironment(context) {
     : {};
 }
 
+const UNITTEST_FILE = /^test.*\.py$/u;
+
+function holdsUnittestFiles(directory) {
+  return readdirSync(directory, { recursive: true }).some((file) =>
+    UNITTEST_FILE.test(path.basename(String(file))),
+  );
+}
+
+function startDirectory(projectRoot, name) {
+  const directory = path.join(projectRoot, name);
+  return (
+    existsSync(directory) &&
+    (!TOP_LEVEL_TEST_DIRECTORIES.includes(name) || holdsUnittestFiles(directory))
+  );
+}
+
 function unittestCommand(context) {
   const timed = [UNITTEST_SCRIPT, path.join(context.reportRoot, JUNIT_REPORT), 'discover'];
-  const directory = ROOT_TEST_DIRECTORIES.find((name) =>
-    existsSync(path.join(context.projectRoot, name)),
-  );
+  const directory = ROOT_TEST_DIRECTORIES.find((name) => startDirectory(context.projectRoot, name));
   if (directory === undefined) {
     return timed;
   }
