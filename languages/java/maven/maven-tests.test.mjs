@@ -255,10 +255,11 @@ describe('collectTestResults', () => {
         since,
         isArchunit: archunitMatcher(),
         tolerateFailures: true,
+        moduleName: 'core',
       }),
     ).toEqual({
       testsRan: true,
-      testsFailure: 'Tests fail in /m:\n  shop.OrderTest.totals: expected 3',
+      failure: { module: 'core', tests: ['shop.OrderTest.totals: expected 3'] },
     });
   });
 

@@ -7,8 +7,11 @@ const enabled = process.env.NITPICKER_TYPESCRIPT_E2E === '1';
 const PASSING_TEST =
   "import { expect, it } from 'vitest';\nimport { greet } from '../src/greeter.ts';\n\nit('greets', () => {\n  expect(greet('Ada')).toBe('Hello, Ada!');\n});\n";
 const FAILING_TEST = PASSING_TEST.replace('Hello, Ada!', 'Hi, Ada!');
+const ASSERTION = (expected) =>
+  `test/greeter.test.ts > greets: AssertionError: expected '${expected}' to be 'Hi, Ada!' // Object.is equality`;
 const FAILURE_MESSAGE = (expected) =>
-  `1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/greeter.test.ts > greets: AssertionError: expected '${expected}' to be 'Hi, Ada!' // Object.is equality`;
+  `1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  ${ASSERTION(expected)}`;
+const BASE_NOTE = `Tests fail on the base:\n  ${ASSERTION('Hello, Ada!')}`;
 const BRANCHY = (name) =>
   `export function ${name}(value: number): string {\n${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     .map((limit) => `  if (value === ${limit}) {\n    return '${limit}';\n  }\n`)
@@ -29,6 +32,7 @@ describe.skipIf(!enabled)('TypeScript preset on a base whose tests fail', () => 
       },
     });
     project.commitBranch('repaired', { 'test/greeter.test.ts': PASSING_TEST }, 'red-base');
+    project.commitBranch('repaired-by-deleting', { 'test/greeter.test.ts': null }, 'red-base');
     project.commitBranch('repaired-new-code', { 'src/added.ts': BRANCHY('added') }, 'repaired');
     project.commitBranch(
       'still-red',
@@ -62,10 +66,31 @@ describe.skipIf(!enabled)('TypeScript preset on a base whose tests fail', () => 
           snapshot: 'base',
           rule: 'tests-failed',
           path: 'test/greeter.test.ts',
-          message: FAILURE_MESSAGE('Hello, Ada!'),
+          message: BASE_NOTE,
         },
       ],
     });
+  });
+
+  it('passes a change that only repairs the tests with every default analyzer too', () => {
+    const result = project.gate('repaired', { base: 'red-base', analyzers: [] });
+
+    expect({
+      exitCode: result.exitCode,
+      toolErrors: result.json('tool-errors.json'),
+      enforceable: result.enforceable(),
+      notes: result.json('notes.json').map(({ tool, rule }) => `${tool} ${rule}`),
+    }).toEqual({ exitCode: 0, toolErrors: [], enforceable: [], notes: ['coverage tests-failed'] });
+  });
+
+  it('fails a change that repairs the tests by deleting them, as it would on a green base', () => {
+    const result = project.gate('repaired-by-deleting', { base: 'red-base' });
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(result.enforceable()).toEqual([
+      'crap crap-coverage-unknown src/greeter.ts',
+      'crap crap-coverage-unknown src/legacy.ts',
+    ]);
   });
 
   it('fails an added file that is untested and over the CRAP limit', () => {
@@ -88,7 +113,7 @@ describe.skipIf(!enabled)('TypeScript preset on a base whose tests fail', () => 
         snapshot: 'base',
         rule: 'tests-failed',
         path: 'test/greeter.test.ts',
-        message: FAILURE_MESSAGE('Hello, Ada!'),
+        message: BASE_NOTE,
       },
       {
         tool: 'coverage',

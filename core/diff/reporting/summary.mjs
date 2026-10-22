@@ -1,5 +1,5 @@
 import { heldFindings, heldLine } from './format/held-findings.mjs';
-import { noteSummaryText } from './format/notes.mjs';
+import { noteSummaryLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
 import {
@@ -60,9 +60,8 @@ function appendHeldSummary(lines, unchangedFindings, color) {
 }
 
 function appendNoteSummary(lines, notes, color) {
-  const text = noteSummaryText(notes);
-  if (text !== undefined) {
-    lines.push(style(text, [ANSI.dim], color));
+  for (const line of noteSummaryLines(notes)) {
+    lines.push(style(line, [ANSI.dim], color));
   }
 }
 

@@ -51,6 +51,7 @@ for `--all`):
   location and message.
 - `resolved-findings.json` and `changed-metrics.json`: informational.
 - `tool-errors.json`: the tool errors, whatever the exit code.
+- `notes.json`: notes such as a base whose tests fail, which the run reports but does not fail on.
 - `summary.json` and `report.junit.xml`: totals and CI output.
 
 Only new enforceable findings fail the run. Resolved and unchanged findings, descriptive findings

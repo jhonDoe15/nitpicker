@@ -57,9 +57,9 @@ describe('coverage on a Mocha project', () => {
     expect(findings).toEqual([
       {
         tool: 'coverage',
-        rule: 'tests-failed',
+        rule: 'tests-not-run',
         path: 'test/broken.test.ts',
-        identity: 'tests-failed',
+        identity: 'tests-not-run',
         message:
           '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
           '  test/broken.test.ts > could not run: Error [ERR_MODULE_NOT_FOUND]: ' +

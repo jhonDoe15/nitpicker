@@ -86,6 +86,7 @@ function writeModule({ key, dir }) {
     JSON.stringify({
       versions: {},
       sourceRoots: [inside('src/main/java')],
+      testsFailed: testsFailedModules.includes(dir === '' ? '.' : dir),
       ...(kotlin && {
         kotlin: true,
         kotlinSourceRoots: [inside('src/main/kotlin')],
@@ -119,7 +120,8 @@ function writeModule({ key, dir }) {
       ? readFileSync('checkstyle-report.xml')
       : '<checkstyle version="10.21.1"></checkstyle>',
   );
-  if (!lines('NO_JACOCO_IN').includes(dir === '' ? '.' : dir)) {
+  const moduleName = dir === '' ? '.' : dir;
+  if (!lines('NO_JACOCO_IN').includes(moduleName) && !testsFailedModules.includes(moduleName)) {
     writeFileSync(
       report('jacoco.xml'),
       existsSync('jacoco.xml') ? readFileSync('jacoco.xml') : '<report name="demo"></report>',
@@ -144,6 +146,27 @@ function writeModule({ key, dir }) {
   writeFileSync(report('classes.json'), '{"files":{},"classes":[]}');
 }
 
+const testsFailedModules =
+  process.argv
+    .find((argument) => argument.startsWith('-Pnitpicker.testsFailed='))
+    ?.split('=')[1]
+    .split(',') ?? [];
+function failTests() {
+  if (!existsSync('TESTS_FAIL') || testsFailedModules.length > 0) {
+    return;
+  }
+  const failing = Object.entries(JSON.parse(readFileSync('TESTS_FAIL', 'utf8')));
+  const listed = failing.map(([dir, suite]) => {
+    const results = path.resolve('build/test-results', dir || 'root');
+    mkdirSync(results, { recursive: true });
+    writeFileSync(path.join(results, 'TEST-demo.ATest.xml'), suite);
+    return { dir, results: [results] };
+  });
+  writeFileSync(path.join(reportBase, 'test-results.json'), JSON.stringify(listed));
+  process.stderr.write('FAILURE: Build failed with an exception.\n');
+  process.exit(1);
+}
+
 const modules = existsSync('NO_REPORTS')
   ? []
   : [
@@ -152,6 +175,7 @@ const modules = existsSync('NO_REPORTS')
     ];
 mkdirSync(reportBase, { recursive: true });
 mkdirSync('build', { recursive: true });
+failTests();
 writeFileSync('build/gradle-args.json', JSON.stringify(process.argv.slice(2)));
 appendFileSync('build/gradle-calls.jsonl', `${JSON.stringify(process.argv.slice(2))}\n`);
 const exportArgument = process.argv.find((argument) =>

@@ -1,14 +1,13 @@
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
 import {
-  gradleFailure,
   isBaseTestFailure,
   runOrNoteFailingTests,
   testsFailedFinding,
-  withTestsFailure,
+  withTestsFailures,
 } from './tests-failed.mjs';
 
 const temporaryRoots = [];
@@ -19,23 +18,45 @@ afterEach(() => {
   }
 });
 
-const TEST_TASK_OUTPUT =
-  "FAILURE: Build failed with an exception.\n* What went wrong:\nExecution failed for task ':test'.\n> There were failing tests.";
+const SUITE = (name) =>
+  `<testsuite name="shop.T"><testcase classname="shop.T" name="${name}"><failure message="no"/></testcase></testsuite>`;
 
-function fakeGradle(stderrWithoutFlag) {
+function failingCall(root, modules) {
+  const listed = modules.map((dir) => {
+    const results = path.join(root, 'results', dir || 'root');
+    mkdirSync(results, { recursive: true });
+    writeFileSync(path.join(results, 'TEST-shop.T.xml'), SUITE(`in_${dir || 'root'}`));
+    return { dir, results: [results] };
+  });
+  return [
+    'mkdir -p "$report"',
+    `printf '%s' '${JSON.stringify(listed)}' > "$report/test-results.json"`,
+    `echo 'FAILURE: Build failed' >&2`,
+    'exit 1',
+  ].join('\n');
+}
+
+function fakeGradle(failingModules) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-fake-gradle-'));
   temporaryRoots.push(root);
   const log = path.join(root, 'calls.log');
   const script = path.join(root, 'gradle');
+  const cases = failingModules
+    .map((modules, index) => `${String(index + 1)})\n${failingCall(root, modules)}\n;;`)
+    .join('\n');
   writeFileSync(
     script,
     `#!/bin/sh
 echo "$@" >> '${log}'
-case "$*" in
-  *-Pnitpicker.testsFailed=true*) echo 'rerun failed' >&2 ;;
-  *) echo "${stderrWithoutFlag}" >&2 ;;
+for argument in "$@"; do
+  case "$argument" in
+    -Pnitpicker.reportDir=*) report="\${argument#-Pnitpicker.reportDir=}" ;;
+  esac
+done
+case $(wc -l < '${log}' | tr -d ' ') in
+${cases}
+*) rm -rf '${root}/results'; echo 'Execution failed for task :compileJava' >&2; exit 1 ;;
 esac
-exit 1
 `,
   );
   chmodSync(script, 0o755);
@@ -43,84 +64,56 @@ exit 1
     readFileSync(log, 'utf8')
       .trim()
       .split('\n')
-      .map((line) => line.includes('-Pnitpicker.testsFailed=true'));
+      .map((line) => {
+        const words = line.split(' ');
+        return {
+          continued: words.includes('--continue'),
+          testsFailed: words.find((word) => word.startsWith('-Pnitpicker.testsFailed=')),
+        };
+      });
   return { root, script, calls };
 }
 
-describe('gradleFailure', () => {
-  it('marks a failed test task, in the root project or a module', () => {
-    expect(gradleFailure('/p', TEST_TASK_OUTPUT).testsFailed).toBe(true);
-    expect(gradleFailure('/p', "Execution failed for task ':app:test'.").testsFailed).toBe(true);
-  });
-
-  it('marks a failed Test task of any name, in the root project or a module', () => {
-    const failing = (task) =>
-      `* What went wrong:\nExecution failed for task '${task}'.\n> There were failing tests. See the report at: file:///p/build/reports/tests/index.html`;
-
-    expect(
-      [':integrationTest', ':app:functionalTest', ':jvmTest', ':app:testDebugUnitTest'].map(
-        (task) => gradleFailure('/p', failing(task)).testsFailed,
-      ),
-    ).toEqual([true, true, true, true]);
-  });
-
-  it('does not mark a test source set that fails to compile', () => {
-    expect(
-      gradleFailure(
-        '/p',
-        "Execution failed for task ':compileIntegrationTestJava'.\n> Compilation failed; see the compiler output below.",
-      ).testsFailed,
-    ).toBe(false);
-  });
-
-  it('does not mark any other Gradle failure', () => {
-    expect(gradleFailure('/p', "Execution failed for task ':compileJava'.").testsFailed).toBe(
-      false,
-    );
-    expect(gradleFailure('/p', "Execution failed for task ':nitpickerPit'.").testsFailed).toBe(
-      false,
-    );
-  });
-
-  it('keeps the message and the raw detail', () => {
-    const error = gradleFailure('/p', 'boom');
-
-    expect({ message: error.message, detail: error.detail }).toEqual({
-      message: 'Java preset failed in /p: boom',
-      detail: 'boom',
-    });
-  });
-});
-
 describe('isBaseTestFailure', () => {
-  it('is true only for a test failure on the base snapshot', () => {
-    const failure = gradleFailure('/p', TEST_TASK_OUTPUT);
-    const other = gradleFailure('/p', 'boom');
+  it('is true only for named failing tests on the base snapshot', () => {
+    const failure = Object.assign(new Error('red'), {
+      failures: [{ module: '.', tests: ['shop.T.t: no'] }],
+    });
 
     expect([
       isBaseTestFailure(failure, { snapshot: 'base' }),
       isBaseTestFailure(failure, { snapshot: 'head' }),
       isBaseTestFailure(failure, undefined),
-      isBaseTestFailure(other, { snapshot: 'base' }),
+      isBaseTestFailure(Object.assign(new Error('x'), { failures: [] }), { snapshot: 'base' }),
       isBaseTestFailure(new Error('x'), { snapshot: 'base' }),
     ]).toEqual([true, false, false, false, false]);
   });
 });
 
 describe('testsFailedFinding', () => {
-  it('is a tool error of the preset, keeping a short message whole', () => {
-    expect(testsFailedFinding('kotlin', 'boom')).toEqual({
+  it('is a tool error of the preset that names the module and the failing tests', () => {
+    expect(
+      testsFailedFinding('kotlin', { module: 'core', tests: ['shop.T.a: no', 'shop.T.b: no'] }),
+    ).toEqual({
       tool: 'kotlin',
       rule: 'tests-failed',
       path: '.',
-      identity: 'tests-failed',
-      message: 'boom',
+      identity: 'tests-failed:core',
+      message: 'Tests fail on the base in core:\n  shop.T.a: no\n  shop.T.b: no',
       classification: 'tool-error',
+      symbol: 'core',
     });
   });
 
-  it('cuts a long message', () => {
-    expect(testsFailedFinding('java', 'x'.repeat(5000)).message).toBe(`${'x'.repeat(4000)}...`);
+  it('words the root project without a module and cuts a long message', () => {
+    const finding = testsFailedFinding('java', { module: '.', tests: ['x'.repeat(5000)] });
+
+    expect([finding.identity, finding.symbol, finding.message.length]).toEqual([
+      'tests-failed',
+      '.',
+      4003,
+    ]);
+    expect(finding.message.startsWith('Tests fail on the base:\n  xxx')).toBe(true);
   });
 });
 
@@ -131,77 +124,101 @@ describe('collectJavaFindings on a failing Gradle build', () => {
       policy: { preset: 'java', snapshot },
     });
 
-  it('reruns a failed base without the test, coverage and mutation tasks, and reports the rerun failure', () => {
-    const fake = fakeGradle(TEST_TASK_OUTPUT);
+  it('runs the failed base again without the tests of the failing modules, after letting every module run', () => {
+    const fake = fakeGradle([['core', 'api']]);
 
-    expect(() => collect(fake, 'base')).toThrow('Java preset failed in');
-    expect(fake.calls()).toEqual([false, true]);
+    expect(() => collect(fake, 'base')).toThrow('Execution failed for task :compileJava');
+    expect(fake.calls()).toEqual([
+      { continued: true, testsFailed: undefined },
+      { continued: true, testsFailed: '-Pnitpicker.testsFailed=core,api' },
+    ]);
   });
 
   it('does not rerun a failed head: a red head fails', () => {
-    const fake = fakeGradle(TEST_TASK_OUTPUT);
+    const fake = fakeGradle([['']]);
 
-    expect(() => collect(fake, 'head')).toThrow("Execution failed for task ':test'");
-    expect(fake.calls()).toEqual([false]);
+    expect(() => collect(fake, 'head')).toThrow('Tests fail in');
+    expect(fake.calls()).toEqual([{ continued: false, testsFailed: undefined }]);
   });
 
-  it('does not rerun a base that failed for another reason', () => {
-    const fake = fakeGradle("Execution failed for task ':compileJava'.");
+  it('does not rerun a base that failed without a failing test', () => {
+    const fake = fakeGradle([]);
 
-    expect(() => collect(fake, 'base')).toThrow("Execution failed for task ':compileJava'");
-    expect(fake.calls()).toEqual([false]);
+    expect(() => collect(fake, 'base')).toThrow('Execution failed for task :compileJava');
+    expect(fake.calls()).toEqual([{ continued: true, testsFailed: undefined }]);
   });
 });
 
 describe('runOrNoteFailingTests', () => {
-  const failure = Object.assign(new Error('red'), { testsFailed: true });
+  const failureOf = (...modules) =>
+    Object.assign(new Error('red'), {
+      failures: modules.map((module) => ({ module, tests: [`${module}.T.t: no`] })),
+    });
 
-  function runner(fails) {
+  function runner(...errors) {
     const calls = [];
     const run = (_root, options) => {
-      calls.push(options.testsFailed === true);
-      if (fails && options.testsFailed !== true) {
-        throw failure;
+      calls.push(options.testsFailedModules);
+      const error = errors[calls.length - 1];
+      if (error !== undefined) {
+        throw error;
       }
     };
     return { run, calls };
   }
 
   it('runs once and notes nothing when the build passes', () => {
-    const { run, calls } = runner(false);
+    const { run, calls } = runner();
 
     expect([runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'base' } }), calls]).toEqual([
-      undefined,
-      [false],
+      [],
+      [[]],
     ]);
   });
 
-  it('reruns a red base without tests and returns the failure as the note', () => {
-    const { run, calls } = runner(true);
+  it('reruns a red base without the tests of the failing modules and returns their failures', () => {
+    const { run, calls } = runner(failureOf('core', 'api'));
 
     expect([runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'base' } }), calls]).toEqual([
-      failure,
-      [false, true],
+      [
+        { module: 'core', tests: ['core.T.t: no'] },
+        { module: 'api', tests: ['api.T.t: no'] },
+      ],
+      [[], ['core', 'api']],
     ]);
+  });
+
+  it('fails when the rerun fails too', () => {
+    const second = new Error('compile');
+    const { run } = runner(failureOf('core'), second);
+
+    expect(() => runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'base' } })).toThrow(
+      second,
+    );
   });
 
   it('lets a red head fail', () => {
-    const { run, calls } = runner(true);
+    const failure = failureOf('core');
+    const { run, calls } = runner(failure);
 
     expect(() => runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'head' } })).toThrow(
       failure,
     );
-    expect(calls).toEqual([false]);
+    expect(calls).toEqual([[]]);
   });
 });
 
-describe('withTestsFailure', () => {
-  it('adds the tool error of the failing tests, or nothing when none failed', () => {
+describe('withTestsFailures', () => {
+  it('adds a tool error for each failing module, or nothing when none failed', () => {
     const findings = [{ rule: 'x' }];
+    const failures = [
+      { module: '.', tests: ['a: no'] },
+      { module: 'core', tests: ['b: no'] },
+    ];
 
     expect([
-      withTestsFailure(findings, 'java', undefined),
-      withTestsFailure(findings, 'java', { detail: 'boom' }),
-    ]).toEqual([findings, [...findings, testsFailedFinding('java', 'boom')]]);
+      withTestsFailures(findings, 'java', undefined),
+      withTestsFailures(findings, 'java', failures).map(({ rule, symbol }) => `${rule} ${symbol}`),
+    ]).toEqual([findings, ['x undefined', 'tests-failed .', 'tests-failed core']]);
   });
 });

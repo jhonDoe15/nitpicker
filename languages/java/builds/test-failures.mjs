@@ -3,6 +3,7 @@ import path from 'node:path';
 import { childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
 
 const MAX_LISTED_FAILURES = 10;
+const ROOT_MODULE = '.';
 const TEST_REPORT = /^TEST-.*\.xml$/u;
 
 export function failedCases(file) {
@@ -35,16 +36,17 @@ export function freshReports(directory, since) {
 }
 
 function listedFailures(failures) {
-  const listed = failures.slice(0, MAX_LISTED_FAILURES).map((failure) => `  ${failure}`);
+  const lines = failures.flatMap(({ tests }) => tests);
+  const listed = lines.slice(0, MAX_LISTED_FAILURES).map((line) => `  ${line}`);
   const more =
-    failures.length > MAX_LISTED_FAILURES
-      ? [`  and ${String(failures.length - MAX_LISTED_FAILURES)} more`]
+    lines.length > MAX_LISTED_FAILURES
+      ? [`  and ${String(lines.length - MAX_LISTED_FAILURES)} more`]
       : [];
   return [...listed, ...more];
 }
 
-export function failingTestsNote(where, failures) {
-  return [`Tests fail in ${where}:`, ...listedFailures(failures)].join('\n');
+export function moduleName(directory) {
+  return directory === '' ? ROOT_MODULE : directory;
 }
 
 export function failingTestsError(where, failures) {
@@ -54,5 +56,5 @@ export function failingTestsError(where, failures) {
       ...listedFailures(failures),
     ].join('\n'),
   );
-  return Object.defineProperty(error, 'detail', { value: failingTestsNote(where, failures) });
+  return Object.defineProperty(error, 'failures', { value: failures });
 }

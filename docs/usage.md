@@ -84,27 +84,46 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
 
 ### A base whose tests fail
 
-A change that repairs a red base is not blocked. When the project's tests fail on the base and pass
-on the head, the run is not a tool error in any preset: the report carries a note (`notes.json`, a
-`Notes:` section of `report.txt`, one line in the console summary) and the run is judged as follows.
+A change that repairs a red base is not blocked. A base is red when its tests ran and at least one
+named test failed, while the tests of the head pass. The run is then not a tool error in any
+preset: the report carries a note (`notes.json`, a `Notes:` section of `report.txt`, one line in
+the console summary, a `system-out` element in the JUnit file and a `note` notification in the
+SARIF file) and the run is judged as follows.
 
 - The base results of the checks that need passing tests are unknown: changed-branch coverage
-  (`changed-branch-coverage`), CRAP (`crap-score-limit`, `crap-coverage-unknown`) and mutation
-  (`mutant-*`). Every other check (lint, format, types, structure, duplicates, coupling, file
-  limits, test-runtime) is compared with the base as usual.
+  (`changed-branch-coverage`), CRAP (`crap-score-limit`, `crap-coverage-unknown`), mutation
+  (`mutant-*`), slow tests (`slow-test`), test console output (`test-console-output`) and the
+  coverage and efficiency descriptions (`uncovered-function`, `uncovered-method`, `line-coverage`,
+  `test-efficiency`). Every other check (lint, format, types, structure, duplicates, coupling, file
+  limits) is compared with the base as usual.
 - A finding of those checks on the head is new when its file is added by the change or it sits on a
-  line the change adds or edits (a CRAP finding: anywhere in an edited function). Any other one
-  is unchanged and does not fail, so legacy code cannot fail merely because the base had no data.
-  An edited function over the CRAP limit therefore fails, because there is no base score to hold
-  it against: test it or split it.
-- A red head still fails, with `tests-failed` as a tool error. When base and head are both red,
-  both are listed as tool errors.
+  line the change adds, edits or deletes from (a CRAP finding: anywhere in a function that has an
+  edited or deleted line). Any other one is unchanged and does not fail, so legacy code cannot fail
+  merely because the base had no data. An edited function over the CRAP limit therefore fails,
+  because there is no base score to hold it against: test it or split it.
+- In a build with several modules (Gradle projects, Maven modules) only the modules whose tests
+  fail are unknown on the base. The modules whose tests pass are compared with the base as usual.
+  A failing root project, and a TypeScript or Python project, count as one module.
+- A change that removes tests gets no help from the red base. When a test file loses more lines
+  than it gains, or a test file is deleted, every test-dependent result of the head counts as new,
+  as it would on a green base, and a `tests-removed` note says so. A test that is weakened without
+  losing lines cannot be told apart from a repaired one, because the base has no mutation data.
+- A base whose tests did not run is not a red base. Code that cannot be loaded (an unresolved
+  import in a TypeScript test, a Python collection or syntax error), a project that does not
+  compile, a test run that exits non-zero without naming a failing test and a run that times out
+  are tool errors on the base too: `tests-not-run` for TypeScript and Python, `gradle-failure` or
+  `maven-failure` for Java and Kotlin. A test that fails by timing out is an ordinary failing test
+  when the runner names it, so a flaky base counts as red.
+- A red head still fails. Its tool error is `tests-failed` for TypeScript and Python and
+  `gradle-failure` or `maven-failure` for Java and Kotlin. When base and head are both red, both
+  are listed as tool errors.
 - A base that does not type-check (`typecheck-failed-skipped`) or whose build fails for any other
   reason is still a tool error.
-- Java and Kotlin Gradle builds rerun the base without the tests (any failing `Test` task counts,
-  not only `test`) to read the other checks. A Maven base does not need a rerun: the build runs
-  with `-Dmaven.test.failure.ignore=true`, so the Surefire and Failsafe reports of a failing module
-  are read and only that module skips JaCoCo and PIT.
+- Java and Kotlin Gradle builds run the base with `--continue`, so every module's tests run, and
+  rerun it without the tests of the failing modules (any failing `Test` task counts, not only
+  `test`) to read the other checks. A Maven base does not need a rerun: the build
+  runs with `-Dmaven.test.failure.ignore=true`, so the Surefire and Failsafe reports of a failing
+  module are read and only that module skips JaCoCo and PIT.
 
 The base ref is the first match of:
 

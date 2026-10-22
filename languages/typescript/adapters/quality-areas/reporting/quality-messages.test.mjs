@@ -147,14 +147,100 @@ describe('unhandled errors in the Vitest output', () => {
     expect(findings).toEqual([
       {
         tool: 'coverage',
-        rule: 'tests-failed',
+        rule: 'tests-not-run',
         path: 'src/t.test.ts',
-        identity: 'tests-failed',
+        identity: 'tests-not-run',
         message:
           "Vitest caught an unhandled rejection from src/t.test.ts: AssertionError: expected 'user-2' to be 'nope' // Object.is equality. Await or return the promise in the test so its failure fails the test, then rerun; coverage, CRAP and mutation were skipped.",
         classification: 'tool-error',
       },
     ]);
+  });
+});
+
+describe('failures of a base snapshot', () => {
+  const failedReport = {
+    numFailedTests: 2,
+    testResults: [
+      {
+        name: '/p/src/a.test.ts',
+        assertionResults: [
+          {
+            fullName: 'adds',
+            status: 'failed',
+            failureMessages: ['AssertionError: expected 1 to be 2'],
+          },
+          { fullName: 'subtracts', status: 'failed', failureMessages: ['Error: boom'] },
+        ],
+      },
+    ],
+  };
+  const findingsOf = ({ report, snapshot, runnerName }) =>
+    coverageFailureFindings(
+      { analyzerName: 'coverage', projectRoot: '/p', snapshot },
+      { report, result: { status: 1, stdout: '', stderr: '' }, runnerName },
+    );
+
+  it.each(['Vitest', 'Jest', 'Mocha', 'node:test'])(
+    'is a tests-failed note naming the failing tests for %s',
+    (runnerName) => {
+      expect(findingsOf({ report: failedReport, snapshot: 'base', runnerName })).toEqual([
+        {
+          tool: 'coverage',
+          rule: 'tests-failed',
+          path: 'src/a.test.ts',
+          identity: 'tests-failed',
+          message: [
+            'Tests fail on the base:',
+            '  src/a.test.ts > adds: AssertionError: expected 1 to be 2',
+            '  src/a.test.ts > subtracts: Error: boom',
+          ].join('\n'),
+          classification: 'tool-error',
+        },
+      ]);
+    },
+  );
+
+  it('keeps the instruction wording for the head', () => {
+    const [finding] = findingsOf({ report: failedReport, snapshot: 'head', runnerName: 'Jest' });
+
+    expect(finding.message.split('\n')[0]).toBe(
+      '2 tests fail, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+    );
+  });
+
+  it('is tests-not-run when a test file could not be loaded', () => {
+    const report = {
+      numFailedTests: 0,
+      testResults: [
+        {
+          name: '/p/src/a.test.ts',
+          status: 'failed',
+          message: 'Cannot find module',
+          assertionResults: [],
+        },
+      ],
+    };
+
+    const [finding] = findingsOf({ report, snapshot: 'base', runnerName: 'Vitest' });
+
+    expect([finding.rule, finding.message]).toEqual([
+      'tests-not-run',
+      [
+        '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+        '  src/a.test.ts > could not run: Cannot find module',
+      ].join('\n'),
+    ]);
+  });
+
+  it('stays an error without a named failing test', () => {
+    expect(() =>
+      findingsOf({
+        report: { numFailedTests: 0, testResults: [] },
+        snapshot: 'base',
+        runnerName: 'Jest',
+      }),
+    ).toThrow('Jest exited 1 without naming a failing test');
   });
 });
 

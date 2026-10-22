@@ -348,9 +348,9 @@ describe('analyzing a Python snapshot', () => {
       },
       {
         tool: 'python',
-        rule: 'tests-failed',
+        rule: 'tests-not-run',
         path: '.',
-        identity: 'tests-failed',
+        identity: 'tests-not-run',
         message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
         classification: 'tool-error',
       },
@@ -363,38 +363,6 @@ describe('analyzing a Python snapshot', () => {
         classification: 'tool-error',
       },
     ]);
-  });
-
-  it('keeps the findings that need no test run when the base tests fail', () => {
-    const root = project({
-      'violations.txt': 'F401|src/demo/a.py|unused\n',
-      'unformatted.txt': 'src/demo/a.py\n',
-      'coverage-data.json': coverageReport,
-      'test-exit.txt': '1\n',
-    });
-
-    const base = analyze(root, { policy: { snapshot: 'base' } });
-
-    expect(
-      withoutCoupling(base).map(
-        ({ tool, rule, classification }) => `${tool} ${rule} ${classification}`,
-      ),
-    ).toEqual([
-      'ruff F401 enforceable',
-      'ruff-format format enforceable',
-      'python tests-failed tool-error',
-    ]);
-  });
-
-  it('returns only the tool errors when another step fails on the base too', () => {
-    const root = project({
-      'fail.json': JSON.stringify({ ruff: 'ruff crashed' }),
-      'test-exit.txt': '1\n',
-    });
-
-    expect(
-      analyze(root, { policy: { snapshot: 'base' } }).findings.map(({ rule }) => rule),
-    ).toEqual(['ruff-failed', 'format-failed', 'tests-failed', 'rules-failed']);
   });
 
   it('maps a broken environment to one tool-error finding', () => {

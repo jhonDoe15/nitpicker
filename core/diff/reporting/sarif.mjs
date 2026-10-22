@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { comparisonKey } from '../comparison/fingerprint.mjs';
+import { noteText } from './format/notes.mjs';
 
 const SARIF_SCHEMA_URL = 'https://json.schemastore.org/sarif-2.1.0.json';
 
@@ -51,10 +52,16 @@ export function renderSarifReport(report) {
         invocations: [
           {
             executionSuccessful: report.toolErrors.length === 0,
-            toolExecutionNotifications: report.toolErrors.map((error) => ({
-              level: 'error',
-              message: { text: `${error.tool} (${error.snapshot}): ${error.message}` },
-            })),
+            toolExecutionNotifications: [
+              ...report.toolErrors.map((error) => ({
+                level: 'error',
+                message: { text: `${error.tool} (${error.snapshot}): ${error.message}` },
+              })),
+              ...(report.notes ?? []).map((note) => ({
+                level: 'note',
+                message: { text: noteText(note) },
+              })),
+            ],
           },
         ],
         results: report.newFindings.map(toSarifResult),

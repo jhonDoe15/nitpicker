@@ -69,10 +69,11 @@ function lint(identity) {
 
 const LEGACY = Array.from({ length: 12 }, (_, index) => `line ${String(index + 1)}\n`).join('');
 
-function compare({ base, head, analyzers }) {
+function compare({ base, head, analyzers, baseFiles = {} }) {
   const repository = createGitRepository({
     'analyzer.json': `${JSON.stringify(base)}\n`,
     'src/legacy.py': LEGACY,
+    ...baseFiles,
   });
   const write = (relativePath, contents) => {
     mkdirSync(path.dirname(path.join(repository.root, relativePath)), { recursive: true });
@@ -82,6 +83,9 @@ function compare({ base, head, analyzers }) {
   write('head.txt', 'head\n');
   for (const [relativePath, contents] of Object.entries(head.files ?? {})) {
     write(relativePath, contents);
+  }
+  for (const relativePath of head.remove ?? []) {
+    rmSync(path.join(repository.root, relativePath));
   }
   fixtureGit(repository.root, ['add', '-A']);
   fixtureGit(repository.root, ['-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', 'head']);
@@ -171,7 +175,9 @@ describe('a base whose tests fail', () => {
         '',
         'Quality gate summary',
         '✓ No new enforceable violations',
-        "Note: the project's tests fail on the base (coverage), so its coverage, CRAP and mutation results are unknown there. Only added files and edited lines are judged on them.",
+        "Note: the project's tests fail on the base (coverage).",
+        'Coverage, CRAP, mutation, slow-test and test-console results are unknown there, ' +
+          'so only added files and edited lines are judged on them.',
         'Full diagnostics: reports/quality/diff/combined/report.txt',
         '',
       ].join('\n'),
@@ -206,12 +212,16 @@ describe('a base whose tests fail', () => {
     });
   });
 
-  it('treats a skipped mutation run on the base like a red base', () => {
+  it('treats a skipped mutation run next to a failing test run like a red base', () => {
     const { report } = compare({
-      analyzers: [analyzer('mutation')],
-      base: { mutation: [testsFailed('mutation', 'tests-failed-skipped')] },
+      analyzers: [analyzer('coverage'), analyzer('mutation')],
+      base: {
+        coverage: [testsFailed('coverage')],
+        mutation: [testsFailed('mutation', 'tests-failed-skipped')],
+      },
       head: {
         specs: {
+          coverage: [],
           mutation: [
             {
               tool: 'mutation',
@@ -231,13 +241,95 @@ describe('a base whose tests fail', () => {
       status: report.summary.overallStatus,
       new: report.newFindings.length,
       unchanged: report.unchangedFindings.map(({ identity }) => identity),
-      notes: report.notes.map(({ rule }) => rule),
+      notes: report.notes.map(({ tool, rule }) => `${tool}/${rule}`),
     }).toEqual({
       status: 'completed',
       new: 0,
       unchanged: ['old-mutant'],
-      notes: ['tests-failed-skipped'],
+      notes: ['coverage/tests-failed'],
     });
+  });
+
+  it('keeps a base whose tests did not run a tool error', () => {
+    const { report } = compare({
+      analyzers: [analyzer('coverage')],
+      base: { coverage: [testsFailed('coverage', 'tests-not-run')] },
+      head: { specs: { coverage: [] } },
+    });
+
+    expect({
+      status: report.summary.overallStatus,
+      toolErrors: report.toolErrors.map(
+        ({ tool, snapshot, rule }) => `${tool}/${snapshot}/${rule}`,
+      ),
+      notes: report.notes,
+    }).toEqual({ status: 'tool-error', toolErrors: ['coverage/base/tests-not-run'], notes: [] });
+  });
+
+  it('judges only the modules whose tests fail as unknown', () => {
+    const failing = { ...testsFailed('python'), symbol: 'core' };
+    const { report } = compare({
+      analyzers: [analyzer('python')],
+      base: { python: [failing] },
+      head: {
+        specs: {
+          python: [
+            crap('in-failing-module', 'core/a.py', { line: 2, endLine: 4 }),
+            crap('in-green-module', 'api/a.py', { line: 2, endLine: 4 }),
+          ],
+        },
+      },
+    });
+
+    expect({
+      new: report.newFindings.map(({ identity }) => identity),
+      unchanged: report.unchangedFindings.map(({ identity }) => identity),
+    }).toEqual({ new: ['in-green-module'], unchanged: ['in-failing-module'] });
+  });
+
+  it('counts every test result of the head as new when the change removes tests', () => {
+    const { report } = compare({
+      analyzers: crapChain(),
+      base: { coverage: [testsFailed('coverage')] },
+      head: {
+        specs: {
+          coverage: [],
+          crap: [crap('legacy-untouched', 'src/legacy.py', { line: 2, endLine: 4 })],
+        },
+        remove: ['tests/test_old.py'],
+      },
+      baseFiles: { 'tests/test_old.py': 'def test_a():\n    assert True\n' },
+    });
+
+    expect({
+      new: report.newFindings.map(({ identity }) => identity),
+      notes: report.notes.map(({ tool, snapshot, rule }) => `${tool}/${snapshot}/${rule}`),
+    }).toEqual({
+      new: ['legacy-untouched'],
+      notes: ['coverage/base/tests-failed', 'nitpicker/head/tests-removed'],
+    });
+  });
+
+  it('counts a deletion inside a function as an edit of that function', () => {
+    const { report } = compare({
+      analyzers: crapChain(),
+      base: { coverage: [testsFailed('coverage')] },
+      head: {
+        specs: {
+          coverage: [],
+          crap: [
+            crap('shrunk', 'src/legacy.py', { line: 2, endLine: 9 }),
+            crap('beside', 'src/legacy.py', { line: 10, endLine: 12 }),
+          ],
+        },
+        files: { 'src/legacy.py': LEGACY.replace('line 5\n', '') },
+      },
+    });
+
+    expect({
+      new: report.newFindings.map(({ identity }) => identity),
+      unchanged: report.unchangedFindings.map(({ identity }) => identity),
+    }).toEqual({ new: ['shrunk'], unchanged: ['beside'] });
   });
 
   it('still fails when the head tests fail', () => {

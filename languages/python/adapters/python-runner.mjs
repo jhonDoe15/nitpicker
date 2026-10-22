@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
-import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
 import { precedenceToolNames } from '../../java/adapters/gradle-presets.mjs';
 import {
@@ -73,34 +72,24 @@ function collectMutationFindings(options) {
   );
 }
 
-function readFindings({ projectRoot, settings, policy }, reportRoot, { testsFailed }) {
-  const { findings } = readPythonFindings({
-    projectRoot,
-    reportRoot,
-    crapLimit: policy.crapLimit,
-    policy,
-    testsFailed,
-  });
-  return applyFindingPolicy(applyPythonExceptions(findings, settings.exceptions), {
-    ...policy,
-    inventoryTool: PYTHON_ANALYZER_NAME,
-  });
-}
-
-function collectPythonFindings(options) {
+function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
   return withReportRoot((reportRoot) => {
-    const failures = runPythonTools(toolContext(options, reportRoot));
-    if (failures.length === 0) {
-      return readFindings(options, reportRoot, { testsFailed: false });
+    const failures = runPythonTools(
+      toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot),
+    );
+    if (failures.length > 0) {
+      return failures.map((failure) => toolError(failure));
     }
-    const failedTests = failures.filter(({ rule }) => rule === TESTS_FAILED_RULE);
-    const readable = options.policy.snapshot === 'base' && failedTests.length === failures.length;
-    return readable
-      ? [
-          ...readFindings(options, reportRoot, { testsFailed: true }),
-          ...failures.map((failure) => toolError(failure)),
-        ]
-      : failures.map((failure) => toolError(failure));
+    const { findings } = readPythonFindings({
+      projectRoot,
+      reportRoot,
+      crapLimit: policy.crapLimit,
+      policy,
+    });
+    return applyFindingPolicy(applyPythonExceptions(findings, settings.exceptions), {
+      ...policy,
+      inventoryTool: PYTHON_ANALYZER_NAME,
+    });
   });
 }
 

@@ -36,9 +36,11 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
   () => {
     redBaseCases({
       gradle,
+      environment: process.env,
       policy: { preset: 'java' },
       setup: () => {
         const root = createRepository({
+          preset: 'java',
           fixture: 'gradle-project',
           ignored: 'build/\n.gradle/\n',
           files: { 'src/main/java/demo/Legacy.java': JAVA_LEGACY },

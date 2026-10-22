@@ -60,6 +60,10 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
 - **Failure policy.** If Gradle fails on either snapshot (does not compile, tests fail, tool
   crashes, no `gradle` on the PATH, unreadable reports), nothing is silently skipped. `runJavaDiff`
   (the library entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2.
+  The one exception is a base snapshot whose test reports name failing tests while the head passes:
+  that is a note and the run goes on (see [A base whose tests fail](usage.md#a-base-whose-tests-fail)).
+  A base that fails for another reason, or whose tests fail without a named failing test, still
+  fails.
 
 ## Maven builds
 
@@ -127,8 +131,9 @@ by field. Per snapshot:
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
   Surefire's or Failsafe's reports, is a `java/maven-failure` tool error that names up to ten
   failing tests. On the base snapshot the failing tests are listed instead of thrown: that module
-  skips JaCoCo and PIT, and the failure becomes the `tests-failed` tool error that the core reads as
-  a red base, the same as a Gradle base whose tests fail. Reports older than the build are ignored.
+  skips JaCoCo and PIT, and the failure becomes a `tests-failed` tool error for that module that the
+  core reads as a red base, the same as a Gradle base whose tests fail. The other modules keep their
+  coverage, CRAP and mutation comparison with the base. Reports older than the build are ignored.
   Gradle runs the ArchUnit classes in their
   own task, but Maven only has the Surefire and Failsafe results: when a module has ArchUnit classes
   and neither plugin ran any of them (Surefire's `<includes>` miss them, as they would `*Rules`, or
