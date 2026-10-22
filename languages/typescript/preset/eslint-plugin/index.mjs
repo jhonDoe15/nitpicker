@@ -43,6 +43,7 @@ import { rule as testTsconfigPinsLibAndTypes } from './rules/testing/types/test-
 import { rule as exhaustiveUnionPredicate } from './rules/api-shape/exhaustive-union-predicate.mjs';
 import { rule as hoverTestNeedsKeyboard } from './rules/react-tests/hover-test-needs-keyboard.mjs';
 import { rule as noForwardingWrapper } from './rules/api-shape/no-forwarding-wrapper.mjs';
+import { rule as noServiceLocator } from './rules/service-locator/no-service-locator.mjs';
 import { rule as noRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as noSingularAndPluralProp } from './rules/react-props/no-singular-and-plural-prop.mjs';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
@@ -139,6 +140,7 @@ export const nitpickerRules = {
     'exhaustive-union-predicate': exhaustiveUnionPredicate,
     'hover-test-needs-keyboard': hoverTestNeedsKeyboard,
     'no-forwarding-wrapper': noForwardingWrapper,
+    'no-service-locator': noServiceLocator,
     'no-runtime-exclusive-props-check': noRuntimeExclusivePropsCheck,
     'no-singular-and-plural-prop': noSingularAndPluralProp,
     'react-no-effect-data-fetching': reactNoEffectDataFetching,

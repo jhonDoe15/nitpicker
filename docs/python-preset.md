@@ -584,6 +584,7 @@ are listed at the end.
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                           | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                               |
 | Environment              | read once in a composition root, pass values in                                                                                                  | `process-env-access` (script)                                                                                                                        |
+| Service lookups          | a parameter, resolved once in a composition root                                                                                                 | `service-locator-lookup` (script)                                                                                                                    |
 | Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                                                          | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                        |
 | SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`; placeholder lists, fixed lookups, `Literal`/`Enum` names, `sql.Identifier` | `sql-string-formatting` (script), ruff `S610`, `S611`                                                                                                |
 | Path traversal           | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                                                           | `unsafe-path-join` (script)                                                                                                                          |
@@ -632,6 +633,23 @@ Details that are decisions rather than the table:
   module named by a script or plugin entry point of `pyproject.toml` (`[project.scripts]`,
   `[project.entry-points]`, poetry, flit) or `setup.cfg`; or a file matched by `python.entryPoints`.
   Nothing under a `domain` folder is a composition root.
+- `service-locator-lookup` reports a service looked up in a dependency-injection container instead
+  of received as a parameter: `injector` (`Injector.get`, `create_object`), `punq`
+  (`Container.resolve`, `resolve_all`), `lagom` (`container[Service]`, `resolve`), `kink`
+  (`di[Service]`), `dependency_injector` (calling a provider of a `DeclarativeContainer` or
+  `DynamicContainer` class defined in the project: `Container.mailer()`, or `container.mailer()` on an
+  instance) and `that_depends` (`Container.mailer()`, `.resolve()`, `.resolve_sync()` on a provider of a
+  `BaseContainer`). The receiver is resolved through imports, aliases, `from` imports, re-exports from a
+  package `__init__`, module-level instances of other project modules, `self.x = Container()` and
+  parameters or attributes annotated with the container class; a method that is only named `get` or
+  `resolve` on another object is not evidence, and assigning `container[Service] = ...`, `@inject`
+  with `Provide[...]` and the container's `wire` and `config` calls are wiring, not lookups. A call
+  to a project function (also through a helper of a helper, a re-export or an import alias) whose
+  body looks a service up counts as a lookup at its call sites; the subject names the helper and
+  the underlying call (`resolve_mailer via punq.Container.resolve`). Not in tests, in a composition
+  root (see `process-env-access` for what counts as one, including `python.entryPoints`), nor in a
+  class that extends `injector.Module` or `injector.Provider`. A helper declared in a composition
+  root is not a lookup elsewhere.
 - `shell-command` reports running a command through a shell: `shell=True` or a `shell=` value that
   is not a literal (also from `**{"shell": True}`), a list starting with `sh`, `bash`, `cmd`,
   `powershell` and the other shells followed by `-c`, `/c` or a similar flag, and the `subprocess`,
