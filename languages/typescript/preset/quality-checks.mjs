@@ -273,6 +273,7 @@ function repositoryChecksFor(exclusions) {
         'languages/typescript/adapters/quality-areas/runners/unused-api.mjs',
         'shared/policy.mjs',
         'shared/rules/exceptions.mjs',
+        'shared/rules/test-only/test-only-judgement.mjs',
         'shared/unused-api/unused-api-policy.mjs',
         JAVASCRIPT_PRESET_FILE,
       ],

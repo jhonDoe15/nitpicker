@@ -14,7 +14,7 @@ import {
 } from '../../languages/typescript/preset/layout.mjs';
 import { conventionDefinitions, conventionStyle } from './definitions.mjs';
 import { lazyConfigRoot } from './style-snapshot.mjs';
-import { globToRegExp } from '../../shared/glob.mjs';
+import { globMatcher } from '../../shared/paths/glob.mjs';
 import {
   commitSource,
   filteredSource,
@@ -111,13 +111,13 @@ function conventionSources(projectRoot, commit) {
 }
 
 function baseHoldsSources(base, definitions) {
-  const sourceFiles = definitions.flatMap(({ files }) => files).map(globToRegExp);
+  const sourceFiles = definitions.flatMap(({ files }) => files).map(globMatcher);
   return () =>
     base !== undefined && base.paths().some((file) => sourceFiles.some((glob) => glob.test(file)));
 }
 
 function projectStyleSource({ base, head }, { exclude, useBase }) {
-  const excluded = exclude.map(globToRegExp);
+  const excluded = exclude.map(globMatcher);
   function accepts(file) {
     return !excluded.some((glob) => glob.test(file));
   }
@@ -223,7 +223,7 @@ function layoutFilter(config, headPolicy) {
     javascript: isJavascriptPolicy(config),
     generatedFiles: headPolicy.generatedFiles,
   });
-  const formatted = prettierPatterns(layout).map(globToRegExp);
+  const formatted = prettierPatterns(layout).map(globMatcher);
   const scopes = {
     layout: (file) => layout.isSourceFile(file) || layout.isTestFile(file),
     'test-code': (file) => layout.isTestFile(file) || TEST_SUPPORT_PATH.test(file),

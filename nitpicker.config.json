@@ -1,7 +1,7 @@
 {
   "preset": "typescript",
   "layout": {
-    "sourceRoots": ["core", "languages", "shared"],
+    "sourceRoots": ["core", "languages", "shared", "scripts"],
     "entryPoints": [
       "core/diff/cache/http-cache-worker.mjs",
       "core/fix/prettier-base-runner.mjs",

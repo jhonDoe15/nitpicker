@@ -1,22 +1,15 @@
-import { RULE_IDS } from '../../../../../../shared/policy.mjs';
-import { copyGroups } from '../copy-groups.mjs';
-import { listPaths, reuseFinding } from '../finding.mjs';
-import { createSimilarityCache, tokenSimilarity } from '../syntax/token-similarity.mjs';
+import { RULE_IDS } from '../../policy.mjs';
+import { copyGroups } from './copy-groups.mjs';
+import { listPaths, reuseFinding } from './reuse-finding.mjs';
+import { createSimilarityCache, tokenSimilarity } from './token-similarity.mjs';
 
 const KINDS = new Set(['function', 'class']);
-const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 const MINIMUM_TOKENS = 20;
 const MINIMUM_SIMILARITY = 0.8;
 
-function isFrameworkEntry({ exportNames }) {
-  return exportNames.some((name) => name === 'default' || HTTP_METHODS.has(name));
-}
-
 function isComparable(definition) {
   return (
-    KINDS.has(definition.kind) &&
-    definition.tokens.length >= MINIMUM_TOKENS &&
-    !isFrameworkEntry(definition)
+    KINDS.has(definition.kind) && definition.tokens.length >= MINIMUM_TOKENS && !definition.entry
   );
 }
 
@@ -30,13 +23,17 @@ function memoized(read) {
   };
 }
 
+function sameDeclaration(left, right) {
+  return left.name === right.name && left.qualifier === right.qualifier;
+}
+
 function stateOf({ path, definition }, baselineFile) {
   const baseline = baselineFile(path);
   if (baseline.unchanged) {
     return { state: 'untouched' };
   }
   const before = baseline.definitions.find(
-    ({ kind, name }) => kind === definition.kind && name === definition.name,
+    (candidate) => candidate.kind === definition.kind && sameDeclaration(candidate, definition),
   );
   if (before === undefined) {
     return { state: 'new' };
@@ -47,19 +44,20 @@ function stateOf({ path, definition }, baselineFile) {
 function divergesFrom(cache, { copy, before }, other) {
   const right = other.definition.tokens;
   const after = tokenSimilarity(cache, { left: copy.definition.tokens, right }, MINIMUM_SIMILARITY);
-  const earlier = tokenSimilarity(cache, { left: before.tokens, right }, MINIMUM_SIMILARITY);
-  return after > 0 && earlier > after;
+  return (
+    after > 0 && tokenSimilarity(cache, { left: before.tokens, right }, MINIMUM_SIMILARITY) > after
+  );
 }
 
 function editFinding({ copy, untouched, analyzerName }) {
-  const { name, line } = copy.definition;
+  const { name, qualifier = name, line } = copy.definition;
   return reuseFinding(analyzerName, {
     key: 'siblingCopyEdit',
     path: copy.path,
-    identity: `sibling-copy:${name}`,
+    identity: `sibling-copy:${qualifier}`,
     symbol: name,
     line,
-    values: { name, others: listPaths(untouched.map(({ path }) => path).toSorted()) },
+    values: { name: qualifier, others: listPaths(untouched.map(({ path }) => path).toSorted()) },
   });
 }
 
@@ -76,13 +74,19 @@ function groupFindings({ copies, baselineFile, analyzerName, cache }) {
     .map((found) => editFinding({ ...found, analyzerName }));
 }
 
-export function siblingCopyEditFindings(facts, { analyzerName, isExcepted, baselineFile }) {
+export function siblingCopyEditFindings(
+  modules,
+  { analyzerName, isExcepted, baselineFile, acrossPackages = false },
+) {
   if (baselineFile === undefined) {
     return [];
   }
   const baselineOf = memoized(baselineFile);
   const cache = createSimilarityCache();
-  return copyGroups(facts, {
+  const grouped = acrossPackages
+    ? modules.map((module) => ({ ...module, packageRoot: '' }))
+    : modules;
+  return copyGroups(grouped, {
     rule: RULE_IDS.siblingCopyEdit,
     isExcepted,
     isComparable,

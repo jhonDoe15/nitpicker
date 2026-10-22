@@ -152,7 +152,6 @@ describe('the hygiene configuration hash', () => {
   it('covers every module the runner loads', () => {
     expect(configurationFiles()).toEqual([
       'filesystem.mjs',
-      'glob.mjs',
       'head-policy.mjs',
       'hygiene/files/build-output.mjs',
       'hygiene/files/env-files.mjs',
@@ -162,6 +161,7 @@ describe('the hygiene configuration hash', () => {
       'hygiene/rules.mjs',
       'hygiene/runner.mjs',
       'hygiene/tracked-files.mjs',
+      'paths/glob.mjs',
       'project-rules/hygiene-rules.mjs',
       'traversal.mjs',
     ]);

@@ -1,4 +1,4 @@
-import { globToRegExp } from '../../../../shared/glob.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { readProjectFile, tomlTable } from '../../adapters/configuration/project-files.mjs';
 import { parseIni } from '../../adapters/configuration/pytest/ini-file.mjs';
 
@@ -53,6 +53,6 @@ export function readEntryModules(projectRoot) {
 }
 
 export function entryFilesOf(sources, globs) {
-  const matchers = globs.map((glob) => globToRegExp(glob));
+  const matchers = globs.map((glob) => globMatcher(glob));
   return sources.filter((file) => matchers.some((matcher) => matcher.test(file)));
 }

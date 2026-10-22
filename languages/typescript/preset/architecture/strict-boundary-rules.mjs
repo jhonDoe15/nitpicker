@@ -1,4 +1,4 @@
-import { globToRegExpSource } from '../../../../shared/glob.mjs';
+import { globToRegExpSource } from '../../../../shared/paths/glob.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { layoutFeatures } from './strict-layout.mjs';
 import { isTypeOnlyDependency } from '../dependency-graph/cruise.mjs';

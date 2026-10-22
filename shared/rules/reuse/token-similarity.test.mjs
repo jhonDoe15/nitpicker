@@ -67,3 +67,53 @@ describe('tokenSimilarity', () => {
     expect(similarity(big.left, big.right, 0.8)).toBe(0);
   });
 });
+
+function spreadEdits(count, every) {
+  const left = tokens(count);
+  return { left, right: left.map((token, index) => (index % every === 0 ? `${token}'` : token)) };
+}
+
+describe('tokenSimilarity work limits', () => {
+  it('always compares a tiny pair, even with no budget left', () => {
+    const { left, right } = spreadEdits(40, 20);
+
+    expect(tokenSimilarity(createSimilarityCache(0), { left, right }, 0.8)).toBe(0.95);
+  });
+
+  it('charges every pair to the run budget, so many mid-sized copies stay bounded', () => {
+    const cache = createSimilarityCache();
+    const copies = Array.from({ length: 60 }, (_, copy) =>
+      Array.from({ length: 2000 }, (_, index) => `t${String((index * (copy + 3) + copy) % 50)}`),
+    );
+    const started = performance.now();
+    const scores = copies.flatMap((left, index) =>
+      copies.slice(index + 1).map((right) => tokenSimilarity(cache, { left, right }, 0.8)),
+    );
+
+    expect(cache.remainingWork).toBeLessThan(0);
+    expect(scores.at(-1)).toBe(0);
+    expect(performance.now() - started).toBeLessThan(10_000);
+  });
+
+  it('skips a large pair once the run has spent its budget', () => {
+    const { left, right } = spreadEdits(3000, 20);
+
+    expect(tokenSimilarity(createSimilarityCache(), { left, right }, 0.8)).toBe(0.95);
+    expect(tokenSimilarity(createSimilarityCache(0), { left, right }, 0.8)).toBe(0);
+  });
+
+  it('charges the work of each large pair to the run budget', () => {
+    const cache = createSimilarityCache(200_000);
+    const first = spreadEdits(3000, 10);
+    const second = spreadEdits(3000, 11);
+
+    expect(tokenSimilarity(cache, first, 0.8)).toBe(0.9);
+    expect(tokenSimilarity(cache, second, 0.8)).toBe(0);
+  });
+
+  it('gives up on one pair past its own work cap', () => {
+    const { left, right } = spreadEdits(10_000, 6);
+
+    expect(tokenSimilarity(createSimilarityCache(), { left, right }, 0.8)).toBe(0);
+  });
+});

@@ -97,7 +97,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
 
     expect(result.exitCode).toBe(2);
     expect(result.output.err).toMatch(
-      /^nitpicker failed: nitpicker.config.json: "layout" is not supported with "preset": "python"/,
+      /^nitpicker failed: nitpicker.config.json: "layout.sourceRoots" is not supported with "preset": "python"/,
     );
   });
   it('gates a snapshot with --all', () => {

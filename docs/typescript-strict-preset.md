@@ -605,13 +605,14 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
 - A doc comment has to say something the name does not. `nitpicker/no-comments` reports a doc
   comment on an exported declaration or exported type member whose description only restates the
   name: it splits the name into words (camelCase, PascalCase, snake_case, kebab-case, digits),
-  drops stopwords (`the`, `a`, `of`, `get`, `returns`, `component`, `value`...), and reports when
+  drops stopwords (`the`, `a`, `of`, `get`, `returns`, `component`, `class`, `value`...), and reports when
   every remaining description word, with a crude `ing`/`ed`/`es`/`s` stem, is a word of the name
   (`/** Gets the user name. */ getUserName`, `/** The order id */ orderId`, `/** Button component */
 Button`). `@param`, `@returns` and other tag lines are not part of the description. Write the
   unit, the limit, the edge case or the reason (`/** Price in cents, rounded down. */`). A
-  description longer than 5 lines, tag lines and blank lines not counted (an `@example` block is a
-  tag), is reported too: keep the non-obvious point and move the rest into names and types. Both
+  description longer than 5 lines, tag lines, blank lines and code examples not counted (a fenced
+  ` ``` ` or `~~~` block, or the body of an `@example` tag; a fence that is never closed counts as prose), is reported too; bullets and
+  other prose count: keep the non-obvious point and move the rest into names and types. Both
   checks are skipped in the JavaScript preset's JSDoc mode, which already bans JSDoc prose, and a
   doc comment that is needed as written gets an exception for the rule.
 
@@ -665,8 +666,10 @@ for a file takes that file out of the rule, so a pair of copies that must both s
   rename detection: at least 50% of the content kept, within git's rename limit of 20000 files) is
   read at its old path, so a moved copy counts as edited or untouched like any other; a rename that
   detection misses leaves the copy new. The token comparison stops as soon as 80% can no longer be
-  reached, so large functions with scattered small edits are compared; a pair is skipped only when
-  what lies between its shared start and shared end is more than 20,000 tokens in the two together.
+  reached, so large functions with scattered small edits are compared. A pair is skipped when what
+  lies between its shared start and shared end is more than 20,000 tokens in the two together, or
+  when it is large enough to be costly and its comparison passes a per-pair work cap or the run's work
+  budget; a pair of up to about 2,000 tokens a side is always compared in full.
   Only the edited copy is reported, naming the untouched ones, so copies that are all edited, in the
   same way or differently, report nothing. Only the head snapshot reports it, as it reads the base
   checkout; the identity is the name and file. It covers the same files as `duplicate-definition`,
@@ -676,7 +679,9 @@ for a file takes that file out of the rule, so a pair of copies that must both s
   module that aliases every colliding import (`import { handler as getUser }`, `import type`,
   `export { x as y }`) is not reported. Both defining modules are reported. Re-exports
   (`export { x } from`, `export *`, an imported name exported again) resolve to the module that
-  defines the name, so a feature's `index.ts` is not a second definition. Imports resolve through relative paths,
+  defines the name, so a feature's `index.ts` is not a second definition. That includes a default
+  export re-exported under a name (`export { default as Button } from './button'`): two such
+  `Button`s a module imports are two different exports and are reported. Imports resolve through relative paths,
   `tsconfig.json` `paths` and `baseUrl`, and a workspace package linked into `node_modules` resolves
   to its source; installed packages are skipped. Rename one, or alias both imports.
 
@@ -1586,7 +1591,9 @@ from a real caller) and the `exceptions` entry that lifts it.
   `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
   `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
   JavaScript preset runs them too.
-
+- `layout.sharedRoots` and `layout.featureRoots` (folder globs, default `<sourceRoot>/main/shared` and
+  `<sourceRoot>/main/features`) change which folders `shared-used-by-one-feature` treats as shared and
+  as features; `[]` in `featureRoots` turns it off. The ESLint boundary rules keep the default layout.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders only, so
   `src/crypto/e2e/` stays production code; a missing one is ignored). Type checking, duplicate

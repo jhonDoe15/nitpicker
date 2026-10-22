@@ -2,14 +2,14 @@ import { filePatterns, globsFor } from './layout/path-patterns.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { filesUnder } from '../../../shared/filesystem.mjs';
-import { escapeRegExp, globToRegExp, globToRegExpSource } from '../../../shared/glob.mjs';
+import { escapeRegExp, globMatcher, globToRegExpSource } from '../../../shared/paths/glob.mjs';
 import {
   isJavascriptPolicy,
   JAVASCRIPT_EXTENSIONS,
   TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
 } from '../../javascript/preset/javascript-preset.mjs';
 
-export { globToRegExp };
+export { globMatcher };
 
 const defaultSourceRoots = ['src'];
 export const END_TO_END_ROOT = 'e2e';
@@ -83,7 +83,7 @@ function testInputPattern(testRoots) {
 }
 
 function createClassifiers({ sourceRoots, testRoots, exclude, patterns, generatedFiles }) {
-  const excludeMatchers = exclude.map(globToRegExp);
+  const excludeMatchers = exclude.map(globMatcher);
   const generated = new Set(generatedFiles);
   const testInput = testInputPattern(testRoots);
   function isGeneratedPath(file) {
