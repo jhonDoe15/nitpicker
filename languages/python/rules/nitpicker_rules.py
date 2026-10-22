@@ -20,6 +20,7 @@ def load_checks():
     from environment import environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped
+    from locators import lookups
     from security import hashes, loading
     from security.sql import check as sql
     from security.timeouts import check as timeouts
@@ -33,6 +34,7 @@ def load_checks():
         comments,
         environment,
         purity,
+        lookups,
         state,
         shell,
         sql,
