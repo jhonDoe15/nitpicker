@@ -9,8 +9,11 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { LINES_VARIABLE } from '../../preset/test-console/console-capture.mjs';
-import { REPORT_VARIABLE, ROOT_VARIABLE } from '../../preset/test-console/console-report.mjs';
+import {
+  LINES_VARIABLE,
+  REPORT_VARIABLE,
+  ROOT_VARIABLE,
+} from '../../preset/test-console/console-report.mjs';
 import { TEST_CONSOLE_REPORT_PATH } from '../quality-areas/reporting/test-report.mjs';
 import { consoleProducerPath, startTestConsole } from './test-console-run.mjs';
 
@@ -38,20 +41,26 @@ describe('the console capture of a test run', () => {
     });
   });
 
-  it('turns the lines of every test process into the report, then removes them', () => {
+  it('turns the lines of every test process into the normalized report, then removes them', () => {
     const capture = startTestConsole({ projectRoot }, { collectsLines: true });
-    const entries = [
-      { file: '/p/a.test.js', test: 'one', messages: ['warn a'] },
-      { file: '/p/b.test.js', test: '', messages: ['warn b'] },
+    const lines = [
+      { file: '/p/a.test.js', test: 'one', content: `warn a in ${projectRoot}/src\n` },
+      { file: '/p/b.test.js', test: '', content: 'warn b\n    at run (/a/b.js:1:2)' },
+      { file: '/p/c.test.js', test: '', content: '{\n}' },
     ];
-    for (const entry of entries) {
-      appendFileSync(capture.environment[LINES_VARIABLE], `${JSON.stringify(entry)}\n`);
+    for (const line of lines) {
+      appendFileSync(capture.environment[LINES_VARIABLE], `${JSON.stringify(line)}\n`);
     }
 
     capture.finish();
     capture.remove();
 
-    expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual({ entries });
+    expect(JSON.parse(readFileSync(reportPath, 'utf8'))).toEqual({
+      entries: [
+        { file: '/p/a.test.js', test: 'one', messages: ['warn a in <root>/src'] },
+        { file: '/p/b.test.js', test: '', messages: ['warn b'] },
+      ],
+    });
     expect(existsSync(capture.environment[LINES_VARIABLE])).toBe(false);
   });
 
@@ -94,8 +103,8 @@ describe('the console capture of a test run', () => {
     expect(consoleProducerPath(options, 'jest')).toBe(
       '/policy/languages/typescript/preset/test-console/runners/jest-reporter.config.mjs',
     );
-    expect(consoleProducerPath(options, 'node')).toBe(
-      '/policy/languages/typescript/preset/test-console/runners/node-test-preload.config.cjs',
+    expect(consoleProducerPath(options, 'mocha')).toBe(
+      '/policy/languages/typescript/preset/test-console/runners/mocha-hooks.config.mjs',
     );
   });
 });
