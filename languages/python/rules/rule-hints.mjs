@@ -6,6 +6,7 @@ import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
 import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
 import { RULES_SECURITY_HINTS } from './hints/security/rules-security.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
+import { WAIT_HINTS } from './hints/waits.mjs';
 import { RULES_TOOL } from './hints/tool.mjs';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mjs';
 
@@ -37,6 +38,7 @@ export const RULE_HINTS = [
   ...SECURITY_HINTS,
   ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
+  ...WAIT_HINTS,
   ...SMELL_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({

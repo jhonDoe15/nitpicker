@@ -436,6 +436,37 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
     reported, and `axios.getUri` sends nothing. `fetch` is not checked in browser projects (React,
     Preact, Vue, Svelte, Solid, Angular, read from `package.json`). Allowed:
     `fetch(url, { signal: AbortSignal.timeout(10_000) })`.
+  - `nitpicker/timeout-abandons-operation`: `Promise.race([operation(...), timeout])` where one
+    entry is a timeout and a losing entry is a call that gets no abort signal. `Promise.race` settles
+    with the first entry and never cancels the others, so when the timeout wins the operation keeps
+    running, holds its connection or lock and repeats its side effect if the caller retries. A
+    timeout entry is a `new Promise` whose executor calls `setTimeout`, `setTimeout` from
+    `node:timers/promises` (any alias or namespace), `once(AbortSignal.timeout(ms), 'abort')`, a
+    constant bound to one of these, a call to a function of the same file that does nothing but wait
+    and reject or resolve, an imported helper named `rejectAfter`, `rejectAfterTimeout`,
+    `rejectOnTimeout`, `timeoutAfter` or `timeoutPromise`, and a `.then()`, `.catch()` or `.finally()`
+    chain on one of these. The losing operation is each call among the other entries, looking through
+    a `const` that holds the call, a `.then()` chain, and `Promise.all`, `allSettled`, `race` and
+    `any` lists. The call passes when an argument is, or resolves to, an object with a `signal`,
+    `abortSignal`, `cancelToken` or `timeout` key (an object with a spread counts, since its keys are
+    unknown), a value named `signal`, `*Signal`, `*abort*`, `*cancel*` or `controller`, `x.signal`,
+    `AbortSignal.timeout(...)` or `AbortSignal.any(...)`; an argument named `options`, `opts`, `init`, `config`,
+    `settings`, `context`, `ctx`, `request`, `req` or `params` is unknown and passes. It also passes when
+    the callee is a function of the same file that uses a signal from its enclosing scope, or when the
+    function holding the race calls `.abort()`, `.cancel()`, `.destroy()`, `.kill()`, `.terminate()` or
+    `.dispose()` anywhere (the cancellation is owned there). A callee of the same file that has a
+    signal parameter the call leaves out gets the second message, which names the parameter.
+    HTTP client calls that `nitpicker/require-http-timeout` recognizes (`fetch`, `axios`, `got` and
+    `http`/`https` without a timeout) are left to that rule, so the code gets one finding, and a call it
+    accepts through a project default already has a deadline. A browser project's `fetch`, which that
+    rule does not check, is checked here. Allowed: create an `AbortController`, abort it in the
+    timeout path and pass `{ signal: controller.signal }`, or pass `AbortSignal.timeout(ms)` to an API
+    that takes `signal` and remove the race. Production source only: tests, stories and support files
+    are not checked. Not recognized (so never reported): a race built from a spread or a computed
+    array, an operation held in a parameter or a `let`, an inline async function, a timeout helper that
+    is imported under another name, and `Promise.any`. Whether a callee honours a signal it receives
+    is not checked. An intentional background task needs an exception for the rule with its paths and
+    a reason.
   - `nitpicker/no-unsafe-deserialization`: `node-serialize`, `funcster` and `cryo` (they rebuild
     functions, also through `import x = require(...)` and `import()`), `v8.deserialize` (and the
     `v8.deserialize(v8.serialize(x))` copy, whose allowed form is `structuredClone(x)`),
