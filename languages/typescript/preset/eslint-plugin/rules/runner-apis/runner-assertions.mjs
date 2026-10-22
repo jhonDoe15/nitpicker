@@ -1,5 +1,5 @@
-import { chainOf } from '../../analysis/ancestry.mjs';
-import { isExpectCall, memberName } from '../../analysis/test-code-analysis.mjs';
+import { chainOf } from '../analysis/ancestry.mjs';
+import { isExpectCall, memberName } from '../analysis/test-code-analysis.mjs';
 
 const ASSERT_NAMESPACE = 'assert';
 const TRUTHY_ASSERTIONS = new Set(['ok', 'isTrue']);
@@ -26,7 +26,7 @@ function isAnchoredPattern(node) {
   return pattern?.startsWith('^') === true && pattern.endsWith('$') && !pattern.endsWith('\\$');
 }
 
-export function isFragmentPattern(node) {
+function isFragmentPattern(node) {
   return node?.type === 'Literal' && node.regex !== undefined && !isAnchoredPattern(node);
 }
 

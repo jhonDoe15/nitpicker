@@ -1,4 +1,4 @@
-import { RUNNER_OPTION_SCHEMA, vocabularyOf } from '../rules/testing/runners/runner-option.mjs';
+import { RUNNER_OPTION_SCHEMA, vocabularyOf } from '../rules/runner-apis/runner-option.mjs';
 import { callbackOf, chainHasProperty, isCaseCall } from './test-calls.mjs';
 
 const MIN_COPIES = 3;

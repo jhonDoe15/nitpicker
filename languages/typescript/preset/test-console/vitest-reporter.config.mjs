@@ -1,5 +1,4 @@
-import { REPORT_VARIABLE, consoleEntry, writeConsoleReport } from './console-report.mjs';
-export { REPORT_VARIABLE, consoleMessagesOf } from './console-report.mjs';
+import { REPORT_VARIABLE, consoleEntry, writeReportFile } from './console-report.mjs';
 
 function locate(entity) {
   if (entity === undefined) {
@@ -26,14 +25,20 @@ export default function testConsoleReporter() {
       ) {
         return;
       }
-      const { file, test } = locate(entity);
-      const entry = consoleEntry(file, test, log.content, vitest.config.root);
-      if (entry.messages.length > 0) {
+      const entry = consoleEntry({
+        content: log.content,
+        root: vitest.config.root,
+        ...locate(entity),
+      });
+      if (entry !== undefined) {
         entries.push(entry);
       }
     },
     onTestRunEnd() {
-      writeConsoleReport(process.env[REPORT_VARIABLE], entries);
+      const reportPath = process.env[REPORT_VARIABLE];
+      if (reportPath !== undefined && reportPath !== '') {
+        writeReportFile(reportPath, entries);
+      }
     },
   };
 }

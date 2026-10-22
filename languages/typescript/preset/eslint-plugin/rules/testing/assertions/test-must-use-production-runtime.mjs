@@ -6,7 +6,7 @@ import {
 } from '../../../../modules/module-resolution.mjs';
 import { moduleReferencesOf, statementSources } from '../../../../modules/module-sources.mjs';
 import { isBrowserEndToEndTest } from '../../analysis/test-code-analysis.mjs';
-import { RUNNER_OPTION_PROPERTY, vocabularyOf } from '../runners/runner-option.mjs';
+import { RUNNER_OPTION_PROPERTY, vocabularyOf } from '../../runner-apis/runner-option.mjs';
 
 const layout = readLayout();
 const { testRoots } = layout;

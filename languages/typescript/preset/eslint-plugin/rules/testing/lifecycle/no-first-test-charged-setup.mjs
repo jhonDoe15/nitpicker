@@ -1,6 +1,6 @@
 import { findVariable, perTestVisitors } from '../../analysis/test-code-analysis.mjs';
 import { chainOf } from '../../analysis/ancestry.mjs';
-import { vocabularyOf } from '../runners/runner-option.mjs';
+import { vocabularyOf } from '../../runner-apis/runner-option.mjs';
 
 const CHEAP_CALL_ROOTS = new Set([
   'path',

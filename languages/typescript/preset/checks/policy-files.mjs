@@ -78,7 +78,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/react/theme/color-text.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-single-styling-approach.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/assertions/no-partial-output-assertion.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/testing/runners/runner-assertions.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/runner-apis/runner-assertions.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-tests/react-test-files.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-tests/react-test-no-implementation-details.mjs',
   'languages/typescript/preset/modules/module-sources.mjs',

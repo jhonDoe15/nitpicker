@@ -3,10 +3,10 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { testTimeoutMs } from '../test-run.mjs';
+import { consoleProducerPath } from '../test-console-run.mjs';
 import { createRunnerProjects } from '../test-support/runner-project.mjs';
 import { coverageArguments } from './jest-coverage.mjs';
-import { jestArguments } from './jest-arguments.mjs';
-import { runJest } from './jest.mjs';
+import { jestArguments, runJest } from './jest.mjs';
 
 const projects = createRunnerProjects();
 
@@ -136,16 +136,14 @@ describe('a Jest run that a Create React App script starts', () => {
       [
         ...['test', '--runInBand', '--ci', '--no-watchman', '--passWithNoTests'],
         ...coverageArguments(options, root),
-        '--silent=false',
-        '--verbose=false',
-        '--reporters=default',
-        `--reporters=${path.join(PACKAGE_ROOT, 'languages/typescript/adapters/test-runners/jest/console-reporter.config.mjs')}`,
         ...['--json', `--outputFile=${path.join(root, '.nitpicker-diff-jest-report.json')}`],
         ...[
           '--testLocationInResults',
           `--testTimeout=${String(testTimeoutMs())}`,
           '--restoreMocks',
         ],
+        ...['--silent=false', '--verbose=false', '--reporters=default'],
+        `--reporters=${consoleProducerPath(options, 'jest')}`,
         '--watchAll=false',
       ],
     ]);

@@ -13,7 +13,8 @@ const ASSERT_FOCUS = '`assert.equal(document.activeElement, element)`';
 const MATCHER_ANY =
   'an asymmetric matcher (`expect.any`, `expect.stringContaining`, `expect.objectContaining`): assert the whole value with `toEqual`';
 
-const EXPECT_FRAGMENT_FORMS = '`toContain`, or `toMatch` with a pattern that is not anchored `^...$`';
+const EXPECT_FRAGMENT_FORMS =
+  '`toContain`, or `toMatch` with a pattern that is not anchored `^...$`';
 const EXPECT_PARTIAL_FORMS =
   '`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`';
 const VARIED_FIELD_ON_ITS_OWN =
@@ -52,6 +53,8 @@ const VOCABULARY = {
     variedField: 'Use `expect.any(Type)` for a field that varies.',
     helperFile:
       'a file Jest does not run as a test: not named *.test.* or *.spec.*, not under __tests__, and outside the testMatch or testRegex of the Jest config',
+    fakeClock: '`jest.useFakeTimers()` and `jest.setSystemTime(...)`',
+    fixRandom: '`jest.spyOn(Math, "random")`',
     collectIt:
       'Rename it `*.test.ts` (or `*.spec.ts`), move it under `__tests__/`, or match it with the `testMatch` of the Jest config.',
     waitOnCondition: TESTING_LIBRARY_WAIT,
@@ -59,8 +62,6 @@ const VOCABULARY = {
     advanceFakeTime: 'jest.advanceTimersByTime',
     domSetup: 'a `/** @jest-environment jsdom */` comment at the top of the test file',
     rejection: '`jest.fn().mockRejectedValue(value)`',
-    fakeClock: '`jest.useFakeTimers()` and `jest.setSystemTime(...)`',
-    fixRandom: '`jest.spyOn(Math, "random")`',
     assertCall: '`expect`',
     assertIt: '`expect` it',
     testFunctions: '`@jest/globals` or the Jest globals',
@@ -79,13 +80,13 @@ const VOCABULARY = {
     variedField: VARIED_FIELD_ON_ITS_OWN,
     helperFile:
       'a file `node --test` does not run: not named *.test.*, *-test.*, *_test.*, test-*.* or test.*, not under a test/ folder, and outside the patterns of the test script',
+    fakeClock: "`mock.timers.enable({ apis: ['Date'], now: ... })`",
+    fixRandom: '`mock.method(Math, "random", () => 0.5)`',
     collectIt:
       'Rename it `*.test.ts`, or name its folder in the patterns of the `node --test` script.',
     waitOnCondition: EVENT_OR_TICK,
     pollInstead: EVENT_OR_TICK,
     advanceFakeTime: 'mock.timers.tick',
-    fakeClock: "`mock.timers.enable({ apis: ['Date'], now: ... })`",
-    fixRandom: '`mock.method(Math, "random", () => 0.5)`',
     domSetup:
       'a setup file that registers global-jsdom (`import "global-jsdom/register"`), loaded with `--import` in the test script; node:test reads no environment comment in the test file',
     rejection:
@@ -110,13 +111,13 @@ const VOCABULARY = {
     variedField: VARIED_FIELD_ON_ITS_OWN,
     helperFile:
       'a file outside the Mocha spec (test/*.{js,cjs,mjs} by default, or the spec in .mocharc.* and the test script)',
+    fakeClock: '`sinon.useFakeTimers(...)`',
+    fixRandom: '`sinon.stub(Math, "random")`',
     collectIt:
       'Move it where the Mocha spec finds it (`test/*.{js,cjs,mjs}` by default), or add its folder to `spec` in .mocharc.',
     waitOnCondition: EVENT_OR_CLOCK,
     pollInstead: EVENT_OR_CLOCK,
     advanceFakeTime: 'clock.tick',
-    fakeClock: '`sinon.useFakeTimers(...)`',
-    fixRandom: '`sinon.stub(Math, "random")`',
     domSetup:
       'a setup file that registers global-jsdom (`--require global-jsdom/register`, or the same entry under `require` in .mocharc); Mocha reads no environment comment in the test file',
     rejection: 'an async stub that throws an `unknown` value: `async () => { throw value; }`',

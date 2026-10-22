@@ -1,4 +1,4 @@
-import { chainOf } from '../../analysis/ancestry.mjs';
+import { chainOf } from '../analysis/ancestry.mjs';
 
 const GLOBAL_KINDS = [
   ['vi', 'vitest'],

@@ -3,7 +3,7 @@ import {
   moduleBindings,
   perTestVisitors,
 } from '../../analysis/test-code-analysis.mjs';
-import { vocabularyOf } from '../runners/runner-option.mjs';
+import { vocabularyOf } from '../../runner-apis/runner-option.mjs';
 
 const SERVER_MODULES = new Set(
   ['http', 'https', 'http2', 'net', 'tls'].flatMap((name) => [name, `node:${name}`]),

@@ -3,8 +3,8 @@ import { reachableModules } from '../../../modules/module-resolution.mjs';
 import { moduleSourcesOf, statementSources } from '../../../modules/module-sources.mjs';
 import { readLayout } from '../../../head-policy.mjs';
 import { isBrowserEndToEndTest } from '../analysis/test-code-analysis.mjs';
-import { moduleMocks } from '../testing/runners/module-mocks.mjs';
-import { runnerApisOf } from '../testing/runners/runner-apis.mjs';
+import { moduleMocks } from '../runner-apis/module-mocks.mjs';
+import { runnerApisOf } from '../runner-apis/runner-apis.mjs';
 
 const layout = readLayout();
 const REACT_PACKAGE = 'react';

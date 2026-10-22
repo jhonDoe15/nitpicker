@@ -72,9 +72,15 @@ function spawnFailure(error, { command, projectRoot, timeoutMs }) {
   );
 }
 
-export function runMaven({ projectRoot, maven, args, timeoutMs = MAVEN_TIMEOUT_MS }) {
+export function runMaven({
+  projectRoot,
+  maven,
+  args,
+  timeoutMs = MAVEN_TIMEOUT_MS,
+  spawn = spawnSync,
+}) {
   const target = mavenTarget({ projectRoot, configured: maven, args: [...MAVEN_FLAGS, ...args] });
-  const result = spawnSync(target.command, target.args, {
+  const result = spawn(target.command, target.args, {
     cwd: projectRoot,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
@@ -113,6 +119,7 @@ export function runJava({
   args,
   cwd,
   accept = () => true,
+  spawn = spawnSync,
 }) {
   const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-'));
   try {
@@ -124,7 +131,7 @@ export function runJava({
       ...args,
     ];
     writeFileSync(argumentFile, tokens.map(argumentFileToken).join('\n'));
-    const result = spawnSync(java, [`@${argumentFile}`], {
+    const result = spawn(java, [`@${argumentFile}`], {
       cwd,
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,

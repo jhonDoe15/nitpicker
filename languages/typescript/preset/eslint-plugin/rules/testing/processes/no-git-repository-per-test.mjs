@@ -5,7 +5,7 @@ import {
   perTestVisitors,
   subprocessBindings,
 } from '../../analysis/test-code-analysis.mjs';
-import { vocabularyOf } from '../runners/runner-option.mjs';
+import { vocabularyOf } from '../../runner-apis/runner-option.mjs';
 
 const REPOSITORY_CREATING_SUBCOMMANDS = new Set(['init', 'clone']);
 
