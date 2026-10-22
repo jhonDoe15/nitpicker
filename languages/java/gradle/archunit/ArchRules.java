@@ -31,7 +31,6 @@ public final class ArchRules {
     Lifetimes.check(main, found);
     Aggregates.check(main, found);
     TestRules.check(unitTests, otherTests, found);
-    Found.dropShadowed(found, Layout.FEATURE_BOUNDARY, Layers.DEPENDENCY_RULES);
     String json =
         "{\"root\":" + (root == null ? "null" : "\"" + root + "\"") + ",\"violations\":["
             + found.stream().map(Found::toJson).collect(Collectors.joining(",")) + "]}\n";

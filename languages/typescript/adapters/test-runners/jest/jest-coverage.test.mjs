@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rebaseGlobs, shownRootDir } from './jest-coverage.mjs';
+import { rebaseGlobs, shownConfig } from './jest-coverage.mjs';
 
 const GLOBS = ['src/**/*.ts', '!src/**/*.spec.*', '!**/dist/**'];
 
@@ -38,22 +38,32 @@ describe('the coverage globs nitpicker gives Jest', () => {
   });
 });
 
-describe('the rootDir Jest prints for --showConfig', () => {
-  it('is read from the global config after any other output', () => {
-    const config = { configs: [{ rootDir: '/p/src' }], globalConfig: { rootDir: '/p/src' } };
-    const result = {
-      status: 0,
-      stdout: `ready\n${JSON.stringify(config, null, '  ')}\n`,
-      stderr: '',
-    };
+function shown(config) {
+  return { status: 0, stdout: `ready\n${JSON.stringify(config, null, '  ')}\n`, stderr: '' };
+}
 
-    expect(shownRootDir(result)).toBe('/p/src');
+describe('the config Jest prints for --showConfig', () => {
+  it('gives the global rootDir, read after any other output', () => {
+    const config = { configs: [{ rootDir: '/p/src' }], globalConfig: { rootDir: '/p/src' } };
+
+    expect(shownConfig(shown(config))).toEqual({ rootDir: '/p/src', printsDirectly: false });
   });
+
+  it.each([
+    { configs: [{ silent: true }, {}], globalConfig: { rootDir: '/p' } },
+    { configs: [{}], globalConfig: { rootDir: '/p', silent: true } },
+    { configs: [{}], globalConfig: { rootDir: '/p', verbose: true } },
+  ])(
+    'prints the console directly when the global config or one project is silent or verbose',
+    (config) => {
+      expect(shownConfig(shown(config)).printsDirectly).toBe(true);
+    },
+  );
 
   it('is an error when Jest could not load the config', () => {
     const result = { status: 1, stdout: '', stderr: 'Validation Error: rootDir not found' };
 
-    expect(() => shownRootDir(result)).toThrow(
+    expect(() => shownConfig(result)).toThrow(
       new Error(
         'Jest exited 1 without printing its config for --showConfig\nProcess output:\n' +
           'Validation Error: rootDir not found',
