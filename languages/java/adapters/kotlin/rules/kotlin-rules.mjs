@@ -12,6 +12,7 @@ const BANNED_SUPPRESSIONS = [
   /^all$/i,
   /^detekt(?:[.:]|$)/i,
   /^ktlint(?:[.:]|$)/i,
+  /^(?:unused|UNUSED_PARAMETER|UNUSED_VARIABLE)$/,
   /^[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*$/,
 ];
 const DETEKT_RULESETS = new Set([
@@ -55,6 +56,13 @@ export const ONE_WAY_RULES = [
     allowed: 'Remove `apply`; use it only to configure an object you just created.',
   },
   { name: 'UseLet', ruleset: 'style' },
+  {
+    name: 'UnusedParameter',
+    ruleset: 'style',
+    mainOnly: true,
+    allowed:
+      'Remove the parameter and update the callers, or use it. An override, a function with a framework annotation (`@GetMapping`, `@EventListener`, `@Bean`, `@Test`, ...) and a name starting `ignored` or `unused` are skipped.',
+  },
   { name: 'UseDataClass', ruleset: 'style' },
   { name: 'ForbiddenImport', ruleset: 'style' },
   { name: 'ForbiddenComment', ruleset: 'style' },

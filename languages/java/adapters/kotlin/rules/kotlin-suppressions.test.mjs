@@ -102,7 +102,7 @@ describe('readSuppressionFindings', () => {
   it('reports each banned token with its rule, a line-free identity and a message that names the fix', () => {
     const root = projectWith({
       [file]:
-        '@Suppress("UnsafeCallOnNullableType", "unused")\nfun a() = 1\n@Suppress("all")\nfun b() = 2\n',
+        '@Suppress("UnsafeCallOnNullableType", "rawtypes")\nfun a() = 1\n@Suppress("all")\nfun b() = 2\n',
     });
 
     expect(readSuppressionFindings(root, { sourceRoots: ['src/main/kotlin'] })).toEqual([
@@ -199,7 +199,7 @@ describe('readSuppressionFindings', () => {
 
   it('reports nothing for allowed suppressions, comments and missing source roots', () => {
     const root = projectWith({
-      [file]: '@Suppress("unused", "UNUSED_PARAMETER")\nfun a() = 42\n// @Suppress("all")\n',
+      [file]: '@Suppress("rawtypes", "UNUSED_VALUE")\nfun a() = 42\n// @Suppress("all")\n',
     });
 
     expect(

@@ -248,6 +248,39 @@ style:
     excludes: []
     ignoreAnnotated: []
     includes: []
+  UnusedParameter:
+    active: true
+    severity: warning
+    excludes: []
+    includes: []
+    allowedNames: '(ignored|unused).*'
+    ignoreAnnotated:
+      - '*Mapping'
+      - '*Listener'
+      - '*Handler'
+      - 'Bean'
+      - 'Scheduled'
+      - 'InitBinder'
+      - 'ModelAttribute'
+      - 'Around'
+      - 'Before'
+      - 'After'
+      - 'AfterReturning'
+      - 'AfterThrowing'
+      - 'JsonCreator'
+      - 'JsonDeserialize'
+      - 'JsonSerialize'
+      - 'Test'
+      - 'ParameterizedTest'
+      - 'RepeatedTest'
+      - 'TestFactory'
+      - 'TestTemplate'
+      - 'BeforeEach'
+      - 'AfterEach'
+      - 'BeforeAll'
+      - 'AfterAll'
+      - 'Provides'
+      - 'Binds'
 
 complexity:
   active: true

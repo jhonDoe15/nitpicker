@@ -69,6 +69,14 @@ describe('booleanFlags', () => {
       'a flag in a combined condition',
       'fun send(text: String, urgent: Boolean): String {\n    if (urgent && text.isNotEmpty()) return "!"\n    return text\n}\n',
     ],
+    [
+      'a member of a public class',
+      'class Renderer(private val tag: String) {\n    fun render(text: String, bold: Boolean): String {\n        if (bold) return text\n        return tag\n    }\n}\n',
+    ],
+    [
+      'a member of a public class inside a public object',
+      'object Holder {\n    class Renderer {\n        fun render(bold: Boolean): String {\n            if (bold) return "b"\n            return ""\n        }\n    }\n}\n',
+    ],
   ])('flags %s', (_name, source) => {
     expect(found(booleanFlags, source).map(([rule]) => rule)).toEqual(['BooleanFlagParameter']);
   });
@@ -94,6 +102,22 @@ describe('booleanFlags', () => {
     [
       'a flag passed on, not branched on',
       'fun render(text: String, bold: Boolean): Span = Span(text, bold)\n',
+    ],
+    [
+      'a function of an internal class',
+      'internal class Renderer {\n    fun render(text: String, bold: Boolean): String {\n        if (bold) return text\n        return text\n    }\n}\n',
+    ],
+    [
+      'a function of a private class',
+      'private class Renderer(val tag: String) {\n    fun render(text: String, bold: Boolean): String {\n        if (bold) return text\n        return text\n    }\n}\n',
+    ],
+    [
+      'a function of a class inside a private object',
+      'private object Holder {\n    class Renderer {\n        fun render(bold: Boolean): String {\n            if (bold) return "b"\n            return ""\n        }\n    }\n}\n',
+    ],
+    [
+      'a local function',
+      'fun outer(text: String): String {\n    fun inner(bold: Boolean): String {\n        if (bold) return text\n        return text\n    }\n    return inner(true)\n}\n',
     ],
     [
       'a flag compared, not used as the condition',

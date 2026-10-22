@@ -1,6 +1,7 @@
 import { closingIndex, enclosingOpen, splitArguments } from '../kotlin-source.mjs';
 import { reportingCalls, withoutCalls } from '../log-calls.mjs';
 import { isRetry } from '../loops.mjs';
+import { isReachableFromOutside } from './exposure.mjs';
 
 const CATCH = /\bcatch\s*\(\s*([A-Za-z_]\w*|`[^`]+`)\s*:([^)]*)\)\s*\{/g;
 const ERROR_CALLS = [
@@ -124,7 +125,11 @@ export function booleanFlags(scanned) {
   return [...code.matchAll(FUNCTION)].flatMap((match) => {
     const lineStart = code.lastIndexOf('\n', match.index) + 1;
     const modifiers = code.slice(lineStart, match.index);
-    if (HIDDEN.test(modifiers) || BUILDER_NAME.test(match[1])) {
+    if (
+      HIDDEN.test(modifiers) ||
+      BUILDER_NAME.test(match[1]) ||
+      !isReachableFromOutside(code, match.index)
+    ) {
       return [];
     }
     const open = match.index + match[0].length - 1;
