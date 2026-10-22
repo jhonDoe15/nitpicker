@@ -1,20 +1,9 @@
 import { globMatcher } from '../paths/glob.mjs';
+import { applyFindingExceptions } from '../exceptions/finding-exceptions.mjs';
+import { findingPaths } from '../exceptions/matching.mjs';
+import { sharedRouteRule, withExceptionRoutes } from '../exceptions/routes.mjs';
 import { applyInventoryToFindings, readOptionalInventory } from '../legacy-inventory.mjs';
 import { evaluateBaselineExpansions } from '../rules/baseline-expansion.mjs';
-import { clonePartnerPath } from '../rules/duplicates.mjs';
-
-export function findingPaths(finding) {
-  const partner = clonePartnerPath(finding);
-  return partner === undefined ? [finding.path] : [finding.path, partner];
-}
-
-function isLifted(finding, lifted) {
-  const printedRule = `${finding.tool}/${finding.rule}`;
-  return lifted.some(
-    ({ rule, matcher }) =>
-      (rule === finding.rule || rule === printedRule) && matchesAny(matcher, finding),
-  );
-}
 
 function matchesAny(matcher, finding) {
   return findingPaths(finding).some((candidate) => matcher.test(candidate));
@@ -30,15 +19,18 @@ export function applyFindingPolicy(
     baselineRoot,
     snapshot = 'head',
     inventoryTool,
+    routeRule = sharedRouteRule,
   } = {},
   resolveOverlaps = (reported) => reported,
 ) {
   const excluders = exclude.map((glob) => globMatcher(glob));
-  const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globMatcher(glob) }));
   const kept = resolveOverlaps(
-    findings.filter(
-      (finding) =>
-        !excluders.some((matcher) => matchesAny(matcher, finding)) && !isLifted(finding, lifted),
+    applyFindingExceptions(
+      withExceptionRoutes(
+        findings.filter((finding) => !excluders.some((matcher) => matchesAny(matcher, finding))),
+        routeRule,
+      ),
+      exceptions,
     ),
   );
   if (legacyInventory === undefined || policyRoot === undefined) {

@@ -18,7 +18,7 @@ describe('singular and plural members in Kotlin', () => {
     expect(summary(findings)).toEqual([`${SINGULAR_PLURAL_RULE} Query.tags 7`]);
     expect(findings[0].tool).toBe('pmd');
     expect(routeOf(findings[0].message)).toBe(
-      'add an exception for pmd/SingularAndPluralMember in nitpicker.config.json.',
+      'If this is intended, add {"rule":"pmd/SingularAndPluralMember","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

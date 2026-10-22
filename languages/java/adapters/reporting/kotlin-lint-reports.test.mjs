@@ -120,15 +120,8 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
     const [finding] = kotlinFindings(root, 'detekt');
 
     expect(finding.identity).toBe('fp:nitpicker/subject=Calling !! on a nullable type will throw.');
-    expect(finding.message).toMatch(
-      new RegExp(
-        [
-          '^Calling !! on a nullable type will throw\\. Handle null with `value \\?: return`',
-          '.*checkNotNull\\(value\\).* If this is intended, add \\{"rule":',
-          '"detekt\\.potential-bugs\\.UnsafeCallOnNullableType".* to "exceptions" in nitpicker\\.config\\.json\\.$',
-        ].join(''),
-        '',
-      ),
+    expect(finding.message).toBe(
+      'Calling !! on a nullable type will throw. Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug. If this is intended, add {"rule":"detekt.potential-bugs.UnsafeCallOnNullableType","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
   it('reports an inline suppression of a one-way rule in a Kotlin source file', () => {
@@ -147,7 +140,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
         path: bad,
         identity: 'suppress:UnsafeCallOnNullableType',
         message:
-          'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags. To lift a one-way rule for some paths, add an "exceptions" entry for it in nitpicker.config.json; to skip generated code, add it to "exclude" there.',
+          'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. If this is intended, add {"rule":"inline-suppression","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);

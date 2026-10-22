@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { file, klass, routeOf, run, summary } from '../test-support/facts.mjs';
+import { file, klass, routeOf, routed, run, summary } from '../test-support/facts.mjs';
 import { ENUM_PREDICATE_RULE } from '../../../review-rules/enum-predicates.mjs';
 import { enumMessage, enumPredicateFindings } from './enum-predicates.mjs';
 
@@ -60,9 +60,9 @@ describe('exhaustive enum predicate in Kotlin', () => {
 
     expect(summary(findings)).toEqual([`${ENUM_PREDICATE_RULE} isSettled 4`]);
     expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toBe(enumMessage('Status'));
+    expect(findings[0].message).toBe(routed(enumMessage('Status'), 'ExhaustiveEnumPredicate'));
     expect(routeOf(findings[0].message)).toBe(
-      'add an exception for pmd/ExhaustiveEnumPredicate in nitpicker.config.json.',
+      'If this is intended, add {"rule":"pmd/ExhaustiveEnumPredicate","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

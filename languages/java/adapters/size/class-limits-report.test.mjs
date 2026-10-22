@@ -65,7 +65,7 @@ describe('class limits read from the report of a project', () => {
   it('lifts a class rule for the paths of an exception', () => {
     const root = kotlinProject();
     const options = { preset: 'kotlin', fileLimits: { classMethods: 2 } };
-    const lifted = [{ rule: 'class-methods-limit', glob: 'src/**' }];
+    const lifted = [{ rule: 'class-methods-limit', paths: ['src/**'] }];
 
     expect(readJavaFindings(root, { ...options, exceptions: lifted }).findings).toEqual([]);
   });

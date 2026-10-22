@@ -123,5 +123,9 @@ export function summary(findings) {
 }
 
 export function routeOf(message) {
-  return message.slice(message.lastIndexOf('add an exception'));
+  return message.slice(message.lastIndexOf('If this is intended'));
+}
+
+export function routed(message, rule, file = MAIN_FILE) {
+  return `${message} If this is intended, add {"rule":"pmd/${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 }

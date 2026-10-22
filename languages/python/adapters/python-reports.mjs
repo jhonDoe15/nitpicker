@@ -35,6 +35,7 @@ import {
 } from './size/python-size.mjs';
 import { readDependencyFindings } from './dependencies/dependency-findings.mjs';
 import { withoutFrameworkForms } from './dependencies/python-frameworks.mjs';
+import { readStructureFunctions } from '../../../shared/ingest/structure-report.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
 import { listProductionModules } from './analysis/python-sources.mjs';
 import { isGeneratedPython } from '../libraries/generated-files.mjs';
@@ -81,6 +82,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
       ...(manifest.testsRan === false ? [noTestsFinding()] : []),
       ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
         roots,
+        functions: readStructureFunctions(reportRoot),
         sourceText: (file) => readSource(projectRoot, file),
       }).findings,
       ...readDuplicateFindings(reportRoot, projectRoot),

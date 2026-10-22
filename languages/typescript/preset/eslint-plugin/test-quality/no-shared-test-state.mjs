@@ -28,7 +28,7 @@ export const rule = {
     schema: [],
     messages: {
       sharedState:
-        'Shared mutable state makes tests depend on their order. Keep `{{name}}` inside the test, or declare it without a value and set it in `beforeEach`. A justified exception goes in nitpicker.config.json.',
+        'Shared mutable state makes tests depend on their order. Keep `{{name}}` inside the test, or declare it without a value and set it in `beforeEach`.',
     },
   },
   create(context) {

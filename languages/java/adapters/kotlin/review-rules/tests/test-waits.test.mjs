@@ -9,6 +9,7 @@ import {
   fn,
   klass,
   routeOf,
+  routed,
   run,
   summary,
   testFile,
@@ -69,11 +70,15 @@ describe('fixed sleeps in Kotlin tests', () => {
       identity: 'FixedSleepInTest:SampleTest.waits:sleep',
       symbol: 'SampleTest.waits',
       location: { line: 5 },
-      message: waitMessage({ rule: FIXED_SLEEP_RULE, kind: 'sleep' }),
+      message: routed(
+        waitMessage({ rule: FIXED_SLEEP_RULE, kind: 'sleep' }),
+        FIXED_SLEEP_RULE,
+        'src/test/kotlin/demo/SampleTest.kt',
+      ),
       classification: 'enforceable',
     });
     expect(routeOf(findings[0].message)).toBe(
-      'add an exception for pmd/FixedSleepInTest in nitpicker.config.json.',
+      'If this is intended, add {"rule":"pmd/FixedSleepInTest","paths":["src/test/kotlin/demo/SampleTest.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(new Set(findings.map(({ identity }) => identity)).size).toBe(3);
   });
@@ -152,7 +157,13 @@ describe('fixed sleeps in Kotlin tests', () => {
       `${FIXED_SLEEP_RULE} SampleTest.waits 1`,
       `${FIXED_SLEEP_RULE} SampleTest.waits 2`,
     ]);
-    expect(findings[0].message).toBe(waitMessage({ rule: FIXED_SLEEP_RULE, kind: 'delay' }));
+    expect(findings[0].message).toBe(
+      routed(
+        waitMessage({ rule: FIXED_SLEEP_RULE, kind: 'delay' }),
+        FIXED_SLEEP_RULE,
+        'src/test/kotlin/demo/SampleTest.kt',
+      ),
+    );
   });
 
   it('reports kotest continually, Mockito after(...).never() and Awaitility during as negative waits', () => {
@@ -187,7 +198,7 @@ describe('fixed sleeps in Kotlin tests', () => {
       `${FIXED_SLEEP_RULE} SampleTest.waits 6`,
     ]);
     expect(routeOf(findings[0].message)).toBe(
-      'add an exception for pmd/NegativeWaitInTest in nitpicker.config.json.',
+      'If this is intended, add {"rule":"pmd/NegativeWaitInTest","paths":["src/test/kotlin/demo/SampleTest.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -206,7 +217,13 @@ describe('fixed sleeps in Kotlin tests', () => {
     const findings = waitsIn([joined]);
     const helper = waitsIn([joined], { functions: [testMethod(), fn('join')] });
 
-    expect(findings[0].message).toBe(waitMessage({ rule: FIXED_SLEEP_RULE, kind: 'timed' }));
+    expect(findings[0].message).toBe(
+      routed(
+        waitMessage({ rule: FIXED_SLEEP_RULE, kind: 'timed' }),
+        FIXED_SLEEP_RULE,
+        'src/test/kotlin/demo/SampleTest.kt',
+      ),
+    );
     expect(helper).toEqual([]);
   });
 
@@ -379,7 +396,7 @@ describe('fixed sleeps in Kotlin tests: parity details', () => {
     expect([sleep, timed].map((kind) => names(waitMessage(kind)))).toEqual([false, false]);
     expect([sleep, timed].map((kind) => names(waitMessage(kind, true)))).toEqual([true, true]);
     expect(waitsIn([wait('sleep')], {}, { awaitility: true })[0].message).toBe(
-      waitMessage(sleep, true),
+      routed(waitMessage(sleep, true), FIXED_SLEEP_RULE, 'src/test/kotlin/demo/SampleTest.kt'),
     );
   });
 });

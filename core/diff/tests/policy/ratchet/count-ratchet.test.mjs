@@ -149,6 +149,23 @@ describe('growth advice on a finding that is new in a function with findings at 
       'Do not throw. The base had 2; keep to it.',
     ]);
   });
+  it('puts the advice before the exception sentence, which stays last', () => {
+    const route =
+      'If this is intended, add {"rule":"nitpicker/no-throw","paths":["src/f.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
+    const routed = (identity, line, count) => ({
+      ...throwFinding(identity, line, count),
+      message: `Do not throw. ${route}`,
+    });
+    const result = compareFindings({
+      baseFindings: [routed('first', 4, 2), routed('second', 9, 2)],
+      headFindings: [routed('first', 4, 3), routed('second', 9, 3), routed('added', 12, 3)],
+      touchedCode: inserted([[12, 12]]),
+    });
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      `Do not throw. The base had 2; keep to it. ${route}`,
+    ]);
+  });
   it('appends the advice to an edited throw the function now has more of', () => {
     const result = compareFindings({
       baseFindings: [throwFinding('first', 4, 1)],
