@@ -261,7 +261,7 @@ describe('hints follow the libraries of the project', () => {
     ],
     [
       'unittest.skip',
-      'Give the reason: `@unittest.skip("needs the staging database")`, `self.skipTest("...")`; or fix or delete the test.',
+      'Skip on a real condition and give the reason: `@unittest.skipUnless(HAS_DATABASE, "needs the staging database")`, or `self.skipTest("...")` inside the condition; or fix or delete the test.',
     ],
     [
       'return in test_a',
@@ -271,6 +271,66 @@ describe('hints follow the libraries of the project', () => {
     expect(advice('skipped-test-without-reason', {}, 'python-rules', subject)).toBe(
       expected('skipped-test-without-reason', allowed),
     );
+  });
+
+  it.each([
+    [
+      'pytest.mark.skip',
+      '`pytest.mark.skip` switches a test off for good',
+      'Delete the test or make it run. ',
+    ],
+    [
+      'pytest.skip()',
+      '`pytest.skip()` switches a test off for good',
+      'Delete the test or make it run. ',
+    ],
+    [
+      'pytest.mark.skipif(literal)',
+      '`pytest.mark.skipif(...)` has a literal condition',
+      'A literal condition switches the test off for good or never applies. Delete the test or make it run; a real condition such as `sys.platform == "win32"` is allowed.',
+    ],
+    [
+      'pytest.mark.xfail',
+      '`pytest.mark.xfail` lets a test fail without failing the build',
+      'Add `strict=True` so a pass fails the build (or set `xfail_strict = true` in the pytest configuration), or fix or delete the test.',
+    ],
+    [
+      'pytest.mark.xfail(run=False)',
+      '`pytest.mark.xfail(run=False)` never runs the test',
+      'Delete the test or make it run. ',
+    ],
+  ])('word a switched-off test by the form %s', (subject, description, allowed) => {
+    expect(describeRuleFinding('switched-off-test', subject)).toBe(description);
+    expect(advice('switched-off-test', {}, 'python-rules', subject)).toContain(allowed);
+  });
+
+  it.each([
+    [
+      'TestOrders.test_total: for',
+      'a `for` loop',
+      'Give each case its own test with `@pytest.mark.parametrize`',
+    ],
+    [
+      'test_total: while',
+      'a `while` loop',
+      'Give each case its own test with `@pytest.mark.parametrize`',
+    ],
+    [
+      'test_total: if',
+      'an `if` branch or conditional expression',
+      'Give each outcome its own test',
+    ],
+    ['test_total: match', 'a `match` statement', 'Give each outcome its own test'],
+    ['test_total: comprehension', 'a comprehension', 'Give each case its own test'],
+    ['test_total: subTest', 'a `subTest` loop', 'accepts `subTest` through the exception'],
+    ['test_total: except', 'an `except` handler', 'with pytest.raises(SpecificError) as info:'],
+  ])('word a conditional assertion by the form %s', (subject, construct, allowed) => {
+    const name = subject.split(': ')[0];
+
+    expect(describeRuleFinding('conditional-assertion-in-test', subject)).toBe(
+      `Test \`${name}\` asserts inside ${construct}`,
+    );
+    expect(advice('conditional-assertion-in-test', {}, 'python-rules', subject)).toContain(allowed);
   });
 
   it('name the default validation library when none is declared', () => {

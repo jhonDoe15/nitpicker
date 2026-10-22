@@ -101,6 +101,16 @@ export function shellWords(text) {
   );
 }
 
+const TRUE_WORDS = new Set(['1', 'true', 'yes', 'y', 'on', 't']);
+
+function isEnabled(value) {
+  return TRUE_WORDS.has(
+    String(value ?? '')
+      .trim()
+      .toLowerCase(),
+  );
+}
+
 export function readPytestConfig(projectRoot) {
   const options = configuredOptions(projectRoot);
   const addopts = options.addopts;
@@ -110,6 +120,7 @@ export function readPytestConfig(projectRoot) {
     pythonFunctions: listOr(options.python_functions, DEFAULT_PYTHON_FUNCTIONS),
     norecursedirs: listOr(options.norecursedirs, DEFAULT_NORECURSEDIRS),
     testpaths: words(options.testpaths),
+    xfailStrict: isEnabled(options.xfail_strict),
     ...(options.DJANGO_SETTINGS_MODULE === undefined
       ? {}
       : { djangoSettingsModule: options.DJANGO_SETTINGS_MODULE }),

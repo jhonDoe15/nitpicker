@@ -19,9 +19,9 @@ function skipAllowed(subject = '') {
     return 'Give the reason and the expected error: `@pytest.mark.xfail(reason="bug 123", raises=ZeroDivisionError, strict=True)`; or fix or delete the test.';
   }
   if (subject.startsWith('unittest.') || subject === 'skipTest()' || subject === 'SkipTest') {
-    return 'Give the reason: `@unittest.skip("needs the staging database")`, `self.skipTest("...")`; or fix or delete the test.';
+    return 'Skip on a real condition and give the reason: `@unittest.skipUnless(HAS_DATABASE, "needs the staging database")`, or `self.skipTest("...")` inside the condition; or fix or delete the test.';
   }
-  return 'Give the reason: `@pytest.mark.skip(reason="needs the staging database")`, `pytest.skip("...")`; or fix or delete the test.';
+  return 'Skip on a real condition and give the reason: `@pytest.mark.skipif(sys.platform == "win32", reason="posix only")`, `pytest.importorskip("numpy")` or `if not has_gpu(): pytest.skip("needs a GPU")`; or fix or delete the test.';
 }
 
 const UNCOLLECTED_ADVICE = [

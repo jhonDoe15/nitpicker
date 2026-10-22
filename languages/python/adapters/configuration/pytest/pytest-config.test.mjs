@@ -122,6 +122,7 @@ describe('the rest of the collection settings', () => {
       pythonFunctions: ['test'],
       norecursedirs: DEFAULT_NORECURSEDIRS,
       testpaths: [],
+      xfailStrict: false,
       addopts: [],
     });
   });
@@ -144,6 +145,7 @@ describe('the rest of the collection settings', () => {
       pythonFunctions: ['check_*'],
       norecursedirs: ['slow', 'legacy'],
       testpaths: ['tests', 'unit'],
+      xfailStrict: false,
       addopts: ['-q', '--deselect', 'tests/a.py::test one', '-k', 'not slow'],
     });
   });
@@ -154,6 +156,22 @@ describe('the rest of the collection settings', () => {
     });
 
     expect(readPytestConfig(root).addopts).toEqual(['-q', '--ignore=tests/old']);
+  });
+
+  it.each([
+    ['pytest.ini', '[pytest]\nxfail_strict = true\n'],
+    ['pytest.ini', '[pytest]\nxfail_strict = 1\n'],
+    ['pyproject.toml', '[tool.pytest.ini_options]\nxfail_strict = true\n'],
+    ['setup.cfg', '[tool:pytest]\nxfail_strict = True\n'],
+  ])('read xfail_strict from %s', (file, text) => {
+    expect(readPytestConfig(project({ [file]: text })).xfailStrict).toBe(true);
+  });
+
+  it.each([
+    ['pytest.ini', '[pytest]\nxfail_strict = false\n'],
+    ['pytest.ini', '[pytest]\naddopts = -q\n'],
+  ])('leave xfail_strict off for %s', (file, text) => {
+    expect(readPytestConfig(project({ [file]: text })).xfailStrict).toBe(false);
   });
 
   it('split options like a shell', () => {
