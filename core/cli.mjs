@@ -11,7 +11,7 @@ import {
   describeDisableCascade,
   loadConfig,
 } from './configuration/config.mjs';
-import { resolveHeadPolicy } from '../languages/typescript/preset/head-policy.mjs';
+import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mjs';
 import { withProjectTestFiles } from '../languages/typescript/preset/test-runner/test-files/project-test-files.mjs';
 import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
@@ -31,7 +31,7 @@ import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
-import { renderRuleFilterSection } from './diff/reporting/text.mjs';
+import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 
 export function runCli(options = {}) {
@@ -116,7 +116,7 @@ function runConfigured(cli) {
   function configure(policy) {
     return configureAnalyzers(presetSet, config, policy);
   }
-  const detectedPolicy = resolveHeadPolicy(config, currentProjectRoot);
+  const detectedPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const headPolicy = withProjectTestFiles(detectedPolicy, {
     projectRoot: currentProjectRoot,
     liveProjectRoot: currentProjectRoot,
@@ -184,7 +184,7 @@ function runComparisonCli(cli) {
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
-    describeNotices: noticeDescriber(config, headPolicy),
+    describeNotices: noticeDescriber(config, headPolicy, currentProjectRoot),
     ...acceptanceOf(cli),
     progress: cli.progress,
     runTasks: cli.runTasks,
@@ -259,7 +259,7 @@ function writeComparisonOutcome({ cli, report, base, outputRoot }) {
       diagnosticsPath: absoluteTextReportPath(outputRoot),
     }),
   );
-  stdout.write(renderRuleFilterSection(report, options.ruleFilters));
+  stdout.write(renderClosingSections(cli, report));
   if (options.deferExit) {
     return 0;
   }

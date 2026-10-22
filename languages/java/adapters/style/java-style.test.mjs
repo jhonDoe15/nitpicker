@@ -5,12 +5,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mjs';
 import { analyzeJavaSnapshot, readRunnerPolicy } from '../java-runner.mjs';
 import { readJavaFindings as readFindings } from '../reporting/java-reports.mjs';
+import { fakeGradleRun } from '../test-support/in-process-gradle.mjs';
 import { readingFrom, reportBaseOf, writeModules } from '../test-support/report-base.mjs';
 import { javaLineLength, javaStyle, javaStyleProperties } from './java-style.mjs';
 
 const NOT_YOUR_FORMATTER =
   'Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.';
-const fakeGradle = path.resolve(import.meta.dirname, '../fixtures/fake-gradle.mjs');
 const roots = [];
 
 afterEach(() => {
@@ -22,7 +22,7 @@ afterEach(() => {
 function gradleArguments(policy) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-style-')));
   roots.push(root);
-  analyzeJavaSnapshot(root, { gradle: fakeGradle, policy });
+  analyzeJavaSnapshot(root, { ...fakeGradleRun, policy });
   return JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8'));
 }
 
@@ -165,7 +165,7 @@ describe('the Checkstyle export stage', () => {
       policyRoot: root,
     };
 
-    analyzeJavaSnapshot(root, { gradle: fakeGradle, policy });
+    analyzeJavaSnapshot(root, { ...fakeGradleRun, policy });
 
     const calls = readFileSync(path.join(root, 'build/gradle-calls.jsonl'), 'utf8')
       .trim()

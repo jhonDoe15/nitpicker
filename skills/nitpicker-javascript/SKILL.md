@@ -39,10 +39,15 @@ Before you change code other modules use or fix a bug, read
      missing package) and rerun. Exit 2 is never a pass. If it says another run is in progress,
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, `@ts-nocheck`, coverage or mutation ignore
-   comments (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`, legacy
+   comments (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`/`exceptions`, legacy
    entries, generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
    `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
    accept.
+5. Code that is right despite a rule: each message ends with the `exceptions` entry that would
+   accept it (`If this is intended, add {...} to "exceptions" in nitpicker.config.json.`). That
+   entry is for a human reviewer. Never add one, and never fill in its
+   `reason`, to get past the gate: stop and ask a human, and quote the finding with its entry. A
+   TypeScript compiler error has no entry; fix the type.
 
 ## Layout
 
@@ -128,7 +133,7 @@ line) is a finding.
 - A file stays within 300 lines (a test file 500) and a line within 120 characters. A folder holds
   at most 6 source files and 6 test files directly: group the rest into subfolders by what they do.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`), in source or tests, fails:
-  extract a function.
+  extract a function, also when the copy has other names and literals.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
@@ -191,6 +196,7 @@ line) is a finding.
   `import { initials } from '../src/main/features/greeting/domain/initials.cjs';`.
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.
+- Keep an assertion unless another test covers the same behaviour.
 - A test run that prints new `console.error` or `console.warn` output fails
   (`test-console-output`): cancel the timer or subscription in the cleanup.
 - Test features through their `index.js` with fakes: plain functions returning
@@ -202,9 +208,10 @@ line) is a finding.
   `proxyquire`, `esmock` and the other runners' module mocks count too). After each test the gate
   restores spies and stubs: Vitest's and Jest's mocks, and, under `node:test` and Mocha, the
   doubles the test and its `beforeEach` hooks made with the shared `node:test` `mock` or with
-  sinon (sinon's `useFakeTimers` clocks included); a double a `before` hook made stays until your
-  `after` hook restores it (`mock.restoreAll()`, `sinon.restore()`). Restore other fake timers
-  yourself in `afterEach`: `vi.useRealTimers()` (`jest.useRealTimers()`, `mock.timers.reset()`).
+  sinon; a double a `before` hook made stays until your
+  `after` hook restores it (`mock.restoreAll()`, `sinon.restore()`). Restore fake timers
+  yourself in `afterEach`: `vi.useRealTimers()` (`jest.useRealTimers()`, `mock.timers.reset()`,
+  `clock.restore()`).
 - Test data typed from a literal widens (`status: string`): write the array as
   `/** @type {const} */ ([...])`, or annotate the `const` with the typedef.
 - Assert whole outputs with `toEqual`/`toBe` (`assert.deepStrictEqual`/`assert.equal`, chai's
@@ -216,8 +223,9 @@ line) is a finding.
   `for (const testCase of cases) { it(testCase.name, () => { ... }); }`, not a loop inside one test.
   Shared setup goes in `beforeAll` (`before` under `node:test` and Mocha). The rules above
   (`for...of` only, no `.then()`, no casts) apply to tests too.
+- Tests assert exact values and are deterministic and fast; each finding names the allowed form.
 - A shared helper (stdout capture) lives once, in a file the runner does not run as a test, such as
-  `test/support/lines.js` (under `node:test` with Node's default patterns every file in `test/` is
+  `test/support/lines.js` or a `test-support/` folder beside the code when the tests sit next to it (under `node:test` with Node's default patterns every file in `test/` is
   a test: put the helper in `tests/support/`, or name the tests in the script, such as
   `node --test 'test/**/*.test.js'`). When an existing test defines the same helper, make it import
   the shared one.

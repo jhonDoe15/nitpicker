@@ -144,6 +144,27 @@ describe('exported-name-collision', () => {
     ]);
   });
 
+  it('follows a default export re-exported under a name to the module that defines it', () => {
+    const button = (body) =>
+      `export default function Button(items: readonly number[]): number {\n  return ${body};\n}\n`;
+    const files = {
+      'src/main/features/a/button.ts': button('items.length + 1'),
+      'src/main/features/b/button.ts': button('items.length * 3'),
+      'src/main/features/a/index.ts': "export { default as Button } from './button';\n",
+      'src/main/features/b/index.ts': "export { default as Button } from './button';\n",
+      'src/main/shared/consumer.ts': source(
+        "import { Button } from '../features/a';",
+        "import { Button as OtherButton } from '../features/b';",
+        'export const both = [Button([1]), OtherButton([2])];',
+      ),
+    };
+
+    expect(rows(collisions(files))).toEqual([
+      ['exported-name-collision', 'src/main/features/a/button.ts', 'collision:Button'],
+      ['exported-name-collision', 'src/main/features/b/button.ts', 'collision:Button'],
+    ]);
+  });
+
   it('follows a workspace package to its source', () => {
     const files = workspaceFiles({
       'packages/ui/src/index.ts': 'export const Foo = 1;\n',

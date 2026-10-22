@@ -108,7 +108,7 @@ describe('the browser globals of production code in a DOM-tested project', () =>
     expect(
       productionMessages(root, jsdom, 'src/ui/label.js', 'export const value = name;'),
     ).toEqual([
-      "Unexpected use of 'name'. `name` here is the browser global, not a local value. Write `window.name` when you mean the global; otherwise take the value as a parameter (`onClick={(event) => ...}`) or declare it. If this is intentional, add an exception for this rule in nitpicker.config.json.",
+      "Unexpected use of 'name'. `name` here is the browser global, not a local value. Write `window.name` when you mean the global; otherwise take the value as a parameter (`onClick={(event) => ...}`) or declare it.",
     ]);
     expect(
       productionMessages(

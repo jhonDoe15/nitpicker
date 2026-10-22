@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { storyGlobs } from '../../eslint-config/scope-support.mjs';
-import { globToRegExp, toPosix } from '../../layout.mjs';
+import { globMatcher, toPosix } from '../../layout.mjs';
 
 const TEST_RUNNER_CONFIG = /^(?:vitest|jest|\.mocharc)/u;
 const TEST_RUNNER_CONFIG_GLOBS = [
@@ -36,7 +36,7 @@ function testAndStoryGlobs(layout) {
 }
 
 export function layoutProductionMatcher(layout) {
-  const matchers = testAndStoryGlobs(layout).map((glob) => globToRegExp(glob));
+  const matchers = testAndStoryGlobs(layout).map((glob) => globMatcher(glob));
   return (relative) => !matchers.some((matcher) => matcher.test(toPosix(relative)));
 }
 

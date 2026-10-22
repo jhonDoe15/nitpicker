@@ -29,7 +29,7 @@ const PLANTED_OUTPUT = [
   'eslint-lint: total=1 enforceable=1 descriptive=0',
   '',
   'Enforceable findings:',
-  'eslint-lint/nitpicker/no-unused-dom-environment test/greet.js:1 This test file runs with jsdom, which the Mocha `require` setup (.mocharc or the test script) registers for every test file through `global-jsdom/register`, but never uses the DOM. Remove `global-jsdom/register` from the Mocha `require` setup (.mocharc or the test script), then import it at the top of the test files that use the DOM, or move those files to a separate Mocha run that registers it. If it uses the DOM in a way nitpicker cannot see, add an exception for nitpicker/no-unused-dom-environment.',
+  'eslint-lint/nitpicker/no-unused-dom-environment test/greet.js:1 This test file runs with jsdom, which the Mocha `require` setup (.mocharc or the test script) registers for every test file through `global-jsdom/register`, but never uses the DOM. Remove `global-jsdom/register` from the Mocha `require` setup (.mocharc or the test script), then import it at the top of the test files that use the DOM, or move those files to a separate Mocha run that registers it. An exception fits only when the file uses the DOM in a way nitpicker cannot see. If this is intended, add {"rule":"nitpicker/no-unused-dom-environment","paths":["test/greet.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
   '',
 ].join('\n');
 const NON_DOM_TEST = `import assert from 'node:assert/strict';

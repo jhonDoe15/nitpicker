@@ -33,7 +33,7 @@ describe('ingestCrap', () => {
     );
     expect(findings[0].path).toBe('src/main/java/demo/Calc.java');
     expect(findings[0].message).toEqual(
-      'Calc.classify(int, int, String) has CRAP 71.39; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+      'Calc.classify has CRAP 71.39; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
   });
@@ -189,7 +189,7 @@ describe('ingestCrap', () => {
     const unknown = ingest().find((f) => f.rule === 'crap-coverage-unknown');
 
     expect(unknown.message).toBe(
-      'Calc.Inner.get(int) has unknown coverage and no CRAP score: JaCoCo has no data for it, so no test runs it or it is annotated @Generated. Add a test that calls it, and remove @Generated from hand-written code.',
+      'Calc.Inner.get has unknown coverage and no CRAP score: JaCoCo has no data for it, so no test runs it or it is annotated @Generated. Add a test that calls it, and remove @Generated from hand-written code. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/java/demo/Calc.java"],"function":"Calc.Inner.get","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -201,7 +201,7 @@ describe('ingestCrap', () => {
     const score = ingest(undefined, covered).find((f) => f.rule === 'crap-score-limit');
 
     expect(score.message).toBe(
-      'Calc.classify(int, int, String) has CRAP 9.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function.',
+      'Calc.classify has CRAP 9.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -223,9 +223,9 @@ describe('ingestCrap', () => {
         key: 'function:Calc.classify(int, int, String):crap',
         value: expect.any(Number),
         worseMessage:
-          'Calc.classify(int, int, String) CRAP rose from {base} to 71.39 (limit 9). Put new code in a new function and cover it with tests.',
+          'Calc.classify CRAP rose from {base} to 71.39 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"..."} to "exceptions" in nitpicker.config.json.',
         heldMessage:
-          'Calc.classify(int, int, String): CRAP 71.39 (limit 9), allowed because base was {base}; any increase fails.',
+          'Calc.classify: CRAP 71.39 (limit 9), allowed because base was {base}; any increase fails.',
       });
     });
 
@@ -249,7 +249,7 @@ describe('ingestCrap', () => {
       const result = edit(withComplexity('Calc.classify', 10));
 
       expect(scoreFinding(result.newFindings).message).toBe(
-        'Calc.classify(int, int, String) CRAP rose from 71.39 to 87.03 (limit 9). Put new code in a new function and cover it with tests.',
+        'Calc.classify CRAP rose from 71.39 to 87.03 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"..."} to "exceptions" in nitpicker.config.json.',
       );
     });
 

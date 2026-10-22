@@ -57,10 +57,10 @@ describe('runHygieneCheck', () => {
         path: 'svc/package.json',
         identity: 'svc/build|build-output',
         message:
-          'svc/build/ looks like build output tracked in git. If it holds sources or build scripts, add ' +
-          '{"rule":"committed-build-output","paths":["svc/build/**"],"reason":"..."} to "exceptions" in ' +
-          'nitpicker.config.json, or rename it. Otherwise untrack it with `git rm -r --cached svc/build`, ' +
-          'add `svc/build/` to .gitignore, and let CI produce it.',
+          'svc/build/ looks like build output tracked in git. Untrack it with `git rm -r --cached svc/build`, ' +
+          'add `svc/build/` to .gitignore, and let CI produce it; if it holds sources or build scripts, rename it. ' +
+          'If this is intended, add {"rule":"committed-build-output","paths":["svc/build/**"],"reason":"..."} to ' +
+          '"exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);
@@ -152,7 +152,6 @@ describe('the hygiene configuration hash', () => {
   it('covers every module the runner loads', () => {
     expect(configurationFiles()).toEqual([
       'filesystem.mjs',
-      'glob.mjs',
       'head-policy.mjs',
       'hygiene/files/build-output.mjs',
       'hygiene/files/env-files.mjs',
@@ -162,6 +161,8 @@ describe('the hygiene configuration hash', () => {
       'hygiene/rules.mjs',
       'hygiene/runner.mjs',
       'hygiene/tracked-files.mjs',
+      'messages/exception-sentence.mjs',
+      'paths/glob.mjs',
       'project-rules/hygiene-rules.mjs',
       'traversal.mjs',
     ]);

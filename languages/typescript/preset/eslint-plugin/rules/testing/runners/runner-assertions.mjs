@@ -21,6 +21,19 @@ export function isTextArgument(node) {
   );
 }
 
+function isAnchoredPattern(node) {
+  const pattern = node.regex?.pattern;
+  return pattern?.startsWith('^') === true && pattern.endsWith('$') && !pattern.endsWith('\\$');
+}
+
+export function isFragmentPattern(node) {
+  return node?.type === 'Literal' && node.regex !== undefined && !isAnchoredPattern(node);
+}
+
+export function isFragmentMatch(argument) {
+  return isFragmentPattern(argument) || isTextArgument(argument);
+}
+
 function isAssertNamespace(node) {
   return (
     (node.type === 'Identifier' && node.name === ASSERT_NAMESPACE) ||
@@ -62,6 +75,9 @@ function assertVerdict(node) {
   if (method === 'include') {
     return includedValueVerdict(expected);
   }
+  if (method === 'match') {
+    return isFragmentPattern(expected) ? 'partialOutput' : undefined;
+  }
   if (ASSERT_PARTIAL_OUTPUT.has(method)) {
     return 'partialOutput';
   }
@@ -81,6 +97,9 @@ function chaiMethodVerdict(node, links) {
   }
   if (method === 'string') {
     return textVerdict(node.arguments[0]);
+  }
+  if (method === 'match' || method === 'matches') {
+    return isFragmentPattern(node.arguments[0]) ? 'partialOutput' : undefined;
   }
   if (method === 'members' && links.some((link) => CHAI_INCLUDES.has(link))) {
     return 'partialMatcher';

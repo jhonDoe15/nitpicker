@@ -6,12 +6,14 @@ import { evaluateStructure } from '../rules/structure.mjs';
 const STRUCTURE_REPORT = 'structure.json';
 export const STRUCTURE_TOOL = 'structure';
 
-export function readStructureFindings(reportRoot, projectRoot, options) {
+export function readStructureFunctions(reportRoot) {
   const report = path.join(reportRoot, STRUCTURE_REPORT);
-  if (!existsSync(report)) {
-    return [];
-  }
-  return structureFindings(JSON.parse(readFileSync(report, 'utf8')), projectRoot, options);
+  return existsSync(report) ? JSON.parse(readFileSync(report, 'utf8')) : [];
+}
+
+export function readStructureFindings(reportRoot, projectRoot, options) {
+  const entries = readStructureFunctions(reportRoot);
+  return entries.length === 0 ? [] : structureFindings(entries, projectRoot, options);
 }
 
 export function structureFindings(
