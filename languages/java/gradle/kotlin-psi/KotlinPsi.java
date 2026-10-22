@@ -18,6 +18,7 @@ import nitpicker.kotlinpsi.facts.FactsCollector;
 import nitpicker.kotlinpsi.metrics.FileClasses;
 import nitpicker.kotlinpsi.metrics.MetricsCollector;
 import nitpicker.kotlinpsi.metrics.Types;
+import nitpicker.kotlinpsi.mutation.MutationFacts;
 import org.jetbrains.kotlin.cli.FrontendConfigurationKeysKt;
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector;
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles;
@@ -35,7 +36,7 @@ import org.jetbrains.kotlin.psi.KtFile;
 
 /**
  * Parses the Kotlin sources of a module once with the PSI parser of the pinned Kotlin compiler (it never
- * compiles them) and writes both reports of the Kotlin preset:
+ * compiles them) and writes the reports of the Kotlin preset:
  *
  * <pre>java -Dnitpicker.kotlinCompiler=VERSION -cp COMPILER_JARS:CLASSES nitpicker.kotlinpsi.KotlinPsi
  *     METRICS.json FACTS.json PROJECT_DIR ROOT...</pre>
@@ -47,6 +48,7 @@ import org.jetbrains.kotlin.psi.KtFile;
  */
 public final class KotlinPsi {
   private static final String TEST_PREFIX = "test:";
+  private static final String MUTATION_REPORT = "kotlin-mutation-facts.json";
   private static final long STACK_BYTES = 1L << 29;
 
   private KotlinPsi() {}
@@ -82,6 +84,7 @@ public final class KotlinPsi {
     List<String> classes = new ArrayList<>();
     List<String> types = new ArrayList<>();
     List<Object> facts = new ArrayList<>();
+    List<Source> mainSources = new ArrayList<>();
     Set<String> claimedFacades = new HashSet<>();
     Disposable disposable = Disposer.newDisposable();
     try {
@@ -96,9 +99,14 @@ public final class KotlinPsi {
           new MetricsCollector(parsed, text, relative, functions).collect();
           classes.add(FileClasses.describe(parsed, relative, claimedFacades));
           Types.collect(parsed, text, relative, types);
+          mainSources.add(new Source(parsed, text, relative));
         }
         facts.add(factsOf(parsed, text, relative, test));
       }
+      Files.writeString(
+          factsOutput.resolveSibling(MUTATION_REPORT),
+          Json.of(Map.of("files", mutationFacts(mainSources))) + "\n",
+          StandardCharsets.UTF_8);
     } finally {
       Disposer.dispose(disposable);
     }
@@ -108,6 +116,21 @@ public final class KotlinPsi {
             + "],\"types\":[" + String.join(",", types) + "]}\n",
         StandardCharsets.UTF_8);
     Files.writeString(factsOutput, Json.of(Map.of("files", facts)) + "\n", StandardCharsets.UTF_8);
+  }
+
+  private record Source(KtFile file, String text, String relative) {}
+
+  private static List<Object> mutationFacts(List<Source> sources) {
+    MutationFacts mutation = new MutationFacts(sources.stream().map(Source::file).collect(Collectors.toList()));
+    List<Object> entries = new ArrayList<>();
+    for (Source source : sources) {
+      try {
+        entries.add(mutation.describe(source.file(), source.text(), source.relative()));
+      } catch (StackOverflowError tooDeep) {
+        System.err.println(source.relative() + ": too deeply nested to collect mutation facts; the file is skipped");
+      }
+    }
+    return entries;
   }
 
   private static Object factsOf(KtFile parsed, String text, String relative, boolean test) {

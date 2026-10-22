@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { outerClass } from '../../ingest/class-names.mjs';
 import { buildCouplingReport, evaluateCoupling } from '../../../../shared/rules/coupling.mjs';
 
 const COUPLING_TOOL = 'coupling';
@@ -18,9 +19,7 @@ export function parseJdeps(text) {
   return edges;
 }
 
-export function outerClass(className) {
-  return className.split('$')[0];
-}
+export { outerClass };
 
 function packageOf(className) {
   const index = className.lastIndexOf('.');

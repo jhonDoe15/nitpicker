@@ -158,6 +158,7 @@ export function projectWithKotlinReports({
     [`${reports}/jacoco.xml`]: JACOCO,
     [`${reports}/pit/mutations.xml`]: PIT,
     [`${reports}/structure.json`]: '[]',
+    [`${reports}/kotlin-mutation-facts.json`]: '{"files":[]}',
     [`${reports}/classes.json`]: JSON.stringify({ files: {}, classes: [] }),
     [`${path.relative(root, reportBaseOf(root))}/duplicates.json`]: JSON.stringify({ runs: [] }),
     [`${reports}/detekt.sarif`]: readFileSync(DETEKT_SARIF, 'utf8'),

@@ -21,42 +21,54 @@ export function ingestPit(xml, options = {}) {
   }
   const tool = options.tool ?? 'pit';
   const resolvePath = options.resolvePath ?? ((className, sourceFile) => sourceFile);
+  const generated = options.generated;
   const mutants = [...xml.matchAll(/<mutation\b([^>]*?)(?:\/>|>([\s\S]*?)<\/mutation>)/g)]
     .map(([, attributes, body = '']) => parseMutant(attributes, body))
     .filter((mutant) => mutant !== undefined);
 
-  const { groups, statusCounts } = groupMutants(mutants, resolvePath);
+  const { groups, statusCounts, leftOut } = groupMutants(mutants, { resolvePath, generated });
   const findings = mutantFindings(neutralMutants(groups, options.functionAt), {
     tool,
     wayOut: PIT_WAY_OUT,
   });
-  findings.push(...statusSummaries(statusCounts, tool));
+  findings.push(...statusSummaries(statusCounts, tool), ...leftOutSummary(leftOut, tool));
   return { findings };
 }
 
-function groupMutants(mutants, resolvePath) {
+function groupMutants(mutants, { resolvePath, generated }) {
   const statusCounts = new Map();
   const groups = new Map();
+  let leftOut = 0;
+  generated?.observe?.(mutants);
   for (const mutant of mutants) {
     const status = STATUS_NAMES[mutant.status] ?? 'Unknown';
-    statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
     const filePath =
-      status === 'Killed' ? undefined : resolvePath(mutant.className, mutant.sourceFile);
-    if (filePath === undefined) {
+      status === 'Killed' && generated === undefined
+        ? undefined
+        : resolvePath(mutant.className, mutant.sourceFile);
+    if (generated?.(mutant, filePath) !== undefined) {
+      leftOut += 1;
       continue;
     }
-    const key = [
-      simpleClassName(mutant.className),
-      `${mutant.method}${simpleDescriptor(mutant.methodDescription)}`,
-      mutator(mutant.mutator),
-      withoutPackages(mutant.description),
-    ].join('|');
-    const groupKey = `${status}\0${filePath}\0${key}`;
-    const group = groups.get(groupKey) ?? [];
-    group.push({ mutant, status, key, filePath });
-    groups.set(groupKey, group);
+    statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
+    if (status !== 'Killed' && filePath !== undefined) {
+      addToGroup(groups, { mutant, status, filePath });
+    }
   }
-  return { groups, statusCounts };
+  return { groups, statusCounts, leftOut };
+}
+
+function addToGroup(groups, { mutant, status, filePath }) {
+  const key = [
+    simpleClassName(mutant.className),
+    `${mutant.method}${simpleDescriptor(mutant.methodDescription)}`,
+    mutator(mutant.mutator),
+    withoutPackages(mutant.description),
+  ].join('|');
+  const groupKey = `${status}\0${filePath}\0${key}`;
+  const group = groups.get(groupKey) ?? [];
+  group.push({ mutant, status, key, filePath });
+  groups.set(groupKey, group);
 }
 
 const INITIALIZER_LAMBDA = /^lambda\$new\$\d+$/u;
@@ -98,6 +110,22 @@ function statusSummaries(statusCounts, tool) {
   }));
 }
 
+function leftOutSummary(count, tool) {
+  return count === 0
+    ? []
+    : [
+        {
+          tool,
+          rule: 'mutation-summary',
+          path: '.',
+          identity: 'status:GeneratedCode',
+          message: 'Mutants in code the Kotlin compiler generated, left out',
+          classification: 'descriptive',
+          metric: { name: 'GeneratedCode', value: count },
+        },
+      ];
+}
+
 function simpleClassName(className) {
   return className.slice(className.lastIndexOf('.') + 1);
 }
@@ -132,6 +160,7 @@ function parseMutant(attributes, body) {
     method: field('mutatedMethod') ?? '',
     methodDescription: field('methodDescription') ?? '',
     mutator: field('mutator') ?? 'unknown',
+    mutatorName: mutator(field('mutator') ?? 'unknown'),
     description: field('description') ?? '',
     line: Number.parseInt(field('lineNumber') ?? '', 10) || 0,
     block: Number.parseInt((field('blocks') ?? '').match(/\d+/)?.[0] ?? '', 10) || 0,

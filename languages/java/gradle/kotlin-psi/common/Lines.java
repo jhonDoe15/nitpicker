@@ -17,6 +17,10 @@ public final class Lines {
     this.starts = found.stream().mapToInt(Integer::intValue).toArray();
   }
 
+  public int count() {
+    return starts.length;
+  }
+
   public int index(int offset) {
     int index = Arrays.binarySearch(starts, offset);
     return index >= 0 ? index : -index - 2;
