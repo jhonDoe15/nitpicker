@@ -1,11 +1,26 @@
 import { annotationIn } from './spring-names.mjs';
-import { BEAN, POST_CONSTRUCT, SYNCHRONIZED } from './spring-types.mjs';
+import { BEAN, COMPLETABLE_FUTURE, POST_CONSTRUCT, SYNCHRONIZED } from './spring-types.mjs';
 
-const STARTUP_NAMES = new Set(['afterPropertiesSet', 'afterSingletonsInstantiated']);
+const INIT_NAMES = new Set(['afterPropertiesSet']);
+const STARTUP_NAMES = new Set([...INIT_NAMES, 'afterSingletonsInstantiated']);
 const LOCKED_HOSTS = new Set(['synchronized', 'withLock']);
 const LOCK_CALLS = new Set(['lock', 'lockInterruptibly', 'tryLock', 'withLock']);
 const HELPER_LEVELS = 2;
 const THIS = /^this$/u;
+const TYPE_NAME = /^[A-Z]/u;
+const FUTURE_FACTORIES = new Set(['completedFuture', 'supplyAsync', 'runAsync', 'failedFuture']);
+const FACTORY_TYPES = {
+  mapOf: 'Map',
+  mutableMapOf: 'MutableMap',
+  hashMapOf: 'HashMap',
+  linkedMapOf: 'LinkedHashMap',
+  emptyMap: 'Map',
+  listOf: 'List',
+  mutableListOf: 'MutableList',
+  emptyList: 'List',
+  setOf: 'Set',
+  mutableSetOf: 'MutableSet',
+};
 
 export function entriesOf(declaration) {
   return declaration.annotationEntries ?? [];
@@ -29,11 +44,21 @@ export function symbolOf(view, scopeId, name) {
   return [owner, fn?.name, name].filter(Boolean).join('.');
 }
 
-export function isSelfCall(invocation) {
+export function isSelfCall(view, invocation) {
   return (
     invocation.assign !== true &&
     invocation.reference !== true &&
-    (invocation.receiver === undefined || THIS.test(invocation.receiver))
+    invocation.index !== true &&
+    (invocation.receiver === undefined || THIS.test(invocation.receiver)) &&
+    view.implicitReceiver(invocation.scope)?.text === undefined
+  );
+}
+
+export function acceptsArguments(fn, count) {
+  const required = fn.parameters.filter((parameter) => !parameter.default && !parameter.vararg);
+  return (
+    count >= required.length &&
+    (fn.parameters.some(({ vararg }) => vararg) || count <= fn.parameters.length)
   );
 }
 
@@ -51,7 +76,7 @@ function callersOf(view, fn) {
   return view.file.invocations.filter(
     (invocation) =>
       invocation.name === fn.name &&
-      isSelfCall(invocation) &&
+      isSelfCall(view, invocation) &&
       ownerOf(view, invocation) === fn.owner,
   );
 }
@@ -84,13 +109,14 @@ export function setupScopes(view, isStart) {
   return (scopeId) => inStartOf(view, startFunctions, scopeId);
 }
 
-export function startupScopes(view) {
+export function startupScopes(view, { singletons = true } = {}) {
   const initNames = initMethods(view);
+  const callbacks = singletons ? STARTUP_NAMES : INIT_NAMES;
   return setupScopes(
     view,
     (fn) =>
       annotationIn(view.resolve, entriesOf(fn), POST_CONSTRUCT) !== undefined ||
-      (fn.parameters.length === 0 && (STARTUP_NAMES.has(fn.name) || initNames.has(fn.name))),
+      (fn.parameters.length === 0 && (callbacks.has(fn.name) || initNames.has(fn.name))),
   );
 }
 
@@ -109,4 +135,26 @@ export function lockedScope(view, scopeId) {
       (invocation) => LOCK_CALLS.has(invocation.name) && view.functionAt(invocation.scope) === fn,
     )
   );
+}
+
+export function returnTypeOf(view, fn) {
+  if (fn.returnType !== undefined || fn.expressionBody !== true) {
+    return fn.returnType;
+  }
+  if (fn.returns !== undefined) {
+    return fn.parameters.find(({ name }) => name === fn.returns)?.type;
+  }
+  const call = fn.forward;
+  if (call === undefined) {
+    return undefined;
+  }
+  if (call.qualifier !== undefined) {
+    return FUTURE_FACTORIES.has(call.name) && view.is(call.qualifier, COMPLETABLE_FUTURE)
+      ? [...COMPLETABLE_FUTURE][0]
+      : undefined;
+  }
+  const type = FACTORY_TYPES[call.name] ?? (TYPE_NAME.test(call.name) ? call.name : undefined);
+  return type === undefined || call.typeArgumentList === undefined
+    ? undefined
+    : `${type}${call.typeArgumentList}`;
 }

@@ -45,13 +45,23 @@ const REACTOR_CREATE = [REACTOR_HTTP_CLIENT, ['create', 'newConnection']];
 const REACTOR_TIMEOUTS = new Set(['responseTimeout']);
 const THIS = /^this\./u;
 const TEMPLATE_NAME = /template/iu;
+const PACKAGE = /^[a-z_]\w*(?:\.[a-z_]\w*)*$/u;
+
+function constructorName(invocation) {
+  if (invocation.assign === true || invocation.index === true) {
+    return undefined;
+  }
+  if (invocation.receiver === undefined) {
+    return invocation.name;
+  }
+  return PACKAGE.test(invocation.receiver)
+    ? `${invocation.receiver}.${invocation.name}`
+    : undefined;
+}
 
 function constructs(view, invocation, fqns) {
-  return (
-    invocation.receiver === undefined &&
-    invocation.assign !== true &&
-    view.is(invocation.name, fqns)
-  );
+  const name = constructorName(invocation);
+  return name !== undefined && view.is(name, fqns);
 }
 
 function factory(view, invocation, [fqns, names]) {
@@ -79,20 +89,37 @@ function staticFactory(view, invocation) {
   return fn.owner === '' || STATIC_OWNERS.has(view.classes.get(fn.owner)?.kind);
 }
 
+function sameName(invocation, other) {
+  return other.name === invocation.name && other.receiver === invocation.receiver;
+}
+
+function ownLambda(view, invocation, scope) {
+  if (
+    scope.k !== 'lambda' ||
+    !SCOPE_FUNCTIONS.has(scope.host) ||
+    scope.parent !== invocation.scope ||
+    !(scope.qualifier ?? '').startsWith(`${invocation.name}(`) ||
+    scope.line < invocation.line
+  ) {
+    return false;
+  }
+  const constructions = view.file.invocations.filter(
+    (other) =>
+      sameName(invocation, other) && other.scope === invocation.scope && other.line <= scope.line,
+  );
+  return constructions.at(-1) === invocation;
+}
+
 function configured(view, invocation, setters) {
   const target = invocation.assignedTo?.replace(THIS, '');
+  const fn = view.functionAt(invocation.scope);
   return view.file.invocations.some(
     (other) =>
       setters.has(other.name) &&
-      ((target !== undefined && (other.receiver ?? '').replace(THIS, '') === target) ||
-        view
-          .chain(other.scope)
-          .some(
-            ({ k, host, qualifier }) =>
-              k === 'lambda' &&
-              SCOPE_FUNCTIONS.has(host) &&
-              (qualifier ?? '').startsWith(`${invocation.name}(`),
-          )),
+      ((target !== undefined &&
+        (other.receiver ?? '').replace(THIS, '') === target &&
+        view.functionAt(other.scope) === fn) ||
+        view.chain(other.scope).some((scope) => ownLambda(view, invocation, scope))),
   );
 }
 
@@ -153,9 +180,7 @@ function factoryWithoutTimeouts(view, invocation) {
 }
 
 function withoutTimeouts(view, invocation) {
-  return invocation.receiver === undefined
-    ? constructedWithoutTimeouts(view, invocation)
-    : factoryWithoutTimeouts(view, invocation);
+  return constructedWithoutTimeouts(view, invocation) || factoryWithoutTimeouts(view, invocation);
 }
 
 function httpClients(view) {
@@ -184,7 +209,7 @@ function ioReceiver(view, invocation) {
 }
 
 function postConstructIo(view) {
-  const startup = startupScopes(view);
+  const startup = startupScopes(view, { singletons: false });
   return view.file.invocations
     .filter(
       (invocation) => view.functionAt(invocation.scope) !== undefined && startup(invocation.scope),

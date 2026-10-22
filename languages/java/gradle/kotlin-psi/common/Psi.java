@@ -74,7 +74,8 @@ public final class Psi {
       list.add(
           m(
               "name", argument.getArgumentName() == null ? null : argument.getArgumentName().getAsName().asString(),
-              "text", clip(argument.getArgumentExpression())));
+              "text", argument.getArgumentExpression() == null ? null
+                  : clip(argument.getArgumentExpression().getText(), Integer.MAX_VALUE)));
     }
     return list;
   }
