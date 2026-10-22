@@ -8,6 +8,8 @@ export const TESTS_FAILED_RULE = 'tests-failed';
 export const TESTS_NOT_RUN_RULE = 'tests-not-run';
 export const TESTS_FAILED_SKIPPED_RULE = 'tests-failed-skipped';
 export const TESTS_FAILED_RULES = [TESTS_FAILED_RULE, TESTS_FAILED_SKIPPED_RULE];
+/** A tests-failed finding's `symbol` lists the directories it covers, joined by this. */
+export const TESTS_FAILED_SCOPE_SEPARATOR = ',';
 export const TYPECHECK_FAILED_SKIPPED_RULE = 'typecheck-failed-skipped';
 
 const MAX_LISTED_TESTS = 5;

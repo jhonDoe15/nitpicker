@@ -139,7 +139,8 @@ by field. Per snapshot:
   failing tests. On the base snapshot the failing tests are listed instead of thrown: that module
   skips JaCoCo and PIT, and the failure becomes a `tests-failed` tool error for that module that the
   core reads as a red base, the same as a Gradle base whose tests fail. The other modules keep their
-  coverage, CRAP and mutation comparison with the base. Reports older than the build are ignored.
+  coverage, CRAP and mutation comparison with the base; a failing root module is unknown only for its
+  own source and test directories. Reports older than the build are ignored.
   Gradle runs the ArchUnit classes in their
   own task, but Maven only has the Surefire and Failsafe results: when a module has ArchUnit classes
   and neither plugin ran any of them (Surefire's `<includes>` miss them, as they would `*Rules`, or
@@ -438,8 +439,14 @@ classpath and its `test` task, and adds no test library to the project.
   ships.
 - **Tests.** `core/command/java/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`),
   so it runs without Java: pass, new finding in text/JSON/SARIF/JUnit, Gradle failure on head and
-  on base, missing binary, `--all`. The real Gradle run stays behind `NITPICKER_JAVA_E2E=1`
-  (`npm run test:java`), unchanged.
+  on base, missing binary, `--all`. The fake runs in the test process: `runFakeGradle({ args, cwd })`
+  (`languages/java/adapters/test-support/fake-gradle/`) is a pure function, `fixtures/fake-gradle.mjs`
+  is the program that calls it, and `spawnFakeGradle` (`languages/java/adapters/test-support/in-process-gradle.mjs`),
+  passed as `spawn` through `analyzeJavaSnapshot` and `runGradle`, answers the supervisor call for the fake's
+  path, so no Node process starts per Gradle call. Output past `maxBuffer` is answered as `ENOBUFS` and an
+  exception of the fake as a failed run; the process-tree deadline is not modelled and stays covered by
+  `gradle-process.test.mjs`, and `subprocess: true` tests run the real supervisor. The real Gradle run stays
+  behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`), unchanged.
 
 ## Slice 1: tools, reports and identities
 

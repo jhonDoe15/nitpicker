@@ -178,7 +178,7 @@ function analyzeModule(context) {
     runCoverageTools({ ...context, reportDir, testsRan, isArchunit });
   }
   writeManifest({ reportDir, manifest, testsFailed: failure !== undefined });
-  return failure;
+  return failure && { ...failure, roots: ownSourceRoots(manifest) };
 }
 
 function analyzeModules({ analyzed, ...shared }) {
