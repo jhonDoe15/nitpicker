@@ -66,6 +66,7 @@ const REVIEW_RULES = new Set([
   'StaticForwardingWrapper',
   'SingularAndPluralMember',
   'SpringUnusedContext',
+  'TaskOutlivesTryResource',
   'TestClassWithoutTestCases',
   'test-only-export',
 ]);
