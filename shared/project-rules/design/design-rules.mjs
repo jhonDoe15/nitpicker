@@ -21,7 +21,7 @@ export const DESIGN_RULE_LISTS = Object.fromEntries(
 export const DESIGN_RULE_LANGUAGES = {
   typescript: true,
   javascript: 'partial',
-  java: false,
+  java: true,
   python: false,
   kotlin: false,
 };

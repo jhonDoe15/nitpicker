@@ -30,6 +30,8 @@ import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { gradleOptions, gradleStages } from './gradle-wrapper/gradle-stages.mjs';
+import { DESIGN_FACTS_FILE, designFindings } from './design/design-findings.mjs';
+import { gradleDesignModules, mavenDesignModules } from './design/design-modules.mjs';
 
 const MAX_FAILURE_LENGTH = 3500;
 const CLOCK_SLACK_MS = 2000;
@@ -121,12 +123,22 @@ function gradleFindings(projectRoot, options, reportBase) {
   if (preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, duplicates);
   }
-  return readJavaFindings(projectRoot, {
+  const findings = readJavaFindings(projectRoot, {
     ...readOptions(options.policy),
     formatAdvice: kotlinRun?.advice,
     reportBase,
     report,
   }).findings;
+  return [
+    ...findings,
+    ...designFindings({
+      projectRoot,
+      modules: gradleDesignModules(report),
+      policy: options.policy,
+      analyzerName: preset,
+      output: path.join(reportBase, DESIGN_FACTS_FILE),
+    }),
+  ];
 }
 
 function withGradleReports(projectRoot, options) {
@@ -158,10 +170,20 @@ function mavenFindings(projectRoot, options) {
       skippedFolders: options.policy?.duplicateSkippedFolders,
     });
   }
-  return readModuleFindings(projectRoot, moduleDirs, {
+  const findings = readModuleFindings(projectRoot, moduleDirs, {
     ...readOptions(options.policy),
     reportDirectory: MAVEN_REPORT_DIRECTORY,
   });
+  return [
+    ...findings,
+    ...designFindings({
+      projectRoot,
+      modules: mavenDesignModules(projectRoot, moduleDirs, MAVEN_REPORT_DIRECTORY),
+      policy: options.policy,
+      analyzerName: options.policy?.preset ?? 'java',
+      output: path.join(projectRoot, MAVEN_REPORT_DIRECTORY, DESIGN_FACTS_FILE),
+    }),
+  ];
 }
 
 export function collectJavaFindings(root, options = {}) {
