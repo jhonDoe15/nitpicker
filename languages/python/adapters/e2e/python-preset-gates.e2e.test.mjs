@@ -19,6 +19,7 @@ import {
   commitBranch,
   fixtureRepository,
   gate,
+  policyChangesOf,
   pythonE2eEnabled,
   removeRepositories,
   summarize,
@@ -64,6 +65,25 @@ const TEST_RUN_CONFIG = {
   thresholds: { unitTestSeconds: 0.2 },
 };
 
+const LIFTED_CONFIG = JSON.stringify({
+  ...TEST_RUN_CONFIG,
+  testConsole: { allow: [{ contains: 'cache is cold', reason: 'fixture' }] },
+  exceptions: [
+    { rule: 'test-console-output', paths: ['tests/test_noisy.py'], reason: 'f' },
+    { rule: 'slow-test', paths: ['tests/**'], reason: 'fixture' },
+  ],
+  python: { exceptions: [{ rule: 'sleep-in-test', paths: ['tests/**'], reason: 'fixture' }] },
+});
+
+const LIFTED_LOOSENINGS = [
+  'analyzer disabled: mutation',
+  'exception added: sleep-in-test for tests/** (fixture)',
+  'exception added: slow-test for tests/** (fixture)',
+  'exceptions for slow-test hide code this change adds or moves where the base config checked it: tests/test_noisy.py, tests/test_runtime.py',
+  'exceptions for test-console-output hide code this change adds or moves where the base config checked it: tests/test_noisy.py',
+  'python.exceptions for sleep-in-test hide code this change adds or moves where the base config checked it: tests/test_noisy.py, tests/test_runtime.py',
+];
+
 const withoutMutants = (summaries) => summaries.filter((summary) => !summary.startsWith('mutmut '));
 
 describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end to end', () => {
@@ -103,15 +123,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     });
     commitBranch(project, 'test-run-lifted', {
       ...testFiles,
-      'nitpicker.config.json': JSON.stringify({
-        ...testRun,
-        testConsole: { allow: [{ contains: 'cache is cold', reason: 'fixture' }] },
-        exceptions: [
-          { rule: 'test-console-output', paths: ['tests/test_noisy.py'], reason: 'f' },
-          { rule: 'slow-test', paths: ['tests/**'], reason: 'fixture' },
-        ],
-        python: { exceptions: [{ rule: 'sleep-in-test', paths: ['tests/**'], reason: 'fixture' }] },
-      }),
+      'nitpicker.config.json': LIFTED_CONFIG,
     });
   });
   afterAll(removeRepositories);
@@ -255,7 +267,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     expect(withoutMutants(enforceable(result))).toEqual(['python-rules no-type-check hidden.py']);
     expect(result.text).toMatch(/Remove the decorator and annotate the code/);
   });
-  it('fails a new slow test and new test output, and passes them once lifted', () => {
+  it('fails a new slow test and new test output', () => {
     const mutationOff = acceptedDigest(['analyzer disabled: mutation'], {
       'nitpicker.config.json': JSON.stringify(TEST_RUN_CONFIG),
     });
@@ -282,15 +294,12 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     expect(messages['slow-test']).toBe(
       'test_value_is_cached took <s> s; a unit test may take 0.2 s. Remove time.sleep and other waits (patch the clock) and fake network, database and disk access, or move it to an integration test (an integration or e2e folder, or an integration or e2e marker registered in the pytest config) if it is one. If this is intended, add {"rule":"slow-test","paths":["tests/test_runtime.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
-    const asked = gate(project, 'test-run-lifted');
-    expect(new Set(enforceable(asked).map((summary) => summary.split(' ')[0]))).toEqual(
-      new Set(['nitpicker-config']),
-    );
+  });
+  it('passes a new slow test and new test output once they are lifted', () => {
+    const { policyLoosenings, policyDigest } = policyChangesOf(project, 'test-run-lifted');
+    expect(policyLoosenings.toSorted()).toEqual(LIFTED_LOOSENINGS);
     const lifted = gate(project, 'test-run-lifted', {
-      environment: {
-        CI: 'true',
-        NITPICKER_ACCEPT_POLICY_CHANGE: asked.json('summary.json').policyDigest,
-      },
+      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: policyDigest },
     });
     expect(lifted.exitCode, lifted.text).toBe(0);
     expect(enforceable(lifted)).toEqual([]);
