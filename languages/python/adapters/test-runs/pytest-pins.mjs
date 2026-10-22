@@ -29,6 +29,7 @@ const STOPPING_FLAGS = new Set([
 const FILTERING_OPTIONS = new Set([
   '--maxfail',
   '-k',
+  '-m',
   '--deselect',
   '--reruns',
   '--reruns-delay',
@@ -97,7 +98,7 @@ function optionName(word) {
   if (word.startsWith('--')) {
     return word.split('=')[0];
   }
-  return /^-[kp]/u.test(word) ? word.slice(0, 2) : word;
+  return /^-[kmp]/u.test(word) ? word.slice(0, 2) : word;
 }
 
 function attachedValue(word, name) {

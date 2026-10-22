@@ -143,6 +143,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
           indentation: checkstyleIndentation(policy.conventions),
         },
         kotlinOptions: kotlin.options,
+        spring: policy.spring,
       });
     }
     return {

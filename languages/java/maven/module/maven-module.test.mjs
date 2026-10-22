@@ -76,4 +76,20 @@ describe('moduleManifest', () => {
       );
     },
   );
+
+  it.each([
+    [true, true],
+    [false, false],
+    [undefined, false],
+  ])('takes Spring declared by the build files as %j: %j', (declared, spring) => {
+    const classpaths = { mainCompile: [], testCompile: [] };
+    const manifest = moduleManifest({
+      module: singleModule(),
+      classpaths,
+      pinned: {},
+      spring: declared,
+    });
+
+    expect(manifest.spring).toBe(spring);
+  });
 });

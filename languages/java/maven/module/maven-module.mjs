@@ -52,7 +52,7 @@ function hasJar(classpath, jar) {
   return classpath.some((entry) => jar.test(path.basename(entry)));
 }
 
-export function moduleManifest({ module, classpaths, pinned }) {
+export function moduleManifest({ module, classpaths, pinned, spring }) {
   return {
     versions: pinned,
     build: 'maven',
@@ -60,7 +60,7 @@ export function moduleManifest({ module, classpaths, pinned }) {
     kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
     resourceRoots: relativeRoots(module, module.resourceRoots),
-    spring: hasJar(classpaths.mainCompile, SPRING_JAR),
+    spring: spring === true || hasJar(classpaths.mainCompile, SPRING_JAR),
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
     testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
     testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
@@ -73,6 +73,13 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
   requireTestngRun({ module, since, isArchunit, testRuntime });
   copyTestResults({ module, reportDir, since, isArchunit });
   return testsRan;
+}
+
+function runCoverage({ module, reportDir, tools, classpaths, since, testsRan }) {
+  const isArchunit = archunitMatcher(module.archunitIncludes);
+  const execFiles = jacocoExecFiles(module);
+  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan });
+  runPit({ module, reportDir, tools, classpaths, isArchunit });
 }
 
 function runSourceTools({ module, reportDir, tools, classpaths, configs, pinned, kotlin, style }) {
@@ -97,10 +104,11 @@ export function analyzeModule({
   since,
   style,
   kotlinOptions,
+  spring,
 }) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const manifest = moduleManifest({ module, classpaths, pinned });
+  const manifest = moduleManifest({ module, classpaths, pinned, spring });
   const { testRuntime } = classpaths;
   const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
   const kotlin = analyzeKotlinModule({
@@ -124,15 +132,7 @@ export function analyzeModule({
   });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
-  runJacocoReport({
-    module: kotlin.coverageModule,
-    reportDir,
-    tools,
-    execFiles: jacocoExecFiles(module),
-    since,
-    testsRan,
-  });
-  runPit({ module: kotlin.coverageModule, reportDir, tools, classpaths, isArchunit });
+  runCoverage({ module: kotlin.coverageModule, reportDir, tools, classpaths, since, testsRan });
   writeFileSync(
     path.join(reportDir, 'manifest.json'),
     JSON.stringify({ ...manifest, ...kotlin.manifest }),
