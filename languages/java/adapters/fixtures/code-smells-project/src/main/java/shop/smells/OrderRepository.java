@@ -12,4 +12,6 @@ public interface OrderRepository {
   void delete(String id);
 
   void saveAll(List<String> ids);
+
+  void markShipped(List<String> ids);
 }
