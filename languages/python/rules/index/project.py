@@ -60,7 +60,7 @@ class Project:
                 return ".".join(relative)
         return ".".join(parts)
 
-    def relative_module(self, path, level, module):
+    def relative_module(self, path, level, module, existing=True):
         base = os.path.dirname(path).split("/") if "/" in path else []
         base = base[: len(base) - (level - 1)] if level > 1 else base
         target = [part for part in base if part] + (module.split(".") if module else [])
@@ -68,7 +68,7 @@ class Project:
         for option in (f"{candidate}.py", f"{candidate}/__init__.py"):
             if option in self.paths:
                 return self.module_name(option)
-        return None
+        return self.module_name(f"{candidate}/__init__.py") if candidate and not existing else None
 
     def locate(self, dotted):
         parts = dotted.split(".")
