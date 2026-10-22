@@ -1,7 +1,11 @@
 import ast
 
 from checks.common import dotted_name, finding, type_text
-from errors.cancellation import awaits_cancelled_task, cancellation_finding
+from errors.cancellation.handlers import (
+    awaits_cancelled_task,
+    cancellation_finding,
+    suppress_finding,
+)
 from errors.handling import is_handled
 from errors.logged_errors import logged_findings
 
@@ -84,6 +88,9 @@ class Errors(ast.NodeVisitor):
 
     def visit_Call(self, node):
         aliases = self.context.aliases
+        cancelled = suppress_finding(node, self.context)
+        if cancelled is not None:
+            self.findings.append(cancelled)
         name = dotted_name(node.func, aliases)
         if name == "contextlib.suppress" and (
             not node.args

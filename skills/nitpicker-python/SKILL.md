@@ -42,7 +42,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Cancellation: after cleanup in an explicit asyncio, Trio or AnyIO cancellation handler, use
   a bare `raise` or re-raise the unchanged caught exception. Returning a failure result or raising
   a different error consumes cancellation (`cancellation-not-propagated`). Keep intentional
-  cancellation boundaries in the backend’s timeout or cancellation scope. Awaiting a task you
+  cancellation boundaries in the backend's timeout or cancellation scope. Awaiting a task you
   cancelled yourself (`task.cancel()` then `await task`) is the one handler that may stay quiet.
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a

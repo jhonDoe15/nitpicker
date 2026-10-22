@@ -539,7 +539,9 @@ Details that are decisions rather than the table:
   from the checkers: `@no_type_check` on a function or class, an `if not TYPE_CHECKING:` branch,
   and a `.pyi` beside a `.py` of the same stem in the sources (mypy then ignores the `.py` body).
   `typing.cast` is allowed.
-- `swallowed-exception` flags an `except` handler whose body does nothing with the error: every
+- `swallowed-exception` flags an `except` handler whose body does nothing with the error (a handler
+  of an asyncio, Trio or AnyIO cancellation inside `async def` is judged by
+  `cancellation-not-propagated` instead, see [Cancellation propagation](#cancellation-propagation)): every
   statement is `pass`, `...` or another constant expression such as a docstring, `continue`, an
   assignment of a constant (`result = None`, `ok = False`), `return` with no value or a constant
   (`None`, `False`, `0`, `-1`, a string, or an empty or constant-only tuple, list, set or dict such
@@ -860,11 +862,18 @@ error or chaining a different exception still consumes the cancellation signal.
 
 The owned AST check recognizes imported `asyncio.CancelledError` (including
 `asyncio.exceptions.CancelledError`), `trio.Cancelled` and `anyio.get_cancelled_exc_class()` in
-handler types, including import aliases and tuples. Shadowed imports and local modules with those
-names are not assumed to be backend APIs. Source files, tests and entry points use the same rule;
-generated/excluded files follow the existing source policy. A matching handler receives this
-finding instead of a duplicate `swallowed-exception` finding. Ordinary errors retain their existing
-handling policy.
+handler types, including import aliases, tuples, and names bound once by a plain assignment
+(`E = asyncio.CancelledError`, `cancelled = anyio.get_cancelled_exc_class()`). Shadowed imports and
+local modules with those names are not assumed to be backend APIs. `concurrent.futures.CancelledError`
+is a different class from `asyncio.CancelledError` (since Python 3.8) and is not matched. Only
+handlers lexically inside an `async def` are checked: a plain function or a done-callback
+(`def done(fut): try: fut.result() except CancelledError: return`) keeps the `swallowed-exception`
+behavior it had before, and so does a handler in an `except*` block. Source files, tests and entry
+points use the same rule; generated/excluded files follow the existing source policy. A matching
+handler receives this finding instead of a duplicate `swallowed-exception` or
+`catch-log-without-exception` finding. Ordinary errors retain their existing handling policy. The
+same rule applies to `contextlib.suppress(...)` with a cancellation class in `async def`, which
+consumes the cancellation exactly like an empty handler (subject `suppress(asyncio.CancelledError)`).
 
 Backend boundaries remain explicit. Raising a fresh asyncio `CancelledError` preserves its
 cancellation signal and is allowed; this does not establish preservation of its payload. Trio and
@@ -878,11 +887,11 @@ The path model covers straight-line handlers, `if` branches (including literal c
 `for`, `async for` and `while` loops (with `break`, `continue` and `else`), `match` statements and
 `try/finally` completion overrides. A loop that can end without running a `raise` leaves a falling
 path, and a `break` or `continue` that leaves the handler itself consumes the cancellation. A
-`match` without a catch-all case, nested `try/except` dispatch and `except*` are unknown: unknown
-paths are not proof of propagation and never become a finding on their own, although a definite
-`return` elsewhere in the handler still does. Context managers can suppress raised errors, so a
-re-raise inside a `with` block is not verified. The check does not resolve arbitrary helper
-implementations, `NoReturn` annotations, assigned type aliases, runtime monkey patches, broad
+`match` without a catch-all case, a nested `try/except`, `except*` and a `with` around a `raise`
+(a context manager can suppress it) may or may not fall through: the statements after them are
+still analysed, so a later `return` or `raise ValueError()` is reported, while a handler that ends
+there is not reported on that evidence alone and a later `raise` is accepted. The check does not
+resolve arbitrary helper implementations, `NoReturn` annotations, runtime monkey patches, broad
 `BaseException` handlers or exception groups. It is a focused source guard, not a proof of
 cancellation safety. Ordinary calls are assumed able to return; helper-based propagation should
 re-raise explicitly in the handler or use a reviewed exception. A handler that deliberately
@@ -890,12 +899,18 @@ translates a cancellation it started itself (a hand-written timeout, or a deferr
 a loop) also needs that reviewed exception.
 
 Awaiting a task this function cancelled is the documented way to wait for a child to stop, and the
-`CancelledError` it raises belongs to the child. A `try` whose body only awaits tasks by plain name
-(`await task` or `result = await task`), each cancelled with `name.cancel()` earlier in the same
-function, is therefore not reported, and its handler gets no `swallowed-exception` finding either.
-Awaiting any other expression, or a task this function did not cancel, is still reported. This
-asyncio-only allowance cannot tell the child's cancellation from one aimed at the current task;
-Trio and AnyIO handlers have no such allowance.
+`CancelledError` it raises belongs to the child. A `try` (or a `with contextlib.suppress(...)`)
+whose body only awaits tasks, each cancelled earlier by a statement that always runs before it in
+the same function, is therefore accepted when every caught type is an asyncio cancellation and the
+handler body is quiet (`pass`, `...`, a bare `return` or a log call). The awaited task is a name or
+attribute chain (`await task`, `result = await self._task`), or `asyncio.gather(...)` of such
+names or of `*tasks` after `for t in tasks: t.cancel()`; the cancel is `name.cancel()` as a
+statement of an enclosing block, not inside an `if`, and the name must not be rebound in between.
+Such a handler is skipped entirely, so no `swallowed-exception`, `catch-log-without-exception` or
+other handler check applies to it. A handler that does more (`return 5`, `raise RuntimeError()`),
+a mixed tuple such as `(asyncio.CancelledError, Exception)`, or an await of anything else is still
+reported. This asyncio-only allowance cannot tell the child's cancellation from one aimed at the
+current task; Trio and AnyIO handlers have no such allowance.
 
 Ruff **0.16.8** (pinned for the Python end-to-end suite in `.github/python-e2e-constraints.txt`;
 0.16.9 was checked as well) has no ASYNC102, ASYNC103, ASYNC104 or ASYNC111; its `ASYNC` family

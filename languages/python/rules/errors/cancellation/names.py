@@ -8,6 +8,8 @@ CANCELLATIONS = {
     "asyncio.exceptions.CancelledError",
     "trio.Cancelled",
 }
+ANYIO_CANCELLED = "anyio.get_cancelled_exc_class()"
+MAX_ALIAS_DEPTH = 3
 
 
 def import_binding(node, name):
@@ -38,11 +40,23 @@ def binds(node, name):
     )
 
 
+def alias_value(node, name):
+    if (
+        isinstance(node, ast.Assign)
+        and len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id == name
+    ):
+        return node.value
+    return None
+
+
 def binding_in(scope, name):
-    imports = set()
+    imports, aliases, binders = set(), [], 0
     for node in own_nodes(scope):
         if binds(node, name):
-            return True, None
+            binders += 1
+            continue
         imported = import_binding(node, name)
         if imported:
             imports.add(imported)
@@ -51,10 +65,17 @@ def binding_in(scope, name):
             for alias in node.names
         ):
             return True, None
+        value = alias_value(node, name)
+        if value is not None:
+            aliases.append(value)
+    if binders and not (imports or len(aliases) != 1 or binders != 1):
+        return True, ("alias", aliases[0])
+    if binders:
+        return True, None
     return bool(imports), next(iter(imports)) if len(imports) == 1 else None
 
 
-def imported_name(name, node, context):
+def imported_name(name, node, context, depth):
     current = node
     in_function = False
     while current is not None:
@@ -65,7 +86,7 @@ def imported_name(name, node, context):
                     key, lambda _: binding_in(current, name)
                 )
                 if found:
-                    return value
+                    return alias_name(value, context, depth)
             in_function |= isinstance(
                 current, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
             )
@@ -73,27 +94,39 @@ def imported_name(name, node, context):
     return None
 
 
-def resolved_name(node, context):
+def alias_name(value, context, depth):
+    if isinstance(value, tuple):
+        if depth >= MAX_ALIAS_DEPTH:
+            return None
+        return resolved_name(value[1], context, depth + 1)
+    return value
+
+
+def resolved_name(node, context, depth=0):
+    if isinstance(node, ast.Call) and not node.args and not node.keywords:
+        base = resolved_name(node.func, context, depth)
+        return f"{base}()" if base else None
     if isinstance(node, ast.Attribute):
-        base = resolved_name(node.value, context)
+        base = resolved_name(node.value, context, depth)
         return f"{base}.{node.attr}" if base else None
     if isinstance(node, ast.Name):
-        name = imported_name(node.id, node, context)
+        name = imported_name(node.id, node, context, depth)
         if name and context.project.module_path(name.split(".")[0]) is None:
             return name
     return None
 
 
 def cancellation_type(node, context):
-    if isinstance(node, ast.Call) and not node.args and not node.keywords:
-        if resolved_name(node.func, context) == "anyio.get_cancelled_exc_class":
-            return "anyio cancellation"
     name = resolved_name(node, context)
+    if name == ANYIO_CANCELLED:
+        return "anyio cancellation"
     return name if name in CANCELLATIONS else None
 
 
+def caught_types(handler):
+    return handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]
+
+
 def caught_cancellations(handler, context):
-    caught = (
-        handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]
-    )
-    return sorted(filter(None, (cancellation_type(node, context) for node in caught)))
+    types = caught_types(handler)
+    return sorted(filter(None, (cancellation_type(node, context) for node in types)))
