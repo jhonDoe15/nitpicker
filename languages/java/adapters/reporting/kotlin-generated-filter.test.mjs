@@ -11,52 +11,74 @@ afterEach(() => {
   }
 });
 
-function project(generatedRoots) {
+const USER = {
+  file: 'src/main/kotlin/demo/User.kt',
+  lines: 10,
+  classes: [
+    {
+      name: 'demo.User',
+      kind: 'class',
+      start: 3,
+      headerEnd: 3,
+      init: false,
+      serializable: false,
+      functions: ['total'],
+      properties: [
+        {
+          name: 'id',
+          start: 3,
+          end: 3,
+          constructor: true,
+          getter: false,
+          setter: false,
+          delegated: false,
+        },
+      ],
+    },
+  ],
+  functions: [],
+  lambdas: [],
+  branching: [],
+  bang: [],
+};
+
+function reportRoot(facts) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-generated-')));
   roots.push(root);
-  const reportRoot = path.join(root, 'build/nitpicker');
-  mkdirSync(reportRoot, { recursive: true });
-  writeFileSync(path.join(reportRoot, 'kotlin-mutation-facts.json'), '{"files":[]}');
-  for (const [directory, file] of [
-    ['build/generated/ksp/main/kotlin/demo', 'UserMapper.kt'],
-    ['build/generated/source/kapt/main/demo', 'UserDao_Impl.java'],
-  ]) {
-    mkdirSync(path.join(root, directory), { recursive: true });
-    writeFileSync(path.join(root, directory, file), '');
+  const reports = path.join(root, 'build/nitpicker');
+  mkdirSync(reports, { recursive: true });
+  if (facts !== undefined) {
+    writeFileSync(path.join(reports, 'kotlin-mutation-facts.json'), JSON.stringify(facts));
   }
-  return {
-    reportRoot,
-    projectRoot: root,
-    manifest: { kotlinGeneratedSourceRoots: generatedRoots },
-  };
+  return reports;
 }
 
-const mutant = (className, sourceFile) => ({
-  className,
-  sourceFile,
-  method: 'map',
-  methodDescription: '()V',
-  mutatorName: 'NullReturnValsMutator',
-  description: 'replaced return value with null',
-  line: 3,
+const mutant = (method, line) => ({
+  className: 'demo.User',
+  sourceFile: 'User.kt',
+  method,
+  methodDescription: '()I',
+  mutatorName: 'PrimitiveReturnsMutator',
+  description: `replaced int return with 0 for demo/User::${method}`,
+  line,
 });
 
-describe('the generated source directories of the manifest', () => {
-  it('drop the mutants of the files in them and keep the mutants of the other files', () => {
-    const filter = kotlinGeneratedFilter(
-      project(['build/generated/ksp/main/kotlin', 'build/generated/source/kapt/main']),
-    );
+describe('the Kotlin mutation filter of a report directory', () => {
+  it('judges a mutant by the mutation facts the kotlin-psi program wrote beside the facts report', () => {
+    const filter = kotlinGeneratedFilter({ reportRoot: reportRoot({ files: [USER] }) });
 
     expect([
-      filter(mutant('demo.UserMapper', 'UserMapper.kt'), undefined),
-      filter(mutant('demo.UserDao_Impl', 'UserDao_Impl.java'), undefined),
-      filter(mutant('demo.UserService', 'UserService.kt'), 'src/main/kotlin/demo/UserService.kt'),
-    ]).toEqual(['generated-source', 'generated-source', undefined]);
+      filter(mutant('getId', 3), USER.file),
+      filter(mutant('total', 6), USER.file),
+      filter(mutant('getId', 3), 'src/main/kotlin/demo/Other.kt'),
+    ]).toEqual(['generated-accessor', undefined, undefined]);
   });
 
-  it('are optional, and a directory that does not exist drops nothing', () => {
-    const filter = kotlinGeneratedFilter(project(['build/generated/ksp/missing']));
+  it('needs that report, because without it the gate would count the compiler-generated mutants', () => {
+    const missing = reportRoot();
 
-    expect(filter(mutant('demo.UserMapper', 'UserMapper.kt'), undefined)).toBeUndefined();
+    expect(() => kotlinGeneratedFilter({ reportRoot: missing })).toThrow(
+      `The Kotlin mutation filter needs kotlin-mutation-facts.json beside kotlin-facts.json in ${missing}; the kotlin-psi program writes it.`,
+    );
   });
 });

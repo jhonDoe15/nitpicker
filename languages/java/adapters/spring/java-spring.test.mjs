@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mjs';
-import { applyJavaPolicy } from '../java-policy.mjs';
+import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import { readSpringConfigFindings } from './java-spring.mjs';
 import {
   MAIN_PROPERTIES,
@@ -45,8 +45,8 @@ describe('readSpringConfigFindings', () => {
     const findings = read({ [resource('application.properties')]: 'spring.jpa.open-in-view=true' });
 
     expect(
-      applyJavaPolicy(findings, {
-        exceptions: [{ rule: 'spring/open-in-view', glob: 'src/main/resources/**' }],
+      applyFindingPolicy(findings, {
+        exceptions: [{ rule: 'spring/open-in-view', paths: ['src/main/resources/**'] }],
       }),
     ).toEqual([]);
   });
@@ -221,7 +221,7 @@ function ddlFinding(key, line, file = MAIN_PROPERTIES, suffix = '') {
     rule: 'ddl-auto',
     file,
     identity: `${key.replaceAll('-', '')}${suffix}`,
-    message: `${key} lets Hibernate change the schema. Manage the schema with Flyway or Liquibase and use none or validate.`,
+    message: `Manage the schema with Flyway or Liquibase and set ${key} to none or validate; other modes let Hibernate change the schema.`,
     line,
   });
 }
@@ -243,7 +243,7 @@ describe('ddl-auto', () => {
         file: MAIN_PROPERTIES,
         identity: 'spring.jpa.generateddl',
         message:
-          'spring.jpa.generate-ddl lets Hibernate change the schema. Manage the schema with Flyway or Liquibase and keep it false.',
+          'Manage the schema with Flyway or Liquibase and keep spring.jpa.generate-ddl false; true lets Hibernate change the schema.',
         line: 3,
       }),
     ]);
@@ -381,10 +381,13 @@ describe('Java analyzer declaration', () => {
 
   it('hashes the Spring configuration modules', () => {
     const modules = [
+      'languages/java/adapters/spring/config-rules/diagnostics.mjs',
+      'languages/java/adapters/spring/config-rules/profiles.mjs',
       'languages/java/adapters/spring/java-spring.mjs',
       'languages/java/adapters/spring/spring-config-files.mjs',
       'languages/java/adapters/spring/spring-config-parser.mjs',
       'languages/java/adapters/spring/spring-secrets.mjs',
+      'languages/java/adapters/spring/wiring/spring-wiring.mjs',
     ];
 
     expect(

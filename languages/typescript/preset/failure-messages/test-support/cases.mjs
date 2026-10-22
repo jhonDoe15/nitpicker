@@ -7,6 +7,7 @@ import { domainFailureMessageCases } from './domain-cases.mjs';
 import { strictDomainConfig } from '../../eslint-config/strict/strict-domain.mjs';
 import { adapterFailureMessageCases, adapterSyntaxFailureMessageCases } from './adapter-cases.mjs';
 import { productionPolicyConfig } from '../../eslint-config/policies/base.mjs';
+import { i18nFailureMessageCases } from '../../eslint-config/i18n/test-support/i18n-cases.mjs';
 import { reactFailureMessageCases } from './react-cases.mjs';
 import { testFailureMessageCases } from './test-cases.mjs';
 
@@ -66,11 +67,6 @@ export const failureMessageCases = [
       'fix the type error',
     ],
     [
-      'eslint-disable names the config exception',
-      '// eslint-disable-next-line no-console\nconst value = 1;',
-      'nitpicker config file',
-    ],
-    [
       'line comment names descriptive code',
       '// increments the counter\nconst value = 1;',
       'descriptive identifier',
@@ -80,7 +76,7 @@ export const failureMessageCases = [
       '/* explains */\nconst value = 1;',
       'descriptive identifier',
     ],
-    ['interface names type', 'interface Shape { size: number }', '`type`'],
+    ['interface names type', 'export interface Shape { size: number }', '`type`'],
     [
       'enum names a union of string literals',
       'enum Mode { Read, Write }',
@@ -159,6 +155,28 @@ export const failureMessageCases = [
       "type Shape = { kind: 'a' } | { kind: 'b' };\nexport function read(shape: Shape) { switch (shape.kind) { case 'a': return 1; } return 0; }",
     allowed: 'exhaustive',
   },
+  ...[
+    ['partial union test names the switch', 'switch'],
+    ['partial union test names the Record lookup', 'Record<Union, boolean>'],
+  ].map(([name, allowed]) => ({
+    name,
+    config: typedStrictConfig,
+    filename: path.resolve('src/fixture.ts'),
+    banned:
+      "type Kind = 'a' | 'b' | 'c';\nexport const isEarly = (kind: Kind) => kind === 'a' || kind === 'b';",
+    allowed,
+  })),
+  ...[
+    ['forwarding wrapper names the direct call', 'call `fetchOne` directly'],
+    ['forwarding wrapper names the re-export', 'export { fetchOne as readOne }'],
+  ].map(([name, allowed]) => ({
+    name,
+    config: typedStrictConfig,
+    filename: path.resolve('src/fixture.ts'),
+    banned:
+      'export function fetchOne(id: string): string { return id; }\nexport function readOne(id: string): string { return fetchOne(id); }',
+    allowed,
+  })),
   ...domainFailureMessageCases,
   {
     name: 'domain recursion names flatMap',
@@ -192,11 +210,11 @@ export const failureMessageCases = [
     allowed: "feature's adapters/",
   },
   {
-    name: 'composition-root branch names the exception in the config file',
+    name: 'composition-root branch names when an exception fits',
     config: strictCompositionRootConfig,
     filename: 'src/main/composition-root.ts',
     banned: 'export function titleOf(book) { return book?.title ?? "none"; }',
-    allowed: 'exception for this rule in nitpicker.config.json',
+    allowed: 'An exception fits only when this branch belongs here',
   },
   {
     name: 'construction in a factory-named file names the composition root',
@@ -227,12 +245,6 @@ export const failureMessageCases = [
     banned: 'export function pick(a: boolean) { if (a) { return 1; } return 0; }',
     allowed: 'smaller named functions',
   },
-  {
-    name: 'cognitive complexity names the exception in the config file',
-    config: cognitiveComplexityConfig,
-    filename: 'src/fixture.ts',
-    banned: 'export function pick(a: boolean) { if (a) { return 1; } return 0; }',
-    allowed: 'exception for this rule in nitpicker.config.json',
-  },
   ...reactFailureMessageCases,
+  ...i18nFailureMessageCases,
 ];

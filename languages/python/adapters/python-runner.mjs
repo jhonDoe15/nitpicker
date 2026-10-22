@@ -1,15 +1,18 @@
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { applyJavaPolicy } from '../../java/adapters/java-policy.mjs';
-import { parseRunnerArguments } from '../../java/adapters/java-runner.mjs';
+import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
+import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
+import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
+import { precedenceToolNames } from '../../java/adapters/gradle-presets.mjs';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
 } from '../../../core/tooling/temporary-files.mjs';
 import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
-import { applyPythonExceptions } from './configuration/python-exceptions.mjs';
+import { applyPythonExceptions, pythonRouteRule } from './configuration/python-exceptions.mjs';
 import { mutationFindings } from './mutation/python-mutation.mjs';
+import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { readPythonFindings } from './python-reports.mjs';
 import { createToolContext, runPythonTools } from './python-tools.mjs';
 
@@ -30,15 +33,21 @@ function toolError({ rule, message }, part = PYTHON_ANALYZER_NAME) {
   };
 }
 
-function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
+function toolContext({ projectRoot, liveRoot, settings, policy, spawn }, reportRoot) {
   return createToolContext({
+    spawn,
     projectRoot,
     liveRoot,
-    settings,
+    settings: { ...settings, testSeconds: policy?.testSeconds },
     reportRoot,
     exclude: policy?.exclude,
+    duplicateSkippedFolders: policy?.duplicateSkippedFolders,
     snapshot: policy?.snapshot,
     baselineRoot: policy?.baselineRoot,
+    conventions: policy?.conventions,
+    policyRoot: policy?.policyRoot,
+    toolPrecedence: policy?.toolPrecedence,
+    pytestAddopts: process.env.PYTEST_ADDOPTS,
   });
 }
 
@@ -54,16 +63,24 @@ function withReportRoot(step) {
 
 function collectMutationFindings(options) {
   return withReportRoot((reportRoot) =>
-    applyJavaPolicy(mutationFindings(toolContext(options, reportRoot)), {
-      exclude: options.policy?.exclude,
-    }),
+    applyFindingPolicy(
+      applyPythonExceptions(
+        applyRuleHints(mutationFindings(toolContext(options, reportRoot))),
+        options.settings?.exceptions,
+      ),
+      {
+        exclude: options.policy?.exclude,
+        exceptions: options.policy?.exceptions,
+        routeRule: pythonRouteRule,
+      },
+    ),
   );
 }
 
-function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
+function collectPythonFindings({ projectRoot, liveRoot, settings, policy, spawn }) {
   return withReportRoot((reportRoot) => {
     const failures = runPythonTools(
-      toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot),
+      toolContext({ projectRoot, liveRoot, settings, policy, spawn }, reportRoot),
     );
     if (failures.length > 0) {
       return failures.map((failure) => toolError(failure));
@@ -74,9 +91,10 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
       crapLimit: policy.crapLimit,
       policy,
     });
-    return applyJavaPolicy(applyPythonExceptions(findings, settings.exceptions), {
+    return applyFindingPolicy(applyPythonExceptions(findings, settings.exceptions), {
       ...policy,
       inventoryTool: PYTHON_ANALYZER_NAME,
+      routeRule: pythonRouteRule,
     });
   });
 }
@@ -115,7 +133,10 @@ export function parsePythonArguments(arguments_) {
       shared.push(argument);
     }
   }
-  const { projectRoot, policy } = parseRunnerArguments(shared);
+  const { projectRoot, policy } = parseRunnerArguments(shared, {
+    runner: 'python-runner.mjs',
+    precedenceTools: precedenceToolNames(),
+  });
   const part = own.get('--part') ?? PYTHON_ANALYZER_NAME;
   if (!(part in UNEXPECTED_FAILURE_RULES)) {
     throw new Error(`--part must be one of: ${Object.keys(UNEXPECTED_FAILURE_RULES).join(', ')}`);
@@ -129,15 +150,21 @@ export function parsePythonArguments(arguments_) {
   };
 }
 
-function main(arguments_) {
-  const { part, projectRoot, liveRoot, settings, policy } = parsePythonArguments(arguments_);
-  const report = analyzePythonSnapshot({
+export function runPython(runnerArguments, { spawn } = {}) {
+  const { part, projectRoot, liveRoot, settings, policy } = parsePythonArguments(runnerArguments);
+  const conventions = readHeadPolicyFile().conventions;
+  return analyzePythonSnapshot({
     part,
     projectRoot: realpathSync(projectRoot),
     liveRoot: realpathSync(liveRoot),
     settings,
-    policy,
+    policy: { ...policy, conventions },
+    spawn,
   });
+}
+
+function main(runnerArguments) {
+  const report = runPython(runnerArguments);
   process.stdout.write(`${JSON.stringify(report)}\n`);
 }
 

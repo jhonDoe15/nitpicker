@@ -173,6 +173,7 @@ describe('custom layout and exclude for tools that need project dependencies', (
       'lib/live/types.ts',
       'lib/live/unused.ts',
       'lib/live/uses-spec.ts',
+      'package.json',
       'spec/helper.ts',
     ]);
     expect(paths.filter(isExcludedPath)).toEqual([]);
@@ -225,7 +226,7 @@ describe('custom layout through the command line', () => {
     const output = chunks.join('');
     expect(exitCode).toBe(1);
     expect(output).toEqual(
-      'nitpicker: head: running 1 analyzer\nNitpicker quality snapshot\nStatus: violations\nEnforceable findings: 1\nDescriptive findings: 0\nTool errors: 0\n\nPer-tool counts:\ndependency-architecture: total=1 enforceable=1 descriptive=0\n\nEnforceable findings:\ndependency-architecture/no-production-to-test lib/live/uses-spec.ts lib/live/uses-spec.ts must not depend on spec/helper.ts\n',
+      'nitpicker: head: running 1 analyzer\nNitpicker quality snapshot\nStatus: violations\nEnforceable findings: 1\nDescriptive findings: 0\nTool errors: 0\n\nPer-tool counts:\ndependency-architecture: total=1 enforceable=1 descriptive=0\n\nEnforceable findings:\ndependency-architecture/no-production-to-test lib/live/uses-spec.ts lib/live/uses-spec.ts must not depend on spec/helper.ts. If this is intended, add {"rule":"no-production-to-test","paths":["lib/live/uses-spec.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.\n',
     );
     expect(output).not.toContain('lib/legacy');
   });
@@ -261,17 +262,16 @@ describe('applyLayout', () => {
     );
     expect(invocation.args).not.toContain('src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
     expect([...new Set(eslint.exclusions)].sort()).toEqual([
-      '**/*.d.ts',
-      '**/build/**',
-      '**/coverage/**',
-      '**/dist/**',
-      '**/generated/**',
       '**/node_modules/**',
-      '**/reports/**',
-      '**/target/**',
       '.stryker-tmp/**',
+      'build/**',
+      'coverage/**',
+      'dist/**',
+      'generated/**',
       'lib/legacy/**',
+      'reports/**',
       'spec/legacy/**',
+      'target/**',
     ]);
     const entryPoints = customAnalyzers
       .find(({ name }) => name === 'entry-points')

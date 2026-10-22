@@ -1,0 +1,99 @@
+name: python-e2e
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'core/**'
+      - 'shared/**'
+      - 'languages/python/**'
+      - 'languages/java/ingest/**'
+      - 'languages/java/adapters/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vitest.config.mts'
+      - 'scripts/test-shards/**'
+      - '.github/python-e2e-constraints.txt'
+      - '.github/workflows/python-e2e.yml'
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  python-shard:
+    name: python shard ${{ matrix.shard }}/${{ strategy.job-total }}
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    # setup-python has no Python 3.9 build for the newer ubuntu-latest image.
+    runs-on: ubuntu-24.04
+    # Every runner owns its project environments; two files at a time bound provisioning/tool load.
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      # The suite's own `uv pip install` calls resolve to these versions too.
+      UV_CONSTRAINT: ${{ github.workspace }}/.github/python-e2e-constraints.txt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      # 3.9 and 3.10 sit beside 3.13 (the default, listed last): the rules script runs on the oldest
+      # supported Python and reports one skipped error below it.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.9
+            3.10
+            3.13
+          cache: pip
+          cache-dependency-path: .github/python-e2e-constraints.txt
+      # The suite finds ruff, black, mypy, pyright, basedpyright, coverage, pytest and uv on the PATH and builds the
+      # environments of its sample projects with uv.
+      - run: pip install -c .github/python-e2e-constraints.txt basedpyright black coverage mypy pyright pytest ruff uv
+      # The base-environment tests install real projects with poetry and uv.
+      - run: pipx install poetry==2.4.3
+      - run: npm ci
+      - run: npm run test:python -- --maxWorkers=2 --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/python-e2e/shard-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-e2e-${{ matrix.shard }}-${{ github.run_attempt }}
+          path: reports/python-e2e/
+          if-no-files-found: warn
+
+  # Lists the suite without provisioning a Python project: test:python must select every case its E2E flag enables,
+  # and the timing profile and the matrix above must split those files with none missing or repeated.
+  python-shard-plan:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: node scripts/test-shards/verify-e2e-shards.mjs python
+
+  python-e2e:
+    if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
+    needs: [python-shard-plan, python-shard]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every Python end-to-end shard passed and the shard plan holds
+        env:
+          PLAN: ${{ needs.python-shard-plan.result }}
+          RESULT: ${{ needs.python-shard.result }}
+        run: test "$PLAN" = success && test "$RESULT" = success

@@ -17,6 +17,9 @@ follows the full TypeScript rules (no `as`, `enum`, `interface`, `any`, `!`), no
 If your change edits a function that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
 
+Before you change code other modules use or fix a bug, read
+[beyond-the-gate.md](beyond-the-gate.md).
+
 ## Finish with the gate
 
 1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.
@@ -24,7 +27,8 @@ If your change edits a function that existed before it, read
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. It applies ESLint and Prettier fixes with its own
-   configs (don't format with plain `prettier`), then checks your change against the merge base. It
+   configs (don't format with plain `prettier`; its quotes, semicolons, indentation and width follow
+   most of the project's files), then checks your change against the merge base. It
    takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
    - 0: done.
@@ -34,8 +38,15 @@ If your change edits a function that existed before it, read
      missing package) and rerun. Exit 2 is never a pass. If it says another run is in progress,
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, `@ts-nocheck`, coverage or mutation ignore
-   comments (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`, legacy
-   entries, or weakened tests. If a finding seems wrong, stop and ask.
+   comments (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`/`exceptions`, legacy
+   entries, generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
+   `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
+   accept.
+5. Code that is right despite a rule: each message ends with the `exceptions` entry that would
+   accept it (`If this is intended, add {...} to "exceptions" in nitpicker.config.json.`). That
+   entry is for a human reviewer. Never add one, and never fill in its
+   `reason`, to get past the gate: stop and ask a human, and quote the finding with its entry. A
+   TypeScript compiler error has no entry; fix the type.
 
 ## Layout
 
@@ -46,8 +57,8 @@ If your change edits a function that existed before it, read
   `/** @typedef {import('./domain/tally.js').Invoice} Invoice */` in `invoices/index.js`, then
   `/** @import { Invoice } from '../../invoices/index.js' */` in the other feature. Never copy a
   type: import it, or derive it from a function you call (`Parameters<typeof runGreeting>[1]`).
-- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it
-  if it isn't a dependency). Field rules and conversions live in the schema
+- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with the project's
+  validation library (zod if it has none; add it then). Field rules and conversions live in the schema
   (`z.string().trim().min(1)`, `z.email()`, `z.iso.date()`, `.transform(toCents)`), never
   `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the issues'
   `path` (`[index, field]`) names the bad record: `issues.map((issue) => issue.path.join('.'))`.
@@ -61,9 +72,16 @@ If your change edits a function that existed before it, read
 - Export only what another module imports: an exported function or `@typedef` that nothing imports
   fails dead-code.
 - Don't put `x.js` beside `x.ts` in one directory: TypeScript drops the `.js`. `.jsx` and `.tsx` are
-  outside the preset.
+  outside the preset, and so is React: a React project uses the typescript preset (`react` in
+  `nitpicker.config.json` is an error here).
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist. Match the
   module format of the files around you (ESM `import`/`export`, or CommonJS where the project is).
+
+## Dependencies and files
+
+- The gate fails unlisted, unused and unresolved dependencies, production imports of a
+  `devDependency`, and committed secrets, binaries, build output and files over 1 MB; each message
+  names the fix. Don't add an `exceptions` entry to get past one: stop and ask.
 
 ## Types are JSDoc
 
@@ -82,7 +100,7 @@ line) is a finding.
 - Bring a type in with `@import { Invoice } from '../domain/tally.js'`; there is no `import type`.
 - A value whose type can't be inferred gets a one-line `/** @type {string[]} */` above its `const`.
   A literal that must stay narrow is `/** @type {const} */ ([...])`; that is the one allowed cast.
-- No cast `/** @type {T} */ (value)`, the JSDoc `as`. Narrow with checks, parse with zod, or type the
+- No cast `/** @type {T} */ (value)`, the JSDoc `as`. Narrow with checks, parse with the project's validation library, or type the
   value correctly where it is made. There is no `!`.
 - No `any`, `*` or a bare `?` in a type. No `null`, `?T` or `T?`: absent is `undefined`
   (`{ readonly note: string | undefined }`).
@@ -114,7 +132,7 @@ line) is a finding.
 - A file stays within 300 lines (a test file 500) and a line within 120 characters. A folder holds
   at most 6 source files and 6 test files directly: group the rest into subfolders by what they do.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`), in source or tests, fails:
-  extract a function.
+  extract a function, also when the copy has other names and literals.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
@@ -174,6 +192,9 @@ line) is a finding.
   `import { initials } from '../src/main/features/greeting/domain/initials.cjs';`.
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.
+- Keep an assertion unless another test covers the same behaviour.
+- A test run that prints new `console.error` or `console.warn` output fails
+  (`test-console-output`): cancel the timer or subscription in the cleanup.
 - Test features through their `index.js` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
   `vi.fn().mockRejectedValue(42)`. Read a fake's calls through a helper that throws when the call is missing, not
@@ -185,9 +206,18 @@ line) is a finding.
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
   Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
   not loops. The rules above (`for...of` only, no `.then()`, no casts) apply to tests too.
-- A shared helper (stdout capture) lives once, in a non-test file such as `test/support/lines.js`.
+- Tests assert exact values and are deterministic and fast; each finding names the allowed form.
+- A shared helper (stdout capture) lives once, in a non-test file such as `test/support/lines.js`, or in a `test-support/` folder beside the code when the tests sit next to it.
   When an existing test defines the same helper, make it import the shared one.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test (a
   padded value for a `.trim()`, two bad fields for a `join`); never delete a schema rule to silence it.
 - No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
+- Give synchronous `child_process` calls in integration tests and shared test helpers a positive
+  subprocess `timeout`, such as `{ timeout: 10_000 }`. The runner's test timeout cannot interrupt
+  `spawnSync`, `execSync` or `execFileSync` while they block the event loop.
+- Plan tests to be fast (`slow-test`): a test you add or edit that takes over 5 s fails, over 30 s
+  for an integration test (under an `integration`, `e2e` or `functional` folder, or named
+  `*.integration.test.js`, folders counted under the test roots). Use fake timers instead of waits
+  and fakes instead of network or disk. A test over budget is run again alone without coverage and
+  fails only if it is still over. A slow test you did not touch stays baselined.

@@ -47,13 +47,19 @@ export const CASE_TIMEOUT_MS = 600_000;
 // The fixture installed as a consumer would have it, except that the dependencies are the ones
 // already in node_modules (no install, no network). The real gate then runs against it.
 const GITIGNORE = 'node_modules/\nreports/\n';
-const consumerPackageJson = () => readFileSync(path.join(strictCleanRoot, 'package.json'), 'utf8');
+function consumerPackageJson(dependencies) {
+  const text = readFileSync(path.join(strictCleanRoot, 'package.json'), 'utf8');
+  if (dependencies === undefined) return text;
+  const manifest = JSON.parse(text);
+  manifest.dependencies = { ...manifest.dependencies, ...dependencies };
+  return `${JSON.stringify(manifest, null, 2)}\n`;
+}
 
 export function linkedWorkdir() {
   const prepare = copiedWorkdir();
   return ({ caseDefinition, workdir }) => {
     write(workdir, '.gitignore', GITIGNORE);
-    write(workdir, 'package.json', consumerPackageJson());
+    write(workdir, 'package.json', consumerPackageJson(caseDefinition.dependencies));
     symlinkSync(path.join(packageRoot, 'node_modules'), path.join(workdir, 'node_modules'));
     prepare({ caseDefinition, workdir });
   };
@@ -118,8 +124,11 @@ export function referenceTrees(caseId, { overlay } = {}) {
  * is the same except for the agent's own gate iterations and report, which `runReference` covers.
  * `analyzers` limits the gate to those quick analyzers (see `flaggedBy` in case-table.mjs).
  */
-export function runApplied(caseId, { overlay, withoutAnalyzers, analyzers } = {}) {
-  const caseDefinition = loadCase(path.join(casesDirectory, caseId));
+export function runApplied(
+  caseId,
+  { overlay, withoutAnalyzers, analyzers, casesRoot = casesDirectory } = {},
+) {
+  const caseDefinition = loadCase(path.join(casesRoot, caseId));
   const copies = overlayDirectories(caseDefinition, overlay)
     .map((directory) => `cp -R ${JSON.stringify(`${directory}/.`)} .`)
     .join(' && ');

@@ -10,8 +10,18 @@ fun plain(a: Int, b: Int): Int {
 fun Int.double(): Int = this * 2
 
 inline fun twice(block: () -> Unit) {
+    val inside = { block() }
     block()
-    block()
+    inside()
+}
+
+fun callbacks(values: List<Int>): Int {
+    val scale = { x: Int -> if (x > 1) x * 2 else x }
+    fun clamp(x: Int): Int {
+        return if (x > 9 && x < 99) 9 else x
+    }
+    val named = fun(x: Int): Int { return x + 1 }
+    return values.map { v -> if (v > 0) clamp(v) else scale(v) }.sum() + named(1)
 }
 
 class Holder(private val start: Int) {
@@ -182,4 +192,30 @@ fun inLoop(values: List<Int>): Int {
     }
     return total
 }
+`;
+
+export const DEEP_CHAIN = `package demo.deep
+
+val sum = ${Array.from({ length: 3000 }, () => '1').join(' + ')}
+
+fun nested() = ${'run { '.repeat(800)}1${' }'.repeat(800)}
+`;
+
+export const PREDICATE_SYMBOLS = `package demo.symbols
+
+enum class Phase { NEW, \`in\`, DONE }
+
+class Holder(val s: Phase) {
+    val k = s == Phase.NEW || s == Phase.DONE
+    val g: Boolean get() = s == Phase.NEW || s == Phase.\`in\`
+    val l = { p: Phase -> p == Phase.NEW || p == Phase.DONE }
+
+    fun f(): Boolean {
+        val local = s == Phase.\`in\` || s == Phase.DONE
+        return local
+    }
+}
+
+val start = Phase.NEW
+val isStart = start == Phase.NEW || start == Phase.\`in\`
 `;

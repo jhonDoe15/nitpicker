@@ -3,14 +3,14 @@ import { finishInvoice } from './invoice-tail.js';
 import { readInvoiceOptions } from './invoice-options.js';
 
 // Invoice totals. Money is integer cents everywhere.
-export interface InvoiceResult {
+export type InvoiceResult = {
   readonly lines: readonly string[];
   readonly subtotalCents: number;
   readonly discountCents: number;
   readonly shippingCents: number;
   readonly taxCents: number;
   readonly totalCents: number;
-}
+};
 
 export function computeInvoice(order: any): InvoiceResult {
   if (!order || !order.items || order.items.length === 0) {

@@ -1,35 +1,35 @@
+import { cssInJsSource, stylesheetSpecifier } from '../../../layout.mjs';
 import { variableNamed } from '../analysis/ancestry.mjs';
 
 const approaches = {
   'class-names': {
     allowed: '`className` with CSS Modules or utility classes',
+    form: 'put them in a class and pass `className={styles.title}`',
     banned: { inlineStyle: true, cssInJs: true },
   },
   'css-in-js': {
     allowed: 'styled components (styled-components or Emotion)',
+    form: 'put them in a styled component, `const Title = styled.h1({ fontSize: 18 })`',
     banned: { inlineStyle: true, stylesheet: true },
   },
   'inline-style': {
     allowed: 'inline `style` objects',
     banned: { stylesheet: true, cssInJs: true },
   },
+  'style-sheet': {
+    allowed: 'React Native `StyleSheet.create` styles',
+    banned: { inlineStyle: true, stylesheet: true, cssInJs: true },
+    inlineMessage: 'inlineStyleSheet',
+  },
 };
 
 export const stylingApproaches = Object.keys(approaches);
-
-const customPropertyExample = "style={{ '--progress': percent }}";
-const customPropertyTyping =
-  "declare module 'csstype' { interface Properties { '--progress'?: number } }";
 
 const found = {
   inlineStyle: 'an inline `style` object',
   stylesheet: 'a stylesheet import',
   cssInJs: 'a CSS-in-JS library',
 };
-
-const stylesheetSource = /\.(?:css|scss|sass|less|styl|pcss)$/u;
-export const cssInJsSource =
-  /^(?:styled-components$|@emotion\/|@stitches\/react$|goober$|@linaria\/)/u;
 
 function isCustomPropertyProperty(property) {
   return (
@@ -58,6 +58,22 @@ function initializersOf(sourceCode, identifier) {
     : [];
 }
 
+function staticKey(node, computed) {
+  if (node.type === 'Literal') {
+    return String(node.value);
+  }
+  return node.type === 'Identifier' && !computed ? node.name : undefined;
+}
+
+function propertyValues(object, key) {
+  return object.properties
+    .filter(
+      (property) =>
+        property.type === 'Property' && staticKey(property.key, property.computed) === key,
+    )
+    .map((property) => property.value);
+}
+
 function innerExpressions(sourceCode, expression) {
   if (wrappedExpressionTypes.has(expression.type)) {
     return [expression.expression];
@@ -71,22 +87,74 @@ function innerExpressions(sourceCode, expression) {
   return expression.type === 'Identifier' ? initializersOf(sourceCode, expression) : [];
 }
 
+function nextLookups(sourceCode, { expression, keys }) {
+  if (expression.type === 'ObjectExpression') {
+    return propertyValues(expression, keys.at(-1)).map((value) => ({
+      expression: value,
+      keys: keys.slice(0, -1),
+    }));
+  }
+  if (expression.type === 'MemberExpression') {
+    const key = staticKey(expression.property, expression.computed);
+    return key === undefined ? [] : [{ expression: expression.object, keys: [...keys, key] }];
+  }
+  return innerExpressions(sourceCode, expression).map((inner) => ({ expression: inner, keys }));
+}
+
 function objectLiteralsIn(sourceCode, start) {
-  const pending = [start];
-  const seen = new Set();
+  const pending = [{ expression: start, keys: [] }];
+  const seen = new Map();
   const objects = [];
-  for (const expression of pending) {
-    if (seen.has(expression)) {
+  for (const lookup of pending) {
+    const path = lookup.keys.join('.');
+    const paths = seen.get(lookup.expression) ?? new Set();
+    if (paths.has(path)) {
       continue;
     }
-    seen.add(expression);
-    if (expression.type === 'ObjectExpression') {
-      objects.push(expression);
+    seen.set(lookup.expression, paths.add(path));
+    if (lookup.expression.type === 'ObjectExpression' && lookup.keys.length === 0) {
+      objects.push(lookup.expression);
     } else {
-      pending.push(...innerExpressions(sourceCode, expression));
+      pending.push(...nextLookups(sourceCode, lookup));
     }
   }
   return objects;
+}
+
+function plainPropertyValues(object) {
+  const isPlain = object.properties.every(
+    (property) => property.type === 'Property' && !property.computed,
+  );
+  return isPlain ? object.properties.map((property) => property.value) : undefined;
+}
+
+function staticChildren(node) {
+  switch (node.type) {
+    case 'Literal':
+      return [];
+    case 'TemplateLiteral':
+      return node.expressions.length === 0 ? [] : undefined;
+    case 'UnaryExpression':
+      return node.argument.type === 'Literal' ? [] : undefined;
+    case 'ArrayExpression':
+      return node.elements.every((element) => element !== null) ? node.elements : undefined;
+    case 'ObjectExpression':
+      return plainPropertyValues(node);
+    default:
+      return undefined;
+  }
+}
+
+function isStaticValue(root) {
+  const pending = [root];
+  for (const node of pending) {
+    const children = staticChildren(node);
+    if (children === undefined) {
+      return false;
+    }
+    pending.push(...children);
+  }
+  return true;
 }
 
 function isInlineStyleObject(sourceCode, attribute) {
@@ -95,13 +163,13 @@ function isInlineStyleObject(sourceCode, attribute) {
     attribute.name.name === 'style' &&
     value?.type === 'JSXExpressionContainer' &&
     objectLiteralsIn(sourceCode, value.expression).some(
-      (object) => !object.properties.every(isCustomPropertyProperty),
+      (object) => !object.properties.every(isCustomPropertyProperty) && isStaticValue(object),
     )
   );
 }
 
 function importKind(source) {
-  if (stylesheetSource.test(source)) {
+  if (stylesheetSpecifier.test(source)) {
     return 'stylesheet';
   }
   return cssInJsSource.test(source) ? 'cssInJs' : undefined;
@@ -123,25 +191,27 @@ export const rule = {
     defaultOptions: [{ approach: 'class-names' }],
     messages: {
       inlineStyle:
-        'Style with {{allowed}}, not an inline `style` object. Pass a runtime value as a CSS custom property, `{{example}}`, typed once with `{{typing}}`. For a one-off, add an exception for this rule in nitpicker.config.json.',
+        'Style with {{allowed}}, not an inline `style` object of fixed values: {{form}}. A `style` object stays for values computed at runtime, such as `{ width: progress }`. An exception fits only for a one-off.',
+      inlineStyleSheet:
+        'Style with {{allowed}}, not an inline `style` object of fixed values: declare `const styles = StyleSheet.create({ title: { fontSize: 18 } })` at module level and pass `style={styles.title}`. A `style` object stays for values computed at runtime, such as `{ opacity: fade }`. An exception fits only for a one-off.',
       otherApproach:
-        'This project styles with {{allowed}}, not with {{found}}. To change the approach set "styling" under "react" in nitpicker.config.json; for a one-off, add an exception for this rule in nitpicker.config.json.',
+        'This project styles with {{allowed}}, not with {{found}}. To change the approach set "styling" under "react" in nitpicker.config.json.',
     },
   },
   create(context) {
-    const { allowed, banned } = approaches[context.options[0].approach];
+    const {
+      allowed,
+      form,
+      banned,
+      inlineMessage = 'inlineStyle',
+    } = approaches[context.options[0].approach];
 
     function report(node, kind) {
       if (banned[kind]) {
         context.report({
           node,
-          messageId: kind === 'inlineStyle' ? 'inlineStyle' : 'otherApproach',
-          data: {
-            allowed,
-            found: found[kind],
-            example: customPropertyExample,
-            typing: customPropertyTyping,
-          },
+          messageId: kind === 'inlineStyle' ? inlineMessage : 'otherApproach',
+          data: { allowed, form, found: found[kind] },
         });
       }
     }

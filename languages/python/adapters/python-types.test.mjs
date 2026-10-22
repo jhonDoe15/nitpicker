@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { createFakeProjects } from './test-support/fake-project.mjs';
-import { pyrightConfig, resolveTypeChecker, typeCheck } from './python-types.mjs';
+import { toolVersions } from './python-tools.mjs';
+import { pyrightConfig } from './project-tools/pyright/pyright-config.mjs';
+import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 
 const fakes = createFakeProjects();
 const saved = new Map();
@@ -25,6 +28,10 @@ afterEach(() => {
   saved.clear();
   fakes.cleanup();
 });
+
+function enabledErrorCodes(args) {
+  return args.filter((_arg, index) => args[index - 1] === '--enable-error-code');
+}
 
 function logged() {
   const logFile = path.join(fakes.temporaryRoot(), 'calls.jsonl');
@@ -64,6 +71,20 @@ describe('choosing the type checker', () => {
     expect(resolveTypeChecker(fakes.contextFor(both).context)).toBe('mypy');
     expect(resolveTypeChecker(fakes.contextFor(pyrightOnly).context)).toBe('pyright');
     expect(resolveTypeChecker(fakes.contextFor(neither).context)).toBeUndefined();
+  });
+
+  it('detects basedpyright from its table or its dependency name', () => {
+    const detect = (files) => resolveTypeChecker(fakes.contextFor(fakes.project(files)).context);
+
+    expect(detect({ 'pyproject.toml': '[tool.basedpyright]\n' })).toBe('basedpyright');
+    expect(detect({ 'pyproject.toml': 'dev = ["basedpyright>=1.20"]\n' })).toBe('basedpyright');
+  });
+
+  it('takes the installed basedpyright when the project says nothing and mypy is missing', () => {
+    const basedOnly = fakes.project({}, { tools: ['basedpyright', 'python'] });
+    setEnvironment('PATH', fakes.temporaryRoot());
+
+    expect(resolveTypeChecker(fakes.contextFor(basedOnly).context)).toBe('basedpyright');
   });
 
   it('finds none when neither is installed', () => {
@@ -109,6 +130,72 @@ describe('running mypy', () => {
     expect(call.cwd).toBe(root);
   });
 
+  it('leaves --strict to the generated config when the project is listed', () => {
+    const logFile = logged();
+    const root = fakes.project({ 'mypy.ini': '[mypy]\ndisallow_untyped_defs = False\n' });
+    const { context, reportRoot } = fakes.contextFor(
+      root,
+      {},
+      {
+        toolPrecedence: { mypy: ['project', 'nitpicker'] },
+        policyRoot: root,
+      },
+    );
+
+    typeCheck(context);
+
+    const [call] = fakes
+      .calls(logFile)
+      .filter(({ args }) => args.includes('--explicit-package-bases'));
+    expect(call.args).not.toContain('--strict');
+    expect(readFileSync(path.join(reportRoot, 'mypy.ini'), 'utf8')).toBe(
+      '[mypy]\nstrict = true\ndisallow_untyped_defs = False\n',
+    );
+  });
+
+  it('passes nitpicker exclude as an --exclude argument when the project config is listed', () => {
+    const logFile = logged();
+    const root = fakes.project({ 'mypy.ini': '[mypy]\nexclude = (?x)(\n  ^legacy/\n  )\n' });
+    const { context, reportRoot } = fakes.contextFor(
+      root,
+      {},
+      {
+        exclude: ['src/gen/**'],
+        toolPrecedence: { mypy: ['project', 'nitpicker'] },
+        policyRoot: root,
+      },
+    );
+
+    typeCheck(context);
+
+    const [call] = fakes
+      .calls(logFile)
+      .filter(({ args }) => args.includes('--explicit-package-bases'));
+    expect(
+      call.args.slice(call.args.indexOf('--exclude'), call.args.indexOf('--exclude') + 2),
+    ).toEqual(['--exclude', '^(?:(?:src/gen/.*)(?:/.*)?/?)$']);
+    expect(readFileSync(path.join(reportRoot, 'mypy.ini'), 'utf8')).toBe(
+      '[mypy]\nstrict = true\nexclude = (?x)(\n    ^legacy/\n    )\n',
+    );
+  });
+
+  it.each([
+    ['1.13.0', false],
+    ['1.14.0', true],
+    ['1.20.1', true],
+    ['2.0.0', true],
+    ['0.991', false],
+  ])('mypy %s asks for the deprecated error code: %s', (version, asked) => {
+    const logFile = logged();
+    const root = fakes.project({ 'mypy-version.txt': version });
+    const { context } = fakes.contextFor(root);
+
+    typeCheck(context);
+
+    const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--strict'));
+    expect(enabledErrorCodes(call.args)).toEqual(asked ? ['deprecated'] : []);
+  });
+
   it('adds the import roots to MYPYPATH before an existing value', () => {
     const logFile = logged();
     setEnvironment('MYPYPATH', '/existing');
@@ -139,7 +226,7 @@ describe('running mypy', () => {
         '',
       ].join('\n'),
     });
-    const { context, reportRoot } = fakes.contextFor(root, {}, ['src/gen/**']);
+    const { context, reportRoot } = fakes.contextFor(root, {}, { exclude: ['src/gen/**'] });
 
     typeCheck(context);
 
@@ -171,7 +258,7 @@ describe('running mypy', () => {
     expect(() => {
       typeCheck(context);
     }).toThrow(
-      'No type checker found in the virtualenv environment: install mypy or pyright there, or set "python.typeChecker" in nitpicker.config.json',
+      'No type checker found in the virtualenv environment: install mypy, pyright or basedpyright there, or set "python.typeChecker" in nitpicker.config.json',
     );
   });
 
@@ -200,6 +287,44 @@ describe('running mypy', () => {
   });
 });
 
+describe('running basedpyright', () => {
+  it('runs it with the same strict project file as pyright', () => {
+    const logFile = logged();
+    const root = fakes.project({ 'pyright.json': '{"generalDiagnostics":[]}' });
+    const { context, reportRoot } = fakes.contextFor(root, { typeChecker: 'basedpyright' });
+
+    typeCheck(context);
+
+    expect(report(reportRoot)).toEqual({
+      checker: 'basedpyright',
+      output: '{"generalDiagnostics":[]}',
+    });
+    const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--outputjson'));
+    expect([call.tool, call.args]).toEqual([
+      'basedpyright',
+      ['--outputjson', '--project', path.join(reportRoot, 'pyrightconfig.json')],
+    ]);
+    expect(JSON.parse(readFileSync(path.join(reportRoot, 'pyrightconfig.json'), 'utf8'))).toEqual({
+      typeCheckingMode: 'strict',
+      reportDeprecated: 'error',
+      enableTypeIgnoreComments: false,
+      ignore: [],
+      executionEnvironments: [],
+      exclude: ['**/node_modules', '**/__pycache__', '**/.*'],
+      include: [path.relative(reportRoot, path.join(root, 'src'))],
+      extraPaths: [path.join(root, 'src')],
+    });
+  });
+
+  it('names its version in the tool versions', () => {
+    const root = fakes.project({ 'conftest.py': '' });
+
+    expect(toolVersions(fakes.contextFor(root, { typeChecker: 'basedpyright' }).context)).toBe(
+      `ruff@0.9.9;basedpyright@1.40.2;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()}`,
+    );
+  });
+});
+
 describe('running pyright', () => {
   it('runs it with a strict project file in the report directory', () => {
     const logFile = logged();
@@ -220,46 +345,11 @@ describe('running pyright', () => {
     ]);
     expect(JSON.parse(readFileSync(path.join(reportRoot, 'pyrightconfig.json'), 'utf8'))).toEqual({
       typeCheckingMode: 'strict',
+      reportDeprecated: 'error',
       enableTypeIgnoreComments: false,
       ignore: [],
+      executionEnvironments: [],
       exclude: ['**/node_modules', '**/__pycache__', '**/.*'],
-      include: [path.relative(reportRoot, path.join(root, 'src'))],
-      extraPaths: [path.join(root, 'src')],
-    });
-  });
-
-  it('extends the project pyright file, or its pyproject section', () => {
-    const withFile = fakes.project({
-      'pyrightconfig.json': '{}',
-      'pyproject.toml': '[tool.pyright]\n',
-    });
-    const withSection = fakes.project({ 'pyproject.toml': '[tool.pyright]\nreportX = false\n' });
-    const without = fakes.project({ 'pyproject.toml': '[tool.black]\n' });
-    const configOf = (root) => pyrightConfig(fakes.contextFor(root).context);
-
-    expect(configOf(withFile).extends).toBe(path.join(withFile, 'pyrightconfig.json'));
-    expect(configOf(withSection).extends).toBe(path.join(withSection, 'pyproject.toml'));
-    expect(configOf(without)).not.toHaveProperty('extends');
-  });
-
-  it('replaces the project ignore and exclude with the nitpicker exclude', () => {
-    const root = fakes.project({
-      'pyproject.toml': '[ tool.pyright ]\nignore = ["src"]\nexclude = ["src"]\n',
-    });
-    const { context, reportRoot } = fakes.contextFor(root, {}, ['src/gen/**', '**/*_pb2.py']);
-
-    expect(pyrightConfig(context)).toEqual({
-      extends: path.join(root, 'pyproject.toml'),
-      typeCheckingMode: 'strict',
-      enableTypeIgnoreComments: false,
-      ignore: [],
-      exclude: [
-        '**/node_modules',
-        '**/__pycache__',
-        '**/.*',
-        path.relative(reportRoot, path.join(root, 'src/gen/**')),
-        path.relative(reportRoot, path.join(root, '**/*_pb2.py')),
-      ],
       include: [path.relative(reportRoot, path.join(root, 'src'))],
       extraPaths: [path.join(root, 'src')],
     });
@@ -271,8 +361,10 @@ describe('running pyright', () => {
 
     expect(pyrightConfig(context)).toEqual({
       typeCheckingMode: 'strict',
+      reportDeprecated: 'error',
       enableTypeIgnoreComments: false,
       ignore: [],
+      executionEnvironments: [],
       exclude: ['**/node_modules', '**/__pycache__', '**/.*'],
       include: [
         path.relative(reportRoot, path.join(root, 'pkg')),

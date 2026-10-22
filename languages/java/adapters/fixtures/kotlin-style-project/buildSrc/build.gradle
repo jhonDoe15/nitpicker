@@ -1,0 +1,6 @@
+plugins { id 'groovy' }
+repositories { }
+dependencies {
+    implementation localGroovy()
+    implementation gradleApi()
+}

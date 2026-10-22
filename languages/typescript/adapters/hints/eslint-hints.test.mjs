@@ -1,5 +1,14 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { eslintMessageWithHint, growthAdviceFor } from './eslint-hints.mjs';
+import { normalizeEslintResults } from '../eslint/normalize.mjs';
+import {
+  eslintMessageWithHint,
+  growthAdviceFor,
+  routedEslintMessage,
+  withoutFatalDirectives,
+} from './eslint-hints.mjs';
 
 const IMMUTABLE = (kind) =>
   `${kind} should have an immutability of at least "ReadonlyDeep" (actual: "Mutable").`;
@@ -217,6 +226,64 @@ describe('eslintMessageWithHint', () => {
     });
   });
 
+  describe('vitest/no-disabled-tests', () => {
+    const ruleId = 'vitest/no-disabled-tests';
+    const hint =
+      '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`.';
+
+    it.each([
+      ['Disabled test', 'a test'],
+      ['Disabled test suite', 'a test suite'],
+    ])('drops the advice to use .todo() instead from "%s"', (head, kind) => {
+      const text = `${head} - if you want to skip ${kind} temporarily, use .todo() instead`;
+
+      expect(eslintMessageWithHint({ ruleId, text, relativePath: 'test/a.test.ts' })).toBe(
+        `${head}${hint}`,
+      );
+    });
+
+    it.each(['Disabled test', 'Disabled test suite', 'Test is missing function argument'])(
+      'adds the route to the short text oxlint reports: "%s"',
+      (text) => {
+        expect(eslintMessageWithHint({ ruleId, text, relativePath: 'test/a.test.ts' })).toBe(
+          `${text}${hint}`,
+        );
+      },
+    );
+  });
+
+  describe('vitest matchers with a nitpicker message under either lint engine', () => {
+    const relativePath = 'test/a.test.ts';
+    const defined =
+      '`toBeDefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned.';
+
+    it.each([
+      ['Use of `toBeDefined` is disallowed', defined],
+      ['Use of `resolves.toBeDefined` is disallowed', defined],
+      [defined, defined],
+      ['Use of `toHaveLength` is disallowed', 'Use of `toHaveLength` is disallowed'],
+    ])('names the allowed form for no-restricted-matchers: "%s"', (text, expected) => {
+      expect(
+        eslintMessageWithHint({ ruleId: 'vitest/no-restricted-matchers', text, relativePath }),
+      ).toBe(expected);
+    });
+
+    it.each([
+      [
+        'vitest/prefer-called-with',
+        'Suggest using `toBeCalledWith()` or `toHaveBeenCalledWith()`.',
+        'A bare `toHaveBeenCalled()` passes for a call with any arguments. Assert them with `toHaveBeenCalledWith(...)`. An exception fits only when the arguments cannot be pinned.',
+      ],
+      [
+        'vitest/require-to-throw-message',
+        'Require a message for "toThrow".',
+        "A bare `toThrow()` passes for any error. Pass the expected message: `toThrow('the message')`. An exception fits only when the message cannot be pinned.",
+      ],
+    ])('replaces the native text of %s', (ruleId, text, expected) => {
+      expect(eslintMessageWithHint({ ruleId, text, relativePath })).toBe(expected);
+    });
+  });
+
   it('offers growth advice for nitpicker/no-throw only', () => {
     expect(growthAdviceFor('nitpicker/no-throw')).toBe(
       'This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
@@ -232,5 +299,162 @@ describe('eslintMessageWithHint', () => {
         relativePath: 'a.ts',
       }),
     ).toBe('Unexpected debugger.');
+  });
+});
+
+describe('routedEslintMessage', () => {
+  const route = (rule) =>
+    `If this is intended, add {"rule":"${rule}","paths":["src/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
+
+  it('ends the message of any rule with the entry that turns it off for the path', () => {
+    expect(
+      routedEslintMessage({
+        ruleId: '@typescript-eslint/no-explicit-any',
+        text: 'Unexpected any.',
+        relativePath: 'src/a.ts',
+      }),
+    ).toBe(`Unexpected any. ${route('@typescript-eslint/no-explicit-any')}`);
+  });
+
+  it('ends the hint of a rule it rewrites with the entry', () => {
+    expect(
+      routedEslintMessage({
+        ruleId: 'vitest/expect-expect',
+        text: 'Test has no assertions',
+        relativePath: 'src/a.ts',
+      }),
+    ).toBe(
+      `Test has no assertions. Call \`expect\` in the test body: asserting helpers do not count, so return the value and \`expect\` it in the test. ${route('vitest/expect-expect')}`,
+    );
+  });
+
+  it('names no entry for a directive eslint reports without a rule', () => {
+    expect(
+      routedEslintMessage({
+        ruleId: 'eslint/unused-disable-directive',
+        text: 'Unused eslint-disable directive',
+        relativePath: 'src/a.ts',
+      }),
+    ).toBe('Unused eslint-disable directive');
+  });
+});
+
+describe('withoutFatalDirectives', () => {
+  const directive = {
+    fatal: true,
+    message: '/* eslint-env */ comments are no longer supported.',
+    severity: 2,
+  };
+  const rule = { ruleId: 'no-debugger', message: 'Unexpected debugger.', severity: 2 };
+
+  it('drops the fatal eslint-env message and keeps everything else', () => {
+    const otherFatal = { fatal: true, message: 'Parsing error: Unexpected token', severity: 2 };
+    expect(withoutFatalDirectives([directive, rule, otherFatal])).toEqual([rule, otherFatal]);
+  });
+
+  it('lets a file with an eslint-env comment normalize without a crash', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-env-'));
+    try {
+      mkdirSync(path.join(root, 'src'), { recursive: true });
+      writeFileSync(path.join(root, 'src/env.ts'), '/* eslint-env node */\nexport const a = 1;\n');
+      const findings = normalizeEslintResults({
+        value: [{ filePath: path.join(root, 'src/env.ts'), messages: [directive] }],
+        projectRoot: root,
+        analyzerName: 'eslint-errors',
+      });
+      expect(findings).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('hints for the production policy rules', () => {
+  const hint = (ruleId, text) => eslintMessageWithHint({ ruleId, text, relativePath: 'src/a.ts' });
+
+  it('names the awaited form instead of the rule wording that recommends .catch', () => {
+    const message = hint(
+      '@typescript-eslint/no-floating-promises',
+      'Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.',
+    );
+
+    expect(message).toBe(
+      `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`.`,
+    );
+  });
+
+  it('keeps the rule wording of other floating-promise messages', () => {
+    expect(
+      hint('@typescript-eslint/no-floating-promises', 'An array of Promises may be unintentional.'),
+    ).toBe('An array of Promises may be unintentional.');
+  });
+
+  it.each([
+    [
+      'Missing return type on function.',
+      'Write the return type of an exported function: `export function total(rows: readonly Row[]): number`, `export async function load(): Promise<Report>`; a React component returns `ReactElement`.',
+    ],
+    [
+      "Argument 'rows' should be typed.",
+      "Argument 'rows' should be typed. Write the parameter type in the signature: `(rows: readonly Row[])`.",
+    ],
+    [
+      'Missing return type on function',
+      'Write the return type of an exported function: `export function total(rows: readonly Row[]): number`, `export async function load(): Promise<Report>`; a React component returns `ReactElement`.',
+    ],
+    [
+      'Missing argument type on function',
+      'Missing argument type on function. Write the parameter type in the signature: `(rows: readonly Row[])`.',
+    ],
+  ])('names the typed signature for a module boundary finding: %s', (text, expected) => {
+    expect(hint('@typescript-eslint/explicit-module-boundary-types', text)).toBe(expected);
+  });
+
+  it('names the allowed casing for a naming-convention finding', () => {
+    expect(hint('nitpicker/naming-convention', 'Function name `a_b` must match camelCase')).toBe(
+      `Function name \`a_b\` must match camelCase. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE; a schema constant may be PascalCase (\`const Order = z.object(...)\`). An exception fits only when an external API forces the name.`,
+    );
+  });
+
+  it.each([
+    ['no-eval', 'eval can be harmful.', 'look it up in a table keyed by name'],
+    ['no-param-reassign', "Assignment to function parameter 'n'.", 'Declare a new const'],
+    ['no-duplicate-imports', "'a' import is duplicated.", 'single import statement'],
+    ['vitest/no-conditional-expect', 'Avoid calling `expect` conditionally.', '.toThrow(Specific)'],
+    [
+      'regexp/no-super-linear-backtracking',
+      'Unsafe quantifier.',
+      'without nested or overlapping quantifiers',
+    ],
+    [
+      '@typescript-eslint/no-deprecated',
+      '`parse` is deprecated. Use the WHATWG URL API instead.',
+      'Call the replacement that the deprecation names',
+    ],
+  ])('rewrites %s', (ruleId, text, expected) => {
+    expect(hint(ruleId, text)).toContain(expected);
+  });
+
+  it('keeps the deprecation text and says when an exception fits', () => {
+    expect(
+      hint('@typescript-eslint/no-deprecated', '`Buffer` is deprecated. Use `Buffer.from`.'),
+    ).toBe(
+      `\`Buffer\` is deprecated. Use \`Buffer.from\`. Call the replacement that the deprecation names instead of the deprecated API. An exception fits only when it names none and the API cannot be avoided.`,
+    );
+  });
+
+  it.each([
+    [
+      'curly',
+      "Expected { after 'if' condition.",
+      "Expected { after 'if' condition. Wrap the body in braces: `if (done) { return; }`.",
+    ],
+    [
+      'no-param-reassign',
+      "Assignment to function parameter 'n'.",
+      "Assignment to function parameter 'n'. Declare a new const with another name instead of reassigning the parameter. An exception fits only when the reassignment is deliberate.",
+    ],
+  ])('names the allowed form for %s', (ruleId, text, expected) => {
+    expect(hint(ruleId, text)).toBe(expected);
   });
 });

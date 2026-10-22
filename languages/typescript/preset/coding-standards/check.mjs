@@ -1,5 +1,5 @@
 import { format as formatOutput } from 'node:util';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ESLint } from 'eslint';
@@ -43,7 +43,12 @@ function resultSignals(root, result) {
 
 function messageSignal(file, lines, message) {
   if (!message.ruleId) throw new Error(message.message);
-  return { file, rule: message.ruleId, source: messageSource(lines, message) };
+  return {
+    file,
+    rule: message.ruleId,
+    source: messageSource(lines, message),
+    message: message.message,
+  };
 }
 
 function messageSource(lines, message) {
@@ -120,7 +125,7 @@ function collectRootArchitectureSignals(root, layoutSourceRoot, layout) {
   return [...contracts, ...boundaries, ...callbacks];
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   try {
     process.exitCode = await check();
   } catch (error) {

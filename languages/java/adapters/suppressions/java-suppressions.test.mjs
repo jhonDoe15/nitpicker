@@ -1,8 +1,13 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { fileFindings, readInlineSuppressionFindings } from './java-suppressions.mjs';
+import { ERROR_PRONE_MESSAGE } from './errorprone/errorprone-escapes.mjs';
+import {
+  INLINE_SUPPRESSIBLE_RULES,
+  fileFindings,
+  readInlineSuppressionFindings,
+} from './java-suppressions.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -19,7 +24,14 @@ const REPOSITORY = `interface Products extends Repository<Product, Long> {
 `;
 
 const MESSAGE =
-  'Do not silence PMD inline: fix the finding, or add an exception for its rule in nitpicker.config.json. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
+  'Do not silence PMD inline: fix the finding. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
+
+const route = (rule, file) =>
+  `If this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
+const ERROR_PRONE_ROUTE = route('errorprone/InlineSuppression', 'A.java');
+const PMD_ROUTE = route('pmd/InlineSuppression', 'A.java');
+const afterMessage = (message, prefix) =>
+  message.slice(prefix.length, message.indexOf(' If this is intended'));
 
 const lines = (findings) => findings.map((finding) => finding.location.line);
 
@@ -55,11 +67,11 @@ describe('fileFindings', () => {
       rule: 'InlineSuppression',
       path: 'src/main/java/A.java',
       identity: expect.stringMatching(/^InlineSuppression:\w+$/),
-      message: `${MESSAGE} Found: "PMD.UnusedPrivateField".`,
+      message: `${MESSAGE} Found: "PMD.UnusedPrivateField". ${route('pmd/InlineSuppression', 'src/main/java/A.java')}`,
       classification: 'enforceable',
       location: { line: 2 },
     });
-    expect(findings.map((finding) => finding.message.slice(MESSAGE.length))).toEqual([
+    expect(findings.map((finding) => afterMessage(finding.message, MESSAGE))).toEqual([
       ' Found: "PMD.UnusedPrivateField".',
       ' Found: "PMD".',
       ' Found: "all".',
@@ -96,9 +108,11 @@ describe('fileFindings', () => {
     ].join('\n');
 
     expect(
-      fileFindings(source, 'A.java').map(
-        (finding) => `${String(finding.location.line)}${finding.message.slice(MESSAGE.length)}`,
-      ),
+      fileFindings(source, 'A.java')
+        .filter((finding) => finding.tool === 'pmd')
+        .map(
+          (finding) => `${String(finding.location.line)}${afterMessage(finding.message, MESSAGE)}`,
+        ),
     ).toEqual([
       '2 Found: "PMD.X".',
       '3 Found: "PMD.X".',
@@ -132,13 +146,12 @@ describe('fileFindings', () => {
 });
 
 describe('fileFindings for SpotBugs', () => {
-  const SPOTBUGS_MESSAGE =
-    'Do not silence SpotBugs inline: fix the bug, or add an exception for spotbugs/<bug pattern> in nitpicker.config.json.';
+  const SPOTBUGS_MESSAGE = 'Do not silence SpotBugs inline: fix the bug.';
   const prefixOf = (tool) => (tool === 'pmd' ? MESSAGE : SPOTBUGS_MESSAGE);
   const found = (findings) =>
     findings.map(
       ({ tool, location, message }) =>
-        `${tool} ${String(location.line)}${message.slice(prefixOf(tool).length)}`,
+        `${tool} ${String(location.line)}${afterMessage(message, prefixOf(tool))}`,
     );
 
   it('reports every @SuppressFBWarnings, without the justification, and not inside comments or strings', () => {
@@ -167,7 +180,7 @@ describe('fileFindings for SpotBugs', () => {
       rule: 'InlineSuppression',
       path: 'src/main/java/A.java',
       identity: expect.stringMatching(/^InlineSuppression:\w+$/),
-      message: `${SPOTBUGS_MESSAGE} Found: "EI_EXPOSE_REP", "NP_NULL".`,
+      message: `${SPOTBUGS_MESSAGE} Found: "EI_EXPOSE_REP", "NP_NULL". ${route('spotbugs/InlineSuppression', 'src/main/java/A.java')}`,
       classification: 'enforceable',
       location: { line: 3 },
     });
@@ -225,6 +238,76 @@ describe('fileFindings for SpotBugs', () => {
   });
 });
 
+describe('fileFindings for Error Prone', () => {
+  it('reports @SuppressWarnings naming NullAway or a check nitpicker runs, by name or alternative name', () => {
+    const source = [
+      'class A {',
+      '  @SuppressWarnings("NullAway") String a() { return null; }',
+      '  @SuppressWarnings({"NullAway.Init", "unchecked"}) private String b;',
+      '  @SuppressWarnings("FutureReturnValueIgnored") void c() {}',
+      '  @SuppressWarnings("NullAwayLike") void d() {}',
+      '  @SuppressWarnings({"dep-ann", "Varifier"}) void e() {}',
+      '}',
+    ].join('\n');
+
+    expect(
+      fileFindings(source, 'A.java').map((finding) => [
+        finding.tool,
+        finding.rule,
+        finding.location.line,
+        finding.message,
+      ]),
+    ).toEqual([
+      [
+        'errorprone',
+        'InlineSuppression',
+        2,
+        `${ERROR_PRONE_MESSAGE} Found: "NullAway". ${ERROR_PRONE_ROUTE}`,
+      ],
+      [
+        'errorprone',
+        'InlineSuppression',
+        3,
+        `${ERROR_PRONE_MESSAGE} Found: "NullAway.Init". ${ERROR_PRONE_ROUTE}`,
+      ],
+      [
+        'errorprone',
+        'InlineSuppression',
+        4,
+        `${ERROR_PRONE_MESSAGE} Found: "FutureReturnValueIgnored". ${ERROR_PRONE_ROUTE}`,
+      ],
+      [
+        'errorprone',
+        'InlineSuppression',
+        6,
+        `${ERROR_PRONE_MESSAGE} Found: "dep-ann". ${ERROR_PRONE_ROUTE}`,
+      ],
+    ]);
+  });
+
+  it('reports a NullAway suppression next to a PMD one on the same annotation once per tool', () => {
+    const source = 'class A {\n  @SuppressWarnings({"PMD", "NullAway"}) void a() {}\n}\n';
+
+    expect(
+      fileFindings(source, 'A.java').map((finding) => [finding.tool, finding.message]),
+    ).toEqual([
+      ['pmd', `${MESSAGE} Found: "PMD". ${PMD_ROUTE}`],
+      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "NullAway". ${ERROR_PRONE_ROUTE}`],
+    ]);
+  });
+
+  it('leaves "unused", which PMD also honors, to the PMD finding alone', () => {
+    const source = 'class A {\n  @SuppressWarnings({"unused", "dep-ann"}) void a() {}\n}\n';
+
+    expect(
+      fileFindings(source, 'A.java').map((finding) => [finding.tool, finding.message]),
+    ).toEqual([
+      ['pmd', `${MESSAGE} Found: "unused". ${PMD_ROUTE}`],
+      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "dep-ann". ${ERROR_PRONE_ROUTE}`],
+    ]);
+  });
+});
+
 describe('fileFindings identities', () => {
   it('keeps identities when lines shift and tells repeated suppressions apart', () => {
     const source =
@@ -264,5 +347,19 @@ describe('readInlineSuppressionFindings', () => {
         (finding) => `${finding.path}:${String(finding.location.line)}`,
       ),
     ).toEqual(['src/main/java/shop/A.java:2']);
+  });
+});
+
+describe('the Java skill', () => {
+  it('names every accepted marker as the exception to its never-suppress rule', () => {
+    const skill = readFileSync(
+      path.resolve(import.meta.dirname, '../../../../skills/nitpicker-java/SKILL.md'),
+      'utf8',
+    );
+    const rule = /^\d+\. Never suppress:[\s\S]*?(?=\n\n|\n\d+\. )/mu.exec(skill)?.[0] ?? '';
+
+    expect(
+      INLINE_SUPPRESSIBLE_RULES.map((marker) => rule.includes(`@SuppressWarnings("${marker}")`)),
+    ).toStrictEqual(INLINE_SUPPRESSIBLE_RULES.map(() => true));
   });
 });

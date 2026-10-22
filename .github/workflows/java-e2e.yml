@@ -1,0 +1,97 @@
+name: java-e2e
+
+# The Java end-to-end suite (npm run test:java): real Gradle and Maven builds of small Java projects, which
+# exercise the formatter, Checkstyle and the followed project style for real. It runs on a push to main that
+# touches the Java preset code, the core and shared code it imports, the package and test configuration, or
+# this file; by hand from the Actions tab; and on a pull request only when the `run-ci` label is added, like
+# the kotlin-e2e workflow.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'languages/java/**'
+      - 'core/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vitest.config.mts'
+      - 'scripts/test-shards/**'
+      - '.github/workflows/java-e2e.yml'
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+# A newer request cancels the older run on the same pull request, other labels do not; runs on main
+# always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  java-shard:
+    name: java shard ${{ matrix.shard }}/${{ strategy.job-total }}
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    # Files run serially inside each isolated shard to avoid competing JVM builds.
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      # Maven comes with the runner image; the cache keeps ~/.m2 between runs, keyed on the fixture poms.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          cache-dependency-path: languages/java/maven/fixtures/**/pom.xml
+      # Caches ~/.gradle: the Checkstyle, PMD, SpotBugs, Error Prone, palantir-java-format and PIT jars the init
+      # script resolves, and the plugins the fixture projects use.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+      - run: npm ci
+      - name: Java end-to-end suite
+        run: npm run test:java -- --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/java-e2e/shard-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: java-e2e-${{ matrix.shard }}-${{ github.run_attempt }}
+          path: reports/java-e2e/
+          if-no-files-found: warn
+
+  # Lists the suite without starting a JVM build: test:java must select every case its E2E flag enables,
+  # and the timing profile and the matrix above must split those files with none missing or repeated.
+  java-shard-plan:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: node scripts/test-shards/verify-e2e-shards.mjs java
+
+  java:
+    if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
+    needs: [java-shard-plan, java-shard]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every Java end-to-end shard passed and the shard plan holds
+        env:
+          PLAN: ${{ needs.java-shard-plan.result }}
+          RESULT: ${{ needs.java-shard.result }}
+        run: test "$PLAN" = success && test "$RESULT" = success

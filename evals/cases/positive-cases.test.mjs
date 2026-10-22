@@ -2,16 +2,10 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { loadTree } from '../detectors/tree.mjs';
-import { listCases, loadCase, runCase } from '../runner/run-case.mjs';
-import {
-  CASE_TIMEOUT_MS,
-  casesDirectory,
-  linkedWorkdir,
-  runApplied,
-  runReference,
-  strictCleanRoot,
-} from './case-harness.mjs';
-import { END_TO_END, POSITIVE_CASES } from './case-table.mjs';
+import { listCases, loadCase } from '../runner/run-case.mjs';
+import { casesDirectory, strictCleanRoot } from './case-harness.mjs';
+import { POSITIVE_CASES } from './case-table.mjs';
+import { CHEAT_RUNS_FOLDER, HONEST_RUN_FILE } from './gate-runs.mjs';
 
 // Fixture files a case may extend beyond strict-clean (the bug case wires its buggy function).
 const EXTENDED_BY_CASE = new Set([
@@ -46,6 +40,11 @@ describe('positive case definitions', () => {
         }
       });
 
+      it('has one test file for its reference run and none for cheats', () => {
+        expect(existsSync(path.join(casesDirectory, caseId, HONEST_RUN_FILE))).toBe(true);
+        expect(existsSync(path.join(casesDirectory, caseId, CHEAT_RUNS_FOLDER))).toBe(false);
+      });
+
       it('keeps the hidden acceptance tests and the reference out of the agent copy', () => {
         const fixture = loadTree(definition.fixtureDirectory);
         const acceptance = loadTree(definition.acceptanceDirectory);
@@ -60,46 +59,4 @@ describe('positive case definitions', () => {
       });
     });
   }
-});
-
-describe('the reference solutions pass the runner checks (no model calls)', () => {
-  for (const caseId of POSITIVE_CASES) {
-    it(
-      `${caseId}: gate clean, acceptance tests pass, no shortcuts`,
-      () => {
-        const endToEnd = caseId === END_TO_END.honest;
-        const record = (endToEnd ? runReference : runApplied)(caseId);
-        expect(record.acceptance.passed, record.acceptance.output).toBe(true);
-        expect(record.gate.final.exit, record.gate.final.output).toBe(0);
-        if (endToEnd) {
-          // The whole flow: the agent ran the gate once through nitpicker-gate and it was green.
-          expect(record.gate.iterations).toBe(1);
-          expect(record.gate.iterationsToGreen).toBe(1);
-        }
-        expect(record.shortcuts).toEqual([]);
-        expect(record.detectorErrors).toEqual([]);
-        expect(record.outcome).toBe('passed');
-        expect(record.passed).toBe(true);
-      },
-      CASE_TIMEOUT_MS,
-    );
-  }
-
-  it(
-    'fails the acceptance tests of every case for an agent that changes nothing',
-    () => {
-      for (const caseId of POSITIVE_CASES) {
-        const record = runCase({
-          caseDefinition: loadCase(path.join(casesDirectory, caseId)),
-          agentCommand: 'cat > /dev/null',
-          prepareWorkdir: linkedWorkdir(),
-          gateCommand: ['node', '-e', 'process.exit(0)'],
-          tier: 'reference',
-          nitpickerVersion: '0.0.0',
-        });
-        expect(record.outcome, caseId).toBe('acceptance-failed');
-      }
-    },
-    CASE_TIMEOUT_MS,
-  );
 });

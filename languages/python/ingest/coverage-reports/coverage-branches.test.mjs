@@ -31,19 +31,19 @@ describe('ingestCoverageBranches', () => {
     expect(findings.map((finding) => [finding.location.line, finding.message])).toEqual([
       [
         2,
-        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 3. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
+        'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 3. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
       ],
       [
         5,
-        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 6. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
+        'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 6. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
       ],
       [
         7,
-        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 8. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
+        'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 8. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
       ],
       [
         13,
-        "Branch coverage is 0.00%; minimum is 95%. Not taken: the branch to line 14; the branch to line 15. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
+        'Branch coverage is 0.00%; minimum is 95%. Not taken: the branch to line 14; the branch to line 15. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
       ],
     ]);
     expect(
@@ -58,6 +58,25 @@ describe('ingestCoverageBranches', () => {
     expect(() => parseAnalyzerReport({ findings }, 'python')).not.toThrow();
   });
 
+  it('names the function that holds a branch and the exceptions entry that accepts it', () => {
+    const functions = [
+      { file: FILE, name: 'pick', start: 1, end: 9 },
+      { file: FILE, name: 'lonely', start: 12, end: 15 },
+    ];
+
+    const findings = ingest({ functions });
+
+    expect(findings.map(({ location, symbol }) => [location.line, symbol])).toEqual([
+      [2, 'pick'],
+      [5, 'pick'],
+      [7, 'pick'],
+      [13, 'lonely'],
+    ]);
+    expect(findings[3].message).toBe(
+      'Branch coverage is 0.00%; minimum is 95%. Not taken: the branch to line 14; the branch to line 15. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/demo/branches.py"],"function":"lonely","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
+  });
+
   it('honors the minimum and tool options', () => {
     expect(ingest({ minimum: 40 }).map((finding) => finding.location.line)).toEqual([13]);
     expect(ingest({ tool: 'cov' })[0].tool).toBe('cov');
@@ -67,7 +86,7 @@ describe('ingestCoverageBranches', () => {
     const [finding] = ingest({}, reportOf([[2, 3]], [[2, -1]]));
 
     expect(finding.message).toBe(
-      "Branch coverage is 50.00%; minimum is 95%. Not taken: the exit from the enclosing scope. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
+      'Branch coverage is 50.00%; minimum is 95%. Not taken: the exit from the enclosing scope. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
     );
   });
 

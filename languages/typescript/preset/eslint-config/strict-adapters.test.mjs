@@ -33,9 +33,9 @@ describe('strict adapters syntactic rules', () => {
     ['while (more()) {}', 'no-restricted-syntax'],
     ['do {} while (more());', 'no-restricted-syntax'],
     ['items.forEach(run);', 'no-restricted-syntax'],
-    ['load().then(use);', 'no-restricted-syntax'],
-    ['load().catch(use);', 'no-restricted-syntax'],
-    ['load().finally(use);', 'no-restricted-syntax'],
+    ['load().then(use);', 'nitpicker/no-promise-chain'],
+    ['load().catch(use);', 'nitpicker/no-promise-chain'],
+    ['load().finally(use);', 'nitpicker/no-promise-chain'],
     ['function f() { throw new Error("x"); }', 'no-restricted-syntax'],
     ['function f() { throw "x"; }', 'no-restricted-syntax'],
     ['function f() { throw { code: 1 }; }', 'no-restricted-syntax'],
@@ -70,6 +70,8 @@ describe('strict adapters type-aware rules', () => {
       'async function load(): Promise<number> { return 1; }\nasync function run() { load(); }\nexport { run };\n',
     'awaited.ts':
       'async function load(): Promise<number> { return 1; }\nasync function run() { await load(); }\nexport { run };\n',
+    'voided.ts':
+      'async function load(): Promise<number> { return 1; }\nasync function run() { void load(); }\nexport { run };\n',
     'throw.ts': 'export function run(value: number) { throw value; }\n',
   };
   for (const [name, code] of Object.entries(fixtures)) {
@@ -116,6 +118,11 @@ describe('strict adapters type-aware rules', () => {
     expect(messages[0].message).toEqual(
       'Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.',
     );
+  });
+
+  it('accepts deliberate fire-and-forget written with void', async () => {
+    const messages = await messagesFor('voided.ts');
+    expect(messages).toEqual([]);
   });
 
   it('accepts an awaited promise', async () => {

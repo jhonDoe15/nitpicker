@@ -1,11 +1,35 @@
-// The single source for the custom checks nitpicker adds on top of third-party tools: rule ids,
-// default limits, failure-message templates and the languages that enforce each rule. Every
-// language adapter reads it, and `spec/checks.md` is generated from it (`npm run gen:checks`).
-//
-// Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
-// import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
+import {
+  FILE_RULE_IDS,
+  SIZE_HELD_MESSAGES,
+  SIZE_RULE_IDS,
+  sizeGrewMessages,
+  sizeMessages,
+  sizeRules,
+} from './project-rules/size-rules.mjs';
+import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
+import { reuseRules } from './project-rules/reuse-rules.mjs';
+import { testConsoleRule } from './project-rules/test-runtime-rules.mjs';
+import {
+  docCommentRule,
+  SOURCE_RULE_IDS,
+  sourceRuleMessages,
+  sourceRules,
+} from './project-rules/source-rules.mjs';
+import { HYGIENE_EXCEPTION_RULES, HYGIENE_RULES } from './project-rules/hygiene-rules.mjs';
+import { sharedFactExceptionRules, withLanguageColumns } from './project-rules/fact-rules.mjs';
 
-export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
+import {
+  BASE_GREW_MESSAGES,
+  BASE_HELD_MESSAGES,
+  BASE_MESSAGES,
+  EXCEPTION_HINT,
+} from './messages/messages.mjs';
+
+export { EXCEPTION_HINT, renderMessage } from './messages/messages.mjs';
+
+export { FILE_LIMIT_DEFAULTS } from './project-rules/size-rules.mjs';
+
+export const LANGUAGES = ['typescript', 'javascript', 'java', 'python', 'kotlin'];
 
 export const RULE_IDS = {
   functionLines: 'function-lines-limit',
@@ -21,11 +45,21 @@ export const RULE_IDS = {
   stabilityDirection: 'stability-direction',
   baselineExpansion: 'baseline-expansion',
   publicAlternativeBypass: 'public-alternative-bypass',
+  ...UNUSED_API_RULE_IDS,
   noProductionRuntime: 'no-production-runtime',
   typeOnlyProductionDependency: 'type-only-production-dependency',
-  fileLines: 'file-lines-limit',
-  lineLength: 'line-length-limit',
-  folderFiles: 'folder-files-limit',
+  ...FILE_RULE_IDS,
+  ...SIZE_RULE_IDS,
+  slowTest: 'slow-test',
+  sharedUsedByOneFeature: 'shared-used-by-one-feature',
+  duplicateDefinition: 'duplicate-definition',
+  siblingCopyEdit: 'sibling-copy-edit',
+  exportedNameCollision: 'exported-name-collision',
+  redefinedLibraryComponent: 'redefined-library-component',
+  newIconAsset: 'new-icon-asset',
+  testConsoleOutput: 'test-console-output',
+  docCommentContent: 'doc-comment-content',
+  ...SOURCE_RULE_IDS,
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -36,31 +70,55 @@ export const FUNCTION_STRUCTURE_LIMITS = {
   parameters: { limit: 3, ruleId: RULE_IDS.functionParameters },
 };
 
-/**
- * Per-file limits, keyed by their `thresholds` name. `fileLines` applies to source files and
- * `testFileLines` to test files; `folderFiles` counts the source files and the test files directly in
- * one folder separately.
- */
-export const FILE_LIMIT_DEFAULTS = {
-  fileLines: 300,
-  testFileLines: 500,
-  lineLength: 120,
-  folderFiles: 6,
-};
+/** Rules a `nitpicker.config.json` exception can narrow to one function with `function`. */
+export const FUNCTION_EXCEPTION_RULES = [
+  ...Object.values(FUNCTION_STRUCTURE_LIMITS).map(({ ruleId }) => ruleId),
+  RULE_IDS.crapScoreLimit,
+  RULE_IDS.crapCoverageUnknown,
+  RULE_IDS.changedBranchCoverage,
+  RULE_IDS.mutantSurvived,
+  RULE_IDS.mutantNoCoverage,
+];
 
-/** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
-export const SHARED_EXCEPTION_RULES = [
+/** The only exceptions a changed-branch-coverage finding takes: they must name the function. */
+export const FUNCTION_REQUIRED_RULES = [RULE_IDS.changedBranchCoverage];
+
+/** The dead-code findings of the TypeScript and JavaScript presets: an unused file, export or type. */
+export const DEAD_CODE_RULES = ['files', 'exports', 'types'];
+
+/** Rules an exception can narrow to one declaration with `name`. */
+export const NAME_EXCEPTION_RULES = ['exports', 'types'];
+
+export const TEST_TIME_DEFAULTS = { unitTestSeconds: 5, integrationTestSeconds: 30 };
+
+const FILE_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
+  RULE_IDS.slowTest,
+  ...HYGIENE_EXCEPTION_RULES,
+  ...sharedFactExceptionRules(),
 ];
 
-/** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
-export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
+const PATH_EXCEPTION_RULES = [
+  RULE_IDS.duplicateClone,
+  RULE_IDS.stabilityDirection,
+  ...FILE_EXCEPTION_RULES,
+];
 
-/** `{exception}` is the `exceptions` entry that would lift the finding, as JSON. */
-const EXCEPTION_HINT =
-  'If this is intended, add {exception} to "exceptions" in nitpicker.config.json.';
+/** Rules every preset lifts with the top-level `exceptions`; Python lifts its other rules with `python.exceptions`. */
+export const COMMON_EXCEPTION_RULES = [...FUNCTION_EXCEPTION_RULES, ...FILE_EXCEPTION_RULES];
+
+export const TEST_RUN_EXCEPTION_RULES = [RULE_IDS.slowTest];
+
+export const MUTATION_EXCEPTION_RULES = [
+  'mutant-ignored',
+  RULE_IDS.mutantSurvived,
+  RULE_IDS.mutantNoCoverage,
+];
+
+/** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
+export const SHARED_EXCEPTION_RULES = [...FUNCTION_EXCEPTION_RULES, ...PATH_EXCEPTION_RULES];
 
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
@@ -89,77 +147,21 @@ export const TOUCHED_CODE_RULES = [
   { rule: RULE_IDS.changedBranchCoverage, tools: ['coverage-py'] },
 ];
 
-/** Failure-message templates; `{name}` placeholders are filled by `renderMessage`. */
 export const MESSAGES = {
-  functionStructure: '{name} has {value} {metric}; limit is {limit}',
-  functionStatements:
-    '{name} has {value} statements; limit is {limit}. Split by responsibility and name each part for what it checks or does.',
-  functionControlNesting:
-    '{name} nests control flow {value} deep (limit {limit}). Return early instead of nesting.',
-  crapScoreLimit:
-    '{name} has CRAP {crap}; score must be below {limit}. Test its uncovered branches, or split a branchy part into its own function.',
-  crapCoverageUnknown:
-    '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
-  crapCoverageUnknownPlain:
-    '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
-  changedBranchCoverage: 'Branch coverage is {percent}%; minimum is {minimum}%',
-  fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
-  lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
-  folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
+  ...BASE_MESSAGES,
+  ...sizeMessages(EXCEPTION_HINT),
+  ...sourceRuleMessages(EXCEPTION_HINT),
 };
 
-export function renderMessage(template, values) {
-  return template.replaceAll(/\{(\w+)\}/g, (_, key) => String(values[key]));
-}
+export const GREW_MESSAGES = { ...BASE_GREW_MESSAGES, ...sizeGrewMessages(EXCEPTION_HINT) };
 
-/**
- * Messages for a function that was already over a limit on the base and got worse. `{base}` is left
- * in the text for the comparison to fill in (it knows the base value); `GREW_MESSAGES[metric]`
- * covers the structure limits and `crap` the CRAP score limit.
- */
-export const GREW_MESSAGES = {
-  lines:
-    '{name} grew from {base} to {value} lines (limit {limit}). Put new code in a new function.',
-  statements:
-    '{name} grew from {base} to {value} statements (limit {limit}). Put new code in a new function.',
-  maxControlNesting:
-    '{name} control nesting grew from {base} to {value} levels (limit {limit}). Put the new nested code in a new function.',
-  parameters:
-    '{name} grew from {base} to {value} parameters (limit {limit}). Group related parameters into one object instead of adding another.',
-  crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
-  fileLines: `File grew from {base} to {value} lines (limit {limit}). Put new code in a new file. ${EXCEPTION_HINT}`,
-  lineLength: `Line grew from {base} to {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
-  folderFiles: `Folder grew from {base} to {value} {kind} files (limit {limit}). Put the new file in a subfolder. ${EXCEPTION_HINT}`,
-};
+export const HELD_MESSAGES = { ...BASE_HELD_MESSAGES, ...SIZE_HELD_MESSAGES };
 
-export const HELD_MESSAGES = {
-  lines:
-    '{name}: {value} lines (limit {limit}), allowed because base was {base}; any increase fails.',
-  statements:
-    '{name}: {value} statements (limit {limit}), allowed because base was {base}; any increase fails.',
-  maxControlNesting:
-    '{name}: control nesting {value} (limit {limit}), allowed because base was {base}; any increase fails.',
-  parameters:
-    '{name}: {value} parameters (limit {limit}), allowed because base was {base}; any increase fails.',
-  crap: '{name}: CRAP {crap} (limit {limit}), allowed because base was {base}; any increase fails.',
-  fileLines:
-    'File: {value} lines (limit {limit}), allowed because base was {base}; any increase fails.',
-  lineLength:
-    'Line: {value} characters (limit {limit}), allowed because base was {base}; any increase fails.',
-  folderFiles:
-    'Folder: {value} {kind} files (limit {limit}), allowed because base was {base}; any increase fails.',
-};
-
-const BOTH = { typescript: true, java: true, python: false };
 const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
 
-/**
- * The catalog of custom rules for `spec/checks.md`. `limit` is the human text of the default
- * threshold; `enforcedBy` says which languages enforce the rule today.
- */
-export const RULES = [
+const CATALOG = [
   {
     id: RULE_IDS.functionLines,
     check: 'structure',
@@ -217,13 +219,14 @@ export const RULES = [
   {
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
-    limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
+    limit: `jscpd in \`${DUPLICATES_MODE}\` mode, also over sources with names and literals normalized (at least 100 tokens, except code that only repeats one or two statements); any new clone fails`,
     enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.stabilityDirection,
     check: 'coupling',
-    limit: 'a package depending on a less stable package',
+    limit:
+      'a package depending on a less stable package; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability',
     enforcedBy: withKotlin(ALL, true),
   },
   {
@@ -250,22 +253,28 @@ export const RULES = [
     limit: 'none: importing around a public entry point fails',
     enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
+  ...UNUSED_API_RULES,
+  ...sizeRules({ all: ALL, withKotlin }),
+  ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
+  ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   {
-    id: RULE_IDS.fileLines,
-    check: 'structure',
-    limit: `more than ${String(FILE_LIMIT_DEFAULTS.fileLines)} lines in a source file or ${String(FILE_LIMIT_DEFAULTS.testFileLines)} in a test file; override with \`thresholds.fileLines\` and \`thresholds.testFileLines\``,
+    id: RULE_IDS.slowTest,
+    check: 'test-runtime',
+    limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
     enforcedBy: withKotlin(ALL, true),
   },
-  {
-    id: RULE_IDS.lineLength,
-    check: 'structure',
-    limit: `a line longer than ${String(FILE_LIMIT_DEFAULTS.lineLength)} characters, except imports, URLs and string literal text; override with \`thresholds.lineLength\` (Java: Checkstyle's own line length; Kotlin: detekt's)`,
-    enforcedBy: withKotlin({ ...ALL, java: false }, false),
-  },
-  {
-    id: RULE_IDS.folderFiles,
-    check: 'structure',
-    limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
-    enforcedBy: withKotlin(ALL, true),
-  },
+  ...HYGIENE_RULES,
+  testConsoleRule(RULE_IDS),
+  docCommentRule(RULE_IDS),
 ];
+
+export const RULES = CATALOG.map((rule) => withLanguageColumns(rule, LANGUAGES));
+
+/** Rules of the TypeScript-only structure, coupling, dead-code and test-console checks, lifted by `exceptions`. */
+export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
+  ({ check, enforcedBy }) =>
+    ['structure', 'coupling', 'dead-code', 'test-console'].includes(check) &&
+    enforcedBy.typescript &&
+    !enforcedBy.java &&
+    !enforcedBy.python,
+).map(({ id }) => id);

@@ -178,6 +178,8 @@ describe('test runtime of a JavaScript project', () => {
       expect(usage.subprocessBridges).toEqual([
         `test/fixtures/app-process.${extension}`,
         `tests/fixtures/app-process.${extension}`,
+        `__tests__/fixtures/app-process.${extension}`,
+        `e2e/fixtures/app-process.${extension}`,
       ]);
     }
   });
@@ -195,7 +197,12 @@ describe('test runtime of a JavaScript project', () => {
     );
     expect({ category, subprocessBridges }).toEqual({
       category: 'subprocess-production-runtime',
-      subprocessBridges: ['test/fixtures/app-process.ts', 'tests/fixtures/app-process.ts'],
+      subprocessBridges: [
+        'test/fixtures/app-process.ts',
+        'tests/fixtures/app-process.ts',
+        '__tests__/fixtures/app-process.ts',
+        'e2e/fixtures/app-process.ts',
+      ],
     });
     expect(bridgeUsage("spawn('./fixtures/app-process.js')", typescriptLayout).category).toBe(
       'no-production-runtime',

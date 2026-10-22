@@ -20,6 +20,13 @@ export function nextOccurrence(occurrences, key) {
   return occurrence;
 }
 
+const REPEATING_UNIT_NAME = /<(?:init|clinit|lambda)>$/u;
+
+/** Whether a function name (`Owner.<init>`, `Owner.run.<lambda>`) may repeat in one file with other source. */
+export function repeatsInSource(name) {
+  return REPEATING_UNIT_NAME.test(name);
+}
+
 /** `value` when it is a positive integer (a usable line number), else undefined. */
 export function positiveInteger(value) {
   return Number.isInteger(value) && value > 0 ? value : undefined;
@@ -64,4 +71,19 @@ export function summaryMetrics(analyzerName, summary = {}, rule, ignored = []) {
     });
   }
   return findings;
+}
+
+/** The name of the narrowest function of `file` (`{ file, name, start, end }[]`) that holds `line`. */
+export function enclosingFunctionName(functions, file, line) {
+  let found;
+  for (const candidate of functions) {
+    const holds = candidate.file === file && candidate.start <= line && line <= candidate.end;
+    if (
+      holds &&
+      (found === undefined || candidate.end - candidate.start < found.end - found.start)
+    ) {
+      found = candidate;
+    }
+  }
+  return found?.name;
 }

@@ -14,7 +14,12 @@ import {
   normalizeMessageText,
   nodeChain,
 } from './syntax.mjs';
-import { growthAdviceFor, eslintMessageWithHint } from '../hints/eslint-hints.mjs';
+import {
+  growthAdviceFor,
+  metricWorseMessage,
+  routedEslintMessage,
+  withoutFatalDirectives,
+} from '../hints/eslint-hints.mjs';
 import { requiredString, positiveInteger } from './arguments.mjs';
 
 export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
@@ -38,7 +43,8 @@ function normalizeResult({ result, resultIndex, projectRoot, analyzerName }) {
     throw new TypeError(`ESLint result ${String(resultIndex)} must contain messages`);
   }
   const projectFile = validatedProjectFile(projectRoot, result.filePath);
-  if (result.messages.length === 0) {
+  const messages = withoutFatalDirectives(withoutSupersededMessages(result.messages));
+  if (messages.length === 0) {
     return [];
   }
   const relativePath = projectFile.relativePath;
@@ -50,7 +56,7 @@ function normalizeResult({ result, resultIndex, projectRoot, analyzerName }) {
     true,
     scriptKind(relativePath),
   );
-  return result.messages.map((message, messageIndex) =>
+  return messages.map((message, messageIndex) =>
     normalizeMessage({
       message,
       context: `ESLint result ${String(resultIndex)} message ${String(messageIndex)}`,
@@ -59,6 +65,22 @@ function normalizeResult({ result, resultIndex, projectRoot, analyzerName }) {
       sourceFile,
     }),
   );
+}
+
+const supersedingRules = new Map([['no-restricted-properties', 'nitpicker/react-no-random-key']]);
+
+function startOf(ruleId, message) {
+  return `${String(ruleId)}@${String(message.line)}:${String(message.column)}`;
+}
+
+function withoutSupersededMessages(messages) {
+  const starts = new Set(
+    messages.filter(isRecord).map((message) => startOf(message.ruleId, message)),
+  );
+  return messages.filter((message) => {
+    const superseding = isRecord(message) ? supersedingRules.get(message.ruleId) : undefined;
+    return superseding === undefined || !starts.has(startOf(superseding, message));
+  });
 }
 
 function metricRules() {
@@ -119,7 +141,7 @@ function withRatchets(findings, plans) {
       ratchet: {
         key: `metric:occurrence:${String(occurrence)}`,
         value: plan.value,
-        worseMessage: `${finding.symbol ?? 'This function'} ${plan.label} grew from {base} to ${String(plan.value)}. Put new code in a new function.`,
+        worseMessage: metricWorseMessage(finding, plan),
       },
     };
   });
@@ -189,7 +211,7 @@ function locateReport(sourceFile, { sourcePosition, endPosition }) {
 }
 
 function hintedMessage({ ruleId, messageText, relativePath, comment, locatedNode, sourceFile }) {
-  return eslintMessageWithHint({
+  return routedEslintMessage({
     ruleId,
     text: messageText,
     relativePath,

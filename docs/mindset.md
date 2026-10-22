@@ -28,7 +28,9 @@ So a rule's default is decided by what it prevents, not by how often other teams
 3. **Flags legitimate code often?** Make the rule narrower and more precise, so it still blocks the
    bad shape (for example: a repository call inside a loop, not every call inside a loop).
 4. **Off, or report-only, only when the noise is structural**: the tool cannot know the answer
-   and no exception could make the finding right, such as equivalent mutants or generated code.
+   and no exception could make the finding right, such as Kotlin mutants (compiler-generated
+   code) or generated code. An equivalent mutant of Java, Python or TypeScript code is not that
+   case: a `mutant-survived` exception with the function accepts it, after review.
    Write the reason down where the rule is configured.
 
 When in doubt, keep the rule on and make the exception easy to find.
@@ -48,6 +50,15 @@ The allowed way is about code and architecture. Which test runner, build tool or
 a project uses is not: nitpicker supports the common options and moves toward the preferred one
 over time, so adopting it on an existing project is never blocked by tooling. For the same reason,
 rules target code shape, not framework versions.
+
+## Follow the project where both ways are right
+
+Some choices have two equally valid answers that well-known style guides disagree on: 2 or 4
+space indentation, line width, quotes, import order, which build tool or formatter a project uses.
+nitpicker does not pick one of those for the project. It measures which one most files already use
+on the base branch (so a change cannot flip it) and checks with that; a project can pin the value
+in `nitpicker.config.json`. Which construct to write (a loop form, a function form, `null` or
+`undefined`) is not such a choice: that stays one allowed way.
 
 ## Clear over clever
 

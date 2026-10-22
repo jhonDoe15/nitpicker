@@ -46,77 +46,77 @@ describe('the Kotlin mutation filter on the measurement fixture', () => {
       [
         'More.kt:112',
         'mutant-survived',
-        'demo.MoreKt|failing(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
+        'MoreKt|failing(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
       ],
       [
         'More.kt:73',
         'mutant-survived',
-        'demo.MoreKt|finals(Ljava/io/StringReader;)I|VoidMethodCallMutator|removed call to java/io/StringReader::close#1',
+        'MoreKt|finals(LStringReader;)I|VoidMethodCallMutator|removed call to StringReader::close#1',
       ],
       [
         'More.kt:30',
         'mutant-survived',
-        'demo.MoreKt|inRange(I)Z|ConditionalsBoundaryMutator|changed conditional boundary#1',
+        'MoreKt|inRange(I)Z|ConditionalsBoundaryMutator|changed conditional boundary#1',
       ],
       [
         'More.kt:10',
         'mutant-survived',
-        'demo.MoreKt|rangeSum(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
+        'MoreKt|rangeSum(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
       ],
       [
         'More.kt:13',
         'mutant-survived',
-        'demo.MoreKt|rangeSum(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
+        'MoreKt|rangeSum(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
       ],
       [
         'More.kt:77',
         'mutant-survived',
-        'demo.MoreKt|uses(Ljava/io/StringReader;)I|VoidMethodCallMutator|removed call to kotlin/io/CloseableKt::closeFinally#1',
+        'MoreKt|uses(LStringReader;)I|VoidMethodCallMutator|removed call to CloseableKt::closeFinally#1',
       ],
       [
         'Coro.kt:44',
         'mutant-survived',
-        'demo.CoroKt|grade(I)Ljava/lang/String;|ConditionalsBoundaryMutator|changed conditional boundary#1',
+        'CoroKt|grade(I)LString;|ConditionalsBoundaryMutator|changed conditional boundary#1',
       ],
       [
         'Coro.kt:44',
         'mutant-survived',
-        'demo.CoroKt|grade(I)Ljava/lang/String;|ConditionalsBoundaryMutator|changed conditional boundary#2',
+        'CoroKt|grade(I)LString;|ConditionalsBoundaryMutator|changed conditional boundary#2',
       ],
       [
         'Coro.kt:45',
         'mutant-survived',
-        'demo.CoroKt|grade(I)Ljava/lang/String;|ConditionalsBoundaryMutator|changed conditional boundary#3',
+        'CoroKt|grade(I)LString;|ConditionalsBoundaryMutator|changed conditional boundary#3',
       ],
       [
         'Coro.kt:45',
         'mutant-survived',
-        'demo.CoroKt|grade(I)Ljava/lang/String;|ConditionalsBoundaryMutator|changed conditional boundary#4',
+        'CoroKt|grade(I)LString;|ConditionalsBoundaryMutator|changed conditional boundary#4',
       ],
       [
         'Coro.kt:26',
         'mutant-survived',
-        'demo.CoroKt|safeFetch(ILkotlin/coroutines/Continuation;)Ljava/lang/Object;|ConditionalsBoundaryMutator|changed conditional boundary#1',
+        'CoroKt|safeFetch(ILContinuation;)LObject;|ConditionalsBoundaryMutator|changed conditional boundary#1',
       ],
       [
         'Flow.kt:22',
         'mutant-survived',
-        'demo.FlowKt|maybe(Ljava/util/List;)Ljava/lang/Integer;|ConditionalsBoundaryMutator|changed conditional boundary#1',
+        'FlowKt|maybe(LList;)LInteger;|ConditionalsBoundaryMutator|changed conditional boundary#1',
       ],
       [
         'Nulls.kt:27',
         'mutant-survived',
-        'demo.NullsKt|useInline(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
+        'NullsKt|useInline(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
       ],
       [
         'Nulls.kt:27',
         'mutant-survived',
-        'demo.NullsKt|useInline(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
+        'NullsKt|useInline(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
       ],
       [
         'Nulls.kt:10',
         'mutant-survived',
-        'demo.Person|forced()I|VoidMethodCallMutator|removed call to kotlin/jvm/internal/Intrinsics::checkNotNull#1',
+        'Person|forced()I|VoidMethodCallMutator|removed call to Intrinsics::checkNotNull#1',
       ],
     ]);
   });

@@ -7,7 +7,9 @@ const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const STATIC_IMPORT = /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"](\.[^'"]+)['"]/g;
 
 function resourceFiles(directory) {
-  return readdirSync(path.join(packageRoot, directory)).map((name) => `${directory}/${name}`);
+  return readdirSync(path.join(packageRoot, directory), { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.relative(packageRoot, path.join(entry.parentPath, entry.name)));
 }
 
 function staticImports(file) {

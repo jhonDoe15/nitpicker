@@ -61,22 +61,27 @@ describe('Java structure findings', () => {
         tool,
       ]),
     ).toEqual([
-      [RULE_IDS.functionLines, 'Big.big has 51 lines; limit is 50', 'enforceable', 'structure'],
+      [
+        RULE_IDS.functionLines,
+        'Big.big has 51 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'enforceable',
+        'structure',
+      ],
       [
         RULE_IDS.functionStatements,
-        'Big.big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does.',
+        'Big.big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does. If this is intended, add {"rule":"function-statements-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         'enforceable',
         'structure',
       ],
       [
         RULE_IDS.functionControlNesting,
-        'Big.big nests control flow 3 deep (limit 2). Return early instead of nesting.',
+        'Big.big nests control flow 3 deep (limit 2). Return early instead of nesting. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         'enforceable',
         'structure',
       ],
       [
         RULE_IDS.functionParameters,
-        'Big.big has 4 parameters; limit is 3',
+        'Big.big has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         'enforceable',
         'structure',
       ],
@@ -86,14 +91,15 @@ describe('Java structure findings', () => {
       rule: 'function-lines-limit',
       path: FILE,
       identity: 'function:Big.big:occurrence:1:source:796ab01f9eb19cf455b6cda2',
-      message: 'Big.big has 51 lines; limit is 50',
+      message:
+        'Big.big has 51 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
       symbol: 'Big.big',
       ratchet: {
         key: 'function:Big.big:occurrence:1:lines',
         value: 51,
         worseMessage:
-          'Big.big grew from {base} to 51 lines (limit 50). Put new code in a new function.',
+          'Big.big grew from {base} to 51 lines (limit 50). Put new code in a new function. If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         heldMessage:
           'Big.big: 51 lines (limit 50), allowed because base was {base}; any increase fails.',
       },
@@ -133,6 +139,63 @@ describe('Java structure findings', () => {
   });
 });
 
+describe('Java structure findings of initializers and lambdas', () => {
+  const SOURCE_WITH_LAMBDAS = [
+    'class Big {',
+    '  {',
+    '    run();',
+    '  }',
+    '',
+    '  {',
+    '    run();',
+    '  }',
+    '',
+    '  void big() {',
+    '    Runnable a = () -> run();',
+    '    Runnable a = () -> run();',
+    '  }',
+    '}',
+    '',
+  ].join('\n');
+  const unit = (name, start, end, extra = {}) =>
+    method({ name, start, end, statements: 16, ...extra });
+
+  beforeEach(() => {
+    projectRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-structure-'));
+    reportRoot = path.join(projectRoot, 'build/nitpicker');
+    mkdirSync(reportRoot, { recursive: true });
+    mkdirSync(path.join(projectRoot, path.dirname(FILE)), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(projectRoot, { recursive: true, force: true });
+  });
+
+  it('numbers repeated initializer blocks and lambdas among those of the same text over the limit', () => {
+    const entries = [
+      unit('Big.<init>', 2, 4, { initializer: true }),
+      unit('Big.<init>', 6, 8, { initializer: true }),
+      unit('Big.big.<lambda>', 11, 11, { lambda: true }),
+      unit('Big.big.<lambda>', 12, 12, { lambda: true }),
+    ];
+
+    expect(
+      readWith(entries, SOURCE_WITH_LAMBDAS).map(({ symbol, identity }) => [symbol, identity]),
+    ).toEqual([
+      ['Big.<init>', 'function:Big.<init>:occurrence:1:source:ea0b918154f689e61ecb72d0'],
+      ['Big.<init>', 'function:Big.<init>:occurrence:2:source:ea0b918154f689e61ecb72d0'],
+      [
+        'Big.big.<lambda>',
+        'function:Big.big.<lambda>:occurrence:1:source:eb80ea9c97a18ee3b80f597f',
+      ],
+      [
+        'Big.big.<lambda>',
+        'function:Big.big.<lambda>:occurrence:2:source:eb80ea9c97a18ee3b80f597f',
+      ],
+    ]);
+  });
+});
+
 describe('Java file limits', () => {
   const manifest = { sourceRoots: ['src/main/java'], testSourceRoots: ['src/test/java'] };
 
@@ -160,14 +223,39 @@ describe('Java file limits', () => {
     rmSync(projectRoot, { recursive: true, force: true });
   });
 
-  it('counts main and test classes per package and leaves line length to Checkstyle', () => {
-    writeClasses('src/main/java/demo', 7, `class A { ${'int a; '.repeat(40)}}\n`);
+  it('counts main and test classes per package', () => {
+    writeClasses('src/main/java/demo', 7);
     writeClasses('src/test/java/demo', 6);
     writeFileSync(path.join(projectRoot, 'src/main/java/demo/notes.txt'), 'not code\n');
 
     expect(summary(readJavaFileLimitFindings(projectRoot, { manifest }))).toEqual([
       [RULE_IDS.folderFiles, 'src/main/java/demo', 'folder-files:source:7', 'structure'],
     ]);
+  });
+
+  it('limits Java lines to 100 characters, except string literals, and honours the exception', () => {
+    writeClasses('src/main/java/demo', 1, `class A { ${'int a; '.repeat(40)}}\n`);
+    writeClasses('src/test/java/demo', 1, `class T { String s = "${'t'.repeat(150)}"; }\n`);
+    const found = (policy) =>
+      readJavaFileLimitFindings(projectRoot, { manifest, policy }).map(
+        ({ rule, path: findingPath }) => [rule, findingPath],
+      );
+
+    expect(found({})).toEqual([[RULE_IDS.lineLength, 'src/main/java/demo/C0.java']]);
+    expect(found({ exceptions: [{ rule: 'line-length-limit', paths: ['src/main/**'] }] })).toEqual(
+      [],
+    );
+  });
+
+  it('limits Java lines to the length the conventions choose', () => {
+    writeClasses('src/main/java/demo', 1, `class A { ${'int a; '.repeat(14)}}\n`);
+    const found = (conventions) =>
+      readJavaFileLimitFindings(projectRoot, { manifest, policy: { conventions } }).map(
+        ({ rule }) => rule,
+      );
+
+    expect(found({})).toEqual([RULE_IDS.lineLength]);
+    expect(found({ 'java.lineLength': '120' })).toEqual([]);
   });
 
   it('applies the configured thresholds, exceptions and exclude globs', () => {
@@ -179,7 +267,7 @@ describe('Java file limits', () => {
       manifest,
       policy: {
         thresholds: { fileLines: 2, folderFiles: 2 },
-        exceptions: [{ rule: 'folder-files-limit', glob: 'src/test/java/**' }],
+        exceptions: [{ rule: 'folder-files-limit', paths: ['src/test/java/**'] }],
         exclude: ['src/main/java/gen/**'],
       },
     });
@@ -220,6 +308,64 @@ describe('Java file limits', () => {
         }),
       ).map(([rule, findingPath, identity]) => [rule, findingPath, identity]),
     ).toEqual([[RULE_IDS.folderFiles, 'src/main/kotlin/demo', 'folder-files:source:5']]);
+  });
+
+  it('fails a package more than 4 levels below the root package', () => {
+    writeClasses('src/main/java/demo', 1);
+    writeClasses('src/main/java/demo/a/b/c/d', 1);
+    writeClasses('src/main/java/demo/a/b/c/d/e', 1);
+    writeClasses('src/test/java/demo/a/b/c/d/e', 1);
+
+    const found = (options) =>
+      summary(readJavaFileLimitFindings(projectRoot, { manifest, ...options })).map(
+        ([rule, findingPath, identity]) => [rule, findingPath, identity],
+      );
+
+    expect(found({})).toEqual([
+      [RULE_IDS.folderDepth, 'src/main/java/demo/a/b/c/d/e', 'folder-depth:source:5'],
+      [RULE_IDS.folderDepth, 'src/test/java/demo/a/b/c/d/e', 'folder-depth:test:5'],
+    ]);
+    expect(found({ policy: { thresholds: { folderDepth: 5 } } })).toEqual([]);
+    expect(
+      found({ policy: { exceptions: [{ rule: 'folder-depth-limit', paths: ['**/e/**'] }] } }),
+    ).toEqual([]);
+  });
+
+  it('takes the root package from the base, so a new top-level package fails no legacy folder', () => {
+    const baseRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-base-'));
+    try {
+      for (const folder of ['demo', 'demo/a/b/c/d']) {
+        mkdirSync(path.join(baseRoot, 'src/main/java', folder), { recursive: true });
+        writeFileSync(path.join(baseRoot, 'src/main/java', folder, 'A.java'), 'class A {}\n');
+      }
+      writeClasses('src/main/java/demo', 1);
+      writeClasses('src/main/java/demo/a/b/c/d', 1);
+      writeClasses('src/main/java/db/migration', 1);
+      const found = (policy) =>
+        readJavaFileLimitFindings(projectRoot, { manifest, policy }).map(
+          ({ rule, path: findingPath }) => [rule, findingPath],
+        );
+
+      expect(found({})).toEqual([[RULE_IDS.folderDepth, 'src/main/java/demo/a/b/c/d']]);
+      expect(found({ baselineRoot: baseRoot })).toEqual([]);
+    } finally {
+      rmSync(baseRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('checks the packages of Kotlin sources the same way', () => {
+    mkdirSync(path.join(projectRoot, 'src/main/kotlin/demo/a/b/c/d/e'), { recursive: true });
+    writeFileSync(path.join(projectRoot, 'src/main/kotlin/demo/Top.kt'), 'class Top\n');
+    writeFileSync(path.join(projectRoot, 'src/main/kotlin/demo/a/b/c/d/e/Deep.kt'), 'class Deep\n');
+
+    expect(
+      summary(
+        readJavaFileLimitFindings(projectRoot, {
+          manifest: { ...manifest, kotlinSourceRoots: ['src/main/kotlin'] },
+          kotlin: true,
+        }),
+      ).map(([rule, findingPath]) => [rule, findingPath]),
+    ).toEqual([[RULE_IDS.folderDepth, 'src/main/kotlin/demo/a/b/c/d/e']]);
   });
 
   it('skips generated roots under build/ and roots outside the project', () => {

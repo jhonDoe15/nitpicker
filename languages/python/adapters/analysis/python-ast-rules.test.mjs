@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createFakeProjects } from '../test-support/fake-project.mjs';
+import { DEFAULT_NORECURSEDIRS } from '../configuration/pytest/pytest-config.mjs';
 import { checkRules, pythonSources } from './python-ast-rules.mjs';
 
 const fakes = createFakeProjects();
@@ -58,7 +59,26 @@ describe('running the rules script', () => {
       expect.stringMatching(/rules\/nitpicker_rules\.py$/),
       path.join(reportRoot, 'python-files.txt'),
       path.join(reportRoot, 'rules.json'),
+      path.join(reportRoot, 'rule-options.json'),
     ]);
+    expect(JSON.parse(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8'))).toEqual({
+      sourceRoots: context.project.sourceRoots,
+      testRunner: context.project.testRunner,
+      pythonFiles: ['test_*.py', '*_test.py'],
+      pythonClasses: ['Test'],
+      pythonFunctions: ['test'],
+      norecursedirs: DEFAULT_NORECURSEDIRS,
+      testpaths: [],
+      deselected: [],
+      ignored: [],
+      ignoredGlobs: [],
+      keywords: [],
+      marks: [],
+      testFiles: [],
+      entryFiles: [],
+      entryModules: [],
+      boundaryRoots: ['pydantic', 'pydantic_settings'],
+    });
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');
     expect(readFileSync(path.join(reportRoot, 'rules.json'), 'utf8')).toBe('[{"rule":"x"}]');
   });
@@ -75,5 +95,27 @@ describe('running the rules script', () => {
         message: expect.stringContaining('no interpreter'),
       }),
     );
+  });
+
+  it('tells it which imports are the validation boundary, from the declared libraries', () => {
+    const root = fakes.project({ 'requirements.txt': 'marshmallow\nmsgspec\n' });
+    const { context, reportRoot } = fakes.contextFor(root);
+
+    checkRules(context);
+
+    expect(
+      JSON.parse(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8')).boundaryRoots,
+    ).toEqual(['msgspec', 'marshmallow', 'marshmallow_dataclass']);
+  });
+
+  it('defaults the boundary to pydantic when no library is declared', () => {
+    const root = fakes.project();
+    const { context, reportRoot } = fakes.contextFor(root);
+
+    checkRules(context);
+
+    expect(
+      JSON.parse(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8')).boundaryRoots,
+    ).toEqual(['pydantic', 'pydantic_settings']);
   });
 });

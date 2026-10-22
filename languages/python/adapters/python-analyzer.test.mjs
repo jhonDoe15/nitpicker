@@ -1,8 +1,10 @@
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
+import { PYTEST_PROBE } from './execution/python-test-runner.mjs';
+import { MUTMUT_VERSION_PROBE } from './mutation/python-mutation.mjs';
 import { installFakeToolchain } from './test-support/fake-toolchain.mjs';
 import {
   configurationFiles,
@@ -22,6 +24,7 @@ function temporaryRoot() {
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
@@ -39,6 +42,7 @@ describe('Python analyzer', () => {
       'coverage',
       'mypy',
       'pyright',
+      'basedpyright',
       'structure',
       'crap',
       'python-rules',
@@ -46,6 +50,9 @@ describe('Python analyzer', () => {
       'duplicates',
       'coupling',
       'import-linter',
+      'tests',
+      'test-runtime',
+      'dependencies',
     ]);
     expect(analyzer.exclusions).toEqual([]);
     expect(analyzer.timeoutMs).toBe(30 * 60 * 1000);
@@ -59,21 +66,22 @@ describe('Python analyzer', () => {
     expect(analyzer.name).toBe(MUTATION_ANALYZER_NAME);
     expect(analyzer.reportedTools).toEqual(['mutmut']);
     expect(analyzer.dependencies).toEqual([PYTHON_ANALYZER_NAME]);
+    expect(analyzer.toleratedDependencyErrors).toEqual(['tests', 'test-runtime', 'dependencies']);
     expect(analyzer.timeoutMs).toBe(70 * 60 * 1000);
     expect(analyzer.version).toBe('unresolved');
   });
 
-  it('hashes the ruff config, the adapters, the lizard pin and every file the runner imports, not the tests', () => {
+  it('hashes the ruff config, the adapters and every file the runner imports, not the tests', () => {
     const files = configurationFiles();
 
     const required = [
       'languages/python/ruff/nitpicker-ruff.toml',
       'languages/python/adapters/execution/python-test-runner.mjs',
       'languages/python/ingest/coverage-reports/coverage-json.mjs',
-      'languages/java/ingest/sarif.mjs',
+      'shared/ingest/sarif.mjs',
       'shared/policy.mjs',
       'shared/rules/baseline-expansion.mjs',
-      'languages/java/gradle/nitpicker.init.gradle',
+      'languages/python/metrics/structure_metrics.py',
     ];
     expect(required.filter((file) => !files.includes(file))).toEqual([]);
     expect(
@@ -140,10 +148,7 @@ describe('Python analyzer', () => {
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
     expect(createPythonAnalyzer({}).configurationHash).toBe(hash);
     expect(createPythonAnalyzer({ formatter: 'black' }).configurationHash).not.toBe(hash);
-    expect(
-      createPythonAnalyzer({ exceptions: [{ rule: 'T201', paths: ['cli/**'], reason: 'CLI' }] })
-        .configurationHash,
-    ).not.toBe(hash);
+    expect(createPythonAnalyzer({ typeChecker: 'pyright' }).configurationHash).not.toBe(hash);
     expect(createPythonAnalyzer({ formatter: 'ruff' }).configurationHash).not.toBe(
       createPythonAnalyzer({ formatter: 'black' }).configurationHash,
     );
@@ -165,7 +170,80 @@ describe('Python analyzer', () => {
     expect(
       createPythonAnalyzer({ typeChecker: 'pyright', testRunner: 'pytest' }).resolveVersion(live),
     ).toBe(`ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1;${jscpd}`);
-    expect(createMutationAnalyzer().resolveVersion(live)).toBe('mutmut@3.8.0;pytest@8.3.1');
+    expect(createMutationAnalyzer().resolveVersion(live)).toBe(
+      'mutmut@3.8.0;pytest@8.3.1;pytest-django@missing',
+    );
+  });
+
+  describe('probing the tools', () => {
+    function useCallsLog() {
+      const log = path.join(temporaryRoot(), 'calls.jsonl');
+      writeFileSync(log, '');
+      vi.stubEnv('FAKE_PYTHON_LOG', log);
+      return () =>
+        readFileSync(log, 'utf8')
+          .split('\n')
+          .filter(Boolean)
+          .map((line) => JSON.parse(line))
+          .map(({ tool, args, cwd }) => ({ tool, args, cwd }));
+    }
+
+    const probeOf = (command, cwd) => ({ tool: command[0], args: command.slice(1), cwd });
+    const versionOf = (tool, cwd) => probeOf([tool, '--version'], cwd);
+
+    it('probes each tool once when base and head resolve the versions, and again for another checkout', () => {
+      const live = temporaryRoot();
+      const other = temporaryRoot();
+      installFakeToolchain(path.join(live, '.venv/bin'));
+      installFakeToolchain(path.join(other, '.venv/bin'));
+      const calls = useCallsLog();
+      const [python, mutation] = createPythonAnalyzers({ testRunner: 'pytest' });
+      const pythonProbes = (cwd) => [
+        versionOf('ruff', cwd),
+        versionOf('mypy', cwd),
+        versionOf('coverage', cwd),
+        probeOf(PYTEST_PROBE, cwd),
+      ];
+
+      for (const checkout of [live, live]) {
+        python.resolveVersion(checkout);
+        mutation.resolveVersion(checkout);
+      }
+      const resolvedOnce = calls();
+      python.resolveVersion(other);
+
+      expect(resolvedOnce).toEqual([...pythonProbes(live), probeOf(MUTMUT_VERSION_PROBE, live)]);
+      expect(calls()).toEqual([...resolvedOnce, ...pythonProbes(other)]);
+    });
+
+    it('probes again for an analyzer created on its own, even for the same checkout', () => {
+      const live = temporaryRoot();
+      installFakeToolchain(path.join(live, '.venv/bin'));
+      const calls = useCallsLog();
+
+      createPythonAnalyzer({ testRunner: 'pytest' }).resolveVersion(live);
+      const once = calls();
+      createPythonAnalyzer({ testRunner: 'pytest' }).resolveVersion(live);
+
+      expect(calls()).toEqual([...once, ...once]);
+    });
+
+    it('probes a tool again once it is installed in the environment', () => {
+      const live = temporaryRoot();
+      installFakeToolchain(path.join(live, '.venv/bin'), ['ruff', 'coverage', 'python']);
+      vi.stubEnv('PATH', temporaryRoot());
+      const python = createPythonAnalyzer({ typeChecker: 'mypy' });
+      const jscpd = `jscpd@${jscpdVersion()}`;
+
+      const before = python.resolveVersion(live);
+      installFakeToolchain(path.join(live, '.venv/bin'), ['mypy']);
+      const after = python.resolveVersion(live);
+
+      expect([before, after]).toEqual([
+        `ruff@0.9.9;mypy@missing;coverage@7.6.1;unittest;${jscpd}`,
+        `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;${jscpd}`,
+      ]);
+    });
   });
 
   it('reports a missing environment when resolving the version', () => {

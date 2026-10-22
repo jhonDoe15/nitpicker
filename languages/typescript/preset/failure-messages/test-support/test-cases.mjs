@@ -57,7 +57,7 @@ export const testFailureMessageCases = [
   testCase({
     name: 'computed test timeout names a number written in the file',
     banned: "it('x', () => {}, Number(process.env.T));",
-    allowed: 'number of at most 10000 ms',
+    allowed: 'number between 1 and 10000 ms written in this file',
   }),
   testCase({
     name: 'first-test-charged setup names beforeAll and the exception path',
@@ -66,10 +66,10 @@ export const testFailureMessageCases = [
     allowed: 'Compute it once in beforeAll',
   }),
   testCase({
-    name: 'first-test-charged setup names nitpicker.config.json',
+    name: 'first-test-charged setup names when an exception fits',
     banned:
       "let cache;\nfunction load() { if (!cache) cache = readAll(); return cache; }\nit('x', () => { load(); });",
-    allowed: 'exception for this rule in nitpicker.config.json',
+    allowed: 'An exception fits only when the setup is cheap',
   }),
   {
     name: 'uninjectable delay names the option with the constant as its default',
@@ -80,12 +80,12 @@ export const testFailureMessageCases = [
     allowed: 'Accept the delay as an option with KILL_DELAY_MS as its default',
   },
   {
-    name: 'uninjectable delay names nitpicker.config.json',
+    name: 'uninjectable delay names when an exception fits',
     config: productionRulesConfig,
     filename: 'src/service.ts',
     banned:
       'const KILL_DELAY_MS = 1_000;\nexport function stop() { setTimeout(kill, KILL_DELAY_MS); }',
-    allowed: 'exception for this rule in nitpicker.config.json',
+    allowed: 'An exception fits only when the delay is deliberately fixed',
   },
   {
     name: 'z.unknown() object field names validating the field in the schema',
@@ -109,11 +109,11 @@ export const testFailureMessageCases = [
     allowed: 'toEqual',
   },
   {
-    name: 'partial output assertion names nitpicker.config.json',
+    name: 'partial output assertion names when an exception fits',
     config: partialAssertionConfig,
     filename: testFile,
     banned: "it('x', () => { expect(render()).toContain('total: 3'); });",
-    allowed: 'exception for this rule in nitpicker.config.json',
+    allowed: 'An exception fits only when the output is too large',
   },
   {
     name: 'partial matcher names toEqual with the whole value',
@@ -130,11 +130,11 @@ export const testFailureMessageCases = [
     allowed: 'expect.any(Type)',
   },
   {
-    name: 'partial matcher names nitpicker.config.json',
+    name: 'partial matcher names when an exception fits',
     config: partialAssertionConfig,
     filename: testFile,
     banned: "it('x', () => { expect(send()).toEqual(expect.objectContaining({ a: 1 })); });",
-    allowed: 'exception for this rule in nitpicker.config.json',
+    allowed: 'An exception fits only when the value is too large',
   },
   testCase({
     name: 'loop in a test names it.each',

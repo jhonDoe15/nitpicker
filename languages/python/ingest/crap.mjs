@@ -1,9 +1,28 @@
-import { ingestCrapRows, parseLizardCsv } from '../../java/ingest/crap.mjs';
-import { normalizeReportPath } from '../../java/ingest/common.mjs';
+import { ingestCrapRows } from '../../../shared/ingest/lizard-crap.mjs';
+import { normalizeReportPath } from '../../../shared/ingest/common.mjs';
 
-export function ingestPythonCrap(lizardCsv, coverageJson, options = {}) {
+const FULLY_COVERED = 100;
+
+function scoredFunctions(entries) {
+  return entries
+    .filter(
+      (entry) => (entry.lambda === true || entry.bodyStart > entry.definition) && !entry.overload,
+    )
+    .map((entry) => ({
+      ccn: entry.complexity,
+      file: entry.file,
+      name: entry.name,
+      start: entry.definition,
+      end: entry.end,
+      lambda: entry.lambda === true,
+      statementLine: entry.statementLine,
+      numberedAmongSameSource: true,
+    }));
+}
+
+export function ingestPythonCrap(functions, coverageJson, options = {}) {
   const files = coverageFiles(coverageJson, options.roots ?? [undefined]);
-  const parsed = parseLizardCsv(lizardCsv);
+  const parsed = scoredFunctions(functions);
   const rows = parsed.map((row) => ({
     ...row,
     path: normalizeReportPath(row.file, options.root),
@@ -13,18 +32,25 @@ export function ingestPythonCrap(lizardCsv, coverageJson, options = {}) {
     if (data === undefined) {
       return { name: fn.name };
     }
+    if (fn.lambda) {
+      return { coverage: statementCoverage(data.lines, fn.statementLine), name: fn.name };
+    }
     const found = matchFunction(data.functions, fn);
     if (found !== undefined) {
-      return { coverage: found.percent, name: found.name };
+      return { coverage: found.percent, name: fn.name };
     }
     const nested = rows.filter(
       (row) => row.path === filePath && row.start > fn.start && row.end <= fn.end,
     );
     return {
       coverage: coverageFromLines(data.lines, fn, nested),
-      name: nearestName(data.functions, fn) ?? fn.name,
+      name: fn.name,
     };
   });
+}
+
+function statementCoverage(lines, statementLine) {
+  return lines.missing.includes(statementLine) ? 0 : FULLY_COVERED;
 }
 
 function coverageFiles(text, roots) {
@@ -94,7 +120,7 @@ function coverageFromLines(lines, fn, nested) {
   const executedBranches = countOwn(lines.executedBranches.map(branchSource), fn, nested);
   const missedBranches = countOwn(lines.missingBranches.map(branchSource), fn, nested);
   return covered + missed === 0
-    ? undefined
+    ? FULLY_COVERED
     : coveragePercent({
         covered_lines: covered,
         num_statements: covered + missed,
@@ -114,23 +140,12 @@ function coveragePercent(summary) {
 }
 
 function namedLike(candidates, fn) {
-  return candidates.filter(({ name }) => name === fn.name || name.endsWith(`.${fn.name}`));
-}
-
-function distanceFrom(fn, { first }) {
-  return Math.abs((first ?? fn.start) - fn.start);
-}
-
-function nearestName(candidates, fn) {
-  return namedLike(candidates, fn).sort(
-    (left, right) => distanceFrom(fn, left) - distanceFrom(fn, right),
-  )[0]?.name;
+  return candidates.filter(({ name }) => name === fn.name);
 }
 
 function matchFunction(candidates, fn) {
   const named = namedLike(candidates, fn);
-  const inside = named
+  return named
     .filter(({ first, last }) => first !== undefined && fn.start <= first && last <= fn.end)
-    .sort((left, right) => left.first - right.first);
-  return inside[0] ?? named.find(({ first }) => first === undefined);
+    .sort((left, right) => left.first - right.first)[0];
 }
