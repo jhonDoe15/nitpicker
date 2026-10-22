@@ -134,6 +134,18 @@ describe('mutmut run data ingester', () => {
     expect(ingest([file]).map(({ identity }) => identity)).toEqual(['f|+→-#1']);
   });
 
+  it('numbers same-named functions in different modules independently', () => {
+    const mutants = ['def f(a, b):\n    return a - b\n'];
+    const billing = { ...fileOf({ mutants, codes: [0] }), path: 'src/billing.py' };
+    const identities = (ordersCode) =>
+      ingest([{ ...fileOf({ mutants, codes: [ordersCode] }), path: 'src/orders.py' }, billing])
+        .filter(({ path: filePath }) => filePath === 'src/billing.py')
+        .map(({ identity }) => identity);
+
+    expect(identities(0)).toEqual(['f|+→-#1']);
+    expect(identities(1)).toEqual(identities(0));
+  });
+
   it.each([
     [0, 'Survived'],
     [1, 'Killed'],

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { kotlinConfig, useGradleFixtures } from './test-support/java-cli-harness.mjs';
@@ -49,7 +50,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         rule: 'detekt.style.MagicNumber',
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'fp:nitpicker/subject=Added magic number',
-        message: 'Added magic number',
+        message: `Added magic number. ${exceptionHint('detekt.style.MagicNumber', 'src/main/kotlin/demo/K.kt')}`,
         classification: 'enforceable',
         location: { line: 4 },
       },
@@ -153,11 +154,11 @@ describe('nitpicker with "preset": "kotlin"', () => {
         tool: 'pit',
         rule: 'mutant-survived',
         path: 'src/main/kotlin/demo/K.kt',
-        identity: 'demo.KKt|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
+        identity: 'KKt|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
         message:
           'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for pit/mutant-survived in nitpicker.config.json.',
         classification: 'descriptive',
-        symbol: 'demo.KKt#fee(I)I',
+        symbol: 'KKt#fee(I)I',
         location: { line: 3 },
       },
     ]);
@@ -175,11 +176,11 @@ describe('nitpicker with "preset": "kotlin"', () => {
         tool: 'pit',
         rule: 'mutant-survived',
         path: 'src/main/java/demo/A.java',
-        identity: 'demo.A|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
+        identity: 'A|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
         message:
           'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for pit/mutant-survived in nitpicker.config.json.',
         classification: 'enforceable',
-        symbol: 'demo.A#fee(I)I',
+        symbol: 'A#fee(I)I',
         location: { line: 3 },
       },
     ]);
