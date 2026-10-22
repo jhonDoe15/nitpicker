@@ -46,10 +46,13 @@ function isAdjacent(tokens, index, text) {
 
 function openerOf(tokens, close) {
   let depth = 0;
-  for (let index = close; index >= 0; index -= 1) {
-    depth += Number(isCloseBracket(tokens[index])) - Number(isOpenBracket(tokens[index]));
+  for (const [offset, token] of tokens
+    .slice(0, close + 1)
+    .reverse()
+    .entries()) {
+    depth += Number(isCloseBracket(token)) - Number(isOpenBracket(token));
     if (depth === 0) {
-      return index;
+      return close - offset;
     }
   }
   return -1;
