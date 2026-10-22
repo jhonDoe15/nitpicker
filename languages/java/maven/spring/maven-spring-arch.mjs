@@ -9,7 +9,7 @@ import { cacheDirectory } from '../maven-tools.mjs';
 const RULES_DIRECTORY = path.join(GRADLE_DIRECTORY, 'archunit');
 const TOOL = 'Spring architecture rules';
 const PROPERTY_SEPARATOR = ' = ';
-const ROLES_PROPERTY = 'nitpicker.springRoles';
+const ROLES_PROPERTY = 'nitpicker.spring.roles';
 
 function jdkIdentity(spawn) {
   const result = spawn(javaCommand('java'), ['-XshowSettings:properties', '-version'], {

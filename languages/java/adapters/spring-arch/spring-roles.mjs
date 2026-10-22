@@ -14,7 +14,9 @@ export function validateSpringOptions(config) {
     return;
   }
   if (!GRADLE_PRESETS.includes(config.preset)) {
-    throw configError(`"spring" is only supported with "preset": ${GRADLE_PRESETS.join(' or ')}`);
+    throw configError(
+      `"spring" is only supported with ${GRADLE_PRESETS.map((preset) => `"preset": "${preset}"`).join(' or ')}`,
+    );
   }
   if (!isPlainObject(spring)) {
     throw configError('"spring" must be an object');
@@ -40,7 +42,7 @@ function validateRoles(roles) {
     }
     if (!Array.isArray(names) || !names.every((name) => BINARY_NAME.test(name))) {
       throw configError(
-        `"spring.roles.${role}" must be an array of fully qualified annotation or type names, such as "com.example.UseCase"`,
+        `"spring.roles.${role}" must be an array of binary annotation or type names, such as "com.example.UseCase" or "com.example.Roles$UseCase" for a nested type`,
       );
     }
   }

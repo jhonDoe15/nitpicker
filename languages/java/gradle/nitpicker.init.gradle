@@ -510,7 +510,7 @@ allprojects {
                 }
                 def output = reportDir.get().file('spring-arch.json').asFile
                 output.delete()
-                def roles = springRoles == null ? [] : ["-Dnitpicker.springRoles=${springRoles}".toString()]
+                def roles = springRoles == null ? [] : ["-Dnitpicker.spring.roles=${springRoles}".toString()]
                 run([bin('java'), argumentFile('run.args', [classes] + libraries + projectPath)] + roles + ['ArchRules',
                      output.absolutePath, mainClasses*.absolutePath.join(File.pathSeparator),
                      unitTestClasses*.absolutePath.join(File.pathSeparator),

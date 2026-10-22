@@ -6,10 +6,11 @@ import java.util.Optional;
 import java.util.Set;
 
 final class BeanScope {
-  enum Lifetime { CONTAINER, SHORT, SHORT_PROXIED, UNKNOWN }
+  enum Lifetime { CONTAINER, PROTOTYPE, SHORT, SHORT_PROXIED, UNKNOWN }
 
   static final BeanScope SINGLETON = new BeanScope("singleton", Lifetime.CONTAINER);
   private static final String SCOPE = "org.springframework.context.annotation.Scope";
+  private static final String PROXY_MODE = "org.springframework.context.annotation.ScopedProxyMode";
   private static final Set<String> CONTAINER_SCOPES = Set.of("", "singleton", "application");
   private static final Set<String> SHORT_SCOPES = Set.of("request", "session", "websocket", "step", "job");
   private static final Set<String> PROXIES = Set.of("TARGET_CLASS", "INTERFACES");
@@ -28,7 +29,7 @@ final class BeanScope {
   }
 
   boolean isSingleton() {
-    return lifetime == Lifetime.CONTAINER && !name.equals("prototype");
+    return lifetime == Lifetime.CONTAINER;
   }
 
   private static Optional<BeanScope> find(
@@ -36,15 +37,16 @@ final class BeanScope {
     for (JavaAnnotation<?> annotation : annotations) {
       JavaClass type = annotation.getRawType();
       if (type.getName().equals(SCOPE)) {
-        return Optional.of(resolve(scopeName(annotation), proxyMode(annotation, defaultProxy)));
+        return Optional.of(resolve(scopeName(annotation), proxyMode(annotation.get("proxyMode"), defaultProxy)));
       }
       if (!visited.add(type.getName())) {
         continue;
       }
       Optional<BeanScope> meta = find(type.getAnnotations(), defaultProxy, visited);
       if (meta.isPresent()) {
-        return annotation.get("proxyMode").isPresent()
-            ? Optional.of(resolve(meta.get().name, proxyMode(annotation, defaultProxy)))
+        Optional<Object> composedProxy = proxyAttribute(annotation);
+        return composedProxy.isPresent()
+            ? Optional.of(resolve(meta.get().name, proxyMode(composedProxy, defaultProxy)))
             : meta;
       }
     }
@@ -63,14 +65,24 @@ final class BeanScope {
         .orElse(UNRESOLVED_PROXY);
   }
 
-  private static String proxyMode(JavaAnnotation<?> annotation, String defaultProxy) {
-    String mode = enumName(annotation.get("proxyMode"));
+  private static Optional<Object> proxyAttribute(JavaAnnotation<?> annotation) {
+    return annotation.getProperties().values().stream()
+        .filter(JavaEnumConstant.class::isInstance)
+        .filter(value -> ((JavaEnumConstant) value).getDeclaringClass().getName().equals(PROXY_MODE))
+        .findFirst();
+  }
+
+  private static String proxyMode(Optional<Object> value, String defaultProxy) {
+    String mode = enumName(value);
     return mode.equals(UNRESOLVED_PROXY) ? defaultProxy : mode;
   }
 
   private static BeanScope resolve(String name, String proxyMode) {
-    if (CONTAINER_SCOPES.contains(name) || name.equals("prototype")) {
+    if (CONTAINER_SCOPES.contains(name)) {
       return new BeanScope(name.isEmpty() ? "singleton" : name, Lifetime.CONTAINER);
+    }
+    if (name.equals("prototype")) {
+      return new BeanScope(name, Lifetime.PROTOTYPE);
     }
     if (!SHORT_SCOPES.contains(name) || proxyMode.equals(UNRESOLVED_PROXY)) {
       return new BeanScope(name, Lifetime.UNKNOWN);

@@ -4,7 +4,10 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaCodeUnit;
 import com.tngtech.archunit.core.domain.JavaField;
 import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.domain.JavaModifier;
+import com.tngtech.archunit.core.domain.JavaParameterizedType;
 import com.tngtech.archunit.core.domain.JavaType;
+import com.tngtech.archunit.core.domain.JavaWildcardType;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -15,8 +18,7 @@ final class Layers {
   static final String SERVICE_WEB = "spring-service-web";
   static final String CONTROLLER_CONTROLLER = "spring-controller-controller";
   static final String REPOSITORY_SERVICE = "spring-repository-service";
-  static final Set<String> DEPENDENCY_RULES =
-      Set.of(CONTROLLER_REPOSITORY, CONTROLLER_CONTROLLER, REPOSITORY_SERVICE, SERVICE_WEB);
+  private static final String CLASS_LITERAL = "java.lang.Class";
   private static final List<String> HANDLER_ANNOTATIONS =
       List.of(
           "org.springframework.web.bind.annotation.RequestMapping",
@@ -59,14 +61,34 @@ final class Layers {
   private static Set<JavaClass> heldTypes(JavaClass type) {
     Set<JavaClass> types = new LinkedHashSet<>();
     for (JavaField field : type.getFields()) {
-      types.addAll(field.getType().getAllInvolvedRawTypes());
-    }
-    for (JavaCodeUnit codeUnit : type.getCodeUnits()) {
-      for (JavaType parameter : codeUnit.getParameterTypes()) {
-        types.addAll(parameter.getAllInvolvedRawTypes());
+      if (!field.getModifiers().contains(JavaModifier.SYNTHETIC)) {
+        collectTypes(field.getType(), types);
       }
     }
+    for (JavaCodeUnit codeUnit : type.getCodeUnits()) {
+      if (!codeUnit.getModifiers().contains(JavaModifier.SYNTHETIC)) {
+        codeUnit.getParameterTypes().forEach(parameter -> collectTypes(parameter, types));
+      }
+    }
+    type.getConstructorCallsFromSelf().forEach(call -> types.add(call.getTargetOwner()));
     return types;
+  }
+
+  private static void collectTypes(JavaType type, Set<JavaClass> types) {
+    if (type instanceof JavaParameterizedType) {
+      JavaClass raw = type.toErasure();
+      types.add(raw);
+      if (!raw.getName().equals(CLASS_LITERAL)) {
+        ((JavaParameterizedType) type).getActualTypeArguments().forEach(argument -> collectTypes(argument, types));
+      }
+    } else if (type instanceof JavaWildcardType) {
+      ((JavaWildcardType) type).getUpperBounds().forEach(bound -> collectTypes(bound, types));
+      ((JavaWildcardType) type).getLowerBounds().forEach(bound -> collectTypes(bound, types));
+    } else if (type instanceof JavaClass) {
+      types.add(((JavaClass) type).getBaseComponentType());
+    } else {
+      types.add(type.toErasure().getBaseComponentType());
+    }
   }
 
   private static void repositoryDependsOnService(JavaClass type, Roles roles, Set<Found> sink) {
