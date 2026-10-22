@@ -411,6 +411,24 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   that does not start from `createQueryBuilder` in the same chain are not. Prisma has no lazy
   loading, and Sequelize association getters (`order.getCustomer()`) are explicit calls that
   `nitpicker/no-io-in-loop` reports.
+- `nitpicker/no-remote-call-in-transaction` (all production code): a remote call (HTTP, gRPC, a
+  cloud SDK call that is not a store or a broker), direct or through project helpers (the message
+  names the path), inside an open transaction is reported when the transaction also runs a query,
+  which proves it holds a connection: the callback of Prisma's interactive `$transaction`, and of
+  `transaction(...)`/`transactional(...)` on knex, TypeORM, Sequelize, Drizzle or MikroORM (a call
+  on the callback's parameter counts as a query), or the calls between `startTransaction()`,
+  `beginTransaction()` or an awaited `transaction()` without a callback and the next `commit`,
+  `commitTransaction`, `rollback` or `rollbackTransaction`. The connection stays held for the
+  remote latency, so the pool runs dry under load. Make the remote call before the transaction
+  starts or after it commits; when its side effect must match the transaction's outcome, write an
+  outbox row inside the transaction and send it from a worker. Broker publishes are
+  `nitpicker/no-dual-write`'s.
+- `nitpicker/no-remote-call-under-lock` (all production code): a remote call, direct or through
+  helpers, while a lock is held: the callback of async-mutex `runExclusive`, async-lock
+  `acquire(key, fn)`, `navigator.locks.request` and redlock `using`, or the calls between
+  `await mutex.acquire()` (a receiver named like a lock, mutex or semaphore) and the next
+  `release()`/`unlock()`. Every waiter queues behind the remote latency. Make the remote call
+  before taking the lock or after releasing it and keep only the shared-state change under it.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
