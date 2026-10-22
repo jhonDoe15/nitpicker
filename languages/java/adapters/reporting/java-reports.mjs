@@ -4,7 +4,6 @@ import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
 import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
 import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
-import { readKotlinMetrics } from '../kotlin/kotlin-metrics.mjs';
 import {
   isEmptyModule,
   readMainCheckstyle,
@@ -16,10 +15,15 @@ import { readInlineSuppressionFindings } from '../suppressions/java-suppressions
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readSpringArchFindings } from '../spring-arch/spring-arch.mjs';
 import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
-import { methodText, readStructureFunctions } from '../../../../shared/ingest/structure-report.mjs';
+import { methodText } from '../../../../shared/ingest/structure-report.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
-import { enclosingFunctionName, hash } from '../../../../shared/rules/finding-helpers.mjs';
-import { javaDeclarationUnits } from '../../ingest/declarations/java-declaration-units.mjs';
+import { hash } from '../../../../shared/rules/finding-helpers.mjs';
+import {
+  declarationUnits,
+  functionLocator,
+  sourceTextReader,
+  structureFunctions,
+} from './function-locator.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
@@ -259,34 +263,6 @@ function pitFindings(context) {
     functionAt: functionLocator(context),
   });
   return context.kotlin ? reportOnlyKotlinMutants(findings) : findings;
-}
-
-function structureFunctions({ reportRoot, kotlin }) {
-  return [
-    ...readStructureFunctions(reportRoot),
-    ...(kotlin ? readKotlinMetrics(reportRoot).functions : []),
-  ];
-}
-
-function declarationUnits(file, text) {
-  return file.endsWith('.java') ? javaDeclarationUnits(file, text) : [];
-}
-
-function sourceTextReader(projectRoot) {
-  return (file) => {
-    const absolute = path.join(projectRoot, file);
-    return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
-  };
-}
-
-function functionLocator(context) {
-  const functions = structureFunctions(context);
-  const sourceText = sourceTextReader(context.projectRoot);
-  return (file, line) => {
-    const text = sourceText(file);
-    const units = text === undefined ? [] : declarationUnits(file, text);
-    return enclosingFunctionName([...functions, ...units], file, line);
-  };
 }
 
 function branchFindings(context, jacoco) {

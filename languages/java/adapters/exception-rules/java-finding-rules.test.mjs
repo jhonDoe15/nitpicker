@@ -42,11 +42,11 @@ describe('validateJavaFindingRule', () => {
     }).toThrow(
       '"exceptions[0].rule" is a pmd finding, which is reported in .java files only: its paths name Kotlin sources',
     );
-    expect(() =>
+    expect(() => {
       validateJavaFindingRule(
         entry('pmd/UnusedPrivateField', ['src/main/kotlin/A.kt', 'src/main/java/A.java']),
         label,
-      ),
-    ).not.toThrow();
+      );
+    }).not.toThrow();
   });
 });
