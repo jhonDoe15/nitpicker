@@ -24,12 +24,13 @@ function namesByTarget(importer, statement, known) {
 }
 
 function statementEdges(importer, statement, { known, fileOf }) {
+  const typeOnly = statement.typeOnly === true;
   return [...namesByTarget(importer, statement, known)].map(([target, names]) => ({
     from: importer.file,
     to: fileOf.get(target),
     names,
-    reexport: importer.isPackage && names.some(({ name }) => isPublicName(name)),
-    typeOnly: statement.typeOnly === true,
+    reexport: importer.isPackage && !typeOnly && names.some(({ name }) => isPublicName(name)),
+    typeOnly,
   }));
 }
 

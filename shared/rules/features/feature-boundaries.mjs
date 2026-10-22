@@ -52,7 +52,7 @@ function isOutside(source, target) {
   );
 }
 
-export function featureInternalImports({ imports }, roleOf) {
+function featureInternalImports({ imports }, roleOf) {
   const seen = new Set();
   return productionImports(imports).flatMap(({ from, to }) => {
     const target = roleOf(to);
@@ -89,7 +89,7 @@ export function featureInternalImportFindings(facts, context) {
   );
 }
 
-export function sharedFeatureImports({ imports }, roleOf) {
+function sharedFeatureImports({ imports }, roleOf) {
   return groupedByImporter(
     productionImports(imports)
       .map(({ from, to }) => ({

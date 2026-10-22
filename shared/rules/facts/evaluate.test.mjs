@@ -170,7 +170,11 @@ describe('the shared fact rules', () => {
     expect(sharedFactExceptionRules()).toEqual([...lifted, CONSOLE]);
     withLanguageRegistered('doc-comment-content', 'python', () => {
       expect(sharedFactExceptionRules()).toEqual([...lifted, 'doc-comment-content', CONSOLE]);
-      expect(registeredFactRules('python')).toContain('doc-comment-content');
+      expect(registeredFactRules('python')).toEqual([
+        'shared-used-by-one-feature',
+        ...FEATURE_RULES,
+        'doc-comment-content',
+      ]);
     });
   });
 });
