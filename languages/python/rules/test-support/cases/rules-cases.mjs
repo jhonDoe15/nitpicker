@@ -22,6 +22,7 @@ export const RULES_CASES = [
   ...rulesCases('pydantic-extra', [['pydantic-extra-allow', 'extra="forbid"']]),
   ...rulesCases('repeated-string', [['repeated-string-literal', 'constant']]),
   ...rulesCases('generic-name', [['generic-name', 'name it for its job']]),
+  ...rulesCases('boolean-flag', [['boolean-flag-parameter', 'keyword-only']]),
   ...rulesCases('hardcoded-secret', [['hardcoded-secret', 'environment']]),
   ...rulesCases('credential-shape', [['credential-shape', 'environment']]),
   ...rulesCases('secret-in-log', [['secret-in-log', 'masked tail']]),

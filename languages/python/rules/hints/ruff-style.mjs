@@ -130,12 +130,6 @@ export const STYLE_HINTS = [
   },
   {
     tool: 'ruff',
-    rules: ['FBT001', 'FBT002'],
-    allowed:
-      'Make the flag keyword-only, `def send(message, *, urgent=False)`, or split the function into two named for each behavior. click, typer and FastAPI pass options by keyword, so `def command(*, verbose: bool)` works there.',
-  },
-  {
-    tool: 'ruff',
     rules: ['TRY002'],
     allowed:
       'Raise a specific exception: a built-in such as `ValueError`, or a subclass named for the failure (`class OrderNotFoundError(Exception)`).',

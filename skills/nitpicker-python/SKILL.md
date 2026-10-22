@@ -37,6 +37,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
+- Parameters: remove an unused one (`@override` marks an override; `_context` only when a callback
+  signature fixes it). A `bool` that picks a behavior is keyword-only
+  (`def send(message, *, urgent=False)`), two functions or an enum.
 - Errors: catch the specific exception and handle it, or re-raise it with its cause:
   `raise ParseError(text) from err`. No bare `except:` or `except Exception:`, and no `raise Exception(...)`.
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
