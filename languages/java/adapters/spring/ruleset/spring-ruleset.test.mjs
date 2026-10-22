@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { configurationFiles } from '../../java-analyzer.mjs';
+import { ALLOWED_FORM_FIRST } from '../test-support/allowed-form.mjs';
 
 const root = path.resolve(import.meta.dirname, '../../../../..');
 const ruleset = readFileSync(path.join(root, 'languages/java/gradle/spring-ruleset.xml'), 'utf8');
@@ -43,6 +44,12 @@ describe('spring-ruleset.xml', () => {
       .map(({ name }) => name);
 
     expect(wrong).toEqual([]);
+  });
+
+  it('leads every message with the allowed form, never with a prohibition or the problem', () => {
+    expect(
+      rules.filter(({ message }) => !ALLOWED_FORM_FIRST.test(message)).map(({ name }) => name),
+    ).toEqual([]);
   });
 
   it('keeps braces out of messages, which PMD formats as patterns', () => {

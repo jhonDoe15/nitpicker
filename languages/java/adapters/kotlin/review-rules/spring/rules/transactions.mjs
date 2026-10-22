@@ -1,6 +1,11 @@
 import { annotationIn, argumentOf, isTrue, typeName } from '../spring-names.mjs';
-import { entriesOf, isSelfCall, ownerOf, symbolOf } from '../spring-scopes.mjs';
-import { ENTITY_MANAGER, JAKARTA_TRANSACTIONAL, SPRING_TRANSACTIONAL } from '../spring-types.mjs';
+import { acceptsArguments, entriesOf, isSelfCall, ownerOf, symbolOf } from '../spring-scopes.mjs';
+import {
+  ENTITY_MANAGER,
+  JAKARTA_TRANSACTIONAL,
+  PERSISTENCE_EXCEPTIONS,
+  SPRING_TRANSACTIONAL,
+} from '../spring-types.mjs';
 
 const BROAD = new Set([
   'kotlin.Exception',
@@ -10,8 +15,7 @@ const BROAD = new Set([
   'java.lang.RuntimeException',
   'java.lang.Throwable',
 ]);
-const PERSISTENCE =
-  /^(?:org\.springframework\.(?:dao|transaction)|jakarta\.persistence|javax\.persistence)\.\w*Exception$/u;
+const RETHROWING = new Set(['getOrElse', 'onFailure', 'fold', 'recover', 'recoverCatching']);
 const CHECKED = new Set([
   'Exception',
   'Throwable',
@@ -77,8 +81,8 @@ function transactionalFunctions(view) {
       view.file.invocations.some(
         (invocation) =>
           invocation.name === fn.name &&
-          isSelfCall(invocation) &&
-          invocation.arguments.length === fn.parameters.length &&
+          isSelfCall(view, invocation) &&
+          acceptsArguments(fn, invocation.arguments.length) &&
           ownerOf(view, invocation) === fn.owner &&
           direct.has(view.functionAt(invocation.scope)),
       ),
@@ -99,7 +103,35 @@ function directlyIn(view, scopeId) {
 }
 
 function broadCatch(view, type) {
-  return view.resolve(typeName(type)).some((name) => BROAD.has(name) || PERSISTENCE.test(name));
+  return view
+    .resolve(typeName(type))
+    .some(
+      (name) => BROAD.has(name) || PERSISTENCE_EXCEPTIONS.some((pattern) => pattern.test(name)),
+    );
+}
+
+function rethrows(invocation) {
+  return (
+    invocation.name === 'getOrThrow' ||
+    (invocation.after ?? []).includes('getOrThrow') ||
+    (RETHROWING.has(invocation.name) && invocation.throwing === true) ||
+    (invocation.afterThrowing ?? []).some((name) => RETHROWING.has(name))
+  );
+}
+
+function resultRethrown(view, invocation) {
+  const fn = view.functionAt(invocation.scope);
+  return (
+    rethrows(invocation) ||
+    (invocation.assignedTo !== undefined &&
+      view.file.invocations.some(
+        (other) =>
+          other.receiver === invocation.assignedTo &&
+          other.line >= invocation.line &&
+          view.functionAt(other.scope) === fn &&
+          rethrows(other),
+      ))
+  );
 }
 
 function swallowed(view) {
@@ -114,7 +146,7 @@ function swallowed(view) {
     .map((clause) => ({ line: clause.line, symbol: symbolOf(view, clause.scope, clause.name) }));
   const results = view.file.invocations
     .filter((invocation) => invocation.name === 'runCatching' && inTransaction(invocation.scope))
-    .filter((invocation) => !(invocation.after ?? []).includes('getOrThrow'))
+    .filter((invocation) => !resultRethrown(view, invocation))
     .map((invocation) => ({
       line: invocation.line,
       symbol: symbolOf(view, invocation.scope, 'runCatching'),
@@ -157,18 +189,26 @@ function rollsBack(annotation) {
   );
 }
 
+function thrownTypes(view, fn) {
+  const thrown = annotationIn(
+    view.resolve,
+    entriesOf(fn),
+    new Set(['kotlin.jvm.Throws', 'kotlin.Throws']),
+  );
+  return [
+    ...[...(thrown?.arguments ?? []).flatMap(({ text }) => [...text.matchAll(CLASS_LITERAL)])].map(
+      (match) => match[1],
+    ),
+    ...(view.file.throws ?? [])
+      .filter(({ scope, caught }) => caught !== true && view.functionAt(scope) === fn)
+      .map(({ type }) => type),
+  ].map((type) => type.split('.').at(-1));
+}
+
 function checkedRollback(view, { projectFiles }) {
   const supers = exceptionSupers(projectFiles);
   return view.file.functions.flatMap((fn) => {
-    const thrown = annotationIn(
-      view.resolve,
-      entriesOf(fn),
-      new Set(['kotlin.jvm.Throws', 'kotlin.Throws']),
-    );
-    const types = [
-      ...(thrown?.arguments ?? []).flatMap(({ text }) => [...text.matchAll(CLASS_LITERAL)]),
-    ].map((match) => match[1].split('.').at(-1));
-    if (!types.some((type) => isChecked(type, supers))) {
+    if (!thrownTypes(view, fn).some((type) => isChecked(type, supers))) {
       return [];
     }
     const { own, inherited } = transactionOf(view, fn);

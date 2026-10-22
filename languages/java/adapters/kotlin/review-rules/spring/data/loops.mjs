@@ -122,7 +122,7 @@ function saveInLoopHelpers(view) {
   const helpers = writingHelpers(view);
   const calls = view.file.invocations.filter(
     (invocation) =>
-      isSelfCall(invocation) &&
+      isSelfCall(view, invocation) &&
       inLoop(view, invocation.scope) &&
       helperCalled(view, helpers, invocation),
   );

@@ -1,3 +1,5 @@
+import { exceptionMatcher } from '../../../../../../shared/rules/exceptions.mjs';
+import { inModule } from '../../../../builds/module-path.mjs';
 import { COLUMN_RULES } from './data/columns.mjs';
 import { ENTITY_RULES } from './data/entities.mjs';
 import { LOOP_RULES } from './data/loops.mjs';
@@ -8,7 +10,7 @@ import { CONFIGURATION_RULES } from './rules/configuration.mjs';
 import { PROXY_RULES } from './rules/proxies.mjs';
 import { TRANSACTION_RULES } from './rules/transactions.mjs';
 import { springMessage } from './spring-messages.mjs';
-import { springViews } from './spring-view.mjs';
+import { springViews } from './view/spring-view.mjs';
 import { ERROR_LEAK_RULES } from './web/error-leaks.mjs';
 import { SECURITY_RULES } from './web/security.mjs';
 import { WEB_RULES } from './web/web.mjs';
@@ -64,10 +66,14 @@ const COVERED_SOURCE_RULES = {
   ]),
 };
 
-export function withoutCoveredSourceFindings(findings) {
+export function withoutCoveredSourceFindings(findings, { exceptions = [], modulePath } = {}) {
+  const lifted = exceptionMatcher(exceptions);
   const reported = new Set(
     findings
-      .filter(({ tool }) => tool === 'pmd')
+      .filter(
+        ({ tool, rule, path }) =>
+          tool === 'pmd' && !lifted(`${tool}/${rule}`, inModule(modulePath, path)),
+      )
       .map(({ rule, path, location }) => `${rule}\0${path}\0${String(location?.line)}`),
   );
   return findings.filter(

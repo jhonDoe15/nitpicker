@@ -1,7 +1,7 @@
 import { isLoggerName } from '../../../../../source/loggers.mjs';
 import { annotationIn, typeName } from '../spring-names.mjs';
 import { entriesOf } from '../spring-scopes.mjs';
-import { EXCEPTION_HANDLER } from '../spring-types.mjs';
+import { EXCEPTION_HANDLER, PERSISTENCE_EXCEPTIONS } from '../spring-types.mjs';
 
 const GENERIC = new Set(
   [
@@ -15,9 +15,8 @@ const GENERIC = new Set(
 );
 const LIBRARY = [
   /^java\.io\.\w*Exception$/u,
-  /^java\.sql\.SQLException$/u,
-  /^org\.springframework\.(?:dao|transaction)\.\w*Exception$/u,
-  /^(?:jakarta|javax)\.persistence\.\w*Exception$/u,
+  /^java\.sql\.\w*Exception$/u,
+  ...PERSISTENCE_EXCEPTIONS,
 ];
 const STACK = new Set(['stackTrace', 'printStackTrace', 'stackTraceToString']);
 const TEXT = new Set(['message', 'localizedMessage', 'toString']);

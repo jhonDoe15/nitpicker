@@ -9,7 +9,6 @@ import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.*;
 
-/** Where an exception handler reads its exception parameters, or a local value taken from them. */
 final class ExceptionUses {
   private static final int PATH_LIMIT = 3;
 
