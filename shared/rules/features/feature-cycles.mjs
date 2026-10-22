@@ -20,7 +20,7 @@ function crossFeatureEdges(imports, roleOf) {
     );
 }
 
-export function featureCycleEdges({ imports }, roleOf) {
+function featureCycleEdges({ imports }, roleOf) {
   const edges = crossFeatureEdges(imports, roleOf);
   const directories = edges.flatMap(({ source, target }) => [source.directory, target.directory]);
   const components = stronglyConnected(
@@ -35,38 +35,68 @@ export function featureCycleEdges({ imports }, roleOf) {
     .map((edge) => ({ ...edge, cycle: componentOf.get(edge.source.directory) }));
 }
 
-function featureName(directory) {
-  return directory.split('/').at(-1);
+function featureNames(edges) {
+  return new Map(
+    edges.flatMap(({ source, target }) => [
+      [source.directory, source.name],
+      [target.directory, target.name],
+    ]),
+  );
+}
+
+function cycleFinding(entry, { names, context }) {
+  const { importer, source, feature, targets, cycle } = entry;
+  return featureFinding(
+    RULE_IDS.featureCycle,
+    {
+      importer,
+      identity: `${feature.directory}|${RULE_IDS.featureCycle}`,
+      message: 'featureCycle',
+      values: {
+        importer,
+        source: source.name,
+        feature: feature.name,
+        targets: listed(targets),
+        cycle: listed(cycle.map((directory) => names.get(directory))),
+      },
+    },
+    context,
+  );
+}
+
+function explainedCycles(reported, edges) {
+  const cycles = new Map(reported.map(({ cycle }) => [cycle.join('\0'), cycle]));
+  return [...cycles.values()].map((features) => ({
+    features,
+    edges: edges.filter(({ cycle }) => cycle === features).map(({ from, to }) => ({ from, to })),
+  }));
+}
+
+export function featureCycleAnalysis(facts, context) {
+  const edges = featureCycleEdges(facts, context.roleOf);
+  const names = featureNames(edges);
+  const entries = sortedBy(
+    groupedByImporter(
+      edges.map(({ from, to, source, target, cycle }) => ({
+        importer: from,
+        target: to,
+        source,
+        feature: target,
+        cycle,
+      })),
+    ),
+    ({ importer, feature }) => `${importer}\0${feature.directory}`,
+  ).map((entry) => ({ entry, findings: cycleFinding(entry, { names, context }) }));
+  const reported = entries.filter(({ findings }) => findings.length > 0);
+  return {
+    findings: entries.flatMap(({ findings }) => findings),
+    cycles: explainedCycles(
+      reported.map(({ entry }) => entry),
+      edges,
+    ),
+  };
 }
 
 export function featureCycleFindings(facts, context) {
-  const rule = RULE_IDS.featureCycle;
-  const entries = groupedByImporter(
-    featureCycleEdges(facts, context.roleOf).map(({ from, to, source, target, cycle }) => ({
-      importer: from,
-      target: to,
-      source,
-      feature: target,
-      cycle,
-    })),
-  );
-  return sortedBy(entries, ({ importer, feature }) => `${importer}\0${feature.directory}`).flatMap(
-    ({ importer, source, feature, targets, cycle }) =>
-      featureFinding(
-        rule,
-        {
-          importer,
-          identity: `${feature.directory}|${rule}`,
-          message: 'featureCycle',
-          values: {
-            importer,
-            source: source.name,
-            feature: feature.name,
-            targets: listed(targets),
-            cycle: listed(cycle.map((directory) => featureName(directory))),
-          },
-        },
-        context,
-      ),
-  );
+  return featureCycleAnalysis(facts, context).findings;
 }

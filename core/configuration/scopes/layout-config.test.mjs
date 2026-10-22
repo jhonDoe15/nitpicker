@@ -56,7 +56,7 @@ describe('feature layout keys', () => {
     'are rejected with the %s preset until it runs the rule that reads them',
     (preset) => {
       expect(() => validateConfig({ preset, layout })).toThrow(
-        `nitpicker.config.json: "layout.sharedRoots" is not supported with "preset": "${preset}": it configures ${RULE}, which the ${preset} preset does not run yet. Remove it`,
+        `nitpicker.config.json: "layout.sharedRoots" is not supported with "preset": "${preset}": it configures ${RULE}, feature-internal-import, shared-imports-feature, feature-cycle, which the ${preset} preset does not run yet. Remove it`,
       );
     },
   );

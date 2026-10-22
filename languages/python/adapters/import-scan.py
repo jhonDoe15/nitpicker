@@ -86,8 +86,36 @@ def collect(root, flags):
     return found
 
 
-def imports_of(tree):
-    return collect(tree, type_checking_names(tree))
+INITIALIZERS = {"__init__.py", "__init__.pyi"}
+
+
+def is_all_assignment(node):
+    return (
+        isinstance(node, ast.Assign)
+        and isinstance(node.value, (ast.List, ast.Tuple))
+        and any(isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets)
+    )
+
+
+def exported_names(tree):
+    return [
+        item.value
+        for node in tree.body
+        if is_all_assignment(node)
+        for item in node.value.elts
+        if isinstance(item, ast.Constant) and isinstance(item.value, str)
+    ]
+
+
+def exports_of(tree, relative):
+    names = exported_names(tree) if relative.rsplit("/", 1)[-1] in INITIALIZERS else []
+    if not names:
+        return []
+    return [{"level": 1, "module": None, "names": names, "typeOnly": True, "exported": True}]
+
+
+def imports_of(tree, relative=""):
+    return collect(tree, type_checking_names(tree)) + exports_of(tree, relative)
 
 
 def scan(root, files):
@@ -95,7 +123,7 @@ def scan(root, files):
     for relative in files:
         try:
             with open(f"{root}/{relative}", "rb") as handle:
-                scanned[relative] = imports_of(ast.parse(handle.read(), relative))
+                scanned[relative] = imports_of(ast.parse(handle.read(), relative), relative)
         except (SyntaxError, ValueError, RecursionError, OSError):
             continue
     return scanned

@@ -73,6 +73,8 @@ const SHAPES = {
     file: isProjectPath,
     role: oneOf(ROLES),
     entry: optional(isBoolean),
+    generated: optional(isBoolean),
+    initializer: optional(isBoolean),
   },
   packages: { root: isRootOrPath, published: isBoolean },
   definitions: {

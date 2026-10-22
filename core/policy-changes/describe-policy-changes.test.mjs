@@ -238,6 +238,55 @@ describe('describePolicyChanges', () => {
     ]);
   });
 
+  it('counts feature and shared roots that take files out of the folder role they had', () => {
+    const python = (layout) => ({ preset: 'python', layout });
+    const files = [
+      'src/app/features/billing/api.py',
+      'src/app/features/billing/plugins/pdf/render.py',
+      'src/app/shared/ids.py',
+    ];
+    const roots = ['src/app/features', 'src/app/features/billing/plugins'];
+
+    expect(changes(python({}), python({ featureRoots: [] }), files).loosened).toEqual([
+      'layout.featureRoots: not set -> [] takes files out of the feature or shared folder they were in: src/app/features/billing/api.py, src/app/features/billing/plugins/pdf/render.py',
+    ]);
+    expect(changes(python({}), python({ sharedRoots: ['**'] }), files).loosened).toEqual([
+      'layout.sharedRoots: not set -> ["**"] takes files out of the feature or shared folder they were in: src/app/features/billing/api.py, src/app/features/billing/plugins/pdf/render.py',
+    ]);
+    expect(changes(python({ featureRoots: roots }), python({}), files).loosened).toEqual([
+      'layout.featureRoots: ["src/app/features","src/app/features/billing/plugins"] -> not set takes files out of the feature or shared folder they were in: src/app/features/billing/plugins/pdf/render.py',
+    ]);
+  });
+
+  it('lists feature and shared roots that only add or split folders without counting them', () => {
+    const python = (layout) => ({ preset: 'python', layout });
+    const files = ['src/app/features/billing/plugins/pdf/render.py', 'src/app/common/ids.py'];
+
+    expect(
+      changes(
+        python({}),
+        python({
+          featureRoots: ['**/features', 'src/app/features/billing/plugins'],
+          sharedRoots: ['**/shared', 'src/app/common'],
+        }),
+        files,
+      ),
+    ).toEqual({
+      loosened: [],
+      changed: [
+        'layout.sharedRoots: not set -> ["**/shared","src/app/common"]; layout.featureRoots: not set -> ["**/features","src/app/features/billing/plugins"]',
+      ],
+    });
+    expect(
+      changes({}, { layout: { featureRoots: ['**/src/main/features', 'lib/features'] } }, [
+        'src/main/features/billing/api.ts',
+      ]),
+    ).toEqual({
+      loosened: [],
+      changed: ['layout.featureRoots: not set -> ["**/src/main/features","lib/features"]'],
+    });
+  });
+
   it('compares the preset that runs, not the preset that is written', () => {
     const presetChange = (before, after) =>
       loosened(
