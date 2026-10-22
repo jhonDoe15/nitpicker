@@ -8,7 +8,7 @@ const slow = {
   identity: 'id',
   classification: 'enforceable',
 };
-const exception = (rule) => ({ exceptions: [{ rule, glob: 'src/test/**' }] });
+const exception = (rule) => ({ exceptions: [{ rule, paths: ['src/test/**'] }] });
 
 describe('applyFindingPolicy slow tests', () => {
   it('lifts a slow test named bare or as printed', () => {
