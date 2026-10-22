@@ -360,13 +360,18 @@ CacheManager`) is not reported, nor are the framework manager roles of `ACCEPTED
   (`price-rounding.ts`); pure logic shared between features lives in `shared/` under such a name.
   The Java, Kotlin and Python presets use the same word list.
 - `nitpicker/no-boolean-flag-parameter` (all production code): a `boolean` parameter
-  (`flag: boolean`, `flag?: boolean`, `flag = false`) of an exported function, exported arrow or
-  function `const`, or public method of an exported class is reported when it switches the
-  function between two behaviors (it is the condition of an `if` or `?:`). Split it into two
-  functions named for each behavior, or take an options object (`{ force }`) or a string union.
-  Hooks (`useToggle(initial)`), setters (`setOpen(open)`), `with*` builders, `of`/`from`
-  factories, constructors, type predicates, destructured options and a boolean that is only passed
-  on or stored are not reported.
+  (`flag: boolean`, `flag?: boolean`, `flag = false`, or in plain JavaScript a parameter whose
+  JSDoc says `@param {boolean} flag`) of an exported function, exported arrow or function
+  `const`, or public method of an exported class is reported when it switches the function
+  between two behaviors: it is the condition of an `if`, `?:`, `while` or `do`/`while`, also
+  through `!`, `&&`, `||` or a comparison with `true` or `false`, and also inside a nested arrow
+  or function. Split it into two functions named for each behavior, or take an options object
+  (`{ force }`) or a string union. Setter and `with*` builder methods (`setOpen(open)` on a
+  class), `of`/`from`/`valueOf`/`builder` factories, constructors, type predicates, destructured
+  options and a boolean that is only passed on or stored are not reported; a `setX` or `withX`
+  function outside a class is. React hooks (`useToggle(initial)`) are skipped too: a hook takes
+  options positionally and is called unconditionally, so a boolean argument cannot be split into
+  two hooks.
 - `nitpicker/no-io-in-loop` (all production code): a database, HTTP or repository call once
   per item of a loop or an iteration callback (`map`, `forEach`, `flatMap`, `filter`, `reduce`,
   `some`, `every`, `find`) is reported: `fetch`, anything imported from `node:http`,

@@ -113,8 +113,11 @@ ruleTester.run('no-boolean-flag-parameter', booleanFlag, {
     'export declare function render(loud: boolean): void;',
     'export function useToggle(initial: boolean) { return initial ? 1 : 0; }',
     'export function useFetch(url: string, enabled = true) { if (!enabled) return; load(url); }',
-    'export function setOpen(open: boolean) { if (open) show(); else hide(); }',
+    'export class Panel { setOpen(open: boolean) { if (open) show(); else hide(); } }',
+    'export class Query { withCache(cache: boolean) { return cache ? this.cached() : this; } }',
     'export function of(value: boolean) { return value ? YES : NO; }',
+    'export function valueOf(value: boolean) { return value ? YES : NO; }',
+    'export function builder(strict: boolean) { return strict ? STRICT : LOOSE; }',
     'export function isText(x: unknown, strict: boolean): x is string { return strict ? a(x) : b(x); }',
     'export class Panel { constructor(open: boolean) { if (open) show(); } }',
     'export class Panel { private draw(loud: boolean) { if (loud) shout(); } }',
@@ -165,6 +168,72 @@ ruleTester.run('no-boolean-flag-parameter', booleanFlag, {
     {
       code: 'export function render(a: boolean, b: boolean) { if (a) x(); return b ? 1 : 0; }',
       errors: [{ messageId: 'flag' }, { messageId: 'flag' }],
+    },
+    flagged('export function setOpen(open: boolean) { if (open) show(); }', 'open', 'setOpen'),
+    flagged('export function drain(all: boolean) { while (all) step(); }', 'all', 'drain'),
+    flagged('export function trim(once: boolean) { do step(); while (!once); }', 'once', 'trim'),
+    flagged(
+      'export function render(loud: boolean) { if (loud === true) shout(); }',
+      'loud',
+      'render',
+    ),
+    flagged(
+      'export function render(loud: boolean) { return false !== loud ? 1 : 0; }',
+      'loud',
+      'render',
+    ),
+    flagged(
+      'export function render(loud: boolean) { return () => (loud ? shout() : say()); }',
+      'loud',
+      'render',
+    ),
+    flagged(
+      'export function render(loud: boolean) { items.forEach(function () { if (loud) shout(); }); }',
+      'loud',
+      'render',
+    ),
+    {
+      ...flagged(
+        '/**\n * @param {string} name\n * @param {boolean} loud\n */\n' +
+          'export function render(name, loud) { return loud ? name : ""; }',
+        'loud',
+        'render',
+      ),
+      filename: 'render.js',
+    },
+    {
+      ...flagged('export function render(loud = false) { if (loud) shout(); }', 'loud', 'render'),
+      filename: 'render.js',
+    },
+  ],
+});
+
+ruleTester.run('no-boolean-flag-parameter on plain JavaScript', booleanFlag, {
+  valid: cases(
+    [
+      '/** @param {string} loud */\nexport function render(loud) { return loud ? 1 : 0; }',
+      'export function render(loud) { return loud ? 1 : 0; }',
+      '/** @param {boolean} loud */\nexport function useLoud(loud) { return loud ? 1 : 0; }',
+      'export function render(loud = "yes") { return loud ? 1 : 0; }',
+    ],
+    { filename: 'render.js' },
+  ),
+  invalid: [
+    {
+      ...flagged(
+        '/** @param {boolean=} loud */\nexport const render = (loud) => (loud ? 1 : 0);',
+        'loud',
+        'render',
+      ),
+      filename: 'render.js',
+    },
+    {
+      ...flagged(
+        'export class Panel {\n  /** @param {boolean} loud */\n  draw(loud) { if (loud) shout(); }\n}',
+        'loud',
+        'draw',
+      ),
+      filename: 'render.js',
     },
   ],
 });

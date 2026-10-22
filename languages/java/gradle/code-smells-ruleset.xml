@@ -149,8 +149,11 @@ return (
   [ancestor::*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration or self::RecordDeclaration][last()][@Visibility = 'public']]
   /FormalParameters/FormalParameter[not(ModifierList/Annotation)][PrimitiveType[@Kind = 'boolean'] or ClassType[@SimpleName = 'Boolean']]
   [let $flag := VariableId/@Name
-   return exists(../../Block//(IfStatement | ConditionalExpression)/*[1]/descendant-or-self::VariableAccess[@Name = $flag]
-     [ancestor::*[not(self::UnaryExpression or self::InfixExpression[@Operator = ('&&', '||')])][1][self::IfStatement or self::ConditionalExpression]])]
+   return exists(../../Block//((IfStatement | ConditionalExpression | WhileStatement)/*[1] | DoStatement/*[last()])
+     /descendant-or-self::VariableAccess[@Name = $flag]
+     [ancestor::*[not(self::UnaryExpression or self::InfixExpression[@Operator = ('&&', '||')]
+         or self::InfixExpression[@Operator = ('==', '!=')][BooleanLiteral])][1]
+       [self::IfStatement or self::ConditionalExpression or self::WhileStatement or self::DoStatement]])]
 ]]></value></property></properties>
   </rule>
 
