@@ -17,6 +17,11 @@ const PROJECT_MARKERS = [
     ],
   },
   {
+    preset: 'go',
+    label: 'Go',
+    files: ['go.mod'],
+  },
+  {
     preset: 'python',
     label: 'Python',
     files: ['pyproject.toml', 'setup.py', 'setup.cfg', 'Pipfile', 'requirements.txt'],

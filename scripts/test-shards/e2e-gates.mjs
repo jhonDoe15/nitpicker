@@ -1,7 +1,7 @@
 import { existsSync, globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-export const SUITES = ['java', 'kotlin', 'python'];
+export const SUITES = ['java', 'kotlin', 'python', 'go'];
 const E2E_NAME = '.e2e.test.';
 const TEST_FILES = ['{core,shared,languages,scripts}/**/*.test.mjs', 'evals/**/*.test.mjs'];
 const FLAG_READ = /process\.env(?:\.|\[\s*['"])(NITPICKER_\w+?_E2E)\b/gu;

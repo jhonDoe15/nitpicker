@@ -17,7 +17,7 @@ export const PACKAGE_EXCEPTION_RULES = Object.values(PACKAGE_RULE_IDS);
 
 export const LARGE_FILE_BYTES = 1024 * 1024;
 
-const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true };
+const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true, go: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false, kotlin: false };
 
 export const HYGIENE_RULES = [

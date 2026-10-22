@@ -16,6 +16,7 @@ import {
   PYTHON_TOP_LEVEL_EXCEPTION_RULES,
   validatePythonConfig,
 } from '../../languages/python/adapters/configuration/python-config.mjs';
+import { validateGoConfig } from '../../languages/go/adapters/configuration/go-config.mjs';
 import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
 import { liftsOnlyRules, validateExceptions } from '../../shared/exceptions/validation.mjs';
 import { RULES } from '../../shared/policy.mjs';
@@ -47,7 +48,7 @@ const OPTIONAL_VALIDATORS = [
   ['duplicates', validateDuplicates],
   ['analyzers', validateCustomAnalyzers],
 ];
-export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
+export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python', 'go'];
 
 export const KEYS = [
   'base',
@@ -67,6 +68,7 @@ export const KEYS = [
   'testConsole',
   'kotlin',
   'conventions',
+  'go',
 ];
 
 const REACT_KEYS = ['enabled', 'styling'];
@@ -116,6 +118,7 @@ function validateScalars(config) {
   }
   validateJavascriptConfig(config);
   validateKotlinOptions(config);
+  validateGoConfig(config);
   validatePythonConfig(
     config,
     liftsOnlyRules(config.exceptions, PYTHON_TOP_LEVEL_EXCEPTION_RULES)
