@@ -27,9 +27,7 @@ function isDirective(node) {
   return typeof node.directive === 'string';
 }
 
-const ENTRY_MEMBERS = new Set(['import.meta.main', 'import.meta.url', 'require.main']);
-
-function entryMemberText(node) {
+function memberText(node) {
   if (node.type !== 'MemberExpression' || node.computed) {
     return undefined;
   }
@@ -37,16 +35,65 @@ function entryMemberText(node) {
   return `${object}.${node.property.name}`;
 }
 
-function isMainGuard(statement) {
-  if (statement.type !== 'IfStatement' || statement.alternate !== null) {
-    return false;
-  }
-  for (const current of depthFirst(statement.test, objectChildren)) {
-    if (ENTRY_MEMBERS.has(entryMemberText(current))) {
+function readsScriptPath(node) {
+  for (const current of depthFirst(node, objectChildren)) {
+    if (
+      current.type === 'MemberExpression' &&
+      current.computed &&
+      memberText(current.object) === 'process.argv' &&
+      current.property.value === 1
+    ) {
       return true;
     }
   }
   return false;
+}
+
+function isEqualityWith(test, left, right) {
+  return (
+    test.type === 'BinaryExpression' &&
+    (test.operator === '===' || test.operator === '==') &&
+    ((left(test.left) && right(test.right)) || (left(test.right) && right(test.left)))
+  );
+}
+
+function isEntryComparison(test) {
+  return (
+    memberText(test) === 'import.meta.main' ||
+    isEqualityWith(test, (side) => memberText(side) === 'import.meta.url', readsScriptPath) ||
+    isEqualityWith(
+      test,
+      (side) => memberText(side) === 'require.main',
+      (side) => side.type === 'Identifier' && side.name === 'module',
+    )
+  );
+}
+
+function conjuncts(test) {
+  const pending = [test];
+  const operands = [];
+  for (const node of pending) {
+    if (node.type === 'LogicalExpression' && node.operator === '&&') {
+      pending.push(node.left, node.right);
+    } else {
+      operands.push(node);
+    }
+  }
+  return operands;
+}
+
+function isEntryCheck(test) {
+  const operands = conjuncts(test);
+  return (
+    operands.some(isEntryComparison) &&
+    operands.every((operand) => isEntryComparison(operand) || readsScriptPath(operand))
+  );
+}
+
+function isMainGuard(statement) {
+  return (
+    statement.type === 'IfStatement' && statement.alternate === null && isEntryCheck(statement.test)
+  );
 }
 
 function guardedByMain(statement, node) {
