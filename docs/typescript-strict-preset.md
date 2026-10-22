@@ -54,6 +54,28 @@ config file is an exception like any other.
   dependency rules keep out of `domain/`.
 - Shared code does not import features. Features do not import the composition root. Import cycles
   are not allowed.
+- A feature's `index.ts` is its contract, so it does not hand out a persistence handle or a web
+  request or response object (`nitpicker/contract-infrastructure-type`, type-aware): an exported
+  function, a public method of an exported class, a callable member of an exported interface or
+  type, or a member of the object an exported factory returns may not take or return a Prisma client
+  or transaction, a Knex, `pg`, `mysql`/`mysql2`, MongoDB, Mongoose, TypeORM (`DataSource`,
+  `EntityManager`, `Repository`, `QueryRunner`), Sequelize, Drizzle (`*Database`, `*Transaction`),
+  Kysely, SQLite, libSQL, `postgres` or MikroORM handle, or an Express, Fastify, Koa, Hono, Next.js
+  or Node `http` request, response or context. The type is resolved by the checker through generics,
+  unions, aliases, `Promise` and re-exports (`export *`), and its package is read from the declaration
+  file, so a project type with the same name never counts. Return a domain type or a plain record
+  and take plain values; keep the handle in the feature's `adapters/`. Left out: a handler signature
+  whose first parameter is a request or context (route handlers and middleware), the methods of a
+  NestJS `@Controller`, a factory's own parameters (the composition root passes the handle in) and
+  constructors. Exported class properties are not read, only methods.
+- A route handler does not take or return an ORM entity (`nitpicker/handler-entity-type`,
+  type-aware): the parameters and return type of a NestJS route method (`@Get`, `@Post`, ... in a
+  `@Controller`), the exported HTTP-verb functions of a Next.js `route.ts`, the argument of
+  `res.json`/`res.send`, `NextResponse.json` or `Response.json`, and a Koa `ctx.body =`. Entities are
+  TypeORM and MikroORM `@Entity` classes (also inherited), Sequelize `Model` and Mongoose `Document`
+  subclasses, and Prisma model types from `@prisma/client`. Take and return a plain record (DTO) and
+  map the entity to it in the service. A Prisma client generated to a custom `output` path is not
+  recognized.
 - Code under `src/main/` lives in `features/`, `shared/` or the composition root
   (`nitpicker/no-unknown-main-folder`): a `services/`, `utils/` or `models/` folder there is
   reported on every file, with the layout in the message, and so is a file directly in `src/main/`
