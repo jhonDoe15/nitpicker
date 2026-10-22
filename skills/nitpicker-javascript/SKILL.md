@@ -137,6 +137,9 @@ line) is a finding.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
+- A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
+  (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
+  or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
 - CommonJS is allowed: `require()` of a module, and `module.exports = { f }`, `module.exports.f = f`

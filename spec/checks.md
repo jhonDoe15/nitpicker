@@ -156,3 +156,22 @@ Notes:
   `structure` and `duplicates` 1 minute.
 - "No threshold" means the gate is differential: the finding fails because it is new, not because
   it crosses a numeric limit.
+
+## Timeouts that abandon work
+
+One rule, `timeout-abandons-operation`, in every language that has a timeout construct which stops
+waiting without stopping the work.
+
+| Language   | Rule id                                   | Implementation                                                                         | Status      |
+| ---------- | ----------------------------------------- | -------------------------------------------------------------------------------------- | ----------- |
+| TypeScript | `nitpicker/timeout-abandons-operation`    | `languages/typescript/preset/eslint-plugin/rules/async/timeout-abandons-operation.mjs` | enforceable |
+| JavaScript | `nitpicker/timeout-abandons-operation`    | the same ESLint rule                                                                   | enforceable |
+| Python     | `python-rules/timeout-abandons-operation` | `languages/python/rules/waits/timeouts.py`                                             | enforceable |
+
+TypeScript and JavaScript: `Promise.race` of an operation and a timeout where the operation gets no
+`AbortSignal`, timeout option or cancelling owner (HTTP clients that `require-http-timeout` already
+reports are left to it). Python: `asyncio.wait(..., timeout=...)` whose `pending` set is not
+cancelled, awaited or handed on, and `asyncio.wait_for(asyncio.shield(task), ...)` with nothing
+cancelling or awaiting the task afterwards; `asyncio.wait_for`, `asyncio.timeout`, task groups and
+Trio and AnyIO scopes cancel and are allowed. The precision limits are in
+[TypeScript](../docs/typescript-strict-preset.md) and [Python](../docs/python-preset.md).

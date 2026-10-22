@@ -39,6 +39,10 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
 - Errors: catch the specific exception and handle it, or re-raise it with its cause:
   `raise ParseError(text) from err`. No bare `except:` or `except Exception:`, and no `raise Exception(...)`.
+- Timeouts: `asyncio.wait(tasks, timeout=...)` leaves its `pending` tasks running. Cancel them
+  (`for task in pending: task.cancel()`) or hand them to an owner; prefer `asyncio.wait_for` or
+  `asyncio.timeout`, which cancel. A shielded `wait_for` needs the task cancelled or awaited after the
+  timeout (`timeout-abandons-operation`).
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.

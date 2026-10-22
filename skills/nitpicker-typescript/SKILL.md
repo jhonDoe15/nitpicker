@@ -96,6 +96,9 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
+- A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
+  (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
+  or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 
 ## Production rules
