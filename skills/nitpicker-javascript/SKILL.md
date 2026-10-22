@@ -137,6 +137,8 @@ line) is a finding.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
+  Await every task that uses a `using` or `finally`-closed resource before its block ends (no `void` call,
+  timer callback or un-awaited async call on it): `nitpicker/no-task-outliving-resource`.
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
 - CommonJS is allowed: `require()` of a module, and `module.exports = { f }`, `module.exports.f = f`
