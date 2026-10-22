@@ -6,6 +6,7 @@ import {
   LINES_VARIABLE,
   REPORT_VARIABLE,
   ROOT_VARIABLE,
+  RUNNER_VARIABLE,
   consoleEntry,
   writeReportFile,
 } from '../../preset/test-console/console-report.mjs';
@@ -56,7 +57,7 @@ export function startTestConsole(options, { collectsLines }) {
     environment: {
       [REPORT_VARIABLE]: reportPath,
       [ROOT_VARIABLE]: options.projectRoot,
-      ...(linesPath === undefined ? {} : { [LINES_VARIABLE]: linesPath }),
+      ...(linesPath === undefined ? {} : { [LINES_VARIABLE]: linesPath, [RUNNER_VARIABLE]: '' }),
     },
     finish() {
       if (linesPath !== undefined) {

@@ -104,6 +104,47 @@ describe('recording console calls in a test process', () => {
     expect(linesWritten().map(({ content }) => content)).toEqual(['careful']);
   });
 
+  function mockedFiles(identity) {
+    const appended = [];
+    const files = {
+      ...fs,
+      fstatSync: (descriptor) =>
+        identity.mocked ? { dev: 8675309, ino: 3 } : fs.fstatSync(descriptor),
+      appendInChild: (file, text) => appended.push([file, text]),
+    };
+    return { appended, files };
+  }
+
+  it('keeps its line out of a descriptor a mocked fs gave the same number, and writes it once fs is back', () => {
+    const identity = { mocked: false };
+    const { appended, files } = mockedFiles(identity);
+    recordConsole(linesPath, () => PLACE, { target, events, files });
+
+    identity.mocked = true;
+    target.warn('while mocked');
+    const whileMocked = readFileSync(linesPath, 'utf8');
+    identity.mocked = false;
+    target.warn('after restore');
+
+    expect(whileMocked).toBe('');
+    expect(linesWritten().map(({ content }) => content)).toEqual(['while mocked', 'after restore']);
+    expect(appended).toEqual([]);
+  });
+
+  it('hands the lines a mock still holds at exit to a child process', () => {
+    const identity = { mocked: false };
+    const { appended, files } = mockedFiles(identity);
+    recordConsole(linesPath, () => PLACE, { target, events, files });
+    identity.mocked = true;
+
+    target.warn('mocked until exit');
+    events.emit('exit');
+
+    expect(appended.map(([file, text]) => [file, JSON.parse(text).content])).toEqual([
+      [linesPath, 'mocked until exit'],
+    ]);
+  });
+
   it('never throws into the console call, even when the place or the file fails', () => {
     recordConsole(path.join(directory, 'missing', 'lines.jsonl'), () => PLACE, {
       target,
@@ -206,6 +247,40 @@ describe('the node:test console capture', () => {
       ['test/a.test.js', 'pick > answers', 'inside'],
       ['test/a.test.js', '', 'in a later after hook'],
     ]);
+  });
+
+  it('keeps the test name through later afterEach hooks and records until the last root after hook', async () => {
+    capture({ NODE_TEST_CONTEXT: 'child-v8', [RUNNER_VARIABLE]: '5' });
+    const steps = [];
+    const context = { fullName: 'pick > answers', after: (step) => steps.push(step) };
+
+    testApi.hooks.beforeEach[0](context);
+    testApi.hooks.afterEach[0](context);
+    target.warn('in the project afterEach');
+    steps.shift()();
+    testApi.hooks.after[0](context);
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+    target.warn('in an async root after hook');
+    steps.shift()();
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+    target.warn('a timer after the file');
+
+    expect(placesWritten()).toEqual([
+      ['test/a.test.js', 'pick > answers', 'in the project afterEach'],
+      ['test/a.test.js', '', 'in an async root after hook'],
+    ]);
+  });
+
+  it('leaves the runner named by an outer run to it, so an inner runner a test starts records nothing', () => {
+    const environment = { [LINES_VARIABLE]: linesPath, [RUNNER_VARIABLE]: '5' };
+
+    captureNodeTest({ environment, testRunner: true, processId: 8, testApi: () => testApi.api });
+
+    expect(environment[RUNNER_VARIABLE]).toBe('5');
   });
 
   it.each([

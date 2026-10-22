@@ -122,6 +122,26 @@ describe('the Mocha console tracking', () => {
     expect(place()).toEqual({ file: '/p/test/b.test.js', test: 'b > two' });
   });
 
+  it('gives the running test a call whose async work a root hook from a required file started', async () => {
+    const { runner, place } = tracked();
+    const root = suite('', { root: true });
+    const api = suite('api', { file: '/p/test/api.test.js', parent: root });
+
+    runner.emit('hook', { parent: root });
+    const inRootHook = place();
+    const handled = new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(place());
+      }, 5);
+    });
+    runner.emit('test', test('reports a broken route', api));
+
+    expect([inRootHook, await handled]).toEqual([
+      NO_PLACE,
+      { file: '/p/test/api.test.js', test: 'api > reports a broken route' },
+    ]);
+  });
+
   it('captures nothing without the lines file or a Mocha to find', async () => {
     const target = { error() {}, warn() {} };
 

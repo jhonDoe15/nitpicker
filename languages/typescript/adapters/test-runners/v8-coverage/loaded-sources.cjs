@@ -1,7 +1,9 @@
 'use strict';
 
+const { spawnSync } = process.getBuiltinModule('node:child_process');
 const { createHash } = process.getBuiltinModule('node:crypto');
-const { openSync, readFileSync, writeFileSync, writeSync } = process.getBuiltinModule('node:fs');
+const { fstatSync, openSync, readFileSync, writeFileSync, writeSync } =
+  process.getBuiltinModule('node:fs');
 const { Session } = process.getBuiltinModule('node:inspector');
 const path = process.getBuiltinModule('node:path');
 const { fileURLToPath, pathToFileURL } = process.getBuiltinModule('node:url');
@@ -16,6 +18,8 @@ const PROJECT_SCRIPT = /^(?:file:\/\/|\/|[A-Za-z]:\\)/u;
 const DEPENDENCY = /[\\/]node_modules[\\/]/u;
 const OWN_URLS = new Set([__filename, pathToFileURL(__filename).href]);
 const BYTE_ORDER_MARK = '﻿';
+const APPEND_STANDARD_INPUT =
+  "const fs = process.getBuiltinModule('node:fs'); fs.appendFileSync(process.argv[1], fs.readFileSync(0));";
 
 function fileText(url = '') {
   try {
@@ -79,33 +83,57 @@ function loadInChildProcesses() {
   }
 }
 
-function openedLines(linesPath = '') {
+function appendInChild(linesPath = '', text = '') {
+  return spawnSync(process.execPath, ['-e', APPEND_STANDARD_INPUT, linesPath], {
+    input: text,
+    env: { ...process.env, NODE_OPTIONS: '' },
+    stdio: ['pipe', 'ignore', 'ignore'],
+  });
+}
+
+const REAL_FILES = { appendInChild, fstatSync, openSync, writeSync };
+
+function identityOf(files = REAL_FILES, descriptor = -1) {
+  const { dev, ino } = files.fstatSync(descriptor);
+  return `${String(dev)}:${String(ino)}`;
+}
+
+function openedLines(linesPath = '', files = REAL_FILES) {
   try {
-    return { descriptor: openSync(linesPath, 'a') };
+    const descriptor = files.openSync(linesPath, 'a');
+    return { descriptor, identity: identityOf(files, descriptor) };
   } catch (error) {
     return { unavailable: error };
   }
 }
 
-function writtenText(descriptor = -1, text = '') {
+function writtenText(files = REAL_FILES, { descriptor = -1, identity = '' } = {}, text = '') {
   try {
-    writeSync(descriptor, text);
+    if (identityOf(files, descriptor) !== identity) {
+      return { refused: true };
+    }
+    files.writeSync(descriptor, text);
     return { written: true };
   } catch (error) {
     return { failed: error };
   }
 }
 
-function lineWriter(linesPath = '', events = process) {
-  const { descriptor } = openedLines(linesPath);
+function lineWriter(linesPath = '', events = process, files = REAL_FILES) {
+  const opened = openedLines(linesPath, files);
   const state = { pending: '' };
   function flush() {
-    if (descriptor !== undefined && writtenText(descriptor, state.pending).written) {
+    if (opened.descriptor !== undefined && writtenText(files, opened, state.pending).written) {
       state.pending = '';
     }
   }
-  if (descriptor !== undefined) {
-    events.on('exit', flush);
+  if (opened.descriptor !== undefined) {
+    events.on('exit', () => {
+      flush();
+      if (state.pending !== '') {
+        files.appendInChild(linesPath, state.pending);
+      }
+    });
   }
   return function write(line = '') {
     state.pending += line;
@@ -129,9 +157,9 @@ function recordedLine(locate = () => NO_PLACE, values = []) {
 function recordConsole(
   linesPath = '',
   locate = () => NO_PLACE,
-  { target = globalThis.console, events = process } = {},
+  { target = globalThis.console, events = process, files = REAL_FILES } = {},
 ) {
-  const write = lineWriter(linesPath, events);
+  const write = lineWriter(linesPath, events, files);
   const original = { error: target.error.bind(target), warn: target.warn.bind(target) };
   function recording(print = original.warn) {
     return (...values) => {
@@ -150,6 +178,15 @@ function nodeTestApi() {
   return process.getBuiltinModule('node:test');
 }
 
+function lastly(context = {}, step = () => {}) {
+  const after = 'after' in context ? context.after : undefined;
+  if (typeof after === 'function') {
+    Reflect.apply(after, context, [step]);
+  } else {
+    step();
+  }
+}
+
 function trackedTests(file = '', { after, afterEach, beforeEach } = nodeTestApi()) {
   const running = [''];
   const state = { finished: false };
@@ -157,14 +194,18 @@ function trackedTests(file = '', { after, afterEach, beforeEach } = nodeTestApi(
     running.push(context.fullName);
   });
   afterEach((context) => {
-    const index = running.lastIndexOf(context.fullName);
-    if (index > 0) {
-      running.splice(index, 1);
-    }
+    lastly(context, () => {
+      const index = running.lastIndexOf(context.fullName);
+      if (index > 0) {
+        running.splice(index, 1);
+      }
+    });
   });
-  after(() => {
-    setImmediate(() => {
-      state.finished = true;
+  after((context) => {
+    lastly(context, () => {
+      setImmediate(() => {
+        state.finished = true;
+      });
     });
   });
   return function place() {
@@ -187,7 +228,7 @@ function captureNodeTest({
   if (linesPath === '') {
     return { capturing: false };
   }
-  if (context === '' && testRunner) {
+  if (context === '' && testRunner && (environment[RUNNER_VARIABLE] ?? '') === '') {
     environment[RUNNER_VARIABLE] = String(processId);
   }
   const isTestFile =

@@ -6,6 +6,7 @@ import {
   consoleOutput,
   createRunnerProjects,
   newConsoleOutput,
+  runArea,
 } from '../test-support/runner-project.mjs';
 
 const projects = createRunnerProjects();
@@ -93,6 +94,32 @@ describe('test console output on a Jest project', () => {
       expect(await consoleOutput(project)).toEqual([]);
     },
   );
+
+  it('still fails a run whose timer logs late when Jest also exits 1 for an obsolete snapshot', async () => {
+    const project = projects.project({
+      'package.json': { name: 'p', private: true, scripts: { test: 'jest' } },
+      'src/main/pick.js': COMMON_JS_PICK,
+      'nitpicker.config.json': JAVASCRIPT_PRESET,
+      'test/pick.test.js': [
+        "const { pick } = require('../src/main/pick');",
+        "it('says yes', () => {",
+        "  setTimeout(() => console.warn('late'), 100);",
+        "  expect(pick(true) + pick(false)).toBe('yesno');",
+        '});',
+        '',
+      ].join('\n'),
+      'test/__snapshots__/pick.test.js.snap': [
+        '// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing',
+        '',
+        'exports[`removed test 1`] = `"old"`;',
+        '',
+      ].join('\n'),
+    });
+
+    await expect(runArea('coverage', project)).rejects.toThrow(
+      /^Jest exited 1 although no test failed\n[^]*1 snapshot obsolete/u,
+    );
+  });
 
   it('words a failed assert as the other runners do and reads a grouped call whole', async () => {
     const project = jestProject(JAVASCRIPT, {

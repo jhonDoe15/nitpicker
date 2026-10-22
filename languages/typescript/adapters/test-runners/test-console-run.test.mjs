@@ -13,6 +13,7 @@ import {
   LINES_VARIABLE,
   REPORT_VARIABLE,
   ROOT_VARIABLE,
+  RUNNER_VARIABLE,
 } from '../../preset/test-console/console-report.mjs';
 import { TEST_CONSOLE_REPORT_PATH } from '../quality-areas/reporting/test-report.mjs';
 import { consoleProducerPath, startTestConsole } from './test-console-run.mjs';
@@ -38,6 +39,7 @@ describe('the console capture of a test run', () => {
       [REPORT_VARIABLE]: reportPath,
       [ROOT_VARIABLE]: projectRoot,
       [LINES_VARIABLE]: path.join(projectRoot, '.nitpicker-diff-test-console.jsonl'),
+      [RUNNER_VARIABLE]: '',
     });
   });
 

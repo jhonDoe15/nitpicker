@@ -483,7 +483,9 @@ shows its console output in the run's log. Jest keeps only the first argument of
 `--experimental-test-isolation=none` (every file in the runner's own process) is not read at all,
 because the file of a call is not known there: the check passes with no findings. Mocha runs every
 spec file in one process (one per worker with `--parallel`); a root hook from a `--require` file
-belongs to no test file and is not seen.
+belongs to no test file and is not seen, but what the work it started prints while a test runs (a
+server it started handling the test's request) belongs to that test, as with Vitest. Work another spec
+file started, such as its timer, is not seen while a later file runs.
 
 It does not see:
 
@@ -493,7 +495,8 @@ It does not see:
 - output printed after a test file has finished (after its last `after`/`afterAll` hook), such as a
   dangling timer that fires later, or with Mocha a timer that fires while another file's tests run;
   with Jest such a call prints "Cannot log after tests are done", which fails a run in band only when
-  it would fail without nitpicker too;
+  it would fail without nitpicker too, and only when Jest's report shows no other failure (a failed
+  test or suite, or an obsolete or unwritten snapshot);
 - the output of a failing run: `coverage` fails first and `test-console` is skipped, as `crap` is.
 
 Each console call becomes one message. A call is a block that starts at an unindented line, so a
