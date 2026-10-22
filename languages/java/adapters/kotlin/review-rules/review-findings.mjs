@@ -4,6 +4,7 @@ import { pathInside, sourceFilesUnder } from '../../review-rules/java-sources.mj
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
+import { serviceLookupFindings } from './main/service-lookups/service-lookups.mjs';
 import { unusedOptionFindings } from './main/unused-options.mjs';
 import { readKotlinFacts } from './kotlin-facts.mjs';
 import { productionTypeResolver } from './production-types.mjs';
@@ -63,6 +64,7 @@ export function readKotlinReviewFindings(context) {
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
     ...singularPluralFindings(own, { finding }),
+    ...serviceLookupFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {
       finding,
       serialization: manifest.kotlinSerialization === true,

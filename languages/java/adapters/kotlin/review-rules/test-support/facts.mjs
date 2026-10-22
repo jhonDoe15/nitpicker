@@ -16,6 +16,8 @@ export function file(overrides = {}) {
     predicates: [],
     calls: [],
     references: [],
+    lookups: [],
+    typed: [],
     ...overrides,
   };
 }

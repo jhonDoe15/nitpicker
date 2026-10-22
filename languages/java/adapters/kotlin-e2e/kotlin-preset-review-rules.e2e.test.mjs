@@ -2,6 +2,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  EXPECTED_LOOKUP_FINDINGS,
+  LOOKUP_FILES,
+  lookupBuild,
+} from './test-support/review/kotlin-lookup-data.mjs';
+import {
   EXPECTED_REVIEW_FINDINGS,
   REVIEW_RULE_FILES,
   runtimeSerializationFiles,
@@ -31,7 +36,12 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
   beforeAll(() => {
     project = initializeProject();
-    commitBranch(project, 'review-rules', REVIEW_RULE_FILES);
+    const build = readFileSync(path.join(project.root, 'build.gradle.kts'), 'utf8');
+    commitBranch(project, 'review-rules', {
+      ...REVIEW_RULE_FILES,
+      ...LOOKUP_FILES,
+      'build.gradle.kts': lookupBuild(build),
+    });
   });
   afterAll(() => {
     removeProject(project);
@@ -41,7 +51,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     const result = diffOf(project, 'review-rules');
 
     expect(result.failed).toBe(true);
-    expect(reviewFindings(result.newEnforceable)).toEqual(EXPECTED_REVIEW_FINDINGS);
+    expect(reviewFindings(result.newEnforceable)).toEqual(
+      [...EXPECTED_REVIEW_FINDINGS, ...EXPECTED_LOOKUP_FINDINGS].sort(),
+    );
   });
 
   it('lifts a rule for some paths with the exception its message names', () => {
@@ -61,6 +73,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       'ExhaustiveEnumPredicate isOpen',
       'ExhaustiveEnumPredicate isSettled',
       'ExhaustiveEnumPredicate weight',
+      ...EXPECTED_LOOKUP_FINDINGS,
       'SingularAndPluralMember Query.tags',
       'StaticForwardingWrapper absOf',
       'StaticForwardingWrapper total',
@@ -78,7 +91,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     const result = diffOf(project, 'runtime-serialization');
 
     expect(reviewFindings(result.newEnforceable)).toEqual(
-      EXPECTED_REVIEW_FINDINGS.filter((entry) => entry !== 'unused-option Envelope.retries'),
+      [...EXPECTED_REVIEW_FINDINGS, ...EXPECTED_LOOKUP_FINDINGS]
+        .filter((entry) => entry !== 'unused-option Envelope.retries')
+        .sort(),
     );
   });
 });
