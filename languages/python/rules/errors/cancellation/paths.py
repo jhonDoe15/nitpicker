@@ -1,11 +1,12 @@
 import ast
 
-from errors.cancellation_names import binds, resolved_name
+from errors.cancellation.names import binds, resolved_name
 
 NEXT = "next"
 PROPAGATED = "propagated"
 LOST = "lost"
 UNKNOWN = "unknown"
+MAYBE = "maybe"
 BREAK = "break"
 CONTINUE = "continue"
 ASYNCIO_CANCELLED = {"asyncio.CancelledError", "asyncio.exceptions.CancelledError"}
@@ -33,25 +34,42 @@ def raise_outcome(node, error, context, caught):
 
 
 def block_outcomes(statements, error, context, caught):
-    outcomes = {NEXT}
+    outcomes, live = set(), {NEXT}
     for statement in statements:
-        if NEXT not in outcomes:
+        if not live:
             break
-        outcomes.remove(NEXT)
-        outcomes.update(statement_outcomes(statement, error, context, caught))
-    return outcomes
+        result = statement_outcomes(statement, error, context, caught)
+        through = result & {NEXT, MAYBE}
+        outcomes |= result - {NEXT, MAYBE}
+        certain = NEXT in live and NEXT in through
+        live = ({NEXT} if certain else set()) | (
+            {MAYBE} if through and (MAYBE in live or MAYBE in through) else set()
+        )
+    return outcomes | live
+
+
+def after_final(pending, final):
+    through = final & {NEXT, MAYBE}
+    if not through:
+        return final
+    kept = pending if MAYBE not in through else relax(pending)
+    return kept | (final - {NEXT, MAYBE})
+
+
+def relax(outcomes):
+    return {MAYBE if item == NEXT else item for item in outcomes}
 
 
 def try_outcomes(node, error, context, caught):
     pending = (
-        {UNKNOWN}
+        {MAYBE, UNKNOWN}
         if node.handlers
         else block_outcomes(node.body, error, context, caught)
     )
     if not node.finalbody:
         return pending
     final = block_outcomes(node.finalbody, error, context, caught)
-    return (pending if NEXT in final else set()) | (final - {NEXT})
+    return after_final(pending, final)
 
 
 def loop_outcomes(node, error, context, caught):
@@ -61,9 +79,11 @@ def loop_outcomes(node, error, context, caught):
         and isinstance(node.test, ast.Constant)
         and bool(node.test.value)
     )
-    result = body - {NEXT, BREAK, CONTINUE}
+    result = body - {NEXT, MAYBE, BREAK, CONTINUE}
     if BREAK in body:
         result.add(NEXT)
+    if MAYBE in body:
+        result.add(MAYBE)
     if not forever:
         result |= block_outcomes(node.orelse, error, context, caught)
     return result
@@ -82,7 +102,7 @@ def match_outcomes(node, error, context, caught):
     for case in node.cases:
         result |= block_outcomes(case.body, error, context, caught)
     if not any(irrefutable(case) for case in node.cases):
-        result.add(UNKNOWN)
+        result |= {MAYBE, UNKNOWN}
     return result
 
 
@@ -110,13 +130,15 @@ def statement_outcomes(node, error, context, caught):
         return try_outcomes(node, error, context, caught)
     if isinstance(node, (ast.With, ast.AsyncWith)):
         body = block_outcomes(node.body, error, context, caught)
-        return (body - {PROPAGATED}) | ({UNKNOWN} if PROPAGATED in body else set())
+        return (body - {PROPAGATED}) | (
+            {MAYBE, UNKNOWN} if PROPAGATED in body else set()
+        )
     if isinstance(node, (ast.For, ast.AsyncFor, ast.While)):
         return loop_outcomes(node, error, context, caught)
     if isinstance(node, ast.Match):
         return match_outcomes(node, error, context, caught)
     if type(node).__name__ == "TryStar":
-        return {UNKNOWN}
+        return {MAYBE, UNKNOWN}
     return {NEXT}
 
 
