@@ -72,7 +72,7 @@ const commonBans = [
   {
     selector: 'ExportAllDeclaration',
     message:
-      "List the public names: `export { name } from './module.js'`. `export *` makes every internal export public. If it is deliberate, add an exception for this rule in nitpicker.config.json.",
+      "List the public names: `export { name } from './module.js'`. `export *` makes every internal export public. An exception fits only when it is deliberate.",
   },
 ];
 
@@ -162,7 +162,7 @@ const domainOnlyBans = [
     selector:
       "NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.name='Date'], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/], CallExpression[callee.name=/^(dayjs|moment)$/][arguments.length=0], CallExpression[callee.object.name='DateTime'][callee.property.name=/^(now|local|utc)$/][arguments.length=0]",
     message:
-      'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. If it is deliberate, add an exception for this rule in nitpicker.config.json.',
+      'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. An exception fits only when it is deliberate.',
   },
   {
     selector: [
@@ -175,7 +175,7 @@ const domainOnlyBans = [
       "MemberExpression[object.type='MemberExpression'][object.object.name=/^(globalThis|window|self|global)$/][object.property.name='Math'][property.name='random']",
     ].join(', '),
     message:
-      'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. If it is deliberate, add an exception for this rule in nitpicker.config.json.',
+      'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. An exception fits only when it is deliberate.',
   },
   {
     selector:
@@ -183,13 +183,13 @@ const domainOnlyBans = [
       '[property.name=/^(process|fetch|setTimeout|setInterval|setImmediate|queueMicrotask|performance|XMLHttpRequest|WebSocket|localStorage|sessionStorage)$/], ' +
       '[property.value=/^(process|fetch|setTimeout|setInterval|setImmediate|queueMicrotask|performance|XMLHttpRequest|WebSocket|localStorage|sessionStorage)$/])',
     message:
-      'domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. If it is deliberate, add an exception for this rule in nitpicker.config.json.',
+      'domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate.',
   },
   {
     selector:
       'ImportDeclaration[source.value=/^(dayjs|moment)$/] > :matches(ImportDefaultSpecifier, ImportNamespaceSpecifier)[local.name!=/^(dayjs|moment)$/]',
     message:
-      "domain/ code imports dayjs and moment under their own names (`import dayjs from 'dayjs'`), so a clock read such as `dayjs()` stays visible. domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. If it is deliberate, add an exception for this rule in nitpicker.config.json.",
+      "domain/ code imports dayjs and moment under their own names (`import dayjs from 'dayjs'`), so a clock read such as `dayjs()` stays visible. domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. An exception fits only when it is deliberate.",
   },
   {
     selector:

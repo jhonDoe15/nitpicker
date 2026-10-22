@@ -28,10 +28,8 @@ const literalText = 'export const Label = () => <p>Save</p>;';
 
 export const i18nFailureMessageCases = [
   ['missing description names a description', withoutDescription, 'description:'],
-  ['missing description names the config exception', withoutDescription, 'nitpicker.config.json'],
   ['missing default message names a literal', withoutDefaultMessage, 'defaultMessage:'],
   ['literal JSX text names FormattedMessage', literalText, '<FormattedMessage'],
-  ['literal JSX text names the config exception', literalText, 'nitpicker.config.json'],
   ['missing placeholder value names the values argument', message('Hi {name}'), '{ name }'],
   ['invalid ICU names the other branch', message('Hi {name'), 'other'],
   [

@@ -1,4 +1,5 @@
 import ts from 'typescript';
+import { DYNAMIC } from '../../../../../../../shared/rules/security/sql-text.mjs';
 import { ancestorsOf, chainOf } from '../../analysis/ancestry.mjs';
 import { findVariable, stringValue } from '../../analysis/constant-resolution.mjs';
 import {
@@ -30,8 +31,6 @@ const MEMBERSHIP = new Set(['has', 'includes']);
 const EXITS = new Set(['ThrowStatement', 'ReturnStatement', 'ContinueStatement', 'BreakStatement']);
 const PRIMITIVE_FLAGS =
   ts.TypeFlags.NumberLike | ts.TypeFlags.BooleanLike | ts.TypeFlags.BigIntLike;
-
-export const DYNAMIC = '\u0000';
 
 function literalText(leaf) {
   const text = stringValue(leaf);

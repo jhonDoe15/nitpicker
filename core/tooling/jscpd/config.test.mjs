@@ -37,16 +37,23 @@ describe('jscpd project config', () => {
     'layers %j with the highest-precedence values first',
     (precedence, minTokens) => {
       const root = temporaryRoot();
-      projectConfig(root, { minTokens: 500, ignore: ['vendor/**'] });
+      projectConfig(root, {
+        minTokens: 500,
+        ignore: ['vendor/**'],
+        threshold: 1,
+        path: ['/elsewhere'],
+        reporters: ['html'],
+      });
       const settings = resolveJscpdPolicy({ precedence }, root);
+      expect(settings.projectConfig ?? {}).not.toHaveProperty('threshold');
       const result = layeredJscpdConfig(
         { minTokens: 50, threshold: 100, ignore: ['build/**'] },
         settings,
       );
       expect(result).toEqual({
         minTokens,
-        ...(precedence.includes('nitpicker') ? { threshold: 100 } : {}),
-        ignore: precedence[0] === 'project' ? ['vendor/**'] : ['build/**'],
+        threshold: 100,
+        ignore: precedence.includes('project') ? ['build/**', 'vendor/**'] : ['build/**'],
       });
     },
   );
@@ -77,9 +84,11 @@ describe('jscpd project config', () => {
   it('rejects missing, malformed, non-object and escaping project configs', () => {
     const root = temporaryRoot();
     const settings = { precedence: ['project'] };
-    expect(() => resolveJscpdPolicy(settings, root)).toThrow();
+    expect(() => resolveJscpdPolicy(settings, root)).toThrow(
+      'create it, or remove "project" from tools.jscpd.precedence',
+    );
     writeFileSync(path.join(root, '.jscpd.json'), '{broken');
-    expect(() => resolveJscpdPolicy(settings, root)).toThrow();
+    expect(() => resolveJscpdPolicy(settings, root)).toThrow('.jscpd.json is not valid JSON');
     for (const value of [[], null, 42]) {
       projectConfig(root, value);
       expect(() => resolveJscpdPolicy(settings, root)).toThrow('must contain a JSON object');

@@ -50,7 +50,7 @@ describe('TypeScript jscpd config execution', () => {
     expect(findings.some(({ rule }) => rule === 'duplicate-clone')).toBe(reports);
   });
 
-  it('compares clone findings even when the native overall threshold exits with one', () => {
+  it("keeps nitpicker's threshold, so a project threshold cannot fail the run", () => {
     const findings = analyze(['project', 'nitpicker'], { threshold: 0 });
     expect(
       findings.filter(({ rule }) => rule === 'duplicate-clone').map(({ path: file }) => file),

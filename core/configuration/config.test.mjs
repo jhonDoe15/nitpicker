@@ -70,18 +70,33 @@ describe('config file', () => {
       preset: 'python',
       ...shared,
     });
-    expect(() => validateConfig({ preset: 'python', layout: {} })).toThrow(
-      '"layout" is not supported with "preset": "python"',
+    expect(() => validateConfig({ preset: 'python', layout: { sourceRoots: ['src'] } })).toThrow(
+      '"layout.sourceRoots" is not supported with "preset": "python"',
     );
     const exceptions = [{ rule: 'line-length-limit', paths: ['src/urls.py'], reason: 'URL table' }];
     expect(validateConfig({ preset: 'python', exceptions })).toEqual({
       preset: 'python',
       exceptions,
     });
+    const functionException = {
+      rule: 'crap-score-limit',
+      paths: ['src/a.py'],
+      function: 'Service.wide',
+      reason: 'Legacy',
+    };
+    expect(
+      validateConfig({ preset: 'python', exceptions: [functionException] }).exceptions,
+    ).toEqual([functionException]);
     expect(() =>
       validateConfig({
         preset: 'python',
         exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
+      }),
+    ).toThrow('"exceptions" is not supported with "preset": "python"');
+    expect(() =>
+      validateConfig({
+        preset: 'python',
+        exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
       }),
     ).toThrow('"exceptions" is not supported with "preset": "python"');
   });
@@ -150,15 +165,14 @@ describe('config file', () => {
       });
     });
 
-    it('accepts an exception for a file limit or a slow test and leaves line length to detekt', () => {
+    it('accepts an exception for a file limit, a slow or an unrun test and leaves line length to detekt', () => {
       const fileLimit = { ...exception, rule: 'folder-files-limit' };
       const lineLength = { ...exception, rule: 'line-length-limit' };
       const slowTest = { ...exception, rule: 'test-runtime/slow-test' };
+      const notRun = { ...exception, rule: 'test-runtime/test-not-run' };
       const config = { preset: 'kotlin', thresholds: { unitTestSeconds: 2.5 } };
-      expect(validateConfig({ ...config, exceptions: [fileLimit, lineLength, slowTest] })).toEqual({
-        ...config,
-        exceptions: [fileLimit, lineLength, slowTest],
-      });
+      const exceptions = [fileLimit, lineLength, slowTest, notRun];
+      expect(validateConfig({ ...config, exceptions })).toEqual({ ...config, exceptions });
       expect(() => validateConfig({ preset: 'kotlin', thresholds: { lineLength: 140 } })).toThrow(
         '"kotlin.lineLength" (any number of columns) sets it for ktlint, ktfmt and detekt',
       );
@@ -174,11 +188,11 @@ describe('config file', () => {
       }
     });
 
-    it('names the rules that can be lifted when the rule is another detekt rule', () => {
-      const other = { ...exception, rule: 'detekt.style.MagicNumber' };
+    it('names the rules that can be lifted when the rule is not one a Kotlin finding prints', () => {
+      const other = { ...exception, rule: 'MutableModuleState' };
 
       expect(() => validateConfig({ preset: 'kotlin', exceptions: [other] })).toThrow(
-        /"exceptions\[0\]\.rule" is "detekt\.style\.MagicNumber".*detekt\.style\.ForbiddenMethodCall.*config\/detekt\/detekt\.yml/,
+        /"exceptions\[0\]\.rule" is "MutableModuleState".*detekt\.<ruleset>\.<Rule>.*kotlin-source\/MutableModuleState/,
       );
     });
   });
@@ -224,9 +238,7 @@ describe('config file', () => {
   });
 
   it.each([
-    ['java', 'layout'],
     ['java', 'react'],
-    ['kotlin', 'layout'],
     ['kotlin', 'react'],
   ])('rejects the %s preset with %s instead of ignoring it', (preset, key) => {
     expect(() => validateConfig({ preset, [key]: {} })).toThrow(
