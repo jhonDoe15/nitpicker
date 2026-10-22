@@ -1,10 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { readClassGraph } from './class-graph.mjs';
 import { featureFacts } from './feature-findings.mjs';
-import {
-  featureProjects,
-  javaSources,
-} from './test-support/feature-project.mjs';
+import { featureProjects, javaSources } from './test-support/feature-project.mjs';
 
 const { project: featureProject, remove } = featureProjects();
 

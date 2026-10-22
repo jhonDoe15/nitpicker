@@ -1,11 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { springRootFolders } from './feature-layout.mjs';
 import { readFeatureGraphFindings } from './feature-findings.mjs';
-import {
-  featureProjects,
-  javaSources,
-  rows,
-} from './test-support/feature-project.mjs';
+import { featureProjects, javaSources, rows } from './test-support/feature-project.mjs';
 
 const { project: featureProject, remove } = featureProjects();
 

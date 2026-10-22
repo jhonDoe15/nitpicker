@@ -38,7 +38,12 @@ function sourceFileReader(projectRoot, project) {
 
 function readProject(projectRoot, project) {
   const names = [
-    ...new Set(readFileSync(reportFiles(project).classes, 'utf8').split(/\r?\n/u).filter(Boolean).map(outerClass)),
+    ...new Set(
+      readFileSync(reportFiles(project).classes, 'utf8')
+        .split(/\r?\n/u)
+        .filter(Boolean)
+        .map(outerClass),
+    ),
   ];
   const fileOf = sourceFileReader(projectRoot, project);
   const classes = names.flatMap((name) => {
