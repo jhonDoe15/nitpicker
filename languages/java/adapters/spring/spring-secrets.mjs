@@ -48,9 +48,9 @@ const ALGORITHM = /^(?:[A-Z]{2,6}\d{0,4}|[A-Z]+(?:_[A-Z]+)+)$/;
 
 function keyWords(key) {
   const segments = key.split('.');
-  const words = segmentWords(segments.at(-1));
-  if (words.length === 1 && words[0] === 'key' && segments.length > 1) {
-    const owner = segmentWords(segments.at(-2)).at(-1);
+  const words = segmentWords(segments.pop());
+  if (words.length === 1 && words[0] === 'key' && segments.length > 0) {
+    const owner = segmentWords(segments.at(-1)).at(-1);
     return KEY_OWNER_WORDS.has(owner) ? [owner, 'key'] : words;
   }
   return words;

@@ -47,13 +47,17 @@ describe('moduleManifest', () => {
         classpaths: { mainCompile: ['/m2/spring-boot-3.3.5.jar'], testCompile: [] },
         pinned,
       }),
-    ).toMatchObject({
+    ).toEqual({
       versions: pinned,
       build: 'maven',
       sourceRoots: ['src/main/java'],
       testSourceRoots: ['src/test/java'],
       resourceRoots: ['src/main/resources'],
       spring: true,
+      guava: false,
+      testGuava: false,
+      testAwaitility: false,
+      published: false,
     });
   });
 
