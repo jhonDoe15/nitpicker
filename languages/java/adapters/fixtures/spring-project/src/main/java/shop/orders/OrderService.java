@@ -110,7 +110,7 @@ public class OrderService {
   @Transactional
   public long importStreamed(List<Product> incoming) {
     long kept = incoming.stream().filter(product -> products.save(product) != null).count(); // violation: IoCallInLoop
-    long mapped = incoming.stream().flatMap(product -> Stream.of(products.save(product))).count(); // violation: IoCallInLoop
+    long mapped = incoming.stream().flatMap(product -> Stream.of(products.save(product))).count(); // violation: SpringDataNoSaveInLoop
     Product last =
         incoming.stream().reduce(null, (previous, product) -> products.save(product), (a, b) -> b); // violation: IoCallInLoop
     return kept + mapped + (last == null ? 0 : 1);
@@ -149,6 +149,20 @@ public class OrderService {
   public void touch(Long id) {
     var unused = products.findById(id).map(products::save);
     products.findById(id).ifPresent(product -> products.save(product));
+  }
+
+  @Transactional
+  public void resetEach(List<Long> ids) {
+    for (Long id : ids) {
+      entityManager.createQuery("update Product p set p.version = 0 where p.id = :id").setParameter("id", id).executeUpdate(); // violation: SpringDataRowWriteInLoop
+    }
+    for (Long id : ids) {
+      entityManager // violation: SpringDataRowWriteInLoop
+          .createQuery("update Product p set p.version = 0 where p.id = :id")
+          .setParameter("id", id)
+          .executeUpdate();
+    }
+    entityManager.createQuery("update Product p set p.version = 0 where p.id in :ids").setParameter("ids", ids).executeUpdate();
   }
 
   private void helper() {}

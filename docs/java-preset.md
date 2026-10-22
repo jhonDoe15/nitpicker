@@ -2053,15 +2053,22 @@ index stepped with `i += 1`, `i++` or `i = i + 1` does not make a paging loop), 
 `try` that returns or breaks on success and a `catch` that lets the loop go on), file system
 calls (`Files`, `new FileReader(...)`: one read or write per file has no batch form, as in the
 TypeScript and Python presets), the batch forms (`saveAll`, `deleteAll`, `deleteAllById`, `findAllById` and
-similar, called once per chunk) and `Optional` callbacks (`Optional.map`, which runs once) are
+similar, called once per chunk), a call that passes the loop's own element when that element is a
+collection (`for (List<Long> chunk : chunks) repository.markShipped(chunk)`, or
+`chunks.forEach(chunk -> ...)`) and `Optional` callbacks (`Optional.map`, which runs once) are
 skipped. In a
 Spring project, the `save`, `delete`, `persist` and similar writes that `SpringDataNoSaveInLoop`
 reports (a Spring Data repository or `jakarta.persistence.EntityManager` receiver, in a loop or a
-`forEach`, `map`, `peek` or `forEachOrdered` callback) and the flushes `SpringDataNoFlush` reports
-are left to those rules, so each is reported once: the Spring wrapper runs `IoCallInLoop` with its
-`springData` property set to `true`, and the rule holds a copy of their XPath, which
-`code-smell-rules.test.mjs` keeps identical. A write in any other callback (`filter`, `flatMap`,
-`reduce`), on any other receiver, or in a project without Spring is reported by `IoCallInLoop`.
+`forEach`, `map`, `flatMap`, `peek` or `forEachOrdered` callback), the flushes `SpringDataNoFlush`
+reports and the row writes `SpringDataRowWriteInLoop` reports (a `@Modifying` repository method,
+a write-verb repository call or `Query.executeUpdate()`, together with the `createQuery` chain it
+runs on) are left to those rules, so each is reported once: the Spring wrapper runs `IoCallInLoop`
+with its `springData` property set to `true`, and the rule holds a copy of their XPath, which
+`code-smell-rules.test.mjs` keeps identical. `SpringDataBatchOfOne` and
+`SpringDataSaveInLoopHelper` report calls `IoCallInLoop` never matches (`saveAll` and a method of
+the same class). A write in any other callback (`filter`, `reduce`), on any other receiver, or in
+a project without Spring is reported by `IoCallInLoop`; a read in a loop (`findById`, a count
+query) is always `IoCallInLoop`.
 Writes and flushes in a JPA batch loop (one that calls `EntityManager.clear()` inside an `if`
 whose condition uses `%`, as in `if (count % 50 == 0) { em.flush(); em.clear(); }`) are the batch
 form and are reported by neither rule; `clear()` itself is never counted.
