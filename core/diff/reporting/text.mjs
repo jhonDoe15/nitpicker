@@ -2,6 +2,7 @@ import { sumToolCount, formatSeconds } from './format/text.mjs';
 import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { noticeSection } from './review/notices.mjs';
 import { policyChangeSection } from './review/policy-changes.mjs';
+import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 
 export function renderTextReport(report) {
   const lines = [
@@ -12,6 +13,7 @@ export function renderTextReport(report) {
     ...toolCountLines(report.summary.tools),
   ];
   appendFindingSection(lines, 'New findings', report.newFindings);
+  appendRuleReference(lines, report.newFindings);
   appendHeldSection(lines, report.unchangedFindings);
   appendFindingSection(lines, 'Resolved findings', report.resolvedFindings);
   appendMetricSection(lines, report.changedMetrics);
@@ -79,6 +81,15 @@ function appendFindingSection(lines, heading, findings) {
   for (const finding of findings) {
     const location = finding.location === undefined ? '' : `:${String(finding.location.line)}`;
     lines.push(`${finding.tool}/${finding.rule} ${finding.path}${location} ${finding.message}`);
+  }
+}
+
+function appendRuleReference(lines, findings) {
+  if (findings.length > 0) {
+    lines.push(
+      '',
+      `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
+    );
   }
 }
 

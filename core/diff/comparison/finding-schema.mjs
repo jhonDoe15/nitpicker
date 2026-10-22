@@ -1,6 +1,7 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
+const HTTP_URL = /^https?:\/\/\S+$/u;
 
 export function parseAnalyzerReport(value, analyzerName) {
   if (!isRecord(value) || !Array.isArray(value.findings)) {
@@ -64,6 +65,9 @@ function parseOptionalFields(value, classification, context) {
   if (value.tokens !== undefined) {
     fields.tokens = parseTokens(value.tokens, `${context}.tokens`);
   }
+  if (value.helpUri !== undefined) {
+    fields.helpUri = parseHelpUri(value.helpUri, `${context}.helpUri`);
+  }
 
   return fields;
 }
@@ -123,6 +127,14 @@ function parseRatchet(value, context) {
     ratchet[name] = value[name];
   }
   return ratchet;
+}
+
+function parseHelpUri(value, context) {
+  const uri = requiredString(value, context);
+  if (!HTTP_URL.test(uri)) {
+    throw new TypeError(`${context} must be an http or https URL`);
+  }
+  return uri;
 }
 
 function parseTokens(value, context) {
