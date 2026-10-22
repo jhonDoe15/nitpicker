@@ -152,12 +152,7 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
   return testsRan;
 }
 
-function analyzeModule({ module, classpaths, tools, pinned, configs, since, style }) {
-  const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
-  const isArchunit = archunitMatcher(module.archunitIncludes);
-  const spring = usesSpring(classpaths);
-  const testRuntime = classpaths.testRuntime;
-  const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
+function analyzeSources({ module, reportDir, classpaths, tools, pinned, configs, style, spring }) {
   runPmd({ module, reportDir, tools, classpaths, configs, spring });
   runSpotbugs({ module, reportDir, tools });
   runErrorProne({ module, reportDir, tools, classpaths });
@@ -165,6 +160,11 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since, styl
   runCheckstyle({ module, reportDir, tools, configs, pinned, style });
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
+}
+
+function analyzeTests(options) {
+  const { module, reportDir, classpaths, tools, pinned, since, spring } = options;
+  const { isArchunit, testsRan } = options;
   runJacocoReport({
     module,
     reportDir,
@@ -175,6 +175,17 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since, styl
   });
   runPit({ module, reportDir, tools, classpaths, isArchunit });
   runSpringArch({ module, reportDir, tools, classpaths, pinned, spring });
+}
+
+function analyzeModule(options) {
+  const { module, classpaths, pinned, since } = options;
+  const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
+  const isArchunit = archunitMatcher(module.archunitIncludes);
+  const spring = usesSpring(classpaths);
+  const testRuntime = classpaths.testRuntime;
+  const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
+  analyzeSources({ ...options, reportDir, spring });
+  analyzeTests({ ...options, reportDir, spring, isArchunit, testsRan });
   writeManifest({ module, reportDir, pinned, spring, classpaths });
 }
 
