@@ -61,6 +61,12 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   instead of `time.sleep` and fake network, database and disk access. A test over budget is run
   again alone without coverage and fails only if it is still over. Lift a legitimate one in the
   top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
+- Honest tests: one case per test with `@pytest.mark.parametrize`, and assert unconditionally (no
+  `assert` inside `if`, `for`, `while`, `match`, `except`, a comprehension or a `subTest` loop:
+  `conditional-assertion-in-test`). Skip only on a real condition with a reason
+  (`@pytest.mark.skipif(sys.platform == "win32", reason="...")`, `pytest.importorskip`); a permanent
+  `skip`, a literal `skipif(True)` or a non-strict `xfail` is `switched-off-test`: delete the test,
+  fix it, or use `xfail(strict=True)`.
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.

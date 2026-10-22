@@ -48,7 +48,8 @@ export function checkRules(context) {
   const list = path.join(context.reportRoot, FILE_LIST);
   const options = path.join(context.reportRoot, OPTIONS_FILE);
   const sources = pythonSources(context);
-  const collection = collectionOptions(readPytestConfig(context.projectRoot));
+  const pytestConfig = readPytestConfig(context.projectRoot);
+  const collection = collectionOptions(pytestConfig);
   const { testRunner } = context.project;
   writeFileSync(list, sources.join('\n'));
   writeFileSync(
@@ -57,6 +58,7 @@ export function checkRules(context) {
       sourceRoots: context.project.sourceRoots,
       testRunner,
       ...collection,
+      xfailStrict: pytestConfig.xfailStrict,
       testFiles: sources.filter(testFileMatcher(context.projectRoot)),
       entryFiles: entryFilesOf(sources, context.project.entryPoints),
       entryModules: readEntryModules(context.projectRoot),

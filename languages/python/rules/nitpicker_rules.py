@@ -19,12 +19,12 @@ def load_checks():
     from discovery import helpers, uncollected
     from environment import environment, purity
     from errors import errors
-    from honesty import assertions, isolation, skipped
+    from honesty import assertions, isolation, skipped, switched_off
     from security import hashes, loading
     from security.sql import check as sql
     from security.timeouts import check as timeouts
     from security.tls import check as tls
-    from silent_tests import unasserted
+    from silent_tests import conditional, unasserted
     from smells import literals, loops, names, secret_logs, secrets
 
     return [
@@ -49,8 +49,10 @@ def load_checks():
         secret_logs,
         loops,
         skipped,
+        switched_off,
         assertions,
         unasserted,
+        conditional,
         isolation,
         uncollected,
         helpers,

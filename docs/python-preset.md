@@ -455,6 +455,8 @@ through the real tools.
 | `logging` (or the project's structlog, loguru) | `print`, `pprint`                                                            | ruff `T201`, `T203`                                        |
 | log the caught exception itself                | logging only `str(error)` or an f-string with it in an `except`              | `catch-log-without-exception`                              |
 | a test that asserts                            | a test function with no assertion                                            | `test-without-assertion`                                   |
+| one case per test, asserted outright           | an assertion inside a branch, loop, `except` or comprehension                | `conditional-assertion-in-test`                            |
+| a skip on a real condition, a strict `xfail`   | a permanent skip, a literal `skipif`, a non-strict `xfail`                   | `switched-off-test`                                        |
 | `@dataclass(frozen=True)`                      | `@dataclass` without `frozen=True`, outside tests                            | `frozen-dataclass`                                         |
 | the validation library in `adapters/` only     | importing pydantic (or the declared library) elsewhere                       | `pydantic-boundary`                                        |
 | an `enum.Enum` / `StrEnum`                     | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
@@ -609,6 +611,7 @@ are listed at the end.
 | Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                    | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                            |
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                 | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
 | Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
+| Test switches            | one case per test, asserted outright; a skip only on a real condition; a strict `xfail`                                                          | `conditional-assertion-in-test`, `switched-off-test` (script)                                                                                        |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
 
 Details that are decisions rather than the table:
@@ -829,7 +832,8 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `pytest.skip()` and `pytest.xfail()` without a message, `@unittest.skip*` and
   `@unittest.expectedFailure` without a reason, `self.skipTest()` and `raise SkipTest` without a
   message, and a test that opens with `if condition: return`. The subject names the form, so the
-  message says which one to fix. `sleep-in-test` ignores
+  message says which one to fix; the allowed form is a skip on a real condition with a reason
+  (`switched-off-test` below reports the unconditional ones). `sleep-in-test` ignores
   `asyncio.sleep(0)` and tests that patch the sleep or freeze the clock; it also follows the
   project's own helpers that call `time.sleep`. `real-clock-in-test` and `random-in-test` skip a
   file that uses `freezegun`, `time_machine`, a patched clock, a seed or a `random.Random(...)`, and
@@ -838,6 +842,45 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `integration`, `e2e` and the like. `tautological-assert` covers `assert True`, `assert x == x`,
   `assert 1`, `assertTrue(True)`, `assertEqual(x, x)`, `assertGreaterEqual(x, x)`,
   `assertIsInstance(x, object)` and the like: asserts that cannot fail.
+- `switched-off-test` reports a test that never runs or can never fail, where
+  `skipped-test-without-reason` reports the same forms without a reason (one finding per site, never
+  both): `@pytest.mark.skip(reason=...)`, `@unittest.skip("...")` (also on a class, in `pytestmark`
+  and in `pytest.param(marks=...)`), a `pytest.skip("...")`, `pytest.xfail("...")`,
+  `self.skipTest("...")` or `raise SkipTest("...")` that is a statement of the test body or of the
+  module (a skip inside an `if` is a real condition), `skipif`, `skipIf` and `skipUnless` with a
+  literal `True`, `False`, number or `"True"`/`"False"` condition, `xfail(run=False)`, and an
+  `xfail` that is not strict. An `xfail` counts as strict with `strict=True` (or any non-literal
+  value), or when the pytest configuration sets `xfail_strict`; `strict=False` is always reported.
+  A skip with a real condition (`skipif(sys.platform == "win32", reason=...)`,
+  `pytest.importorskip("numpy")`, `@unittest.skipUnless(HAS_DATABASE, "...")`, a conditional
+  `pytest.skip(...)`) is allowed. `@unittest.expectedFailure` stays with
+  `skipped-test-without-reason`. The message follows the TypeScript
+  `nitpicker/no-switched-off-tests`: delete the test or make it run. A project that must keep a
+  permanent skip lists the file in a `python.exceptions` entry for `switched-off-test`.
+- `conditional-assertion-in-test` is the Python form of `vitest/no-conditional-expect`. In a test
+  function of a collected test file it reports the first assertion inside each outermost `if` (also a
+  conditional expression), `for`, `async for`, `while`, `match`, `except` handler, comprehension or
+  `and`/`or` operand, once per construct and with the test and the construct as subject
+  (`TestOrders.test_total: for`). Assertions are the ones `test-without-assertion` knows: `assert`,
+  `raise AssertionError`, `self.assert*` and other `assert*` calls, `pytest.raises`, `warns`,
+  `fail` and `self.fail`, pytest-check, imported assertion libraries and the project's assertion
+  helpers; a skip (`pytest.skip`, `importorskip`, `self.skipTest`) is not an assertion, so a
+  conditional skip stays allowed. The allowed form is one test per case with
+  `@pytest.mark.parametrize` and an unconditional assertion. Not reported: a loop or branch that
+  only builds data before an unconditional `assert`, `with` blocks (`with pytest.raises(...)`), an
+  `assert` over a generator (`assert all(...)`), assertions in a `try` body, `else` or `finally`,
+  and loops in an assertion helper or a nested function, which are not test functions. An
+  `unittest` `subTest` loop is a loop: it is reported as `subTest`, because an empty iterable runs
+  no case and passes without asserting anything, where an empty `parametrize` list reports a skipped
+  test; a suite without `pytest` accepts it with a `python.exceptions` entry. An `assert` in an
+  `except ... as error:` handler that reads `error` is left to ruff `PT017`, which reports it
+  already (use `with pytest.raises(...) as info:`), so no site gets two findings.
+- Focused tests: pytest has no `only` marker, and the ways to narrow a run are already blocked.
+  `-k`, `-m`, `--deselect`, `--ignore`, `--ignore-glob`, `testpaths`, `norecursedirs` and
+  `collect_ignore` in the configuration are reported per hidden test by `uncollected-tests`, and
+  the gate's own test runs drop `-k`, `-m`, `--deselect`, `--maxfail`, `-x`, `--sw`, `--co` and
+  rerun options from `addopts` (`adapters/test-runs/pytest-pins.mjs`), so a narrowed
+  configuration neither hides a test from the gate nor from the report.
 - A test function with no assertion is not checked here; the conventions work owns it, together
   with the detection of the project's own assertion helpers.
 - Touched code: a new finding is reported per site, and the rules in `touched-rules.mjs` (every
