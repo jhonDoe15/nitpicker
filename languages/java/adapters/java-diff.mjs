@@ -68,6 +68,17 @@ function exportArguments(common, { initScript, directory, policy }) {
   ];
 }
 
+function commonArguments({ reportBase, policy, kotlinArguments }) {
+  return [
+    '--console=plain',
+    '--quiet',
+    '--no-configuration-cache',
+    `-Pnitpicker.reportDir=${reportBase}`,
+    ...lintBaselineProperties(policy),
+    ...kotlinArguments,
+  ];
+}
+
 function runJavaPreset(
   projectRoot,
   {
@@ -84,13 +95,7 @@ function runJavaPreset(
   const since = Date.now() - CLOCK_SLACK_MS;
   const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
   withKotlin((kotlinArguments) => {
-    const common = [
-      '--console=plain',
-      '--quiet',
-      '--no-configuration-cache',
-      `-Pnitpicker.reportDir=${reportBase}`,
-      ...kotlinArguments,
-    ];
+    const common = commonArguments({ reportBase, policy, kotlinArguments });
     const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
     const stages = [
       ...(layersCheckstyle
