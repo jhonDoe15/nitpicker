@@ -88,13 +88,14 @@ describe('reading the structure report', () => {
       {
         rule: 'function-parameters-limit',
         symbol: 'Service.handle',
-        message: 'Service.handle has 4 parameters; limit is 3',
+        message:
+          'Service.handle has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"..."} to "exceptions" in nitpicker.config.json.',
       },
       {
         rule: 'function-control-nesting-limit',
         symbol: 'Service.run',
         message:
-          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch.',
+          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/demo/service.py"],"function":"Service.run","reason":"..."} to "exceptions" in nitpicker.config.json.',
       },
     ]);
     expect(
@@ -118,7 +119,7 @@ describe('reading the structure report', () => {
       key: 'function:Service.handle:occurrence:1:parameters',
       value: 4,
       worseMessage:
-        'Service.handle grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another.',
+        'Service.handle grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"..."} to "exceptions" in nitpicker.config.json.',
       heldMessage:
         'Service.handle: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
     });
@@ -245,7 +246,7 @@ describe('Python file limits', () => {
       findingsWith({
         exclude: ['src/gen/**'],
         fileLimits: limits,
-        exceptions: [{ rule: 'folder-files-limit', glob: 'src/icons/*' }],
+        exceptions: [{ rule: 'folder-files-limit', paths: ['src/icons/*'] }],
       }),
     ).toEqual([]);
   });
