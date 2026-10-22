@@ -81,6 +81,14 @@ describe('libraries of the base run', () => {
     expect(base.libraries).toEqual(head.libraries);
     expect(Object.keys(base.libraries.packages)).toEqual(['.', 'packages/api']);
   });
+
+  it('takes the colocated test placement of a checkout without test roots', () => {
+    const head = resolveHeadPolicy({}, projectWith({ '.': {} }));
+    const base = withHeadCheckoutFacts({ layout: { sourceRoots: ['lib'] } }, head);
+
+    expect(base.layout).toEqual({ sourceRoots: ['lib'], colocatedTests: true });
+    expect(withHeadCheckoutFacts({ layout: {} }, { layout: {} }).layout).toEqual({});
+  });
 });
 
 describe('libraries of the manifest nearest a file', () => {

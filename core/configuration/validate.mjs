@@ -10,8 +10,6 @@ import {
   validateExceptions,
   TYPESCRIPT_ONLY_KEYS,
   validateProjectRelativePath,
-  validateFolderGlobs,
-  FEATURE_LAYOUT_KEYS,
   validateFactRuleSettings,
 } from '../../shared/config.mjs';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
@@ -21,7 +19,6 @@ import {
   validatePythonConfig,
 } from '../../languages/python/adapters/configuration/python-config.mjs';
 import { RULES } from '../../shared/policy.mjs';
-import { factRuleSettings } from '../../shared/rules/facts/registry.mjs';
 import { validateTools } from './tool-settings.mjs';
 import { rejectHeadBase } from './project-checks/project-config.mjs';
 import { conventionDefinitions } from '../conventions/definitions.mjs';
@@ -29,7 +26,7 @@ import { validateConventions } from '../../shared/conventions/settings.mjs';
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
-import path from 'node:path';
+import { TYPESCRIPT_PRESETS, validateLayout } from './scopes/layout-settings.mjs';
 
 const OPTIONAL_VALIDATORS = [
   [
@@ -71,18 +68,6 @@ export const KEYS = [
   'kotlin',
   'conventions',
 ];
-
-const LAYOUT_KEYS = [
-  'sourceRoots',
-  'testRoots',
-  'excludedGlobs',
-  'entryPoints',
-  ...FEATURE_LAYOUT_KEYS,
-];
-
-const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
-
-const TYPESCRIPT_PRESETS = [undefined, 'typescript', 'javascript'];
 
 const REACT_KEYS = ['enabled', 'styling'];
 
@@ -235,61 +220,6 @@ function validateTypescriptExceptionRules(exceptions, preset) {
       throw configError(`"exceptions[${String(index)}].rule" names ${rule}, ${problem}`);
     }
   }
-}
-
-function validateLayout(layout, preset) {
-  if (!isPlainObject(layout)) {
-    throw configError('"layout" must be an object');
-  }
-  const settings = factRuleSettings(preset ?? 'typescript');
-  const allowed = TYPESCRIPT_PRESETS.includes(preset)
-    ? LAYOUT_KEYS
-    : FEATURE_LAYOUT_KEYS.filter((key) => settings.includes(`layout.${key}`));
-  for (const [key, value] of Object.entries(layout)) {
-    if (LAYOUT_KEYS.includes(key) && !allowed.includes(key)) {
-      throw configError(
-        `"layout.${key}" is not supported with "preset": "${preset}": it describes TypeScript source folders. Layout keys with ${preset}: ${keyList(allowed)}`,
-      );
-    }
-    validateLayoutEntry(key, value, allowed);
-  }
-}
-
-function keyList(keys) {
-  return keys.length === 0 ? 'none yet' : keys.join(', ');
-}
-
-function validateLayoutEntry(key, value, allowed) {
-  if (!allowed.includes(key)) {
-    throw configError(`unknown layout key "${key}". Allowed layout keys: ${keyList(allowed)}`);
-  }
-  validateStringArray(value, `layout.${key}`);
-  if (FEATURE_LAYOUT_KEYS.includes(key)) {
-    validateFolderGlobs(key, value);
-    return;
-  }
-  if (GLOB_LAYOUT_KEYS.includes(key)) {
-    return;
-  }
-  if (value.length === 0) {
-    throw configError(`"layout.${key}" must not be empty`);
-  }
-  for (const root of value) {
-    if (!isProjectRelativeDirectory(root)) {
-      throw configError(`"layout.${key}" entries must be directories inside the project: ${root}`);
-    }
-  }
-}
-
-function isProjectRelativeDirectory(root) {
-  const normalized = root.replaceAll('\\', '/');
-  return (
-    !path.isAbsolute(normalized) &&
-    !/^[A-Za-z]:/.test(normalized) &&
-    !/[*?{}[\]]/.test(normalized) &&
-    !normalized.split('/').includes('..') &&
-    normalized.replace(/^\.\/?|\/$/g, '').length > 0
-  );
 }
 
 function validateCustomAnalyzers(analyzers) {

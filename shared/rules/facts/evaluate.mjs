@@ -14,11 +14,11 @@ import { uniqueFindings } from '../reuse/reuse-finding.mjs';
 import { siblingCopyEditFindings } from '../reuse/sibling-copy-edits.mjs';
 import { testOnlyFactFindings } from '../test-only/test-only-uses.mjs';
 import { baselineFromFacts, baselinePathsOf } from './baseline.mjs';
-import { FACT_RULE_LISTS, registeredFactRules } from './registry.mjs';
+import { FACT_RULE_LISTS, registeredFactRules } from '../../project-rules/fact-rules.mjs';
 import { reuseModules, withImportRoles } from './reuse-modules.mjs';
 import { validateFacts } from './schema.mjs';
 
-const REGISTRY = 'FACT_RULE_LANGUAGES (shared/rules/facts/registry.mjs)';
+const REGISTRY = 'FACT_RULE_LANGUAGES (shared/project-rules/fact-rules.mjs)';
 
 function featureLayout(layout = {}) {
   return {

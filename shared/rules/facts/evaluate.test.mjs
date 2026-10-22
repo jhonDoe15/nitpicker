@@ -7,7 +7,7 @@ import {
   FACT_RULE_LISTS,
   registeredFactRules,
   sharedFactExceptionRules,
-} from './registry.mjs';
+} from '../../project-rules/fact-rules.mjs';
 import {
   exception,
   fixtureFindings,
@@ -59,7 +59,7 @@ describe('the shared fact rules', () => {
     'fails for %s, which registers no rule yet, instead of finding nothing',
     (language) => {
       expect(() => sharedFactFindings({}, { language, analyzerName: 'facts' })).toThrow(
-        `No fact rule is registered for language "${language}" in FACT_RULE_LANGUAGES (shared/rules/facts/registry.mjs)`,
+        `No fact rule is registered for language "${language}" in FACT_RULE_LANGUAGES (shared/project-rules/fact-rules.mjs)`,
       );
     },
   );
