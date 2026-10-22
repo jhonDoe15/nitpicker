@@ -3,12 +3,7 @@ import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import {
-  commitBranch,
-  GRADLE_STEP_TIMEOUT_MS,
-  runGitIn,
-  summarize,
-} from '../../../test-support/gradle-e2e.mjs';
+import { commitBranch, runGitIn, summarize } from '../../../test-support/gradle-e2e.mjs';
 import { runJavaDiff } from '../../../java-diff.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -91,23 +86,19 @@ describe.skipIf(!enabled)('find-sec-bugs end to end', () => {
   });
 
   afterAll(() => {
-    spawnSync(gradle, ['--stop'], { stdio: 'ignore' });
+    spawnSync(gradle, ['--stop'], { stdio: 'ignore', timeout: 60_000 });
     rmSync(repository, { recursive: true, force: true });
   });
 
-  it(
-    'reports a JPA query and SQL built in a helper once each, and no servlet marker',
-    () => {
-      const result = runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle });
+  it('reports a JPA query and SQL built in a helper once each, and no servlet marker', () => {
+    const result = runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle });
 
-      expect(
-        summarize(result.newEnforceable.filter((finding) => finding.tool === 'spotbugs')),
-      ).toEqual([
-        'spotbugs SQL_INJECTION_JPA Lookup.java',
-        'spotbugs SQL_INJECTION_SPRING_JDBC Reports.java',
-        'spotbugs SQL_INJECTION_SPRING_JDBC Reports.java',
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(
+      summarize(result.newEnforceable.filter((finding) => finding.tool === 'spotbugs')),
+    ).toEqual([
+      'spotbugs SQL_INJECTION_JPA Lookup.java',
+      'spotbugs SQL_INJECTION_SPRING_JDBC Reports.java',
+      'spotbugs SQL_INJECTION_SPRING_JDBC Reports.java',
+    ]);
+  }, 180_000);
 });

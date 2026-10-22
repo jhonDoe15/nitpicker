@@ -220,7 +220,7 @@ describe('spotbugsLaunch', () => {
     const argument = (name) => launch.args[launch.args.indexOf(name) + 1];
 
     expect(argument('-pluginList')).toBe(['/m2/plugin.jar', '/m2/extra.jar'].join(path.delimiter));
-    expect(argument('-exclude')).toMatch(/gradle[/\\]security[/\\]exclude\.xml$/u);
+    expect(argument('-exclude')).toBe(path.join(GRADLE_DIRECTORY, 'security', 'exclude.xml'));
     expect(launch.args.at(-1)).toBe('/work/classes');
   });
 

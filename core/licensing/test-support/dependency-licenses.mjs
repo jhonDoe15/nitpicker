@@ -34,8 +34,6 @@ const JAVA_ONLY_PERMISSIVE = new Set(['BSD-style']);
 const LICENSE_FILE = /^(?:licen[cs]es?|copying)(?:[.-].*)?$/i;
 const LESSER_COPYLEFT = /\bLGPL/i;
 const EXACT_VERSION = /^\d+(?:\.\d+)*$/;
-const PINNED_BLOCK = /def pinned = \[([\s\S]*?)\n\]/;
-const PINNED_ENTRY = /^\s*(\w+)\s*:\s*'([^']*)'/gm;
 
 function readJson(file) {
   return JSON.parse(readFileSync(file, 'utf8'));
@@ -52,15 +50,25 @@ export function lockedPackages(root) {
     }));
 }
 
+function within(base, name) {
+  const root = path.resolve(base);
+  const full = path.resolve(root, name);
+  if (!full.startsWith(`${root}${path.sep}`)) {
+    throw new Error(`${name} is outside ${root}`);
+  }
+  return full;
+}
+
 function licenseFiles(directory) {
   return readdirSync(directory)
     .filter((entry) => LICENSE_FILE.test(entry))
-    .flatMap((entry) =>
-      statSync(path.join(directory, entry)).isDirectory()
-        ? readdirSync(path.join(directory, entry)).map((inner) => path.join(entry, inner))
-        : [entry],
-    )
-    .filter((entry) => statSync(path.join(directory, entry)).isFile());
+    .flatMap((entry) => {
+      const full = within(directory, entry);
+      return statSync(full).isDirectory()
+        ? readdirSync(full).map((inner) => within(full, inner))
+        : [full];
+    })
+    .filter((file) => statSync(file).isFile());
 }
 
 function textProblems(directory, label, declared) {
@@ -68,10 +76,9 @@ function textProblems(directory, label, declared) {
     return [];
   }
   const allowGpl = declared !== undefined && LESSER_COPYLEFT.test(declared);
-  return licenseFiles(directory).flatMap((entry) => {
-    const found = forbiddenLicenseText(readFileSync(path.join(directory, entry), 'utf8'), {
-      allowGpl,
-    });
+  return licenseFiles(directory).flatMap((file) => {
+    const found = forbiddenLicenseText(readFileSync(file, 'utf8'), { allowGpl });
+    const entry = path.relative(directory, file);
     return found === undefined ? [] : [`${label}: ${entry} is ${found}, which is not allowed`];
   });
 }
@@ -83,21 +90,12 @@ export function npmLicenseViolations(root) {
       declared === undefined || classifyExpression(declared) === REJECTED
         ? [`${label}: license "${String(declared)}" is not on the allowlist`]
         : [];
-    return [...declaredProblem, ...textProblems(path.join(root, key), label, declared)];
+    return [...declaredProblem, ...textProblems(within(root, key), label, declared)];
   });
 }
 
-export function pinnedJavaTools(initScript) {
-  const block = PINNED_BLOCK.exec(initScript)?.[1] ?? '';
-  return [...block.matchAll(PINNED_ENTRY)].map(([, tool, version]) => ({ tool, version }));
-}
-
-export function javaToolLicenseViolations(initScript) {
-  const tools = pinnedJavaTools(initScript);
-  if (tools.length === 0) {
-    return ['the init script has no `def pinned = [...]` map'];
-  }
-  return tools.flatMap(({ tool, version }) => {
+export function javaToolLicenseViolations(pinned) {
+  return Object.entries(pinned).flatMap(([tool, version]) => {
     const license = JAVA_TOOL_LICENSES[tool];
     const exact = EXACT_VERSION.test(version)
       ? []
