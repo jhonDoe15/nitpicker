@@ -4,18 +4,14 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync } 
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { javaCommand, runJava } from '../maven-command.mjs';
-import { cacheRoot } from '../maven-tools.mjs';
+import { cacheDirectory } from '../maven-tools.mjs';
 
 const RULES_DIRECTORY = path.join(GRADLE_DIRECTORY, 'archunit');
 const TOOL = 'Spring architecture rules';
-const identities = new Map();
+const PROPERTY_SEPARATOR = ' = ';
 
 function jdkIdentity() {
-  const java = javaCommand('java');
-  if (identities.has(java)) {
-    return identities.get(java);
-  }
-  const result = spawnSync(java, ['-XshowSettings:properties', '-version'], {
+  const result = spawnSync(javaCommand('java'), ['-XshowSettings:properties', '-version'], {
     encoding: 'utf8',
   });
   if (result.error !== undefined || result.status !== 0) {
@@ -25,15 +21,13 @@ function jdkIdentity() {
   }
   const lines = `${result.stderr}\n${result.stdout}`.split(/\r?\n/u).map((line) => line.trim());
   function property(name) {
-    const line = lines.find((candidate) => candidate.startsWith(`${name} = `));
+    const line = lines.find((candidate) => candidate.startsWith(`${name}${PROPERTY_SEPARATOR}`));
     if (line === undefined) {
       throw new Error(`${TOOL} need the JDK identity, but java reported no ${name}`);
     }
-    return line.slice(name.length + 3);
+    return line.slice(name.length + PROPERTY_SEPARATOR.length);
   }
-  const identity = `${property('java.vendor')}|${property('java.version')}`;
-  identities.set(java, identity);
-  return identity;
+  return `${property('java.vendor')}|${property('java.version')}`;
 }
 
 function ruleSources(rulesDirectory) {
@@ -116,7 +110,7 @@ export function runSpringArch(options) {
   const output = path.join(reportDir, 'spring-arch.json');
   rmSync(output, { force: true });
   const sources = ruleSources(options.rules ?? RULES_DIRECTORY);
-  const root = path.join(cacheRoot(), 'spring-arch');
+  const root = cacheDirectory('spring-arch');
   mkdirSync(root, { recursive: true });
   const classes = path.join(root, cacheKey({ sources, archunit: pinned.archunit }));
   const libraries = existing(tools.archunit);

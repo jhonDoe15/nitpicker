@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import {
   archunitTool,
-  cacheRoot,
+  cacheDirectory,
   formatTool,
   resolveTools,
   toolDependencies,
@@ -82,14 +82,15 @@ describe('archunitTool', () => {
   });
 });
 
-describe.skipIf(process.platform === 'win32')('cacheRoot', () => {
-  it('is a private nitpicker directory under XDG_CACHE_HOME', () => {
+describe.skipIf(process.platform === 'win32')('cacheDirectory', () => {
+  it('names a directory inside a private nitpicker directory under XDG_CACHE_HOME', () => {
     const home = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-cache-root-')));
     roots.push(home);
     vi.stubEnv('XDG_CACHE_HOME', home);
-    const root = cacheRoot();
+    const directory = cacheDirectory('spring-arch');
+    const root = path.join(home, 'nitpicker');
 
-    expect([root, statSync(root).mode & 0o077]).toEqual([path.join(home, 'nitpicker'), 0]);
+    expect([directory, statSync(root).mode & 0o077]).toEqual([path.join(root, 'spring-arch'), 0]);
   });
 });
 
