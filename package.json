@@ -39,9 +39,9 @@
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
     "test:record-eslint": "node scripts/record-eslint-reports.mjs",
     "test:conformance": "vitest run --config vitest.config.mts core/diff/comparison/conformance.test.mjs",
-    "test:java": "NITPICKER_JAVA_E2E=1 vitest run --config vitest.config.mts --no-file-parallelism languages/java/adapters/java-e2e/java-preset.e2e.test.mjs languages/java/adapters/java-e2e/multi-project.e2e.test.mjs languages/java/adapters/spring/java-spring.e2e.test.mjs languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs languages/java/maven/maven-preset.e2e.test.mjs languages/java/adapters/errorprone/error-prone.e2e.test.mjs languages/java/adapters/errorprone/lombok.e2e.test.mjs languages/java/adapters/errorprone/checks/checks-catalog.e2e.test.mjs languages/java/maven/errorprone/maven-errorprone.e2e.test.mjs languages/java/messages/rule-catalog.e2e.test.mjs",
+    "test:java": "NITPICKER_JAVA_E2E=1 vitest run --config vitest.config.mts --no-file-parallelism languages/java/adapters/java-e2e/preset languages/java/adapters/java-e2e/test-frameworks.e2e.test.mjs languages/java/adapters/java-e2e/multi-project.e2e.test.mjs languages/java/adapters/spring/e2e languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs languages/java/maven/preset languages/java/adapters/errorprone/error-prone.e2e.test.mjs languages/java/adapters/errorprone/lombok.e2e.test.mjs languages/java/adapters/errorprone/checks/checks-catalog.e2e.test.mjs languages/java/maven/errorprone/maven-errorprone.e2e.test.mjs languages/java/messages/rule-catalog.e2e.test.mjs",
     "test:python": "NITPICKER_PYTHON_E2E=1 vitest run --config vitest.config.mts --testTimeout=900000 --hookTimeout=900000 languages/python/adapters/e2e languages/python/adapters/project-tools/pyright/pyright.e2e.test.mjs languages/python/adapters/project-tools/mypy.e2e.test.mjs languages/python/rules/nitpicker-rules.e2e.test.mjs languages/python/rules/swallowing.e2e.test.mjs languages/python/rules/rule-cases.e2e.test.mjs languages/python/rules/e2e",
-    "test:kotlin": "NITPICKER_KOTLIN_E2E=1 vitest run --config vitest.config.mts --no-file-parallelism --testTimeout=900000 --hookTimeout=900000 languages/java/adapters/kotlin-metrics.e2e.test.mjs languages/java/adapters/kotlin-e2e languages/java/adapters/kotlin/spring/kotlin-spring.e2e.test.mjs languages/java/maven/kotlin/e2e"
+    "test:kotlin": "NITPICKER_KOTLIN_E2E=1 vitest run --config vitest.config.mts languages/java/adapters/kotlin-metrics.e2e.test.mjs languages/java/adapters/kotlin-e2e"
   },
   "prettier": "./languages/typescript/preset/defaults/.prettierrc.json",
   "files": [
@@ -51,6 +51,7 @@
     "!**/*.test.mjs",
     "!**/fixtures/**",
     "!**/test-support/**",
+    "!languages/java/**/__tests__/**",
     "!**/README.md",
     "!**/__pycache__/**",
     "!**/*.pyc",
@@ -62,6 +63,8 @@
   "peerDependencies": {
     "@types/node": ">=20",
     "@vitest/coverage-v8": "^4.1.11 || ^5.0.0",
+    "jest": ">=29",
+    "mocha": ">=10",
     "typescript": ">=5.7",
     "vitest": "^4.1.11 || ^5.0.0"
   },
@@ -70,6 +73,12 @@
       "optional": true
     },
     "@vitest/coverage-v8": {
+      "optional": true
+    },
+    "jest": {
+      "optional": true
+    },
+    "mocha": {
       "optional": true
     },
     "typescript": {
@@ -81,10 +90,16 @@
   },
   "dependencies": {
     "@eslint/js": "10.0.1",
+    "@jridgewell/trace-mapping": "0.3.31",
     "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/jest-runner": "10.0.0",
+    "@stryker-mutator/mocha-runner": "10.0.0",
+    "@stryker-mutator/tap-runner": "10.0.0",
     "@stryker-mutator/typescript-checker": "10.0.0",
     "@stryker-mutator/vitest-runner": "10.0.0",
     "@vitest/eslint-plugin": "1.6.27",
+    "acorn": "8.18.0",
+    "ast-v8-to-istanbul": "1.0.7",
     "dependency-cruiser": "18.2.0",
     "eslint": "10.9.1",
     "eslint-plugin-formatjs": "8.1.1",
@@ -108,9 +123,16 @@
     "yaml": "2.9.1"
   },
   "devDependencies": {
+    "@types/jest": "30.0.0",
+    "@types/mocha": "10.0.10",
     "@types/node": "25.6.0",
     "@types/react": "19.2.2",
     "@vitest/coverage-v8": "4.1.11",
+    "jest": "30.5.2",
+    "mocha": "12.0.3",
+    "ts-jest": "29.4.15",
+    "ts-node": "10.9.2",
+    "tsx": "4.23.15",
     "typescript": "6.0.3",
     "vitest": "4.1.11"
   }

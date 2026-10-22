@@ -6,12 +6,17 @@ Status: Proposed, pending owner review.
 
 The default Stryker config (`languages/typescript/preset/defaults/stryker.config.mjs`) mutates `src/**` code
 files (`sourceGlobs` from `languages/typescript/preset/layout.mjs`), minus the shared excluded globs (the root folders `dist`, `build`,
-`generated`, `coverage`, `reports` and `target`, `node_modules` at any depth, and `*.d.ts`), `src/**/__tests__/**` and
-every test glob. It uses the vitest runner with the TypeScript checker, `perTest` coverage analysis,
+`generated`, `coverage`, `reports` and `target`, `node_modules` at any depth, and `*.d.ts`), `src/**/__tests__/**`, `src/**/test-support/**` when tests sit next to sources, and
+every test glob. It uses the Stryker runner for the project's test runner (Vitest, Jest, Mocha, or the tap runner
+for `node:test`; see [Test runners](usage.md#test-runners)) with the TypeScript checker, `perTest` coverage analysis,
 and `thresholds.break: null`, so Stryker itself never fails the run. The differential gate runs it
 through `languages/typescript/adapters/quality-areas-runner.mjs`, which rewrites the config, forces the `json`
-reporter, and turns `Survived` and `NoCoverage` mutants into findings. `nitpicker --all` mutates
-that whole area.
+reporter, and turns `Survived` and `NoCoverage` mutants into findings. A mutant that a `Stryker
+disable` comment would hide is reported as an enforceable `mutant-ignored` finding too, so the comment
+cannot be used to switch mutation off, not even for a path with a `nitpicker/no-comments` exception.
+Code that must stay out of mutation testing gets a reviewed `exceptions` entry for `mutant-ignored`
+with its paths in `nitpicker.config.json` instead; that entry is the only way to lift the finding.
+`nitpicker --all` mutates that whole area.
 
 ## Scope in a comparison
 
@@ -23,9 +28,55 @@ base side runs no mutants: a mutant on a line the change wrote has no counterpar
 every surviving or uncovered mutant reported is new, which matches the touched-code rule for strict
 findings.
 
-What this gives up: a change that weakens existing tests, or changes a dependency or config, can
-let mutants survive in lines it did not touch, and a comparison does not see them. `--all` (for
-example on a schedule) still mutates every source file.
+### Changed tests
+
+When the change adds, edits, renames or deletes a test file, head also mutates, whole, every
+production module that a changed test imports directly (read with TypeScript's `preProcessFile`
+from the head version of the test, and from the base version for an edited, renamed or deleted
+test). A test renamed without a content change (`R100`) does not count. A changed file in the test
+area that is not itself a test, such as `test/support/assert.ts`, counts through the tests that
+import it, directly or through other test-area files. Imports resolve with TypeScript's module
+resolution and the project's `tsconfig.json` (or `jsconfig.json`), so relative paths, `paths`
+aliases such as `@/` and `baseUrl` imports are followed, including settings inherited through
+`extends` and those of the configs listed in `references` (the usual Vite layout keeps `paths` in
+`tsconfig.app.json`). Without a config the bundler resolution applies. A module the test reaches
+through re-exports (`export * from`, `export { x } from`, as in a feature's `index.ts`) counts too,
+up to three re-exports deep. Packages, an alias that points into `node_modules` included, and
+modules reached only through another module's imports are not followed. A module that exists on
+only one side is skipped, and a module that is also a changed source file is mutated whole instead
+of by its changed lines.
+
+At most ten modules are mutated this way: the ones the changed tests import directly first, then
+those reached through re-exports, so a test that imports a top-level `src/index.ts` cannot make
+the run mutate the whole source tree. The modules over the cap are named in a descriptive
+`tested-modules-capped` finding, which never fails the run.
+
+The usual findings still come only from the changed lines. A mutant elsewhere in those modules
+fails only when the change let it escape: head reports it `Survived` or `NoCoverage`, and the base
+tests caught it (`Killed` or `Timeout`). To find that out, the base checkout runs Stryker on just
+those mutants: each escaped mutant's lines, moved to their base position. Every line of a source
+file that the change did not write is mapped to its base line through the hunks of `git diff
+--unified=0` (deleted lines included, so deleting a line above a mutant moves it too), and a mutant
+matches a base mutant with the same mutator, replacement, base line and column. The base run skips
+the TypeScript checker, since head's checker already accepted those mutants. The finding keeps the
+`mutant-survived` or `mutant-nocoverage` rule and says "This change weakened the tests of
+<module>: the base tests caught this <mutator> mutant (...), but it survives now". If the weaker
+tests are intended, an exception for that rule with the module's path in `nitpicker.config.json`
+lifts it (the same exception lifts the usual mutant findings of that path). A change that touches
+no test mutates nothing extra, and when no mutant of those modules outside the changed lines
+escapes on head, the base run is skipped.
+
+On the sandbox project (33 lines in three modules), deleting one assertion took about 2.5 minutes
+for the mutation analyzer, against about 1 minute for a one-line source change.
+
+Not covered: a change to the Vitest config that stops some tests from running (an `exclude`, a
+narrower `include`) changes no test file, so it mutates nothing extra. The options pinned in the
+config nitpicker runs tests with (see [typescript-strict-preset.md](typescript-strict-preset.md))
+keep a config from letting a failing test pass, but not from dropping a test.
+
+What this gives up: a change of a dependency or a config can still let mutants survive in lines it
+did not touch, and a comparison does not see them. `--all` (for example on a schedule) still
+mutates every source file.
 
 Before this scope, both sides mutated the whole source area. On ufo (1,575 source lines, 1,017
 mutants) that took 426 s with the TypeScript checker; the changed lines of a three-line function

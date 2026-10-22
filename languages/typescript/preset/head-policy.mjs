@@ -5,7 +5,6 @@ import {
   readHeadPolicyFile,
   resolveHeadPolicy as resolveSharedHeadPolicy,
 } from '../../../shared/head-policy.mjs';
-import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
 import {
   frameworkConventions,
   hasScopePackage,
@@ -15,6 +14,7 @@ import {
 } from './eslint-config/scope-support.mjs';
 import {
   builtInExcludedGlobs,
+  existingRoots,
   globToRegExp,
   resolveLayout,
   resolveLayoutFor,
@@ -54,10 +54,20 @@ const PRETTIER_PROJECT_FILES = [
   'package.json',
 ];
 
+function withTestPlacement(policy, projectRoot) {
+  if (
+    projectRoot === undefined ||
+    existingRoots(projectRoot, resolveLayout(policy.layout).testRoots).length > 0
+  ) {
+    return policy;
+  }
+  return { ...policy, layout: { ...policy.layout, colocatedTests: true } };
+}
+
 const SCOPED_PRESETS = [undefined, 'typescript', 'javascript'];
 
 export function resolveHeadPolicy(config = {}, projectRoot) {
-  const policy = resolveSharedHeadPolicy(config);
+  const policy = withTestPlacement(resolveSharedHeadPolicy(config), projectRoot);
   return projectRoot === undefined ? policy : withProjectFacts(policy, config, projectRoot);
 }
 
@@ -199,6 +209,7 @@ export function readHeadPolicy(environment = process.env) {
     i18n: policy.i18n ?? {},
     preset: policy.preset,
     tools: policy.tools ?? {},
+    duplicates: policy.duplicates ?? {},
     conventions: policy.conventions,
     testConsole: policy.testConsole ?? {},
     conventionPins: policy.conventionPins,
@@ -211,10 +222,7 @@ export function readHeadPolicy(environment = process.env) {
 export function readLayout(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return {
-    ...resolveLayout(readHeadPolicyFile(environment).layout, policy.exclude, {
-      javascript: isJavascriptPolicy(policy),
-      generatedFiles: policy.generatedFiles,
-    }),
+    ...resolveLayoutFor({ ...policy, layout: readHeadPolicyFile(environment).layout }),
     entryPoints: [...(policy.layout.entryPoints ?? []), ...policy.frameworks.entryPoints],
   };
 }

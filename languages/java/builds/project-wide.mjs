@@ -8,6 +8,7 @@ import {
 import { readJavaFileLimitFindings } from '../adapters/metrics/java-structure.mjs';
 import { kotlinModules, readKotlinMetrics } from '../adapters/kotlin/kotlin-metrics.mjs';
 import { inModule } from './module-path.mjs';
+import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-classes.mjs';
 
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
@@ -134,11 +135,13 @@ export function projectWideFindings(
       kotlin,
       policy: {
         thresholds: policy.fileLimits,
+        conventions: policy.conventions,
         exclude: policy.exclude,
         exceptions: policy.exceptions,
         baselineRoot: policy.baselineRoot,
       },
     }),
     ...couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin }),
+    ...readTestOnlyClassFindings(projectRoot, { projects }),
   ];
 }

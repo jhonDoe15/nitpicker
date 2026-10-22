@@ -1,11 +1,8 @@
-import { childAt, childrenAt, childrenNamed } from '../../ingest/common.mjs';
+import { childAt, childrenAt, childrenNamed } from '../../../../shared/ingest/common.mjs';
+import { textAt } from '../configuration/pom-elements.mjs';
 
 const COMPILER = 'maven-compiler-plugin';
 const UNRESOLVED = /\$\{/u;
-
-export function textAt(element, ...names) {
-  return childAt(element, ...names)?.text?.trim();
-}
 
 function compilerPlugin(project) {
   return childrenAt(project, 'build', 'plugins', 'plugin').find(

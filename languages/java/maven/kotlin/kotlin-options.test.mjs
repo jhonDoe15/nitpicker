@@ -7,6 +7,13 @@ import { kotlinSetup } from './kotlin-options.mjs';
 
 const roots = [];
 const pinned = readPinnedTools();
+const KTLINT_POM = pomWith('ktlint-maven-plugin');
+const KTFMT_POM = pomWith('ktfmt-maven-plugin', '<style>KOTLINLANG</style>');
+
+function pomWith(artifactId, configuration = '') {
+  const body = `<artifactId>${artifactId}</artifactId><configuration>${configuration}</configuration>`;
+  return `<project><build><plugins><plugin>${body}</plugin></plugins></build></project>`;
+}
 
 function directory(files = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-options-'));
@@ -64,24 +71,21 @@ describe('kotlinSetup', () => {
   });
 
   it('follows the formatter the effective POM names, ktlint before ktfmt', () => {
-    expect(
-      setup({ effectivePom: '<artifactId>ktlint-maven-plugin</artifactId>' }).result.options,
-    ).toMatchObject({ formatter: 'ktlint', ktfmtStyle: 'meta', ktfmtEditorconfig: false });
-    expect(
-      setup({ effectivePom: '<ktfmt><style>KOTLINLANG</style></ktfmt>' }).result.options,
-    ).toMatchObject({ formatter: 'ktfmt', ktfmtStyle: 'meta' });
-    expect(
-      setup({
-        effectivePom: '<ktfmt><style>KOTLINLANG</style></ktfmt>',
-        policy: { toolPrecedence: { ktfmt: ['project', 'nitpicker'] } },
-      }).result.options,
-    ).toMatchObject({ formatter: 'ktfmt', ktfmtStyle: 'kotlinlang' });
+    expect(setup({ effectivePom: KTLINT_POM }).result.options).toMatchObject({
+      formatter: 'ktlint',
+      ktfmtStyle: 'meta',
+      ktfmtEditorconfig: false,
+    });
+    expect(setup({ effectivePom: KTFMT_POM }).result.options).toMatchObject({
+      formatter: 'ktfmt',
+      ktfmtStyle: 'kotlinlang',
+    });
     expect(setup({ effectivePom: '<name>plain</name>' }).result.options.formatter).toBe('none');
   });
 
   it('lets kotlin.formatter win and has ktfmt read the editorconfig only when the project is opted in', () => {
     const files = { '.editorconfig': 'root = true\nindent_size = 2\n' };
-    const effectivePom = '<artifactId>ktlint-maven-plugin</artifactId>';
+    const effectivePom = KTLINT_POM;
     const ignored = setup({ effectivePom, files, policy: { kotlinFormatter: 'ktfmt' } });
     const opted = setup({
       effectivePom,
@@ -104,7 +108,7 @@ describe('kotlinSetup', () => {
 
   it('gives ktlint an isolated workspace with the followed conventions unless the project is opted in', () => {
     const { result } = setup({
-      effectivePom: '<artifactId>ktlint-maven-plugin</artifactId>',
+      effectivePom: KTLINT_POM,
       files: { '.editorconfig': 'root = true\nindent_size = 8\n' },
       policy: { conventions: { 'kotlin.indentation': 4 } },
     });
