@@ -447,38 +447,53 @@ The `test-console` check fails a change when the project's tests print `console.
 `console.warn` output that the base run did not print. The usual cause is work that outlives a test:
 a React "state update on an unmounted component" warning from a timer that survives unmount, a
 "unique key" warning from a list that changed, an error logged by a handler that now fails. The
-check reads the `coverage` run, so it starts no tests of its own; it costs a small reporter in that
-run and a file read per side.
+check reads the `coverage` run, so it starts no tests of its own; it costs a reporter or a console
+wrapper in that run (one file append per `console.error` or `console.warn` call) and a file read per
+side.
 
 The check runs on every test runner nitpicker supports (Vitest, Jest, `node:test` and Mocha, both
 presets), with the same rules for each. What it sees is what the test prints through `console.error`,
-`console.warn`, `console.trace` and a failed `console.assert`; `silent: true` (Vitest and Jest) does not
-hide anything from the check, because it silences the terminal, not the output. A call that the
+`console.warn`, `console.trace` and a failed `console.assert`; `silent: true` (Vitest and Jest) does
+not hide anything from the check, because it silences the terminal, not the output. A call that the
 project itself silences is not seen, because it never prints: Vitest's `onConsoleLog` returning
-`false`, a `console.error` replaced by a stub or a Jest spy that does not call through. How exactly
-the output is attributed depends on the runner:
+`false`, a `console.error` replaced by a stub or a Jest spy that does not call through. The check
+never changes what a test sees: a test that spawns a process gets that process's own output, and a
+test that mocks `fs` does not see the check's writes. How the output is attributed depends on the
+runner:
 
-| Runner      | Attributed to      | How it is read                                                                               |
-| ----------- | ------------------ | -------------------------------------------------------------------------------------------- |
-| Vitest      | test file and test | A reporter added to the coverage run.                                                        |
-| `node:test` | test file and test | The coverage preload wraps the console in each test process and tracks the running test.     |
-| Mocha       | test file and test | A root hook plugin names the running test to the same preload; also works with `--parallel`. |
-| Jest        | test file only     | A reporter that reads the console buffer of each file, which Jest does not split by test.    |
+| Runner      | Attributed to      | How it is read                                                          |
+| ----------- | ------------------ | ----------------------------------------------------------------------- |
+| Vitest      | test file and test | A reporter added to the coverage run.                                   |
+| `node:test` | test file and test | The coverage preload wraps the console in each test file process.       |
+| Mocha       | test file and test | A `--require` module follows the runner's events, `--parallel` too.     |
+| Jest        | test file only     | A reporter reading each file's console buffer (Jest has none per test). |
+
+Output printed while a test file loads, or in a `before`/`after` hook (`beforeAll`/`afterAll`),
+belongs to that file, with no test name or with the name of the hook's suite. Output from a hook that
+runs around each test (`beforeEach`/`afterEach`) belongs to that test. A message is the same whichever
+way it is attributed, because findings are keyed by test file and message, so a Jest finding just does
+not name a test.
 
 For Jest the run uses Jest's `default` reporter and nitpicker's console reporter in place of the
 `reporters` of the project config (as the Vitest and Mocha runs replace theirs), and runs with
-`silent` and `verbose` off, because Jest buffers console calls only then. A message is the same
-whichever way it is attributed, because findings are keyed by test file and message, so a Jest
-finding just does not name a test. With Mocha, output printed while the spec files load, or in a
-root-level `before` or `after` hook, has no test file. With `node:test`, tests of one file that run
-concurrently can swap the test name, and `--test-isolation=none` (one process for every file) is not
-read, because the file of a call is not known there. A Node process that a test starts inherits the preload, so its own console calls are seen too (for `node:test`, under the path of the script it runs).
+`silent` and `verbose` off, because Jest buffers console calls only then; a `silent` project then
+shows its console output in the run's log. Jest keeps only the first argument of a failed
+`console.assert` (`console.assert(false, 'bad %s', 'input')` gives `Assertion failed: bad %s`). With
+`node:test`, tests of one file that run concurrently can swap the test name, and
+`--experimental-test-isolation=none` (every file in the runner's own process) is not read at all,
+because the file of a call is not known there: the check passes with no findings. Mocha runs every
+spec file in one process (one per worker with `--parallel`); a root hook from a `--require` file
+belongs to no test file and is not seen.
 
 It does not see:
 
 - `console.log`, `console.info` and `console.debug`, which go to standard output;
-- `process.stderr.write`, output of child processes and `process.emitWarning`;
-- output printed after a test file has finished, such as a dangling timer that fires later;
+- `process.stderr.write`, `process.emitWarning`, and the output of child processes and worker threads
+  a test starts;
+- output printed after a test file has finished (after its last `after`/`afterAll` hook), such as a
+  dangling timer that fires later, or with Mocha a timer that fires while another file's tests run;
+  with Jest such a call prints "Cannot log after tests are done", which fails a run in band only when
+  it would fail without nitpicker too;
 - the output of a failing run: `coverage` fails first and `test-console` is skipped, as `crap` is.
 
 Each console call becomes one message. A call is a block that starts at an unindented line, so a
@@ -626,12 +641,13 @@ have one. `typescript` and `vitest` are peers as for TypeScript.
 
 What the preset does not support:
 
-- **Test runner.** Vitest is the only runner, for both presets. A Jest or `node:test` project cannot
-  pass yet: coverage, CRAP and mutation run Vitest, and `vitest/no-import-node-test` fails a
-  `node:test` import (its message points to an exception for that rule, which silences the lint
-  finding only). Support for both runners is tracked in issue #162.
-- **CommonJS tests.** Production code may be CommonJS, but a test file must `import` Vitest, because
-  `require('vitest')` fails at run time. Import `.cjs` production code from an ESM test, as the fixture does.
+- **Test runner.** Both presets run the tests with the project's runner: Vitest, Jest, `node:test` or
+  Mocha (coverage, CRAP, mutation and console output). Test files are linted with the Vitest rules
+  whatever the runner, so `vitest/no-import-node-test` reports a `node:test` import; its message
+  points to an exception for that rule.
+- **CommonJS tests.** Production code may be CommonJS. A Vitest test file must `import` Vitest,
+  because `require('vitest')` fails at run time, so import `.cjs` production code from an ESM test, as
+  the fixture does; Jest, `node:test` and Mocha tests may be CommonJS.
 - **`.jsx` and `.tsx`.** React and JSX belong to the TypeScript preset. No analyzer reads a `.jsx` or
   `.tsx` file, so a project with one under its source or test roots is a config error (exit 2) rather
   than a green gate that checks nothing. Use the TypeScript preset, or list those files in `exclude`.

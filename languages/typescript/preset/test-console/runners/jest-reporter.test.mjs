@@ -54,7 +54,31 @@ describe('the Jest console reporter', () => {
     expect(entriesWritten()).toEqual([
       { file, test: '', messages: ['Warning: leaked in <root>/src'] },
       { file, test: '', messages: ['Error: boom'] },
-      { file, test: '', messages: ['AssertionError [ERR_ASSERTION]: bad'] },
+      { file, test: '', messages: ['Assertion failed: bad'] },
+    ]);
+  });
+
+  it('words a failed assert as Node does and reads a grouped call like one outside a group', () => {
+    const file = `${ROOT}/test/a.test.ts`;
+
+    runWith([
+      [
+        file,
+        [
+          { type: 'assert', message: 'AssertionError [ERR_ASSERTION]: bad input' },
+          {
+            type: 'assert',
+            message: '  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value',
+          },
+          { type: 'warn', message: '    at the door' },
+        ],
+      ],
+    ]);
+
+    expect(entriesWritten().map(({ messages }) => messages)).toEqual([
+      ['Assertion failed: bad input'],
+      ['Assertion failed'],
+      ['at the door'],
     ]);
   });
 

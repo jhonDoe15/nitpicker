@@ -15,18 +15,32 @@ const PRODUCER_FOLDER = 'languages/typescript/preset/test-console';
 const CONSOLE_PRODUCERS = {
   vitest: `${PRODUCER_FOLDER}/vitest-reporter.config.mjs`,
   jest: `${PRODUCER_FOLDER}/runners/jest-reporter.config.mjs`,
-  mocha: `${PRODUCER_FOLDER}/runners/mocha-hooks.config.mjs`,
+  mocha: `${PRODUCER_FOLDER}/runners/mocha-capture.config.mjs`,
 };
 
 export function consoleProducerPath(options, runner) {
   return path.join(options.policyRoot, CONSOLE_PRODUCERS[runner]);
 }
 
+function parsedLine(line) {
+  try {
+    return { value: JSON.parse(line) };
+  } catch (error) {
+    return { malformed: error };
+  }
+}
+
+function recordedCall(line) {
+  const { value } = parsedLine(line);
+  return typeof value?.content === 'string' ? value : undefined;
+}
+
 function entriesOf(linesPath, root) {
   const lines = existsSync(linesPath) ? readFileSync(linesPath, 'utf8').split('\n') : [];
   return lines
-    .filter((line) => line !== '')
-    .map((line) => consoleEntry({ ...JSON.parse(line), root }))
+    .map((line) => recordedCall(line))
+    .filter((line) => line !== undefined)
+    .map((line) => consoleEntry({ ...line, root }))
     .filter((entry) => entry !== undefined);
 }
 

@@ -41,7 +41,7 @@ describe('the console capture of a test run', () => {
     });
   });
 
-  it('turns the lines of every test process into the normalized report, then removes them', () => {
+  it('turns the readable lines of every test process into the normalized report, then removes them', () => {
     const capture = startTestConsole({ projectRoot }, { collectsLines: true });
     const lines = [
       { file: '/p/a.test.js', test: 'one', content: `warn a in ${projectRoot}/src\n` },
@@ -51,6 +51,7 @@ describe('the console capture of a test run', () => {
     for (const line of lines) {
       appendFileSync(capture.environment[LINES_VARIABLE], `${JSON.stringify(line)}\n`);
     }
+    appendFileSync(capture.environment[LINES_VARIABLE], '{"file":"/p/d.test.js","te\n[1]\n');
 
     capture.finish();
     capture.remove();
@@ -104,7 +105,7 @@ describe('the console capture of a test run', () => {
       '/policy/languages/typescript/preset/test-console/runners/jest-reporter.config.mjs',
     );
     expect(consoleProducerPath(options, 'mocha')).toBe(
-      '/policy/languages/typescript/preset/test-console/runners/mocha-hooks.config.mjs',
+      '/policy/languages/typescript/preset/test-console/runners/mocha-capture.config.mjs',
     );
   });
 });

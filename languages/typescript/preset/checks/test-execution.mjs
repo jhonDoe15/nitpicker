@@ -17,8 +17,8 @@ const COVERAGE_CONFIGURATION_FILES = [
   'languages/typescript/preset/test-console/console-report.mjs',
   'languages/typescript/preset/test-console/runners/jest-reporter.config.mjs',
   'languages/typescript/preset/test-console/runners/jest-reporter.mjs',
+  'languages/typescript/preset/test-console/runners/mocha-capture.config.mjs',
   'languages/typescript/preset/test-console/runners/mocha-capture.mjs',
-  'languages/typescript/preset/test-console/runners/mocha-hooks.config.mjs',
   'languages/typescript/preset/test-console/vitest-reporter.config.mjs',
   JAVASCRIPT_PRESET_FILE,
 ];

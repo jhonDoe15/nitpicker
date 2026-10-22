@@ -69,7 +69,7 @@ const EXPECT_THROWS_HINT =
   ' In a test, assert a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)` instead of asserting inside a `catch`.';
 
 const NODE_TEST_HINT =
-  ' nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). If this file must stay on node:test, add an exception for this rule in nitpicker.config.json.';
+  ' nitpicker runs node:test files, but lints every test file with the Vitest rules. If this file must stay on node:test, add an exception for this rule in nitpicker.config.json.';
 
 const EXCEPTION_ROUTE = 'add an exception for this rule in nitpicker.config.json';
 

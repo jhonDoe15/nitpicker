@@ -1,16 +1,19 @@
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
+import { readTestReport } from '../../quality-areas/reporting/test-report.mjs';
 import {
-  readRun,
+  finishedRun,
   removeTemporary,
   temporaryProjectPath,
   testTimeoutMs,
   workerCount,
 } from '../test-run.mjs';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
-import { assertSourcesCovered, coverageArguments, shownRootDir } from './jest-coverage.mjs';
+import { assertSourcesCovered, coverageArguments, shownConfig } from './jest-coverage.mjs';
 import { jestTool } from './jest-launcher.mjs';
 import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
+
+const LATE_LOG = 'Cannot log after tests are done';
 
 const OPTIONS_NITPICKER_SETS = {
   flags: [
@@ -103,8 +106,15 @@ function consoleArguments(options, testConsole) {
     : [];
 }
 
+function withoutForcedLateLogExit(result, { report, printsDirectly, testConsole }) {
+  const ownRunPrints = printsDirectly || report?.numTotalTestSuites === 1;
+  const forced =
+    testConsole.enabled && ownRunPrints && result.status === 1 && result.stderr.includes(LATE_LOG);
+  return forced ? { ...result, status: 0 } : result;
+}
+
 export function runJest(options, command) {
-  const rootDir = shownRootDir(spawnJest(options, command, ['--showConfig']));
+  const { rootDir, printsDirectly } = shownConfig(spawnJest(options, command, ['--showConfig']));
   const reportPath = temporaryProjectPath(options, 'jest-report.json');
   const testConsole = startTestConsole(options, { collectsLines: false });
   try {
@@ -133,7 +143,12 @@ export function runJest(options, command) {
         ...consoleArguments(options, testConsole),
       ],
     );
-    const run = readRun({ reportPath, result, runnerName: RUNNER_NAMES.jest });
+    const report = readTestReport(reportPath, result, RUNNER_NAMES.jest);
+    const run = finishedRun({
+      report,
+      result: withoutForcedLateLogExit(result, { report, printsDirectly, testConsole }),
+      runnerName: RUNNER_NAMES.jest,
+    });
     if (!run.failed && run.report.numTotalTests > 0 && options.rerun === undefined) {
       assertSourcesCovered(options, rootDir);
     }
