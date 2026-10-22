@@ -23,6 +23,18 @@ describe('clonePartnerPath', () => {
     ]);
   });
 
+  it('names the other file of the pair for a renamed clone and a CPD clone', () => {
+    expect(
+      ['renamed:', 'cpd:'].map((kind) =>
+        clonePartnerPath({
+          rule: 'duplicate-clone',
+          path: 'a.py',
+          identity: `${kind}pair:a.py|b.py:fragment:x:occurrence:1`,
+        }),
+      ),
+    ).toEqual(['b.py', 'b.py']);
+  });
+
   it('has no partner for other findings', () => {
     expect(
       clonePartnerPath({ rule: 'duplicate-clone', path: 'a.java', identity: 'something' }),

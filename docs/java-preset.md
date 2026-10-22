@@ -400,6 +400,12 @@ classpath and its `test` task, and adds no test library to the project.
   [Using nitpicker](usage.md#configuration)). The head is measured with the head's config and the
   base with its own (widened to the head's roots), and a change to `preset` is listed under "Policy
   changed in this change"; declaring `java` on a project that had no preset is not a loosening.
+  The same list reads the build files for what shrinks the measured code (Gradle `sourceSets`
+  `srcDirs` and `exclude`, test excludes and filters; Maven `sourceDirectory` and surefire,
+  failsafe and compiler excludes), the project tool configs the project opted into
+  (`config/pmd/`, `config/checkstyle/`) and hidden code that production imports; see
+  [Using nitpicker](usage.md#configuration). Changed `.java` and `.kt` files outside the build's
+  source sets are named in a notice.
 - **One analyzer, several tools.** The preset is a single analyzer, `java` (one Gradle run per
   snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `errorprone` (Error Prone and NullAway, below), `google-java-format`, `jacoco`,
   `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5), `duplicates` (slice 6), `pit` (slice 7) and `spring` (configuration files, below). The analyzer declares them as
@@ -634,8 +640,12 @@ identity when the value changes: editing such a line counts as a resolved plus a
   no test runs it or it is annotated `@Generated`.
 - **JaCoCo filters.** The project's own JaCoCo settings (`jacocoTestReport.classDirectories`
   excludes, `test.jacoco` includes and excludes) are reset, so a class cannot leave the coverage
-  report through `build.gradle`. JaCoCo and PIT still skip code annotated `@Generated`; on
-  hand-written code that annotation is the `pmd/GeneratedOnHandWrittenCode` finding. Only violations are findings; the
+  report through `build.gradle`. JaCoCo and PIT still skip code annotated `@Generated`. An
+  annotation whose value names a known generator (MapStruct, Dagger, AutoValue, Immutables and the
+  others the generated-sources check lists) makes the whole file generated, so its findings are
+  dropped and no `pmd/GeneratedOnHandWrittenCode` is reported; adding one to a file the base checked
+  is a policy loosening. Any other `@Generated` is the `pmd/GeneratedOnHandWrittenCode` finding.
+  Only violations are findings; the
   per-function metric findings of the TypeScript check are not produced.
 - **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
   enclosing classes, method and parameter types (`signature` in `structure.json`), never a line;
@@ -675,6 +685,16 @@ identity when the value changes: editing such a line counts as a resolved plus a
   `duplicates`: `duplicate-clone` (enforceable, one per clone) and `duplicate-clone-size`
   (descriptive metrics `lines` and `tokens`). There is no extra threshold:
   jscpd's defaults (5 lines, 50 tokens) apply, as for TypeScript.
+- **Renamed copies.** A second jscpd run (100 tokens, 5 lines), on Gradle and Maven alike, goes over
+  a normalized copy of the `.java` files of each source root, where names, strings, characters,
+  numbers and comments are one token each, `package` and `import` lines, literal-only `List.of`,
+  `Map.of` and `Arrays.asList` calls and array initializers are blanked and generated files are left
+  out, so a copy with renamed locals and changed literals fails too, with `duplicate-clone` and an
+  identity starting `renamed:`. It replaces a plain clone over the same two ranges, and drops clones
+  made of declarations only (fields, constructors, getters and setters) and clones that only repeat
+  one or two statements (DTO mappers, enum `switch` tables). The copy lives under the report
+  directory while the run lasts. The message names the same route as for any clone: add either file
+  of the pair to `exclude`.
 
 | Tool                 | Report                      | Ingester                                              | Classification                                                    | Identity                                                                                                                                                              |
 | -------------------- | --------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1773,7 +1793,7 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
 - **Duplicates.** The jscpd check is unchanged. `nitpickerCpd` runs PMD's copy-paste detector
   (BSD-style, already inside the pinned PMD) over main and test sources with identifiers and
   literals ignored and at least 100 tokens, so a copy with renamed variables is found. When jscpd
-  and CPD report the same clone (same two files, overlapping lines, jscpd's range ending at its
+  (its plain run or its renamed-copies run) and CPD report the same clone (same two files, overlapping lines, jscpd's range ending at its
   start line plus `lines` minus one), only the CPD finding is kept, also when nitpicker then drops
   CPD's clone as boilerplate or as overlapping its own copy; in a module where CPD did not run or
   wrote no usable report, jscpd's clones stay, overlapping
@@ -1907,9 +1927,30 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   (`SecureRandom` is right for tokens, but a plain `Random` for sampling is legitimate and the
   tool cannot tell), and a path join that is checked after the fact in another method.
 
+## Generated sources
+
+Findings on generated sources are dropped (`generated/generated-sources.mjs`, applied to the Java
+and Kotlin presets on Gradle and Maven alike), so a generated file needs no `exclude`. A source is
+generated when its leading comments carry the header a known generator writes (the shared list in
+`shared/conventions/generator-marker.mjs`: protoc, Wire, jOOQ, Avro, ANTLR, JAXB, OpenAPI
+Generator, Swagger Codegen, Thrift, Android's `R` and `BuildConfig`, or `Code generated by <tool>.
+DO NOT EDIT.`), when it carries an `@Generated` annotation naming a known annotation processor
+(MapStruct, Dagger, AutoValue, Immutables, Querydsl, the gRPC Java plugin, the Hibernate
+metamodel generator, OpenAPI and Swagger generators, jOOQ, Room, Micronaut), when it lies under
+`build/generated/` (javac, kapt and KSP output), `target/generated-sources/`,
+`target/generated-test-sources/` or a `delombok` folder of the build output, or when it lies in a
+`generated/`, `generated-sources/` or `gen/` folder and its first five lines say `@generated` or
+`DO NOT EDIT`. Lombok's `delombok` writes no header, so its output counts through the build
+folder. A generic marker in a normally named file, an `@Generated` annotation with another value
+and a header below the code exempt nothing; hand-written code carrying `@Generated` stays the
+`pmd/GeneratedOnHandWrittenCode` finding. The evals harness fails a case whose agent wrote one of
+these markers into a file it wrote by hand.
+
 ## Spring rules
 
-A Gradle project whose compile classpath has `spring-context` or `spring-boot` gets nitpicker's
+A project whose compile classpath has `spring-context` or `spring-boot`, or whose build files
+(`build.gradle(.kts)`, `*.versions.toml`, `pom.xml`, comments removed) name `org.springframework`,
+gets nitpicker's
 Spring ruleset, [`languages/java/gradle/spring-ruleset.xml`](../languages/java/gradle/spring-ruleset.xml),
 added to its PMD run, next to nitpicker's rule set `pmd-ruleset.xml` (and the project's own `config/pmd/ruleset.xml` when
 `tools.pmd.precedence` lists `"project"` too). Every
@@ -1917,7 +1958,11 @@ project's PMD run now gets the main and test compile classpaths and the main and
 its auxiliary classpath (`pmd-aux-classpath.txt` in the report directory), so the rules match annotation and
 supertype names exactly; `nitpickerPmd` therefore compiles the main and test classes first, and a
 test compile error stops it. The manifest records `spring` and the
-main `resourceRoots`.
+main `resourceRoots`. Whether the build files name Spring is read once from the head checkout and
+handed to the base run through the head policy (`spring`, `-Pnitpicker.spring=true` for Gradle, the
+Maven module analysis), so a change that adds Spring does not turn legacy violations into new
+findings; a project that has Spring on the classpath only through a plugin keeps the per-snapshot
+classpath detection.
 
 Each rule allows one form and its message names it. A finding prints as `pmd/<rule>`, which is also
 the `rule` of a config exception.

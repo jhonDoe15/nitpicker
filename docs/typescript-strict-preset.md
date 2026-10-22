@@ -621,6 +621,16 @@ that defines a named function (a copied helper: keep one in a non-test file such
 `test/support/` and import it). Repeated expected values and assertions between tests are left
 alone.
 
+The `duplicates` check also runs jscpd over a copy of the sources where every name, string, number and
+comment is the same token, with at least 100 tokens and 5 lines, so a copy-pasted function whose
+locals and literals were renamed fails too (`duplicate-clone`, identity starting `renamed:`).
+Imports and re-exports, `interface`, `type` and `enum` declarations, literal-only objects and
+arrays, field declarations and JSX markup (tags, attributes, text and plain `{name}` holders) are
+left out of that copy, and so are generated files, so test tables, import lists and components that
+only share markup structure are not clones, and neither is code that only repeats one or two
+statements (constructor mappers, enum `switch` tables); handlers and conditions inside the markup count. The
+message names the same route as for any clone: add either file of the pair to `exclude`. Between two test files it points at a helper or a table-driven test.
+
 Every runnable test imports production code at runtime
 (`nitpicker/test-must-use-production-runtime`), directly or through a relative test helper that
 does, such as a `renderWithProviders` in `test/support/` that imports the app. The rule follows one

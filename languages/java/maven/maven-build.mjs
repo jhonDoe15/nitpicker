@@ -142,6 +142,10 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
   return testsRan;
 }
 
+function withDeclaredSpring(manifest, declared) {
+  return { ...manifest, spring: declared === true || manifest.spring };
+}
+
 function analyzeSources(context, project) {
   const { module, reportDir, tools, classpaths, configs, pinned, style } = context;
   runPmd({ module, reportDir, tools, classpaths, configs, spring: context.spring });
@@ -172,7 +176,10 @@ function analyzeModule({ project, ...options }) {
   const { module, classpaths, since, pinned } = options;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const manifest = moduleManifest({ module, classpaths, pinned });
+  const manifest = withDeclaredSpring(
+    moduleManifest({ module, classpaths, pinned }),
+    options.spring,
+  );
   const context = { ...options, reportDir, isArchunit, spring: manifest.spring };
   const testsRan = readTestRuns({
     module,
@@ -262,6 +269,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
           javaStyle: policy.javaStyle,
           indentation: checkstyleIndentation(policy.conventions),
         },
+        spring: policy.spring,
       });
     }
     return modules.map((module) => module.basedir);
