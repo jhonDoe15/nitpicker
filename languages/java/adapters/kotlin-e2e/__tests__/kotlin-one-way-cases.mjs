@@ -66,7 +66,8 @@ export function defineBannedCases(fixture, runWithPolicy) {
     git(fixture.project, 'checkout', '-q', 'one-way-banned');
     const exception = (testCase) => ({
       rule: testCase.rule,
-      glob: fixturePath(testCase, 'banned'),
+      paths: [fixturePath(testCase, 'banned')],
+      reason: 'The test lifts this rule for one path.',
     });
     const [scopeRun, scopeWith] = ['scopeRun', 'scopeWith'].map((id) =>
       kotlinRuleCases.find((testCase) => testCase.id === id),

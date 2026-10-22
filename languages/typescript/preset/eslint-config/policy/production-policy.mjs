@@ -8,7 +8,7 @@ const JAVASCRIPT_FILES = '**/*.{js,jsx,mjs,cjs}';
 const MAGIC_NUMBER_ALLOWED = [-1, 0, 1, 2, 10, 100, 1000];
 
 const RANDOM_MESSAGE =
-  'Math.random() is predictable, so it must not make ids or tokens: use crypto.randomUUID() or crypto.randomInt(), or take the random value as a parameter. For a simulation or UI jitter, add an exception for this rule in nitpicker.config.json.';
+  'Math.random() is predictable, so it must not make ids or tokens: use crypto.randomUUID() or crypto.randomInt(), or take the random value as a parameter. An exception fits only for a simulation or UI jitter.';
 
 const productionRestrictedProperties = [
   { object: 'Math', property: 'random', message: RANDOM_MESSAGE },

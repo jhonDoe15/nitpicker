@@ -29,7 +29,7 @@ function suppressionMessage(file, token) {
   if (compilerRule !== undefined) {
     return `Suppressing "${token}" inline is not allowed. Fix the code the compiler warns about. ${exceptionHint(compilerRule, file)}`;
   }
-  return `Suppressing "${token}" inline is not allowed. Fix the code the rule flags. To lift a one-way rule for some paths, add an "exceptions" entry for it in nitpicker.config.json; to skip generated code, add it to "exclude" there.`;
+  return `Suppressing "${token}" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. ${exceptionHint(SUPPRESSION_RULE, file)}`;
 }
 
 function suppressionFinding(file, token, identity) {

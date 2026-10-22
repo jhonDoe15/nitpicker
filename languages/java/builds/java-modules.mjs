@@ -4,6 +4,7 @@ import {
   readJavaFindings,
   readProjectDuplicateFindings,
 } from '../adapters/reporting/java-reports.mjs';
+import { retargetSentence } from '../../../shared/messages/exception-sentence.mjs';
 import { inModule } from './module-path.mjs';
 import { projectWideFindings } from './project-wide.mjs';
 
@@ -16,6 +17,28 @@ const MODULE_ROOT_LISTS = [
 
 function prefixOf(projectRoot, moduleDir) {
   return path.relative(projectRoot, moduleDir).replaceAll('\\', '/');
+}
+
+export function prefixedFinding(finding, prefix) {
+  const findingPath = inModule(prefix, finding.path);
+  function retarget(text) {
+    return text === undefined ? text : retargetSentence(text, finding.path, findingPath);
+  }
+  const { ratchet } = finding;
+  return {
+    ...finding,
+    path: findingPath,
+    message: retarget(finding.message),
+    ...(ratchet === undefined
+      ? {}
+      : {
+          ratchet: {
+            ...ratchet,
+            heldMessage: retarget(ratchet.heldMessage),
+            worseMessage: retarget(ratchet.worseMessage),
+          },
+        }),
+  };
 }
 
 function readManifest(moduleDir, reportDirectory) {
@@ -74,10 +97,7 @@ export function readModuleFindings(projectRoot, moduleDirs, options) {
   const moduleFindings = moduleDirs.flatMap((moduleDir) => {
     const prefix = prefixOf(projectRoot, moduleDir);
     return readModule(moduleDir, { ...options, projectWide: false, modulePath: prefix }).map(
-      (finding) => ({
-        ...finding,
-        path: inModule(prefix, finding.path),
-      }),
+      (finding) => prefixedFinding(finding, prefix),
     );
   });
   const roots = mergedRoots(projectRoot, moduleDirs, options.reportDirectory);

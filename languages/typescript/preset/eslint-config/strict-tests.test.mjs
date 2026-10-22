@@ -18,7 +18,7 @@ const loopMessage =
 const forEachMessage = 'Use a for...of loop instead of forEach.';
 const chainMessage =
   'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.' +
-  ' If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.';
+  ' An exception fits only when a framework or library requires it.';
 const asMessage =
   'Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.';
 const angleMessage =
@@ -33,7 +33,7 @@ describe('strict test rules', () => {
   it('requires subprocess deadlines in integration tests and their shared helpers', () => {
     const code = "import { spawnSync } from 'node:child_process'; spawnSync('tool', []);";
     const expected = [
-      'Give spawnSync a positive subprocess timeout, such as { timeout: 10_000 }. A test runner timeout cannot interrupt a synchronous child process, so a stuck command can hang the suite. If this process must wait without a deadline, add an exception for this rule in nitpicker.config.json.',
+      'Give spawnSync a positive subprocess timeout, such as { timeout: 10_000 }. A test runner timeout cannot interrupt a synchronous child process, so a stuck command can hang the suite. An exception fits only when this process must wait without a deadline.',
     ];
     expect(
       [

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import { readKotlinSpringFindings } from './kotlin-spring.mjs';
-import { KOTLIN_SPRING_RULES } from './spring-rules.mjs';
 import { FIXTURE, markedViolations } from './test-support/kotlin-spring-projects.mjs';
 
 function read(reportRoot) {
@@ -188,19 +188,16 @@ describe('Kotlin Spring rules', () => {
       identity: 'SpringConstructorInjection:FieldInjected.repo@Autowired',
       symbol: 'FieldInjected.repo@Autowired',
       location: { line: 26 },
-      message:
-        'Inject through the constructor into private val properties. Do not put @Autowired, @Inject, @Resource or @Value on properties or setters, and do not annotate the only constructor. If it is right here, add an exception for pmd/SpringConstructorInjection in nitpicker.config.json.',
+      message: `Inject through the constructor into private val properties. Do not put @Autowired, @Inject, @Resource or @Value on properties or setters, and do not annotate the only constructor. ${exceptionRoute({ rule: 'pmd/SpringConstructorInjection', path: 'src/main/kotlin/demo/Beans.kt' })}`,
       classification: 'enforceable',
     });
   });
 
-  it('names the exception route of its own rule in every message', () => {
+  it('names the exception route of its own rule and file in every message', () => {
     expect(
-      KOTLIN_SPRING_RULES.filter(
-        ({ name, message }) =>
-          !message.endsWith(
-            `If it is right here, add an exception for pmd/${name} in nitpicker.config.json.`,
-          ),
+      findings.filter(
+        ({ rule, path: file, message }) =>
+          !message.endsWith(exceptionRoute({ rule: `pmd/${rule}`, path: file })),
       ),
     ).toEqual([]);
   });

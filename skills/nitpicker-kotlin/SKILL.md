@@ -27,7 +27,7 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
      Gradle or Maven error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
-4. Never suppress: no `@Suppress` of a detekt or ktlint rule, config `exclude`/`disable`, legacy
+4. Never suppress: no `@Suppress` of a detekt or ktlint rule, config `exclude`/`disable`/`exceptions`, legacy
    entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and
    `@SuppressWarnings("PMD")` are findings, and a project's own PMD or Checkstyle config is used
    only when `nitpicker.config.json` opts in under `tools`. The one inline marker is
@@ -80,7 +80,10 @@ Before you change code other modules use, or fix a bug, read
 - Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
   fix the code. The compiler warnings `UNCHECKED_CAST`, `DEPRECATION` and `USELESS_CAST` are
   findings too and are not suppressed either. If a rule flags legitimate code, stop and ask: the
-  project adds the `exceptions` entry the finding's message names to `nitpicker.config.json`;
+  project adds the `exceptions` entry the finding's message names to `nitpicker.config.json`
+  (`detekt.<ruleset>.<Rule>`, paths, reason). A structure, CRAP, changed-branch coverage, duplicate
+  or coupling finding ends with its own entry
+  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`);
   switching a one-way rule off in
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
 - A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join

@@ -84,7 +84,7 @@ describe('rules from the React plugins', () => {
       {
         ruleId: 'react-x/refs',
         message:
-          'Cannot access refs during render. Read and write `ref.current` in event handlers and effects (render may only run the lazy init `if (ref.current === null) ref.current = new X()`); keep what renders in state. If this is intentional, add an exception for this rule in nitpicker.config.json.',
+          'Cannot access refs during render. Read and write `ref.current` in event handlers and effects (render may only run the lazy init `if (ref.current === null) ref.current = new X()`); keep what renders in state.',
       },
     ]);
   });
@@ -109,7 +109,7 @@ describe('rules from the React plugins', () => {
       'react-x/no-leaked-conditional-rendering',
     ]);
     expect(result.messages[0].message).toBe(
-      'Potential leaked value count that might cause unintentionally rendered values or rendering crashes. Compare explicitly (`count > 0 && <Badge />`) or use a ternary. If this is intentional, add an exception for this rule in nitpicker.config.json.',
+      'Potential leaked value count that might cause unintentionally rendered values or rendering crashes. Compare explicitly (`count > 0 && <Badge />`) or use a ternary.',
     );
   });
 

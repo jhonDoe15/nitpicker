@@ -14,7 +14,7 @@ export const rule = {
     schema: [],
     messages: {
       neverRuns:
-        'This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). If another test file runs it on purpose, add an exception for nitpicker/no-uncollected-tests in nitpicker.config.json.',
+        'This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose.',
     },
   },
   create(context) {

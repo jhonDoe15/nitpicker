@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
+import { REVIEW_TOOL, withRoute } from '../review-rules/review-finding.mjs';
 import { readKotlinFile } from './model/kotlin-file.mjs';
 import { checkedExceptionsOf, enumTypesOf, repositoryTypesOf } from './project-types.mjs';
 import { KOTLIN_SPRING_RULES } from './spring-rules.mjs';
@@ -12,7 +13,7 @@ function findingOf({ file, rule, hit, occurrences }) {
   const key = `${file.source.file}\0${rule.name}\0${hit.symbol}`;
   const occurrence = nextOccurrence(occurrences, key);
   return {
-    tool: 'pmd',
+    tool: REVIEW_TOOL,
     rule: rule.name,
     path: file.source.file,
     identity:
@@ -21,7 +22,12 @@ function findingOf({ file, rule, hit, occurrences }) {
         : `${rule.name}:${hit.symbol}#${String(occurrence)}`,
     symbol: hit.symbol,
     location: { line: lineOf(file.source, hit.node.s) },
-    message: rule.message,
+    message: withRoute({
+      tool: REVIEW_TOOL,
+      rule: rule.name,
+      file: file.source.file,
+      message: rule.message,
+    }),
     classification: 'enforceable',
   };
 }
