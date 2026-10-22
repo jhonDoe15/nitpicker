@@ -19,7 +19,7 @@ describe('policy findings', () => {
 
   it('explains the exclusion before the self-contained acceptance route', () => {
     const kinds = { 'exclude added: src/**': 'exclusion' };
-    const [finding] = policyFindings(loosenings, 'd1e2f3a4b5c6', undefined, kinds);
+    const [finding] = policyFindings(loosenings, 'd1e2f3a4b5c6', { kinds });
 
     expect(finding.policyKind).toBe('exclusion');
     expect(finding.message).toBe(
@@ -33,7 +33,7 @@ describe('policy findings', () => {
   });
 
   it('words a finding without a kind with the generic guidance and keeps its identity', () => {
-    const [, finding] = policyFindings(loosenings, 'd1e2f3a4b5c6', undefined, {});
+    const [, finding] = policyFindings(loosenings, 'd1e2f3a4b5c6');
 
     expect(finding.policyKind).toBeUndefined();
     expect(finding.identity).toBe('analyzer disabled: mutation');
@@ -41,8 +41,12 @@ describe('policy findings', () => {
   });
 
   it('accepts only the digest the run computed', () => {
-    expect(policyFindings(loosenings, 'd1e2f3a4b5c6', 'd1e2f3a4b5c6')).toEqual([]);
-    expect(policyFindings(loosenings, 'd1e2f3a4b5c6', 'ffffffffffff')).toHaveLength(2);
+    expect(policyFindings(loosenings, 'd1e2f3a4b5c6', { acceptedDigest: 'd1e2f3a4b5c6' })).toEqual(
+      [],
+    );
+    expect(
+      policyFindings(loosenings, 'd1e2f3a4b5c6', { acceptedDigest: 'ffffffffffff' }),
+    ).toHaveLength(2);
     expect(isPolicyChangeAccepted([], 'd1e2f3a4b5c6', 'd1e2f3a4b5c6')).toBe(false);
     expect(isPolicyChangeAccepted(loosenings, 'd1e2f3a4b5c6', undefined)).toBe(false);
   });

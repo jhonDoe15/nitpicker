@@ -67,34 +67,31 @@ function appendHeldSummary(lines, unchangedFindings, color) {
   }
 }
 
-function appendViolationSummary(lines, { violations, incomplete, policyCount }, color) {
+function violationHeadline({ violations, incomplete, policyCount }, color) {
   const failing = (text) => style(text, [ANSI.bold, ANSI.red], color);
   const policy = `${String(policyCount)} unapproved policy ${pluralize('change', policyCount)}`;
+  const code = `${String(violations.length)} code ${pluralize('violation', violations.length)}`;
   if (violations.length === 0 && policyCount > 0) {
-    lines.push(
-      failing(
-        `✖ No new code violations, but ${policy} fail${policyCount === 1 ? 's' : ''} the gate` +
-          (incomplete ? ' and the run is incomplete:' : ''),
-      ),
-    );
-    return;
-  }
-  if (violations.length === 0 && incomplete) {
-    lines.push('No new enforceable violations, but the run is incomplete:');
-    return;
+    const verb = policyCount === 1 ? 'fails' : 'fail';
+    const tail = incomplete ? ' and the run is incomplete:' : '';
+    return failing(`✖ No new code violations, but ${policy} ${verb} the gate${tail}`);
   }
   if (violations.length === 0) {
-    lines.push(style('✓ No new enforceable violations', [ANSI.green], color));
-    return;
+    return incomplete
+      ? 'No new enforceable violations, but the run is incomplete:'
+      : style('✓ No new enforceable violations', [ANSI.green], color);
   }
-  const code = `${String(violations.length)} code ${pluralize('violation', violations.length)}`;
-  lines.push(
-    failing(
-      policyCount === 0
-        ? `✖ ${String(violations.length)} new enforceable ${pluralize('violation', violations.length)}`
-        : `✖ ${String(violations.length + policyCount)} new enforceable violations: ${code} and ${policy}`,
-    ),
+  const total = violations.length + policyCount;
+  return failing(
+    policyCount === 0
+      ? `✖ ${String(total)} new enforceable ${pluralize('violation', total)}`
+      : `✖ ${String(total)} new enforceable violations: ${code} and ${policy}`,
   );
+}
+
+function appendViolationSummary(lines, summary, color) {
+  const { violations } = summary;
+  lines.push(violationHeadline(summary, color));
   for (const group of groupRepeatedFindings(violations)) {
     const [finding] = group;
     lines.push(

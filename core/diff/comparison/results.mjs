@@ -104,7 +104,10 @@ function buildReport(context) {
   const newFindings = [
     ...collect(outcomes, 'newFindings'),
     ...(context.reportsPolicy
-      ? policyFindings(policyLoosenings, digest, acceptPolicyChange, context.policyKinds)
+      ? policyFindings(policyLoosenings, digest, {
+          acceptedDigest: acceptPolicyChange,
+          kinds: context.policyKinds,
+        })
       : []),
   ];
   return {

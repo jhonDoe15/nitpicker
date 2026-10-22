@@ -25,7 +25,7 @@ function acceptRoute(digest) {
   );
 }
 
-export function policyFindings(loosenings, digest, acceptedDigest, kinds = {}) {
+export function policyFindings(loosenings, digest, { acceptedDigest, kinds = {} } = {}) {
   if (isPolicyChangeAccepted(loosenings, digest, acceptedDigest)) {
     return [];
   }

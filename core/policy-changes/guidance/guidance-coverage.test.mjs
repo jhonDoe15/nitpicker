@@ -206,7 +206,7 @@ describe('policy guidance kinds', () => {
 
       expect(fields.policyLoosenings.length).toBeGreaterThan(0);
       for (const text of fields.policyLoosenings) {
-        expect(fields.policyKinds[text], text).toBeDefined();
+        expect(typeof fields.policyKinds[text], text).toBe('string');
         expect(hasSpecificGuidance(fields.policyKinds[text]), text).toBe(true);
       }
       expect(fields.policyLoosenings.map((text) => fields.policyKinds[text])).toContain(kind);
@@ -219,14 +219,18 @@ describe('policy guidance kinds', () => {
 
   it('carries the kind to the finding, which words its message with that guidance', () => {
     const fields = FIXTURES['entry-point']();
-    const [finding] = policyFindings(
-      fields.policyLoosenings,
-      'd1e2f3a4b5c6',
-      undefined,
-      fields.policyKinds,
-    );
+    const [finding] = policyFindings(fields.policyLoosenings, 'd1e2f3a4b5c6', {
+      kinds: fields.policyKinds,
+    });
 
     expect(finding.policyKind).toBe('entry-point');
-    expect(finding.message).toContain(POLICY_GUIDANCE['entry-point']);
+    expect(finding.message).toBe(
+      [
+        `${fields.policyLoosenings[0]}. ${POLICY_GUIDANCE['entry-point']}`,
+        'If the policy change is intended, stop and ask a person reviewing this change:',
+        'only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6',
+        'at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI.',
+      ].join(' '),
+    );
   });
 });

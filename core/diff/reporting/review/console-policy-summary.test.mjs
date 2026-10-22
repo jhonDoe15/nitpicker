@@ -14,33 +14,46 @@ const ENTRY_CHANGES = [
   'layout.entryPoints added: scripts/first.mjs',
   'layout.entryPoints added: scripts/second.mjs',
 ];
-const KINDS = Object.fromEntries(ENTRY_CHANGES.map((change) => [change, 'entry-point']));
 const TIGHTENED = 'threshold crapLimit lowered from 9 to 8';
-const UNAPPROVED =
-  '  Unapproved policy changes (nitpicker-config/policy-loosened): 2; ' +
-  'the gate fails until each is undone or a person accepts the digest.';
 const ACCEPT =
   '  Only a person may accept exactly these changes, after reviewing them: ' +
   `--accept-policy-change=${DIGEST} at an interactive terminal, ` +
   `or NITPICKER_ACCEPT_POLICY_CHANGE=${DIGEST} in CI.`;
 const DIAGNOSTICS = 'Full diagnostics: reports/quality/diff/combined/report.txt';
-const ENTRY_BLOCK = [
-  '  layout.entryPoints added: scripts/first.mjs',
-  '  layout.entryPoints added: scripts/second.mjs',
-  `    ${POLICY_GUIDANCE['entry-point']}`,
-];
+const CODE_DEFECT = ['  eslint/no-console src/a.js:12', '    Unexpected console statement'];
+const ACCEPT_ROUTE = [
+  'If the policy change is intended, stop and ask a person reviewing this change:',
+  'only they accept exactly these loosenings,',
+  `with --accept-policy-change=${DIGEST} at an interactive terminal`,
+  `or NITPICKER_ACCEPT_POLICY_CHANGE=${DIGEST} in CI.`,
+].join(' ');
+
+function kindsOf(changes, kind = 'entry-point') {
+  return Object.fromEntries(changes.map((change) => [change, kind]));
+}
+
+function unapproved(count) {
+  return (
+    `  Unapproved policy changes (nitpicker-config/policy-loosened): ${String(count)}; ` +
+    'the gate fails until each is undone or a person accepts the digest.'
+  );
+}
+
+function entryBlock(changes) {
+  return [...changes.map((change) => `  ${change}`), `    ${POLICY_GUIDANCE['entry-point']}`];
+}
 
 function policyReport({
   accepted = false,
   defects = [],
   toolErrors = [],
   changes = ENTRY_CHANGES,
-  kinds = KINDS,
+  kinds = kindsOf(changes),
 } = {}) {
   const result = report({
     newFindings: [
       ...defects,
-      ...policyFindings(changes, DIGEST, accepted ? DIGEST : undefined, kinds),
+      ...policyFindings(changes, DIGEST, { acceptedDigest: accepted ? DIGEST : undefined, kinds }),
     ],
     toolErrors,
   });
@@ -53,31 +66,26 @@ function policyReport({
   return result;
 }
 
-function consoleLines(result) {
-  return renderConsoleSummary(result, { color: false }).split('\n');
+function consoleLines(result, color = false) {
+  return renderConsoleSummary(result, { color }).split('\n');
 }
 
 describe('console policy review', () => {
   it('lists two entry points once each with one shared guidance, review and digest block', () => {
     const result = policyReport();
-    const text = renderConsoleSummary(result, { color: false });
 
-    expect(text.split('\n')).toEqual([
+    expect(consoleLines(result)).toEqual([
       '',
       'Quality gate summary',
       '✖ No new code violations, but 2 unapproved policy changes fail the gate',
       HEADING,
-      ...ENTRY_BLOCK,
+      ...entryBlock(ENTRY_CHANGES),
       `  ${TIGHTENED}`,
-      UNAPPROVED,
+      unapproved(2),
       ACCEPT,
       DIAGNOSTICS,
       '',
     ]);
-    expect(text.match(/scripts\/first\.mjs/gu)).toHaveLength(1);
-    expect(text.match(/scripts\/second\.mjs/gu)).toHaveLength(1);
-    expect(text.match(/dead-code check treats them as used/gu)).toHaveLength(1);
-    expect(text).not.toContain('✓');
     expect(result.summary.newEnforceableFindings).toBe(2);
     expect(result.newFindings.map(({ identity }) => identity)).toEqual(ENTRY_CHANGES);
   });
@@ -87,14 +95,19 @@ describe('console policy review', () => {
       { length: 10 },
       (_, index) => `layout.entryPoints added: scripts/job-${String(index)}.mjs`,
     );
-    const kinds = Object.fromEntries(changes.map((change) => [change, 'entry-point']));
-    const text = renderConsoleSummary(policyReport({ changes, kinds }), { color: false });
 
-    expect(text.match(/dead-code check treats them as used/gu)).toHaveLength(1);
-    expect(text.match(/layout\.entryPoints added:/gu)).toHaveLength(10);
-    expect(text).toContain(
+    expect(consoleLines(policyReport({ changes }))).toEqual([
+      '',
+      'Quality gate summary',
       '✖ No new code violations, but 10 unapproved policy changes fail the gate',
-    );
+      HEADING,
+      ...entryBlock(changes),
+      `  ${TIGHTENED}`,
+      unapproved(10),
+      ACCEPT,
+      DIAGNOSTICS,
+      '',
+    ]);
   });
 
   it('groups different kinds, each with its own guidance once', () => {
@@ -108,9 +121,11 @@ describe('console policy review', () => {
       [changes[1]]: 'exclusion',
       [changes[2]]: 'exclusion',
     };
-    const lines = consoleLines(policyReport({ changes, kinds }));
 
-    expect(lines.slice(3, 10)).toEqual([
+    expect(consoleLines(policyReport({ changes, kinds }))).toEqual([
+      '',
+      'Quality gate summary',
+      '✖ No new code violations, but 3 unapproved policy changes fail the gate',
       HEADING,
       `  ${changes[0]}`,
       `    ${POLICY_GUIDANCE.exception}`,
@@ -118,8 +133,11 @@ describe('console policy review', () => {
       `  ${changes[2]}`,
       `    ${POLICY_GUIDANCE.exclusion}`,
       `  ${TIGHTENED}`,
+      unapproved(3),
+      ACCEPT,
+      DIAGNOSTICS,
+      '',
     ]);
-    expect(lines.join('\n')).not.toContain('fix the findings instead');
   });
 
   it('keeps code defects, policy review and incomplete analyzers distinct', () => {
@@ -132,12 +150,11 @@ describe('console policy review', () => {
       '',
       'Quality gate summary',
       '✖ 3 new enforceable violations: 1 code violation and 2 unapproved policy changes',
-      '  eslint/no-console src/a.js:12',
-      '    Unexpected console statement',
+      ...CODE_DEFECT,
       HEADING,
-      ...ENTRY_BLOCK,
+      ...entryBlock(ENTRY_CHANGES),
       `  ${TIGHTENED}`,
-      UNAPPROVED,
+      unapproved(2),
       ACCEPT,
       '✖ 1 tool error',
       '  coverage (head): Error: unavailable',
@@ -148,82 +165,108 @@ describe('console policy review', () => {
   });
 
   it('does not present an incomplete policy-only run as clean', () => {
-    const text = renderConsoleSummary(
-      policyReport({ toolErrors: [{ tool: 'coverage', message: 'Error: unavailable' }] }),
-      { color: false },
-    );
+    const result = policyReport({
+      toolErrors: [{ tool: 'coverage', message: 'Error: unavailable' }],
+    });
 
-    expect(text.split('\n').slice(0, 4)).toEqual([
+    expect(consoleLines(result)).toEqual([
       '',
       'Quality gate summary',
       '✖ No new code violations, but 2 unapproved policy changes fail the gate and the run is incomplete:',
       HEADING,
+      ...entryBlock(ENTRY_CHANGES),
+      `  ${TIGHTENED}`,
+      unapproved(2),
+      ACCEPT,
+      '✖ 1 tool error',
+      '  coverage: Error: unavailable',
+      DIAGNOSTICS,
+      '',
     ]);
-    expect(text).toContain('✖ 1 tool error');
-    expect(text).not.toContain('✓');
   });
 
-  it('colors the policy-only headline as a failure', () => {
-    const text = renderConsoleSummary(policyReport(), { color: true });
+  it('colors the policy-only headline and title as a failure', () => {
+    const red = '\u001B[1m\u001B[31m';
+    const yellow = '\u001B[1m\u001B[33m';
+    const reset = '\u001B[0m';
 
-    expect(text).toContain('\u001B[1m\u001B[31m✖ No new code violations, but 2 unapproved');
-    expect(text).toContain('\u001B[1m\u001B[31mQuality gate summary');
+    expect(consoleLines(policyReport(), true)).toEqual([
+      '',
+      `${red}Quality gate summary${reset}`,
+      `${red}✖ No new code violations, but 2 unapproved policy changes fail the gate${reset}`,
+      `${yellow}${HEADING}${reset}`,
+      ...entryBlock(ENTRY_CHANGES),
+      `  ${TIGHTENED}`,
+      unapproved(2),
+      ACCEPT,
+      `\u001B[2m${DIAGNOSTICS}${reset}`,
+      '',
+    ]);
   });
 
   it('retains accepted changes without unapproved review instructions', () => {
-    const lines = consoleLines(policyReport({ accepted: true, defects: [finding()] }));
-
-    expect(lines).toEqual([
+    expect(consoleLines(policyReport({ accepted: true, defects: [finding()] }))).toEqual([
       '',
       'Quality gate summary',
       '✖ 1 new enforceable violation',
-      '  eslint/no-console src/a.js:12',
-      '    Unexpected console statement',
+      ...CODE_DEFECT,
       ACCEPTED_HEADING,
-      '  layout.entryPoints added: scripts/first.mjs',
-      '  layout.entryPoints added: scripts/second.mjs',
+      ...ENTRY_CHANGES.map((change) => `  ${change}`),
       `  ${TIGHTENED}`,
       DIAGNOSTICS,
       '',
     ]);
   });
 
-  it('keeps one finding per change with the guidance and the digest in full diagnostics', () => {
-    const text = renderTextReport(policyReport());
-    const lines = text.split('\n').filter((line) => line.startsWith('nitpicker-config/'));
+  it('keeps one finding per change with the guidance and the route in full diagnostics', () => {
+    const lines = renderTextReport(policyReport()).split('\n');
+    const start = lines.indexOf('New findings:');
 
-    expect(lines).toHaveLength(2);
-    for (const [index, line] of lines.entries()) {
-      expect(line).toContain(`nitpicker.config.json ${ENTRY_CHANGES[index]}. `);
-      expect(line).toContain(POLICY_GUIDANCE['entry-point']);
-      expect(line).toContain(`--accept-policy-change=${DIGEST}`);
-      expect(line).toContain(`NITPICKER_ACCEPT_POLICY_CHANGE=${DIGEST}`);
-    }
-    expect(text).toContain(
-      `${HEADING}\n  ${ENTRY_CHANGES[0]}\n  ${ENTRY_CHANGES[1]}\n  ${TIGHTENED}`,
+    expect(lines.slice(start + 1, start + 3)).toEqual(
+      ENTRY_CHANGES.map(
+        (change) =>
+          `nitpicker-config/policy-loosened nitpicker.config.json ${change}. ` +
+          `${POLICY_GUIDANCE['entry-point']} ${ACCEPT_ROUTE}`,
+      ),
     );
+    expect(lines.slice(lines.indexOf(HEADING), lines.indexOf(HEADING) + 4)).toEqual([
+      HEADING,
+      ...ENTRY_CHANGES.map((change) => `  ${change}`),
+      `  ${TIGHTENED}`,
+    ]);
   });
 
   it('uses the fallback guidance only for a finding that carries no kind', () => {
     const lines = consoleLines(policyReport({ kinds: {} }));
+    const fallback = lines.filter((line) => line.startsWith('    Changes the checking policy'));
 
-    expect(lines.filter((line) => line.startsWith('    Changes the checking policy'))).toHaveLength(
-      1,
-    );
+    expect(fallback).toEqual([
+      '    Changes the checking policy for affected code. ' +
+        'Restore the base setting unless a person confirms the weaker checks.',
+    ]);
   });
 
   it('cannot be forged by an exception reason with line breaks or terminal escapes', () => {
     const reason =
       'ok)\n  Unapproved policy changes (nitpicker-config/policy-loosened): 0;\u001B[2K\u001B[31m';
     const change = `exception added: eslint/no-console for src/** (${reason})`;
-    const result = policyReport({ changes: [change], kinds: { [change]: 'exception' } });
-    const text = renderConsoleSummary(result, { color: false });
+    const lines = consoleLines(
+      policyReport({ changes: [change], kinds: kindsOf([change], 'exception') }),
+    );
 
-    expect(text).not.toContain('\u001B');
-    expect(text.split('\n').filter((line) => line.includes('policy-loosened): 0'))).toEqual([
-      '  exception added: eslint/no-console for src/** (ok) Unapproved policy changes ' +
-        '(nitpicker-config/policy-loosened): 0;)',
+    expect(lines).toEqual([
+      '',
+      'Quality gate summary',
+      '✖ No new code violations, but 1 unapproved policy change fails the gate',
+      HEADING,
+      '  exception added: eslint/no-console for src/** (ok) ' +
+        'Unapproved policy changes (nitpicker-config/policy-loosened): 0;)',
+      `    ${POLICY_GUIDANCE.exception}`,
+      `  ${TIGHTENED}`,
+      unapproved(1),
+      ACCEPT,
+      DIAGNOSTICS,
+      '',
     ]);
-    expect(text.match(/policy-loosened\): 1;/gu)).toHaveLength(1);
   });
 });
