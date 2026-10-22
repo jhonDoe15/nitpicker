@@ -96,6 +96,11 @@ describe('rules script report', () => {
       'acc|acc + [...]|reduce',
       '`acc` is replaced by a copy of itself (`acc + [...]`) on every step of the `reduce`, so the work grows with the square of the list',
     ],
+    [
+      'lazy-relation-in-loop',
+      'Order.customer|django|Order.objects.all()',
+      '`Order.customer` is a lazy relationship: `Order.objects.all()` fetches the `Order` rows without it, so each item of the loop runs one more query',
+    ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
       'skipped-test-without-reason',

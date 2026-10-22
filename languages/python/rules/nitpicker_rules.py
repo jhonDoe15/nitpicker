@@ -21,6 +21,7 @@ def load_checks():
     from environment import environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped
+    from orm import lazy
     from security import hashes, loading
     from security.sql import check as sql
     from security.timeouts import check as timeouts
@@ -50,6 +51,7 @@ def load_checks():
         secret_logs,
         loops,
         copies,
+        lazy,
         skipped,
         assertions,
         unasserted,

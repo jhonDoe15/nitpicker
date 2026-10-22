@@ -1,6 +1,6 @@
 const PATH_SEPARATOR = ' > ';
 const FIELD_SEPARATOR = '|';
-const STRUCTURED_RULES = new Set(['io-in-loop', 'accumulator-copy']);
+const STRUCTURED_RULES = new Set(['io-in-loop', 'accumulator-copy', 'lazy-relation-in-loop']);
 
 export function parseEffect(subject = '') {
   const [route = '', ...fields] = subject.split(FIELD_SEPARATOR);
