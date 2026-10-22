@@ -20,15 +20,47 @@ const KOTLIN_KEYWORDS = new Set(
     'null object package return super this throw true try typealias typeof val var when while'
   ).split(' '),
 );
+const JAVA_KEYWORDS = new Set(
+  (
+    'abstract assert boolean break byte case catch char class continue default do double else ' +
+    'enum extends final finally float for if implements import instanceof int interface long ' +
+    'native new package private protected public return short static super switch ' +
+    'synchronized this throw throws try void volatile while var record yield'
+  ).split(' '),
+);
 const LITERAL_WORDS = new Set(['False', 'None', 'True', 'false', 'null', 'true']);
 const DATA_PUNCTUATION = new Set([',', ':', '-', '+']);
 const DATA_KINDS = new Set(['string', 'number', 'comment']);
 const KOTLIN_DATA_CALL = /^(?:\w*Of|Pair|Triple)$/u;
+const JAVA_DATA_CALL = /^(?:of|asList|ofEntries|entry)$/u;
 const CONTINUATION = /\\[ \t]*\r?\n[ \t]*$/u;
 const OPERAND_ENDS = new Set([')', ']', '}']);
 const OPERAND_KINDS = new Set(['string', 'number']);
 const UNDERSCORE = '_ ';
 const ZERO = '0 ';
+
+function isAdjacent(tokens, index, text) {
+  const previous = tokens[index - 1];
+  return previous?.text === text && previous.end === tokens[index].start;
+}
+
+function openerOf(tokens, close) {
+  let depth = 0;
+  for (let index = close; index >= 0; index -= 1) {
+    depth += Number(isCloseBracket(tokens[index])) - Number(isOpenBracket(tokens[index]));
+    if (depth === 0) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+function opensWhenTable(tokens, index) {
+  if (tokens[index].text !== '{' || tokens[index - 1]?.text !== ')') {
+    return false;
+  }
+  return tokens[openerOf(tokens, index - 1) - 1]?.text === 'when';
+}
 
 function isOperand(token, keywords) {
   if (token === undefined) {
@@ -52,12 +84,41 @@ const LANGUAGES = {
     keywords: KOTLIN_KEYWORDS,
     statementWords: new Set('import package'.split(' ')),
     opensData: (tokens, index) =>
-      tokens[index].text === '(' && KOTLIN_DATA_CALL.test(tokens[index - 1]?.text ?? ''),
+      (tokens[index].text === '(' && KOTLIN_DATA_CALL.test(tokens[index - 1]?.text ?? '')) ||
+      opensWhenTable(tokens, index),
     isDataWord: (token) => token.text === 'to' || KOTLIN_DATA_CALL.test(token.text),
+  },
+  java: {
+    syntax: SYNTAXES.java,
+    keywords: JAVA_KEYWORDS,
+    statementWords: new Set('import package'.split(' ')),
+    opensData: (tokens, index) =>
+      (tokens[index].text === '(' && JAVA_DATA_CALL.test(tokens[index - 1]?.text ?? '')) ||
+      (tokens[index].text === '{' && ['=', ']'].includes(tokens[index - 1]?.text)),
+    isDataWord: (token) => JAVA_DATA_CALL.test(token.text),
   },
 };
 
-function isDataToken(token, language) {
+function isDottedName(tokens, index) {
+  const token = tokens[index];
+  if (token.kind === 'punctuation') {
+    return (
+      token.text === '.' &&
+      tokens[index - 1]?.kind === 'identifier' &&
+      tokens[index + 1]?.kind === 'identifier'
+    );
+  }
+  return (
+    token.kind === 'identifier' &&
+    (tokens[index - 1]?.text === '.' || tokens[index + 1]?.text === '.')
+  );
+}
+
+function isDataToken(tokens, index, language) {
+  const token = tokens[index];
+  if (isDottedName(tokens, index) || (token.text === '>' && isAdjacent(tokens, index, '-'))) {
+    return true;
+  }
   if (token.kind === 'punctuation') {
     return DATA_PUNCTUATION.has(token.text);
   }
@@ -74,7 +135,7 @@ function holdsOnlyData(tokens, [open, close], language) {
     if (isOpenBracket(token)) {
       return language.opensData(tokens, index);
     }
-    return isCloseBracket(token) || isDataToken(token, language);
+    return isCloseBracket(token) || isDataToken(tokens, index, language);
   });
 }
 

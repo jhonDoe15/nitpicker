@@ -622,7 +622,8 @@ locals and literals were renamed fails too (`duplicate-clone`, identity starting
 Imports and re-exports, `interface`, `type` and `enum` declarations, literal-only objects and
 arrays, field declarations and JSX markup (tags, attributes, text and plain `{name}` holders) are
 left out of that copy, and so are generated files, so test tables, import lists and components that
-only share markup structure are not clones; handlers and conditions inside the markup count. The
+only share markup structure are not clones, and neither is code that only repeats one or two
+statements (constructor mappers, enum `switch` tables); handlers and conditions inside the markup count. The
 message names the same route as for any clone: add either file of the pair to `exclude`. Between two test files it points at a helper or a table-driven test.
 
 Every runnable test imports production code at runtime

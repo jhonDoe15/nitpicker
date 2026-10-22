@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { removeTrackedTemporaryPaths } from '../../core/tooling/temporary-files.mjs';
 import { sourceFilesUnder } from './files.mjs';
 import { withNormalizedTree } from './tree.mjs';
 
@@ -35,7 +36,12 @@ describe('the normalized copy of a project', () => {
     let seen;
 
     withNormalizedTree(
-      { projectRoot: root, files: Object.keys(files), syntaxOf: () => 'python' },
+      {
+        projectRoot: root,
+        files: Object.keys(files),
+        syntaxOf: () => 'python',
+        scratchRoot: path.join(root, 'reports'),
+      },
       ({ tree }) => {
         seen = {
           a: readFileSync(path.join(tree, 'src/a.py'), 'utf8').replace(/\s+/gu, ''),
@@ -56,6 +62,7 @@ describe('the normalized copy of a project', () => {
         projectRoot: root,
         files: ['src/gone.py', 'src/a.py', '../outside.py'],
         syntaxOf: () => 'python',
+        scratchRoot: path.join(root, 'reports'),
       },
       (directories) => {
         scratch = directories.scratch;
@@ -72,7 +79,7 @@ describe('the normalized copy of a project', () => {
 
     expect(() =>
       withNormalizedTree(
-        { projectRoot: root, files: [], syntaxOf: () => 'python' },
+        { projectRoot: root, files: [], syntaxOf: () => 'python', scratchRoot: root },
         (directories) => {
           scratch = directories.scratch;
           throw new Error('jscpd failed');
@@ -80,6 +87,23 @@ describe('the normalized copy of a project', () => {
       ),
     ).toThrow('jscpd failed');
     expect(existsSync(scratch)).toBe(false);
+  });
+
+  it('keeps the copy under the report folder, where an interrupted run still removes it', () => {
+    const root = project(files);
+    const scratchRoot = path.join(root, 'reports/quality/duplicates');
+    let seen;
+
+    withNormalizedTree(
+      { projectRoot: root, files: ['src/a.py'], syntaxOf: () => 'python', scratchRoot },
+      ({ scratch }) => {
+        const inside = path.dirname(scratch) === scratchRoot;
+        removeTrackedTemporaryPaths();
+        seen = { inside, removedOnInterrupt: !existsSync(scratch) };
+      },
+    );
+
+    expect(seen).toEqual({ inside: true, removedOnInterrupt: true });
   });
 });
 

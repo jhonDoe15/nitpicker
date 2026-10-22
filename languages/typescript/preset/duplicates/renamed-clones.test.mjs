@@ -118,7 +118,30 @@ function form(tags) {
   return `export function Panel() {\n  return (\n    <div>\n${fields}\n    </div>\n  );\n}\n`;
 }
 
+const SHAPE_NAMES = (
+  'id name email phone street city zip country role plan bio score level owner locale avatar ' +
+  'status created updated timezone'
+).split(' ');
+const OTHER_NAMES = (
+  'code total tax note carrier weight items paid buyer method coupon refund channel house ' +
+  'invoice placed shipped tracking discount currency'
+).split(' ');
+
+function mapper(type, source, names) {
+  const fields = names.map((name) => `    ${source}.${name},`).join('\n');
+  return `export function to${type}Dto(${source}: ${type}) {\n  return new ${type}Dto(\n${fields}\n  );\n}\n`;
+}
+
+function switchTable(type, names) {
+  const cases = names.map((name) => `    case ${type}.${name}:\n      return '${name}';`);
+  return `export function ${type.toLowerCase()}Name(value: ${type}): string {\n  switch (value) {\n${cases.join('\n')}\n  }\n}\n`;
+}
+
 const FILES = {
+  'src/mappers/first.ts': mapper('User', 'user', SHAPE_NAMES),
+  'src/mappers/second.ts': mapper('Order', 'order', OTHER_NAMES),
+  'src/tables/first.ts': switchTable('Color', SHAPE_NAMES),
+  'src/tables/second.ts': switchTable('Status', OTHER_NAMES),
   'src/renamed/first.ts': pricing(ORIGINAL, ['0', '0', '100', '1000', '10']),
   'src/renamed/second.ts': pricing(RENAMED, ['1', '2', '10', '5000', '50']),
   'src/short/first.ts':
@@ -242,6 +265,7 @@ let cachedFindings;
 function foundClones() {
   if (cachedFindings === undefined) {
     const run = analyze(FILES);
+
     cachedFindings = { findings: enforceable(run), toolErrors: run.toolErrors };
   }
   return cachedFindings;
@@ -311,7 +335,7 @@ describe('clones whose names and literals were renamed', () => {
     );
   });
 
-  it('stays quiet for short functions, imports, generated files, test tables and markup', () => {
+  it('stays quiet for short functions, imports, generated files, tables, mappers and markup', () => {
     expect(foundClones().findings.map(({ path: file }) => file)).toEqual([
       'src/logic/first.tsx',
       'src/renamed/first.ts',

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { renamedClones, renamedFindings, withoutRenamedCopies } from './findings.mjs';
+import { isRepeatingShape } from './repetition.mjs';
 
 const roots = [];
 
@@ -168,5 +169,42 @@ describe('findings for renamed clones', () => {
       'This code repeats test/b.test.ts:1 (8 lines). Fold the cases into one table. If the repetition is intended, add test/a.test.ts or test/b.test.ts to "exclude" in nitpicker.config.json.',
       'This code repeats test/b.test.ts:1 (8 lines). Keep one copy and call it from both places. If the repetition is intended, add src/a.ts or test/b.test.ts to "exclude" in nitpicker.config.json.',
     ]);
+  });
+});
+
+describe('clones that only repeat one or two statements', () => {
+  const repeated = (unit, count) => Array.from({ length: count }, () => unit).join('');
+
+  it.each([
+    ['a mapper call', `_(${repeated('_=_._,', 20)})`],
+    ['an enum table', `fun_(_:_):_=when(_){${repeated('_._->""', 25)}}`],
+    ['an if chain', `fun_(_:_):_{var_=0${repeated('if(_>0){_+=0}', 9)}return_}`],
+    ['a pair of statements', `_(){${repeated('_._("",_=_);_._(0);', 8)}}`],
+  ])('treats %s as a shape, not a copy', (_, fragment) => {
+    expect(isRepeatingShape(fragment)).toBe(true);
+  });
+
+  it('treats logic that only partly repeats as a copy', () => {
+    const logic =
+      'fun_(_:_<_>,_:_):_{var_=0for(_in_){if(_._>0&&_._>0){_+=_._*_._*_}else if(_._<0)' +
+      '{_-=_._(_._)*_._}if(_>0){_=_-0}}val_=_._(_*0.0)/0return if(_>0)_-0 else_._()}';
+
+    expect(isRepeatingShape(logic)).toBe(false);
+    expect(isRepeatingShape(`${logic}${repeated('_._(0);', 3)}`)).toBe(false);
+  });
+
+  it('drops a renamed clone of a repeated statement', () => {
+    const lines = Array.from(
+      { length: 20 },
+      (_, index) => `    field${index} = source.field${index},`,
+    );
+    const root = project({ 'a.py': lines.join('\n'), 'b.py': lines.join('\n') });
+
+    expect(
+      renamedClones([clone({ fragment: repeated('_ = _._ ,\n', 20), lines: 20 })], {
+        projectRoot: root,
+        syntax: 'python',
+      }),
+    ).toEqual([]);
   });
 });

@@ -10,6 +10,8 @@ const KOTLIN_TEMPLATE = String.raw`\$\{(?:[^{}"]|${KOTLIN_SIMPLE_STRING}|${KOTLI
 const KOTLIN_STRING =
   String.raw`"""[\s\S]*?(?:"""|$)|"(?:\\[\s\S]|${KOTLIN_TEMPLATE}|[^"\\$\n]|\$)*"?|` +
   String.raw`'(?:\\.|[^'\\\n])*'?`;
+const JAVA_STRING = String.raw`"""[\s\S]*?(?:"""|$)|"(?:\\.|[^"\\\n])*"?|'(?:\\.|[^'\\\n])*'?`;
+const JAVA_COMMENT = String.raw`//[^\n]*|/\*[\s\S]*?(?:\*/|$)`;
 const KOTLIN_COMMENT = String.raw`//[^\n]*|/\*(?:[^*/]|\*(?!/)|/(?!\*)|/\*(?:[^*]|\*(?!/))*\*/)*(?:\*/|$)`;
 
 function tokenizer({ comment, string, name }) {
@@ -27,6 +29,7 @@ export const SYNTAXES = {
     string: KOTLIN_STRING,
     name: `\`[^\`\\n]*\`|${NAME}`,
   }),
+  java: tokenizer({ comment: JAVA_COMMENT, string: JAVA_STRING, name: NAME }),
 };
 
 const OPENERS = new Set(['(', '[', '{']);

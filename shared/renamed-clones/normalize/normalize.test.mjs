@@ -53,6 +53,12 @@ describe('Python sources', () => {
   it('keeps a literal list that holds a name', () => {
     expect(squash(normalize('names = [first, 1]\n', 'a.py', 'python'))).toBe(squash('_ = [_ , 0]'));
   });
+
+  it('treats a dict of qualified enum names as data, and keeps a call on a qualified name', () => {
+    const text = 'NAMES = {\n    Status.NEW: "new",\n    Status.OLD: "old",\n}\nrun(Status.NEW)\n';
+
+    expect(squash(normalize(text, 'a.py', 'python'))).toBe(squash('_ = 0 _(_._)'));
+  });
 });
 
 describe('Kotlin sources', () => {
@@ -87,6 +93,57 @@ describe('Kotlin sources', () => {
     expect(squash(normalize('val x = listOf(first, 2)\n', 'A.kt', 'kotlin'))).toBe(
       squash('val _ = _(_, 0)'),
     );
+  });
+
+  it('treats a when table of qualified names and a map of them as data, and keeps logic', () => {
+    const text = [
+      'fun name(c: Color) = when (c) {',
+      '    Color.RED -> "red"',
+      '    Color.BLUE -> "blue"',
+      '}',
+      'val table = mapOf(Color.RED to 1)',
+      'fun pick(c: Int) = when (c) {',
+      '    1 -> run(c)',
+      '    else -> 0',
+      '}',
+      '',
+    ].join('\n');
+
+    expect(squash(normalize(text, 'A.kt', 'kotlin'))).toBe(
+      squash('fun _(_: _) = when (_) 0 val _ = _ 0 fun _(_: _) = when (_) { 0 -> _(_) else -> 0 }'),
+    );
+  });
+});
+
+describe('Java sources', () => {
+  const source = [
+    'package demo.app;',
+    'import java.util.List;',
+    '/* block */',
+    'class Cart {',
+    '    private static final int[] SIZES = {1, 2};',
+    '    String label(List<Item> items, char mark) {',
+    '        var names = List.of("a", "b");',
+    '        String text = """',
+    '            raw "quoted" text',
+    '            """;',
+    "        return items.get(0).name + mark + 'c' + 1.5f; // tail",
+    '    }',
+    '}',
+    '',
+  ].join('\n');
+
+  it('renames names, strings, characters and numbers, and drops comments, imports and data', () => {
+    expect(squash(normalize(source, 'Cart.java', 'java'))).toBe(
+      squash(
+        'class _ { private static final int[] _ = 0; _ _(_<_> _, char _) { var _ = _._ 0; ' +
+          '_ _ = ""; return _._(0)._ + _ + "" + 0; } }',
+      ),
+    );
+  });
+
+  it('keeps every line break', () => {
+    expect(lineCount(normalize(source, 'Cart.java', 'java'))).toBe(lineCount(source));
   });
 });
 

@@ -109,7 +109,7 @@ function runRenamedJscpd({ cwd, roots, renamed, reportFile, ignore, reportRoot, 
   const ignored = ignore.map((glob) => globToRegExp(glob));
   const files = renamed.files.filter((file) => !ignored.some((pattern) => pattern.test(file)));
   const runs = withNormalizedTree(
-    { projectRoot: cwd, files, syntaxOf: () => renamed.syntax },
+    { projectRoot: cwd, files, syntaxOf: () => renamed.syntax, scratchRoot: reportRoot },
     ({ tree }) =>
       runGroups({
         ...tool,

@@ -1123,7 +1123,9 @@ the source root detection already does.
   out, so a copy with renamed locals and changed literals is found: `duplicate-clone` with an
   identity starting `renamed:`, the same message, lifted by the same `exclude` glob or
   `python.exceptions` entry. It replaces a plain jscpd clone over the same two ranges and drops
-  clones made of class and field declarations only. Findings are mapped back to the original lines
+  clones made of class, field and enum member declarations only, and clones that only repeat one or
+  two statements (mapper calls, `add_argument` lists); dicts keyed by qualified names
+  (`Status.NEW: "new"`) are data. Findings are mapped back to the original lines
   because the copy keeps every line break.
 - **Coupling.** `python -I languages/python/adapters/import-scan.py` (the project's interpreter,
   standard library only) parses every production file with `ast` and prints each file's `import`

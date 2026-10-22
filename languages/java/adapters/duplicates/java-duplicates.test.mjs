@@ -201,3 +201,205 @@ describe('duplicates in Kotlin sources', () => {
     ]);
   });
 });
+
+const FIELDS = (
+  'id name email phone street city zip country role plan bio score level owner locale avatar ' +
+  'status created updated timezone'
+).split(' ');
+const ORDER_FIELDS = (
+  'code total tax note carrier weight items paid buyer method coupon refund channel house ' +
+  'invoice placed shipped tracking discount currency'
+).split(' ');
+
+function renamedClones(projectRoot, { run, read }) {
+  run(projectRoot, duplicateOptions(projectRoot));
+  return read(path.join(projectRoot, 'build/nitpicker'), projectRoot)
+    .filter(({ rule }) => rule === 'duplicate-clone')
+    .map(({ path: file, identity }) => `${file} ${identity.split(':')[0]}`);
+}
+
+const JAVA_RENAMED = {
+  run: runJavaDuplicates,
+  read: (reportRoot, projectRoot) => readDuplicateFindings(reportRoot, { projectRoot }),
+};
+
+function javaCopy({ type, fn, list, sum, item }, [low, limit, scale, discount]) {
+  return `package demo;
+
+import java.util.List;
+
+class ${type} {
+    int ${fn}(List<Entry> ${list}, int factor) {
+        int ${sum} = ${low};
+        for (Entry ${item} : ${list}) {
+            if (${item}.price > ${low} && ${item}.count > ${low}) {
+                ${sum} += ${item}.price * ${item}.count * factor;
+            } else if (${item}.price < ${low}) {
+                ${sum} -= Math.abs(${item}.price) * ${item}.count;
+            }
+            if (${sum} > ${limit}) {
+                ${sum} = ${sum} - ${discount};
+            }
+        }
+        long rounded = Math.round(${sum} * ${scale}.0) / ${scale};
+        return rounded > ${limit} ? (int) (rounded - ${discount}) : (int) rounded;
+    }
+}
+`;
+}
+
+function javaMapper(type, source, fields) {
+  const getters = fields.map((field) => `                ${source}.get${field}()`).join(',\n');
+  return `package demo;\n\nfinal class ${type}Mapper {\n    static ${type}Dto to${type}Dto(${type} ${source}) {\n        return new ${type}Dto(\n${getters});\n    }\n}\n`;
+}
+
+function javaSwitch(type, values) {
+  const cases = values.map((value) => `            case ${value.toUpperCase()} -> "${value}";`);
+  return `package demo;\n\nfinal class ${type}Names {\n    static String name(${type} value) {\n        return switch (value) {\n${cases.join('\n')}\n        };\n    }\n}\n`;
+}
+
+function javaBean(type, fields) {
+  const members = fields.flatMap((field) => [
+    `    private String ${field};`,
+    `    public String get${field}() {`,
+    `        return ${field};`,
+    '    }',
+    `    public void set${field}(String ${field}) {`,
+    `        this.${field} = ${field};`,
+    '    }',
+  ]);
+  return `package demo;\n\npublic class ${type} {\n${members.join('\n')}\n}\n`;
+}
+
+describe('Java copies whose names and literals were renamed', () => {
+  it('reports a copied method with every name and literal changed', () => {
+    const projectRoot = project({
+      'src/main/java/demo/Invoice.java': javaCopy(
+        { type: 'Invoice', fn: 'total', list: 'lines', sum: 'subtotal', item: 'line' },
+        [0, 1000, 100, 10],
+      ),
+      'src/main/java/demo/Parcel.java': javaCopy(
+        { type: 'Parcel', fn: 'weigh', list: 'boxes', sum: 'running', item: 'box' },
+        [1, 5000, 10, 50],
+      ),
+    });
+
+    expect(renamedClones(projectRoot, JAVA_RENAMED)).toEqual([
+      'src/main/java/demo/Invoice.java renamed',
+    ]);
+  });
+
+  it('stays quiet for mappers, enum switches and beans that only share a shape', () => {
+    const projectRoot = project({
+      'src/main/java/demo/UserMapper.java': javaMapper('User', 'user', FIELDS),
+      'src/main/java/demo/OrderMapper.java': javaMapper('Order', 'order', ORDER_FIELDS),
+      'src/main/java/demo/ColorNames.java': javaSwitch('Color', FIELDS),
+      'src/main/java/demo/StatusNames.java': javaSwitch('Status', ORDER_FIELDS),
+      'src/main/java/demo/UserBean.java': javaBean('UserBean', FIELDS.slice(0, 5)),
+      'src/main/java/demo/OrderBean.java': javaBean('OrderBean', ORDER_FIELDS.slice(0, 5)),
+    });
+
+    expect(renamedClones(projectRoot, JAVA_RENAMED)).toEqual([]);
+  });
+});
+
+const KOTLIN_RENAMED = {
+  run: runKotlinDuplicates,
+  read: (reportRoot, projectRoot) => readKotlinDuplicateFindings(reportRoot, projectRoot),
+};
+
+function kotlinCopy({ type, fn, list, sum, item }, [low, limit, scale, discount]) {
+  return `package demo
+
+class ${type} {
+    fun ${fn}(${list}: List<Entry>, factor: Int): Int {
+        var ${sum} = ${low}
+        for (${item} in ${list}) {
+            if (${item}.price > ${low} && ${item}.count > ${low}) {
+                ${sum} += ${item}.price * ${item}.count * factor
+            } else if (${item}.price < ${low}) {
+                ${sum} -= Math.abs(${item}.price) * ${item}.count
+            }
+            if (${sum} > ${limit}) {
+                ${sum} = ${sum} - ${discount}
+            }
+        }
+        val rounded = Math.round(${sum} * ${scale}.0) / ${scale}
+        return if (rounded > ${limit}) rounded - ${discount} else rounded.toInt()
+    }
+}
+`;
+}
+
+function kotlinMapper(type, fields) {
+  const assignments = fields.map((field) => `        ${field} = this.${field},`).join('\n');
+  return `package demo\n\nfun ${type}.to${type}Dto(): ${type}Dto =\n    ${type}Dto(\n${assignments}\n    )\n`;
+}
+
+function kotlinWhen(type, values) {
+  const branches = values.map((value) => `        ${type}.${value.toUpperCase()} -> "${value}"`);
+  return `package demo\n\nfun ${type.toLowerCase()}Name(value: ${type}): String =\n    when (value) {\n${branches.join('\n')}\n    }\n`;
+}
+
+function kotlinDataClass(type, fields) {
+  const defaults = ['""', 'emptyList()', '0', 'mutableMapOf()', 'null', 'listOf("a")', 'now()'];
+  const types = [
+    'String',
+    'List<String>',
+    'Int',
+    'MutableMap<String, Int>',
+    'String?',
+    'Any',
+    'Instant',
+  ];
+  const parameters = fields.map((field, index) => {
+    const kind = Math.floor(index / 3) % types.length;
+    return `    val ${field}: ${types[kind]} = ${defaults[kind]},`;
+  });
+  return `package demo\n\ndata class ${type}(\n${parameters.join('\n')}\n)\n`;
+}
+
+function kotlinChain(name, step) {
+  const branches = Array.from(
+    { length: 9 },
+    (_, index) => `    if (value > ${index * step}) {\n        result += 1\n    }`,
+  );
+  return `package demo\n\nfun ${name}(value: Int): Int {\n    var result = 0\n${branches.join('\n')}\n    return result\n}\n`;
+}
+
+describe('Kotlin copies whose names and literals were renamed', () => {
+  const kotlinProject = (files) =>
+    project(files, { sourceRoots: [], kotlinSourceRoots: ['src/main/kotlin'] });
+
+  it('reports a copied function with every name and literal changed', () => {
+    const projectRoot = kotlinProject({
+      'src/main/kotlin/demo/Invoice.kt': kotlinCopy(
+        { type: 'Invoice', fn: 'total', list: 'lines', sum: 'subtotal', item: 'line' },
+        [0, 1000, 100, 10],
+      ),
+      'src/main/kotlin/demo/Parcel.kt': kotlinCopy(
+        { type: 'Parcel', fn: 'weigh', list: 'boxes', sum: 'running', item: 'box' },
+        [1, 5000, 10, 50],
+      ),
+    });
+
+    expect(renamedClones(projectRoot, KOTLIN_RENAMED)).toEqual([
+      'src/main/kotlin/demo/Invoice.kt renamed',
+    ]);
+  });
+
+  it('stays quiet for mappers, when tables, data classes and if chains that only share a shape', () => {
+    const projectRoot = kotlinProject({
+      'src/main/kotlin/demo/UserMapper.kt': kotlinMapper('User', FIELDS),
+      'src/main/kotlin/demo/OrderMapper.kt': kotlinMapper('Order', ORDER_FIELDS),
+      'src/main/kotlin/demo/ColorNames.kt': kotlinWhen('Color', FIELDS),
+      'src/main/kotlin/demo/StatusNames.kt': kotlinWhen('Status', ORDER_FIELDS),
+      'src/main/kotlin/demo/UserView.kt': kotlinDataClass('UserView', FIELDS),
+      'src/main/kotlin/demo/OrderView.kt': kotlinDataClass('OrderView', ORDER_FIELDS),
+      'src/main/kotlin/demo/Classify.kt': kotlinChain('classify', 10),
+      'src/main/kotlin/demo/Rank.kt': kotlinChain('rank', 13),
+    });
+
+    expect(renamedClones(projectRoot, KOTLIN_RENAMED)).toEqual([]);
+  });
+});

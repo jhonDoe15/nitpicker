@@ -185,7 +185,12 @@ function runDuplicatesReport(options, config, outputDirectory) {
     const report = JSON.parse(
       readFileSync(path.join(outputDirectory, 'jscpd-report.json'), 'utf8'),
     );
-    const renamed = renamedDuplicatesReport({ projectRoot: options.projectRoot, config, runJscpd });
+    const renamed = renamedDuplicatesReport({
+      projectRoot: options.projectRoot,
+      config,
+      runJscpd,
+      scratchRoot: outputDirectory,
+    });
     return { report, renamed };
   } finally {
     unlinkSync(configPath);
