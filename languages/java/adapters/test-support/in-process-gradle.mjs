@@ -21,8 +21,8 @@ function spawnFakeGradle(realSpawn) {
     });
     return {
       status: 0,
-      signal: null,
-      stdout: JSON.stringify({ status, signal: null, stdout, stderr }),
+      signal: undefined,
+      stdout: JSON.stringify({ status, signal: undefined, stdout, stderr }),
       stderr: '',
     };
   };
