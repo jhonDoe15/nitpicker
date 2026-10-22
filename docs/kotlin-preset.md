@@ -243,7 +243,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
-`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `unused-option`), a class limit, a file
+`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ClassLoadEffect`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
 `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown` or `changed-branch-coverage`
@@ -411,7 +411,7 @@ data classes; parameters with an annotation (`@RequestParam`, `@PathVariable`) a
 
 ## Review rules
 
-Six checks that detekt has no rule for run on a syntax tree of the Kotlin sources. They use the rule
+Seven checks that detekt has no rule for run on a syntax tree of the Kotlin sources. They use the rule
 ids and the exception route of the Java preset's PMD rules, so a finding reads the same in both
 languages and one `exceptions` entry style covers either.
 
@@ -421,20 +421,22 @@ once per module with the pinned Kotlin compiler's parser. Gradle must run on a J
 without `javac` the task fails and says so. One parse
 of the main and test source roots writes `kotlin-metrics.json` (main only: structure, CRAP, coupling) and
 `kotlin-facts.json` (main and test: classes, functions, properties, calls, type aliases, waits and
-comparison chains). The rules are evaluated in Node (`languages/java/adapters/kotlin/review-rules/`) from the
+comparison chains; for main sources also the calls that run while a file or object loads, and the type or
+initializer of each property). The rules are evaluated in Node (`languages/java/adapters/kotlin/review-rules/`) from the
 facts, so they have no type resolution. A name is matched through the file's imports and the project's own
 declarations, across all modules of the build; a call that cannot be tied to one declaration is left alone, so
 an unclear case is not flagged. A file nested deeper than even the large stack of that program allows is
 skipped with a note on stderr.
 
-| Rule id                                  | Where                                       | Flags                                                                                                                                                                  |
-| ---------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during` |
-| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                        |
-| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                           |
-| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                           |
-| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                   |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                               |
+| Rule id                                  | Where                                       | Flags                                                                                                                                                                             |
+| ---------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`            |
+| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                                   |
+| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                                      |
+| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                                      |
+| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                              |
+| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                          |
+| `ClassLoadEffect`                        | `review-rules/main/load-effects.mjs`        | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads |
 
 Limits, all chosen to flag less rather than guess:
 
@@ -487,6 +489,30 @@ Limits, all chosen to flag less rather than guess:
   Data classes are skipped when the module has `jackson-module-kotlin`, `kotlinx-serialization` or
   `moshi-kotlin` on its main compile or runtime classpath (`runtimeOnly` counts), since a library may set the defaults; a library that does so
   without that jar (reflection in a framework) is not seen.
+- Class-load effects: load time is a top-level property initializer (it runs when the file's facade
+  class loads), the property initializers and `init` blocks of an `object` or companion object, an
+  enum entry's arguments and body and the enum class's own properties, `init` blocks and
+  constructors, the members of a class whose companion object creates it
+  (`companion object { val instance = Registry() }`), and a function of the same file or object that
+  one of those calls by name (one level). `by lazy { }`, getters (`val x get() = ...`), functions,
+  `lateinit` and lambdas run later and are allowed; a lambda passed to an inline scope or collection
+  function (`run`, `let`, `apply`, `also`, `with`, `use`, `forEach`, `map` and similar) runs at once
+  and is followed. The effects are the Java rule's, with Kotlin's own forms added (`File.readText` and
+  the other `kotlin.io` and `kotlin.io.path` file calls, `URL.readText`, `exitProcess`,
+  `kotlin.concurrent.timer`, `launch` or `async` on a `CoroutineScope(...)` or `MainScope()`), and a
+  test (`load-effects.test.mjs`) keeps the two lists in step. Calls detekt already bans in main sources
+  are left to it, so each is reported once: `Thread.start`, `thread { }`, `Runtime.exec`, `runBlocking`,
+  `GlobalScope`, `System.getenv` and `TimeZone`. Without type resolution a call counts only when its
+  receiver is known: a type name through an explicit import (an alias too), the file's package, a star
+  import or the default imports (in that order, as Kotlin resolves them, so a project class named
+  `Files` is not `java.nio.file.Files`), a fully qualified name, a constructor or known factory
+  (`HttpClient.newHttpClient()`, `Runtime.getRuntime()`, `Path.of`, a builder's `build()`), or a
+  property of the same file or object whose declared type or initializer is one of those
+  (`private val ok = OkHttpClient.Builder().build()` makes `ok.newCall(request).execute()` a request).
+  A receiver returned by a function, a parameter or a property of another class is not followed. The
+  file with a top-level `fun main` and an `object` or companion object with a `@JvmStatic fun main` are
+  not checked. Kotlin builds with Maven are not supported by the Kotlin preset; their Java files get
+  the PMD rule through the Java preset.
 - Not covered: Android and Kotlin Multiplatform modules (the facts step is registered for
   `org.jetbrains.kotlin.jvm` only), and source-set `exclude` patterns (every `.kt` file under a source
   directory is read, as for detekt and the other Kotlin steps).

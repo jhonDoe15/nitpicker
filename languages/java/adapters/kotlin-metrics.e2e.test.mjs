@@ -14,6 +14,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../builds/java-build.mjs';
+import { loadEffectFindings } from './kotlin/review-rules/main/load-effects.mjs';
+import { findingFactory } from './kotlin/review-rules/review-finding.mjs';
 import {
   BOM,
   BROKEN,
@@ -21,6 +23,7 @@ import {
   DEEP_CHAIN,
   FLAT,
   INITIALIZERS,
+  LOAD_EFFECTS,
   MULTIFILE_A,
   MULTIFILE_B,
   NESTING,
@@ -375,6 +378,21 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       'Holder.l: Phase.NEW Phase.DONE',
       'Holder.f: Phase.`in` Phase.DONE',
       'isStart: Phase.NEW Phase.`in`',
+    ]);
+  });
+
+  it('collects the calls that run while a file or object loads, and the rule reports their effects', () => {
+    const { facts } = measure(writeSources('load', { 'src/Load.kt': LOAD_EFFECTS }));
+    const findings = loadEffectFindings(facts.files, { finding: findingFactory() });
+
+    expect(findings.map(({ symbol, location }) => `${symbol} ${String(location.line)}`)).toEqual([
+      'config 7',
+      'counted 8',
+      'connect() 13',
+      'Store.init 21',
+      'Repository.Companion.shared 29',
+      'Registry.connection 34',
+      'Mode.FAST 42',
     ]);
   });
 
