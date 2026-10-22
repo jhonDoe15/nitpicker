@@ -145,20 +145,26 @@ export function runPythonTools(context) {
   return failures;
 }
 
+export function lintOptions(context) {
+  return [
+    '--config',
+    ruffConfigFor(context),
+    '--target-version',
+    context.project.targetVersion,
+    ...pytestStyleFlags(pytestStyle(context.projectRoot)),
+    '--ignore-noqa',
+    '--no-cache',
+    ...ruffExclusions(context),
+  ];
+}
+
 export function lint(context) {
   run(
     context,
     [
       'ruff',
       'check',
-      '--config',
-      ruffConfigFor(context),
-      '--target-version',
-      context.project.targetVersion,
-      ...pytestStyleFlags(pytestStyle(context.projectRoot)),
-      '--ignore-noqa',
-      '--no-cache',
-      ...ruffExclusions(context),
+      ...lintOptions(context),
       '--output-format',
       'sarif',
       '--output-file',

@@ -7,19 +7,49 @@ import {
 } from '../../languages/typescript/preset/head-policy.mjs';
 import { resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
 import { collectWorkingTreeChanges, readBaseFiles } from './changes.mjs';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { prettierExtensions, prettierExclusions, typescriptExtensions } from './extensions.mjs';
 import { linkPolicyFile } from '../tooling/policy-links.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../tooling/tool-resolution.mjs';
 import { layoutTransformFor } from '../../languages/typescript/preset/tool-configs.mjs';
-import { spawnSync } from 'node:child_process';
+import { runFixCommand, fixerError } from './common/fix-command.mjs';
+import { rewrittenPaths } from './common/fix-files.mjs';
+import { languageFixers } from './language-fixers.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
 
 const prettierPolicy = staticChecks.find(({ name }) => name === 'prettier-format');
 
-export function fixWorkingTree({ headPolicy = resolveHeadPolicy(), ...options }) {
+const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
+
+export function spawnInvocation(
+  { command, args, cwd, input, environment, shell = false },
+  baseEnvironment,
+  spawn = spawnSync,
+) {
+  return spawn(command, args, {
+    cwd,
+    input,
+    shell,
+    env: { ...baseEnvironment, ...environment },
+    encoding: 'utf8',
+    maxBuffer: MAX_OUTPUT_BYTES,
+  });
+}
+
+export function fixWorkingTree(options) {
+  const settings = {
+    ...options,
+    executeFixCommand: (invocation) =>
+      options.executeFixCommand?.(invocation) ?? spawnInvocation(invocation, options.environment),
+  };
+  const fixer = languageFixers[settings.config?.preset];
+  return fixer === undefined ? fixTypeScript(settings) : fixer(settings);
+}
+
+function fixTypeScript({ headPolicy = resolveHeadPolicy(), ...options }) {
   return withHeadPolicyFile(headPolicy, (policyFile) =>
     fixWithPolicy({
       ...options,
@@ -52,21 +82,13 @@ function fixWithPolicy(settings) {
     ...eslintFixErrors(settings, eslintFiles),
     ...prettierFixErrors(settings, prettierFiles, comparison.mergeBaseSha),
   ];
-  return { fixedFiles: changedPaths(files, before, projectRoot), toolErrors };
+  return { fixedFiles: rewrittenPaths(projectRoot, files, before), toolErrors };
 }
 
 function eslintExtensionsFor(layout) {
   return layout.javascript
     ? new Set(layout.extensions.map((extension) => `.${extension}`))
     : typescriptExtensions;
-}
-
-function changedPaths(files, before, projectRoot) {
-  return files
-    .filter(
-      ({ path: name }) => !before.get(name).equals(readFileSync(path.join(projectRoot, name))),
-    )
-    .map(({ path: name }) => name);
 }
 
 function eslintFixErrors(settings, eslintFiles) {
@@ -243,46 +265,6 @@ function writePolicyPrettier({ projectRoot, policyEnvironment, executeFixCommand
   });
 }
 
-function run({
-  operation,
-  script,
-  args,
-  cwd,
-  acceptedStatuses,
-  environment = {},
-  input,
-  executeFixCommand,
-}) {
-  const invocation = {
-    operation,
-    command: process.execPath,
-    args: [script, ...args],
-    cwd,
-    acceptedStatuses,
-    environment,
-    input,
-  };
-  const result =
-    executeFixCommand?.(invocation) ??
-    spawnSync(invocation.command, invocation.args, {
-      cwd,
-      input,
-      env: { ...process.env, ...environment },
-      encoding: 'utf8',
-      maxBuffer: 50 * 1024 * 1024,
-    });
-  if (result.error || !acceptedStatuses.includes(result.status)) {
-    throw new Error(
-      `${operation} failed: ${result.error?.message ?? result.stderr?.trim() ?? `exit ${result.status}`}`,
-    );
-  }
-  return result;
-}
-
-function fixerError(tool, error) {
-  return {
-    tool,
-    snapshot: 'fix',
-    message: error instanceof Error ? error.message : String(error),
-  };
+function run({ script, args, ...invocation }) {
+  return runFixCommand({ ...invocation, command: process.execPath, args: [script, ...args] });
 }

@@ -8,6 +8,7 @@ export const MAVEN_PLUGINS = {
   dependency: 'org.apache.maven.plugins:maven-dependency-plugin:3.8.1',
   help: 'org.apache.maven.plugins:maven-help-plugin:3.5.1',
 };
+const TOOLS_KEY_LENGTH = 16;
 const JUNIT_PLATFORM_EXCLUSIONS = [
   'org.junit.platform',
   'org.junit.jupiter',
@@ -19,7 +20,7 @@ export function jacocoPlugin(pinned) {
   return `org.jacoco:jacoco-maven-plugin:${pinned.jacoco}`;
 }
 
-function dependency(coordinates, exclusions = []) {
+export function dependency(coordinates, exclusions = []) {
   const [groupId, artifactId, version, classifier] = coordinates.split(':');
   const excluded = exclusions
     .map((group) => `<exclusion><groupId>${group}</groupId><artifactId>*</artifactId></exclusion>`)
@@ -140,9 +141,11 @@ export function cacheDirectory(name) {
   return path.join(root, name);
 }
 
-export function resolveTools({ projectRoot, maven, pinned, launcherVersions, extraTools, spawn }) {
-  const tools = toolDependencies(pinned, launcherVersions, extraTools);
-  const key = createHash('sha256').update(JSON.stringify(tools)).digest('hex').slice(0, 16);
+export function resolveToolSet({ projectRoot, maven, tools, spawn }) {
+  const key = createHash('sha256')
+    .update(JSON.stringify(tools))
+    .digest('hex')
+    .slice(0, TOOLS_KEY_LENGTH);
   const directory = cacheDirectory(`maven-tools-${key}`);
   const cached = readClasspaths(directory, Object.keys(tools));
   if (missing(cached).length === 0) {
@@ -169,4 +172,13 @@ export function resolveTools({ projectRoot, maven, pinned, launcherVersions, ext
     );
   }
   return resolved;
+}
+
+export function resolveTools({ projectRoot, maven, pinned, launcherVersions, extraTools, spawn }) {
+  return resolveToolSet({
+    projectRoot,
+    maven,
+    tools: toolDependencies(pinned, launcherVersions, extraTools),
+    spawn,
+  });
 }
