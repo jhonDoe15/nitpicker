@@ -1,3 +1,4 @@
+import { GENERIC_NAME_WORDS } from '../../../../../../shared/naming/smell-words.mjs';
 import { braceDepths, closingIndex, parenDepths } from '../kotlin-source.mjs';
 
 const OBJECT_BODY =
@@ -61,8 +62,13 @@ const MUTABLE_TYPES =
   'Mutable\\w+|Array|IntArray|LongArray|DoubleArray|ByteArray|ArrayList|HashMap|HashSet|StringBuilder|Atomic\\w+';
 const MUTABLE_TYPE = new RegExp(String.raw`^\s*:\s*(?:${MUTABLE_TYPES})\b`);
 
-const GENERIC_SUFFIX = 'Util|Utils|Utility|Utilities|Helper|Manager|Common|Commons|Misc';
+const GENERIC_WORDS = new Set(GENERIC_NAME_WORDS);
+const GENERIC_SUFFIX = GENERIC_NAME_WORDS.map(
+  (word) => word.charAt(0).toUpperCase() + word.slice(1),
+).join('|');
 const GENERIC_TYPE = new RegExp(`(?:^|[A-Za-z0-9])(${GENERIC_SUFFIX})$`);
+const FILE_STEM = /([^/]+)\.kt$/;
+const WORD_BOUNDARIES = [/([a-z0-9])([A-Z])/g, /([A-Z]+)([A-Z][a-z])/g];
 const ACCEPTED_MANAGER =
   /(?:Authentication|Transaction|Cache|Entity|Session|Connection|Lock|Resource)Manager$/;
 const TYPE_MODIFIERS =
@@ -74,8 +80,7 @@ const TYPE_DECLARATION = new RegExp(
   ].join(''),
   'g',
 );
-const GENERIC_PACKAGE =
-  /(?:^|\.)(?:util|utils|utility|helpers|manager|common|commons|misc)(?:\.|$)/;
+const GENERIC_PACKAGE = new RegExp(`(?:^|\\.)(?:${GENERIC_NAME_WORDS.join('|')})(?:\\.|$)`);
 const PACKAGE = /^\s*package\s+([\w.`]+)/m;
 
 export const DECLARATION_MESSAGES = {
@@ -83,6 +88,8 @@ export const DECLARATION_MESSAGES = {
     'Keep state in an instance: a class whose object the composition root creates and passes in, holding `val`s and immutable `listOf`/`mapOf`. A top-level `var` or a mutable collection in an `object` is shared by the whole program.',
   GenericTypeName:
     'Name this type for what it does (`PriceRounder`, `OrderTotals`), not Utils, Helper, Manager, Common or Misc. Pure logic shared between features goes in the shared package under such a name.',
+  GenericFileName:
+    'Name this file for what it holds (`PriceRounding.kt`), not Utils, Helper, Manager, Common or Misc. Pure logic shared between features goes in the shared package under such a name.',
   GenericPackageName:
     'Name this package for what it holds, not utils, helpers, common or misc. Pure logic shared between features goes in the shared package under a name that says what it does.',
 };
@@ -155,24 +162,52 @@ function supertypeNames(header) {
     .filter((name) => name !== undefined);
 }
 
-export function genericNames(scanned) {
-  const typeFindings = [...scanned.code.matchAll(TYPE_DECLARATION)].flatMap((match) => {
-    const [, name, header] = match;
-    const suffix = GENERIC_TYPE.exec(name)?.[1];
-    if (
-      suffix === undefined ||
-      ACCEPTED_MANAGER.test(name) ||
-      supertypeNames(header).some((supertype) => supertype.endsWith(suffix))
-    ) {
-      return [];
-    }
-    return [{ rule: 'GenericTypeName', offset: match.index, subject: name }];
-  });
-  const declared = PACKAGE.exec(scanned.code);
+function lastWord(stem) {
+  const spaced = WORD_BOUNDARIES.reduce((text, boundary) => text.replace(boundary, '$1 $2'), stem);
+  return spaced
+    .split(/[^A-Za-z0-9]+/)
+    .findLast((word) => word !== '')
+    ?.toLowerCase();
+}
+
+function fileFindings(file, declaredNames) {
+  const stem = FILE_STEM.exec(file ?? '')?.[1];
+  if (stem === undefined || declaredNames.includes(stem) || !GENERIC_WORDS.has(lastWord(stem))) {
+    return [];
+  }
+  return [{ rule: 'GenericFileName', offset: 0, subject: stem }];
+}
+
+function declaredTypes(code) {
+  return [...code.matchAll(TYPE_DECLARATION)].map((match) => ({
+    name: match[1],
+    header: match[2],
+    offset: match.index,
+  }));
+}
+
+function isGenericType({ name, header }) {
+  const suffix = GENERIC_TYPE.exec(name)?.[1];
+  return (
+    suffix !== undefined &&
+    !ACCEPTED_MANAGER.test(name) &&
+    !supertypeNames(header).some((supertype) => supertype.endsWith(suffix))
+  );
+}
+
+function packageFindings(code) {
+  const declared = PACKAGE.exec(code);
   const packageName = declared?.[1].replaceAll('`', '');
-  const packageFinding =
-    packageName !== undefined && GENERIC_PACKAGE.test(packageName)
-      ? [{ rule: 'GenericPackageName', offset: declared.index, subject: packageName }]
-      : [];
-  return [...packageFinding, ...typeFindings];
+  return packageName !== undefined && GENERIC_PACKAGE.test(packageName)
+    ? [{ rule: 'GenericPackageName', offset: declared.index, subject: packageName }]
+    : [];
+}
+
+export function genericNames(scanned, context = {}) {
+  const types = declaredTypes(scanned.code);
+  const typeFindings = types
+    .filter(isGenericType)
+    .map(({ name, offset }) => ({ rule: 'GenericTypeName', offset, subject: name }));
+  const names = types.map(({ name }) => name);
+  return [...fileFindings(context.file, names), ...packageFindings(scanned.code), ...typeFindings];
 }

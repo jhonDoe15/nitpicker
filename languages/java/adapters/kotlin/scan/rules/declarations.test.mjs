@@ -72,6 +72,9 @@ describe('genericNames', () => {
     ['a Helper class', 'package demo.orders\n\nclass OrderHelper(val x: Int)\n', 'OrderHelper'],
     ['a Manager after an acronym', 'package demo.orders\n\nclass IOManager\n', 'IOManager'],
     ['a Misc interface', 'package demo.orders\n\ninterface Misc\n', 'Misc'],
+    ['a plural Helpers', 'package demo.orders\n\nobject OrderHelpers\n', 'OrderHelpers'],
+    ['a plural Managers', 'package demo.orders\n\nclass Managers\n', 'Managers'],
+    ['a Miscellaneous object', 'package demo.orders\n\nobject Miscellaneous\n', 'Miscellaneous'],
   ])('flags %s', (_name, source, subject) => {
     expect(found(genericNames, source)).toEqual([['GenericTypeName', 3, subject]]);
   });
@@ -94,5 +97,38 @@ describe('genericNames', () => {
     ]);
     expect(found(genericNames, 'package demo.shared.text\n')).toEqual([]);
     expect(found(genericNames, 'package demo.utilization\n')).toEqual([]);
+    expect(found(genericNames, 'package demo.helper\n')).toEqual([
+      ['GenericPackageName', 1, 'demo.helper'],
+    ]);
+    expect(found(genericNames, 'package demo.utilities.text\n')).toEqual([
+      ['GenericPackageName', 1, 'demo.utilities.text'],
+    ]);
+  });
+
+  function foundIn(file, source) {
+    const scanned = scanKotlinSource(source);
+    return genericNames(scanned, { file }).map(({ rule, subject }) => [rule, subject]);
+  }
+
+  it.each([
+    ['a Utils file of top-level functions', 'StringUtils.kt', 'fun trim(s: String) = s\n'],
+    ['a lowercase utils file', 'utils.kt', 'fun trim(s: String) = s\n'],
+    ['a Helpers file of properties', 'src/OrderHelpers.kt', 'val limit = 3\n'],
+    ['a file whose class has another name', 'Misc.kt', 'class PriceRounder\n'],
+  ])('flags %s', (_name, file, source) => {
+    const stem = file.replace(/^.*\//, '').replace('.kt', '');
+
+    expect(foundIn(file, `package demo\n\n${source}`)).toEqual([['GenericFileName', stem]]);
+  });
+
+  it.each([
+    ['a file named for its job', 'PriceRounding.kt', 'fun round(v: Int) = v\n'],
+    ['a file whose type is flagged as a type', 'Utils.kt', 'object Utils\n'],
+    ['a framework role file', 'TransactionManager.kt', 'class TransactionManager\n'],
+    ['a word that only ends in the letters', 'Uncommon.kt', 'fun rare() = 1\n'],
+  ])('does not flag %s as a file', (_name, file, source) => {
+    const rules = foundIn(file, `package demo\n\n${source}`).map(([rule]) => rule);
+
+    expect(rules).not.toContain('GenericFileName');
   });
 });

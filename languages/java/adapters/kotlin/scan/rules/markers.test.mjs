@@ -97,6 +97,16 @@ describe('commentedOutCode', () => {
     ]);
   });
 
+  it.each([
+    ['an assignment of an if expression', '// val label = if (paid) "paid" else "open"'],
+    ['an assignment with a string', '// val message = "total is high for this order"'],
+    ['a plain assignment', '// total = items.sum()'],
+  ])('still flags %s', (_name, comment) => {
+    expect(found(commentedOutCode, `fun f() {\n    ${comment}\n}\n`)).toEqual([
+      ['CommentedOutCode', 2],
+    ]);
+  });
+
   it('reports a run of commented lines once', () => {
     const source = 'fun f() {\n    // val a = 1\n    // val b = 2\n\n    // val c = 3\n}\n';
 
@@ -114,6 +124,14 @@ describe('commentedOutCode', () => {
     ['a link', '// https://example.com/docs(1)'],
     ['a TODO', '// TODO(#12): call(x)'],
     ['a list item', '// - total(items)'],
+    ['a setting with its unit', '// timeout = 30 seconds in production'],
+    ['a default described in words', '// retries = 3 by default, see the runbook'],
+    ['a key described in words', '// key = value pairs are sorted'],
+    [
+      'a sample after an Example heading',
+      '// Example:\n// val client = Client()\n// client.connect()',
+    ],
+    ['a sample after a Usage heading', '// Usage: client.connect(host, port)\n// val c = Client()'],
   ])('passes %s', (_name, comment) => {
     expect(found(commentedOutCode, `${comment}\nfun f() = 1\n`)).toEqual([]);
   });
