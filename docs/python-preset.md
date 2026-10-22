@@ -461,19 +461,6 @@ through the real tools.
 | fixing the code                                | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                         | `no-inline-suppression`                                    |
 | annotated code the checkers read               | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside                     | `no-type-check`, `not-type-checking`, `stub-beside-source` |
 
-`type-cast` rejects calls resolved to `typing.cast` or `typing_extensions.cast`;
-`explicit-any` rejects explicit references to those modules' `Any` in source and tests,
-including imported names, renamed imports and quoted annotations. Use a concrete type or
-`object` and narrow with a runtime check, or parse untrusted input in an adapter. Both
-rules accept reviewed `python.exceptions` entries with paths and a reason. Existing
-`any-in-domain` and `pydantic-any-field` findings take precedence on the same line.
-
-Resolution is lexical and conservative: a reassigned or ambiguous imported name is not
-assumed to refer to typing. Dynamic imports, wildcard imports, re-exports and arbitrary
-assignment aliases are not followed. Annotation strings are parsed as expressions;
-`Literal` string values and `Annotated` metadata are data, not type references. Unused
-imports alone do not produce these findings (ruff handles unused imports).
-
 Details that are decisions rather than the table:
 
 - `frozen-dataclass` and `pydantic-boundary` do not apply to test files (a `tests` or `test`
@@ -604,6 +591,7 @@ are listed at the end.
 | Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                  | ruff `N`                                                                                                                                             |
 | Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                      | `handwritten-boundary-guard` (script)                                                                                                                |
 | Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                       | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
+| Type checking            | a concrete type, `Protocol`, `TypeVar`, `ParamSpec`, `object` narrowed with `isinstance`; no `typing.cast`, no `Any`                             | `type-cast`, `explicit-any` (script)                                                                                                                 |
 | Pure domain              | clock, ids and random values passed in; ports implemented in `adapters/`                                                                         | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
 | Module state             | state in an object made in the composition root                                                                                                  | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
 | Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
@@ -636,6 +624,23 @@ assumed to refer to typing. Dynamic imports, wildcard imports, re-exports and ar
 assignment aliases are not followed. Annotation strings are parsed as expressions;
 `Literal` string values and `Annotated` metadata are data, not type references. Unused
 imports alone do not produce these findings (ruff handles unused imports).
+
+`type-cast` rejects calls resolved to `typing.cast` or `typing_extensions.cast`;
+`explicit-any` rejects every explicit reference to those modules' `Any`, in source and in tests (as the
+TypeScript preset bans `as` and `any` in tests too), including imported names, renamed imports, quoted
+annotations and type aliases. The messages name the allowed forms: the concrete type, a `Protocol`, a
+`TypeVar`, a `ParamSpec` for the `*args` and `**kwargs` of a wrapper, `object` narrowed with `isinstance`
+or `match`, and, for untrusted input such as JSON, a model parsed once in `adapters/` instead of
+`dict[str, Any]` (`dict[str, object]` for a value only passed through). Both rules take `python.exceptions`
+entries with paths and a reason. `cast(Any, value)` is one `type-cast` finding, and an `Any` on a line
+that `any-in-domain` or `pydantic-any-field` already reports is not reported twice. ruff's `ANN401` is not
+selected, since `explicit-any` covers the same `Any` in every position.
+
+Resolution is lexical and conservative: a reassigned or ambiguous imported name is not assumed to refer
+to typing. Dynamic imports, wildcard imports (ruff `F403` bans them), re-exports and arbitrary assignment
+aliases are not followed. Annotation strings are parsed as expressions; `Literal` string values and
+`Annotated` metadata are data, not type references. Unused imports alone do not produce these findings
+(ruff handles unused imports), and standalone `.pyi` stubs are not read.
 
 Details that are decisions rather than the table:
 

@@ -70,6 +70,21 @@ describe.skipIf(process.env.NITPICKER_PYTHON_E2E !== '1')('Python type launderin
         'def name(value):\n    from typing import cast\n    return cast(str, value)\n',
         ['type-cast:3 name.typing.cast'],
       ],
+      [
+        'cast with an explicit Any is one finding',
+        'from typing import Any, cast\nvalue = cast(Any, source)\nother = cast(list[Any], source)\n',
+        ['type-cast:2 typing.cast', 'type-cast:3 typing.cast'],
+      ],
+      [
+        'wrapper typed with ParamSpec and object',
+        'from collections.abc import Callable\nfrom typing import ParamSpec, TypeVar\nP = ParamSpec("P")\nR = TypeVar("R")\ndef wrap(call: Callable[P, R]) -> Callable[P, R]:\n    def inner(*args: P.args, **kwargs: P.kwargs) -> R:\n        return call(*args, **kwargs)\n    return inner\nPayload = dict[str, object]\n',
+        [],
+      ],
+      [
+        'wrapper with Any arguments',
+        'from typing import Any\ndef wrap(call):\n    def inner(*args: Any, **kwargs: Any):\n        return call(*args, **kwargs)\n    return inner\n',
+        ['explicit-any:3 wrap.inner.typing.Any', 'explicit-any:3 wrap.inner.typing.Any'],
+      ],
       ['unrelated', 'from shapes import Any, cast\nvalue: Any = cast(str, source)\n', []],
       [
         'parameter shadows import',

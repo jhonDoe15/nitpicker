@@ -29,20 +29,31 @@ function importBoundaryAdvice(libraries) {
   return `Use ${validators.join(' or ')} only in an \`adapters/\` package to parse untrusted input (\`${validatorNamed(validators[0]).call}\`), and pass frozen dataclasses on from there.`;
 }
 
+const LAUNDERED_NAME = /(?:typing|typing_extensions)\.(?:cast|Any)$/;
+
+function laundered(subject) {
+  return LAUNDERED_NAME.exec(subject)?.[0] ?? subject;
+}
+
+function castBoundaryAdvice(libraries) {
+  const [validator] = validatorsOf(libraries);
+  return `parse untrusted input once in an \`adapters/\` package with ${validatorForm(validator)}, so \`dict[str, Any]\` becomes a typed model.`;
+}
+
 export const STRUCTURE_HINTS = [
   {
     tool: RULES_TOOL,
     rules: ['type-cast'],
-    describe: (subject) => `\`${subject}\` asserts a type without checking the value`,
-    allowed:
-      'Narrow with a runtime check, or parse untrusted input at the boundary; do not use `typing.cast`.',
+    describe: (subject) => `\`${laundered(subject)}\` asserts a type without checking the value`,
+    allowed: (_subject, libraries) =>
+      `Narrow the value with \`isinstance\` or \`match\`, or give it the correct type at its source; ${castBoundaryAdvice(libraries)}`,
   },
   {
     tool: RULES_TOOL,
     rules: ['explicit-any'],
-    describe: (subject) => `\`${subject}\` disables type checking with an explicit Any`,
-    allowed:
-      'Use a concrete type or `object`, then narrow with a runtime check or parse at the boundary.',
+    describe: (subject) => `\`${laundered(subject)}\` disables type checking with an explicit Any`,
+    allowed: (_subject, libraries) =>
+      `Write the concrete type, a \`Protocol\`, a \`TypeVar\` or \`ParamSpec\` (a wrapper's \`*args\` and \`**kwargs\`), or \`object\` and narrow it; ${castBoundaryAdvice(libraries)}`,
   },
   { tool: 'ruff', rules: ['E722', 'BLE001'], allowed: HANDLE_EXCEPTION },
   {
