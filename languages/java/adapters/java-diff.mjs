@@ -264,12 +264,13 @@ export function runJavaDiff({
   const comparison = includeWorkingTree
     ? { ...committed, headSha: captureWorkingTree(repositoryRoot, committed.headSha) }
     : committed;
-  const baseToHeadRenames = readRenameMap({
+  const range = {
     repositoryRoot,
     mergeBaseSha: comparison.mergeBaseSha,
     headSha: comparison.headSha,
     projectRelativePath,
-  });
+  };
+  const baseToHeadRenames = readRenameMap(range);
   const { notes, baseFindings, headFindings } = collectBothSnapshots({
     repositoryRoot,
     projectRelativePath,
@@ -277,12 +278,6 @@ export function runJavaDiff({
     options: { gradle, maven, initScript },
     policy,
   });
-  const range = {
-    repositoryRoot,
-    mergeBaseSha: comparison.mergeBaseSha,
-    headSha: comparison.headSha,
-    projectRelativePath,
-  };
   const touchedCode = {
     changedLines: readChangedLines(range),
     isStrictRule: isJavaTouchedRule,
