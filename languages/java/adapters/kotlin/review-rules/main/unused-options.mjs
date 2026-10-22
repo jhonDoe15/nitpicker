@@ -2,95 +2,18 @@ import { MESSAGES, renderMessage } from '../../../../../../shared/policy.mjs';
 import { exceptionText } from '../../../../../../shared/rules/exceptions.mjs';
 import { UNUSED_API_RULE_IDS } from '../../../../../../shared/unused-api/unused-api-policy.mjs';
 import { append } from '../kotlin-facts.mjs';
+import { optionUnits } from './unused-option-units.mjs';
 
 export const UNUSED_OPTION_RULE = UNUSED_API_RULE_IDS.unusedOption;
 export const UNUSED_OPTION_TOOL = 'structure';
 
-const SCOPE = 'private and internal declarations only; calls in tests count';
-const LIMITED = new Set(['private', 'internal']);
-const SKIPPED_MODIFIERS = new Set([
-  'override',
-  'open',
-  'abstract',
-  'operator',
-  'infix',
-  'actual',
-  'expect',
-]);
-const CONSTRUCTOR = '<init>';
+const SCOPES = {
+  limited: 'private or internal, so calls in tests count',
+  production: 'tests do not count',
+  published: 'tests of this published module count',
+};
 const NULLABLE = /\?$/u;
 const COPY = 'copy';
-const CALLABLE_KINDS = new Set(['class']);
-
-function hasOptions(parameters) {
-  return parameters.some(({ default: hasDefault, vararg }) => hasDefault && !vararg);
-}
-
-function functionUnits(file, classes) {
-  return file.functions
-    .filter((fn) => {
-      const owner = classes.get(fn.owner);
-      return (
-        fn.name !== CONSTRUCTOR &&
-        fn.name !== 'main' &&
-        LIMITED.has(fn.visibility) &&
-        fn.annotations.length === 0 &&
-        !fn.modifiers.some((modifier) => SKIPPED_MODIFIERS.has(modifier)) &&
-        fn.owner !== '<anonymous>' &&
-        owner?.kind !== 'interface' &&
-        hasOptions(fn.parameters)
-      );
-    })
-    .map((fn) => ({
-      file: file.file,
-      callee: fn.name,
-      label: [fn.owner, fn.name].filter(Boolean).join('.'),
-      parameters: fn.parameters,
-      line: fn.line,
-    }));
-}
-
-function eligibleClass(klass, serialization) {
-  return (
-    CALLABLE_KINDS.has(klass.kind) &&
-    !klass.local &&
-    !klass.open &&
-    klass.annotations.length === 0 &&
-    !(serialization && klass.data)
-  );
-}
-
-function constructorUnits(file, classes, serialization) {
-  const primary = file.classes
-    .filter(
-      (klass) =>
-        eligibleClass(klass, serialization) &&
-        (LIMITED.has(klass.visibility) || LIMITED.has(klass.constructorVisibility)) &&
-        hasOptions(klass.primaryParameters),
-    )
-    .map((klass) => ({
-      file: file.file,
-      callee: klass.name,
-      label: klass.qualified,
-      data: klass.data,
-      parameters: klass.primaryParameters,
-      line: klass.line,
-    }));
-  const secondary = file.functions
-    .filter(
-      (fn) => fn.name === CONSTRUCTOR && LIMITED.has(fn.visibility) && hasOptions(fn.parameters),
-    )
-    .filter((fn) => classes.has(fn.owner) && eligibleClass(classes.get(fn.owner), serialization))
-    .map((fn) => ({
-      file: file.file,
-      callee: classes.get(fn.owner).name,
-      label: fn.owner,
-      data: false,
-      parameters: fn.parameters,
-      line: fn.line,
-    }));
-  return [...primary, ...secondary];
-}
 
 function typeAliases(files) {
   return new Map(
@@ -158,32 +81,44 @@ function unusedParameters(unit, calls, copies) {
     .map(({ parameter }) => parameter);
 }
 
-export function unusedOptionFindings(files, { finding, mentionedInJava, serialization = false }) {
-  const main = files.filter(({ test }) => !test);
-  const calls = callsByName(files);
-  const references = referencedNames(files);
-  return main.flatMap((file) => {
-    const classes = new Map(file.classes.map((klass) => [klass.qualified, klass]));
-    return [...functionUnits(file, classes), ...constructorUnits(file, classes, serialization)]
-      .filter((unit) => !references.has(unit.callee) && !mentionedInJava(unit.callee))
-      .flatMap((unit) =>
-        unusedParameters(unit, calls.get(unit.callee) ?? [], calls.get(COPY) ?? []).map(
-          (parameter) => {
-            const symbol = `${unit.label}.${parameter.name}`;
-            return finding({
-              tool: UNUSED_OPTION_TOOL,
-              rule: UNUSED_OPTION_RULE,
-              file: unit.file,
-              line: parameter.line,
-              symbol,
-              message: renderMessage(MESSAGES.unusedOption, {
-                name: symbol,
-                scope: SCOPE,
-                exception: exceptionText(UNUSED_OPTION_RULE, unit.file),
-              }),
-            });
-          },
-        ),
-      );
-  });
+function callerView(own, { projectFiles = own, published = false }) {
+  const production = projectFiles.filter(({ test }) => !test);
+  const ownTests = published ? own.filter(({ test }) => test) : [];
+  return {
+    limited: callsByName(own),
+    open: callsByName([...production, ...ownTests]),
+    scope: published ? SCOPES.published : SCOPES.production,
+    references: referencedNames(projectFiles),
+  };
+}
+
+export function unusedOptionFindings(files, options) {
+  const { finding, mentionedInJava, serialization = false } = options;
+  const view = callerView(files, options);
+  return files
+    .filter(({ test }) => !test)
+    .flatMap((file) => optionUnits(file, serialization))
+    .filter((unit) => !view.references.has(unit.callee))
+    .flatMap((unit) => {
+      const calls = unit.limited ? view.limited : view.open;
+      const unused = unusedParameters(unit, calls.get(unit.callee) ?? [], calls.get(COPY) ?? []);
+      if (unused.length === 0 || mentionedInJava(unit.callee)) {
+        return [];
+      }
+      return unused.map((parameter) => {
+        const symbol = `${unit.label}.${parameter.name}`;
+        return finding({
+          tool: UNUSED_OPTION_TOOL,
+          rule: UNUSED_OPTION_RULE,
+          file: unit.file,
+          line: parameter.line,
+          symbol,
+          message: renderMessage(MESSAGES.unusedOption, {
+            name: symbol,
+            scope: unit.limited ? SCOPES.limited : view.scope,
+            exception: exceptionText(UNUSED_OPTION_RULE, unit.file),
+          }),
+        });
+      });
+    });
 }

@@ -13,23 +13,28 @@ import { testWaitFindings } from './tests/test-waits.mjs';
 
 const IDENTIFIER = /[\p{L}_$][\p{L}\p{N}_$]*/gu;
 
-function javaSourceText(projectRoot, manifest) {
-  const roots = [...(manifest.sourceRoots ?? []), ...(manifest.testSourceRoots ?? [])];
-  return roots
+function javaSourceText(projectRoot, manifests) {
+  const roots = new Set(
+    manifests.flatMap((manifest) => [
+      ...(manifest.sourceRoots ?? []),
+      ...(manifest.testSourceRoots ?? []),
+    ]),
+  );
+  return [...roots]
     .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), ['.java']))
     .map((file) => readFileSync(file, 'utf8'))
     .join('\n');
 }
 
-function javaMentions(projectRoot, manifest) {
+function javaMentions(projectRoot, manifests) {
   let identifiers;
   return (name) => {
-    identifiers ??= new Set(javaSourceText(projectRoot, manifest).match(IDENTIFIER));
+    identifiers ??= new Set(javaSourceText(projectRoot, manifests).match(IDENTIFIER));
     return identifiers.has(name);
   };
 }
 
-function projectView({ reportRoot, projectRoot, manifest, modules = [] }) {
+function projectView({ reportRoot, manifest, modules = [] }) {
   const own = readKotlinFacts(reportRoot).files;
   const siblings = modules.filter((module) => module.reportRoot !== reportRoot);
   const projectFiles = [
@@ -43,12 +48,13 @@ function projectView({ reportRoot, projectRoot, manifest, modules = [] }) {
       ),
     ),
   ];
-  return { own, projectFiles, javaRoots, projectRoot };
+  const manifests = [manifest, ...siblings.map((module) => module.manifest)];
+  return { own, projectFiles, javaRoots, manifests };
 }
 
 export function readKotlinReviewFindings(context) {
   const { manifest, projectRoot } = context;
-  const { own, projectFiles, javaRoots } = projectView(context);
+  const { own, projectFiles, javaRoots, manifests } = projectView(context);
   if (own.length === 0) {
     return [];
   }
@@ -65,8 +71,10 @@ export function readKotlinReviewFindings(context) {
     ...singularPluralFindings(own, { finding }),
     ...unusedOptionFindings(own, {
       finding,
+      projectFiles,
+      published: manifest.published === true,
       serialization: manifest.kotlinSerialization === true,
-      mentionedInJava: javaMentions(projectRoot, manifest),
+      mentionedInJava: javaMentions(projectRoot, manifests),
     }),
   ];
 }

@@ -118,6 +118,31 @@ describe('readKotlinReviewFindings across the project', () => {
     expect(readKotlinReviewFindings({ ...context, modules })).toEqual([]);
   });
 
+  it('judges a public option by its own published flag and the Java sources of every module', () => {
+    const format = fn('format', {
+      parameters: [parameter('value', 'Int'), parameter('pad', 'Int', { default: true })],
+    });
+    const { first, modules } = twoModules(
+      {
+        files: [
+          file({ functions: [format], calls: [call('format', { positional: 1 })] }),
+          testFile({ calls: [call('format', { positional: 2 })] }),
+        ],
+      },
+      { files: [] },
+    );
+    const context = { reportRoot: first.reportRoot, projectRoot: first.root, modules };
+    const javaRoot = path.join(first.root, 'billing/src/main/java');
+    const options = (manifest) => readKotlinReviewFindings({ ...context, manifest });
+
+    expect(options({})).toHaveLength(1);
+    expect(options({ published: true })).toEqual([]);
+    mkdirSync(javaRoot, { recursive: true });
+    writeFileSync(path.join(javaRoot, 'Bill.java'), 'class Bill { int a = Kt.format(1, 2); }\n');
+    modules[1].manifest.sourceRoots = ['billing/src/main/java'];
+    expect(options({})).toEqual([]);
+  });
+
   it('does not stop at a Kotlin name that is not a valid pattern when it scans Java sources', () => {
     const { root, reportRoot } = projectWith({
       files: [

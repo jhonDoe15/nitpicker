@@ -35,7 +35,7 @@ describe('unused option in Kotlin', () => {
       symbol: 'format.pad',
       location: { line: 8 },
       message:
-        'Option format.pad is never set. Remove it, or set it from a real call (private and internal declarations only; calls in tests count). If this is intended, add {"rule":"unused-option","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Option format.pad is never set. Remove it, or set it from a real call (private or internal, so calls in tests count). If this is intended, add {"rule":"unused-option","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
     });
   });
@@ -98,7 +98,6 @@ describe('unused option in Kotlin', () => {
   });
 
   it.each([
-    ['a public function', { visibility: 'public' }],
     ['an override', { modifiers: ['override'] }],
     ['an annotated function', { annotations: ['JvmOverloads'] }],
     ['an open function', { modifiers: ['open'] }],
@@ -148,7 +147,7 @@ describe('unused option in Kotlin', () => {
     ).toEqual([]);
   });
 
-  it('leaves public, annotated and open classes alone, and a subclass call counts', () => {
+  it('leaves annotated and open classes alone, and a subclass call counts', () => {
     const base = {
       visibility: 'internal',
       primaryParameters: [
@@ -158,9 +157,6 @@ describe('unused option in Kotlin', () => {
     };
     const calls = [call('Mailer', { positional: 1 })];
 
-    expect(
-      findingsFor([file({ classes: [klass('Mailer', { ...base, visibility: 'public' })], calls })]),
-    ).toEqual([]);
     expect(
       findingsFor([
         file({

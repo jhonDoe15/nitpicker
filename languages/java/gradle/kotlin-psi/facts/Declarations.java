@@ -81,6 +81,7 @@ final class Declarations {
                 || klass.hasModifier(KtTokens.SEALED_KEYWORD),
             "local", local, "visibility", effective(own, frame),
             "constructorVisibility", primary == null ? "public" : visibility(primary),
+            "constructorAnnotations", primary == null ? List.of() : annotationNames(primary),
             "annotations", annotationTexts(klass), "supers", supertypes(klass), "superCall", superCall,
             "primaryParameters", constructor, "entries", entries));
     return new Frame(frame, m("k", "class", "name", simple, "qualified", qualified,

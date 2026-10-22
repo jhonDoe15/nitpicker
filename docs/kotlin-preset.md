@@ -434,7 +434,7 @@ skipped with a note on stderr.
 | `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                           |
 | `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                           |
 | `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                   |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                               |
+| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a function or constructor that no call sets                                                                                                   |
 
 Limits, all chosen to flag less rather than guess:
 
@@ -478,15 +478,27 @@ Limits, all chosen to flag less rather than guess:
   body of a property getter, or the condition of an `if` that has an `else` and is itself one of those.
   Backticked constants (``Status.`in` ``) are matched by their name. A test in a property initializer is
   named after the property (`Holder.isOpen`), as it is in a getter.
-- Unused option: a defaulted parameter of a private or internal function that is not `override`, `open`,
-  `abstract`, `operator`, `infix` or `main`, has no annotation and is not declared in an interface, or of the
-  constructor of a final class without annotations. It is flagged when no call (in main or tests, matched by
-  name, through an import alias or a type alias) sets the parameter by name or position, no callable
-  reference exists and no Java file mentions the name. A call that cannot match the signature is ignored, a
-  call with a spread sets every parameter, and a `copy(name = ...)` call sets that parameter of a data class.
-  Data classes are skipped when the module has `jackson-module-kotlin`, `kotlinx-serialization` or
-  `moshi-kotlin` on its main compile or runtime classpath (`runtimeOnly` counts), since a library may set the defaults; a library that does so
-  without that jar (reflection in a framework) is not seen.
+- Unused option: a defaulted parameter of a function that is not `override`, `open`, `abstract`,
+  `operator`, `infix` or `main`, has no annotation and is not declared in an interface, or of a
+  constructor (primary or secondary, without annotations such as `@JvmOverloads` or `@Autowired`) of a
+  final class without annotations. It is flagged when no call (matched by name, through an import alias
+  or a type alias) sets the parameter by name or position, no callable reference or class literal
+  (`Mailer::class`) names it and no Java file mentions the name. Which calls count follows the
+  TypeScript rule:
+  - a private or internal declaration: the calls of its own module, main and tests;
+  - a public one: the main sources of every module of the build, and also the module's own tests when
+    the module is published (a Gradle `publishing` publication, as for `test-only-export`); Java
+    sources of every module are checked for the name. A public function of an annotated class (a
+    Spring bean or controller, or any class a framework may call by reflection) is left alone.
+
+  A call that cannot match the signature is ignored, a call with a spread sets every parameter, and a
+  `copy(name = ...)` call sets that parameter of a data class. When the module has
+  `jackson-module-kotlin`, `kotlinx-serialization` or `moshi-kotlin` on its main compile or runtime
+  classpath (`runtimeOnly` counts), data classes are skipped, and so are public classes whose
+  constructor parameters are all properties, since a library may set the defaults; a library that does
+  so without that jar (reflection in a framework) is not seen. A declaration that only reflection calls
+  has no call to compare and is not judged.
+
 - Not covered: Android and Kotlin Multiplatform modules (the facts step is registered for
   `org.jetbrains.kotlin.jvm` only), and source-set `exclude` patterns (every `.kt` file under a source
   directory is read, as for detekt and the other Kotlin steps).
