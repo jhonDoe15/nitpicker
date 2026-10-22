@@ -81,9 +81,11 @@ measurements. The existing duration recorder uses Vitest module diagnostics, whi
 execution in the module duration, and writes sorted whole-second profiles. Record enabled suites
 with the same package filters and flags after obtaining an isolated timing sample.
 
-`node scripts/test-shards/verify-e2e-shards.mjs` collects through the real package scripts,
-checks the 76/54 discovered case counts, resolves CLI shard
-options through Vitest, and exercises the configured sequencer. It requires the profile to cover
+`node scripts/test-shards/verify-e2e-shards.mjs` collects through the real package scripts and
+checks that each selects exactly the cases its E2E flag enables: every `.e2e.test.` case Vitest
+lists with the flag set and not with the other JVM suite's flag set instead. The expected cases are derived rather than counted by
+hand, so a gated file that a package script leaves out fails the check. It resolves CLI shard
+options through Vitest and exercises the configured sequencer with the language's profile. It requires the profile to cover
 every selected file exactly and each matrix shard to be nonempty, with every selected file in
 exactly one shard. Vitest list itself does not apply sharding, so its `--shard` output alone is
 insufficient to verify the partition.
@@ -93,3 +95,10 @@ Maven/Gradle actions cache dependencies; mutable fixture builds are not shared b
 The aggregate `java` and `kotlin` checks retain their names and require matrix success: a failed,
 cancelled or unexpectedly skipped matrix cannot turn green. Unrelated PR labels still skip the
 workflows' test jobs as before.
+
+The Kotlin style file test (`kotlin-e2e/style/kotlin-style-files.e2e.test.mjs`, eight cases) was
+gated on the Java flag but selected by neither suite. It runs the init script's two Kotlin style
+tasks against a stand-in Kotlin plugin, so it now sits under `kotlin-e2e/`, is gated on the Kotlin
+flag and runs in the Kotlin suite with a planning weight of 120 seconds, an estimate until a
+recorded timing replaces it. Each language workflow runs the verifier in its own shard-plan job;
+it lists tests without starting a JVM build, and the aggregate check requires it.
