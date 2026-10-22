@@ -28,6 +28,11 @@ export const ONE_WAY_RULES = [
       'Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug.',
   },
   { name: 'CastNullableToNonNullableType', ruleset: 'potential-bugs' },
+  {
+    name: 'TooGenericExceptionCaught',
+    ruleset: 'exceptions',
+    allowed: 'In a test, use `assertFailsWith`.',
+  },
   { name: 'GlobalCoroutineUsage', ruleset: 'coroutines' },
   { name: 'ForbiddenMethodCall', ruleset: 'style' },
   {
@@ -57,7 +62,7 @@ export function isBannedSuppression(token) {
   return DETEKT_RULESETS.has(token) || BANNED_SUPPRESSIONS.some((banned) => banned.test(token));
 }
 
-function appendSentence(message, sentence) {
+export function appendSentence(message, sentence) {
   return `${message.replace(/\.?\s*$/, '')}. ${sentence}`;
 }
 

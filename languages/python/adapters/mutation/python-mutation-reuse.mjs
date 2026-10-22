@@ -5,7 +5,7 @@ import { collectImports, importEdges } from '../analysis/python-coupling.mjs';
 import { META_SUFFIX, MUTANTS_DIRECTORY, metaFiles } from './python-mutation-data.mjs';
 import { run } from '../execution/python-process.mjs';
 
-const TEST_FILE = /(?:^|\/)(?:test_[^/]*|[^/]*_test|conftest)\.py$/u;
+const TEST_FILE = /(?:^|\/)(?:tests?_[^/]*|[^/]*_tests?|tests|conftest)\.py$/u;
 const TEST_DIRECTORY = /(?:^|\/)tests?\//u;
 const REUSABLE_STATUSES = ['M', 'A'];
 

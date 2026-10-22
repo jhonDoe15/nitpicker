@@ -2,18 +2,34 @@ import { globMatcher } from '../paths/glob.mjs';
 
 export const SAMPLE_LIMIT = 400;
 
-export function detectConventions({ definitions, source, pinned = {}, exclude = [] }) {
+export function detectConventions({
+  definitions,
+  source,
+  pinned = {},
+  exclude = [],
+  accepts = () => true,
+}) {
   const measured = definitions.filter((definition) => pinned[definition.id] === undefined);
   const excluded = exclude.map(globMatcher);
-  const candidates =
-    measured.length === 0
+  function candidatesOf(options) {
+    return measured.length === 0
       ? []
-      : source.paths().filter((file) => !excluded.some((glob) => glob.test(file)));
+      : source.paths(options).filter((file) => !excluded.some((glob) => glob.test(file)));
+  }
+  const readable = candidatesOf({});
+  const named = measured.some(({ nameOnly }) => nameOnly) ? candidatesOf({ unreadable: true }) : [];
   const samples = new Map(
-    measured.map((definition) => [definition.id, sampleFor(definition, candidates)]),
+    measured.map((definition) => [
+      definition.id,
+      sampleFor(definition, definition.nameOnly ? named : readable, accepts),
+    ]),
   );
   const texts =
-    measured.length === 0 ? new Map() : source.readMany([...new Set([...samples.values()].flat())]);
+    measured.length === 0
+      ? new Map()
+      : source.readMany([
+          ...new Set(measured.flatMap((definition) => filesToRead(definition, samples))),
+        ]);
   return Object.fromEntries(
     definitions.map((definition) => [
       definition.id,
@@ -27,24 +43,56 @@ export function detectConventions({ definitions, source, pinned = {}, exclude = 
 export function conventionChoices(detected, definitions) {
   return Object.fromEntries(
     definitions
-      .filter(({ id, fallback }) => detected[id].choice !== fallback)
+      .filter(
+        ({ id, fallback }) => JSON.stringify(detected[id].choice) !== JSON.stringify(fallback),
+      )
       .map(({ id }) => [id, detected[id].choice]),
   );
 }
 
-function sampleFor(definition, candidates) {
+function filesToRead(definition, samples) {
+  const sample = samples.get(definition.id);
+  if (!definition.nameOnly) {
+    return sample;
+  }
+  return definition.needsText === undefined ? [] : sample.filter(definition.needsText);
+}
+
+function sampleFor(definition, candidates, accepts) {
   const files = definition.files.map(globMatcher);
   return evenSample(
-    candidates.filter((file) => files.some((glob) => glob.test(file))),
-    SAMPLE_LIMIT,
+    candidates.filter((file) => files.some((glob) => glob.test(file)) && accepts(definition, file)),
+    definition.sampleLimit ?? SAMPLE_LIMIT,
   );
 }
 
+function measureNames(definition, sample, texts) {
+  const counts = {};
+  for (const file of sample) {
+    const text = texts.get(file);
+    const names = text === undefined ? [] : definition.measure(text, file);
+    for (const name of new Set(names)) {
+      counts[name] = (counts[name] ?? 0) + 1;
+    }
+  }
+  const choice = (
+    definition.choose?.(counts, definition) ??
+    Object.keys(counts).filter((name) => counts[name] >= definition.minFiles)
+  ).sort();
+  return choice.length === 0
+    ? { choice: definition.fallback, source: 'default', counts, files: sample.length }
+    : { choice, source: 'majority', counts, files: sample.length };
+}
+
 function measureConvention(definition, sample, texts) {
+  if (definition.kind === 'names') {
+    return measureNames(definition, sample, texts);
+  }
   const counts = Object.fromEntries(definition.options.map((option) => [option, 0]));
   for (const file of sample) {
     const text = texts.get(file);
-    const option = text === undefined ? undefined : definition.measure(text);
+    const option =
+      text === undefined && !definition.nameOnly ? undefined : definition.measure(text, file);
     if (option !== undefined && option in counts) {
       counts[option] += 1;
     }

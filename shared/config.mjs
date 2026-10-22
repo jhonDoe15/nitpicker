@@ -1,5 +1,4 @@
 import path from 'node:path';
-import { hasSpecificText } from './rules/console/console-messages.mjs';
 import { FACT_RULE_SETTINGS, factRuleSettings } from './rules/facts/registry.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
@@ -19,12 +18,12 @@ export const THRESHOLD_KEYS = [
   'integrationTestSeconds',
 ];
 const TEST_TIME_KEYS = ['unitTestSeconds', 'integrationTestSeconds'];
-const TEST_TIME_PRESETS = new Set(['java', 'kotlin']);
+const TEST_TIME_PRESETS = new Set(['java', 'kotlin', 'python']);
 const THRESHOLD_PRESETS = {
-  folderDepth: ['typescript', 'javascript', 'java', 'kotlin'],
-  classMethods: ['java', 'kotlin'],
-  classFields: ['java', 'kotlin'],
-  inheritanceDepth: ['java', 'kotlin'],
+  folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python'],
+  classMethods: ['java', 'kotlin', 'python'],
+  classFields: ['java', 'kotlin', 'python'],
+  inheritanceDepth: ['java', 'kotlin', 'python'],
 };
 const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'fileLines',
@@ -38,10 +37,6 @@ const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
 ]);
 
 const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
-
-const TEST_CONSOLE_KEYS = ['allow'];
-
-const ALLOW_KEYS = ['contains', 'paths', 'reason'];
 
 export const FEATURE_LAYOUT_KEYS = ['sharedRoots', 'featureRoots'];
 
@@ -72,7 +67,7 @@ export function validateThresholds(thresholds, preset = 'typescript') {
   const testTime = TEST_TIME_KEYS.find((key) => thresholds[key] !== undefined);
   if (testTime !== undefined && !TEST_TIME_PRESETS.has(preset)) {
     throw configError(
-      `"thresholds.${testTime}" is supported only with "preset": "java" or "kotlin"`,
+      `"thresholds.${testTime}" is supported only with "preset": "java", "kotlin" or "python"`,
     );
   }
   for (const [key, value] of Object.entries(thresholds)) {
@@ -145,57 +140,8 @@ function validateException(entry, label, matchesOwnGlobs) {
   }
 }
 
-export function validateTestConsole(testConsole) {
-  if (testConsole === undefined) {
-    return;
-  }
-  if (!isPlainObject(testConsole)) {
-    throw configError('"testConsole" must be an object');
-  }
-  const unknown = Object.keys(testConsole).find((key) => !TEST_CONSOLE_KEYS.includes(key));
-  if (unknown !== undefined) {
-    throw configError(
-      `unknown testConsole key "${unknown}". Allowed testConsole keys: ${TEST_CONSOLE_KEYS.join(', ')}`,
-    );
-  }
-  if (testConsole.allow === undefined) {
-    return;
-  }
-  if (!Array.isArray(testConsole.allow)) {
-    throw configError('"testConsole.allow" must be an array');
-  }
-  for (const [index, entry] of testConsole.allow.entries()) {
-    validateAllowEntry(entry, `testConsole.allow[${String(index)}]`);
-  }
-}
-
-function validateAllowEntry(entry, label) {
-  if (!isPlainObject(entry)) {
-    throw configError(`"${label}" must be an object`);
-  }
-  for (const key of Object.keys(entry)) {
-    if (!ALLOW_KEYS.includes(key)) {
-      const hint = key === 'pattern' ? ': use "contains"' : '';
-      throw configError(
-        `unknown key "${key}" in "${label}"${hint}. Allowed keys: ${ALLOW_KEYS.join(', ')}`,
-      );
-    }
-  }
-  if (typeof entry.contains !== 'string' || !hasSpecificText(entry.contains)) {
-    throw configError(
-      `"${label}.contains" must keep at least 3 characters once numbers and ids become <n> and <id>`,
-    );
-  }
-  if (entry.paths !== undefined) {
-    validateStringArray(entry.paths, `${label}.paths`);
-    if (entry.paths.length === 0) {
-      throw configError(`"${label}.paths" needs at least one path glob`);
-    }
-    validateGlobs(entry.paths, `${label}.paths`, filesFix);
-  }
-  if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
-    throw configError(`"${label}.reason" is required: say which library prints this and why`);
-  }
+export function validateFileGlobs(globs, label) {
+  validateGlobs(globs, label, filesFix);
 }
 
 function hasUnclosedBrace(glob) {
