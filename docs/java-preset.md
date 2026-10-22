@@ -279,7 +279,7 @@ by field. Per snapshot:
   module exactly as on one without a descriptor, with no module path: over a temporary copy of the
   class files of the modular class directories, without `module-info.class`, made in the build
   directory (`target/` on Maven, Gradle's build directory) and removed afterwards
-  (`languages/java/maven/coupling/maven-jdeps.mjs`, and `tasks/jdeps-task.gradle`). The copy and
+  (`languages/java/maven/coupling/maven-jdeps.mjs`, and the init script's `nitpickerJdeps`). The copy and
   `jdeps-classes.txt` take regular `.class` files only, so a symbolic link inside a class directory,
   to a file or a folder, is left out of both (a class directory that is itself a link is read
   through it), and on Maven it goes to the system
@@ -405,7 +405,7 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `org.example` targets `org.example.*`. PIT refuses `org.*` because it matches PIT's own classes,
   so classes directly in `org` are named one by one), against the project's own tests. The only
   profile can produce enforceable findings.
-- **What runs.** `nitpickerPit` (`languages/java/gradle/tasks/pit-task.gradle`) runs the pinned `pitest-command-line` (1.19.6) with the test
+- **What runs.** `nitpickerPit` (in `languages/java/gradle/nitpicker.init.gradle`) runs the pinned `pitest-command-line` (1.19.6) with the test
   plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
   1.0.0, both pinned, added on the conditions below), default mutators, XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
@@ -1742,8 +1742,9 @@ palantir-java-format, or neither for `none`).
   the jdeps output in memory: Gradle splits it line by line as jdeps writes it, Maven writes it to
   a file in the report directory and splits that in 1 MB chunks, so a module of any size works.
   jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The
-  task lives in `languages/java/gradle/tasks/jdeps-task.gradle`, and its arguments come from the
-  `jdeps` entry of `languages/java/builds/tools/tool-commands.json`.
+  task (`nitpickerJdeps`) lives in `languages/java/gradle/nitpicker.init.gradle`, and its arguments
+  and accepted exit codes come from the `jdeps` entry of `languages/java/builds/tools/tool-commands.json`;
+  a failed run names jdeps' first error lines.
 - **Conversion.** `languages/java/adapters/metrics/java-coupling.mjs` parses the class graph, folds nested classes
   into their top-level class, keeps only edges between two main classes, computes the metrics and
   hands the neutral report to `evaluateCoupling` in `shared/rules/coupling.mjs`. The findings are

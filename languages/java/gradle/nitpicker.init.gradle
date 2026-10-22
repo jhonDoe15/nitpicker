@@ -365,13 +365,15 @@ allprojects {
             classpath = configurations.nitpickerPmd
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true // PMD exits 4 when it finds violations
+            inputs.files(toolCommandsFile, toolCommandsScript).withPropertyName('toolCommands')
+            def command = null
             // languages/java/adapters/tool-config writes a layered copy of nitpicker's ruleset when the
             // project lists its own ruleset or the tests use assertion helpers of their own, and the
             // project's ruleset without the rules nitpicker already has.
             def nitpickerRuleset = nitpickerArgument('nitpicker.pmd.nitpickerRuleset') ?: new File(initScriptDir, 'pmd-ruleset.xml').absolutePath
             def projectRuleset = nitpickerArgument('nitpicker.pmd.projectConfig')
             def testRules = new File(nitpickerArgument('nitpicker.pmd.testRules') ?: new File(initScriptDir, 'pmd-test-ruleset.xml').absolutePath)
-            def ruleset = ([nitpickerRuleset] + (projectRuleset ? [projectRuleset] : [])).join(',')
+            def baseRulesets = [nitpickerRuleset] + (projectRuleset ? [projectRuleset] : [])
             doFirst {
                 reportDir.get().asFile.mkdirs()
                 // Type resolution: the main and test compile classpaths (compileOnly libraries are on the
@@ -396,13 +398,19 @@ allprojects {
                 ])
                 writeRules('pmd-guards', guardsPlan)
                 nitpickerExtras += reportDir.get().file('pmd-rulesets.txt').asFile.text.split(',').findAll { it }.collect { new File(it) }
-                def rulesets = ([ruleset] + nitpickerExtras.collect { it.absolutePath }).join(',')
-                args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
-                    '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
-                    '--rulesets', rulesets,
-                    '--aux-classpath', "file:${auxClasspath.absolutePath}",
-                    '--suppress-marker', 'NITPICKER-NO-INLINE-SUPPRESSION',
-                    '--dir', lintedSources().join(',')
+                command = toolCommand('pmd', [
+                    report      : reportDir.get().file('pmd.sarif').asFile.absolutePath,
+                    rulesets    : baseRulesets + nitpickerExtras*.absolutePath,
+                    auxClasspath: auxClasspath.absolutePath,
+                    directories : lintedSources()*.absolutePath,
+                ], temporaryDir)
+                args command.args
+            }
+            doLast {
+                def code = executionResult.get().exitValue
+                if (!command.accepts(code)) {
+                    throw new GradleException("PMD failed with exit code ${code} and wrote no report")
+                }
             }
         }
 
@@ -767,7 +775,12 @@ allprojects {
                 }
             }.unique().sort()
         }
-        def runJdeps = { Collection<File> classDirs, Closure onLine ->
+        def jvmNoise = ~/^(?:Picked up (?:JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS)|NOTE: Picked up)/
+        def failureDetail = { File errors ->
+            def lines = errors.getText('UTF-8').readLines().findAll { it.trim() && !(it =~ jvmNoise) }
+            (lines.findAll { it =~ /Error|Exception|Caused by/ } ?: lines).take(10).join('\n')
+        }
+        def runJdeps = { Collection<File> classDirs, File workDir, Closure onLine ->
             def staged = layout.buildDirectory.dir('nitpicker-jdeps-classes').get().asFile
             delete staged
             staged.mkdirs()
@@ -782,21 +795,24 @@ allprojects {
                 target
             }
             def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
-            def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
-                analyzed.collect { it.absolutePath }).directory(projectDir)
-                .redirectError(ProcessBuilder.Redirect.DISCARD).start()
+            def command = toolCommand('jdeps', [classDirectories: analyzed*.absolutePath], workDir)
+            def errors = new File(workDir, 'jdeps-errors.txt')
+            def process = new ProcessBuilder([jdeps.absolutePath] + command.args).directory(projectDir)
+                .redirectError(errors).start()
             process.inputStream.withReader('UTF-8') { reader -> reader.eachLine { onLine(it) } }
             def result = process.waitFor()
             delete staged
-            if (result != 0) {
-                throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
+            if (!command.accepts(result)) {
+                throw new GradleException("jdeps failed (${jdeps}) with exit code ${result}: ${failureDetail(errors)}")
             }
         }
         tasks.register('nitpickerJdeps') {
             group = 'nitpicker'
             dependsOn { [tasks.named('classes')] + testSourceSets().collect { tasks.named(it.classesTaskName) } }
+            inputs.files(toolCommandsFile, toolCommandsScript).withPropertyName('toolCommands')
             doLast {
                 reportDir.get().asFile.mkdirs()
+                def workDir = temporaryDir
                 def mainDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
                 def testDirs = testSourceSets().collectMany { it.output.classesDirs.files }
                     .findAll { it.exists() && !mainDirs.contains(it) }.unique()
@@ -808,7 +824,7 @@ allprojects {
                 reportDir.get().file('jdeps.txt').asFile.withWriter('UTF-8') { mainEdges ->
                     reportDir.get().file('jdeps-test.txt').asFile.withWriter('UTF-8') { testEdges ->
                         if (!analyzed.isEmpty()) {
-                            runJdeps(analyzed) { String line ->
+                            runJdeps(analyzed, workDir) { String line ->
                                 if (line ==~ /^\s+\S+\s+->\s+\S+.*/) {
                                     def source = sourceOf(line)
                                     if (mainClassSet.contains(source)) {
