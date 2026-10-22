@@ -16,6 +16,7 @@ import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
+import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { toolConfigChoices, toolConfigProperties } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
@@ -43,6 +44,13 @@ function exportArguments(common, { initScript, directory, policy }) {
     '-I',
     initScript,
     'nitpickerCheckstyleConfig',
+  ];
+}
+
+function headFactProperties(policy) {
+  return [
+    ...javaStyleProperties(policy),
+    ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
   ];
 }
 
@@ -82,7 +90,7 @@ function runJavaPreset(
           ? [`-Pnitpicker.testsFailed=${testsFailedModules.join(',')}`]
           : []),
         ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
-        ...javaStyleProperties(policy),
+        ...headFactProperties(policy),
         '-I',
         initScript,
         'nitpickerJava',
@@ -194,7 +202,10 @@ export function collectJavaFindings(root, options = {}) {
   }
   const policed = applyFindingPolicy(
     withoutFollowedImports(
-      withProjectEnumPredicates(parseAnalyzerReport({ findings }, preset).findings, projectRoot),
+      withProjectEnumPredicates(
+        withoutGeneratedSources(parseAnalyzerReport({ findings }, preset).findings, projectRoot),
+        projectRoot,
+      ),
       options.policy?.conventions,
       readSource,
     ),

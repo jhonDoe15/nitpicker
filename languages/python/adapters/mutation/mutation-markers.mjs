@@ -80,6 +80,17 @@ function readOptions(projectRoot) {
       };
 }
 
+export function mutmutDoNotMutate(projectRoot) {
+  const config = readOptions(projectRoot);
+  return config === undefined
+    ? undefined
+    : {
+        file: config.file,
+        patterns: listOf(config.options.do_not_mutate),
+        matches: (file, pattern) => fnmatch(pattern).test(file),
+      };
+}
+
 function isTrue(value) {
   return value === true || /^(?:true|1|yes|on)$/iu.test(String(value ?? ''));
 }
