@@ -393,9 +393,12 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   one read or write per file has no batch form, as in the Python and Java presets. One chain
   (`db.select().from(t).where(...)`) is reported once.
 - `nitpicker/no-accumulator-spread-in-reduce` (all production code): `reduce` callbacks do not
-  spread their accumulator (`{ ...acc, [id]: x }`, `[...acc, x]`): each step copies it, so the work
-  grows with the square of the list. Use `Object.fromEntries(xs.map(...))`, `Object.groupBy`,
-  `Map.groupBy` or `flatMap`. An object accumulator whose type has a fixed set of keys
+  spread their accumulator (`{ ...acc, [id]: x }`, `[...acc, x]`), and a loop or iteration callback
+  does not reassign a variable declared outside it from a copy of itself (`acc = [...acc, x]`,
+  `acc = [x, ...acc]`, `acc = { ...acc, [k]: v }`, `acc = acc.concat(x)`): each step copies it, so
+  the work grows with the square of the list. Use `Object.fromEntries(xs.map(...))`,
+  `Object.groupBy`, `Map.groupBy` or `flatMap`, or push into an array (or `set` into a `Map`)
+  created before the loop. An object accumulator whose type has a fixed set of keys
   (`Record<Status, number>`) is not reported: copying it costs the same on every step.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
