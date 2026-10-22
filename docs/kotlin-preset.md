@@ -783,12 +783,12 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts any detekt rule,
-the [source checks](#source-checks), the [source scans](#source-scans) (`catch-log-without-exception`
-and `test-without-assertion`), the [compiler warnings](#compiler-warnings), the
-[class limits](#class-limits), the file limits `file-lines-limit` and `folder-files-limit`,
-`slow-test` (or `test-runtime/slow-test`) and the
+the [one-way rules](#one-way-rules), the [source checks](#source-checks), the
+[source scans](#source-scans) (`catch-log-without-exception` and `test-without-assertion`), the
+[compiler warnings](#compiler-warnings), the [class limits](#class-limits), the file limits
+`file-lines-limit` and `folder-files-limit`, `slow-test` (or `test-runtime/slow-test`) and the
 [dependency and repository checks](usage.md#dependency-and-repository-checks) per path. `layout` is
-a config error.
+a config error until the Kotlin preset runs the rule that reads it (`shared-used-by-one-feature`).
 
 ## Slow tests
 

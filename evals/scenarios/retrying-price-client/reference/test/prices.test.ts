@@ -273,8 +273,8 @@ describe('pricesMain', () => {
     vi.restoreAllMocks();
   });
 
-  it('prints one line per symbol using the global fetch', async () => {
-    const fetchMock = vi.fn((url: string) =>
+  it('prints one line per symbol using the global fetch with a timeout', async () => {
+    const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>((url) =>
       Promise.resolve(
         url.endsWith('/AAPL')
           ? new Response('189.5', { status: 200 })
@@ -284,9 +284,13 @@ describe('pricesMain', () => {
     vi.stubGlobal('fetch', fetchMock);
     const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     await pricesMain(['AAPL', 'A/B']);
-    expect(fetchMock.mock.calls).toEqual([
-      ['https://prices.example.com/quotes/AAPL'],
-      ['https://prices.example.com/quotes/A%2FB'],
+    const requests = fetchMock.mock.calls.map(([url, init]) => [
+      url,
+      init?.signal instanceof AbortSignal,
+    ]);
+    expect(requests).toEqual([
+      ['https://prices.example.com/quotes/AAPL', true],
+      ['https://prices.example.com/quotes/A%2FB', true],
     ]);
     expect(write.mock.calls).toEqual([['AAPL 189.50\n'], ['A/B failed: not-found\n']]);
   });
