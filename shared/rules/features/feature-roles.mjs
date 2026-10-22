@@ -20,6 +20,7 @@ export function featureLayout(layout = {}) {
   return {
     sharedRoots: layout.sharedRoots ?? DEFAULT_FEATURE_LAYOUT.sharedRoots,
     featureRoots: layout.featureRoots ?? DEFAULT_FEATURE_LAYOUT.featureRoots,
+    notFeatures: layout.notFeatures ?? [],
   };
 }
 
@@ -43,13 +44,17 @@ function isSharedAbove(sharedFolder, featureDirectory) {
   );
 }
 
-export function featureRoles({ sharedRoots, featureRoots }) {
+export function featureRoles({ sharedRoots, featureRoots, notFeatures = [] }) {
   const shared = sharedRoots.map((glob) => globMatcher(glob));
   const features = featureRoots.map((glob) => globMatcher(glob));
+  const excluded = new Set(notFeatures);
   return (file) => {
     const prefixes = folderPrefixes(file);
     const sharedFolder = prefixes.find(({ folder }) => matchesAny(shared, folder))?.folder;
-    const feature = prefixes.find(({ folder, isLast }) => !isLast && matchesAny(features, folder));
+    const feature = prefixes.find(
+      ({ folder, child, isLast }) =>
+        !isLast && !excluded.has(child) && matchesAny(features, folder),
+    );
     const directory = feature === undefined ? undefined : `${feature.folder}/${feature.child}`;
     if (isSharedAbove(sharedFolder, directory)) {
       return { kind: 'shared' };

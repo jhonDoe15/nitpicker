@@ -57,7 +57,7 @@ export function analyzeJavaSnapshot(
 
 export function readRunnerPolicy(runnerArguments, environment = process.env) {
   const { projectRoot, policy } = parseJavaRunnerArguments(runnerArguments);
-  const { conventions, spring, kotlin } = readHeadPolicyFile(environment);
+  const { conventions, spring, kotlin, layout } = readHeadPolicyFile(environment);
   return {
     projectRoot,
     policy: {
@@ -65,6 +65,7 @@ export function readRunnerPolicy(runnerArguments, environment = process.env) {
       conventions,
       javaStyle: javaStyle(conventions),
       ...(spring === true ? { spring } : {}),
+      ...(layout === undefined ? {} : { layout }),
       kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
     },
   };

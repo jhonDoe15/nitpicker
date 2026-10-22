@@ -14,6 +14,21 @@ describe('feature roles', () => {
   ])('%s is %j', (file, role) => {
     expect(roleOf(file)).toEqual(role);
   });
+
+  it('leaves the folders named in notFeatures out of the features under a feature root', () => {
+    const springRoles = featureRoles({
+      sharedRoots: ['src/shop/shared'],
+      featureRoots: ['src/shop'],
+      notFeatures: ['service'],
+    });
+
+    expect(springRoles('src/shop/service/Billing.java')).toEqual({ kind: 'other' });
+    expect(springRoles('src/shop/billing/service/Rates.java')).toEqual({
+      kind: 'feature',
+      directory: 'src/shop/billing',
+    });
+    expect(springRoles('src/shop/shared/Money.java')).toEqual({ kind: 'shared' });
+  });
 });
 
 const BILLING = 'src/app/features/billing';

@@ -890,6 +890,34 @@ the file and not its directory. Of a `@JvmMultifileClass` facade, each file list
 (`Facade__FileKt`) and the first file (in path order) lists the facade class, so callers of the
 facade belong to that file. A class that no file lists is its own module.
 
+## Feature packages
+
+`feature-internal-import`, `shared-imports-feature`, `feature-cycle`, `shared-used-by-one-feature`
+and `package-cycle` run as for Java, over the same jdeps graph (see
+[Feature packages](java-preset.md#feature-packages) for the roles, the Spring root package, the
+ArchUnit dedupe, identities and exceptions). What is particular to Kotlin:
+
+- **Files, not classes.** Every class of a file (its classes, objects, the file facade `RatesKt` of
+  its top-level functions and properties, the parts of a `@JvmMultifileClass` facade) maps to that
+  file by the Kotlin metrics step's file list, so an edge to a top-level function is an edge to the
+  file that declares it. Java classes in the same module map by the source scan, and the edges
+  between Java and Kotlin files stay in the graph both ways.
+- **`internal` is not feature-private.** It is visible in the whole Gradle module, so two features
+  of one module can use each other's `internal` declarations without a compiler error; the rules
+  judge by package instead: a class or top-level function in a feature's sub-package is internal,
+  whatever its modifier.
+- **The folder decides.** The Kotlin convention of leaving out the root package's folders
+  (`src/main/kotlin/billing/Invoice.kt` for `package com.acme.shop.billing`) is supported: the
+  globs match the folders as they are (the feature root `src/main/kotlin` makes
+  `src/main/kotlin/billing/` a feature), and the Spring root package's folder is found from where
+  its files lie.
+  `package-cycle` names the packages by their `package` line, as the bytecode does.
+- **Limits.** A typealias is resolved to the class it names, so using another feature's alias is
+  an edge to that class's file, which is what it couples to. An `inline` function is copied into
+  its caller, so calling another feature's internal `inline fun` leaves no edge to the file that
+  declares it, only to what its body uses; a `reified` type parameter likewise. A `const val` is
+  inlined like a Java compile-time constant.
+
 ## Failure policy
 
 As for Java: a Gradle failure on either snapshot (Kotlin does not compile, a test fails, a tool
@@ -912,8 +940,9 @@ the [one-way rules](#one-way-rules), the [source checks](#source-checks), the
 [java-preset.md](java-preset.md#tests-that-never-run)), the
 [dependency and repository checks](usage.md#dependency-and-repository-checks), stability, and the
 mutants of Java classes per path, and the structure, CRAP and coverage rules per function. Java rule
-ids are accepted for the Java sources of the project. `layout` is a config error until the Kotlin
-preset runs the rule that reads it (`shared-used-by-one-feature`).
+ids are accepted for the Java sources of the project. `layout` takes `sharedRoots` and
+`featureRoots` (see [Feature packages](#feature-packages)), and `exceptions` the feature rules by
+name and `coupling/package-cycle`.
 
 ## Slow tests
 

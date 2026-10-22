@@ -11,9 +11,9 @@ export const OWN_TOOL = 'own-tool';
 const FEATURE_BOUNDARY_LANGUAGES = {
   typescript: OWN_TOOL,
   javascript: OWN_TOOL,
-  java: false,
+  java: true,
   python: true,
-  kotlin: false,
+  kotlin: true,
 };
 
 const FEATURE_LAYOUT_SETTINGS = ['layout.sharedRoots', 'layout.featureRoots'];
@@ -22,7 +22,12 @@ export const FACT_RULE_LANGUAGES = {
   'duplicate-definition': { ...TYPESCRIPT_AND_JAVASCRIPT, javascript: 'partial' },
   'exported-name-collision': { ...TYPESCRIPT_AND_JAVASCRIPT, javascript: 'partial' },
   'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT },
-  'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT, python: true },
+  'shared-used-by-one-feature': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    java: true,
+    python: true,
+    kotlin: true,
+  },
   'feature-internal-import': { ...FEATURE_BOUNDARY_LANGUAGES },
   'shared-imports-feature': { ...FEATURE_BOUNDARY_LANGUAGES },
   'feature-cycle': { ...FEATURE_BOUNDARY_LANGUAGES },

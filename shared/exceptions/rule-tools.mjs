@@ -54,6 +54,7 @@ const RULE_TOOLS = new Map([
   [RULE_IDS.featureInternalImport, ['coupling']],
   [RULE_IDS.sharedImportsFeature, ['coupling']],
   [RULE_IDS.featureCycle, ['coupling']],
+  [RULE_IDS.packageCycle, ['coupling']],
   [RULE_IDS.duplicateDefinition, ['structure']],
   [RULE_IDS.siblingCopyEdit, ['structure']],
   [RULE_IDS.exportedNameCollision, ['structure']],

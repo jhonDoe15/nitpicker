@@ -433,10 +433,9 @@ classpath and its `test` task, and adds no test library to the project.
     `--exception <json>`, one per entry, are listed in the report and change the analyzer's
     configuration hash. Every message of a rule nitpicker adds ends with the entry that accepts it, and so does every PMD,
     Checkstyle, SpotBugs and ArchUnit message (`pmd/<rule>`).
-  - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
-    keys are TypeScript only, and `layout.sharedRoots` and `layout.featureRoots` are accepted once the
-    Java preset registers the rule that reads them (`shared-used-by-one-feature`) in
-    `shared/project-rules/fact-rules.mjs`. `testConsole` is accepted because the registry lists Java and
+  - `layout` takes only `sharedRoots` and `featureRoots` with `"preset": "java"` (the
+    [feature packages](#feature-packages) rules read them); its source-folder keys are TypeScript
+    only and an error here instead of being ignored. `testConsole` is accepted because the registry lists Java and
     Kotlin for `test-console-output`. `tools` takes `pmd` and `checkstyle`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
@@ -1627,6 +1626,103 @@ palantir-java-format, or neither for `none`).
   neutral report through the shared rule), `java-reports.test.mjs` (glue), and two gated e2e cases
   (a package depending on a less stable package fails; the same violation on the base stays
   baselined).
+
+## Feature packages
+
+A project that groups its code by feature keeps each feature behind a small public face, keeps
+shared code independent of features, and keeps the dependencies between features and between
+packages one-way. The rules are written once for every language over the import facts
+(`shared/rules/features/`, the same ones the [Python preset](python-preset.md#feature-folders)
+runs) and run under the tool `coupling`, on Gradle and Maven, single- and multi-module builds, for
+Java and Kotlin classes alike (the kotlin preset runs the same code, see
+[kotlin-preset.md](kotlin-preset.md#feature-packages)):
+
+| Rule                         | Fails                                                                                                    |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `feature-internal-import`    | a production class outside a feature depends on a class in a sub-package of that feature                 |
+| `shared-imports-feature`     | a production class under a shared root depends on any class of a feature                                 |
+| `feature-cycle`              | a dependency between two features that closes a cycle of features                                        |
+| `shared-used-by-one-feature` | a class under a shared root that only one feature reaches (and nothing else uses): move it into that one |
+| `package-cycle`              | a production package is in a dependency cycle with other packages                                        |
+
+**Which packages.** `layout.featureRoots` and `layout.sharedRoots` in `nitpicker.config.json` are
+folder globs from the project root, and a package is its source folder: `**/com/acme/features`
+makes every folder under `src/main/java/com/acme/features/` (and `src/main/kotlin/...`, in any
+module) a feature, named after the folder. They default to `**/features` and `**/shared`, and
+`"featureRoots": []` turns the feature rules off. A class directly in a feature root belongs to no
+feature; `features/shared/` is shared and `features/billing/shared/` is part of billing. The
+folder decides, not the `package` line: a Kotlin file kept in another folder than its package
+counts where it lies.
+
+**The public face** of a feature is the classes directly in its package. Its sub-packages
+(`billing.internal`, `billing.persistence`) are internal: the feature itself may use them, other
+code may not.
+
+```java
+// src/main/java/com/acme/features/orders/OrderService.java
+import com.acme.features.billing.BillingApi;                  // allowed: the public face
+import com.acme.features.billing.internal.InvoiceWriter;      // feature-internal-import
+```
+
+Visibility the compiler already enforces (a package-private class) needs no rule. Kotlin's
+`internal` is visible in the whole Gradle module, so it is not treated as feature-private: what
+counts is the package.
+
+- **The graph.** `adapters/features/class-graph.mjs` reads the `jdeps.txt` and `jdeps-classes.txt`
+  of every project or module (see [Coupling and stability](#coupling-and-stability-ticket-sh6)):
+  production classes only, nested classes (`Invoice$Line`, a lambda, a companion object) folded
+  into their top-level class, and each top-level class mapped to its source file, by the Kotlin
+  PSI file list (`kotlin-metrics.json`, kotlin preset) or a scan of the declarations in the main
+  Java and Kotlin source roots (`review-rules/source-declarations.mjs`: classes, a second top-level
+  class in a file, the Kotlin file facade `RatesKt` or its `@file:JvmName`). The facts are file
+  edges with the class names used, so a Java class that calls a top-level Kotlin function of
+  another feature, or a Kotlin class that uses a Java one, is an edge between the two files. In a
+  multi-module build a class depending on a class of another module is an edge too (a class of
+  its own module wins; a name declared by two other modules is left out rather than guessed).
+  JDK and library classes, classes without a source file (generated by an annotation processor)
+  and test classes are not nodes; test code may use any class, as in the other presets.
+- **Spring apps.** In a module whose Spring architecture report names a root package (the package
+  of the `@SpringBootApplication` class, see [Spring architecture rules](#spring-architecture-rules))
+  and a project without `layout.featureRoots`, the features are the sub-packages of the root
+  package other than `shared` and the layer names of `spring-layout`, and `<root>.shared` is
+  shared (unless `layout.sharedRoots` says otherwise), so an ordinary package-by-feature app needs
+  no configuration. The root folder is where the root package's classes lie, so a Kotlin tree
+  that leaves out the root package's folders (`src/main/kotlin/billing/` for
+  `com.acme.shop.billing`) works too. ArchUnit's `spring-feature-boundary` and
+  `spring-shared-pure` already report the boundary edges there, so only `feature-cycle`,
+  `shared-used-by-one-feature` and `package-cycle` run. With `layout.featureRoots` set, all the
+  rules run, and an edge ArchUnit already reports (the same class file and dependency file in a
+  `spring-feature-boundary` or `spring-shared-pure` finding) is left out of
+  `feature-internal-import` and `shared-imports-feature`, so one dependency is one finding.
+- **Cycles.** `feature-cycle` takes the features as nodes and every production dependency between
+  files of two features as an edge; one finding per importing file and feature inside a cycle.
+  `package-cycle` takes the Java packages (by name, so a package split across folders or modules
+  is one package) and reports each package of a strongly connected component on its first file,
+  identity `cycle:<package>`, as Python does. Edges a `feature-cycle` already reports, and
+  shared-to-feature edges (`shared-imports-feature` or `spring-shared-pure`), are left out first,
+  so a cycle has one root cause and one finding. There is no class-level cycle rule like Python's
+  `no-production-cycles`: classes of one package that use each other are ordinary Java (a builder
+  and its product, a bidirectional JPA association, a node and its children), the package is the
+  unit Java encapsulates with package-private access, and the JVM loads such classes without the
+  import-order failures that make a Python module cycle a defect.
+- **Identities and exceptions.** `feature-internal-import`: `feature-internal:<target file>`;
+  `shared-imports-feature` and `feature-cycle`: `<feature folder>|<rule>`; `package-cycle`:
+  `cycle:<package>`; never a line. The four feature rules are lifted by the top-level
+  `exceptions` with the rule name and the importing file
+  (`{ "rule": "feature-internal-import", "paths": ["src/main/java/com/acme/orders/OrderService.java"], "reason": "..." }`),
+  `package-cycle` with `coupling/package-cycle` and the package's folder (`".../com/acme/orders/*"`).
+  Every message ends with the entry.
+- **Limits.** jdeps reads bytecode: a compile-time constant (`static final` primitive or `String`)
+  of another class is inlined and leaves no edge; annotations kept only in the source or the class
+  file (`SOURCE`, `CLASS` retention) are not in its output, `RUNTIME` ones are; reflection and
+  wiring by name are invisible. It cannot tell a type-only use from a call, so every edge counts
+  for `feature-cycle`. Kotlin: a typealias is resolved to its target, so an alias of another
+  feature's class is an edge to that class's file; an `inline` function is copied into its caller,
+  so calling another feature's internal `inline fun` leaves an edge to what its body uses, not to
+  the file that declares it.
+- **Tests.** `adapters/features/*.test.mjs`: the class graph (nested classes, Kotlin facades and
+  PSI files, mixed Java and Kotlin, modules, generated and ambiguous classes), the rules over it,
+  the Spring roles and the ArchUnit dedupe, and `package-cycle`.
 
 ## Generated sources
 

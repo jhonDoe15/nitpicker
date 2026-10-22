@@ -173,6 +173,11 @@ const POLICY_SHAPES = [
     'an array of folder globs',
   ],
   [
+    'policy.layout.notFeatures',
+    (policy) => policy.layout?.notFeatures === undefined || isGlobs(policy.layout.notFeatures),
+    'an array of folder names',
+  ],
+  [
     'policy.layout.featureRoots',
     (policy) => policy.layout?.featureRoots === undefined || isGlobs(policy.layout.featureRoots),
     'an array of folder globs',

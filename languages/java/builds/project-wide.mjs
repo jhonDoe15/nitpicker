@@ -8,6 +8,7 @@ import {
 import { readJavaFileLimitFindings } from '../adapters/metrics/java-structure.mjs';
 import { kotlinModules, readKotlinMetrics } from '../adapters/kotlin/kotlin-metrics.mjs';
 import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-classes.mjs';
+import { readFeatureGraphFindings } from '../adapters/features/feature-findings.mjs';
 
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
@@ -142,5 +143,10 @@ export function projectWideFindings(
     }),
     ...couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin }),
     ...readTestOnlyClassFindings(projectRoot, { projects }),
+    ...readFeatureGraphFindings(projectRoot, {
+      projects,
+      kotlin,
+      policy: { layout: policy.layout, exceptions: policy.exceptions },
+    }),
   ];
 }

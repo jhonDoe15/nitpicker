@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
-import { withLanguageRegistered } from '../../../shared/rules/facts/test-support/fact-fixtures.mjs';
+import {
+  FACT_RULE_LANGUAGES,
+  FACT_RULE_SETTINGS,
+} from '../../../shared/project-rules/fact-rules.mjs';
 import { validateConfig } from '../validate.mjs';
 
 describe('layout keys', () => {
@@ -44,7 +47,7 @@ describe('feature layout keys', () => {
   const layout = { sharedRoots: ['**/common'], featureRoots: ['src/main/java/com/acme/features'] };
   const RULE = 'shared-used-by-one-feature';
 
-  it.each([['typescript'], ['javascript'], ['python']])(
+  it.each([['typescript'], ['javascript'], ['python'], ['java'], ['kotlin']])(
     'are valid with the %s preset and reach the analyzers',
     (preset) => {
       expect(validateConfig({ preset, layout })).toEqual({ preset, layout });
@@ -52,20 +55,23 @@ describe('feature layout keys', () => {
     },
   );
 
-  it.each([['java'], ['kotlin']])(
-    'are rejected with the %s preset until it runs the rule that reads them',
-    (preset) => {
-      expect(() => validateConfig({ preset, layout })).toThrow(
-        `nitpicker.config.json: "layout.sharedRoots" is not supported with "preset": "${preset}": it configures ${RULE}, which the ${preset} preset does not run yet. Remove it`,
+  it('are rejected with a preset whose language runs no rule that reads them', () => {
+    const rules = Object.entries(FACT_RULE_SETTINGS)
+      .filter(([, settings]) => settings.includes('layout.sharedRoots'))
+      .map(([rule]) => rule);
+    const before = rules.map((rule) => FACT_RULE_LANGUAGES[rule].java);
+    for (const rule of rules) {
+      FACT_RULE_LANGUAGES[rule].java = false;
+    }
+    try {
+      expect(() => validateConfig({ preset: 'java', layout })).toThrow(
+        `nitpicker.config.json: "layout.sharedRoots" is not supported with "preset": "java": it configures ${RULE}, which the java preset does not run yet. Remove it`,
       );
-    },
-  );
-
-  it('are accepted by a preset once its language registers the rule', () => {
-    const config = { preset: 'java', layout };
-
-    expect(withLanguageRegistered(RULE, 'java', () => validateConfig(config))).toEqual(config);
-    expect(resolveHeadPolicy(config).layout).toEqual(layout);
+    } finally {
+      for (const [index, rule] of rules.entries()) {
+        FACT_RULE_LANGUAGES[rule].java = before[index];
+      }
+    }
   });
 
   it('accepts an empty feature list, which turns the rule off', () => {
@@ -104,8 +110,8 @@ describe('feature layout keys', () => {
 
   it.each([
     ['python', 'sharedRoots, featureRoots'],
-    ['java', 'none yet'],
-    ['kotlin', 'none yet'],
+    ['java', 'sharedRoots, featureRoots'],
+    ['kotlin', 'sharedRoots, featureRoots'],
   ])(
     'rejects the TypeScript source folders with the %s preset and names the keys it takes',
     (preset, keys) => {

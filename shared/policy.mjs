@@ -55,6 +55,7 @@ export const RULE_IDS = {
   featureInternalImport: 'feature-internal-import',
   sharedImportsFeature: 'shared-imports-feature',
   featureCycle: 'feature-cycle',
+  packageCycle: 'package-cycle',
   duplicateDefinition: 'duplicate-definition',
   siblingCopyEdit: 'sibling-copy-edit',
   exportedNameCollision: 'exported-name-collision',

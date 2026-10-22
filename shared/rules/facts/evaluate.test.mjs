@@ -53,9 +53,9 @@ describe('the shared fact rules', () => {
       expect(RULES.find(({ id }) => id === rule).enforcedBy).toEqual({
         typescript: true,
         javascript: true,
-        java: false,
+        java: true,
         python: true,
-        kotlin: false,
+        kotlin: true,
       });
     }
     expect(registeredFactRules('typescript')).not.toContain(FEATURE_RULES[0]);
@@ -65,6 +65,13 @@ describe('the shared fact rules', () => {
     expect(registeredFactRules('typescript')).toEqual(factRulesOf('typescript'));
     expect(registeredFactRules('javascript')).toEqual(factRulesOf('javascript'));
     expect(registeredFactRules('python')).toEqual(['shared-used-by-one-feature', ...FEATURE_RULES]);
+    expect(registeredFactRules('java')).toEqual([
+      'shared-used-by-one-feature',
+      ...FEATURE_RULES,
+      'test-only-export',
+      'test-console-output',
+    ]);
+    expect(registeredFactRules('kotlin')).toEqual(registeredFactRules('java'));
     expect(registeredFactRules('cobol')).toEqual([]);
   });
 
