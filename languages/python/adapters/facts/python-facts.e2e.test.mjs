@@ -1,38 +1,10 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { run } from '../execution/python-process.mjs';
-import { createToolContext } from '../python-tools.mjs';
 import { pythonE2eEnabled } from '../e2e/test-support/python-e2e-support.mjs';
-import { collectFacts, FACTS_REPORT, readFactFindings } from './python-facts.mjs';
+import { createFactsProjects } from './test-support/facts-projects.mjs';
 
-const roots = [];
+const { factsOf, cleanup } = createFactsProjects();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function factsOf(files) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-facts-')));
-  const reportRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-facts-report-')));
-  roots.push(root, reportRoot);
-  for (const [file, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), content);
-  }
-  const context = createToolContext({
-    projectRoot: root,
-    liveRoot: root,
-    settings: { environment: 'path', sourceRoots: ['src'] },
-    reportRoot,
-  });
-  const report = collectFacts(context, run);
-  expect(JSON.parse(readFileSync(path.join(reportRoot, FACTS_REPORT), 'utf8'))).toEqual(report);
-  return { ...report, findings: () => readFactFindings(reportRoot) };
-}
+afterEach(cleanup);
 
 const PRICING = `"""Prices."""
 from decimal import Decimal as D
@@ -228,21 +200,23 @@ describe.skipIf(!pythonE2eEnabled)('the facts scan', () => {
     expect(report.modules[0].qualifiedUses).toEqual(['money.Coin', 'money.cached']);
   });
 
-  it('records the description lines of every docstring', () => {
+  it('records the description lines of every docstring, and whether its sections say more', () => {
     expect(factsOf({ 'src/shop/a.py': DOCUMENTED }).docComments).toEqual([
       {
         file: 'src/shop/a.py',
         line: 2,
         name: 'Cart',
-        qualifiedName: 'Cart',
+        qualifier: 'Cart',
         lines: ['A cart.', 'Holds items.'],
+        detailed: false,
       },
       {
         file: 'src/shop/a.py',
         line: 8,
         name: 'add',
-        qualifiedName: 'Cart.add',
+        qualifier: 'Cart.add',
         lines: ['Add one.'],
+        detailed: true,
       },
     ]);
   });

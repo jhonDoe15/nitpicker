@@ -139,6 +139,14 @@ describe('python config validation', () => {
       { exceptions: [{ rule: 'S110', paths: ['a'], reason: 'r' }] },
       'names no rule nitpicker reports: "S110"; ruff S110 was replaced by "swallowed-exception": rename the entry to "swallowed-exception"',
     ],
+    ...['restating-docstring', 'long-docstring'].map((rule) => [
+      { exceptions: [{ rule, paths: ['a'], reason: 'r' }] },
+      `names no rule nitpicker reports: "${rule}"; ${rule} is now the shared "doc-comment-content" rule: move the entry to the top-level "exceptions" as "doc-comment-content"`,
+    ]),
+    [
+      { exceptions: [{ rule: 'doc-comment-content', paths: ['a'], reason: 'r' }] },
+      'a rule shared by every preset: lift it in the top-level "exceptions" instead',
+    ],
     [
       {
         exceptions: [

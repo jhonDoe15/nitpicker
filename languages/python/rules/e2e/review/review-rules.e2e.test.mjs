@@ -7,133 +7,6 @@ afterEach(cleanup);
 
 const only = (rule) => (findings) => findings.filter((finding) => finding.startsWith(`${rule} `));
 
-describe.skipIf(!enabled)('restating-docstring', () => {
-  const restating = (code) => only('restating-docstring')(single(code));
-
-  it.each([
-    ['a function', 'def load_user():\n    """Load the user."""\n', ['load_user']],
-    [
-      'stopwords and stems',
-      'def load_users():\n    """Returns the loaded user."""\n',
-      ['load_users'],
-    ],
-    ['a class', 'class OrderRepository:\n    """Repository of orders."""\n', ['OrderRepository']],
-    [
-      'a method, by its scope',
-      'class A:\n    def total_price(self):\n        """The total price."""\n',
-      ['A.total_price'],
-    ],
-    [
-      'a docstring that adds a fact',
-      'def load_user():\n    """Raises KeyError for an unknown id."""\n',
-      [],
-    ],
-    ['a module docstring', '"""Users."""\n', []],
-    [
-      'an Args section that says more',
-      'def get_user(user_id):\n    """Get the user.\n\n    Args:\n        user_id: Database key, not the login.\n    """\n',
-      [],
-    ],
-    [
-      'a one-line Returns section',
-      'def get_user():\n    """Get the user.\n\n    Returns: The login name.\n    """\n',
-      [],
-    ],
-    [
-      'a bullet list that says more',
-      'def get_user():\n    """Get the user.\n\n    - from the cache first\n    """\n',
-      [],
-    ],
-    [
-      'empty sections',
-      'def get_user(user_id):\n    """Get the user.\n\n    :param user_id:\n    :returns:\n    """\n',
-      ['get_user'],
-    ],
-  ])('%s', (_name, code, subjects) => {
-    expect(restating(code).map((finding) => finding.split(' ').at(-1))).toEqual(subjects);
-  });
-
-  it('reports at the docstring line', () => {
-    expect(restating('def load_user():\n\n    """Load the user."""\n')).toEqual([
-      'restating-docstring src/mod.py:3 load_user',
-    ]);
-  });
-});
-
-describe.skipIf(!enabled)('long-docstring', () => {
-  const docstring = (lines) => `def render():\n    """${lines.join('\n    ')}\n    """\n`;
-  const long = (code) =>
-    reportOf({ 'src/mod.py': code }).filter(({ rule }) => rule === 'long-docstring');
-
-  it('reports more than 5 description lines with the count', () => {
-    expect(long(docstring(['One.', 'Two.', 'Three.', '', 'Four.', 'Five.', 'Six.']))).toEqual([
-      {
-        rule: 'long-docstring',
-        path: 'src/mod.py',
-        subject: 'render',
-        line: 2,
-        data: { lines: 6, limit: 5 },
-      },
-    ]);
-  });
-
-  it.each([
-    ['5 lines', ['One.', 'Two.', 'Three.', 'Four.', 'Five.']],
-    [
-      'Google sections',
-      ['One.', 'Two.', '', 'Args:', '    a: x.', '    b: y.', '    c: z.', 'Returns:', '    w.'],
-    ],
-    [
-      ':param fields',
-      ['One.', ':param a: x.', ':param b: y.', ':param c: z.', ':returns: w.', ':raises E: v.'],
-    ],
-    [
-      'numpy sections',
-      ['One.', '', 'Parameters', '----------', 'a : int', '    x.', 'b : int', '    y.'],
-    ],
-    ['doctest examples', ['One.', '>>> render()', "''", '>>> render()', "''", '>>> 1', '1']],
-    [
-      'a literal block',
-      ['One.', 'Example::', '', '    a = 1', '    b = 2', '    c = 3', '    d = 4', '    e = 5'],
-    ],
-    [
-      'a code-block directive',
-      [
-        'One.',
-        '',
-        '.. code-block:: python',
-        '',
-        '    a = 1',
-        '    b = 2',
-        '    c = 3',
-        '    d = 4',
-      ],
-    ],
-    [
-      'a fenced block',
-      ['One.', '', '```', 'a = 1', 'b = 2', 'c = 3', 'd = 4', 'e = 5', '```', 'Two.'],
-    ],
-    [
-      'one-line sections',
-      ['One.', 'Two.', 'Returns: x.', 'Raises ValueError: y.', 'Note: z.', 'more z.', 'and z.'],
-    ],
-  ])('does not count %s', (_name, lines) => {
-    expect(long(docstring(lines))).toEqual([]);
-  });
-
-  it.each([
-    ['a bullet list', ['One.', '', '- a', '- b', '  more b', '* c', '1. d', '2) e'], 7],
-    ['a note directive', ['One.', '', '.. note::', '', '    a', '    b', '    c', '    d'], 6],
-    [
-      'prose after a doctest',
-      ['One.', '>>> render()', "''", '', 'Two.', 'Three.', 'Four.', 'Five.', 'Six.'],
-      6,
-    ],
-  ])('counts %s', (_name, lines, count) => {
-    expect(long(docstring(lines)).map(({ data }) => data.lines)).toEqual([count]);
-  });
-});
-
 describe.skipIf(!enabled)('singular-and-plural-field', () => {
   const pairs = (code) => only('singular-and-plural-field')(single(code));
 
@@ -203,11 +76,11 @@ describe.skipIf(!enabled)('rules that apply to several files at once', () => {
   it('see test files and production files in one run', () => {
     expect(
       findingsOf({
-        'src/mod.py': 'def load_user():\n    """Load the user."""\n',
+        'src/mod.py': 'def find(tag: str = "", tags: list[str] = ()) -> None: ...\n',
         'tests/test_mod.py': 'import time\ntime.sleep(1)\n',
       }),
     ).toEqual([
-      'restating-docstring src/mod.py:2 load_user',
+      'singular-and-plural-field src/mod.py:1 find.tags',
       'sleep-in-test tests/test_mod.py:2 time.sleep',
     ]);
   });

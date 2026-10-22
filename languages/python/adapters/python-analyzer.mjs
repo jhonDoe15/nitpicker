@@ -54,7 +54,7 @@ function resolveVersion(liveProjectRoot, settings, versions) {
 }
 
 function pythonInvocation(settings, part) {
-  return ({ projectRoot, liveProjectRoot, toolRoot }) => ({
+  return ({ projectRoot, liveProjectRoot, toolRoot, baselineMovesFile }) => ({
     command: process.execPath,
     args: [
       runnerPath,
@@ -67,6 +67,9 @@ function pythonInvocation(settings, part) {
       ...(Object.keys(settings).length === 0
         ? []
         : ['--python-settings', JSON.stringify(settings)]),
+      ...(part === PYTHON_ANALYZER_NAME && baselineMovesFile !== undefined
+        ? ['--baseline-moves-file', baselineMovesFile]
+        : []),
     ],
     cwd: toolRoot,
   });

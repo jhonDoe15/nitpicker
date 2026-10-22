@@ -373,11 +373,11 @@ describe.skipIf(!enabled)('an expression too deep for the recursion limit', () =
     expect(
       reportOf({
         'shop/sums.py': sum,
-        'shop/users.py': 'def load_user():\n    """Load the user."""\n',
+        'tests/test_users.py': 'import time\ntime.sleep(1)\n',
       }),
     ).toEqual([
       { rule: 'rules-too-deep', path: 'shop/sums.py', subject: 'file', line: 1 },
-      { rule: 'restating-docstring', path: 'shop/users.py', subject: 'load_user', line: 2 },
+      { rule: 'sleep-in-test', path: 'tests/test_users.py', subject: 'time.sleep', line: 2 },
     ]);
   });
 

@@ -184,20 +184,6 @@ export const STRUCTURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
-    rules: ['restating-docstring'],
-    describe: (subject) => `The docstring of \`${subject}\` only restates its name`,
-    allowed: 'Delete it, or say what the name cannot: a unit, a limit, an edge case or why.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['long-docstring'],
-    describe: (subject, _libraries, { lines, limit }) =>
-      `The docstring of \`${subject}\` has ${String(lines)} description lines (limit ${String(limit)})`,
-    allowed:
-      'Keep the non-obvious point (a unit, a limit, an edge case) and put the rest in names and types; `Args:`, `Returns:` and `:param x:` sections and code examples do not count.',
-  },
-  {
-    tool: RULES_TOOL,
     rules: ['singular-and-plural-field'],
     describe: (subject, _libraries, { singular, plural, kind }) =>
       `Optional ${kind} \`${singular}\` and \`${plural}\` of \`${ownerOf(subject)}\` are two ways to pass the same data`,
