@@ -219,3 +219,63 @@ class Holder(val s: Phase) {
 val start = Phase.NEW
 val isStart = start == Phase.NEW || start == Phase.\`in\`
 `;
+
+export const LIFETIMES = `package demo.lifetimes
+
+import java.io.Closeable
+import kotlinx.coroutines.*
+import kotlinx.coroutines.NonCancellable as Shield
+import kotlinx.coroutines.sync.Mutex
+
+class Holder(private val scope: CoroutineScope, private val gate: Mutex) : CoroutineScope by scope {
+    suspend fun cleanup(job: Job) {
+        try {
+            work()
+        } finally {
+            delay(1)
+            job.join()
+            gate.lock()
+            withContext(Shield) { delay(2) }
+            scope.launch { delay(3) }
+            runCatching { yield() }
+        }
+    }
+
+    suspend fun cancelled() {
+        try {
+            work()
+        } catch (e: CancellationException) {
+            delay(4)
+        }
+    }
+
+    suspend fun timed() {
+        try {
+            withTimeout(1) { work() }
+        } catch (e: CancellationException) {
+            delay(5)
+        }
+    }
+
+    suspend fun shielded() {
+        withContext(NonCancellable) {
+            try {
+                work()
+            } finally {
+                delay(6)
+            }
+        }
+    }
+
+    fun uses(resource: Closeable, other: CoroutineScope) {
+        resource.use { reader -> other.launch { reader.close() } }
+        resource.use { launch { println(it) } }
+        resource.use { reader -> other.launch { reader.close() }.join() }
+        resource.use { reader -> runBlocking { launch { reader.close() } } }
+        resource.use { reader -> val inner = CoroutineScope(Dispatchers.IO); inner.launch { reader.close() } }
+        resource.use { reader -> other.launch { println("done") } }
+    }
+
+    private fun work() {}
+}
+`;

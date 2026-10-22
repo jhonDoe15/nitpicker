@@ -21,6 +21,7 @@ import {
   DEEP_CHAIN,
   FLAT,
   INITIALIZERS,
+  LIFETIMES,
   MULTIFILE_A,
   MULTIFILE_B,
   NESTING,
@@ -353,6 +354,31 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
     expect([status, log.includes('StackOverflow')]).toEqual([0, false]);
     expect(metrics.functions[0].name).toBe('nested');
     expect(facts.files.map(({ file }) => file)).toEqual(['src/Deep.kt']);
+  });
+
+  it('collects the calls of finally and CancellationException handlers outside NonCancellable, and the launches of use blocks', () => {
+    const { facts } = measure(writeSources('lifetimes', { 'src/Lifetimes.kt': LIFETIMES }));
+    const [lifetimes] = facts.files;
+
+    expect(
+      lifetimes.cleanupCalls.map(
+        ({ section, function: name, name: callee, receiverType }) =>
+          `${section} ${name} ${callee}${receiverType === undefined ? '' : ` ${receiverType}`}`,
+      ),
+    ).toEqual([
+      'finally cleanup delay',
+      'finally cleanup join Job',
+      'finally cleanup lock Mutex',
+      'finally cleanup launch CoroutineScope',
+      'finally cleanup runCatching',
+      'finally cleanup yield',
+      'catch cancelled delay',
+    ]);
+    expect(
+      lifetimes.useLaunches.map(({ function: name, resource, scope, scopeType, implicit }) =>
+        `${name} ${resource} ${scope ?? implicit} ${scopeType ?? ''}`.trim(),
+      ),
+    ).toEqual(['uses reader other CoroutineScope', 'uses it class']);
   });
 
   it('names a predicate in a property initializer after the property and keeps backticked constants', () => {
