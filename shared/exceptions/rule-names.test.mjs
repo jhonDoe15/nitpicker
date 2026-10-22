@@ -90,6 +90,16 @@ describe('exceptionRoute', () => {
     );
   });
 
+  it('names the python.exceptions list for a rule the top-level list does not take', () => {
+    expect(exceptionRoute({ rule: 'T201', path: 'src/a.py', key: 'python.exceptions' })).toBe(
+      'If this is intended, add {"rule":"T201","paths":["src/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+    );
+  });
+
+  it('has no route for a finding that has no path', () => {
+    expect(exceptionRoute({ rule: 'T201', path: undefined })).toBeUndefined();
+  });
+
   it('names a declaration', () => {
     expect(
       exceptionRoute({

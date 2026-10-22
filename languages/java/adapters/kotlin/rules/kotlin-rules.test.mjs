@@ -94,6 +94,17 @@ describe('one-way rule messages', () => {
     );
   });
 
+  it('keeps the allowed form and adds no route to a finding that has no path', () => {
+    const withoutPath = {
+      ...detektFinding('detekt.style.UnnecessaryLet', 'let expression can be omitted'),
+      path: undefined,
+    };
+
+    expect(addOneWayHint(withoutPath).message).toBe(
+      'let expression can be omitted. Call the member directly; `let` is for `value?.let { ... }`.',
+    );
+  });
+
   it('leaves other detekt rules and other tools alone', () => {
     const other = detektFinding('detekt.style.MagicNumber', 'magic');
     const sameRuleOtherTool = { ...detektFinding(ONE_WAY_RULES[0].id, 'x'), tool: 'ktlint' };
