@@ -28,9 +28,14 @@ def is_none(node):
 
 def without_none(annotation):
     if isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr):
-        kept = [side for side in (annotation.left, annotation.right) if not is_none(side)]
+        kept = [
+            side for side in (annotation.left, annotation.right) if not is_none(side)
+        ]
         return kept[0] if len(kept) == 1 else annotation
-    if isinstance(annotation, ast.Subscript) and last_segment(annotation.value) in OPTIONAL_NAMES:
+    if (
+        isinstance(annotation, ast.Subscript)
+        and last_segment(annotation.value) in OPTIONAL_NAMES
+    ):
         return parts_of(annotation)[0]
     return annotation
 
@@ -46,7 +51,10 @@ def parsed_annotation(annotation):
 
 def unwrapped(annotation):
     annotation = parsed_annotation(annotation)
-    while isinstance(annotation, ast.Subscript) and last_segment(annotation.value) in WRAPPERS:
+    while (
+        isinstance(annotation, ast.Subscript)
+        and last_segment(annotation.value) in WRAPPERS
+    ):
         annotation = parsed_annotation(parts_of(annotation)[0])
     return parsed_annotation(without_none(annotation))
 
@@ -72,7 +80,9 @@ def defaulted_parameters(fn):
         if default is not None
     ]
     keyword_only = zip(fn.args.kwonlyargs, fn.args.kw_defaults)
-    return found + [(parameter, None) for parameter, default in keyword_only if default is not None]
+    return found + [
+        (parameter, None) for parameter, default in keyword_only if default is not None
+    ]
 
 
 def same_node(left, right):

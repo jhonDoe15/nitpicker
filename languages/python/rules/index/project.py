@@ -68,7 +68,11 @@ class Project:
         for option in (f"{candidate}.py", f"{candidate}/__init__.py"):
             if option in self.paths:
                 return self.module_name(option)
-        return self.module_name(f"{candidate}/__init__.py") if candidate and not existing else None
+        return (
+            self.module_name(f"{candidate}/__init__.py")
+            if candidate and not existing
+            else None
+        )
 
     def locate(self, dotted):
         parts = dotted.split(".")

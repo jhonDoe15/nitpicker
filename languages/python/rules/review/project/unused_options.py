@@ -18,13 +18,18 @@ def literal_all(tree):
     writes = [
         statement
         for statement in tree.body
-        if any(isinstance(t, ast.Name) and t.id == "__all__" for t in assigned_names(statement))
+        if any(
+            isinstance(t, ast.Name) and t.id == "__all__"
+            for t in assigned_names(statement)
+        )
     ]
     if len(writes) != 1 or isinstance(writes[0], ast.AugAssign):
         return None
     value = writes[0].value
     elements = value.elts if isinstance(value, (ast.List, ast.Tuple)) else None
-    if elements is None or not all(isinstance(element, ast.Constant) for element in elements):
+    if elements is None or not all(
+        isinstance(element, ast.Constant) for element in elements
+    ):
         return None
     return {element.value for element in elements}
 
@@ -45,7 +50,10 @@ def is_main_guard(node):
         isinstance(test, ast.Compare)
         and isinstance(test.left, ast.Name)
         and test.left.id == "__name__"
-        and any(isinstance(c, ast.Constant) and c.value == MAIN_GUARD for c in test.comparators)
+        and any(
+            isinstance(c, ast.Constant) and c.value == MAIN_GUARD
+            for c in test.comparators
+        )
     )
 
 
@@ -61,13 +69,17 @@ def guarded_nodes(path, tree):
 
 
 def is_loaded_reference(node):
-    return isinstance(node, (ast.Name, ast.Attribute)) and isinstance(node.ctx, ast.Load)
+    return isinstance(node, (ast.Name, ast.Attribute)) and isinstance(
+        node.ctx, ast.Load
+    )
 
 
 def passes_of(call):
     names = {keyword.arg for keyword in call.keywords if keyword.arg is not None}
     starred = [
-        index for index, argument in enumerate(call.args) if isinstance(argument, ast.Starred)
+        index
+        for index, argument in enumerate(call.args)
+        if isinstance(argument, ast.Starred)
     ]
     return {
         "all": any(keyword.arg is None for keyword in call.keywords),
@@ -105,7 +117,9 @@ class Usage:
 
     def record_file(self, path, tree):
         guarded = guarded_nodes(path, tree)
-        callees = {id(node.func) for node in ast.walk(tree) if isinstance(node, ast.Call)}
+        callees = {
+            id(node.func) for node in ast.walk(tree) if isinstance(node, ast.Call)
+        }
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
                 self.record_call(path, node, id(node) in guarded)
@@ -129,7 +143,9 @@ class Usage:
     def judged(self, key):
         module = self.index.modules.get(key[0])
         return (
-            key in self.calls and key not in self.blocked and (module, key[1]) not in self.entries
+            key in self.calls
+            and key not in self.blocked
+            and (module, key[1]) not in self.entries
         )
 
 
@@ -146,9 +162,17 @@ def unused_option_findings(index, options):
             if not is_target(statement, exported) or not usage.judged(key):
                 continue
             for parameter, position in defaulted_parameters(statement):
-                if not any(passes(call, parameter, position) for call in usage.calls[key]):
+                if not any(
+                    passes(call, parameter, position) for call in usage.calls[key]
+                ):
                     subject = f"{statement.name}.{parameter.arg}"
                     found.append(
-                        finding("unused-option", path, subject, parameter.lineno, {"scope": scope})
+                        finding(
+                            "unused-option",
+                            path,
+                            subject,
+                            parameter.lineno,
+                            {"scope": scope},
+                        )
                     )
     return found

@@ -75,7 +75,9 @@ def is_reference(node):
 class EnumPredicates:
     def __init__(self, index):
         self.index = index
-        self.literals = {path: literal_aliases(tree) for path, tree in index.trees.items()}
+        self.literals = {
+            path: literal_aliases(tree) for path, tree in index.trees.items()
+        }
 
     def class_of(self, path, node, depth=0):
         resolved = self.index.resolve(path, node)
@@ -130,12 +132,18 @@ class EnumPredicates:
         if not isinstance(value, ast.Constant) or not isinstance(subject, ast.Name):
             return None
         annotation = context["annotations"].get(subject.id)
-        union = None if annotation is None else self.literal_type(context["path"], annotation)
+        union = (
+            None
+            if annotation is None
+            else self.literal_type(context["path"], annotation)
+        )
         return None if union is None else (union, value.value)
 
     def comparison(self, context, left, right):
         for subject, value in ((left, right), (right, left)):
-            found = self.member(context, subject, value) if is_reference(subject) else None
+            found = (
+                self.member(context, subject, value) if is_reference(subject) else None
+            )
             if found is not None:
                 return ast.dump(subject), found
         return None
@@ -148,7 +156,9 @@ class EnumPredicates:
         ):
             values = node.comparators[0]
             if isinstance(values, (ast.Tuple, ast.List, ast.Set)) and values.elts:
-                return [self.comparison(context, node.left, value) for value in values.elts]
+                return [
+                    self.comparison(context, node.left, value) for value in values.elts
+                ]
             return None
         if not isinstance(node, ast.BoolOp) or type(node.op) not in CHAIN_OPERATORS:
             return None
@@ -173,7 +183,11 @@ class EnumPredicates:
         if node is not None and node is context.get("owner"):
             return None
         compared = {member for _, (_, member) in found}
-        if len(compared) < 2 or len(members) < MINIMUM_MEMBERS or not compared < set(members):
+        if (
+            len(compared) < 2
+            or len(members) < MINIMUM_MEMBERS
+            or not compared < set(members)
+        ):
             return None
         return {"union": name}
 
@@ -225,19 +239,28 @@ def slot_values(owner):
 
 
 def parameter_annotations(fn):
-    return {p.arg: p.annotation for p in every_parameter(fn) if p.annotation is not None}
+    return {
+        p.arg: p.annotation for p in every_parameter(fn) if p.annotation is not None
+    }
 
 
 def returns_type_guard(fn):
     returns = fn.returns
-    return isinstance(returns, ast.Subscript) and last_segment(returns.value) in TYPE_GUARDS
+    return (
+        isinstance(returns, ast.Subscript)
+        and last_segment(returns.value) in TYPE_GUARDS
+    )
 
 
 def enum_predicate_findings(index):
     checker = EnumPredicates(index)
     found = []
     for path, tree in index.production_trees():
-        found.extend(checker.findings_in({"path": path, "annotations": {}}, slot_values(tree), ""))
+        found.extend(
+            checker.findings_in(
+                {"path": path, "annotations": {}}, slot_values(tree), ""
+            )
+        )
         parents = index.parents[path]
         for node, scope in scoped_definitions(tree):
             if isinstance(node, FUNCTION_TYPES) and not returns_type_guard(node):
@@ -247,5 +270,7 @@ def enum_predicate_findings(index):
                     "annotations": parameter_annotations(node),
                     "owner": owner if isinstance(owner, ast.ClassDef) else None,
                 }
-                found.extend(checker.findings_in(context, slot_values(node), ".".join(scope)))
+                found.extend(
+                    checker.findings_in(context, slot_values(node), ".".join(scope))
+                )
     return found

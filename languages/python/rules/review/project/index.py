@@ -31,14 +31,18 @@ def scope_imports(body):
             yield statement
         elif not isinstance(statement, SCOPE_TYPES):
             children = ast.iter_child_nodes(statement)
-            yield from scope_imports([child for child in children if isinstance(child, ast.stmt)])
+            yield from scope_imports(
+                [child for child in children if isinstance(child, ast.stmt)]
+            )
 
 
 class ProjectIndex:
     def __init__(self, project):
         self.project = project
         self.trees = {path: context.tree for path, context in project.contexts.items()}
-        self.parents = {path: context.parents for path, context in project.contexts.items()}
+        self.parents = {
+            path: context.parents for path, context in project.contexts.items()
+        }
         self.tests = project.test_files
         declared = project.options.get("modules", {})
         self.modules = {
@@ -47,19 +51,25 @@ class ProjectIndex:
         self.paths = {}
         for path in sorted(self.trees, key=lambda path: path in self.tests):
             self.paths.setdefault(self.modules[path], path)
-        self.definitions = {path: module_definitions(tree) for path, tree in self.trees.items()}
+        self.definitions = {
+            path: module_definitions(tree) for path, tree in self.trees.items()
+        }
         self.bindings = {
             path: self.bindings_of(path, tree.body) for path, tree in self.trees.items()
         }
         self.local = {}
 
     def production_trees(self):
-        return [(path, tree) for path, tree in self.trees.items() if path not in self.tests]
+        return [
+            (path, tree) for path, tree in self.trees.items() if path not in self.tests
+        ]
 
     def import_base(self, path, node):
         if node.level == 0:
             return node.module
-        return self.project.relative_module(path, node.level, node.module, existing=False)
+        return self.project.relative_module(
+            path, node.level, node.module, existing=False
+        )
 
     def bindings_of(self, path, body):
         bindings = {}
@@ -72,12 +82,16 @@ class ProjectIndex:
             base = self.import_base(path, node)
             for alias in node.names:
                 if base is not None and alias.name != "*":
-                    bindings[alias.asname or alias.name] = self.imported(base, alias.name)
+                    bindings[alias.asname or alias.name] = self.imported(
+                        base, alias.name
+                    )
         return bindings
 
     def imported(self, base, name):
         qualified = f"{base}.{name}" if base else name
-        return ("module", qualified) if qualified in self.paths else ("name", base, name)
+        return (
+            ("module", qualified) if qualified in self.paths else ("name", base, name)
+        )
 
     def definition(self, module, name, depth=0):
         path = self.paths.get(module)
@@ -136,7 +150,9 @@ class ProjectIndex:
         if binding[0] == "name":
             return None if rest else self.exported(binding[1], binding[2])
         parts = binding[1].split(".") + rest
-        return self.exported(".".join(parts[:-1]), parts[-1]) if len(parts) > 1 else None
+        return (
+            self.exported(".".join(parts[:-1]), parts[-1]) if len(parts) > 1 else None
+        )
 
     def exported(self, module, name, depth=0):
         path = self.paths.get(module)
@@ -152,7 +168,9 @@ class ProjectIndex:
     def star_imported(self, path):
         modules = []
         for node in scope_imports(self.trees[path].body):
-            if isinstance(node, ast.ImportFrom) and any(a.name == "*" for a in node.names):
+            if isinstance(node, ast.ImportFrom) and any(
+                a.name == "*" for a in node.names
+            ):
                 base = self.import_base(path, node)
                 if base is not None:
                     modules.append(base)

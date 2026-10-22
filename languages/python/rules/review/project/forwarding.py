@@ -38,16 +38,22 @@ def forwards_positionals(fn, call):
         return None
     if not all(is_name(argument, name) for argument, name in zip(passed, names)):
         return None
-    rest = names[len(passed):]
+    rest = names[len(passed) :]
     posonly = {parameter.arg for parameter in fn.args.posonlyargs}
     return None if posonly.intersection(rest) else rest
 
 
 def forwards_keywords(fn, call, rest):
-    named = {keyword.arg: keyword.value for keyword in call.keywords if keyword.arg is not None}
+    named = {
+        keyword.arg: keyword.value
+        for keyword in call.keywords
+        if keyword.arg is not None
+    }
     spread = [keyword.value for keyword in call.keywords if keyword.arg is None]
     expected = rest + [parameter.arg for parameter in fn.args.kwonlyargs]
-    if set(named) != set(expected) or not all(is_name(named[name], name) for name in expected):
+    if set(named) != set(expected) or not all(
+        is_name(named[name], name) for name in expected
+    ):
         return False
     kwarg = fn.args.kwarg
     if kwarg is None:
@@ -73,17 +79,27 @@ def shape_of(fn):
     keyword_only = sorted(
         zip(arguments.kwonlyargs, arguments.kw_defaults), key=lambda pair: pair[0].arg
     )
-    spreads = [parameter for parameter in (arguments.vararg, arguments.kwarg) if parameter]
+    spreads = [
+        parameter for parameter in (arguments.vararg, arguments.kwarg) if parameter
+    ]
     return (
         [
-            (parameter.arg, positional_kind(fn, parameter), parameter.annotation, default)
+            (
+                parameter.arg,
+                positional_kind(fn, parameter),
+                parameter.annotation,
+                default,
+            )
             for parameter, default in positional_defaults(fn)
         ]
         + [
             (parameter.arg, "keyword", parameter.annotation, default)
             for parameter, default in keyword_only
         ]
-        + [(f"*{parameter.arg}", "spread", parameter.annotation, None) for parameter in spreads]
+        + [
+            (f"*{parameter.arg}", "spread", parameter.annotation, None)
+            for parameter in spreads
+        ]
     )
 
 
@@ -140,7 +156,9 @@ def wrapper_finding(index, path, fn):
         return None
     if not same_signature(fn, target[2]):
         return None
-    return finding("forwarding-wrapper", path, fn.name, fn.lineno, {"target": target[1]})
+    return finding(
+        "forwarding-wrapper", path, fn.name, fn.lineno, {"target": target[1]}
+    )
 
 
 def forwarding_findings(index):
