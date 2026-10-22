@@ -17,6 +17,7 @@ import nitpicker.kotlinpsi.common.Json;
 import nitpicker.kotlinpsi.facts.FactsCollector;
 import nitpicker.kotlinpsi.metrics.FileClasses;
 import nitpicker.kotlinpsi.metrics.MetricsCollector;
+import nitpicker.kotlinpsi.syntax.SyntaxTrees;
 import org.jetbrains.kotlin.cli.FrontendConfigurationKeysKt;
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector;
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles;
@@ -34,13 +35,14 @@ import org.jetbrains.kotlin.psi.KtFile;
 
 /**
  * Parses the Kotlin sources of a module once with the PSI parser of the pinned Kotlin compiler (it never
- * compiles them) and writes both reports of the Kotlin preset:
+ * compiles them) and writes the reports of the Kotlin preset:
  *
  * <pre>java -Dnitpicker.kotlinCompiler=VERSION -cp COMPILER_JARS:CLASSES nitpicker.kotlinpsi.KotlinPsi
- *     METRICS.json FACTS.json PROJECT_DIR ROOT...</pre>
+ *     METRICS.json FACTS.json SYNTAX.json PROJECT_DIR ROOT...</pre>
  *
  * A root prefixed {@code test:} holds test sources. The metrics report (functions and class names, see
- * {@link MetricsCollector}) covers the other roots only; the facts report ({@link FactsCollector}) covers all.
+ * {@link MetricsCollector}) covers the other roots only; the facts report ({@link FactsCollector}) covers all;
+ * the syntax report ({@link SyntaxTrees}) holds the trees of the other roots' files that use Spring or JPA.
  * A syntax error ends the run: the sources compiled, so the pinned compiler does not read them.
  */
 public final class KotlinPsi {
@@ -74,11 +76,13 @@ public final class KotlinPsi {
   private static void run(String[] args) throws IOException {
     Path metricsOutput = Path.of(args[0]);
     Path factsOutput = Path.of(args[1]);
-    Path projectDir = Path.of(args[2]).toAbsolutePath().normalize();
-    Map<Path, Boolean> files = sources(projectDir, List.of(args).subList(3, args.length));
+    Path syntaxOutput = Path.of(args[2]);
+    Path projectDir = Path.of(args[3]).toAbsolutePath().normalize();
+    Map<Path, Boolean> files = sources(projectDir, List.of(args).subList(4, args.length));
     List<String> functions = new ArrayList<>();
     List<String> classes = new ArrayList<>();
     List<Object> facts = new ArrayList<>();
+    List<String> trees = new ArrayList<>();
     Set<String> claimedFacades = new HashSet<>();
     Disposable disposable = Disposer.newDisposable();
     try {
@@ -92,6 +96,9 @@ public final class KotlinPsi {
         if (!test) {
           new MetricsCollector(parsed, text, relative, functions).collect();
           classes.add(FileClasses.describe(parsed, relative, claimedFacades));
+          if (SyntaxTrees.wanted(text)) {
+            trees.add(SyntaxTrees.entry(parsed, relative));
+          }
         }
         facts.add(factsOf(parsed, text, relative, test));
       }
@@ -103,6 +110,7 @@ public final class KotlinPsi {
         "{\"functions\":[" + String.join(",", functions) + "],\"files\":[" + String.join(",", classes) + "]}\n",
         StandardCharsets.UTF_8);
     Files.writeString(factsOutput, Json.of(Map.of("files", facts)) + "\n", StandardCharsets.UTF_8);
+    Files.writeString(syntaxOutput, "{\"files\":[" + String.join(",", trees) + "]}\n", StandardCharsets.UTF_8);
   }
 
   private static Object factsOf(KtFile parsed, String text, String relative, boolean test) {

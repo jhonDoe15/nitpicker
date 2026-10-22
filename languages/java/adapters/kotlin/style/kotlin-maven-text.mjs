@@ -5,15 +5,13 @@ import {
   parseXml,
 } from '../../../../../shared/ingest/common.mjs';
 
-const SPOTLESS = 'spotless-maven-plugin';
-const EXEC = 'exec-maven-plugin';
+const SPOTLESS = 'com.diffplug.spotless:spotless-maven-plugin';
+const KTLINT_PLUGINS = new Set([
+  'com.github.gantsign.maven:ktlint-maven-plugin',
+  'com.github.shyiko:ktlint-maven-plugin',
+]);
 const FORMATTERS = ['ktlint', 'ktfmt'];
-const STYLE_CALLS = {
-  kotlinlang: 'kotlinlangStyle',
-  dropbox: 'kotlinlangStyle',
-  google: 'googleStyle',
-  meta: 'metaStyle',
-};
+const STYLES = { kotlinlang: 'kotlinlang', dropbox: 'kotlinlang', google: 'google', meta: 'meta' };
 
 function projectsOf(document) {
   return document.name === 'projects' ? childrenNamed(document, 'project') : [document];
@@ -25,45 +23,49 @@ function configurationsOf(plugin) {
     .filter((configuration) => configuration !== undefined);
 }
 
-function styleCall(element) {
-  const style = childAt(element, 'style')?.text?.trim().toLowerCase();
-  return STYLE_CALLS[style];
+function ktfmtStyleOf(element) {
+  return STYLES[childAt(element, 'style')?.text?.trim().toLowerCase()];
 }
 
-function formatterNamed(name) {
-  const lowered = (name ?? '').toLowerCase();
-  return FORMATTERS.find((formatter) => lowered.includes(formatter));
+function coordinatesOf(plugin) {
+  const group = childAt(plugin, 'groupId')?.text?.trim() ?? 'org.apache.maven.plugins';
+  return `${group}:${childAt(plugin, 'artifactId')?.text?.trim()}`;
+}
+
+function spotlessDeclarations(plugin) {
+  return configurationsOf(plugin)
+    .map((configuration) => childAt(configuration, 'kotlin'))
+    .filter((kotlin) => kotlin !== undefined)
+    .flatMap((kotlin) =>
+      FORMATTERS.filter((name) => childAt(kotlin, name) !== undefined).map((name) => ({
+        formatter: name,
+        style: name === 'ktfmt' ? ktfmtStyleOf(childAt(kotlin, name)) : undefined,
+        via: 'spotless',
+      })),
+    );
 }
 
 function declarationsOf(plugin) {
-  const artifact = childAt(plugin, 'artifactId')?.text;
-  const configurations = configurationsOf(plugin);
-  if (artifact === SPOTLESS) {
-    return configurations
-      .map((configuration) => childAt(configuration, 'kotlin'))
-      .filter((kotlin) => kotlin !== undefined)
-      .flatMap((kotlin) =>
-        FORMATTERS.filter((name) => childAt(kotlin, name) !== undefined).map((name) => ({
-          formatter: name,
-          style: styleCall(childAt(kotlin, name)),
-        })),
-      );
+  const coordinates = coordinatesOf(plugin);
+  if (coordinates === SPOTLESS) {
+    return spotlessDeclarations(plugin);
   }
-  const formatter =
-    artifact === EXEC
-      ? formatterNamed(configurations.map((c) => childAt(c, 'executable')?.text).find(Boolean))
-      : formatterNamed(artifact);
-  return formatter === undefined
-    ? []
-    : [{ formatter, style: configurations.map(styleCall).find(Boolean) }];
+  return KTLINT_PLUGINS.has(coordinates) ? [{ formatter: 'ktlint', via: 'plugin' }] : [];
 }
 
-export function mavenFormatterText(pom) {
-  if (pom === undefined || !pom.includes('<plugin>')) {
-    return '';
+function parsedProjects(pom) {
+  try {
+    return projectsOf(parseXml(pom));
+  } catch {
+    return [];
   }
-  const declarations = projectsOf(parseXml(pom))
+}
+
+export function mavenFormatters(pom) {
+  if (pom === undefined || !pom.includes('<plugin>')) {
+    return [];
+  }
+  return parsedProjects(pom)
     .flatMap((project) => childrenAt(project, 'build', 'plugins', 'plugin'))
     .flatMap(declarationsOf);
-  return declarations.flatMap(({ formatter, style }) => [formatter, style ?? '']).join('\n');
 }

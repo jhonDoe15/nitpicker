@@ -1,9 +1,10 @@
 name: kotlin-e2e
 
-# The Kotlin end-to-end suite (npm run test:kotlin): real Gradle builds of a small Kotlin and Java project and
-# real Maven builds with the runner's Maven, sharded across isolated runners. It runs on a push to main that touches the Java and Kotlin preset code, the core and
-# shared code it imports, the package and test configuration, or this file; by hand from the Actions tab;
-# and on a pull request only when the `run-ci` label is added, like the typescript workflow.
+# The Kotlin end-to-end suite (npm run test:kotlin): real Gradle builds of a small Kotlin and Java project
+# and real Maven builds with the runner's Maven, sharded across isolated runners. It runs on a push to main
+# that touches the Java and Kotlin preset code, the core and shared code it imports, the package and test
+# configuration, or this file; by hand from the Actions tab; and on a pull request only when the `run-ci`
+# label is added, like the typescript workflow.
 on:
   push:
     branches: [main]

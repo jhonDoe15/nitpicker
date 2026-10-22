@@ -4,7 +4,6 @@ import path from 'node:path';
 import { childAt, childrenAt, childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
 import { executionsWithGoal, pluginsOf, textAt } from './configuration/pom-elements.mjs';
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
-import { kotlinSourceRoots } from './configuration/kotlin-roots.mjs';
 import { kotlinRoots } from './kotlin/kotlin-roots.mjs';
 
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
@@ -134,7 +133,6 @@ function describeModule(project, basedir) {
       resolvedText(build, basedir, 'testOutputDirectory') ??
       path.join(buildDirectory, 'test-classes'),
     sourceRoots,
-    kotlinSourceRoots: kotlinSourceRoots(plugins, basedir, sourceRoots),
     testSourceRoots: [
       resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
       ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),

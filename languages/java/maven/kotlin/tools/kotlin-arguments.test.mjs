@@ -7,7 +7,7 @@ import { toolDependencies } from '../../maven-tools.mjs';
 import { detektArguments, detektClasspath, jdkHome } from './kotlin-detekt.mjs';
 import { kotlinTools } from './kotlin-dependencies.mjs';
 import { ktfmtArguments, ktlintArguments } from './kotlin-format.mjs';
-import { programArguments, psiArguments } from './kotlin-programs.mjs';
+import { psiArguments } from './kotlin-programs.mjs';
 
 const roots = [];
 const module = {
@@ -168,27 +168,12 @@ describe('formatter and metrics arguments', () => {
     ).toEqual(['--meta-style', '--dry-run', '--max-width=120', 'src/main/kotlin/A.kt']);
   });
 
-  it('runs the syntax program on the module, with the roots relative to it', () => {
-    const [program, ...rest] = programArguments({
-      program: 'KotlinSyntax.java',
-      output: '/r/kotlin-syntax.json',
-      module,
-    });
-
-    expect(path.basename(program)).toBe('KotlinSyntax.java');
-    expect(rest).toEqual([
-      '/r/kotlin-syntax.json',
-      '/work/app',
-      'src/main/java',
-      'src/main/kotlin',
-    ]);
-  });
-
   it('runs the PSI program on the module, with the main roots then the test roots marked test:', () => {
     expect(
       psiArguments({
         metrics: '/r/kotlin-metrics.json',
         facts: '/r/kotlin-facts.json',
+        syntax: '/r/kotlin-syntax.json',
         module: {
           ...module,
           kotlin: {
@@ -200,6 +185,7 @@ describe('formatter and metrics arguments', () => {
     ).toEqual([
       '/r/kotlin-metrics.json',
       '/r/kotlin-facts.json',
+      '/r/kotlin-syntax.json',
       '/work/app',
       'src/main/java',
       'src/main/kotlin',
@@ -289,14 +275,24 @@ describe('the JDK detekt resolves types against', () => {
   }
 
   it('is the toolchain the build selects', () => {
-    expect(jdkHome({ jdkToolchain: { version: '17' } }, { home: toolchainHome() })).toBe(
-      '/jdks/17',
-    );
+    const context = { projectRoot: '/p', environment: {}, home: toolchainHome() };
+
+    expect(jdkHome({ jdkToolchain: { version: '17' } }, context)).toEqual({ home: '/jdks/17' });
   });
 
   it('is the JDK the build runs on when no toolchain is selected', () => {
     vi.stubEnv('JAVA_HOME', runningJdk());
 
-    expect(jdkHome({})).toBe('/running/jdk');
+    expect(jdkHome({})).toEqual({ home: '/running/jdk' });
+  });
+
+  it('is the JDK the build runs on, with a note, when no toolchains file lists the selected one', () => {
+    vi.stubEnv('JAVA_HOME', runningJdk());
+    const context = { projectRoot: '/p', environment: {}, home: toolchainHome(), maven: '/none' };
+
+    expect(jdkHome({ jdkToolchain: { version: '21' } }, context)).toEqual({
+      home: '/running/jdk',
+      note: 'The build selects the JDK toolchain {"version":"21"}, which no toolchains file lists, so detekt resolves JDK types against /running/jdk',
+    });
   });
 });

@@ -1,8 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
-import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { childAt, childrenAt, parseXml } from '../../../../shared/ingest/common.mjs';
 import { executionsOf, pluginsOf } from './pom-elements.mjs';
+import { existingFile, globalToolchainsFile, userToolchainsFile } from './toolchain-files.mjs';
 
 const TOOLCHAINS_PLUGIN = 'org.apache.maven.plugins:maven-toolchains-plugin';
 const COMPILER_PLUGIN = 'org.apache.maven.plugins:maven-compiler-plugin';
@@ -68,20 +67,32 @@ function provides(entry, required) {
   );
 }
 
-export function toolchainJdkHome(required, { home = homedir() } = {}) {
-  const file = path.join(home, '.m2', 'toolchains.xml');
-  const entries = existsSync(file)
-    ? childrenAt(parseXml(readFileSync(file, 'utf8')), 'toolchain').filter(
-        (entry) => childAt(entry, 'type')?.text === 'jdk' && provides(entry, required),
-      )
-    : [];
-  const jdkHome = entries
+function interpolated(text, { environment, home }) {
+  return text.replaceAll(/\$\{([^}]+)\}/gu, (match, name) => {
+    if (name === 'user.home') {
+      return home;
+    }
+    return name.startsWith('env.') ? (environment[name.slice('env.'.length)] ?? match) : match;
+  });
+}
+
+function jdkHomeIn(file, required, context) {
+  const existing = existingFile(file);
+  if (existing === undefined) {
+    return undefined;
+  }
+  const entries = childrenAt(parseXml(readFileSync(existing, 'utf8')), 'toolchain').filter(
+    (entry) => childAt(entry, 'type')?.text === 'jdk' && provides(entry, required),
+  );
+  const found = entries
     .map((entry) => childAt(entry, 'configuration', 'jdkHome')?.text)
     .find((candidate) => candidate !== undefined);
-  if (jdkHome === undefined) {
-    throw new Error(
-      `The build selects the JDK toolchain ${JSON.stringify(required)}, and ${file} lists no JDK that provides it`,
-    );
-  }
-  return jdkHome;
+  return found === undefined ? undefined : interpolated(found.trim(), context);
+}
+
+export function toolchainJdkHome(required, context) {
+  return (
+    jdkHomeIn(userToolchainsFile(context), required, context) ??
+    jdkHomeIn(globalToolchainsFile(context), required, context)
+  );
 }

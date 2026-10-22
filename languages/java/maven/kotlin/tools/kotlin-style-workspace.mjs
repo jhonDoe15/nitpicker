@@ -5,7 +5,7 @@ import {
   trackTemporaryPath,
   untrackTemporaryPath,
 } from '../../../../../core/tooling/temporary-files.mjs';
-import { relativeTo } from './kotlin-files.mjs';
+import { relativeTo } from '../../module/module-paths.mjs';
 
 const DEFAULTS_FILE = 'ktlint-defaults.editorconfig';
 const WORKSPACE = 'workspace';

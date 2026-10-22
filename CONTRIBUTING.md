@@ -103,7 +103,7 @@ without starting a JVM build or a Python project (CI runs the same check in the 
 Java, Kotlin and Python workflows):
 
 ```sh
-npm run verify:e2e-shards
+node scripts/test-shards/verify-e2e-shards.mjs
 ```
 
 Enabled JVM suites use separate timing files: `scripts/test-shards/java-e2e.json` and

@@ -1030,7 +1030,8 @@ allprojects {
                 // --- kotlin structure (KT3) ---
                 // Per-function lines, statements, control nesting, parameters and complexity (the CRAP input), the
                 // class names of each file (the coupling input) and the declarations, calls and test waits of the
-                // main and test sources (the review rules). languages/java/gradle/kotlin-psi parses the Kotlin
+                // main and test sources (the review rules) and the syntax trees of the main files that use Spring or
+                // JPA (the Kotlin Spring rules). languages/java/gradle/kotlin-psi parses the Kotlin
                 // sources once with the PSI parser of the pinned Kotlin compiler: the sources are compiled once per
                 // build with the javac of the JVM that runs Gradle (kotlinPsiClasses), then run on it.
                 tasks.register('nitpickerKotlinPsi') {
@@ -1040,9 +1041,11 @@ allprojects {
                         reportDir.get().asFile.mkdirs()
                         def metrics = reportDir.get().file('kotlin-metrics.json').asFile
                         def facts = reportDir.get().file('kotlin-facts.json').asFile
+                        def syntax = reportDir.get().file('kotlin-syntax.json').asFile
                         if (kotlinLintedFiles().isEmpty()) {
                             metrics.text = '{"functions":[],"files":[]}'
                             facts.text = '{"files":[]}'
+                            syntax.text = '{"files":[]}'
                             return
                         }
                         def home = new File(System.getProperty('java.home'), 'bin')
@@ -1053,30 +1056,9 @@ allprojects {
                         runProcess('KotlinPsi', [new File(home, 'java').absolutePath, '-Djava.awt.headless=true',
                                 "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(), '-cp',
                                 compiler + File.pathSeparator + classes.absolutePath, 'nitpicker.kotlinpsi.KotlinPsi',
-                                metrics.absolutePath, facts.absolutePath, analysisRoot.absolutePath] + roots,
+                                metrics.absolutePath, facts.absolutePath, syntax.absolutePath,
+                                analysisRoot.absolutePath] + roots,
                             projectDir)
-                    }
-                }
-                // Syntax trees of the Kotlin sources that use Spring or JPA, for the Kotlin Spring rules
-                // (languages/java/adapters/kotlin/spring). Same compiler, same single-file source mode.
-                tasks.register('nitpickerKotlinSyntax') {
-                    group = 'nitpicker'
-                    onlyIf { usesSpring() && !kotlinFiles().isEmpty() }
-                    def syntaxSource = new File(initScriptDir, 'KotlinSyntax.java')
-                    doLast {
-                        reportDir.get().asFile.mkdirs()
-                        def output = reportDir.get().file('kotlin-syntax.json').asFile
-                        def roots = kotlinSourceDirs().collect { relative(it) }
-                        def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-                        def process = new ProcessBuilder([java, '-Djava.awt.headless=true',
-                                "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(), '-cp',
-                                configurations.nitpickerKotlinCompiler.asPath, syntaxSource.absolutePath,
-                                output.absolutePath, analysisRoot.absolutePath] + roots)
-                            .directory(projectDir).redirectErrorStream(true).start()
-                        def log = process.inputStream.getText('UTF-8')
-                        if (process.waitFor() != 0) {
-                            throw new GradleException("KotlinSyntax failed: ${log.trim()}")
-                        }
                     }
                 }
                 // --- end kotlin structure ---
@@ -1084,7 +1066,7 @@ allprojects {
                 // Reports a skipped tool would have written, so the Nitpicker side reads the same files for
                 // every module; and the Kotlin entries of the manifest. The Java source roots stay Java-only.
                 tasks.named('nitpickerJava') {
-                    dependsOn 'nitpickerDetekt', 'nitpickerKtlint', 'nitpickerKtfmt', 'nitpickerKotlinPsi', 'nitpickerKotlinSyntax'
+                    dependsOn 'nitpickerDetekt', 'nitpickerKtlint', 'nitpickerKtfmt', 'nitpickerKotlinPsi'
                     doLast {
                         def directory = reportDir.get().asFile
                         def emptySarif = '{"version":"2.1.0","runs":[]}'

@@ -49,19 +49,21 @@ export function analyzeJavaSnapshot(
   }
 }
 
+export function withHeadPolicy(policy, headPolicy) {
+  const { conventions, spring, kotlin } = headPolicy;
+  return {
+    ...policy,
+    conventions,
+    javaStyle: javaStyle(conventions),
+    ...(spring === true ? { spring } : {}),
+    kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
+    ...(kotlin === undefined ? {} : { kotlinFacts: kotlin }),
+  };
+}
+
 export function readRunnerPolicy(runnerArguments, environment = process.env) {
   const { projectRoot, policy } = parseJavaRunnerArguments(runnerArguments);
-  const { conventions, spring, kotlin } = readHeadPolicyFile(environment);
-  return {
-    projectRoot,
-    policy: {
-      ...policy,
-      conventions,
-      javaStyle: javaStyle(conventions),
-      ...(spring === true ? { spring } : {}),
-      kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
-    },
-  };
+  return { projectRoot, policy: withHeadPolicy(policy, readHeadPolicyFile(environment)) };
 }
 
 function main(arguments_) {

@@ -2,7 +2,8 @@ import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runJava } from '../../maven-command.mjs';
 import { withStyleWorkspace } from './kotlin-style-workspace.mjs';
-import { EMPTY_SARIF, kotlinFiles, lintedRoots, relativeTo } from './kotlin-files.mjs';
+import { EMPTY_SARIF, kotlinFiles, lintedRoots } from './kotlin-files.mjs';
+import { relativeTo } from '../../module/module-paths.mjs';
 
 const KTLINT_FAILURE_CODE = 1;
 const KTFMT_ERROR = 'Error formatting';

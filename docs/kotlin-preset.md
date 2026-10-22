@@ -765,26 +765,27 @@ A project with a `pom.xml` and no Gradle build runs through the Maven runner of 
 (`languages/java/maven/`). The Kotlin tools run next to the Java ones, in the same module loop, with
 the same reports and the same findings as on Gradle. Nothing is configured: a module counts as a
 Kotlin module when its effective POM (`mvn help:effective-pom`, parents, profiles and
-`pluginManagement` resolved) applies `org.jetbrains.kotlin:kotlin-maven-plugin`. A build where no
-module does is a `kotlin/maven-failure` tool error saying so.
+`pluginManagement` resolved) applies `org.jetbrains.kotlin:kotlin-maven-plugin` with an execution of
+a compile goal (`compile`, `kapt`, `test-compile` or `test-kapt`) whose phase is not `none`. A build
+where no module does is a `kotlin/maven-failure` tool error saying so.
 
 **Source roots** are the ones the build compiles, from the effective POM: the `sourceDirs` of the
 plugin's `compile` and `kapt` executions for main code, those of `test-compile` and `test-kapt` for
 test code (a `sourceDirs` set on the plugin itself serves main code only); where none are set, the
 plugin compiles the Maven source roots (`sourceDirectory`, `testSourceDirectory` and the roots
-build-helper adds), and so do these. A folder the build does not compile, such as a leftover
-`src/main/kotlin` that no `sourceDir` names, is not analyzed. A module counts as a Kotlin module
-when `org.jetbrains.kotlin:kotlin-maven-plugin` has an execution of a compile goal whose phase is not
-`none`. Only directories that exist, lie inside the module and are not under its build directory
-are kept, and of nested roots only the outermost, so a generator that writes Kotlin to
-`target/generated-sources` is neither linted nor measured, as on Gradle. `manifest.json` carries
+build-helper adds), and so do these; one reader, `kotlin-roots.mjs`, serves the Kotlin preset and
+the Java preset's `kotlinSourceRoots`. A folder the build does not compile, such as a leftover
+`src/main/kotlin` that no `sourceDir` and no `sourceDirectory` names, is not analyzed. Only
+directories that exist, lie inside the module and are not under its build directory are kept, and
+of nested roots only the outermost, so a generator that writes Kotlin to `target/generated-sources`
+is neither linted nor measured. `manifest.json` carries
 `sourceRoots`, `kotlinSourceRoots`, `kotlinTestSourceRoots` and `kotlinFormatter` per module, as for
-Gradle. The code is in `languages/java/maven/kotlin/` (roots, options, classes, module) and
+Gradle. The code is in `languages/java/maven/kotlin/` (roots, setup, Java classes, module) and
 `languages/java/maven/kotlin/tools/` (one file per tool).
 
 | Tool               | On Maven                                                                                                                                                                                                                                                                                                                                            |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Compile and tests  | The project's own `mvn` run with the JaCoCo agent, so the Kotlin test frameworks Maven's Surefire runs (JUnit 5) work as in the Java preset. A compile error is `kotlin/maven-failure` and names the file.                                                                                                                                          |
+| Compile and tests  | The project's own `mvn` run with the JaCoCo agent, so the Kotlin tests that Maven's Surefire runs (JUnit 5, JUnit 4, TestNG and Kotest through its JUnit platform runner) work as in the Java preset. A compile error is `kotlin/maven-failure` and names the file.                                                                                 |
 | detekt             | Run outside Maven with the pinned jars. `--base-path` is the module directory, so paths and fingerprints match Gradle's. Exit codes 0 and 2 (findings) are accepted, as on Gradle.                                                                                                                                                                  |
 | ktlint, ktfmt      | Run outside Maven with the pinned jars on the Kotlin files of the module; the formatter is detected from the effective POM (see [Format check](#format-check-ktlint-ktfmt-or-none)).                                                                                                                                                                |
 | kotlin-psi         | The same `kotlin-psi` program as on Gradle (metrics and the facts of the [review rules](#review-rules)), compiled once per run with the `javac` of the JDK that runs Maven and run on the pinned `kotlin-compiler-embeddable` (2.4.21) for each module. Structure limits, CRAP, the review rules, and the clone and stability inputs are identical. |
@@ -799,11 +800,14 @@ transitive dependencies. Nothing of the project's own dependency tree reaches a 
 Maven Central, like the Java tools do.
 
 **detekt with type resolution.** The classpath is detekt's own Kotlin standard library (2.0.21), the
-module's Java classes (`target/nitpicker/java-classes`) and the module's compile classpath minus the project's `kotlin-stdlib`, for the reason given
-under [detekt](#detekt). `--jdk-home` is the JDK that the build's toolchain selects (the `jdk` of a
-`maven-toolchains-plugin` configuration, or the `jdkToolchain` of `maven-compiler-plugin`, looked up
-in `~/.m2/toolchains.xml`; a toolchain that file does not list is an error), otherwise `JAVA_HOME`, or
-the JDK of the `java` on the PATH when it is unset; a run that finds no JDK home stops with an error. The config layering, the one-way rules and the `kotlin.detektConfig` override are the same
+module's Java classes (`target/nitpicker/java-classes`) and the module's main and test compile classpaths minus the project's `kotlin-stdlib`, for the reason
+given under [detekt](#detekt). `--jdk-home` is the JDK that the build's toolchain selects (the `jdk`
+of a `maven-toolchains-plugin` configuration, or the `jdkToolchain` of `maven-compiler-plugin`),
+looked up in the toolchains files as Maven finds them: the user file named by `-t`/`--toolchains` in
+`.mvn/maven.config` or `MAVEN_ARGS`, else `~/.m2/toolchains.xml`, and the global file named by
+`-gt`/`--global-toolchains`, else `conf/toolchains.xml` of the Maven installation. A toolchain none
+of them lists falls back to the JDK of `JAVA_HOME` (or of the `java` on the PATH), with a note in
+the report that says so; a run that finds no JDK home stops with an error. The config layering, the one-way rules and the `kotlin.detektConfig` override are the same
 code as on Gradle.
 
 **Mixed modules.** Kotlin and Java files in one module share the compile; Java files are linted by
@@ -823,8 +827,8 @@ cannot be resolved, no `mvn` on the PATH) is one `kotlin/maven-failure` finding 
 mutants are descriptive, as on Gradle.
 
 **Tests.** The Maven Kotlin unit tests sit next to the code (`kotlin-roots.test.mjs`,
-`kotlin-options.test.mjs`, `kotlin-classes.test.mjs`, `tools/kotlin-arguments.test.mjs`,
-`configuration/toolchain-jdk.test.mjs`) and use the
+`kotlin-setup.test.mjs`, `java-classes.test.mjs`, `tools/kotlin-arguments.test.mjs`,
+`module/maven-module-kotlin.test.mjs`, `configuration/toolchain-jdk.test.mjs`) and use the
 fixture `languages/java/maven/fixtures/kotlin-single`; the real-Maven end-to-end suites are in
 [Tests](#tests).
 
@@ -843,26 +847,35 @@ cycles, naming, placement) run as tests in the project's own test run, and their
 resolved to the Kotlin source file of the violating class as to a Java one. Both are lifted through
 `exceptions` with the same `spring/<rule>` and `archunit/<rule>` names as in the Java preset.
 
-**The 34 PMD rules of the Java preset exist for Kotlin.** PMD cannot read Kotlin, so the Java rule
-set does not apply. nitpicker reimplements the same 34 rules, with the same names and the same
-areas (beans, configuration, proxies, web, JPA, Spring Data), in Node, over the Kotlin syntax tree:
+**All 55 PMD rules of the Java preset exist for Kotlin.** PMD cannot read Kotlin, so the Java rule
+set does not apply. nitpicker reimplements the same 55 rules, with the same names and the same
+areas (beans, configuration, proxies, web and security, transactions and startup, HTTP clients, JPA,
+Spring Data), in Node, over the Kotlin syntax tree. No rule of the Java table is left out: the
+table in the [Java preset](java-preset.md#spring-rules) lists them, and every one of them checks
+Kotlin classes too.
 
 ```
-KotlinSyntax.java (Kotlin PSI, parse only)  ->  <module report dir>/kotlin-syntax.json
+KotlinPsi (syntax package, parse only)  ->  <module report dir>/kotlin-syntax.json
   -> readKotlinSpringFindings                 (languages/java/adapters/kotlin/spring/kotlin-spring.mjs)
        -> model of each file (classes, properties, functions, constructors, annotations, types)
        -> import-based name resolution
        -> rules in languages/java/adapters/kotlin/spring/rules/
 ```
 
-`KotlinSyntax.java` is a separate parse (it is not part of `kotlin-psi`) and runs only when the project uses Spring (the manifest says `spring: true`, from
-the Gradle compile classpath or the Maven `dependency:list` of the module), on the pinned Kotlin compiler, and only when the
-module has Kotlin files. A finding has the tool `spring`, so it prints as `spring/<Rule>`, for
-example `spring/SpringConstructorInjection`, and an exception names the same: `{ "rule":
-"spring/SpringDataNoSaveInLoop", "paths": [...], "reason": "..." }`. Each message names the one
-allowed form in Kotlin terms (`private val` constructor properties, `saveAll`) and ends with the
-exception route. The identity of a finding is the rule and the symbol (`Settings.read@getenv`,
-`Batches.loop@save`), not the line, so moving code does not report it again.
+The syntax trees come from the same `kotlin-psi` program that writes the metrics and the facts
+(a third output, `kotlin-syntax.json`), on Gradle and on Maven, for the Kotlin files that mention
+Spring, JPA or Hibernate. The program runs on the pinned Kotlin compiler on a thread with a large
+stack, so deeply nested code is parsed like any other. The Spring rules run when the project uses
+Spring (the manifest says `spring: true`, from the Gradle compile classpath or the Maven
+`dependency:list` of the module) and the module has Kotlin files; a Spring module whose syntax
+report is missing is an error, never an empty result. A finding has the tool `pmd`, as in a Java
+file, so it prints as `pmd/<Rule>`, for example `pmd/SpringConstructorInjection`, and an exception
+names the same: `{ "rule": "pmd/SpringDataNoSaveInLoop", "paths": [...], "reason": "..." }`. A
+mixed module therefore needs one entry for a rule, whichever language holds the violation. The
+configuration checks keep their `spring/<key>` ids. Each message names the one allowed form in
+Kotlin terms (`private val` constructor properties, `saveAll`) and ends with the exception route.
+The identity of a finding is the rule and the symbol (`Settings.read@getenv`, `Batches.loop@save`),
+not the line, so moving code does not report it again.
 
 Where a rule in Kotlin cannot work as in Java, this is what differs:
 
@@ -892,6 +905,52 @@ Where a rule in Kotlin cannot work as in Java, this is what differs:
 - **Suppression.** The one accepted inline marker is `@Suppress("PMD.SpringDataNativeQuery")` on a
   function, as `@SuppressWarnings("PMD.SpringDataNativeQuery")` is in Java. Other `@Suppress`
   arguments for these rules do nothing; use `exceptions`.
+- **Security DSL.** `SpringCsrfDisabled`, `SpringCorsWildcard` and `SpringPermitAllAnyRequest` read
+  the chained form of Java (`http.csrf().disable()`), the lambda forms (`csrf { it.disable() }`,
+  `csrf(AbstractHttpConfigurer::disable)`) and the Kotlin DSL (`http { csrf { disable() } }`,
+  `authorize(anyRequest, permitAll)`), on servlet and on WebFlux (`pathMatchers`, `anyExchange`,
+  `NoOpServerSecurityContextRepository`). The stateless exceptions of `SpringCsrfDisabled`
+  (`SessionCreationPolicy.STATELESS`, a null security context repository, `oauth2ResourceServer`
+  with `jwt` or `opaqueToken` and every login disabled) must sit in the same filter chain. A chain
+  built through a helper function in another file is not followed.
+- **HTTP clients.** `SpringHttpClientPerCall` and `SpringHttpClientTimeouts` match the clients by the
+  type written at the call (`RestTemplate(...)`, `RestClient.create()`, `WebClient.builder()`,
+  `HttpClient.newHttpClient()`, Reactor Netty `HttpClient.create()`), and look for the timeout
+  setters on the same chain, on the variable it is assigned to, or in the same function or class.
+  A client obtained from an injected builder is not a site, because its timeouts come from the
+  `spring.http.client.*` properties.
+- **Startup and state.** `SpringNoPostConstructIo` flags a call on a repository, an `EntityManager`
+  or a remote client (declared types) inside a `@PostConstruct` function. `SpringBeanCollectionState`
+  looks at `val` properties of singleton beans that hold a mutable collection (`mutableMapOf`,
+  `HashMap()`, `ArrayList()`) and are changed (`put`, `add`, `+=`, indexed assignment) outside
+  startup (`init` blocks, secondary constructors, `@PostConstruct`, `afterPropertiesSet`, a `@Bean`
+  `initMethod`, and the private functions only those call) and outside a lock (`synchronized`,
+  `withLock`, a `Lock` receiver).
+- **Secrets.** `SpringValueSecretDefault` reads `@Value("${key:default}")`, `@DefaultValue` on a
+  parameter named like a secret, and `getProperty(key, default)`; a
+  key counts as a secret by its last words (`password`, `secret`, `token`, `api-key`, ...).
+- **Transactions.** `SpringTransactionalCheckedRollback` flags `@Throws(...)` of a checked exception
+  (Kotlin has no `throws` clause, so `@Throws` is the declaration) on a `@Transactional` function
+  without `rollbackFor`; `SpringTransactionalReadOnlyWrite` flags a repository or `EntityManager`
+  write (`save`, `delete`, `persist`, or a repository function named `update...`, `delete...` and
+  the like) in a function under `@Transactional(readOnly = true)`.
+- **Web types.** `SpringTypedResponse` and `SpringTypedRequestBody` flag `Any`, `JsonNode`,
+  `Map<String, Any>`, `ResponseEntity<*>` and lists or `Optional`s of those, and `null` returns.
+  A `Map` with typed values is fine, as in Java. `SpringNoErrorLeak` flags the message or stack
+  trace of a generic, JDK or persistence exception returned from an `@ExceptionHandler`; the
+  message of an exception type of the project is fine.
+- **JPA.** `JpaEnumString` reads the property type (and the type arguments of an
+  `@ElementCollection`) against the enums declared in the project and `@Enumerated`,
+  `@MapKeyEnumerated` and an auto-applied `AttributeConverter`. `JpaIdentityHashCode` flags a
+  `hashCode` that reads the `@GeneratedValue` id, and a `data class` entity with the generated id
+  in its constructor and no `hashCode` of its own; `javaClass.hashCode()` or a business key is the
+  allowed form.
+- **Spring Data writes.** `SpringDataBatchOfOne`, `SpringDataRowWriteInLoop`,
+  `SpringDataSaveInLoopHelper` and `SpringDataFilterInQuery` use the same loop and receiver
+  recognition as `SpringDataNoSaveInLoop` (above); `SpringQueryConcatenation` flags a query built
+  with `+`, a string template that contains an expression, or `String.format`/`formatted`, passed
+  (directly or through a local `val` or `var` of the same function or class) to `createQuery`,
+  `createNativeQuery` or a JDBC template or client method; a template with only constants is fine.
 - **JPA** rules know `jakarta.persistence` only, as in the Java preset.
 - **`SpringProxySelfCall`** matches a call by name and by argument count over the arity range of
   the declared parameters, so a default argument counts.
