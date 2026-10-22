@@ -409,6 +409,12 @@ with `fun main`, the `@SpringBootApplication` class or a Ktor module) may read `
 `SpreadOperator` findings in a Spring project; JPA and Spring Data entities are not asked to become
 data classes; parameters with an annotation (`@RequestParam`, `@PathVariable`) are not boolean flags.
 
+The Spring architecture rules of the Java preset run on the compiled Kotlin classes too, and so
+does `archunit/contract-infrastructure-type`
+([contract types](java-preset.md#contract-types)), also in a Kotlin project without Spring that has
+feature folders. It sees through type aliases (`typealias Rows = List<Connection>`), and leaves out
+the `componentN` and `copy` functions of data classes and `internal` functions.
+
 ## Review rules
 
 Six checks that detekt has no rule for run on a syntax tree of the Kotlin sources. They use the rule
@@ -912,8 +918,9 @@ the [one-way rules](#one-way-rules), the [source checks](#source-checks), the
 [java-preset.md](java-preset.md#tests-that-never-run)), the
 [dependency and repository checks](usage.md#dependency-and-repository-checks), stability, and the
 mutants of Java classes per path, and the structure, CRAP and coverage rules per function. Java rule
-ids are accepted for the Java sources of the project. `layout` is a config error until the Kotlin
-preset runs the rule that reads it (`shared-used-by-one-feature`).
+ids are accepted for the Java sources of the project. `layout` takes only `sharedRoots` and
+`featureRoots`, which `archunit/contract-infrastructure-type` reads (see
+[contract types](java-preset.md#contract-types)); its other keys are a config error.
 
 ## Slow tests
 

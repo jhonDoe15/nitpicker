@@ -150,8 +150,9 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `lineLength` and `folderFiles`, the size limits `folderDepth`, `classMethods`, `classFields` and
 `inheritanceDepth`, and the test time limits `unitTestSeconds` and `integrationTestSeconds`), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
-below. `layout.featureRoots` and `layout.sharedRoots` place the [feature folders](#feature-folders) (the
-other `layout` keys describe TypeScript sources and are an error); `testConsole` stays a config error
+below. `layout.featureRoots` and `layout.sharedRoots` place the [feature folders](#feature-folders), which
+`contract-infrastructure-type` reads too (the other `layout` keys describe TypeScript sources and are
+an error); `testConsole` stays a config error
 with this preset until it runs `test-console-output`. The
 top-level `exceptions` is accepted only for the rules shared with the other languages: the [feature folder rules](#feature-folders), the file and size limits
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
@@ -593,6 +594,8 @@ are listed at the end.
 | Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                      | `handwritten-boundary-guard` (script)                                                                                                                |
 | Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                       | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
 | Pure domain              | clock, ids and random values passed in; ports implemented in `adapters/`                                                                         | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
+| Feature contracts        | a frozen dataclass or a domain type; the session or request stays in an adapter or route handler                                                 | `contract-infrastructure-type` (script)                                                                                                              |
+| Route handlers           | a separate schema (a Pydantic model, a frozen dataclass) mapped from the entity                                                                  | `handler-entity-type` (script)                                                                                                                       |
 | Module state             | state in an object made in the composition root                                                                                                  | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
 | Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
 | Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                     | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
@@ -614,6 +617,37 @@ are listed at the end.
 
 Details that are decisions rather than the table:
 
+- `contract-infrastructure-type` reads the public face of each feature: its `__init__.py` and the
+  modules directly in the feature folder whose names do not start with `_` (`layout.featureRoots`,
+  default `**/features`; `layout.sharedRoots`, default `**/shared`). Their public functions, and the
+  public methods of their public classes (nested ones included, dunder methods such as `__init__`
+  left out), may not take or return a persistence handle (SQLAlchemy and SQLModel `Session`,
+  `AsyncSession`, `sessionmaker`, `Engine`, `Connection`, `Query`, `Result`; Django `QuerySet` and
+  `Manager`; DB-API connections and cursors of `sqlite3`, `psycopg`, `psycopg2`, `asyncpg`,
+  `aiosqlite`, `pymysql` and `MySQLdb`; `pymongo` and `motor` clients, databases and collections;
+  peewee, Tortoise and `databases` handles) or a web request or response object (Django, Django REST
+  framework, Starlette, FastAPI, Flask, Werkzeug, Quart, aiohttp, Litestar and Sanic requests,
+  responses, websockets and uploads). A name an `__init__.py` imports from an internal module of the
+  feature counts, reported on the import. Annotations are resolved through the imports, string
+  annotations and module-level type aliases, also across modules; a name that does not resolve to
+  one of those libraries is never reported. Left out: a function with a route decorator
+  (`@router.get`, `@app.route`, a framework's own decorator), a class that subclasses a framework
+  type (a Django `View`, a `Manager`), a class named `*Repository` or `*Repo`, modules named
+  `adapters`, `infrastructure`, `infra`, `persistence`, `repository`, `repositories`, `db`,
+  `database`, `dependencies` or `deps`, and tests. A function whose first parameter is a request
+  (a Django view) and the modules `views`, `routes`, `routers`, `api`, `endpoints`, `urls` and
+  `middleware` may use the web types, but not the persistence ones. Class and dataclass fields are
+  not read, only signatures.
+- `handler-entity-type` reads route handlers: functions with a FastAPI, Starlette, Flask, Quart,
+  django-ninja or Sanic route decorator (`@router.get(...)`, `@app.route(...)`, `@api.post(...)` in
+  a module that imports one of them, or a decorator from the framework itself, such as Litestar's
+  `@get`). A parameter, the return annotation, `response_model=` or django-ninja's `response=` that
+  names an ORM entity is reported once per handler and entity. Entities are SQLAlchemy mapped classes
+  (a `__tablename__` or `__table__` under a `DeclarativeBase` or `declarative_base()` base, and
+  their subclasses), SQLModel classes with `table=True`, and Django, Tortoise and peewee models that
+  are not `abstract`, found across the project's modules. Imperative mappings
+  (`registry.map_imperatively`, `@registry.mapped`) and entities a handler returns without an
+  annotation (`return jsonify(order)`) are not seen.
 - `PLR2004` allows the same numbers as the TypeScript `no-magic-numbers` (`-1`, `0`, `1`, `2`, `10`,
   `100`, `1000`): findings for them are dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`),
   because ruff has no setting for it. Ruff already allows strings and bytes.
