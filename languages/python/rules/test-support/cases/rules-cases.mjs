@@ -18,6 +18,8 @@ export const RULES_CASES = [
   ...rulesCases('path-join', [['unsafe-path-join', 'is_relative_to']]),
   ...rulesCases('boundary-guard', [['handwritten-boundary-guard', 'model_validate']]),
   ...rulesCases('domain-any', [['any-in-domain', 'frozen dataclass']]),
+  ...rulesCases('contract-types', [['contract-infrastructure-type', 'composition root']]),
+  ...rulesCases('handler-entities', [['handler-entity-type', 'schema, not an entity']]),
   ...rulesCases('pydantic-any', [['pydantic-any-field', 'real type']]),
   ...rulesCases('pydantic-extra', [['pydantic-extra-allow', 'extra="forbid"']]),
   ...rulesCases('repeated-string', [['repeated-string-literal', 'constant']]),

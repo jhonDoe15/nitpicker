@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createFakeProjects } from '../test-support/fake-project.mjs';
 import { DEFAULT_NORECURSEDIRS } from '../configuration/pytest/pytest-config.mjs';
-import { checkRules, pythonSources } from './python-ast-rules.mjs';
+import { checkRules, contractFaces, pythonSources } from './python-ast-rules.mjs';
 
 const fakes = createFakeProjects();
 
@@ -78,6 +78,7 @@ describe('running the rules script', () => {
       entryFiles: [],
       entryModules: [],
       boundaryRoots: ['pydantic', 'pydantic_settings'],
+      contractFaces: {},
     });
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');
     expect(readFileSync(path.join(reportRoot, 'rules.json'), 'utf8')).toBe('[{"rule":"x"}]');
@@ -117,5 +118,33 @@ describe('running the rules script', () => {
     expect(
       JSON.parse(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8')).boundaryRoots,
     ).toEqual(['pydantic', 'pydantic_settings']);
+  });
+});
+
+describe('the public faces of the features the contract rule reads', () => {
+  const sources = [
+    'app/features/orders/__init__.py',
+    'app/features/orders/service.py',
+    'app/features/orders/_store.py',
+    'app/features/orders/web/views.py',
+    'app/features/helpers.py',
+    'app/shared/db.py',
+    'app/billing/ledger.py',
+  ];
+
+  it('are the __init__.py and the public modules directly in each feature folder', () => {
+    expect(contractFaces(sources, {})).toEqual({
+      'app/features/orders/__init__.py': 'app/features/orders',
+      'app/features/orders/service.py': 'app/features/orders',
+    });
+  });
+
+  it('follow the configured feature and shared roots', () => {
+    const layout = { featureRoots: ['app'], sharedRoots: ['app/shared'] };
+
+    expect(contractFaces(sources, layout)).toEqual({
+      'app/billing/ledger.py': 'app/billing',
+      'app/features/helpers.py': 'app/features',
+    });
   });
 });

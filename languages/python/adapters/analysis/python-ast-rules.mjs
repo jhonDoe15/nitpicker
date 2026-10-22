@@ -9,6 +9,10 @@ import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
 import { testFileMatcher } from './python-sources.mjs';
 import { entryFilesOf, readEntryModules } from '../../rules/libraries/entry-modules.mjs';
 import { boundaryRoots, detectLibraries } from '../../rules/libraries/project-libraries.mjs';
+import {
+  featureRoleContract,
+  PUBLIC_FACES,
+} from '../../../../shared/rules/features/feature-roles.mjs';
 
 export const RULES_REPORT = 'rules.json';
 export const ALLOWANCES_REPORT = 'rules-allowances.json';
@@ -44,6 +48,16 @@ export function pythonSources(context) {
     .filter((file) => file !== undefined);
 }
 
+export function contractFaces(sources, layout) {
+  const roleOf = featureRoleContract(layout, PUBLIC_FACES.python);
+  return Object.fromEntries(
+    sources.flatMap((file) => {
+      const role = roleOf(file);
+      return role.kind === 'feature' && role.isPublic ? [[file, role.directory]] : [];
+    }),
+  );
+}
+
 export function checkRules(context) {
   const list = path.join(context.reportRoot, FILE_LIST);
   const options = path.join(context.reportRoot, OPTIONS_FILE);
@@ -61,6 +75,7 @@ export function checkRules(context) {
       entryFiles: entryFilesOf(sources, context.project.entryPoints),
       entryModules: readEntryModules(context.projectRoot),
       boundaryRoots: boundaryRoots(detectLibraries(context.projectRoot)),
+      contractFaces: contractFaces(sources, context.layout),
     }),
   );
   run(
