@@ -40,6 +40,14 @@ export const kotlinRuleCases = [
     allowed: 'fun grow(items: List<String>): MutableList<String> = items.toMutableList()\n',
   },
   {
+    id: 'collectionTypeCheck',
+    rule: 'detekt.potential-bugs.DontDowncastCollectionTypes',
+    message: 'Down-casting from type List to MutableList is risky. Use `toMutableList()` instead.',
+    allowedForm: 'toMutableList',
+    banned: 'fun writable(items: List<String>): Boolean = items is MutableList<String>\n',
+    allowed: 'fun writable(items: List<String>): Boolean = items.isNotEmpty()\n',
+  },
+  {
     id: 'broadCatch',
     rule: 'detekt.exceptions.TooGenericExceptionCaught',
     message:

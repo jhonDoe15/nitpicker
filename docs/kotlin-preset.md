@@ -197,13 +197,24 @@ after detekt runs, not by a path glob, so a `test` package inside the main sourc
 in the composition root by the gate (a file with a top-level `fun main`, an `@SpringBootApplication`
 class or a Ktor `fun Application.module()`), see [Frameworks](#frameworks).
 
-**Type laundering (decision).** The Kotlin counterpart of the TypeScript `as` and `any` bans is: no unchecked
-cast (`kotlinc/unchecked`, and its `@Suppress("UNCHECKED_CAST")` is an `inline-suppression` finding), no cast that
-can throw where `as?` states the intent (`CastNullableToNonNullableType`, `CastToNullableType`), and no
-downcast of a read-only collection (`DontDowncastCollectionTypes`). A plain `as` between types the compiler can
-check, and `Any` as a parameter type, have no general recommendation against them in Kotlin (`Any` is the root
-of the type system, and smart casts after an `is` check are idiomatic), so they are not findings. The
-compiler lint covers main sources only, as for Java; a test's unchecked cast is not reported.
+**Type laundering (decision).** The Kotlin counterpart of the TypeScript `as` ban is the unsafe cast operator,
+which the Kotlin documentation itself calls the "unsafe" cast: `value as T` throws `ClassCastException`
+when the type is wrong, and a generic target (`as List<String>`) is not even checked. The allowed forms
+are an `is` check or `when` (a smart cast), `as?` with the null handled, and `assertIs<T>(value)` in a
+test. So `kotlin-source/UnsafeCastOperator` flags every `as` in main and test sources (an import alias,
+`as?`, `null as T?` as a type hint and `as Any?` are not casts that can fail and pass). Where a more
+specific rule reports the same line, that one stays and the cast finding is dropped: the compiler's
+`kotlinc/unchecked` and `kotlinc/cast`, and detekt's `CastNullableToNonNullableType`, `CastToNullableType`,
+`DontDowncastCollectionTypes` (`items as MutableList<T>` and `items is MutableList<T>` on a read-only
+`List`) and `UnsafeCast`. `Any?` as a parameter type stays allowed: it is the counterpart of TypeScript's
+`unknown`, which is the allowed form there, and what is built from it has to be checked with `is`.
+
+Cases where the cast looks harmless and is still flagged, with the form to use: the `other as Foo` that an
+IDE writes into `equals` after a `javaClass` comparison (`if (other !is Foo) return false`), a reified
+`value as T` (`value as? T`, then handle the null), an upcast to pick an overload (`x as Any`; name the
+parameter type, or call the overload by its name), `mock as Foo` in a test (`assertIs<Foo>(mock)`). A cast
+inside a string template (`"${value as T}"`) is not seen, because the scan masks string bodies. Reflection
+and Java interop that cannot avoid a cast take an `exceptions` entry for `kotlin-source/UnsafeCastOperator`.
 
 **Why these allowed forms (decision).** One function per job: `let` binds a value to a name for a
 block (and is the null-handling form), `apply` configures an object and returns it. `run` and `with`
@@ -276,8 +287,7 @@ fails every token that targets a detekt or ktlint rule: `all`, anything starting
 `detekt.`, `detekt:`, `ktlint`, `ktlint.` or `ktlint:`, a detekt ruleset (`style`, `naming`, ...) and a
 PascalCase rule id (`MagicNumber`), and the compiler warnings the [kotlinc lint](#compiler-warnings)
 reports: `UNCHECKED_CAST`, `DEPRECATION`, `TYPEALIAS_EXPANSION_DEPRECATION` and `USELESS_CAST`, whose
-message gives the exception route of the `kotlinc/<rule>` it hides. Those four are banned in main
-sources only: the kotlinc lint compiles the main sources, so in a test they hide nothing. Other compiler diagnostics stay
+message gives the exception route of the `kotlinc/<rule>` it hides, in main and test sources alike. Other compiler diagnostics stay
 allowed (`unused`, `UNUSED_PARAMETER`). Rule `inline-suppression`, tool `detekt`, one finding per
 token, identified by the token. detekt's own `ForbiddenSuppress` is not used: it cannot report
 `all` or `style`, because the suppression hides its report too. The scan reads the string literals of
@@ -316,6 +326,7 @@ whose first comment says it is generated (`@generated`, "generated ... do not ed
 | `GenericPackageName`            | a package segment `util`, `utils`, `utility`, `helpers`, `manager`, `common`, `commons`, `misc`                                                                                                                                                                                                                                                                 | a package named for what it holds; shared pure logic in `shared`                                |
 | `LogStringConcatenation`        | an `info`, `warn`, `error`, `log`, `config`, `warning` or `severe` call on a logger (the levels of the Java rule) whose message is a string template, `+` or `format` with a value that is not a compile-time constant (a literal, a `CONSTANT_CASE` name or a `const val` is one)                                                                              | placeholders (`log.info("user {}", user)`) or a lambda message (`logger.info { "user $user" }`) |
 | `ShellCommand`                  | a shell and its command flag as consecutive literals (`"sh", "-c"`, `"bash", "-c"`, `"cmd", "/c"`, `"powershell", "-Command"`)                                                                                                                                                                                                                                  | the program with an argument list (`ProcessBuilder("git", "log", ref)`)                         |
+| `UnsafeCastOperator`            | the cast operator `as` (not `as?`) in main and test sources, outside an import alias; `null as T?` and `as Any?` pass, and a line another cast rule already reports keeps only that finding                                                                                                                                                                     |
 | `IoCallInLoop`                  | a repository, DAO, JDBC or HTTP client call in a `for`, `while` or `do` body or an iterating lambda (`forEach`, `map`, `filter` and similar); paging and polling loops (a `while` or `do` whose condition, `if (...) break` or `?: break` reads what the call returned) and retries (the call in a `try` that leaves the loop) pass; file calls are not checked | fetch or write all items at once (`findAllById`, `saveAll`)                                     |
 | `CatchOnlyLogsOrReturnsDefault` | a `catch` that neither throws, nor uses the exception, nor answers with an error response; log calls and `printStackTrace` do not count (so it is the one finding for a catch that only logs); an interrupt and a retry loop are skipped                                                                                                                        | rethrow with the cause, or `Result.failure(e)`                                                  |
 | `BooleanFlagParameter`          | an unannotated `Boolean` parameter of a public function that is the condition of an `if`, `when` or `while`; private, `override`, setters, `with*`, `of`/`from`/`valueOf` are skipped                                                                                                                                                                           | two functions, an enum or a data class                                                          |
@@ -396,8 +407,11 @@ Kotlin sources, generated ones included, with the pinned compiler into a throwaw
 module's compile classpath, its compiled Java classes, its language and API version, JVM target,
 opt-ins, free compiler arguments and compiler plugins, and `-Xrender-internal-diagnostic-names`. The
 arguments that silence warnings (`-nowarn`, `-Werror`, `-Xsuppress-warning`, `-Xwarning-level`) are
-dropped, so a build setting cannot hide them. Three groups of warnings are findings of the tool
-`kotlinc`, on the source roots only, each message naming the allowed form first:
+dropped, so a build setting cannot hide them. A second task, `nitpickerKotlinTestLint`, compiles the
+test sources the same way against the compiled main classes (`-Xfriend-paths` makes `internal` members
+visible), the module's test class path and its compiled Java test classes, and writes `kotlinc-test.json`.
+Three groups of warnings are findings of the tool `kotlinc`, on the main and test source roots, each
+message naming the allowed form first:
 
 | Rule          | Kotlin diagnostics                               | Allowed form                                                               |
 | ------------- | ------------------------------------------------ | -------------------------------------------------------------------------- |
@@ -407,8 +421,10 @@ dropped, so a build setting cannot hide them. Three groups of warnings are findi
 
 Like `-Werror` on changed code: a new warning fails, a legacy one stays baselined (the identity is
 the rule and the message with numbers replaced, not the line). Their `@Suppress` is an
-`inline-suppression` finding. A lint compile that fails (a compiler plugin it could not load, for
-example) is one descriptive `kotlinc/lint-not-run` finding naming the first error.
+`inline-suppression` finding, in test sources too. A lint compile that fails (a compiler plugin it could
+not load, a test class path that does not resolve) is one descriptive `kotlinc/lint-not-run` finding
+naming the first error, one for the main and one for the test compile, so a broken test compile does not
+hide the main warnings.
 
 ## Frameworks
 
