@@ -361,7 +361,7 @@ classpath and its `test` task, and adds no test library to the project.
   feature with a `where:` block counts as a template, like a `@ParameterizedTest`. A test that
   names no method (a Kotest test, a custom unroll name) in a file without templates is counted when
   its file changed. `*IntegrationSpec` and `*ISpec` classes get the integration budget.
-- **Tests.** `adapters/java-e2e/test-frameworks.e2e.test.mjs` runs a JUnit 4 project with
+- **Tests.** `adapters/java-e2e/test-frameworks-*.e2e.test.mjs` run a JUnit 4 project with
   `archunit-junit4` rules, a TestNG project and a Spock project, both with `archunit-junit5` rules,
   on Gradle and on Maven (fixtures in `adapters/fixtures/test-frameworks/`), JUnit 4 tests with
   `archunit-junit5` rules and an ArchUnit class no runner picks up on Gradle;

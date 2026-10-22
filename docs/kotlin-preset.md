@@ -1005,7 +1005,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
   exception sentence for the rule it prints, the config accepts that rule, and no Kotlin message
   file writes a route of its own except the suppression scan. `kotlin-compiler.test.mjs` and
   `kotlin-class-limits.test.mjs`: the kotlinc lint reader and the class limits.
-- `languages/java/adapters/kotlin-e2e/kotlin-preset-guards.e2e.test.mjs`: real Gradle on the source
+- `languages/java/adapters/kotlin-e2e/guards/*.e2e.test.mjs`: real Gradle on the source
   checks, the compiler warnings and the class limits, banned and allowed, with their exception route
   and an exception for one path.
 - `kotlin-psi` on a fixture (units, lambda properties, package, multifile parts, byte

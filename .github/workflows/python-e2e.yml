@@ -61,8 +61,17 @@ jobs:
       - run: pip install -c .github/python-e2e-constraints.txt basedpyright black coverage mypy pyright pytest ruff uv
       # The base-environment tests install real projects with poetry and uv.
       - run: pipx install poetry==2.4.3
+      # uv keeps the wheels it downloads and builds for the sample projects. Only that download cache is restored:
+      # the environments stay fresh per test, and UV_CONSTRAINT above still pins every version it resolves.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('.github/python-e2e-constraints.txt') }}-${{ matrix.shard }}
+          restore-keys: uv-${{ runner.os }}-${{ hashFiles('.github/python-e2e-constraints.txt') }}-
       - run: npm ci
       - run: npm run test:python -- --maxWorkers=2 --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/python-e2e/shard-${{ matrix.shard }}.json
+      - name: Drop the uv cache entries that are cheap to download again
+        run: uv cache prune --ci
       - uses: actions/upload-artifact@v4
         if: always()
         with:
