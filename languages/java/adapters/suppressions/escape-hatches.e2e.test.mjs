@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { enabled, ofFile, useEscapeHatchProject } from './escape-hatches-project.mjs';
+import { enabled, ofFile, useEscapeHatchProject } from './__tests__/escape-hatches-project.mjs';
 
 describe.skipIf(!enabled)('Java preset escape hatches without an opt-in', () => {
   const project = useEscapeHatchProject();

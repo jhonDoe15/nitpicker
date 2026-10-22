@@ -14,7 +14,7 @@ import {
   summary,
   useFrameworkProjects,
   withRuleClassOf,
-} from './test-support/test-frameworks-project.mjs';
+} from './__tests__/test-frameworks-project.mjs';
 
 describe.skipIf(!enabled)('Java preset on JUnit and ArchUnit test frameworks', () => {
   const { projectOf, findingsOf } = useFrameworkProjects();

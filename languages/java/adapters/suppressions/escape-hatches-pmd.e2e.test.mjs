@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { enabled, ofTool, useEscapeHatchProject } from './escape-hatches-project.mjs';
+import { enabled, ofTool, useEscapeHatchProject } from './__tests__/escape-hatches-project.mjs';
 
 describe.skipIf(!enabled)('Java preset PMD escape hatch', () => {
   const project = useEscapeHatchProject();

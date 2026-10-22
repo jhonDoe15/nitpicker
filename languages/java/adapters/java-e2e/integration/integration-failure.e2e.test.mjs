@@ -3,13 +3,12 @@ import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../java-diff.mjs';
 import {
-  HOOK_TIMEOUT_MS,
   enabled,
   fixtures,
   gradle,
   policy,
   useIntegrationProjects,
-} from './integration-support.mjs';
+} from '../__tests__/integration-support.mjs';
 
 describe.skipIf(!enabled)('a failing integration task wired to check', () => {
   const projectOf = useIntegrationProjects();
@@ -25,7 +24,7 @@ describe.skipIf(!enabled)('a failing integration task wired to check', () => {
         .replaceAll(project, '<project>')
         .replace(/^Full Gradle log: \S+\n/u, '');
     }
-  }, HOOK_TIMEOUT_MS);
+  }, 180_000);
 
   it('fail the build naming the failing cases of a checked integration task', () => {
     expect(runs.failure).toEqual(

@@ -2,12 +2,12 @@ import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll } from 'vitest';
-import { runJavaDiff } from '../java-diff.mjs';
-import { commitBranch, runGitIn, summarize } from '../test-support/gradle-e2e.mjs';
+import { runJavaDiff } from '../../java-diff.mjs';
+import { commitBranch, runGitIn, summarize } from '../../test-support/gradle-e2e.mjs';
 
 export const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-const fixture = path.resolve(import.meta.dirname, '../fixtures/gradle-project');
+const fixture = path.resolve(import.meta.dirname, '../../fixtures/gradle-project');
 
 const SUPPRESSED = `package demo;
 
@@ -86,11 +86,13 @@ class SwallowingTest {
 }
 `;
 
-export const ofTool = (result, tool) =>
-  summarize(result.newEnforceable.filter((finding) => finding.tool === tool));
+export function ofTool(result, tool) {
+  return summarize(result.newEnforceable.filter((finding) => finding.tool === tool));
+}
 
-export const ofFile = (result, file) =>
-  summarize(result.newEnforceable.filter((finding) => path.basename(finding.path) === file));
+export function ofFile(result, file) {
+  return summarize(result.newEnforceable.filter((finding) => path.basename(finding.path) === file));
+}
 
 export function useEscapeHatchProject() {
   let repository;

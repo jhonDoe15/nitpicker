@@ -32,20 +32,26 @@ const MAX_LISTING_BYTES = 256 * 1024 * 1024;
 
 async function listCases(args, flag) {
   const unset = SUITES.flatMap((suite) => ['-u', suiteFlag(suite)]);
-  const result = await run(
-    'env',
-    [
-      ...unset,
-      ...(flag === undefined ? [] : [`${flag}=1`]),
-      process.execPath,
-      path.join(root, 'node_modules/vitest/vitest.mjs'),
-      'list',
-      ...args,
-      '--no-isolate',
-      '--json',
-    ],
-    { cwd: root, encoding: 'utf8', maxBuffer: MAX_LISTING_BYTES },
-  ).catch((failure) => assert.fail(failure.stderr || failure.stdout || failure.message));
+  const command = [
+    ...unset,
+    ...(flag === undefined ? [] : [`${flag}=1`]),
+    process.execPath,
+    path.join(root, 'node_modules/vitest/vitest.mjs'),
+    'list',
+    ...args,
+    '--no-isolate',
+    '--json',
+  ];
+  let result;
+  try {
+    result = await run('env', command, {
+      cwd: root,
+      encoding: 'utf8',
+      maxBuffer: MAX_LISTING_BYTES,
+    });
+  } catch (failure) {
+    assert.fail(failure.stderr || failure.stdout || failure.message);
+  }
   return JSON.parse(result.stdout).map(({ file, name }) => ({
     file: path.relative(root, file).split(path.sep).join('/'),
     name,

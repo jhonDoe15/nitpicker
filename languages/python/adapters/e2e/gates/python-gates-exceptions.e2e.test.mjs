@@ -64,12 +64,17 @@ describe.skipIf(!pythonE2eEnabled)('Python preset one-way rules and exceptions e
       'python-rules no-inline-suppression rules.py',
       'ruff PTH118 rules.py',
     ]);
-    expect(result.text).toMatch(/Declare records as `@dataclass\(frozen=True\)`/);
-    expect(result.text).toMatch(/Use `pathlib\.Path`/);
-    expect(result.text).toMatch(/Remove the comment and fix the code/);
-    expect(result.text).toMatch(
-      /add \{"rule":"PTH118","paths":\["src\/demo\/rules\.py"\],"reason":"..."\} to "python\.exceptions" in nitpicker\.config\.json\./,
+    expect(/Declare records as `@dataclass\(frozen=True\)`/.test(result.text), result.text).toBe(
+      true,
     );
+    expect(/Use `pathlib\.Path`/.test(result.text), result.text).toBe(true);
+    expect(/Remove the comment and fix the code/.test(result.text), result.text).toBe(true);
+    expect(
+      /add \{"rule":"PTH118","paths":\["src\/demo\/rules\.py"\],"reason":"..."\} to "python\.exceptions" in nitpicker\.config\.json\./.test(
+        result.text,
+      ),
+      result.text,
+    ).toBe(true);
   });
   it('fails the exceptions that hide checked code until a person accepts exactly those loosenings', () => {
     const result = gate(project, 'excepted');

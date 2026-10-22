@@ -5,7 +5,6 @@ import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { collectJavaFindings } from '../../java-diff.mjs';
 import {
   FULL_COVERAGE,
-  HOOK_TIMEOUT_MS,
   WITHOUT_FAREWELL,
   coverage,
   enabled,
@@ -16,7 +15,7 @@ import {
   policy,
   slowTests,
   useIntegrationProjects,
-} from './integration-support.mjs';
+} from '../__tests__/integration-support.mjs';
 
 const LAYER_TEST = 'src/integrationTest/java/demo/LayerArchTest.java';
 
@@ -41,12 +40,12 @@ describe.skipIf(!enabled)('an integration suite wired to check or left unwired',
       'package demo;\n\nimport org.junit.jupiter.api.Test;\n\nclass LayerArchTest {\n  @Test\n  void layersHold() {\n    throw new AssertionError("layer violated");\n  }\n}\n',
     );
     runs.suite = collectJavaFindings(project, { gradle, policy });
-  }, HOOK_TIMEOUT_MS);
+  }, 180_000);
   beforeAll(() => {
     const project = projectOf(path.join(fixtures, 'integration-unwired'), { sources: true });
     moveIntegrationTest(project);
     runs.unwired = collectJavaFindings(project, { gradle, policy });
-  }, HOOK_TIMEOUT_MS);
+  }, 180_000);
 
   it('run for a suite wired to check, with its own tags and library versions, in one report', () => {
     expect(coverage(runs.suite)).toEqual(FULL_COVERAGE);
