@@ -1,7 +1,7 @@
 import ast
 
 from checks.common import dotted_name, finding, type_text
-from errors.cancellation import cancellation_finding
+from errors.cancellation import awaits_cancelled_task, cancellation_finding
 from errors.handling import is_handled
 from errors.logged_errors import logged_findings
 
@@ -52,6 +52,9 @@ class Errors(ast.NodeVisitor):
     visit_AsyncFunctionDef = visit_scope
 
     def visit_ExceptHandler(self, node):
+        if awaits_cancelled_task(node, self.context):
+            self.generic_visit(node)
+            return
         cancellation = cancellation_finding(node, self.context)
         if cancellation is not None:
             self.findings.append(cancellation)
