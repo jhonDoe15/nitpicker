@@ -1,4 +1,4 @@
-import { createIdentityCounter } from '../../../ingest/common.mjs';
+import { createIdentityCounter } from '../../../../../shared/ingest/common.mjs';
 
 export const REVIEW_TOOL = 'pmd';
 
