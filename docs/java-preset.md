@@ -415,13 +415,26 @@ classpath and its `test` task, and adds no test library to the project.
     `count` enforceable findings per site are baselined on both snapshots, read from the head's
     inventory. Head fails with `baseline-expansion` for any site whose count is higher than on base
     (a new site counts as 0 before).
-  - `exceptions` lifts one rule for some paths: `{ "rule", "paths", "reason" }`, where `rule` is the
-    finding as printed, `<tool>/<rule>` (for example `pmd/UnusedPrivateField`), and `tool` is one of
-    the tools the Java analyzer reports. Matching findings are dropped on both snapshots. The shared
-    `file-lines-limit`, `folder-files-limit`, `folder-depth-limit`, `class-methods-limit`,
-    `class-fields-limit` and `inheritance-depth-limit` rules and the
-    [dependency and repository checks](usage.md#dependency-and-repository-checks) are named as they are. Each exception is listed
-    in the report and changes the configuration hash.
+  - `exceptions` lifts one rule for some paths: `{ "rule", "paths", "function"?, "reason" }`. `rule` is
+    a finding as it is printed, `<tool>/<rule>` (for example `pmd/UnusedPrivateField`), where `tool`
+    is one of the tools the Java analyzer reports, or a rule nitpicker adds, bare or as printed:
+    `file-lines-limit`, `line-length-limit` (100 characters per Java line), `folder-files-limit`,
+    `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, the structure rules (`function-lines-limit`,
+    `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`),
+    `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
+    `mutant-nocoverage` and `stability-direction`, and the
+    [dependency and repository checks](usage.md#dependency-and-repository-checks). `function` names one method
+    (`Big.run`, parameter lists ignored; matched exactly, so `run` alone does not accept
+    `Big.run`) for the structure, CRAP, coverage and mutation rules, and is required for
+    `changed-branch-coverage`. A branch is attributed to the narrowest method of `structure.json`
+    that holds its line, or to a unit that is not a method: a `static { }` block
+    (`Big.<clinit>`), an instance initializer block (`Big.<init>`) and a field initializer, lambdas
+    included (`Big.field`), found by a scan of the source, so every branch of Java code can be
+    named. The name in the entry is the one the finding prints. `stability-direction` takes the
+    package name as printed (`"paths": ["stable"]`), not a source path. Matching findings are dropped on both snapshots. The entries reach the runner as
+    `--exception <json>`, one per entry, are listed in the report and change the analyzer's
+    configuration hash. Every message of a rule nitpicker adds ends with the entry that accepts it, and so does every PMD,
+    Checkstyle, SpotBugs and ArchUnit message (`pmd/<rule>`).
   - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
     keys are TypeScript only, and `layout.sharedRoots` and `layout.featureRoots` are accepted once the
     Java preset registers the rule that reads them (`shared-used-by-one-feature`) in
@@ -1372,7 +1385,8 @@ table:
   over 50 lines, 15 statements, control nesting 2 or 3 parameters fails with the same rule ids
   (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
   `function-parameters-limit`) and the same messages (`{name} has {value} {metric}; limit is
-{limit}`, and for nesting `{name} nests control flow {value} deep (limit {limit})`) as TypeScript. `shared/policy.mjs` marks the four rules as enforced for Java; the
+{limit}`, and for nesting `{name} nests control flow {value} deep (limit {limit})`) as TypeScript, followed by the `exceptions` entry that accepts the method (`If this is intended, add {...} to
+"exceptions" in nitpicker.config.json.`). `shared/policy.mjs` marks the four rules as enforced for Java; the
   catalog in `spec/checks.md` is generated from it.
 - **Metric source (decision to review).** `languages/java/gradle/StructureMetrics.java` parses the main sources
   (parse only, no compilation) with the JDK's compiler tree API (`jdk.compiler`) in single-file
@@ -1607,7 +1621,7 @@ palantir-java-format, or neither for `none`).
   `typeOnlyDependencies` summaries are not reported. (3) A second top-level class in a file named
   after another class is attributed to `<package>/<Class>.java`, which may not exist; only the
   metric path is affected. (4) Reflection and other references that are not in the bytecode are
-  invisible to jdeps. (5) Test classes and library classes are not part of the graph.
+  invisible to jdeps. (5) Test classes and library classes are not part of the graph. (6) The `path` of a `stability-direction` finding is the package name (`stable`), not a file, so its `exceptions` entry names the package: `"paths": ["stable"]`; a glob over source directories never matches it.
 - **Baselining.** Identities are `package-edge:<source>-><target>`, `package:<name>:<metric>` and
   `module:<metric>` with the file path, never a line, so an existing violation stays baselined and
   only a new package edge, or a new instability inversion, fails.

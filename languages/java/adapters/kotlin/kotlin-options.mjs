@@ -6,6 +6,12 @@ import {
 import { JAVA_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { SPRING_CONFIG_RULE_IDS } from '../spring/java-spring.mjs';
+import { JAVA_TOOLS } from '../gradle-presets.mjs';
+import {
+  isJavaFindingRule,
+  validateJavaFindingRule,
+} from '../exception-rules/java-finding-rules.mjs';
+import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 import { isKotlinFindingRule, KOTLIN_LISTED_RULES } from './rules/kotlin-messages.mjs';
 import { SOURCE_RULE_IDS } from './rules/kotlin-rules.mjs';
 import { KOTLIN_SPRING_RULE_IDS } from './spring/spring-rules.mjs';
@@ -32,7 +38,8 @@ export const KOTLIN_EXCEPTION_RULES = [
   ]),
 ];
 
-function isKotlinExceptionRule(rule) {
+function isKotlinExceptionRule(printed) {
+  const rule = canonicalRule(printed);
   return isKotlinFindingRule(rule) || KOTLIN_EXCEPTION_RULES.includes(rule);
 }
 
@@ -42,11 +49,15 @@ function validateKotlinExceptions(config) {
   }
   for (const [index, entry] of config.exceptions.entries()) {
     const rule = isPlainObject(entry) ? entry.rule : undefined;
-    if (typeof rule === 'string' && rule !== '' && !isKotlinExceptionRule(rule)) {
+    if (typeof rule !== 'string' || rule === '' || isKotlinExceptionRule(rule)) {
+      continue;
+    }
+    if (!isJavaFindingRule(rule)) {
       throw configError(
-        `"exceptions[${String(index)}].rule" is "${rule}", which is not a rule with exceptions. Write the rule as the finding prints it; rules with exceptions for the kotlin preset: detekt.<ruleset>.<Rule>, ${KOTLIN_EXCEPTION_RULES.join(', ')}`,
+        `"exceptions[${String(index)}].rule" is "${rule}", which is not a rule with exceptions. Write the rule as the finding prints it; rules with exceptions for the kotlin preset: detekt.<ruleset>.<Rule>, ${KOTLIN_EXCEPTION_RULES.join(', ')}, and, for the Java sources of the project, a finding as it is printed, "<tool>/<rule>" (for example "pmd/UnusedPrivateField"; tools: ${JAVA_TOOLS.join(', ')})`,
       );
     }
+    validateJavaFindingRule(entry, `exceptions[${String(index)}].rule`);
   }
 }
 

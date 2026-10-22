@@ -1,4 +1,3 @@
-import { ifRightHere } from '../../review-rules/review-finding.mjs';
 import { ancestors } from '../model/kotlin-declarations.mjs';
 import { argumentValue } from '../syntax/kotlin-annotations.mjs';
 import { enclosingFunction } from '../syntax/expressions/kotlin-scope.mjs';
@@ -114,7 +113,7 @@ export function isTrueArgument(annotation, name) {
 export function defineRule(name, text, check) {
   return {
     name,
-    message: `${text} ${ifRightHere(name)}`,
+    message: text,
     check,
   };
 }

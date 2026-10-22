@@ -60,7 +60,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         path: 'src/base/__init__.py',
         identity: 'package-edge:base->other',
         message:
-          'base depends on less stable package other. Depend on an abstraction in a more stable package instead. To allow it for some paths, add a "python.exceptions" entry for stability-direction in nitpicker.config.json.',
+          'base depends on less stable package other. Depend on an abstraction in a more stable package instead. If this is intended, add {"rule":"stability-direction","paths":["src/base/__init__.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);
@@ -83,7 +83,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         path: 'src/demo/a.py',
         identity: 'contract:Layers:demo.a -> demo.b',
         message:
-          'Import contract "Layers" is broken: demo.a -> demo.b. Remove the import. To allow it for some paths, add a "python.exceptions" entry for contract-broken in nitpicker.config.json.',
+          'Import contract "Layers" is broken: demo.a -> demo.b. Remove the import. If this is intended, add {"rule":"contract-broken","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 4 },
       },
@@ -159,7 +159,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         path: 'src/billing/invoice.py',
         identity: 'unlisted:pyyaml',
         message:
-          'Package pyyaml is imported (as yaml) but not listed in pyproject.toml. Add it to the project dependencies (a dev dependency group for tests and tooling). To allow it for some paths, add a "python.exceptions" entry for unlisted-dependency in nitpicker.config.json.',
+          'Package pyyaml is imported (as yaml) but not listed in pyproject.toml. Add it to the project dependencies (a dev dependency group for tests and tooling). If this is intended, add {"rule":"unlisted-dependency","paths":["src/billing/invoice.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);
