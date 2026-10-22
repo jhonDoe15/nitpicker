@@ -5,6 +5,7 @@
   "languages/java/adapters/kotlin-e2e/kotest.e2e.test.mjs": 99,
   "languages/java/adapters/kotlin-e2e/kotlin-preset-review-rules.e2e.test.mjs": 170,
   "languages/java/adapters/kotlin-e2e/kotlin-preset-toolchain.e2e.test.mjs": 66,
+  "languages/java/adapters/kotlin-e2e/kotlin-spring-arch.e2e.test.mjs": 120,
   "languages/java/adapters/kotlin-e2e/lint/kotlin-preset-lint-baseline.e2e.test.mjs": 137,
   "languages/java/adapters/kotlin-e2e/lint/kotlin-preset-lint-detection.e2e.test.mjs": 71,
   "languages/java/adapters/kotlin-e2e/lint/kotlin-preset-lint-detekt-config.e2e.test.mjs": 113,
