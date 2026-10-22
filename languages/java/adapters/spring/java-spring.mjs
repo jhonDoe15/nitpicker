@@ -1,5 +1,6 @@
 import { nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
-import { readSpringDocuments, stripBracketsAndQuotes, usesJpa } from './spring-config-files.mjs';
+import { readSpringDocuments, usesJpa } from './spring-config-files.mjs';
+import { ACTUATOR_RULE } from './config-rules/actuator.mjs';
 import { DIAGNOSTIC_RULES } from './config-rules/diagnostics.mjs';
 import { isPlaceholder, isTest, isTestOrLocal, isTrue } from './config-rules/profiles.mjs';
 import { relaxKey } from './spring-config-parser.mjs';
@@ -23,7 +24,7 @@ const STARTUP_FLAG_NAMES = [
 ];
 const STARTUP_FLAGS = new Set(STARTUP_FLAG_NAMES.map(relaxKey));
 const OPEN_IN_VIEW_MESSAGE =
-  'Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries. Set spring.jpa.open-in-view=false.';
+  'Set spring.jpa.open-in-view=false. Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries.';
 
 const ENTRY_RULES = [
   {
@@ -36,18 +37,10 @@ const ENTRY_RULES = [
     exempt: isTest,
     problem: (entry, key) =>
       STARTUP_FLAGS.has(key) && isTrue(entry)
-        ? `${displayName(key, STARTUP_FLAG_NAMES)}=true hides wiring problems instead of fixing them. Remove it, or restructure the beans.`
+        ? `Remove ${displayName(key, STARTUP_FLAG_NAMES)}=true and restructure the beans; the flag hides wiring problems instead of fixing them.`
         : undefined,
   },
-  {
-    rule: 'actuator-exposure',
-    exempt: isTestOrLocal,
-    lists: true,
-    problem: (entry, key) =>
-      key === relaxKey('management.endpoints.web.exposure.include') && exposesAll(entry.value)
-        ? 'management.endpoints.web.exposure.include=* exposes every actuator endpoint. List the endpoints you need, for example health,info.'
-        : undefined,
-  },
+  ACTUATOR_RULE,
   ...DIAGNOSTIC_RULES,
   {
     rule: 'literal-secret',
@@ -59,13 +52,13 @@ const ENTRY_RULES = [
 
 function secretProblem(entry) {
   return entry.value.trim().startsWith('${')
-    ? `${entry.key} falls back to a literal secret. Drop the default from the placeholder.`
-    : `${entry.key} holds a literal secret. Remove it and set ${secretVariable(entry.key)} in the environment, or read it from a secret store.`;
+    ? `Drop the default from the placeholder of ${entry.key}, so a missing secret fails at startup; it falls back to a literal secret.`
+    : `Set ${secretVariable(entry.key)} in the environment, or read it from a secret store, and remove the literal secret from ${entry.key}.`;
 }
 
 function urlProblem(entry) {
   return credentialUrl(entry.value)
-    ? `${entry.key} embeds a credential in its URL. Take it out of the URL and supply it from the environment, for example through a placeholder without a default.`
+    ? `Supply the credential in ${entry.key} from the environment, for example through a placeholder without a default, and take it out of the URL.`
     : undefined;
 }
 
@@ -76,11 +69,11 @@ function ddlProblem(entry, key) {
   if (DDL_MODES.has(key)) {
     const mode = entry.value.toLowerCase();
     return mode !== '' && mode !== 'none' && mode !== 'validate'
-      ? `${displayName(key, DDL_MODE_NAMES)} lets Hibernate change the schema. Manage the schema with Flyway or Liquibase and use none or validate.`
+      ? `Manage the schema with Flyway or Liquibase and set ${displayName(key, DDL_MODE_NAMES)} to none or validate; other modes let Hibernate change the schema.`
       : undefined;
   }
   return key === GENERATE_DDL && isTrue(entry)
-    ? 'spring.jpa.generate-ddl lets Hibernate change the schema. Manage the schema with Flyway or Liquibase and keep it false.'
+    ? 'Manage the schema with Flyway or Liquibase and keep spring.jpa.generate-ddl false; true lets Hibernate change the schema.'
     : undefined;
 }
 
@@ -88,14 +81,8 @@ function displayName(key, names) {
   return names.find((name) => relaxKey(name) === key) ?? key;
 }
 
-function exposesAll(value) {
-  return stripBracketsAndQuotes(value)
-    .split(',')
-    .some((item) => item.trim() === '*');
-}
-
 function allowance(rule) {
-  return `To allow it here, add an exception for spring/${rule} in nitpicker.config.json.`;
+  return `If it is right here, add an exception for spring/${rule} in nitpicker.config.json.`;
 }
 
 export function readSpringConfigFindings(

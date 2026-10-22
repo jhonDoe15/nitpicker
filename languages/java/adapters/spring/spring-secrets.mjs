@@ -1,7 +1,10 @@
 const SECRET_WORDS = new Set([
   'password',
+  'passwd',
+  'passphrase',
   'secret',
   'token',
+  'credential',
   'credentials',
   'apikey',
   'privatekey',
@@ -41,7 +44,8 @@ const NOT_LITERAL = [
 ];
 const URL_PASSWORD = /:\/\/[^/\s:@]*:([^@\s/]+)@/;
 const URL_PARAMETER =
-  /[?&;][\w.-]*(?:password|pwd|passwd|secret|token|api-?key|access-?key)=([^&;\s]+)/i;
+  /[?&;][\w.-]*(?:password|pwd|passwd|secret|token|api[-_]?key|access[-_]?key)=([^&;\s]+)/i;
+const URL_KEY_PARAMETER = /[?&;]key=([\w-]{20,})(?:[&;\s]|$)/;
 const ORACLE_LOGIN = /^jdbc:oracle:\w+:@?[^/@\s:]+\/([^@\s]+)@/i;
 const URL_TEMPLATE = /^(?:\{[^}]*\}|%[a-z]|<[^>]*>)$/i;
 const ALGORITHM = /^(?:[A-Z]{2,6}\d{0,4}|[A-Z]+(?:_[A-Z]+)+)$/;
@@ -107,7 +111,7 @@ export function secretVariable(key) {
 
 export function credentialUrl(value) {
   const text = placeholderDefault(value.trim());
-  return [URL_PASSWORD, URL_PARAMETER, ORACLE_LOGIN].some((pattern) => {
+  return [URL_PASSWORD, URL_PARAMETER, URL_KEY_PARAMETER, ORACLE_LOGIN].some((pattern) => {
     const secret = pattern.exec(text)?.[1];
     return secret !== undefined && !secret.startsWith('${') && !URL_TEMPLATE.test(secret);
   });

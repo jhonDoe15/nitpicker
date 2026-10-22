@@ -1561,15 +1561,23 @@ main `resourceRoots`.
 Each rule allows one form and its message names it. A finding prints as `pmd/<rule>`, which is also
 the `rule` of a config exception.
 
-| Area          | Rules                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Beans         | `SpringConstructorInjection`, `SpringImmutableBeans` (also static non-final fields), `SpringBeanCollectionState` (a `final` `HashMap`/`ArrayList`/`HashSet`/... field of a singleton bean written to after startup), `SpringNoServiceLocator`, `SpringNoLazyInjection`, `SpringLiteConfiguration`, `SpringNoComponentScan`, `SpringHttpClientPerCall` (a `RestTemplate`, `RestClient`, `WebClient` or `HttpClient` built inside a method that is not a `@Bean` or `static` factory), `SpringHttpClientTimeouts` (a client or request factory built without timeouts in a field, constructor, `@Bean` or `static` factory), `SpringNoPostConstructIo` (repository, JDBC, `EntityManager` or HTTP calls in `@PostConstruct`)                                                                          |
-| Configuration | `SpringTypedConfiguration` (no `@Value` outside `@Configuration`, no `System.getenv`/`getProperty` of application keys in any class except `@Configuration`, `@SpringBootApplication`, `EnvironmentPostProcessor`, `ApplicationContextInitializer` and `main`, no `Environment.getProperty` in beans), `SpringValueSecretDefault` (a non-empty default for a secret-named key in `@Value("${...secret:default}")`, `@DefaultValue` or `getProperty(key, default)`), `SpringProfileOnConfiguration`                                                                                                                                                                                                                                                                                                  |
-| Proxies       | `SpringProxyMethodVisibility`, `SpringProxySelfCall` (both for `@Transactional`, `@Async`, the cache annotations, `@Retryable`, `@PreAuthorize`, `@PostAuthorize`, `@Secured`), `SpringTransactionalAnnotation`, `SpringNoTransactionalController`, `SpringNoRequiresNew`, `SpringNoSwallowedTransactionException` (also private helpers of a `@Transactional` class), `SpringTransactionalCheckedRollback` (a checked `throws` without `rollbackFor`), `SpringTransactionalReadOnlyWrite` (a repository or `EntityManager` write under `readOnly = true`), `SpringAsyncExecutor`, `SpringScheduledFixedDelay`                                                                                                                                                                                      |
-| Web           | `SpringComposedMapping`, `SpringRestController`, `SpringValidRequestBody`, `SpringTypedResponse` (a handler returns `Object`, `JsonNode`, `Map<String, Object>`, `ResponseEntity<?>`, raw `ResponseEntity`, a list or `Optional` of those, or `null`), `SpringTypedRequestBody` (a `@RequestBody` that is an `Object`, `JsonNode`, `Map<String, Object>` or a list or `Optional` of those), `SpringNoErrorLeak` (the stack trace, or the message of a generic, JDK or persistence exception, reaching the response of an `@ExceptionHandler`), `SpringNoCrossOrigin`, `SpringCorsWildcard`, `SpringPasswordEncoder` (also the MD4, message-digest, LDAP SHA and SHA-256 encoders and `User.withDefaultPasswordEncoder()`), `SpringPermitAllAnyRequest`, `SpringCsrfDisabled`, `SpringHardcodedUser` |
-| JPA           | `JpaLazyFetching`, `JpaEntityClass`, `JpaManyToManyCascade`, `JpaManyToManySet`, `JpaVersion`, `JpaSequenceIds`, `JpaEnumString` (an enum field without `@Enumerated(EnumType.STRING)`), `JpaIdentityHashCode` (`hashCode` reading the `@GeneratedValue` id, or Lombok `@Data`/`@EqualsAndHashCode` without arguments on an entity)                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Spring Data   | `SpringDataDerivedQuery` (every declared repository method has `@Query`; inherited methods such as `findById` and `save` stay legal), `SpringDataNativeQuery` (also `EntityManager.createNativeQuery`), `SpringDataModifyingQuery`, `SpringDataNoSaveInLoop`, `SpringDataBatchOfOne`, `SpringDataRowWriteInLoop`, `SpringDataSaveInLoopHelper`, `SpringDataFilterInQuery`, `SpringQueryConcatenation`, `SpringDataNoFlush`, `SpringDataNamedParameters`, `SpringDataQueryTextBlock`                                                                                                                                                                                                                                                                                                                 |
-| Tests         | `SpringUnusedContext` (test sources only, from `spring-test-ruleset.xml`; see [Review rules](#review-rules))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Area          | Rules                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Beans         | `SpringConstructorInjection`, `SpringImmutableBeans` (also static non-final fields), `SpringBeanCollectionState` (a `final` `HashMap`/`ArrayList`/`HashSet`/... field of a singleton bean written to after startup), `SpringNoServiceLocator`, `SpringNoLazyInjection`, `SpringLiteConfiguration`, `SpringNoComponentScan`, `SpringHttpClientPerCall` (a `RestTemplate`, `RestTemplateBuilder`, `RestClient`, `WebClient` or `HttpClient` built inside a method that is not a `@Bean`, a `static` factory or a private helper only they call), `SpringHttpClientTimeouts` (a client, request factory, `new RestTemplateBuilder()` or Reactor Netty `HttpClient` built without timeouts in a field, constructor, `@Bean`, `static` factory or such a helper), `SpringNoPostConstructIo` (repository, JDBC, `EntityManager` or HTTP calls in `@PostConstruct`) |
+| Configuration | `SpringTypedConfiguration` (no `@Value` outside `@Configuration`, no `System.getenv`/`getProperty` of application keys in any class except `@Configuration`, `@SpringBootApplication`, `EnvironmentPostProcessor`, `ApplicationContextInitializer` and `main`, no `Environment.getProperty` in beans), `SpringValueSecretDefault` (a non-empty default for a secret-named key in `@Value("${...secret:default}")`, `@DefaultValue` or `getProperty(key, default)`), `SpringProfileOnConfiguration`                                                                                                                                                                                                                                                                                                                                                           |
+| Proxies       | `SpringProxyMethodVisibility`, `SpringProxySelfCall` (both for `@Transactional`, `@Async`, the cache annotations, `@Retryable`, `@PreAuthorize`, `@PostAuthorize`, `@Secured`), `SpringTransactionalAnnotation`, `SpringNoTransactionalController`, `SpringNoRequiresNew`, `SpringNoSwallowedTransactionException` (also private helpers of a `@Transactional` class), `SpringTransactionalCheckedRollback` (a checked `throws` without `rollbackFor`), `SpringTransactionalReadOnlyWrite` (a repository or `EntityManager` write under `readOnly = true`), `SpringAsyncExecutor`, `SpringScheduledFixedDelay`                                                                                                                                                                                                                                               |
+| Web           | `SpringComposedMapping`, `SpringRestController`, `SpringValidRequestBody`, `SpringTypedResponse` (a handler returns `Object`, `JsonNode`, `Map<String, Object>`, `ResponseEntity<?>`, raw `ResponseEntity`, a list or `Optional` of those, or `null`), `SpringTypedRequestBody` (a `@RequestBody` that is an `Object`, `JsonNode`, `Map<String, Object>` or a list or `Optional` of those), `SpringNoErrorLeak` (the stack trace, or the message of a generic, JDK or persistence exception, reaching the response of an `@ExceptionHandler`), `SpringNoCrossOrigin`, `SpringCorsWildcard`, `SpringPasswordEncoder` (also the MD4, message-digest, LDAP SHA and SHA-256 encoders and `User.withDefaultPasswordEncoder()`), `SpringPermitAllAnyRequest`, `SpringCsrfDisabled`, `SpringHardcodedUser`                                                          |
+| JPA           | `JpaLazyFetching`, `JpaEntityClass`, `JpaManyToManyCascade`, `JpaManyToManySet`, `JpaVersion`, `JpaSequenceIds`, `JpaEnumString` (an enum field or `@ElementCollection` of enums without `@Enumerated(EnumType.STRING)`, or enum map keys without `@MapKeyEnumerated(EnumType.STRING)`), `JpaIdentityHashCode` (`hashCode` reading the `@GeneratedValue` id, or Lombok `@Data`/`@EqualsAndHashCode` without arguments on an entity)                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Spring Data   | `SpringDataDerivedQuery` (every declared repository method has `@Query`; inherited methods such as `findById` and `save` stay legal), `SpringDataNativeQuery` (also `EntityManager.createNativeQuery`), `SpringDataModifyingQuery`, `SpringDataNoSaveInLoop`, `SpringDataBatchOfOne`, `SpringDataRowWriteInLoop`, `SpringDataSaveInLoopHelper`, `SpringDataFilterInQuery`, `SpringQueryConcatenation`, `SpringDataNoFlush`, `SpringDataNamedParameters`, `SpringDataQueryTextBlock`                                                                                                                                                                                                                                                                                                                                                                          |
+| Tests         | `SpringUnusedContext` (test sources only, from `spring-test-ruleset.xml`; see [Review rules](#review-rules))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+
+**Kotlin.** PMD reads Java sources only, so every rule in this table checks the Java files of a
+project, on Gradle and Maven alike. Kotlin classes, in a kotlin-preset project or in a mixed
+module, get none of these rules for now: not the beans, HTTP-client, CSRF and security rules, not
+the JPA entity rules (`JpaEnumString`, `JpaIdentityHashCode`, `JpaLazyFetching`, ...) and not the
+Spring Data loop and query rules. The Spring configuration file checks
+([below](#spring-configuration-files)) do not depend on the language and apply to Kotlin projects
+too, and `missing-enable` scans the Kotlin sources.
 
 **Inline suppressions.** PMD would let a change silence any rule without review. nitpicker runs PMD
 with `--suppress-marker` set to a string no code uses, so `// NOPMD` comments do nothing. PMD still
@@ -1654,12 +1662,17 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   credentials (`true` or `Boolean.TRUE`), and on a `@CrossOrigin` with origin `"*"` and
   `allowCredentials = "true"`. A filter chain is identified by the variable at the start of its call chain (`http`).
   `SpringCsrfDisabled` (`csrf(...disable())`, `csrf(AbstractHttpConfigurer::disable)`,
-  `csrf().disable()`) accepts a chain that also sets `SessionCreationPolicy.STATELESS`, and an OAuth2
-  resource server chain (`oauth2ResourceServer(o -> o.jwt(...))` or `opaqueToken`) without
-  `formLogin`, `httpBasic`, `rememberMe` or a login flow. `SpringPermitAllAnyRequest` fires on
-  `anyRequest().permitAll()` and on `requestMatchers("/**").permitAll()` unless the chain is
-  scoped by `securityMatcher(...)` or the matcher names an `HttpMethod` (the `OPTIONS` preflight
-  case), and on `web.ignoring().requestMatchers("/**")`. `SpringHardcodedUser` fires on
+  `csrf().disable()`, `csrf(ServerHttpSecurity.CsrfSpec::disable)`) accepts a chain that also sets
+  `SessionCreationPolicy.STATELESS` or a `NullSecurityContextRepository` (servlet), or
+  `securityContextRepository(NoOpServerSecurityContextRepository.getInstance())` (WebFlux), and an
+  OAuth2 resource server chain (`oauth2ResourceServer(o -> o.jwt(...))` or `opaqueToken`) whose
+  `formLogin`, `httpBasic`, `rememberMe` and login flows are absent or disabled
+  (`formLogin(AbstractHttpConfigurer::disable)`, `httpBasic(b -> b.disable())`,
+  `formLogin().disable()`). `SpringPermitAllAnyRequest` fires on `anyRequest().permitAll()`,
+  `anyExchange().permitAll()` and `requestMatchers("/**").permitAll()` or
+  `pathMatchers("/**").permitAll()` unless the chain is scoped by `securityMatcher(...)` or the
+  matcher names an `HttpMethod` (the `OPTIONS` preflight case), and on
+  `web.ignoring().requestMatchers("/**")`. `SpringHardcodedUser` fires on
   `.password("literal")`, `.password(encoder.encode("literal"))` or a local variable or field
   initialized with a literal, on a `User` builder or an `inMemoryAuthentication()` user.
 - `SpringQueryConcatenation` checks the first argument of `EntityManager.createQuery` and
@@ -1707,14 +1720,21 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   `@Transactional` class, and a helper that a `@Transactional` method of the same class calls.
 - `SpringImmutableBeans` now includes `static` non-final fields. `SpringBeanCollectionState` needs
   both a plain collection and a write to it after startup. Writes in the constructor, an
-  initializer block, a `@PostConstruct` method, or a private helper (two levels deep, also through
+  initializer block, a `@PostConstruct` method, `InitializingBean.afterPropertiesSet()`,
+  `SmartInitializingSingleton.afterSingletonsInstantiated()`, a method that a `@Bean(initMethod = ...)`
+  in the same file names, or a private helper (two levels deep, also through
   `this::register`) that only those call are startup and accepted; so are writes inside
   `synchronized` blocks or methods and in methods that take a `Lock`, and beans with
   `@RequestScope`, `@SessionScope` or a `@Scope` other than `singleton`. The allowed form is a
   collection filled in the constructor and kept as `Map.copyOf`/`List.copyOf`, a
   `ConcurrentHashMap`, or a cache. `SpringHttpClientPerCall` accepts a client built in a field
-  initializer, a constructor, a `@Bean` method or returned from a `static` factory method;
-  `SpringHttpClientTimeouts` checks those places and reports `new RestTemplate()` without a later
+  initializer, a constructor, a `@Bean` method, a private helper (two levels deep) that only those
+  call, or returned from a `static` factory method; it also reports `new RestTemplateBuilder()` in
+  any other method. `SpringHttpClientTimeouts` checks those places and reports
+  `new RestTemplateBuilder()` whose chain has no `connectTimeout`, `readTimeout` (or their `set`
+  forms), `requestFactory`, `requestFactorySettings` or `requestFactoryBuilder`, a Reactor Netty
+  `HttpClient.create()` without `responseTimeout` in its chain or on its variable, a no-argument
+  `ReactorClientHttpConnector`, `new RestTemplate()` without a later
   `setRequestFactory(...)`, `RestClient.create(...)`/`WebClient.create(...)` (except
   `RestClient.create(restTemplate)`, which keeps the template's factory), `HttpClient.newHttpClient()`,
   a `RestClient.builder()`, `WebClient.builder()` or `HttpClient.newBuilder()` whose call chain has
@@ -1728,7 +1748,9 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   value that only reaches a logger call passes, also through a local variable
   (`String message = ex.getMessage(); log.error("{}", message, ex);`). Handlers for your own
   exception types are not judged: their message is meant for the client.
-- `JpaEnumString` skips static and transient fields, `@Transient`, `@Convert` and Hibernate type
+- `JpaEnumString` also reads `@ElementCollection` fields: the element type of a collection and
+  the value type of a map need `@Enumerated(EnumType.STRING)`, an enum map key
+  `@MapKeyEnumerated(EnumType.STRING)`. It skips static and transient fields, `@Transient`, `@Convert` and Hibernate type
   annotations, entities that put `@Id` on a getter, and enums that an `@Converter(autoApply =
 true)` class in the same file converts. `JpaIdentityHashCode` reports the first read of a
   `@GeneratedValue` field (or its `getX()` getter) inside `hashCode`. Without a hand-written
@@ -1740,9 +1762,12 @@ true)` class in the same file converts. `JpaIdentityHashCode` reports the first 
   `System.getenv()` map, unless it is read by key (`System.getenv().get("X")`). It covers every
   class, plain helpers included, because a helper is the easy way around it; the allowed form there
   is to read the value once through `@ConfigurationProperties` and pass it in as a constructor or
-  method argument. `SpringValueSecretDefault` reads the last key segment: one ending in
-  `password`, `passwd`, `pwd`, `passphrase`, `secret`, `token`, `credential(s)`, `apikey`,
-  `privatekey`, or a `key` word (`api-key`, `signingKey`, `app.key`) is a secret, and any non-empty
+  method argument. `SpringValueSecretDefault` uses the secret words of the config files'
+  `literal-secret` check (see [Literal secrets](#spring-configuration-files)): the last key segment,
+  split into words, ends in `password`, `passwd`, `passphrase`, `secret`, `token`, `credential(s)`
+  or a named key (`api-key`, `apiKey`, `signing-key`, `access-key`, ...), or is a bare `key` under an
+  owner word (`app.api.key`, `jwt.key`), so `routing-key`, `partitionKey` and `app.sort.key` are
+  not secrets. Any non-empty
   default fires except a nested placeholder or SpEL (`${a:${B}}`, `#{...}`), so
   `${app.token:changeme}` fires and `${auth.token-ttl:3600}` does not. It also covers a non-empty
   `@DefaultValue` on a secret-named `@ConfigurationProperties` component and
@@ -1844,7 +1869,7 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 | `open-in-view`         | JPA in the main sources (`jakarta.persistence` or `javax.persistence` import) and `spring.jpa.open-in-view` unset, or true                                                                                                                                                                                                                                                                                                                                                                          | test             |
 | `ddl-auto`             | `spring.jpa.hibernate.ddl-auto` or `spring.jpa.properties.hibernate.hbm2ddl.auto` other than `none`/`validate`, or `spring.jpa.generate-ddl` true                                                                                                                                                                                                                                                                                                                                                   | test, local, dev |
 | `risky-startup-flags`  | `spring.main.allow-circular-references`, `allow-bean-definition-overriding` or `lazy-initialization` true                                                                                                                                                                                                                                                                                                                                                                                           | test             |
-| `actuator-exposure`    | `management.endpoints.web.exposure.include` containing `*`                                                                                                                                                                                                                                                                                                                                                                                                                                          | test, local, dev |
+| `actuator-exposure`    | `management.endpoints.web.exposure.include` containing `*` or a sensitive endpoint (below); `management.endpoints.access.default=unrestricted`; `management.endpoint.shutdown.access=unrestricted`; `management.endpoint.heapdump.access` `read-only` or `unrestricted`; `management.endpoint.shutdown.enabled` or `management.endpoints.enabled-by-default` true                                                                                                                                   | test, local, dev |
 | `error-details`        | `server.error.include-stacktrace`, `include-message` or `include-binding-errors` set to `always` or `on-param`; `include-exception` true; also as a placeholder default (`${X:always}`)                                                                                                                                                                                                                                                                                                             | test, local, dev |
 | `unsafe-diagnostics`   | `spring.jpa.show-sql` or `spring.jpa.properties.hibernate.show_sql` true; Hibernate bind logging (`org.hibernate.orm.jdbc.bind`, `orm.jdbc.extract`, `type.descriptor.sql`, any parent such as `org.hibernate.type`, and `root`) at TRACE or ALL; `management.endpoint.env.show-values`, `configprops.show-values`, `health.show-details` or `health.show-components` `always`; `spring.h2.console.enabled` or `settings.web-allow-others` true; also as a placeholder default (`${SHOW_SQL:true}`) | test, local, dev |
 | `active-profile`       | `spring.profiles.active` or `spring.profiles.include` with a literal value in the main (profile-less) document, one finding per line                                                                                                                                                                                                                                                                                                                                                                | none             |
@@ -1852,7 +1877,7 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 | `literal-secret`       | a literal value under a key whose last segment is, or ends in a separate word that is, a secret word (below)                                                                                                                                                                                                                                                                                                                                                                                        | test, local, dev |
 
 - **Literal secrets.** The last key segment, split into words at `-`, `_` and case changes, must
-  end in `password`, `secret`, `token`, `credentials`, `api-key` (or `apikey`), `private-key`,
+  end in `password`, `passwd`, `passphrase`, `secret`, `token`, `credential(s)`, `api-key` (or `apikey`), `private-key`,
   `secret-key`, `access-key`, `signing-key`, `encryption-key`, `hmac-key`, `jwt-key`, `crypto-key` or
   `master-key`, so `db-password`, `client-secret` and `jwtSecret` match while
   `password-file`, `token-validity-seconds` and `passwords` do not. Settings
@@ -1871,14 +1896,22 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   `app.cache.key` do not. A value that starts with `classpath:` or `file:` points at key material
   instead of holding it and is not judged. Any other key whose value is a URL is checked for a
   credential: `user:password@` in the authority, Oracle's `jdbc:oracle:thin:user/password@host`,
-  or a parameter whose name ends in `password`, `pwd`, `secret`, `token`, `api-key` or `access-key`
-  (`sslpassword=`, `client_secret=`, `access_token=`) in the query or after `;`, with a value that
+  or a parameter whose name ends in `password`, `pwd`, `secret`, `token`, `api-key`, `api_key` or
+  `access-key` (`sslpassword=`, `client_secret=`, `access_token=`) in the query or after `;`, or a
+  plain `key=` parameter whose value is a token of 20 or more letters, digits, `-` or `_` (an API
+  key such as `?key=AIza...`; `?key=orders` is a setting), with a value that
   is not a `${...}` placeholder or a URI template (`{token}`, `{0}`, `%s`, `<token>`), so
   `jdbc:postgresql://db/shop?user=shop&password=${DB_PASSWORD}` passes. For an `<owner>.key` key,
   algorithm and identifier values (`RS256`, `AES256`, `SECRET_KEY_ID`) and single lowercase words
   (`read`, `rsa`) are settings, not keys. The finding
   is `literal-secret`, names the key and never the value. The Java twin is `SpringValueSecretDefault`,
   which judges the default inside `@Value("${jwt.secret:default}")` by the same words.
+- **Actuator.** The sensitive endpoints are `auditevents`, `beans`, `caches`, `conditions`,
+  `configprops`, `env`, `heapdump`, `httpexchanges`, `httptrace`, `jolokia`, `logfile`, `loggers`,
+  `mappings`, `quartz`, `sessions`, `shutdown` and `threaddump`: they serve configuration, heap or
+  thread contents, or change the running application. `health`, `info`, `metrics` and
+  `prometheus` pass. A project that serves the sensitive ones only on a separate, non-public
+  `management.server.port` adds an exception.
 - **Active profiles.** `spring.profiles.active` and `spring.profiles.include` belong in the
   deployment's environment, not in the packaged main file: a literal there turns the dev
   exemptions on in production. Values that come from the environment pass: `${SPRING_PROFILES_ACTIVE}`,
@@ -1888,7 +1921,10 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   fallback a deployment can override; the one for `include` names `spring.profiles.group`. A flow
   list (`active: [dev, h2]`) is one finding.
 - **Missing `@Enable...`.** Java and Kotlin sources of the main source roots are scanned (comments and
-  strings blanked) for Spring's `@Scheduled`, `@Async`, `@Cacheable`/`@CacheEvict`/`@CachePut`/`@Caching`,
+  strings blanked), the Kotlin roots included: the manifest's `kotlinSourceRoots` lists the Kotlin
+  plugin's main source directories on Gradle (with the java preset too) and, on Maven, the
+  `sourceDirs` of `kotlin-maven-plugin`'s compile configuration, or `src/main/kotlin` when it
+  names none for Spring's `@Scheduled`, `@Async`, `@Cacheable`/`@CacheEvict`/`@CachePut`/`@Caching`,
   `@PreAuthorize`/`@PostAuthorize`/`@PreFilter`/`@PostFilter`/`@Secured` and the two `@Retryable`
   annotations (matched through their import or full name, so other libraries' `@Scheduled` do not
   count). When no main class carries `@EnableScheduling`, `@EnableAsync`, `@EnableCaching`,
