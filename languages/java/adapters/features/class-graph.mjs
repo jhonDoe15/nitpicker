@@ -7,19 +7,20 @@ import { readDeclarations } from '../review-rules/source-declarations.mjs';
 const MAIN_EDGES = 'jdeps.txt';
 const MAIN_CLASSES = 'jdeps-classes.txt';
 
-export function packageOf(className) {
+function packageOf(className) {
   const index = className.lastIndexOf('.');
   return index < 0 ? '' : className.slice(0, index);
 }
 
-function report(project, name) {
-  return readFileSync(path.join(project.reportRoot, name), 'utf8');
+function reportFiles({ reportRoot }) {
+  return {
+    edges: path.join(reportRoot, MAIN_EDGES),
+    classes: path.join(reportRoot, MAIN_CLASSES),
+  };
 }
 
 function isComplete(project) {
-  return [MAIN_EDGES, MAIN_CLASSES].every((name) =>
-    existsSync(path.join(project.reportRoot, name)),
-  );
+  return Object.values(reportFiles(project)).every((file) => existsSync(file));
 }
 
 function keyOf(qualifier, name) {
@@ -37,7 +38,7 @@ function sourceFileReader(projectRoot, project) {
 
 function readProject(projectRoot, project) {
   const names = [
-    ...new Set(report(project, MAIN_CLASSES).split(/\r?\n/u).filter(Boolean).map(outerClass)),
+    ...new Set(readFileSync(reportFiles(project).classes, 'utf8').split(/\r?\n/u).filter(Boolean).map(outerClass)),
   ];
   const fileOf = sourceFileReader(projectRoot, project);
   const classes = names.flatMap((name) => {
@@ -68,7 +69,7 @@ function classResolver(read) {
   );
   return {
     isProjectClass: (name) => owners.has(outerClass(name)),
-    resolve(qualifier, name) {
+    resolve: (qualifier, name) => {
       const outer = outerClass(name);
       const found = owners.get(outer) ?? [];
       const owner = found.includes(qualifier) || found.length !== 1 ? qualifier : found[0];
@@ -78,7 +79,7 @@ function classResolver(read) {
 }
 
 function projectEdges(project, resolver) {
-  return parseJdeps(report(project, MAIN_EDGES)).flatMap((edge) => {
+  return parseJdeps(readFileSync(reportFiles(project).edges, 'utf8')).flatMap((edge) => {
     const source = resolver.resolve(project.qualifier, edge.source);
     if (source === undefined) {
       return [];

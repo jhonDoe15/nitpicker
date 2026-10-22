@@ -2,13 +2,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { readFeatureGraphFindings } from './feature-findings.mjs';
 import {
-  featureProject,
+  featureProjects,
   javaSources,
-  removeFeatureProjects,
   rows,
 } from './test-support/feature-project.mjs';
 
-afterEach(removeFeatureProjects);
+const { project: featureProject, remove } = featureProjects();
+
+afterEach(remove);
 
 const FEATURES = 'com.acme.features';
 const FOLDER = 'src/main/java/com/acme/features';
@@ -38,13 +39,16 @@ describe('feature boundaries on the class graph', () => {
 
     const importer = `${FOLDER}/billing/BillingService.java`;
     const target = `${FOLDER}/shipping/internal/ShipmentWriter.java`;
-    expect(rows(found)).toEqual([
-      ['feature-internal-import', importer, `feature-internal:${target}`],
+    expect(found).toEqual([
+      {
+        tool: 'coupling',
+        rule: 'feature-internal-import',
+        path: importer,
+        identity: `feature-internal:${target}`,
+        message: `Import feature shipping only through its public face, a class directly in the feature package ${FOLDER}/shipping/: ${importer} imports its internal module ${target}. Expose what ${importer} needs there, or move the code both use to a shared root (layout.sharedRoots). ${exceptionHint('feature-internal-import', importer)}`,
+        classification: 'enforceable',
+      },
     ]);
-    expect(found[0]).toMatchObject({ tool: 'coupling', classification: 'enforceable' });
-    expect(found[0].message).toBe(
-      `Import feature shipping only through its public face, a class directly in the feature package ${FOLDER}/shipping/: ${importer} imports its internal module ${target}. Expose what ${importer} needs there, or move the code both use to a shared root (layout.sharedRoots). ${exceptionHint('feature-internal-import', importer)}`,
-    );
   });
 
   it('reports shared code that depends on a feature, and shared code only one feature uses', () => {
@@ -93,7 +97,9 @@ describe('feature boundaries on the class graph', () => {
       ['feature-cycle', `${FOLDER}/b/B.java`, `${FOLDER}/c|feature-cycle`],
       ['feature-cycle', `${FOLDER}/c/C.java`, `${FOLDER}/a|feature-cycle`],
     ]);
-    expect(found[0].message).toContain('a cycle between features a, b, c');
+    expect(found[0].message).toBe(
+      `Keep dependencies between features one-way: ${FOLDER}/a/A.java in feature a imports feature b (${FOLDER}/b/B.java), and b depends back on a, a cycle between features a, b, c. Move what both need to a shared root, invert this dependency behind an interface a owns that the composition root wires, or merge the features. ${exceptionHint('feature-cycle', `${FOLDER}/a/A.java`)}`,
+    );
   });
 
   it('reports a Java class that calls an internal top-level Kotlin function of another feature', () => {

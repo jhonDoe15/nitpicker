@@ -2,12 +2,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { readClassGraph } from './class-graph.mjs';
 import { featureFacts } from './feature-findings.mjs';
 import {
-  featureProject,
+  featureProjects,
   javaSources,
-  removeFeatureProjects,
 } from './test-support/feature-project.mjs';
 
-afterEach(removeFeatureProjects);
+const { project: featureProject, remove } = featureProjects();
+
+afterEach(remove);
 
 function fileEdges(graph) {
   return graph.edges.map(({ source, target }) => `${source.file} -> ${target.file}`);

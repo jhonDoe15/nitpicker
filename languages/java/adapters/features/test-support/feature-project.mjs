@@ -1,23 +1,19 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-const roots = [];
-
-export function removeFeatureProjects() {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-}
-
 function write(root, files) {
   for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
+    const target = path.resolve(root, name);
+    if (!target.startsWith(root + path.sep)) {
+      throw new Error(`${name} is outside the test project`);
+    }
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, text);
   }
 }
 
-export function javaClass(qualifiedName) {
+function javaClass(qualifiedName) {
   const index = qualifiedName.lastIndexOf('.');
   const name = qualifiedName.slice(index + 1);
   return `package ${qualifiedName.slice(0, index)};\n\npublic class ${name} {}\n`;
@@ -29,7 +25,9 @@ export function javaSources(names, root = 'src/main/java') {
   );
 }
 
-const edgeLine = ([source, target]) => `   ${source} -> ${target} classes\n`;
+function edgeLine([source, target]) {
+  return `   ${source} -> ${target} classes\n`;
+}
 
 function reportFiles(module) {
   return {
@@ -59,11 +57,23 @@ function projectOf(root, module) {
   };
 }
 
-export function featureProject({ files = {}, modules }) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-feature-graph-'));
-  roots.push(root);
-  write(root, files);
-  return { root, projects: modules.map((module) => projectOf(root, module)) };
+export function featureProjects() {
+  const temporaryRoots = [];
+
+  function remove() {
+    for (const root of temporaryRoots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+
+  function project({ files = {}, modules }) {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-feature-graph-')));
+    temporaryRoots.push(root);
+    write(root, files);
+    return { root, projects: modules.map((module) => projectOf(root, module)) };
+  }
+
+  return { project, remove };
 }
 
 export function rows(findings) {

@@ -56,7 +56,7 @@ function reportedEdges(facts, layout) {
   );
 }
 
-export function featureGraphFindings(graph, { language, policy, reports }) {
+function featureGraphFindings(graph, { language, policy, reports }) {
   const facts = featureFacts(graph);
   const plan = featurePlan(policy.layout ?? {}, reports, graph);
   const options = {

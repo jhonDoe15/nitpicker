@@ -28,10 +28,14 @@ describe('packageCycleFindings', () => {
       ['package-cycle', INVOICE.file, 'cycle:com.acme.billing'],
       ['package-cycle', ORDER.file, 'cycle:com.acme.orders'],
     ]);
-    expect(found[0]).toMatchObject({ tool: 'coupling', classification: 'enforceable' });
-    expect(found[0].message).toBe(
-      `Keep dependencies between packages one-way: package com.acme.billing is in a dependency cycle with com.acme.orders. Move the shared types down into one of them, or invert one dependency behind an interface. ${exceptionHint('coupling/package-cycle', 'src/main/java/com/acme/billing/*')}`,
-    );
+    expect(found[0]).toEqual({
+      tool: 'coupling',
+      rule: 'package-cycle',
+      path: INVOICE.file,
+      identity: 'cycle:com.acme.billing',
+      message: `Keep dependencies between packages one-way: package com.acme.billing is in a dependency cycle with com.acme.orders. Move the shared types down into one of them, or invert one dependency behind an interface. ${exceptionHint('coupling/package-cycle', 'src/main/java/com/acme/billing/*')}`,
+      classification: 'enforceable',
+    });
   });
 
   it('names the default package (root) and leaves out the edges another rule already reports', () => {

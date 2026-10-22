@@ -2,13 +2,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { springRootFolders } from './feature-layout.mjs';
 import { readFeatureGraphFindings } from './feature-findings.mjs';
 import {
-  featureProject,
+  featureProjects,
   javaSources,
-  removeFeatureProjects,
   rows,
 } from './test-support/feature-project.mjs';
 
-afterEach(removeFeatureProjects);
+const { project: featureProject, remove } = featureProjects();
+
+afterEach(remove);
 
 const ROOT = 'com.acme.shop';
 const FOLDER = 'src/main/java/com/acme/shop';
@@ -78,10 +79,17 @@ describe('Spring package-by-feature roles', () => {
       springFindings({ layout: { featureRoots: ['**/com/acme/shop'] }, violations: [] }).filter(
         ([rule]) => rule === 'feature-internal-import',
       ),
-    ).toContainEqual([
-      'feature-internal-import',
-      `${FOLDER}/billing/Invoice.java`,
-      `feature-internal:${FOLDER}/orders/internal/OrderRepository.java`,
+    ).toEqual([
+      [
+        'feature-internal-import',
+        `${FOLDER}/billing/Invoice.java`,
+        `feature-internal:${FOLDER}/orders/internal/OrderRepository.java`,
+      ],
+      [
+        'feature-internal-import',
+        `${FOLDER}/ShopApplication.java`,
+        `feature-internal:${FOLDER}/orders/internal/Audit.java`,
+      ],
     ]);
   });
 
