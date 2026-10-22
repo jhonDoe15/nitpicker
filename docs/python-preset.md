@@ -641,15 +641,22 @@ Details that are decisions rather than the table:
   instance) and `that_depends` (`Container.mailer()`, `.resolve()`, `.resolve_sync()` on a provider of a
   `BaseContainer`). The receiver is resolved through imports, aliases, `from` imports, re-exports from a
   package `__init__`, module-level instances of other project modules, `self.x = Container()` and
-  parameters or attributes annotated with the container class; a method that is only named `get` or
-  `resolve` on another object is not evidence, and assigning `container[Service] = ...`, `@inject`
-  with `Provide[...]` and the container's `wire` and `config` calls are wiring, not lookups. A call
-  to a project function (also through a helper of a helper, a re-export or an import alias) whose
-  body looks a service up counts as a lookup at its call sites; the subject names the helper and
-  the underlying call (`resolve_mailer via punq.Container.resolve`). Not in tests, in a composition
+  parameters or attributes annotated with the container class (also `"Injector"`, `Injector | None`,
+  `Optional[...]`, `Union[...]`), `x = injector or Injector()`, a function annotated to return the
+  container and an alias of an instance. A name is resolved by scope: a parameter or a local of the
+  function shadows a module-level container or helper of the same name. A project container or
+  `injector.Module` that extends another one is followed through its bases. A method that is only
+  named `get` or `resolve` on another object is not evidence, and assigning `container[Service] = ...`, `@inject`
+  with `Provide[...]` and the container's `wire` and `config` calls are wiring, not lookups, and so is
+  a lookup inside a registration factory (`di[Mailer] = lambda di: ...`, `container.register(Mailer,
+factory=make_mailer)`, `injector.binder.bind(...)`). A call to a project function, method, class
+  method, static method or constructor (also through a helper of a helper, a re-export, `import *`
+  or an import alias) whose own body looks a service up counts as a lookup at its call sites; a
+  closure the function only defines does not. The subject names the helper, the underlying call and
+  the helper's file (`resolve_mailer via punq.Container.resolve in src/shop/shared.py`). Not in tests, in a composition
   root (see `process-env-access` for what counts as one, including `python.entryPoints`), nor in a
   class that extends `injector.Module` or `injector.Provider`. A helper declared in a composition
-  root is not a lookup elsewhere.
+  root is a lookup when it is called from outside the roots; the lookup inside the root stays allowed.
 - `shell-command` reports running a command through a shell: `shell=True` or a `shell=` value that
   is not a literal (also from `**{"shell": True}`), a list starting with `sh`, `bash`, `cmd`,
   `powershell` and the other shells followed by `-c`, `/c` or a similar flag, and the `subprocess`,

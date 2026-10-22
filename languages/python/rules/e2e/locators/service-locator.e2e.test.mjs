@@ -313,8 +313,8 @@ describe.skipIf(!enabled)('service-locator-lookup behind project helpers', () =>
     '    return container.resolve(Mailer)',
   );
   const LOOKUP_IN_SHARED = `${RULE} src/shop/shared.py:7 punq.Container.resolve`;
-  const wrapped = (file, line, name) =>
-    `${RULE} src/shop/${file}:${String(line)} ${name} via punq.Container.resolve`;
+  const wrapped = (file, line, name, helper = 'shared.py') =>
+    `${RULE} src/shop/${file}:${String(line)} ${name} via punq.Container.resolve in src/shop/${helper}`;
   const run = (files) =>
     findingsOf({ 'src/shop/shared.py': SHARED, ...files }, { sourceRoots: ['src'] });
 
@@ -388,7 +388,7 @@ describe.skipIf(!enabled)('service-locator-lookup behind project helpers', () =>
     expect(run(files)).toEqual(
       [
         wrapped('mailing.py', 5, 'resolve_mailer'),
-        wrapped('orders.py', 5, 'mailer_of_the_day'),
+        wrapped('orders.py', 5, 'mailer_of_the_day', 'mailing.py'),
         LOOKUP_IN_SHARED,
       ].sort(),
     );
@@ -410,7 +410,7 @@ describe.skipIf(!enabled)('service-locator-lookup behind project helpers', () =>
     ]);
   });
 
-  it('does not treat a helper in a composition root, or one without a lookup, as a lookup', () => {
+  it('counts a helper in a composition root from outside the roots, and not one without a lookup', () => {
     const files = {
       'src/shop/main.py': code(
         'import punq',
@@ -432,6 +432,8 @@ describe.skipIf(!enabled)('service-locator-lookup behind project helpers', () =>
         '    mailer()',
       ),
     };
-    expect(findingsOf(files, { sourceRoots: ['src'] })).toEqual([]);
+    expect(findingsOf(files, { sourceRoots: ['src'] })).toEqual([
+      `${RULE} src/shop/orders.py:6 resolve_mailer via punq.Container.resolve in src/shop/main.py`,
+    ]);
   });
 });

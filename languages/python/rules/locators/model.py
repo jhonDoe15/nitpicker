@@ -10,7 +10,7 @@ INSTANCE_LIBRARIES = {
         "display": "punq.Container",
         "classes": ("punq.Container",),
         "instances": (),
-        "methods": ("resolve", "resolve_all"),
+        "methods": ("resolve", "resolve_all", "instantiate"),
         "subscript": False,
     },
     "lagom": {
@@ -37,11 +37,13 @@ PROVIDER_LIBRARIES = {
         ),
         "providers": "dependency_injector.providers.",
         "methods": (),
+        "class_methods": (),
     },
     "that_depends": {
         "bases": ("that_depends.BaseContainer", "that_depends.container.BaseContainer"),
         "providers": "that_depends.providers.",
         "methods": ("resolve", "resolve_sync"),
+        "class_methods": ("resolve", "resolver"),
     },
 }
 
@@ -64,8 +66,20 @@ SERVICE_PROVIDERS = {
     "AsyncSingleton",
     "ContextResource",
     "FactoryAggregate",
+    "DelegatedSingleton",
+    "DelegatedThreadSafeSingleton",
+    "DelegatedThreadLocalSingleton",
+    "DelegatedFactory",
+    "AbstractFactory",
+    "AbstractSingleton",
+    "Container",
     "List",
     "Dict",
 }
 
 COMPOSITION_BASES = {"injector.Module", "injector.Provider"}
+
+REGISTRATION_METHODS = {"register", "define", "partial", "bind", "multibind", "factory", "singleton"}
+REGISTRATION_ATTRIBUTES = {"factories", "services", "binder"}
+UNION_WRAPPERS = {"Optional", "Union", "Annotated"}
+OWNER_NAMES = {"self", "cls"}
