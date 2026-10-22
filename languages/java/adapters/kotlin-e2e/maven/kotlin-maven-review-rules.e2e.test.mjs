@@ -18,7 +18,12 @@ import {
 const mavenDiffOf = mavenDiffRunner(process.env.NITPICKER_MAVEN);
 const REVIEW_TOOLS = new Set(['pmd']);
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
-const RUNTIME_SERIALIZATION = `    <dependency><groupId>com.fasterxml.jackson.module</groupId><artifactId>jackson-module-kotlin</artifactId><version>2.17.2</version><scope>runtime</scope></dependency>
+const RUNTIME_SERIALIZATION = `    <dependency>
+      <groupId>com.fasterxml.jackson.module</groupId>
+      <artifactId>jackson-module-kotlin</artifactId>
+      <version>2.17.2</version>
+      <scope>runtime</scope>
+    </dependency>
   </dependencies>`;
 
 function reviewFindings(findings) {
