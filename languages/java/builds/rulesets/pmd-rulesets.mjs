@@ -1,7 +1,7 @@
 import { escapeXml } from '../../adapters/tool-config/xml-write.mjs';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { escapeRegExp } from '../../../../shared/glob.mjs';
+import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { GRADLE_DIRECTORY } from '../java-build.mjs';
 import { targetRelease } from '../lint/javac-options.mjs';
 
