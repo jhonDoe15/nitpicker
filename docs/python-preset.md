@@ -631,7 +631,8 @@ Details that are decisions rather than the table:
   `composition_root`, `settings`, `config` or `conf` folder; an alembic `env.py` (a `script.py.mako`
   beside it); a file that defines `create_app`, `make_app`, `build_app` or a similar factory; a
   module named by a script or plugin entry point of `pyproject.toml` (`[project.scripts]`,
-  `[project.entry-points]`, poetry, flit) or `setup.cfg`; or a file matched by `python.entryPoints`.
+  `[project.entry-points]`, poetry scripts and plugins, flit), `setup.cfg` or `setup.py`; or a file
+  matched by `python.entryPoints`.
   Nothing under a `domain` folder is a composition root.
 - `shell-command` reports running a command through a shell: `shell=True` or a `shell=` value that
   is not a literal (also from `**{"shell": True}`), a list starting with `sh`, `bash`, `cmd`,
@@ -939,14 +940,17 @@ assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(valu
   in an `__init__.py`), using the module names the coupling check uses. A function nothing calls is
   not judged, nor one used as a value (passed, stored, decorating), one a star import exposes, one
   called from an `if __name__ == "__main__":` block or a `__main__.py`, or one an entry point
-  names: `[project.scripts]`, `[project.gui-scripts]`, any `[project.entry-points.<group>]` and
-  `[tool.poetry.scripts]` (read by `rules/libraries/package-facts.mjs`), the
-  `[options.entry_points]` of `setup.cfg`, and the `entry_points` of a `setup()` call in `setup.py`
-  when it is a literal or a module-level name bound to one (`review/project/entry_points.py` parses it
-  with `ast` and never runs it). Tests do not count as callers,
-  unless the project is a published package (a `[project]` or poetry `name`, a
-  `[build-system] build-backend`, no `Private :: Do Not Upload` classifier and no
-  `package-mode = false`): then its own tests count, as in the TypeScript preset. The subject is
+  names: `[project.scripts]`, `[project.gui-scripts]`, any `[project.entry-points.<group>]`,
+  `[tool.poetry.scripts]`, `[tool.poetry.plugins.<group>]` and `[tool.flit.scripts]`, the
+  `[options.entry_points]` of `setup.cfg`, and the `name = module:function` strings of `setup.py`
+  (all read once by `rules/libraries/package-facts.mjs`, which never runs `setup.py`; entry points
+  built at run time are not seen). Tests do not count as callers, unless the project is a
+  published package (a `[project]` or poetry `name` with a `[build-system] build-backend` and no
+  `package-mode = false`, a `setup.cfg` `[metadata] name`, or a `setup.py` whose `setup()` gets a
+  `name`, in each case without a `Private :: Do Not Upload` classifier): then its own tests count,
+  as in the TypeScript preset. `setup.cfg` is read leniently, as for the pytest settings, so a
+  duplicated key in another tool's section is no error; a project file that exists but cannot be
+  read (a folder named `setup.cfg`) fails the run and names the file. The subject is
   `function.parameter`, so the finding is new only when the change adds the parameter or removes
   its last caller.
 

@@ -93,15 +93,12 @@ def too_deep(path, subject):
 
 
 def review_findings(project):
-    from review.project.entry_points import declared_entry_points, invalid_file_findings
     from review.project.enum_predicates import enum_predicate_findings
     from review.project.forwarding import forwarding_findings
     from review.project.index import ProjectIndex
     from review.project.unused_options import unused_option_findings
 
-    entries, problems = declared_entry_points()
-    options = dict(project.options)
-    options["entryPoints"] = options.get("entryPoints", []) + entries
+    options = project.options
     trees = {path: context.tree for path, context in project.contexts.items()}
     index = ProjectIndex(trees, options.get("modules", {}), project.test_files)
     checks = {
@@ -109,7 +106,7 @@ def review_findings(project):
         "exhaustive-enum-predicate": lambda: enum_predicate_findings(index),
         "unused-option": lambda: unused_option_findings(index, options),
     }
-    found = invalid_file_findings(options.get("invalidFiles", []) + problems)
+    found = []
     for name, run in checks.items():
         try:
             found.extend(run())

@@ -1,27 +1,55 @@
 import {
   isTable,
-  parseToml,
   readProjectFile,
-  tomlProblem,
+  tomlTable,
 } from '../../adapters/configuration/project-files.mjs';
+import { parseIni } from '../../adapters/configuration/pytest/ini-file.mjs';
 
 const PRIVATE_CLASSIFIER = 'Private :: Do Not Upload';
-const SCRIPT_TABLES = ['scripts', 'gui-scripts'];
-const ENTRY_POINT = /^\s*([\w.]+)\s*:\s*([\w.]+)/;
-
 const PYPROJECT = 'pyproject.toml';
+const SETUP_CFG = 'setup.cfg';
+const SETUP_PY = 'setup.py';
+const OBJECT_REFERENCE =
+  /^\s*([A-Za-z_][\w.]*)\s*(?::\s*([A-Za-z_][\w.]*))?\s*(?:\[[^\]]*\]\s*)?$/u;
+const DECLARED_ENTRY = /^\s*[^=[#\s][^=[#]*=(.*)$/u;
+const STRING_LITERAL = /(["'])((?:\\.|(?!\1)[^\\\n])*)\1/gu;
+const SETUP_CALL = /\bsetup\s*\(/u;
+const NAME_ARGUMENT = /\bname\s*=/u;
 
-function readPyproject(projectRoot) {
-  const text = readProjectFile(projectRoot, PYPROJECT);
-  const parsed = text === undefined ? undefined : parseToml(text);
-  if (parsed?.kind === 'invalid') {
-    const problem = tomlProblem(parsed.error);
-    return {
-      pyproject: {},
-      invalidFiles: [{ file: PYPROJECT, line: parsed.error?.line ?? 1, problem }],
-    };
-  }
-  return { pyproject: parsed?.table ?? {}, invalidFiles: [] };
+function valuesOf(table) {
+  return isTable(table)
+    ? Object.values(table).map((value) => (isTable(value) ? value.reference : value))
+    : [];
+}
+
+function groupsOf(table) {
+  return isTable(table) ? Object.values(table).flatMap((group) => valuesOf(group)) : [];
+}
+
+function pyprojectReferences(pyproject) {
+  return [
+    ...valuesOf(pyproject.project?.scripts),
+    ...valuesOf(pyproject.project?.['gui-scripts']),
+    ...groupsOf(pyproject.project?.['entry-points']),
+    ...valuesOf(pyproject.tool?.poetry?.scripts),
+    ...groupsOf(pyproject.tool?.poetry?.plugins),
+    ...valuesOf(pyproject.tool?.flit?.scripts),
+  ];
+}
+
+function declaredReferences(text) {
+  return text.split('\n').flatMap((line) => DECLARED_ENTRY.exec(line)?.slice(1) ?? []);
+}
+
+function setupCfgReferences(sections) {
+  const points = sections.get('options.entry_points');
+  return [...(points?.values() ?? [])].flatMap((block) => declaredReferences(block));
+}
+
+function setupPyReferences(text) {
+  return [...text.matchAll(STRING_LITERAL)]
+    .flatMap(([, , value]) => declaredReferences(value))
+    .filter((reference) => reference.includes(':'));
 }
 
 function packageTable(pyproject) {
@@ -32,7 +60,7 @@ function packageTable(pyproject) {
   return typeof poetry?.name === 'string' && poetry['package-mode'] !== false ? poetry : undefined;
 }
 
-function isPublished(pyproject) {
+function pyprojectPublished(pyproject) {
   const table = packageTable(pyproject);
   const classifiers = Array.isArray(table?.classifiers) ? table.classifiers : [];
   return (
@@ -42,32 +70,37 @@ function isPublished(pyproject) {
   );
 }
 
-function entryPointGroups(pyproject) {
-  const groups = pyproject.project?.['entry-points'];
-  return isTable(groups) ? Object.values(groups) : [];
+function setupPublished({ sections, setupPy = '', setupCfg = '' }) {
+  const named =
+    (sections.get('metadata')?.get('name') ?? '') !== '' ||
+    (SETUP_CALL.test(setupPy) && NAME_ARGUMENT.test(setupPy));
+  return named && ![setupPy, setupCfg].some((text) => text.includes(PRIVATE_CLASSIFIER));
 }
 
-function scriptReferences(pyproject) {
-  const tables = [
-    ...SCRIPT_TABLES.map((name) => pyproject.project?.[name]),
-    pyproject.tool?.poetry?.scripts,
-    ...entryPointGroups(pyproject),
-  ];
-  return tables
-    .filter((table) => isTable(table))
-    .flatMap((table) => Object.values(table))
-    .map((value) => (typeof value === 'string' ? value : value?.reference))
-    .filter((value) => typeof value === 'string');
+function referencesOf(texts) {
+  return texts
+    .map((text) => (typeof text === 'string' ? OBJECT_REFERENCE.exec(text) : null))
+    .filter((match) => match !== null);
 }
 
-function entryPoints(pyproject) {
-  return scriptReferences(pyproject)
-    .map((reference) => ENTRY_POINT.exec(reference))
-    .filter((match) => match !== null)
-    .map(([, module, name]) => `${module}:${name}`);
+function unique(values) {
+  return [...new Set(values)].sort();
 }
 
 export function readPackageFacts(projectRoot) {
-  const { pyproject, invalidFiles } = readPyproject(projectRoot);
-  return { published: isPublished(pyproject), entryPoints: entryPoints(pyproject), invalidFiles };
+  const pyproject = tomlTable(projectRoot, PYPROJECT) ?? {};
+  const setupCfg = readProjectFile(projectRoot, SETUP_CFG);
+  const setupPy = readProjectFile(projectRoot, SETUP_PY);
+  const sections = parseIni(setupCfg ?? '');
+  const references = referencesOf([
+    ...pyprojectReferences(pyproject),
+    ...setupCfgReferences(sections),
+    ...setupPyReferences(setupPy ?? ''),
+  ]);
+  const named = references.filter(([, , name]) => name !== undefined);
+  return {
+    published: pyprojectPublished(pyproject) || setupPublished({ sections, setupPy, setupCfg }),
+    entryPoints: unique(named.map(([, module, name]) => `${module}:${name}`)),
+    entryModules: unique(references.map(([, module]) => module)),
+  };
 }

@@ -5,7 +5,6 @@ const CHECK_FAILED_RULE = 'rules-check-failed';
 const SKIPPED_RULE = 'rules-skipped';
 const MINIMUM_PYTHON = '3.10';
 const TOO_DEEP_RULE = 'rules-too-deep';
-const INVALID_FILE_RULE = 'project-file-invalid';
 const TOO_DEEP_CHECKS = { file: 'some of the per-file checks', all: 'every check' };
 
 function toolError({ rule, path, subject, error }) {
@@ -28,16 +27,9 @@ function tooDeepMessage(subject) {
   return `python-rules skipped ${checks} here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.`;
 }
 
-function invalidFileMessage(subject, { problem }) {
-  return `${subject} could not be read (${problem}), so python-rules took the package as unpublished with no entry points from it, and unused-option may name a parameter an entry point passes. Fix the file.`;
-}
-
 function described({ rule, subject, data }, libraries) {
   if (rule === TOO_DEEP_RULE) {
     return { message: tooDeepMessage(subject), classification: 'descriptive' };
-  }
-  if (rule === INVALID_FILE_RULE) {
-    return { message: invalidFileMessage(subject, data), classification: 'tool-error' };
   }
   return {
     message: describeRuleFinding(rule, subject, { libraries, data }),
