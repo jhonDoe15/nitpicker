@@ -64,9 +64,10 @@ function javaFile(name, header, body) {
   return `package demo;\n\n${header}\n\nclass ${name} {\n${body}\n}\n`;
 }
 
-function project(files, manifest = { sourceRoots: ['src/main/java'] }) {
-  const projectRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-duplicates-')));
-  roots.push(projectRoot);
+function project(files, manifest = { sourceRoots: ['src/main/java'] }, under = '.') {
+  const outer = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-duplicates-')));
+  roots.push(outer);
+  const projectRoot = path.join(outer, under);
   mkdirSync(path.join(projectRoot, 'build/nitpicker'), { recursive: true });
   writeFileSync(path.join(projectRoot, 'build/nitpicker/manifest.json'), JSON.stringify(manifest));
   for (const [relative, contents] of Object.entries(files)) {
@@ -120,6 +121,18 @@ describe('duplicates in Java sources', () => {
 
     expect(clones(projectRoot)).toEqual([ONE_TWO_CLONE]);
   });
+
+  it.each(['build', 'target', 'out'])(
+    'reports the clone when the checkout sits under a folder named %s',
+    (folder) => {
+      const files = {
+        'src/main/java/demo/One.java': javaFile('One', '', BODY),
+        'src/main/java/demo/Two.java': javaFile('Two', '', BODY),
+      };
+
+      expect(clones(project(files, undefined, folder))).toEqual([ONE_TWO_CLONE]);
+    },
+  );
 
   it('drops the clone when an exclude matches only the second file of the pair', () => {
     const projectRoot = project({
@@ -187,6 +200,21 @@ describe('duplicates in Kotlin sources', () => {
     });
 
     expect(kotlinClones(projectRoot)).toEqual([]);
+  });
+
+  it('reports the clone when the checkout sits under a folder named build', () => {
+    const projectRoot = project(
+      {
+        'src/main/kotlin/demo/One.kt': `package demo\n\n${KOTLIN_BODY}\n`,
+        'src/main/kotlin/demo/Two.kt': `package demo\n\n${KOTLIN_BODY}\n`,
+      },
+      { sourceRoots: [], kotlinSourceRoots: ['src/main/kotlin'] },
+      'build',
+    );
+
+    expect(kotlinClones(projectRoot).map(({ path: file }) => file)).toEqual([
+      'src/main/kotlin/demo/One.kt',
+    ]);
   });
 
   it('reports a clone of code and honours the project folder list', () => {

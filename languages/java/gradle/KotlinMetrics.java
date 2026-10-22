@@ -64,15 +64,7 @@ public final class KotlinMetrics {
   public static void main(String[] args) throws IOException {
     Path output = Path.of(args[0]);
     Path projectDir = Path.of(args[1]).toAbsolutePath().normalize();
-    List<Path> files = new ArrayList<>();
-    for (int i = 2; i < args.length; i++) {
-      Path root = projectDir.resolve(args[i]);
-      if (Files.isDirectory(root)) {
-        try (Stream<Path> walk = Files.walk(root)) {
-          walk.filter(p -> p.toString().endsWith(".kt")).sorted().forEach(files::add);
-        }
-      }
-    }
+    List<Path> files = MetricsSupport.sourceFiles(projectDir, args, 2, ".kt");
     List<String> entries = new ArrayList<>();
     List<String> fileEntries = new ArrayList<>();
     Set<String> claimedFacades = new HashSet<>();
@@ -87,8 +79,7 @@ public final class KotlinMetrics {
               disposable, configuration, EnvironmentConfigFiles.JVM_CONFIG_FILES);
       PsiFileFactory factory = PsiFileFactory.getInstance(environment.getProject());
       for (Path file : files.stream().distinct().collect(Collectors.toList())) {
-        String relative =
-            projectDir.relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
+        String relative = MetricsSupport.relative(projectDir, file);
         String text = Files.readString(file, StandardCharsets.UTF_8);
         if (text.startsWith("\uFEFF")) {
           text = text.substring(1);
@@ -145,8 +136,8 @@ public final class KotlinMetrics {
         classes.add(prefix + facadeName);
       }
     }
-    return "{\"file\":" + quote(relative) + ",\"package\":" + quote(packageName) + ",\"classes\":["
-        + classes.stream().map(KotlinMetrics::quote).collect(Collectors.joining(",")) + "]}";
+    return "{\"file\":" + MetricsSupport.quote(relative) + ",\"package\":" + MetricsSupport.quote(packageName) + ",\"classes\":["
+        + classes.stream().map(MetricsSupport::quote).collect(Collectors.joining(",")) + "]}";
   }
 
   private static boolean multifile(KtFile file) {
@@ -414,8 +405,8 @@ public final class KotlinMetrics {
       }
       metrics.visit(body, 0);
       entries.add(
-          "{\"file\":" + quote(relative)
-              + ",\"name\":" + quote(name)
+          "{\"file\":" + MetricsSupport.quote(relative)
+              + ",\"name\":" + MetricsSupport.quote(name)
               + ",\"start\":" + (startLine + 1)
               + ",\"end\":" + (endLine + 1)
               + ",\"lines\":" + (endLine - startLine + 1)
@@ -528,26 +519,5 @@ public final class KotlinMetrics {
         || element instanceof KtLoopExpression
         || element instanceof KtWhenExpression
         || element instanceof KtCatchClause;
-  }
-
-  private static String quote(String text) {
-    StringBuilder out = new StringBuilder("\"");
-    for (char c : text.toCharArray()) {
-      switch (c) {
-        case '"' -> out.append("\\\"");
-        case '\\' -> out.append("\\\\");
-        case '\n' -> out.append("\\n");
-        case '\r' -> out.append("\\r");
-        case '\t' -> out.append("\\t");
-        default -> {
-          if (c < 0x20) {
-            out.append(String.format("\\u%04x", (int) c));
-          } else {
-            out.append(c);
-          }
-        }
-      }
-    }
-    return out.append('"').toString();
   }
 }

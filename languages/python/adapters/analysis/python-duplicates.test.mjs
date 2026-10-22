@@ -33,8 +33,8 @@ const CLONE = [
   '',
 ].join('\n');
 
-function project(files, sourceRoots = ['src']) {
-  const projectRoot = temporaryRoot();
+function project(files, sourceRoots = ['src'], under = '.') {
+  const projectRoot = path.join(temporaryRoot(), under);
   for (const [relative, contents] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(projectRoot, relative)), { recursive: true });
     writeFileSync(path.join(projectRoot, relative), contents);
@@ -66,6 +66,17 @@ describe('duplicates in Python sources', () => {
       },
     ]);
   });
+
+  it.each(['build', 'target'])(
+    'reports the clone when the checkout sits under a folder named %s',
+    (folder) => {
+      const context = project({ 'src/app/a.py': CLONE, 'src/app/b.py': CLONE }, ['src'], folder);
+
+      expect(clonesOf(context).map(({ identity }) => identity)).toEqual([
+        'pair:src/app/a.py|src/app/b.py:fragment:8e33a9ff56a22a94c8efc96f:occurrence:1',
+      ]);
+    },
+  );
 
   it('reports the sizes of a clone as metrics', () => {
     const context = project({ 'src/app/a.py': CLONE, 'src/app/b.py': CLONE });

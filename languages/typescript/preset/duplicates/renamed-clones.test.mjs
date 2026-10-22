@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mjs';
 import { withDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
 import { applyLayout, configuredAnalyzers } from '../diff/configured-analyzers.mjs';
@@ -350,5 +350,39 @@ describe('the exclude route for a clone', () => {
 
     expect(run.toolErrors).toEqual([]);
     expect(enforceable(run)).toEqual([]);
+  });
+});
+
+describe('a project whose checkout sits under a folder the scan skips', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('still reports the plain copy and the renamed one', () => {
+    const skipped = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-outer-')), 'build');
+    temporaryRoots.push(path.dirname(skipped));
+    mkdirSync(skipped);
+    vi.stubEnv('TMPDIR', skipped);
+    const lines = Array.from(
+      { length: 30 },
+      (_, index) => `  total += values[${String(index)}] * ${String(index + 3)};`,
+    );
+    const copied = `export function sum(values: number[]): number {\n  let total = 0;\n${lines.join('\n')}\n  return total;\n}\n`;
+    const run = analyze({
+      'src/renamed/first.ts': pricing(ORIGINAL, ['0', '0', '100', '1000', '10']),
+      'src/renamed/second.ts': pricing(RENAMED, ['1', '2', '10', '5000', '50']),
+      'src/copied/first.ts': copied,
+      'src/copied/second.ts': copied,
+    });
+
+    const pairs = (run.reports.get('duplicates')?.findings ?? []).map(
+      ({ identity }) => identity.split(/:fragment:|:occurrence:/u)[0],
+    );
+
+    expect(run.toolErrors).toEqual([]);
+    expect([...new Set(pairs)].toSorted()).toEqual([
+      'pair:src/copied/first.ts|src/copied/second.ts',
+      'renamed:pair:src/renamed/first.ts|src/renamed/second.ts',
+    ]);
   });
 });

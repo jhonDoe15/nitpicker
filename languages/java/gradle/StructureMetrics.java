@@ -11,12 +11,8 @@ import javax.tools.*;
 public final class StructureMetrics {
   private static final int MAX_REPORTED_ERRORS = 5;
 
-  private static String relative(Path projectDir, Path file) {
-    return projectDir.relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
-  }
-
   private static String describe(Path projectDir, Diagnostic<? extends JavaFileObject> d) {
-    String where = d.getSource() == null ? "" : relative(projectDir, Path.of(d.getSource().toUri()));
+    String where = d.getSource() == null ? "" : MetricsSupport.relative(projectDir, Path.of(d.getSource().toUri()));
     return where + ":" + d.getLineNumber() + ": " + d.getMessage(Locale.ROOT);
   }
 
@@ -24,15 +20,7 @@ public final class StructureMetrics {
     Path output = Path.of(args[0]);
     Path classesOutput = Path.of(args[1]);
     Path projectDir = Path.of(args[2]).toAbsolutePath().normalize();
-    List<Path> files = new ArrayList<>();
-    for (int i = 3; i < args.length; i++) {
-      Path root = projectDir.resolve(args[i]);
-      if (Files.isDirectory(root)) {
-        try (Stream<Path> walk = Files.walk(root)) {
-          walk.filter(p -> p.toString().endsWith(".java")).sorted().forEach(files::add);
-        }
-      }
-    }
+    List<Path> files = MetricsSupport.sourceFiles(projectDir, args, 3, ".java");
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     if (compiler == null) {
       throw new IllegalStateException("Running on a JRE without jdk.compiler; a JDK is required");
@@ -58,7 +46,7 @@ public final class StructureMetrics {
                     null,
                     fm.getJavaFileObjects(file.toFile()));
         SourcePositions positions = Trees.instance(task).getSourcePositions();
-        String relative = relative(projectDir, file);
+        String relative = MetricsSupport.relative(projectDir, file);
         for (CompilationUnitTree unit : task.parse()) {
           new Collector(unit, positions, relative, entries).scan(unit, "");
           fileEntries.add(describeFile(relative, unit));
@@ -242,8 +230,8 @@ public final class StructureMetrics {
       long startLine = lines.getLineNumber(start);
       long endLine = lines.getLineNumber(Math.max(start, end - 1));
       entries.add(
-          "{\"file\":" + quote(file)
-              + ",\"name\":" + quote(metrics.name)
+          "{\"file\":" + MetricsSupport.quote(file)
+              + ",\"name\":" + MetricsSupport.quote(metrics.name)
               + ",\"start\":" + startLine
               + ",\"end\":" + endLine
               + ",\"lines\":" + (endLine - startLine + 1)
@@ -251,7 +239,7 @@ public final class StructureMetrics {
               + ",\"maxControlNesting\":" + metrics.body.maxNesting
               + ",\"parameters\":" + metrics.parameters
               + ",\"complexity\":" + (1 + metrics.complexity.branches)
-              + ",\"signature\":" + quote(metrics.signature)
+              + ",\"signature\":" + MetricsSupport.quote(metrics.signature)
               + "," + metrics.extra
               + "}");
     }
@@ -409,7 +397,7 @@ public final class StructureMetrics {
   private static String parameterTypes(
       MethodTree tree, Map<String, TypeParameterTree> variables) {
     return tree.getParameters().stream()
-        .map(parameter -> quote(erasedName(parameter.getType(), variables)))
+        .map(parameter -> MetricsSupport.quote(erasedName(parameter.getType(), variables)))
         .collect(Collectors.joining(",", "[", "]"));
   }
 
@@ -459,9 +447,9 @@ public final class StructureMetrics {
     String imports =
         unit.getImports().stream()
             .filter(i -> !i.isStatic())
-            .map(i -> quote(i.getQualifiedIdentifier().toString()))
+            .map(i -> MetricsSupport.quote(i.getQualifiedIdentifier().toString()))
             .collect(Collectors.joining(","));
-    return quote(file) + ":{\"package\":" + quote(packageName) + ",\"imports\":[" + imports + "]}";
+    return MetricsSupport.quote(file) + ":{\"package\":" + MetricsSupport.quote(packageName) + ",\"imports\":[" + imports + "]}";
   }
 
   private static final class ClassCollector extends TreeScanner<Void, String> {
@@ -504,13 +492,13 @@ public final class StructureMetrics {
       }
       long start = positions.getStartPosition(unit, tree);
       String extendsName = tree.getKind() == Tree.Kind.CLASS ? superclass(tree) : null;
-      return "{\"file\":" + quote(file)
-          + ",\"name\":" + quote(name)
+      return "{\"file\":" + MetricsSupport.quote(file)
+          + ",\"name\":" + MetricsSupport.quote(name)
           + ",\"start\":" + unit.getLineMap().getLineNumber(start)
-          + ",\"kind\":" + quote(tree.getKind().toString().toLowerCase(Locale.ROOT).replace("_type", ""))
+          + ",\"kind\":" + MetricsSupport.quote(tree.getKind().toString().toLowerCase(Locale.ROOT).replace("_type", ""))
           + ",\"methods\":" + methods
           + ",\"fields\":" + fields
-          + (extendsName == null ? "" : ",\"extends\":" + quote(extendsName))
+          + (extendsName == null ? "" : ",\"extends\":" + MetricsSupport.quote(extendsName))
           + "}";
     }
   }
@@ -535,17 +523,5 @@ public final class StructureMetrics {
     return owner.getKind() == Tree.Kind.ENUM
         && variable.getInitializer() instanceof NewClassTree
         && variable.getType().toString().equals(owner.getSimpleName().toString());
-  }
-
-  private static String quote(String text) {
-    StringBuilder out = new StringBuilder("\"");
-    for (char c : text.toCharArray()) {
-      switch (c) {
-        case '"' -> out.append("\\\"");
-        case '\\' -> out.append("\\\\");
-        default -> out.append(c < 0x20 ? String.format("\\u%04x", (int) c) : String.valueOf(c));
-      }
-    }
-    return out.append('"').toString();
   }
 }

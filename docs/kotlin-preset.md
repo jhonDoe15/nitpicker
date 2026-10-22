@@ -514,7 +514,7 @@ there are no inline disables.
 **Metric source (decision).** `languages/java/gradle/KotlinMetrics.java` parses the Kotlin sources
 (parse only, no compilation) with the PSI parser of the Kotlin compiler and writes
 `kotlin-metrics.json` in the report directory. It runs in Java's single-file source mode in the JVM that
-runs Gradle, with `org.jetbrains.kotlin:kotlin-compiler-embeddable` on the class path. The version is
+runs Gradle, with `org.jetbrains.kotlin:kotlin-compiler-embeddable` and the compiled `MetricsSupport.java` (helpers shared with `StructureMetrics.java`) on the class path. The version is
 pinned as `kotlinCompiler` in the init script (2.4.21) and resolved from its own Gradle configuration
 (`nitpickerKotlinCompiler`), like the other tools. It uses the compiler's PSI classes, so bumping the
 pin means running `npm run test:kotlin` again; the `kotlin-e2e` GitHub Actions workflow runs it for a
