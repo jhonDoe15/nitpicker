@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { globToRegExp, resolveLayout } from '../layout.mjs';
+import { globMatcher, resolveLayout } from '../layout.mjs';
 import { createQualityChecks } from '../quality-checks.mjs';
 
 function prettierPatterns(layout) {
   const check = createQualityChecks(layout).staticChecks.find(
     ({ name }) => name === 'prettier-format',
   );
-  return check.patterns.map((pattern) => globToRegExp(pattern));
+  return check.patterns.map((pattern) => globMatcher(pattern));
 }
 
 function isChecked(patterns, file) {
