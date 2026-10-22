@@ -916,16 +916,23 @@ members is not reported.
   a string annotation (`tags: "list[str]"`) is read as the annotation it spells.
 - `exhaustive-enum-predicate` (TypeScript: `nitpicker/exhaustive-union-predicate`): an `or` chain of
   `==` or `is`, an `and` chain of `!=` or `is not`, or an `in` / `not in` tuple, list or set, that
-  compares one plain reference (`status`, `self.status`) with two or more distinct members of one project
-  enum (a class of the project that derives from `Enum`, `IntEnum` or `StrEnum`, resolved through
-  imports, with at least 3 members) or with values of a `Literal` alias the parameter is annotated
-  with. Only a value is checked (a `return`, an assignment, a lambda body, also inside `not`, a
-  conditional expression or another `and`/`or`), never an `if` or `while` condition, and not in a
-  function that returns `TypeGuard` or `TypeIs`. Only a list of some of the members fails, as in
-  the TypeScript and Java presets, because a member added later falls into the default silently; a
-  list of every member is not reported. An alias (`DEFAULT = A`, or a second name with the value
-  of an earlier member) is not a member of its own. Enums from libraries are not checked. The allowed form is a `match` with `case _:
-assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(value)`.
+  compares one plain reference (`status`, `self.status`) with two or more distinct members of one
+  project enum, or with values of a `Literal` the parameter is annotated with. A project enum is a
+  class of the project, nested ones included (`Order.Kind.A`), that derives from `Enum`, `IntEnum`,
+  `StrEnum` or `ReprEnum`, directly or through project base classes, resolved through imports, with
+  at least 3 members. `Flag` and `IntFlag` enums, also through a base, are not checked, since their
+  members combine. The `Literal` is written in the annotation or is an alias reached by name,
+  through imports and re-exports or as a module attribute (`st.Mode`), also inside `Optional`,
+  `Annotated` or a string annotation. Only a value is checked (a `return`, an assignment, an
+  augmented assignment, a lambda body, also inside `not`, a conditional expression or another
+  `and`/`or`), never an `if` or `while` condition, and not in a function that returns `TypeGuard`
+  or `TypeIs`. A method of the enum itself may list its own members (`def is_early(self): return
+  self in (Stage.A, Stage.B)`), like the boolean each constant declares in the Java preset. Only a
+  list of some of the members fails, as in the TypeScript and Java presets, because a member added
+  later falls into the default silently; a list of every member is not reported. An alias
+  (`DEFAULT = A`, or a second name with the value of an earlier member) is not a member of its own.
+  Enums from libraries are not checked. The allowed form is a `match` with `case _:
+  assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(value)`.
 - `forwarding-wrapper` (TypeScript: `nitpicker/no-forwarding-wrapper`): an undecorated
   module-level function whose body (after a docstring) is `return target(...)`, or `return await
   target(...)` in an `async def`, passing its own parameters in order (by position or as

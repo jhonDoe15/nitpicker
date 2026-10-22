@@ -125,6 +125,30 @@ class ProjectIndex:
             return None if rest else self.definition(binding[1], binding[2])
         return self.module_member(binding[1].split(".") + rest)
 
+    def origin(self, path, node):
+        chain = attribute_chain(node)
+        if chain is None:
+            return None
+        head, rest = chain[0], chain[1:]
+        binding = self.binding(path, node, head)
+        if binding is None:
+            return None if rest else (path, head)
+        if binding[0] == "name":
+            return None if rest else self.exported(binding[1], binding[2])
+        parts = binding[1].split(".") + rest
+        return self.exported(".".join(parts[:-1]), parts[-1]) if len(parts) > 1 else None
+
+    def exported(self, module, name, depth=0):
+        path = self.paths.get(module)
+        if path is None or depth > MAX_REEXPORT_DEPTH:
+            return None
+        binding = self.bindings[path].get(name)
+        if binding is None:
+            return path, name
+        if binding[0] == "name":
+            return self.exported(binding[1], binding[2], depth + 1)
+        return None
+
     def star_imported(self, path):
         modules = []
         for node in scope_imports(self.trees[path].body):
