@@ -131,7 +131,7 @@
     </properties>
   </rule>
   <rule name="HttpWithoutTimeout" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Give this HTTP call a timeout: HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)) on every request, HttpClient.newBuilder().connectTimeout(...) for the client, and setConnectTimeout and setReadTimeout on an HttpURLConnection. Without one a slow or silent server holds the thread forever. If it is right here, add an exception for pmd/HttpWithoutTimeout in nitpicker.config.json.">
+        message="Give this HTTP call a timeout: HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)) on every request, HttpClient.newBuilder().connectTimeout(...) for the client, setConnectTimeout and setReadTimeout on the URLConnection from url.openConnection() (url.openStream() cannot take one), and a RequestConfig with timeouts on an Apache client, HttpClients.custom().setDefaultRequestConfig(...). Without one a slow or silent server holds the thread forever. If it is right here, add an exception for pmd/HttpWithoutTimeout in nitpicker.config.json.">
     <priority>2</priority>
     <properties>
       <property name="xpath">
@@ -150,6 +150,15 @@ let $chain := function($node) {
       ($node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer
                          or self::LambdaExpression][1], $node/ancestor::ClassBody[last()])[1]
     },
+    $initializers := function($node, $names) {
+      ($scope($node)//VariableDeclarator[VariableId/@Name = $names]/*[2],
+       $node/ancestor::ClassBody[last()]/FieldDeclaration/VariableDeclarator[VariableId/@Name = $names]/*[2])
+    },
+    $http := function($call) {
+      let $first := $initializers($call, $call/*[1]/descendant-or-self::VariableAccess/@Name),
+          $second := $initializers($call, $first/descendant-or-self::VariableAccess/@Name)
+      return exists(($call/*[1], $first, $second)/descendant-or-self::StringLiteral[matches(@ConstValue, '^https?://', 'i')])
+    },
     $unset := function($node, $setters) {
       let $chained := $chain($node)
       return if ($chained[@MethodName = $setters]) then false()
@@ -165,10 +174,21 @@ return (
       [$unset(., 'timeout')]
   | //MethodCall[@MethodName = 'openConnection'][*[1][pmd-java:typeIs('java.net.URL')]]
       [parent::CastExpression[pmd-java:typeIs('java.net.HttpURLConnection')]
-       or parent::VariableDeclarator/parent::LocalVariableDeclaration[pmd-java:typeIs('java.net.HttpURLConnection')]]
-      [let $name := $stored(.) return $name != ''
-        and not($scope(.)//MethodCall[@MethodName = 'setConnectTimeout'][.//VariableAccess[@Name = $name]]
-                and $scope(.)//MethodCall[@MethodName = 'setReadTimeout'][.//VariableAccess[@Name = $name]])]
+       or parent::VariableDeclarator/parent::LocalVariableDeclaration[pmd-java:typeIs('java.net.HttpURLConnection')]
+       or $http(.)]
+      [let $name := $stored(.) return
+        if ($name != '')
+        then not($scope(.)//MethodCall[@MethodName = 'setConnectTimeout'][.//VariableAccess[@Name = $name]]
+                 and $scope(.)//MethodCall[@MethodName = 'setReadTimeout'][.//VariableAccess[@Name = $name]])
+        else exists(parent::MethodCall | parent::CastExpression/parent::MethodCall)]
+  | //MethodCall[@MethodName = 'openStream'][*[1][pmd-java:typeIs('java.net.URL')]][$http(.)]
+  | //MethodCall[@MethodName = ('createDefault', 'createSystem', 'createMinimal')]
+      [*[1][self::TypeExpression][pmd-java:typeIs('org.apache.http.impl.client.HttpClients')
+        or pmd-java:typeIs('org.apache.hc.client5.http.impl.classic.HttpClients')]]
+  | //MethodCall[@MethodName = 'custom']
+      [*[1][self::TypeExpression][pmd-java:typeIs('org.apache.http.impl.client.HttpClients')
+        or pmd-java:typeIs('org.apache.hc.client5.http.impl.classic.HttpClients')]]
+      [$unset(., ('setDefaultRequestConfig', 'setConnectionManager', 'setDefaultSocketConfig'))]
 )
 ]]></value>
       </property>

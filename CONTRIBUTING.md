@@ -141,9 +141,19 @@ tool pinned in `languages/java/gradle/nitpicker.init.gradle` must have a license
 `core/licensing/test-support/` that the allowlist accepts and an exact version, and every package in
 `package-lock.json` must declare an allowed license, with its installed LICENSE text scanned for a
 GPL, AGPL or source-available notice (a package that offers an allowed license in an OR expression
-passes). Adding a pinned Java tool means adding its license entry in the same change, after reading
-the license text, since a package's metadata can disagree with its LICENSE file. Transitive Java
-dependencies that Gradle resolves at run time (Saxon-HE, the JUnit launcher) are not read by the
-test; they are listed above and reviewed by hand when a pinned tool is bumped.
+passes). `Public Domain`, which is not an SPDX id, is accepted for `jsonify@0.0.1` only. Adding a
+pinned Java tool means adding its license entry in the same change, after reading the license text,
+since a package's metadata can disagree with its LICENSE file.
+
+`languages/java/adapters/java-e2e/preset/quality/java-preset-tool-licenses.e2e.test.mjs` runs in the
+Java end-to-end suite, since it needs
+Maven and the network. It resolves every tool nitpicker downloads with Maven, transitive
+dependencies included (the formatters and the Kotlin tools through the coordinates in the Gradle
+scripts), and checks the license each jar's POM declares, or the nearest parent POM that declares
+one; several licenses in one POM are a choice, as Maven defines them. Free-text names become SPDX
+ids in `core/licensing/test-support/pom-licenses.mjs`, and a name it does not know fails until it is
+added there after reading the license (dom4j's POM says "Plexus" for its BSD-style license, so it
+has its own entry). The license texts inside the jars are not read, and lizard, a Python tool, keeps
+only its hand entry.
 
 To cut a release, see [docs/releasing.md](docs/releasing.md).

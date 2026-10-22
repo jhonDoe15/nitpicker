@@ -256,6 +256,15 @@ describe('find-sec-bugs advice', () => {
     );
   });
 
+  it('leads with the allowed form, and allows * on CORS without credentials as SpringCorsWildcard', () => {
+    const openings = securityPatterns().map((pattern) => securityMessage(pattern).split(' ')[0]);
+
+    expect(openings.filter((word) => ['Do', 'Never', "Don't"].includes(word))).toEqual([]);
+    expect(securityMessage('PERMISSIVE_CORS')).toBe(
+      'Allow * only on a public API that sends no credentials; when credentials are allowed, list the origins from configuration (CorsConfiguration.setAllowedOrigins) and echo only a matching Origin. If it is right here, add an exception for spotbugs/PERMISSIVE_CORS in nitpicker.config.json.',
+    );
+  });
+
   it('has no message for a SpotBugs core pattern', () => {
     expect(securityMessage('DM_DEFAULT_ENCODING')).toBeUndefined();
   });

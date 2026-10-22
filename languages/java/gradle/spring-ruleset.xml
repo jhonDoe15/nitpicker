@@ -830,7 +830,7 @@ return (
   </rule>
 
   <rule name="SpringOutboundUrl" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not build the URL of an outgoing request from a method parameter. Keep the host fixed (a configured base URL) and pass the changing parts as URI template variables, not as part of the URL string. If it is right here, add an exception for pmd/SpringOutboundUrl in nitpicker.config.json.">
+        message="Keep the host of an outgoing request fixed, a configured base URL, and pass the changing parts as URI template variables; a URL built from a method parameter can reach any host. If it is right here, add an exception for pmd/SpringOutboundUrl in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodCall[
@@ -851,7 +851,15 @@ return (
 [not(ancestor::ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Configuration')]])]
 [not(ancestor::MethodDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')])]
 [let $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
-     $parameters := $method/FormalParameters/FormalParameter
+     $parameters := $method[not(self::ConstructorDeclaration and ancestor::ClassDeclaration[1]/ModifierList/Annotation[
+        pmd-java:typeIs('org.springframework.stereotype.Component')
+        or pmd-java:typeIs('org.springframework.stereotype.Service')
+        or pmd-java:typeIs('org.springframework.stereotype.Repository')
+        or pmd-java:typeIs('org.springframework.stereotype.Controller')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')])]
+      /FormalParameters/FormalParameter
       [not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.beans.factory.annotation.Value')])],
      $strings := $parameters[pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.net.URI')
       or pmd-java:typeIs('java.net.URL')]/VariableId/@Name,
@@ -902,7 +910,7 @@ return (
   </rule>
 
   <rule name="SpringOpenRedirect" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not redirect to a value taken from the request. Redirect to a fixed route, or check the target against an allow-list of paths; a fixed path with a changing last segment, such as redirect:/orders/ plus an id, is fine. If it is right here, add an exception for pmd/SpringOpenRedirect in nitpicker.config.json.">
+        message="Redirect to a fixed route, or check the target against an allow-list of paths; a fixed path with a changing last segment, such as redirect:/orders/ plus an id, is fine. A redirect to a value taken from the request can send users to any site. If it is right here, add an exception for pmd/SpringOpenRedirect in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 (//InfixExpression[@Operator = '+'][*[1][self::StringLiteral[matches(@ConstValue, '^(redirect|forward):((https?:)?//?)?$')]]]
