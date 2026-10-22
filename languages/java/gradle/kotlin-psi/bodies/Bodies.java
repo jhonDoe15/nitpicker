@@ -10,7 +10,6 @@ import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.*;
 
-/** Call sites, assignments, catches and returns of the main sources, each tied to its enclosing scope. */
 public final class Bodies {
   private static final int CHAIN_LIMIT = 12;
 
@@ -21,12 +20,18 @@ public final class Bodies {
   private final List<Object> catches = new ArrayList<>();
   private final List<Object> literals = new ArrayList<>();
   private final List<Object> nullReturns = new ArrayList<>();
+  private final List<Object> locals = new ArrayList<>();
+  private final List<Object> throwsList = new ArrayList<>();
   private final ExceptionUses exceptionUses;
+  private final Throwing throwing;
+  private final Set<String> handlerNames;
 
-  public Bodies(String text, boolean test) {
+  public Bodies(String text, boolean test, Set<String> nothing, Set<String> handlerNames) {
     this.active = !test;
     this.lines = new Lines(text);
     this.exceptionUses = new ExceptionUses(this::lineOf);
+    this.throwing = new Throwing(nothing);
+    this.handlerNames = handlerNames;
   }
 
   int lineOf(PsiElement element) {
@@ -50,7 +55,7 @@ public final class Bodies {
     if (body instanceof KtConstantExpression && "null".equals(body.getText())) {
       nullReturns.add(m("line", lineOf(body), "scope", scopes.id(inner)));
     }
-    if (annotationNames(function).contains("ExceptionHandler") && body != null) {
+    if (annotationNames(function).stream().anyMatch(handlerNames::contains) && body != null) {
       exceptionUses.collect(function, scopes.id(inner));
     }
   }
@@ -66,10 +71,11 @@ public final class Bodies {
     } else if (element instanceof KtCatchClause) {
       catchClause((KtCatchClause) element, frame);
     } else if (element instanceof KtProperty && ((KtProperty) element).isLocal()) {
-      KtProperty local = (KtProperty) element;
-      if (Initializers.isLiteral(local.getInitializer())) {
-        literals.add(m("name", local.getName(), "scope", scopes.id(frame)));
-      }
+      local((KtProperty) element, frame);
+    } else if (element instanceof KtArrayAccessExpression) {
+      read((KtArrayAccessExpression) element, frame);
+    } else if (element instanceof KtThrowExpression) {
+      thrown((KtThrowExpression) element, frame);
     } else if (element instanceof KtReturnExpression) {
       KtReturnExpression returned = (KtReturnExpression) element;
       KtExpression value = returned.getReturnedExpression();
@@ -84,12 +90,60 @@ public final class Bodies {
     }
   }
 
+  private void local(KtProperty local, Frame frame) {
+    if (Initializers.isLiteral(local.getInitializer())) {
+      literals.add(m("name", local.getName(), "scope", scopes.id(frame)));
+    }
+    locals.add(m("name", local.getName(), "scope", scopes.id(frame), "line", lineOf(local),
+        "type", clip(local.getTypeReference()), "initializer", Initializers.callee(local),
+        "alias", Initializers.alias(local)));
+  }
+
+  private void read(KtArrayAccessExpression access, Frame frame) {
+    PsiElement parent = access.getParent();
+    if (parent instanceof KtBinaryExpression && ((KtBinaryExpression) parent).getLeft() == access
+        && KtTokens.ALL_ASSIGNMENTS.contains(((KtBinaryExpression) parent).getOperationToken())) {
+      return;
+    }
+    List<Object> indexes = new ArrayList<>();
+    for (KtExpression index : access.getIndexExpressions()) {
+      indexes.add(m("text", clip(index)));
+    }
+    record(access, frame, m("name", "get", "receiver", clip(access.getArrayExpression()), "index", true,
+        "arguments", indexes));
+  }
+
+  private void thrown(KtThrowExpression expression, Frame frame) {
+    KtExpression value = expression.getThrownExpression();
+    if (value instanceof KtQualifiedExpression) {
+      value = ((KtQualifiedExpression) value).getSelectorExpression();
+    }
+    if (value instanceof KtCallExpression) {
+      throwsList.add(m("line", lineOf(expression), "scope", scopes.id(frame),
+          "type", nameOf(((KtCallExpression) value).getCalleeExpression()), "caught", caught(expression)));
+    }
+  }
+
+  private static Boolean caught(PsiElement start) {
+    PsiElement child = start;
+    for (PsiElement up = start.getParent(); up != null && !(up instanceof KtDeclarationWithBody);
+        up = up.getParent()) {
+      if (up instanceof KtTryExpression && ((KtTryExpression) up).getTryBlock() == child
+          && !((KtTryExpression) up).getCatchClauses().isEmpty()) {
+        return Boolean.TRUE;
+      }
+      child = up;
+    }
+    return null;
+  }
+
   private void call(KtCallExpression call, Frame frame) {
     String name = nameOf(call.getCalleeExpression());
     if (name == null) {
       return;
     }
-    Map<String, Object> data = m("name", name, "arguments", arguments(call));
+    Map<String, Object> data = m("name", name, "arguments", arguments(call),
+        "throwing", throwing.lambdaThrows(call) ? Boolean.TRUE : null);
     if (call.getParent() instanceof KtQualifiedExpression
         && ((KtQualifiedExpression) call.getParent()).getSelectorExpression() == call) {
       KtQualifiedExpression qualified = (KtQualifiedExpression) call.getParent();
@@ -115,6 +169,7 @@ public final class Bodies {
 
   private void chained(KtExpression top, Map<String, Object> data) {
     List<Object> after = new ArrayList<>();
+    List<Object> afterThrowing = new ArrayList<>();
     KtExpression outer = top;
     while (outer.getParent() instanceof KtQualifiedExpression
         && ((KtQualifiedExpression) outer.getParent()).getReceiverExpression() == outer) {
@@ -124,10 +179,18 @@ public final class Bodies {
           ? nameOf(((KtCallExpression) selector).getCalleeExpression()) : nameOf(selector);
       if (next != null && after.size() < CHAIN_LIMIT) {
         after.add(next);
+        if (selector instanceof KtCallExpression && throwing.lambdaThrows((KtCallExpression) selector)) {
+          afterThrowing.add(next);
+        }
       }
     }
     PsiElement parent = outer.getParent();
     data.put("after", after.isEmpty() ? null : after);
+    data.put("afterThrowing", afterThrowing.isEmpty() ? null : afterThrowing);
+    if (parent instanceof KtBinaryExpression && ((KtBinaryExpression) parent).getLeft() == outer
+        && ((KtBinaryExpression) parent).getOperationToken() == KtTokens.ELVIS) {
+      data.put("elvis", clip(((KtBinaryExpression) parent).getRight()));
+    }
     data.put("statement", parent instanceof KtBlockExpression ? Boolean.TRUE : null);
     data.put("returned", parent instanceof KtReturnExpression
         || (parent instanceof KtDeclarationWithBody && ((KtDeclarationWithBody) parent).getBodyExpression() == outer)
@@ -168,7 +231,7 @@ public final class Bodies {
     catches.add(
         m("line", lineOf(clause), "scope", scopes.id(frame), "name", parameter.getName(),
             "type", clip(parameter.getTypeReference()),
-            "throws", PsiTreeUtil.findChildOfType(clause.getCatchBody(), KtThrowExpression.class) != null));
+            "throws", throwing.throwsIn(clause.getCatchBody())));
   }
 
   private void record(PsiElement element, Frame frame, Map<String, Object> data) {
@@ -183,7 +246,8 @@ public final class Bodies {
   public Map<String, Object> result() {
     return active
         ? m("scopes", scopes.entries(), "invocations", invocations, "catches", catches, "literals", literals,
-            "nullReturns", nullReturns, "exceptionUses", exceptionUses.uses())
+            "nullReturns", nullReturns, "exceptionUses", exceptionUses.uses(), "locals", locals,
+            "throws", throwsList)
         : Map.of();
   }
 }

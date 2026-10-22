@@ -1,5 +1,6 @@
 package nitpicker.kotlinpsi.bodies;
 
+import static nitpicker.kotlinpsi.common.Psi.clip;
 import static nitpicker.kotlinpsi.common.Psi.nameOf;
 
 import org.jetbrains.kotlin.psi.*;
@@ -13,6 +14,16 @@ public final class Initializers {
       value = ((KtQualifiedExpression) value).getSelectorExpression();
     }
     return value instanceof KtCallExpression ? nameOf(((KtCallExpression) value).getCalleeExpression()) : null;
+  }
+
+  static String alias(KtProperty property) {
+    KtExpression value = property.getInitializer();
+    while (value instanceof KtDotQualifiedExpression
+        && ((KtDotQualifiedExpression) value).getSelectorExpression() instanceof KtNameReferenceExpression) {
+      value = ((KtDotQualifiedExpression) value).getReceiverExpression();
+    }
+    return value instanceof KtNameReferenceExpression || value instanceof KtThisExpression
+        ? clip(property.getInitializer()) : null;
   }
 
   public static Boolean literal(KtProperty property) {

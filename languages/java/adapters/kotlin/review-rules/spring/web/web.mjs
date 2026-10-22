@@ -1,5 +1,5 @@
 import { annotationIn, typeArguments, typeName } from '../spring-names.mjs';
-import { has, report } from '../spring-scopes.mjs';
+import { has, report, returnTypeOf } from '../spring-scopes.mjs';
 import {
   CONTROLLER,
   CROSS_ORIGIN,
@@ -166,7 +166,10 @@ function requestBodies(view) {
 function responses(view) {
   const handlerSet = new Set(handlers(view));
   const typed = [...handlerSet]
-    .filter((fn) => fn.returnType !== undefined && untyped(view, fn.returnType))
+    .filter((fn) => {
+      const type = returnTypeOf(view, fn);
+      return type !== undefined && untyped(view, type);
+    })
     .map((fn) => report('SpringTypedResponse', fn, `${fn.owner}.${fn.name}`));
   const nulls = view.file.nullReturns
     .filter(({ scope }) => handlerSet.has(view.functionAt(scope)))

@@ -1,11 +1,12 @@
 import { isSecretKey } from '../../../../spring/spring-secrets.mjs';
-import { annotationIn, stringValue } from '../spring-names.mjs';
+import { annotationIn, argumentOf, stringValue } from '../spring-names.mjs';
 import { entriesOf, symbolOf } from '../spring-scopes.mjs';
 import {
   BEAN,
   CONFIG_INITIALIZERS,
   CONFIGURATION,
   CONFIGURATION_CLASSES,
+  CONFIGURATION_PROPERTIES,
   DEFAULT_VALUE,
   PROFILE,
   PROPERTY_RESOLVERS,
@@ -15,6 +16,7 @@ import {
 
 const JVM_KEY = /^(?:java|user|os|file|line|path|javax|jdk|sun|com\.sun|http|https|ftp)\.|^socks/u;
 const SECRET_DEFAULT = /^\$\{([^}:]+):([^}]*)\}$/u;
+const READS = new Set(['getProperty', 'getRequiredProperty']);
 function isFallback(value) {
   return value !== '' && !/^[#$]/u.test(value);
 }
@@ -79,7 +81,7 @@ function propertyReads(view) {
       !(owner !== undefined && configurationClass(view, owner)) &&
       fn?.name !== 'main';
     const environment =
-      ['getProperty', 'getRequiredProperty'].includes(invocation.name) &&
+      (READS.has(invocation.name) || (invocation.name === 'get' && invocation.index === true)) &&
       view
         .chain(invocation.scope)
         .some(({ k, qualified }) => k === 'class' && stereotype(view, qualified)) &&
@@ -121,22 +123,43 @@ function secretDefaults(view) {
   });
   const reads = view.file.invocations.filter(
     (invocation) =>
-      invocation.name === 'getProperty' &&
-      invocation.arguments.length === 2 &&
+      (READS.has(invocation.name) || invocation.index === true) &&
       secretFallback(
-        stringValue(invocation.arguments[0].text),
-        stringValue(invocation.arguments[1].text),
+        stringValue(invocation.arguments[0]?.text),
+        stringValue(invocation.arguments[1]?.text ?? invocation.elvis),
       ) &&
       view.is(view.typeOf(invocation.scope, invocation.receiver), PROPERTY_RESOLVERS),
   );
   return [
     ...annotated,
+    ...propertiesDefaults(view),
     ...reads.map((invocation) => ({
       rule: 'SpringValueSecretDefault',
       line: invocation.line,
       symbol: symbolOf(view, invocation.scope, invocation.name),
     })),
   ];
+}
+
+function propertiesDefaults(view) {
+  return view.file.classes.flatMap((declared) => {
+    const properties = annotationIn(view.resolve, declared.annotations, CONFIGURATION_PROPERTIES);
+    if (properties === undefined) {
+      return [];
+    }
+    const prefix = stringValue(
+      argumentOf(properties, 'prefix') ?? argumentOf(properties, 'value', { positional: true }),
+    );
+    return declared.primaryParameters
+      .filter(({ name, defaultValue }) =>
+        secretFallback([prefix, name].filter(Boolean).join('.'), stringValue(defaultValue)),
+      )
+      .map((parameter) => ({
+        rule: 'SpringValueSecretDefault',
+        line: parameter.line,
+        symbol: `${declared.qualified}.${parameter.name}`,
+      }));
+  });
 }
 
 function profiles(view) {

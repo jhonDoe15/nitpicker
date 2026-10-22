@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { findingFactory } from '../review-finding.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../review-rules.mjs';
 import { springFindings, withoutCoveredSourceFindings } from './spring-findings.mjs';
-import { SPRING_RULES } from './spring-messages.mjs';
+import { ALLOWED_FORM_FIRST } from '../../../spring/test-support/allowed-form.mjs';
+import { SPRING_RULES, springMessage } from './spring-messages.mjs';
 
 const FIXTURES = path.resolve(import.meta.dirname, '../../../fixtures');
 const FIXTURE = path.join(FIXTURES, 'kotlin-spring-facts.json');
@@ -90,6 +91,25 @@ const EXPECTED = [
   'bad/Data.kt:62 SpringDataFilterInQuery InvoiceService.anyOpen.findAll',
   'bad/Data.kt:65 SpringDataFilterInQuery InvoiceService.unpaid.findAll',
   'bad/Data.kt:68 SpringDataFilterInQuery InvoiceService.total.findAll',
+  'bad/Defaults.kt:17 SpringValueSecretDefault JwtProps.secret',
+  'bad/Defaults.kt:23 SpringNoServiceLocator Receipts.context',
+  'bad/Defaults.kt:26 SpringProxySelfCall Receipts.issue.record',
+  'bad/Defaults.kt:27 SpringProxySelfCall Receipts.issue.find',
+  'bad/Defaults.kt:43 SpringNoSwallowedTransactionException Receipts.retry.e',
+  'bad/Defaults.kt:49 SpringTransactionalCheckedRollback Receipts.importAll',
+  'bad/Defaults.kt:61 SpringNoSwallowedTransactionException Receipts.cancel.e',
+  'bad/Defaults.kt:66 SpringTypedConfiguration Receipts.secret.getProperty',
+  'bad/Defaults.kt:66 SpringValueSecretDefault Receipts.secret.getProperty',
+  'bad/Defaults.kt:68 SpringTypedConfiguration Receipts.url.get',
+  'bad/Defaults.kt:70 SpringTypedConfiguration Receipts.mode.getProperty',
+  'bad/Defaults.kt:72 SpringHttpClientPerCall Receipts.fetch.RestTemplate',
+  'bad/Defaults.kt:84 SpringImmutableBeans Sequence.instances',
+  'bad/Defaults.kt:85 SpringBeanCollectionState Sequence.seen',
+  'bad/Defaults.kt:91 SpringBeanCollectionState Caches.first',
+  'bad/Defaults.kt:92 SpringBeanCollectionState Caches.second',
+  'bad/Defaults.kt:93 SpringBeanCollectionState Caches.third',
+  'bad/Defaults.kt:103 SpringConstructorInjection SecondaryInjected',
+  'bad/Defaults.kt:117 SpringProxyMethodVisibility Invoicing.charge',
   'bad/Entities.kt:20 JpaEntityClass Customer',
   'bad/Entities.kt:20 JpaVersion Customer',
   'bad/Entities.kt:20 JpaIdentityHashCode Customer',
@@ -105,6 +125,13 @@ const EXPECTED = [
   'bad/Entities.kt:40 JpaIdentityHashCode Invoice.hashCode',
   'bad/Entities.kt:46 JpaVersion BaseEntity',
   'bad/Entities.kt:49 JpaSequenceIds BaseEntity.id',
+  'bad/Handlers.kt:19 SpringTypedResponse InferredController.inferred',
+  'bad/Handlers.kt:22 SpringTypedRequestBody InferredController.echo.body',
+  'bad/Handlers.kt:22 SpringTypedResponse InferredController.echo',
+  'bad/Handlers.kt:29 SpringNoErrorLeak AliasedErrors.failed.e',
+  'bad/Handlers.kt:41 SpringHttpClientTimeouts FactoryConfig.bare.SimpleClientHttpRequestFactory',
+  'bad/Handlers.kt:45 SpringHttpClientTimeouts FactoryConfig.named.SimpleClientHttpRequestFactory',
+  'bad/Handlers.kt:50 SpringHttpClientTimeouts FactoryConfig.qualified.RestTemplate',
   'bad/Proxies.kt:17 SpringProxySelfCall Billing.charge.record',
   'bad/Proxies.kt:18 SpringProxySelfCall Billing.charge.record',
   'bad/Proxies.kt:25 SpringNoSwallowedTransactionException Billing.record.e',
@@ -173,13 +200,13 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
     expect(
       SPRING_RULES.every((rule) => KOTLIN_REVIEW_EXCEPTION_RULES.includes(`pmd/${rule}`)),
     ).toBe(true);
+    expect(KOTLIN_REVIEW_EXCEPTION_RULES.includes('pmd/SpringQueryConcatenation')).toBe(true);
   });
 
-  it('names the allowed form first and ends with the exception route of its own rule', () => {
+  it('ends each message with the exception route of its own rule', () => {
     for (const finding of findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN })) {
       expect(finding.tool).toBe('pmd');
       expect(finding.classification).toBe('enforceable');
-      expect(/^[A-Z]/u.test(finding.message)).toBe(true);
       expect(
         finding.message.endsWith(
           OWN_ROUTE[finding.rule] ??
@@ -187,6 +214,12 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
         ),
       ).toBe(true);
     }
+  });
+
+  it('leads every message with the allowed form, never with a prohibition or the problem', () => {
+    const leads = SPRING_RULES.filter((rule) => !ALLOWED_FORM_FIRST.test(springMessage(rule)));
+
+    expect(leads).toEqual([]);
   });
 
   it('runs only on a Spring project, as the Java rule set does', () => {
@@ -201,6 +234,7 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
     );
 
     expect(EXPECTED.filter((line) => !unknown.includes(line))).toEqual([
+      'bad/Defaults.kt:117 SpringProxyMethodVisibility Invoicing.charge',
       'bad/Proxies.kt:71 SpringProxyMethodVisibility Mailer.send',
     ]);
     expect(withoutPlugin.filter((line) => line.startsWith('good/'))).toEqual([
@@ -212,6 +246,19 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'good/Data.kt:51 SpringProxyMethodVisibility ShipmentService.touch',
       'good/Data.kt:54 SpringProxyMethodVisibility ShipmentService.open',
       'good/Data.kt:57 SpringProxyMethodVisibility ShipmentService.openCount',
+      'good/Defaults.kt:23 SpringProxyMethodVisibility Accounts.duplicate',
+      'good/Defaults.kt:32 SpringProxyMethodVisibility Accounts.helper',
+      'good/Defaults.kt:43 SpringProxyMethodVisibility Accounts.onFailure',
+      'good/Defaults.kt:48 SpringProxyMethodVisibility Accounts.folded',
+      'good/Defaults.kt:51 SpringProxyMethodVisibility Accounts.orElse',
+      'good/Defaults.kt:54 SpringProxyMethodVisibility Accounts.later',
+      'good/Defaults.kt:60 SpringProxyMethodVisibility Accounts.sendLater',
+      'good/Defaults.kt:68 SpringProxyMethodVisibility Catalog.cached',
+      'good/Defaults.kt:71 SpringProxyMethodVisibility Catalog.list',
+      'good/Defaults.kt:87 SpringProxyMethodVisibility Inventory.cached',
+      'good/Defaults.kt:90 SpringProxyMethodVisibility Inventory.list',
+      'good/Defaults.kt:121 SpringProxyMethodVisibility Pricing.quote',
+      'good/Defaults.kt:127 SpringProxyMethodVisibility Checks.run',
       'good/Entities.kt:48 JpaEntityClass Tag',
       'good/Entities.kt:51 JpaEntityClass Shipment',
       'good/Entities.kt:64 JpaEntityClass Line',
@@ -221,6 +268,7 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'good/Proxies.kt:35 SpringProxyMethodVisibility Billing.export',
       'good/Proxies.kt:38 SpringProxyMethodVisibility Billing.notifyLater',
       'good/Proxies.kt:47 SpringProxyMethodVisibility Audit.write',
+      'good/StarImports.kt:13 SpringProxyMethodVisibility Parser.parse',
     ]);
   });
 });
@@ -249,7 +297,23 @@ describe('Kotlin Spring rules that read the rest of the project', () => {
       }),
     );
 
-    expect(opened.filter((line) => line.startsWith('good/'))).toEqual([]);
+    expect(opened.filter((line) => line.startsWith('good/'))).toEqual([
+      'good/Defaults.kt:121 SpringProxyMethodVisibility Pricing.quote',
+      'good/Defaults.kt:127 SpringProxyMethodVisibility Checks.run',
+    ]);
+  });
+
+  it('opens a class through a project annotation only when the plugin opens that annotation', () => {
+    const opened = summary(
+      findingsWith({
+        spring: true,
+        kotlinAllOpen: { annotations: ['org.springframework.stereotype.Component'], presets: [] },
+      }),
+    );
+
+    expect(opened.filter((line) => /Pricing\.quote|Invoicing\.charge/u.test(line))).toEqual([
+      'bad/Defaults.kt:117 SpringProxyMethodVisibility Invoicing.charge',
+    ]);
   });
 });
 
@@ -272,5 +336,20 @@ describe('withoutCoveredSourceFindings', () => {
       findings[3],
       findings[5],
     ]);
+  });
+
+  it('keeps the Kotlin finding when an exception lifts the Spring finding on that line', () => {
+    const findings = [
+      at('kotlin-source', 'HttpWithoutTimeout', 3),
+      at('pmd', 'SpringHttpClientPerCall', 3),
+    ];
+    const exceptions = [{ rule: 'pmd/SpringHttpClientPerCall', glob: 'app/A.kt' }];
+
+    expect(withoutCoveredSourceFindings(findings, { exceptions, modulePath: 'app' })).toEqual(
+      findings,
+    );
+    expect(withoutCoveredSourceFindings(findings, { exceptions, modulePath: 'other' })).toEqual(
+      findings.slice(1),
+    );
   });
 });

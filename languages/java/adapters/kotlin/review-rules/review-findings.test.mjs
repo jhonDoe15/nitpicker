@@ -162,6 +162,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/StaticForwardingWrapper',
       'pmd/SingularAndPluralMember',
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),
+      'pmd/SpringQueryConcatenation',
       'unused-option',
     ]);
     for (const rule of KOTLIN_REVIEW_EXCEPTION_RULES) {

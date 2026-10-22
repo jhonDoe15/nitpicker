@@ -54,6 +54,7 @@ export const SINGLETON_SCOPES = group(
 );
 export const SCOPE = group(inPackage(CONTEXT, 'Scope'));
 export const SYNCHRONIZED = group(['kotlin.jvm.Synchronized']);
+export const COMPLETABLE_FUTURE = group(['java.util.concurrent.CompletableFuture']);
 
 export const SPRING_TRANSACTIONAL = group(
   inPackage(`${SPRING}.transaction.annotation`, 'Transactional'),
@@ -73,6 +74,7 @@ export const SPRING_PRESET_OPEN = group(
   [...STEREOTYPES, ...CONFIGURATION_CLASSES, ...SPRING_TRANSACTIONAL, ...ASYNC],
   inPackage(`${SPRING}.cache.annotation`, 'Cacheable'),
   inPackage(`${SPRING}.boot.test.context`, 'SpringBootTest'),
+  inPackage(`${SPRING}.validation.annotation`, 'Validated'),
 );
 
 export const MAPPINGS = group(
@@ -108,6 +110,14 @@ export const LOCATOR_INTERFACES = group(
 );
 export const POST_PROCESSORS = group(
   inPackage(`${FACTORY}.config`, 'BeanFactoryPostProcessor', 'BeanPostProcessor'),
+);
+export const PERSISTENCE_EXCEPTIONS = [
+  /^org\.springframework\.(?:dao|transaction|orm|jdbc)(?:\.\w+)*\.\w*Exception$/u,
+  /^(?:jakarta|javax)\.persistence\.\w*Exception$/u,
+  /^org\.hibernate(?:\.\w+)*\.\w*Exception$/u,
+];
+export const CONFIGURATION_PROPERTIES = group(
+  inPackage(`${SPRING}.boot.context.properties`, 'ConfigurationProperties'),
 );
 export const CONFIG_INITIALIZERS = group(
   inPackage(`${SPRING}.boot.env`, 'EnvironmentPostProcessor'),

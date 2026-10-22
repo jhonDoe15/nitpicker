@@ -6,12 +6,15 @@ import static nitpicker.kotlinpsi.common.Psi.nameOf;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import nitpicker.kotlinpsi.bodies.Bodies;
 import nitpicker.kotlinpsi.common.Frame;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
 public final class FactsCollector {
+  private static final String HANDLER = "org.springframework.web.bind.annotation.ExceptionHandler";
+
   private final KtFile file;
   private final State state;
   private final Declarations declarations;
@@ -19,13 +22,13 @@ public final class FactsCollector {
   private final Predicates predicates;
   private final Bodies bodies;
 
-  public FactsCollector(KtFile file, String text, String relative, boolean test) {
+  public FactsCollector(KtFile file, String text, String relative, boolean test, Set<String> nothing) {
     this.file = file;
     this.state = new State(file, text, relative, test);
     this.declarations = new Declarations(state);
     this.calls = new Calls(state);
     this.predicates = new Predicates(state);
-    this.bodies = new Bodies(text, test);
+    this.bodies = new Bodies(text, test, nothing, state.namesOf(HANDLER));
   }
 
   public void collect() {
@@ -71,10 +74,10 @@ public final class FactsCollector {
       return new Frame(frame, m("k", "init"));
     }
     if (element instanceof KtLambdaExpression) {
-      return new Frame(frame, Scopes.lambdaData((KtLambdaExpression) element));
+      return new Frame(frame, Scopes.lambdaData((KtLambdaExpression) element, state));
     }
     if (element instanceof KtLoopExpression) {
-      return new Frame(frame, Scopes.loopData((KtLoopExpression) element));
+      return new Frame(frame, Scopes.loopData((KtLoopExpression) element, state));
     }
     observe(element, frame);
     return frame;
