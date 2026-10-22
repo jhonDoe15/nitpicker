@@ -1,5 +1,15 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -8,24 +18,26 @@ import {
   BOM,
   BROKEN,
   CRLF,
+  DEEP_CHAIN,
   FLAT,
   INITIALIZERS,
   MULTIFILE_A,
   MULTIFILE_B,
   NESTING,
+  PREDICATE_SYMBOLS,
   ROOT_PACKAGE,
   UNITS,
 } from './test-support/kotlin-metrics-sources.mjs';
 
-// Runs KotlinMetrics.java, the PSI program behind Kotlin structure, CRAP and coupling, on source
-// files. It needs Java 21, Gradle and network access to Maven Central (for the Kotlin compiler the
-// init script pins), so it only runs with NITPICKER_KOTLIN_E2E=1 (`npm run test:kotlin`). A bump
+// Compiles and runs kotlin-psi, the PSI program behind Kotlin structure, CRAP, coupling and the
+// review rules, on source files. It needs Java 21, Gradle and network access to Maven Central (for
+// the Kotlin compiler the init script pins), so it only runs with NITPICKER_KOTLIN_E2E=1 (`npm run test:kotlin`). A bump
 // of `kotlinCompiler` in the init script is checked by this test.
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const pinned = /kotlinCompiler\s*:\s*'([^']+)'/.exec(readFileSync(INIT_SCRIPT, 'utf8'))[1];
-const metricsSource = path.resolve(import.meta.dirname, '../gradle/KotlinMetrics.java');
+const psiSources = path.resolve(import.meta.dirname, '../gradle/kotlin-psi');
 
 const PRINT_CLASSPATH = `allprojects {
     plugins.withId('org.jetbrains.kotlin.jvm') {
@@ -49,9 +61,22 @@ configurations.matching { it.name == "nitpickerKotlinCompiler" }.configureEach {
 }
 `;
 
+const fixtureBuild = readFileSync(
+  path.resolve(import.meta.dirname, 'fixtures/kotlin-project/build.gradle.kts'),
+  'utf8',
+);
+const kotlinPlugin = /kotlin\("jvm"\) version "([^"]+)"/u.exec(fixtureBuild)[1];
+const MODULE_BUILD = [
+  'plugins {\n    kotlin("jvm")\n}\n',
+  'repositories {\n    mavenCentral()\n}\n',
+  'kotlin {\n    jvmToolchain(21)\n}\n',
+].join('\n');
+const PSI_CLASS = 'nitpicker/kotlinpsi/KotlinPsi.class';
+
 let workspace;
 let java;
 let classpath;
+let classes;
 
 function gradleClasspath(project) {
   const script = path.join(workspace, 'print.init.gradle');
@@ -86,25 +111,77 @@ function writeSources(name, files) {
   return dir;
 }
 
-function measure(project) {
-  const output = path.join(project, 'metrics.json');
+function twoModuleProject() {
+  return writeSources('modules', {
+    'settings.gradle.kts': 'rootProject.name = "modules"\ninclude("one", "two")\n',
+    'build.gradle.kts': `plugins {\n    kotlin("jvm") version "${kotlinPlugin}" apply false\n}\n`,
+    'one/build.gradle.kts': MODULE_BUILD,
+    'two/build.gradle.kts': MODULE_BUILD,
+    'one/src/main/kotlin/One.kt': 'package demo.one\n\nfun one() = 1\n',
+    'two/src/main/kotlin/Two.kt': 'package demo.two\n\nfun two() = 2\n',
+  });
+}
+
+function runPsiTasks(project, options = []) {
+  return spawnSync(
+    gradle,
+    [
+      '--console=plain',
+      '--quiet',
+      '--no-configuration-cache',
+      '--parallel',
+      '-Pnitpicker.kotlin=true',
+      '-I',
+      INIT_SCRIPT,
+      ...options,
+      ':one:nitpickerKotlinPsi',
+      ':two:nitpickerKotlinPsi',
+    ],
+    { cwd: project, encoding: 'utf8', timeout: 170_000 },
+  );
+}
+
+function functionsOf(project, module) {
+  const report = path.join(project, module, 'build/nitpicker/kotlin-metrics.json');
+  return JSON.parse(readFileSync(report, 'utf8')).functions.map(({ name }) => name);
+}
+
+function compilePsiProgram() {
+  const output = path.join(workspace, 'psi-classes');
+  const sources = readdirSync(psiSources, { recursive: true })
+    .filter((entry) => entry.endsWith('.java'))
+    .map((entry) => path.join(psiSources, entry));
+  const result = spawnSync(
+    path.join(java, 'bin/javac'),
+    ['-proc:none', '-d', output, '-cp', classpath, ...sources],
+    { encoding: 'utf8', timeout: 180_000 },
+  );
+  expect(result.status, result.stderr).toBe(0);
+  return output;
+}
+
+function measure(project, roots = ['src']) {
+  const metricsOutput = path.join(project, 'metrics.json');
+  const factsOutput = path.join(project, 'facts.json');
   const result = spawnSync(
     path.join(java, 'bin/java'),
     [
       `-Dnitpicker.kotlinCompiler=${pinned}`,
       '-cp',
-      classpath,
-      metricsSource,
-      output,
+      `${classpath}${path.delimiter}${classes}`,
+      'nitpicker.kotlinpsi.KotlinPsi',
+      metricsOutput,
+      factsOutput,
       project,
-      'src',
+      ...roots,
     ],
     { cwd: project, encoding: 'utf8', timeout: 180_000 },
   );
   return {
     status: result.status,
     log: result.stdout + result.stderr,
-    metrics: result.status === 0 ? JSON.parse(readFileSync(output, 'utf8')) : undefined,
+    metrics: result.status === 0 ? JSON.parse(readFileSync(metricsOutput, 'utf8')) : undefined,
+    facts: result.status === 0 ? JSON.parse(readFileSync(factsOutput, 'utf8')) : undefined,
   };
 }
 
@@ -120,6 +197,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       `${readFileSync(path.join(project, 'build.gradle.kts'), 'utf8')}${FORCE_OTHER_KOTLIN}`,
     );
     ({ javaHome: java, classpath } = gradleClasspath(project));
+    classes = compilePsiProgram();
   });
 
   afterAll(() => {
@@ -265,5 +343,119 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       'm',
     ).exec(log);
     expect([status, line, version]).toEqual([1, '4', pinned]);
+  });
+
+  it('reads a source file nested far deeper than the default stack allows', () => {
+    const { status, log, metrics, facts } = measure(
+      writeSources('deep', { 'src/Deep.kt': DEEP_CHAIN }),
+    );
+
+    expect([status, log.includes('StackOverflow')]).toEqual([0, false]);
+    expect(metrics.functions[0].name).toBe('nested');
+    expect(facts.files.map(({ file }) => file)).toEqual(['src/Deep.kt']);
+  });
+
+  it('names a predicate in a property initializer after the property and keeps backticked constants', () => {
+    const { facts } = measure(writeSources('symbols', { 'src/Symbols.kt': PREDICATE_SYMBOLS }));
+    const [symbols] = facts.files;
+
+    expect(symbols.classes.find(({ name }) => name === 'Phase').entries).toEqual([
+      'NEW',
+      'in',
+      'DONE',
+    ]);
+    expect(
+      symbols.predicates.map(
+        ({ symbol, comparisons }) =>
+          `${symbol}: ${comparisons.map(({ right }) => right).join(' ')}`,
+      ),
+    ).toEqual([
+      'Holder.k: Phase.NEW Phase.DONE',
+      'Holder.g: Phase.NEW Phase.`in`',
+      'Holder.l: Phase.NEW Phase.DONE',
+      'Holder.f: Phase.`in` Phase.DONE',
+      'isStart: Phase.NEW Phase.`in`',
+    ]);
+  });
+
+  it('collects facts of test roots without measuring them, and words a test syntax error for tests', () => {
+    const project = writeSources('roots', {
+      'src/main/Main.kt': FLAT,
+      'src/test/Check.kt': 'package demo.check\n\nclass Check { fun go() { Thread.sleep(5) } }\n',
+    });
+    const { metrics, facts } = measure(project, ['src/main', 'test:src/test']);
+    const broken = measure(writeSources('broken-test', { 'src/test/Broken.kt': BROKEN }), [
+      'test:src/test',
+    ]);
+
+    expect(metrics.files.map(({ file }) => file)).toEqual(['src/main/Main.kt']);
+    expect(facts.files.map(({ file, test, waits }) => [file, test, waits.length])).toEqual([
+      ['src/main/Main.kt', false, 0],
+      ['src/test/Check.kt', true, 1],
+    ]);
+    const reported = broken.log.split('\n').find((line) => line.startsWith('src/test/Broken.kt'));
+    expect(reported).toMatch(
+      /^src\/test\/Broken\.kt:4: .*\. This test source is not compiled by this step: .*$/u,
+    );
+  });
+});
+
+describe.skipIf(!enabled)('kotlin-psi in a Gradle build of several modules', () => {
+  let project;
+  let shared;
+
+  beforeAll(() => {
+    workspace = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-psi-build-'));
+    project = twoModuleProject();
+    shared = path.join(project, 'build/tmp/nitpickerKotlinPsi');
+  });
+
+  afterAll(() => {
+    rmSync(workspace, { recursive: true, force: true });
+  });
+
+  it('compiles the program once into the root build and every module runs it, in this build and the next', () => {
+    const first = runPsiTasks(project);
+    expect(first.status, first.stdout + first.stderr).toBe(0);
+    const compiled = readdirSync(shared);
+    const classFile = path.join(shared, compiled[0], PSI_CLASS);
+    const compiledAt = statSync(classFile).mtimeMs;
+    const second = runPsiTasks(project);
+
+    expect(second.status, second.stdout + second.stderr).toBe(0);
+    expect([compiled.length, readdirSync(shared)]).toEqual([1, compiled]);
+    expect(statSync(classFile).mtimeMs).toBe(compiledAt);
+    expect([functionsOf(project, 'one'), functionsOf(project, 'two')]).toEqual([['one'], ['two']]);
+    expect(existsSync(path.join(project, 'one/build/tmp/nitpickerKotlinPsi'))).toBe(false);
+  });
+
+  it('fails with a request for a JDK when Gradle runs on a Java runtime without javac', () => {
+    const settings = spawnSync(
+      'sh',
+      ['-c', 'exec "${JAVA_HOME:+$JAVA_HOME/bin/}java" -XshowSettings:properties -version'],
+      { encoding: 'utf8', timeout: 30_000 },
+    );
+    const jdk = /java\.home = (.+)/u.exec(settings.stderr)[1];
+    const runtime = path.join(workspace, 'runtime');
+    cpSync(jdk, runtime, { recursive: true });
+    rmSync(path.join(runtime, 'bin/javac'));
+
+    const result = runPsiTasks(project, [
+      '--no-daemon',
+      `-Dorg.gradle.java.home=${runtime}`,
+      `-Porg.gradle.java.installations.paths=${jdk}`,
+    ]);
+
+    const reasons = (result.stdout + result.stderr)
+      .split('\n')
+      .filter((line) => line.includes('without javac'))
+      .map((line) => line.trim());
+
+    expect(result.status).not.toBe(0);
+    expect([...new Set(reasons)]).toEqual([
+      `> The kotlin preset compiles its Kotlin parser with javac, and Gradle runs on ${runtime}, ` +
+        'a Java runtime without javac. Run the build on a JDK (Java 21): point JAVA_HOME or ' +
+        'org.gradle.java.home at one.',
+    ]);
   });
 });

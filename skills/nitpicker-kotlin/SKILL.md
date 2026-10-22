@@ -32,6 +32,9 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    Never pass `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
    `nitpicker-config/policy-loosened` finding is for a person to accept.
 
+Before you change code other modules use, or fix a bug, read
+[beyond-the-gate.md](beyond-the-gate.md).
+
 ## Write it this way
 
 - Scope functions: `let` for null (`value?.let { ... }`) and `apply` to configure an object you just
@@ -59,6 +62,17 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
   members and parameters.
+- Enums: to sort the entries of one of your enums into two groups, classify every entry with a
+  `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
+  declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`
+  (`pmd/ExhaustiveEnumPredicate`).
+- No top-level or `object` function that only passes its parameters, in order, to another function
+  with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
+  `of` or `from` are fine.
+- A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
+  (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- A private or `internal` function or constructor does not declare a default parameter that no
+  call in the project sets (`unused-option`): remove the parameter, or pass it from a real call.
 - Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
   fix the code. The compiler warnings `UNCHECKED_CAST`, `DEPRECATION` and `USELESS_CAST` are
   findings too and are not suppressed either. If a rule flags legitimate code, stop and ask: the
@@ -89,5 +103,16 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 - Every branch you add needs a test: changed-branch coverage runs on your change.
 - Plan tests to be fast (`slow-test`): a test dispatcher or fake clock instead of
   waits, a test slice instead of a full context.
+- Never wait a fixed time in a test (`pmd/FixedSleepInTest`): no `Thread.sleep`, `TimeUnit.sleep`
+  or `delay` inside `runBlocking`. Wait on the condition in a loop against a deadline or with
+  Awaitility, use `runTest` with virtual time for coroutines, and `verify(mock, timeout(1000))`
+  for a mock. `join(ms)` and `wait(ms)` return when time runs out and the test goes on unchecked:
+  assert the result. A sleep in a mock answer, a thread or `launch` body, or a test fake that
+  implements or extends a main class is fine. To show that something does not happen, give the
+  code a clock the test moves forward, not `after(ms).never()`, `during(...)` or kotest
+  `continually` (`pmd/NegativeWaitInTest`).
+- A `@SpringBootTest` class uses its context: it injects a bean or a `MockMvc`, `WebTestClient` or
+  `TestRestTemplate`, or it starts a web server port. Otherwise create the class with its
+  constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.
