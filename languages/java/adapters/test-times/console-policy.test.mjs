@@ -2,7 +2,7 @@ import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from '../java-analyzer.mjs';
 import { configureJavaAnalyzer, validateJavaConfig } from '../java-policy.mjs';
-import { parseRunnerArguments } from '../java-runner.mjs';
+import { parseJavaRunnerArguments } from '../java-policy.mjs';
 
 const ALLOW = [{ contains: 'deprecated driver', paths: ['src/test/**'], reason: 'vendor' }];
 
@@ -22,7 +22,7 @@ describe('the test console allow list in the Java policy', () => {
       testConsole: { allow: ALLOW },
     });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
 
     expect(parsed.policy.testConsoleAllow).toEqual(ALLOW);
     expect(configured.configurationHash).not.toBe(createJavaAnalyzer().configurationHash);
@@ -30,7 +30,7 @@ describe('the test console allow list in the Java policy', () => {
 
   it('rejects an allow list argument that is not a JSON array', () => {
     expect(() =>
-      parseRunnerArguments(['--project-root', '/p', '--test-console-allow', '{}']),
+      parseJavaRunnerArguments(['--project-root', '/p', '--test-console-allow', '{}']),
     ).toThrow('--test-console-allow must be a JSON array');
   });
 

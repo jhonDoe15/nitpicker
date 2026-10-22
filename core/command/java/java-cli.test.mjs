@@ -1,10 +1,15 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
-import { unusedFieldMessage, useGradleFixtures } from './test-support/java-cli-harness.mjs';
+import {
+  gradleFailureMessage,
+  unusedFieldMessage,
+  useGradleFixtures,
+} from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { acceptedDigest } from '../test-support/accepted-digest.mjs';
 
@@ -25,13 +30,20 @@ const addedField = unusedFieldMessage('added');
 const xmlText = (text) =>
   text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
 
+const CLONE_MESSAGE = [
+  'This code repeats src/main/java/demo/Second.java:3 (30 lines).',
+  'Keep one copy and call it from both places.',
+  'If the repetition is intended, add src/main/java/demo/First.java or',
+  'src/main/java/demo/Second.java to "exclude" in nitpicker.config.json.',
+].join(' ');
+
 const addedFieldOutput = expect.stringMatching(exactText`Base: comparison-base (argument)
 
 Quality gate summary
 ✖ 1 new enforceable violation
   pmd/UnusedPrivateField src/main/java/demo/A.java:4
     ${addedField}
-Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
+Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
 
 describe('nitpicker with "preset": "java"', () => {
@@ -45,7 +57,10 @@ describe('nitpicker with "preset": "java"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['java']);
+    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
+      'java',
+      'repository-hygiene',
+    ]);
   });
   it('fails on a new enforceable finding and reports it in text, JSON, SARIF and JUnit', () => {
     const root = gradleRepository();
@@ -127,8 +142,9 @@ describe('nitpicker with "preset": "java"', () => {
     );
     expect(readFileSync(path.join(result.reports, 'report.junit.xml'), 'utf8')).toEqual(
       expect.stringMatching(exactText`<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="quality.diff" tests="2" failures="1" errors="0" time="${/[0-9]+(?:\.[0-9]+)?/}">
+<testsuite name="quality.diff" tests="3" failures="1" errors="0" time="${/[0-9]+(?:\.[0-9]+)?/}">
   <testcase classname="quality.diff" name="java" time="${/[0-9]+(?:\.[0-9]+)?/}"></testcase>
+  <testcase classname="quality.diff" name="repository-hygiene" time="${/[0-9]+(?:\.[0-9]+)?/}"></testcase>
   <testcase classname="quality.diff.new-findings" name="pmd/UnusedPrivateField src/main/java/demo/A.java:4" time="${/[0-9]+(?:\.[0-9]+)?/}"><failure message="${xmlText(addedField)}" type="pmd/UnusedPrivateField">${xmlText(addedField)}</failure></testcase>
 </testsuite>
 `),
@@ -172,8 +188,8 @@ describe('nitpicker with "preset": "java"', () => {
 Quality gate summary
 ✖ 1 new enforceable violation
   duplicates/duplicate-clone src/main/java/demo/First.java:3
-    This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places.
-Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
+    ${CLONE_MESSAGE}
+Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
     const clones = result
@@ -186,8 +202,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         path: 'src/main/java/demo/First.java',
         identity:
           'pair:src/main/java/demo/First.java|src/main/java/demo/Second.java:fragment:41aa749b80d76291fc31cc1b:occurrence:1',
-        message:
-          'This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places.',
+        message: CLONE_MESSAGE,
         classification: 'enforceable',
         location: { line: 3 },
       },
@@ -210,7 +225,9 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         snapshot: 'head',
         rule: 'gradle-failure',
         path: '.',
-        message: 'Java preset failed in head: Execution failed for task :compileJava',
+        message: gradleFailureMessage(
+          'Java preset failed in head: Execution failed for task :compileJava',
+        ),
       },
     ]);
   });
@@ -227,7 +244,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
       rule: 'gradle-failure',
       path: '.',
       message: expect.stringMatching(
-        exactText`spawnSync /tmp/nitpicker-java-none-${/[A-Za-z0-9]{6}/}/no-gradle ENOENT`,
+        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nspawnSync ${tmpdir()}/nitpicker-java-none-${/[A-Za-z0-9]{6}/}/no-gradle ENOENT`,
       ),
     });
   });
@@ -255,6 +272,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         '',
         'Per-tool counts:',
         'java: total=1 enforceable=1 descriptive=0',
+        'repository-hygiene: total=0 enforceable=0 descriptive=0',
         '',
         'Enforceable findings:',
         `pmd/UnusedPrivateField src/main/java/demo/A.java:3 ${unusedFieldMessage('legacy')}`,
