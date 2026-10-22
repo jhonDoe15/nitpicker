@@ -7,6 +7,23 @@ const SUPERTYPE =
   /\bclass\s+\w+(?:<[^{]*?>)?\s+extends\s+([\w.]+)|\bclass\s+\w+(?=[^\w{])[^{]*?:\s*([\w.]+)\s*\(/gu;
 const ANNOTATION = /@([A-Z][\w.]*)/gu;
 const MAX_TYPES = 50;
+const UNIT_TEST_TASKS = new Set(['test', 'surefire']);
+const INTEGRATION_CLASS = /(?:IT|ITCase|IntegrationTests?|IntegrationSpec|ISpec)$/u;
+const INTEGRATION_SEGMENTS = new Set(['integration', 'it', 'e2e']);
+
+export function isUnitTestTask(task) {
+  return UNIT_TEST_TASKS.has(task);
+}
+
+export function isIntegrationTest({ className, unitSource }) {
+  const segments = className.split('.');
+  const simple = segments.pop().split('$')[0];
+  return (
+    !unitSource ||
+    INTEGRATION_CLASS.test(simple) ||
+    segments.some((segment) => INTEGRATION_SEGMENTS.has(segment))
+  );
+}
 
 function referencedTypes(text) {
   return [
