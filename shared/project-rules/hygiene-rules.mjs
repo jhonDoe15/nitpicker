@@ -71,3 +71,50 @@ export const HYGIENE_RULES = [
     enforcedBy: TYPESCRIPT_ONLY,
   },
 ];
+
+export const CHANGE_HISTORY_TOOL = 'change-history';
+
+export const HISTORY_RULE_IDS = {
+  coChange: 'co-change',
+};
+
+export const HISTORY_EXCEPTION_RULES = Object.values(HISTORY_RULE_IDS);
+
+export const CO_CHANGE_DEFAULTS = {
+  commits: 300,
+  minSupport: 5,
+  minConfidence: 0.6,
+  maxCommitFiles: 30,
+};
+
+export const CO_CHANGE_LIMITS = {
+  maxCommits: 2000,
+  minHistory: 20,
+  minSupport: 2,
+  minCommitFiles: 2,
+};
+
+export const CO_CHANGE_EXAMPLES = 3;
+
+const PERCENT = 100;
+const REPORTED_EVERYWHERE = Object.fromEntries(
+  ['typescript', 'javascript', 'java', 'python', 'kotlin'].map((language) => [
+    language,
+    'reported',
+  ]),
+);
+
+export const HISTORY_RULES = [
+  {
+    id: HISTORY_RULE_IDS.coChange,
+    check: CHANGE_HISTORY_TOOL,
+    limit: [
+      'two folders of production code that changed together in at least',
+      `${String(CO_CHANGE_DEFAULTS.minSupport)} of the last ${String(CO_CHANGE_DEFAULTS.commits)} commits`,
+      `and in at least ${String(CO_CHANGE_DEFAULTS.minConfidence * PERCENT)}% of the commits of the less-changed one`,
+      `(commits of more than ${String(CO_CHANGE_DEFAULTS.maxCommitFiles)} files and rename-only commits are ignored);`,
+      'opt-in with `history.coChange`, never fails',
+    ].join(' '),
+    enforcedBy: REPORTED_EVERYWHERE,
+  },
+];

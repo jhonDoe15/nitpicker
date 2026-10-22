@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../core/diff/git/test-support/git-repository.mjs';
 import { HEAD_POLICY_ENV } from '../head-policy.mjs';
 import { configurationFiles, createHygieneAnalyzers } from './analyzers.mjs';
-import { parseHygieneArguments, runHygieneCheck, runHygieneCli } from './runner.mjs';
+import { parseHygieneArguments } from './cli.mjs';
+import { runHygieneCheck, runHygieneCli } from './runner.mjs';
 
 const temporaryDirectories = [];
 const { createGitRepository } = useGitFixtures();
@@ -153,6 +154,7 @@ describe('the hygiene configuration hash', () => {
     expect(configurationFiles()).toEqual([
       'filesystem.mjs',
       'head-policy.mjs',
+      'hygiene/cli.mjs',
       'hygiene/files/build-output.mjs',
       'hygiene/files/env-files.mjs',
       'hygiene/files/known-files.mjs',

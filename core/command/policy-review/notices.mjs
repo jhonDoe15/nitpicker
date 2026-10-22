@@ -1,3 +1,8 @@
+import {
+  availabilityNotices,
+  coChangeNotices,
+} from '../../../shared/history/co-change/notices.mjs';
+import { CHANGE_HISTORY_TOOL } from '../../../shared/project-rules/hygiene-rules.mjs';
 import { jvmOutsideRootsNotices } from '../../../languages/java/adapters/notices/outside-roots-notice.mjs';
 import { readBuildSources } from '../../../languages/java/builds/narrowing/build-sources.mjs';
 import { listedFiles } from '../../policy-changes/policy-scope.mjs';
@@ -23,7 +28,7 @@ function jvmDescriber(config, headPolicy, projectRoot) {
     });
 }
 
-export function noticeDescriber(config, headPolicy, projectRoot) {
+function languageDescriber(config, headPolicy, projectRoot) {
   if (TYPESCRIPT_PRESETS.has(config.preset)) {
     return (changedFiles) => outsideRootsNotices(changedFiles, headPolicy);
   }
@@ -39,4 +44,27 @@ export function noticeDescriber(config, headPolicy, projectRoot) {
   return config.preset === 'java' || config.preset === 'kotlin'
     ? jvmDescriber(config, headPolicy, projectRoot)
     : undefined;
+}
+
+function runsCoChange(config) {
+  return config.history?.coChange === true && !(config.disable ?? []).includes(CHANGE_HISTORY_TOOL);
+}
+
+export function noticeDescriber(config, headPolicy, projectRoot) {
+  const describers = [
+    languageDescriber(config, headPolicy, projectRoot),
+    runsCoChange(config)
+      ? (changedFiles) => coChangeNotices({ projectRoot, policy: headPolicy, changedFiles })
+      : undefined,
+  ].filter((describer) => describer !== undefined);
+  return describers.length === 0
+    ? undefined
+    : (changedFiles) => describers.flatMap((describe) => describe(changedFiles));
+}
+
+export function historyAvailabilityNotes(config, headPolicy, projectRoot) {
+  if (!runsCoChange(config)) {
+    return [];
+  }
+  return availabilityNotices({ projectRoot, policy: headPolicy });
 }
