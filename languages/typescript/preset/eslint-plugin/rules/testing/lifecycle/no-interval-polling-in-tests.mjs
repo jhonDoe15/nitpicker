@@ -1,5 +1,5 @@
 import { readLayout } from '../../../../head-policy.mjs';
-import { RUNNER_OPTION_SCHEMA, vocabularyOf } from '../runners/runner-option.mjs';
+import { RUNNER_OPTION_SCHEMA, vocabularyOf } from '../../runner-apis/runner-option.mjs';
 
 const { isTestFixture } = readLayout();
 

@@ -1,14 +1,14 @@
 import path from 'node:path';
-import { readHeadPolicy, readLayout } from '../../../../head-policy.mjs';
-import { DEFAULT_TEST_RUNNER, TEST_RUNNERS } from '../../../../test-runner/runners.mjs';
+import { readHeadPolicy, readLayout } from '../../../head-policy.mjs';
+import { DEFAULT_TEST_RUNNER, TEST_RUNNERS } from '../../../test-runner/runners.mjs';
 import {
   recordedTestRunner,
   runnerVocabulary,
-} from '../../../../test-runner/runner-vocabulary.mjs';
+} from '../../../test-runner/runner-vocabulary.mjs';
 import {
   defaultTestFiles,
   testFileMatcher,
-} from '../../../../test-runner/test-files/test-file-patterns.mjs';
+} from '../../../test-runner/test-files/test-file-patterns.mjs';
 
 const layout = readLayout();
 

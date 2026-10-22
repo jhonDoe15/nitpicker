@@ -4,8 +4,8 @@ import {
   isFragmentMatch,
   isTextArgument,
   runnerAssertionVerdict,
-} from '../runners/runner-assertions.mjs';
-import { RUNNER_OPTION_SCHEMA, vocabularyOf } from '../runners/runner-option.mjs';
+} from '../../runner-apis/runner-assertions.mjs';
+import { RUNNER_OPTION_SCHEMA, vocabularyOf } from '../../runner-apis/runner-option.mjs';
 
 const PARTIAL_MATCHERS = new Set(['toContain', 'toContainEqual', 'toMatch']);
 const WHOLE_VALUE_MATCHERS = new Set(['toEqual', 'toStrictEqual']);

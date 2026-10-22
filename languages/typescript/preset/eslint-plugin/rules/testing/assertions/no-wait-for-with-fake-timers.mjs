@@ -1,6 +1,6 @@
 import { ancestorsOf, chainOf } from '../../analysis/ancestry.mjs';
-import { createRunnerApis, runnerApiVisitors } from '../runners/runner-apis.mjs';
-import { fakeTimerChange, waitKind } from '../runners/runner-doubles.mjs';
+import { createRunnerApis, runnerApiVisitors } from '../../runner-apis/runner-apis.mjs';
+import { fakeTimerChange, waitKind } from '../../runner-apis/runner-doubles.mjs';
 
 const TEARDOWN_HOOKS = ['afterEach', 'afterAll', 'after'];
 const WAIT_MESSAGES = { node: 'mockedWait', sinon: 'clockWait' };

@@ -1,7 +1,11 @@
 import { readLayout } from '../../../../head-policy.mjs';
 import { scanDomEvidence } from './dom-evidence.mjs';
 import { closureUsesDom, setupUsesDom } from './module-closure.mjs';
-import { RUNNER_OPTION_PROPERTY, projectRelative, runnerOf } from '../runners/runner-option.mjs';
+import {
+  RUNNER_OPTION_PROPERTY,
+  projectRelative,
+  runnerOf,
+} from '../../runner-apis/runner-option.mjs';
 import { statementSources } from '../../../../modules/module-sources.mjs';
 import { registeredEnvironment } from '../../../../test-environment/global-dom/global-dom.mjs';
 
@@ -40,7 +44,6 @@ const ALIAS_FIND = {
     },
   ],
 };
-
 
 function registeredInFile(program) {
   for (const statement of program.body) {

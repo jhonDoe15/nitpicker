@@ -1,6 +1,6 @@
-import { createRunnerApis, runnerApiVisitors } from '../rules/testing/runners/runner-apis.mjs';
-import { fakeTimerChange, spiedMember } from '../rules/testing/runners/runner-doubles.mjs';
-import { RUNNER_OPTION_PROPERTY, vocabularyOf } from '../rules/testing/runners/runner-option.mjs';
+import { createRunnerApis, runnerApiVisitors } from '../rules/runner-apis/runner-apis.mjs';
+import { fakeTimerChange, spiedMember } from '../rules/runner-apis/runner-doubles.mjs';
+import { RUNNER_OPTION_PROPERTY, vocabularyOf } from '../rules/runner-apis/runner-option.mjs';
 
 const NETWORK_MODULES = new Map([
   ['http', new Set(['request', 'get'])],

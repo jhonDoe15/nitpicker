@@ -4,7 +4,8 @@ import { rule } from '../../rules/testing/assertions/no-partial-output-assertion
 
 const EXCEPTION_FOR_OUTPUT =
   'An exception fits only when the output is too large or unordered to pin.';
-const EXCEPTION_FOR_VALUE = 'An exception fits only when the value is too large or unordered to pin.';
+const EXCEPTION_FOR_VALUE =
+  'An exception fits only when the value is too large or unordered to pin.';
 const ON_ITS_OWN =
   'For a field that varies, assert it on its own and compare the rest of the value whole.';
 

@@ -4,9 +4,9 @@ import {
   isReactExpression,
   reactBindingNames,
 } from './react-test-files.mjs';
-import { moduleMocks } from '../testing/runners/module-mocks.mjs';
-import { runnerApisOf } from '../testing/runners/runner-apis.mjs';
-import { spiedMember } from '../testing/runners/runner-doubles.mjs';
+import { moduleMocks } from '../runner-apis/module-mocks.mjs';
+import { runnerApisOf } from '../runner-apis/runner-apis.mjs';
+import { spiedMember } from '../runner-apis/runner-doubles.mjs';
 
 const instanceMethods = new Set([
   'instance',
