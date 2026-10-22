@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathInside } from '../../../shared/filesystem.mjs';
 import { globToRegExp } from '../../../shared/glob.mjs';
 import { DUPLICATES_MODE } from '../../../shared/policy.mjs';
 import { RENAMED_SETTINGS, withNormalizedTree } from '../../../shared/renamed-clones/tree.mjs';
@@ -14,7 +15,7 @@ const JSCPD_CONFIG = 'jscpd-config.json';
 const RENAMED_CONFIG = 'jscpd-renamed-config.json';
 const JSCPD_SETTINGS = { minTokens: 50, minLines: 5, threshold: 100 };
 
-function insideReportRoot(reportRoot, ...segments) {
+export function insideReportRoot(reportRoot, ...segments) {
   const root = path.resolve(reportRoot);
   const target = path.resolve(root, ...segments);
   if (!target.startsWith(`${root}${path.sep}`)) {
@@ -85,7 +86,7 @@ function runJscpdOnce({ cwd, output, args }) {
 
 function runGroups({ cwd, roots, together, settings, names, reportRoot, ...tool }) {
   const jscpd = resolveTool('jscpd', { bin: 'run-jscpd.js' }).binPath;
-  const config = path.join(reportRoot, names.config);
+  const config = insideReportRoot(reportRoot, names.config);
   writeFileSync(config, JSON.stringify(settings));
   const groups = together
     ? [roots].filter((group) => group.length > 0)
@@ -113,7 +114,10 @@ function runRenamedJscpd({ cwd, roots, renamed, reportFile, ignore, reportRoot, 
       runGroups({
         ...tool,
         cwd: tree,
-        roots: roots.filter((root) => existsSync(path.resolve(tree, root))),
+        roots: roots.filter((root) => {
+          const inTree = pathInside(tree, root);
+          return inTree !== undefined && existsSync(inTree);
+        }),
         ignore,
         reportRoot,
         settings: RENAMED_SETTINGS,

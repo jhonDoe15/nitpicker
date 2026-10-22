@@ -16,8 +16,8 @@ function listedByGit(projectRoot, roots) {
 }
 
 function walkedRoot(projectRoot, root) {
-  const absolute = path.resolve(projectRoot, root);
-  if (!existsSync(absolute)) {
+  const absolute = pathInside(projectRoot, root);
+  if (absolute === undefined || !existsSync(absolute)) {
     return [];
   }
   const files = filesUnder(absolute, {
