@@ -60,6 +60,12 @@ const DISABLED_TEST_TAIL =
 const DISABLED_TEST_HINT =
   '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`.';
 
+const UNUSED_PARAMETER_TAIL =
+  /\s*(?:Allowed unused args must match [^\s]+|Unused parameters should start with a '_')\.$/u;
+
+const UNUSED_PARAMETER_HINT =
+  ' Remove the parameter and update the callers. One that an override or a callback signature requires starts with `_` (`_context`).';
+
 const BACKTICKED_MATCHER = /`([\w.]+)`/u;
 
 const PREFER_CALLED_WITH_TEXT =
@@ -176,6 +182,12 @@ function boundaryTypesMessage({ text }) {
     : `${text.replace(/\.?$/u, '.')}${ARGUMENT_TYPE_HINT}`;
 }
 
+function unusedVariableMessage({ text }) {
+  return UNUSED_PARAMETER_TAIL.test(text)
+    ? `${text.replace(UNUSED_PARAMETER_TAIL, '')}${UNUSED_PARAMETER_HINT}`
+    : text;
+}
+
 function appendHint(hint) {
   return ({ text }) => `${text}${hint}`;
 }
@@ -208,6 +220,7 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/explicit-module-boundary-types', boundaryTypesMessage],
   ['no-eval', () => EVAL_MESSAGE],
   ['no-param-reassign', appendHint(PARAM_REASSIGN_HINT)],
+  ['@typescript-eslint/no-unused-vars', unusedVariableMessage],
   ['curly', appendHint(CURLY_HINT)],
   ['no-duplicate-imports', appendHint(DUPLICATE_IMPORT_HINT)],
   ['regexp/no-super-linear-backtracking', appendHint(REGEXP_HINT)],

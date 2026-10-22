@@ -13,6 +13,7 @@ const layout = defaultResolvedLayout;
 
 const BRANCH_STRICT_RULES = [
   '@typescript-eslint/explicit-module-boundary-types',
+  '@typescript-eslint/no-unused-vars',
   'curly',
   'nitpicker/naming-convention',
   'nitpicker/no-disabled-tls-verification',
