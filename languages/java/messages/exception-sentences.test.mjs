@@ -24,6 +24,10 @@ const OTHER_RULES_ROUTE = new Map([
     'adapters/kotlin/rules/kotlin-rules.mjs',
     'the Kotlin preset, whose exceptions lift detekt rules',
   ],
+  [
+    'adapters/kotlin/review-rules/review-finding.mjs',
+    'the Kotlin review rules, which the Kotlin preset routes by their own rule',
+  ],
 ]);
 
 function messageSources() {
