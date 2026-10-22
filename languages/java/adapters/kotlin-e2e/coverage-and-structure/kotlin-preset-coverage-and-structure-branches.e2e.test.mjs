@@ -1,6 +1,12 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { diffOf, fromTool, kotlinE2eEnabled } from '../test-support/kotlin-e2e-project.mjs';
+import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
+import {
+  diffOf,
+  fromTool,
+  kotlinE2eEnabled,
+  kotlinSources,
+} from '../test-support/kotlin-e2e-project.mjs';
 import { useKotlinCoverageProject } from '../__tests__/kotlin-coverage-project.mjs';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to end', () => {
@@ -16,7 +22,12 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       result.newEnforceable
         .filter(({ tool }) => tool === 'jacoco')
         .map(({ message, location }) => ({ message, location })),
-    ).toEqual([{ message: 'Branch coverage is 50.00%; minimum is 95%', location: { line: 4 } }]);
+    ).toEqual([
+      {
+        message: `Branch coverage is 50.00%; minimum is 95%. ${exceptionRoute({ rule: 'changed-branch-coverage', path: `${kotlinSources}/Label.kt`, function: 'Label.larger' })}`,
+        location: { line: 4 },
+      },
+    ]);
     expect(fromTool(result.newEnforceable, 'pit')).toEqual([]);
     expect(
       result.newFindings.filter(

@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { jscpdVersion } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
-import { failure } from './python-process.mjs';
+import { execute, failure, probe, probeVersion } from './python-process.mjs';
 import { PYTEST_SCRIPT } from './python-test-runner.mjs';
 import { mutationVersions, runPythonTools, toolVersions } from '../python-tools.mjs';
 import {
@@ -281,5 +281,139 @@ describe('tool versions', () => {
     });
 
     expect(toolVersions(contextFor(root).context)).toMatch(/^ruff@unknown;/);
+  });
+});
+
+function recordingSpawn(stdout = 'tool 1.2.3\n') {
+  const calls = [];
+  function spawn(command, args, options) {
+    calls.push({ command, args, options });
+    return { status: 0, stdout, stderr: '' };
+  }
+  return { calls, spawn };
+}
+
+function launch(tool, args) {
+  return { command: `/venv/bin/${tool}`, args, env: { VIRTUAL_ENV: '/venv' } };
+}
+
+function contextWith(spawn, overrides = {}) {
+  return {
+    spawn,
+    projectRoot: '/work/head',
+    env: { PYTHONPATH: '/work/head/src' },
+    launcher: { launch },
+    ...overrides,
+  };
+}
+
+describe('running a tool', () => {
+  it('starts the launched command in the project with the merged environment and the timeout', () => {
+    const { calls, spawn } = recordingSpawn();
+    const context = contextWith(spawn);
+
+    execute(context, ['ruff', '--version'], { timeout: 1234, env: { EXTRA: '1' } });
+
+    expect(calls).toEqual([
+      {
+        command: '/venv/bin/ruff',
+        args: ['--version'],
+        options: {
+          cwd: '/work/head',
+          env: { ...process.env, VIRTUAL_ENV: '/venv', PYTHONPATH: '/work/head/src', EXTRA: '1' },
+          encoding: 'utf8',
+          maxBuffer: 50 * 1024 * 1024,
+          timeout: 1234,
+        },
+      },
+    ]);
+  });
+});
+
+describe('probing a tool', () => {
+  it('runs one command once for the same launch, project and environment', () => {
+    const { calls, spawn } = recordingSpawn();
+    const context = contextWith(spawn);
+
+    const first = probe(context, ['ruff', '--version']);
+    const second = probe(context, ['ruff', '--version']);
+
+    expect(calls).toHaveLength(1);
+    expect(second).toBe(first);
+  });
+
+  it('runs a command again for another project root', () => {
+    const { calls, spawn } = recordingSpawn();
+    const shared = new Map();
+
+    probe(contextWith(spawn, { probes: shared }), ['ruff', '--version']);
+    probe(contextWith(spawn, { probes: shared, projectRoot: '/work/base' }), ['ruff', '--version']);
+
+    expect(calls.map(({ options }) => options.cwd)).toEqual(['/work/head', '/work/base']);
+  });
+
+  it('runs a command again for another context environment', () => {
+    const { calls, spawn } = recordingSpawn();
+    const shared = new Map();
+
+    probe(contextWith(spawn, { probes: shared }), ['ruff', '--version']);
+    probe(contextWith(spawn, { probes: shared, env: { PYTHONPATH: '/work/head/lib' } }), [
+      'ruff',
+      '--version',
+    ]);
+
+    expect(calls.map(({ options }) => options.env.PYTHONPATH)).toEqual([
+      '/work/head/src',
+      '/work/head/lib',
+    ]);
+  });
+
+  it('runs a command again for another launched command or arguments', () => {
+    const { calls, spawn } = recordingSpawn();
+    const context = contextWith(spawn);
+
+    probe(context, ['ruff', '--version']);
+    probe(context, ['black', '--version']);
+    probe(context, ['ruff', 'rule']);
+
+    expect(calls.map(({ command, args }) => [command, ...args])).toEqual([
+      ['/venv/bin/ruff', '--version'],
+      ['/venv/bin/black', '--version'],
+      ['/venv/bin/ruff', 'rule'],
+    ]);
+  });
+
+  it('shares answers only between contexts that hold the same memo', () => {
+    const { calls, spawn } = recordingSpawn();
+    const memo = new Map();
+
+    probe(contextWith(spawn, { probes: memo }), ['ruff', '--version']);
+    probe(contextWith(spawn, { probes: memo }), ['ruff', '--version']);
+    probe(contextWith(spawn, { probes: new Map() }), ['ruff', '--version']);
+
+    expect(calls).toHaveLength(2);
+  });
+
+  it('works for a context built without a memo and keeps the memo on that context', () => {
+    const { calls, spawn } = recordingSpawn();
+    const context = contextWith(spawn);
+
+    probe(context, ['ruff', '--version']);
+    probe(context, ['ruff', '--version']);
+
+    expect(calls).toHaveLength(1);
+  });
+
+  it('reads the version from a memoized probe', () => {
+    const { calls, spawn } = recordingSpawn('Coverage.py, version 7.6.1 with C extension\n');
+    const context = contextWith(spawn);
+
+    const versions = [
+      probeVersion(context, ['coverage', '--version']),
+      probeVersion(context, ['coverage', '--version']),
+    ];
+
+    expect(versions).toEqual(['7.6.1', '7.6.1']);
+    expect(calls).toHaveLength(1);
   });
 });

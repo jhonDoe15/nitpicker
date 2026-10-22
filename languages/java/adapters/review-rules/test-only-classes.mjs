@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { outerClass, parseJdeps } from '../metrics/java-coupling.mjs';
 import { exceptionText } from '../../../../shared/rules/exceptions.mjs';
+import { EXCEPTION_HINT } from '../../../../shared/policy.mjs';
 import { pathInside } from './java-sources.mjs';
 import { isNamedElsewhere, readProjectTexts } from './project-texts.mjs';
 import { readDeclarations } from './source-declarations.mjs';
@@ -10,9 +11,7 @@ const TEST_ONLY_TOOL = 'coupling';
 const TEST_ONLY_RULE = 'test-only-export';
 export const TEST_ONLY_EXCEPTION_RULE = `${TEST_ONLY_TOOL}/${TEST_ONLY_RULE}`;
 const REPORTS = ['jdeps.txt', 'jdeps-classes.txt', 'jdeps-test.txt'];
-const MESSAGE =
-  'Class {name} is only used by tests. Move it to the test sources, or use it from production code. ' +
-  'If it is loaded by name from a file nitpicker does not read, or another build uses it, add {exception} to "exceptions" in nitpicker.config.json.';
+const MESSAGE = `Class {name} is only used by tests. Move it to the test sources, or use it from production code. ${EXCEPTION_HINT}`;
 
 function readProject(project) {
   function report(name) {

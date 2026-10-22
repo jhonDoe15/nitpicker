@@ -1,9 +1,15 @@
-import { chmodSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readPinnedTools } from '../builds/java-build.mjs';
-import { formatTool, resolveTools, toolDependencies } from './maven-tools.mjs';
+import {
+  archunitTool,
+  cacheDirectory,
+  formatTool,
+  resolveTools,
+  toolDependencies,
+} from './maven-tools.mjs';
 
 const roots = [];
 const pinned = readPinnedTools();
@@ -36,7 +42,7 @@ afterEach(() => {
   }
 });
 
-function resolvedWith(javaStyle) {
+function resolvedWith(javaStyle, spring = false) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-tools-')));
   roots.push(root);
   const maven = path.join(root, 'fake-mvn');
@@ -49,7 +55,7 @@ function resolvedWith(javaStyle) {
       maven,
       pinned,
       launcherVersions: [],
-      extraTools: formatTool(javaStyle, pinned),
+      extraTools: [...formatTool(javaStyle, pinned), ...archunitTool(spring, pinned)],
     }),
   );
 }
@@ -64,6 +70,27 @@ describe('formatTool', () => {
   it('asks for the palantir-java-format jar only for the palantir style, and for none when no formatter runs', () => {
     expect(formatTool('palantir', pinned)).toEqual([PALANTIR]);
     expect(formatTool('none', pinned)).toEqual([]);
+  });
+});
+
+describe('archunitTool', () => {
+  it('asks for the pinned ArchUnit jar only for a build with a Spring module', () => {
+    expect([archunitTool(true, pinned), archunitTool(false, pinned)]).toEqual([
+      [{ name: 'archunit', coordinates: [`com.tngtech.archunit:archunit:${pinned.archunit}`] }],
+      [],
+    ]);
+  });
+});
+
+describe.skipIf(process.platform === 'win32')('cacheDirectory', () => {
+  it('names a directory inside a private nitpicker directory under XDG_CACHE_HOME', () => {
+    const home = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-cache-root-')));
+    roots.push(home);
+    vi.stubEnv('XDG_CACHE_HOME', home);
+    const directory = cacheDirectory('spring-arch');
+    const root = path.join(home, 'nitpicker');
+
+    expect([directory, statSync(root).mode & 0o077]).toEqual([path.join(root, 'spring-arch'), 0]);
   });
 });
 
@@ -109,5 +136,9 @@ describe.skipIf(process.platform === 'win32')('resolveTools', () => {
     expect(resolvedWith('google')).toEqual([...common, 'format']);
     expect(resolvedWith('palantir')).toEqual([...common, 'format-palantir']);
     expect(resolvedWith('none')).toEqual(common);
+  });
+
+  it('resolves ArchUnit with the other tools, under its own cache key, when a module uses Spring', () => {
+    expect(resolvedWith('google', true)).toEqual([...common, 'format', 'archunit']);
   });
 });
