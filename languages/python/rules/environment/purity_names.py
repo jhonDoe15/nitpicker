@@ -67,7 +67,16 @@ RANDOM_NAMES = {
     "secrets.randbits",
     "secrets.SystemRandom",
     "random.SystemRandom",
+    "ulid.new",
+    "uuid6.uuid6",
+    "uuid6.uuid7",
+    "uuid_utils.uuid1",
+    "uuid_utils.uuid4",
+    "uuid_utils.uuid6",
+    "uuid_utils.uuid7",
 }
+NEW_VALUE_FACTORIES = {"ulid.ULID"}
+RANDOM_MODULES = {"faker", "mimesis", "nanoid", "shortuuid", "cuid", "cuid2"}
 SEEDED_FACTORIES = {
     "random.Random",
     "numpy.random.default_rng",
@@ -128,6 +137,17 @@ INPUT_OUTPUT_CALLS = {
 }
 MODULE_LOADERS = {"importlib.import_module", "__import__"}
 PATH_FACTORIES = {"pathlib.Path", "pathlib.PurePath", "Path"}
+PATH_DERIVERS = {
+    "with_name",
+    "with_stem",
+    "with_suffix",
+    "joinpath",
+    "relative_to",
+    "absolute",
+    "expanduser",
+    "resolve",
+}
+PATH_PARTS = {"parent"}
 PATH_METHODS = {
     "read_text",
     "read_bytes",
