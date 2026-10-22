@@ -113,11 +113,11 @@ export function runSpringArch(options) {
     tools,
     classpaths,
     pinned,
-    spring,
+    archRules,
     springRoles,
     spawn = spawnSync,
   } = options;
-  if (!spring) {
+  if (!archRules) {
     return;
   }
   const output = path.join(reportDir, 'spring-arch.json');

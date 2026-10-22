@@ -29,6 +29,7 @@ public final class ArchRules {
     }
     Layers.check(main, Roles.load(), found);
     Lifetimes.check(main, found);
+    Aggregates.check(main, found);
     TestRules.check(unitTests, otherTests, found);
     Found.dropShadowed(found, Layout.FEATURE_BOUNDARY, Layers.DEPENDENCY_RULES);
     String json =

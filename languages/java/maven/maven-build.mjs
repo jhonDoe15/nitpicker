@@ -9,6 +9,7 @@ import {
   parseDependencyList,
   readReactor,
   usesSpring,
+  runsArchRules,
 } from './maven-project.mjs';
 import {
   archunitMatcher,
@@ -134,7 +135,7 @@ export function moduleManifest({ module, classpaths, pinned }) {
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
     resourceRoots: relativeRoots(module, module.resourceRoots),
     spring,
-    springArch: spring,
+    springArch: runsArchRules(classpaths),
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
     testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
     testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
@@ -159,7 +160,7 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
 
 function withDeclaredSpring(manifest, declared) {
   const spring = declared === true || manifest.spring;
-  return { ...manifest, spring, springArch: spring };
+  return { ...manifest, spring, springArch: spring || manifest.springArch };
 }
 
 function analyzeSources(options) {
@@ -174,7 +175,7 @@ function analyzeSources(options) {
 }
 
 function analyzeTests(options) {
-  const { module, reportDir, classpaths, tools, pinned, since, spring, springRoles } = options;
+  const { module, reportDir, classpaths, tools, pinned, since, springArch, springRoles } = options;
   const { isArchunit, testsRan, spawn } = options;
   runJacocoReport({
     module,
@@ -186,7 +187,16 @@ function analyzeTests(options) {
     spawn,
   });
   runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
-  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, springRoles, spawn });
+  runSpringArch({
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    pinned,
+    archRules: springArch,
+    springRoles,
+    spawn,
+  });
 }
 
 function analyzeModule(options) {
@@ -197,11 +207,11 @@ function analyzeModule(options) {
     moduleManifest({ module, classpaths, pinned }),
     options.spring,
   );
-  const { spring } = manifest;
+  const { spring, springArch } = manifest;
   const testRuntime = classpaths.testRuntime;
   const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
   analyzeSources({ ...options, reportDir, spring });
-  analyzeTests({ ...options, reportDir, spring, isArchunit, testsRan });
+  analyzeTests({ ...options, reportDir, springArch, isArchunit, testsRan });
   writeFileSync(path.join(reportDir, 'manifest.json'), JSON.stringify(manifest));
 }
 
@@ -246,7 +256,7 @@ function extraTools({ modules, analyzed, policy, pinned }) {
     ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     ...formatTool(policy.javaStyle, pinned),
     ...archunitTool(
-      analyzed.some(({ classpaths }) => usesSpring(classpaths)),
+      analyzed.some(({ classpaths }) => runsArchRules(classpaths)),
       pinned,
     ),
   ];

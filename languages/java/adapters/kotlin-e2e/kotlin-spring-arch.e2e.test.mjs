@@ -10,6 +10,8 @@ const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixture = path.resolve(import.meta.dirname, '../fixtures/spring-arch-kotlin-project');
 
 const EXPECTED = [
+  'ddd-aggregate-reference shop.sales.Order shop.sales.Customer Sales.kt',
+  'ddd-foreign-entity shop.sales.Order shop.sales.Cart:shop.sales.CartLine Sales.kt',
   'spring-controller-controller shop.carts.CartController shop.orders.OrderController CartController.kt',
   'spring-controller-entity shop.orders.OrderController all:shop.orders.Order OrderController.kt',
   'spring-controller-repository shop.customers.CustomerReport org.springframework.jdbc.core.JdbcTemplate CustomerReport.kt',
