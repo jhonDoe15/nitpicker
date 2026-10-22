@@ -33,9 +33,9 @@ export function declaresSpring(projectRoot) {
 function effectivePomOf(projectRoot, maven) {
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-head-pom-'));
   try {
-    return readEffectivePom(projectRoot, maven, work);
-  } catch {
-    return undefined;
+    return { text: readEffectivePom(projectRoot, maven, work) };
+  } catch (error) {
+    return { failure: error.message };
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
@@ -43,8 +43,8 @@ function effectivePomOf(projectRoot, maven) {
 
 function kotlinFacts(projectRoot, config, { maven }) {
   const configured = config.kotlin?.formatter;
-  const effectivePom =
-    detectJavaBuild(projectRoot) === 'maven' ? effectivePomOf(projectRoot, maven) : undefined;
+  const { text: effectivePom } =
+    detectJavaBuild(projectRoot) === 'maven' ? effectivePomOf(projectRoot, maven) : {};
   return effectivePom === undefined
     ? { formatter: kotlinFormatterOf(projectRoot, configured) }
     : mavenKotlinFacts(projectRoot, configured, effectivePom);

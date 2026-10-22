@@ -37,7 +37,6 @@ const STATIC = [
   { kind: 'jdk-new', types: [JDK_HTTP_CLIENT], methods: ['newHttpClient'] },
   { kind: 'netty', types: [NETTY_HTTP_CLIENT], methods: ['create', 'newConnection'] },
 ];
-const setups = new WeakMap();
 
 function writtenName(file, call) {
   const prefix = textOf(file.source, call.receiver);
@@ -70,20 +69,14 @@ export function clientSites(file) {
 }
 
 function setupFunctionsOf(file, owner) {
-  if (!setups.has(owner)) {
-    setups.set(
-      owner,
-      startupFunctions(file, owner, {
-        functions: owner.functions.filter((member) => hasAnnotation(file, member, BEAN)),
-        nodes: [
-          ...initializerNodes(owner),
-          ...secondaryConstructorNodes(owner),
-          ...propertyNodes(owner),
-        ],
-      }),
-    );
-  }
-  return setups.get(owner);
+  return startupFunctions(file, owner, {
+    functions: owner.functions.filter((member) => hasAnnotation(file, member, BEAN)),
+    nodes: [
+      ...initializerNodes(owner),
+      ...secondaryConstructorNodes(owner),
+      ...propertyNodes(owner),
+    ],
+  });
 }
 
 function returnsFromFactory(declaration, ancestors) {

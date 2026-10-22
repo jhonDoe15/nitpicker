@@ -51,13 +51,14 @@ function wordsOf(segment) {
 }
 
 function isSecretKey(key) {
-  const segments = key.split('.');
-  const last = wordsOf(segments.at(-1));
-  const owner = wordsOf(segments.at(-2)).at(-1);
+  const [lastSegment, ownerSegment] = key.split('.').toReversed();
+  const last = wordsOf(lastSegment);
+  const owner = wordsOf(ownerSegment).at(-1);
+  const [tail, beforeTail] = last.toReversed();
   return (
-    SECRET_WORDS.has(last.at(-1)) ||
-    (last.length > 1 && SECRET_WORDS.has(last.slice(-2).join(''))) ||
-    (last.length === 1 && last[0] === 'key' && KEY_OWNERS.has(owner))
+    SECRET_WORDS.has(tail) ||
+    (last.length > 1 && SECRET_WORDS.has(`${beforeTail}${tail}`)) ||
+    (last.length === 1 && tail === 'key' && KEY_OWNERS.has(owner))
   );
 }
 

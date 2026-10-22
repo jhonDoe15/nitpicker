@@ -2,12 +2,14 @@ import { kid, kids, textOf } from '../kotlin-tree.mjs';
 
 const QUALIFIED = new Set(['DOT_QUALIFIED_EXPRESSION', 'SAFE_ACCESS_EXPRESSION']);
 
-function climb(above, top) {
-  const parent = above.at(-1);
-  if (parent === undefined || !QUALIFIED.has(parent.t) || kids(parent)[0] !== top) {
-    return { top, parent };
+function climb(above, start) {
+  let top = start;
+  let depth = above.length;
+  while (depth > 0 && QUALIFIED.has(above[depth - 1].t) && kids(above[depth - 1])[0] === top) {
+    depth -= 1;
+    top = above[depth];
   }
-  return climb(above.slice(0, -1), parent);
+  return { top, parent: above[depth - 1] };
 }
 
 export function chainOf(call) {
@@ -47,10 +49,15 @@ function selectorText(source, node) {
 }
 
 function collect(source, node, start) {
-  if (node === start || !QUALIFIED.has(node.t)) {
-    return [];
+  const selectors = [];
+  for (
+    let current = node;
+    current !== start && QUALIFIED.has(current.t);
+    current = kids(current)[0]
+  ) {
+    selectors.unshift(selectorText(source, current));
   }
-  return [...collect(source, kids(node)[0], start), selectorText(source, node)];
+  return selectors;
 }
 
 export function selectorsAfter(source, call) {

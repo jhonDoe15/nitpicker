@@ -86,7 +86,9 @@ const csrfDisabled = defineRule(
       .flatMap((declaration) => {
         const nodes = rootedNodes(file, declaration);
         const all = callsIn(file.source, declaration.body);
-        const rootOf = (node) => nodes.find((entry) => entry.node === node)?.root;
+        function rootOf(node) {
+          return nodes.find((entry) => entry.node === node)?.root;
+        }
         return all
           .filter((call) => disablesCsrf(file, call))
           .filter((call) => {

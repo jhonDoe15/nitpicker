@@ -14,7 +14,7 @@ export function propertyNodes(owner) {
   return owner.properties.filter(({ fromConstructor }) => !fromConstructor).map(({ node }) => node);
 }
 
-function usedOnlyIn(file, owner, member, regions) {
+function usedOnlyIn({ file, owner, regions }, member) {
   if (!member.modifiers.has('private')) {
     return false;
   }
@@ -26,16 +26,20 @@ function usedOnlyIn(file, owner, member, regions) {
   );
 }
 
+function addUsedOnlyIn(scope, known) {
+  for (const member of scope.owner.functions) {
+    if (!known.has(member) && usedOnlyIn(scope, member)) {
+      known.add(member);
+    }
+  }
+}
+
 export function startupFunctions(file, owner, starts) {
   const known = new Set(starts.functions);
   const rounds = [known.size];
   for (const size of rounds) {
     const regions = [...starts.nodes, ...[...known].map(({ node }) => node)];
-    for (const member of owner.functions) {
-      if (!known.has(member) && usedOnlyIn(file, owner, member, regions)) {
-        known.add(member);
-      }
-    }
+    addUsedOnlyIn({ file, owner, regions }, known);
     if (known.size > size) {
       rounds.push(known.size);
     }

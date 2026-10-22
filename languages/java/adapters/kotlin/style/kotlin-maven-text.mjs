@@ -55,9 +55,9 @@ function declarationsOf(plugin) {
 
 function parsedProjects(pom) {
   try {
-    return projectsOf(parseXml(pom));
-  } catch {
-    return [];
+    return { projects: projectsOf(parseXml(pom)) };
+  } catch (error) {
+    return { failure: error.message };
   }
 }
 
@@ -65,7 +65,8 @@ export function mavenFormatters(pom) {
   if (pom === undefined || !pom.includes('<plugin>')) {
     return [];
   }
-  return parsedProjects(pom)
+  const { projects = [] } = parsedProjects(pom);
+  return projects
     .flatMap((project) => childrenAt(project, 'build', 'plugins', 'plugin'))
     .flatMap(declarationsOf);
 }

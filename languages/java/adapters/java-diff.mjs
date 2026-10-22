@@ -148,6 +148,7 @@ function mavenFindings(projectRoot, options) {
     maven: options.maven,
     policy: options.policy,
     configs: toolConfigChoices(projectRoot, options.policy),
+    environment: options.environment,
   });
   const preset = options.policy?.preset ?? 'java';
   const duplicates = {

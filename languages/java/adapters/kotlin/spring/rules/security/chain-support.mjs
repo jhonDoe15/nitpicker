@@ -18,7 +18,7 @@ export function terminalCall(source, node) {
   };
 }
 
-function rootOf(source, body, ancestors, node) {
+function rootOf(source, body, { ancestors, node }) {
   const statement = body.t === 'BLOCK' ? (ancestors[1] ?? node) : body;
   const first = descendants(statement, (child) => child.t === 'REFERENCE_EXPRESSION')[0];
   return textOf(source, first);
@@ -29,6 +29,6 @@ export function rootedNodes(file, declaration) {
   return walk(body).map(({ node, ancestors }) => ({
     node,
     ancestors,
-    root: rootOf(file.source, body, ancestors, node),
+    root: rootOf(file.source, body, { ancestors, node }),
   }));
 }
