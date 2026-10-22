@@ -9,11 +9,10 @@ const TEXT = readFileSync(
   'utf8',
 );
 const RULE = parse(TEXT).style.ForbiddenComment;
-const COMMENTS = listEntriesOf(TEXT, {
-  ruleset: 'style',
-  rule: 'ForbiddenComment',
-  list: 'comments',
-});
+const COMMENTS = listEntriesOf(
+  TEXT,
+  MERGED_LISTS.find(({ rule }) => rule === 'ForbiddenComment'),
+);
 
 function javaRegex(pattern) {
   return new RegExp(pattern.replaceAll('(?m)', '').replaceAll('(?-i)', ''), 'm');
