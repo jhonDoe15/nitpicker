@@ -128,7 +128,9 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       ['-proc:none', '-d', support, supportSource],
       { encoding: 'utf8', timeout: 180_000 },
     );
-    expect(compiled.status, compiled.stderr).toBe(0);
+    if (compiled.status !== 0) {
+      throw new Error(`MetricsSupport.java did not compile: ${compiled.stderr}`);
+    }
   });
 
   afterAll(() => {
