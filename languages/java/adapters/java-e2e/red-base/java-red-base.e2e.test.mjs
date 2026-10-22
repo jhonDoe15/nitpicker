@@ -52,10 +52,9 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
       expected: {
         legacy: 'pmd UnusedPrivateField Legacy.java',
         violation: [
-          'checkstyle com.puppycrawl.tools.checkstyle.checks.blocks.EmptyCatchBlockCheck Bad.java',
+          'errorprone DefaultCharset Bad.java',
+          'errorprone EmptyCatch Bad.java',
           'pit mutant-nocoverage Bad.java',
-          'pmd EmptyCatchBlock Bad.java',
-          'spotbugs DM_DEFAULT_ENCODING Bad.java',
         ],
       },
     });
