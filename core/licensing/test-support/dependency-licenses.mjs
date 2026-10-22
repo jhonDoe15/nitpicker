@@ -7,6 +7,7 @@ import {
   offersChoice,
   REJECTED,
 } from './license-rule.mjs';
+import { jarLicenseViolations } from './pom-licenses.mjs';
 
 export const JAVA_TOOL_LICENSES = {
   pmd: 'BSD-style',
@@ -31,6 +32,7 @@ export const JAVA_TOOL_LICENSES = {
 };
 
 const JAVA_ONLY_PERMISSIVE = new Set(['BSD-style']);
+const NPM_LICENSE_EXCEPTIONS = new Map([['jsonify@0.0.1', 'Public Domain']]);
 const LICENSE_FILE = /^(?:licen[cs]es?|copying)(?:[.-].*)?$/i;
 const LESSER_COPYLEFT = /\bLGPL/i;
 const EXACT_VERSION = /^\d+(?:\.\d+)*$/;
@@ -86,8 +88,9 @@ function textProblems(directory, label, declared) {
 export function npmLicenseViolations(root) {
   return lockedPackages(root).flatMap(({ key, label, manifest }) => {
     const declared = declaredExpression(manifest);
+    const excepted = declared !== undefined && NPM_LICENSE_EXCEPTIONS.get(label) === declared;
     const declaredProblem =
-      declared === undefined || classifyExpression(declared) === REJECTED
+      !excepted && (declared === undefined || classifyExpression(declared) === REJECTED)
         ? [`${label}: license "${String(declared)}" is not on the allowlist`]
         : [];
     return [...declaredProblem, ...textProblems(within(root, key), label, declared)];
@@ -107,4 +110,8 @@ export function javaToolLicenseViolations(pinned) {
         : [`${tool}: license ${String(license)} is not on the allowlist`];
     return [...exact, ...allowed];
   });
+}
+
+export function javaJarLicenseViolations(jars) {
+  return jarLicenseViolations(jars, { extraPermissive: JAVA_ONLY_PERMISSIVE });
 }

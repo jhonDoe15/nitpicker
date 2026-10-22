@@ -195,6 +195,17 @@ describe('npm license violations', () => {
     ]);
   });
 
+  it('accepts Public Domain only for the one package version that declares it', () => {
+    const root = projectWith({
+      jsonify: { manifest: { license: 'Public Domain' }, version: '0.0.1' },
+      'jsonify-next': { manifest: { license: 'Public Domain' } },
+    });
+
+    expect(npmLicenseViolations(root)).toEqual([
+      'jsonify-next@1.0.0: license "Public Domain" is not on the allowlist',
+    ]);
+  });
+
   it('skips development-only packages and checks transitive ones by their lock entry', () => {
     const root = projectWith({ outer: { manifest: { license: 'MIT' } } });
     writeFileSync(

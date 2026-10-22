@@ -7,18 +7,18 @@ const SECRETS =
 const DTO = 'Return and accept a DTO record, not a JPA entity.';
 const AES = 'Use AES/GCM/NoPadding with a fresh random 12-byte IV per message.';
 const NO_EVALUATE =
-  'Never evaluate an expression or script built from input; keep it fixed and pass input as a variable.';
+  'Keep the expression or script fixed and pass input as a variable; never evaluate one built from input.';
 const DESERIALIZE =
-  'Do not deserialize untrusted bytes with Java serialization; read JSON into a record with Jackson, without default typing.';
+  'Read JSON into a record with Jackson, without default typing; Java serialization of untrusted bytes can run code.';
 const TLS = 'Use the JVM default trust store and hostname verification, and TLS 1.2 or newer.';
 const ESCAPE_OUTPUT =
-  'Do not write input into a response; return a typed value as JSON, or let the template engine escape it.';
+  'Return a typed value as JSON, or let the template engine escape input; never write it into a response raw.';
 const FIXED_TEMPLATE =
-  'Never take template or stylesheet text from input; load a fixed template and pass input as a model value.';
+  'Load a fixed template and pass input as a model value; never take template or stylesheet text from input.';
 const FIXED_BASE =
   'Resolve against a fixed base directory, normalize(), check startsWith(base), and never use a client file name as a path.';
 const FIXED_VIEW =
-  'Do not build a view or forward path from input; map input to a fixed set of names.';
+  'Map input to a fixed set of view or forward names; never build the path from input.';
 const SECURE_XML =
   'Parse XML with XMLConstants.FEATURE_SECURE_PROCESSING and the disallow-doctype-decl feature set.';
 
@@ -107,7 +107,7 @@ export const ADVICE_GROUPS = [
   },
   {
     patterns: ['URLCONNECTION_SSRF_FD', 'SCALA_PLAY_SSRF'],
-    text: 'Do not fetch a URL taken from input; build it from a configured base URL and a template variable, or check the host against an allow-list.',
+    text: 'Build the URL from a configured base URL and a template variable, or check the host against an allow-list; never fetch a URL taken from input as it is.',
   },
   {
     patterns: [
@@ -165,12 +165,12 @@ export const ADVICE_GROUPS = [
   },
   {
     patterns: ['BEAN_PROPERTY_INJECTION', 'EXTERNAL_CONFIG_CONTROL'],
-    text: 'Do not let input choose a property, class or configuration key; map it to a fixed set of names.',
+    text: 'Map input to a fixed set of property, class or configuration names; never let it choose one directly.',
   },
   { patterns: ['ENTITY_LEAK', 'ENTITY_MASS_ASSIGNMENT'], text: DTO },
   {
     patterns: ['PERMISSIVE_CORS'],
-    text: 'List the allowed origins explicitly instead of *.',
+    text: 'Allow * only on a public API that sends no credentials; when credentials are allowed, list the origins from configuration (CorsConfiguration.setAllowedOrigins) and echo only a matching Origin.',
   },
   {
     patterns: ['INSECURE_COOKIE', 'HTTPONLY_COOKIE'],

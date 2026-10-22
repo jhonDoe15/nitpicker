@@ -15,7 +15,7 @@ export const PLATFORM_ADVICE = [
   },
   {
     patterns: ['SCALA_SENSITIVE_DATA_EXPOSURE'],
-    text: 'Do not put configuration values in the response, and never let input choose which key is read.',
+    text: 'Keep configuration values out of the response, and read only keys from a fixed set, never one that input chooses.',
   },
   {
     patterns: ['ANDROID_WEB_VIEW_JAVASCRIPT'],
