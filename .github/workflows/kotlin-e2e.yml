@@ -64,13 +64,30 @@ jobs:
           path: reports/kotlin-e2e/
           if-no-files-found: warn
 
+  # Lists the suite without starting a JVM build: test:kotlin must select every case its E2E flag enables,
+  # and the timing profile and the matrix above must split those files with none missing or repeated.
+  kotlin-shard-plan:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: node scripts/test-shards/verify-e2e-shards.mjs kotlin
+
   kotlin:
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
-    needs: kotlin-shard
+    needs: [kotlin-shard-plan, kotlin-shard]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Every Kotlin end-to-end shard passed
+      - name: Every Kotlin end-to-end shard passed and the shard plan holds
         env:
+          PLAN: ${{ needs.kotlin-shard-plan.result }}
           RESULT: ${{ needs.kotlin-shard.result }}
-        run: test "$RESULT" = success
+        run: test "$PLAN" = success && test "$RESULT" = success
