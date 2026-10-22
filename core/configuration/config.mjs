@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { CONFIG_FILE_NAME, configError, withCanonicalRules } from '../../shared/config.mjs';
+import { CONFIG_FILE_NAME, configError } from '../../shared/config.mjs';
+import { withCanonicalRules } from '../../shared/exceptions/validation.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { validateConfig, KEYS } from './validate.mjs';
 import { rejectUnreadableSources } from './project-checks/project-config.mjs';

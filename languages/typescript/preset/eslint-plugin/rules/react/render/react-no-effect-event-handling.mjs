@@ -123,7 +123,7 @@ export const rule = {
     schema: [],
     messages: {
       effectEvent:
-        'Do not call `{{name}}` from an effect to react to a change: call it in the event handler that causes the change (`onSubmit` calls `onSave(value)`). If this effect synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
+        'Do not call `{{name}}` from an effect to react to a change: call it in the event handler that causes the change (`onSubmit` calls `onSave(value)`). An exception fits only when this effect synchronizes with an external system.',
     },
   },
   create(context) {

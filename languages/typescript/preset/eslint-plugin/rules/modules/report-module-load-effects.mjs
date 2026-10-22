@@ -1,6 +1,7 @@
 import { stylesheetSpecifier } from '../../../layout.mjs';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
+import { guardedByMain, isMainGuard } from './entry/main-guard.mjs';
 
 const SYNC_MODULES = new Set(
   ['fs', 'child_process', 'crypto', 'zlib'].flatMap((name) => [name, `node:${name}`]),
@@ -26,12 +27,21 @@ function isDirective(node) {
   return typeof node.directive === 'string';
 }
 
-function executesAtModuleLoad(node) {
+function isTopLevelControl(node, sourceCode) {
+  return (
+    node.parent?.type === 'Program' &&
+    TOP_LEVEL_CONTROL.has(node.type) &&
+    !isMainGuard(node, sourceCode)
+  );
+}
+
+function executesAtModuleLoad(node, sourceCode) {
   for (const current of ancestorsOf(node)) {
     if (
       current.type === 'ArrowFunctionExpression' ||
       current.type === 'FunctionDeclaration' ||
-      current.type === 'FunctionExpression'
+      current.type === 'FunctionExpression' ||
+      guardedByMain(current, node, sourceCode)
     ) {
       return false;
     }
@@ -119,10 +129,10 @@ function isCommonJsExport(expression) {
   );
 }
 
-function importTimeEffectAtLoad(node, syncBindings) {
+function importTimeEffectAtLoad(node, { syncBindings, sourceCode }) {
   const call = importTimeEffect(node, syncBindings);
   return call !== undefined &&
-    executesAtModuleLoad(node) &&
+    executesAtModuleLoad(node, sourceCode) &&
     ancestorsOf(node).some(isModuleLevelDeclaration)
     ? call
     : undefined;
@@ -148,12 +158,13 @@ export const rule = {
       topLevelControl: `Top-level {{kind}} executes control flow during module loading.${ENTRY_HINT}`,
       topLevelExpression: `Top-level expression executes work during module loading.${ENTRY_HINT}`,
       importTimeEffect:
-        '`{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. If it must run at import, add an exception for this rule in nitpicker.config.json.',
+        '`{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. An exception fits only when it must run at import.',
     },
   },
   create(context) {
     const commonJsExports = context.options[0]?.commonJsExports === true;
-    const syncBindings = moduleBindings(context.sourceCode.ast, SYNC_MODULES);
+    const { sourceCode } = context;
+    const syncBindings = moduleBindings(sourceCode.ast, SYNC_MODULES);
     return {
       ImportDeclaration(node) {
         if (node.specifiers.length === 0 && !stylesheetSpecifier.test(node.source.value)) {
@@ -161,12 +172,12 @@ export const rule = {
         }
       },
       AwaitExpression(node) {
-        if (executesAtModuleLoad(node)) {
+        if (executesAtModuleLoad(node, sourceCode)) {
           context.report({ node, messageId: 'topLevelAwait' });
         }
       },
       'NewExpression, CallExpression'(node) {
-        const call = importTimeEffectAtLoad(node, syncBindings);
+        const call = importTimeEffectAtLoad(node, { syncBindings, sourceCode });
         if (call !== undefined) {
           context.report({ node, messageId: 'importTimeEffect', data: { call } });
         }
@@ -183,12 +194,12 @@ export const rule = {
         context.report({ node, messageId: 'topLevelExpression' });
       },
       StaticBlock(node) {
-        if (executesAtModuleLoad(node)) {
+        if (executesAtModuleLoad(node, sourceCode)) {
           context.report({ node, messageId: 'staticBlock' });
         }
       },
       ':statement'(node) {
-        if (node.parent?.type === 'Program' && TOP_LEVEL_CONTROL.has(node.type)) {
+        if (isTopLevelControl(node, sourceCode)) {
           context.report({
             node,
             messageId: 'topLevelControl',

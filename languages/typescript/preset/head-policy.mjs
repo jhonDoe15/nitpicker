@@ -15,7 +15,9 @@ import {
 } from './eslint-config/scope-support.mjs';
 import {
   builtInExcludedGlobs,
-  globToRegExp,
+  existingRoots,
+  globMatcher,
+  resolveLayout,
   resolveLayoutFor,
   sourceRoots,
   testRoots,
@@ -29,7 +31,7 @@ export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-
 
 export const defaultLayout = { sourceRoots, testRoots, excludedGlobs: builtInExcludedGlobs };
 
-const PRETTIER_PROJECT_FILES = [
+export const PRETTIER_PROJECT_FILES = [
   '.prettierrc',
   '.prettierrc.json',
   '.prettierrc.json5',
@@ -53,10 +55,20 @@ const PRETTIER_PROJECT_FILES = [
   'package.json',
 ];
 
+function withTestPlacement(policy, projectRoot) {
+  if (
+    projectRoot === undefined ||
+    existingRoots(projectRoot, resolveLayout(policy.layout).testRoots).length > 0
+  ) {
+    return policy;
+  }
+  return { ...policy, layout: { ...policy.layout, colocatedTests: true } };
+}
+
 const SCOPED_PRESETS = [undefined, 'typescript', 'javascript'];
 
 export function resolveHeadPolicy(config = {}, projectRoot) {
-  const policy = resolveSharedHeadPolicy(config);
+  const policy = withTestPlacement(resolveSharedHeadPolicy(config), projectRoot);
   return projectRoot === undefined ? policy : withProjectFacts(policy, config, projectRoot);
 }
 
@@ -85,7 +97,7 @@ function withProjectFacts(policy, config, projectRoot) {
 }
 
 function excludedPathMatcher(policy) {
-  const matchers = resolveLayoutFor(policy).excludedGlobs.map(globToRegExp);
+  const matchers = resolveLayoutFor(policy).excludedGlobs.map(globMatcher);
   return (file) => matchers.some((matcher) => matcher.test(file));
 }
 
@@ -127,6 +139,8 @@ const HEAD_CHECKOUT_FACTS = [
   'generatedFiles',
   'frameworks',
   'libraries',
+  'spring',
+  'kotlin',
 ];
 const SCOPE_FACTS = [
   ['react', ['enabled', 'iconPackage', 'major', 'styling', 'autoCleanup']],
@@ -152,9 +166,16 @@ function headToolFacts(policy, headPolicy) {
   return policy.tools === undefined ? {} : { tools };
 }
 
+function headTestPlacement(policy, headPolicy) {
+  return headPolicy.layout?.colocatedTests === true
+    ? { layout: { ...policy.layout, colocatedTests: true } }
+    : {};
+}
+
 export function withHeadCheckoutFacts(policy, headPolicy = {}) {
   return {
     ...policy,
+    ...headTestPlacement(policy, headPolicy),
     ...picked(headPolicy, HEAD_CHECKOUT_FACTS),
     ...Object.fromEntries(
       SCOPE_FACTS.filter(([scope]) => headPolicy[scope] !== undefined).map(([scope, keys]) => [

@@ -66,21 +66,46 @@ describe('baseConfigCoveringHead', () => {
           disable: ['mutation', 'crap'],
           exceptions: [exception(['src/a/**', 'src/b/**']), { ...exception(['x/**']), rule: 'r' }],
           thresholds: { fileLines: 500, crapLimit: 6 },
-          python: { typeChecker: 'mypy', exceptions: [exception(['src/a/**'])] },
         },
         {
           disable: ['mutation'],
           exceptions: [exception(['src/b/**'])],
           thresholds: { lineLength: 100 },
-          python: { typeChecker: 'mypy' },
         },
       ),
     ).toEqual({
       disable: ['mutation'],
       exceptions: [exception(['src/b/**'])],
       thresholds: { fileLines: 300, crapLimit: 6, lineLength: 100 },
-      python: { typeChecker: 'mypy', exceptions: [] },
     });
+  });
+
+  it('keeps only the exceptions of the same function and name in the head', () => {
+    const exception = (extra) => ({
+      rule: 'function-lines-limit',
+      paths: ['src/a.py'],
+      reason: 'Legacy',
+      ...extra,
+    });
+
+    expect(
+      baseConfigCoveringHead(
+        {
+          exceptions: [
+            exception({ function: 'old' }),
+            exception({ function: 'kept' }),
+            exception({ name: 'n' }),
+          ],
+        },
+        {
+          exceptions: [
+            exception({ function: 'kept' }),
+            exception({ function: 'other' }),
+            exception({}),
+          ],
+        },
+      ).exceptions,
+    ).toEqual([exception({ function: 'kept' })]);
   });
 
   it('measures the base with the stricter slow test budget, a missing side being the default', () => {
