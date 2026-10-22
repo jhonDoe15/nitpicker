@@ -902,10 +902,15 @@ members is not reported.
 - `singular-and-plural-field` (TypeScript: `nitpicker/no-singular-and-plural-prop`): an optional
   `tag: T` beside an optional `tags` whose element type is `T` (`list`, `Sequence`, `set`,
   `frozenset`, `Iterable`, `tuple[T, ...]` and the `typing` names; `Optional`, `| None`,
-  `NotRequired` and `Annotated` are looked through; `-es` and `-ies` plurals count). Optional means
-  a default value in a `@dataclass`, attrs `@define` class, pydantic `BaseModel` or `BaseSettings`
-  and `NamedTuple`, `total=False` or `NotRequired` in a `TypedDict`, and a default in a function's
-  parameters. Unannotated parameters are not compared. Common irregular plurals of the last word
+  `NotRequired` and `Annotated` are looked through; `-es` and `-ies` plurals count, and a name with
+  two plural forms, such as `indexes` and `indices`, is reported once). Optional means a default
+  value in a `@dataclass` (also pydantic's), an attrs class (`@define`, `@frozen`, `@mutable` from
+  `attrs` or `attr`, `@attr.s`), a pydantic `BaseModel` or `BaseSettings` and a `NamedTuple`,
+  `total=False` or `NotRequired` in a `TypedDict`, and a default in a function's parameters. A
+  class whose base is a project class of one of those kinds counts too (followed through imports,
+  up to 10 bases deep). A value that only builds the field is not a default: `Field(...)` or
+  `Field(description=...)` without a default, `field(metadata=...)` and `attr.ib()` without
+  `default`, `default_factory` or `factory` leave the field required. Unannotated parameters are not compared. Common irregular plurals of the last word
   count (`child`/`children`, `index`/`indices`, `person`/`people`, `sub_index`/`sub_indices`), and
   a string annotation (`tags: "list[str]"`) is read as the annotation it spells.
 - `exhaustive-enum-predicate` (TypeScript: `nitpicker/exhaustive-union-predicate`): an `or` chain of

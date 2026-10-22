@@ -1,17 +1,9 @@
 import ast
 
-from checks.common import dotted_name
-
 FUNCTION_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef)
 SCOPE_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 OPTIONAL_NAMES = {"Optional"}
 WRAPPERS = {"NotRequired", "Required", "Annotated", "Final"}
-
-
-def decorator_name(decorator, aliases):
-    target = decorator.func if isinstance(decorator, ast.Call) else decorator
-    name = dotted_name(target, aliases)
-    return name.rsplit(".", 1)[-1] if name else None
 
 
 def last_segment(node):
