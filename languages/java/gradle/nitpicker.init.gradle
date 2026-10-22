@@ -37,6 +37,53 @@ def relativeToRoot = { File file ->
     analysisRoot.toPath().relativize(file.toPath()).toString().replace('\\', '/')
 }
 
+def runProcess = { String name, List<String> command, File directory ->
+    def process = new ProcessBuilder(command).directory(directory).redirectErrorStream(true).start()
+    def log = process.inputStream.getText('UTF-8')
+    if (process.waitFor() != 0) {
+        throw new GradleException("${name} failed: ${log.trim()}".toString())
+    }
+}
+
+def kotlinPsiKeys = [] as Set
+def gradleJavac = {
+    def bin = new File(System.getProperty('java.home'), 'bin')
+    def javac = ['javac', 'javac.exe'].collect { new File(bin, it) }.find { it.isFile() }
+    if (javac == null) {
+        throw new GradleException(('The kotlin preset compiles its Kotlin parser with javac, and Gradle runs on ' +
+            "${System.getProperty('java.home')}, a Java runtime without javac. Run the build on a JDK (Java 21): " +
+            'point JAVA_HOME or org.gradle.java.home at one.').toString())
+    }
+    javac
+}
+def kotlinPsiClasses = { project, String compiler ->
+    def javac = gradleJavac()
+    def sources = project.fileTree(new File(initScriptDir, 'kotlin-psi')) { include '**/*.java' }.files
+        .sort { it.absolutePath }
+    def digest = java.security.MessageDigest.getInstance('SHA-256')
+    ([pinned.kotlinCompiler, System.getProperty('java.version'), compiler] +
+        sources.collect { it.absolutePath + '\n' + it.getText('UTF-8') }).each {
+        digest.update((it + '\u0000').getBytes('UTF-8'))
+    }
+    def root = project.rootProject.layout.buildDirectory.dir('tmp/nitpickerKotlinPsi').get().asFile
+    def classes = new File(root, digest.digest().encodeHex().toString().take(16))
+    synchronized (kotlinPsiKeys) {
+        if (!kotlinPsiKeys.contains(classes.name) && !classes.isDirectory()) {
+            root.mkdirs()
+            root.listFiles().findAll { !kotlinPsiKeys.contains(it.name) }.each { project.delete(it) }
+            def staging = new File(root, classes.name + '.compiling')
+            staging.mkdirs()
+            runProcess('javac', [javac.absolutePath, '-proc:none', '-d', staging.absolutePath, '-cp', compiler] +
+                sources.collect { it.absolutePath }, project.projectDir)
+            if (!staging.renameTo(classes)) {
+                throw new GradleException("nitpicker could not move the compiled kotlin-psi program to ${classes}")
+            }
+        }
+        kotlinPsiKeys << classes.name
+    }
+    classes
+}
+
 gradle.projectsEvaluated {
     if (reportBase && gradle.parent == null) {
         def modules = new File(reportBase.toString(), 'modules.json')
@@ -571,10 +618,18 @@ allprojects {
                 def roots = mainSources.files.collect { relativeToRoot(it) }
                 def testRoots = testSourceDirectories().collect { relativeToRoot(it) }
                 def resourceRoots = sourceSets.main.resources.srcDirs.collect { relativeToRoot(it) }
+                def buildPath = layout.buildDirectory.get().asFile.toPath()
+                def kotlinRoots = []
+                if (project.plugins.hasPlugin('org.jetbrains.kotlin.jvm')) {
+                    kotlinRoots = project.kotlin.sourceSets.main.kotlin.srcDirs.findAll {
+                        it.exists() && it.toPath().startsWith(projectDir.toPath()) && !it.toPath().startsWith(buildPath)
+                    }.sort().collect { relativeToRoot(it) }
+                }
                 reportDir.get().file('manifest.json').asFile.text = groovy.json.JsonOutput.toJson([
                     versions       : pinned,
                     moduleKey      : moduleKey,
                     sourceRoots    : roots,
+                    kotlinSourceRoots: kotlinRoots,
                     testSourceRoots: testRoots,
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
@@ -892,32 +947,33 @@ allprojects {
                 }
 
                 // --- kotlin structure (KT3) ---
-                // Per-function lines, statements, control nesting, parameters and complexity (the CRAP input), and
-                // the class names of each file (the coupling input). languages/java/gradle/KotlinMetrics.java
-                // parses the Kotlin sources with the PSI parser of the pinned Kotlin compiler in single-file
-                // source mode, run by the JVM that runs Gradle.
-                tasks.register('nitpickerKotlinMetrics') {
+                // Per-function lines, statements, control nesting, parameters and complexity (the CRAP input), the
+                // class names of each file (the coupling input) and the declarations, calls and test waits of the
+                // main and test sources (the review rules). languages/java/gradle/kotlin-psi parses the Kotlin
+                // sources once with the PSI parser of the pinned Kotlin compiler: the sources are compiled once per
+                // build with the javac of the JVM that runs Gradle (kotlinPsiClasses), then run on it.
+                tasks.register('nitpickerKotlinPsi') {
                     group = 'nitpicker'
                     dependsOn tasks.named('classes')
-                    def metricsSource = new File(initScriptDir, 'KotlinMetrics.java')
                     doLast {
                         reportDir.get().asFile.mkdirs()
-                        def output = reportDir.get().file('kotlin-metrics.json').asFile
-                        def roots = kotlinSourceDirs().collect { relative(it) }
-                        if (kotlinFiles().isEmpty()) {
-                            output.text = '{"functions":[],"files":[]}'
+                        def metrics = reportDir.get().file('kotlin-metrics.json').asFile
+                        def facts = reportDir.get().file('kotlin-facts.json').asFile
+                        if (kotlinLintedFiles().isEmpty()) {
+                            metrics.text = '{"functions":[],"files":[]}'
+                            facts.text = '{"files":[]}'
                             return
                         }
-                        def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-                        def process = new ProcessBuilder([java, '-Djava.awt.headless=true',
+                        def home = new File(System.getProperty('java.home'), 'bin')
+                        def compiler = configurations.nitpickerKotlinCompiler.asPath
+                        def classes = kotlinPsiClasses(project, compiler)
+                        def roots = kotlinSourceDirs().collect { relative(it) } +
+                            kotlinSourceDirsOf('test').collect { 'test:' + relative(it) }
+                        runProcess('KotlinPsi', [new File(home, 'java').absolutePath, '-Djava.awt.headless=true',
                                 "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(), '-cp',
-                                configurations.nitpickerKotlinCompiler.asPath, metricsSource.absolutePath,
-                                output.absolutePath, analysisRoot.absolutePath] + roots)
-                            .directory(projectDir).redirectErrorStream(true).start()
-                        def log = process.inputStream.getText('UTF-8')
-                        if (process.waitFor() != 0) {
-                            throw new GradleException("KotlinMetrics failed: ${log.trim()}")
-                        }
+                                compiler + File.pathSeparator + classes.absolutePath, 'nitpicker.kotlinpsi.KotlinPsi',
+                                metrics.absolutePath, facts.absolutePath, analysisRoot.absolutePath] + roots,
+                            projectDir)
                     }
                 }
                 // --- end kotlin structure ---
@@ -925,7 +981,7 @@ allprojects {
                 // Reports a skipped tool would have written, so the Nitpicker side reads the same files for
                 // every module; and the Kotlin entries of the manifest. The Java source roots stay Java-only.
                 tasks.named('nitpickerJava') {
-                    dependsOn 'nitpickerDetekt', 'nitpickerKtlint', 'nitpickerKtfmt', 'nitpickerKotlinMetrics'
+                    dependsOn 'nitpickerDetekt', 'nitpickerKtlint', 'nitpickerKtfmt', 'nitpickerKotlinPsi'
                     doLast {
                         def directory = reportDir.get().asFile
                         def emptySarif = '{"version":"2.1.0","runs":[]}'
@@ -950,6 +1006,11 @@ allprojects {
                         manifest.kotlinSourceRoots = kotlinSourceDirs().collect { relative(it) }
                         manifest.kotlinTestSourceRoots = kotlinSourceDirsOf('test').collect { relative(it) }
                         manifest.kotlinFormatter = kotlinFormatter()
+                        def mainClasspath = sourceSets.main.compileClasspath.files +
+                            sourceSets.main.runtimeClasspath.files
+                        manifest.kotlinSerialization = mainClasspath.any {
+                            it.name ==~ /(jackson-module-kotlin|kotlinx-serialization-(core|json)|moshi-kotlin).*\.jar/
+                        }
                         manifestFile.text = groovy.json.JsonOutput.toJson(manifest)
                     }
                 }
