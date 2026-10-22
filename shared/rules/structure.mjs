@@ -109,6 +109,42 @@ function withHint(message, hint) {
   return message.endsWith('.') ? `${message} ${hint}` : `${message}. ${hint}`;
 }
 
+function limitFinding({
+  analyzerName,
+  entry,
+  metricName,
+  limit,
+  ruleId,
+  occurrence,
+  sourceHash,
+  hint,
+}) {
+  const route = exceptionRoute({ rule: ruleId, path: entry.file, function: entry.name });
+  const values = { name: entry.name, value: entry[metricName], limit, base: '{base}' };
+  return {
+    tool: analyzerName,
+    rule: ruleId,
+    path: entry.file,
+    identity: `function:${entry.name}:occurrence:${String(occurrence)}:source:${sourceHash}`,
+    message: withHint(
+      withHint(
+        renderMessage(structureMessage(metricName), { ...values, metric: metricName }),
+        hint,
+      ),
+      route,
+    ),
+    classification: 'enforceable',
+    symbol: entry.name,
+    ratchet: {
+      key: `function:${entry.name}:occurrence:${String(occurrence)}:${metricName}`,
+      value: entry[metricName],
+      worseMessage: withHint(renderMessage(GREW_MESSAGES[metricName], values), route),
+      heldMessage: renderMessage(HELD_MESSAGES[metricName], values),
+    },
+    ...(positiveInteger(entry.start) === undefined ? {} : { location: { line: entry.start } }),
+  };
+}
+
 function addLimitViolations(findings, analyzerName, entry, numbering, { hints }) {
   const sourceHash =
     entry.sourceHash ?? hash(`${entry.file}:${String(entry.start)}:${String(entry.end)}`);
@@ -116,11 +152,6 @@ function addLimitViolations(findings, analyzerName, entry, numbering, { hints })
     if (typeof entry[metricName] !== 'number' || entry[metricName] <= limit) {
       continue;
     }
-    const route = exceptionRoute({
-      rule: ruleId,
-      path: entry.file,
-      function: entry.name,
-    });
     const occurrence =
       entry.numberedAmongSameSource === true
         ? nextOccurrence(
@@ -128,45 +159,17 @@ function addLimitViolations(findings, analyzerName, entry, numbering, { hints })
             `${entry.file}\0${entry.name}\0${metricName}\0${sourceHash}`,
           )
         : numbering.occurrence;
-    findings.push({
-      tool: analyzerName,
-      rule: ruleId,
-      path: entry.file,
-      identity: `function:${entry.name}:occurrence:${String(occurrence)}:source:${sourceHash}`,
-      message: withHint(
-        withHint(
-          renderMessage(structureMessage(metricName), {
-            name: entry.name,
-            value: entry[metricName],
-            metric: metricName,
-            limit,
-          }),
-          hints[metricName],
-        ),
-        route,
-      ),
-      classification: 'enforceable',
-      symbol: entry.name,
-      ratchet: {
-        key: `function:${entry.name}:occurrence:${String(occurrence)}:${metricName}`,
-        value: entry[metricName],
-        worseMessage: withHint(
-          renderMessage(GREW_MESSAGES[metricName], {
-            name: entry.name,
-            value: entry[metricName],
-            limit,
-            base: '{base}',
-          }),
-          route,
-        ),
-        heldMessage: renderMessage(HELD_MESSAGES[metricName], {
-          name: entry.name,
-          value: entry[metricName],
-          limit,
-          base: '{base}',
-        }),
-      },
-      ...(positiveInteger(entry.start) === undefined ? {} : { location: { line: entry.start } }),
-    });
+    findings.push(
+      limitFinding({
+        analyzerName,
+        entry,
+        metricName,
+        limit,
+        ruleId,
+        occurrence,
+        sourceHash,
+        hint: hints[metricName],
+      }),
+    );
   }
 }

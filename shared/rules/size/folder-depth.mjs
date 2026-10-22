@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { RULE_IDS } from '../../policy.mjs';
-import { escapeGlob, exceptionEntryText } from '../../exceptions/sentence.mjs';
+import { escapeGlob, exceptionEntryText } from '../../messages/exception-sentence.mjs';
 import { exceptionMatcher } from '../exceptions.mjs';
 import { TEST_DATA_FOLDER, messagesFor, ratchetedFinding } from '../file-limits.mjs';
 

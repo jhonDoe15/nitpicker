@@ -19,7 +19,11 @@ const CASES = [
   { glob: 'a}b,c', matching: ['a}b,c'], other: ['ab'] },
   { glob: 'src/app/[id]/**', matching: ['src/app/[id]/page.tsx'], other: ['src/app/i/page.tsx'] },
   { glob: '$x.(1)', matching: ['$x.(1)'], other: ['ax.(1)'] },
-  { glob: String.raw`src/app/\[id\]/*.tsx`, matching: ['src/app/[id]/page.tsx'], other: ['src/app/i/page.tsx'] },
+  {
+    glob: String.raw`src/app/\[id\]/*.tsx`,
+    matching: ['src/app/[id]/page.tsx'],
+    other: ['src/app/i/page.tsx'],
+  },
   { glob: String.raw`a\*b\{c\,d\}`, matching: ['a*b{c,d}'], other: ['axb{c,d}', 'a*bc'] },
   {
     glob: 'tests/**/*legacy*',

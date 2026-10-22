@@ -10,7 +10,7 @@ import {
   readKotlinStructureFindings,
 } from '../kotlin/kotlin-metrics.mjs';
 import { addOneWayHint } from '../kotlin/rules/kotlin-rules.mjs';
-import { appendSentence } from '../../../../shared/exceptions/sentence.mjs';
+import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import {
   readCatchLogFindings,
   readTestAssertionFindings,

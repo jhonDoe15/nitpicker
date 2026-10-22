@@ -1,11 +1,9 @@
 import { globMatcher } from '../paths/glob.mjs';
 import { applyFindingExceptions } from '../exceptions/finding-exceptions.mjs';
+import { findingPaths } from '../exceptions/matching.mjs';
 import { sharedRouteRule, withExceptionRoutes } from '../exceptions/routes.mjs';
 import { applyInventoryToFindings, readOptionalInventory } from '../legacy-inventory.mjs';
 import { evaluateBaselineExpansions } from '../rules/baseline-expansion.mjs';
-import { findingPaths } from './finding-paths.mjs';
-
-export { findingPaths };
 
 function matchesAny(matcher, finding) {
   return findingPaths(finding).some((candidate) => matcher.test(candidate));

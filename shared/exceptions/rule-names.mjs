@@ -1,5 +1,5 @@
-import { PREFIXED_RULE_TOOLS, PRESET_TOOLS, RULE_TOOLS } from './rule-tools.mjs';
-import { exceptionEntryText, exceptionSentence } from './sentence.mjs';
+import { PRESET_TOOLS, toolsOf } from './rule-tools.mjs';
+import { exceptionEntryText, exceptionSentence } from '../messages/exception-sentence.mjs';
 
 /** A function name without its parameter list, with `::` written as `.`. */
 export function normalizeFunctionName(name) {
@@ -26,13 +26,6 @@ export function exceptionRoute({ rule, path, function: functionName, name }) {
       name,
       ...(functionName === undefined ? {} : { function: normalizeFunctionName(functionName) }),
     }),
-  );
-}
-
-/** The tools that print `rule` when nitpicker adds it, or undefined. */
-export function toolsOf(rule) {
-  return (
-    RULE_TOOLS.get(rule) ?? PREFIXED_RULE_TOOLS.find(([prefix]) => rule.startsWith(prefix))?.[1]
   );
 }
 

@@ -9,13 +9,8 @@ const SCRIPT_KINDS = new Map([
   ['.mjs', ts.ScriptKind.JS],
   ['.cjs', ts.ScriptKind.JS],
 ]);
-const cache = new Map();
 
 function unitsOf(source, file) {
-  const known = cache.get(file);
-  if (known?.source === source) {
-    return known.units;
-  }
   const sourceFile = ts.createSourceFile(
     file,
     source,
@@ -23,9 +18,7 @@ function unitsOf(source, file) {
     true,
     SCRIPT_KINDS.get(path.extname(file)) ?? ts.ScriptKind.TS,
   );
-  const { units } = functionUnits(sourceFile);
-  cache.set(file, { source, units });
-  return units;
+  return functionUnits(sourceFile).units;
 }
 
 function narrowest(units, line) {
@@ -39,18 +32,15 @@ function narrowest(units, line) {
   return found?.name;
 }
 
-/** The qualified name of the function a CRAP entry measures, found by its first and last line. */
-export function crapFunctionName(source, file, { lines }) {
-  const functions = unitsOf(source, file).filter(({ kind }) => kind === 'function');
+function crapFunctionName(units, { lines }) {
+  const functions = units.filter(({ kind }) => kind === 'function');
   return (
     functions.find((unit) => unit.start === lines?.start && unit.end === lines?.end) ??
     functions.find((unit) => unit.start === lines?.start)
   )?.name;
 }
 
-/** The unit (function, class field initializer or static block) that holds each branch. */
-export function branchFunctionNames(source, file, branchMap = {}) {
-  const units = unitsOf(source, file);
+function branchFunctionNames(units, branchMap = {}) {
   return Object.fromEntries(
     Object.entries(branchMap).map(([branchId, branch]) => [
       branchId,
@@ -59,7 +49,16 @@ export function branchFunctionNames(source, file, branchMap = {}) {
   );
 }
 
-/** The unit that holds a line, for a mutant. */
-export function functionNameAtLine(source, file, line) {
-  return narrowest(unitsOf(source, file), line);
+/**
+ * The functions of one source file: the qualified name of the function a CRAP entry measures
+ * (found by its first and last line), of the unit (function, class field initializer or static
+ * block) that holds each branch, and of the one that holds a mutant's line.
+ */
+export function functionIdentity(source, file) {
+  const units = unitsOf(source, file);
+  return {
+    crapFunctionName: (entry) => crapFunctionName(units, entry),
+    branchFunctionNames: (branchMap) => branchFunctionNames(units, branchMap),
+    functionNameAtLine: (line) => narrowest(units, line),
+  };
 }

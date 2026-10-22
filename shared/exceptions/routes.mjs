@@ -5,15 +5,16 @@ import {
   RULE_IDS,
 } from '../policy.mjs';
 import { functionNameOf } from './matching.mjs';
-import { exceptionRoute, toolsOf } from './rule-names.mjs';
+import { exceptionRoute } from './rule-names.mjs';
 import {
   CODING_STANDARDS_RULE_PREFIXES,
   CODING_STANDARDS_RULES,
   DEPENDENCY_RULES,
+  toolsOf,
 } from './rule-tools.mjs';
-import { appendSentence } from './sentence.mjs';
+import { appendSentence } from '../messages/exception-sentence.mjs';
 
-export const ROUTED_RULES = [
+const ROUTED_RULES = [
   RULE_IDS.mutantSurvived,
   RULE_IDS.mutantNoCoverage,
   RULE_IDS.stabilityDirection,

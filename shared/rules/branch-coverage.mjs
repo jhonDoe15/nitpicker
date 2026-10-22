@@ -2,20 +2,20 @@ import { MESSAGES, MINIMUM_BRANCH_COVERAGE, RULE_IDS, renderMessage } from '../p
 import { positiveInteger } from './finding-helpers.mjs';
 import { exceptionRoute } from '../exceptions/rule-names.mjs';
 
-// Neutral input: `{ path, key, percent, line?, arms? }` per branch (or per line of branches), where
-// `percent` is the share of its outcomes covered and `key` identifies its source text. Anything
-// below `minimum` is an enforceable `changed-branch-coverage` finding; which branches are
-// *changed* is the differential gate's job.
-//
-// `symbol` (optional) is the display name of the function the branch is in; with it the message
-// names the per-function exception that accepts the branch, without it the `exclude` route.
-//
-// `arms` (optional) names the outcomes no test took, e.g. `the false arm of the ?: at 3:28`.
-//
-// Identity is the adapter's format (`identify(key, occurrence)`), but the occurrence number is
-// counted here: the n-th *failing* branch with the same path and key gets n, so a covered twin
-// does not shift it.
-
+/**
+ * Neutral input: `{ path, key, percent, symbol?, line?, arms? }` per branch (or per line of
+ * branches), where `percent` is the share of its outcomes covered and `key` identifies its source
+ * text. Anything below `minimum` is an enforceable `changed-branch-coverage` finding; which
+ * branches are *changed* is the differential gate's job.
+ *
+ * `symbol` is the display name of the function the branch is in; with it the message names the
+ * per-function exception that accepts the branch, without it the `exclude` route. `arms` names the
+ * outcomes no test took, e.g. `the false arm of the ?: at 3:28`.
+ *
+ * Identity is the adapter's format (`identify(key, occurrence)`), but the occurrence number is
+ * counted here: the n-th *failing* branch with the same path and key gets n, so a covered twin
+ * does not shift it.
+ */
 export function branchCoverageFindings(
   branches,
   { tool, identify, minimum = MINIMUM_BRANCH_COVERAGE },

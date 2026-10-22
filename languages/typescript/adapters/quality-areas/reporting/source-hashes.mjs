@@ -1,10 +1,11 @@
 import { hash, positiveInteger } from '../../../../../shared/rules/finding-helpers.mjs';
-import * as ids from '../../exceptions/function-identity.mjs';
+import { functionIdentity } from '../../exceptions/function-identity.mjs';
 import { readFileSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 
 export function withFunctionSourceHashes(report, projectRoot) {
   const sourceTexts = new Map();
+  const identities = new Map();
   return {
     ...report,
     functions: (report.functions ?? []).map((entry) => {
@@ -12,10 +13,11 @@ export function withFunctionSourceHashes(report, projectRoot) {
       if (source === undefined) {
         source = readProjectSource(projectRoot, entry.source);
         sourceTexts.set(entry.source, source);
+        identities.set(entry.source, functionIdentity(source, entry.source));
       }
       return {
         ...entry,
-        function: ids.crapFunctionName(source, entry.source, entry) ?? entry.function,
+        function: identities.get(entry.source).crapFunctionName(entry) ?? entry.function,
         sourceHash: hash(
           sourceLineRange(source, entry.start ?? entry.lines?.start, entry.end ?? entry.lines?.end),
         ),
@@ -48,7 +50,9 @@ export function withBranchSourceHashes(report, projectRoot) {
           describeUncoveredArms(branch, coverage.b?.[branchId], source),
         ]),
       );
-      const branchFunctions = ids.branchFunctionNames(source, absolutePath, coverage.branchMap);
+      const branchFunctions = functionIdentity(source, absolutePath).branchFunctionNames(
+        coverage.branchMap,
+      );
       return [absolutePath, { ...coverage, branchSourceHashes, uncoveredArms, branchFunctions }];
     }),
   );
@@ -146,6 +150,7 @@ export function withMutationSourceHashes(report, projectRoot) {
     files: Object.fromEntries(
       Object.entries(report.files ?? {}).map(([filePath, file]) => {
         const source = readProjectSource(projectRoot, filePath);
+        const identity = functionIdentity(source, filePath);
         return [
           filePath,
           {
@@ -154,7 +159,7 @@ export function withMutationSourceHashes(report, projectRoot) {
               ...mutant,
               sourceHash: hash(sourceLocation(source, mutant.location)),
               original: sourceSnippet(source, mutant.location),
-              functionName: ids.functionNameAtLine(source, filePath, mutant.location?.start?.line),
+              functionName: identity.functionNameAtLine(mutant.location?.start?.line),
             })),
           },
         ];

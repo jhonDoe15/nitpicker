@@ -1,5 +1,5 @@
 import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
-import { appendSentence } from '../../../../../shared/exceptions/sentence.mjs';
+import { appendSentence } from '../../../../../shared/messages/exception-sentence.mjs';
 import { CATCH_LOG_RULE } from '../../../source/catch-logging.mjs';
 
 const DETEKT_TOOL = 'detekt';

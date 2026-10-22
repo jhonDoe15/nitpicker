@@ -9,7 +9,7 @@ export function pathMatcher(globs) {
 const LAMBDA = /^lambda\$(.+)\$\d+$/u;
 
 /** `Calc.save` for the PIT mutant symbol `demo.Calc#save(IIII)I`, `Calc.Calc` for a constructor. */
-export function pitFunctionName(symbol) {
+function pitFunctionName(symbol) {
   const separator = symbol.indexOf('#');
   if (separator === -1) {
     return undefined;
@@ -27,4 +27,24 @@ export function functionNameOf(finding) {
     return undefined;
   }
   return finding.tool === 'pit' ? pitFunctionName(finding.symbol) : finding.symbol;
+}
+
+const PAIR_END = /:(?:fragment|occurrence):/;
+
+export function clonePartnerPath(finding) {
+  const prefix = `pair:${finding.path}|`;
+  if (
+    !['duplicate-clone', 'duplicate-clone-size'].includes(finding.rule) ||
+    !finding.identity.startsWith(prefix)
+  ) {
+    return undefined;
+  }
+  const rest = finding.identity.slice(prefix.length);
+  const end = rest.search(PAIR_END);
+  return end < 0 ? undefined : rest.slice(0, end);
+}
+
+export function findingPaths(finding) {
+  const partner = clonePartnerPath(finding);
+  return partner === undefined ? [finding.path] : [finding.path, partner];
 }

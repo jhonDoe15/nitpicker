@@ -1,6 +1,5 @@
 import { normalizeFunctionName } from './rule-names.mjs';
-import { findingPaths } from '../findings/finding-paths.mjs';
-import { functionNameOf, pathMatcher } from './matching.mjs';
+import { findingPaths, functionNameOf, pathMatcher } from './matching.mjs';
 
 /** True when `wanted` is the function `symbol`, whatever its parameter list (overloads agree). */
 export function functionMatches(wanted, symbol) {

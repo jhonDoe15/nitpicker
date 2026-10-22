@@ -1,6 +1,6 @@
 import { applyFindingExceptions } from '../../../../shared/exceptions/finding-exceptions.mjs';
+import { findingPaths } from '../../../../shared/exceptions/matching.mjs';
 import { sharedRouteRule } from '../../../../shared/exceptions/routes.mjs';
-import { findingPaths } from '../../../../shared/findings/finding-policy.mjs';
 import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { FUNCTION_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { RUFF_SELECTOR } from './python-rule-ids.mjs';
@@ -12,8 +12,9 @@ function covers(rule, finding) {
   );
 }
 
-const narrowed = ({ function: functionName, name }) =>
-  functionName !== undefined || name !== undefined;
+function narrowed({ function: functionName, name }) {
+  return functionName !== undefined || name !== undefined;
+}
 
 export function pythonRouteRule(finding) {
   return FUNCTION_EXCEPTION_RULES.includes(finding.rule) ? sharedRouteRule(finding) : undefined;

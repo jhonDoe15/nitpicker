@@ -347,9 +347,9 @@ describe('parseJavaRunnerArguments', () => {
     '{"rule":"r","paths":[1]}',
     '{"rule":"r","paths":["a"],"function":3}',
   ])('rejects the exception %s without a rule, paths and a text function', (value) => {
-    expect(() =>
-      parseJavaRunnerArguments(['--project-root', '/p', '--exception', value]),
-    ).toThrow(JAVA_USAGE);
+    expect(() => parseJavaRunnerArguments(['--project-root', '/p', '--exception', value])).toThrow(
+      JAVA_USAGE,
+    );
   });
 
   it('keeps a colon inside a glob and a function', () => {
