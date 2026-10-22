@@ -53,17 +53,21 @@ export function captureWorkingTree(repositoryRoot, headSha) {
     const environment = { GIT_INDEX_FILE: temporaryIndexPath };
     runGit(repositoryRoot, ['add', '--all', '--', ':/'], { environment });
     const treeSha = runGit(repositoryRoot, ['write-tree'], { environment }).trim();
-    if (treeSha === runGit(repositoryRoot, ['rev-parse', `${headSha}^{tree}`]).trim()) {
-      return headSha;
-    }
-    return runGit(
-      repositoryRoot,
-      ['commit-tree', treeSha, '-p', headSha, '-m', 'nitpicker working tree'],
-      { environment: CAPTURE_IDENTITY },
-    ).trim();
+    return commitTreeOverHead(repositoryRoot, treeSha, headSha);
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
+}
+
+export function commitTreeOverHead(repositoryRoot, treeSha, headSha) {
+  if (treeSha === runGit(repositoryRoot, ['rev-parse', `${headSha}^{tree}`]).trim()) {
+    return headSha;
+  }
+  return runGit(
+    repositoryRoot,
+    ['commit-tree', treeSha, '-p', headSha, '-m', 'nitpicker working tree'],
+    { environment: CAPTURE_IDENTITY },
+  ).trim();
 }
 
 function wholeSeconds(nanoseconds) {

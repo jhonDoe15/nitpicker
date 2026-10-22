@@ -31,6 +31,8 @@ import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
+import { applyRunProfile } from './quick/profile.mjs';
+import { indexCapture } from './staged/capture-index.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 
 export function runCli(options = {}) {
@@ -113,7 +115,11 @@ function runConfigured(cli) {
   const config = loadConfig(currentProjectRoot);
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const analyzers = configureAnalyzers(presetSet, config, headPolicy);
+  const captureHead = stagedCapture(cli);
+  const { analyzers, quick } = applyRunProfile(
+    configureAnalyzers(presetSet, config, headPolicy),
+    options,
+  );
   for (const note of describeDisableCascade(presetSet, config)) {
     cli.stderr.write(`nitpicker: ${note}\n`);
   }
@@ -123,6 +129,8 @@ function runConfigured(cli) {
         options,
         currentProjectRoot,
         analyzers,
+        quick,
+        captureHead,
         headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
         stdout,
         runTasks,
@@ -132,11 +140,22 @@ function runConfigured(cli) {
       ...cli,
       currentProjectRoot,
       analyzers,
+      quick,
+      captureHead,
       injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
     });
   });
+}
+
+function stagedCapture(cli) {
+  if (!cli.options.staged) {
+    return undefined;
+  }
+  const { GIT_INDEX_FILE: indexFile } = cli.environment;
+  delete process.env.GIT_INDEX_FILE;
+  return indexCapture(indexFile);
 }
 
 function runComparisonCli(cli) {
@@ -168,6 +187,8 @@ function runComparisonCli(cli) {
     analyzers,
     cacheStore,
     includeWorkingTree: true,
+    captureHead: cli.captureHead,
+    quick: cli.quick,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
     headPolicy,

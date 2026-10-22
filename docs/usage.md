@@ -141,6 +141,14 @@ Python, `python.sourceRoots`; for Java and Kotlin, the build's source sets (`src
 list them in `exclude`. Choose another directory
 with `--output <dir>`. Set `NO_COLOR` to disable colored console output.
 
+A `--quick` run adds a `quick` object to `summary.json`, a `Quick run: ...` line to the console
+summary and the same line to `report.txt`. `quick.skipped` lists what the run left out (analyzer
+names for TypeScript and JavaScript, tool names for Python, Java and Kotlin, and an empty list when
+the configuration has nothing to skip) and `quick.message` is the line itself, for example
+`Quick run: skipped coverage, crap, mutation, test-runtime, test-console. Run nitpicker without --quick before you finish.`
+A full run writes no `quick` field. `overallStatus` and the exit code are decided as for a full run,
+over the checks that did run.
+
 ## Exit codes
 
 | Code | Meaning                                                                                                          |
@@ -169,6 +177,7 @@ automatically.
 ```text
 nitpicker [--base <ref>] [--output <dir>] [--all | --fix]
           [--analyzer <name>]... [--rule <substring>]...
+          [--quick] [--staged]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
           [--accept-policy-change=<digest>] [--help]
 nitpicker aggregate --input-root <dir> --shard-count <n>
@@ -184,6 +193,23 @@ nitpicker cache publish [--analyzer <name>]...
   fixer and the comparison still run. Cannot be combined with `--all`.
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer (repeatable). Cannot be combined with sharding.
+- `--quick`: run only the fast checks, for a commit hook or an agent's edit loop. It keeps format,
+  lint, typecheck, structure and review rules, and skips the tests and everything built on them. For
+  TypeScript and JavaScript the skipped analyzers are `coverage`, `crap`, `mutation`, `test-runtime`
+  and `test-console`; for Python they are the `tests`, `coverage`, `crap` and `test-runtime` tools and
+  the mutation analyzer; for Java and Kotlin the `tests`, `jacoco`, `crap`, `pit`, `archunit`,
+  `test-runtime` and `test-console` tools (Gradle and Maven compile the code and run the static
+  analysis without running a test). The console summary, `report.txt` and `summary.json` name what was
+  skipped, and exit codes keep their meaning, but a quick run is never a pass: run `nitpicker` without
+  `--quick` before you finish. `--quick` works with `--base`, `--fix`, `--all` and `--analyzer` (a name
+  that quick mode skips is refused). Cannot be combined with sharding.
+- `--staged`: judge the git index (what the next commit would contain) instead of the working tree.
+  Unstaged edits and untracked files are ignored, and the base is still the merge base with the base
+  ref. Inside a hook it honours the `GIT_INDEX_FILE` that Git sets. It works with every preset and
+  with `--all` (the whole index) and `--quick`. Cannot be combined with `--fix`: fixes land in the
+  working tree, so run `nitpicker --fix`, stage the result, then run `nitpicker --staged`.
+  `nitpicker.config.json`, the tools' own config files and the installed dependencies are still read
+  from the working tree.
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
 - `--output <dir>`: where reports go.
 
@@ -207,6 +233,12 @@ merge-base commit, project path, analyzer name and version, the analyzer's confi
 config-file overrides and the head policy (`exclude`, `layout`, `exceptions`, `thresholds`, `react`, `i18n`, `testConsole`) with the
 legacy inventory path, so changing any of them is a miss. Only clean reports are stored.
 
+A quick run uses the same cache. The Python, Java and Kotlin analyzers produce different output in
+quick mode, so their quick entries are keyed apart from full ones: a quick run never reads a full
+entry and a full run never reads a quick one. The TypeScript and JavaScript analyzers that stay in
+the quick set produce the same findings as in a full run, so they share the full run's entries; both
+the base and the head of a quick comparison run the same quick set.
+
 - `NITPICKER_CACHE_DIR`: local cache directory (relative to the project root). Default:
   `node_modules/.cache/nitpicker`.
 - `NITPICKER_CACHE_URL`: remote cache prefix; an entry is `GET`/`PUT` at `<url>/<key>.json`.
@@ -214,6 +246,65 @@ legacy inventory path, so changing any of them is a miss. Only clean reports are
   read the remote; give write credentials only to the job that runs `cache publish` on `main`.
 
 See [typescript-single-command.md](typescript-single-command.md) for the full model.
+
+## Commit hooks
+
+`nitpicker --quick --staged` checks what the commit would contain, skips the tests, and finishes in a
+fraction of a full run, so it fits a pre-commit hook. A hook blocks the commit when the exit code is
+not 0 (new enforceable findings, or a tool error). It does not replace the full gate: run `nitpicker`
+before you push, in CI, or from a pre-push hook. Install nitpicker and the project's dependencies
+first (`npm install --save-dev nitpicker`); the hook reads the dependencies, `nitpicker.config.json`
+and the tools' configs from the working tree. The base ref has to exist locally: fetch it, or set
+`base` in `nitpicker.config.json` or pass `--base <ref>`.
+
+### husky
+
+```sh
+npm install --save-dev husky
+npx husky init
+```
+
+`husky init` adds a `prepare` script and a sample `.husky/pre-commit`. Replace its content with:
+
+```sh
+npx nitpicker --quick --staged
+```
+
+### lefthook
+
+```sh
+npm install --save-dev lefthook
+```
+
+```yaml
+# lefthook.yml
+pre-commit:
+  commands:
+    nitpicker:
+      run: npx nitpicker --quick --staged
+```
+
+Run `npx lefthook install` once to write the Git hook.
+
+### pre-commit
+
+The repository ships a `.pre-commit-hooks.yaml` with two hooks: `nitpicker` (`nitpicker --quick
+--staged`, at the `pre-commit` stage) and `nitpicker-full` (`nitpicker`, at the `pre-push` stage).
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/jhonDoe15/nitpicker
+    rev: v0.1.0 # a release tag of nitpicker
+    hooks:
+      - id: nitpicker
+      - id: nitpicker-full
+```
+
+Run `pre-commit install` and, for the full gate, `pre-commit install --hook-type pre-push`. The hooks
+use `language: node`, so pre-commit installs nitpicker into its own environment; the project still
+needs its own `node_modules`. pre-commit stashes unstaged changes before it runs a hook, which
+matches what `--staged` judges anyway.
 
 ## Configuration
 

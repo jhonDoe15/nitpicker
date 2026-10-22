@@ -55,7 +55,6 @@ function readSource(projectRoot, file) {
 export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy = {} }) {
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
-  const coverage = readReport(reportRoot, COVERAGE_REPORT);
   const imports = readImportsReport(reportRoot);
   const libraries = { ...detectLibraries(projectRoot), pytestStyle: pytestStyle(projectRoot) };
   const found = applyRuleHints(
@@ -69,31 +68,41 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
       ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
       ...ingestRulesReport(readReport(reportRoot, RULES_REPORT), libraries),
-      ...ingestCoverageJson(coverage, { roots }).findings,
       ...readPythonStructureFindings(reportRoot, projectRoot),
       ...pythonFileLimitFindings(projectRoot, policy),
-      ...readPythonCrapFindings({
-        functions: readPythonFunctions(reportRoot),
-        coverage,
-        projectRoot,
-        roots,
-        crapLimit,
-      }),
-      ...(manifest.testsRan === false ? [noTestsFinding()] : []),
-      ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
-        roots,
-        functions: readStructureFunctions(reportRoot),
-        sourceText: (file) => readSource(projectRoot, file),
-      }).findings,
+      ...testRunFindings({ manifest, reportRoot, projectRoot, roots, crapLimit }),
       ...readDuplicateFindings(reportRoot, projectRoot),
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),
-      ...testFailureFindings(manifest, policy.snapshot),
+      ...(manifest.quick ? [] : testFailureFindings(manifest, policy.snapshot)),
       ...projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }),
     ],
     libraries,
   );
   return { findings: withoutFrameworkForms(found, projectRoot, imports) };
+}
+
+function testRunFindings({ manifest, reportRoot, projectRoot, roots, crapLimit }) {
+  if (manifest.quick) {
+    return [];
+  }
+  const coverage = readReport(reportRoot, COVERAGE_REPORT);
+  return [
+    ...ingestCoverageJson(coverage, { roots }).findings,
+    ...readPythonCrapFindings({
+      functions: readPythonFunctions(reportRoot),
+      coverage,
+      projectRoot,
+      roots,
+      crapLimit,
+    }),
+    ...(manifest.testsRan === false ? [noTestsFinding()] : []),
+    ...ingestCoverageBranches(coverage, {
+      roots,
+      functions: readStructureFunctions(reportRoot),
+      sourceText: (file) => readSource(projectRoot, file),
+    }).findings,
+  ];
 }
 
 function sizedModules(projectRoot, modules) {
@@ -109,15 +118,17 @@ function baseModules(baselineRoot, sourceRoots) {
 function projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }) {
   const limits = { thresholds: policy.fileLimits ?? {}, exceptions: policy.exceptions ?? [] };
   return [
-    ...readSlowTestFindings({
-      reportRoot,
-      projectRoot,
-      limits: policy.testSeconds,
-      baselineRoot: policy.baselineRoot,
-      snapshot: policy.snapshot,
-      testRunner: manifest.testRunner,
-      testsRan: manifest.testsRan,
-    }),
+    ...(manifest.quick
+      ? []
+      : readSlowTestFindings({
+          reportRoot,
+          projectRoot,
+          limits: policy.testSeconds,
+          baselineRoot: policy.baselineRoot,
+          snapshot: policy.snapshot,
+          testRunner: manifest.testRunner,
+          testsRan: manifest.testsRan,
+        })),
     ...pythonFolderDepthFindings(sizedModules(projectRoot, imports.modules), {
       ...limits,
       tests: sizedModules(projectRoot, imports.others ?? []).filter(({ kind }) => kind === 'test'),

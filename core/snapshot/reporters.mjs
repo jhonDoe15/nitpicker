@@ -1,5 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { quickLines } from '../quick/summary.mjs';
 
 const REPORT_FILE_NAMES = [
   'summary.json',
@@ -36,6 +37,7 @@ function renderTextReport(report) {
     `Enforceable findings: ${String(enforceable.length)}`,
     `Descriptive findings: ${String(descriptive.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
+    ...quickLines(report.summary),
   ];
 
   if (report.summary.tools.length === 0) {

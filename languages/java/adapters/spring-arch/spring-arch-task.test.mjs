@@ -11,17 +11,19 @@ function taskBody(name) {
 
 describe('nitpickerSpringArch in the init script', () => {
   it('runs as part of nitpickerJava', () => {
-    const dependsOn = /dependsOn ((?:'[^'\n]+',\s*)*'[^'\n]+')/.exec(taskBody('nitpickerJava'))[1];
+    const dependsOn = [
+      ...taskBody('nitpickerJava').matchAll(/dependsOn ((?:'[^'\n]+',\s*)*'[^'\n]+')/gu),
+    ].flatMap(([, names]) => names.split(/,\s*/u).map((task) => task.replaceAll("'", '')));
 
-    expect(dependsOn.split(/,\s*/u).map((task) => task.replaceAll("'", ''))).toEqual([
+    expect(dependsOn).toEqual([
       'nitpickerPmd',
       'nitpickerSpotbugs',
       'nitpickerErrorProne',
       'nitpickerFormat',
-      'nitpickerJacoco',
-      'nitpickerArchunit',
       'nitpickerSpringArch',
       'nitpickerStructure',
+      'nitpickerJacoco',
+      'nitpickerArchunit',
       'nitpickerPit',
     ]);
   });

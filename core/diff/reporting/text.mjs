@@ -2,6 +2,7 @@ import { sumToolCount, formatSeconds } from './format/text.mjs';
 import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { noticeSection } from './review/notices.mjs';
 import { policyChangeSection } from './review/policy-changes.mjs';
+import { quickLines } from '../../quick/summary.mjs';
 
 export function renderTextReport(report) {
   const lines = [
@@ -32,6 +33,7 @@ function summaryLines(report) {
     `Unchanged findings: ${String(sumToolCount(report.summary.tools, 'unchanged'))}`,
     `Changed metrics: ${String(report.changedMetrics.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
+    ...quickLines(report.summary),
   ];
 }
 

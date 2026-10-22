@@ -121,6 +121,7 @@ function buildReport(context) {
         ? {}
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
       notices,
+      ...(context.quick === undefined ? {} : { quick: context.quick }),
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),
       renamedPaths: context.baseToHeadRenames.size,
