@@ -36,7 +36,10 @@ export const RULES_CASES = [
   ...rulesCases('catch-log-without-exception', [
     ['catch-log-without-exception', 'logger.exception'],
   ]),
-  ...rulesCases('real-clock-test', [['real-clock-in-test', 'freeze']]),
+  ...rulesCases('real-clock-test', [
+    ['real-clock-in-test', 'freeze'],
+    ['real-clock-in-test', 'tzinfo=timezone.utc'],
+  ]),
   ...rulesCases('random-test', [['random-in-test', 'seed']]),
   ...rulesCases('network-test', [['network-in-test', 'fake']]),
   ...rulesCases('uncollected-tests', [['uncollected-tests', 'python_files']]),

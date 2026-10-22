@@ -9,6 +9,7 @@ const ruff = process.env.NITPICKER_RUFF ?? 'ruff';
 const LISTED_GROUPS = /^(?:G|N|ERA|ARG|PT|S|TRY|FBT|ASYNC|DTZ|LOG|PLE|PLW|T10)\d+$/u;
 const DECLINED = new Set([
   'FBT003',
+  'PLE0116',
   'PLW1641',
   'PT004',
   'PT005',
@@ -43,6 +44,7 @@ function stableCodesOfListedGroups() {
     timeout: 10_000,
     maxBuffer: 64 * 1024 * 1024,
   });
+  expect(result.status, result.stderr).toBe(0);
   return JSON.parse(result.stdout)
     .filter((rule) => LISTED_GROUPS.test(rule.code ?? '') && isStableRule(rule))
     .map((rule) => rule.code);

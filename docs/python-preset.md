@@ -415,8 +415,9 @@ through the real tools.
   the pitfall groups `ASYNC`, `DTZ`, `LOG`, `PLE`, `PLW` and `T10`, and the single rules
   `PLR2004`, `FBT001` and `FBT002`; the last section of this slice lists each one with its allowed
   form and the rules of those groups that are left off.
-  These groups, including `RUF`, `G`, `N`, `PT`, `S` and `TRY`, list stable codes, not
-  by prefix, so a later ruff cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
+  The groups `RUF`, `G`, `N`, `ERA`, `ARG`, `PT`, `S`, `TRY`, `FBT`, `ASYNC`, `DTZ`, `LOG`, `PLE`,
+  `PLW` and `T10` are selected by listing their stable codes, not by prefix, so a later ruff
+  cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
   (`adapters/configuration/python-ruff-config.mjs`) writes the toml into the report directory
   without the codes that the installed ruff does not know or lists as preview or removed
   (`ruff rule --all --output-format json`), which lets ruff 0.9 up to 0.16 run the same selection;
@@ -800,22 +801,45 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   the call site) and, for `PT`, `PT009` and `PT027` (`unittest` assertions, which `unittest`
   projects use by design). `PT011` and `PT030` ask for a `match` or a more specific class.
 - The pitfall groups `ASYNC`, `DTZ`, `LOG`, `PLE`, `PLW` and `T10` list every stable code of
-  ruff 0.16.8 except `PLW1641` (equality without a hash: a mutable class may be unhashable on
-  purpose). The excluded `S`, `TRY` and `PT` rules carry their reasons at the end of
-  `nitpicker-ruff.toml`.
-- `ASYNC` checks known blocking calls inside `async def`, missing awaits and timeout scopes with
-  no checkpoint. Use the backend's awaited APIs (`httpx.AsyncClient`, for example), move blocking
-  work to a worker thread, and let callers own deadline scopes. These are local checks: `ASYNC100`
+  ruff 0.16.9 except `PLW1641` (equality without a hash: a mutable class may be unhashable on
+  purpose) and `PLE0116` (`continue` in `finally`, which ruff reports only below Python 3.8). Every
+  rule left off in a listed group carries its reason at the end of `nitpicker-ruff.toml`, and every
+  selected pitfall code has its own allowed form (`rules/hints/pitfalls/`). All of them apply to
+  test files too.
+- `ASYNC`: inside `async def`, sleep with `await asyncio.sleep(...)`; call HTTP through an async
+  client (`httpx.AsyncClient`), processes through `asyncio.create_subprocess_exec`, and move other
+  blocking calls (files, `os.path`, `input`) to `await asyncio.to_thread(...)`. A timeout scope
+  holds an `await` (`ASYNC100`). An `async def` takes no `timeout` parameter (`ASYNC109`, from
+  Python 3.11 for asyncio): the caller bounds it with `async with asyncio.timeout(...)`, the one
+  way that composes through every call below it. Wait on an `asyncio.Event` instead of a sleep
+  loop (`ASYNC110`). For trio and anyio: await `trio.sleep`, `trio.lowlevel.checkpoint()` for a
+  bare yield and `trio.sleep_forever()` for an indefinite wait. These are local checks: `ASYNC100`
   does not follow a checkpoint through helpers.
-- `DTZ` requires timezone-aware datetimes: `datetime.now(tz=timezone.utc)`, a date from `.date()`,
-  `%z` when parsing an offset, or the known source timezone attached before converting. A naive
-  civil time that is meant takes a path exception. The domain clock rule still decides where time
-  is read.
-- `LOG` asks for named loggers (`logging.getLogger(__name__)`) and `exc_info` only inside an active
-  handler. `PLE` checks invalid operations, special-method contracts and logging argument counts;
-  `PLW` checks suspicious assignments, ineffective locks and unchecked process results
-  (`subprocess.run` without `check`). `T100` rejects committed debugger imports and breakpoints.
-  All of them apply to test files too.
+- `DTZ`: pass the zone everywhere a datetime is made: `datetime(2026, 1, 1, tzinfo=timezone.utc)`,
+  `datetime.now(tz=timezone.utc)` (for `now()`, `today()` and `utcnow()`),
+  `datetime.fromtimestamp(value, tz=timezone.utc)` (for `utcfromtimestamp` too) and
+  `datetime.max.replace(tzinfo=timezone.utc)`. Parsing (`DTZ007`) uses `%z`, attaches the known
+  zone with `.replace(tzinfo=...)`, or reads a date-only or time-only string with
+  `date.fromisoformat` or `time.fromisoformat`. A date (`DTZ011`, `DTZ012`) comes from
+  `datetime.now(tz=zone).date()` with the zone the date is meant in, since `date.today()` is the
+  server's local date. A naive civil time that is meant takes a path exception.
+- The clock rules own where time is read. On a line where `clock-now` (domain code) or
+  `real-clock-in-test` reports, `DTZ002`, `DTZ003`, `DTZ005` and `DTZ011` are dropped, so the one
+  finding left names one fix (inject the clock, or freeze it); the rules script lists those sites
+  (`rules-allowances.json`) and `rules/filters/ruff-allowed-forms.mjs` drops them. The same goes
+  for `ASYNC251` on a `sleep-in-test` line and `ASYNC110` on the `while` loop around it.
+- `LOG`: create loggers with `logging.getLogger(__name__)` (not `logging.Logger(...)`, `__file__`
+  or `__cached__`) and log through them, not the root logger (`LOG015`; `G010` is dropped on the
+  same `logging.warn` line). `logger.exception(...)` and `exc_info` belong inside an `except`
+  handler, without `exc_info=False` (use `logger.error(...)` then); use `logging.WARNING`, not
+  `logging.WARN`.
+- `PLE` and `PLW` check invalid operations and suspicious code: special-method signatures and
+  return types, `__all__` of strings, logging argument counts, `os.getenv` types, a loop variable
+  overwritten in its body (bind a new name), an exception built and not raised, a lock made inside
+  `with`, nested `max`/`min` and `subprocess.run` without `check` (`check=True`, or `check=False`
+  with the return code handled). `PLW0108` asks to pass the function itself (`key=str`); a lambda
+  that must look a name up at call time takes an exception. `T100` rejects committed debugger
+  imports and breakpoints.
 - The advice follows the project when two forms are valid. Pytest style: the parentheses of
   `@pytest.fixture` (`PT001`) and marks (`PT023`) and the shape of `parametrize` (`PT006`,
   `PT007`) are read from the project's `[tool.ruff.lint.flake8-pytest-style]` table (`pyproject.toml`,
