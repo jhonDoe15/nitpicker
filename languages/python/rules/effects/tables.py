@@ -1,6 +1,7 @@
 DATABASE = "database"
 REMOTE = "remote"
 MESSAGE = "message"
+WRITE = "database-write"
 PRIORITY = (DATABASE, REMOTE, MESSAGE)
 
 MODULE_KINDS = {

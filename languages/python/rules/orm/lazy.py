@@ -1,11 +1,10 @@
 import ast
 
-from checks.common import finding
+from checks.common import finding, walk_statements
 from orm.origins import EVERYTHING, FORWARD, origin_of
 
 RULE = "lazy-relation-in-loop"
 COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
-NESTED = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
 MANAGER_QUERIES = {
     "all",
     "filter",
@@ -41,15 +40,6 @@ def loop_parts(node):
     return None
 
 
-def walk_body(body):
-    pending = list(body)
-    while pending:
-        node = pending.pop()
-        yield node
-        if not isinstance(node, NESTED):
-            pending.extend(ast.iter_child_nodes(node))
-
-
 def is_covered(relation, plan):
     if relation.name in plan or EVERYTHING in plan:
         return True
@@ -71,7 +61,7 @@ def loads_relation(node, relation, parents):
 
 def lazy_accesses(variable, body, origin, parents):
     found = {}
-    attributes = [n for n in walk_body(body) if isinstance(n, ast.Attribute)]
+    attributes = [n for n in walk_statements(body) if isinstance(n, ast.Attribute)]
     for node in sorted(attributes, key=lambda n: (n.lineno, n.col_offset)):
         if not (isinstance(node.value, ast.Name) and node.value.id == variable):
             continue
