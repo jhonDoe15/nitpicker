@@ -32,7 +32,7 @@ describe('Spring role mappings', () => {
   it.each([
     [
       { preset: 'typescript', spring: { roles: ROLES } },
-      '"spring" is only supported with "preset": java or kotlin',
+      '"spring" is only supported with "preset": "java" or "preset": "kotlin"',
     ],
     [{ preset: 'java', spring: [] }, '"spring" must be an object'],
     [
@@ -46,11 +46,11 @@ describe('Spring role mappings', () => {
     ],
     [
       { preset: 'java', spring: { roles: { service: ['UseCase'] } } },
-      '"spring.roles.service" must be an array of fully qualified annotation or type names, such as "com.example.UseCase"',
+      '"spring.roles.service" must be an array of binary annotation or type names, such as "com.example.UseCase" or "com.example.Roles$UseCase" for a nested type',
     ],
     [
       { preset: 'java', spring: { roles: { service: 'com.acme.UseCase' } } },
-      '"spring.roles.service" must be an array of fully qualified annotation or type names',
+      '"spring.roles.service" must be an array of binary annotation or type names, such as "com.example.UseCase" or "com.example.Roles$UseCase" for a nested type',
     ],
   ])('rejects %j', (config, message) => {
     expect(() => validateConfig(config)).toThrow(message);
@@ -91,8 +91,8 @@ describe('Spring role mappings', () => {
       policy: { springRoles: ROLES },
       directory: path.join(directory, 'gradle'),
     });
-    expect(stage()).toContain(
+    expect(stage().filter((argument) => argument.startsWith('-Pnitpicker.spring.'))).toEqual([
       `-Pnitpicker.spring.roles=${path.join(directory, 'gradle', 'spring-roles.txt')}`,
-    );
+    ]);
   });
 });

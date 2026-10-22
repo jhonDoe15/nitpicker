@@ -14,14 +14,14 @@ afterEach(() => {
   }
 });
 
-function read(violations, resolvePath = (className) => `src/${className}.java`) {
+function read(violations, resolvePath = (className) => `src/${className}.java`, isExcepted) {
   const reportRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-spring-arch-'));
   temporaryRoots.push(reportRoot);
   writeFileSync(
     path.join(reportRoot, SPRING_ARCH_REPORT),
     JSON.stringify({ root: ROOT, violations }),
   );
-  return readSpringArchFindings(reportRoot, { resolvePath });
+  return readSpringArchFindings(reportRoot, { resolvePath, isExcepted });
 }
 
 function violation(rule, className, detail = '', fileName = '') {
@@ -100,7 +100,15 @@ describe('readSpringArchFindings messages', () => {
     ],
     [
       violation('spring-scope-capture', 'com.shop.core.Svc', 'request:com.shop.web.Cart'),
-      "Inject ObjectProvider<Cart> into Svc and call getObject() where it is used, or give Cart a scoped proxy (proxyMode = ScopedProxyMode.TARGET_CLASS, which @RequestScope and @SessionScope set): Svc is a singleton, so it gets one Cart when it is created: outside a request that fails, and inside one it keeps that request's bean for every later caller.",
+      "Inject ObjectProvider<Cart> into Svc and call getObject() per use, or give Cart a scoped proxy (proxyMode = ScopedProxyMode.TARGET_CLASS): a singleton gets one Cart when it is created, which fails outside a request and otherwise keeps the first request's bean.",
+    ],
+    [
+      violation(
+        'spring-scope-capture',
+        'com.shop.core.Config',
+        'pricing:session:com.shop.web.Cart',
+      ),
+      "Inject ObjectProvider<Cart> into the bean Config.pricing and call getObject() per use, or give Cart a scoped proxy (proxyMode = ScopedProxyMode.TARGET_CLASS): a singleton gets one Cart when it is created, which fails outside a session and otherwise keeps the first session's bean.",
     ],
     [
       violation(
@@ -204,6 +212,32 @@ describe('readSpringArchFindings findings', () => {
 
     expect(findings(true).map((finding) => finding.identity)).toEqual(['Mapper|Request']);
     expect(findings(false)).toEqual(findings(true));
+  });
+
+  it('reports a feature boundary crossing once, as the layering rule it also breaks, unless that rule is excepted', () => {
+    const violations = [
+      violation(
+        'spring-controller-repository',
+        'com.shop.orders.OrderController',
+        'com.shop.catalog.internal.CatalogRepository',
+      ),
+      violation(
+        'spring-feature-boundary',
+        'com.shop.orders.OrderController',
+        'com.shop.catalog.internal.CatalogRepository',
+      ),
+    ];
+    const rules = (isExcepted) =>
+      read(violations, undefined, isExcepted).map((finding) => finding.rule);
+
+    expect(rules(undefined)).toEqual(['spring-controller-repository']);
+    expect(
+      rules(
+        (rule, file) =>
+          rule === 'archunit/spring-controller-repository' &&
+          file === 'src/com.shop.orders.OrderController.java',
+      ),
+    ).toEqual(['spring-controller-repository', 'spring-feature-boundary']);
   });
 
   it('leaves out the context tests the shared integration-test rule accepts', () => {

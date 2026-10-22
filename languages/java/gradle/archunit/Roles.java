@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 final class Roles {
-  static final String PROPERTY = "nitpicker.springRoles";
+  static final String PROPERTY = "nitpicker.spring.roles";
   private static final String CONTROLLER_ROLE = "controller";
   private static final String SERVICE_ROLE = "service";
   private static final String REPOSITORY_ROLE = "repository";
@@ -19,6 +19,7 @@ final class Roles {
   private static final String SERVICE = "org.springframework.stereotype.Service";
   private static final String REPOSITORY = "org.springframework.stereotype.Repository";
   private static final String DATA_REPOSITORY = "org.springframework.data.repository.Repository";
+  private static final String REPOSITORY_DEFINITION = "org.springframework.data.repository.RepositoryDefinition";
   private static final List<String> WEB_PACKAGES =
       Arrays.asList(
           "jakarta.servlet.",
@@ -78,6 +79,7 @@ final class Roles {
 
   boolean isRepository(JavaClass type) {
     return type.isMetaAnnotatedWith(REPOSITORY)
+        || type.isMetaAnnotatedWith(REPOSITORY_DEFINITION)
         || type.isAssignableTo(DATA_REPOSITORY)
         || hasMappedRole(REPOSITORY_ROLE, type);
   }
