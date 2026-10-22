@@ -3,6 +3,7 @@ import path from 'node:path';
 import { runJava } from '../../../../languages/java/adapters/java-runner.mjs';
 import { runPython } from '../../../../languages/python/adapters/python-runner.mjs';
 import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
+import { runHygieneCli } from '../../../../shared/hygiene/runner.mjs';
 import { progressEvent } from '../analyzer-scheduler.mjs';
 import { reportFromAnalyzerOutput } from '../process.mjs';
 import { createProgressReporter } from '../progress.mjs';
@@ -19,7 +20,10 @@ const pythonRunnerPath = path.resolve(
   '../../../../languages/python/adapters/python-runner.mjs',
 );
 
+const cliPath = path.resolve(import.meta.dirname, '../../../cli.mjs');
+
 const inProcessScripts = new Map([
+  [cliPath, inProcessHygiene],
   [fakeAnalyzerPath, runFakeAnalyzer],
   [javaRunnerPath, inProcessRunner(runJava)],
   [pythonRunnerPath, inProcessRunner(runPython)],
@@ -36,9 +40,10 @@ export function runTasksInProcess(tasks, headPolicyFile, { progress, spawn } = {
         });
   const tasksByName = new Map(tasks.map((task) => [task.name, task]));
   const outcomes = new Map();
+  const environment = headPolicyFile === undefined ? {} : headPolicyEnvironment(headPolicyFile);
   withPolicyFile(headPolicyFile, () => {
     for (const task of dependencyOrder(tasks, tasksByName)) {
-      const outcome = settleTask(task, { tasksByName, outcomes, spawn });
+      const outcome = settleTask(task, { tasksByName, outcomes, spawn, environment });
       outcomes.set(task.name, outcome);
       reportSettled?.(progressEvent(outcome));
     }
@@ -105,13 +110,13 @@ function deferTask(pending, task, taskCount) {
   pending.push(task);
 }
 
-function settleTask(task, { tasksByName, outcomes, spawn }) {
+function settleTask(task, { tasksByName, outcomes, ...run }) {
   const dependencyOutcomes = task.dependencies.map((name) =>
     tasksByName.has(name) ? outcomes.get(name) : missingDependency(name, task),
   );
   const failedDependency = dependencyOutcomes.find(hasFailed);
   return failedDependency === undefined
-    ? executeTask(task, spawn)
+    ? executeTask(task, run)
     : dependentOutcome(task, failedDependency);
 }
 
@@ -142,10 +147,10 @@ function dependentOutcome(task, failedDependency) {
   };
 }
 
-function executeTask(task, spawn) {
+function executeTask(task, run) {
   const startedAt = Date.now();
   try {
-    const output = inProcessOutput(task, spawn) ?? spawnedOutput(task);
+    const output = inProcessOutput(task, run) ?? spawnedOutput(task);
     return {
       name: task.name,
       report: reportFromAnalyzerOutput(task, output),
@@ -160,13 +165,13 @@ function executeTask(task, spawn) {
   }
 }
 
-function inProcessOutput(task, spawn) {
+function inProcessOutput(task, run) {
   const { command, args, env } = task.invocation;
   const script = command === process.execPath ? inProcessScripts.get(args[0]) : undefined;
   if (script === undefined || env !== undefined) {
     return undefined;
   }
-  return script(args.slice(1), { spawn });
+  return script(args.slice(1), run);
 }
 
 function spawnedOutput(task) {
@@ -193,6 +198,18 @@ function spawnedOutput(task) {
     stdoutText: result.stdout,
     stderrText: result.stderr,
   };
+}
+
+function inProcessHygiene(argv, { environment }) {
+  const stdout = [];
+  const stderr = [];
+  const status = runHygieneCli({
+    commandArguments: argv.slice(1),
+    stdout: { write: (text) => stdout.push(text) },
+    stderr: { write: (text) => stderr.push(text) },
+    environment,
+  });
+  return { status, signal: undefined, stdoutText: stdout.join(''), stderrText: stderr.join('') };
 }
 
 function inProcessRunner(analyze) {
