@@ -96,6 +96,13 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['boolean-flag-parameter'],
+    describe: (subject) => `\`${subject}\` switches a public function between two behaviors`,
+    allowed:
+      'Make the flag keyword-only, `def send(message, *, urgent=False)`, split the function into two named for each behavior, or pass an enum. click, typer and FastAPI pass options by keyword, so `def command(*, verbose: bool)` works there.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['hardcoded-secret'],
     describe: (subject) => `\`${subject}\` holds a hardcoded secret`,
     allowed:

@@ -412,7 +412,7 @@ through the real tools.
   `swallowed-exception` reports what they did, and more, once and under one id. The shared
   one-way rules add the groups `G` (logging calls), `N` (PEP 8 naming), `ERA` (commented-out
   code), `ARG` (unused arguments), `PT` (pytest style), `S` (security) and `TRY` (exceptions), and
-  the single rules `PLR2004`, `PLW0602`, `PLW0603`, `FBT001` and `FBT002`; the last section of this
+  the single rules `PLR2004`, `PLW0602` and `PLW0603`; the last section of this
   slice lists each one with its allowed form and the rules of those groups that are left off.
   The groups `RUF`, `G`, `N`, `PT`, `S` and `TRY` are selected by listing their stable codes, not
   by prefix, so a later ruff cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
@@ -422,7 +422,7 @@ through the real tools.
   a prefix such as `E4` or `T20` stays when a known rule starts with it. Test files are the ones
   pytest collects (the `python_files` patterns, `testpaths`, `conftest.py`, any `tests` or `test`
   folder, `test_*.py`, `*_test.py`, and the Django names in a Django project, see
-  [runner parity](#runner-parity)): ruff's `ARG`, `FBT`, `PLR2004` and `S` findings in them are
+  [runner parity](#runner-parity)): ruff's `ARG`, `PLR2004` and `S` findings in them are
   dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`). Security findings (ruff `S` and the
   `sql-string-formatting`, `tls-verification-off`, `weak-hmac`, `http-without-timeout` and
   `unsafe-deserialization` rules) are also dropped in test support that pytest does not collect, as in the
@@ -597,10 +597,10 @@ are listed at the end.
 | Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                     | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
 | Deprecated APIs          | the replacement the deprecation notice names                                                                                                     | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
 | Repeated strings         | a constant or enum member                                                                                                                        | `repeated-string-literal` (script)                                                                                                                   |
-| Unused arguments         | remove the argument, or prefix it with `_` when the signature is fixed                                                                           | ruff `ARG001`-`ARG005`                                                                                                                               |
+| Unused arguments         | remove the argument; `@override` on an override; a `_` prefix when a callback signature is fixed                                                 | ruff `ARG001`-`ARG005`                                                                                                                               |
 | Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                      | `generic-name` (script)                                                                                                                              |
 | Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
-| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
+| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`), two functions or an enum                                                                    | `boolean-flag-parameter` (script)                                                                                                                    |
 | Input or output per item | one batch call, or `asyncio.gather`                                                                                                              | `io-in-loop` (script)                                                                                                                                |
 | Task markers             | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
 | Commented-out code       | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
@@ -768,6 +768,23 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - `generic-name` reports a file, a folder or a top-level class whose last word is `util`, `utils`,
   `helper`, `helpers`, `manager`, `common`, `misc` and the like; a class that extends a type with the
   same ending (`class SessionManager(CacheManager)`) is not reported.
+- `boolean-flag-parameter` reports a positional `bool` parameter (annotated `bool`, `bool | None` or
+  `Optional[bool]`, or defaulted to `True` or `False`) of a public function or method that is the
+  condition of an `if`, a conditional expression or a `while` (also under `not`, `and` and `or`). The
+  flag is keyword-only (`def send(message, *, urgent=False)`), two functions, or an enum. Private
+  names (a leading underscore, which covers `__init__` and the other dunder methods), methods of a
+  private class, nested functions, tests, `set_*`, `with_*` and `from_*` names, `of` and `builder`,
+  functions with `@override`, `@abstractmethod`, `@overload` or a property `setter`, and a flag
+  that is only passed on or stored are not reported. A method that overrides a base class without
+  `@override` is reported; mark it `@override`. Java, Kotlin, TypeScript and JavaScript use the
+  same definition, with an options object, a record or an enum as the allowed form.
+- Unused arguments (ruff `ARG001`-`ARG005`) skip names that start with `_`, `*args` and `**kwargs`,
+  `@override` and `@abstractmethod` methods, `@overload`, dunder methods other than `__init__`,
+  `__new__` and `__call__`, and bodies that are only `...`, `pass`, a docstring or
+  `raise NotImplementedError`. A callback signature that fixes a parameter the body does not read
+  takes the `_` prefix (`def handler(event, _context)`); a parameter the framework passes by
+  keyword (a FastAPI path parameter, a pytest fixture requested for its effect) keeps its name and
+  the path gets an exception. Test files are skipped, as for the other `ARG` use.
 - `hardcoded-secret` reports a secret-looking string (six characters or more with letters and
   digits, or three character classes) assigned to a name ending in `password`, `token`, `secret`,
   `api_key`, `credentials` and similar, also as a parameter default, keyword argument, dictionary
@@ -861,7 +878,7 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `RUF003` and `RUF012`: non-ASCII text and mutable class attributes, both common in correct
   code) and `T20` (no `print`), without `B008` (a call in an argument default, which the web
   frameworks need). Slice 2 adds the shared one-way groups `G`, `N`, `ERA`, `ARG`, `PT`, `S`, `TRY`,
-  `PLR2004` and `FBT`. The target version follows the project's
+  `PLR2004`. The target version follows the project's
   `requires-python` (or poetry's `python`, or `python_requires`): its lowest version, never lower
   than 3.8, and 3.8 when none is declared, so a rule that exists only on newer versions (`B905`,
   `zip(strict=)`) cannot flag code that must run on an older one. The SARIF goes through the existing generic ingester; identity is the

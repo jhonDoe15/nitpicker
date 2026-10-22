@@ -1,6 +1,15 @@
-def send(message: str, urgent: bool) -> tuple[str, bool]:
-    return message, urgent
+class Mailer:
+    def deliver(self, message: str, urgent: bool) -> str:
+        return f"!{message}" if urgent else message
 
 
 def stop(message, force=False):
-    return message, force
+    if force:
+        return message.upper()
+    return message
+
+
+def render(text: str, upper: bool | None) -> str:
+    if not upper:
+        return text
+    return text.upper()
