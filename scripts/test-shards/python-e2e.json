@@ -18,6 +18,7 @@
   "languages/python/adapters/project-tools/pyright/pyright.e2e.test.mjs": 3,
   "languages/python/ruff/ruff-groups.e2e.test.mjs": 1,
   "languages/python/ruff/ruff-rules.e2e.test.mjs": 1,
+  "languages/python/rules/e2e/boundary/contracts.e2e.test.mjs": 2,
   "languages/python/rules/e2e/boundary/guards.e2e.test.mjs": 1,
   "languages/python/rules/e2e/boundary/library-rules.e2e.test.mjs": 2,
   "languages/python/rules/e2e/boundary/paths.e2e.test.mjs": 1,

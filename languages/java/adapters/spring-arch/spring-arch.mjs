@@ -3,6 +3,7 @@ import path from 'node:path';
 import { createIdentityCounter } from '../../../../shared/ingest/common.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { isIntegrationTest } from '../test-times/integration-tests.mjs';
+import { CONTRACT_RULE, contractEntry, keepsContract, simpleName } from './contract-types.mjs';
 
 export const SPRING_ARCH_REPORT = 'spring-arch.json';
 const TOOL = 'archunit';
@@ -34,10 +35,6 @@ const MESSAGES = {
 
 const PLACEMENT = 'spring-test-placement';
 
-function simpleName(name) {
-  return name.slice(name.lastIndexOf('.') + 1);
-}
-
 function packageOf(name) {
   return name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : '';
 }
@@ -54,46 +51,66 @@ function targetOf(detail, root) {
   return { packageName, rootPackage: `${root}.${segment}` };
 }
 
-export function readSpringArchFindings(reportRoot, { resolvePath }) {
+function describeEntry({ rule, className, detail }, root) {
+  if (rule === CONTRACT_RULE) {
+    return contractEntry(className, detail);
+  }
+  const describe = MESSAGES[rule];
+  if (describe === undefined) {
+    throw new Error(`Unknown Spring architecture rule ${rule} in ${SPRING_ARCH_REPORT}`);
+  }
+  const simple = simpleName(className);
+  const short = shortDetail(detail);
+  return {
+    key: short === '' ? simple : `${simple}|${short}`,
+    symbol: simple,
+    message: describe({
+      simple,
+      detail: short,
+      root,
+      target: root === null ? undefined : targetOf(detail, root),
+    }),
+  };
+}
+
+function isKept({ rule, className, detail }, filePath, options) {
+  if (filePath === undefined) {
+    return false;
+  }
+  if (rule === CONTRACT_RULE) {
+    return keepsContract(detail, filePath, options.isFeatureFace ?? (() => false));
+  }
+  return (
+    options.spring !== false &&
+    !(rule === PLACEMENT && isIntegrationTest({ className, unitSource: true }))
+  );
+}
+
+export function readSpringArchFindings(reportRoot, options) {
   const file = path.join(reportRoot, SPRING_ARCH_REPORT);
   if (!existsSync(file)) {
     throw new Error(`The Spring architecture report ${SPRING_ARCH_REPORT} is missing`);
   }
   const { root, violations } = JSON.parse(readFileSync(file, 'utf8'));
   const counters = new Map();
-  return violations.flatMap(({ rule, className, fileName, detail }) => {
-    const filePath = resolvePath(className, fileName === '' ? undefined : fileName);
-    const describe = MESSAGES[rule];
-    if (describe === undefined) {
-      throw new Error(`Unknown Spring architecture rule ${rule} in ${SPRING_ARCH_REPORT}`);
-    }
-    if (
-      filePath === undefined ||
-      (rule === PLACEMENT && isIntegrationTest({ className, unitSource: true }))
-    ) {
+  return violations.flatMap((violation) => {
+    const { rule, className, fileName } = violation;
+    const filePath = options.resolvePath(className, fileName === '' ? undefined : fileName);
+    const entry = describeEntry(violation, root);
+    if (!isKept(violation, filePath, options)) {
       return [];
     }
     const unique = counters.get(filePath) ?? createIdentityCounter();
     counters.set(filePath, unique);
-    const simple = simpleName(className);
-    const short = shortDetail(detail);
-    const message = describe({
-      simple,
-      detail: short,
-      root,
-      target: root === null ? undefined : targetOf(detail, root),
-    });
     return [
       {
         tool: TOOL,
         rule,
         path: filePath,
-        identity: unique(`${rule}:${short === '' ? simple : `${simple}|${short}`}`).slice(
-          rule.length + 1,
-        ),
-        message: `${message} ${exceptionHint(`${TOOL}/${rule}`, filePath)}`,
+        identity: unique(`${rule}:${entry.key}`).slice(rule.length + 1),
+        message: `${entry.message} ${exceptionHint(`${TOOL}/${rule}`, filePath)}`,
         classification: 'enforceable',
-        symbol: simple,
+        symbol: entry.symbol,
       },
     ];
   });

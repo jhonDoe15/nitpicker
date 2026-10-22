@@ -3,6 +3,7 @@ import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { collectJavaFindings } from './java-diff.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
+import { featureLayout } from '../../../shared/rules/features/feature-roles.mjs';
 import { javaStyle } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 
@@ -57,7 +58,7 @@ export function analyzeJavaSnapshot(
 
 export function readRunnerPolicy(runnerArguments, environment = process.env) {
   const { projectRoot, policy } = parseJavaRunnerArguments(runnerArguments);
-  const { conventions, spring, kotlin } = readHeadPolicyFile(environment);
+  const { conventions, spring, featureFolders, layout, kotlin } = readHeadPolicyFile(environment);
   return {
     projectRoot,
     policy: {
@@ -65,6 +66,8 @@ export function readRunnerPolicy(runnerArguments, environment = process.env) {
       conventions,
       javaStyle: javaStyle(conventions),
       ...(spring === true ? { spring } : {}),
+      ...(featureFolders === true ? { featureFolders } : {}),
+      ...(layout === undefined ? {} : { layout: featureLayout(layout) }),
       kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
     },
   };

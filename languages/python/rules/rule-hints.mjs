@@ -1,6 +1,7 @@
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
 import { COMMON_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
+import { CONTRACT_HINTS } from './hints/ast-contracts.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
 import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
@@ -37,6 +38,7 @@ export const RULE_HINTS = [
   ...SECURITY_HINTS,
   ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
+  ...CONTRACT_HINTS,
   ...SMELL_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({

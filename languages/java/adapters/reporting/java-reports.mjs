@@ -14,6 +14,7 @@ import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readSpringArchFindings } from '../spring-arch/spring-arch.mjs';
+import { featureFaceMatcher } from '../spring-arch/contract-types.mjs';
 import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { methodText } from '../../../../shared/ingest/structure-report.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
@@ -115,6 +116,7 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
         baseline: options.baseline,
         modulePath,
       },
+      featureLayout: { layout: options.featureLayout, modulePath },
       testConsole: {
         allow: options.testConsoleAllow,
         exceptions: options.exceptions,
@@ -219,6 +221,8 @@ function springArchFindings(context) {
   const locate = classLocator(context);
   return readSpringArchFindings(context.reportRoot, {
     resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
+    spring: context.manifest.spring === true,
+    isFeatureFace: featureFaceMatcher(context.featureLayout),
   });
 }
 

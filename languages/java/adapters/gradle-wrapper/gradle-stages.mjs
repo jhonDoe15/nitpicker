@@ -33,6 +33,7 @@ function headFactProperties(policy) {
   return [
     ...javaStyleProperties(policy),
     ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
+    ...(policy.featureFolders === true ? ['-Pnitpicker.featureFolders=true'] : []),
   ];
 }
 

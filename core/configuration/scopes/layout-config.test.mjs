@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
-import { withLanguageRegistered } from '../../../shared/rules/facts/test-support/fact-fixtures.mjs';
 import { validateConfig } from '../validate.mjs';
 
 describe('layout keys', () => {
@@ -42,31 +41,14 @@ describe('layout keys', () => {
 
 describe('feature layout keys', () => {
   const layout = { sharedRoots: ['**/common'], featureRoots: ['src/main/java/com/acme/features'] };
-  const RULE = 'shared-used-by-one-feature';
 
-  it.each([['typescript'], ['javascript'], ['python']])(
+  it.each([['typescript'], ['javascript'], ['python'], ['java'], ['kotlin']])(
     'are valid with the %s preset and reach the analyzers',
     (preset) => {
       expect(validateConfig({ preset, layout })).toEqual({ preset, layout });
       expect(resolveHeadPolicy({ preset, layout }).layout).toEqual(layout);
     },
   );
-
-  it.each([['java'], ['kotlin']])(
-    'are rejected with the %s preset until it runs the rule that reads them',
-    (preset) => {
-      expect(() => validateConfig({ preset, layout })).toThrow(
-        `nitpicker.config.json: "layout.sharedRoots" is not supported with "preset": "${preset}": it configures ${RULE}, which the ${preset} preset does not run yet. Remove it`,
-      );
-    },
-  );
-
-  it('are accepted by a preset once its language registers the rule', () => {
-    const config = { preset: 'java', layout };
-
-    expect(withLanguageRegistered(RULE, 'java', () => validateConfig(config))).toEqual(config);
-    expect(resolveHeadPolicy(config).layout).toEqual(layout);
-  });
 
   it('accepts an empty feature list, which turns the rule off', () => {
     expect(() => validateConfig({ layout: { featureRoots: [] } })).not.toThrow();
@@ -104,8 +86,8 @@ describe('feature layout keys', () => {
 
   it.each([
     ['python', 'sharedRoots, featureRoots'],
-    ['java', 'none yet'],
-    ['kotlin', 'none yet'],
+    ['java', 'sharedRoots, featureRoots'],
+    ['kotlin', 'sharedRoots, featureRoots'],
   ])(
     'rejects the TypeScript source folders with the %s preset and names the keys it takes',
     (preset, keys) => {
