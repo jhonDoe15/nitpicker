@@ -30,6 +30,9 @@ describe('TODO comments', () => {
     ['// Phone numbers are formatted as XXX-XXX-XXXX.', []],
     ['// Drop the column after the migration, TODO: issue', ['TodoWithoutIssue:1']],
     ['// TODO SHA-256 hashing', ['TodoWithoutIssue:1']],
+    ['// TODO(#12): split it, FIXME: rename it', ['TodoWithoutIssue:1']],
+    ['// TODO(#12): split it, FIXME(#13): rename it', []],
+    ['// Reads the TODO list of the user', []],
   ])('%s', (source, expected) => {
     expect(summary(`${source}\nclass A {}`)).toEqual(expected);
   });
