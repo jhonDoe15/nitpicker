@@ -12,6 +12,7 @@ import {
 } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { acceptedDigest } from '../test-support/accepted-digest.mjs';
+import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 
 const EMPTY_JDEPS = { 'jdeps/jdeps.txt': '', 'jdeps/jdeps-classes.txt': '' };
 const EXCEPTION_ENTRY = /\{"rule":"[^"]+","paths":\[[^\]]+\],"reason":"\.\.\."\}/u;
@@ -41,6 +42,8 @@ const CLONE_MESSAGE = [
   'If the repetition is intended, add src/main/java/demo/First.java or',
   'src/main/java/demo/Second.java to "exclude" in nitpicker.config.json.',
 ].join(' ');
+
+const UNUSED_FIELD_HELP_URI = docsUrl('docs/rules/java-pmd.md', 'pmd-unusedprivatefield');
 
 const addedFieldOutput = expect.stringMatching(exactText`Base: comparison-base (argument)
 
@@ -86,6 +89,11 @@ describe.each([
       output: addedFieldOutput,
     });
     expect(result.output.out).toEqual(addedFieldOutput);
+    expect(
+      JSON.parse(readFileSync(path.join(result.reports, 'new-findings.json'), 'utf8')).map(
+        ({ helpUri }) => helpUri,
+      ),
+    ).toEqual([UNUSED_FIELD_HELP_URI]);
     expect(result.json('new-findings.json')).toEqual([
       {
         tool: 'pmd',
@@ -110,7 +118,11 @@ describe.each([
           "rules": [
             {
               "id": "pmd/UnusedPrivateField",
-              "name": "UnusedPrivateField"
+              "name": "UnusedPrivateField",
+              "shortDescription": {
+                "text": "Unused private field"
+              },
+              "helpUri": ${JSON.stringify(UNUSED_FIELD_HELP_URI)}
             }
           ]
         }
