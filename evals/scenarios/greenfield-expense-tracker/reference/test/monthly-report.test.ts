@@ -325,7 +325,9 @@ describe('largest expenses', () => {
       { date: '2024-03-01', amountCents: 1234, category: 'Food', note: 'a, b' },
     ]);
     expect(disk.files.has('data/expenses.json')).toBe(true);
-    expect(savedJson(disk, 'data/expenses.json')).not.toBeNull();
+    expect(savedJson(disk, 'data/expenses.json')).toEqual({
+      expenses: [{ date: '2024-03-01', amountCents: 1234, category: 'Food', note: 'a, b' }],
+    });
   });
 });
 
