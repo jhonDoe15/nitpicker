@@ -109,6 +109,21 @@ describe('the pytest style of a project', () => {
     });
   });
 
+  it('reads the set options from the config root and measures the checked code', () => {
+    const head = project({
+      'pyproject.toml': '[tool.ruff.lint.flake8-pytest-style]\nfixture-parentheses = false\n',
+    });
+    const base = project({
+      'tests/test_a.py': parenthesized,
+      'pyproject.toml': '[tool.ruff.lint.flake8-pytest-style]\nfixture-parentheses = true\n',
+    });
+
+    expect(pytestStyle(base, ['tests/test_a.py'], head)).toMatchObject({
+      'fixture-parentheses': false,
+      'mark-parentheses': true,
+    });
+  });
+
   it('turns the choices into ruff config flags', () => {
     expect(
       pytestStyleFlags({ 'fixture-parentheses': true, 'parametrize-names-type': 'csv' }),

@@ -258,9 +258,13 @@ handed to ruff or black either. The rules most likely to flag code that is right
 each item) and `F401` (an `__init__.py` that re-exports): lift them for the path with
 `python.exceptions`, or `exclude` the path, for example
 `"exclude": ["src/demo/cli.py", "**/__init__.py"]`. The project's own ruff configuration
-(`[tool.ruff]`, `ruff.toml`) is not read for linting, and of the coverage configuration only the
-settings that say how the tests run are kept (see the test step below), so the result means the
-same on every project; there is no override key for them.
+(`[tool.ruff]`, `ruff.toml`) is not read for linting until `"tools": { "ruff": { "precedence":
+["project", "nitpicker"] } }` opts it in; then the rules it selects run next to nitpicker's (never
+instead of them: an `ignore` or `per-file-ignores` entry for a nitpicker rule is dropped, and
+`python.exceptions` lifts those) and its rule options merge with nitpicker's (see
+[Formatter and detekt configs](usage.md#formatter-and-detekt-configs-python-and-kotlin-presets)). Of
+the coverage configuration only the settings that say how the tests run are kept (see the test step
+below), so the result means the same on every project; there is no override key for them.
 
 The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile`,
 `.pre-commit-config.yaml` or a requirements file (`requirements*.txt`, `requirements/*.txt`) has a
@@ -801,7 +805,9 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - The advice follows the project when two forms are valid. Pytest style: the parentheses of
   `@pytest.fixture` (`PT001`) and marks (`PT023`) and the shape of `parametrize` (`PT006`,
   `PT007`) are read from the project's `[tool.ruff.lint.flake8-pytest-style]` table (`pyproject.toml`,
-  `ruff.toml`), and where it sets nothing from the majority of the project's own test code
+  `ruff.toml`; from the head checkout for both sides of a comparison, so editing the table does not
+  turn unchanged tests into new findings), and where it sets nothing from the majority of the
+  project's own test code
   (`rules/libraries/pytest-style.mjs`); a tie leaves ruff's default. Ruff gets the result as
   `--config` flags, so the gate and the advice agree. Logging and validation: `project-libraries.mjs`
   reads the dependencies (`pyproject.toml`, `Pipfile`, `requirements*.txt`) and words the logging
