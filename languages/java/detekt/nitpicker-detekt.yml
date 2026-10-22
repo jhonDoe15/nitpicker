@@ -248,19 +248,3 @@ style:
     excludes: []
     ignoreAnnotated: []
     includes: []
-
-complexity:
-  active: true
-  excludes: []
-  ignoreAnnotated: []
-  includes: []
-  StringLiteralDuplication:
-    active: true
-    severity: warning
-    excludes: []
-    ignoreAnnotated: []
-    includes: []
-    threshold: 3
-    ignoreAnnotation: true
-    excludeStringsWithLessThan5Characters: true
-    ignoreStringsRegex: '^[^A-Za-z0-9]*$'

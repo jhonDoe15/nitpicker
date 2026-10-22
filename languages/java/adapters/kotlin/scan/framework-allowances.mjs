@@ -2,7 +2,6 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { listEntriesOf, MERGED_LISTS } from '../detekt/detekt-lists.mjs';
-import { ONE_WAY_RULES } from '../rules/kotlin-rules.mjs';
 import { isCompositionRoot } from './kotlin-scan.mjs';
 import { lineText, scanKotlinSource } from './kotlin-source.mjs';
 
@@ -37,16 +36,10 @@ function mainOnlyNames() {
 }
 
 const MAIN_ONLY = mainOnlyNames();
-const MAIN_ONLY_RULES = new Set(
-  ONE_WAY_RULES.filter(({ mainOnly }) => mainOnly).map(({ id }) => id),
-);
 
 function isMainOnly(finding) {
   const name = NAMED.exec(finding.message)?.[1];
-  return (
-    MAIN_ONLY_RULES.has(finding.rule) ||
-    (name !== undefined && MAIN_ONLY.get(finding.rule)?.has(name) === true)
-  );
+  return name !== undefined && MAIN_ONLY.get(finding.rule)?.has(name) === true;
 }
 
 function isMainOnlyInTest(finding, testRoots) {
