@@ -4,7 +4,7 @@ import {
   isCollectedByRunner,
   runnerOf,
   vocabularyOf,
-} from '../rules/testing/runners/runner-option.mjs';
+} from '../rules/runner-apis/runner-option.mjs';
 
 const TYPE_TEST_NAME = /\.(?:test|spec)-d\.[cm]?[jt]sx?$/u;
 

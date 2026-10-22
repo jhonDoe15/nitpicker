@@ -1,7 +1,7 @@
 import { productionModulePath } from '../../../test-isolation/production-source.mjs';
-import { moduleMocks } from '../runners/module-mocks.mjs';
-import { createRunnerApis, runnerApiVisitors } from '../runners/runner-apis.mjs';
-import { spiedMember } from '../runners/runner-doubles.mjs';
+import { moduleMocks } from '../../runner-apis/module-mocks.mjs';
+import { createRunnerApis, runnerApiVisitors } from '../../runner-apis/runner-apis.mjs';
+import { spiedMember } from '../../runner-apis/runner-doubles.mjs';
 
 const EXCEPTION_ROUTE = 'An exception fits only when injection is not possible.';
 

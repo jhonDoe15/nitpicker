@@ -4,8 +4,8 @@ import {
   kindOfObject,
   propertyName,
   runnerApiVisitors,
-} from '../rules/testing/runners/runner-apis.mjs';
-import { fakeTimerChange } from '../rules/testing/runners/runner-doubles.mjs';
+} from '../rules/runner-apis/runner-apis.mjs';
+import { fakeTimerChange } from '../rules/runner-apis/runner-doubles.mjs';
 
 const RESTORING_HOOKS = new Set(['afterEach', 'afterAll', 'after', 'onTestFinished']);
 const USER_EVENT_PACKAGE = '@testing-library/user-event';

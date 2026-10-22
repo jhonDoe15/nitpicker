@@ -3,10 +3,16 @@ import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { stripAnsi } from '../../../../shared/rules/console/ansi.mjs';
+import { MAX_CONTENT_LENGTH } from '../../adapters/test-runners/v8-coverage/loaded-sources.cjs';
 
 export const REPORT_VARIABLE = 'NITPICKER_TEST_CONSOLE_REPORT';
 
-const MAX_CONTENT_LENGTH = 4000;
+export const ROOT_VARIABLE = 'NITPICKER_TEST_CONSOLE_ROOT';
+
+export {
+  LINES_VARIABLE,
+  RUNNER_VARIABLE,
+} from '../../adapters/test-runners/v8-coverage/loaded-sources.cjs';
 
 const EMPTY_LINE = '<empty line>';
 
@@ -56,25 +62,24 @@ function isMessageLine(line) {
   return /[\p{L}\p{N}]/u.test(line) && !STACK_LINE.test(line) && line.trim() !== EMPTY_LINE;
 }
 
+function withoutGroupIndent(lines) {
+  const indent = /^\s*/u.exec(lines[0])[0];
+  return lines.map((line) => (line.startsWith(indent) ? line.slice(indent.length) : line));
+}
+
 export function consoleMessagesOf(content) {
-  return blocksOf(stripAnsi(content).split(/\r?\n/u))
+  return blocksOf(withoutGroupIndent(stripAnsi(content).split(/\r?\n/u)))
     .map((block) => block.filter((line) => isMessageLine(line)).map((line) => line.trim()))
     .filter((lines) => lines.length > 0)
     .map((lines) => lines.join(' '));
 }
 
-export function writeConsoleReport(reportPath, entries) {
-  if (reportPath === undefined || reportPath === '') {
-    return;
-  }
-  mkdirSync(path.dirname(reportPath), { recursive: true });
-  writeFileSync(reportPath, `${JSON.stringify({ entries })}\n`);
+export function consoleEntry({ content, root, file, test }) {
+  const messages = consoleMessagesOf(withPlaceholders(content.slice(0, MAX_CONTENT_LENGTH), root));
+  return messages.length === 0 ? undefined : { file, test, messages };
 }
 
-export function consoleEntry(file, test, content, root) {
-  return {
-    file,
-    test,
-    messages: consoleMessagesOf(withPlaceholders(content.slice(0, MAX_CONTENT_LENGTH), root)),
-  };
+export function writeReportFile(reportPath, entries) {
+  mkdirSync(path.dirname(reportPath), { recursive: true });
+  writeFileSync(reportPath, `${JSON.stringify({ entries })}\n`);
 }

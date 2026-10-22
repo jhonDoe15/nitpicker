@@ -1,8 +1,3 @@
-import {
-  REPORT_VARIABLE,
-  consoleEntry,
-  writeConsoleReport,
-} from '../../../preset/test-console/console-report.mjs';
 import path from 'node:path';
 
 const RESULT_EVENTS = new Set(['test:pass', 'test:fail']);
@@ -153,9 +148,5 @@ export default async function* nodeTestReporter(source) {
   for await (const event of source) {
     events.push(event);
   }
-  const entries = events
-    .filter(({ type }) => type === 'test:stderr')
-    .map(({ data }) => consoleEntry(data.file ?? '', '', String(data.message), process.cwd()));
-  writeConsoleReport(process.env[REPORT_VARIABLE], entries);
   yield `${JSON.stringify(reportFromEvents(events))}\n`;
 }

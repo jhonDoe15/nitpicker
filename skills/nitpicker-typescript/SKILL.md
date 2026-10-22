@@ -16,9 +16,9 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 
 ## Finish with the gate
 
-1. Run your tests with the project's runner (`npx vitest run`, `npx jest`, `node --test` or
-   `npx mocha`). Failing tests stop coverage, CRAP and mutation from running. The gate type-checks
-   for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
+1. Run your tests with the project's runner (its `test` script: `npx vitest run`, `npx jest`,
+   `node --test` or `npx mocha`). Failing tests stop coverage, CRAP and mutation from running. The
+   gate type-checks for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. It applies ESLint and Prettier fixes with its own

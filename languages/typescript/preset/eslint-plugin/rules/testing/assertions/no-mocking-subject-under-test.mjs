@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readLayout } from '../../../../head-policy.mjs';
-import { moduleMocks } from '../runners/module-mocks.mjs';
-import { createRunnerApis, runnerApiVisitors } from '../runners/runner-apis.mjs';
+import { moduleMocks } from '../../runner-apis/module-mocks.mjs';
+import { createRunnerApis, runnerApiVisitors } from '../../runner-apis/runner-apis.mjs';
 
 const layout = readLayout();
 

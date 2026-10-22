@@ -2,6 +2,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
+import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
 import { parseArguments } from '../../quality-areas/arguments.mjs';
 import { runQualityArea } from '../../quality-areas-runner.mjs';
 
@@ -81,5 +83,37 @@ export const PICK_SOURCE = [
   '',
 ].join('\n');
 
+export const PICK_JS_SOURCE = PICK_SOURCE.replace('(flag: boolean): string', '(flag)');
+
 export const UNCOVERED_ELSE =
   'Branch coverage is 50.00%; minimum is 95%. Not taken: the false arm of the if (or its else) at 2:3.';
+
+const PRINTED = /^Tests print new console output: (.*?)\. Fix the cause/u;
+
+async function consoleFindings(projectRoot) {
+  const failures = (await runArea('coverage', projectRoot)).filter(
+    ({ rule }) => rule === TESTS_FAILED_RULE,
+  );
+  if (failures.length > 0) {
+    throw new Error(failures.map(({ message }) => message).join('\n'));
+  }
+  return runArea('test-console', projectRoot);
+}
+
+function printedRows(findings) {
+  return findings.map(({ rule, path: file, message }) => [rule, file, PRINTED.exec(message)?.[1]]);
+}
+
+export async function consoleOutput(projectRoot) {
+  return printedRows(await consoleFindings(projectRoot));
+}
+
+export async function newConsoleOutput({ base, head }) {
+  const { newFindings } = compareFindings({
+    baseFindings: await consoleFindings(base),
+    headFindings: await consoleFindings(head),
+  });
+  return printedRows(newFindings);
+}
+
+export const JAVASCRIPT_PRESET = { preset: 'javascript' };

@@ -89,8 +89,8 @@ describe('readJestConfig', () => {
       command: runnerCommand('craco test', 'jest'),
     });
 
-    expect(failure).toMatch(
-      /^The test script runs "craco test", but @craco\/craco is not installed/u,
+    expect(failure).toBe(
+      `The test script runs "craco test", but @craco/craco is not installed in ${root}. Install the project dependencies, or set "tools.tests.runner" in nitpicker.config.json.`,
     );
   });
 
@@ -103,7 +103,9 @@ describe('readJestConfig', () => {
 
     expect(failure).toBeUndefined();
     expect(config.configs).toHaveLength(1);
-    expect(config.configs[0].testEnvironment).toMatch(/jest-environment-node/u);
+    expect(config.configs[0].testEnvironment).toBe(
+      path.join(repositoryJest, '../jest-environment-node/build/index.js'),
+    );
   });
 
   it('reports a configuration jest cannot load, with the first lines of its error', () => {
@@ -115,7 +117,9 @@ describe('readJestConfig', () => {
     const { config, failure } = readJestConfig({ projectRoot: root, timeoutMs: 20_000 });
 
     expect(config).toBeUndefined();
-    expect(failure).toMatch(/^jest --showConfig exited with code 1: /u);
+    expect(failure).toMatch(
+      /^jest --showConfig exited with code 1: JSONError: .+ while parsing '\{ not json' in .+\/jest\.config\.json at .+$/u,
+    );
   });
 
   it('reports a project without jest', () => {
@@ -128,6 +132,8 @@ describe('readJestConfig', () => {
     });
 
     expect(config).toBeUndefined();
-    expect(failure).toMatch(/^jest could not be resolved from the project \(/u);
+    expect(failure).toBe(
+      `jest could not be resolved from the project (Cannot find module 'jest/package.json'\nRequire stack:\n- ${root}/package.json)`,
+    );
   });
 });

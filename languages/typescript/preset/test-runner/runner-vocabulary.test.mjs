@@ -37,18 +37,24 @@ describe('runnerVocabulary', () => {
     expect(runnerVocabulary(runner).sharedSetupHook).toBe(hook);
   });
 
-  it.each(['node', 'mocha'])(
-    'gives %s a loop of tests, a DOM setup file and plain assertions',
-    (runner) => {
-      const { eachCase, domSetup, assertFocus, assertVisible } = runnerVocabulary(runner);
+  it.each([
+    [
+      'node',
+      'a setup file that registers global-jsdom (`import "global-jsdom/register"`), loaded with `--import` in the test script; node:test reads no environment comment in the test file',
+    ],
+    [
+      'mocha',
+      'a setup file that registers global-jsdom (`--require global-jsdom/register`, or the same entry under `require` in .mocharc); Mocha reads no environment comment in the test file',
+    ],
+  ])('gives %s a loop of tests, a DOM setup file and plain assertions', (runner, setup) => {
+    const { eachCase, domSetup, assertFocus, assertVisible } = runnerVocabulary(runner);
 
-      expect([eachCase, domSetup, assertFocus, assertVisible].join(' ')).not.toMatch(
-        /it\.each|@jest-environment|toHaveFocus|toBeVisible/u,
-      );
-      expect(eachCase).toBe(
-        'give each case its own test: `for (const testCase of cases) { it(testCase.name, () => { ... }); }`',
-      );
-      expect(domSetup).toMatch(/^a setup file that registers global-jsdom /u);
-    },
-  );
+    expect([eachCase, domSetup, assertFocus, assertVisible].join(' ')).not.toMatch(
+      /it\.each|@jest-environment|toHaveFocus|toBeVisible/u,
+    );
+    expect(eachCase).toBe(
+      'give each case its own test: `for (const testCase of cases) { it(testCase.name, () => { ... }); }`',
+    );
+    expect(domSetup).toBe(setup);
+  });
 });
