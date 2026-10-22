@@ -14,7 +14,6 @@ import { appendSentence } from './sentence.mjs';
 export const ROUTED_RULES = [
   RULE_IDS.mutantSurvived,
   RULE_IDS.mutantNoCoverage,
-  RULE_IDS.duplicateClone,
   RULE_IDS.stabilityDirection,
   RULE_IDS.noProductionRuntime,
   RULE_IDS.typeOnlyProductionDependency,

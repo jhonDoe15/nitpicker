@@ -153,7 +153,7 @@ describe('the react-project fixture', () => {
         'put them in a styled component, `const Title = styled.h1({ fontSize: 18 })`.',
         'A `style` object stays for values computed at runtime, such as `{ width: progress }`.',
         'An exception fits only for a one-off.',
-        'If a reviewer agrees this is intended, add {"rule":"nitpicker/react-single-styling-approach","paths":["src/main/ui/inline-style.tsx"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'If this is intended, add {"rule":"nitpicker/react-single-styling-approach","paths":["src/main/ui/inline-style.tsx"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       ].join(' '),
     );
   });

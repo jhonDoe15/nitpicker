@@ -1,0 +1,8 @@
+{
+  "name": "fixture-lib",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "node -e \"require('fs').writeFileSync('LIB_POSTINSTALL', '1')\""
+  }
+}

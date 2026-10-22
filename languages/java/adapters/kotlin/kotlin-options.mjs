@@ -6,16 +6,21 @@ import {
 import { JAVA_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { JAVA_TOOLS } from '../gradle-presets.mjs';
-import { ONE_WAY_RULE_IDS } from './rules/kotlin-rules.mjs';
+import { ONE_WAY_RULE_IDS, SOURCE_RULE_IDS } from './rules/kotlin-rules.mjs';
 import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
+import { TEST_ONLY_EXCEPTION_RULE } from '../review-rules/test-only-classes.mjs';
+import { CONSOLE_EXCEPTION_RULE } from '../test-times/console-findings.mjs';
 
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
 const KOTLIN_KEYS = ['formatter', 'detektConfig'];
-const KOTLIN_EXCEPTION_RULES = [
+export const KOTLIN_EXCEPTION_RULES = [
   ...ONE_WAY_RULE_IDS,
+  ...SOURCE_RULE_IDS,
   ...SHARED_EXCEPTION_RULES,
   ...JAVA_SIZE_RULES,
   'test-runtime/slow-test',
+  CONSOLE_EXCEPTION_RULE,
+  TEST_ONLY_EXCEPTION_RULE,
 ];
 
 function validateKotlinExceptions(config) {

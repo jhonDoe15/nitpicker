@@ -22,7 +22,7 @@ describe('Java folder depth', () => {
       identity: 'folder-depth:source:5',
     });
     expect(finding.message).toBe(
-      'Package is 5 levels below the root package (limit 4). Keep packages at most 4 levels below the root package: group by responsibility instead of nesting. If a reviewer agrees this is intended, add {"rule":"folder-depth-limit","paths":["src/main/java/com/example/shop/a/b/c/d/e/**"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'Package is 5 levels below the root package (limit 4). Keep packages at most 4 levels below the root package: group by responsibility instead of nesting. If this is intended, add {"rule":"folder-depth-limit","paths":["src/main/java/com/example/shop/a/b/c/d/e/**"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

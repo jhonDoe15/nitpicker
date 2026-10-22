@@ -27,11 +27,11 @@ const MESSAGE =
   'Do not silence PMD inline: fix the finding. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
 
 const route = (rule, file) =>
-  `If a reviewer agrees this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`;
+  `If this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 const ERROR_PRONE_ROUTE = route('errorprone/<check>', 'A.java');
 const PMD_ROUTE = route('pmd/<PMD rule>', 'A.java');
 const afterMessage = (message, prefix) =>
-  message.slice(prefix.length, message.indexOf(' If a reviewer agrees'));
+  message.slice(prefix.length, message.indexOf(' If this is intended'));
 
 const lines = (findings) => findings.map((finding) => finding.location.line);
 

@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { normalizeArchitectureViolations } from '../../../languages/typescript/adapters/static-checks-runner.mjs';
 import {
   normalizeCoupling,
-  normalizeDeadCode,
   normalizeStructure,
   normalizeTestRuntime,
 } from '../../../languages/typescript/adapters/quality-areas/reporting/repository.mjs';
+import { normalizeDeadCode } from '../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mjs';
 import {
   normalizeCrap,
   normalizeMutation,
@@ -374,6 +374,24 @@ describe('spec/findings.schema.json', () => {
       ratchet: { key: 'count:k', value: 2, growthAdvice: 'Had {base}.' },
     };
     const empty = { ...finding, ratchet: { ...finding.ratchet, growthAdvice: '' } };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(empty)).toThrow(TypeError);
+    expect(validate({ findings: [empty] })).not.toEqual([]);
+  });
+
+  it('accepts tokens and rejects an empty one', () => {
+    const finding = {
+      tool: 'tool',
+      rule: 'rule',
+      path: 'src/a.ts',
+      identity: 'id',
+      message: 'message',
+      classification: 'enforceable',
+      tokens: ['a', 'b', 'c'],
+    };
+    const empty = { ...finding, tokens: ['a', ''] };
 
     expect(parseFinding(finding)).toEqual(finding);
     expect(validate({ findings: [finding] })).toEqual([]);

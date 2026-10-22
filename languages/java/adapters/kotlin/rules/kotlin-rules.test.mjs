@@ -34,7 +34,7 @@ describe('one-way rule messages', () => {
         id: testCase.id,
         namesAllowedForm: message.toLowerCase().includes(testCase.allowedForm.toLowerCase()),
         namesExceptionRoute: message.endsWith(
-          ` If a reviewer agrees this is intended, add {"rule":"${testCase.rule}","paths":["src/main/kotlin/demo/A.kt"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`,
+          ` If this is intended, add {"rule":"${testCase.rule}","paths":["src/main/kotlin/demo/A.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
         ),
         keepsDetektText: message.startsWith(expectedMessage(testCase, 'banned').replace(/\.$/, '')),
       };
@@ -64,7 +64,7 @@ describe('one-way rule messages', () => {
     );
 
     expect(message).toBe(
-      'let expression can be omitted. Call the member directly; `let` is for `value?.let { ... }`. If a reviewer agrees this is intended, add {"rule":"detekt.style.UnnecessaryLet","paths":["src/main/kotlin/demo/A.kt"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'let expression can be omitted. Call the member directly; `let` is for `value?.let { ... }`. If this is intended, add {"rule":"detekt.style.UnnecessaryLet","paths":["src/main/kotlin/demo/A.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -77,7 +77,7 @@ describe('one-way rule messages', () => {
     );
 
     expect(message).toBe(
-      'The class A defines no functionality and only holds data. Consider converting it to a data class. If a reviewer agrees this is intended, add {"rule":"detekt.style.UseDataClass","paths":["src/main/kotlin/demo/A.kt"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'The class A defines no functionality and only holds data. Consider converting it to a data class. If this is intended, add {"rule":"detekt.style.UseDataClass","paths":["src/main/kotlin/demo/A.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -90,7 +90,7 @@ describe('one-way rule messages', () => {
     );
 
     expect(message).toBe(
-      'The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled. In a test, use `assertFailsWith`. If a reviewer agrees this is intended, add {"rule":"detekt.exceptions.TooGenericExceptionCaught","paths":["src/main/kotlin/demo/A.kt"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled. In a test, use `assertFailsWith`. If this is intended, add {"rule":"detekt.exceptions.TooGenericExceptionCaught","paths":["src/main/kotlin/demo/A.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

@@ -1,4 +1,4 @@
-export const PLACEHOLDER_REASONS = ['...', '<why this is intended>'];
+export const PLACEHOLDER_REASONS = ['...'];
 
 const GLOB_CHARACTERS = /[{}[\],*?\\]/gu;
 
@@ -17,18 +17,18 @@ export function exceptionEntryText({ rule, path, glob, function: functionName, n
     paths: [glob ?? escapeGlob(path)],
     ...(functionName === undefined ? {} : { function: functionName }),
     ...(name === undefined ? {} : { name }),
-    reason: PLACEHOLDER_REASONS[1],
+    reason: PLACEHOLDER_REASONS[0],
   });
 }
 
 /** The one sentence every message uses to name the config entry that accepts its finding. */
 export function exceptionSentence(entryText) {
-  return `If a reviewer agrees this is intended, add ${entryText} to "exceptions" in nitpicker.config.json.`;
+  return `If this is intended, add ${entryText} to "exceptions" in nitpicker.config.json.`;
 }
 
 /** `message` ended with a full stop, then `sentence`. */
 export function appendSentence(message, sentence) {
-  return `${message.endsWith('.') ? message : `${message}.`} ${sentence}`;
+  return `${message.replace(/\.?\s*$/, '')}. ${sentence}`;
 }
 
 const FOLDER_SUFFIXES = ['', '/**', '/*'];

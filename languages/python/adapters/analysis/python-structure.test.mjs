@@ -89,13 +89,13 @@ describe('reading the structure report', () => {
         rule: 'function-parameters-limit',
         symbol: 'Service.handle',
         message:
-          'Service.handle has 4 parameters; limit is 3. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'Service.handle has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"..."} to "exceptions" in nitpicker.config.json.',
       },
       {
         rule: 'function-control-nesting-limit',
         symbol: 'Service.run',
         message:
-          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch. If a reviewer agrees this is intended, add {"rule":"function-control-nesting-limit","paths":["src/demo/service.py"],"function":"Service.run","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/demo/service.py"],"function":"Service.run","reason":"..."} to "exceptions" in nitpicker.config.json.',
       },
     ]);
     expect(
@@ -119,10 +119,28 @@ describe('reading the structure report', () => {
       key: 'function:Service.handle:occurrence:1:parameters',
       value: 4,
       worseMessage:
-        'Service.handle grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Service.handle grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"..."} to "exceptions" in nitpicker.config.json.',
       heldMessage:
         'Service.handle: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
     });
+  });
+
+  it('keeps the identity of a property setter when another function of that name is added above it', () => {
+    const getter = ['    @property', '    def value(self, a, b, c, d):', '        return a'];
+    const setter = ['    @value.setter', '    def value(self, a, b, c, d):', '        self.a = a'];
+    const source = (lines) => `class Service:\n${lines.join('\n')}\n`;
+    const named = (start) => entry({ name: 'Service.value', parameters: 4, start, end: start + 1 });
+    const setterIdentity = (lines, starts) => {
+      const findings = findingsFor(starts.map(named), {
+        'src/demo/service.py': source(lines),
+      });
+      return findings.at(-1).identity;
+    };
+
+    const before = setterIdentity([...getter, '', ...setter], [3, 7]);
+    const after = setterIdentity([...getter, '', ...getter, '', ...setter], [3, 7, 11]);
+
+    expect(after).toBe(before);
   });
 
   it('finds nothing when no function is over a limit', () => {
@@ -184,6 +202,14 @@ describe('Python file limits', () => {
     ]);
   });
 
+  it('counts the tests.py of a Django app as a test module', () => {
+    write(['manage.py', 'polls/models.py', 'polls/views.py', 'polls/admin.py', 'polls/tests.py']);
+
+    expect(findingsWith({ fileLimits: limits })).toEqual([
+      ['folder-files-limit', 'polls', 'folder-files:source:3'],
+    ]);
+  });
+
   it('leaves package markers out of the folder count', () => {
     write(['pkg/__init__.py', 'pkg/a.py', 'pkg/b.py']);
 
@@ -197,6 +223,18 @@ describe('Python file limits', () => {
     expect(findingsWith({}).map(([rule, findingPath]) => [rule, findingPath])).toEqual([
       ['file-lines-limit', 'src/app/long.py'],
       ['line-length-limit', 'src/app/wide.py'],
+    ]);
+  });
+
+  it('keeps production modules when python_files matches every file, testing the testpaths folders', () => {
+    write(
+      ['pyproject.toml'],
+      '[tool.pytest.ini_options]\ntestpaths = ["tests"]\npython_files = ["*.py"]\n',
+    );
+    write(['app/service.py', 'tests/checks.py'], 'VALUE = 1\n'.repeat(480));
+
+    expect(findingsWith({}).map(([rule, findingPath]) => [rule, findingPath])).toEqual([
+      ['file-lines-limit', 'app/service.py'],
     ]);
   });
 

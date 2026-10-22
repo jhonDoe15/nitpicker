@@ -76,7 +76,7 @@ const failures = (findings) =>
   findings.filter(({ classification }) => classification === 'enforceable');
 
 const ROUTE =
-  'If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/main/a.ts"],"function":"wide","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';
+  'If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/a.ts"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.';
 
 describe('exceptions for structure findings in the TypeScript analyzers', () => {
   const entry = {
@@ -190,7 +190,7 @@ describe('exceptions for duplicate and dead-code findings in the TypeScript anal
       [
         'duplicate-clone',
         'src/main/a.ts',
-        'This code repeats src/main/b.ts:1 (16 lines). Keep one copy and call it from both places. If a reviewer agrees this is intended, add {"rule":"duplicate-clone","paths":["src/main/a.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'This code repeats src/main/b.ts:1 (16 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicate-clone","paths":["src/main/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
     expect(after).toEqual([]);
@@ -212,12 +212,12 @@ describe('exceptions for duplicate and dead-code findings in the TypeScript anal
       [
         'files',
         'src/main/orphan.ts',
-        'Unused file: src/main/orphan.ts. Nothing imports it: delete it, or import it where it is needed. If a reviewer agrees this is intended, add {"rule":"files","paths":["src/main/orphan.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Unused file: src/main/orphan.ts. Nothing imports it: delete it, or import it where it is needed. If this is intended, add {"rule":"files","paths":["src/main/orphan.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       ],
       [
         'exports',
         'src/main/a.ts',
-        'Export unused is never imported. Remove `export`, or the declaration if nothing uses it. If a reviewer agrees this is intended, add {"rule":"exports","paths":["src/main/a.ts"],"name":"unused","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Export unused is never imported. Remove `export`, or the declaration if nothing uses it. If this is intended, add {"rule":"exports","paths":["src/main/a.ts"],"name":"unused","reason":"..."} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
     expect(after).toEqual([]);
@@ -272,7 +272,7 @@ describe('exceptions for CRAP and coverage findings in the TypeScript analyzers'
     const entry = { rule: 'crap-score-limit', paths: ['src/main/**'], function: 'risky' };
 
     expect(findings.map(({ message }) => message)).toEqual([
-      'risky has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/a.ts"],"function":"risky","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'risky has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/a.ts"],"function":"risky","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
     expect(applyFindingExceptions(findings, [entry])).toEqual([]);
   });
@@ -284,7 +284,7 @@ describe('exceptions for CRAP and coverage findings in the TypeScript analyzers'
     expect(findings.map(({ symbol, message }) => [symbol, message])).toEqual([
       [
         'risky',
-        'Branch coverage is 50.00%; minimum is 95%. If a reviewer agrees this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/a.ts"],"function":"risky","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Branch coverage is 50.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/a.ts"],"function":"risky","reason":"..."} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
     expect(applyFindingExceptions(findings, [entry])).toEqual([]);
@@ -314,7 +314,7 @@ describe('exceptions for CRAP and coverage findings in the TypeScript analyzers'
         ),
       ).map(({ message }) => message),
     ).toEqual([
-      'f has 4 parameters; limit is 3. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/a.ts"],"function":"f","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'f has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/a.ts"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 });

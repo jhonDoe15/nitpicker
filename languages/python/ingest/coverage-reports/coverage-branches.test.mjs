@@ -73,7 +73,7 @@ describe('ingestCoverageBranches', () => {
       [13, 'lonely'],
     ]);
     expect(findings[3].message).toBe(
-      'Branch coverage is 0.00%; minimum is 95%. Not taken: the branch to line 14; the branch to line 15. Test it, or remove it if it can\'t happen. If a reviewer agrees this is intended, add {"rule":"changed-branch-coverage","paths":["src/demo/branches.py"],"function":"lonely","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'Branch coverage is 0.00%; minimum is 95%. Not taken: the branch to line 14; the branch to line 15. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/demo/branches.py"],"function":"lonely","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

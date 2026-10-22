@@ -1,4 +1,4 @@
-import { createIdentityCounter } from '../../java/ingest/common.mjs';
+import { createIdentityCounter } from '../../../shared/ingest/common.mjs';
 
 const LINE_REFERENCE = /\s+(?:on|from) line \d+/g;
 

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { ingestMutmut, SUPPORTED_MUTMUT } from '../../ingest/mutmut.mjs';
 import {
@@ -7,11 +7,25 @@ import {
   NO_COVERAGE_EXIT_CODE,
 } from './python-mutation-data.mjs';
 import { seedMutantsFromBase } from './python-mutation-reuse.mjs';
+import { writeMutmutConfig } from '../project-tools/mutmut/mutmut-config.mjs';
 import { probeVersion, run } from '../execution/python-process.mjs';
-import { singleProcessPytestEnvironment } from '../execution/python-test-runner.mjs';
+import { mutationMarkerFindings } from './mutation-markers.mjs';
+import {
+  DISABLE_HINT,
+  missingPytest,
+  mutmutEnvironment,
+  noTestsCollected,
+  runnerSkip,
+  skippedFinding,
+} from './test-run/python-mutation-runner.mjs';
+import {
+  everyModuleFails,
+  failedOnProjectTests,
+  failingTestModules,
+  pythonVersionSkip,
+} from './test-run/mutation-scope.mjs';
 
 export const MUTATION_FAILED_RULE = 'mutation-failed';
-export const MUTATION_SKIPPED_RULE = 'mutation-skipped';
 export const MUTMUT_VERSION_PROBE = [
   'python',
   '-c',
@@ -23,59 +37,10 @@ const NO_TESTS_COLLECTED = 'failed to collect stats. runner returned 5';
 const STATS_FAILURE = 'failed to collect stats';
 const COPY_HINT =
   'If the tests read files outside the source roots, list them under "also_copy" in [tool.mutmut] of pyproject.toml.';
-const DISABLE_HINT =
-  'To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.';
 const SUPPORTED_MAJOR = /^3\./u;
-const PYPROJECT = 'pyproject.toml';
-const PYPROJECT_SECTION = /^\s*\[tool\.mutmut\]/mu;
-const SETUP_CFG_SECTION = /^\s*\[mutmut\]/mu;
-const TEST_PATTERNS = [
-  'tests/*',
-  'test/*',
-  '*/tests/*',
-  '*/test/*',
-  'test_*.py',
-  '*/test_*.py',
-  '*_test.py',
-  'conftest.py',
-  '*/conftest.py',
-];
 
 function failure(message) {
   return Object.assign(new Error(message), { rule: MUTATION_FAILED_RULE });
-}
-
-function readOptional(file) {
-  return existsSync(file) ? readFileSync(file, 'utf8') : '';
-}
-
-function hasProjectConfiguration(projectRoot) {
-  return (
-    PYPROJECT_SECTION.test(readOptional(path.join(projectRoot, PYPROJECT))) ||
-    SETUP_CFG_SECTION.test(readOptional(path.join(projectRoot, 'setup.cfg')))
-  );
-}
-
-function excludedPatterns(exclude = []) {
-  return exclude.flatMap((glob) => [glob, `${glob.replace(/\/+$/u, '')}/*`]);
-}
-
-export function ensureMutmutConfiguration({ projectRoot, project, exclude }) {
-  if (hasProjectConfiguration(projectRoot)) {
-    return;
-  }
-  if (project.sourceRoots.includes('.')) {
-    throw failure(
-      'mutmut needs the directories to mutate: set "python.sourceRoots" in nitpicker.config.json or source_paths in [tool.mutmut]',
-    );
-  }
-  const pyproject = path.join(projectRoot, PYPROJECT);
-  const section = [
-    '[tool.mutmut]',
-    `source_paths = ${JSON.stringify(project.sourceRoots)}`,
-    `do_not_mutate = ${JSON.stringify([...TEST_PATTERNS, ...excludedPatterns(exclude)])}`,
-  ].join('\n');
-  writeFileSync(pyproject, `${readOptional(pyproject)}\n${section}\n`);
 }
 
 function finishedRun({ status, stdout, stderr }) {
@@ -98,55 +63,87 @@ function checkInstallation(context) {
       `mutmut ${version} is not supported: nitpicker reads the run data of ${SUPPORTED_MUTMUT}. ${DISABLE_HINT}`,
     );
   }
+  const pytestProblem = missingPytest(context);
+  if (pytestProblem !== undefined) {
+    throw failure(pytestProblem);
+  }
 }
 
-function runMutmut(context) {
+function runMutmut(context, ignored = []) {
+  return run(context, ['mutmut', 'run'], {
+    accepted: finishedRun,
+    rule: MUTATION_FAILED_RULE,
+    timeoutMs: MUTATION_TIMEOUT_MS,
+    ...mutmutEnvironment(context, ignored),
+  });
+}
+
+function withCopyHint(error) {
+  return error.message.includes(STATS_FAILURE) ? failure(`${error.message}\n${COPY_HINT}`) : error;
+}
+
+function runPassingTests(context) {
   try {
-    return run(context, ['mutmut', 'run'], {
-      accepted: finishedRun,
-      rule: MUTATION_FAILED_RULE,
-      timeoutMs: MUTATION_TIMEOUT_MS,
-      env: singleProcessPytestEnvironment(context),
-    });
+    return { result: runMutmut(context), ignored: [] };
   } catch (error) {
-    throw error.message.includes(STATS_FAILURE) ? failure(`${error.message}\n${COPY_HINT}`) : error;
+    if (!failedOnProjectTests(error.message)) {
+      throw withCopyHint(error);
+    }
+    const ignored = failingTestModules(context);
+    if (ignored.length === 0) {
+      throw withCopyHint(error);
+    }
+    try {
+      return { result: runMutmut(context, ignored), ignored };
+    } catch (retryError) {
+      throw withCopyHint(retryError);
+    }
   }
 }
 
 function mutantRunData(context) {
   const mutants = path.join(context.projectRoot, MUTANTS_DIRECTORY);
   rmSync(mutants, { recursive: true, force: true });
-  ensureMutmutConfiguration(context);
+  writeMutmutConfig({ context, fail: failure });
   seedMutantsFromBase(context);
-  const result = runMutmut(context);
+  const { result, ignored } = runPassingTests(context);
   if (`${result.stdout}${result.stderr}`.includes(NO_TESTS_COLLECTED)) {
-    return undefined;
+    return {
+      findings: [
+        ignored.length === 0 ? noTestsCollected(context) : everyModuleFails(context, ignored),
+      ],
+    };
   }
-  return collectRunData({
+  const data = collectRunData({
     projectRoot: context.projectRoot,
     uncheckedExitCode: result.status === 0 ? undefined : NO_COVERAGE_EXIT_CODE,
   });
+  return { findings: ingestMutmut(data).findings };
 }
 
 function skippedOnWindows() {
-  return {
-    tool: 'mutmut',
-    rule: MUTATION_SKIPPED_RULE,
-    path: '.',
-    identity: 'windows',
-    message: `Mutation testing was skipped: mutmut needs POSIX fork and does not run on native Windows. Run nitpicker inside WSL to enable it. ${DISABLE_HINT}`,
-    classification: 'descriptive',
-  };
+  return skippedFinding(
+    'windows',
+    'mutmut needs POSIX fork and does not run on native Windows. Run nitpicker inside WSL to enable it.',
+  );
 }
 
 export function mutationFindings(context, platform = process.platform) {
   if (platform === 'win32') {
     return [skippedOnWindows()];
   }
+  const skipped = pythonVersionSkip(context);
+  if (skipped !== undefined) {
+    return [skipped];
+  }
   checkInstallation(context);
+  const runnerSkipped = runnerSkip(context);
+  if (runnerSkipped !== undefined) {
+    return [runnerSkipped];
+  }
+  const markers = mutationMarkerFindings(context);
   try {
-    const data = mutantRunData(context);
-    return data === undefined ? [] : ingestMutmut(data).findings;
+    return [...markers, ...mutantRunData(context).findings];
   } finally {
     if (context.snapshot !== 'base') {
       rmSync(path.join(context.projectRoot, MUTANTS_DIRECTORY), { recursive: true, force: true });

@@ -1,5 +1,6 @@
 import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import { appendSentence } from '../../../../../shared/exceptions/sentence.mjs';
+import { CATCH_LOG_RULE } from '../../../source/catch-logging.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const BANNED_SUPPRESSIONS = [
@@ -58,6 +59,9 @@ export const ONE_WAY_RULES = [
 ].map((rule) => ({ ...rule, id: `detekt.${rule.ruleset}.${rule.name}` }));
 
 export const SUPPRESSION_RULE = 'inline-suppression';
+export const TEST_ASSERTION_RULE = 'test-without-assertion';
+
+export const SOURCE_RULE_IDS = [CATCH_LOG_RULE, TEST_ASSERTION_RULE];
 
 export const ONE_WAY_RULE_IDS = ONE_WAY_RULES.map(({ id }) => id);
 

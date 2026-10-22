@@ -1,5 +1,6 @@
 import { normalizeFunctionName } from './rule-names.mjs';
 import { functionNameOf } from './function-names.mjs';
+import { findingPaths } from '../findings/finding-paths.mjs';
 import { pathMatcher } from './matching.mjs';
 
 /** True when `wanted` is the function `symbol`, whatever its parameter list (overloads agree). */
@@ -14,7 +15,7 @@ export function functionMatches(wanted, symbol) {
 function lifts(entry, finding) {
   return (
     (finding.rule === entry.rule || `${finding.tool}/${finding.rule}` === entry.rule) &&
-    entry.matches(finding.path) &&
+    findingPaths(finding).some((path) => entry.matches(path)) &&
     (entry.functionName === undefined ||
       functionMatches(entry.functionName, functionNameOf(finding))) &&
     (entry.name === undefined || finding.symbol === entry.name)
@@ -26,7 +27,7 @@ export function applyFindingExceptions(findings, exceptions = []) {
   if (exceptions.length === 0) {
     return findings;
   }
-  const entries = exceptions.map(({ rule, paths, function: functionName, name }) => ({
+  const entries = exceptions.filter(({ packages }) => packages === undefined).map(({ rule, paths, function: functionName, name }) => ({
     rule,
     functionName,
     name,

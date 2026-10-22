@@ -5,9 +5,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { prefixedFinding, readModuleFindings } from './java-modules.mjs';
 
 const ROUTE =
-  'If a reviewer agrees this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';
+  'If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.';
 const MOVED_ROUTE =
-  'If a reviewer agrees this is intended, add {"rule":"function-lines-limit","paths":["core/src/main/java/demo/Big.java"],"function":"Big.big","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';
+  'If this is intended, add {"rule":"function-lines-limit","paths":["core/src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.';
 const REPORT_DIRECTORY = 'target/nitpicker';
 const temporaryRoots = [];
 
@@ -215,7 +215,7 @@ describe('readModuleFindings', () => {
     );
 
     expect(offered).toEqual([
-      { rule: 'class-methods-limit', paths: [main], reason: '<why this is intended>' },
+      { rule: 'class-methods-limit', paths: [main], reason: '...' },
     ]);
     expect(classLimits([{ rule: 'class-methods-limit', paths: ['app/src/**'] }])).toEqual([]);
     expect(classLimits([{ rule: 'class-methods-limit', paths: ['src/**'] }])).toHaveLength(1);

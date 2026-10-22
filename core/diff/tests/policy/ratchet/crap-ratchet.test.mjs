@@ -39,14 +39,14 @@ describe('CRAP limit on edited legacy functions', () => {
         path: 'src/price.ts',
         identity: 'function:priceOf:occurrence:1:source:after',
         message:
-          'priceOf has CRAP 15.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'priceOf has CRAP 15.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'priceOf',
         ratchet: {
           key: 'function:priceOf:occurrence:1:crap',
           value: 15,
           worseMessage:
-            'priceOf CRAP rose from {base} to 15 (limit 9). Put new code in a new function and cover it with tests. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+            'priceOf CRAP rose from {base} to 15 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"..."} to "exceptions" in nitpicker.config.json.',
           heldMessage:
             'priceOf: CRAP 15.00 (limit 9), allowed because base was {base}; any increase fails.',
         },
@@ -88,7 +88,7 @@ describe('CRAP limit on edited legacy functions', () => {
     );
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      'priceOf CRAP rose from 15 to 17.5 (limit 9). Put new code in a new function and cover it with tests. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'priceOf CRAP rose from 15 to 17.5 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
   it('fails a function the change pushes over the limit, with the plain message', () => {
@@ -98,7 +98,7 @@ describe('CRAP limit on edited legacy functions', () => {
     );
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      'priceOf has CRAP 15.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'priceOf has CRAP 15.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
   it('fails a new function over the limit', () => {
@@ -134,7 +134,7 @@ describe('CRAP limit on edited legacy functions', () => {
         path: 'src/price.ts',
         identity: 'function:priceOf:occurrence:1:source:after',
         message:
-          'priceOf has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If a reviewer agrees this is intended, add {"rule":"crap-coverage-unknown","paths":["src/price.ts"],"function":"priceOf","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'priceOf has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/price.ts"],"function":"priceOf","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'priceOf',
       },

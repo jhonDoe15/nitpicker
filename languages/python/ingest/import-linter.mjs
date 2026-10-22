@@ -1,5 +1,4 @@
-import { createIdentityCounter } from '../../java/ingest/common.mjs';
-import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
+import { createIdentityCounter } from '../../../shared/ingest/common.mjs';
 
 const SUMMARY_LINE = /^Contracts: \d+ kept, \d+ broken\.$/m;
 const BROKEN_SECTION = /^Broken contracts$/m;
@@ -69,12 +68,9 @@ function describe(violation) {
   return violation.modules.length > 0 ? violation.modules.join(' -> ') : violation.note;
 }
 
-function brokenMessage(name, violation, file) {
+function brokenMessage(name, violation) {
   const detail = violation === NO_VIOLATION ? '' : `: ${describe(violation)}`;
-  const message = `Import contract "${name}" is broken${detail}. Remove the import.`;
-  return file === undefined
-    ? message
-    : `${message} ${exceptionRoute({ rule: 'contract-broken', path: file })}`;
+  return `Import contract "${name}" is broken${detail}. Remove the import.`;
 }
 
 function contractFinding({ name, violation, files, identity }) {
@@ -85,7 +81,7 @@ function contractFinding({ name, violation, files, identity }) {
     rule: 'contract-broken',
     path: file ?? '.',
     identity: identity(`contract:${name}${subject}`),
-    message: brokenMessage(name, violation, file),
+    message: brokenMessage(name, violation),
     classification: 'enforceable',
     ...(violation.line === undefined ? {} : { location: { line: violation.line } }),
   };

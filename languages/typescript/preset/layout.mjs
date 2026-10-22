@@ -1,3 +1,4 @@
+import { filePatterns, globsFor } from './layout/path-patterns.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { filesUnder } from '../../../shared/filesystem.mjs';
@@ -44,38 +45,19 @@ export function mayBeGenerated(file) {
   return GENERATED_CANDIDATE.test(toPosix(file)) && !DEPENDENCY_PATH.test(toPosix(file));
 }
 
+export const FIXTURE_PATH = /(?:^|\/)(?:fixtures|__fixtures__)\//;
+
+export function prettierPatterns(layout) {
+  const code = layout.formatExtensions.join(',');
+  return [
+    ...layout.sourceRoots.map((root) => `${root}/**/*.{${code},json,yaml,yml}`),
+    ...layout.testRoots.map((root) => `${root}/**/*.{${code},json}`),
+    `*.{${code},json}`,
+  ];
+}
+
 function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
-}
-
-function filePatterns({ sourceRoots, testRoots, extensions }) {
-  const sourceAlternatives = sourceRoots.map(escapeRegExp).join('|');
-  const testAlternatives = testRoots.map(escapeRegExp).join('|');
-  const suffix = `(?:${extensions.join('|')})$`;
-  const testPattern = new RegExp(
-    [
-      `^(?:${testAlternatives})/`,
-      `^(?:${sourceAlternatives})/.*\\.(?:test|spec)\\.${suffix}`,
-      `^(?:${sourceAlternatives})/(?:.*/)?__tests__/`,
-    ]
-      .map((pattern) => `(?:${pattern})`)
-      .join('|'),
-  );
-  const sourcePattern = new RegExp(`^(?:${sourceAlternatives})/.*\\.${suffix}`);
-  return {
-    testPattern,
-    sourcePattern,
-    codePattern: new RegExp(`\\.${suffix}`),
-    runnableTestPattern: new RegExp(`\\.(?:test|spec)\\.${suffix}`),
-  };
-}
-
-function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob }) {
-  const extension = javascript ? extensionGlob : 'ts';
-  return [
-    ...sourceRoots.map((root) => `${root}/**/__tests__/**/*.${extension}`),
-    ...testRoots.map((root) => `${root}/unit/**/*.${extension}`),
-  ];
 }
 
 export function toPosix(file) {
@@ -130,6 +112,7 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns, generate
   return {
     isExcluded,
     isTestFile,
+    isFixturePath: (file) => FIXTURE_PATH.test(toPosix(file)),
     isGeneratedPath,
     isTestPath: (file) => patterns.testPattern.test(toPosix(file)),
     isRunnableTestFile: (file) => isTestFile(file) && patterns.runnableTestPattern.test(file),
@@ -141,20 +124,6 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns, generate
     }),
     sourceRootOf: (file) => sourceRoots.find((root) => file.includes(`/${root}/`)),
     isTestFixture: (file, name = '') => testInput(name).test(toPosix(file)),
-  };
-}
-
-function globsFor({ sourceRoots, testRoots, javascript, extensionGlob }) {
-  return {
-    sourceGlobs: sourceRoots.map((root) => `${root}/**/*.${extensionGlob}`),
-    testGlobs: [
-      ...testRoots.map((root) => `${root}/**/*.${extensionGlob}`),
-      ...sourceRoots.map((root) => `${root}/**/*.{test,spec}.${extensionGlob}`),
-    ],
-    sourceTestDirectoryGlobs: sourceRoots.map((root) => `${root}/**/__tests__/**`),
-    unitTestGlobs: unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob }),
-    graphRoots: [...sourceRoots, ...testRoots],
-    graphIncludeOnly: `^(${[...sourceRoots, ...testRoots].map(escapeRegExp).join('|')})(?:/|$)`,
   };
 }
 
@@ -177,6 +146,16 @@ function endToEndFor(layout, testRoots, extensionGlob) {
   };
 }
 
+function excludedGlobsFor(layout, exclude) {
+  return {
+    excludedGlobs: [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude],
+    hiddenGlobs: [
+      ...(layout.excludedGlobs ?? []).filter((glob) => !builtInExcludedGlobs.includes(glob)),
+      ...exclude,
+    ],
+  };
+}
+
 export function resolveLayout(
   layout = {},
   exclude = [],
@@ -186,15 +165,13 @@ export function resolveLayout(
   const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
   const extensions = javascript ? javascriptProjectExtensionNames : codeExtensionNames;
   const extensionGlob = `{${extensions.join(',')}}`;
-  const patterns = filePatterns({ sourceRoots, testRoots, extensions });
-  const globs = globsFor({ sourceRoots, testRoots, javascript, extensionGlob });
-  const excludedGlobs = [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude];
-  const hiddenGlobs = [
-    ...(layout.excludedGlobs ?? []).filter((glob) => !builtInExcludedGlobs.includes(glob)),
-    ...exclude,
-  ];
+  const colocatedTests = layout.colocatedTests === true;
+  const patterns = filePatterns({ sourceRoots, testRoots, extensions, colocatedTests });
+  const globs = globsFor({ sourceRoots, testRoots, javascript, extensionGlob, colocatedTests });
+  const { excludedGlobs, hiddenGlobs } = excludedGlobsFor(layout, exclude);
   const resolved = {
     javascript,
+    colocatedTests,
     extensions,
     entryExtensions: javascript
       ? [...JAVASCRIPT_EXTENSIONS, ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT]
@@ -253,10 +230,14 @@ export function existingRoots(projectRoot, roots) {
 }
 
 export function resolveLayoutFor(policy = {}) {
-  return resolveLayout(policy.layout, policy.exclude, {
-    javascript: isJavascriptPolicy(policy),
-    generatedFiles: policy.generatedFiles,
-  });
+  return {
+    ...resolveLayout(policy.layout, policy.exclude, {
+      javascript: isJavascriptPolicy(policy),
+      generatedFiles: policy.generatedFiles,
+    }),
+    duplicateSkippedFolders: policy.duplicates?.skippedFolders,
+    typescriptProject: policy.tools?.typescript?.project,
+  };
 }
 
 const defaults = resolveLayout();

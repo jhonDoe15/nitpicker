@@ -55,7 +55,7 @@ describe('TypeScript folder depth', () => {
       ['src/main/features/orders/adapters/db/deep/er', 'folder-depth:test:3'],
     ]);
     expect(findings[0].message).toBe(
-      'Folder is 2 levels below features/<feature>/<layer>/ (limit 1). Keep files at most 1 folder below it, or move them into a feature of their own. If a reviewer agrees this is intended, add {"rule":"folder-depth-limit","paths":["src/main/features/orders/adapters/db/deep/**"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'Folder is 2 levels below features/<feature>/<layer>/ (limit 1). Keep files at most 1 folder below it, or move them into a feature of their own. If this is intended, add {"rule":"folder-depth-limit","paths":["src/main/features/orders/adapters/db/deep/**"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

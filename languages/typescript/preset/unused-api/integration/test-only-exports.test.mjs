@@ -7,7 +7,7 @@ import { createProject } from '../test-support/project.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
 const EXCEPTION = (file) =>
-  `If a reviewer agrees this is intended, add {"rule":"test-only-export","paths":["${file}"],"reason":"<why this is intended>"} ` +
+  `If this is intended, add {"rule":"test-only-export","paths":["${file}"],"reason":"..."} ` +
   'to "exceptions" in nitpicker.config.json.';
 const ONLY_TESTS_FINDING = {
   tool: 'dead-code',

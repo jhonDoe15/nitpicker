@@ -42,7 +42,7 @@ describe('exported-name-collision', () => {
       [
         'getFilters is also exported by src/main/features/orders/adapters/filters.ts;',
         `${importer} imports both. Rename one, or alias both imports.`,
-        `If a reviewer agrees this is intended, add ${exceptionFor('exported-name-collision', findings[1].path)}`,
+        `If this is intended, add ${exceptionFor('exported-name-collision', findings[1].path)}`,
         'to "exceptions" in nitpicker.config.json.',
       ].join(' '),
     );

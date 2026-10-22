@@ -12,8 +12,10 @@ import {
   sizeRules,
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
-import { reuseRules } from './rules/reuse-rules.mjs';
+import { reuseRules } from './project-rules/reuse-rules.mjs';
+import { testConsoleRule } from './project-rules/test-runtime-rules.mjs';
 import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
+import { HYGIENE_EXCEPTION_RULES, HYGIENE_RULES } from './project-rules/hygiene-rules.mjs';
 
 export { FILE_LIMIT_DEFAULTS } from './project-rules/size-rules.mjs';
 
@@ -41,9 +43,11 @@ export const RULE_IDS = {
   slowTest: 'slow-test',
   sharedUsedByOneFeature: 'shared-used-by-one-feature',
   duplicateDefinition: 'duplicate-definition',
+  siblingCopyEdit: 'sibling-copy-edit',
   exportedNameCollision: 'exported-name-collision',
   redefinedLibraryComponent: 'redefined-library-component',
   newIconAsset: 'new-icon-asset',
+  testConsoleOutput: 'test-console-output',
   ...SOURCE_RULE_IDS,
 };
 
@@ -77,12 +81,29 @@ export const NAME_EXCEPTION_RULES = ['exports', 'types'];
 export const TEST_TIME_DEFAULTS = { unitTestSeconds: 5, integrationTestSeconds: 30 };
 
 /** Rules an exception lifts for a path only: such a finding has no function or declaration to name. */
-const PATH_EXCEPTION_RULES = [
-  RULE_IDS.duplicateClone,
-  RULE_IDS.stabilityDirection,
+export const FILE_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
+  RULE_IDS.slowTest,
+  ...HYGIENE_EXCEPTION_RULES,
+];
+
+const PATH_EXCEPTION_RULES = [
+  RULE_IDS.duplicateClone,
+  RULE_IDS.stabilityDirection,
+  ...FILE_EXCEPTION_RULES,
+];
+
+/** Rules every preset lifts with the top-level `exceptions`; Python lifts its other rules with `python.exceptions`. */
+export const COMMON_EXCEPTION_RULES = [...FUNCTION_EXCEPTION_RULES, ...FILE_EXCEPTION_RULES];
+
+export const TEST_RUN_EXCEPTION_RULES = [RULE_IDS.slowTest];
+
+export const MUTATION_EXCEPTION_RULES = [
+  'mutant-ignored',
+  RULE_IDS.mutantSurvived,
+  RULE_IDS.mutantNoCoverage,
 ];
 
 /** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
@@ -228,12 +249,14 @@ export const MESSAGES = {
   testOnlyReexport: `Export {name} is only imported by tests, and {reexporter} re-exports it, which is not a use. Remove the re-export and \`export\`, or import it from production code. If a host or tool loads {reexporter} instead of importing it, list it in "layout.entryPoints". ${EXCEPTION_HINT}`,
   testOnlyModule: `Module {name} is only imported by tests. Move it to a test-support/ folder, or import it from production code. ${EXCEPTION_HINT}`,
   ...sizeMessages(EXCEPTION_HINT),
-  slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
+  slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. {fix}. ${EXCEPTION_HINT}`,
   sharedUsedByOneFeature: `{path} is used only by feature {feature}. Move it into {directory}. ${EXCEPTION_HINT}`,
   duplicateDefinition: `{name} is also defined with {same} in {others}. {fix} ${EXCEPTION_HINT}`,
+  siblingCopyEdit: `{name} is edited here but not in {others}, where it has almost the same code. Edit it there too, or merge the copies. ${EXCEPTION_HINT}`,
   exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. {fix} ${EXCEPTION_HINT}`,
   redefinedLibraryComponent: `{name} is already rendered from {package} in {count}. Use that one. ${EXCEPTION_HINT}`,
   newIconAsset: `Use an icon from {package} instead of adding {path}. ${EXCEPTION_HINT}`,
+  testConsoleOutput: `Tests print new console output: {output}. Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json. ${EXCEPTION_HINT}`,
   ...sourceRuleMessages(EXCEPTION_HINT),
 };
 
@@ -272,7 +295,6 @@ export const HELD_MESSAGES = {
   ...SIZE_HELD_MESSAGES,
 };
 
-const BOTH = { typescript: true, java: true, python: false };
 const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
@@ -374,13 +396,24 @@ export const RULES = [
     enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
   ...UNUSED_API_RULES,
-  ...sizeRules({ all: ALL, both: BOTH, withKotlin }),
+  ...sizeRules({ all: ALL, withKotlin }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   {
     id: RULE_IDS.slowTest,
     check: 'test-runtime',
     limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
-    enforcedBy: withKotlin({ ...BOTH, typescript: false }, true),
+    enforcedBy: withKotlin(ALL, true),
   },
+  ...HYGIENE_RULES,
+  testConsoleRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
 ];
+
+/** Rules of the TypeScript-only structure, coupling, dead-code and test-console checks, lifted by `exceptions`. */
+export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
+  ({ check, enforcedBy }) =>
+    ['structure', 'coupling', 'dead-code', 'test-console'].includes(check) &&
+    enforcedBy.typescript &&
+    !enforcedBy.java &&
+    !enforcedBy.python,
+).map(({ id }) => id);

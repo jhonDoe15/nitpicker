@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mjs';
-import { applyJavaPolicy } from '../java-policy.mjs';
+import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import { readSpringConfigFindings } from './java-spring.mjs';
 import {
   MAIN_PROPERTIES,
@@ -45,7 +45,7 @@ describe('readSpringConfigFindings', () => {
     const findings = read({ [resource('application.properties')]: 'spring.jpa.open-in-view=true' });
 
     expect(
-      applyJavaPolicy(findings, {
+      applyFindingPolicy(findings, {
         exceptions: [{ rule: 'spring/open-in-view', paths: ['src/main/resources/**'] }],
       }),
     ).toEqual([]);

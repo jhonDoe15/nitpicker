@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
 import {
   LEGACY_WEAKER,
   PRICING,
@@ -8,6 +11,7 @@ import {
 } from './test-support/python-preset-data.mjs';
 import {
   commitBranch,
+  fixture,
   fixtureRepository,
   gate,
   initializeRepository,
@@ -18,6 +22,26 @@ import {
   write,
 } from './test-support/python-e2e-support.mjs';
 
+const MUTMUT_LISTED_CONFIG =
+  '{ "preset": "python", "tools": { "mutmut": { "precedence": ["project", "nitpicker"] } } }\n';
+const MUTMUT_LISTED = 'tools.mutmut.precedence: not set -> ["project","nitpicker"]';
+
+const ACCEPTED = {
+  CI: 'true',
+  NITPICKER_ACCEPT_POLICY_CHANGE: acceptedDigest([MUTMUT_LISTED], {
+    'nitpicker.config.json': MUTMUT_LISTED_CONFIG,
+  }),
+};
+const SHRUNK = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mutmut]\ndo_not_mutate = ["src/*"]\n`;
+const OWN_KEY = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mutmut]\nmax_stack_depth = 8\n`;
+const PRODUCTION_FILES = ['__init__', 'greeter', 'legacy', 'pricing', 'wide'].map(
+  (name) => `src/demo/${name}.py`,
+);
+const mutantFindings = (result) =>
+  result
+    .json('new-findings.json')
+    .filter(({ tool, rule }) => tool === 'mutmut' && rule !== 'mutation-summary');
+
 describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', () => {
   let project;
   beforeAll(() => {
@@ -26,6 +50,21 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
     commitBranch(project, 'survivors', {
       'src/demo/pricing.py': PRICING_WITH_UNUSED,
       'tests/test_pricing.py': PRICING_TEST,
+    });
+    const pricing = {
+      'src/demo/pricing.py': PRICING_WITH_UNUSED,
+      'tests/test_pricing.py': PRICING_TEST,
+      'pyproject.toml': SHRUNK,
+    };
+    commitBranch(project, 'shrunk', pricing);
+    commitBranch(project, 'shrunk-listed', {
+      ...pricing,
+      'nitpicker.config.json': MUTMUT_LISTED_CONFIG,
+    });
+    commitBranch(project, 'listed-key', {
+      ...pricing,
+      'pyproject.toml': OWN_KEY,
+      'nitpicker.config.json': MUTMUT_LISTED_CONFIG,
     });
     commitBranch(project, 'killed', {
       'src/demo/pricing.py': PRICING,
@@ -52,11 +91,43 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
       path: 'src/demo/pricing.py',
       identity: 'discount|-→+#1',
       message:
-        'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/demo/pricing.py"],"function":"discount","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/demo/pricing.py"],"function":"discount","reason":"..."} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
       symbol: 'discount',
       location: { line: 2 },
     });
+  });
+  it('keeps mutating the files a do_not_mutate of the project config would skip, and reports them as ignored', () => {
+    const result = gate(project, 'shrunk');
+    const findings = mutantFindings(result);
+    const mutated = findings.filter(({ rule }) => rule !== 'mutant-ignored');
+    const ignored = findings.filter(({ rule }) => rule === 'mutant-ignored');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(new Set(mutated.map(({ path: file }) => file))).toEqual(
+      new Set(['src/demo/pricing.py']),
+    );
+    expect(new Set(ignored.map(({ path: file }) => file))).toEqual(new Set(PRODUCTION_FILES));
+  });
+  it('still reports the do_not_mutate of the project config as ignored code once a person accepts listing the project', () => {
+    const result = gate(project, 'shrunk-listed', { environment: ACCEPTED });
+    const findings = mutantFindings(result);
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(new Set(findings.map(({ rule }) => rule))).toEqual(new Set(['mutant-ignored']));
+    expect(new Set(findings.map(({ path: file }) => file))).toEqual(new Set(PRODUCTION_FILES));
+  });
+  it('takes the other keys of the project config once a person accepts listing the project', () => {
+    const result = gate(project, 'listed-key', { environment: ACCEPTED });
+    const findings = mutantFindings(result);
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(new Set(findings.map(({ rule }) => rule))).toEqual(
+      new Set(['mutant-survived', 'mutant-nocoverage']),
+    );
+    expect(new Set(findings.map(({ path: file }) => file))).toEqual(
+      new Set(['src/demo/pricing.py']),
+    );
   });
   it('passes new code whose mutants are all killed', () => {
     const result = gate(project, 'killed');

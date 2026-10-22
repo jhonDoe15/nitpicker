@@ -5,7 +5,6 @@ import {
   readHeadPolicyFile,
   resolveHeadPolicy as resolveSharedHeadPolicy,
 } from '../../../shared/head-policy.mjs';
-import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
 import {
   frameworkConventions,
   hasScopePackage,
@@ -15,6 +14,7 @@ import {
 } from './eslint-config/scope-support.mjs';
 import {
   builtInExcludedGlobs,
+  existingRoots,
   globToRegExp,
   resolveLayout,
   resolveLayoutFor,
@@ -23,7 +23,7 @@ import {
 } from './layout.mjs';
 import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
-import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
+import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
@@ -54,10 +54,20 @@ const PRETTIER_PROJECT_FILES = [
   'package.json',
 ];
 
+function withTestPlacement(policy, projectRoot) {
+  if (
+    projectRoot === undefined ||
+    existingRoots(projectRoot, resolveLayout(policy.layout).testRoots).length > 0
+  ) {
+    return policy;
+  }
+  return { ...policy, layout: { ...policy.layout, colocatedTests: true } };
+}
+
 const SCOPED_PRESETS = [undefined, 'typescript', 'javascript'];
 
 export function resolveHeadPolicy(config = {}, projectRoot) {
-  const policy = resolveSharedHeadPolicy(config);
+  const policy = withTestPlacement(resolveSharedHeadPolicy(config), projectRoot);
   return projectRoot === undefined ? policy : withProjectFacts(policy, config, projectRoot);
 }
 
@@ -119,7 +129,13 @@ function detectedScopes(policy, projectRoot) {
   };
 }
 
-const HEAD_CHECKOUT_FACTS = ['conventions', 'generatedFiles', 'frameworks', 'libraries'];
+const HEAD_CHECKOUT_FACTS = [
+  'conventions',
+  'conventionPins',
+  'generatedFiles',
+  'frameworks',
+  'libraries',
+];
 const SCOPE_FACTS = [
   ['react', ['enabled', 'iconPackage', 'major', 'styling', 'autoCleanup']],
   ['i18n', ['enabled']],
@@ -178,7 +194,7 @@ export function usesLayeredPrettier(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return (
     usesProjectConfig(policy.tools.prettier?.precedence ?? []) ||
-    Object.keys(prettierConventionOptions(policy.conventions)).length > 0
+    hasPrettierConventions(policy.conventions)
   );
 }
 
@@ -193,7 +209,10 @@ export function readHeadPolicy(environment = process.env) {
     i18n: policy.i18n ?? {},
     preset: policy.preset,
     tools: policy.tools ?? {},
+    duplicates: policy.duplicates ?? {},
     conventions: policy.conventions,
+    testConsole: policy.testConsole ?? {},
+    conventionPins: policy.conventionPins,
     generatedFiles: policy.generatedFiles ?? [],
     libraries: policy.libraries,
     frameworks: { defaultExports: [], entryPoints: [], ...policy.frameworks },
@@ -203,10 +222,7 @@ export function readHeadPolicy(environment = process.env) {
 export function readLayout(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return {
-    ...resolveLayout(readHeadPolicyFile(environment).layout, policy.exclude, {
-      javascript: isJavascriptPolicy(policy),
-      generatedFiles: policy.generatedFiles,
-    }),
+    ...resolveLayoutFor({ ...policy, layout: readHeadPolicyFile(environment).layout }),
     entryPoints: [...(policy.layout.entryPoints ?? []), ...policy.frameworks.entryPoints],
   };
 }

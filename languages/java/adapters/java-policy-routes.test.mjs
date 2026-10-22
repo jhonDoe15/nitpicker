@@ -19,7 +19,7 @@ describe('exception routes of applyJavaPolicy', () => {
       {
         ...archunit,
         message:
-          'Rule violated. If a reviewer agrees this is intended, add {"rule":"archunit/Rule","paths":["src/main/java/app/A.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'Rule violated. If this is intended, add {"rule":"archunit/Rule","paths":["src/main/java/app/A.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       },
       pmd,
     ]);

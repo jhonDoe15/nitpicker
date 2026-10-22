@@ -38,7 +38,7 @@ describe('size limits on edited legacy functions', () => {
         path: 'src/big.ts',
         identity: 'function:big:occurrence:1:source:after',
         message:
-          'big has 78 statements; limit is 15. Split by responsibility and name each part for what it checks or does. If a reviewer agrees this is intended, add {"rule":"function-statements-limit","paths":["src/big.ts"],"function":"big","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'big has 78 statements; limit is 15. Split by responsibility and name each part for what it checks or does. If this is intended, add {"rule":"function-statements-limit","paths":["src/big.ts"],"function":"big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'big',
         location: { line: 1 },
@@ -46,7 +46,7 @@ describe('size limits on edited legacy functions', () => {
           key: 'function:big:occurrence:1:statements',
           value: 78,
           worseMessage:
-            'big grew from {base} to 78 statements (limit 15). Put new code in a new function. If a reviewer agrees this is intended, add {"rule":"function-statements-limit","paths":["src/big.ts"],"function":"big","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+            'big grew from {base} to 78 statements (limit 15). Put new code in a new function. If this is intended, add {"rule":"function-statements-limit","paths":["src/big.ts"],"function":"big","reason":"..."} to "exceptions" in nitpicker.config.json.',
           heldMessage:
             'big: 78 statements (limit 15), allowed because base was {base}; any increase fails.',
         },
@@ -63,7 +63,7 @@ describe('size limits on edited legacy functions', () => {
         path: 'src/big.ts',
         identity: 'function:big:occurrence:1:source:after',
         message:
-          'big grew from 80 to 81 statements (limit 15). Put new code in a new function. If a reviewer agrees this is intended, add {"rule":"function-statements-limit","paths":["src/big.ts"],"function":"big","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'big grew from 80 to 81 statements (limit 15). Put new code in a new function. If this is intended, add {"rule":"function-statements-limit","paths":["src/big.ts"],"function":"big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'big',
         location: { line: 1 },
@@ -71,7 +71,7 @@ describe('size limits on edited legacy functions', () => {
           key: 'function:big:occurrence:1:statements',
           value: 81,
           worseMessage:
-            'big grew from {base} to 81 statements (limit 15). Put new code in a new function. If a reviewer agrees this is intended, add {"rule":"function-statements-limit","paths":["src/big.ts"],"function":"big","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+            'big grew from {base} to 81 statements (limit 15). Put new code in a new function. If this is intended, add {"rule":"function-statements-limit","paths":["src/big.ts"],"function":"big","reason":"..."} to "exceptions" in nitpicker.config.json.',
           heldMessage:
             'big: 81 statements (limit 15), allowed because base was {base}; any increase fails.',
         },
@@ -115,19 +115,19 @@ describe('the message of a function that got worse', () => {
   it.each([
     [
       'lines',
-      'computeInvoice grew from 68 to 69 lines (limit 50). Put new code in a new function. If a reviewer agrees this is intended, add {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'computeInvoice grew from 68 to 69 lines (limit 50). Put new code in a new function. If this is intended, add {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ],
     [
       'statements',
-      'computeInvoice grew from 16 to 17 statements (limit 15). Put new code in a new function. If a reviewer agrees this is intended, add {"rule":"function-statements-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'computeInvoice grew from 16 to 17 statements (limit 15). Put new code in a new function. If this is intended, add {"rule":"function-statements-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ],
     [
       'maxControlNesting',
-      'computeInvoice control nesting grew from 3 to 4 levels (limit 2). Put the new nested code in a new function. If a reviewer agrees this is intended, add {"rule":"function-control-nesting-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'computeInvoice control nesting grew from 3 to 4 levels (limit 2). Put the new nested code in a new function. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ],
     [
       'parameters',
-      'computeInvoice grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'computeInvoice grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ],
   ])('shows the base value and the fix for %s', (metric, expected) => {
     const start = METRIC_START[metric];
@@ -194,14 +194,14 @@ describe('the message of a function that got worse', () => {
     );
 
     expect(messages(result)).toEqual([
-      'computeInvoice has 72 lines; limit is 50. If a reviewer agrees this is intended, add {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'computeInvoice has 72 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
   it('keeps the plain message for a new function', () => {
     const result = compare([], [computeInvoice('lines', 72, 'after')]);
 
     expect(messages(result)).toEqual([
-      'computeInvoice has 72 lines; limit is 50. If a reviewer agrees this is intended, add {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'computeInvoice has 72 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 });

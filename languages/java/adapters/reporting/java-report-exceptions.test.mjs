@@ -83,9 +83,9 @@ describe('readJavaFindings exception routes', () => {
       ['changed-branch-coverage', 'Bad.decode'],
     ]);
     expect(routed.map(({ message }) => message.match(/If a reviewer.*$/)[0])).toEqual([
-      'If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-      'If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-      'If a reviewer agrees this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'If this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
     const lifted = applyJavaPolicy(findings, {
       exceptions: [

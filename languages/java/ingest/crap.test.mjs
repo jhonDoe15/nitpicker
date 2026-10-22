@@ -3,7 +3,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
-import { calculateCrap, ingestCrap, parseLizardCsv } from './crap.mjs';
+import { calculateCrap, parseLizardCsv } from '../../../shared/ingest/lizard-crap.mjs';
+import { ingestCrap } from './crap.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
 const SOURCE_ROOTS = ['src/main/java'];
@@ -32,7 +33,7 @@ describe('ingestCrap', () => {
     );
     expect(findings[0].path).toBe('src/main/java/demo/Calc.java');
     expect(findings[0].message).toEqual(
-      'Calc.classify has CRAP 71.39; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'Calc.classify has CRAP 71.39; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
   });
@@ -188,7 +189,7 @@ describe('ingestCrap', () => {
     const unknown = ingest().find((f) => f.rule === 'crap-coverage-unknown');
 
     expect(unknown.message).toBe(
-      'Calc.Inner.get has unknown coverage and no CRAP score: JaCoCo has no data for it, so no test runs it or it is annotated @Generated. Add a test that calls it, and remove @Generated from hand-written code. If a reviewer agrees this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/java/demo/Calc.java"],"function":"Calc.Inner.get","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'Calc.Inner.get has unknown coverage and no CRAP score: JaCoCo has no data for it, so no test runs it or it is annotated @Generated. Add a test that calls it, and remove @Generated from hand-written code. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/java/demo/Calc.java"],"function":"Calc.Inner.get","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -200,7 +201,7 @@ describe('ingestCrap', () => {
     const score = ingest(undefined, covered).find((f) => f.rule === 'crap-score-limit');
 
     expect(score.message).toBe(
-      'Calc.classify has CRAP 9.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'Calc.classify has CRAP 9.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -222,7 +223,7 @@ describe('ingestCrap', () => {
         key: 'function:Calc.classify(int, int, String):crap',
         value: expect.any(Number),
         worseMessage:
-          'Calc.classify CRAP rose from {base} to 71.39 (limit 9). Put new code in a new function and cover it with tests. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'Calc.classify CRAP rose from {base} to 71.39 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"..."} to "exceptions" in nitpicker.config.json.',
         heldMessage:
           'Calc.classify: CRAP 71.39 (limit 9), allowed because base was {base}; any increase fails.',
       });
@@ -248,7 +249,7 @@ describe('ingestCrap', () => {
       const result = edit(withComplexity('Calc.classify', 10));
 
       expect(scoreFinding(result.newFindings).message).toBe(
-        'Calc.classify CRAP rose from 71.39 to 87.03 (limit 9). Put new code in a new function and cover it with tests. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Calc.classify CRAP rose from 71.39 to 87.03 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"..."} to "exceptions" in nitpicker.config.json.',
       );
     });
 
@@ -256,6 +257,107 @@ describe('ingestCrap', () => {
       const unknown = withHash('abc').find((f) => f.rule === 'crap-coverage-unknown');
 
       expect(unknown.identity).toBe('function:Calc.Inner.get(int)');
+    });
+  });
+
+  describe('lambdas and initializer blocks', () => {
+    const FILE = 'src/main/java/demo/Box.java';
+    const unit = (name, [start, end], complexity, flags = {}) => ({
+      file: FILE,
+      name: `Box.${name}`,
+      start,
+      end,
+      complexity,
+      signature: `Box.${name}`,
+      ...flags,
+    });
+    const jacocoMethod = (name, line, covered, missed) =>
+      `<method name="${name}" desc="()V" line="${line}"><counter type="LINE" missed="${missed}" covered="${covered}"/></method>`;
+    const sourceLine = (number, covered, missed) =>
+      `<line nr="${number}" mi="${missed}" ci="${covered}" mb="0" cb="0"/>`;
+    const report = ({ methods, lines }) =>
+      `<report name="demo"><package name="demo"><class name="demo/Box" sourcefilename="Box.java">${methods.join('')}</class><sourcefile name="Box.java">${lines.join('')}</sourcefile></package></report>`;
+    const scores = (entries, xml) =>
+      ingest(entries, xml, { limit: 1 }).map(
+        ({ symbol, identity, message }) =>
+          `${symbol} ${identity} ${/CRAP (\d+\.\d+)/.exec(message)?.[1] ?? 'unknown'}`,
+      );
+
+    it('scores a lambda by its synthetic lambda$ method and leaves the lambda inside it out', () => {
+      const entries = [
+        unit('run', [10, 30], 2),
+        unit('run.<lambda>', [12, 20], 4, { lambda: true }),
+        unit('run.<lambda>.<lambda>', [15, 15], 3, { lambda: true }),
+      ];
+      const xml = report({
+        methods: [
+          jacocoMethod('run', 10, 6, 0),
+          jacocoMethod('lambda$run$1', 15, 0, 1),
+          jacocoMethod('lambda$run$0', 12, 5, 0),
+        ],
+        lines: [],
+      });
+
+      expect(scores(entries, xml)).toEqual([
+        'Box.run function:Box.run 2.00',
+        'Box.run.<lambda> function:Box.run.<lambda> 4.00',
+        'Box.run.<lambda>.<lambda> function:Box.run.<lambda>.<lambda> 12.00',
+      ]);
+    });
+
+    it('never matches a lambda to a named method that starts in its range', () => {
+      const entries = [unit('run.<lambda>', [12, 20], 4, { lambda: true })];
+      const xml = report({ methods: [jacocoMethod('helper', 13, 3, 0)], lines: [] });
+
+      expect(scores(entries, xml)).toEqual(['Box.run.<lambda> function:Box.run.<lambda> unknown']);
+    });
+
+    it('scores an initializer block by the coverage of its own lines, whatever method holds them', () => {
+      const entries = [
+        unit('<clinit>', [40, 46], 3, { initializer: true }),
+        unit('<clinit>.<lambda>', [43, 43], 1, { lambda: true }),
+      ];
+      const xml = report({
+        methods: [
+          jacocoMethod('lambda$static$0', 43, 0, 1),
+          jacocoMethod('&lt;clinit&gt;', 3, 2, 3),
+        ],
+        lines: [
+          sourceLine(41, 1, 0),
+          sourceLine(42, 0, 1),
+          sourceLine(43, 0, 1),
+          sourceLine(44, 1, 0),
+          sourceLine(50, 0, 3),
+        ],
+      });
+
+      expect(scores(entries, xml)).toEqual([
+        'Box.<clinit> function:Box.<clinit> 3.33',
+        'Box.<clinit>.<lambda> function:Box.<clinit>.<lambda> 2.00',
+      ]);
+    });
+
+    it('numbers repeated blocks and lambdas only among the ones over the limit with the same source', () => {
+      const entries = [
+        unit('<init>', [10, 12], 3, { initializer: true }),
+        unit('<init>', [20, 22], 3, { initializer: true }),
+        unit('run.<lambda>', [30, 31], 3, { lambda: true }),
+        unit('run.<lambda>', [40, 41], 3, { lambda: true }),
+      ];
+      const xml = report({
+        methods: [jacocoMethod('lambda$run$0', 30, 2, 0), jacocoMethod('lambda$run$1', 40, 0, 2)],
+        lines: [sourceLine(11, 0, 1), sourceLine(21, 0, 1)],
+      });
+      const findings = ingest(entries, xml, {
+        limit: 4,
+        sourceHash: ({ start }) => String(start % 20),
+      });
+
+      expect(findings.map(({ symbol, identity }) => `${symbol} ${identity}`)).toEqual([
+        'Box.<init> function:Box.<init>:source:10',
+        'Box.<init> function:Box.<init>:source:0',
+        'Box.run.<lambda> function:Box.run.<lambda>:source:0',
+      ]);
     });
   });
 

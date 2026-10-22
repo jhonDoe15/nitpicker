@@ -63,25 +63,25 @@ describe('Java structure findings', () => {
     ).toEqual([
       [
         RULE_IDS.functionLines,
-        'Big.big has 51 lines; limit is 50. If a reviewer agrees this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Big.big has 51 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         'enforceable',
         'structure',
       ],
       [
         RULE_IDS.functionStatements,
-        'Big.big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does. If a reviewer agrees this is intended, add {"rule":"function-statements-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Big.big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does. If this is intended, add {"rule":"function-statements-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         'enforceable',
         'structure',
       ],
       [
         RULE_IDS.functionControlNesting,
-        'Big.big nests control flow 3 deep (limit 2). Return early instead of nesting. If a reviewer agrees this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Big.big nests control flow 3 deep (limit 2). Return early instead of nesting. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         'enforceable',
         'structure',
       ],
       [
         RULE_IDS.functionParameters,
-        'Big.big has 4 parameters; limit is 3. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Big.big has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         'enforceable',
         'structure',
       ],
@@ -92,14 +92,14 @@ describe('Java structure findings', () => {
       path: FILE,
       identity: 'function:Big.big:occurrence:1:source:796ab01f9eb19cf455b6cda2',
       message:
-        'Big.big has 51 lines; limit is 50. If a reviewer agrees this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Big.big has 51 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
       symbol: 'Big.big',
       ratchet: {
         key: 'function:Big.big:occurrence:1:lines',
         value: 51,
         worseMessage:
-          'Big.big grew from {base} to 51 lines (limit 50). Put new code in a new function. If a reviewer agrees this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'Big.big grew from {base} to 51 lines (limit 50). Put new code in a new function. If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         heldMessage:
           'Big.big: 51 lines (limit 50), allowed because base was {base}; any increase fails.',
       },
@@ -136,6 +136,63 @@ describe('Java structure findings', () => {
 
     expect(identities[0]).toEqual('function:Big.big:occurrence:1:source:796ab01f9eb19cf455b6cda2');
     expect(identities[1]).toEqual('function:Big.big:occurrence:2:source:82386020526deefc6efbafdb');
+  });
+});
+
+describe('Java structure findings of initializers and lambdas', () => {
+  const SOURCE_WITH_LAMBDAS = [
+    'class Big {',
+    '  {',
+    '    run();',
+    '  }',
+    '',
+    '  {',
+    '    run();',
+    '  }',
+    '',
+    '  void big() {',
+    '    Runnable a = () -> run();',
+    '    Runnable a = () -> run();',
+    '  }',
+    '}',
+    '',
+  ].join('\n');
+  const unit = (name, start, end, extra = {}) =>
+    method({ name, start, end, statements: 16, ...extra });
+
+  beforeEach(() => {
+    projectRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-structure-'));
+    reportRoot = path.join(projectRoot, 'build/nitpicker');
+    mkdirSync(reportRoot, { recursive: true });
+    mkdirSync(path.join(projectRoot, path.dirname(FILE)), { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(projectRoot, { recursive: true, force: true });
+  });
+
+  it('numbers repeated initializer blocks and lambdas among those of the same text over the limit', () => {
+    const entries = [
+      unit('Big.<init>', 2, 4, { initializer: true }),
+      unit('Big.<init>', 6, 8, { initializer: true }),
+      unit('Big.big.<lambda>', 11, 11, { lambda: true }),
+      unit('Big.big.<lambda>', 12, 12, { lambda: true }),
+    ];
+
+    expect(
+      readWith(entries, SOURCE_WITH_LAMBDAS).map(({ symbol, identity }) => [symbol, identity]),
+    ).toEqual([
+      ['Big.<init>', 'function:Big.<init>:occurrence:1:source:ea0b918154f689e61ecb72d0'],
+      ['Big.<init>', 'function:Big.<init>:occurrence:2:source:ea0b918154f689e61ecb72d0'],
+      [
+        'Big.big.<lambda>',
+        'function:Big.big.<lambda>:occurrence:1:source:eb80ea9c97a18ee3b80f597f',
+      ],
+      [
+        'Big.big.<lambda>',
+        'function:Big.big.<lambda>:occurrence:2:source:eb80ea9c97a18ee3b80f597f',
+      ],
+    ]);
   });
 });
 
@@ -188,6 +245,17 @@ describe('Java file limits', () => {
     expect(found({ exceptions: [{ rule: 'line-length-limit', paths: ['src/main/**'] }] })).toEqual(
       [],
     );
+  });
+
+  it('limits Java lines to the length the conventions choose', () => {
+    writeClasses('src/main/java/demo', 1, `class A { ${'int a; '.repeat(14)}}\n`);
+    const found = (conventions) =>
+      readJavaFileLimitFindings(projectRoot, { manifest, policy: { conventions } }).map(
+        ({ rule }) => rule,
+      );
+
+    expect(found({})).toEqual([RULE_IDS.lineLength]);
+    expect(found({ 'java.lineLength': '120' })).toEqual([]);
   });
 
   it('applies the configured thresholds, exceptions and exclude globs', () => {

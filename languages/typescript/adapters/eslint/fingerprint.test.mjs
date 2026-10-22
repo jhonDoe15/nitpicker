@@ -157,7 +157,7 @@ describe('a finding in an edited function stays baselined while the function has
       identity:
         'message:Reported text.|node:CatchClause|syntax:1aa86ed9695b52439cb90d7f|occurrence:1',
       message:
-        'Reported text. If a reviewer agrees this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       location: { line: 4, column: 5 },
       classification: 'enforceable',
       symbol: 'load',
@@ -251,7 +251,7 @@ describe('a finding in an edited function stays baselined while the function has
         identity:
           'message:Reported text.|node:CatchClause|syntax:1aa86ed9695b52439cb90d7f|occurrence:1',
         message:
-          'Reported text. If a reviewer agrees this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         location: { line: 13, column: 5 },
         classification: 'enforceable',
         symbol: 'fetchValue',
@@ -279,7 +279,7 @@ describe('a new throw in a legacy function', () => {
   const NO_THROW = 'nitpicker/no-throw';
   const NO_THROW_MESSAGE = 'Return a discriminated-union failure result instead of throwing.';
   const NO_THROW_ROUTE =
-    'If a reviewer agrees this is intended, add {"rule":"nitpicker/no-throw","paths":["src/legacy.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';
+    'If this is intended, add {"rule":"nitpicker/no-throw","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
   const oneThrow = [
     'export function parse(text: string): string {',
     "  if (text === '') {",
@@ -344,7 +344,7 @@ describe('a complexity finding fails only when the number rises', () => {
   const complexity = (amount) =>
     `This function has a cognitive complexity of ${String(amount)}; the limit is 15. Move nested branches and conditions into smaller named functions.`;
   const COMPLEXITY_ROUTE =
-    'If a reviewer agrees this is intended, add {"rule":"nitpicker/cognitive-complexity","paths":["src/legacy.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';
+    'If this is intended, add {"rule":"nitpicker/cognitive-complexity","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
 
   const arrow = (body) => `export const total = (items: readonly Item[]) => {\n${body}\n};\n`;
   const named = (body) => `export function total(items: readonly Item[]) {\n${body}\n}\n`;
@@ -381,7 +381,7 @@ describe('a complexity finding fails only when the number rises', () => {
     const result = compare(find(build, reported, 16), find(build, reported, 60));
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      'total cognitive complexity grew from 16 to 60. Put new code in a new function. If a reviewer agrees this is intended, add {"rule":"nitpicker/cognitive-complexity","paths":["src/legacy.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+      'total cognitive complexity grew from 16 to 60. Put new code in a new function. If this is intended, add {"rule":"nitpicker/cognitive-complexity","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 

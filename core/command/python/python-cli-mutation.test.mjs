@@ -36,7 +36,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         path: 'src/demo/a.py',
         identity: 'value|1→3#1',
         message:
-          'Survived number: replacing `1` with `3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"function":"value","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'Survived number: replacing `1` with `3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'value',
         location: { line: 5 },
@@ -58,7 +58,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         path: 'src/demo/a.py',
         identity: 'value|1→3#1',
         message:
-          'NoCoverage number: no test runs this code. Add a test that reaches it. If a reviewer agrees this is intended, add {"rule":"mutant-nocoverage","paths":["src/demo/a.py"],"function":"value","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'NoCoverage number: no test runs this code. Add a test that reaches it. If this is intended, add {"rule":"mutant-nocoverage","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'value',
         location: { line: 5 },
@@ -158,7 +158,10 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['python']);
+    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
+      'python',
+      'repository-hygiene',
+    ]);
     expect(calls().filter(({ tool }) => tool === 'mutmut')).toEqual([]);
   });
   it('does not run mutmut when the tests fail, and the tests-failed error is the only one', () => {
