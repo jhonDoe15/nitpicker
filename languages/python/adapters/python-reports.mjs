@@ -39,6 +39,7 @@ import { TYPES_REPORT } from './python-types.mjs';
 import { listProductionModules } from './analysis/python-sources.mjs';
 import { isGeneratedPython } from '../libraries/generated-files.mjs';
 import { readConsoleFindings } from './test-results/console-output.mjs';
+import { readFactFindings } from './facts/python-facts.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
 const NO_TESTS_RULE = 'no-tests-ran';
@@ -90,6 +91,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
       ...testFailureFindings(manifest, policy.snapshot),
       ...projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }),
       ...readConsoleFindings(reportRoot, { projectRoot, manifest }),
+      ...readFactFindings(reportRoot, policy),
     ],
     libraries,
   );

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { run } from '../execution/python-process.mjs';
 import { createToolContext } from '../python-tools.mjs';
 import { pythonE2eEnabled } from '../e2e/test-support/python-e2e-support.mjs';
-import { collectFacts, FACTS_REPORT } from './python-facts.mjs';
+import { collectFacts, FACTS_REPORT, readFactFindings } from './python-facts.mjs';
 
 const roots = [];
 
@@ -31,7 +31,7 @@ function factsOf(files) {
   });
   const report = collectFacts(context, run);
   expect(JSON.parse(readFileSync(path.join(reportRoot, FACTS_REPORT), 'utf8'))).toEqual(report);
-  return report;
+  return { ...report, findings: () => readFactFindings(reportRoot) };
 }
 
 const PRICING = `"""Prices."""
@@ -274,5 +274,18 @@ describe.skipIf(!pythonE2eEnabled)('the facts scan', () => {
 
   it('leaves out a file that does not parse', () => {
     expect(factsOf({ 'src/shop/bad.py': 'def (:\n' }).modules).toEqual([]);
+  });
+
+  it('feeds the shared rules: a module only the tests import is test-only', () => {
+    const facts = factsOf({
+      'src/shop/__init__.py': '',
+      'src/shop/helpers.py': 'def helper():\n    return 1\n',
+      'tests/test_helpers.py':
+        'from shop.helpers import helper\n\n\ndef test_helper():\n    assert helper() == 1\n',
+    });
+
+    expect(facts.findings().map(({ rule, path: file }) => `${rule} ${file}`)).toEqual([
+      'test-only-export src/shop/helpers.py',
+    ]);
   });
 });

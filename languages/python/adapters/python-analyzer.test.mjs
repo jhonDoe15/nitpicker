@@ -50,6 +50,7 @@ describe('Python analyzer', () => {
       'tests',
       'test-runtime',
       'test-console',
+      'facts',
       'dependencies',
     ]);
     expect(analyzer.exclusions).toEqual([]);
