@@ -58,6 +58,8 @@ Web:
   origin with credentials, no user passwords in source.
 - No `@CrossOrigin`; CORS is configured once. Passwords through
   `PasswordEncoderFactories.createDelegatingPasswordEncoder()`, never a weak encoder.
+- Outgoing HTTP: a fixed or configured base URL, changing parts as template variables
+  (`pmd/SpringOutboundUrl`).
 
 JPA and Spring Data:
 

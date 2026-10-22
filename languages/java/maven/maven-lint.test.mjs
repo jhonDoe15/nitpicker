@@ -3,10 +3,15 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
-import { javaFiles, runFormat, runPmd, writeCheckstyleSetup } from './maven-lint.mjs';
+import { GRADLE_DIRECTORY, INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
+import {
+  javaFiles,
+  runFormat,
+  runPmd,
+  spotbugsLaunch,
+  writeCheckstyleSetup,
+} from './maven-lint.mjs';
 import { toolDependencies } from './maven-tools.mjs';
-import { readPinnedTools } from '../builds/java-build.mjs';
 
 const roots = [];
 
@@ -194,8 +199,47 @@ describe('maven tools', () => {
     expect(tools['launcher-1.11.4']).toEqual([
       dependency('org.junit.platform', 'junit-platform-launcher', '1.11.4'),
     ]);
+    expect(tools.spotbugsPlugins).toEqual([
+      dependency('com.h3xstream.findsecbugs', 'findsecbugs-plugin', pinned.findSecBugs),
+    ]);
     expect(tools.jacoco).toEqual([
       dependency('org.jacoco', 'org.jacoco.cli', pinned.jacoco, '<classifier>nodeps</classifier>'),
+    ]);
+  });
+});
+
+describe('spotbugsLaunch', () => {
+  const module = { sourceRoots: ['/missing/src'], outputDirectory: '/work/classes' };
+  const launch = spotbugsLaunch({
+    module,
+    report: '/work/spotbugs.sarif',
+    tools: { spotbugsPlugins: ['/m2/plugin.jar', '/m2/extra.jar'] },
+  });
+
+  it('loads find-sec-bugs with its exclusion filter, as the Gradle run does', () => {
+    const argument = (name) => launch.args[launch.args.indexOf(name) + 1];
+
+    expect(argument('-pluginList')).toBe(['/m2/plugin.jar', '/m2/extra.jar'].join(path.delimiter));
+    expect(argument('-exclude')).toBe(path.join(GRADLE_DIRECTORY, 'security', 'exclude.xml'));
+    expect(launch.args.at(-1)).toBe('/work/classes');
+  });
+
+  it('gives the plugin the same sink files and types as the Gradle init script', () => {
+    const init = readFileSync(INIT_SCRIPT, 'utf8');
+    const gradleFiles = [
+      ...init.matchAll(/security\/([\w-]+-sinks\.txt)'\)\.absolutePath\}\|(\w+)/gu),
+    ]
+      .map(([, file, type]) => `${file}|${type}`)
+      .sort();
+    const mavenFiles = launch.jvmArgs
+      .flatMap((argument) => argument.split('=')[1].split(path.delimiter))
+      .map((entry) => `${path.basename(entry.split('|')[0])}|${entry.split('|')[1]}`)
+      .sort();
+
+    expect(mavenFiles).toEqual(gradleFiles);
+    expect(launch.jvmArgs.map((argument) => argument.split('=')[0])).toEqual([
+      '-Dfindsecbugs.injection.customconfigfile.SqlInjectionDetector',
+      '-Dfindsecbugs.injection.customconfigfile.PathTraversalDetector',
     ]);
   });
 });

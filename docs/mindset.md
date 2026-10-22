@@ -86,8 +86,12 @@ function over another branch in an old one.
 
 ## Our own code, and other people's
 
-- Dependencies must be under permissive licenses. Source-available analyzers (SonarJS and
-  SonarJava, OpenRewrite's Spring recipes) are not used, and their implementations are not read
-  when we write similar rules.
+- Code we write or copy is under a permissive license. A tool we run unmodified, downloaded at run
+  time or installed as an unmodified npm package, may be weak-copyleft (LGPL, EPL, MPL): SpotBugs,
+  find-sec-bugs, Checkstyle, JaCoCo, the JUnit launcher, PMD's Saxon-HE and axe-core are. GPL, AGPL and source-available licenses
+  (SSPL, SSALv1, BSL, Elastic) never are, so SonarJS and SonarJava, and OpenRewrite's Spring
+  recipes, are not used, and their implementations are not read when we write similar rules. A test
+  checks a license entry for every pinned Java tool and the declared license and LICENSE text of
+  every locked npm package (see [CONTRIBUTING.md](../CONTRIBUTING.md#licenses)).
 - Ideas from MIT-licensed projects (for example Taikai's ArchUnit rules) are welcome when they fit
   this mindset, with credit.

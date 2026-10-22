@@ -291,13 +291,10 @@ return (
       [*[1][self::TypeExpression and (pmd-java:typeIs('org.springframework.web.client.RestClient')
         or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient'))]]
       [not(ArgumentList/*[pmd-java:typeIs('org.springframework.web.client.RestTemplate')])]
-  | //MethodCall[@MethodName = 'newHttpClient']
-      [*[1][self::TypeExpression and pmd-java:typeIs('java.net.http.HttpClient')]]
   | //MethodCall[@MethodName = ('builder', 'newBuilder')][not(ArgumentList/*)]
       [*[1][self::TypeExpression and (pmd-java:typeIs('org.springframework.web.client.RestClient')
-        or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient')
-        or pmd-java:typeIs('java.net.http.HttpClient'))]]
-      [not($chain(.)[@MethodName = ('requestFactory', 'clientConnector', 'connectTimeout')])]
+        or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient'))]]
+      [not($chain(.)[@MethodName = ('requestFactory', 'clientConnector')])]
   | //ConstructorCall[pmd-java:typeIs('org.springframework.boot.web.client.RestTemplateBuilder')
       or pmd-java:typeIs('org.springframework.boot.restclient.RestTemplateBuilder')][not(ArgumentList/*)]
       [not($chain(.)[@MethodName = ('connectTimeout', 'readTimeout', 'setConnectTimeout', 'setReadTimeout',
@@ -829,6 +826,109 @@ return (
      self::StringLiteral
      or self::VariableAccess[@Name = (ancestor::MethodDeclaration[1]//VariableDeclarator[StringLiteral]/VariableId/@Name,
        ancestor::ClassBody[last()]/FieldDeclaration/VariableDeclarator[StringLiteral]/VariableId/@Name)]]]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringOutboundUrl" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Keep the host of an outgoing request fixed, a configured base URL, and pass the changing parts as URI template variables; a URL built from a method parameter can reach any host. If it is right here, add an exception for pmd/SpringOutboundUrl in nitpicker.config.json.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[
+  (@MethodName = ('getForObject', 'getForEntity', 'postForObject', 'postForEntity', 'postForLocation', 'put',
+        'delete', 'headForHeaders', 'optionsForAllow', 'exchange', 'execute')
+    and *[1][pmd-java:typeIs('org.springframework.web.client.RestOperations')])
+  or (@MethodName = 'uri'
+    and *[1][pmd-java:typeIs('org.springframework.web.client.RestClient.UriSpec')
+      or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient.UriSpec')
+      or pmd-java:typeIs('java.net.http.HttpRequest.Builder')])
+  or (@MethodName = 'baseUrl'
+    and *[1][pmd-java:typeIs('org.springframework.web.client.RestClient.Builder')
+      or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient.Builder')])
+  or pmd-java:matchesSig('org.springframework.web.client.RestClient#create(_)')
+  or pmd-java:matchesSig('org.springframework.web.reactive.function.client.WebClient#create(_)')
+  or pmd-java:matchesSig('java.net.http.HttpRequest#newBuilder(_)')
+]
+[not(ancestor::ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Configuration')]])]
+[not(ancestor::MethodDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')])]
+[let $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
+     $parameters := $method[not(self::ConstructorDeclaration and ancestor::ClassDeclaration[1]/ModifierList/Annotation[
+        pmd-java:typeIs('org.springframework.stereotype.Component')
+        or pmd-java:typeIs('org.springframework.stereotype.Service')
+        or pmd-java:typeIs('org.springframework.stereotype.Repository')
+        or pmd-java:typeIs('org.springframework.stereotype.Controller')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')])]
+      /FormalParameters/FormalParameter
+      [not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.beans.factory.annotation.Value')])],
+     $strings := $parameters[pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.net.URI')
+      or pmd-java:typeIs('java.net.URL')]/VariableId/@Name,
+     $objects := $parameters/VariableId/@Name,
+     $inTemplate := function($node) {
+       exists($node/ancestor::ArgumentList[parent::MethodCall[@MethodName = ('buildAndExpand', 'expand', 'queryParam',
+         'queryParams', 'replaceQueryParam', 'pathSegment', 'path', 'fragment')]])
+     },
+     $reads := function($node, $names) {
+       exists($node/descendant-or-self::VariableAccess[@Name = $names][not($inTemplate(.))])
+       or exists($node/descendant-or-self::MethodCall[empty(ArgumentList/*)][*[1][self::VariableAccess[@Name = $objects]]]
+         [not($inTemplate(.))]
+         [pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.net.URI') or pmd-java:typeIs('java.net.URL')
+           or matches(@MethodName, 'url|uri|href|host|endpoint|address|target|location|link|callback|origin', 'i')])
+     },
+     $step := function($known) {
+       distinct-values(($known,
+         $method//VariableDeclarator[*[2][$reads(., $known)]]/VariableId/@Name,
+         $method//AssignmentExpression[$reads(*[2], $known)]/*[1][self::VariableAccess]/@Name))
+     },
+     $derived := $step($step($step($step($strings)))),
+     $constantValue := function($value) {
+       empty($value/descendant-or-self::*[self::MethodCall or self::ConstructorCall
+         or self::VariableAccess[not(matches(@Name, '^[A-Z][A-Z0-9_]*$'))]
+         or self::FieldAccess[not(matches(@Name, '^[A-Z][A-Z0-9_]*$'))]])
+     },
+     $inputName := function($call, $name) {
+       let $caller := $call/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
+           $declarations := $caller//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name]
+       return not(exists($declarations)
+         and empty($caller//AssignmentExpression[*[1][self::VariableAccess][@Name = $name]])
+         and (every $declaration in $declarations satisfies
+           (exists($declaration/*[2]) and $constantValue($declaration/*[2]))))
+     },
+     $callers := $method/ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration][1]
+      //MethodCall[@MethodName = $method/@Name]
+        [count(ArgumentList/*) = count($method/FormalParameters/FormalParameter)]
+ return (not($method[pmd-java:modifiers() = 'private'])
+         or (some $call in $callers satisfies
+           (some $argument in $call/ArgumentList/* satisfies
+             exists($argument/descendant-or-self::VariableAccess
+               [@Name = $call/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]//VariableId/@Name]
+               [$inputName($call, string(@Name))]))))
+   and (exists(ArgumentList/*[1][not(self::LambdaExpression)][$reads(., $derived)])
+     or exists(ArgumentList/*[1][self::LambdaExpression]//MethodCall[@MethodName = ('host', 'scheme', 'port', 'userInfo', 'uri')]
+       /ArgumentList/*[$reads(., $derived)]))]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringOpenRedirect" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Redirect to a fixed route, or check the target against an allow-list of paths; a fixed path with a changing last segment, such as redirect:/orders/ plus an id, is fine. A redirect to a value taken from the request can send users to any site. If it is right here, add an exception for pmd/SpringOpenRedirect in nitpicker.config.json.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+(//InfixExpression[@Operator = '+'][*[1][self::StringLiteral[matches(@ConstValue, '^(redirect|forward):((https?:)?//?)?$')]]]
+  | //ConstructorCall[pmd-java:typeIs('org.springframework.web.servlet.view.RedirectView')])
+[let $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
+     $strings := $method/FormalParameters/FormalParameter[pmd-java:typeIs('java.lang.CharSequence')
+      or pmd-java:typeIs('java.net.URI')]/VariableId/@Name,
+     $reads := function($node, $names) {
+       exists($node/descendant-or-self::VariableAccess[@Name = $names])
+     },
+     $step := function($known) {
+       distinct-values(($known,
+         $method//VariableDeclarator[*[2][$reads(., $known)]]/VariableId/@Name,
+         $method//AssignmentExpression[$reads(*[2], $known)]/*[1][self::VariableAccess]/@Name))
+     },
+     $derived := $step($step($step($strings)))
+ return exists(self::InfixExpression/*[2][$reads(., $derived)])
+     or exists(self::ConstructorCall/ArgumentList/*[1][$reads(., $derived)])]
 ]]></value></property></properties>
   </rule>
 

@@ -8,6 +8,12 @@ import {
 import { ingestSarif, prepareSarif } from '../../../../../shared/ingest/sarif.mjs';
 import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.mjs';
 import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
+import {
+  securitySubject,
+  stableName,
+  withoutDuplicateSites,
+  withSecurityMessages,
+} from '../../security/security-advice.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const EMPTY_SARIF = { version: '2.1.0', runs: [] };
@@ -31,7 +37,10 @@ export function sarifFindings(context) {
   const pmd = preparedReport('pmd.sarif', context, (result) =>
     result.message?.text?.replace(LINE_NUMBER, 'line'),
   );
-  const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
+  const spotbugs = preparedReport('spotbugs.sarif', context, (result) =>
+    securitySubject(result, spotbugsSubject(result)),
+  );
+  const pmdLog = readSarifReport(path.join(context.reportRoot, 'pmd.sarif'));
   return [
     ...withWaitAdvice(
       dropSleepsInFakes(
@@ -47,13 +56,19 @@ export function sarifFindings(context) {
       ),
       { manifest: context.manifest, projectRoot },
     ),
-    ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
-      tool: 'spotbugs',
-    }).findings.map(withExposureAdvice),
+    ...ingestSarif(
+      withSecurityMessages(
+        withoutDuplicateSites(dropEntityAssociations(spotbugs, projectRoot), pmdLog),
+      ),
+      {
+        tool: 'spotbugs',
+      },
+    ).findings.map(withExposureAdvice),
   ];
 }
 
 function spotbugsSubject(result) {
   const args = result.message?.arguments;
-  return Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
+  const subject = Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
+  return typeof subject === 'string' ? stableName(subject) : subject;
 }

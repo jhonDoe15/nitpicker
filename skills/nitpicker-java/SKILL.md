@@ -142,6 +142,11 @@ Before you change code other modules use, or fix a bug, read
   If a PMD rule or an Error Prone check flags test code that is right, add an
   exception for `pmd/<rule>` or `errorprone/<Check>`.
 
+## Security
+
+SpotBugs also runs find-sec-bugs on main sources, and nitpicker's Spring rules cover outgoing URLs and CSRF.
+Each finding names the safe form; the exception route is `spotbugs/<PATTERN>` or `pmd/<rule>`.
+
 ## Editing existing code
 
 - A method already over a size limit may be edited but must not get worse: the gate then prints
