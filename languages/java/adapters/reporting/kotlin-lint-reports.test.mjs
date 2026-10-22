@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
   readJavaFindings,
@@ -55,7 +56,8 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
 
     expect(findings.find(({ rule }) => rule === 'detekt.style.MagicNumber').message).toBe(
       'This expression contains a magic number. Consider defining it to a well named constant. ' +
-        'Nitpicker runs detekt without your detekt.yml (see the start of the run).',
+        'Nitpicker runs detekt without your detekt.yml (see the start of the run). ' +
+        exceptionHint('detekt.style.MagicNumber', bad),
     );
   });
   it('treats note-level detekt results as descriptive', () => {
@@ -126,7 +128,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
     const root = projectWithKotlinReports();
     writeFileSync(
       path.join(root, bad),
-      `${KOTLIN_SOURCE}\n@Suppress("UnsafeCallOnNullableType", "UNCHECKED_CAST")\nfun f(text: String?) = text!!.length\n`,
+      `${KOTLIN_SOURCE}\n@Suppress("UnsafeCallOnNullableType", "unused")\nfun f(text: String?) = text!!.length\n`,
     );
 
     expect(
@@ -143,14 +145,14 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
       },
     ]);
   });
-  it('reports a catch that logs without the exception and tests without an assertion', () => {
+  it('reports a handled catch that logs without the exception and tests without an assertion', () => {
     const root = projectWithKotlinReports({
       manifest: { kotlinTestSourceRoots: ['src/test/kotlin'] },
     });
     const test = 'src/test/kotlin/demo/BadTest.kt';
     writeFileSync(
       path.join(root, bad),
-      `${KOTLIN_SOURCE}\nval log = LoggerFactory.getLogger(Bad::class.java)\nfun g() {\n  try { run() } catch (e: Exception) { log.error(e.message) }\n}\n`,
+      `${KOTLIN_SOURCE}\nval log = LoggerFactory.getLogger(Bad::class.java)\nfun g() {\n  try { run() } catch (e: Exception) { log.error(e.message); throw IllegalStateException("failed") }\n}\n`,
     );
     mkdirSync(path.dirname(path.join(root, test)), { recursive: true });
     writeFileSync(
