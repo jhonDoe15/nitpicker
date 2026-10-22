@@ -16,6 +16,7 @@
   "languages/python/adapters/formatting/format-scope.e2e.test.mjs": 1,
   "languages/python/adapters/project-tools/mypy.e2e.test.mjs": 11,
   "languages/python/adapters/project-tools/pyright/pyright.e2e.test.mjs": 3,
+  "languages/python/fix/e2e/python-fix.e2e.test.mjs": 10,
   "languages/python/ruff/ruff-groups.e2e.test.mjs": 1,
   "languages/python/ruff/ruff-rules.e2e.test.mjs": 1,
   "languages/python/rules/e2e/boundary/guards.e2e.test.mjs": 1,

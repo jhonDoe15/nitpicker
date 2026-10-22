@@ -21,7 +21,7 @@ import { NITPICKER_RULESET } from '../adapters/tool-config/layer-files.mjs';
 const LAYOUT_SUPPRESSIONS = 'checkstyle-suppressions.xml';
 const UNFORMATTED_SUPPRESSIONS = 'checkstyle-suppressions-unformatted.xml';
 const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
-const JAVAC_EXPORTS = ['api', 'file', 'parser', 'tree', 'util', 'code'].map(
+export const JAVAC_EXPORTS = ['api', 'file', 'parser', 'tree', 'util', 'code'].map(
   (name) => `--add-exports=jdk.compiler/com.sun.tools.javac.${name}=ALL-UNNAMED`,
 );
 

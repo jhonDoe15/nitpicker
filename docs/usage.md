@@ -179,9 +179,14 @@ nitpicker cache publish [--analyzer <name>]...
 
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
   Cannot be combined with `--base`, `--fix`, sharding or `--defer-exit`.
-- `--fix`: apply ESLint and Prettier fixes to the changed files in your checkout, using the gate's
-  own configs, then run the comparison. A fixer that fails is reported as a tool error; the other
-  fixer and the comparison still run. Cannot be combined with `--all`.
+- `--fix`: rewrite the changed files in your checkout with the fixers of the preset, using the
+  gate's own configs, then run the comparison: ESLint and Prettier for TypeScript and JavaScript;
+  `ruff check --fix` (safe fixes, nitpicker's rules only) and ruff format or black for Python;
+  google-java-format or palantir-java-format for Java; ktlint or ktfmt for Kotlin (see the Java,
+  Kotlin and Python sections). Only files whose bytes changed are listed under "Fixed files:", and a
+  formatter leaves alone a file that already failed its format check on the base. A fixer that
+  fails is reported as a tool error; the other fixers and the comparison still run. Cannot be
+  combined with `--all`.
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer (repeatable). Cannot be combined with sharding.
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
@@ -720,6 +725,13 @@ at a time (findings carry the module path); a Maven failure or a failing test is
 one, else `mvn` from the PATH; `NITPICKER_MAVEN=<command>` overrides both. See
 [Maven builds](java-preset.md#maven-builds).
 
+With `--fix`, the changed `.java` files are rewritten with the formatter the run names under
+"Following this project's conventions": google-java-format 1.25.2 (`--aosp` for the 4-space
+style) or palantir-java-format 2.50.0, the versions the gate checks with, whether the project
+declares its formatter through Spotless, fmt-maven-plugin or not at all. The jars are resolved
+through the project's own Gradle or Maven. When `conventions` pins `"java.formatter"` to
+`"none"`, no Java file is rewritten and the run prints a "Fix notes:" line saying so.
+
 Needs Java 21. Gradle is run through the project's own wrapper (`gradlew`, `gradlew.bat` on Windows) when the
 project root has one (run with `sh` when it is not executable), else `gradle` from the PATH; `NITPICKER_GRADLE=<command>` overrides both.
 Config keys with this preset: `base`, `disable`, `analyzers`, and the keys shared with the other
@@ -747,7 +759,10 @@ error with this preset; `layout` is an error too until the Java preset runs the 
 Set `"preset": "kotlin"` for a Gradle project with Kotlin JVM modules, including modules that mix
 Java and Kotlin. It runs everything the Java preset runs on the Java sources, plus detekt and a
 format check (ktlint or ktfmt, whichever the project uses, and none for a project that uses
-neither; `"kotlin": { "formatter": "ktfmt" }` overrides the detection) on the Kotlin sources,
+neither; `"kotlin": { "formatter": "ktfmt" }` overrides the detection) on the Kotlin sources
+(`--fix` rewrites the changed `.kt` and `.kts` files with the same formatter, the pinned ktlint 1.8.0
+or ktfmt 0.64 with the same style and `.editorconfig` handling as the check, and prints a "Fix notes:"
+line when no Kotlin formatter is found),
 JaCoCo coverage and changed-branch coverage for both (a changed Kotlin branch that no test takes
 fails; a line the compiler generated branches for is ignored), and the structure limits, CRAP,
 duplicates and package stability checks on Kotlin code. PIT also mutates the Kotlin classes, but
@@ -850,6 +865,11 @@ analyzer that ran it, never thrown: `python` for `ruff-failed`, `format-failed`,
 `mutation-failed` (exit 2 when there are no new findings). A mutation failure keeps the lint,
 format and coverage findings, and mutation testing is skipped when the `python` analyzer had a tool
 error.
+
+`--fix` runs inside that environment, on the changed `.py` and `.pyi` files only: `ruff check --fix`
+with nitpicker's selected rules and ruff's safe fixes, then the formatter the run names (ruff
+format or black) with the options of the "Format with ..." command. A file that does not parse is
+left as it is, and a file that already failed the format check on the base is not reformatted.
 
 The environment is detected: `uv.lock` (also the one of a uv workspace above a member) runs the
 tools with `uv run --no-sync`, `poetry.lock` uses the environment poetry reports, a `Pipfile` the one `pipenv --venv` reports,
