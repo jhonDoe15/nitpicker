@@ -1570,10 +1570,14 @@ and CRAP rules.
   the one-way rules and `python.exceptions` end to end; `languages/python/adapters/e2e/` holds the
   basedpyright e2e (a configured and a weakened `[tool.basedpyright]` table) and the `if TYPE_CHECKING:`
   one (no stability inversion, import-linter still sees it), which share `helpers.mjs` with the preset e2e.
-- `languages/python/ruff/ruff-rules.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1` (the ruff
-  from the `PATH`, or `NITPICKER_RUFF`). Every stable `RUF` rule of the installed ruff must be
-  selected or ignored in `nitpicker-ruff.toml`, so a new stable rule fails the test until someone
-  reviews it.
+- `languages/python/ruff/ruff-rules.e2e.test.mjs` and `ruff-groups.e2e.test.mjs`: gated behind
+  `NITPICKER_PYTHON_E2E=1` and part of `npm run test:python` (the ruff from the `PATH`, or
+  `NITPICKER_RUFF`). Every stable `RUF` rule, and every stable rule of the listed groups, of the
+  installed ruff must be selected or ignored in `nitpicker-ruff.toml`, so a new stable rule fails the
+  test until someone reviews it. `adapters/configuration/python-ruff-config.e2e.test.mjs` (the
+  generated ruff config keeps the group selectors and the rules the installed ruff knows) and
+  `adapters/formatting/format-scope.e2e.test.mjs` (the formatters run isolated from the project
+  config) run in the same suite.
 - `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
   rules script, are in the npm package.
 - Slice 5 unit tests: `python-sources.test.mjs` (module naming, exclusions), `python-coupling.test.mjs`

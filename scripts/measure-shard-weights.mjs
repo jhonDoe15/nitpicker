@@ -17,6 +17,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   renameSync,
   rmSync,
   writeFileSync,
@@ -346,7 +347,6 @@ async function main() {
     if (!['self', 'consumer', 'generated'].includes(options.fixture)) {
       throw new Error('Pass --project <dir> or --fixture self|consumer|generated');
     }
-    // `--keep <dir>` builds the fixture there and leaves it for inspection.
     if (options.keep === undefined) {
       temporary = mkdtempSync(path.join(tmpdir(), `nitpicker-weights-${options.fixture}-`));
     }
@@ -365,6 +365,6 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   await main();
 }

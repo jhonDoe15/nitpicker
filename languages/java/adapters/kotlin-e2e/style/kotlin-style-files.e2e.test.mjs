@@ -15,10 +15,13 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import { GRADLE_STEP_TIMEOUT_MS } from '../../test-support/gradle-e2e.mjs';
-import { kotlinGradleArguments, kotlinStyleFile, resolveKotlinTools } from '../kotlin-tools.mjs';
+import {
+  kotlinGradleArguments,
+  kotlinStyleFile,
+  resolveKotlinTools,
+} from '../../kotlin/kotlin-tools.mjs';
+import { gradle, kotlinE2eEnabled } from '../test-support/kotlin-e2e-project.mjs';
 
-const enabled = process.env.NITPICKER_JAVA_E2E === '1';
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixture = fileURLToPath(new URL('../../fixtures/kotlin-style-project', import.meta.url));
 const roots = [];
 const WORKSPACE = 'build/tmp/nitpickerKotlinStyleWorkspace';
@@ -91,7 +94,7 @@ const MIRRORED = [
   'src/main/kotlin/demo/A.kt',
 ];
 
-describe.skipIf(!enabled)('the files the init script writes for ktlint and detekt', () => {
+describe.skipIf(!kotlinE2eEnabled)('the files the init script writes for ktlint and detekt', () => {
   it('mirrors the sources under a root .editorconfig of its own and layers nothing by default', () => {
     const outcome = runStyleTasks(copyOfFixture(), {});
 
@@ -133,7 +136,7 @@ describe.skipIf(!enabled)('the files the init script writes for ktlint and detek
   it.each([
     [
       ['project', 'nitpicker'],
-      ['conventions', 'project'],
+      ['conventions', 'project', 'enforced'],
     ],
     [
       ['nitpicker', 'project'],
@@ -146,22 +149,37 @@ describe.skipIf(!enabled)('the files the init script writes for ktlint and detek
       toolPrecedence: { detekt: precedence },
     });
 
-    const named = { [path.join(root, 'config/detekt/detekt.yml')]: 'project' };
+    const named = {
+      [path.join(root, 'config/detekt/detekt.yml')]: 'project',
+      [path.join(root, LAYERS, 'followed-conventions.yml')]: 'conventions',
+      [path.join(root, LAYERS, 'enforced-conventions.yml')]: 'enforced',
+    };
     expect(
       layers
         .trim()
         .split('\n')
-        .map((layer) => named[layer] ?? 'conventions'),
+        .map((layer) => named[layer] ?? layer),
     ).toEqual(order);
   });
 
   it('keeps the project .editorconfig of the head checkout in the workspace when ktlint lists it', () => {
     const outcome = runStyleTasks(copyOfFixture(), {
-      conventions: FOLLOWED,
+      conventions: { 'kotlin.trailingCommas': 'never', 'kotlin.wildcardImports': 'wildcard' },
       toolPrecedence: { ktlint: ['project', 'nitpicker'] },
     });
 
     expect(outcome.editorconfig).toBe('root = true\n\nroot = true\n\n[*.kt]\nindent_size = 8\n');
+  });
+
+  it('appends the followed value after a project .editorconfig of the head checkout that changes it', () => {
+    const outcome = runStyleTasks(copyOfFixture(), {
+      conventions: FOLLOWED,
+      toolPrecedence: { ktlint: ['project', 'nitpicker'] },
+    });
+
+    expect(outcome.editorconfig).toBe(
+      'root = true\n\nroot = true\n\n[*.kt]\nindent_size = 8\n\n[*.{kt,kts}]\nindent_size = 2\n',
+    );
   });
 
   it('mirrors the nested and the ancestor .editorconfig files at their repository paths, root = true on the top one', () => {
