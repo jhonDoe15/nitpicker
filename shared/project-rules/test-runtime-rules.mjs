@@ -1,9 +1,8 @@
-export function testConsoleRule(ids, enforcedBy) {
+export function testConsoleRule(ids) {
   return {
     id: ids.testConsoleOutput,
     check: 'test-console',
     limit:
-      'a test file printing console.error or console.warn output (Python: stderr, warnings and log records at WARNING or above), compared as text with numbers and paths normalized and one random-looking word tolerated, that the base run did not print',
-    enforcedBy,
+      'a test file printing console.error or console.warn output (Python: stderr, warnings and log records at WARNING or above; compared as text with numbers and paths normalized, one random-looking word tolerated) that the base run did not print',
   };
 }

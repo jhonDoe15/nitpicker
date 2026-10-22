@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseIni } from '../ini-parser.mjs';
 import { missingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
-import { globToRegExpSource } from '../../../../../shared/glob.mjs';
+import { globToRegExpSource } from '../../../../../shared/paths/glob.mjs';
 import {
   isOwnModulePattern,
   MYPY_LOOKED,

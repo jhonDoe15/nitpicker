@@ -2,16 +2,14 @@ import {
   configError,
   isNonEmptyString,
   isPlainObject,
+  validateFileGlobs,
   validateStringArray,
 } from '../../../shared/config.mjs';
-import { hasSpecificText } from '../../../shared/console/console-messages.mjs';
-import { GRADLE_PRESETS } from '../../../languages/java/adapters/gradle-presets.mjs';
+import { hasSpecificText } from '../../../shared/rules/console/console-messages.mjs';
 
 const TEST_CONSOLE_KEYS = ['allow'];
 
 const ALLOW_KEYS = ['contains', 'paths', 'reason'];
-
-const TEST_CONSOLE_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 
 export function validateScope(name, scope, keys) {
   if (scope === undefined) {
@@ -30,14 +28,9 @@ export function validateScope(name, scope, keys) {
   }
 }
 
-export function validateTestConsole(testConsole, preset = 'typescript') {
+export function validateTestConsole(testConsole) {
   if (testConsole === undefined) {
     return;
-  }
-  if (!TEST_CONSOLE_PRESETS.includes(preset)) {
-    throw configError(
-      `"testConsole" is not supported with "preset": "${preset}": its tests' console output is not checked yet. Supported with: ${TEST_CONSOLE_PRESETS.join(', ')}`,
-    );
   }
   validateScope('testConsole', testConsole, TEST_CONSOLE_KEYS);
   if (testConsole.allow === undefined) {
@@ -73,6 +66,7 @@ function validateAllowEntry(entry, label) {
     if (entry.paths.length === 0) {
       throw configError(`"${label}.paths" needs at least one path glob`);
     }
+    validateFileGlobs(entry.paths, `${label}.paths`);
   }
   if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
     throw configError(`"${label}.reason" is required: say which library prints this and why`);
