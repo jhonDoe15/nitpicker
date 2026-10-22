@@ -197,7 +197,9 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     expect(result.text).toMatch(/Declare records as `@dataclass\(frozen=True\)`/);
     expect(result.text).toMatch(/Use `pathlib\.Path`/);
     expect(result.text).toMatch(/Remove the comment and fix the code/);
-    expect(result.text).toMatch(/entry for PTH118 in nitpicker\.config\.json/);
+    expect(result.text).toMatch(
+      /add \{"rule":"PTH118","paths":\["src\/demo\/rules\.py"\],"reason":"..."\} to "python\.exceptions" in nitpicker\.config\.json\./,
+    );
   });
   it('fails the exceptions that hide checked code until a person accepts exactly those loosenings', () => {
     const result = gate(project, 'excepted');
@@ -217,7 +219,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
       })),
     );
   });
-  it('passes the same code when python.exceptions lifts its rules', () => {
+  it('passes the same code when exceptions lift its rules', () => {
     gate(project, 'excepted');
     const digest = acceptedDigest(EXCEPTION_LOOSENINGS, {
       'nitpicker.config.json': EXCEPTING_CONFIG,

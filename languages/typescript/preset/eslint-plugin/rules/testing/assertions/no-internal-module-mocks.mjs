@@ -1,8 +1,7 @@
 import { productionModulePath } from '../../../test-isolation/production-source.mjs';
 import { mockedModuleSource } from '../../analysis/test-code-analysis.mjs';
 
-const EXCEPTION_ROUTE =
-  'If injection is not possible, add an exception for nitpicker/no-internal-module-mocks in nitpicker.config.json.';
+const EXCEPTION_ROUTE = 'An exception fits only when injection is not possible.';
 
 function isVitestAlias(specifier) {
   return specifier.type === 'ImportSpecifier' && ['vi', 'vitest'].includes(specifier.imported.name);

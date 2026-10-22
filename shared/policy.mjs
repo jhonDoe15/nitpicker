@@ -70,10 +70,28 @@ export const FUNCTION_STRUCTURE_LIMITS = {
   parameters: { limit: 3, ruleId: RULE_IDS.functionParameters },
 };
 
+/** Rules a `nitpicker.config.json` exception can narrow to one function with `function`. */
+export const FUNCTION_EXCEPTION_RULES = [
+  ...Object.values(FUNCTION_STRUCTURE_LIMITS).map(({ ruleId }) => ruleId),
+  RULE_IDS.crapScoreLimit,
+  RULE_IDS.crapCoverageUnknown,
+  RULE_IDS.changedBranchCoverage,
+  RULE_IDS.mutantSurvived,
+  RULE_IDS.mutantNoCoverage,
+];
+
+/** The only exceptions a changed-branch-coverage finding takes: they must name the function. */
+export const FUNCTION_REQUIRED_RULES = [RULE_IDS.changedBranchCoverage];
+
+/** The dead-code findings of the TypeScript and JavaScript presets: an unused file, export or type. */
+export const DEAD_CODE_RULES = ['files', 'exports', 'types'];
+
+/** Rules an exception can narrow to one declaration with `name`. */
+export const NAME_EXCEPTION_RULES = ['exports', 'types'];
+
 export const TEST_TIME_DEFAULTS = { unitTestSeconds: 5, integrationTestSeconds: 30 };
 
-/** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
-export const SHARED_EXCEPTION_RULES = [
+const FILE_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
@@ -82,6 +100,15 @@ export const SHARED_EXCEPTION_RULES = [
   ...sharedFactExceptionRules(),
 ];
 
+const PATH_EXCEPTION_RULES = [
+  RULE_IDS.duplicateClone,
+  RULE_IDS.stabilityDirection,
+  ...FILE_EXCEPTION_RULES,
+];
+
+/** Rules every preset lifts with the top-level `exceptions`; Python lifts its other rules with `python.exceptions`. */
+export const COMMON_EXCEPTION_RULES = [...FUNCTION_EXCEPTION_RULES, ...FILE_EXCEPTION_RULES];
+
 export const TEST_RUN_EXCEPTION_RULES = [RULE_IDS.slowTest];
 
 export const MUTATION_EXCEPTION_RULES = [
@@ -89,6 +116,9 @@ export const MUTATION_EXCEPTION_RULES = [
   RULE_IDS.mutantSurvived,
   RULE_IDS.mutantNoCoverage,
 ];
+
+/** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
+export const SHARED_EXCEPTION_RULES = [...FUNCTION_EXCEPTION_RULES, ...PATH_EXCEPTION_RULES];
 
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
@@ -189,7 +219,7 @@ const CATALOG = [
   {
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
-    limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
+    limit: `jscpd in \`${DUPLICATES_MODE}\` mode, also over sources with names and literals normalized (at least 100 tokens, except code that only repeats one or two statements); any new clone fails`,
     enforcedBy: withKotlin(ALL, true),
   },
   {

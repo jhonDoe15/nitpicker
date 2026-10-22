@@ -38,10 +38,15 @@ Before you change code other modules use or fix a bug, read
      missing package) and rerun. Exit 2 is never a pass. If it says another run is in progress,
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, `@ts-nocheck`, coverage or mutation ignore
-   comments (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`, legacy
+   comments (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`/`exceptions`, legacy
    entries, generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
    `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
    accept.
+5. Code that is right despite a rule: each message ends with the `exceptions` entry that would
+   accept it (`If this is intended, add {...} to "exceptions" in nitpicker.config.json.`). That
+   entry is for a human reviewer. Never add one, and never fill in its
+   `reason`, to get past the gate: stop and ask a human, and quote the finding with its entry. A
+   TypeScript compiler error has no entry; fix the type.
 
 ## Layout
 
@@ -127,7 +132,7 @@ line) is a finding.
 - A file stays within 300 lines (a test file 500) and a line within 120 characters. A folder holds
   at most 6 source files and 6 test files directly: group the rest into subfolders by what they do.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`), in source or tests, fails:
-  extract a function.
+  extract a function, also when the copy has other names and literals.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
