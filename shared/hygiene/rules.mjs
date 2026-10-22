@@ -1,4 +1,4 @@
-import { globToRegExp } from '../glob.mjs';
+import { globMatcher } from '../paths/glob.mjs';
 
 export function exceptionEntry(rule, glob, packageName) {
   const packages = packageName === undefined ? {} : { packages: [packageName] };
@@ -14,7 +14,7 @@ export function isExcepted(exceptions, { rule, path: filePath, packageName }) {
   return exceptions.some(
     (entry) =>
       entry.rule === rule &&
-      entry.paths.some((pattern) => globToRegExp(pattern).test(filePath)) &&
+      entry.paths.some((pattern) => globMatcher(pattern).test(filePath)) &&
       (entry.packages === undefined || entry.packages.includes(packageName)),
   );
 }
@@ -33,6 +33,6 @@ export function withoutExcepted(findings, exceptions = []) {
 }
 
 export function withoutExcluded(filePaths, exclude = []) {
-  const patterns = exclude.map((glob) => globToRegExp(glob));
+  const patterns = exclude.map((glob) => globMatcher(glob));
   return filePaths.filter((filePath) => !patterns.some((pattern) => pattern.test(filePath)));
 }
