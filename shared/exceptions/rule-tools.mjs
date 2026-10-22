@@ -28,11 +28,6 @@ export const DEPENDENCY_RULES = [
   'domain-does-not-import-module-state',
 ];
 
-/**
- * The tools that print each rule an `exceptions` entry can name, so that `<tool>/<rule>` is only
- * valid with the finding's own tool. The TypeScript and JavaScript presets also print the rules
- * listed after the shared ones.
- */
 const RULE_TOOLS = new Map([
   ...STRUCTURE_RULES.map((rule) => [rule, ['structure']]),
   [RULE_IDS.crapScoreLimit, ['crap']],

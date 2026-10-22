@@ -8,7 +8,6 @@ export function pathMatcher(globs) {
 
 const LAMBDA = /^lambda\$(.+)\$\d+$/u;
 
-/** `Calc.save` for the PIT mutant symbol `demo.Calc#save(IIII)I`, `Calc.Calc` for a constructor. */
 function pitFunctionName(symbol) {
   const separator = symbol.indexOf('#');
   if (separator === -1) {
