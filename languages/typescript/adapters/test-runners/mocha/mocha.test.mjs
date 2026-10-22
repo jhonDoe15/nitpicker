@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   PICK_SOURCE,
@@ -82,6 +84,31 @@ describe('coverage on a Mocha project', () => {
     );
 
     expect(findings.find(({ identity }) => identity === 'test-count')?.metric.value).toBe(1);
+  });
+
+  it('loads each test file once in a parallel run whose config also lists the specs', async () => {
+    const loads = (name) =>
+      [
+        "import { appendFileSync } from 'node:fs';",
+        `appendFileSync(new URL('../loads.log', import.meta.url), '${name}\\n');`,
+        `it('${name}', () => {});`,
+        '',
+      ].join('\n');
+    const root = mochaProject(
+      {
+        '.mocharc.json': { spec: ['test/**/*.test.ts'] },
+        'test/a.test.ts': loads('a'),
+        'test/b.test.ts': loads('b'),
+      },
+      'mocha --parallel --jobs 4',
+    );
+
+    const findings = await runArea('coverage', root);
+
+    expect([
+      readFileSync(path.join(root, 'loads.log'), 'utf8').split('\n').sort(),
+      findings.find(({ identity }) => identity === 'test-count')?.metric.value,
+    ]).toEqual([['', 'a', 'b'], 2]);
   });
 
   it.each([
