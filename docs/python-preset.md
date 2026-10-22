@@ -605,6 +605,8 @@ are listed at the end.
 | Accumulator copies                              | `append` in the loop, a comprehension, `itertools.chain.from_iterable`, `dict(pairs)`, `collections.defaultdict`                                 | `accumulator-copy` (script), ruff `RUF017` for `sum(lists, [])`                                                                                      |
 | Lazy relations per item                         | `select_related`, `prefetch_related`, `selectinload` or `joinedload` in the query that loads the rows                                            | `lazy-relation-in-loop` (script)                                                                                                                     |
 | Remote calls while holding a connection or lock | make the call before the transaction or after the commit, or record an outbox row and send it from a worker                                      | `remote-call-in-transaction`, `remote-call-under-lock` (script)                                                                                      |
+| Retried writes                                  | a stable idempotency key, a deduplication id, an upsert, or retry only the read                                                                  | `retry-without-idempotency` (script)                                                                                                                 |
+| Database and message writes                     | an outbox row in the same transaction, sent by a relay                                                                                           | `dual-write-without-outbox` (script)                                                                                                                 |
 | Task markers                                    | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
 | Commented-out code                              | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
 | Security sinks                                  | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                         | ruff `S` (see below)                                                                                                                                 |
@@ -832,6 +834,29 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   lock is a `threading`, `asyncio`, `anyio`, `trio` or `multiprocessing` lock or condition assigned in
   the project (also `self._lock`) or a name ending in `lock` or `mutex`, a `filelock.FileLock(...)` or
   a Redis `client.lock(...)`. Every other caller waits for the remote latency while the lock is held.
+- `retry-without-idempotency` reports a write that a retry can run twice. Retry scopes: a function
+  decorated with tenacity `@retry`, `retrying.retry`, `backoff.on_exception` or `on_predicate`, or
+  `stamina.retry`; a `for attempt in Retrying(...)` loop (tenacity, `AsyncRetrying`, `stamina.retry_context`)
+  and a function given to `Retrying(...)(fn)`; and a hand-written retry loop (a `try` in a loop that
+  leaves on success while its `except` goes on). The writes recognized, direct or through project
+  helpers (the path is in the message), are the documented API set and nothing else: a Stripe
+  `stripe.<Resource>.create(...)` without `idempotency_key=` (also `client.payment_intents.create` of
+  `StripeClient`); a message publish (Kafka `send` and `produce`, pika `basic_publish`, aio-pika,
+  Pub/Sub, NATS, Celery `delay`, `apply_async` and `send_task`, SQS `send_message`, SNS `publish`)
+  unless the call carries a `MessageDeduplicationId`; and SQL text starting with `INSERT` sent through a
+  database call (`execute`, `executemany`, `exec_driver_sql`) or a SQLAlchemy `insert(...)` construct, unless it
+  has `ON CONFLICT`, `ON DUPLICATE KEY`, `INSERT IGNORE`, `INSERT OR IGNORE`, `REPLACE INTO` or `MERGE` (or
+  `on_conflict_do_*` on the construct). An HTTP `POST` alone, an ORM `save()` and any write whose
+  contract is unknown are not reported.
+- `dual-write-without-outbox` reports a function that has a database write (a repository, ORM or
+  client `save`, `create`, `update`, `delete`, `merge`, `session.add`, `bulk_*`, Django `save()` and
+  `delete()` in a file that imports `django.db`, an `INSERT`, `UPDATE` or `DELETE` statement) and a
+  different message publish (the message calls above), each direct or through helpers. Only the lowest
+  function is reported: a function that calls one helper doing both is not. Publishing from a
+  `transaction.on_commit` callback is reported with its own message: it avoids a message for a
+  change that rolls back, but a crash right after the commit loses the message. An outbox row (a
+  database write only, published by a relay), change data capture and a database-backed queue are the
+  allowed forms and stay quiet.
 - `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
   comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
   `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and

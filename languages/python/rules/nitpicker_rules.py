@@ -18,10 +18,12 @@ def load_checks():
     from boundary import domain_types, guards, paths
     from checks import comments, declarations, shell, state
     from discovery import helpers, uncollected
+    from dual_write import check as dual_write
     from environment import environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped
     from orm import lazy
+    from retries import check as retries
     from security import hashes, loading
     from security.sql import check as sql
     from security.timeouts import check as timeouts
@@ -54,6 +56,8 @@ def load_checks():
         copies,
         lazy,
         transactions,
+        retries,
+        dual_write,
         skipped,
         assertions,
         unasserted,

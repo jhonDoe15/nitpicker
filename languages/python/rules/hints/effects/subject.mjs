@@ -6,6 +6,8 @@ const STRUCTURED_RULES = new Set([
   'lazy-relation-in-loop',
   'remote-call-in-transaction',
   'remote-call-under-lock',
+  'retry-without-idempotency',
+  'dual-write-without-outbox',
 ]);
 
 export function parseEffect(subject = '') {

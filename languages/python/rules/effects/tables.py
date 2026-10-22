@@ -2,6 +2,14 @@ DATABASE = "database"
 REMOTE = "remote"
 MESSAGE = "message"
 WRITE = "database-write"
+UNSAFE_STRIPE = "unsafe-payment"
+UNSAFE_MESSAGE = "unsafe-message"
+UNSAFE_SQL = "unsafe-insert"
+UNSAFE_KINDS = {
+    UNSAFE_STRIPE: "payment",
+    UNSAFE_MESSAGE: "message",
+    UNSAFE_SQL: "insert",
+}
 PRIORITY = (DATABASE, REMOTE, MESSAGE)
 
 MODULE_KINDS = {

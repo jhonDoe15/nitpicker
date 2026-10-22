@@ -56,6 +56,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Accumulating: append to one list (or fill one dict) in the loop, or use a comprehension or `itertools.chain.from_iterable`; `acc = acc + [x]`, `[*acc, x]` and `{**acc, k: v}` copy the whole accumulator on every step.
 - Related rows in a loop: fetch the relation in the query (`select_related`, `prefetch_related`, `selectinload`, `joinedload`) instead of reading `order.customer` or `order.lines.all()` for each row.
 - Transactions and locks: no HTTP, cloud SDK or other remote call inside `transaction.atomic()`, `session.begin()` or `with lock:`; call before, or after the commit, or write an outbox row inside the transaction and send it from a worker.
+- Retries and messages: a retried payment create, publish or insert needs a stable idempotency key, a deduplication id or an upsert; a database change and a message publish in one function belong in one transaction as an outbox row that a relay publishes.
 - Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
   test honesty) reports the allowed form in its message: follow the form the message names.
 - Tests: use the project's runner (pytest, unittest, Django or nose2). Every test asserts something. Every branch you add needs a test, and a

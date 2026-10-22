@@ -111,6 +111,21 @@ describe('rules script report', () => {
       'notify() > requests.post()|self._lock',
       '`notify()` (which calls `requests.post()`) makes a remote call while `self._lock` is held: every other caller waits for the remote latency, and a slow or hung remote service blocks them all',
     ],
+    [
+      'retry-without-idempotency',
+      'stripe.PaymentIntent.create()|payment|@retry',
+      '`stripe.PaymentIntent.create()` creates a payment object without an idempotency key inside `@retry`: when the server accepts the write and the response times out, the retry runs it a second time',
+    ],
+    [
+      'dual-write-without-outbox',
+      'place|repo.save()|producer.send()',
+      '`place` writes to the database (`repo.save()`) and publishes a message (`producer.send()`) in two separate steps: the message can be sent for a change that is rolled back, or the change can commit and the message never be sent',
+    ],
+    [
+      'dual-write-without-outbox',
+      'place|order.save()|notify.delay()|on-commit',
+      '`place` writes to the database (`order.save()`) and publishes a message (`notify.delay()`) in two separate steps: publishing after the commit avoids a message for a rolled-back change, but a crash right after the commit loses the message',
+    ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
       'skipped-test-without-reason',

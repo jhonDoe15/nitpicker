@@ -11,7 +11,8 @@ from effects.clients import (
     static_names,
     task_names,
 )
-from effects.writes import write_tags
+from effects.idempotency import unsafe_tags
+from effects.writes import database_receiver, write_tags
 from effects.tables import (
     DATABASE,
     GETTER_LOOKUPS,
@@ -115,13 +116,9 @@ def scope_facts(context):
     paths = imported_module_paths(context.tree)
     clients, partials = static_names(context, paths)
     django = any(path.startswith("django.db") for path in paths)
-    return (
-        imported_kinds(context.tree),
-        clients,
-        partials,
-        message_methods(paths),
-        django,
-    )
+    stripe = any(path.split(".")[0] == "stripe" for path in paths)
+    methods = message_methods(paths)
+    return imported_kinds(context.tree), clients, partials, methods, (django, stripe)
 
 
 class IoScope:
@@ -132,7 +129,8 @@ class IoScope:
         facts = context.project.memo(
             ("io-facts", context.path), lambda _: scope_facts(context)
         )
-        self.imported, self.clients, self.partials, self.methods, self.django = facts
+        self.imported, self.clients, self.partials, self.methods, flags = facts
+        self.django, self.stripe = flags
         self.tasks = task_names(context.project)
 
     def client_spec(self, names):
@@ -226,7 +224,12 @@ class IoScope:
         spec = self.client_spec(names)
         kind = self.direct_kind(names) or name_kind(names)
         receiver = spec.default if spec is not None else None
-        return write_tags(call, names, kind, receiver, self.context, self.django, text)
+        tags = write_tags(call, names, kind, receiver, self.context, self.django, text)
+        database = kind == DATABASE or database_receiver(names, receiver)
+        tags.update(
+            unsafe_tags(call, names, kind, database, self.context, self.stripe, text)
+        )
+        return tags
 
     def map_effects(self, call):
         if not (
