@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
@@ -12,6 +13,7 @@ const ENTRY_FILES = [
   'languages/java/adapters/java-analyzer.mjs',
   'languages/java/adapters/java-runner.mjs',
 ];
+const KOTLIN_PSI_DIRECTORY = 'languages/java/gradle/kotlin-psi';
 const RESOURCE_FILES = [
   'languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs',
   'languages/java/gradle/nitpicker.init.gradle',
@@ -23,8 +25,6 @@ const RESOURCE_FILES = [
   'languages/java/gradle/pmd-test-ruleset.xml',
   'languages/java/gradle/spring-test-ruleset.xml',
   'languages/java/gradle/StructureMetrics.java',
-  'languages/java/gradle/KotlinMetrics.java',
-  'languages/java/gradle/MetricsSupport.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
   'languages/java/gradle/errorprone/checks.json',
   'languages/java/adapters/overlaps/overlap-pairs.json',
@@ -36,8 +36,14 @@ const RESOURCE_FILES = [
   'languages/java/messages/spotbugs.json',
 ];
 
+function kotlinPsiFiles() {
+  return readdirSync(path.join(packageRoot, KOTLIN_PSI_DIRECTORY), { recursive: true })
+    .filter((entry) => entry.endsWith('.java'))
+    .map((entry) => `${KOTLIN_PSI_DIRECTORY}/${entry.replaceAll(path.sep, '/')}`);
+}
+
 function configurationContents() {
-  return importClosure([...ENTRY_FILES, ...RESOURCE_FILES], packageRoot);
+  return importClosure([...ENTRY_FILES, ...RESOURCE_FILES, ...kotlinPsiFiles()], packageRoot);
 }
 
 export function configurationFiles() {

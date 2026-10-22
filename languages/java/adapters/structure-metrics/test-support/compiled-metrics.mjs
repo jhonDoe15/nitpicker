@@ -7,9 +7,7 @@ import path from 'node:path';
 const HASH_LENGTH = 16;
 const COMPILATION_TIMEOUT_MS = 30_000;
 const METRICS_TIMEOUT_MS = 120_000;
-const METRICS_SOURCES = ['StructureMetrics.java', 'MetricsSupport.java'].map((name) =>
-  path.resolve(import.meta.dirname, '../../../gradle', name),
-);
+const METRICS_SOURCE = path.resolve(import.meta.dirname, '../../../gradle/StructureMetrics.java');
 
 function placeCompiled(staging, classes) {
   try {
@@ -23,17 +21,14 @@ function placeCompiled(staging, classes) {
 }
 
 export function compiledMetrics() {
-  const digest = createHash('sha256');
-  for (const source of METRICS_SOURCES) {
-    digest.update(readFileSync(source));
-  }
-  const hash = digest.digest('hex').slice(0, HASH_LENGTH);
+  const source = readFileSync(METRICS_SOURCE);
+  const hash = createHash('sha256').update(source).digest('hex').slice(0, HASH_LENGTH);
   const classes = path.join(tmpdir(), `nitpicker-structure-metrics-${hash}`);
   if (existsSync(classes)) {
     return classes;
   }
   const staging = mkdtempSync(`${classes}-`);
-  const compiled = spawnSync('javac', ['-d', staging, ...METRICS_SOURCES], {
+  const compiled = spawnSync('javac', ['-d', staging, METRICS_SOURCE], {
     encoding: 'utf8',
     timeout: COMPILATION_TIMEOUT_MS,
   });
