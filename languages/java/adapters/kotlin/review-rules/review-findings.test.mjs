@@ -33,7 +33,10 @@ function projectWith(facts) {
   const reportRoot = path.join(root, 'build/nitpicker');
   mkdirSync(reportRoot, { recursive: true });
   if (facts !== undefined) {
-    writeFileSync(path.join(reportRoot, 'kotlin-facts.json'), JSON.stringify(facts));
+    writeFileSync(
+      path.join(reportRoot, 'kotlin-facts.json'),
+      JSON.stringify({ design: { modules: [], types: [], callables: [] }, ...facts }),
+    );
   }
   return { root, reportRoot };
 }
@@ -80,6 +83,19 @@ describe('readKotlinReviewFindings', () => {
       'structure/unused-option',
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
+  });
+});
+
+describe('readKotlinReviewFindings design facts', () => {
+  it('adds a tool error when the facts report lacks the design facts of its files', () => {
+    const { root, reportRoot } = projectWith({ files: [file()] });
+    writeFileSync(path.join(reportRoot, 'kotlin-facts.json'), JSON.stringify({ files: [file()] }));
+
+    const findings = readKotlinReviewFindings({ reportRoot, projectRoot: root, manifest: {} });
+
+    expect(findings.map(({ rule, classification }) => `${rule} ${classification}`)).toEqual([
+      'design-facts tool-error',
+    ]);
   });
 });
 

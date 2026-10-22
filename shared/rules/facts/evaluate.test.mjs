@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LANGUAGES, RULES } from '../../policy.mjs';
+import { DESIGN_RULES } from '../../project-rules/design-rules.mjs';
 import { exceptionHint } from '../exceptions.mjs';
 import { sharedFactFindings } from './evaluate.mjs';
 import {
@@ -138,13 +139,14 @@ describe('the shared fact rules', () => {
   });
 
   it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
-    expect(sharedFactExceptionRules()).toEqual(['test-only-export', CONSOLE]);
+    expect(sharedFactExceptionRules()).toEqual(['test-only-export', CONSOLE, ...DESIGN_RULES]);
     expect(registeredFactRules('python')).toEqual([]);
     withLanguageRegistered('doc-comment-content', 'python', () => {
       expect(sharedFactExceptionRules()).toEqual([
         'test-only-export',
         'doc-comment-content',
         CONSOLE,
+        ...DESIGN_RULES,
       ]);
       expect(registeredFactRules('python')).toEqual(['doc-comment-content']);
     });

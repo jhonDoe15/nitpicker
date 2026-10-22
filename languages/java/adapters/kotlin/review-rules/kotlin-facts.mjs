@@ -5,13 +5,18 @@ const FACTS_REPORT = 'kotlin-facts.json';
 const NULLABLE = /\?$/u;
 const GENERIC_ARGUMENTS = /<.*$/u;
 
-export function readKotlinFacts(reportRoot) {
+function readReport(reportRoot) {
   const report = path.join(reportRoot, FACTS_REPORT);
-  if (!existsSync(report)) {
-    return { files: [] };
-  }
-  const { files } = JSON.parse(readFileSync(report, 'utf8'));
+  return existsSync(report) ? JSON.parse(readFileSync(report, 'utf8')) : { files: [] };
+}
+
+export function readKotlinFacts(reportRoot) {
+  const { files } = readReport(reportRoot);
   return { files: files.filter(({ skipped }) => skipped !== true) };
+}
+
+export function readKotlinDesign(reportRoot) {
+  return readReport(reportRoot).design;
 }
 
 export function append(map, key, value) {

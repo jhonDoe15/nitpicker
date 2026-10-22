@@ -1,0 +1,3457 @@
+{
+  "modules": [
+    {
+      "file": "src/billing/Cart.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/dup/First.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/dup/Second.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/report/Ambiguous.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/report/Explicit.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/shop/Cart.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/shop/Checkout.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/shop/Context.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/shop/Entries.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/shop/Extensions.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/shop/Order.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/shop/Registry.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/shop/Rules.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/shop/Session.kt",
+      "role": "production"
+    }
+  ],
+  "types": [
+    {
+      "id": "src/billing/Cart.kt#Cart",
+      "file": "src/billing/Cart.kt",
+      "name": "Cart",
+      "line": 3,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/dup/First.kt#Twin",
+      "file": "src/dup/First.kt",
+      "name": "Twin",
+      "line": 3,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/dup/Second.kt#Twin",
+      "file": "src/dup/Second.kt",
+      "name": "Twin",
+      "line": 3,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/dup/Second.kt",
+      "file": "src/dup/Second.kt",
+      "name": "Second",
+      "line": 7,
+      "kind": "module",
+      "exported": true
+    },
+    {
+      "id": "src/report/Ambiguous.kt",
+      "file": "src/report/Ambiguous.kt",
+      "name": "Ambiguous",
+      "line": 6,
+      "kind": "module",
+      "exported": true
+    },
+    {
+      "id": "src/report/Explicit.kt",
+      "file": "src/report/Explicit.kt",
+      "name": "Explicit",
+      "line": 6,
+      "kind": "module",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Cart.kt#Cart",
+      "file": "src/shop/Cart.kt",
+      "name": "Cart",
+      "line": 3,
+      "kind": "class",
+      "exported": true,
+      "fields": [
+        {
+          "name": "items",
+          "mutable": true,
+          "private": true
+        },
+        {
+          "name": "counts",
+          "mutable": true,
+          "private": true
+        },
+        {
+          "name": "current",
+          "private": true
+        },
+        {
+          "name": "tags",
+          "mutable": true
+        },
+        {
+          "name": "_view",
+          "mutable": true,
+          "private": true
+        },
+        {
+          "name": "immutable"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Cart.kt#Line",
+      "file": "src/shop/Cart.kt",
+      "name": "Line",
+      "line": 38,
+      "kind": "data",
+      "exported": true,
+      "fields": [
+        {
+          "name": "sku"
+        },
+        {
+          "name": "price"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt",
+      "file": "src/shop/Checkout.kt",
+      "name": "Checkout",
+      "line": 3,
+      "kind": "module",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Checkout.kt#Checkout",
+      "file": "src/shop/Checkout.kt",
+      "name": "Checkout",
+      "line": 48,
+      "kind": "class",
+      "exported": true,
+      "fields": [
+        {
+          "name": "cart",
+          "private": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt#Context",
+      "file": "src/shop/Context.kt",
+      "name": "Context",
+      "line": 3,
+      "kind": "class",
+      "exported": true,
+      "fields": [
+        {
+          "name": "clock"
+        },
+        {
+          "name": "locale"
+        },
+        {
+          "name": "region"
+        },
+        {
+          "name": "currency"
+        },
+        {
+          "name": "tenant"
+        },
+        {
+          "name": "debug"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt",
+      "file": "src/shop/Context.kt",
+      "name": "Context",
+      "line": 14,
+      "kind": "module",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Context.kt#Holder",
+      "file": "src/shop/Context.kt",
+      "name": "Holder",
+      "line": 20,
+      "kind": "data",
+      "exported": true,
+      "fields": [
+        {
+          "name": "ctx"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Entries.kt#Handler",
+      "file": "src/shop/Entries.kt",
+      "name": "Handler",
+      "line": 5,
+      "kind": "interface",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Entries.kt#Impl",
+      "file": "src/shop/Entries.kt",
+      "name": "Impl",
+      "line": 9,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Entries.kt#Framework",
+      "file": "src/shop/Entries.kt",
+      "name": "Framework",
+      "line": 15,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Entries.kt#Controller",
+      "file": "src/shop/Entries.kt",
+      "name": "Controller",
+      "line": 21,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Entries.kt#Failure",
+      "file": "src/shop/Entries.kt",
+      "name": "Failure",
+      "line": 28,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Entries.kt",
+      "file": "src/shop/Entries.kt",
+      "name": "Entries",
+      "line": 34,
+      "kind": "module",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Extensions.kt",
+      "file": "src/shop/Extensions.kt",
+      "name": "Extensions",
+      "line": 3,
+      "kind": "module",
+      "exported": true,
+      "fields": [
+        {
+          "name": "registry",
+          "mutable": true,
+          "private": true
+        },
+        {
+          "name": "names",
+          "mutable": true
+        },
+        {
+          "name": "counter"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Order.kt#Status",
+      "file": "src/shop/Order.kt",
+      "name": "Status",
+      "line": 3,
+      "kind": "enum",
+      "exported": true,
+      "cases": ["NEW", "PAID", "SHIPPED"]
+    },
+    {
+      "id": "src/shop/Order.kt#Shape",
+      "file": "src/shop/Order.kt",
+      "name": "Shape",
+      "line": 5,
+      "kind": "enum",
+      "exported": true,
+      "cases": ["Circle", "Square"]
+    },
+    {
+      "id": "src/shop/Order.kt#Result",
+      "file": "src/shop/Order.kt",
+      "name": "Result",
+      "line": 11,
+      "kind": "data",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Order.kt#Ok",
+      "file": "src/shop/Order.kt",
+      "name": "Ok",
+      "line": 13,
+      "kind": "data",
+      "exported": true,
+      "fields": [
+        {
+          "name": "value"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Order.kt#Failed",
+      "file": "src/shop/Order.kt",
+      "name": "Failed",
+      "line": 15,
+      "kind": "data",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Order.kt#Order",
+      "file": "src/shop/Order.kt",
+      "name": "Order",
+      "line": 17,
+      "kind": "data",
+      "exported": true,
+      "fields": [
+        {
+          "name": "id"
+        },
+        {
+          "name": "status"
+        },
+        {
+          "name": "total"
+        },
+        {
+          "name": "note"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Order.kt#Account",
+      "file": "src/shop/Order.kt",
+      "name": "Account",
+      "line": 19,
+      "kind": "class",
+      "exported": true,
+      "fields": [
+        {
+          "name": "level"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Registry.kt#Registry",
+      "file": "src/shop/Registry.kt",
+      "name": "Registry",
+      "line": 3,
+      "kind": "class",
+      "exported": true,
+      "fields": [
+        {
+          "name": "names",
+          "mutable": true,
+          "private": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Registry.kt#Registry.Companion",
+      "file": "src/shop/Registry.kt",
+      "name": "Companion",
+      "line": 10,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Registry.kt#Clock",
+      "file": "src/shop/Registry.kt",
+      "name": "Clock",
+      "line": 15,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Registry.kt",
+      "file": "src/shop/Registry.kt",
+      "name": "Registry",
+      "line": 19,
+      "kind": "module",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Rules.kt",
+      "file": "src/shop/Rules.kt",
+      "name": "Rules",
+      "line": 3,
+      "kind": "module",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Session.kt#Session",
+      "file": "src/shop/Session.kt",
+      "name": "Session",
+      "line": 3,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Session.kt#Pool",
+      "file": "src/shop/Session.kt",
+      "name": "Pool",
+      "line": 13,
+      "kind": "class",
+      "exported": true,
+      "fields": [
+        {
+          "name": "session"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Session.kt",
+      "file": "src/shop/Session.kt",
+      "name": "Session",
+      "line": 19,
+      "kind": "module",
+      "exported": true
+    }
+  ],
+  "callables": [
+    {
+      "id": "src/billing/Cart.kt#Cart.total",
+      "file": "src/billing/Cart.kt",
+      "name": "total",
+      "line": 4,
+      "kind": "method",
+      "owner": "src/billing/Cart.kt#Cart",
+      "exported": true,
+      "returns": "Int"
+    },
+    {
+      "id": "src/billing/Cart.kt#Cart.price(String)",
+      "file": "src/billing/Cart.kt",
+      "name": "price",
+      "line": 6,
+      "kind": "method",
+      "owner": "src/billing/Cart.kt#Cart",
+      "exported": true,
+      "params": [
+        {
+          "name": "sku",
+          "type": "String"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/billing/Cart.kt#Cart.price(Int)",
+      "file": "src/billing/Cart.kt",
+      "name": "price",
+      "line": 8,
+      "kind": "method",
+      "owner": "src/billing/Cart.kt#Cart",
+      "exported": true,
+      "params": [
+        {
+          "name": "sku",
+          "type": "Int"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/dup/First.kt#Twin.go",
+      "file": "src/dup/First.kt",
+      "name": "go",
+      "line": 4,
+      "kind": "method",
+      "owner": "src/dup/First.kt#Twin",
+      "exported": true,
+      "returns": "Int"
+    },
+    {
+      "id": "src/dup/Second.kt#Twin.go",
+      "file": "src/dup/Second.kt",
+      "name": "go",
+      "line": 4,
+      "kind": "method",
+      "owner": "src/dup/Second.kt#Twin",
+      "exported": true,
+      "returns": "Int"
+    },
+    {
+      "id": "src/dup/Second.kt#useTwin",
+      "file": "src/dup/Second.kt",
+      "name": "useTwin",
+      "line": 7,
+      "kind": "function",
+      "owner": "src/dup/Second.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "twin",
+          "type": "Twin"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/report/Ambiguous.kt#ambiguous",
+      "file": "src/report/Ambiguous.kt",
+      "name": "ambiguous",
+      "line": 6,
+      "kind": "function",
+      "owner": "src/report/Ambiguous.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "Cart"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/report/Ambiguous.kt#sameShop",
+      "file": "src/report/Ambiguous.kt",
+      "name": "sameShop",
+      "line": 8,
+      "kind": "function",
+      "owner": "src/report/Ambiguous.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "order",
+          "type": "src/shop/Order.kt#Order"
+        },
+        {
+          "name": "line",
+          "type": "src/shop/Cart.kt#Line"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["total"],
+          "forwards": []
+        },
+        {
+          "param": 1,
+          "fields": ["price"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Cart.kt#Line",
+          "fields": ["price"],
+          "line": 8
+        },
+        {
+          "type": "src/shop/Order.kt#Order",
+          "fields": ["total"],
+          "line": 8
+        }
+      ]
+    },
+    {
+      "id": "src/report/Ambiguous.kt#viaLambda",
+      "file": "src/report/Ambiguous.kt",
+      "name": "viaLambda",
+      "line": 10,
+      "kind": "function",
+      "owner": "src/report/Ambiguous.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "carts",
+          "type": "List"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/report/Ambiguous.kt#scoped",
+      "file": "src/report/Ambiguous.kt",
+      "name": "scoped",
+      "line": 12,
+      "kind": "function",
+      "owner": "src/report/Ambiguous.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "Cart"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/report/Ambiguous.kt#applied",
+      "file": "src/report/Ambiguous.kt",
+      "name": "applied",
+      "line": 14,
+      "kind": "function",
+      "owner": "src/report/Ambiguous.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "order",
+          "type": "src/shop/Order.kt#Order"
+        }
+      ],
+      "returns": "src/shop/Order.kt#Order",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Order.kt#Order",
+          "fields": ["total"],
+          "line": 14
+        }
+      ]
+    },
+    {
+      "id": "src/report/Explicit.kt#explicit",
+      "file": "src/report/Explicit.kt",
+      "name": "explicit",
+      "line": 6,
+      "kind": "function",
+      "owner": "src/report/Explicit.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/billing/Cart.kt#Cart"
+        }
+      ],
+      "returns": "Int",
+      "forward": {
+        "target": "src/billing/Cart.kt#Cart.total",
+        "arguments": [],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/billing/Cart.kt#Cart.total",
+          "line": 6,
+          "receiver": "cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["total"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/report/Explicit.kt#aliased",
+      "file": "src/report/Explicit.kt",
+      "name": "aliased",
+      "line": 8,
+      "kind": "function",
+      "owner": "src/report/Explicit.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        }
+      ],
+      "returns": "Int",
+      "forward": {
+        "target": "src/shop/Cart.kt#Cart.total",
+        "arguments": [],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.total",
+          "line": 8,
+          "receiver": "cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["total"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/report/Explicit.kt#overloaded",
+      "file": "src/report/Explicit.kt",
+      "name": "overloaded",
+      "line": 10,
+      "kind": "function",
+      "owner": "src/report/Explicit.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/billing/Cart.kt#Cart"
+        },
+        {
+          "name": "sku",
+          "type": "String"
+        }
+      ],
+      "returns": "Int",
+      "forward": {
+        "target": "src/billing/Cart.kt#Cart.price(String)",
+        "arguments": [1],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/billing/Cart.kt#Cart.price(String)",
+          "line": 10,
+          "receiver": "cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["price"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/report/Explicit.kt#literalOverload",
+      "file": "src/report/Explicit.kt",
+      "name": "literalOverload",
+      "line": 12,
+      "kind": "function",
+      "owner": "src/report/Explicit.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/billing/Cart.kt#Cart"
+        }
+      ],
+      "returns": "Int",
+      "calls": [
+        {
+          "target": "src/billing/Cart.kt#Cart.price(String)",
+          "line": 12,
+          "receiver": "cart"
+        },
+        {
+          "target": "src/billing/Cart.kt#Cart.price(Int)",
+          "line": 12,
+          "receiver": "cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["price"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/report/Explicit.kt#unknownArgument",
+      "file": "src/report/Explicit.kt",
+      "name": "unknownArgument",
+      "line": 14,
+      "kind": "function",
+      "owner": "src/report/Explicit.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/billing/Cart.kt#Cart"
+        },
+        {
+          "name": "any",
+          "type": "Any"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["price"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Cart.kt#Cart.tags:get",
+      "file": "src/shop/Cart.kt",
+      "name": "tags",
+      "line": 7,
+      "kind": "accessor",
+      "owner": "src/shop/Cart.kt#Cart",
+      "exported": true,
+      "returnsField": "tags"
+    },
+    {
+      "id": "src/shop/Cart.kt#Cart.view:get",
+      "file": "src/shop/Cart.kt",
+      "name": "view",
+      "line": 9,
+      "kind": "accessor",
+      "owner": "src/shop/Cart.kt#Cart",
+      "exported": true,
+      "returns": "List",
+      "ownFields": ["_view"],
+      "returnsField": "_view"
+    },
+    {
+      "id": "src/shop/Cart.kt#Cart.copy:get",
+      "file": "src/shop/Cart.kt",
+      "name": "copy",
+      "line": 10,
+      "kind": "accessor",
+      "owner": "src/shop/Cart.kt#Cart",
+      "exported": true,
+      "returns": "List",
+      "ownFields": ["items"]
+    },
+    {
+      "id": "src/shop/Cart.kt#Cart.lines",
+      "file": "src/shop/Cart.kt",
+      "name": "lines",
+      "line": 13,
+      "kind": "method",
+      "owner": "src/shop/Cart.kt#Cart",
+      "exported": true,
+      "returns": "MutableList",
+      "ownFields": ["items"],
+      "returnsField": "items"
+    },
+    {
+      "id": "src/shop/Cart.kt#Cart.linesAgain",
+      "file": "src/shop/Cart.kt",
+      "name": "linesAgain",
+      "line": 15,
+      "kind": "method",
+      "owner": "src/shop/Cart.kt#Cart",
+      "exported": true,
+      "returns": "MutableList",
+      "ownFields": ["items"],
+      "returnsField": "items"
+    },
+    {
+      "id": "src/shop/Cart.kt#Cart.snapshot",
+      "file": "src/shop/Cart.kt",
+      "name": "snapshot",
+      "line": 19,
+      "kind": "method",
+      "owner": "src/shop/Cart.kt#Cart",
+      "exported": true,
+      "returns": "List",
+      "ownFields": ["items"]
+    },
+    {
+      "id": "src/shop/Cart.kt#Cart.swapped",
+      "file": "src/shop/Cart.kt",
+      "name": "swapped",
+      "line": 21,
+      "kind": "method",
+      "owner": "src/shop/Cart.kt#Cart",
+      "exported": true,
+      "returns": "MutableList",
+      "ownFields": ["current"],
+      "returnsField": "current"
+    },
+    {
+      "id": "src/shop/Cart.kt#Cart.add",
+      "file": "src/shop/Cart.kt",
+      "name": "add",
+      "line": 25,
+      "kind": "method",
+      "owner": "src/shop/Cart.kt#Cart",
+      "exported": true,
+      "params": [
+        {
+          "name": "line",
+          "type": "src/shop/Cart.kt#Line"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["sku"],
+          "forwards": [],
+          "opaque": true
+        }
+      ],
+      "ownFields": ["items", "counts", "current"],
+      "reads": [
+        {
+          "type": "src/shop/Cart.kt#Line",
+          "fields": ["sku"],
+          "line": 27
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Cart.kt#Cart.total",
+      "file": "src/shop/Cart.kt",
+      "name": "total",
+      "line": 31,
+      "kind": "method",
+      "owner": "src/shop/Cart.kt#Cart",
+      "exported": true,
+      "returns": "Int",
+      "ownFields": ["items"]
+    },
+    {
+      "id": "src/shop/Cart.kt#Cart.count(String)",
+      "file": "src/shop/Cart.kt",
+      "name": "count",
+      "line": 33,
+      "kind": "method",
+      "owner": "src/shop/Cart.kt#Cart",
+      "exported": true,
+      "params": [
+        {
+          "name": "sku",
+          "type": "String"
+        }
+      ],
+      "returns": "Int",
+      "ownFields": ["counts"]
+    },
+    {
+      "id": "src/shop/Cart.kt#Cart.count(String,Int)",
+      "file": "src/shop/Cart.kt",
+      "name": "count",
+      "line": 35,
+      "kind": "method",
+      "owner": "src/shop/Cart.kt#Cart",
+      "exported": true,
+      "params": [
+        {
+          "name": "sku",
+          "type": "String"
+        },
+        {
+          "name": "fallback",
+          "type": "Int"
+        }
+      ],
+      "returns": "Int",
+      "ownFields": ["counts"]
+    },
+    {
+      "id": "src/shop/Cart.kt#Line.<init>",
+      "file": "src/shop/Cart.kt",
+      "name": "Line",
+      "line": 38,
+      "kind": "constructor",
+      "owner": "src/shop/Cart.kt#Line",
+      "exported": true,
+      "params": [
+        {
+          "name": "sku",
+          "type": "String"
+        },
+        {
+          "name": "price",
+          "type": "Int"
+        }
+      ],
+      "ownFields": ["sku", "price"]
+    },
+    {
+      "id": "src/shop/Checkout.kt#addDirect",
+      "file": "src/shop/Checkout.kt",
+      "name": "addDirect",
+      "line": 3,
+      "kind": "function",
+      "owner": "src/shop/Checkout.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        },
+        {
+          "name": "line",
+          "type": "src/shop/Cart.kt#Line"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.lines",
+          "line": 4,
+          "receiver": "cart",
+          "mutation": "add"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["lines"],
+          "forwards": []
+        },
+        {
+          "param": 1,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt#addViaAlias",
+      "file": "src/shop/Checkout.kt",
+      "name": "addViaAlias",
+      "line": 7,
+      "kind": "function",
+      "owner": "src/shop/Checkout.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        },
+        {
+          "name": "line",
+          "type": "src/shop/Cart.kt#Line"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.lines",
+          "line": 8,
+          "receiver": "cart",
+          "mutation": "add"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["lines"],
+          "forwards": []
+        },
+        {
+          "param": 1,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt#addViaCopy",
+      "file": "src/shop/Checkout.kt",
+      "name": "addViaCopy",
+      "line": 12,
+      "kind": "function",
+      "owner": "src/shop/Checkout.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        },
+        {
+          "name": "line",
+          "type": "src/shop/Cart.kt#Line"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.lines",
+          "line": 13,
+          "receiver": "cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["lines"],
+          "forwards": []
+        },
+        {
+          "param": 1,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt#addViaReassigned",
+      "file": "src/shop/Checkout.kt",
+      "name": "addViaReassigned",
+      "line": 17,
+      "kind": "function",
+      "owner": "src/shop/Checkout.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        },
+        {
+          "name": "other",
+          "type": "src/shop/Cart.kt#Cart"
+        },
+        {
+          "name": "line",
+          "type": "src/shop/Cart.kt#Line"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.lines",
+          "line": 18,
+          "receiver": "cart"
+        },
+        {
+          "target": "src/shop/Cart.kt#Cart.lines",
+          "line": 19,
+          "receiver": "other"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["lines"],
+          "forwards": []
+        },
+        {
+          "param": 1,
+          "fields": ["lines"],
+          "forwards": []
+        },
+        {
+          "param": 2,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt#clearTags",
+      "file": "src/shop/Checkout.kt",
+      "name": "clearTags",
+      "line": 23,
+      "kind": "function",
+      "owner": "src/shop/Checkout.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.tags:get",
+          "line": 24,
+          "receiver": "cart",
+          "mutation": "clear"
+        },
+        {
+          "target": "src/shop/Cart.kt#Cart.tags:get",
+          "line": 25,
+          "receiver": "cart",
+          "mutation": "assign"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["tags"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Cart.kt#Cart",
+          "fields": ["tags"],
+          "line": 24
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt#readOnly",
+      "file": "src/shop/Checkout.kt",
+      "name": "readOnly",
+      "line": 28,
+      "kind": "function",
+      "owner": "src/shop/Checkout.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        }
+      ],
+      "returns": "Int",
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.view:get",
+          "line": 28,
+          "receiver": "cart"
+        },
+        {
+          "target": "src/shop/Cart.kt#Cart.snapshot",
+          "line": 28,
+          "receiver": "cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["view", "snapshot"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Cart.kt#Cart",
+          "fields": ["view"],
+          "line": 28
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt#total",
+      "file": "src/shop/Checkout.kt",
+      "name": "total",
+      "line": 30,
+      "kind": "function",
+      "owner": "src/shop/Checkout.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        }
+      ],
+      "returns": "Int",
+      "forward": {
+        "target": "src/shop/Cart.kt#Cart.total",
+        "arguments": [],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.total",
+          "line": 30,
+          "receiver": "cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["total"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt#totalOf",
+      "file": "src/shop/Checkout.kt",
+      "name": "totalOf",
+      "line": 32,
+      "kind": "function",
+      "owner": "src/shop/Checkout.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        },
+        {
+          "name": "scale",
+          "type": "Int"
+        }
+      ],
+      "returns": "Int",
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.total",
+          "line": 32,
+          "receiver": "cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["total"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt#same",
+      "file": "src/shop/Checkout.kt",
+      "name": "same",
+      "line": 34,
+      "kind": "function",
+      "owner": "src/shop/Checkout.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        }
+      ],
+      "returns": "Int",
+      "forward": {
+        "target": "src/shop/Cart.kt#Cart.total",
+        "arguments": [],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.total",
+          "line": 35,
+          "receiver": "cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["total"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt#reorder",
+      "file": "src/shop/Checkout.kt",
+      "name": "reorder",
+      "line": 38,
+      "kind": "function",
+      "owner": "src/shop/Checkout.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        },
+        {
+          "name": "sku",
+          "type": "String"
+        },
+        {
+          "name": "fallback",
+          "type": "Int"
+        }
+      ],
+      "returns": "Int",
+      "forward": {
+        "target": "src/shop/Cart.kt#Cart.count(String,Int)",
+        "arguments": [1, 2],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.count(String,Int)",
+          "line": 38,
+          "receiver": "cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["count"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt#reordered",
+      "file": "src/shop/Checkout.kt",
+      "name": "reordered",
+      "line": 40,
+      "kind": "function",
+      "owner": "src/shop/Checkout.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        },
+        {
+          "name": "sku",
+          "type": "String"
+        },
+        {
+          "name": "fallback",
+          "type": "Int"
+        }
+      ],
+      "returns": "Int",
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.count(String,Int)",
+          "line": 40
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt#nothing",
+      "file": "src/shop/Checkout.kt",
+      "name": "nothing",
+      "line": 42,
+      "kind": "function",
+      "owner": "src/shop/Checkout.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        },
+        {
+          "name": "line",
+          "type": "src/shop/Cart.kt#Line"
+        }
+      ],
+      "forward": {
+        "target": "src/shop/Cart.kt#Cart.add",
+        "arguments": [1],
+        "returned": false
+      },
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.add",
+          "line": 43,
+          "receiver": "cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["add"],
+          "forwards": []
+        },
+        {
+          "param": 1,
+          "fields": [],
+          "forwards": [
+            {
+              "target": "src/shop/Cart.kt#Cart.add",
+              "position": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt#ambiguous",
+      "file": "src/shop/Checkout.kt",
+      "name": "ambiguous",
+      "line": 46,
+      "kind": "function",
+      "owner": "src/shop/Checkout.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        },
+        {
+          "name": "sku",
+          "type": "String"
+        }
+      ],
+      "forward": {
+        "target": "src/shop/Cart.kt#Cart.count(String)",
+        "arguments": [1],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.count(String)",
+          "line": 46,
+          "receiver": "cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["count"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Checkout.kt#Checkout.<init>",
+      "file": "src/shop/Checkout.kt",
+      "name": "Checkout",
+      "line": 48,
+      "kind": "constructor",
+      "owner": "src/shop/Checkout.kt#Checkout",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ],
+      "ownFields": ["cart"]
+    },
+    {
+      "id": "src/shop/Checkout.kt#Checkout.add",
+      "file": "src/shop/Checkout.kt",
+      "name": "add",
+      "line": 49,
+      "kind": "method",
+      "owner": "src/shop/Checkout.kt#Checkout",
+      "exported": true,
+      "params": [
+        {
+          "name": "line",
+          "type": "src/shop/Cart.kt#Line"
+        }
+      ],
+      "forward": {
+        "target": "src/shop/Cart.kt#Cart.add",
+        "arguments": [0],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.add",
+          "line": 49,
+          "receiver": "this.cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [
+            {
+              "target": "src/shop/Cart.kt#Cart.add",
+              "position": 0
+            }
+          ]
+        }
+      ],
+      "ownFields": ["cart"]
+    },
+    {
+      "id": "src/shop/Checkout.kt#Checkout.price",
+      "file": "src/shop/Checkout.kt",
+      "name": "price",
+      "line": 51,
+      "kind": "method",
+      "owner": "src/shop/Checkout.kt#Checkout",
+      "exported": true,
+      "returns": "Int",
+      "forward": {
+        "target": "src/shop/Cart.kt#Cart.total",
+        "arguments": [],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.total",
+          "line": 51,
+          "receiver": "this.cart"
+        }
+      ],
+      "ownFields": ["cart"]
+    },
+    {
+      "id": "src/shop/Checkout.kt#Checkout.both",
+      "file": "src/shop/Checkout.kt",
+      "name": "both",
+      "line": 53,
+      "kind": "method",
+      "owner": "src/shop/Checkout.kt#Checkout",
+      "exported": true,
+      "params": [
+        {
+          "name": "line",
+          "type": "src/shop/Cart.kt#Line"
+        }
+      ],
+      "returns": "Int",
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.add",
+          "line": 54,
+          "receiver": "this.cart"
+        },
+        {
+          "target": "src/shop/Cart.kt#Cart.total",
+          "line": 55,
+          "receiver": "this.cart"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [
+            {
+              "target": "src/shop/Cart.kt#Cart.add",
+              "position": 0
+            }
+          ]
+        }
+      ],
+      "ownFields": ["cart"]
+    },
+    {
+      "id": "src/shop/Context.kt#Context.<init>",
+      "file": "src/shop/Context.kt",
+      "name": "Context",
+      "line": 3,
+      "kind": "constructor",
+      "owner": "src/shop/Context.kt#Context",
+      "exported": true,
+      "params": [
+        {
+          "name": "clock",
+          "type": "Int"
+        },
+        {
+          "name": "locale",
+          "type": "String"
+        },
+        {
+          "name": "region",
+          "type": "String"
+        },
+        {
+          "name": "currency",
+          "type": "String"
+        },
+        {
+          "name": "tenant",
+          "type": "String"
+        },
+        {
+          "name": "debug",
+          "type": "Boolean"
+        }
+      ],
+      "ownFields": ["clock", "locale", "region", "currency", "tenant", "debug"]
+    },
+    {
+      "id": "src/shop/Context.kt#Context.describe",
+      "file": "src/shop/Context.kt",
+      "name": "describe",
+      "line": 11,
+      "kind": "method",
+      "owner": "src/shop/Context.kt#Context",
+      "exported": true,
+      "returns": "String",
+      "ownFields": ["locale", "region"]
+    },
+    {
+      "id": "src/shop/Context.kt#outer",
+      "file": "src/shop/Context.kt",
+      "name": "outer",
+      "line": 14,
+      "kind": "function",
+      "owner": "src/shop/Context.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "ctx",
+          "type": "src/shop/Context.kt#Context"
+        }
+      ],
+      "returns": "Int",
+      "forward": {
+        "target": "src/shop/Context.kt#inner",
+        "arguments": [0],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Context.kt#inner",
+          "line": 14
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [
+            {
+              "target": "src/shop/Context.kt#inner",
+              "position": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt#inner",
+      "file": "src/shop/Context.kt",
+      "name": "inner",
+      "line": 16,
+      "kind": "function",
+      "owner": "src/shop/Context.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "ctx",
+          "type": "src/shop/Context.kt#Context"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["clock"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Context.kt#Context",
+          "fields": ["clock"],
+          "line": 16
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt#stored",
+      "file": "src/shop/Context.kt",
+      "name": "stored",
+      "line": 18,
+      "kind": "function",
+      "owner": "src/shop/Context.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "ctx",
+          "type": "src/shop/Context.kt#Context"
+        }
+      ],
+      "returns": "src/shop/Context.kt#Holder",
+      "forward": {
+        "target": "src/shop/Context.kt#Holder.<init>",
+        "arguments": [0],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Context.kt#Holder.<init>",
+          "line": 18
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [
+            {
+              "target": "src/shop/Context.kt#Holder.<init>",
+              "position": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt#returned",
+      "file": "src/shop/Context.kt",
+      "name": "returned",
+      "line": 22,
+      "kind": "function",
+      "owner": "src/shop/Context.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "ctx",
+          "type": "src/shop/Context.kt#Context"
+        }
+      ],
+      "returns": "src/shop/Context.kt#Context",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt#inLambda",
+      "file": "src/shop/Context.kt",
+      "name": "inLambda",
+      "line": 24,
+      "kind": "function",
+      "owner": "src/shop/Context.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "ctx",
+          "type": "src/shop/Context.kt#Context"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["clock"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Context.kt#Context",
+          "fields": ["clock"],
+          "line": 24
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt#inEscaping",
+      "file": "src/shop/Context.kt",
+      "name": "inEscaping",
+      "line": 26,
+      "kind": "function",
+      "owner": "src/shop/Context.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "ctx",
+          "type": "src/shop/Context.kt#Context"
+        }
+      ],
+      "returns": "()->Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Context.kt#Context",
+          "fields": ["clock"],
+          "line": 26
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt#nullChecked",
+      "file": "src/shop/Context.kt",
+      "name": "nullChecked",
+      "line": 28,
+      "kind": "function",
+      "owner": "src/shop/Context.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "ctx",
+          "type": "src/shop/Context.kt#Context"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["clock"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Context.kt#Context",
+          "fields": ["clock"],
+          "line": 28
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt#passedWrongPosition",
+      "file": "src/shop/Context.kt",
+      "name": "passedWrongPosition",
+      "line": 30,
+      "kind": "function",
+      "owner": "src/shop/Context.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "ctx",
+          "type": "src/shop/Context.kt#Context"
+        }
+      ],
+      "returns": "Int",
+      "forward": {
+        "target": "src/shop/Context.kt#vararg",
+        "arguments": [-1, -1, 0],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Context.kt#vararg",
+          "line": 30
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [
+            {
+              "target": "src/shop/Context.kt#vararg",
+              "position": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt#vararg",
+      "file": "src/shop/Context.kt",
+      "name": "vararg",
+      "line": 32,
+      "kind": "function",
+      "owner": "src/shop/Context.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "n",
+          "type": "Array",
+          "variadic": true
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/shop/Context.kt#unresolved",
+      "file": "src/shop/Context.kt",
+      "name": "unresolved",
+      "line": 34,
+      "kind": "function",
+      "owner": "src/shop/Context.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "ctx",
+          "type": "src/shop/Context.kt#Context"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt#defaults",
+      "file": "src/shop/Context.kt",
+      "name": "defaults",
+      "line": 36,
+      "kind": "function",
+      "owner": "src/shop/Context.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "ctx",
+          "type": "src/shop/Context.kt#Context"
+        },
+        {
+          "name": "extra",
+          "type": "Int",
+          "optional": true
+        }
+      ],
+      "returns": "Int",
+      "forward": {
+        "target": "src/shop/Context.kt#twoArgs",
+        "arguments": [1, 0],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Context.kt#twoArgs",
+          "line": 36
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [
+            {
+              "target": "src/shop/Context.kt#twoArgs",
+              "position": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt#twoArgs",
+      "file": "src/shop/Context.kt",
+      "name": "twoArgs",
+      "line": 38,
+      "kind": "function",
+      "owner": "src/shop/Context.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "extra",
+          "type": "Int"
+        },
+        {
+          "name": "ctx",
+          "type": "src/shop/Context.kt#Context"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 1,
+          "fields": ["clock"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Context.kt#Context",
+          "fields": ["clock"],
+          "line": 38
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt#named",
+      "file": "src/shop/Context.kt",
+      "name": "named",
+      "line": 40,
+      "kind": "function",
+      "owner": "src/shop/Context.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "ctx",
+          "type": "src/shop/Context.kt#Context"
+        }
+      ],
+      "returns": "Int",
+      "calls": [
+        {
+          "target": "src/shop/Context.kt#twoArgs",
+          "line": 40
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [
+            {
+              "target": "src/shop/Context.kt#twoArgs",
+              "position": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Context.kt#Holder.<init>",
+      "file": "src/shop/Context.kt",
+      "name": "Holder",
+      "line": 20,
+      "kind": "constructor",
+      "owner": "src/shop/Context.kt#Holder",
+      "exported": true,
+      "params": [
+        {
+          "name": "ctx",
+          "type": "src/shop/Context.kt#Context"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ],
+      "ownFields": ["ctx"]
+    },
+    {
+      "id": "src/shop/Entries.kt#Handler.handle",
+      "file": "src/shop/Entries.kt",
+      "name": "handle",
+      "line": 6,
+      "kind": "method",
+      "owner": "src/shop/Entries.kt#Handler",
+      "exported": true,
+      "params": [
+        {
+          "name": "x",
+          "type": "Int"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/shop/Entries.kt#Impl.handle",
+      "file": "src/shop/Entries.kt",
+      "name": "handle",
+      "line": 10,
+      "kind": "method",
+      "owner": "src/shop/Entries.kt#Impl",
+      "exported": true,
+      "entry": true,
+      "params": [
+        {
+          "name": "x",
+          "type": "Int"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/shop/Entries.kt#Impl.plain",
+      "file": "src/shop/Entries.kt",
+      "name": "plain",
+      "line": 12,
+      "kind": "method",
+      "owner": "src/shop/Entries.kt#Impl",
+      "exported": true,
+      "returns": "Int"
+    },
+    {
+      "id": "src/shop/Entries.kt#Framework.run",
+      "file": "src/shop/Entries.kt",
+      "name": "run",
+      "line": 16,
+      "kind": "method",
+      "owner": "src/shop/Entries.kt#Framework",
+      "exported": true,
+      "entry": true
+    },
+    {
+      "id": "src/shop/Entries.kt#Framework.helper",
+      "file": "src/shop/Entries.kt",
+      "name": "helper",
+      "line": 18,
+      "kind": "method",
+      "owner": "src/shop/Entries.kt#Framework",
+      "exported": true,
+      "entry": true
+    },
+    {
+      "id": "src/shop/Entries.kt#Controller.index",
+      "file": "src/shop/Entries.kt",
+      "name": "index",
+      "line": 23,
+      "kind": "method",
+      "owner": "src/shop/Entries.kt#Controller",
+      "exported": true,
+      "entry": true
+    },
+    {
+      "id": "src/shop/Entries.kt#Controller.plain",
+      "file": "src/shop/Entries.kt",
+      "name": "plain",
+      "line": 25,
+      "kind": "method",
+      "owner": "src/shop/Entries.kt#Controller",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Entries.kt#Failure.toString",
+      "file": "src/shop/Entries.kt",
+      "name": "toString",
+      "line": 29,
+      "kind": "method",
+      "owner": "src/shop/Entries.kt#Failure",
+      "exported": true,
+      "returns": "String"
+    },
+    {
+      "id": "src/shop/Entries.kt#Failure.detail",
+      "file": "src/shop/Entries.kt",
+      "name": "detail",
+      "line": 31,
+      "kind": "method",
+      "owner": "src/shop/Entries.kt#Failure",
+      "exported": true,
+      "entry": true,
+      "returns": "String"
+    },
+    {
+      "id": "src/shop/Entries.kt#main",
+      "file": "src/shop/Entries.kt",
+      "name": "main",
+      "line": 34,
+      "kind": "function",
+      "owner": "src/shop/Entries.kt",
+      "exported": true,
+      "entry": true,
+      "calls": [
+        {
+          "target": "src/shop/Entries.kt#Impl.handle",
+          "line": 35
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Entries.kt#Screen",
+      "file": "src/shop/Entries.kt",
+      "name": "Screen",
+      "line": 39,
+      "kind": "function",
+      "owner": "src/shop/Entries.kt",
+      "exported": true,
+      "entry": true
+    },
+    {
+      "id": "src/shop/Entries.kt#callHandler",
+      "file": "src/shop/Entries.kt",
+      "name": "callHandler",
+      "line": 41,
+      "kind": "function",
+      "owner": "src/shop/Entries.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "handler",
+          "type": "src/shop/Entries.kt#Handler"
+        }
+      ],
+      "returns": "Int",
+      "calls": [
+        {
+          "target": "src/shop/Entries.kt#Handler.handle",
+          "line": 41,
+          "receiver": "handler"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["handle"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Extensions.kt#names:get",
+      "file": "src/shop/Extensions.kt",
+      "name": "names",
+      "line": 4,
+      "kind": "accessor",
+      "owner": "src/shop/Extensions.kt",
+      "exported": true,
+      "returnsField": "names"
+    },
+    {
+      "id": "src/shop/Extensions.kt#register",
+      "file": "src/shop/Extensions.kt",
+      "name": "register",
+      "line": 8,
+      "kind": "function",
+      "owner": "src/shop/Extensions.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "name",
+          "type": "String"
+        }
+      ],
+      "ownFields": ["registry", "counter"]
+    },
+    {
+      "id": "src/shop/Extensions.kt#registered",
+      "file": "src/shop/Extensions.kt",
+      "name": "registered",
+      "line": 13,
+      "kind": "function",
+      "owner": "src/shop/Extensions.kt",
+      "exported": true,
+      "returns": "List",
+      "ownFields": ["registry"],
+      "returnsField": "registry"
+    },
+    {
+      "id": "src/shop/Extensions.kt#leaked",
+      "file": "src/shop/Extensions.kt",
+      "name": "leaked",
+      "line": 15,
+      "kind": "function",
+      "owner": "src/shop/Extensions.kt",
+      "exported": true,
+      "returns": "MutableList",
+      "ownFields": ["registry"],
+      "returnsField": "registry"
+    },
+    {
+      "id": "src/shop/Extensions.kt#isPaid@Order",
+      "file": "src/shop/Extensions.kt",
+      "name": "isPaid",
+      "line": 17,
+      "kind": "function",
+      "owner": "src/shop/Extensions.kt",
+      "exported": true,
+      "returns": "Boolean",
+      "reads": [
+        {
+          "type": "src/shop/Order.kt#Order",
+          "fields": ["status"],
+          "line": 17
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Extensions.kt#addAll@Cart",
+      "file": "src/shop/Extensions.kt",
+      "name": "addAll",
+      "line": 19,
+      "kind": "function",
+      "owner": "src/shop/Extensions.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "lines",
+          "type": "List"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Cart.kt#Cart.add",
+          "line": 21,
+          "receiver": "this"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Extensions.kt#useExtensions",
+      "file": "src/shop/Extensions.kt",
+      "name": "useExtensions",
+      "line": 25,
+      "kind": "function",
+      "owner": "src/shop/Extensions.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "cart",
+          "type": "src/shop/Cart.kt#Cart"
+        },
+        {
+          "name": "order",
+          "type": "src/shop/Order.kt#Order"
+        },
+        {
+          "name": "lines",
+          "type": "List"
+        }
+      ],
+      "returns": "Boolean",
+      "calls": [
+        {
+          "target": "src/shop/Extensions.kt#addAll@Cart",
+          "line": 26,
+          "receiver": "cart"
+        },
+        {
+          "target": "src/shop/Extensions.kt#isPaid@Order",
+          "line": 27,
+          "receiver": "order"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        },
+        {
+          "param": 1,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Extensions.kt#describe@Order",
+      "file": "src/shop/Extensions.kt",
+      "name": "describe",
+      "line": 30,
+      "kind": "function",
+      "owner": "src/shop/Extensions.kt",
+      "exported": true,
+      "returns": "String",
+      "decisions": [
+        {
+          "subject": "src/shop/Order.kt#Status",
+          "groups": [["NEW"]],
+          "line": 31,
+          "otherwise": true
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Order.kt#Order",
+          "fields": ["status", "note"],
+          "decided": ["status"],
+          "line": 31
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Extensions.kt#shout@String",
+      "file": "src/shop/Extensions.kt",
+      "name": "shout",
+      "line": 36,
+      "kind": "function",
+      "owner": "src/shop/Extensions.kt",
+      "exported": true,
+      "returns": "String"
+    },
+    {
+      "id": "src/shop/Extensions.kt#shouted",
+      "file": "src/shop/Extensions.kt",
+      "name": "shouted",
+      "line": 38,
+      "kind": "function",
+      "owner": "src/shop/Extensions.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "text",
+          "type": "String"
+        }
+      ],
+      "returns": "String",
+      "forward": {
+        "target": "src/shop/Extensions.kt#shout@String",
+        "arguments": [],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Extensions.kt#shout@String",
+          "line": 38,
+          "receiver": "text"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Order.kt#Ok.<init>",
+      "file": "src/shop/Order.kt",
+      "name": "Ok",
+      "line": 13,
+      "kind": "constructor",
+      "owner": "src/shop/Order.kt#Ok",
+      "exported": true,
+      "params": [
+        {
+          "name": "value",
+          "type": "Int"
+        }
+      ],
+      "ownFields": ["value"]
+    },
+    {
+      "id": "src/shop/Order.kt#Account.<init>",
+      "file": "src/shop/Order.kt",
+      "name": "Account",
+      "line": 19,
+      "kind": "constructor",
+      "owner": "src/shop/Order.kt#Account",
+      "exported": true,
+      "params": [
+        {
+          "name": "level",
+          "type": "String"
+        }
+      ],
+      "ownFields": ["level"]
+    },
+    {
+      "id": "src/shop/Order.kt#Account.upgrade",
+      "file": "src/shop/Order.kt",
+      "name": "upgrade",
+      "line": 20,
+      "kind": "method",
+      "owner": "src/shop/Order.kt#Account",
+      "exported": true,
+      "returns": "src/shop/Order.kt#Account",
+      "calls": [
+        {
+          "target": "src/shop/Order.kt#Account.<init>",
+          "line": 20
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Registry.kt#Registry.names",
+      "file": "src/shop/Registry.kt",
+      "name": "names",
+      "line": 6,
+      "kind": "method",
+      "owner": "src/shop/Registry.kt#Registry",
+      "exported": true,
+      "returns": "MutableList",
+      "ownFields": ["names"],
+      "returnsField": "names"
+    },
+    {
+      "id": "src/shop/Registry.kt#Registry.size",
+      "file": "src/shop/Registry.kt",
+      "name": "size",
+      "line": 8,
+      "kind": "method",
+      "owner": "src/shop/Registry.kt#Registry",
+      "exported": true,
+      "returns": "Int",
+      "ownFields": ["names"]
+    },
+    {
+      "id": "src/shop/Registry.kt#Registry.Companion.create",
+      "file": "src/shop/Registry.kt",
+      "name": "create",
+      "line": 11,
+      "kind": "method",
+      "owner": "src/shop/Registry.kt#Registry.Companion",
+      "exported": true,
+      "returns": "src/shop/Registry.kt#Registry"
+    },
+    {
+      "id": "src/shop/Registry.kt#Clock.compareTo",
+      "file": "src/shop/Registry.kt",
+      "name": "compareTo",
+      "line": 16,
+      "kind": "method",
+      "owner": "src/shop/Registry.kt#Clock",
+      "exported": true,
+      "entry": true,
+      "params": [
+        {
+          "name": "other",
+          "type": "src/shop/Registry.kt#Clock"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Registry.kt#addName",
+      "file": "src/shop/Registry.kt",
+      "name": "addName",
+      "line": 19,
+      "kind": "function",
+      "owner": "src/shop/Registry.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "registry",
+          "type": "src/shop/Registry.kt#Registry"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Registry.kt#Registry.names",
+          "line": 20,
+          "receiver": "registry",
+          "mutation": "plusAssign"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["names"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Registry.kt#build",
+      "file": "src/shop/Registry.kt",
+      "name": "build",
+      "line": 23,
+      "kind": "function",
+      "owner": "src/shop/Registry.kt",
+      "exported": true,
+      "returns": "Int",
+      "calls": [
+        {
+          "target": "src/shop/Registry.kt#Registry.Companion.create",
+          "line": 23
+        },
+        {
+          "target": "src/shop/Registry.kt#Registry.size",
+          "line": 23
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#label",
+      "file": "src/shop/Rules.kt",
+      "name": "label",
+      "line": 3,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "status",
+          "type": "src/shop/Order.kt#Status"
+        }
+      ],
+      "returns": "String",
+      "decisions": [
+        {
+          "subject": "src/shop/Order.kt#Status",
+          "groups": [["NEW", "PAID"], ["SHIPPED"]],
+          "line": 4
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#labelElse",
+      "file": "src/shop/Rules.kt",
+      "name": "labelElse",
+      "line": 9,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "order",
+          "type": "src/shop/Order.kt#Order"
+        }
+      ],
+      "returns": "String",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["status"],
+          "forwards": []
+        }
+      ],
+      "decisions": [
+        {
+          "subject": "src/shop/Order.kt#Status",
+          "groups": [["NEW"]],
+          "line": 10,
+          "otherwise": true
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Order.kt#Order",
+          "fields": ["status"],
+          "decided": ["status"],
+          "line": 10
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#byLevel",
+      "file": "src/shop/Rules.kt",
+      "name": "byLevel",
+      "line": 15,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "account",
+          "type": "src/shop/Order.kt#Account"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["level"],
+          "forwards": []
+        }
+      ],
+      "decisions": [
+        {
+          "subject": "src/shop/Order.kt#Account.level",
+          "groups": [["gold", "silver"], ["bronze"]],
+          "line": 16,
+          "otherwise": true
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Order.kt#Account",
+          "fields": ["level"],
+          "decided": ["level"],
+          "line": 16
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#chain",
+      "file": "src/shop/Rules.kt",
+      "name": "chain",
+      "line": 22,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "order",
+          "type": "src/shop/Order.kt#Order"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["note"],
+          "forwards": []
+        }
+      ],
+      "decisions": [
+        {
+          "subject": "src/shop/Order.kt#Order.note",
+          "groups": [["a"], ["b", "c"]],
+          "line": 23,
+          "otherwise": true
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Order.kt#Order",
+          "fields": ["note"],
+          "decided": ["note"],
+          "line": 23
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#membership",
+      "file": "src/shop/Rules.kt",
+      "name": "membership",
+      "line": 32,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "order",
+          "type": "src/shop/Order.kt#Order"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["note"],
+          "forwards": []
+        }
+      ],
+      "decisions": [
+        {
+          "subject": "src/shop/Order.kt#Order.note",
+          "groups": [["x", "y"]],
+          "line": 32,
+          "otherwise": true
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Order.kt#Order",
+          "fields": ["note"],
+          "decided": ["note"],
+          "line": 32
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#areaObjects",
+      "file": "src/shop/Rules.kt",
+      "name": "areaObjects",
+      "line": 34,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "shape",
+          "type": "src/shop/Order.kt#Shape"
+        }
+      ],
+      "returns": "Int",
+      "decisions": [
+        {
+          "subject": "src/shop/Order.kt#Shape",
+          "groups": [["Circle"], ["Square"]],
+          "line": 35
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#areaIs",
+      "file": "src/shop/Rules.kt",
+      "name": "areaIs",
+      "line": 40,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "shape",
+          "type": "src/shop/Order.kt#Shape"
+        }
+      ],
+      "returns": "Int",
+      "decisions": [
+        {
+          "subject": "src/shop/Order.kt#Shape",
+          "groups": [["Circle"], ["Square"]],
+          "line": 41
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#notAnEnum",
+      "file": "src/shop/Rules.kt",
+      "name": "notAnEnum",
+      "line": 46,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "result",
+          "type": "src/shop/Order.kt#Result"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#comparison",
+      "file": "src/shop/Rules.kt",
+      "name": "comparison",
+      "line": 52,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "order",
+          "type": "src/shop/Order.kt#Order"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["total"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Order.kt#Order",
+          "fields": ["total"],
+          "decided": ["total"],
+          "line": 52
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#subjectless",
+      "file": "src/shop/Rules.kt",
+      "name": "subjectless",
+      "line": 54,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "order",
+          "type": "src/shop/Order.kt#Order"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["status"],
+          "forwards": []
+        }
+      ],
+      "decisions": [
+        {
+          "subject": "src/shop/Order.kt#Status",
+          "groups": [["NEW"], ["PAID", "SHIPPED"]],
+          "line": 55,
+          "otherwise": true
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Order.kt#Order",
+          "fields": ["status"],
+          "decided": ["status"],
+          "line": 56
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#mixedChain",
+      "file": "src/shop/Rules.kt",
+      "name": "mixedChain",
+      "line": 61,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "order",
+          "type": "src/shop/Order.kt#Order"
+        },
+        {
+          "name": "flag",
+          "type": "Boolean"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["note"],
+          "forwards": []
+        }
+      ],
+      "decisions": [
+        {
+          "subject": "src/shop/Order.kt#Order.note",
+          "groups": [["a"]],
+          "line": 62,
+          "otherwise": true
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Order.kt#Order",
+          "fields": ["note"],
+          "decided": ["note"],
+          "line": 62
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#conditionReads",
+      "file": "src/shop/Rules.kt",
+      "name": "conditionReads",
+      "line": 70,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "order",
+          "type": "src/shop/Order.kt#Order"
+        }
+      ],
+      "returns": "Boolean",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["status", "total", "note"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Order.kt#Order",
+          "fields": ["status", "total", "note"],
+          "decided": ["status", "total"],
+          "line": 71
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#enumEquals",
+      "file": "src/shop/Rules.kt",
+      "name": "enumEquals",
+      "line": 78,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "order",
+          "type": "src/shop/Order.kt#Order"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["status"],
+          "forwards": []
+        }
+      ],
+      "decisions": [
+        {
+          "subject": "src/shop/Order.kt#Status",
+          "groups": [["NEW"], ["PAID"]],
+          "line": 79
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Order.kt#Order",
+          "fields": ["status"],
+          "decided": ["status"],
+          "line": 79
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Rules.kt#lone",
+      "file": "src/shop/Rules.kt",
+      "name": "lone",
+      "line": 87,
+      "kind": "function",
+      "owner": "src/shop/Rules.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "order",
+          "type": "src/shop/Order.kt#Order"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["note"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Order.kt#Order",
+          "fields": ["note"],
+          "decided": ["note"],
+          "line": 88
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Session.kt#Session.begin",
+      "file": "src/shop/Session.kt",
+      "name": "begin",
+      "line": 4,
+      "kind": "method",
+      "owner": "src/shop/Session.kt#Session",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Session.kt#Session.write",
+      "file": "src/shop/Session.kt",
+      "name": "write",
+      "line": 6,
+      "kind": "method",
+      "owner": "src/shop/Session.kt#Session",
+      "exported": true,
+      "params": [
+        {
+          "name": "data",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Session.kt#Session.commit",
+      "file": "src/shop/Session.kt",
+      "name": "commit",
+      "line": 8,
+      "kind": "method",
+      "owner": "src/shop/Session.kt#Session",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Session.kt#Session.close",
+      "file": "src/shop/Session.kt",
+      "name": "close",
+      "line": 10,
+      "kind": "method",
+      "owner": "src/shop/Session.kt#Session",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Session.kt#Pool.open",
+      "file": "src/shop/Session.kt",
+      "name": "open",
+      "line": 16,
+      "kind": "method",
+      "owner": "src/shop/Session.kt#Pool",
+      "exported": true,
+      "returns": "src/shop/Session.kt#Session"
+    },
+    {
+      "id": "src/shop/Session.kt#balanced",
+      "file": "src/shop/Session.kt",
+      "name": "balanced",
+      "line": 19,
+      "kind": "function",
+      "owner": "src/shop/Session.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "session",
+          "type": "src/shop/Session.kt#Session"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Session.kt#Session.begin",
+          "line": 20,
+          "receiver": "session"
+        },
+        {
+          "target": "src/shop/Session.kt#Session.write",
+          "line": 22,
+          "receiver": "session"
+        },
+        {
+          "target": "src/shop/Session.kt#Session.close",
+          "line": 24,
+          "receiver": "session",
+          "cleanup": true
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["begin", "write", "close"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Session.kt#unbalanced",
+      "file": "src/shop/Session.kt",
+      "name": "unbalanced",
+      "line": 28,
+      "kind": "function",
+      "owner": "src/shop/Session.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "session",
+          "type": "src/shop/Session.kt#Session"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Session.kt#Session.begin",
+          "line": 29,
+          "receiver": "session"
+        },
+        {
+          "target": "src/shop/Session.kt#Session.write",
+          "line": 30,
+          "receiver": "session"
+        },
+        {
+          "target": "src/shop/Session.kt#Session.close",
+          "line": 31,
+          "receiver": "session"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["begin", "write", "close"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Session.kt#inCatch",
+      "file": "src/shop/Session.kt",
+      "name": "inCatch",
+      "line": 34,
+      "kind": "function",
+      "owner": "src/shop/Session.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "session",
+          "type": "src/shop/Session.kt#Session"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Session.kt#Session.write",
+          "line": 36,
+          "receiver": "session"
+        },
+        {
+          "target": "src/shop/Session.kt#Session.close",
+          "line": 38,
+          "receiver": "session"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["write", "close"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Session.kt#usesLambda",
+      "file": "src/shop/Session.kt",
+      "name": "usesLambda",
+      "line": 42,
+      "kind": "function",
+      "owner": "src/shop/Session.kt",
+      "exported": true,
+      "calls": [
+        {
+          "target": "src/shop/Session.kt#Session.write",
+          "line": 43
+        },
+        {
+          "target": "src/shop/Session.kt#Session.close",
+          "line": 43,
+          "cleanup": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Session.kt#usesVariable",
+      "file": "src/shop/Session.kt",
+      "name": "usesVariable",
+      "line": 46,
+      "kind": "function",
+      "owner": "src/shop/Session.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "pool",
+          "type": "src/shop/Session.kt#Pool"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Session.kt#Pool.open",
+          "line": 47,
+          "receiver": "pool"
+        },
+        {
+          "target": "src/shop/Session.kt#Session.begin",
+          "line": 48,
+          "receiver": "mine"
+        },
+        {
+          "target": "src/shop/Session.kt#Session.close",
+          "line": 48,
+          "receiver": "mine",
+          "cleanup": true
+        },
+        {
+          "target": "src/shop/Session.kt#Session.commit",
+          "line": 49
+        },
+        {
+          "target": "src/shop/Session.kt#Session.close",
+          "line": 49,
+          "cleanup": true
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["open", "session"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Session.kt#Pool",
+          "fields": ["session"],
+          "line": 49
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Session.kt#aliased",
+      "file": "src/shop/Session.kt",
+      "name": "aliased",
+      "line": 52,
+      "kind": "function",
+      "owner": "src/shop/Session.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "pool",
+          "type": "src/shop/Session.kt#Pool"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Session.kt#Pool.open",
+          "line": 53,
+          "receiver": "pool"
+        },
+        {
+          "target": "src/shop/Session.kt#Session.begin",
+          "line": 55,
+          "receiver": "a"
+        },
+        {
+          "target": "src/shop/Session.kt#Session.commit",
+          "line": 56,
+          "receiver": "a"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["open"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Session.kt#reassigned",
+      "file": "src/shop/Session.kt",
+      "name": "reassigned",
+      "line": 59,
+      "kind": "function",
+      "owner": "src/shop/Session.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "pool",
+          "type": "src/shop/Session.kt#Pool"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Session.kt#Pool.open",
+          "line": 60,
+          "receiver": "pool"
+        },
+        {
+          "target": "src/shop/Session.kt#Session.begin",
+          "line": 61
+        },
+        {
+          "target": "src/shop/Session.kt#Pool.open",
+          "line": 62,
+          "receiver": "pool"
+        },
+        {
+          "target": "src/shop/Session.kt#Session.commit",
+          "line": 63
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["open"],
+          "forwards": []
+        }
+      ]
+    }
+  ]
+}

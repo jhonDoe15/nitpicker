@@ -14,6 +14,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../builds/java-build.mjs';
+import { prepareCompiler, runPsiProgram } from './test-support/kotlin-psi-program.mjs';
 import {
   BOM,
   BROKEN,
@@ -36,20 +37,6 @@ import {
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-const pinned = /kotlinCompiler\s*:\s*'([^']+)'/.exec(readFileSync(INIT_SCRIPT, 'utf8'))[1];
-const psiSources = path.resolve(import.meta.dirname, '../gradle/kotlin-psi');
-
-const PRINT_CLASSPATH = `allprojects {
-    plugins.withId('org.jetbrains.kotlin.jvm') {
-        tasks.register('printKotlinCompiler') {
-            doLast {
-                println 'JAVA_HOME=' + System.getProperty('java.home')
-                println 'CLASSPATH=' + configurations.nitpickerKotlinCompiler.asPath
-            }
-        }
-    }
-}
-`;
 
 const FORCE_OTHER_KOTLIN = `
 configurations.matching { it.name == "nitpickerKotlinCompiler" }.configureEach {
@@ -74,33 +61,7 @@ const MODULE_BUILD = [
 const PSI_CLASS = 'nitpicker/kotlinpsi/KotlinPsi.class';
 
 let workspace;
-let java;
-let classpath;
-let classes;
-
-function gradleClasspath(project) {
-  const script = path.join(workspace, 'print.init.gradle');
-  writeFileSync(script, PRINT_CLASSPATH);
-  const result = spawnSync(
-    gradle,
-    [
-      '--console=plain',
-      '--quiet',
-      '--no-configuration-cache',
-      '-Pnitpicker.kotlin=true',
-      '-I',
-      INIT_SCRIPT,
-      '-I',
-      script,
-      'printKotlinCompiler',
-    ],
-    { cwd: project, encoding: 'utf8', timeout: 180_000 },
-  );
-  expect(result.status, result.stderr).toBe(0);
-  const lines = result.stdout.split('\n');
-  const valueOf = (key) => lines.find((line) => line.startsWith(`${key}=`)).slice(key.length + 1);
-  return { javaHome: valueOf('JAVA_HOME'), classpath: valueOf('CLASSPATH') };
-}
+let compiler;
 
 function writeSources(name, files) {
   const dir = path.join(workspace, name);
@@ -146,43 +107,8 @@ function functionsOf(project, module) {
   return JSON.parse(readFileSync(report, 'utf8')).functions.map(({ name }) => name);
 }
 
-function compilePsiProgram() {
-  const output = path.join(workspace, 'psi-classes');
-  const sources = readdirSync(psiSources, { recursive: true })
-    .filter((entry) => entry.endsWith('.java'))
-    .map((entry) => path.join(psiSources, entry));
-  const result = spawnSync(
-    path.join(java, 'bin/javac'),
-    ['-proc:none', '-d', output, '-cp', classpath, ...sources],
-    { encoding: 'utf8', timeout: 180_000 },
-  );
-  expect(result.status, result.stderr).toBe(0);
-  return output;
-}
-
-function measure(project, roots = ['src']) {
-  const metricsOutput = path.join(project, 'metrics.json');
-  const factsOutput = path.join(project, 'facts.json');
-  const result = spawnSync(
-    path.join(java, 'bin/java'),
-    [
-      `-Dnitpicker.kotlinCompiler=${pinned}`,
-      '-cp',
-      `${classpath}${path.delimiter}${classes}`,
-      'nitpicker.kotlinpsi.KotlinPsi',
-      metricsOutput,
-      factsOutput,
-      project,
-      ...roots,
-    ],
-    { cwd: project, encoding: 'utf8', timeout: 180_000 },
-  );
-  return {
-    status: result.status,
-    log: result.stdout + result.stderr,
-    metrics: result.status === 0 ? JSON.parse(readFileSync(metricsOutput, 'utf8')) : undefined,
-    facts: result.status === 0 ? JSON.parse(readFileSync(factsOutput, 'utf8')) : undefined,
-  };
+function measure(project, roots) {
+  return runPsiProgram(compiler, project, roots);
 }
 
 describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
@@ -196,8 +122,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       path.join(project, 'build.gradle.kts'),
       `${readFileSync(path.join(project, 'build.gradle.kts'), 'utf8')}${FORCE_OTHER_KOTLIN}`,
     );
-    ({ javaHome: java, classpath } = gradleClasspath(project));
-    classes = compilePsiProgram();
+    compiler = prepareCompiler({ workspace, project, gradle, environment: process.env });
   });
 
   afterAll(() => {
@@ -205,10 +130,10 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('resolves the pinned compiler although the project forces another Kotlin version', () => {
-    const jars = classpath.split(path.delimiter).map((jar) => path.basename(jar));
+    const jars = compiler.classpath.split(path.delimiter).map((jar) => path.basename(jar));
 
     expect(jars.filter((jar) => jar.startsWith('kotlin-compiler-embeddable'))).toEqual([
-      `kotlin-compiler-embeddable-${pinned}.jar`,
+      `kotlin-compiler-embeddable-${compiler.pinned}.jar`,
     ]);
     expect(jars.filter((jar) => /1\.9\.25/.test(jar))).toEqual([]);
   });
@@ -342,7 +267,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       ].join(''),
       'm',
     ).exec(log);
-    expect([status, line, version]).toEqual([1, '4', pinned]);
+    expect([status, line, version]).toEqual([1, '4', compiler.pinned]);
   });
 
   it('reads a source file nested far deeper than the default stack allows', () => {
