@@ -112,7 +112,7 @@ def path_method_calls(context):
     scopes = [context.tree] + [
         node
         for node in ast.walk(context.tree)
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
     ]
     for scope in scopes:
         names = path_names(scope, context.aliases)

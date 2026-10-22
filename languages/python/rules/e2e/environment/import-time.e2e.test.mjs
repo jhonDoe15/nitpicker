@@ -116,6 +116,17 @@ describe.skipIf(!enabled)('import-time-effect', () => {
         [`${RULE}:2 open`],
       ],
       [
+        'a class body reading a path',
+        lines(
+          'from pathlib import Path',
+          '',
+          '',
+          'class Config:',
+          '    TEXT = Path("a.txt").read_text()',
+        ),
+        [`${RULE}:5 Path.read_text`],
+      ],
+      [
         'a default argument',
         lines('def load(data=open("seed.json").read()):', '    return data'),
         [`${RULE}:1 open`],

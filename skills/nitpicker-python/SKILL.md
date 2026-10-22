@@ -43,7 +43,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
 - Imports: name what you use. No `from module import *`.
-- Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`. A
+- Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`;
+  a `domain` package returns a result instead and leaves logging to `adapters/`. A
   log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
   error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the
   error or return a failure that carries it.
