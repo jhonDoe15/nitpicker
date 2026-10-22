@@ -116,7 +116,7 @@ export const rule = {
     schema: [],
     messages: {
       singularAndPlural:
-        'Optional props `{{ singular }}` and `{{ plural }}` are two ways to pass the same data. Keep `{{ plural }}` and pass a single item as a one-element array. If both props are intended, add an exception for this rule in nitpicker.config.json.',
+        'Optional props `{{ singular }}` and `{{ plural }}` are two ways to pass the same data. Keep `{{ plural }}` and pass a single item as a one-element array.',
     },
   },
   create(context) {

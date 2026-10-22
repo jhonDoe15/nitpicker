@@ -151,8 +151,7 @@ describe('the test file rules follow the runner', () => {
     expect(message).toBe(
       "'vitest' import is restricted from being used. nitpicker runs this project's tests with Jest, " +
         'which does not run Vitest tests. Take the test functions from `@jest/globals` or the Jest globals, or, if the project runs its tests with Vitest, ' +
-        'set "tools.tests.runner" to "vitest" in nitpicker.config.json. If this file needs the module for another reason, ' +
-        'add an exception for no-restricted-imports for it in nitpicker.config.json.',
+        'set "tools.tests.runner" to "vitest" in nitpicker.config.json. An exception fits only when this file needs the module for another reason.',
     );
   });
 });

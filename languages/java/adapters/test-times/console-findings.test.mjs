@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
-import { normalizeConsoleMessage, testConsoleFindings } from './console-findings.mjs';
+import { normalizeConsoleMessage } from '../../../../shared/rules/console/console-messages.mjs';
+import { testConsoleFindings } from './console-findings.mjs';
 
 const ORDER_TEST = 'src/test/java/shop/OrderTest.java';
 const CART_TEST = 'src/test/java/shop/CartTest.java';

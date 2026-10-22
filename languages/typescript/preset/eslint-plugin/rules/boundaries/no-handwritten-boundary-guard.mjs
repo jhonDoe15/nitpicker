@@ -177,15 +177,15 @@ export function boundaryGuardRule(rootLibraries) {
       schema: jsdocOptionSchema,
       messages: {
         typePredicate:
-          'Do not hand-write a type guard for unknown input: parse it once at the boundary with {{phrase}} ({{example}}). A predicate over a union (`(result): result is Ok => result.kind === "ok"`) is fine. If the guard is genuinely needed, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.',
+          'Do not hand-write a type guard for unknown input: parse it once at the boundary with {{phrase}} ({{example}}). A predicate over a union (`(result): result is Ok => result.kind === "ok"`) is fine. An exception fits only when the guard is genuinely needed.',
         inlineNarrowing:
-          'Do not hand-narrow an `unknown` value with `typeof x === "object"` or `"key" in x`: parse it once at the boundary with {{phrase}} ({{example}}). A caught error is read with `error instanceof Error`. If the narrowing is genuinely needed, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.',
+          'Do not hand-narrow an `unknown` value with `typeof x === "object"` or `"key" in x`: parse it once at the boundary with {{phrase}} ({{example}}). A caught error is read with `error instanceof Error`. An exception fits only when the narrowing is genuinely needed.',
         overloadCast:
-          'This overload implementation returns unknown or any, which makes its overload signatures a cast. Return a typed value, or split it into separate functions. If it is deliberate, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.',
+          'This overload implementation returns unknown or any, which makes its overload signatures a cast. Return a typed value, or split it into separate functions. An exception fits only when it is deliberate.',
         unparsedJson:
-          'Pass `JSON.parse(text)` straight into `{{call}}(...)` inside the same `try`. If the text is trusted and already typed, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.',
+          'Pass `JSON.parse(text)` straight into `{{call}}(...)` inside the same `try`. An exception fits only when the text is trusted and already typed.',
         jsonCopy:
-          'Copy a value with `structuredClone(value)`, not `JSON.parse(JSON.stringify(value))`. If it is deliberate, add an exception for nitpicker/no-handwritten-boundary-guard in nitpicker.config.json.',
+          'Copy a value with `structuredClone(value)`, not `JSON.parse(JSON.stringify(value))`. An exception fits only when it is deliberate.',
       },
     },
     create: (context) => createVisitors(context, rootLibraries),

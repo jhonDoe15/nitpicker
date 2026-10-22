@@ -83,8 +83,7 @@ function wrongRunnerMessage(runner, other) {
     `nitpicker runs this project's tests with ${RUNNER_NAMES[runner]}, which does not run ` +
     `${RUNNER_NAMES[other]} tests. Take the test functions from ${runnerVocabulary(runner).testFunctions}, ` +
     `or, if the project runs its tests with ${RUNNER_NAMES[other]}, set "tools.tests.runner" to "${other}" ` +
-    'in nitpicker.config.json. If this file needs the module for another reason, ' +
-    'add an exception for no-restricted-imports for it in nitpicker.config.json.'
+    'in nitpicker.config.json. An exception fits only when this file needs the module for another reason.'
   );
 }
 

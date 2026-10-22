@@ -3,7 +3,7 @@ import { isFailureCall, logCalls, topLevelArguments } from './loggers.mjs';
 
 export const CATCH_LOG_RULE = 'catch-log-without-exception';
 export const CATCH_LOG_MESSAGE =
-  'Pass the caught exception to the logger as its own argument so the stack trace is kept (log.error("what failed", e), or logger.error(e) { "what failed" }). e.message, e.toString() and a string template of the exception drop it. If this log is right without the exception, add an "exceptions" entry for rule catch-log-without-exception in nitpicker.config.json.';
+  'Pass the caught exception to the logger as its own argument so the stack trace is kept (log.error("what failed", e), or logger.error(e) { "what failed" }). e.message, e.toString() and a string template of the exception drop it.';
 
 const CATCH = /\bcatch\s*\(([^()]*)\)\s*\{/g;
 const CAUGHT_NAME = { kotlin: /^\s*(\w+)\s*:/, java: /(\w+)\s*$/ };
@@ -57,7 +57,7 @@ function rethrows(body, name) {
   );
 }
 
-export function catchLogViolations(code, language) {
+export function catchLogViolations(code, language, { reportedElsewhere = new Set() } = {}) {
   const blocks = catchBlocks(code, language);
   return logCalls(code)
     .filter(isFailureCall)
@@ -65,6 +65,7 @@ export function catchLogViolations(code, language) {
       const block = innermost(blocks, call.index);
       const handled =
         block === undefined ||
+        reportedElsewhere.has(block.open) ||
         passesException(call, block.name) ||
         rethrows(code.slice(block.open, block.close), block.name);
       return handled ? [] : [{ receiver: call.receiver, level: call.level, caught: block.name }];

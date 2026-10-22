@@ -47,12 +47,12 @@ const SURVIVING_MUTANTS = [
   {
     file: 'src/main/features/greeting/domain/shout.js',
     message:
-      'Survived MethodExpression at column 13: replacing `text.toUpperCase()` with `text.toLowerCase()` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+      'Survived MethodExpression at column 13: replacing `text.toUpperCase()` with `text.toLowerCase()` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/features/greeting/domain/shout.js"],"function":"shout","reason":"..."} to "exceptions" in nitpicker.config.json.',
   },
   {
     file: 'src/main/features/greeting/domain/shout.js',
     message:
-      "Survived StringLiteral at column 10: replacing `` `${text.toUpperCase()}!` `` with `''` (an empty string) fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.",
+      'Survived StringLiteral at column 10: replacing `` `${text.toUpperCase()}!` `` with `\'\'` (an empty string) fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/features/greeting/domain/shout.js"],"function":"shout","reason":"..."} to "exceptions" in nitpicker.config.json.',
   },
 ];
 

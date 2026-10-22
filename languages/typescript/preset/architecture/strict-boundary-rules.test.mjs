@@ -1,5 +1,8 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { DEPENDENCY_RULES } from '../../../../shared/exceptions/rule-tools.mjs';
+import cruiserConfig from '../defaults/dependency-cruiser.config.mjs';
+import { NO_IMPORT_OUTSIDE_ROOTS } from './outside-roots/outside-roots.mjs';
 import { cruiseStrict, cruiseWithConfig } from './test-support/strict-cruise.mjs';
 import strictConfig from './fixtures/dependency-cruiser.strict.fixture.config.mjs';
 import {
@@ -57,7 +60,7 @@ const violations = [
   ['import-cycle', 'no-production-cycles', null],
 ];
 
-const exceptionRoute = 'add an exception for this rule in nitpicker.config.json';
+const exceptionRoute = 'An exception fits only when it is deliberate';
 
 describe('strict boundary rules', () => {
   it('accepts the allowed layout', async () => {
@@ -242,5 +245,15 @@ describe('the test files of each runner in domain/', () => {
       [`${domain}/login-test.ts`, 'node:test', 'domain-does-not-import-node-io'],
       [`${domain}/test/login.ts`, 'node:test', 'domain-does-not-import-node-io'],
     ]);
+  });
+});
+
+describe('the exception route of the dependency rules', () => {
+  it('knows every dependency-cruiser rule except the one a layout setting lifts', () => {
+    const names = cruiserConfig.forbidden.map(({ name }) => name);
+
+    expect(names.filter((name) => name !== NO_IMPORT_OUTSIDE_ROOTS).toSorted()).toEqual(
+      DEPENDENCY_RULES.toSorted(),
+    );
   });
 });

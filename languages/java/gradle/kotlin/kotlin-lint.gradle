@@ -1,0 +1,91 @@
+def reportDir = project.ext.nitpickerReportDir
+def analysisRoot = gradle.startParameter.currentDir
+def kotlinFiles = project.ext.nitpickerKotlinFiles
+def compiledKotlinFiles = {
+    project.kotlin.sourceSets.main.kotlin.srcDirs.findAll { it.exists() }.sort()
+        .collectMany { dir -> fileTree(dir) { include '**/*.kt' }.files.sort() }.unique()
+}
+def jdkHome = project.ext.nitpickerKotlinJdkHome
+def relative = { File file -> analysisRoot.toPath().relativize(file.toPath()).toString().replace('\\', '/') }
+def silencing = ~/^-(?:nowarn|Werror|Xsuppress-warning|Xwarning-level|Xreport-all-warnings|Xrender-internal-diagnostic-names)\b.*/
+def quoted = { String argument -> '"' + argument.replace('\\', '\\\\').replace('"', '\\"') + '"' }
+
+def projectCompilerArguments = {
+    def arguments = []
+    def compile = tasks.findByName('compileKotlin')
+    if (compile == null) {
+        return arguments
+    }
+    try {
+        def options = compile.compilerOptions
+        def language = options.languageVersion.orNull?.version
+        def api = options.apiVersion.orNull?.version
+        def target = options.jvmTarget.orNull?.target
+        if (language) { arguments += ['-language-version', language] }
+        if (api) { arguments += ['-api-version', api] }
+        if (target) { arguments += ['-jvm-target', target] }
+        options.optIn.get().each { arguments << "-opt-in=${it}".toString() }
+        if (options.javaParameters.get()) { arguments << '-java-parameters' }
+        arguments += options.freeCompilerArgs.get().findAll { !(it ==~ silencing) }
+    } catch (Exception ignored) {
+    }
+    try {
+        def plugins = compile.pluginClasspath.files.findAll { it.exists() }
+        if (!plugins.isEmpty()) {
+            arguments << "-Xplugin=${plugins.collect { it.absolutePath }.join(',')}".toString()
+        }
+        compile.pluginOptions.get().each { config ->
+            config.allOptions().each { pluginId, pluginOptions ->
+                pluginOptions.each { option ->
+                    arguments += ['-P', "plugin:${pluginId}:${option.key}=${option.value}".toString()]
+                }
+            }
+        }
+    } catch (Exception ignored) {
+    }
+    arguments
+}
+
+tasks.register('nitpickerKotlinLint', JavaExec) {
+    group = 'nitpicker'
+    classpath = configurations.nitpickerKotlinCompiler
+    mainClass = 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler'
+    ignoreExitValue = true
+    workingDir = analysisRoot
+    dependsOn 'compileJava'
+    def log = new ByteArrayOutputStream()
+    def report = reportDir.map { it.file('kotlinc.json') }
+    onlyIf { !kotlinFiles().isEmpty() }
+    doFirst {
+        reportDir.get().asFile.mkdirs()
+        standardOutput = log
+        errorOutput = log
+        def classes = new File(temporaryDir, 'classes')
+        project.delete(classes)
+        def javaClasses = tasks.named('compileJava').get().destinationDirectory.get().asFile
+        def libraries = (sourceSets.main.compileClasspath.files + [javaClasses]).findAll { it.exists() }
+        def arguments = ['-Xrender-internal-diagnostic-names', '-no-stdlib', '-no-reflect',
+                         '-jdk-home', jdkHome(), '-d', classes.absolutePath] +
+            (libraries.isEmpty() ? [] : ['-classpath', libraries.collect { it.absolutePath }.join(File.pathSeparator)]) +
+            projectCompilerArguments() + compiledKotlinFiles().collect { relative(it) }
+        def argumentFile = new File(temporaryDir, 'kotlinc.args')
+        argumentFile.text = arguments.collect { quoted(it.toString()) + '\n' }.join('')
+        args("@${argumentFile.absolutePath}".toString())
+    }
+    doLast {
+        report.get().asFile.text = groovy.json.JsonOutput.toJson([
+            exitCode: executionResult.get().exitValue,
+            output  : log.toString('UTF-8'),
+        ])
+    }
+}
+
+tasks.named('nitpickerJava') {
+    dependsOn 'nitpickerKotlinLint'
+    doLast {
+        def report = reportDir.get().file('kotlinc.json').asFile
+        if (!report.exists()) {
+            report.text = '{"exitCode":0,"output":""}'
+        }
+    }
+}

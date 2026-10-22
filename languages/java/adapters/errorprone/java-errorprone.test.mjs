@@ -63,7 +63,7 @@ describe('readErrorProneFindings', () => {
     ]);
   });
 
-  it('ends findings of checks that can hit intended code with the exceptions route, in the java preset only', () => {
+  it('ends findings of checks that can hit intended code with the exceptions route', () => {
     const { projectRoot, reportRoot } = reportRootWith((root) => [
       {
         file: path.join(root, 'src/main/java/demo/A.java'),
@@ -72,20 +72,15 @@ describe('readErrorProneFindings', () => {
       },
       diagnostic(path.join(root, 'src/main/java/demo/A.java')),
     ]);
-    const read = (kotlin) =>
-      readErrorProneFindings({
-        reportRoot,
-        roots: [projectRoot],
-        lintedRoots: ['src'],
-        kotlin,
-      }).map((finding) => finding.message);
 
-    expect(read(false)).toEqual([
+    const messages = readErrorProneFindings({
+      reportRoot,
+      roots: [projectRoot],
+      lintedRoots: ['src'],
+    }).map((finding) => finding.message);
+
+    expect(messages).toEqual([
       'Stack is a nonstandard class. If this is intended, add {"rule":"errorprone/JdkObsolete","paths":["src/main/java/demo/A.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
-      "Exception created but not thrown. Did you mean 'throw new X();'?",
-    ]);
-    expect(read(true)).toEqual([
-      'Stack is a nonstandard class',
       "Exception created but not thrown. Did you mean 'throw new X();'?",
     ]);
   });
@@ -105,10 +100,11 @@ describe('readErrorProneFindings', () => {
       roots: [projectRoot],
       lintedRoots: ['src/main/java', 'src/test/java'],
       manifest: { testSourceRoots: ['src/test/java'], guava: false, testGuava: true },
-      kotlin: true,
     });
 
-    expect(findings.map((finding) => finding.message)).toStrictEqual([
+    expect(
+      findings.map((finding) => finding.message.split(' If this is intended')[0]),
+    ).toStrictEqual([
       "Throw something specific. Did you mean 'throw new IllegalStateException('?",
       "Throw something specific. Did you mean 'throw new VerifyException('?",
     ]);
@@ -147,7 +143,6 @@ describe('readErrorProneFindings', () => {
       reportRoot,
       roots: [projectRoot],
       lintedRoots: ['src/main/java'],
-      kotlin: true,
     });
 
     expect(findings.map((finding) => [finding.rule, finding.location.line])).toStrictEqual([

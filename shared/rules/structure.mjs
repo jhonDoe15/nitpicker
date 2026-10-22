@@ -37,6 +37,7 @@ import {
   positiveInteger,
   summaryMetrics,
 } from './finding-helpers.mjs';
+import { exceptionRoute } from '../exceptions/rule-names.mjs';
 
 const METADATA_FIELDS = new Set([
   'file',
@@ -62,18 +63,18 @@ export function evaluateStructure(report, analyzerName, { hints = {} } = {}) {
       });
     }
   }
-  addEntries(findings, analyzerName, report.functions, 'function', hints);
-  addEntries(findings, analyzerName, report.classes, 'class', hints);
+  addEntries(findings, analyzerName, report.functions, 'function', { hints });
+  addEntries(findings, analyzerName, report.classes, 'class', { hints });
   return findings;
 }
 
-function addEntries(findings, analyzerName, entries = [], kind, hints) {
+function addEntries(findings, analyzerName, entries = [], kind, messageOptions) {
   const occurrences = new Map();
   const violations = new Map();
   for (const entry of entries) {
     const occurrence = nextOccurrence(occurrences, `${entry.file}\0${entry.name}`);
     if (kind === 'function') {
-      addLimitViolations(findings, analyzerName, entry, { occurrence, violations }, hints);
+      addLimitViolations(findings, analyzerName, entry, { occurrence, violations }, messageOptions);
     }
     for (const [metricName, value] of Object.entries(entry)) {
       if (METADATA_FIELDS.has(metricName)) {
@@ -108,7 +109,43 @@ function withHint(message, hint) {
   return message.endsWith('.') ? `${message} ${hint}` : `${message}. ${hint}`;
 }
 
-function addLimitViolations(findings, analyzerName, entry, numbering, hints) {
+function limitFinding({
+  analyzerName,
+  entry,
+  metricName,
+  limit,
+  ruleId,
+  occurrence,
+  sourceHash,
+  hint,
+}) {
+  const route = exceptionRoute({ rule: ruleId, path: entry.file, function: entry.name });
+  const values = { name: entry.name, value: entry[metricName], limit, base: '{base}' };
+  return {
+    tool: analyzerName,
+    rule: ruleId,
+    path: entry.file,
+    identity: `function:${entry.name}:occurrence:${String(occurrence)}:source:${sourceHash}`,
+    message: withHint(
+      withHint(
+        renderMessage(structureMessage(metricName), { ...values, metric: metricName }),
+        hint,
+      ),
+      route,
+    ),
+    classification: 'enforceable',
+    symbol: entry.name,
+    ratchet: {
+      key: `function:${entry.name}:occurrence:${String(occurrence)}:${metricName}`,
+      value: entry[metricName],
+      worseMessage: withHint(renderMessage(GREW_MESSAGES[metricName], values), route),
+      heldMessage: renderMessage(HELD_MESSAGES[metricName], values),
+    },
+    ...(positiveInteger(entry.start) === undefined ? {} : { location: { line: entry.start } }),
+  };
+}
+
+function addLimitViolations(findings, analyzerName, entry, numbering, { hints }) {
   const sourceHash =
     entry.sourceHash ?? hash(`${entry.file}:${String(entry.start)}:${String(entry.end)}`);
   for (const [metricName, { limit, ruleId }] of Object.entries(FUNCTION_STRUCTURE_LIMITS)) {
@@ -122,39 +159,17 @@ function addLimitViolations(findings, analyzerName, entry, numbering, hints) {
             `${entry.file}\0${entry.name}\0${metricName}\0${sourceHash}`,
           )
         : numbering.occurrence;
-    findings.push({
-      tool: analyzerName,
-      rule: ruleId,
-      path: entry.file,
-      identity: `function:${entry.name}:occurrence:${String(occurrence)}:source:${sourceHash}`,
-      message: withHint(
-        renderMessage(structureMessage(metricName), {
-          name: entry.name,
-          value: entry[metricName],
-          metric: metricName,
-          limit,
-        }),
-        hints[metricName],
-      ),
-      classification: 'enforceable',
-      symbol: entry.name,
-      ratchet: {
-        key: `function:${entry.name}:occurrence:${String(occurrence)}:${metricName}`,
-        value: entry[metricName],
-        worseMessage: renderMessage(GREW_MESSAGES[metricName], {
-          name: entry.name,
-          value: entry[metricName],
-          limit,
-          base: '{base}',
-        }),
-        heldMessage: renderMessage(HELD_MESSAGES[metricName], {
-          name: entry.name,
-          value: entry[metricName],
-          limit,
-          base: '{base}',
-        }),
-      },
-      ...(positiveInteger(entry.start) === undefined ? {} : { location: { line: entry.start } }),
-    });
+    findings.push(
+      limitFinding({
+        analyzerName,
+        entry,
+        metricName,
+        limit,
+        ruleId,
+        occurrence,
+        sourceHash,
+        hint: hints[metricName],
+      }),
+    );
   }
 }

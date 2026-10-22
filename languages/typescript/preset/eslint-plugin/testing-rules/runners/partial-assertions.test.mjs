@@ -3,9 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { rule } from '../../rules/testing/assertions/no-partial-output-assertion.mjs';
 
 const EXCEPTION_FOR_OUTPUT =
-  'If the output is too large or unordered to pin, add an exception for this rule in nitpicker.config.json.';
-const EXCEPTION_FOR_VALUE =
-  'If the value is too large or unordered to pin, add an exception for this rule in nitpicker.config.json.';
+  'An exception fits only when the output is too large or unordered to pin.';
+const EXCEPTION_FOR_VALUE = 'An exception fits only when the value is too large or unordered to pin.';
 const ON_ITS_OWN =
   'For a field that varies, assert it on its own and compare the rest of the value whole.';
 
@@ -14,6 +13,13 @@ const OUTPUT_ASSERTIONS = {
   jest: '`toEqual` or `toBe`',
   node: '`assert.deepStrictEqual` or `assert.strictEqual`',
   mocha: '`expect(...).to.deep.equal` or `assert.deepStrictEqual`',
+};
+const FRAGMENT_FORMS = {
+  vitest: '`toContain`, or `toMatch` with a pattern that is not anchored `^...$`',
+  jest: '`toContain`, or `toMatch` with a pattern that is not anchored `^...$`',
+  node: "`assert.ok(text.includes('x'))`, or `assert.match` with a pattern that is not anchored `^...$`",
+  mocha:
+    '`include`, `contain` or `string` with text, or `match` with a pattern that is not anchored `^...$`',
 };
 const VALUE_ASSERTIONS = {
   vitest: [
@@ -30,7 +36,7 @@ const VALUE_ASSERTIONS = {
 };
 
 function outputMessage(runner) {
-  return `Assert the whole output with ${OUTPUT_ASSERTIONS[runner]} instead of checking that it contains a fragment: a fragment passes even when the rest is wrong. ${EXCEPTION_FOR_OUTPUT}`;
+  return `Assert the whole output with ${OUTPUT_ASSERTIONS[runner]} instead of checking that it contains a fragment (${FRAGMENT_FORMS[runner]}): a fragment passes even when the rest is wrong. ${EXCEPTION_FOR_OUTPUT}`;
 }
 
 function valueMessage(runner) {

@@ -51,7 +51,7 @@ export const policyFailureMessageCases = [
   adapterCase(
     'process.env names the exception route',
     "export const url = process.env['API_URL'];",
-    'exception for this rule in nitpicker.config.json',
+    'An exception fits only when',
   ),
   adapterCase(
     'process.exit names the main guard',

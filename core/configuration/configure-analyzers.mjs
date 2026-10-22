@@ -65,7 +65,10 @@ function applyJavaConfig(analyzers, config) {
           exclude: config.exclude,
           legacyInventory: config.legacyInventory ?? DEFAULT_LEGACY_INVENTORY,
           ...(analyzer.name === MUTATION_ANALYZER_NAME
-            ? { thresholds: { crapLimit: config.thresholds?.crapLimit } }
+            ? {
+                thresholds: { crapLimit: config.thresholds?.crapLimit },
+                exceptions: config.exceptions,
+              }
             : {
                 thresholds: config.thresholds,
                 exceptions: config.exceptions,

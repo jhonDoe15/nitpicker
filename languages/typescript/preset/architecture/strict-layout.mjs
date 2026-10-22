@@ -1,16 +1,21 @@
-import { escapeRegExp } from '../../../../shared/glob.mjs';
-import { readLayout } from '../head-policy.mjs';
+import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 
-const layout = readLayout();
+const resolvedLayout = readLayout();
+const { sourceRoots } = resolvedLayout;
+const { layout } = readHeadPolicy();
 
-const sourceRoot = `(?:${layout.sourceRoots.join('|')})`;
+const FEATURES = 'main/features';
+const SHARED = 'main/shared';
+
+const sourceRoot = `(?:${sourceRoots.join('|')})`;
 
 const main = `(?:^|/)${sourceRoot}/main`;
 
 export const layoutFeatures = {
-  featureRoot: `${main}/features`,
-  feature: `${main}/features/[^/]+`,
-  shared: `${main}/shared/`,
+  featureRoot: `(?:^|/)${sourceRoot}/${FEATURES}`,
+  feature: `(?:^|/)${sourceRoot}/${FEATURES}/[^/]+`,
+  shared: `(?:^|/)${sourceRoot}/${SHARED}/`,
   compositionRoot: `${main}/composition-root(?:\\.[cm]?[jt]sx?$|/)`,
 };
 
@@ -28,4 +33,9 @@ export function testFilePathPatterns(resolved, projectRoot) {
   ];
 }
 
-export const testFilePaths = testFilePathPatterns(layout, '.');
+export const testFilePaths = testFilePathPatterns(resolvedLayout, '.');
+
+export const featureLayout = {
+  sharedRoots: layout.sharedRoots ?? sourceRoots.map((root) => `**/${root}/${SHARED}`),
+  featureRoots: layout.featureRoots ?? sourceRoots.map((root) => `**/${root}/${FEATURES}`),
+};

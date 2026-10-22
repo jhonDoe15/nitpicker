@@ -175,8 +175,8 @@ describe('the React scope config', () => {
     const hints = testingLibraryHintsFor(runnerVocabulary(runner));
 
     expect([hints['no-node-access'], hints['no-debugging-utils']]).toEqual([
-      ` Use \`screen.getByRole(...)\` or \`within(...)\`, and ${focus} for focus. If this is intentional, add an exception for this rule in nitpicker.config.json.`,
-      `. Remove the debug output and assert what you were looking for: ${visible}. If this is intentional, add an exception for this rule in nitpicker.config.json.`,
+      ` Use \`screen.getByRole(...)\` or \`within(...)\`, and ${focus} for focus.`,
+      `. Remove the debug output and assert what you were looking for: ${visible}.`,
     ]);
   });
 

@@ -1,8 +1,7 @@
-import path from 'node:path';
 import { readLayout } from '../../../../head-policy.mjs';
 import { scanDomEvidence } from './dom-evidence.mjs';
 import { closureUsesDom, setupUsesDom } from './module-closure.mjs';
-import { RUNNER_OPTION_PROPERTY, runnerOf } from '../runners/runner-option.mjs';
+import { RUNNER_OPTION_PROPERTY, projectRelative, runnerOf } from '../runners/runner-option.mjs';
 import { statementSources } from '../../../../modules/module-sources.mjs';
 import { registeredEnvironment } from '../../../../test-environment/global-dom/global-dom.mjs';
 
@@ -29,7 +28,7 @@ const DEFAULT_GLOBAL_DOM_SETUP = {
   separateRun: 'a separate test run',
 };
 const EXCEPTION_HINT =
-  'If it uses the DOM in a way nitpicker cannot see, add an exception for nitpicker/no-unused-dom-environment.';
+  'An exception fits only when the file uses the DOM in a way nitpicker cannot see.';
 const ALIAS_FIND = {
   anyOf: [
     { type: 'string' },
@@ -42,13 +41,6 @@ const ALIAS_FIND = {
   ],
 };
 
-function projectRelative(filename, cwd) {
-  const relative = path.relative(cwd, filename).split(path.sep).join('/');
-  if (!relative.startsWith('..')) return relative;
-  const roots = [...layout.sourceRoots, ...layout.testRoots];
-  const root = roots.find((candidate) => filename.includes(`/${candidate}/`));
-  return root === undefined ? relative : filename.slice(filename.indexOf(`/${root}/`) + 1);
-}
 
 function registeredInFile(program) {
   for (const statement of program.body) {

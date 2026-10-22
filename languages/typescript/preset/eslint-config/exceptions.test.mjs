@@ -39,6 +39,11 @@ describe('strict rule exceptions', () => {
     expect(applyRuleExceptions(presetConfig, [fileLimit])).toEqual(presetConfig);
   });
 
+  it('leaves exceptions for mutants hidden by an ignore comment to the mutation check', () => {
+    const ignoredMutant = { rule: 'mutant-ignored', paths: ['src/gen/**'], reason: 'Generated' };
+    expect(applyRuleExceptions(presetConfig, [ignoredMutant])).toEqual(presetConfig);
+  });
+
   it('leaves exceptions for the hygiene and package checks to their own analyzers', () => {
     const rules = ['committed-env-file', 'large-file', 'unused-dependency'];
     const lifted = rules.map((name) => ({ rule: name, paths: ['config/**'], reason: 'Fixture' }));
@@ -85,6 +90,21 @@ describe('strict rule exceptions', () => {
     expect(() =>
       applyRuleExceptions(presetConfig, [{ ...exception, rule: 'nitpicker/nope' }]),
     ).toThrow(/unknown rules: nitpicker\/nope/);
+  });
+
+  it('leaves the function-scoped nitpicker rules to the analyzers that report them', async () => {
+    const config = applyRuleExceptions(presetConfig, [
+      { rule: 'function-lines-limit', paths: ['src/legacy/**'], function: 'big', reason: 'Legacy' },
+      {
+        rule: 'changed-branch-coverage',
+        paths: ['src/legacy/**'],
+        function: 'f',
+        reason: 'Legacy',
+      },
+      exception,
+    ]);
+    await expect(ruleSeverity(config, 'src/legacy/old.ts')).resolves.toBe(0);
+    await expect(ruleSeverity(config, 'src/fresh/new.ts')).resolves.toBe(2);
   });
 
   it('lifts a rule in a narrower production analyzer and ignores rules it does not run', async () => {

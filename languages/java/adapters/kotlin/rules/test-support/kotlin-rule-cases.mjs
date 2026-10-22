@@ -1,4 +1,5 @@
 import { SUPPRESSION_RULE } from '../kotlin-rules.mjs';
+import { kotlinGuardCases } from './kotlin-guard-cases.mjs';
 
 const COROUTINE_IMPORTS =
   'import kotlinx.coroutines.GlobalScope\nimport kotlinx.coroutines.launch\n';
@@ -130,6 +131,7 @@ export const kotlinRuleCases = [
       '@Suppress("UnsafeCallOnNullableType")\nfun length(text: String?): Int = text!!.length\n',
     allowed: 'fun length(text: String?): Int = text?.length ?: 0\n',
   },
+  ...kotlinGuardCases,
 ];
 
 const VARIANT_NAMES = { banned: 'Banned', allowed: 'Allowed' };

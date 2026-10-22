@@ -1,4 +1,4 @@
-import { escapeRegExp } from '../../../../../shared/glob.mjs';
+import { escapeRegExp } from '../../../../../shared/paths/glob.mjs';
 import {
   binaryName,
   commandRunners,
