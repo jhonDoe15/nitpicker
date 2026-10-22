@@ -156,7 +156,7 @@ return (
     <priority>2</priority>
     <properties>
       <property name="springData" type="Boolean" value="false"
-                description="SpringDataNoSaveInLoop runs and reports Spring Data and JPA writes in a loop"/>
+                description="The Spring Data loop rules run and report Spring Data and JPA writes in a loop"/>
       <property name="xpath"><value><![CDATA[
 let $ioTypes := '(Repository|Dao|DAO|Client|EntityManager|JdbcTemplate|RestTemplate|Connection|Statement)$',
     $ioNames := //(FieldDeclaration | LocalVariableDeclaration | FormalParameter)[ClassType[matches(@SimpleName, $ioTypes)]]//VariableId/@Name,
@@ -208,10 +208,46 @@ let $ioTypes := '(Repository|Dao|DAO|Client|EntityManager|JdbcTemplate|RestTempl
     ) else ()),
     $springFlushes := (if ($springData) then //MethodCall[@MethodName = ('saveAndFlush', 'saveAllAndFlush', 'flush')]
         [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]] else ()),
+    $springRowWrites := (if ($springData) then (
+let $loop := function($node) {
+  exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
+    [not(.//IfStatement[*[1]//InfixExpression[@Operator = '%']]//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
+  or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
+    [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
+    [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+      or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
+},
+    $entityWrite := function($node) {
+  $node/@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')
+  and exists($node/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
+},
+    $read := '^(find|get|read|count|exists|query|stream|search|load|fetch|list|is|has)',
+    $write := '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)',
+    $standard := ('save', 'saveAndFlush', 'saveAll', 'saveAllAndFlush', 'delete', 'deleteById', 'deleteAll',
+      'deleteAllById', 'deleteAllInBatch', 'deleteAllByIdInBatch', 'flush')
+return (
+  //MethodCall[*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]
+    [not(@MethodName = $standard) and not(matches(@MethodName, $read))]
+    [not(ArgumentList/*[pmd-java:typeIs('java.lang.Iterable')])]
+    [parent::ExpressionStatement
+     or parent::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'peek')]]
+     or matches(@MethodName, $write)]
+  | //MethodCall[@MethodName = 'executeUpdate'][*[1][(pmd-java:typeIs('jakarta.persistence.Query') or pmd-java:typeIs('javax.persistence.Query'))]]
+)[$loop(.)]
+|
+//MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'peek')]
+  /ArgumentList/MethodReference[*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]
+    [not(@MethodName = $standard) and not(matches(@MethodName, $read))]
+    ) else ()),
     $batchedWrites := (//ForStatement | //ForeachStatement | //WhileStatement | //DoStatement)
       [.//IfStatement[*[1]//InfixExpression[@Operator = '%']]//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager')]]]
       //MethodCall[@MethodName = ($writes, 'flush')],
-    $calls := ($bodies//(MethodCall | ConstructorCall) except $attempts) except $paging
+    $chunks := //MethodCall[ArgumentList/VariableAccess[pmd-java:typeIs('java.lang.Iterable')]
+      [let $name := @Name
+       return exists(ancestor::ForeachStatement/LocalVariableDeclaration//VariableId[@Name = $name]
+         | ancestor::LambdaExpression/LambdaParameterList//VariableId[@Name = $name])]],
+    $calls := ($bodies//(MethodCall | ConstructorCall) except $attempts) except $paging except $chunks
 return
 (
   $calls[
@@ -235,7 +271,8 @@ return
     /ArgumentList/MethodReference
     [*[1][@Name = $ioNames or pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('java.sql.Statement') or pmd-java:typeIs('java.sql.Connection')]]
     [not(@MethodName = ('hashCode', 'toString', 'equals'))]
-) except ($springWrites | $springFlushes | $batchedWrites)
+) except ($springWrites | $springFlushes | $springRowWrites
+  | $springRowWrites/*[1]/descendant-or-self::MethodCall | $batchedWrites)
 ]]></value></property></properties>
   </rule>
 </ruleset>
