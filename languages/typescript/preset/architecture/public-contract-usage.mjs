@@ -1,5 +1,6 @@
 import { depthFirst } from '../../../../shared/traversal.mjs';
 import { syntaxChildren } from '../syntax/children.mjs';
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
@@ -174,7 +175,7 @@ export function analyzePublicContractUsage(configPath) {
   });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   if (!process.argv[2]) throw new Error('Usage: public-contract-usage.mjs <tsconfig.json>');
   process.stdout.write(
     `${JSON.stringify({ findings: analyzePublicContractUsage(process.argv[2]) }, null, 2)}\n`,
