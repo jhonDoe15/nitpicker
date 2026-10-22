@@ -1,4 +1,4 @@
-import { globToRegExp } from '../../../shared/glob.mjs';
+import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { isUnder, matcherOf } from '../policy-scope.mjs';
 import { duplicateFolderExclusions } from './duplicate-folders.mjs';
@@ -42,8 +42,8 @@ export function testRootReclassifier(config) {
 }
 
 function globSet(label, [baseGlobs, headGlobs], importable) {
-  const base = baseGlobs.map((glob) => globToRegExp(glob));
-  const head = headGlobs.map((glob) => globToRegExp(glob));
+  const base = baseGlobs.map((glob) => globMatcher(glob));
+  const head = headGlobs.map((glob) => globMatcher(glob));
   return {
     label,
     importable,

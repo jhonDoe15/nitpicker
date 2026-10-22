@@ -655,7 +655,8 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
 [one-way rules](#one-way-rules), `catch-log-without-exception` and `test-without-assertion`
 ([source scans](#source-scans)), the file limits `file-lines-limit` and `folder-files-limit` and
-`slow-test` (or `test-runtime/slow-test`) and the [dependency and repository checks](usage.md#dependency-and-repository-checks) per path. `layout` is a config error.
+`slow-test` (or `test-runtime/slow-test`) and the [dependency and repository checks](usage.md#dependency-and-repository-checks) per path. `layout` is a config error until the Kotlin
+preset runs the rule that reads it (`shared-used-by-one-feature`).
 
 ## Slow tests
 
