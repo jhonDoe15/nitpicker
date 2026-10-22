@@ -3,12 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { jacocoPlugin } from './maven-tools.mjs';
-import {
-  lifecycleArgs,
-  moduleClasspaths,
-  parseDependencyList,
-  readReactor,
-} from './maven-project.mjs';
+import { lifecycleArgs, readReactor } from './maven-project.mjs';
 
 const roots = [];
 
@@ -127,6 +122,7 @@ function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' })
     surefireReports: path.join(target, 'surefire-reports'),
     failsafeReports: path.join(target, 'failsafe-reports'),
     runsFailsafe: false,
+    published: false,
     jacocoDestFiles: [],
     jacocoAgentVersion: undefined,
     archunitIncludes: undefined,
@@ -164,6 +160,7 @@ describe('readReactor', () => {
       surefireReports: `${root}/core/out/tests`,
       failsafeReports: `${root}/core/out/it-tests`,
       runsFailsafe: true,
+      published: false,
       jacocoDestFiles: [`${root}/core/out/mine.exec`],
       jacocoAgentVersion: undefined,
       archunitIncludes: '**/*Rules.class',
@@ -425,71 +422,98 @@ describe('describeModule plugin configuration', () => {
   });
 });
 
-describe('parseDependencyList', () => {
-  it('reads coordinates, scope and file, with classifiers, module names, optional markers and drive letters', () => {
-    const listing = [
-      '',
-      'The following files have been resolved:',
-      '   org.junit.jupiter:junit-jupiter-api:jar:5.11.0:test:/m2/junit-jupiter-api-5.11.0.jar -- module org.junit.jupiter.api',
-      '   demo:core:jar:tests:1.0:test:/work/core/target/test-classes',
-      '   demo:shared:jar:1.0:compile:C:\\work\\shared\\target\\classes (optional)',
-      '   demo:z:jar:runtime:1.0:compile:/m2/z-1.0-runtime.jar',
-      '   none',
-    ].join('\n');
+describe('describeModule Groovy test sources', () => {
+  it('adds the GMavenPlus test sources, src/test/groovy unless an execution or the plugin names others', () => {
+    const gmavenplus = (inner) =>
+      soloModule(inBuild(plugin('gmavenplus-plugin', inner, 'org.codehaus.gmavenplus')));
+    const testSource = (directory) =>
+      `<configuration><testSources><testSource><directory>${directory}</directory></testSource></testSources></configuration>`;
+    const named = gmavenplus(
+      `${testSource('src/spec/groovy')}<executions><execution>${testSource('src/it/groovy')}</execution></executions>`,
+    );
+    const plain = gmavenplus('');
 
-    expect(parseDependencyList(listing)).toEqual([
-      {
-        groupId: 'org.junit.jupiter',
-        artifactId: 'junit-jupiter-api',
-        type: 'jar',
-        scope: 'test',
-        file: '/m2/junit-jupiter-api-5.11.0.jar',
-      },
-      {
-        groupId: 'demo',
-        artifactId: 'core',
-        type: 'jar',
-        scope: 'test',
-        file: '/work/core/target/test-classes',
-      },
-      {
-        groupId: 'demo',
-        artifactId: 'shared',
-        type: 'jar',
-        scope: 'compile',
-        file: 'C:\\work\\shared\\target\\classes',
-      },
-      {
-        groupId: 'demo',
-        artifactId: 'z',
-        type: 'jar',
-        scope: 'compile',
-        file: '/m2/z-1.0-runtime.jar',
-      },
+    expect(plain.testSourceRoots).toEqual([
+      path.join(plain.basedir, 'src/test/java'),
+      path.join(plain.basedir, 'src/test/groovy'),
+    ]);
+    expect(named.testSourceRoots).toEqual(
+      ['src/test/java', 'src/spec/groovy', 'src/it/groovy'].map((root) =>
+        path.join(named.basedir, root),
+      ),
+    );
+  });
+});
+
+describe('describeModule test roots of other compilers and outside the module', () => {
+  it('adds an existing src/test/groovy without GMavenPlus, as groovy-eclipse-compiler builds it', () => {
+    const solo = '<project><groupId>demo</groupId><artifactId>solo</artifactId></project>';
+    const withGroovy = reactor({ 'pom.xml': raw('solo'), 'src/test/groovy/demo/ASpec.groovy': '' });
+    const withoutGroovy = reactor({ 'pom.xml': raw('solo') });
+
+    expect(
+      [withGroovy, withoutGroovy].map((root) => readReactor(root, solo)[0].testSourceRoots),
+    ).toEqual([
+      [path.join(withGroovy, 'src/test/java'), path.join(withGroovy, 'src/test/groovy')],
+      [path.join(withoutGroovy, 'src/test/java')],
+    ]);
+  });
+
+  it('keeps no build-helper or GMavenPlus root that lies outside the module', () => {
+    const helper = plugin(
+      'build-helper-maven-plugin',
+      '<executions><execution><goals><goal>add-test-source</goal></goals><configuration>' +
+        '<sources><source>../shared/src/test/java</source><source>src/it/java</source></sources>' +
+        '</configuration></execution></executions>',
+      'org.codehaus.mojo',
+    );
+    const gmavenplus = plugin(
+      'gmavenplus-plugin',
+      '<configuration><testSources><testSource><directory>/elsewhere/groovy</directory>' +
+        '</testSource></testSources></configuration>',
+      'org.codehaus.gmavenplus',
+    );
+    const module = soloModule(inBuild(helper + gmavenplus));
+
+    expect(module.testSourceRoots).toEqual([
+      path.join(module.basedir, 'src/test/java'),
+      path.join(module.basedir, 'src/it/java'),
     ]);
   });
 });
 
-describe('moduleClasspaths', () => {
-  it('keeps compile scopes for main code, adds test for test code, and everything at test runtime', () => {
-    const module = { outputDirectory: '/m/classes', testOutputDirectory: '/m/test-classes' };
-    const dependencies = ['compile', 'provided', 'runtime', 'test', 'system'].map((scope) => ({
-      scope,
-      file: `${scope}.jar`,
-    }));
+describe('describeModule publishing', () => {
+  const DISTRIBUTION =
+    '<distributionManagement><repository><id>releases</id><url>https://repo.example.com</url>' +
+    '</repository></distributionManagement>';
 
-    expect(moduleClasspaths(module, dependencies)).toEqual({
-      mainCompile: ['compile.jar', 'provided.jar', 'system.jar'],
-      testCompile: ['compile.jar', 'provided.jar', 'test.jar', 'system.jar'],
-      testRuntime: [
-        '/m/test-classes',
-        '/m/classes',
-        'compile.jar',
-        'provided.jar',
-        'runtime.jar',
-        'test.jar',
-        'system.jar',
-      ],
-    });
+  it('counts a module with distributionManagement as published unless deploy is skipped', () => {
+    const skippedByProperty = `${DISTRIBUTION}<properties><maven.deploy.skip>true</maven.deploy.skip></properties>`;
+    const skippedByPlugin =
+      DISTRIBUTION +
+      inBuild(plugin('maven-deploy-plugin', '<configuration><skip>true</skip></configuration>'));
+
+    expect(
+      [DISTRIBUTION, skippedByProperty, skippedByPlugin, ''].map(
+        (inner) => soloModule(inner).published,
+      ),
+    ).toEqual([true, false, false, false]);
+  });
+
+  it('counts a library jar a publishing plugin deploys, but not a war or a pom', () => {
+    const central = inBuild(
+      plugin('central-publishing-maven-plugin', '', 'org.sonatype.central') +
+        plugin('maven-surefire-plugin', ''),
+    );
+
+    expect(
+      [
+        central,
+        inBuild(plugin('nexus-staging-maven-plugin', '', 'org.sonatype.plugins')),
+        `<packaging>war</packaging>${DISTRIBUTION}`,
+        `<packaging>pom</packaging>${DISTRIBUTION}`,
+        `<packaging>bundle</packaging>${DISTRIBUTION}`,
+      ].map((inner) => soloModule(inner).published),
+    ).toEqual([true, true, false, false, true]);
   });
 });

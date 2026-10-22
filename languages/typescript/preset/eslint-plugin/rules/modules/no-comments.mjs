@@ -9,12 +9,15 @@ import {
   isJsdocBlock,
   parseJsdoc,
 } from '../../../../../javascript/preset/documentation/jsdoc.mjs';
+import { readHeadPolicy } from '../../../head-policy.mjs';
+import { validationBehavior } from '../../../libraries/project-libraries.mjs';
 
 const typescriptSuppression = /@ts-(?:ignore|expect-error|nocheck)\b/;
 const eslintSuppression = /^\s*eslint-(?:disable|enable)\b/;
 const coverageSuppression = /^[\s*]*((?:istanbul|c8|v8)\s+ignore|stryker\s+(?:disable|restore))\b/i;
 const exportDeclarations = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
 const typeMembers = new Set(['TSPropertySignature', 'TSMethodSignature']);
+const validationName = validationBehavior(readHeadPolicy().libraries).name;
 const JSDOC_EXCEPTION =
   'If this is legitimate, add an exception for nitpicker/no-comments in nitpicker.config.json.';
 const TOOL_DIRECTIVES = [
@@ -95,10 +98,13 @@ function plainCommentReports(comment, sourceCode) {
   return [...publicApiDocReports(comment), ...docCommentContentReports(comment, node)];
 }
 
-function commentReports(comment, { jsdocTypes, sourceCode }) {
+function commentReports(comment, { jsdocTypes, sourceCode, suppressionsOnly }) {
   const suppression = suppressionReport(comment);
   if (suppression !== undefined) {
     return suppression;
+  }
+  if (suppressionsOnly) {
+    return [];
   }
   if (jsdocTypes && isJsdocBlock(comment)) {
     return jsdocReports(comment, sourceCode);
@@ -116,7 +122,7 @@ export const rule = {
     schema: [
       {
         type: 'object',
-        properties: { jsdocTypes: { type: 'boolean' } },
+        properties: { jsdocTypes: { type: 'boolean' }, suppressionsOnly: { type: 'boolean' } },
         additionalProperties: false,
       },
     ],
@@ -134,9 +140,9 @@ export const rule = {
         'JSDoc holds types only: remove the description text and put the intent in a descriptive identifier or a named function.',
       jsdocUnsupportedTag: `The JSDoc tag @{{tag}} is not allowed: JSDoc holds types only (@param, @returns, @type, @typedef, @template, @import). ${JSDOC_EXCEPTION}`,
       jsdocMalformed: 'Write the JSDoc tag as `{{usage}}`.',
-      jsdocAnyType: `Do not use \`any\`, \`*\` or a bare \`?\` in a JSDoc type. Use \`unknown\` and parse it into a specific type at the boundary with zod, or write the specific type. ${JSDOC_EXCEPTION}`,
+      jsdocAnyType: `Do not use \`any\`, \`*\` or a bare \`?\` in a JSDoc type. Use \`unknown\` and parse it into a specific type at the boundary with ${validationName}, or write the specific type. ${JSDOC_EXCEPTION}`,
       jsdocNullType: `Use \`undefined\` for an absent value; \`null\` and the \`?T\` and \`T?\` forms are not allowed in a JSDoc type. Type it as optional with \`undefined\`. ${JSDOC_EXCEPTION}`,
-      jsdocCast: `Do not assert with a JSDoc cast (\`/** @type {T} */ (value)\`). Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. \`/** @type {const} */\` is allowed. ${JSDOC_EXCEPTION}`,
+      jsdocCast: `Do not assert with a JSDoc cast (\`/** @type {T} */ (value)\`). Narrow the value (a discriminated union check or a ${validationName} parse) or give it the correct type at its source. \`/** @type {const} */\` is allowed. ${JSDOC_EXCEPTION}`,
       todoWithoutIssue: `A TODO or FIXME needs an issue reference: write \`TODO(#123): ...\` or \`TODO PROJ-123: ...\`, or do the work now. ${JSDOC_EXCEPTION}`,
       commentedOutCode: `Delete the commented-out code; version control keeps it. ${JSDOC_EXCEPTION}`,
       restatingDocComment:
@@ -150,6 +156,7 @@ export const rule = {
   create(context) {
     const settings = {
       jsdocTypes: context.options[0]?.jsdocTypes === true,
+      suppressionsOnly: context.options[0]?.suppressionsOnly === true,
       sourceCode: context.sourceCode,
     };
     return {

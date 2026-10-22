@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { isDirectory } from '../../libraries/project-files.mjs';
 
 const HINT_FILES = [
   'pyproject.toml',
@@ -64,7 +65,7 @@ export const NON_SOURCE_DIRECTORIES = new Set([
 ]);
 export const NON_SOURCE_FILES = new Set(['conftest.py']);
 
-function readFileEntries(projectRoot, names) {
+export function readFileEntries(projectRoot, names) {
   return names
     .filter((name) => isFile(path.join(projectRoot, name)))
     .map((name) => [name, readFileSync(path.join(projectRoot, name), 'utf8')]);
@@ -94,12 +95,28 @@ export function readProjectHints(projectRoot) {
   return readFiles(projectRoot, [...HINT_FILES, ...requirementFiles(projectRoot)]).join('\n');
 }
 
+function formatterOf(hints) {
+  return BLACK_HINT.test(hints) && !RUFF_FORMAT_HINT.test(hints) ? 'black' : 'ruff';
+}
+
 export function detectFormatter(projectRoot, setting) {
+  return setting ?? formatterOf(readProjectHints(projectRoot));
+}
+
+function isHintFile(file) {
+  return (
+    HINT_FILES.includes(file) ||
+    (!file.includes('/') && REQUIREMENT_FILE.test(file)) ||
+    new RegExp(String.raw`^${REQUIREMENT_DIRECTORY}/[^/]+\.(?:txt|in)$`).test(file)
+  );
+}
+
+export function detectFormatterFromSource(source, setting) {
   if (setting !== undefined) {
     return setting;
   }
-  const hints = readProjectHints(projectRoot);
-  return BLACK_HINT.test(hints) && !RUFF_FORMAT_HINT.test(hints) ? 'black' : 'ruff';
+  const texts = source.readMany(source.paths().filter(isHintFile));
+  return formatterOf([...texts.values()].join('\n'));
 }
 
 function lowestMinor(specifier) {
@@ -179,10 +196,10 @@ export function importRoots(projectRoot, sourceRoots) {
   return [...new Set(roots)];
 }
 
-function isFile(file) {
-  return existsSync(file) && statSync(file).isFile();
+export function readOptional(file) {
+  return existsSync(file) ? readFileSync(file, 'utf8') : '';
 }
 
-function isDirectory(directory) {
-  return existsSync(directory) && statSync(directory).isDirectory();
+function isFile(file) {
+  return existsSync(file) && statSync(file).isFile();
 }

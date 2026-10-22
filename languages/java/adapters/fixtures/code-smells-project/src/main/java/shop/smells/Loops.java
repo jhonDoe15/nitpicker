@@ -26,7 +26,7 @@ public final class Loops {
     int total = 0;
     for (Path path : paths) {
       if (Files.exists(path)) {
-        total += Files.readString(path).length(); // violation: IoCallInLoop
+        total += Files.readString(path).length();
       }
     }
     return total;

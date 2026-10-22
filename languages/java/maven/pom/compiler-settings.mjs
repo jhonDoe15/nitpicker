@@ -1,4 +1,4 @@
-import { childrenNamed } from '../../ingest/common.mjs';
+import { childrenNamed } from '../../../../shared/ingest/common.mjs';
 import { all, child, CONFIGURATION, pluginsOf, PROPERTIES } from './pom-elements.mjs';
 
 const COMPILER = 'org.apache.maven.plugins:maven-compiler-plugin';

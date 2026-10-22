@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseXml } from '../../ingest/common.mjs';
+import { parseXml } from '../../../../shared/ingest/common.mjs';
 import { compilerSettings } from './compiler-settings.mjs';
 import { pluginsOf } from './pom-elements.mjs';
 import { processorTool } from '../errorprone/maven-errorprone.mjs';

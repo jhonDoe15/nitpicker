@@ -1,4 +1,4 @@
-import { childAt, childrenAt } from '../../ingest/common.mjs';
+import { childAt, childrenAt } from '../../../../shared/ingest/common.mjs';
 
 export const CONFIGURATION = 'configuration';
 export const PROPERTIES = 'properties';

@@ -1,26 +1,17 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
-import { collectJavaFindings } from '../java-diff.mjs';
-import { featureVersion, jdkHomes } from '../../maven/errorprone/maven-jdk.mjs';
 import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
-import { KOTLIN_POLICY, kotlinLevelFiles } from './test-support/kotlin-levels-data.mjs';
+import {
+  analyzeAtLevel,
+  jdkHome,
+  removeLevelProjects,
+  TESTS_FAILED,
+} from './test-support/jdk-levels-run.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
-const kotlinEnabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const maven = process.env.NITPICKER_MAVEN;
 const gradleOnJdk25 = process.env.NITPICKER_GRADLE_ON_JDK25;
-const roots = [];
-
-function jdkHome(feature) {
-  return jdkHomes().find((home) => {
-    const result = spawnSync(path.join(home, 'bin', 'java'), ['-version'], { encoding: 'utf8' });
-    return featureVersion(`${result.stderr}${result.stdout}`) === feature;
-  });
-}
 
 const RECORDS = `  public sealed interface Shape permits Circle, Square {}
 
@@ -181,65 +172,20 @@ ${DEPENDENCIES.map(
   }),
 };
 
-function projectFor(build, release) {
-  const root = mkdtempSync(path.join(tmpdir(), `nitpicker-jdk-${String(release)}-`));
-  roots.push(root);
-  const files =
-    build === 'kotlin'
-      ? kotlinLevelFiles(release)
-      : {
-          ...BUILD_FILES[build](release),
-          ...SOURCES,
-          'src/main/java/demo/Shapes.java': LEVELS[release].shapes,
-          'src/main/java/demo/Messy.java': LEVELS[release].messy,
-        };
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-  return root;
-}
-
-const FAILED_TEST = 'demo.BrokenTest.parses: expected: <2> but was: <3>';
-
 function analyze(build, release, runner = { gradle, jdk: LEVELS[release].gradleJdk }) {
-  const javaHome = jdkHome(build === 'maven' ? release : runner.jdk);
-  if (javaHome !== undefined) {
-    vi.stubEnv('JAVA_HOME', javaHome);
-  }
-  const findings = collectJavaFindings(projectFor(build, release), {
-    ...(build === 'maven' ? { maven } : { gradle: runner.gradle }),
-    policy: build === 'kotlin' ? KOTLIN_POLICY : { testSeconds: { unitTestSeconds: -1 } },
+  return analyzeAtLevel({
+    release,
+    files: {
+      ...BUILD_FILES[build](release),
+      ...SOURCES,
+      'src/main/java/demo/Shapes.java': LEVELS[release].shapes,
+      'src/main/java/demo/Messy.java': LEVELS[release].messy,
+    },
+    jdk: build === 'maven' ? release : runner.jdk,
+    build: build === 'maven' ? { maven } : { gradle: runner.gradle },
+    policy: { testSeconds: { unitTestSeconds: -1 } },
   });
-  return {
-    toolErrors: findings
-      .filter((finding) => finding.classification === 'tool-error')
-      .map(({ tool, rule, message }) => ({ tool, rule, message })),
-    reported: [
-      ...new Set(
-        findings
-          .filter(
-            (finding) =>
-              finding.classification !== 'tool-error' &&
-              finding.metric === undefined &&
-              finding.tool !== 'test-runtime',
-          )
-          .map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`),
-      ),
-    ].sort(),
-  };
 }
-
-const TESTS_FAILED = {
-  tool: 'tests',
-  rule: 'tests-failed',
-  message: [
-    'Tests fail in the head snapshot. Make each failing test pass:',
-    `  ${FAILED_TEST}`,
-    'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
-    'Mutation testing (PIT) left out the test classes demo.BrokenTest.',
-  ].join('\n'),
-};
 
 const REPORTED = [
   'forbiddenapis legacy-date-time Shapes.java',
@@ -261,9 +207,7 @@ describe.skipIf(!enabled)('the Java preset on each supported JDK level', () => {
 
   afterAll(() => {
     spawnSync(gradle, ['--stop'], { stdio: 'ignore' });
-    for (const root of roots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
+    removeLevelProjects();
   });
 
   for (const release of [17, 25]) {
@@ -282,52 +226,6 @@ describe.skipIf(!enabled)('the Java preset on each supported JDK level', () => {
     'runs every analyzer on a gradle project when Gradle itself runs on JDK 25',
     () => {
       expect(analyze('gradle', 25, { gradle: gradleOnJdk25, jdk: 25 })).toEqual(EXPECTED[25]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
-});
-
-const KOTLIN_EXPECTED = {
-  toolErrors: [TESTS_FAILED],
-  reported: [
-    'crap crap-score-limit Shapes.kt',
-    'detekt detekt.style.FunctionOnlyReturningConstant Shapes.kt',
-    'jacoco changed-branch-coverage Shapes.kt',
-    'jacoco uncovered-method Messy.kt',
-    'jacoco uncovered-method Shapes.kt',
-    'ktfmt format Messy.kt',
-    'ktfmt format Shapes.kt',
-    'pit mutant-nocoverage Messy.kt',
-    'pit mutant-nocoverage Shapes.kt',
-    'structure function-parameters-limit Shapes.kt',
-  ],
-};
-
-describe.skipIf(!kotlinEnabled)('the Kotlin preset on each supported JDK level', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  afterAll(() => {
-    for (const root of roots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  for (const release of [17, 25]) {
-    it.skipIf(jdkHome(release) === undefined)(
-      `runs every analyzer on a Kotlin project at release ${String(release)}`,
-      () => {
-        expect(analyze('kotlin', release)).toEqual(KOTLIN_EXPECTED);
-      },
-      GRADLE_STEP_TIMEOUT_MS,
-    );
-  }
-
-  it.skipIf(gradleOnJdk25 === undefined || jdkHome(25) === undefined)(
-    'runs detekt on an older JDK when Gradle itself runs on JDK 25',
-    () => {
-      expect(analyze('kotlin', 25, { gradle: gradleOnJdk25, jdk: 25 })).toEqual(KOTLIN_EXPECTED);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );

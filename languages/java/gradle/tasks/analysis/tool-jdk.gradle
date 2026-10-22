@@ -65,5 +65,7 @@ project.ext.nitpickerProjectJavaHome = { ->
 }
 
 project.ext.nitpickerJavaCompiles = {
-    ['compileJava', 'compileTestJava'].collect { tasks.named(it).get() }.findAll { !it.source.isEmpty() }
+    ([tasks.named('compileJava').get()] + project.ext.nitpickerTestSourceSets().collect {
+        tasks.named(it.compileJavaTaskName).get()
+    }).findAll { !it.source.isEmpty() }
 }

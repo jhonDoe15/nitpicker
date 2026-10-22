@@ -1,6 +1,7 @@
+import { isPublished, isTrue } from './configuration/publishing.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { childrenNamed, parseXml } from '../ingest/common.mjs';
+import { childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
 import { compilerSettings } from './pom/compiler-settings.mjs';
 import {
   all,
@@ -17,9 +18,12 @@ const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
 const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
 const TEST_COMPILE_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'test']);
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
+const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
+const GROOVY_TEST_ROOT = 'src/test/groovy';
 const JACOCO = 'org.jacoco:jacoco-maven-plugin';
 const SUREFIRE = 'org.apache.maven.plugins:maven-surefire-plugin';
 const FAILSAFE = 'org.apache.maven.plugins:maven-failsafe-plugin';
+
 const AGENT_GOALS = ['prepare-agent', 'prepare-agent-integration'];
 const FAILSAFE_SKIPS = ['skip', 'skipITs', 'skipTests'];
 const SKIP_PROPERTIES = ['skipITs', 'skipTests'];
@@ -44,10 +48,6 @@ function coordinates(project) {
   return `${groupId}:${textAt(project, 'artifactId')}`;
 }
 
-function isTrue(text) {
-  return text?.trim().toLowerCase() === 'true';
-}
-
 function runsFailsafe(project, plugin) {
   if (
     plugin === undefined ||
@@ -62,14 +62,36 @@ function runsFailsafe(project, plugin) {
   );
 }
 
+function rootsInside(basedir, roots) {
+  const resolved = roots.map((root) => path.resolve(basedir, root));
+  return [...new Set(resolved.filter((root) => root === basedir || insideOf(basedir, root)))];
+}
+
 function helperRoots(plugin, goal, basedir) {
-  return plugin === undefined
-    ? []
-    : executionsWithGoal(plugin, goal).flatMap((execution) =>
-        all(execution, CONFIGURATION, 'sources', 'source').map((source) =>
-          path.resolve(basedir, source.text ?? '.'),
-        ),
-      );
+  const sources =
+    plugin === undefined
+      ? []
+      : executionsWithGoal(plugin, goal).flatMap((execution) =>
+          all(execution, CONFIGURATION, 'sources', 'source').map(
+            (source) => source.text ?? '.',
+          ),
+        );
+  return rootsInside(basedir, sources);
+}
+
+function groovyTestRoots(plugin, basedir) {
+  const configured = (
+    plugin === undefined ? [] : [plugin, ...all(plugin, 'executions', 'execution')]
+  )
+    .flatMap((element) => all(element, CONFIGURATION, 'testSources', 'testSource'))
+    .map((source) => textAt(source, 'directory'))
+    .filter((directory) => directory !== undefined);
+  const pluginDefault = plugin !== undefined && configured.length === 0;
+  const present = existsSync(path.join(basedir, GROOVY_TEST_ROOT));
+  return rootsInside(basedir, [
+    ...configured,
+    ...(pluginDefault || present ? [GROOVY_TEST_ROOT] : []),
+  ]);
 }
 
 function jacocoDestFiles(plugin, basedir) {
@@ -125,6 +147,7 @@ function describeModule(project, { basedir, pomFile }) {
     testSourceRoots: [
       resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
       ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
+      ...groovyTestRoots(plugins.get(GMAVENPLUS), basedir),
     ],
     resourceRoots: all(build, 'resources', 'resource')
       .map((resource) => textAt(resource, 'directory'))
@@ -138,6 +161,7 @@ function describeModule(project, { basedir, pomFile }) {
       failsafeReports ?? path.join(buildDirectory, 'failsafe-reports'),
     ),
     runsFailsafe: runsFailsafe(project, plugins.get(FAILSAFE)),
+    published: isPublished(project, plugins),
     jacocoDestFiles: jacocoDestFiles(plugins.get(JACOCO), basedir),
     jacocoAgentVersion: jacocoAgentVersion(plugins.get(JACOCO)),
     archunitIncludes: textAt(project, PROPERTIES, 'nitpicker.archunit.includes'),

@@ -335,6 +335,10 @@
     "fix": "Name classes, interfaces, enums, records and annotations UpperCamelCase with no underscores: OrderService, HttpClient.",
     "mayBeIntended": false
   },
+  "UnusedImports": {
+    "fix": "Remove the import, or use the class it names.",
+    "mayBeIntended": false
+  },
   "UpperEll": {
     "fix": "Write long literals with an uppercase L, as in 100L, never 100l.",
     "mayBeIntended": false

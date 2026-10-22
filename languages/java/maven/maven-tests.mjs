@@ -3,18 +3,19 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
-  readFileSync,
   rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../shared/glob.mjs';
-import { childrenNamed, parseXml } from '../ingest/common.mjs';
 import { runJava } from './maven-command.mjs';
+import { failedTestCases, freshReports } from '../builds/test-failures.mjs';
 
 const OFF = 'false';
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
+const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
+const TESTNG_JAR = /^testng-\d.*\.jar$/u;
 
 export function archunitMatcher(includes = DEFAULT_ARCHUNIT_INCLUDES) {
   const patterns = includes
@@ -38,15 +39,6 @@ function classFiles(directory) {
     : [];
 }
 
-export function freshReports(directory, since) {
-  return existsSync(directory)
-    ? readdirSync(directory)
-        .filter((name) => /^TEST-.*\.xml$/u.test(name))
-        .map((name) => path.join(directory, name))
-        .filter((file) => statSync(file).mtimeMs >= since)
-    : [];
-}
-
 export function testReportDirectories(module) {
   const surefire = ['surefire', module.surefireReports];
   const shared = path.resolve(module.failsafeReports) === path.resolve(module.surefireReports);
@@ -55,27 +47,6 @@ export function testReportDirectories(module) {
 
 export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
-}
-
-function failedCases(file) {
-  const root = parseXml(readFileSync(file, 'utf8'));
-  const suites = root.name === 'testsuites' ? childrenNamed(root, 'testsuite') : [root];
-  return suites.flatMap((suite) =>
-    childrenNamed(suite, 'testcase')
-      .filter(
-        (testCase) =>
-          childrenNamed(testCase, 'failure').length + childrenNamed(testCase, 'error').length > 0,
-      )
-      .map((testCase) => {
-        const problem = [
-          ...childrenNamed(testCase, 'failure'),
-          ...childrenNamed(testCase, 'error'),
-        ][0];
-        const message = (problem.attrs.message ?? problem.attrs.type ?? '').split('\n')[0];
-        const className = testCase.attrs.classname ?? suite.attrs.name;
-        return { className, text: `${className}.${testCase.attrs.name}: ${message}` };
-      }),
-  );
 }
 
 export function collectTestResults({ module, reportDir, since, isArchunit }) {
@@ -89,7 +60,7 @@ export function collectTestResults({ module, reportDir, since, isArchunit }) {
       mkdirSync(archunitDir, { recursive: true });
       copyFileSync(report, path.join(archunitDir, path.basename(report)));
     } else {
-      failures.push(...failedCases(report));
+      failures.push(...failedTestCases(report));
     }
   }
   requireArchunitRun(module, reports, isArchunit);
@@ -199,7 +170,7 @@ export function pitTests(testClassDirectory, isArchunit) {
 
 export function junitLauncherVersion(classpath) {
   const names = classpath.map((entry) => path.basename(entry));
-  const engine = names.find((name) => /^junit-platform-engine-.+\.jar$/u.test(name));
+  const engine = names.find((name) => JUNIT_ENGINE_JAR.test(name));
   return engine === undefined || names.some((name) => name.startsWith('junit-platform-launcher-'))
     ? undefined
     : engine.replace(/^junit-platform-engine-|\.jar$/gu, '');
@@ -221,6 +192,17 @@ function pitArguments({ module, pitDir, tests, classpaths, excludedTestClasses }
           '--excludedTestClasses',
           excludedTestClasses.flatMap((name) => [name, `${name}$*`]).join(','),
         ]),
+  ];
+}
+
+export function pitClasspath(tools, testRuntime) {
+  const names = testRuntime.map((entry) => path.basename(entry));
+  const launcher = junitLauncherVersion(testRuntime);
+  return [
+    ...tools.pit,
+    ...(names.some((name) => JUNIT_ENGINE_JAR.test(name)) ? tools['pit-junit5'] : []),
+    ...(launcher === undefined ? [] : tools[`launcher-${launcher}`]),
+    ...(names.some((name) => TESTNG_JAR.test(name)) ? tools['pit-testng'] : []),
   ];
 }
 
@@ -246,10 +228,9 @@ export function runPit({
       reason: 'every test class has a failing test, so no passing test is left to kill mutants',
     };
   }
-  const launcher = junitLauncherVersion(classpaths.testRuntime);
   runJava({
     tool: 'PIT',
-    classpath: [...tools.pit, ...(launcher === undefined ? [] : tools[`launcher-${launcher}`])],
+    classpath: pitClasspath(tools, classpaths.testRuntime),
     mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
     args: pitArguments({ module, pitDir, tests, classpaths, excludedTestClasses }),
     cwd: module.basedir,

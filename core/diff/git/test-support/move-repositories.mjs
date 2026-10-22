@@ -34,9 +34,10 @@ export function probeAnalyzer() {
 function runProbe(tasks, policyFile) {
   const policy = policyFile === undefined ? {} : JSON.parse(readFileSync(policyFile, 'utf8'));
   const sourceRoots = policy.layout?.sourceRoots ?? ['src'];
+  const skipped = policy.duplicates?.skippedFolders ?? ['dist'];
   const reports = tasks.map((task) => {
     const [projectRoot] = task.invocation.args;
-    const findings = sourceRoots.flatMap((root) => scan(projectRoot, root));
+    const findings = sourceRoots.flatMap((root) => scan(projectRoot, root, skipped));
     const stdoutText = JSON.stringify({ findings });
     return [
       task.name,
@@ -58,7 +59,7 @@ function insideRoot(root, relativePath) {
   return full;
 }
 
-function scan(projectRoot, sourceRoot) {
+function scan(projectRoot, sourceRoot, skipped) {
   const directory = insideRoot(projectRoot, sourceRoot);
   if (directory === undefined || !existsSync(directory)) {
     return [];
@@ -67,6 +68,13 @@ function scan(projectRoot, sourceRoot) {
     .filter((entry) => entry.isFile())
     .map((entry) => path.relative(directory, path.join(entry.parentPath, entry.name)))
     .map((name) => `${sourceRoot}/${name.split(path.sep).join('/')}`)
+    .filter(
+      (relativePath) =>
+        !relativePath
+          .split('/')
+          .slice(0, -1)
+          .some((part) => skipped.includes(part)),
+    )
     .sort()
     .flatMap((relativePath) => findingsIn(projectRoot, relativePath));
 }

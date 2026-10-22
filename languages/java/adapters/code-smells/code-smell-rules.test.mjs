@@ -120,20 +120,22 @@ describe('the Java code smell ruleset', () => {
         .filter((ruleset) => ruleset.startsWith(reportDir))
         .map((ruleset) => readFileSync(ruleset, 'utf8'))
         .find((text) => text.includes(path.join(GRADLE_DIRECTORY, file)));
-    const script = readFileSync(
-      path.join(packageRoot, 'languages/java/gradle/tasks/analysis/pmd-task.gradle'),
-      'utf8',
-    );
+    const gradleFile = (file) =>
+      readFileSync(path.join(packageRoot, 'languages/java/gradle', file), 'utf8');
     const maven = readFileSync(
-      path.join(packageRoot, 'languages/java/maven/guards/maven-pmd.mjs'),
+      path.join(packageRoot, 'languages/java/maven/maven-lint.mjs'),
       'utf8',
     );
     const shipped = ['code-smells-ruleset.xml', 'code-smells-test-ruleset.xml'];
     const wiring = {
       main: wrapperOf(shipped[0]).includes(`<exclude-pattern>${test}/.*</exclude-pattern>`),
       test: wrapperOf(shipped[1]).includes(`<include-pattern>${test}/.*</include-pattern>`),
-      gradle: script.includes("writeRules('pmd', plan)"),
-      maven: maven.includes("from '../../builds/rulesets/pmd-rulesets.mjs'"),
+      gradle:
+        gradleFile('tasks/analysis/pmd-task.gradle').includes("writeRules('pmd', plan)") &&
+        gradleFile('nitpicker.init.gradle').includes("writeRules('pmd-guards', guardsPlan)"),
+      maven: maven.includes(
+        "import { writeGuardRulesets } from '../builds/rulesets/pmd-rulesets.mjs'",
+      ),
       shipped: shipped.filter((file) =>
         configurationFiles().includes(`languages/java/gradle/${file}`),
       ),

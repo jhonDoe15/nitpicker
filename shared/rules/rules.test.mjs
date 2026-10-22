@@ -204,11 +204,11 @@ describe('duplicates rule on neutral clones', () => {
     expect(failures.map((finding) => [finding.path, finding.message])).toEqual([
       [
         'a.java',
-        'This code repeats b.java:3 (6 lines). Keep one copy and call it from both places.',
+        'This code repeats b.java:3 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java or b.java to "exclude" in nitpicker.config.json.',
       ],
       [
         'a.java',
-        'This code repeats b.java:8 (6 lines). Keep one copy and call it from both places.',
+        'This code repeats b.java:8 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java or b.java to "exclude" in nitpicker.config.json.',
       ],
     ]);
     expect(failures[0].identity).toMatch(
@@ -254,6 +254,16 @@ describe('duplicates rule on neutral clones', () => {
       ],
     });
     expect(byLines.ratchet.value).toBe(6);
+  });
+
+  it('names the file once when a file repeats itself', () => {
+    const [failure] = byRule(
+      evaluateDuplicates([clone('a.java', 'a.java')], 'duplicates'),
+      'duplicate-clone',
+    );
+    expect(failure.message).toBe(
+      'This code repeats a.java:8 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java to "exclude" in nitpicker.config.json.',
+    );
   });
 
   it('adds size metrics and omits a location for an unusable line', () => {

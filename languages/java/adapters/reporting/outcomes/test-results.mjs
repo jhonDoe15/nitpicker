@@ -4,14 +4,19 @@ import { ingestCrap } from '../../../ingest/crap.mjs';
 import { ingestJacoco } from '../../../ingest/coverage-reports/jacoco.mjs';
 import { ingestJacocoBranches } from '../../../ingest/coverage-reports/jacoco-branches.mjs';
 import { ingestPit } from '../../../ingest/pit.mjs';
-import { methodText } from '../../metrics/java-structure.mjs';
+import { javaMethodText } from '../../metrics/java-structure.mjs';
 import { readSlowTestFindings } from '../../test-times/slow-tests.mjs';
 import {
   hash,
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
 } from '../../../../../shared/rules/finding-helpers.mjs';
-import { jacocoSourceRoots, reportOnlyKotlinMutants, sourceLocator } from '../kotlin-reports.mjs';
+import {
+  jacocoSourceRoots,
+  reportOnlyKotlinMutants,
+  sourceFileOf,
+  sourceLocator,
+} from '../kotlin-reports.mjs';
 
 export const TEST_FAILURES_REPORT = 'test-failures.json';
 const TESTS_TOOL = 'tests';
@@ -91,12 +96,6 @@ export function testFailureFindings(report, scope) {
   ];
 }
 
-export function sourceFileOf(locate, className, fileName) {
-  const parts = className.split('.');
-  const simple = parts.pop().split('$')[0];
-  return locate(parts.join('/'), fileName ?? `${simple}.java`);
-}
-
 function containedFile(projectRoot, file) {
   const base = path.resolve(projectRoot);
   const full = path.resolve(base, file);
@@ -125,7 +124,7 @@ function jacocoFindings(context) {
   );
 }
 
-function crapFindings({ reportRoot, sourceRoots, projectRoot, jacoco }, crapLimit) {
+function crapFindings({ reportRoot, sourceRoots, projectRoot, reactorRoot, jacoco }, crapLimit) {
   const sources = new Map();
   const structure = JSON.parse(readFileSync(path.join(reportRoot, 'structure.json'), 'utf8'));
   return ingestCrap(structure, jacoco, {
@@ -133,7 +132,7 @@ function crapFindings({ reportRoot, sourceRoots, projectRoot, jacoco }, crapLimi
     limit: crapLimit,
     sourceHash: (entry) =>
       isProjectFile(projectRoot, entry.file)
-        ? hash(methodText(sources, projectRoot, entry))
+        ? hash(javaMethodText(sources, { projectRoot, reactorRoot }, entry))
         : undefined,
   }).findings;
 }

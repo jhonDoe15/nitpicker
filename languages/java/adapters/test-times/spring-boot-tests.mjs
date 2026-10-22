@@ -15,7 +15,7 @@ function referencedTypes(text) {
   ];
 }
 
-function qualifiedName(text, name) {
+export function qualifiedName(text, name) {
   if (name.includes('.')) {
     return name;
   }
@@ -27,11 +27,19 @@ function qualifiedName(text, name) {
   return owner === undefined ? name : `${owner}.${name}`;
 }
 
-function sourceOfType(locate, projectRoot, qualified) {
+function typeSource(locate, directory, simple) {
+  return (
+    locate(directory, `${simple}.java`) ??
+    locate(directory, `${simple}.kt`) ??
+    locate(directory, `${simple}.groovy`)
+  );
+}
+
+export function sourceOfType(locate, projectRoot, qualified) {
   const parts = qualified.split('.');
   const simple = parts.pop();
   const directory = parts.join('/');
-  const relative = locate(directory, `${simple}.java`) ?? locate(directory, `${simple}.kt`);
+  const relative = typeSource(locate, directory, simple);
   const file = relative === undefined ? undefined : path.join(projectRoot, relative);
   return file !== undefined && existsSync(file) ? { relative, file } : undefined;
 }
@@ -60,4 +68,11 @@ export function isSpringBootTest(text, context) {
     }
   }
   return false;
+}
+
+export function sourceOf(locate, className) {
+  const parts = className.split('.');
+  const simple = parts.pop().split('$')[0];
+  const directory = parts.join('/');
+  return typeSource(locate, directory, simple);
 }

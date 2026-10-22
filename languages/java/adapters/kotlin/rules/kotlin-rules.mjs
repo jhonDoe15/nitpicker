@@ -1,3 +1,5 @@
+import { CATCH_LOG_RULE } from '../../../source/catch-logging.mjs';
+
 const DETEKT_TOOL = 'detekt';
 const STYLE = 'style';
 const BANNED_SUPPRESSIONS = [
@@ -29,6 +31,11 @@ export const ONE_WAY_RULES = [
       'Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug.',
   },
   { name: 'CastNullableToNonNullableType', ruleset: 'potential-bugs' },
+  {
+    name: 'TooGenericExceptionCaught',
+    ruleset: 'exceptions',
+    allowed: 'In a test, use `assertFailsWith`.',
+  },
   { name: 'GlobalCoroutineUsage', ruleset: 'coroutines' },
   { name: 'ForbiddenMethodCall', ruleset: STYLE },
   { name: 'ForbiddenImport', ruleset: STYLE },
@@ -52,6 +59,9 @@ export const ONE_WAY_RULES = [
 ].map((rule) => ({ ...rule, id: `detekt.${rule.ruleset}.${rule.name}` }));
 
 export const SUPPRESSION_RULE = 'inline-suppression';
+export const TEST_ASSERTION_RULE = 'test-without-assertion';
+
+export const SOURCE_RULE_IDS = [CATCH_LOG_RULE, TEST_ASSERTION_RULE];
 
 export const ONE_WAY_RULE_IDS = ONE_WAY_RULES.map(({ id }) => id);
 
@@ -59,7 +69,7 @@ export function isBannedSuppression(token) {
   return DETEKT_RULESETS.has(token) || BANNED_SUPPRESSIONS.some((banned) => banned.test(token));
 }
 
-function appendSentence(message, sentence) {
+export function appendSentence(message, sentence) {
   return `${message.replace(/\.?\s*$/, '')}. ${sentence}`;
 }
 
