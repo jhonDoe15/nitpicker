@@ -1,9 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isRecord } from '../../../../shared/rules/facts/checks.mjs';
 
 function aliasEntries(alias) {
   if (Array.isArray(alias)) return alias.filter(isRecord);
