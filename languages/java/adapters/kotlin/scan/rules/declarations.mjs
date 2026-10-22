@@ -1,4 +1,7 @@
-import { GENERIC_NAME_WORDS } from '../../../../../../shared/naming/smell-words.mjs';
+import {
+  ACCEPTED_MANAGER_ROLES,
+  GENERIC_NAME_WORDS,
+} from '../../../../../../shared/naming/smell-words.mjs';
 import { braceDepths, closingIndex, parenDepths } from '../kotlin-source.mjs';
 
 const OBJECT_BODY =
@@ -62,21 +65,24 @@ const MUTABLE_TYPES =
   'Mutable\\w+|Array|IntArray|LongArray|DoubleArray|ByteArray|ArrayList|HashMap|HashSet|StringBuilder|Atomic\\w+';
 const MUTABLE_TYPE = new RegExp(String.raw`^\s*:\s*(?:${MUTABLE_TYPES})\b`);
 
+const capitalized = (word) => word.charAt(0).toUpperCase() + word.slice(1);
 const GENERIC_WORDS = new Set(GENERIC_NAME_WORDS);
-const GENERIC_SUFFIX = GENERIC_NAME_WORDS.map(
-  (word) => word.charAt(0).toUpperCase() + word.slice(1),
-).join('|');
+const GENERIC_SUFFIX = GENERIC_NAME_WORDS.map(capitalized).join('|');
 const GENERIC_TYPE = new RegExp(`(?:^|[A-Za-z0-9])(${GENERIC_SUFFIX})$`);
-const FILE_STEM = /([^/]+)\.kt$/;
+const FILE_STEM = /([^/]+?)(?:\.[A-Za-z][A-Za-z0-9]*)?\.kt$/;
 const WORD_BOUNDARIES = [/([a-z0-9])([A-Z])/g, /([A-Z]+)([A-Z][a-z])/g];
-const ACCEPTED_MANAGER =
-  /(?:Authentication|Transaction|Cache|Entity|Session|Connection|Lock|Resource)Manager$/;
+const MANAGER_ROLES = new Set(ACCEPTED_MANAGER_ROLES);
+const MANAGER_WORDS = new Set(['manager', 'managers']);
+const ACCEPTED_MANAGER = new RegExp(
+  `(?:${ACCEPTED_MANAGER_ROLES.map(capitalized).join('|')})Managers?$`,
+);
+const VERSION_WORD = /^v?$/;
 const TYPE_MODIFIERS =
   'data|sealed|abstract|open|enum|annotation|inner|value|fun|private|internal|public|protected';
 const TYPE_DECLARATION = new RegExp(
   [
     String.raw`(?<![\w.])(?:(?:${TYPE_MODIFIERS})\s+)*`,
-    String.raw`(?:class|interface|object)\s+([A-Z]\w*)(?:\s*<[^>]*>)?([^{\n]*)`,
+    String.raw`(?:class|interface|object|typealias)\s+\`?([A-Z]\w*)\`?(?:\s*<[^>]*>)?([^{\n]*)`,
   ].join(''),
   'g',
 );
@@ -162,20 +168,27 @@ function supertypeNames(header) {
     .filter((name) => name !== undefined);
 }
 
-function lastWord(stem) {
-  const spaced = WORD_BOUNDARIES.reduce((text, boundary) => text.replace(boundary, '$1 $2'), stem);
+function nameWords(name) {
+  const spaced = WORD_BOUNDARIES.reduce((text, boundary) => text.replace(boundary, '$1 $2'), name);
   return spaced
     .split(/[^A-Za-z0-9]+/)
-    .findLast((word) => word !== '')
-    ?.toLowerCase();
+    .map((word) => word.toLowerCase().replace(/\d+$/, ''))
+    .filter((word) => word !== '' && !VERSION_WORD.test(word));
+}
+
+function isGenericFile(stem) {
+  const words = nameWords(stem);
+  const last = words.at(-1);
+  const managerRole = MANAGER_WORDS.has(last) && MANAGER_ROLES.has(words.at(-2));
+  return GENERIC_WORDS.has(last) && !managerRole;
 }
 
 function fileFindings(file, declaredNames) {
   const stem = FILE_STEM.exec(file ?? '')?.[1];
-  if (stem === undefined || declaredNames.includes(stem) || !GENERIC_WORDS.has(lastWord(stem))) {
-    return [];
-  }
-  return [{ rule: 'GenericFileName', offset: 0, subject: stem }];
+  const declared = declaredNames.some((name) => name.toLowerCase() === stem?.toLowerCase());
+  return stem === undefined || declared || !isGenericFile(stem)
+    ? []
+    : [{ rule: 'GenericFileName', offset: 0, subject: stem }];
 }
 
 function declaredTypes(code) {
@@ -187,7 +200,7 @@ function declaredTypes(code) {
 }
 
 function isGenericType({ name, header }) {
-  const suffix = GENERIC_TYPE.exec(name)?.[1];
+  const suffix = GENERIC_TYPE.exec(name.replace(/\d+$/, ''))?.[1];
   return (
     suffix !== undefined &&
     !ACCEPTED_MANAGER.test(name) &&

@@ -207,9 +207,8 @@ style:
     ignoreAnnotated: []
     includes: []
     comments:
-      - value: '(?m)(?-i)(?:^[\s*]*(?:TODO|FIXME|XXX|HACK|STOPSHIP)(?![\w-])(?![./]\w)|(?<![\w./-])(?:TODO|FIXME|XXX|HACK|STOPSHIP)(?=[:(]))'
+      - value: '(?m)(?-i)(?:^[\s*]*(?:TODO|FIXME|XXX|HACK|STOPSHIP)(?![\w-])(?![./]\w)|(?<![\w./-])(?:TODO|FIXME|XXX|HACK|STOPSHIP)(?=[:(]))(?!\(\s*(?:#\d+|(?!(?:SHA|UTF|ISO|RFC|MD|AES|RSA|TLS|SSL|HTTP|ES|ECMA|IEEE|CVE)-)[A-Z][A-Z0-9]+-\d+|https?://\S+)\s*\)|:?\s+(?:#\d+|(?!(?:SHA|UTF|ISO|RFC|MD|AES|RSA|TLS|SSL|HTTP|ES|ECMA|IEEE|CVE)-)[A-Z][A-Z0-9]+-\d+|https?://\S+))'
         reason: 'A TODO or FIXME needs an issue reference: write `TODO(#123): ...` or `TODO PROJ-123: ...`, or do the work now.'
-    allowedPatterns: '(?-i)(?<![\w./-])(?:TODO|FIXME|XXX|HACK|STOPSHIP)(?:\(\s*(?:#\d+|(?!(?:SHA|UTF|ISO|RFC|MD|AES|RSA|TLS|SSL|HTTP|ES|ECMA|IEEE|CVE)-)[A-Z][A-Z0-9]+-\d+|https?://\S+)\s*\)|:?\s+(?:#\d+|(?!(?:SHA|UTF|ISO|RFC|MD|AES|RSA|TLS|SSL|HTTP|ES|ECMA|IEEE|CVE)-)[A-Z][A-Z0-9]+-\d+|https?://\S+))'
   UnnecessaryLet:
     active: true
     severity: warning

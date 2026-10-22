@@ -60,10 +60,13 @@ const CODE_SHAPES = [
 ];
 const SENTENCE = /^[A-Z][a-z]+ [a-z]+ [a-z]+/;
 const FENCE = /^(?:```|~~~)/;
-const NOT_CODE = /^(?:@|https?:|TODO\b|FIXME\b|[-*>#]|\{@)/;
-const EXAMPLE_HEADING = /^(?:e\.g\.|example|examples|usage|sample|for example)\b/i;
+const IDE_DIRECTIVE = String.raw`language\s*=\s*[A-Za-z]\w*(?:\s+(?:prefix|suffix)=.*)?$|noinspection\b`;
+const NOT_CODE = new RegExp(String.raw`^(?:@|https?:|TODO\b|FIXME\b|[-*>#]|\{@|${IDE_DIRECTIVE})`);
+const EXAMPLE_HEADING =
+  /^(?:(?:examples?|usage|samples?)(?:\s+(?:usage|code))?\s*(?::|$)|(?:e\.g\.|for example)\s*(?:[,:]|$))/i;
 const STRING_LITERAL = /"(?:\\.|[^"\\\n])*"/g;
-const WORD_RUN = /\b[a-z]{2,}\s+[a-z]{2,}\b/;
+const GROUPED = /\([^()]*\)|\[[^[\]]*\]/g;
+const WORD_RUN = /\b(?:[a-z]{2,}|\d+)\s+[a-z]{2,}\b/;
 const KOTLIN_WORD_LIST = [
   ...['if', 'else', 'when', 'try', 'catch', 'is', 'in', 'as', 'by', 'to', 'and', 'or'],
   ...['shl', 'shr', 'ushr', 'xor', 'until', 'downTo', 'step', 'object', 'return', 'throw'],
@@ -158,8 +161,14 @@ function commentGroups(scanned) {
   return groups;
 }
 
+function withoutGroups(text) {
+  const inner = text.replaceAll(GROUPED, '');
+  return inner === text ? text : withoutGroups(inner);
+}
+
 function readsAsProse(text) {
-  return WORD_RUN.test(text.replaceAll(STRING_LITERAL, '""').replaceAll(KOTLIN_WORDS, ' '));
+  const keywordsMarked = text.replaceAll(STRING_LITERAL, '""').replaceAll(KOTLIN_WORDS, '~');
+  return WORD_RUN.test(withoutGroups(keywordsMarked));
 }
 
 function isCodeLine(text) {
@@ -171,14 +180,23 @@ function isCodeLine(text) {
 }
 
 function firstCodeLine(lines) {
-  let documented = false;
+  let fenced = false;
+  let example = { open: false, started: false };
   return lines.findIndex((line) => {
     if (FENCE.test(line)) {
-      documented = !documented;
+      fenced = !fenced;
       return false;
     }
-    documented = documented || EXAMPLE_HEADING.test(line);
-    return !documented && isCodeLine(line);
+    if (EXAMPLE_HEADING.test(line)) {
+      example = { open: true, started: false };
+      return false;
+    }
+    if (line === '' && example.started) {
+      example = { open: false, started: false };
+    } else if (line !== '') {
+      example.started = true;
+    }
+    return !fenced && !example.open && isCodeLine(line);
   });
 }
 

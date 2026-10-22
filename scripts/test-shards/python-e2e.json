@@ -42,6 +42,7 @@
   "languages/python/rules/e2e/security/tls/tls-detection.e2e.test.mjs": 1,
   "languages/python/rules/e2e/security/tls/tls.e2e.test.mjs": 1,
   "languages/python/rules/e2e/smells/smells.e2e.test.mjs": 2,
+  "languages/python/rules/e2e/smells/task-markers.e2e.test.mjs": 1,
   "languages/python/rules/nitpicker-rules.e2e.test.mjs": 19,
   "languages/python/rules/rule-cases.e2e.test.mjs": 50,
   "languages/python/rules/swallowing.e2e.test.mjs": 19

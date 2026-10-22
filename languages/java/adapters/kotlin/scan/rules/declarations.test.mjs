@@ -75,6 +75,9 @@ describe('genericNames', () => {
     ['a plural Helpers', 'package demo.orders\n\nobject OrderHelpers\n', 'OrderHelpers'],
     ['a plural Managers', 'package demo.orders\n\nclass Managers\n', 'Managers'],
     ['a Miscellaneous object', 'package demo.orders\n\nobject Miscellaneous\n', 'Miscellaneous'],
+    ['a backticked name', 'package demo.orders\n\nclass `FooUtils`\n', 'FooUtils'],
+    ['a typealias', 'package demo.orders\n\ntypealias FooUtils = Bar\n', 'FooUtils'],
+    ['a name with trailing digits', 'package demo.orders\n\nobject Utils2\n', 'Utils2'],
   ])('flags %s', (_name, source, subject) => {
     expect(found(genericNames, source)).toEqual([['GenericTypeName', 3, subject]]);
   });
@@ -87,6 +90,8 @@ describe('genericNames', () => {
       'package demo.orders\n\nclass OrderCacheHelper : CacheHelper\n',
     ],
     ['a word that only ends in the letters', 'package demo.orders\n\nclass Fulfillment\n'],
+    ['a plural framework role', 'package demo.orders\n\nclass TransactionManagers\n'],
+    ['a framework role typealias', 'package demo.orders\n\ntypealias LockManager = Foo\n'],
   ])('passes %s', (_name, source) => {
     expect(found(genericNames, source)).toEqual([]);
   });
@@ -119,6 +124,38 @@ describe('genericNames', () => {
     const stem = file.replace(/^.*\//, '').replace('.kt', '');
 
     expect(foundIn(file, `package demo\n\n${source}`)).toEqual([['GenericFileName', stem]]);
+  });
+
+  it.each([
+    ['a source-set suffix', 'Utils.jvm.kt', 'actual fun now() = 1L\n', 'Utils'],
+    ['trailing digits', 'Utils2.kt', 'fun copy() = 1\n', 'Utils2'],
+    ['a version word', 'Utils_v2.kt', 'fun copy() = 1\n', 'Utils_v2'],
+    ['an acronym before the word', 'IOUtils.kt', 'fun copy() = 1\n', 'IOUtils'],
+    [
+      'a plural framework role of another word',
+      'OrderManagers.kt',
+      'fun x() = 1\n',
+      'OrderManagers',
+    ],
+  ])('flags a file name with %s', (_name, file, source, stem) => {
+    expect(foundIn(file, `package demo\n\n${source}`)).toEqual([['GenericFileName', stem]]);
+  });
+
+  it.each([
+    ['a source-set suffix', 'Platform.common.kt', 'expect fun platform(): String\n'],
+    ['a framework role of functions', 'SessionManager.kt', 'fun open() = 1\n'],
+    ['a plural framework role', 'LockManagers.kt', 'fun open() = 1\n'],
+    ['a framework role typealias', 'TransactionManager.kt', 'typealias TransactionManager = Foo\n'],
+  ])('does not flag a file name with %s', (_name, file, source) => {
+    expect(foundIn(file, `package demo\n\n${source}`)).toEqual([]);
+  });
+
+  it.each([
+    ['a type of the same name in another case', 'utils.kt', 'object Utils\n', 'Utils'],
+    ['a typealias of the same name', 'Helpers.kt', 'typealias Helpers = Foo\n', 'Helpers'],
+    ['a backticked type of the same name', 'FooUtils.kt', 'class `FooUtils`\n', 'FooUtils'],
+  ])('leaves a file with %s to the type rule', (_name, file, source, subject) => {
+    expect(foundIn(file, `package demo\n\n${source}`)).toEqual([['GenericTypeName', subject]]);
   });
 
   it.each([
