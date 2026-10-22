@@ -33,13 +33,18 @@ function declaredSuspend(file, call) {
     : declared.every(({ modifiers }) => modifiers.includes('suspend'));
 }
 
-function memberSuspend(file, type, name) {
+function memberSuspend(files, type, name) {
   const simple = type.slice(type.lastIndexOf('.') + 1);
-  const klass = file.classes.find((entry) => entry.name === simple || entry.qualified === type);
-  if (klass === undefined) {
+  const owners = files.flatMap((candidate) =>
+    candidate.classes
+      .filter((klass) => klass.name === simple || klass.qualified === type)
+      .map((klass) => ({ candidate, klass })),
+  );
+  if (owners.length !== 1) {
     return undefined;
   }
-  const declared = file.functions.filter(
+  const [{ candidate, klass }] = owners;
+  const declared = candidate.functions.filter(
     ({ owner, name: declaredName }) => owner === klass.qualified && declaredName === name,
   );
   return declared.length > 0 && declared.every(({ modifiers }) => modifiers.includes('suspend'));
@@ -52,7 +57,7 @@ function cancellableContext(context) {
   return context.split('+').every((term) => CANCELLABLE_CONTEXT_TERM.test(term.trim()));
 }
 
-function isSuspendCall(file, resolves, call) {
+function isSuspendCall({ file, files }, resolves, call) {
   if (call.receiver === undefined || call.receiver === 'this') {
     return unqualifiedSuspend(file, resolves, call);
   }
@@ -69,7 +74,7 @@ function isSuspendCall(file, resolves, call) {
   if (type !== undefined) {
     return hasMember(type, call.name);
   }
-  return memberSuspend(file, call.receiverType, call.name) === true;
+  return memberSuspend(files, call.receiverType, call.name) === true;
 }
 
 function unqualifiedSuspend(file, resolves, call) {
@@ -98,11 +103,11 @@ function labelOf(call) {
   return `${prefix}${call.name}()`;
 }
 
-export function suspendCleanupFindings(files, { finding }) {
+export function suspendCleanupFindings(files, { finding, declaredIn = files }) {
   return files.flatMap((file) => {
     const resolves = importResolver(file);
     return (file.cleanupCalls ?? [])
-      .filter((call) => isSuspendCall(file, resolves, call))
+      .filter((call) => isSuspendCall({ file, files: declaredIn }, resolves, call))
       .map((call) => {
         const owner = call.owner === undefined ? '' : `${call.owner}.`;
         const inCatch = call.section === 'catch';
