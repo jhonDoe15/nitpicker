@@ -32,13 +32,14 @@ jobs:
     name: java shard ${{ matrix.shard }}/${{ strategy.job-total }}
     if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
     runs-on: ubuntu-latest
-    # Files run serially inside each isolated shard to avoid competing JVM builds.
+    # Files run serially inside each isolated shard to avoid competing JVM builds. The matrix size comes from
+    # scripts/test-shards: about two minutes of tests per shard, one shard for the file that is longer than that.
     timeout-minutes: 60
     strategy:
       fail-fast: false
-      max-parallel: 16
+      max-parallel: 21
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

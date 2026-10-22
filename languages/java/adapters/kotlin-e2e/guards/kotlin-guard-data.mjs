@@ -1,18 +1,5 @@
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { runJavaDiff } from '../java-diff.mjs';
-import { SOURCE_RULE_IDS } from '../kotlin/rules/kotlin-rules.mjs';
-import {
-  commitBranch,
-  diffOf,
-  git,
-  gradle,
-  initializeProject,
-  kotlinE2eEnabled,
-  kotlinPolicy,
-  removeProject,
-} from './test-support/kotlin-e2e-project.mjs';
+import { SOURCE_RULE_IDS } from '../../kotlin/rules/kotlin-rules.mjs';
 
 const PACKAGE = 'package demo.guards\n\n';
 const LOGGER = `${PACKAGE}import java.util.logging.Logger\n\n`;
@@ -24,7 +11,7 @@ const methods = Array.from(
   (_, index) => `    fun m${String(index)}(): String = "m${String(index)}"`,
 );
 
-const GUARD_ROOT = 'src/main/kotlin/demo/guards';
+export const GUARD_ROOT = 'src/main/kotlin/demo/guards';
 const GUARD_TEST_ROOT = 'src/test/kotlin/demo/guards';
 
 const BANNED_GUARDS = {
@@ -78,7 +65,10 @@ function guardFiles(sources, tests) {
   };
 }
 
-const EXPECTED_BANNED = [
+export const BANNED_FILES = guardFiles(BANNED_GUARDS, BANNED_TESTS);
+export const ALLOWED_FILES = guardFiles(ALLOWED_GUARDS, ALLOWED_TESTS);
+
+export const EXPECTED_BANNED = [
   'kotlin-source/MutableModuleState State.kt',
   'kotlin-source/LogStringConcatenation Audit.kt',
   'kotlin-source/ShellCommand Shell.kt',
@@ -106,7 +96,7 @@ const CLASS_RULES = new Set([
 
 const DETEKT_SOURCE_RULES = new Set(SOURCE_RULE_IDS);
 
-function guardFindings(findings) {
+export function guardFindings(findings) {
   return findings.filter(
     ({ tool, rule }) =>
       GUARD_TOOLS.has(tool) ||
@@ -115,73 +105,12 @@ function guardFindings(findings) {
   );
 }
 
-function printedRule({ tool, rule }) {
+export function printedRule({ tool, rule }) {
   return tool === 'structure' || tool === 'detekt' ? rule : `${tool}/${rule}`;
 }
 
-function summary(findings) {
+export function summary(findings) {
   return guardFindings(findings)
     .map(({ tool, rule, path: file }) => `${tool}/${rule} ${path.basename(file)}`)
     .toSorted();
 }
-
-describe.skipIf(!kotlinE2eEnabled)(
-  'Kotlin preset source guards, compiler warnings and class limits end to end',
-  () => {
-    let project;
-    let banned;
-    let allowed;
-
-    beforeAll(() => {
-      project = initializeProject();
-      commitBranch(project, 'guards-banned', guardFiles(BANNED_GUARDS, BANNED_TESTS));
-      commitBranch(project, 'guards-allowed', guardFiles(ALLOWED_GUARDS, ALLOWED_TESTS));
-      banned = diffOf(project, 'guards-banned');
-      allowed = diffOf(project, 'guards-allowed');
-    });
-    afterAll(() => {
-      removeProject(project);
-    });
-
-    it('fails every banned form with its own rule', () => {
-      expect(summary(banned.newEnforceable)).toEqual(EXPECTED_BANNED);
-      expect(banned.newFindings.some(({ rule }) => rule === 'lint-not-run')).toBe(false);
-    });
-
-    it('lets every allowed form through, the composition root reading the environment among them', () => {
-      expect(summary(allowed.newFindings)).toEqual([]);
-      expect(
-        allowed.newEnforceable.filter(({ path: file }) => file.endsWith(`${GUARD_ROOT}/App.kt`)),
-      ).toEqual([]);
-    });
-
-    it('ends each finding with the exception sentence of the rule it prints', () => {
-      const wrong = guardFindings(banned.newEnforceable)
-        .filter(
-          (finding) => !finding.message.endsWith(exceptionHint(printedRule(finding), finding.path)),
-        )
-        .map(({ tool, rule }) => `${tool}/${rule}`);
-
-      expect(wrong).toEqual([]);
-    });
-
-    it('lifts a source rule for the paths of an exception only', () => {
-      git(project, 'checkout', '-q', 'guards-banned');
-      const result = runJavaDiff({
-        repositoryRoot: project.root,
-        requestedBaseRef: 'main',
-        gradle,
-        policy: {
-          ...kotlinPolicy,
-          exceptions: [
-            { rule: 'kotlin-source/MutableModuleState', glob: `${GUARD_ROOT}/State.kt` },
-          ],
-        },
-      });
-
-      expect(summary(result.newEnforceable)).toEqual(
-        EXPECTED_BANNED.filter((entry) => entry !== 'kotlin-source/MutableModuleState State.kt'),
-      );
-    });
-  },
-);

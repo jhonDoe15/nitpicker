@@ -14,8 +14,7 @@ two test workers each. Its initial weights come from the successful
 [Python run 39316386448](https://github.com/jhonDoe15/nitpicker/actions/runs/39316386448) on
 `aec1d434adabc8259fc8e0e56840687952a6c4d1`: 42 files, 767 tests and 399.74 seconds of test-run
 wall time, plus roughly 40 seconds of tool/dependency setup. The sum of per-file times is larger
-because files ran concurrently. The target is 2–4 minutes including setup, subject to measurement
-in the new matrix. Keep Python 3.9/3.10/3.13, version constraints and all current tests on every
+because files ran concurrently. The target is 2–3 minutes of job time. Keep Python 3.9/3.10/3.13, version constraints and all current tests on every
 relevant shard; partitioning files must not change interpreter or behavioral coverage.
 
 The initial JVM weights are per-file milliseconds from successful CI logs on main commit
@@ -38,9 +37,9 @@ Kotlin coverage/structure at 297.21 seconds. Every individual case took at most 
 JSON first-to-last assertion time excludes the first `beforeAll`: the Spring file actually
 spent 213.51 seconds including hooks, and Kotlin one-way rules spent 211.65 seconds.
 
-The refined split uses 16 Java and 10 Kotlin runners. Java preset cases are grouped into nine
-pairs, Maven into five behavior groups, Kotlin lint into five pairs and coverage/structure into
-three groups. Spring retains its three existing independent build hooks in separate files.
+The earlier refined split grouped Java preset cases into nine pairs, Maven into five behavior
+groups, Kotlin lint into five pairs and coverage/structure into three groups. Spring retains its
+three existing independent build hooks in separate files.
 Kotlin one-way rules build only the banned, allowed or hostile-config snapshot needed by their
 file, rather than rebuilding all three snapshots in every group. Each original assertion is retained. Named timeout projects select the Java/Kotlin test subject
 independently of the `.mjs` harness extension. Tests have a three-minute execution deadline;
@@ -53,30 +52,31 @@ cases in total. Their unchanged files use measured module durations from success
 and 99 seconds for Kotest ([run 39408625035](https://github.com/jhonDoe15/nitpicker/actions/runs/39408625035)).
 These measured weights are integrated into the same deterministic partition.
 
-The Kotlin parity guards file and the added one-way rules bring the Kotlin total to 71 cases, and the
-Kotlin review rules file (three cases) and the added `kotlin-psi` cases to 79; the guards and review
-rules files are planning estimates of 100 and 110 seconds for their single builds.
+The profiles were rewritten from the isolated-shard runs
+[Java 39827137379](https://github.com/jhonDoe15/nitpicker/actions/runs/39827137379),
+[Kotlin 39827137380](https://github.com/jhonDoe15/nitpicker/actions/runs/39827137380) and
+[Python 39827137436](https://github.com/jhonDoe15/nitpicker/actions/runs/39827137436) on
+`de8c1413`, whose shards ran 100-297 seconds (Java), 174-344 seconds (Kotlin) and 127-193 seconds
+(Python) of job time, with about 48 seconds of setup in each JVM job and 40 in each Python job.
+Weights are seconds of test step time including hooks. Where the log showed a file's own time
+(Java: nearly every file) the weight is that time. Elsewhere it is the measured suite step of the
+shard, shared between its files in proportion to the earlier estimates, and a file that was split
+shares its weight over its parts. Files added since (the Java integration tests) keep their
+author's estimate. Every weight is replaced by a per-file measurement when a run of the new matrix
+is available: read the shard JSON reports uploaded as artifacts.
 
-The split-file weights remain planning estimates, not measurements of the new split. Unchanged files
-use the successful isolated-shard log totals, including hooks. Split case groups sum their
-measured case times plus original hook time and a conservative 25-second allowance for the
-additional first JVM build. Spring review/console weights are 88/150 seconds: their individual
-hooks were not logged, so these budget the observed combined 186 seconds by their two/four
-snapshot builds, with extra startup allowance. One-way banned/allowed/hostile weights are
-128/81/81 seconds, budgeting the observed 165-second combined hook evenly plus extra startup;
-the banned group also retains its measured 46.52-second exception comparison. These allocations
-are hypotheses to replace with new full-module measurements.
+Files longer than about 125 seconds were split into independent behavior groups, each with its
+own fixture tree and every assertion kept: the Java integration, preset branches, Maven reactor,
+test framework and escape hatch files, the Kotlin guards, review rules, lint, coverage branches
+and one-way rules files, and the Python gate file. Identical builds repeated in one file now run
+once and are shared by the cases that read them. The Spring console file (about 197 seconds) is
+the one file left longer than a shard: its single case compares the full Gradle and Maven findings
+of two builds. It has a shard of its own.
 
-The deterministic sequencer gives estimated Java loads of 111–181 seconds and Kotlin loads
-of 117–181 seconds, before runner setup. The goal is 2–3 minutes normally and under five minutes
-including setup. The successful warm-cache sample on `0925469` measured Java jobs at 112/152/277 seconds
-(minimum/median/maximum) and Kotlin jobs at 110/150.5/206 seconds. Every shard stayed under
-five minutes; two shards per language exceeded three minutes. Java queue delays were
-116–255 seconds, separate from job execution. These measurements predate the layered timeout
-change; they do not prove cold-cache behavior. The prior setup overhead was
-29–45 seconds per job. More isolated runners repeat dependency/setup work and compete for
-account runner capacity, so queue delay and total runner minutes can rise even if each job is
-faster. One active file per runner avoids competing JVM builds inside a shard.
+The sequencer gives Java 21 shards of 106-121 seconds, plus 197 seconds for the console file;
+Kotlin 15 shards of 98-135 seconds; Python 4 shards of 129 seconds, before runner setup. The
+verifier lists tests with `--no-isolate` and runs the four listings at once, which keeps the
+shard-plan job under a minute instead of about two.
 
 Each shard uploads a JSON test report under a language/shard/attempt-specific artifact name,
 including on test failure when a report exists. Compare the test step and full job elapsed time,
@@ -102,7 +102,10 @@ insufficient to verify the partition. The script's own main guard resolves `proc
 through `realpathSync`, so a run through a symlinked path checks rather than exiting silently.
 
 Fixture Git trees, generated reports and build outputs remain local to each runner. The existing
-Maven/Gradle actions cache dependencies; mutable fixture builds are not shared between shards.
+Maven/Gradle actions cache dependencies; mutable fixture builds are not shared between shards. The
+Python shards also restore uv's download cache (`~/.cache/uv`, keyed on the constraints file and
+the shard): it holds downloaded wheels only, every environment is still built fresh and the
+constraints still pin every version. Its saving is not measured yet.
 The aggregate `java` and `kotlin` checks retain their names and require matrix success: a failed,
 cancelled or unexpectedly skipped matrix cannot turn green. Unrelated PR labels still skip the
 workflows' test jobs as before.
@@ -110,14 +113,10 @@ workflows' test jobs as before.
 The Kotlin style file test (`kotlin-e2e/style/kotlin-style-files.e2e.test.mjs`, nine cases) was
 gated on the Java flag but selected by neither suite. It runs the init script's two Kotlin style
 tasks against a stand-in Kotlin plugin, so it now sits under `kotlin-e2e/`, is gated on the Kotlin
-flag and runs in the Kotlin suite with a planning weight of 120 seconds (about 64 to 85 seconds
-locally). Its first run showed two expectations older than the enforcement of the followed base
+flag and runs in the Kotlin suite (about 64 to 85 seconds locally). Its first run showed two expectations older than the enforcement of the followed base
 values: a project `.editorconfig` that sets another value gets the followed one appended, and a
-project-first detekt precedence gets the enforced layer last. The Kotlin review rules file
-(`kotlin-e2e/kotlin-preset-review-rules.e2e.test.mjs`) weighs 170 seconds: its shard in
-[run 39777693542](https://github.com/jhonDoe15/nitpicker/actions/runs/39777693542) took 291 seconds
-together with a file of about 120. Each language workflow runs the verifier in its own shard-plan
-job; it lists tests without starting a JVM build or a Python project, and the aggregate check
+project-first detekt precedence gets the enforced layer last. Each language workflow runs the
+verifier in its own shard-plan job; it lists tests without starting a JVM build or a Python project, and the aggregate check
 requires it.
 
 Four Python files (`ruff/ruff-rules`, `ruff/ruff-groups`, `adapters/formatting/format-scope` and
