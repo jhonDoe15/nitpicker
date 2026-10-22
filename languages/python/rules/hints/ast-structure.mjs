@@ -29,7 +29,32 @@ function importBoundaryAdvice(libraries) {
   return `Use ${validators.join(' or ')} only in an \`adapters/\` package to parse untrusted input (\`${validatorNamed(validators[0]).call}\`), and pass frozen dataclasses on from there.`;
 }
 
+const CAST_CONTAINER = /^cast\((?:list|dict|set|frozenset|tuple)\b|^cast\([^)]*\[/u;
+
+function castBoundaryAdvice(subject, libraries) {
+  if (!CAST_CONTAINER.test(subject)) {
+    return '';
+  }
+  const [validator] = validatorsOf(libraries);
+  return ` Parse untrusted input once in \`adapters/\` with ${validatorForm(validator)}.`;
+}
+
 export const STRUCTURE_HINTS = [
+  {
+    tool: RULES_TOOL,
+    rules: ['type-cast'],
+    describe: (subject) =>
+      `\`${subject.split(' in ')[0]}\` asserts a type without checking the value`,
+    allowed: (subject, libraries) =>
+      `Narrow the value with \`isinstance\` or \`match\`, or give it the correct type at its source.${castBoundaryAdvice(subject, libraries)}`,
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['explicit-any'],
+    describe: (subject) => `\`${subject}\` is typed with an explicit \`Any\``,
+    allowed:
+      'Write the concrete type, a `Protocol`, a `TypeVar`, a `ParamSpec` or `object` (`dict[str, object]`, `Callable[..., object]`).',
+  },
   { tool: 'ruff', rules: ['E722', 'BLE001'], allowed: HANDLE_EXCEPTION },
   {
     tool: RULES_TOOL,

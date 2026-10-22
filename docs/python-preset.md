@@ -591,6 +591,7 @@ are listed at the end.
 | Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                  | ruff `N`                                                                                                                                             |
 | Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                      | `handwritten-boundary-guard` (script)                                                                                                                |
 | Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                       | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
+| Type checking            | a concrete type, `Protocol`, `TypeVar`, `ParamSpec`, `object` narrowed with `isinstance`; no `typing.cast`, no `Any`                             | `type-cast`, `explicit-any` (script)                                                                                                                 |
 | Pure domain              | clock, ids and random values passed in; ports implemented in `adapters/`                                                                         | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
 | Module state             | state in an object made in the composition root                                                                                                  | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
 | Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
@@ -610,6 +611,35 @@ are listed at the end.
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                 | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
 | Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
+
+`type-cast` rejects `typing.cast` (and `typing_extensions.cast`) as a call or as a value
+(`partial(cast, int)`); `explicit-any` rejects every explicit `Any` of those modules. Both apply in
+source and in tests, as the TypeScript preset bans `as` and `any` in tests too. The finding is named
+by what it types: `f(a)`, `f(return)`, `Model.field`, `Alias`, or `cast(str) in f`, so a finding
+added above another does not renumber it; one annotation gives one finding however many `Any` it holds
+(`dict[str, Any] | list[Any]`), and `cast(Any, value)` is one `type-cast` finding. The allowed forms
+are the concrete type, a `Protocol`, a `TypeVar`, a `ParamSpec` for a wrapper's `*args` and `**kwargs`,
+and `object` narrowed with `isinstance` or `match` (`dict[str, object]`, `Callable[..., object]`);
+untrusted input is parsed once in `adapters/` (the cast message names it when the target is a
+container). Both rules take `python.exceptions` entries with paths and a reason. ruff's `ANN401` is
+not selected, since `explicit-any` covers the same `Any` in every position.
+
+- An `Any` inside a node that `any-in-domain` or `pydantic-any-field` already reports (the whole
+  annotation, also over several lines) is not reported again, so one exception for the first rule
+  covers the `explicit-any` on that node too.
+- The implementation signature of a function that has `@overload` siblings is not checked: callers
+  see the overloads, which are.
+- `__getattr__`, `Callable[..., Any]` and test mocks are reported like any other `Any`; write
+  `Callable[..., object]` and a typed fake.
+- Resolution is lexical and conservative: a reassigned or ambiguous imported name (a comprehension
+  variable, a `match` capture, a parameter) is not assumed to refer to typing, while `typing` and
+  `typing_extensions` count as the same module (`try: from typing import cast` /
+  `except ImportError: from typing_extensions import cast`). Dynamic imports, wildcard imports (ruff
+  `F403` bans them), re-exports and arbitrary assignment aliases are not followed.
+- Annotation strings are parsed as expressions; `Literal` string values and `Annotated` metadata are
+  data, not type references. PEP 695/696 type-parameter bounds and defaults, class keywords and
+  subscript targets are read. Unused imports alone do not produce these findings (ruff handles unused
+  imports), and standalone `.pyi` stubs are not read.
 
 Details that are decisions rather than the table:
 

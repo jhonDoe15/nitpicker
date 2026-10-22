@@ -20,6 +20,7 @@ import {
 } from '../kotlin/rules/kotlin-source-rules.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
 import { withFrameworkAllowances } from '../kotlin/scan/framework-allowances.mjs';
+import { withoutCoveredCasts } from '../kotlin/scan/casts/cast-precedence.mjs';
 import { readKotlinSourceFindings } from '../kotlin/scan/kotlin-scan.mjs';
 import { readKotlinReviewFindings } from '../kotlin/review-rules/review-findings.mjs';
 import { withoutCoveredSourceFindings } from '../kotlin/review-rules/spring/spring-findings.mjs';
@@ -103,15 +104,17 @@ export function readKotlinFindings(context, crapLimit) {
   const metrics = readKotlinMetrics(reportRoot);
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
   const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
-  const ruleFindings = applyKotlinRuleMessages([
-    ...withFrameworkAllowances(detektFindings(reportRoot, formatAdvice), {
-      projectRoot,
-      spring: manifest.spring === true,
-      testRoots,
-    }),
-    ...readKotlinSourceFindings(projectRoot, manifest),
-    ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),
-  ]);
+  const ruleFindings = applyKotlinRuleMessages(
+    withoutCoveredCasts([
+      ...withFrameworkAllowances(detektFindings(reportRoot, formatAdvice), {
+        projectRoot,
+        spring: manifest.spring === true,
+        testRoots,
+      }),
+      ...readKotlinSourceFindings(projectRoot, manifest),
+      ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? [], testRoots),
+    ]),
+  );
   return withoutCoveredSourceFindings(
     [
       ...ruleFindings,

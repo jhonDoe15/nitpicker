@@ -39,6 +39,8 @@ Before you change code other modules use, or fix a bug, read
 
 - Scope functions: `let` for null (`value?.let { ... }`) and `apply` to configure an object you just
   created. No `run`, `with` or `also`, and no `let` or `apply` where a direct call works.
+- Casts: no `as`, in tests too. Use an `is` check or `when` (smart cast), `as?` with the null handled, or
+  `assertIs<T>(value)` in a test; a read-only `List` is copied with `toMutableList()`, not cast.
 - Null: no `!!`, no `as String` on a nullable. Use `value ?: return`, `?.let`, or
   `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
 - Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
