@@ -179,20 +179,35 @@ let $ioTypes := '(Repository|Dao|DAO|Client|EntityManager|JdbcTemplate|RestTempl
             or *[2][self::InfixExpression][@Operator = ('+', '-', '*', '/', '%')][VariableAccess/@Name = $target])])]
       //(MethodCall | ConstructorCall),
     $springWrites := (if ($springData) then (
-      //MethodCall[@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')]
-        [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
-        [ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
-           [not(.//IfStatement[*[1]//InfixExpression[@Operator = '%']]//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])]
-         or ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]
-           [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')]]]]
+      let $iterated := function($call) {
+        exists($call/*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+          or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')])
+      },
+          $loop := function($node) {
+        exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
+          [not(.//IfStatement[*[1]//InfixExpression[@Operator = '%']]//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
+        or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
+          [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')][$iterated(.)]])
+      },
+          $entityWrite := function($node) {
+        $node/@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')
+        and exists($node/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
+          or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
+      }
+      return
+      //MethodCall[$entityWrite(.)][$loop(.)]
       |
-      //MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]
-        [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Map')]]/ArgumentList
-        /MethodReference[@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')]
-        [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
+      //MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek')][$iterated(.)]
+        /ArgumentList/MethodReference[$entityWrite(.)]
+      |
+      //VariableDeclarator[let $name := VariableId/@Name
+          return ancestor::MethodDeclaration[1]//(MethodCall[@MethodName = 'accept'][*[1][self::VariableAccess[@Name = $name]]][$loop(.)]
+            | MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek')][$iterated(.)]
+                /ArgumentList/VariableAccess[@Name = $name])]
+        /MethodReference[$entityWrite(.)]
     ) else ()),
     $springFlushes := (if ($springData) then //MethodCall[@MethodName = ('saveAndFlush', 'saveAllAndFlush', 'flush')]
-      [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]] else ()),
+        [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]] else ()),
     $batchedWrites := (//ForStatement | //ForeachStatement | //WhileStatement | //DoStatement)
       [.//IfStatement[*[1]//InfixExpression[@Operator = '%']]//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager')]]]
       //MethodCall[@MethodName = ($writes, 'flush')],

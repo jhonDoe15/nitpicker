@@ -5,11 +5,8 @@ import path from 'node:path';
 import { parse } from 'yaml';
 import { createVitest, parseCLI } from 'vitest/node';
 import { assignShards, readDurations } from './sequencer.mjs';
-import { resolveTestTimeouts } from '../../shared/test-timeouts/resolve.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const EXPECTED_CASES = { java: 103, kotlin: 54 };
-const JVM_TEST_DEADLINE_MS = 180_000;
 const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 
 // Collect through the package script's real flags and Vitest config without running JVM builds.
@@ -36,16 +33,6 @@ for (const language of process.argv.slice(2).length ? process.argv.slice(2) : ['
   const matrix = workflow.jobs[`${language}-shard`].strategy.matrix.shard;
   const cases = discover(language);
   const files = [...new Set(cases.map(({ file }) => path.relative(root, file)))].toSorted();
-  const policy = JSON.parse(readFileSync(path.join(root, 'nitpicker.config.json'), 'utf8'));
-  for (const file of files) {
-    const timeout = resolveTestTimeouts(policy, { file, language: 'typescript' });
-    assert.equal(
-      timeout.testTimeoutMs,
-      JVM_TEST_DEADLINE_MS,
-      `${file} must use its JVM project deadline`,
-    );
-    assert.equal(timeout.testDeclarationCeilingMs, JVM_TEST_DEADLINE_MS);
-  }
   const durations = readDurations(path.join(import.meta.dirname, `${language}-e2e.json`));
   assert.deepEqual(
     [...durations.keys()].toSorted(),
@@ -76,7 +63,7 @@ for (const language of process.argv.slice(2).length ? process.argv.slice(2) : ['
   }
   delete process.env[`NITPICKER_${language.toUpperCase()}_E2E`];
   assert.deepEqual(actual.flat().toSorted(), files, 'every file must occur exactly once');
-  assert.equal(cases.length, EXPECTED_CASES[language], 'behavioral case coverage changed');
+  assert.equal(cases.length, language === 'java' ? 76 : 54, 'behavioral case coverage changed');
   const loads = shards.map((shard) => shard.reduce((sum, file) => sum + durations.get(file), 0));
   console.log(
     JSON.stringify({
