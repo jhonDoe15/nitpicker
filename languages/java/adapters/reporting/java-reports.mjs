@@ -21,6 +21,7 @@ import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
+import { readUnrunTestFindings } from '../test-runs/unrun-tests.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
@@ -138,6 +139,12 @@ function readModuleFindings(context, crapLimit) {
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
     ...readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),
     ...readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
+    ...readUnrunTestFindings({
+      reportRoot,
+      projectRoot,
+      manifest: context.manifest,
+      modulePath: context.testTimes.modulePath,
+    }),
   ];
 }
 

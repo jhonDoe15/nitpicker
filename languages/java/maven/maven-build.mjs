@@ -134,6 +134,7 @@ function writeManifest({ module, reportDir, pinned, spring, classpaths }) {
       testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
       testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
       published: module.published,
+      runsFailsafe: module.runsFailsafe,
     }),
   );
 }
