@@ -76,6 +76,13 @@ describe.skipIf(!pythonE2eEnabled)(
           message:
             'This code repeats src/shop/domain/pricing.py:5 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/shop/domain/bulk.py or src/shop/domain/pricing.py to "exclude" in nitpicker.config.json. To allow it for some paths, add a "python.exceptions" entry for duplicate-clone in nitpicker.config.json.',
         },
+        {
+          tool: 'facts',
+          rule: 'test-only-export',
+          file: 'src/shop/domain/bulk.py',
+          message:
+            'Module src/shop/domain/bulk.py is only used by tests. Move it beside the tests as a test helper, or use it from production code. If this is intended, add {"rule":"test-only-export","paths":["src/shop/domain/bulk.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        },
       ]);
     });
     it('fails a stable package importing an unstable one, the cycle it closes and the contract it breaks', () => {
