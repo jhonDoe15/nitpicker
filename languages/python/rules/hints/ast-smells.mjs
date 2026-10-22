@@ -133,6 +133,14 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['negative-wait-in-test'],
+    describe: (subject) =>
+      `\`${subject}\` proves that nothing happens by waiting out its timeout, so the test is slow and depends on the delay`,
+    allowed:
+      'Check the state at once (`assert not event.is_set()`, `assert queue.empty()`), or control the clock or scheduler the code waits on, move it past the delay and assert right away.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['tautological-assert'],
     describe: (subject) => `\`${subject}\` can never fail`,
     allowed:

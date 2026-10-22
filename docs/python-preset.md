@@ -609,7 +609,7 @@ are listed at the end.
 | TLS                      | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                    | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                 |
 | Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                    | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                            |
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                 | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
-| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
+| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
 
 Details that are decisions rather than the table:
@@ -835,12 +835,25 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `anyio.sleep` and `gevent.sleep` with a delay other than a literal `0` (`asyncio.sleep(0)` only
   yields), also through a star import (`from time import *`), and Playwright's `wait_for_timeout`.
   It ignores tests that patch the sleep or freeze the clock, and follows the project's own helpers
-  that sleep. A poll is the allowed form, so a sleep is not reported in the body of a `while` loop
-  of the same function, or of a `for` loop whose body leaves early under a condition (a `break` of
-  that loop or a `return` inside an `if`, `try` or `match`, as in
-  `for _ in range(50): if ready(): break`). A `for` loop that only repeats the wait, the `else` of
-  a loop and a comprehension are reported, and so is `wait_for_timeout` in a loop, because
-  Playwright's `expect` already polls. `real-clock-in-test` and `random-in-test` skip a
+  that sleep, star imports included. A poll is the allowed form, so a sleep is not reported in the
+  body of a `while` loop of the same function with a condition, of a `while True` (or `while 1`)
+  loop that reads the clock (`time.monotonic()`, `time.perf_counter()`, `time.time()`,
+  `datetime.now()`, `loop.time()`, trio's or anyio's `current_time()`) as a deadline, or of a `for`
+  loop whose body leaves early under a condition (a `break` of that loop or a `return` inside an
+  `if`, `try` or `match`, as in `for _ in range(50): if ready(): break`). A `while True` loop
+  without a clock read is reported, as in the Java and Kotlin presets, because nothing bounds it. A
+  `for` loop that only repeats the wait, the `else` of a loop and a comprehension are reported, and
+  so is `wait_for_timeout` in a loop, because Playwright's `expect` already polls. As in the Java
+  preset, a sleep in code that runs off the test's path is not reported: a function or lambda
+  handed to a thread or executor (`Thread(target=...)`, `Timer`, `submit`, `run_in_executor`,
+  `asyncio.to_thread`, `start_new_thread`) or used as a mock's `side_effect` (keyword or
+  assignment). `negative-wait-in-test` (Java: `NegativeWaitInTest`; TypeScript: the timeout-based
+  negative assertion of `nitpicker/no-fixed-sleep-synchronization`) reports a wait that the test
+  expects to run out: `assert not event.wait(0.5)`, `lock.acquire(timeout=1) is False`,
+  `assertFalse(x.wait(...))`, and the first call with a delay (`timeout=`, `asyncio.wait_for(x,
+  t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or `assertRaises`
+  of `TimeoutError`, `queue.Empty` or `TimeoutExpired`. Such a test passes only after the full
+  delay. A delay of `0` or `None` is not reported. `real-clock-in-test` and `random-in-test` skip a
   file that uses `freezegun`, `time_machine`, a patched clock, a seed or a `random.Random(...)`, and
   look at the fake per test function, not per file. `network-in-test` skips files that use
   `responses`, `respx`, `requests_mock` and similar or patch the client, and tests under

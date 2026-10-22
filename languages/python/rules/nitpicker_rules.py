@@ -20,7 +20,7 @@ def load_checks():
     from discovery import helpers, uncollected
     from environment import environment, purity
     from errors import errors
-    from honesty import assertions, isolation, skipped
+    from honesty import assertions, isolation, skipped, waits
     from review import fields
     from security import hashes, loading
     from security.sql import check as sql
@@ -54,6 +54,7 @@ def load_checks():
         assertions,
         unasserted,
         isolation,
+        waits,
         uncollected,
         helpers,
         fields,

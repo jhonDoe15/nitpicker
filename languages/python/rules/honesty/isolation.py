@@ -2,7 +2,7 @@ import ast
 
 from checks.common import call_name, dotted_name, finding
 from honesty.fakes import CLOCK, NETWORK, RANDOM, SLEEP, fakes_of
-from honesty.sleeps import is_wall_clock_wait, star_modules, starred_name
+from honesty.sleeps import star_modules, starred_name, wall_clock_waits
 
 CLOCK_CALLS = {
     "datetime.datetime.now",
@@ -138,11 +138,13 @@ def sleeping_functions(project):
 
 def sleepers_of(context):
     names = set()
+    waits = wall_clock_waits(context)
+    stars = star_modules(context.tree)
     for node in ast.walk(context.tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             for part in ast.walk(node):
                 name = call_name(part, context.aliases)
-                if name and is_wall_clock_wait(name, part, context.parents):
+                if name and waits(starred_name(name, part, stars), part):
                     names.add(node.name)
     return names
 
@@ -155,15 +157,14 @@ def sleeping_helper(name, project):
     return function in sleeping_functions(project).get(path, set())
 
 
-def waits_in(context):
-    return lambda name, node: is_wall_clock_wait(name, node, context.parents)
-
-
 def rule_checks(context):
+    def sleeps_inside(name):
+        return sleeping_helper(name, context.project)
+
     checks = [
         ("real-clock-in-test", is_clock, CLOCK),
         ("random-in-test", is_random, RANDOM),
-        ("sleep-in-test", waits_in(context), SLEEP),
+        ("sleep-in-test", wall_clock_waits(context, sleeps_inside), SLEEP),
     ]
     if not is_integration(context.path):
         checks.append(("network-in-test", is_network, NETWORK))
@@ -175,16 +176,14 @@ def check(context):
         return []
     fakes = fakes_of(context)
     stars = star_modules(context.tree)
+    checks = rule_checks(context)
     found = []
     for node in ast.walk(context.tree):
         name = call_name(node, context.aliases)
         if not name:
             continue
         name = starred_name(name, node, stars)
-        for rule, matches, kind in rule_checks(context):
-            is_helper = rule == "sleep-in-test" and sleeping_helper(
-                name, context.project
-            )
-            if (matches(name, node) or is_helper) and kind not in fakes.kinds_at(node):
+        for rule, matches, kind in checks:
+            if matches(name, node) and kind not in fakes.kinds_at(node):
                 found.append(finding(context.path, rule, name, node))
     return found
