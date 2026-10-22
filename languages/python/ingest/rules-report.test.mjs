@@ -12,25 +12,42 @@ const entry = (overrides) => ({
 describe('rules script report', () => {
   it('shows the helper chain in the message and keeps it out of the identity', () => {
     const via = 'quote -> shop.prices.fetch -> requests.get';
-    const [found] = ingestRulesReport(
-      JSON.stringify([entry({ rule: 'io-in-domain', subject: 'fetch', via })]),
-    );
+    const report = [entry({ rule: 'io-in-domain', subject: 'fetch', via })];
 
-    expect(found).toMatchObject({
-      identity: 'fetch',
-      subject: via,
-      message: `\`${via}\` does input or output through a project helper called from domain code`,
-    });
+    expect(ingestRulesReport(JSON.stringify(report))).toEqual([
+      {
+        tool: 'python-rules',
+        rule: 'io-in-domain',
+        path: 'src/order.py',
+        identity: 'fetch',
+        subject: via,
+        message: `\`${via}\` does input or output through a project helper called from domain code`,
+        classification: 'enforceable',
+        location: { line: 4 },
+      },
+    ]);
   });
 
   it.each([
-    ['clock-now', 'when -> shop.clock.now -> datetime.datetime.now', 'reads the clock through'],
-    ['random-in-domain', 'ident -> shop.ids.new -> uuid.uuid4', 'draws randomness through'],
-    ['import-time-effect', 'shop.db.connect -> sqlite3.connect', 'runs an external effect when'],
-  ])('words the %s helper chain', (rule, via, words) => {
+    [
+      'clock-now',
+      'when -> shop.clock.now -> datetime.datetime.now',
+      '`when -> shop.clock.now -> datetime.datetime.now` reads the clock through a project helper called from domain code',
+    ],
+    [
+      'random-in-domain',
+      'ident -> shop.ids.new -> uuid.uuid4',
+      '`ident -> shop.ids.new -> uuid.uuid4` draws randomness through a project helper called from domain code',
+    ],
+    [
+      'import-time-effect',
+      'shop.db.connect -> sqlite3.connect',
+      '`shop.db.connect -> sqlite3.connect` runs an external effect when the module is imported, so every import, tests included, performs it',
+    ],
+  ])('words the %s helper chain', (rule, via, message) => {
     const [found] = ingestRulesReport(JSON.stringify([entry({ rule, subject: 'x', via })]));
 
-    expect(found.message).toContain(`\`${via}\` ${words}`);
+    expect(found.message).toBe(message);
   });
 
   it('turns each entry into an enforceable finding identified by its subject', () => {
