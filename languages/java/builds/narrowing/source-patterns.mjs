@@ -90,7 +90,9 @@ const SOURCE_INCLUDES = new Set(['source', 'testSource']);
 
 export function includeScope(kind, entries, testClass = TEST_CLASS) {
   const roots = kind === 'source' ? mainRootsOf(entries) : testRootsOf(entries);
-  const inRoots = (file) => relativeIn(file, roots) !== undefined;
+  function inRoots(file) {
+    return relativeIn(file, roots) !== undefined;
+  }
   const admits = {
     source: matchesIn(roots, classPathMatches),
     testSource: matchesIn(roots, classPathMatches),

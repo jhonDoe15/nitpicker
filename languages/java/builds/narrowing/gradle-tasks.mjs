@@ -1,14 +1,20 @@
 const TASKS = String.raw`(?:(?:project\.)?tasks\.)?`;
-const TYPE_ARGUMENT = (types) => String.raw`(?:${types})(?:::class(?:\.java)?)?`;
-const NAMED = (names) =>
-  String.raw`(?:named|getByName)\s*(?:<\s*\w+\s*>\s*)?\(\s*["'](?:${names})["']\s*(?:,\s*\w+(?:::class(?:\.java)?)?\s*)?\)`;
-const WITH_TYPE = (types) =>
-  String.raw`withType\s*(?:\(\s*${TYPE_ARGUMENT(types)}\s*\)|<\s*(?:${types})\s*>(?:\s*\(\s*\))?)`;
+function typeArgument(types) {
+  return String.raw`(?:${types})(?:::class(?:\.java)?)?`;
+}
+
+function named(names) {
+  return String.raw`(?:named|getByName)\s*(?:<\s*\w+\s*>\s*)?\(\s*["'](?:${names})["']\s*(?:,\s*\w+(?:::class(?:\.java)?)?\s*)?\)`;
+}
+
+function withType(types) {
+  return String.raw`withType\s*(?:\(\s*${typeArgument(types)}\s*\)|<\s*(?:${types})\s*>(?:\s*\(\s*\))?)`;
+}
 const CONFIGURED = String.raw`(?:\.get\(\))?(?:\.(?:configure|configureEach|all)(?:\s*\(\s*\))?)?`;
 
 function taskPattern(names, types) {
-  const typed = types === undefined ? '' : `|${WITH_TYPE(types)}`;
-  return String.raw`${TASKS}(?:${names}|${NAMED(names)}${typed})${CONFIGURED}`;
+  const typed = types === undefined ? '' : `|${withType(types)}`;
+  return String.raw`${TASKS}(?:${names}|${named(names)}${typed})${CONFIGURED}`;
 }
 
 const TARGETS = [
@@ -29,12 +35,12 @@ const SOURCE_SETS = /^(?:\w+\.)?sourceSets\b/u;
 const RESOURCES = /\bresources\b/u;
 const TEST_SET = /test/iu;
 const ONLY_IF = /^(?:.+\.)?onlyIf$/u;
-const DISABLED = /^(?:enabled|isEnabled)\s*=?\s*false$|^setEnabled\s*\(\s*false\s*\)$/u;
+const DISABLED = /^(?:enabled|isEnabled)(?:\s*=\s*|\s+)false$|^setEnabled\s*\(\s*false\s*\)$/u;
 const FILTERS = [
   {
     action: 'exclude',
     kind: 'files',
-    pattern: /^(?:exclude|setExcludes)\b(?!\s*\(?\s*(?:group|module)\s*[:=])/u,
+    pattern: /^(?:exclude|setExcludes)\b(?!\s*(?:\(\s*)?(?:group|module)\s*[:=])/u,
   },
   { action: 'exclude', kind: 'files', pattern: /^excludes\s*\+?=/u },
   { action: 'exclude', kind: 'name', pattern: /^excludeTestsMatching\b/u },

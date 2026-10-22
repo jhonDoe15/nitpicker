@@ -11,7 +11,7 @@ import {
   describeDisableCascade,
   loadConfig,
 } from './configuration/config.mjs';
-import { resolveProjectHeadPolicy } from './configuration/project-head-policy.mjs';
+import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mjs';
 import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
 import { withRunLock } from './command/run-lock.mjs';

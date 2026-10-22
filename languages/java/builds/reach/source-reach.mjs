@@ -35,7 +35,9 @@ function declaredNames(file, code) {
     return { types: new Set([stem, ...[...code.matchAll(JAVA_TYPE)].map((match) => match[1])]) };
   }
   const declarations = [...code.matchAll(KOTLIN_DECLARATION)];
-  const isCallable = ([, keyword, receiver]) => CALLABLES.has(keyword) && receiver === undefined;
+  function isCallable([, keyword, receiver]) {
+    return CALLABLES.has(keyword) && receiver === undefined;
+  }
   return {
     types: new Set([
       stem,
@@ -97,7 +99,9 @@ function usedFrom(importer, { byName, byPackage }) {
     importer.package,
     ...importer.imports.filter(({ wildcard }) => wildcard).map(({ name }) => name),
   ]);
-  const unshadowed = (name) => !importer.explicit.has(name);
+  function unshadowed(name) {
+    return !importer.explicit.has(name);
+  }
   const sameOrWildcard = [...packages]
     .flatMap((name) => byPackage.get(name) ?? [])
     .filter(

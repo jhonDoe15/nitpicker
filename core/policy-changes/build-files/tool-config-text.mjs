@@ -22,16 +22,23 @@ function keptLines(text, isComment, trimStart = true) {
     .join('\n');
 }
 
+function closesBraces(glob) {
+  let depth = 0;
+  for (const character of glob) {
+    depth += { '{': 1, '}': -1 }[character] ?? 0;
+    if (depth < 0) {
+      return false;
+    }
+  }
+  return depth === 0;
+}
+
 function sectionApplies(glob, names) {
-  if (glob.includes('/')) {
+  if (glob.includes('/') || !closesBraces(glob)) {
     return true;
   }
-  try {
-    const matcher = globMatcher(glob);
-    return names.some((name) => matcher.test(name));
-  } catch {
-    return true;
-  }
+  const matcher = globMatcher(glob);
+  return names.some((name) => matcher.test(name));
 }
 
 function editorconfigText(text, names) {
@@ -61,9 +68,9 @@ function scriptText(text) {
 
 function jsonText(text) {
   try {
-    return JSON.stringify(JSON.parse(text));
+    return { kind: 'json', text: JSON.stringify(JSON.parse(text)) };
   } catch {
-    return undefined;
+    return { kind: 'malformed-json' };
   }
 }
 
@@ -71,8 +78,8 @@ export function toolConfigText(tool, file, text) {
   const name = path.posix.basename(file);
   const extension = path.posix.extname(file);
   const json = extension === '.json' || name === '.prettierrc' ? jsonText(text) : undefined;
-  if (json !== undefined) {
-    return json;
+  if (json?.kind === 'json') {
+    return json.text;
   }
   if (name === EDITORCONFIG) {
     return editorconfigText(text, tool === 'prettier' ? PRETTIER_FILES : KOTLIN_FILES);
