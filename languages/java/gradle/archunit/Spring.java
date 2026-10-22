@@ -16,7 +16,28 @@ final class Spring {
           "javax.servlet.",
           "org.springframework.web.bind.",
           "org.springframework.web.servlet.",
-          "org.springframework.web.multipart.");
+          "org.springframework.web.multipart.",
+          "org.springframework.web.context.request.",
+          "org.springframework.web.server.",
+          "org.springframework.web.reactive.",
+          "org.springframework.http.server.");
+  private static final List<String> DATA_ACCESS =
+      Arrays.asList(
+          "org.springframework.jdbc.core.JdbcOperations",
+          "org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations",
+          "org.springframework.jdbc.core.simple.JdbcClient",
+          "org.springframework.jdbc.core.simple.SimpleJdbcInsertOperations",
+          "org.springframework.r2dbc.core.DatabaseClient",
+          "org.springframework.data.jdbc.core.JdbcAggregateOperations",
+          "org.springframework.data.r2dbc.core.R2dbcEntityOperations",
+          "org.springframework.data.mongodb.core.MongoOperations",
+          "org.springframework.data.mongodb.core.ReactiveMongoOperations",
+          "jakarta.persistence.EntityManager",
+          "javax.persistence.EntityManager",
+          "jakarta.persistence.EntityManagerFactory",
+          "javax.persistence.EntityManagerFactory",
+          "org.hibernate.Session",
+          "javax.sql.DataSource");
   private static final String RESPONSE_ENTITY = "org.springframework.http.ResponseEntity";
   private static final String KOTLIN_METADATA = "kotlin.Metadata";
   private static final int KOTLIN_FILE_FACADE = 2;
@@ -41,6 +62,10 @@ final class Spring {
 
   static boolean isRepository(JavaClass type) {
     return type.isMetaAnnotatedWith(REPOSITORY) || type.isAssignableTo(DATA_REPOSITORY);
+  }
+
+  static boolean isDataAccess(JavaClass type) {
+    return isRepository(type) || DATA_ACCESS.stream().anyMatch(type::isAssignableTo);
   }
 
   static boolean isEntity(JavaClass type) {

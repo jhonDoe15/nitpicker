@@ -389,7 +389,10 @@ allprojects {
                 directory.mkdirs()
                 def existing = { Collection<File> files -> files.findAll { it.exists() } }
                 def mainClasses = existing(sourceSets.main.output.classesDirs.files)
+                def unitTestSet = sourceSets.findByName('test')
                 def testClasses = existing(testSourceSets().collectMany { it.output.classesDirs.files })
+                def unitTestClasses = existing(unitTestSet == null ? [] : unitTestSet.output.classesDirs.files)
+                def otherTestClasses = testClasses - unitTestClasses
                 def libraries = existing(configurations.nitpickerSpringArch.files)
                 def projectPath = existing(mainClasses + testClasses + sourceSets.main.compileClasspath.files
                     + testSourceSets().collectMany { it.compileClasspath.files })
@@ -432,7 +435,8 @@ allprojects {
                 output.delete()
                 run([bin('java'), argumentFile('run.args', [classes] + libraries + projectPath), 'ArchRules',
                      output.absolutePath, mainClasses*.absolutePath.join(File.pathSeparator),
-                     testClasses*.absolutePath.join(File.pathSeparator)])
+                     unitTestClasses*.absolutePath.join(File.pathSeparator),
+                     otherTestClasses*.absolutePath.join(File.pathSeparator)])
             }
         }
 

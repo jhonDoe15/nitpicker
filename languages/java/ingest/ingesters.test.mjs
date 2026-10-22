@@ -275,6 +275,21 @@ describe('pit', () => {
     ).toEqual(keys('audit'));
   });
 
+  it('numbers the mutants of same-named classes in different packages independently', () => {
+    const mutant = (packageName, line, status) =>
+      `<mutation detected='false' status='${status}'><sourceFile>Mapper.java</sourceFile><mutatedClass>shop.${packageName}.Mapper</mutatedClass><mutatedMethod>map</mutatedMethod><methodDescription>()I</methodDescription><lineNumber>${String(line)}</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.MathMutator</mutator><description>Replaced integer addition with subtraction</description></mutation>`;
+    const billing = (ordersStatus) =>
+      ingestPit(
+        `<mutations>${mutant('orders', 10, ordersStatus)}${mutant('billing', 20, 'SURVIVED')}</mutations>`,
+        { resolvePath: resolveJavaPath },
+      ).findings.filter((finding) => finding.path === 'src/main/java/shop/billing/Mapper.java');
+
+    expect(billing('SURVIVED').map((finding) => finding.identity)).toEqual([
+      'Mapper|map()I|MathMutator|Replaced integer addition with subtraction#1',
+    ]);
+    expect(billing('KILLED')).toEqual(billing('SURVIVED'));
+  });
+
   it('summarizes status counts as descriptive metrics and skips unresolvable sources', () => {
     expect(
       summary('mutation-summary').map((finding) => [finding.metric.name, finding.metric.value]),

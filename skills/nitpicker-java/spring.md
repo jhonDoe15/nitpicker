@@ -10,8 +10,9 @@ Layout (enforced by `archunit/spring-...`; each message says what to change):
   controller, service, repository and entity; other features use only the classes directly in it;
   pure utilities go to `<root>.shared`. Controllers call services and exchange records, never
   entities; services know nothing of the web layer.
-- Tests that start a Spring context live in an `integration` or `it` package; a unit test of a
-  service is `new OrderService(mock(...))`.
+- A test that starts a Spring context is an integration test: name it `*IT` in its own package
+  (package-private classes stay visible) or put it in an integration test source set; a unit test
+  of a service is `new OrderService(mock(...))`.
 
 Beans and configuration:
 

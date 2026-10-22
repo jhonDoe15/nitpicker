@@ -35,7 +35,7 @@ final class Layers {
 
   private static void controllerDependsOnRepository(JavaClass type, Set<Found> sink) {
     for (Dependency dependency : type.getDirectDependenciesFromSelf()) {
-      if (Spring.isRepository(dependency.getTargetClass())) {
+      if (Spring.isDataAccess(dependency.getTargetClass())) {
         Found.add(sink, CONTROLLER_REPOSITORY, type, dependency.getTargetClass().getName());
       }
     }

@@ -1,6 +1,6 @@
 package shop.billing;
 
-import shop.web.internal.Formats;
+import shop.catalog.internal.Formats;
 
 public final class Invoices {
   private Invoices() {}

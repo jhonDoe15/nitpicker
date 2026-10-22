@@ -1,4 +1,4 @@
-package shop.web.internal;
+package shop.catalog.internal;
 
 public final class Formats {
   private Formats() {}
