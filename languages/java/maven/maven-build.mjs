@@ -26,6 +26,7 @@ import {
   MAVEN_PLUGINS,
   resolveTools,
 } from './maven-tools.mjs';
+import { ownSourceRoots } from '../adapters/red-base/tests-failed.mjs';
 import {
   moduleManifest,
   relativeTo,
