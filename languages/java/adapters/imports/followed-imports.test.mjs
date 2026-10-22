@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
+import { fakeGradle, useInProcessGradle } from '../test-support/in-process-gradle.mjs';
 import { withoutFollowedImports } from './followed-imports.mjs';
 
-const fakeGradle = path.resolve(import.meta.dirname, '../fixtures/fake-gradle.mjs');
 const MAIN = 'src/main/java/demo/A.java';
 const TEST = 'src/test/java/demo/ATest.java';
 const SOURCES = {
@@ -76,6 +76,8 @@ describe('withoutFollowedImports', () => {
 
 describe('the Gradle run', () => {
   const roots = [];
+
+  useInProcessGradle();
 
   afterEach(() => {
     for (const root of roots.splice(0)) {
