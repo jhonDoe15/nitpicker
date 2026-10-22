@@ -1,6 +1,8 @@
 import { TYPESCRIPT_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import {
+  MUTATION_EXCEPTION_RULES,
   SHARED_EXCEPTION_RULES,
+  TEST_RUN_EXCEPTION_RULES,
   TYPESCRIPT_PROJECT_EXCEPTION_RULES,
 } from '../../../../shared/policy.mjs';
 import { PACKAGE_EXCEPTION_RULES } from '../../../../shared/project-rules/hygiene-rules.mjs';
@@ -12,6 +14,8 @@ const NON_ESLINT_EXCEPTION_RULES = [
   ...SHARED_EXCEPTION_RULES,
   ...TYPESCRIPT_PROJECT_EXCEPTION_RULES,
   ...TYPESCRIPT_SIZE_RULES,
+  ...MUTATION_EXCEPTION_RULES,
+  ...TEST_RUN_EXCEPTION_RULES,
   ...PACKAGE_EXCEPTION_RULES,
 ];
 

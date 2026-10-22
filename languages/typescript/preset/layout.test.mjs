@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   builtInExcludedGlobs,
   defaultResolvedLayout,
-  globToRegExp,
+  globMatcher,
   sourceGlobs,
   testGlobs,
   isSourceFile,
@@ -79,7 +79,7 @@ const readConfig = (name) =>
 describe('built-in excluded globs', () => {
   it('match build output folders only at the project root', () => {
     const matches = (file) =>
-      defaultResolvedLayout.excludedGlobs.some((glob) => globToRegExp(glob).test(file));
+      defaultResolvedLayout.excludedGlobs.some((glob) => globMatcher(glob).test(file));
 
     for (const folder of ['dist', 'build', 'generated', 'coverage', 'reports', 'target']) {
       expect(matches(`${folder}/a.ts`)).toBe(true);

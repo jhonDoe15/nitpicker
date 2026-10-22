@@ -85,10 +85,13 @@ function plainCommentReports(comment, sourceCode) {
   return docCommentContentReports(comment, node);
 }
 
-function commentReports(comment, { jsdocTypes, sourceCode }) {
+function commentReports(comment, { jsdocTypes, sourceCode, suppressionsOnly }) {
   const suppression = suppressionReport(comment);
   if (suppression !== undefined) {
     return suppression;
+  }
+  if (suppressionsOnly) {
+    return [];
   }
   if (jsdocTypes && isJsdocBlock(comment)) {
     return jsdocReports(comment, sourceCode);
@@ -106,7 +109,7 @@ export const rule = {
     schema: [
       {
         type: 'object',
-        properties: { jsdocTypes: { type: 'boolean' } },
+        properties: { jsdocTypes: { type: 'boolean' }, suppressionsOnly: { type: 'boolean' } },
         additionalProperties: false,
       },
     ],
@@ -138,6 +141,7 @@ export const rule = {
   create(context) {
     const settings = {
       jsdocTypes: context.options[0]?.jsdocTypes === true,
+      suppressionsOnly: context.options[0]?.suppressionsOnly === true,
       sourceCode: context.sourceCode,
     };
     return {

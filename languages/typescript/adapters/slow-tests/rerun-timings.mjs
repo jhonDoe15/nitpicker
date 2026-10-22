@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { escapeRegExp } from '../../../../shared/glob.mjs';
+import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { runProjectTests } from '../test-runners/run-project-tests.mjs';
 import { passedRuns, runKey } from './report-runs.mjs';
 

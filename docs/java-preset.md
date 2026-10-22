@@ -459,8 +459,11 @@ classpath and its `test` task, and adds no test library to the project.
     `class-fields-limit` and `inheritance-depth-limit` rules and the
     [dependency and repository checks](usage.md#dependency-and-repository-checks) are named as they are. Each exception is listed
     in the report and changes the configuration hash.
-  - `layout` and `tools` configure TypeScript source roots and tool configs; they have no Java
-    meaning and stay a config error with `"preset": "java"` instead of being ignored.
+  - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
+    keys are TypeScript only, and `layout.sharedRoots` and `layout.featureRoots` are accepted once the
+    Java preset registers the rule that reads them (`shared-used-by-one-feature`) in
+    `shared/project-rules/fact-rules.mjs`. `testConsole` is accepted because the registry lists Java and
+    Kotlin for `test-console-output`. `tools` takes `pmd` and `checkstyle`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
@@ -788,11 +791,14 @@ resolved plus a new finding, as in the TypeScript check.
   with `redirectTestOutputToFile`) are copied too and read with the stdout rule. The init script
   sets `outputPerTestCase` on every test task, so Gradle names the test that printed a line as
   Surefire does; a test name loses its parameter list (`totals()` is `totals`).
-- **Normalization.** As in TypeScript: ANSI colors, absolute paths (kept as the last segment),
+- **Normalization.** The TypeScript preset's normalizer (`shared/rules/console/console-messages.mjs`), so
+  `testConsole.allow` matches the same way in every preset: ANSI colors, absolute paths (kept as the last segment),
   timestamps and clock times, hex values, UUIDs, random-looking words and numbers (with their
   units) are replaced, so `cache miss for order 42` and `... 43` are the same message. The thread
   name of a Spring Boot (`--- [main]`) or Logback (`[main] WARN`) log line is replaced too: Gradle
-  runs tests on `Test worker`, Surefire on `main`.
+  runs tests on `Test worker`, Surefire on `main`. The same normalizer also covers the escaped and
+  replaced characters of Gradle and Surefire reports, `java.util.logging` clock lines, durations and
+  the random parts of Mockito, ByteBuddy and proxy class names.
 - **Keyed per module, not per file.** The finding's path is the module directory (`.` for the
   root) and its identity a hash of the normalized message. The JVM shares state across test
   classes: Spring caches one application context for every test class that asks for it, and a
@@ -2306,3 +2312,12 @@ in it against the catalogs, nitpicker's own PMD rules, Error Prone's check list 
   Java-specific part of X11's done criterion ("passes the conformance suite") is that the findings
   produced here satisfy the findings schema, which `collectJavaFindings` enforces on every run via
   `parseAnalyzerReport`.
+
+Gradle commands default to a 15-minute deadline, configurable with
+`NITPICKER_GRADLE_TIMEOUT_MINUTES` as described above. On Linux and macOS, nitpicker starts each command
+in its own process group and stops that group with SIGTERM at the deadline, then SIGKILL
+after 500 ms. This also stops inherited Gradle/test-worker processes when the launcher exits
+first or ignores SIGTERM. On Windows, the deadline force-stops the command tree with
+`taskkill /T /F`. Cleanup adds at most 1.5 seconds on Linux/macOS or 2 seconds on Windows, plus process-launch overhead. Processes
+that deliberately leave the command group, including a pre-existing shared Gradle daemon,
+are outside this boundary; use `--no-daemon` when the whole build must stop with the command.
