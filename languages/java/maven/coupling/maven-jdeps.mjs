@@ -55,9 +55,9 @@ function jdepsFailure(result) {
   return new Error(`jdeps failed with exit code ${String(result.status)}: ${detail}`);
 }
 
-function analyzeClasses(module, classes) {
+function analyzeClasses(module, classes, spawn) {
   const command = toolCommand('jdeps', { classDirectories: [classes] });
-  const result = spawnSync(javaCommand('jdeps'), command.args, {
+  const result = spawn(javaCommand('jdeps'), command.args, {
     cwd: module.basedir,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
@@ -85,7 +85,7 @@ function stagingParent({ outputDirectory, buildDirectory }) {
   return inside ? tmpdir() : buildDirectory;
 }
 
-function analyzeWithoutModuleInfo(module) {
+function analyzeWithoutModuleInfo(module, spawn) {
   mkdirSync(module.buildDirectory, { recursive: true });
   const outputDirectory = realpathSync(module.outputDirectory);
   const parent = stagingParent({
@@ -96,13 +96,13 @@ function analyzeWithoutModuleInfo(module) {
   try {
     const classes = path.join(staged, 'classes');
     cpSync(outputDirectory, classes, { recursive: true, filter: isStagedClass });
-    return analyzeClasses(module, classes);
+    return analyzeClasses(module, classes, spawn);
   } finally {
     rmSync(staged, { recursive: true, force: true });
   }
 }
 
-export function runJdeps(module, reportDir) {
+export function runJdeps(module, reportDir, spawn = spawnSync) {
   const classes = mainClasses(module.outputDirectory);
   writeFileSync(
     path.join(reportDir, 'jdeps-classes.txt'),
@@ -114,7 +114,7 @@ export function runJdeps(module, reportDir) {
   }
   const modular = existsSync(path.join(module.outputDirectory, MODULE_INFO));
   const graph = modular
-    ? analyzeWithoutModuleInfo(module)
-    : analyzeClasses(module, module.outputDirectory);
+    ? analyzeWithoutModuleInfo(module, spawn)
+    : analyzeClasses(module, module.outputDirectory, spawn);
   writeFileSync(path.join(reportDir, 'jdeps.txt'), graph);
 }
