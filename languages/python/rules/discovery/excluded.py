@@ -134,17 +134,36 @@ def is_deselected(owner, function, ids):
     )
 
 
-def marker_names(function, aliases):
+def mark_name(node, aliases):
+    target = node.func if isinstance(node, ast.Call) else node
+    dotted = dotted_name(target, aliases) or ""
+    return dotted.split(".")[-1].lower() if dotted.startswith("pytest.mark.") else None
+
+
+def marker_names(node, aliases):
+    names = {mark_name(decorator, aliases) for decorator in node.decorator_list}
+    return names - {None}
+
+
+def module_marks(tree, aliases):
     names = set()
-    for decorator in function.decorator_list:
-        target = decorator.func if isinstance(decorator, ast.Call) else decorator
-        dotted = dotted_name(target, aliases) or ""
-        if dotted.startswith("pytest.mark."):
-            names.add(dotted.split(".")[-1].lower())
+    for node in tree.body:
+        targets = node.targets if isinstance(node, ast.Assign) else []
+        if any(isinstance(t, ast.Name) and t.id == "pytestmark" for t in targets):
+            values = getattr(node.value, "elts", [node.value])
+            names |= {mark_name(value, aliases) for value in values} - {None}
     return names
 
 
-def evaluate(tokens, names):
+def class_marks(tree, aliases):
+    return {
+        node.name: marker_names(node, aliases)
+        for node in tree.body
+        if isinstance(node, ast.ClassDef)
+    }
+
+
+def evaluate(tokens, matches):
     position = [0]
 
     def peek():
@@ -163,7 +182,7 @@ def evaluate(tokens, names):
             if peek() == ")":
                 take()
             return value
-        return any(token.lower() in name for name in names)
+        return matches(token.lower())
 
     def conjunction():
         value = primary()
@@ -184,29 +203,46 @@ def evaluate(tokens, names):
     return disjunction()
 
 
-def keyword_matches(expression, names):
+def expression_matches(expression, matches):
     tokens = TOKEN.findall(expression)
     if not tokens or tokens[0] in {"and", "or"}:
         return True
     try:
-        return evaluate(tokens, names)
+        return evaluate(tokens, matches)
     except IndexError:
         return True
+
+
+def keyword_matches(expression, names):
+    return expression_matches(
+        expression, lambda token: any(token in name for name in names)
+    )
+
+
+def mark_matches(expression, marks):
+    return expression_matches(expression, lambda token: token in marks)
 
 
 def hidden_test_findings(context, functions_matcher):
     path = context.path
     ids = deselected_ids(context.options, path)
     expressions = context.options.get("keywords") or []
+    mark_expressions = context.options.get("marks") or []
     stem = os.path.splitext(os.path.basename(path))[0].lower()
+    shared = module_marks(context.tree, context.aliases)
+    owners = class_marks(context.tree, context.aliases)
     found = []
     for owner, function in test_nodes(context.tree, functions_matcher):
-        names = {stem, function.name.lower()} | marker_names(function, context.aliases)
+        marks = shared | owners.get(owner, set())
+        marks |= marker_names(function, context.aliases)
+        names = {stem, function.name.lower()} | marks
         names |= {owner.lower()} if owner else set()
         if is_deselected(owner, function, ids):
             reason = "--deselect"
         elif not all(keyword_matches(e, names) for e in expressions):
             reason = "-k"
+        elif not all(mark_matches(e, marks) for e in mark_expressions):
+            reason = "-m"
         else:
             continue
         label = f"{owner}.{function.name}" if owner else function.name

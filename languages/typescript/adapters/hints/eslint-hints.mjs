@@ -1,3 +1,5 @@
+import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
+import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import { immutableTypesMessage } from './immutable-types-hint.mjs';
 import { restrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mjs';
@@ -56,36 +58,34 @@ const DISABLED_TEST_TAIL =
   /\s*-\s*if you want to skip a test(?: suite)? temporarily, use \.todo\(\) instead$/u;
 
 const DISABLED_TEST_HINT =
-  '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`. A justified exception goes in nitpicker.config.json.';
+  '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`.';
 
 const BACKTICKED_MATCHER = /`([\w.]+)`/u;
 
 const PREFER_CALLED_WITH_TEXT =
-  'A bare `toHaveBeenCalled()` passes for a call with any arguments. Assert them with `toHaveBeenCalledWith(...)`. If the arguments cannot be pinned, add an exception for vitest/prefer-called-with in nitpicker.config.json.';
+  'A bare `toHaveBeenCalled()` passes for a call with any arguments. Assert them with `toHaveBeenCalledWith(...)`. An exception fits only when the arguments cannot be pinned.';
 
 const THROW_MESSAGE_TEXT =
-  "A bare `toThrow()` passes for any error. Pass the expected message: `toThrow('the message')`. If the message cannot be pinned, add an exception for vitest/require-to-throw-message in nitpicker.config.json.";
+  "A bare `toThrow()` passes for any error. Pass the expected message: `toThrow('the message')`. An exception fits only when the message cannot be pinned.";
 const EXPECT_THROWS_HINT =
   ' In a test, assert a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)` instead of asserting inside a `catch`.';
 
 const NODE_TEST_HINT =
-  ' nitpicker runs node:test files, but lints every test file with the Vitest rules. If this file must stay on node:test, add an exception for this rule in nitpicker.config.json.';
-
-const EXCEPTION_ROUTE = 'add an exception for this rule in nitpicker.config.json';
+  ' nitpicker runs node:test files, but lints every test file with the Vitest rules. An exception fits only a file that must stay on node:test.';
 
 const FLOATING_PROMISE_TEXT = /^Promises must be awaited/u;
 
 const FLOATING_PROMISE_MESSAGE = `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`.`;
 
-const EVAL_MESSAGE = `Do not evaluate a string as code. Call the function directly, look it up in a table keyed by name, or parse the data with JSON.parse and a schema. If it is unavoidable, ${EXCEPTION_ROUTE}.`;
+const EVAL_MESSAGE = `Do not evaluate a string as code. Call the function directly, look it up in a table keyed by name, or parse the data with JSON.parse and a schema.`;
 
-const PARAM_REASSIGN_HINT = ` Declare a new const with another name instead of reassigning the parameter. If the reassignment is deliberate, ${EXCEPTION_ROUTE}.`;
+const PARAM_REASSIGN_HINT = ` Declare a new const with another name instead of reassigning the parameter. An exception fits only when the reassignment is deliberate.`;
 
-const CURLY_HINT = ` Wrap the body in braces: \`if (done) { return; }\`. To keep a file as it is, ${EXCEPTION_ROUTE}.`;
+const CURLY_HINT = ` Wrap the body in braces: \`if (done) { return; }\`.`;
 
-const NAMING_HINT = `. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE; a schema constant may be PascalCase (\`const Order = z.object(...)\`). If an external API forces the name, ${EXCEPTION_ROUTE}.`;
+const NAMING_HINT = `. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE; a schema constant may be PascalCase (\`const Order = z.object(...)\`). An exception fits only when an external API forces the name.`;
 
-const REGEXP_HINT = ` Rewrite the pattern without nested or overlapping quantifiers, or use a string method. If the input is bounded and trusted, ${EXCEPTION_ROUTE}.`;
+const REGEXP_HINT = ` Rewrite the pattern without nested or overlapping quantifiers, or use a string method. An exception fits only when the input is bounded and trusted.`;
 
 const RETURN_TYPE_TEXT = /^Missing return type on function\.?$/u;
 
@@ -96,7 +96,7 @@ const ARGUMENT_TYPE_HINT = ' Write the parameter type in the signature: `(rows: 
 
 const DUPLICATE_IMPORT_HINT = ' Merge the imports of one module into a single import statement.';
 
-const DEPRECATED_HINT = ` Call the replacement that the deprecation names instead of the deprecated API. If it names none and the API cannot be avoided, ${EXCEPTION_ROUTE}.`;
+const DEPRECATED_HINT = ` Call the replacement that the deprecation names instead of the deprecated API. An exception fits only when it names none and the API cannot be avoided.`;
 
 const GROWTH_ADVICE = new Map([
   [
@@ -167,9 +167,7 @@ function restrictedMatcherMessage({ text }) {
 }
 
 function floatingPromiseMessage({ text }) {
-  return FLOATING_PROMISE_TEXT.test(text)
-    ? FLOATING_PROMISE_MESSAGE
-    : `${text} ${EXCEPTION_ROUTE}.`;
+  return FLOATING_PROMISE_TEXT.test(text) ? FLOATING_PROMISE_MESSAGE : text;
 }
 
 function boundaryTypesMessage({ text }) {
@@ -216,9 +214,36 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/no-deprecated', appendHint(DEPRECATED_HINT)],
 ]);
 
+const NO_ROUTE_RULES = new Set([
+  'eslint/unused-disable-directive',
+  'eslint/inline-config-disabled',
+]);
+
+export function eslintRoute({ rule, path: relativePath }) {
+  return NO_ROUTE_RULES.has(rule) ? undefined : exceptionRoute({ rule, path: relativePath });
+}
+
+function withEslintRoute(text, finding) {
+  return appendSentence(text, eslintRoute(finding));
+}
+
+export function metricWorseMessage(finding, plan) {
+  return withEslintRoute(
+    `${finding.symbol ?? 'This function'} ${plan.label} grew from {base} to ${String(plan.value)}. Put new code in a new function.`,
+    finding,
+  );
+}
+
 export function eslintMessageWithHint({ ruleId, text, relativePath, node, sourceFile }) {
   const rewrite = MESSAGE_REWRITERS.get(ruleId);
   return rewrite === undefined ? text : rewrite({ text, relativePath, node, sourceFile });
+}
+
+export function routedEslintMessage(options) {
+  return withEslintRoute(eslintMessageWithHint(options), {
+    rule: options.ruleId,
+    path: options.relativePath,
+  });
 }
 
 export function growthAdviceFor(ruleId) {

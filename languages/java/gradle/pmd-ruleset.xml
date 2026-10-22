@@ -19,7 +19,7 @@
     <exclude name="AssignmentInOperand"/>
   </rule>
   <rule ref="category/java/errorprone.xml/AvoidFieldNameMatchingMethodName"
-        message="Field {0} has the same name as a method. Rename one of them; a method named exactly like its field with at most one parameter (an accessor, a fluent setter or builder step) is allowed. If it is right here, add an exception for pmd/AvoidFieldNameMatchingMethodName in nitpicker.config.json.">
+        message="Field {0} has the same name as a method. Rename one of them; a method named exactly like its field with at most one parameter (an accessor, a fluent setter or builder step) is allowed.">
     <properties>
       <property name="xpath">
         <value><![CDATA[
@@ -32,14 +32,14 @@
     </properties>
   </rule>
   <rule ref="category/java/errorprone.xml/AvoidLiteralsInIfCondition"
-        message="Use a named constant instead of this literal in the condition (-1, 0, 1 and 2 are allowed). If it is not a magic number, add an exception for pmd/AvoidLiteralsInIfCondition in nitpicker.config.json.">
+        message="Use a named constant instead of this literal in the condition (-1, 0, 1 and 2 are allowed).">
     <properties>
       <property name="ignoreMagicNumbers" value="-1,0,1,2"/>
       <property name="violationSuppressXPath" value=".[self::StringLiteral or self::CharLiteral]"/>
     </properties>
   </rule>
   <rule ref="category/java/errorprone.xml/AssignmentInOperand"
-        message="Assign first, then use the variable. An assignment in a while condition is allowed. If it is right here, add an exception for pmd/AssignmentInOperand in nitpicker.config.json.">
+        message="Assign first, then use the variable. An assignment in a while condition is allowed.">
     <properties>
       <property name="allowWhile" value="true"/>
     </properties>
@@ -64,7 +64,7 @@
     </properties>
   </rule>
   <rule ref="category/java/bestpractices.xml/GuardLogStatement"
-        message="Pass values as placeholders (LOG.debug(&quot;user '{'}&quot;, user)) and compute nothing in the arguments; guard the call with isDebugEnabled() only when an argument must be computed. If it is right here, add an exception for pmd/GuardLogStatement in nitpicker.config.json.">
+        message="Pass values as placeholders (LOG.debug(&quot;user '{'}&quot;, user)) and compute nothing in the arguments; guard the call with isDebugEnabled() only when an argument must be computed.">
     <properties>
       <property name="logLevels" value="trace,debug,finest,finer,fine"/>
       <property name="guardsMethods" value="isTraceEnabled,isDebugEnabled,isLoggable"/>
@@ -81,7 +81,7 @@
     </properties>
   </rule>
   <rule name="LogStringConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Pass values as placeholders (LOG.info(&quot;user '{'}&quot;, user); '{'0} in System.Logger and java.util.logging), not a message built with + or String.format. If it is right here, add an exception for pmd/LogStringConcatenation in nitpicker.config.json.">
+        message="Pass values as placeholders (LOG.info(&quot;user '{'}&quot;, user); '{'0} in System.Logger and java.util.logging), not a message built with + or String.format.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
@@ -98,7 +98,7 @@
     </properties>
   </rule>
   <rule name="GeneratedOnHandWrittenCode" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="JaCoCo and PIT skip code annotated @Generated, so this is not measured. Remove the annotation from hand-written code. If this file is generated, add an exception for pmd/GeneratedOnHandWrittenCode in nitpicker.config.json.">
+        message="JaCoCo and PIT skip code annotated @Generated, so this is not measured. Remove the annotation from hand-written code.">
     <priority>2</priority>
     <properties>
       <property name="xpath">

@@ -28,7 +28,7 @@ const HONESTY_ROWS = [
   [
     'toBeDefined names nitpicker.config.json',
     "it('x', () => { expect(load()).toBeDefined(); });",
-    'exception for vitest/no-restricted-matchers in nitpicker.config.json',
+    '{"rule":"vitest/no-restricted-matchers","paths":["test/orders.test.ts"],"reason":"..."}',
   ],
   [
     'bare toHaveBeenCalled names the expected arguments',
@@ -111,7 +111,7 @@ const HONESTY_ROWS = [
   [
     'inline eslint disable in a test names the config exception',
     "/* eslint-disable */\nit('x', () => {});",
-    'nitpicker config file',
+    '"rule":"nitpicker/no-comments"',
   ],
 ];
 

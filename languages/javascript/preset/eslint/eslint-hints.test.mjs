@@ -36,9 +36,9 @@ function nodeTestMessage() {
 }
 
 describe('node:test hint', () => {
-  it('says node:test files run but are linted with the Vitest rules, and names the exception route', () => {
+  it('says node:test files run but are linted with the Vitest rules, and when an exception fits', () => {
     expect(nodeTestMessage()).toBe(
-      'Import from vitest instead of node:test nitpicker runs node:test files, but lints every test file with the Vitest rules. If this file must stay on node:test, add an exception for this rule in nitpicker.config.json.',
+      'Import from vitest instead of node:test nitpicker runs node:test files, but lints every test file with the Vitest rules. An exception fits only a file that must stay on node:test.',
     );
   });
 });

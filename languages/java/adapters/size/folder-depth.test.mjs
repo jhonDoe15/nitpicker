@@ -47,7 +47,7 @@ describe('Java folder depth', () => {
     expect(
       findings(entries, {
         thresholds: { folderDepth: 1 },
-        exceptions: [{ rule: 'folder-depth-limit', glob: 'src/main/java/r/a/**' }],
+        exceptions: [{ rule: 'folder-depth-limit', paths: ['src/main/java/r/a/**'] }],
       }),
     ).toEqual([]);
   });
