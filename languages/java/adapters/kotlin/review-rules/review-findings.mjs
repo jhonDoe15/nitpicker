@@ -5,6 +5,7 @@ import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { unusedOptionFindings } from './main/unused-options.mjs';
+import { kotlinDesignFindings } from './design/kotlin-design.mjs';
 import { readKotlinFacts } from './kotlin-facts.mjs';
 import { productionTypeResolver } from './production-types.mjs';
 import { findingFactory } from './review-finding.mjs';
@@ -48,7 +49,7 @@ function projectView({ reportRoot, projectRoot, manifest, modules = [] }) {
 }
 
 export function readKotlinReviewFindings(context) {
-  const { manifest, projectRoot } = context;
+  const { manifest, projectRoot, reportRoot } = context;
   const { own, projectFiles, javaRoots } = projectView(context);
   if (own.length === 0) {
     return [];
@@ -65,6 +66,7 @@ export function readKotlinReviewFindings(context) {
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
     ...singularPluralFindings(own, { finding }),
+    ...kotlinDesignFindings(reportRoot, { environment: context.environment }),
     ...unusedOptionFindings(own, {
       finding,
       serialization: manifest.kotlinSerialization === true,

@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import nitpicker.kotlinpsi.bodies.Throwing;
 import nitpicker.kotlinpsi.common.Json;
+import nitpicker.kotlinpsi.design.DesignFacts;
+import nitpicker.kotlinpsi.design.Source;
 import nitpicker.kotlinpsi.facts.FactsCollector;
 import nitpicker.kotlinpsi.metrics.FileClasses;
 import nitpicker.kotlinpsi.metrics.MetricsCollector;
@@ -43,7 +45,8 @@ import org.jetbrains.kotlin.psi.KtFile;
  *
  * A root prefixed {@code test:} holds test sources. The metrics report (functions, class names and types, see
  * {@link MetricsCollector} and {@link Types}) covers the other roots only; the facts report
- * ({@link FactsCollector}) covers all.
+ * ({@link FactsCollector}) covers all. The facts report also carries a {@code design} key: the design facts
+ * of the production roots ({@link DesignFacts}), resolved by name without a type checker.
  * A syntax error ends the run: the sources compiled, so the pinned compiler does not read them.
  */
 public final class KotlinPsi {
@@ -83,28 +86,32 @@ public final class KotlinPsi {
     List<String> classes = new ArrayList<>();
     List<String> types = new ArrayList<>();
     List<Object> facts = new ArrayList<>();
+    List<Source> production = new ArrayList<>();
+    Object design;
     Set<String> claimedFacades = new HashSet<>();
     Disposable disposable = Disposer.newDisposable();
     try {
       PsiFileFactory factory = PsiFileFactory.getInstance(environment(disposable).getProject());
-      List<Source> sources = new ArrayList<>();
+      List<Parsed> sources = new ArrayList<>();
       for (Map.Entry<Path, Boolean> source : files.entrySet()) {
         Path file = source.getKey();
         boolean test = source.getValue();
         String relative = projectDir.relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
         String text = normalized(Files.readString(file, StandardCharsets.UTF_8));
-        sources.add(new Source(parse(factory, file, text, relative, test), text, relative, test));
+        sources.add(new Parsed(parse(factory, file, text, relative, test), text, relative, test));
       }
       Set<String> nothing = Throwing.nothingFunctions(
-          sources.stream().filter(source -> !source.test()).map(Source::parsed).toList());
-      for (Source source : sources) {
+          sources.stream().filter(source -> !source.test()).map(Parsed::parsed).toList());
+      for (Parsed source : sources) {
         if (!source.test()) {
           new MetricsCollector(source.parsed(), source.text(), source.relative(), functions).collect();
           classes.add(FileClasses.describe(source.parsed(), source.relative(), claimedFacades));
           Types.collect(source.parsed(), source.text(), source.relative(), types);
+          production.add(new Source(source.parsed(), source.relative(), source.text()));
         }
         facts.add(factsOf(source, nothing));
       }
+      design = designOf(production);
     } finally {
       Disposer.dispose(disposable);
     }
@@ -113,12 +120,15 @@ public final class KotlinPsi {
         "{\"functions\":[" + String.join(",", functions) + "],\"files\":[" + String.join(",", classes)
             + "],\"types\":[" + String.join(",", types) + "]}\n",
         StandardCharsets.UTF_8);
-    Files.writeString(factsOutput, Json.of(Map.of("files", facts)) + "\n", StandardCharsets.UTF_8);
+    Map<String, Object> report = new LinkedHashMap<>();
+    report.put("files", facts);
+    report.put("design", design);
+    Files.writeString(factsOutput, Json.of(report) + "\n", StandardCharsets.UTF_8);
   }
 
-  private record Source(KtFile parsed, String text, String relative, boolean test) {}
+  private record Parsed(KtFile parsed, String text, String relative, boolean test) {}
 
-  private static Object factsOf(Source source, Set<String> nothing) {
+  private static Object factsOf(Parsed source, Set<String> nothing) {
     try {
       FactsCollector collector =
           new FactsCollector(source.parsed(), source.text(), source.relative(), source.test(), nothing);
@@ -131,6 +141,15 @@ public final class KotlinPsi {
         throw failed;
       }
       return skipped(source.relative(), source.test());
+    }
+  }
+
+  private static Object designOf(List<Source> production) {
+    try {
+      return DesignFacts.build(production);
+    } catch (RuntimeException | StackOverflowError failed) {
+      System.err.println("design facts failed: " + failed);
+      return Map.of("error", String.valueOf(failed));
     }
   }
 
