@@ -115,8 +115,9 @@ line) is a finding.
 - `function` declarations for named functions, nested helpers too; arrows only as callbacks, with a block body when
   they return nothing: `(line) => { out.push(line); }`.
 - String-literal unions, never an enum; no classes except `Error` subclasses.
-- The code smell rules (repeated strings, secrets, generic names, boolean flags, I/O per loop
-  item, spread in `reduce`, TODOs) name the allowed form in their message. Read secrets from the
+- The code smell rules (repeated strings, secrets, generic names, boolean flags, a query or
+  request per loop item, also through your own helpers and queries inside `Promise.all`, lazy
+  TypeORM relations awaited per item, an accumulator copied in `reduce` or a loop, TODOs) name the allowed form in their message. Read secrets from the
   environment in the composition root; shared pure logic goes in `src/main/shared/` under a name for its job.
 - No `any` and no `null` in your own values: read a library's `null` with `regex.exec(s)?.[0]` in
   one expression or a strict `!== null` check. Narrow with checks, and don't add `??`, `?.` or
