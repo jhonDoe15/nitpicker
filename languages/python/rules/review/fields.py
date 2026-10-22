@@ -117,14 +117,19 @@ def base_class(context, base):
 
 
 def decorator_target(decorator, aliases):
-    return dotted_name(decorator.func if isinstance(decorator, ast.Call) else decorator, aliases)
+    return dotted_name(
+        decorator.func if isinstance(decorator, ast.Call) else decorator, aliases
+    )
 
 
 def record_kind(context, node, depth=0):
     bases = {last_segment(base) for base in node.bases}
     if TYPED_DICT in bases:
         return TYPED_DICT
-    decorators = {decorator_target(decorator, context.aliases) for decorator in node.decorator_list}
+    decorators = {
+        decorator_target(decorator, context.aliases)
+        for decorator in node.decorator_list
+    }
     if bases & RECORD_BASES or decorators & RECORD_DECORATORS:
         return "record"
     if depth >= MAX_BASE_DEPTH:
@@ -147,7 +152,10 @@ def is_total_false(node):
 
 
 def has_default(value):
-    if not isinstance(value, ast.Call) or last_segment(value.func) not in FIELD_FACTORIES:
+    if (
+        not isinstance(value, ast.Call)
+        or last_segment(value.func) not in FIELD_FACTORIES
+    ):
         return not (isinstance(value, ast.Constant) and value.value is Ellipsis)
     keywords = {keyword.arg: keyword.value for keyword in value.keywords}
     if keywords.keys() & FACTORY_KEYWORDS:
@@ -163,11 +171,15 @@ def optional_fields(node, kind):
     total_false = is_total_false(node)
     fields = {}
     for statement in node.body:
-        if not isinstance(statement, ast.AnnAssign) or not isinstance(statement.target, ast.Name):
+        if not isinstance(statement, ast.AnnAssign) or not isinstance(
+            statement.target, ast.Name
+        ):
             continue
         annotation = statement.annotation
         parsed = parsed_annotation(annotation)
-        wrapper = last_segment(parsed.value) if isinstance(parsed, ast.Subscript) else None
+        wrapper = (
+            last_segment(parsed.value) if isinstance(parsed, ast.Subscript) else None
+        )
         if wrapper == "ClassVar":
             continue
         optional = (
@@ -181,7 +193,11 @@ def optional_fields(node, kind):
 
 
 def optional_parameters(fn):
-    return {p.arg: p.annotation for p, _ in defaulted_parameters(fn) if p.annotation is not None}
+    return {
+        p.arg: p.annotation
+        for p, _ in defaulted_parameters(fn)
+        if p.annotation is not None
+    }
 
 
 def field_findings(context, scoped):
@@ -198,7 +214,9 @@ def field_findings(context, scoped):
         for singular, plural in singular_and_plural(inputs):
             subject = ".".join(scope + (plural,))
             data = {"singular": singular, "plural": plural, "kind": kind}
-            found.append(finding("singular-and-plural-field", path, subject, node.lineno, data))
+            found.append(
+                finding("singular-and-plural-field", path, subject, node.lineno, data)
+            )
     return found
 
 

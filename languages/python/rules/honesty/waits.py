@@ -32,7 +32,9 @@ def is_wait(node):
 
 def expects_timeout(item):
     call = item.context_expr
-    if not (isinstance(call, ast.Call) and last_name(call.func) in RAISES and call.args):
+    if not (
+        isinstance(call, ast.Call) and last_name(call.func) in RAISES and call.args
+    ):
         return False
     expected = call.args[0]
     names = expected.elts if isinstance(expected, ast.Tuple) else [expected]
@@ -62,17 +64,29 @@ def is_false(node):
 def false_wait(test):
     if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
         return waits_out(test.operand)
-    if isinstance(test, ast.Compare) and len(test.ops) == 1 and is_false(test.comparators[0]):
-        return waits_out(test.left) if isinstance(test.ops[0], (ast.Is, ast.Eq)) else None
+    if (
+        isinstance(test, ast.Compare)
+        and len(test.ops) == 1
+        and is_false(test.comparators[0])
+    ):
+        return (
+            waits_out(test.left) if isinstance(test.ops[0], (ast.Is, ast.Eq)) else None
+        )
     return None
 
 
 def negative_wait(node):
-    if isinstance(node, (ast.With, ast.AsyncWith)) and any(map(expects_timeout, node.items)):
+    if isinstance(node, (ast.With, ast.AsyncWith)) and any(
+        map(expects_timeout, node.items)
+    ):
         return first_wait(node.body)
     if isinstance(node, ast.Assert):
         return false_wait(node.test)
-    if isinstance(node, ast.Call) and last_name(node.func) == "assertFalse" and node.args:
+    if (
+        isinstance(node, ast.Call)
+        and last_name(node.func) == "assertFalse"
+        and node.args
+    ):
         return waits_out(node.args[0])
     return None
 
