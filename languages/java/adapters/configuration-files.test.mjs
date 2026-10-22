@@ -30,7 +30,6 @@ describe('Java analyzer configuration files', () => {
       'languages/java/adapters/java-analyzer.mjs',
       'languages/java/adapters/kotlin/rules/kotlin-literals.mjs',
       ...resourceFiles('languages/java/gradle'),
-      ...resourceFiles('languages/java/gradle/security'),
       ...resourceFiles('languages/java/detekt'),
     ];
 
