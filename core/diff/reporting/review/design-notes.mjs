@@ -1,4 +1,4 @@
-import { DESIGN_RULES } from '../../../../shared/project-rules/design-rules.mjs';
+import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rules.mjs';
 import { singleLine } from '../format/text.mjs';
 
 const LISTED_NOTES = 10;

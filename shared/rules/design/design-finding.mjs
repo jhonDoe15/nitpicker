@@ -1,4 +1,4 @@
-import { REPORT_ONLY_DESIGN_RULES } from '../../project-rules/design-rules.mjs';
+import { REPORT_ONLY_DESIGN_RULES } from '../../project-rules/design/design-rules.mjs';
 import { exceptionHint } from '../exceptions.mjs';
 import { nextOccurrence } from '../finding-helpers.mjs';
 

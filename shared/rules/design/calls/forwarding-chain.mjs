@@ -1,4 +1,4 @@
-import { DESIGN_RULE_IDS } from '../../../project-rules/design-rules.mjs';
+import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs';
 import { displayName } from '../design-index.mjs';
 
 const RULE = DESIGN_RULE_IDS.forwardingChain;
@@ -65,7 +65,12 @@ function chainFinding(chain, { index, finding }) {
     identity: chain.map(({ id }) => id).join('>'),
     symbol: displayName(head, index),
     line: head.line,
-    message: `${path.join(' -> ')} pass the same parameters in order and return the result unchanged, across ${String(modules)} modules. Call ${displayName(last, index)} directly where ${displayName(head, index)} is used, or let a hop own something (a type change, a policy, a dependency) so it hides more than it forwards.`,
+    message: [
+      `${path.join(' -> ')} pass the same parameters in order and return the result unchanged,`,
+      `across ${String(modules)} modules. Call ${displayName(last, index)} directly`,
+      `where ${displayName(head, index)} is used,`,
+      'or let a hop own something (a type change, a policy, a dependency) so it hides more than it forwards.',
+    ].join(' '),
   });
 }
 

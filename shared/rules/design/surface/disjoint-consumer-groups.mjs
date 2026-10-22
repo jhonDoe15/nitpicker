@@ -1,23 +1,36 @@
-import { DESIGN_RULE_IDS } from '../../../project-rules/design-rules.mjs';
+import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs';
 import { quoted } from '../design-finding.mjs';
 import { listSites } from '../design-index.mjs';
 
 const RULE = DESIGN_RULE_IDS.disjointConsumerGroups;
 const MIN_USED_MEMBERS = 4;
 const MIN_GROUP_MEMBERS = 2;
+const MAX_LISTED_FILES = 3;
 const OWNER_KINDS = new Set(['class', 'module']);
 
 function consumersByMember(owner, members, index) {
   const ids = new Set(members.map(({ id }) => id));
   const consumers = new Map();
-  for (const caller of index.callables.filter(({ file }) => file !== owner.file)) {
-    for (const { target } of caller.calls ?? []) {
-      if (ids.has(target)) {
-        consumers.set(target, new Set([...(consumers.get(target) ?? []), caller.file]));
-      }
-    }
+  for (const { target, file } of index.callables
+    .filter((caller) => caller.file !== owner.file)
+    .flatMap((caller) => (caller.calls ?? []).map(({ target }) => ({ target, file: caller.file })))
+    .filter((call) => ids.has(call.target))) {
+    consumers.set(target, new Set([...(consumers.get(target) ?? []), file]));
   }
   return consumers;
+}
+
+function componentOf(start, { links, seen }) {
+  const group = [start];
+  seen.add(start);
+  for (const id of group) {
+    const next = [...links.get(id)].filter((linked) => !seen.has(linked));
+    for (const linked of next) {
+      seen.add(linked);
+    }
+    group.push(...next);
+  }
+  return group.sort();
 }
 
 function linkedGroups(ids) {
@@ -31,44 +44,34 @@ function linkedGroups(ids) {
     },
     groups() {
       const seen = new Set();
-      const groups = [];
-      for (const start of ids.filter((id) => !seen.has(id))) {
-        const group = [start];
-        seen.add(start);
-        for (const id of group) {
-          const next = [...links.get(id)].filter((linked) => !seen.has(linked));
-          for (const linked of next) {
-            seen.add(linked);
-          }
-          group.push(...next);
-        }
-        groups.push(group.sort());
-      }
-      return groups;
+      return ids.flatMap((id) => (seen.has(id) ? [] : [componentOf(id, { links, seen })]));
     },
   };
 }
 
+function ownHelpers(current, member, { index, seen }) {
+  const helpers = (current.calls ?? [])
+    .map(({ target }) => index.callable(target))
+    .filter((helper) => helper?.owner === member.owner && !seen.has(helper.id));
+  const fresh = [...new Map(helpers.map((helper) => [helper.id, helper])).values()];
+  for (const helper of fresh) {
+    seen.add(helper.id);
+  }
+  return fresh;
+}
+
 function internalResources(member, index) {
-  const resources = new Set([
-    `helper:${member.id}`,
-    ...(member.ownFields ?? []).map((field) => `field:${field}`),
-  ]);
   const pending = [member];
   const seen = new Set([member.id]);
   for (const current of pending) {
-    for (const helper of (current.calls ?? []).map(({ target }) => index.callable(target))) {
-      if (helper?.owner === member.owner && !seen.has(helper.id)) {
-        seen.add(helper.id);
-        resources.add(`helper:${helper.id}`);
-        for (const field of helper.ownFields ?? []) {
-          resources.add(`field:${field}`);
-        }
-        pending.push(helper);
-      }
-    }
+    pending.push(...ownHelpers(current, member, { index, seen }));
   }
-  return resources;
+  return new Set(
+    pending.flatMap((callable) => [
+      `helper:${callable.id}`,
+      ...(callable.ownFields ?? []).map((field) => `field:${field}`),
+    ]),
+  );
 }
 
 function joinByConsumers(used, consumers, sets) {
@@ -98,7 +101,7 @@ function joinByResources(used, index, sets) {
 function groupText(group, { consumers, index }) {
   const names = group.map((id) => index.callable(id).name).sort();
   const files = [...new Set(group.flatMap((id) => [...consumers.get(id)]))].sort();
-  return `${quoted(names)} (used by ${listSites(files, 3)})`;
+  return `${quoted(names)} (used by ${listSites(files, MAX_LISTED_FILES)})`;
 }
 
 function ownerGroups(owner, index) {
@@ -132,7 +135,11 @@ export function disjointConsumerGroupFindings(index, finding) {
       identity: owner.id,
       symbol: owner.name,
       line: owner.line,
-      message: `${owner.name} serves ${String(groups.length)} separate groups of callers that share no state or helper inside it: ${described.join('; ')}. Each caller still depends on all of ${owner.name}; give each group its own smaller module or interface.`,
+      message: [
+        `${owner.name} serves ${String(groups.length)} separate groups of callers`,
+        `that share no state or helper inside it: ${described.join('; ')}.`,
+        `Each caller still depends on all of ${owner.name}; give each group its own smaller module or interface.`,
+      ].join(' '),
     });
   });
 }

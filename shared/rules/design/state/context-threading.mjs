@@ -1,10 +1,12 @@
-import { DESIGN_RULE_IDS } from '../../../project-rules/design-rules.mjs';
+import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs';
 import { quoted } from '../design-finding.mjs';
 import { displayName, listSites } from '../design-index.mjs';
 
 const RULE = DESIGN_RULE_IDS.contextThreading;
 const MIN_FIELDS = 5;
 const MIN_PASSES = 2;
+const MIN_READ_LIMIT = 2;
+const READ_SHARE = 3;
 const CONTEXT_KINDS = new Set(['class', 'data', 'interface']);
 
 function useOf(callable, position) {
@@ -21,15 +23,13 @@ function contextType(callable, position, index) {
 }
 
 function nextHops(use, type, index) {
-  const hops = [];
-  for (const { target, position } of use.forwards) {
-    const next = index.callable(target);
-    if (next === undefined || next.params?.[position]?.type !== type.id) {
-      return undefined;
-    }
-    hops.push({ callable: next, position });
-  }
-  return hops;
+  const hops = use.forwards.map(({ target, position }) => ({
+    callable: index.callable(target),
+    position,
+  }));
+  return hops.every(({ callable, position }) => callable?.params?.[position]?.type === type.id)
+    ? hops
+    : undefined;
 }
 
 function stepThread(step, { type, index, thread }) {
@@ -49,35 +49,37 @@ function stepThread(step, { type, index, thread }) {
 }
 
 function threadOf(start, type, index) {
-  const thread = { fields: new Set(), passes: [] };
-  const seen = new Set();
+  const thread = { fields: new Set(), passes: [], seen: new Set(), complete: true };
   const pending = [start];
   for (const step of pending) {
-    const key = `${step.callable.id}#${String(step.position)}`;
-    const hops = seen.has(key) ? [] : stepThread(step, { type, index, thread });
-    if (hops === undefined) {
-      return undefined;
-    }
-    seen.add(key);
-    pending.push(...hops);
+    pending.push(...visitStep(step, { type, index, thread }));
   }
-  return { fields: [...thread.fields].sort(), passes: thread.passes };
+  return thread.complete ? { fields: [...thread.fields].sort(), passes: thread.passes } : undefined;
+}
+
+function visitStep(step, { type, index, thread }) {
+  const key = `${step.callable.id}#${String(step.position)}`;
+  if (!thread.complete || thread.seen.has(key)) {
+    return [];
+  }
+  thread.seen.add(key);
+  const hops = stepThread(step, { type, index, thread });
+  thread.complete = hops !== undefined;
+  return hops ?? [];
 }
 
 function forwardedInto(index) {
-  const targets = new Set();
-  for (const callable of index.callables) {
-    for (const use of callable.paramUses ?? []) {
-      for (const { target, position } of use.forwards) {
-        targets.add(`${target}#${String(position)}`);
-      }
-    }
-  }
-  return targets;
+  return new Set(
+    index.callables.flatMap((callable) =>
+      (callable.paramUses ?? []).flatMap(({ forwards }) =>
+        forwards.map(({ target, position }) => `${target}#${String(position)}`),
+      ),
+    ),
+  );
 }
 
 function isNarrow(thread, type, start) {
-  const limit = Math.max(2, Math.floor(type.fields.length / 3));
+  const limit = Math.max(MIN_READ_LIMIT, Math.floor(type.fields.length / READ_SHARE));
   const passes = [...new Map(thread.passes.map((callable) => [callable.id, callable])).values()];
   return (
     thread.fields.length > 0 &&
@@ -87,34 +89,45 @@ function isNarrow(thread, type, start) {
   );
 }
 
-function threadFinding({ start, position, type, thread }, { index, finding }) {
+function threadMessage({ start, position, type, thread }, index) {
   const parameter = start.params[position].name;
   const passes = [...new Set(thread.passes.map((callable) => displayName(callable, index)))];
+  const whole = `${displayName(start, index)} takes the whole ${type.name} (${String(type.fields.length)} fields)`;
+  const passed = `as \`${parameter}\` and passes it on through ${listSites(passes)}`;
+  const fix = `Pass those values, or a small type with just them, so callers need not build a whole ${type.name}.`;
+  return `${whole} ${passed}, which together read only ${quoted(thread.fields)}. ${fix}`;
+}
+
+function threadFinding(site, { index, finding }) {
+  const { start, position } = site;
   return finding({
     rule: RULE,
     path: start.file,
-    identity: `${start.id}#${parameter}`,
+    identity: `${start.id}#${start.params[position].name}`,
     symbol: displayName(start, index),
     line: start.line,
-    message: `${displayName(start, index)} takes the whole ${type.name} (${String(type.fields.length)} fields) as \`${parameter}\` and passes it on through ${listSites(passes)}, which together read only ${quoted(thread.fields)}. Pass those values, or a small type with just them, so callers need not build a whole ${type.name}.`,
+    message: threadMessage(site, index),
+  });
+}
+
+function threadSites(start, { forwarded, index }) {
+  return (start.params ?? []).flatMap((_, position) => {
+    const type = contextType(start, position, index);
+    const isHead =
+      type !== undefined &&
+      !forwarded.has(`${start.id}#${String(position)}`) &&
+      !index.isPublished(start);
+    const thread = isHead ? threadOf({ callable: start, position }, type, index) : undefined;
+    return thread !== undefined && isNarrow(thread, type, start)
+      ? [{ start, position, type, thread }]
+      : [];
   });
 }
 
 export function contextThreadingFindings(index, finding) {
   const forwarded = forwardedInto(index);
-  const findings = [];
-  for (const start of index.callables.filter(({ entry }) => entry !== true)) {
-    for (const [position] of (start.params ?? []).entries()) {
-      const type = contextType(start, position, index);
-      const isHead =
-        type !== undefined &&
-        !forwarded.has(`${start.id}#${String(position)}`) &&
-        !index.isPublished(start);
-      const thread = isHead ? threadOf({ callable: start, position }, type, index) : undefined;
-      if (thread !== undefined && isNarrow(thread, type, start)) {
-        findings.push(...threadFinding({ start, position, type, thread }, { index, finding }));
-      }
-    }
-  }
-  return findings;
+  return index.callables
+    .filter(({ entry }) => entry !== true)
+    .flatMap((start) => threadSites(start, { forwarded, index }))
+    .flatMap((site) => threadFinding(site, { index, finding }));
 }

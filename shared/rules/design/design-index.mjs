@@ -28,7 +28,9 @@ export function designIndex(facts) {
   const types = facts.types ?? [];
   const callables = facts.callables ?? [];
   const roleOf = roleLookup(facts.modules);
-  const isProduction = (item) => roleOf(item.file) !== 'test';
+  function isProduction(item) {
+    return roleOf(item.file) !== 'test';
+  }
   const typeById = byId(types);
   const callableById = byId(callables);
   const members = membersByOwner(callables);

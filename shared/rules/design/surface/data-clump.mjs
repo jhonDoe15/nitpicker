@@ -1,4 +1,4 @@
-import { DESIGN_RULE_IDS } from '../../../project-rules/design-rules.mjs';
+import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs';
 import { quoted } from '../design-finding.mjs';
 import { listSites, siteText } from '../design-index.mjs';
 
@@ -49,15 +49,11 @@ function parameterKeys(callable) {
 }
 
 function triples(keys) {
-  const found = [];
-  for (const [first, a] of keys.entries()) {
-    for (const [second, b] of keys.slice(first + 1).entries()) {
-      for (const c of keys.slice(first + second + 2)) {
-        found.push([a, b, c]);
-      }
-    }
-  }
-  return found;
+  return keys.flatMap((a, first) =>
+    keys
+      .slice(first + 1)
+      .flatMap((b, second) => keys.slice(first + second + 2).map((c) => [a, b, c])),
+  );
 }
 
 function isNumericKernel(keys) {
@@ -113,7 +109,11 @@ function clumpFinding({ keys, support }, { index, finding }) {
     path: first.callable.file,
     identity: keys.join(', '),
     line: first.callable.line,
-    message: `The parameters ${quoted(keys)} travel together through ${String(support.length)} functions: ${listSites(ordered.map(({ callable }) => siteText(callable, index)))}. ${ownerText} and pass that instead.`,
+    message: [
+      `The parameters ${quoted(keys)} travel together through ${String(support.length)} functions:`,
+      `${listSites(ordered.map(({ callable }) => siteText(callable, index)))}.`,
+      `${ownerText} and pass that instead.`,
+    ].join(' '),
   });
 }
 
