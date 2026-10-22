@@ -9,7 +9,7 @@ const TEST_ROOT = 'src/test/java';
 const ORDER_TEST = `${TEST_ROOT}/shop/OrderTest.java`;
 const WAITS = 'Remove Thread.sleep and other waits, start a smaller Spring context or a test slice';
 const EXCEPTIONS = 'to "exceptions" in nitpicker.config.json.';
-const FAILSAFE_ADVICE = 'or make it an integration test that Failsafe runs (*IT) if it is one';
+const FAILSAFE_ADVICE = 'or if it is an integration test, name it *IT so that Failsafe runs it';
 const temporaryRoots = [];
 const GROOVY_ROOT = 'src/test/groovy';
 
@@ -98,8 +98,8 @@ describe('readSlowTestFindings', () => {
         location: { line: 5 },
         message:
           'OrderTest totals() took 5.4 s; a unit test may take 5 s. Remove Thread.sleep and other ' +
-          'waits, start a smaller Spring context or a test slice, or move it to an integration test ' +
-          'source set if it is one. If this is intended, add ' +
+          'waits, start a smaller Spring context or a test slice, or if it is an integration test, ' +
+          'name it *IT or move it to an integration test source set. If this is intended, add ' +
           '{"rule":"slow-test","paths":["src/test/java/shop/OrderTest.java"],"reason":"..."} ' +
           'to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
@@ -107,7 +107,7 @@ describe('readSlowTestFindings', () => {
     ]);
   });
 
-  it('gives integration tests 30 s: other test tasks, *IT classes and @SpringBootTest', () => {
+  it('gives integration tests 30 s: other test tasks, *IT classes, integration packages and @SpringBootTest', () => {
     const boot = `${TEST_ROOT}/shop/BootTest.java`;
     const findings = findingsFor({
       sources: { [boot]: '@SpringBootTest\nclass BootTest {\n  @Test\n  void starts() {}\n}\n' },
@@ -115,6 +115,10 @@ describe('readSlowTestFindings', () => {
         test: [
           suite('shop.BootTest', [['starts()', '29']]),
           suite('shop.OrderIT', [['a()', '31']]),
+          suite('shop.orders.integration.OrderControllerTest', [['lists()', '12']]),
+          suite('shop.orders.it.OrderRepositoryTest', [['saves()', '12']]),
+          suite('shop.orders.e2e.CheckoutTest', [['pays()', '12']]),
+          suite('shop.orders.OrderControllerTest', [['lists()', '6']]),
         ],
         integrationTest: suite('shop.Flow', [['runs()', '12']]),
       },
@@ -127,6 +131,10 @@ describe('readSlowTestFindings', () => {
           'Spring context or a test slice. If this is intended, add ' +
           '{"rule":"slow-test","paths":["."],"reason":"..."} ' +
           'to "exceptions" in nitpicker.config.json.',
+      ],
+      [
+        'test:shop.orders.OrderControllerTest#lists()',
+        expect.stringMatching(/^ a unit test may take 5 s\./u),
       ],
     ]);
   });
@@ -330,7 +338,7 @@ describe('readSlowTestFindings', () => {
         path: spec,
         identity: 'test:shop.OrderSpec#ships an order',
         location: { line: 4 },
-        message: `OrderSpec ships an order took 6.0 s; a unit test may take 5 s. ${WAITS}, or move it to an integration test source set if it is one. If this is intended, add {"rule":"slow-test","paths":["${spec}"],"reason":"..."} ${EXCEPTIONS}`,
+        message: `OrderSpec ships an order took 6.0 s; a unit test may take 5 s. ${WAITS}, or if it is an integration test, name it *IT or move it to an integration test source set. If this is intended, add {"rule":"slow-test","paths":["${spec}"],"reason":"..."} ${EXCEPTIONS}`,
         classification: 'enforceable',
       },
     ]);

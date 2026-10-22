@@ -1,7 +1,6 @@
 import { ENUM_PREDICATE_RULE, readEnums } from '../../../review-rules/enum-predicates.mjs';
-import { exceptionSentence } from '../review-finding.mjs';
 
-const MESSAGE = `These comparisons list only some entries of {type}, so an entry added later silently falls into the other case. Classify every entry: a \`when\` without \`else\` (adding an entry then fails to compile), or a Boolean each entry declares (PAID(true)). If a partial test is intended, ${exceptionSentence(ENUM_PREDICATE_RULE)}`;
+const MESSAGE = `These comparisons list only some entries of {type}, so an entry added later silently falls into the other case. Classify every entry: a \`when\` without \`else\` (adding an entry then fails to compile), or a Boolean each entry declares (PAID(true)).`;
 const MINIMUM_ENTRIES = 3;
 const ENUM_OFFSET = 2;
 const MINIMUM_ELEMENTS = 2;
