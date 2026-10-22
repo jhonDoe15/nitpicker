@@ -1,3 +1,4 @@
+import { rule as noDevDependencyInProduction } from './rules/dependencies/no-dev-dependency-in-production.mjs';
 import { rule as integrationTestUsesApprovedHarness } from './rules/testing/processes/integration-test-uses-approved-harness.mjs';
 import { rule as containerPauseRequiresFinallyUnpause } from './rules/testing/lifecycle/container-pause-requires-finally-unpause.mjs';
 import { rule as boundedContainerTeardown } from './rules/testing/lifecycle/bounded-container-teardown.mjs';
@@ -34,6 +35,7 @@ import { rule as hermeticGitInTests } from './rules/testing/processes/hermetic-g
 import { rule as noNodeProcessPerTest } from './rules/testing/processes/no-node-process-per-test.mjs';
 import { rule as noServerOrWorkerPerTest } from './rules/testing/processes/no-server-or-worker-per-test.mjs';
 import { rule as noRaisedTestTimeout } from './rules/testing/assertions/no-raised-test-timeout.mjs';
+import { rule as requireTestProcessTimeout } from './rules/testing/processes/timeouts/require-test-process-timeout.mjs';
 import { rule as noUnusedDomEnvironment } from './rules/testing/environment/no-unused-dom-environment.mjs';
 import { rule as noPartialOutputAssertion } from './rules/testing/assertions/no-partial-output-assertion.mjs';
 import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mjs';
@@ -66,6 +68,10 @@ import { rule as noUnknownMainFolder } from './rules/guards/no-unknown-main-fold
 import { rule as noUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
 import { rule as noMagicNumbers } from './rules/wrapped/no-magic-numbers.mjs';
 import { rule as namingConvention } from './rules/wrapped/naming-convention.mjs';
+import { testAssertionRules } from './test-assertions/rules.mjs';
+import { rule as noTestHelpersInSource } from './test-placement/no-test-helpers-in-source.mjs';
+import { testIsolationRules } from './test-isolation/rules.mjs';
+import { testQualityRules } from './test-quality/rules.mjs';
 
 export const nitpickerRules = {
   meta: {
@@ -110,6 +116,7 @@ export const nitpickerRules = {
     'no-production-console': noProductionConsole,
     'no-self-recursion': noSelfRecursion,
     'no-silent-catch': noSilentCatch,
+    'no-dev-dependency-in-production': noDevDependencyInProduction,
     'no-throw': noThrow,
     'no-unknown-in-domain': noUnknownInDomain,
     'no-mutating-method-in-domain': noMutatingMethodInDomain,
@@ -124,6 +131,7 @@ export const nitpickerRules = {
     'no-node-process-per-test': noNodeProcessPerTest,
     'no-server-or-worker-per-test': noServerOrWorkerPerTest,
     'no-raised-test-timeout': noRaisedTestTimeout,
+    'require-test-process-timeout': requireTestProcessTimeout,
     'no-partial-output-assertion': noPartialOutputAssertion,
     'no-unused-dom-environment': noUnusedDomEnvironment,
     'no-process-globals-outside-main-guard': noProcessGlobalsOutsideMainGuard,
@@ -143,5 +151,9 @@ export const nitpickerRules = {
     'react-no-effect-event-handling': reactNoEffectEventHandling,
     'react-no-random-key': reactNoRandomKey,
     'react-test-no-implementation-details': reactTestNoImplementationDetails,
+    'no-test-helpers-in-source': noTestHelpersInSource,
+    ...testAssertionRules,
+    ...testIsolationRules,
+    ...testQualityRules,
   },
 };

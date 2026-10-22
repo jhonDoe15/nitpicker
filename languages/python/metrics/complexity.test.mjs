@@ -78,7 +78,23 @@ describe.skipIf(!pythonUsable())('with python3 3.10 or newer on the PATH', () =>
       expect(complexityOf('return [x for x in a if x if b]')).toBe(4);
       expect(complexityOf('return {x: y for x in a for y in b}')).toBe(3);
       expect(complexityOf('return (x for x in a)')).toBe(2);
-      expect(complexityOf('return lambda x: x if a else b')).toBe(2);
+      expect(
+        field(
+          ['def f(a, b):', '    return lambda x: [y for y in x if y] if a else b'],
+          'complexity',
+        ),
+      ).toEqual([1, 4]);
+    });
+
+    it('leaves the decisions of a lambda to its own entry', () => {
+      expect(
+        functionsOf(['def f(a, b):', '    if a:', '        return lambda x: x and b']).map(
+          ({ name, complexity }) => [name, complexity],
+        ),
+      ).toEqual([
+        ['f', 2],
+        ['f.<lambda>', 2],
+      ]);
     });
 
     it('counts each case of a match but a wildcard without a guard, like default in a switch', () => {

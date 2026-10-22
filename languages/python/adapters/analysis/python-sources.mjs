@@ -1,14 +1,16 @@
 import { existsSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { sourceLines } from '../../../java/adapters/metrics/java-structure.mjs';
+import {
+  PYTHON_SKIPPED_FOLDERS,
+  skippedFolderGlobs,
+} from '../../../../core/tooling/jscpd/skipped-folders.mjs';
+import { sourceLines } from '../../../../shared/ingest/structure-report.mjs';
 import {
   DOCUMENTATION_DIRECTORIES,
   importRoots,
   INSTALLED_DIRECTORIES,
   NON_SOURCE_DIRECTORIES,
   NON_SOURCE_FILES,
-  TEST_DIRECTORIES,
-  TEST_FILE_GLOBS,
   TOP_LEVEL_TEST_DIRECTORIES,
 } from '../execution/python-project.mjs';
 import { isGeneratedPython } from '../../libraries/generated-files.mjs';
@@ -86,16 +88,8 @@ export function functionText(sources, projectRoot, { file, start, end }) {
   return lines.map((line) => line.slice(indent)).join('\n');
 }
 
-const EXCLUDED_DIRECTORIES = [
-  '__pycache__',
-  'venv',
-  'node_modules',
-  'site-packages',
-  'build',
-  'dist',
-  ...TEST_DIRECTORIES,
-  'migrations',
-];
+const DEPENDENCY_DIRECTORIES = ['__pycache__', 'venv', 'node_modules', 'site-packages'];
+const EXCLUDED_DIRECTORIES = [...DEPENDENCY_DIRECTORIES, ...PYTHON_SKIPPED_FOLDERS];
 const HIDDEN_PREFIX = '.';
 const COMMON_HIDDEN_DIRECTORIES = [
   '.git',
@@ -108,15 +102,33 @@ const COMMON_HIDDEN_DIRECTORIES = [
   '.pytest_cache',
 ];
 
-export const NON_PRODUCTION_GLOBS = [
-  ...[...EXCLUDED_DIRECTORIES, ...COMMON_HIDDEN_DIRECTORIES].map((name) => `**/${name}/**`),
-  ...TEST_FILE_GLOBS.map((glob) => `**/${glob}`),
-];
+const TEST_FILE_GLOBS = ['**/test_*.py', '**/*_test.py', '**/conftest.py'];
 
-export function nonProductionGlobs(sourceRoots, projectRoot) {
+function productionGlobs(skippedFolders) {
+  return [
+    ...skippedFolderGlobs([
+      ...DEPENDENCY_DIRECTORIES,
+      ...skippedFolders,
+      ...COMMON_HIDDEN_DIRECTORIES,
+    ]),
+    ...TEST_FILE_GLOBS,
+  ];
+}
+
+export const NON_PRODUCTION_GLOBS = productionGlobs(PYTHON_SKIPPED_FOLDERS);
+
+export function nonProductionGlobs(
+  sourceRoots,
+  projectRoot,
+  skippedFolders = PYTHON_SKIPPED_FOLDERS,
+) {
+  const globs =
+    skippedFolders === PYTHON_SKIPPED_FOLDERS
+      ? NON_PRODUCTION_GLOBS
+      : productionGlobs(skippedFolders);
   const topLevel = [...DOCUMENTATION_DIRECTORIES, ...TOP_LEVEL_TEST_DIRECTORIES];
   return [
-    ...NON_PRODUCTION_GLOBS,
+    ...globs,
     ...(isDjangoProject(projectRoot) ? DJANGO_TEST_FILES.map((name) => `**/${name}`) : []),
     ...(sourceRoots.includes('.') ? topLevel.map((name) => `${name}/**`) : []),
   ];

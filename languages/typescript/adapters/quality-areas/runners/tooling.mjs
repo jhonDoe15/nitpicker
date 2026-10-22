@@ -38,22 +38,29 @@ export function runNodeTool({ acceptedStatuses, ...invocation }) {
   return result;
 }
 
+function nodeToolPaths(options, { relativeToolPath, absoluteToolPath }) {
+  if (absoluteToolPath !== undefined) {
+    return [absoluteToolPath];
+  }
+  if (relativeToolPath === undefined) {
+    return [];
+  }
+  const name = toolNameForPath(relativeToolPath);
+  const bin = relativeToolPath.slice(name.length + 1);
+  return [resolveTool(name, { projectRoot: options.liveProjectRoot, bin }).binPath];
+}
+
 export function spawnNodeTool({
   options,
   relativeToolPath,
   absoluteToolPath,
   arguments_,
+  nodeArguments = [],
   cwd = options.projectRoot,
   environment = {},
 }) {
-  const name = relativeToolPath === undefined ? undefined : toolNameForPath(relativeToolPath);
-  const toolPath =
-    absoluteToolPath ??
-    resolveTool(name, {
-      projectRoot: options.liveProjectRoot,
-      bin: relativeToolPath.slice(name.length + 1),
-    }).binPath;
-  const result = spawnSync(process.execPath, [toolPath, ...arguments_], {
+  const toolPaths = nodeToolPaths(options, { relativeToolPath, absoluteToolPath });
+  const result = spawnSync(process.execPath, [...nodeArguments, ...toolPaths, ...arguments_], {
     cwd,
     env: { ...process.env, ...environment },
     encoding: 'utf8',

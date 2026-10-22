@@ -4,6 +4,11 @@ import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
 import { testConsoleCheckFor } from './test-console.mjs';
 
 const COVERAGE_CONFIGURATION_FILES = [
+  'shared/test-timeouts/resolve.mjs',
+  'shared/glob.mjs',
+  'shared/head-policy.mjs',
+  'shared/policy.mjs',
+  'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs',
   'languages/typescript/preset/defaults/vitest.quality.config.ts',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
@@ -22,6 +27,7 @@ export function testExecutionChecksFor(exclusions) {
       concurrencyWeight: 2,
       concurrencyGroup: 'test-execution',
       executionPriority: 1,
+      reportedTools: ['test-runtime'],
       shardWeight: 16,
       timeoutMs: 5 * MINUTE_MS,
       configurationFiles: COVERAGE_CONFIGURATION_FILES,
@@ -50,6 +56,7 @@ export function testExecutionChecksFor(exclusions) {
       timeoutMs: 30 * MINUTE_MS,
       configurationFiles: [
         'languages/typescript/preset/tool-configs.mjs',
+        'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
         JAVASCRIPT_PRESET_FILE,
         'languages/typescript/preset/defaults/stryker.config.mjs',
         'languages/typescript/preset/defaults/vitest.quality.config.ts',

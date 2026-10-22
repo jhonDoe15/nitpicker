@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { normalizeReportPath } from '../../../java/ingest/common.mjs';
+import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
 import { readPackageFacts } from '../../rules/libraries/package-facts.mjs';
 import { ruffConfigFor } from '../configuration/python-ruff-config.mjs';

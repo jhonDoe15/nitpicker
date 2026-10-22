@@ -12,7 +12,7 @@ export function testConsoleCheckFor(exclusions) {
     configurationFiles: [
       'shared/console/console-findings.mjs',
       'shared/console/console-messages.mjs',
-      'languages/typescript/adapters/quality-areas/reporting/vitest.mjs',
+      'languages/typescript/adapters/quality-areas/reporting/test-report.mjs',
       'languages/typescript/adapters/quality-areas/runners/console/test-console.mjs',
       'languages/typescript/adapters/quality-areas/runners/tests.mjs',
       'languages/typescript/adapters/quality-areas/runners/tooling.mjs',
