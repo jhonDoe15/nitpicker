@@ -15,7 +15,7 @@ export function nodesIn(root, visitorKeys) {
   return found;
 }
 
-export function isGlobalName(context, node, name) {
+function isGlobalName(context, node, name) {
   return (
     node?.type === 'Identifier' &&
     node.name === name &&
