@@ -14,7 +14,11 @@ export function policyDigest({ loosenings, files = [] }) {
 }
 
 export function isPolicyChangeAccepted(loosenings, digest, acceptedDigest) {
-  return loosenings.length > 0 && acceptedDigest !== undefined && acceptedDigest === digest;
+  return (
+    loosenings.length > 0 &&
+    acceptedDigest !== undefined &&
+    acceptedDigest.split(',').includes(digest)
+  );
 }
 
 function acceptRoute(digest) {

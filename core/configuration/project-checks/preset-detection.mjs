@@ -64,14 +64,17 @@ function detectedPreset(projectRoot) {
   return kotlin > java ? { ...marker, preset: 'kotlin' } : marker;
 }
 
-export function presetToDeclare(config, projectRoot) {
+export function hasScriptSources(config, projectRoot) {
   const roots = config.layout?.sourceRoots ?? defaultSourceRoots;
-  const hasScripts = roots.some((root) =>
+  return roots.some((root) =>
     codeFiles(path.join(projectRoot, root), ASSET_FOLDERS).some(
       (name) => SCRIPT_FILE.test(name) && !MINIFIED_FILE.test(name),
     ),
   );
-  return hasScripts ? undefined : detectedPreset(projectRoot);
+}
+
+export function presetToDeclare(config, projectRoot) {
+  return hasScriptSources(config, projectRoot) ? undefined : detectedPreset(projectRoot);
 }
 
 export function rejectUndeclaredPreset(config, projectRoot) {
