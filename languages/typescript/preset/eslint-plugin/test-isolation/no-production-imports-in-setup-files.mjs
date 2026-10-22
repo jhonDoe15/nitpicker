@@ -13,7 +13,7 @@ export const rule = {
     schema: [],
     messages: {
       productionImport:
-        'A setup file runs before every test file, so production code imported here is covered without a test. Import {{source}} in the tests that need it. A justified exception goes in nitpicker.config.json.',
+        'A setup file runs before every test file, so production code imported here is covered without a test. Import {{source}} in the tests that need it.',
     },
   },
   create(context) {

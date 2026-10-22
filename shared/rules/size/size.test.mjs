@@ -64,7 +64,7 @@ describe('folder depth', () => {
     expect(found.map(({ path }) => path)).toEqual(['root/a/b/c', 'root/a/b/c']);
     expect(
       depthFindings(files, {
-        exceptions: [{ rule: 'folder-depth-limit', glob: 'root/a/b/**' }],
+        exceptions: [{ rule: 'folder-depth-limit', paths: ['root/a/b/**'] }],
       }),
     ).toEqual([]);
   });
@@ -154,7 +154,7 @@ describe('class limits', () => {
     ).toEqual([]);
     expect(
       classFindings([entry(big)], {
-        exceptions: [{ rule: 'class-fields-limit', glob: 'src/main/**' }],
+        exceptions: [{ rule: 'class-fields-limit', paths: ['src/main/**'] }],
       }),
     ).toHaveLength(1);
     expect(classFindings([entry(big), entry(big)]).map(({ identity }) => identity)).toEqual([

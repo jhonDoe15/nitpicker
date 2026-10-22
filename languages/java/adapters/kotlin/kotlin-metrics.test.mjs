@@ -153,7 +153,8 @@ describe('readKotlinStructureFindings', () => {
       {
         rule: 'function-parameters-limit',
         symbol: 'Counter.wide',
-        message: 'Counter.wide has 4 parameters; limit is 3',
+        message:
+          'Counter.wide has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Tiers.kt"],"function":"Counter.wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
       },
     ]);
     expect(
@@ -229,7 +230,7 @@ describe('readKotlinCrapFindings', () => {
         rule: 'crap-score-limit',
         symbol: 'tier',
         message:
-          'tier has CRAP 6.00; score must be below 6. Test its uncovered branches, or split a branchy part into its own function.',
+          'tier has CRAP 6.00; score must be below 6. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/kotlin/demo/Tiers.kt"],"function":"tier","reason":"..."} to "exceptions" in nitpicker.config.json.',
         path: 'src/main/kotlin/demo/Tiers.kt',
       },
     ]);
@@ -240,7 +241,7 @@ describe('readKotlinCrapFindings', () => {
 
     expect(uncovered.map(({ symbol }) => symbol)).toEqual(['Counter.wide.<lambda>']);
     expect(uncovered[0].message).toBe(
-      'Counter.wide.<lambda> has CRAP 6.00; score must be below 2.1. Test its uncovered branches, or split a branchy part into its own function.',
+      'Counter.wide.<lambda> has CRAP 6.00; score must be below 2.1. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/kotlin/demo/Tiers.kt"],"function":"Counter.wide.<lambda>","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -333,7 +334,7 @@ describe('readKotlinCrapFindings', () => {
     ]);
     expect(findings.every(({ classification }) => classification === 'enforceable')).toBe(true);
     expect(findings[0].message).toBe(
-      'tier has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
+      'tier has unknown coverage and no CRAP score: no test runs it. Add a test that calls it. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/kotlin/demo/Tiers.kt"],"function":"tier","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

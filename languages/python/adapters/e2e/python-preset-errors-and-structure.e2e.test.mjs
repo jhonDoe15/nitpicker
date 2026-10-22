@@ -173,14 +173,14 @@ describe.skipIf(!pythonE2eEnabled)(
             symbol: 'wide',
             identity: expect.any(String),
             message:
-              'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+              'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
             classification: 'enforceable',
             location: { line: 1 },
             ratchet: {
               key: 'function:wide:occurrence:1:parameters',
               value: 5,
               worseMessage:
-                'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+                'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
               heldMessage:
                 'wide: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
             },
@@ -199,14 +199,14 @@ describe.skipIf(!pythonE2eEnabled)(
             symbol: 'pipeline.score',
             identity: expect.any(String),
             message:
-              'pipeline.score has CRAP 10.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function.',
+              'pipeline.score has CRAP 10.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
             classification: 'enforceable',
             location: { line: 2, endLine: 12 },
             ratchet: {
               key: 'function:pipeline.score:crap',
               value: 10,
               worseMessage:
-                'pipeline.score CRAP rose from {base} to 10 (limit 9). Put new code in a new function and cover it with tests.',
+                'pipeline.score CRAP rose from {base} to 10 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
               heldMessage:
                 'pipeline.score: CRAP 10.00 (limit 9), allowed because base was {base}; any increase fails.',
             },
@@ -225,14 +225,14 @@ describe.skipIf(!pythonE2eEnabled)(
             symbol: 'pick',
             identity: expect.any(String),
             message:
-              'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+              'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
             classification: 'enforceable',
             location: { line: 1, endLine: 8 },
             ratchet: {
               key: 'function:pick:crap',
               value: 20,
               worseMessage:
-                'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests.',
+                'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
               heldMessage:
                 'pick: CRAP 20.00 (limit 9), allowed because base was {base}; any increase fails.',
             },

@@ -5,7 +5,7 @@ import {
   testRoots,
 } from '../../languages/typescript/preset/layout.mjs';
 import { THRESHOLD_DEFAULTS } from './loosenings.mjs';
-import { exceptionPathsByRule } from './paths/hiding.mjs';
+import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
 
 const UNSET_ROOTS = { sourceRoots, testRoots: defaultResolvedLayout.executedTestRoots };
 const DEFAULT_LAYOUT = {
@@ -48,12 +48,21 @@ function coveringLayout(baseLayout, headLayout) {
   );
 }
 
+function sameScope(left, right) {
+  return (
+    canonicalRule(left.rule) === canonicalRule(right.rule) &&
+    left.function === right.function &&
+    left.name === right.name
+  );
+}
+
 function commonExceptions(base, head = []) {
-  const headPaths = exceptionPathsByRule(head);
   return base
     .map((entry) => ({
       ...entry,
-      paths: entry.paths.filter((glob) => (headPaths.get(entry.rule) ?? []).includes(glob)),
+      paths: entry.paths.filter((glob) =>
+        head.some((other) => sameScope(entry, other) && other.paths.includes(glob)),
+      ),
     }))
     .filter(({ paths }) => paths.length > 0);
 }

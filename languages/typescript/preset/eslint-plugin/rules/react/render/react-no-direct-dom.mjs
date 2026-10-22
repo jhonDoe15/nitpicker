@@ -217,7 +217,7 @@ export const rule = {
     schema: [],
     messages: {
       directDom:
-        'Do not query or change the page DOM directly: render the value from state or props, render into another node with `createPortal`, and reach an element through a ref (`ref.current.style`, focus, measuring); `document.documentElement` and `document.body` may change their class, style and attributes. For a third-party widget or a file download, add an exception for this rule in nitpicker.config.json.',
+        'Do not query or change the page DOM directly: render the value from state or props, render into another node with `createPortal`, and reach an element through a ref (`ref.current.style`, focus, measuring); `document.documentElement` and `document.body` may change their class, style and attributes. An exception fits only for a third-party widget or a file download.',
     },
   },
   create(context) {
