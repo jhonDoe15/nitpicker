@@ -1,11 +1,14 @@
 package nitpicker.kotlinpsi.common;
 
 import java.util.*;
+import java.util.regex.Pattern;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
 public final class Psi {
   private static final int TEXT_LIMIT = 200;
+  private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+  private static final Pattern TYPE_ARGUMENTS = Pattern.compile("<.*");
 
   private Psi() {}
 
@@ -18,8 +21,12 @@ public final class Psi {
   }
 
   public static String clip(String text, int limit) {
-    String flat = text.replaceAll("\\s+", " ").trim();
+    String flat = WHITESPACE.matcher(text).replaceAll(" ").trim();
     return flat.length() > limit ? flat.substring(0, limit) : flat;
+  }
+
+  public static String withoutTypeArguments(String text) {
+    return TYPE_ARGUMENTS.matcher(text).replaceAll("");
   }
 
   public static String clip(PsiElement element) {

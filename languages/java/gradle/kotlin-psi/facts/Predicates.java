@@ -18,17 +18,30 @@ final class Predicates {
     this.state = state;
   }
 
-  private String symbolAt(Frame frame) {
+  private String symbolAt(Frame frame, PsiElement at) {
     Frame function = frame == null ? null : frame.nearest("fun");
     Frame owner = frame == null ? null : frame.nearest("class");
     List<String> parts = new ArrayList<>();
     if (owner != null) {
       parts.add((String) owner.data.get("qualified"));
     }
-    if (function != null) {
-      parts.add((String) function.data.get("name"));
+    String name = function != null ? (String) function.data.get("name") : propertyAround(at);
+    if (name != null) {
+      parts.add(name);
     }
     return String.join(".", parts);
+  }
+
+  private String propertyAround(PsiElement at) {
+    for (PsiElement parent = at.getParent(); parent != null; parent = parent.getParent()) {
+      if (parent instanceof KtClassOrObject || parent instanceof KtAnonymousInitializer) {
+        return null;
+      }
+      if (parent instanceof KtProperty && !((KtProperty) parent).isLocal()) {
+        return ((KtProperty) parent).getName();
+      }
+    }
+    return null;
   }
 
   private boolean stable(KtExpression expression) {
@@ -134,7 +147,8 @@ final class Predicates {
               "right", clip(comparison.getRight()), "rightStable", stable(comparison.getRight())));
     }
     state.predicates.add(
-        m("kind", "chain", "line", state.lineOf(expression.getTextRange().getStartOffset()), "symbol", symbolAt(frame),
+        m("kind", "chain", "line", state.lineOf(expression.getTextRange().getStartOffset()),
+            "symbol", symbolAt(frame, expression),
             "negated", token == KtTokens.ANDAND, "holder", holder(expression), "comparisons", comparisons));
   }
 
@@ -155,7 +169,7 @@ final class Predicates {
       elements.add(clip(argument.getArgumentExpression()));
     }
     state.predicates.add(
-        m("kind", "membership", "line", state.lineOf(at.getTextRange().getStartOffset()), "symbol", symbolAt(frame),
+        m("kind", "membership", "line", state.lineOf(at.getTextRange().getStartOffset()), "symbol", symbolAt(frame, at),
             "holder", holder(at),
             "subject", clip(subject), "subjectStable", stable(subject), "elements", elements,
             "factory", plain instanceof KtDotQualifiedExpression

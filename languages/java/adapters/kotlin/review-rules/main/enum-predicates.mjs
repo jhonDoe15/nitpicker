@@ -5,8 +5,9 @@ const MESSAGE = `These comparisons list only some entries of {type}, so an entry
 const MINIMUM_ENTRIES = 3;
 const ENUM_OFFSET = 2;
 const MINIMUM_ELEMENTS = 2;
-const QUALIFIED = /^(?:\w+\.)*([A-Z]\w*)\.(\w+)$/u;
-const BARE = /^\w+$/u;
+const QUALIFIED = /^(?:\w+\.)*([A-Z]\w*)\.(\w+|`[^`]+`)$/u;
+const BARE = /^(?:\w+|`[^`]+`)$/u;
+const BACKTICKS = /^`(.*)`$/u;
 const HOLDERS = new Set(['return', 'variable', 'lambda', 'assign']);
 
 function kotlinEnums(files) {
@@ -66,12 +67,16 @@ function importedConstant(text, file, enums) {
   return owners.length === 1 ? { type: owners[0], constant: text } : undefined;
 }
 
+function unquoted(name) {
+  return name.replace(BACKTICKS, '$1');
+}
+
 function referenceOf(text, file, enums) {
   const qualified = QUALIFIED.exec(text);
   if (qualified) {
-    return { type: qualified[1], constant: qualified[2] };
+    return { type: qualified[1], constant: unquoted(qualified[2]) };
   }
-  return BARE.test(text) ? importedConstant(text, file, enums) : undefined;
+  return BARE.test(text) ? importedConstant(unquoted(text), file, enums) : undefined;
 }
 
 function constantOf(text, file, enums) {

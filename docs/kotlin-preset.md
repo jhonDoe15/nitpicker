@@ -287,7 +287,9 @@ ids and the exception route of the Java preset's PMD rules, so a finding reads t
 languages and one `exceptions` entry style covers either.
 
 How it works: task `nitpickerKotlinPsi` compiles the sources of `languages/java/gradle/kotlin-psi/` with the `javac`
-of the JVM that runs Gradle and runs them once per module with the pinned Kotlin compiler's parser. One parse
+of the JVM that runs Gradle, once per build into the root project's `build/tmp/nitpickerKotlinPsi`, and runs them
+once per module with the pinned Kotlin compiler's parser. Gradle must run on a JDK (Java 21): on a Java runtime
+without `javac` the task fails and says so. One parse
 of the main and test source roots writes `kotlin-metrics.json` (main only: structure, CRAP, coupling) and
 `kotlin-facts.json` (main and test: classes, functions, properties, calls, type aliases, waits and
 comparison chains). The rules are evaluated in Node (`languages/java/adapters/kotlin/review-rules/`) from the
@@ -312,7 +314,9 @@ Limits, all chosen to flag less rather than guess:
   `channelFlow`, `callbackFlow`, `execute`, `submit`, `schedule`, `scheduleAtFixedRate`, `runAsync`,
   `supplyAsync`, `startVirtualThread`, `newThread`, `timer`, `fixedRateTimer` or a mock answer (`thenAnswer`,
   `doAnswer`, `answers`, `coAnswers`), in a `run` override of a `Thread`, or in a test fake that implements or extends a class of the project's main sources
-  (in any module of the build) is allowed. A `for` over a collection is not a polling loop, as in the Java rule.
+  (in any module of the build) is allowed. A sleep in an inline lambda (`run`, `let`, `also`, `apply`, `with`,
+  `repeat`, `takeIf`, `takeUnless`, `use`, `synchronized`, `forEach`, `forEachIndexed`, `onEach`) is judged by
+  the loop or body around that lambda. A `for` over a collection is not a polling loop, as in the Java rule.
   `delay` is judged only inside `runBlocking`; `runTest` runs it in virtual time.
 - Which calls are waits: `Thread.sleep`, `TimeUnit.X.sleep` and `LockSupport.parkNanos`, also through an
   import or an alias of an import (`import java.lang.Thread.sleep as nap`); `join(ms)` and `wait(ms)` on any
@@ -342,6 +346,8 @@ Limits, all chosen to flag less rather than guess:
   least three constants; one that is not found, a test that lists every constant and a `when` are not
   flagged. The test must be returned, assigned, kept in a variable, the last expression of a lambda, the
   body of a property getter, or the condition of an `if` that has an `else` and is itself one of those.
+  Backticked constants (``Status.`in` ``) are matched by their name. A test in a property initializer is
+  named after the property (`Holder.isOpen`), as it is in a getter.
 - Unused option: a defaulted parameter of a private or internal function that is not `override`, `open`,
   `abstract`, `operator`, `infix` or `main`, has no annotation and is not declared in an interface, or of the
   constructor of a final class without annotations. It is flagged when no call (in main or tests, matched by
@@ -349,7 +355,7 @@ Limits, all chosen to flag less rather than guess:
   reference exists and no Java file mentions the name. A call that cannot match the signature is ignored, a
   call with a spread sets every parameter, and a `copy(name = ...)` call sets that parameter of a data class.
   Data classes are skipped when the module has `jackson-module-kotlin`, `kotlinx-serialization` or
-  `moshi-kotlin` on its compile classpath, since a library may set the defaults; a library that does so
+  `moshi-kotlin` on its main compile or runtime classpath (`runtimeOnly` counts), since a library may set the defaults; a library that does so
   without that jar (reflection in a framework) is not seen.
 - Not covered: Android and Kotlin Multiplatform modules (the facts step is registered for
   `org.jetbrains.kotlin.jvm` only), and source-set `exclude` patterns (every `.kt` file under a source

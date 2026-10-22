@@ -41,6 +41,21 @@ const SPARED_HOSTS = new Set([
   'Runnable',
   'Callable',
 ]);
+const INLINE_HOSTS = new Set([
+  'run',
+  'let',
+  'also',
+  'apply',
+  'with',
+  'repeat',
+  'takeIf',
+  'takeUnless',
+  'use',
+  'synchronized',
+  'forEach',
+  'forEachIndexed',
+  'onEach',
+]);
 const VIRTUAL_TIME_HOSTS = new Set(['runTest', 'runBlockingTest']);
 const THREAD_TYPES = new Set(['Thread', 'Runnable']);
 const NEGATIVE_FOLLOWERS = new Set(['never', 'atMost', 'atMostOnce']);
@@ -170,8 +185,12 @@ function isTestClass(owner, file) {
   );
 }
 
+function isBoundary(scope) {
+  return BOUNDARIES.has(scope.k) && !(scope.k === 'lambda' && INLINE_HOSTS.has(scope.host));
+}
+
 function isSpared(wait, file, isProduction) {
-  const [boundary] = wait.scopes.filter((scope) => BOUNDARIES.has(scope.k));
+  const boundary = wait.scopes.find(isBoundary);
   const owner = ownerOf(wait);
   if (boundary?.k === 'loop' && isPolling(boundary)) {
     return true;
