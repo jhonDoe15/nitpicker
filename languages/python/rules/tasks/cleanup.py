@@ -5,7 +5,7 @@ from tasks.shields import shielding
 
 RULE = "unshielded-cleanup-await"
 BACKENDS = {"trio", "anyio"}
-CANCELLED = {"trio.Cancelled", "BaseException", "builtins.BaseException"}
+CANCELLED = {"trio.Cancelled"}
 CANCELLED_CALL = "anyio.get_cancelled_exc_class"
 SAFE_AWAITS = {
     "trio.lowlevel.cancel_shielded_checkpoint",
@@ -30,8 +30,6 @@ def imports_backend(tree):
 
 
 def is_cancellation_type(node, aliases):
-    if node is None:
-        return True
     if isinstance(node, ast.Tuple):
         return any(is_cancellation_type(part, aliases) for part in node.elts)
     if isinstance(node, ast.Call):
@@ -100,8 +98,7 @@ class Cleanup:
         self.region("finally", node.finalbody, node)
         for handler in node.handlers:
             if is_cancellation_type(handler.type, self.aliases):
-                caught = "except" if handler.type is None else type_text(handler.type)
-                label = caught if handler.type is None else f"except {caught}"
+                label = f"except {type_text(handler.type)}"
                 self.region(label, handler.body, node)
 
 

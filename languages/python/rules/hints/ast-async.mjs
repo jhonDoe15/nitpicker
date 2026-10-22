@@ -15,6 +15,6 @@ export const ASYNC_HINTS = [
     describe: (subject) =>
       `\`${subject}\` can be cancelled before the cleanup finishes, so the resource may stay open`,
     allowed:
-      'Run the cleanup in a shielded scope with a deadline: `with trio.move_on_after(5, shield=True): await resource.aclose()` (`anyio.move_on_after(5, shield=True)` in AnyIO), or `await trio.aclose_forcefully(resource)` when graceful close is not needed. A shield without a deadline can hang shutdown.',
+      'Run the cleanup in a shielded scope with a deadline: `with trio.move_on_after(5, shield=True): await resource.aclose()` (`anyio.move_on_after(5, shield=True)` in AnyIO), or `await trio.aclose_forcefully(resource)` when graceful close is not needed. Prefer a deadline: a shield without one can hang shutdown.',
   },
 ];

@@ -33,16 +33,6 @@ describe.skipIf(!enabled)('unshielded-cleanup-await under Trio and AnyIO', () =>
         found(8, 'await resource.aclose() in except trio.Cancelled'),
       ],
       [
-        'BaseException handler',
-        cleanupCode('except BaseException:\n    await resource.aclose()\n    raise'),
-        found(8, 'await resource.aclose() in except BaseException'),
-      ],
-      [
-        'bare except handler',
-        cleanupCode('except:\n    await resource.aclose()\n    raise'),
-        found(8, 'await resource.aclose() in except'),
-      ],
-      [
         'tuple with a cancellation class',
         cleanupCode('except (ValueError, trio.Cancelled):\n    await resource.aclose()\n    raise'),
         found(8, 'await resource.aclose() in except (ValueError, trio.Cancelled)'),
@@ -71,23 +61,8 @@ describe.skipIf(!enabled)('unshielded-cleanup-await under Trio and AnyIO', () =>
         found(8, 'async for resource in finally'),
       ],
       [
-        'shield without a deadline',
-        cleanupCode(
-          `${FINALLY}    with trio.CancelScope(shield=True):\n        await resource.aclose()`,
-        ),
-        found(9, 'await resource.aclose() in finally'),
-      ],
-      [
         'deadline without a shield',
         cleanupCode(`${FINALLY}    with trio.move_on_after(5):\n        await resource.aclose()`),
-        found(9, 'await resource.aclose() in finally'),
-      ],
-      [
-        'unbounded timeout',
-        cleanupCode(
-          `${FINALLY}    with anyio.move_on_after(None, shield=True):\n        await resource.aclose()`,
-          'import anyio',
-        ),
         found(9, 'await resource.aclose() in finally'),
       ],
       [
@@ -130,6 +105,23 @@ describe.skipIf(!enabled)('unshielded-cleanup-await under Trio and AnyIO', () =>
           `${FINALLY}    with anyio.move_on_after(5, shield=True):\n        await resource.aclose()`,
           'import anyio',
         ),
+        [],
+      ],
+      [
+        'shield without a deadline is allowed, the message recommends a deadline',
+        cleanupCode(
+          `${FINALLY}    with trio.CancelScope(shield=True):\n        await resource.aclose()`,
+        ),
+        [],
+      ],
+      [
+        'BaseException handler is not a named cancellation handler',
+        cleanupCode('except BaseException:\n    await resource.aclose()\n    raise'),
+        [],
+      ],
+      [
+        'bare except handler is not a named cancellation handler',
+        cleanupCode('except:\n    await resource.aclose()\n    raise'),
         [],
       ],
       [
@@ -206,7 +198,7 @@ describe.skipIf(!enabled)('unshielded-cleanup-await reporting', () => {
     expect(verdict).toEqual({
       ok: true,
       messages: [
-        '`await resource.aclose() in finally` can be cancelled before the cleanup finishes, so the resource may stay open. Run the cleanup in a shielded scope with a deadline: `with trio.move_on_after(5, shield=True): await resource.aclose()` (`anyio.move_on_after(5, shield=True)` in AnyIO), or `await trio.aclose_forcefully(resource)` when graceful close is not needed. A shield without a deadline can hang shutdown. If this is intended, add {"rule":"unshielded-cleanup-await","paths":["worker.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        '`await resource.aclose() in finally` can be cancelled before the cleanup finishes, so the resource may stay open. Run the cleanup in a shielded scope with a deadline: `with trio.move_on_after(5, shield=True): await resource.aclose()` (`anyio.move_on_after(5, shield=True)` in AnyIO), or `await trio.aclose_forcefully(resource)` when graceful close is not needed. Prefer a deadline: a shield without one can hang shutdown. If this is intended, add {"rule":"unshielded-cleanup-await","paths":["worker.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       ],
     });
   });
