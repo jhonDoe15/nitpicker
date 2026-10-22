@@ -30,7 +30,7 @@ export function renderConsoleSummary(
     {
       violations: violations.filter((finding) => !isPolicyFinding(finding)),
       incomplete: report.toolErrors.length > 0,
-      policyPending: violations.some(isPolicyFinding),
+      policyCount: violations.filter(isPolicyFinding).length,
     },
     color,
   );
@@ -67,28 +67,32 @@ function appendHeldSummary(lines, unchangedFindings, color) {
   }
 }
 
-function appendViolationSummary(lines, { violations, incomplete, policyPending }, color) {
-  if (violations.length === 0 && incomplete) {
+function appendViolationSummary(lines, { violations, incomplete, policyCount }, color) {
+  const failing = (text) => style(text, [ANSI.bold, ANSI.red], color);
+  const policy = `${String(policyCount)} unapproved policy ${pluralize('change', policyCount)}`;
+  if (violations.length === 0 && policyCount > 0) {
     lines.push(
-      policyPending
-        ? 'No new code violations, but policy review is required and the run is incomplete:'
-        : 'No new enforceable violations, but the run is incomplete:',
+      failing(
+        `✖ No new code violations, but ${policy} fail${policyCount === 1 ? 's' : ''} the gate` +
+          (incomplete ? ' and the run is incomplete:' : ''),
+      ),
     );
+    return;
+  }
+  if (violations.length === 0 && incomplete) {
+    lines.push('No new enforceable violations, but the run is incomplete:');
     return;
   }
   if (violations.length === 0) {
-    lines.push(
-      policyPending
-        ? 'No new code violations; policy review is required below.'
-        : style('✓ No new enforceable violations', [ANSI.green], color),
-    );
+    lines.push(style('✓ No new enforceable violations', [ANSI.green], color));
     return;
   }
+  const code = `${String(violations.length)} code ${pluralize('violation', violations.length)}`;
   lines.push(
-    style(
-      `✖ ${String(violations.length)} new enforceable ${pluralize('violation', violations.length)}`,
-      [ANSI.bold, ANSI.red],
-      color,
+    failing(
+      policyCount === 0
+        ? `✖ ${String(violations.length)} new enforceable ${pluralize('violation', violations.length)}`
+        : `✖ ${String(violations.length + policyCount)} new enforceable violations: ${code} and ${policy}`,
     ),
   );
   for (const group of groupRepeatedFindings(violations)) {

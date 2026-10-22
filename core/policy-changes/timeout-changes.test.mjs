@@ -12,6 +12,10 @@ const project = (limits = {}, include = ['test/jvm/**']) => ({
 });
 const ceilings = (value) => ({ testDeclarationCeilingMs: value, hookDeclarationCeilingMs: value });
 
+function loosenedTexts(base, head) {
+  return timeoutChanges(base, head).loosened.map(({ text }) => text);
+}
+
 function policyFields(base, head) {
   const scope = createPolicyScope({
     files: [],
@@ -46,14 +50,14 @@ describe('timeout policy changes', () => {
   it('detects deleting a stricter repo or project override', () => {
     const base = config({ languages: { java: ceilings(20_000) }, defaults: ceilings(5_000) });
     const head = config({ languages: { java: ceilings(20_000) } });
-    expect(timeoutChanges(base, head).loosened).toEqual(
+    expect(loosenedTexts(base, head)).toEqual(
       LANGUAGES.flatMap((language) => [
         `test timeout ${language} testDeclarationCeilingMs raised from 5000 to ${language === 'java' ? 20000 : 10000}`,
         `test timeout ${language} hookDeclarationCeilingMs raised from 5000 to ${language === 'java' ? 20000 : 10000}`,
       ]),
     );
     const strictProject = config({ projects: { jvm: project(ceilings(5_000)) } });
-    expect(timeoutChanges(strictProject, {}).loosened).toEqual([
+    expect(loosenedTexts(strictProject, {})).toEqual([
       'test timeout project jvm testDeclarationCeilingMs raised from 5000 to 10000',
       'test timeout project jvm hookDeclarationCeilingMs raised from 5000 to 10000',
     ]);
@@ -67,7 +71,7 @@ describe('timeout policy changes', () => {
     const widened = config({
       projects: { jvm: project(ceilings(20_000), ['test/jvm/**', 'test/new/**']) },
     });
-    expect(timeoutChanges(base, widened).loosened).toEqual([
+    expect(loosenedTexts(base, widened)).toEqual([
       'test timeout project jvm membership added: ["test/new/**"] (java)',
       'test timeout project jvm testDeclarationCeilingMs raised from 10000 to 20000',
       'test timeout project jvm hookDeclarationCeilingMs raised from 10000 to 20000',
@@ -79,7 +83,7 @@ describe('timeout policy changes', () => {
     for (const value of [5_000, 20_000]) {
       const base = config({ projects: { jvm: project(ceilings(value), includes) } });
       const head = config({ projects: { jvm: project(ceilings(value)) } });
-      const result = timeoutChanges(base, head).loosened;
+      const result = loosenedTexts(base, head);
       expect(result.length > 0).toBe(value === 5_000);
     }
   });
@@ -87,7 +91,7 @@ describe('timeout policy changes', () => {
   it('reviews real execution increases and transitions to native hook deadlines', () => {
     const base = config({ defaults: { testTimeoutMs: 30_000, hookTimeoutMs: 30_000 } });
     const head = config({ defaults: { testTimeoutMs: 40_000 } });
-    const result = timeoutChanges(base, head).loosened;
+    const result = loosenedTexts(base, head);
     expect(result).toEqual(
       LANGUAGES.flatMap((language) => [
         `test timeout ${language} testTimeoutMs raised from 30000 to 40000`,
@@ -108,7 +112,7 @@ describe('timeout policy changes', () => {
   it('rejects an ambiguous duplicate project even when its effective tiers are equal', () => {
     const base = config({ projects: { jvm: project() } });
     const head = config({ projects: { jvm: project(), duplicate: project() } });
-    expect(timeoutChanges(base, head).loosened).toEqual([
+    expect(loosenedTexts(base, head)).toEqual([
       'test timeout policy cannot be compared safely: timeout project jvm shares a selector with another project',
     ]);
   });

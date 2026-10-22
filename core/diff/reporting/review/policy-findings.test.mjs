@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { POLICY_GUIDANCE, policyKindGuidance } from './policy-guidance.mjs';
 import { isPolicyChangeAccepted, policyDigest, policyFindings } from './policy-findings.mjs';
 
 describe('policy findings', () => {
@@ -17,12 +18,26 @@ describe('policy findings', () => {
   });
 
   it('explains the exclusion before the self-contained acceptance route', () => {
-    const [finding] = policyFindings(loosenings, 'd1e2f3a4b5c6', undefined);
+    const kinds = { 'exclude added: src/**': 'exclusion' };
+    const [finding] = policyFindings(loosenings, 'd1e2f3a4b5c6', undefined, kinds);
 
+    expect(finding.policyKind).toBe('exclusion');
     expect(finding.message).toBe(
-      'exclude added: src/**. Removes matching paths from analyzed scope and filters their findings, so newly hidden code needs review. Remove or narrow an unintended exclusion and fix the findings. ' +
-        'If the policy change is intended, stop and ask a person reviewing this change: only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6 at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI.',
+      [
+        `exclude added: src/**. ${POLICY_GUIDANCE.exclusion}`,
+        'If the policy change is intended, stop and ask a person reviewing this change:',
+        'only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6',
+        'at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI.',
+      ].join(' '),
     );
+  });
+
+  it('words a finding without a kind with the generic guidance and keeps its identity', () => {
+    const [, finding] = policyFindings(loosenings, 'd1e2f3a4b5c6', undefined, {});
+
+    expect(finding.policyKind).toBeUndefined();
+    expect(finding.identity).toBe('analyzer disabled: mutation');
+    expect(finding.message).toContain(policyKindGuidance(undefined));
   });
 
   it('accepts only the digest the run computed', () => {

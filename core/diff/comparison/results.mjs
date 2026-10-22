@@ -103,7 +103,9 @@ function buildReport(context) {
   const digest = context.policyDigest ?? policyDigest({ loosenings: policyLoosenings });
   const newFindings = [
     ...collect(outcomes, 'newFindings'),
-    ...(context.reportsPolicy ? policyFindings(policyLoosenings, digest, acceptPolicyChange) : []),
+    ...(context.reportsPolicy
+      ? policyFindings(policyLoosenings, digest, acceptPolicyChange, context.policyKinds)
+      : []),
   ];
   return {
     summary: {

@@ -120,6 +120,12 @@ describe('a change that loosens nitpicker.config.json', () => {
     'react.enabled: not set -> false',
   ];
 
+  const EXPECTED_KINDS = {
+    'exclude added: src/vendor/**': 'exclusion',
+    'threshold crapLimit raised from 9 to 20': 'threshold',
+    'react.enabled: not set -> false': 'react-disabled',
+  };
+
   it('fails with one finding per loosening and passes only once a person accepts its digest in CI', () => {
     const outsideCi = runWithHeadConfig({
       baseConfig,
@@ -140,7 +146,7 @@ describe('a change that loosens nitpicker.config.json', () => {
     ]);
     expect(policyFindings(outsideCi.newFindings)).toEqual([...expected].sort());
     expect(policyMessages(outsideCi.newFindings)).toEqual(
-      findingsFor(expected, outsideCi.summary.policyDigest)
+      findingsFor(expected, outsideCi.summary.policyDigest, undefined, EXPECTED_KINDS)
         .map(({ message }) => message)
         .sort(),
     );
@@ -148,6 +154,19 @@ describe('a change that loosens nitpicker.config.json', () => {
       HEADING,
       ...expected.map((change) => `  ${change}`),
     ]);
+    expect(
+      outsideCi.newFindings
+        .filter(({ tool }) => tool === 'nitpicker-config')
+        .map(({ policyKind }) => policyKind)
+        .toSorted(),
+    ).toEqual(['exclusion', 'react-disabled', 'threshold']);
+    const { policyDigest } = outsideCi.summary;
+    expect(outsideCi.stdoutText).toContain('(nitpicker-config/policy-loosened): 3;');
+    expect(outsideCi.stdoutText).toContain(
+      `--accept-policy-change=${policyDigest} at an interactive`,
+    );
+    expect(outsideCi.stdoutText).toContain(`NITPICKER_ACCEPT_POLICY_CHANGE=${policyDigest} in CI.`);
+    expect(accepted.stdoutText).not.toContain('Unapproved policy changes');
     expect([accepted.exitCode, accepted.summary.policyChangeAccepted]).toEqual([0, true]);
     expect(policyBlock(accepted.stdoutText, ACCEPTED_HEADING)).toEqual([
       ACCEPTED_HEADING,

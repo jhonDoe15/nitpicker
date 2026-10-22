@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { printable } from '../format/text.mjs';
+import { policyKindGuidance } from './policy-guidance.mjs';
 
 const POLICY_TOOL = 'nitpicker-config';
 const POLICY_RULE = 'policy-loosened';
@@ -23,7 +25,7 @@ function acceptRoute(digest) {
   );
 }
 
-export function policyFindings(loosenings, digest, acceptedDigest) {
+export function policyFindings(loosenings, digest, acceptedDigest, kinds = {}) {
   if (isPolicyChangeAccepted(loosenings, digest, acceptedDigest)) {
     return [];
   }
@@ -33,8 +35,9 @@ export function policyFindings(loosenings, digest, acceptedDigest) {
     rule: POLICY_RULE,
     path: 'nitpicker.config.json',
     identity: change,
-    message: `${change}. ${policyChangeGuidance(change)} ${route}`,
+    message: `${printable(change)}. ${policyKindGuidance(kinds[change])} ${route}`,
     classification: 'enforceable',
+    ...(kinds[change] === undefined ? {} : { policyKind: kinds[change] }),
   }));
 }
 
@@ -42,40 +45,4 @@ export function isPolicyFinding(finding) {
   return finding.tool === POLICY_TOOL && finding.rule === POLICY_RULE;
 }
 
-const CHANGE_GUIDANCE = [
-  [
-    /^layout\.entryPoints added:/u,
-    'Treats matching files as runtime entry points and public API roots for reachability and unused-export checks, and permits module-load effects and process access in those composition roots. A command or runtime may load a script without a static import; verify that invocation before review. Remove an unintended declaration; other checks still apply.',
-  ],
-  [
-    /^python\.entryPoints added:/u,
-    'Treats matching Python files as composition roots, exempting their process-environment access from process-env-access. Verify the command or runtime that loads the script before review. Remove an unintended declaration; other checks still apply.',
-  ],
-  [
-    /^exception added:/u,
-    'Suppresses findings for the named rule on matching paths, so newly covered code needs review. Remove or narrow an unintended exception and fix the rule findings.',
-  ],
-  [
-    /^(?:exclude|layout\.excludedGlobs) added:/u,
-    'Removes matching paths from analyzed scope and filters their findings, so newly hidden code needs review. Remove or narrow an unintended exclusion and fix the findings.',
-  ],
-  [
-    /^duplicates\./u,
-    'Changes the scope of duplicate-code analysis, so newly skipped code needs review. Restore the previous duplicate-analysis scope if unintended.',
-  ],
-  [
-    /^analyzer (?:disabled|removed|changed):/u,
-    'Changes which analyzer checks run or how they run, so lost protection needs review. Restore the previous analyzer configuration if unintended.',
-  ],
-  [
-    /^threshold /u,
-    'Allows a higher metric value before the gate fails, so the weaker limit needs review. Restore the previous threshold and reduce the metric if unintended.',
-  ],
-];
-
-export function policyChangeGuidance(change) {
-  return (
-    CHANGE_GUIDANCE.find(([pattern]) => pattern.test(change))?.[1] ??
-    'Changes the checking policy for affected code and requires review of the lost protection. Restore the base setting and fix the findings if unintended.'
-  );
-}
+export const POLICY_FINDING_ID = `${POLICY_TOOL}/${POLICY_RULE}`;
