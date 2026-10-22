@@ -14,6 +14,7 @@ public final class FactsCollector {
   private final State state;
   private final Declarations declarations;
   private final Calls calls;
+  private final Timeouts timeouts;
   private final Predicates predicates;
 
   public FactsCollector(KtFile file, String text, String relative, boolean test) {
@@ -21,6 +22,7 @@ public final class FactsCollector {
     this.state = new State(file, text, relative, test);
     this.declarations = new Declarations(state);
     this.calls = new Calls(state);
+    this.timeouts = new Timeouts(state);
     this.predicates = new Predicates(state);
   }
 
@@ -87,6 +89,7 @@ public final class FactsCollector {
       declarations.declareTypeAlias((KtTypeAlias) element);
     } else if (element instanceof KtCallExpression) {
       calls.call((KtCallExpression) element, frame);
+      timeouts.call((KtCallExpression) element);
     } else if (element instanceof KtSuperTypeCallEntry) {
       KtSuperTypeCallEntry entry = (KtSuperTypeCallEntry) element;
       calls.delegation(element, nameOf(entry.getCalleeExpression()), entry.getValueArguments(), List.of());

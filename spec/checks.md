@@ -167,11 +167,18 @@ waiting without stopping the work.
 | TypeScript | `nitpicker/timeout-abandons-operation`    | `languages/typescript/preset/eslint-plugin/rules/async/timeout-abandons-operation.mjs` | enforceable |
 | JavaScript | `nitpicker/timeout-abandons-operation`    | the same ESLint rule                                                                   | enforceable |
 | Python     | `python-rules/timeout-abandons-operation` | `languages/python/rules/waits/timeouts.py`                                             | enforceable |
+| Java       | `pmd/timeout-abandons-operation`          | `languages/java/gradle/pmd-main-ruleset.xml` (XPath, Gradle and Maven)                 | enforceable |
+| Kotlin     | `pmd/timeout-abandons-operation`          | `languages/java/adapters/kotlin/review-rules/main/timeouts.mjs`                        | enforceable |
 
 TypeScript and JavaScript: `Promise.race` of an operation and a timeout where the operation gets no
 `AbortSignal`, timeout option or cancelling owner (HTTP clients that `require-http-timeout` already
 reports are left to it). Python: `asyncio.wait(..., timeout=...)` whose `pending` set is not
 cancelled, awaited or handed on, and `asyncio.wait_for(asyncio.shield(task), ...)` with nothing
 cancelling or awaiting the task afterwards; `asyncio.wait_for`, `asyncio.timeout`, task groups and
-Trio and AnyIO scopes cancel and are allowed. The precision limits are in
-[TypeScript](../docs/typescript-strict-preset.md) and [Python](../docs/python-preset.md).
+Trio and AnyIO scopes cancel and are allowed. Java: `Future.get(timeout, unit)` whose
+`TimeoutException` handler neither cancels the future nor rethrows, and `orTimeout` or
+`completeOnTimeout` on a `CompletableFuture` that `supplyAsync` or `runAsync` started. Kotlin: the
+same two forms, plus `withTimeout { deferred.await() }` on a `Deferred` another scope started that
+the timeout path does not cancel. The precision limits are in
+[TypeScript](../docs/typescript-strict-preset.md), [Python](../docs/python-preset.md),
+[Java](../docs/java-preset.md) and [Kotlin](../docs/kotlin-preset.md).

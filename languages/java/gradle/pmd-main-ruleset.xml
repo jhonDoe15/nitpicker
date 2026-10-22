@@ -130,4 +130,44 @@
       </property>
     </properties>
   </rule>
+  <rule name="timeout-abandons-operation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="The timeout in {0}(...) stops waiting for the future, not the task behind it: a Future.get(timeout, unit) whose TimeoutException handler neither calls cancel(true) nor rethrows, and CompletableFuture.orTimeout or completeOnTimeout on supplyAsync or runAsync, leave the task running with its threads and side effects, so a retry overlaps it (cancelling a CompletableFuture never interrupts its task). Call future.cancel(true) in the handler or rethrow the TimeoutException to the owner, or submit the work to an ExecutorService and call cancel(true) or shutdownNow() when the timeout passes, or give the task a deadline or cancellation flag that it checks.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodCall[@MethodName = 'get'][ArgumentList/@Size = 2]
+    [pmd-java:matchesSig('java.util.concurrent.Future#get(long,java.util.concurrent.TimeUnit)')]
+    [let $call := .,
+         $boundary := ancestor::*[self::LambdaExpression or self::MethodDeclaration or self::ConstructorDeclaration
+                                   or self::Initializer or self::ClassBody][1],
+         $try := (ancestor::TryStatement[(Block)[1]//MethodCall intersect $call]
+                    [CatchClause/CatchParameter//ClassType[pmd-java:typeIs('java.util.concurrent.TimeoutException')]]
+                    [. intersect $boundary//TryStatement])[last()]
+     return exists($try)
+       and (some $handler in $try/CatchClause[CatchParameter//ClassType[pmd-java:typeIs('java.util.concurrent.TimeoutException')]]
+            satisfies not($handler//ThrowStatement)
+              and not($handler//MethodCall[@MethodName = ('cancel', 'shutdownNow', 'shutdown', 'interrupt')]))
+       and not($try/FinallyClause//MethodCall[@MethodName = ('cancel', 'shutdownNow', 'shutdown', 'interrupt')])]
+  |
+  //MethodCall[@MethodName = ('orTimeout', 'completeOnTimeout')]
+    [pmd-java:typeIs('java.util.concurrent.CompletableFuture')]
+    [let $call := .,
+         $scope := ancestor::*[self::LambdaExpression or self::MethodDeclaration or self::ConstructorDeclaration
+                                or self::Initializer][1],
+         $down := function($start) { fold-left(1 to 8, $start, function($node, $i) {
+                    if ($node/*[1][self::MethodCall]) then $node/*[1] else $node }) },
+         $bottom := $down(*[1]),
+         $source := if ($bottom[self::VariableAccess])
+                    then $down(($scope//VariableDeclarator[@Name = $bottom/@Name]/*[last()])[1])
+                    else $bottom
+     return exists($source[self::MethodCall]
+              [pmd-java:matchesSig('java.util.concurrent.CompletableFuture#supplyAsync(_*)')
+               or pmd-java:matchesSig('java.util.concurrent.CompletableFuture#runAsync(_*)')])]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
 </ruleset>

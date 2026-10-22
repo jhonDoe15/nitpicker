@@ -243,7 +243,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
-`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `unused-option`), a class limit, a file
+`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/timeout-abandons-operation`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
 `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown` or `changed-branch-coverage`
@@ -420,21 +420,22 @@ of the JVM that runs Gradle, once per build into the root project's `build/tmp/n
 once per module with the pinned Kotlin compiler's parser. Gradle must run on a JDK (Java 21): on a Java runtime
 without `javac` the task fails and says so. One parse
 of the main and test source roots writes `kotlin-metrics.json` (main only: structure, CRAP, coupling) and
-`kotlin-facts.json` (main and test: classes, functions, properties, calls, type aliases, waits and
+`kotlin-facts.json` (main and test: classes, functions, properties, calls, type aliases, waits, timeouts and
 comparison chains). The rules are evaluated in Node (`languages/java/adapters/kotlin/review-rules/`) from the
 facts, so they have no type resolution. A name is matched through the file's imports and the project's own
 declarations, across all modules of the build; a call that cannot be tied to one declaration is left alone, so
 an unclear case is not flagged. A file nested deeper than even the large stack of that program allows is
 skipped with a note on stderr.
 
-| Rule id                                  | Where                                       | Flags                                                                                                                                                                  |
-| ---------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during` |
-| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                        |
-| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                           |
-| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                           |
-| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                   |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                               |
+| Rule id                                  | Where                                       | Flags                                                                                                                                                                                                                                                     |
+| ---------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                    |
+| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                           |
+| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                              |
+| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                              |
+| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                      |
+| `timeout-abandons-operation`             | `review-rules/main/timeouts.mjs`            | a timeout that stops waiting but leaves the work running: `future.get(timeout, unit)` without a cancel or rethrow, `orTimeout`/`completeOnTimeout` on `supplyAsync`/`runAsync`, `withTimeout { work.await() }` on a coroutine started in an outside scope |
+| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                  |
 
 Limits, all chosen to flag less rather than guess:
 
@@ -466,6 +467,20 @@ Limits, all chosen to flag less rather than guess:
   `unmodifiable*`, `synchronized*` and `checked*`; and functions in or below a class with a Spring
   stereotype (`@Component`, `@Service`, `@Repository`, `@Controller`, `@RestController`, `@ControllerAdvice`,
   `@Configuration`, `@SpringBootApplication`).
+- Timeouts (`pmd/timeout-abandons-operation`, main sources only, the Kotlin form of the rule every preset
+  has under that name): `withTimeout` and `withTimeoutOrNull` cancel the coroutines they start, so they pass.
+  Three forms are reported. `x.get(timeout, unit)` inside a `try` that catches `TimeoutException` (the
+  catch identifies it as `Future.get`, since the facts carry no types) when no such handler calls
+  `cancel`, `shutdownNow`, `shutdown` or `interrupt` or throws and the `finally` block calls none of them.
+  `orTimeout` or `completeOnTimeout` on a chain that starts at `CompletableFuture.supplyAsync(...)` or
+  `runAsync(...)`, directly or through a local `val`, because cancelling a `CompletableFuture` never
+  interrupts its task. And a `withTimeout`/`withTimeoutOrNull` block (imported from `kotlinx.coroutines`,
+  also under an alias or a star import) whose lambda calls `await()` or `join()` on a local `val` that
+  `<scope>.async` or `<scope>.launch` started before the block with an explicit receiver (`GlobalScope`,
+  a stored `CoroutineScope`), when neither the value nor that scope is cancelled
+  (`cancel`, `cancelAndJoin`, `cancelChildren`) anywhere in the function. An `async` without a
+  receiver is a child of the enclosing `coroutineScope` and is cancelled with it, a `Deferred` from a
+  parameter, a property or a function result has an unknown owner, and neither is reported.
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Only the primary-constructor properties of a `data class` and the
   properties of a `@ConfigurationProperties` class are inspected.
