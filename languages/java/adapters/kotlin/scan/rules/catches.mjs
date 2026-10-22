@@ -1,7 +1,6 @@
 import { closingIndex, enclosingOpen, splitArguments } from '../kotlin-source.mjs';
 import { reportingCalls, withoutCalls } from '../log-calls.mjs';
 import { isRetry } from '../loops.mjs';
-import { isReachableFromOutside } from './exposure.mjs';
 
 const CATCH = /\bcatch\s*\(\s*([A-Za-z_]\w*|`[^`]+`)\s*:([^)]*)\)\s*\{/g;
 const ERROR_CALLS = [
@@ -22,6 +21,11 @@ const ERROR_RESPONSE = new RegExp(String.raw`\b(?:${ERROR_CALLS.join('|')})\s*[.
 const FUNCTION = /(?<![\w.])fun\s+(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?([A-Za-z_]\w*)\s*\(/g;
 const HIDDEN = /\b(?:private|internal|protected|override)\b/;
 const BUILDER_NAME = /^(?:set|with)[A-Z]|^(?:of|from|valueOf|builder)$/;
+const TYPE_KEYWORD = /\b(?:class|object|interface)\b/;
+const FUNCTION_KEYWORD = /(?<![\w.])fun\b/;
+const HIDING_MODIFIER = /\b(?:private|internal|protected)\b/;
+const BRACE = /[{}]/g;
+const HEADER_START = /[;{}]/g;
 const BOOLEAN_PARAMETER =
   /^\s*(?:vararg\s+)?(?:(?:val|var)\s+)?([A-Za-z_]\w*)\s*:\s*Boolean\??\s*(?:=.*)?$/s;
 
@@ -118,6 +122,36 @@ function switchesOn(body, flag) {
     const operands = condition.split(/&&|\|\|/).map((part) => part.trim().replace(/^!+\s*/, ''));
     return operands.some((operand) => operand === flag) && bare.test(condition);
   });
+}
+
+function headerBefore(code, open) {
+  const starts = [...code.slice(0, open).matchAll(HEADER_START)];
+  const start = starts.length === 0 ? 0 : starts.at(-1).index + 1;
+  return code.slice(start, open);
+}
+
+function hidesFunctions(header) {
+  const type = TYPE_KEYWORD.exec(header);
+  if (type !== null) {
+    return HIDING_MODIFIER.test(header.slice(0, type.index));
+  }
+  return FUNCTION_KEYWORD.test(header);
+}
+
+function openBraces(code, offset) {
+  const open = [];
+  for (const { index, 0: brace } of code.slice(0, offset).matchAll(BRACE)) {
+    if (brace === '{') {
+      open.push(index);
+    } else {
+      open.pop();
+    }
+  }
+  return open;
+}
+
+function isReachableFromOutside(code, offset) {
+  return !openBraces(code, offset).some((open) => hidesFunctions(headerBefore(code, open)));
 }
 
 export function booleanFlags(scanned) {
