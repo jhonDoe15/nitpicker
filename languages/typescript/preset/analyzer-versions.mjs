@@ -3,6 +3,7 @@ import path from 'node:path';
 import { PACKAGE_ROOT, resolveTool } from '../../../core/tooling/tool-resolution.mjs';
 import { testRunnerFor } from './test-runner/detect-runner.mjs';
 import { RUNNER_PACKAGES } from './test-runner/runners.mjs';
+import { TYPESCRIPT_API } from '../typescript-api/api-selection.mjs';
 
 const TOOL_BY_ANALYZER = {
   'entry-points': 'dependency-cruiser',
@@ -77,7 +78,17 @@ export function testRunnerAnalyzerVersion(
   return `${resolve('@stryker-mutator/core', { projectRoot: liveProjectRoot }).version};${runnerVersion}`;
 }
 
-export function resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve = resolveTool) {
+function typeScriptApiVersion(resolve, bundled) {
+  return bundled
+    ? `js-api-${resolve('typescript-js-api', { projectRoot: PACKAGE_ROOT }).version}`
+    : resolve('typescript', { projectRoot: PACKAGE_ROOT }).version;
+}
+
+export function resolveAnalyzerVersion(
+  analyzerName,
+  liveProjectRoot,
+  { resolve = resolveTool, bundled = TYPESCRIPT_API.bundled } = {},
+) {
   if (analyzerName === 'coverage' || analyzerName === 'mutation') {
     return testRunnerAnalyzerVersion(analyzerName, liveProjectRoot, { resolve });
   }
@@ -86,8 +97,9 @@ export function resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve = 
     throw new Error(`No tool is configured for analyzer ${analyzerName}`);
   }
 
-  const toolRoot = PACKAGE_ANALYZERS.has(analyzerName) ? PACKAGE_ROOT : liveProjectRoot;
-  const version = resolve(toolName, { projectRoot: toolRoot }).version;
+  const version = PACKAGE_ANALYZERS.has(analyzerName)
+    ? typeScriptApiVersion(resolve, bundled)
+    : resolve(toolName, { projectRoot: liveProjectRoot }).version;
   if (analyzerName === 'typescript-typecheck') {
     return `${version};typescript-native@${resolve('typescript-native', { projectRoot: PACKAGE_ROOT }).version}`;
   }
@@ -95,9 +107,7 @@ export function resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve = 
     return version;
   }
 
-  const typeScriptVersion = resolve('typescript', {
-    projectRoot: PACKAGE_ROOT,
-  }).version;
+  const typeScriptVersion = typeScriptApiVersion(resolve, bundled);
   const base = `${toolName}@${version};typescript@${typeScriptVersion};plugins:${resolveEslintPluginVersions(resolve)}`;
   return analyzerName.startsWith('eslint-') ? `${base};${resolveOxlintVersions(resolve)}` : base;
 }

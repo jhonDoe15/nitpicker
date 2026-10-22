@@ -1,12 +1,13 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import {
   enclosingSymbol,
   formatDiagnostic,
   loadTypeScript,
+  nativeProjectTypeScript,
   preEmitDiagnostics,
   withoutProjectRoot,
 } from './typescript-program.mjs';
@@ -57,8 +58,14 @@ function writeConfig(name, compilerOptions, include = ['src']) {
   return configPath;
 }
 
-async function described(engine, configPath) {
-  const diagnostics = await preEmitDiagnostics({ ts, engine, configPath, projectRoot: root });
+async function described(engine, configPath, projectNative) {
+  const diagnostics = await preEmitDiagnostics({
+    ts,
+    engine,
+    configPath,
+    projectRoot: root,
+    projectNative,
+  });
   return diagnostics.map((diagnostic) => {
     const located = diagnostic.file !== undefined && diagnostic.start !== undefined;
     return {
@@ -200,6 +207,57 @@ describe('TypeScript 7 type check', () => {
     expect(
       withoutProjectRoot(`'${root}/src/a.ts' '${root}' '/mnt${root}/b.ts' '${root}-copy'`, root),
     ).toBe(`'src/a.ts' '.' '/mnt${root}/b.ts' '${root}-copy'`);
+  });
+});
+
+describe('a project whose own typescript is TypeScript 7', () => {
+  const projectNative = resolveTool('typescript-native').root;
+
+  it('type checks with the project compiler and reports what the native engine reports', async () => {
+    const configPath = writeConfig('tsconfig.own.json', { ...STRICT, types: ['missing-types'] });
+
+    expect(await described('project', configPath, projectNative)).toEqual(
+      await described('native', configPath),
+    );
+  });
+
+  it('reports removed options as the project compiler does, instead of falling back', async () => {
+    const configPath = writeConfig('tsconfig.own-legacy.json', {
+      ...STRICT,
+      types: [],
+      baseUrl: '.',
+    });
+
+    expect(await described('native', configPath, projectNative)).toEqual([
+      configNote(
+        5102,
+        "Option 'baseUrl' has been removed. Please remove it from your configuration.\n" +
+          '  Use \'"paths": {"*": ["./*"]}\' instead.',
+      ),
+      ...SOURCE_FINDINGS,
+    ]);
+  });
+
+  it('fails with the project compiler message when the config cannot be read', async () => {
+    const configPath = path.join(root, 'tsconfig.broken.json');
+    writeFileSync(configPath, '{ "compilerOptions": { "strict": "yes" } }');
+
+    await expect(described('project', configPath, projectNative)).rejects.toThrow(
+      /Compiler option 'strict' requires a value of type boolean/u,
+    );
+  });
+
+  it('reads source files with the bundled TypeScript API', () => {
+    const consumer = path.join(root, 'ts7-consumer');
+    mkdirSync(path.join(consumer, 'node_modules'), { recursive: true });
+    writeFileSync(path.join(consumer, 'package.json'), '{"name":"ts7-consumer"}');
+    symlinkSync(projectNative, path.join(consumer, 'node_modules/typescript'));
+
+    const api = loadTypeScript(consumer);
+
+    expect(nativeProjectTypeScript(consumer)).toBe(realpathSync(projectNative));
+    expect(api.version).toBe(resolveTool('typescript-js-api').version);
+    expect(nativeProjectTypeScript(PACKAGE_ROOT)).toBeUndefined();
   });
 });
 

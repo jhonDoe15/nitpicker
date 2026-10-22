@@ -32,6 +32,7 @@ import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 
 export function runCli(options = {}) {
   const cli = withCliDefaults(options);
@@ -257,5 +258,6 @@ function writeComparisonOutcome({ cli, report, base, outputRoot }) {
 const invokedPath = process.argv[1];
 
 if (invokedPath !== undefined && realpathSync(invokedPath) === import.meta.filename) {
+  redirectToBundledTypeScriptApi(process.env);
   process.exitCode = runCli();
 }

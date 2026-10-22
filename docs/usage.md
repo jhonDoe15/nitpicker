@@ -15,7 +15,8 @@ npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/no
 `pnpm add --save-dev`, `yarn add --dev` and `bun add --dev` take the same packages; run nitpicker
 with `npx nitpicker`, `pnpm exec nitpicker`, `yarn nitpicker` or `bunx nitpicker`.
 
-Requirements: Node.js 22.14 or newer, a Git repository, and a project whose dependencies are
+Requirements: Node.js 22.14 or newer (22.15 or newer for a project on TypeScript 7, see
+[Type check engine](#type-check-engine)), a Git repository, and a project whose dependencies are
 installed in `node_modules` by npm, pnpm, Yarn (Yarn Plug'n'Play is not supported: set
 `nodeLinker: node-modules`) or Bun. The base's own install supports all four managers; nitpicker
 itself is tested end to end with npm projects. nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
@@ -1262,12 +1263,18 @@ To run the policy on ESLint itself, set the engine:
 ### Type check engine
 
 The `typescript-typecheck` analyzer type checks with TypeScript 7, the native compiler, which is
-much faster than TypeScript 5 and 6. nitpicker installs and pins TypeScript 7 itself. The project's
-own `typescript` package (5.7 to 6.x) is still needed, because nitpicker reads source files with it
-to name the enclosing symbol of each finding. A run uses the project's TypeScript instead, as
-before, when the config uses an option TypeScript 7 removed or no longer knows (such as `baseUrl`,
-`moduleResolution: "node"` or `target: "ES5"`), or when TypeScript 7's compiler is not installed
-for the platform. The report does not say which engine a run used; set the engine to choose one.
+much faster than TypeScript 5 and 6. nitpicker installs and pins TypeScript 7 itself. A run uses
+the project's own `typescript` package instead, as before, when the config uses an option
+TypeScript 7 removed or no longer knows (such as `baseUrl`, `moduleResolution: "node"` or
+`target: "ES5"`), or when TypeScript 7's compiler is not installed for the platform. The report does
+not say which engine a run used; set the engine to choose one.
+
+Projects on TypeScript 7 (the native compiler) are supported. TypeScript 7's npm package has no
+JavaScript API, which nitpicker's analyzers and typescript-eslint read source files with, so on such
+a project nitpicker reads them with its own TypeScript 6.0, the JavaScript release that matches
+TypeScript 7's behavior, and redirects `typescript` to it in the processes it starts. That needs
+Node.js 22.15 or newer. The type check still runs on the project's own TypeScript 7 with the
+`project` engine, and an option it removed is reported as the project's compiler reports it.
 
 Findings match the project's own TypeScript, with the same messages, positions and symbols, except:
 
