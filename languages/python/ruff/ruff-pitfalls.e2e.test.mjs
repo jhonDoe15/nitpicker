@@ -4,7 +4,8 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createToolContext, lint, RUFF_REPORT } from '../adapters/python-tools.mjs';
 import { ruffFindings } from '../adapters/python-reports.mjs';
-import { applyRuleHints, exceptionSentence } from '../rules/rule-hints.mjs';
+import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
+import { applyRuleHints } from '../rules/rule-hints.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const fixtures = path.resolve(import.meta.dirname, '../rules/fixtures/ruff-pitfalls');
@@ -74,7 +75,9 @@ describe.skipIf(!enabled)('the shipped Ruff pitfall selection', () => {
         .map(({ rule, identity, message }) => ({
           rule,
           identity,
-          exception: message.endsWith(exceptionSentence(rule)),
+          exception: message.endsWith(
+            exceptionRoute({ rule, path: file, key: 'python.exceptions' }),
+          ),
         }));
 
     expect(identities('shifted.py')).toEqual(identities('banned.py'));
