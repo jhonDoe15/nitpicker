@@ -159,7 +159,7 @@ export const rule = {
     schema: [],
     messages: {
       partialUnionTest:
-        'These comparisons list only some members of {{ union }}, so a member added later is silently classified as the default. Classify every member with a `switch` that has no `default`, or a `Record<Union, boolean>` lookup, so adding a member fails to compile. If a partial test is intended, add an exception for this rule in nitpicker.config.json.',
+        'These comparisons list only some members of {{ union }}, so a member added later is silently classified as the default. Classify every member with a `switch` that has no `default`, or a `Record<Union, boolean>` lookup, so adding a member fails to compile.',
     },
   },
   create(context) {

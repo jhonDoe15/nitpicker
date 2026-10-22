@@ -25,12 +25,15 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
      Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
-4. Never suppress: no `@Suppress` of a detekt or ktlint rule, config `exclude`/`disable`, legacy
+4. Never suppress: no `@Suppress` of a detekt or ktlint rule, config `exclude`/`disable`/`exceptions`, legacy
    entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and
    `@SuppressWarnings("PMD")` are findings, and a project's own PMD or Checkstyle config is used
    only when `nitpicker.config.json` opts in under `tools`. If a finding seems wrong, stop and ask.
    Never pass `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
    `nitpicker-config/policy-loosened` finding is for a person to accept.
+
+Before you change code other modules use, or fix a bug, read
+[beyond-the-gate.md](beyond-the-gate.md).
 
 ## Write it this way
 
@@ -44,8 +47,11 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   only an expected specific failure; a Result helper must immediately rethrow `CancellationException`.
   Non-suspending `runCatching` is allowed.
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
-  A class with `var`s is not flagged. Where equality by value is wrong (a JPA `@Entity`), the project
-  narrows `UseDataClass` with detekt's own `excludeAnnotatedClasses` in its `detekt.yml`.
+  A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
+  annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.
+- Design for a fixed clock and a seeded random: take a `java.time.Clock` and a `kotlin.random.Random`
+  as constructor parameters, and read environment variables once where `fun main` (or the
+  `@SpringBootApplication` class, or the Ktor module) builds the objects, into a config class passed in.
 - Test sources are linted like main ones (detekt, and ktlint or ktfmt): the rules above, including `!!`, apply
   in tests. detekt keeps its default exclusions for tests, so magic numbers, `lateinit`, many functions,
   duplicated string literals, spread operators and function names in backticks are not findings in a
@@ -54,18 +60,33 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 - detekt's defaults stay on. In main sources: lines of at most 120 characters, named constants
   instead of numbers other than -1, 0, 1 and 2 (`MagicNumber`), at most 2 `return` and 2 `throw`
   per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports unless most of the project's files
-  already use them, and no `TODO:` or `FIXME:` comments. Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
+  already use them, and no `TODO` or `FIXME` without an issue (`TODO(#123): ...`). Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
   `Throwable` (also in tests: `TooGenericExceptionCaught`), and pass the caught exception on as the cause (`SwallowedException`). Use
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
   members and parameters.
+- Enums: to sort the entries of one of your enums into two groups, classify every entry with a
+  `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
+  declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`
+  (`pmd/ExhaustiveEnumPredicate`).
+- No top-level or `object` function that only passes its parameters, in order, to another function
+  with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
+  `of` or `from` are fine.
+- A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
+  (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- A private or `internal` function or constructor does not declare a default parameter that no
+  call in the project sets (`unused-option`): remove the parameter, or pass it from a real call.
 - Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
-  fix the code. Kotlin compiler warnings (`UNCHECKED_CAST`) may be suppressed. If a one-way rule
-  flags legitimate code, stop and ask: the project adds an `exceptions` entry
-  (`detekt.<ruleset>.<Rule>`, paths, reason) to `nitpicker.config.json`; switching a one-way rule off in
+  fix the code. The compiler warnings `UNCHECKED_CAST`, `DEPRECATION` and `USELESS_CAST` are
+  findings too and are not suppressed either. If a rule flags legitimate code, stop and ask: the
+  project adds the `exceptions` entry the finding's message names to `nitpicker.config.json`
+  (`detekt.<ruleset>.<Rule>`, paths, reason). A structure, CRAP, changed-branch coverage, duplicate
+  or coupling finding ends with its own entry
+  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`);
+  switching a one-way rule off in
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
 - A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join
-  the four above. Do not call anything the project lists there.
+  the preset's. Do not call anything the project lists there.
 
 ## Repository files
 
@@ -81,12 +102,23 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   a function. Complex code needs tests: the CRAP score of a function must
   stay below 9.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
-  a function. A package must not depend on a less stable one (`stability-direction`).
+  a function, also when the copy has other names and literals. A package must not depend on a less stable one (`stability-direction`).
 - A file stays within 300 lines (a test file 500). A package folder holds at most 6 files and 6
   test files directly: group the rest into subpackages by what they do. Java sources follow the
   `nitpicker-java` rules.
 - Every branch you add needs a test: changed-branch coverage runs on your change.
 - Plan tests to be fast (`slow-test`): a test dispatcher or fake clock instead of
   waits, a test slice instead of a full context.
+- Never wait a fixed time in a test (`pmd/FixedSleepInTest`): no `Thread.sleep`, `TimeUnit.sleep`
+  or `delay` inside `runBlocking`. Wait on the condition in a loop against a deadline or with
+  Awaitility, use `runTest` with virtual time for coroutines, and `verify(mock, timeout(1000))`
+  for a mock. `join(ms)` and `wait(ms)` return when time runs out and the test goes on unchecked:
+  assert the result. A sleep in a mock answer, a thread or `launch` body, or a test fake that
+  implements or extends a main class is fine. To show that something does not happen, give the
+  code a clock the test moves forward, not `after(ms).never()`, `during(...)` or kotest
+  `continually` (`pmd/NegativeWaitInTest`).
+- A `@SpringBootTest` class uses its context: it injects a bean or a `MockMvc`, `WebTestClient` or
+  `TestRestTemplate`, or it starts a web server port. Otherwise create the class with its
+  constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.

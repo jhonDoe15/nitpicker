@@ -2,7 +2,6 @@ import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 import { lintFixture } from '../../../failure-messages/test-support/harness.mjs';
 import { resolveLayout } from '../../../layout.mjs';
-import { GENERAL_HINT } from '../../rule-hints.mjs';
 import { accessibilityRuleNames } from '../react-rules.mjs';
 import { reactSyntaxConfigFor } from '../react-scope.mjs';
 import { accessibilityHints, extraAccessibilityRuleNames } from './accessibility-rules.mjs';
@@ -94,11 +93,11 @@ describe('accessibility rules beyond the plugin recommendation', () => {
       },
     ]);
     expect(flagged('onMouseEnter={show} onMouseLeave={hide}')).toEqual([
-      `onMouseEnter must be accompanied by onFocus for accessibility.${GENERAL_HINT}`,
-      `onMouseLeave must be accompanied by onBlur for accessibility.${GENERAL_HINT}`,
+      `onMouseEnter must be accompanied by onFocus for accessibility.`,
+      `onMouseLeave must be accompanied by onBlur for accessibility.`,
     ]);
     expect(flagged('onMouseOver={show}')).toEqual([
-      `onMouseOver must be accompanied by onFocus for accessibility.${GENERAL_HINT}`,
+      `onMouseOver must be accompanied by onFocus for accessibility.`,
     ]);
     expect(flagged('onMouseEnter={show} onFocus={show} onMouseLeave={hide} onBlur={hide}')).toEqual(
       [],
@@ -119,17 +118,14 @@ describe('accessibility messages', () => {
     expect(
       messagesFor('<button type="button" title="Close"><svg aria-hidden="true" /></button>'),
     ).toEqual([
-      `A control must be associated with a text label. Give it visible text (\`<button>Close</button>\`) or \`aria-label="Close"\`; \`title\` is not a label.${GENERAL_HINT}`,
+      `A control must be associated with a text label. Give it visible text (\`<button>Close</button>\`) or \`aria-label="Close"\`; \`title\` is not a label.`,
     ]);
   });
 
   it.each(extraAccessibilityRuleNames)('give %s a hint of its own', (name) => {
     const hint = accessibilityHints[name];
 
-    expect([
-      hint.endsWith(GENERAL_HINT),
-      hint.slice(0, -GENERAL_HINT.length).includes('`'),
-    ]).toEqual([true, true]);
+    expect(hint.includes('`')).toBe(true);
   });
 
   it('give hints only to rules the scope runs', () => {
