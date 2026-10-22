@@ -8,6 +8,7 @@ import {
 } from '../../../preset/test-runner/runners.mjs';
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
+import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
 import {
   readRun,
   removeTemporary,
@@ -108,10 +109,11 @@ export function nodeTestSelection(options, command) {
   };
 }
 
-function testArguments(options, command, reportPath) {
+function testArguments(options, command, { reportPath, testConsole }) {
   const { nodeArguments, scriptOptions, testFiles } = nodeTestSelection(options, command);
   return [
     ...nodeArguments,
+    ...(testConsole.enabled ? [`--require=${consoleProducerPath(options, 'node')}`] : []),
     '--test',
     `--test-reporter=${REPORTER}`,
     `--test-reporter-destination=${reportPath}`,
@@ -125,15 +127,20 @@ function testArguments(options, command, reportPath) {
 
 export async function runNodeTest(options, command) {
   const reportPath = temporaryProjectPath(options, 'node-test-report.json');
+  const testConsole = startTestConsole(options, { collectsLines: true });
   const coverage =
     options.rerun === undefined ? startV8Coverage(options, command) : uncoveredRun(command);
   try {
     const result = spawnNodeTool({
       options,
-      nodeArguments: [...coverage.nodeArguments, ...testArguments(options, command, reportPath)],
-      environment: coverage.environment,
+      nodeArguments: [
+        ...coverage.nodeArguments,
+        ...testArguments(options, command, { reportPath, testConsole }),
+      ],
+      environment: { ...coverage.environment, ...testConsole.environment },
       arguments_: [],
     });
+    testConsole.finish();
     const run = readRun({ reportPath, result, runnerName: RUNNER_NAMES.node });
     if (!run.failed) {
       await coverage.write();
@@ -141,6 +148,7 @@ export async function runNodeTest(options, command) {
     return run;
   } finally {
     removeTemporary(reportPath);
+    testConsole.remove();
     coverage.remove();
   }
 }

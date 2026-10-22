@@ -65,5 +65,15 @@ export const PICK_SOURCE = [
   '',
 ].join('\n');
 
+export const PICK_JS_SOURCE = PICK_SOURCE.replace('(flag: boolean): string', '(flag)');
+
 export const UNCOVERED_ELSE =
   'Branch coverage is 50.00%; minimum is 95%. Not taken: the false arm of the if (or its else) at 2:3.';
+
+const PRINTED = /^Tests print new console output: (.*?)\. Fix the cause/u;
+
+export async function newConsoleOutput(projectRoot) {
+  await runArea('coverage', projectRoot);
+  const findings = await runArea('test-console', projectRoot);
+  return findings.map(({ rule, path: file, message }) => [rule, file, PRINTED.exec(message)?.[1]]);
+}

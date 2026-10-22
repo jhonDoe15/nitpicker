@@ -450,12 +450,31 @@ a React "state update on an unmounted component" warning from a timer that survi
 check reads the `coverage` run, so it starts no tests of its own; it costs a small reporter in that
 run and a file read per side.
 
-The check runs on Vitest projects, since only Vitest reports console output per test. What it sees is
-what Vitest sends to standard error from the console: `console.error`,
-`console.warn`, `console.trace` and a failed `console.assert`. A message the project's own
-`onConsoleLog` returns `false` for is skipped, because that is the project saying it is expected.
-`silent: true` does not hide anything from the check, because it silences the terminal, not the
-output. It does not see:
+The check runs on every test runner nitpicker supports (Vitest, Jest, `node:test` and Mocha, both
+presets), with the same rules for each. What it sees is what the test prints through `console.error`,
+`console.warn`, `console.trace` and a failed `console.assert`; `silent: true` (Vitest and Jest) does not
+hide anything from the check, because it silences the terminal, not the output. A call that the
+project itself silences is not seen, because it never prints: Vitest's `onConsoleLog` returning
+`false`, a `console.error` replaced by a stub or a Jest spy that does not call through. How exactly
+the output is attributed depends on the runner:
+
+| Runner      | Attributed to                | How it is read                                                                                      |
+| ----------- | ---------------------------- | --------------------------------------------------------------------------------------------------- |
+| Vitest      | test file and test           | A reporter added to the coverage run.                                                               |
+| `node:test` | test file and test           | A preload (`--require`) that wraps the console in each test process and tracks the running test.     |
+| Mocha       | test file and test           | A root hook plugin (`--require`) that wraps the console; also works with `--parallel`.              |
+| Jest        | test file only               | A reporter that reads the console buffer of each file, which Jest does not split by test.           |
+
+For Jest the run uses Jest's `default` reporter and nitpicker's console reporter in place of the
+`reporters` of the project config (as the Vitest and Mocha runs replace theirs), and runs with
+`silent` and `verbose` off, because Jest buffers console calls only then. A message is the same
+whichever way it is attributed, because findings are keyed by test file and message, so a Jest
+finding just does not name a test. With Mocha, output printed while the spec files load, or in a
+root-level `before` or `after` hook, has no test file. With `node:test`, tests of one file that run
+concurrently can swap the test name, and `--test-isolation=none` (one process for every file) is not
+read, because the file of a call is not known there.
+
+It does not see:
 
 - `console.log`, `console.info` and `console.debug`, which go to standard output;
 - `process.stderr.write`, output of child processes and `process.emitWarning`;
@@ -516,8 +535,7 @@ matches every `waited <n>`) and must keep at least three characters besides spac
 `paths` list of test file globs, and a required `reason`. The fragment is matched against the
 whole message of a call, so it can match any line of the call. There are no regular expressions.
 Both routes apply to the base and the head run. The base run does not need to be clean: only messages
-the base did not print can fail. The check follows the project's Vitest, the only runner the presets
-support (see the [JavaScript preset](#javascript-preset) for Jest and `node:test`).
+the base did not print can fail.
 
 `"disable": ["test-console"]` turns the check off alone. Disabling `coverage` turns it off too, like `crap`,
 so a `disable` list written before the check existed keeps working.
