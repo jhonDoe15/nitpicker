@@ -158,7 +158,7 @@ describe('javaHeadFacts', () => {
 
     expect([policy.featureFolders, policy.layout]).toEqual([
       true,
-      { featureRoots: ['**/modules'] },
+      { sharedRoots: ['**/shared'], featureRoots: ['**/modules'] },
     ]);
     expect(readRunnerPolicy(['--project-root', '/p'], {}).policy.layout).toBeUndefined();
   });
@@ -188,7 +188,7 @@ describe('hasFeatureFolders', () => {
     [['src/main/java/com/acme/modules/orders/A.java'], ['**/modules'], true],
     [['src/main/java/com/acme/features/orders/A.java'], [], false],
   ])('finds a JVM source directly in a feature folder: %j %j', (files, featureRoots, expected) => {
-    expect(hasFeatureFolders(files, featureRoots)).toBe(expected);
+    expect(hasFeatureFolders(files, { featureRoots })).toBe(expected);
   });
 
   it('puts the fact in the head facts from the files of the checkout', () => {

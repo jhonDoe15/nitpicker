@@ -1,8 +1,7 @@
-import path from 'node:path';
 import {
-  featureRoles,
-  DEFAULT_FEATURE_LAYOUT,
-} from '../../../../shared/rules/features/shared-usage.mjs';
+  featureRoleContract,
+  PUBLIC_FACES,
+} from '../../../../shared/rules/features/feature-roles.mjs';
 import { inModule } from '../../builds/module-path.mjs';
 
 export const CONTRACT_RULE = 'contract-infrastructure-type';
@@ -51,15 +50,11 @@ export function contractEntry(className, detail) {
   };
 }
 
-export function featureFaceMatcher({ featureRoots, modulePath }) {
-  const roleOf = featureRoles({
-    sharedRoots: [],
-    featureRoots: featureRoots ?? DEFAULT_FEATURE_LAYOUT.featureRoots,
-  });
+export function featureFaceMatcher({ layout, modulePath }) {
+  const roleOf = featureRoleContract(layout, PUBLIC_FACES.jvm);
   return (file) => {
-    const projectFile = inModule(modulePath, file);
-    const role = roleOf(projectFile);
-    return role.kind === 'feature' && path.posix.dirname(projectFile) === role.directory;
+    const role = roleOf(inModule(modulePath, file));
+    return role.kind === 'feature' && role.isPublic;
   };
 }
 

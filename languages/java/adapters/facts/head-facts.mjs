@@ -27,8 +27,8 @@ export function declaresSpring(projectRoot, files = projectFiles(projectRoot)) {
     );
 }
 
-export function hasFeatureFolders(files, featureRoots) {
-  const isFeatureFace = featureFaceMatcher({ featureRoots, modulePath: '' });
+export function hasFeatureFolders(files, layout) {
+  const isFeatureFace = featureFaceMatcher({ layout, modulePath: '' });
   return files.some((file) => JVM_SOURCE.test(file) && isFeatureFace(file));
 }
 
@@ -36,7 +36,7 @@ export function javaHeadFacts(projectRoot, config) {
   const files = projectFiles(projectRoot);
   return {
     ...(declaresSpring(projectRoot, files) ? { spring: true } : {}),
-    ...(hasFeatureFolders(files, config.layout?.featureRoots) ? { featureFolders: true } : {}),
+    ...(hasFeatureFolders(files, config.layout) ? { featureFolders: true } : {}),
     ...(config.preset === 'kotlin'
       ? { kotlin: { formatter: kotlinFormatterOf(projectRoot, config.kotlin?.formatter) } }
       : {}),
