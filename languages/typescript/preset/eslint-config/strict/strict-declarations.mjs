@@ -1,3 +1,5 @@
+import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mjs';
+
 const nonErrorSuperclass =
   ':not([superClass.name=/Error$/]):not([superClass.property.name=/Error$/])';
 const nonComponentSuperclass =
@@ -63,27 +65,43 @@ export function declarationSelectorsFor({ react = false } = {}) {
   );
 }
 
+const moduleAugmentation =
+  ":matches(TSModuleDeclaration[declare=true][id.type='Literal'], TSModuleDeclaration[declare=true][kind='global'])";
+const moduleStatements = [
+  'ImportDeclaration',
+  'ExportNamedDeclaration',
+  'ExportDefaultDeclaration',
+  'ExportAllDeclaration',
+  'TSExportAssignment',
+]
+  .map((statement) => `> ${statement}`)
+  .join(', ');
+const scriptFile = `Program:not(:has(${moduleStatements}))`;
+
 export const defaultExportSelectors = [
   {
-    selector: 'ExportDefaultDeclaration',
-    message:
-      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files.',
+    selector: `ExportDefaultDeclaration:not(${moduleAugmentation} ExportDefaultDeclaration)`,
+    message: `Use a named export (\`export function name() {}\` or \`export const name = ...\`). Default exports are only allowed in config files, \`declare module\` blocks and the framework files that need one (Next.js routes, Storybook stories, Expo Router screens).${SYNTAX_EXCEPTION_HINT}`,
   },
   {
     selector: "ExportSpecifier[exported.name='default']",
-    message:
-      'Use a named export (`export { name }`). Default exports are only allowed in config files.',
+    message: `Use a named export (\`export { name }\`). Default exports are only allowed in config files and in the framework files that need one (Next.js routes, Storybook stories, Expo Router screens).${SYNTAX_EXCEPTION_HINT}`,
   },
 ];
 
-const moduleAugmentation =
-  ":matches(TSModuleDeclaration[declare=true][id.type='Literal'], TSModuleDeclaration[declare=true][kind='global'])";
+export const moduleSurfaceSelectors = [
+  {
+    selector: 'ExportAllDeclaration',
+    message:
+      "List the public names: `export { name } from './module.js'`. `export *` makes every internal export public. If it is deliberate, add an exception for this rule in nitpicker.config.json.",
+  },
+];
 
 export const typeDefinitionSelectors = [
   {
-    selector: `TSInterfaceDeclaration:not(${moduleAugmentation} TSInterfaceDeclaration)`,
+    selector: `TSInterfaceDeclaration:not(${moduleAugmentation} TSInterfaceDeclaration):not(${scriptFile} > TSInterfaceDeclaration)`,
     message:
-      'Use a `type` instead of an `interface`: `type Shape = { size: number }`. Only a `declare module` or `declare global` augmentation may declare an `interface`.',
+      'Use a `type` instead of an `interface`: `type Shape = { size: number }`. Only a `declare module` or `declare global` augmentation, or a global declaration file without imports or exports, may declare an `interface`.',
   },
 ];
 

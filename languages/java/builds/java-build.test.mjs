@@ -43,16 +43,20 @@ describe('readPinnedTools', () => {
       'pmd',
       'spotbugs',
       'googleJavaFormat',
+      'palantirJavaFormat',
       'jacoco',
       'checkstyle',
       'lizard',
       'pitest',
       'pitestJunit5',
+      'pitestTestng',
       'detekt',
       'detektKotlin',
       'ktlint',
       'ktfmt',
       'kotlinCompiler',
+      'errorProne',
+      'nullAway',
     ]);
   });
 

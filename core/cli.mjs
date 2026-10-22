@@ -6,14 +6,22 @@ import { runCacheCommand } from './command/cache.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
-import { loadConfig, describeConfigOverrides } from './configuration/config.mjs';
+import {
+  describeConfigOverrides,
+  describeDisableCascade,
+  loadConfig,
+} from './configuration/config.mjs';
 import { resolveHeadPolicy } from '../languages/typescript/preset/head-policy.mjs';
 import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
 import { runSnapshotCli } from './command/snapshot.mjs';
-import { createBaseSetupResolver } from './configuration/base-setup.mjs';
+import { baseSetupResolver } from './command/policy-review/base-setup.mjs';
+import { noticeDescriber } from './command/policy-review/notices.mjs';
+import { policyAcceptance } from './command/policy-review/policy-acceptance.mjs';
+import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
+import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
 import path from 'node:path';
 import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
@@ -23,9 +31,18 @@ import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderRuleFilterSection } from './diff/reporting/text.mjs';
+import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 
 export function runCli(options = {}) {
   const cli = withCliDefaults(options);
+  if (cli.arguments_[0] === 'hygiene') {
+    return runHygieneCli({
+      commandArguments: cli.arguments_.slice(1),
+      stdout: cli.stdout,
+      stderr: cli.stderr,
+      environment: cli.environment,
+    });
+  }
   if (cli.arguments_[0] === 'aggregate') {
     return runAggregateCli({
       arguments_: cli.arguments_.slice(1),
@@ -46,6 +63,10 @@ export function runCli(options = {}) {
   }
 }
 
+function isTerminal(stream) {
+  return stream.isTTY === true;
+}
+
 function withCliDefaults(options) {
   const stderr = options.stderr ?? process.stderr;
   const progress = options.progress ?? stderr;
@@ -53,6 +74,8 @@ function withCliDefaults(options) {
     ...options,
     arguments_: options.arguments_ ?? process.argv.slice(2),
     environment: options.environment ?? process.env,
+    interactive:
+      options.interactive ?? [process.stdin, options.stdout ?? process.stdout].every(isTerminal),
     snapshotAnalyzers: options.snapshotAnalyzers ?? options.analyzers,
     stdout: options.stdout ?? process.stdout,
     stderr,
@@ -89,18 +112,18 @@ function runConfigured(cli) {
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(currentProjectRoot);
   const headPolicy = resolveHeadPolicy(config, currentProjectRoot);
-  const analyzers = configureAnalyzers(
-    presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers),
-    config,
-    headPolicy,
-  );
+  const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
+  const analyzers = configureAnalyzers(presetSet, config, headPolicy);
+  for (const note of describeDisableCascade(presetSet, config)) {
+    cli.stderr.write(`nitpicker: ${note}\n`);
+  }
   return withRunLock({ projectRoot: currentProjectRoot, stderr: cli.stderr }, () => {
     if (options.all) {
       return runSnapshotCli({
         options,
         currentProjectRoot,
         analyzers,
-        headPolicy,
+        headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
         stdout,
         runTasks,
       });
@@ -109,11 +132,7 @@ function runConfigured(cli) {
       ...cli,
       currentProjectRoot,
       analyzers,
-      resolveBaseSetup: createBaseSetupResolver({
-        headConfig: config,
-        injectedAnalyzers: cli.analyzers,
-        warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
-      }),
+      injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
     });
@@ -121,7 +140,7 @@ function runConfigured(cli) {
 }
 
 function runComparisonCli(cli) {
-  const { options, currentProjectRoot, config, headPolicy } = cli;
+  const { options, currentProjectRoot, config } = cli;
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
@@ -135,8 +154,10 @@ function runComparisonCli(cli) {
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/diff')
       : path.resolve(currentProjectRoot, options.outputRoot);
-  const fixResult = fixIfRequested(cli, repositoryRoot, base);
   clearDiffReports(outputRoot);
+  const analyzers = selectComparisonAnalyzers(cli);
+  const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
+  const fixResult = fixIfRequested({ ...cli, headPolicy }, repositoryRoot, base);
   const cacheStore = resolveRunCacheStore(cli);
   const report = runQualityDiff({
     repositoryRoot,
@@ -144,17 +165,31 @@ function runComparisonCli(cli) {
     headProjectRoot: currentProjectRoot,
     requestedBaseRef: base.baseRef,
     outputRoot,
-    analyzers: selectComparisonAnalyzers(cli),
+    analyzers,
     cacheStore,
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
     headPolicy,
-    resolveBaseSetup: cli.resolveBaseSetup,
+    resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
+    describeNotices: noticeDescriber(config, headPolicy),
+    ...acceptanceOf(cli),
     progress: cli.progress,
     runTasks: cli.runTasks,
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });
+}
+
+function acceptanceOf(cli) {
+  const { ignoredAcceptance, ...acceptance } = policyAcceptance(
+    cli.options,
+    cli.environment,
+    cli.interactive,
+  );
+  if (ignoredAcceptance !== undefined) {
+    cli.stderr.write(`nitpicker: ${ignoredAcceptance}\n`);
+  }
+  return acceptance;
 }
 
 function fixIfRequested(cli, repositoryRoot, base) {

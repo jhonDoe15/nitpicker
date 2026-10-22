@@ -21,15 +21,15 @@
   //FieldDeclaration/ModifierList/Annotation
   | //MethodDeclaration/ModifierList/Annotation
 )[pmd-java:typeIs('org.springframework.beans.factory.annotation.Autowired')
-  or pmd-java:typeIs('jakarta.inject.Inject')
-  or pmd-java:typeIs('jakarta.annotation.Resource')
+  or (pmd-java:typeIs('jakarta.inject.Inject') or pmd-java:typeIs('javax.inject.Inject'))
+  or (pmd-java:typeIs('jakarta.annotation.Resource') or pmd-java:typeIs('javax.annotation.Resource'))
   or (pmd-java:typeIs('org.springframework.beans.factory.annotation.Value')
       and (parent::ModifierList/parent::FieldDeclaration
            or parent::ModifierList/parent::MethodDeclaration[not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')])]))]
 |
 //ConstructorDeclaration[count(../ConstructorDeclaration) = 1]/ModifierList/Annotation[
   pmd-java:typeIs('org.springframework.beans.factory.annotation.Autowired')
-  or pmd-java:typeIs('jakarta.inject.Inject')]
+  or (pmd-java:typeIs('jakarta.inject.Inject') or pmd-java:typeIs('javax.inject.Inject'))]
 ]]></value></property></properties>
   </rule>
 
@@ -46,8 +46,8 @@
     or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
     or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')]]
   /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'final')]
-  [not(ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.PersistenceContext')
-    or pmd-java:typeIs('jakarta.persistence.PersistenceUnit')])]
+  [not(ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.PersistenceContext') or pmd-java:typeIs('javax.persistence.PersistenceContext'))
+    or (pmd-java:typeIs('jakarta.persistence.PersistenceUnit') or pmd-java:typeIs('javax.persistence.PersistenceUnit'))])]
 ]]></value></property></properties>
   </rule>
 
@@ -276,7 +276,7 @@ return (
     pmd-java:typeIs('jakarta.annotation.PostConstruct') or pmd-java:typeIs('javax.annotation.PostConstruct')]]
   //MethodCall[*[1][
     pmd-java:typeIs('org.springframework.data.repository.Repository')
-    or pmd-java:typeIs('jakarta.persistence.EntityManager')
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))
     or pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
     or pmd-java:typeIs('org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations')
     or pmd-java:typeIs('org.springframework.jdbc.core.simple.JdbcClient')
@@ -340,7 +340,7 @@ return //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springfr
             or pmd-java:typeIs('java.io.UncheckedIOException')
             or pmd-java:typeIs('org.springframework.dao.DataAccessException')
             or pmd-java:typeIs('org.springframework.transaction.TransactionException')
-            or pmd-java:typeIs('jakarta.persistence.PersistenceException')
+            or (pmd-java:typeIs('jakarta.persistence.PersistenceException') or pmd-java:typeIs('javax.persistence.PersistenceException'))
             or pmd-java:typeIs('java.sql.SQLException')]]/VariableId/@Name,
           $exception := function($node) {
             exists($node[self::VariableAccess[@Name = $names]
@@ -385,7 +385,7 @@ return //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springfr
   </rule>
 
   <rule name="SpringProxySelfCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This call stays inside the class, so it skips the proxy and the called method's annotation does nothing. Move the annotated method to another bean and call it there. If it is right here, add an exception for pmd/SpringProxySelfCall in nitpicker.config.json.">
+        message="This call stays inside the class, so it skips the proxy and the called method''s annotation does nothing. Move the annotated method to another bean and call it there. If it is right here, add an exception for pmd/SpringProxySelfCall in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodCall[*[1][self::ArgumentList or self::TypeArguments or self::ThisExpression[not(*)]]][
@@ -480,7 +480,7 @@ return //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springfr
     or pmd-java:typeIsExactly('java.lang.Throwable')
     or pmd-java:typeIs('org.springframework.dao.DataAccessException')
     or pmd-java:typeIs('org.springframework.transaction.TransactionException')
-    or pmd-java:typeIs('jakarta.persistence.PersistenceException')]]
+    or (pmd-java:typeIs('jakarta.persistence.PersistenceException') or pmd-java:typeIs('javax.persistence.PersistenceException'))]]
 ]]></value></property></properties>
   </rule>
 
@@ -537,7 +537,7 @@ return //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springfr
   //(MethodCall | MethodReference)[
     (@MethodName = ('save', 'saveAll', 'saveAndFlush', 'saveAllAndFlush', 'delete', 'deleteAll', 'deleteById',
       'deleteAllById', 'deleteAllInBatch', 'persist', 'merge', 'remove')
-     and *[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')])
+     and *[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
     or (matches(@MethodName, '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)')
      and *[1][pmd-java:typeIs('org.springframework.data.repository.Repository')])]
 ]]></value></property></properties>
@@ -566,12 +566,12 @@ return //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springfr
   </rule>
 
   <rule name="SpringValidRequestBody" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Add @Valid to this @RequestBody; without it the record's constraints are never checked. If it is right here, add an exception for pmd/SpringValidRequestBody in nitpicker.config.json.">
+        message="Add @Valid to this @RequestBody; without it the record''s constraints are never checked. If it is right here, add an exception for pmd/SpringValidRequestBody in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //FormalParameter[ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.RequestBody')]]
   [not(ModifierList/Annotation[
-    pmd-java:typeIs('jakarta.validation.Valid')
+    (pmd-java:typeIs('jakarta.validation.Valid') or pmd-java:typeIs('javax.validation.Valid'))
     or pmd-java:typeIs('org.springframework.validation.annotation.Validated')])]
   [not(ClassType[
     pmd-java:typeIs('java.lang.CharSequence')
@@ -778,11 +778,11 @@ return (
         message="Write fetch = FetchType.LAZY on every @ManyToOne and @OneToOne (they are eager by default) and never use EAGER; load what a query needs with join fetch. If it is right here, add an exception for pmd/JpaLazyFetching in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-//Annotation[pmd-java:typeIs('jakarta.persistence.ManyToOne') or pmd-java:typeIs('jakarta.persistence.OneToOne')]
+//Annotation[(pmd-java:typeIs('jakarta.persistence.ManyToOne') or pmd-java:typeIs('javax.persistence.ManyToOne')) or (pmd-java:typeIs('jakarta.persistence.OneToOne') or pmd-java:typeIs('javax.persistence.OneToOne'))]
   [not(AnnotationMemberList/MemberValuePair[@Name = 'fetch'][.//*[@Name = 'LAZY']])]
 |
-//Annotation[pmd-java:typeIs('jakarta.persistence.OneToMany') or pmd-java:typeIs('jakarta.persistence.ManyToMany')
-    or pmd-java:typeIs('jakarta.persistence.ElementCollection')]
+//Annotation[(pmd-java:typeIs('jakarta.persistence.OneToMany') or pmd-java:typeIs('javax.persistence.OneToMany')) or (pmd-java:typeIs('jakarta.persistence.ManyToMany') or pmd-java:typeIs('javax.persistence.ManyToMany'))
+    or (pmd-java:typeIs('jakarta.persistence.ElementCollection') or pmd-java:typeIs('javax.persistence.ElementCollection'))]
   [AnnotationMemberList/MemberValuePair[@Name = 'fetch'][.//*[@Name = 'EAGER']]]
 ]]></value></property></properties>
   </rule>
@@ -792,7 +792,7 @@ return (
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 //(RecordDeclaration | ClassDeclaration[pmd-java:modifiers() = 'final'])
-  /ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Entity')]
+  /ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity'))]
 ]]></value></property></properties>
   </rule>
 
@@ -800,7 +800,7 @@ return (
         message="Do not cascade ALL or REMOVE on @ManyToMany: removing one parent deletes rows that other parents still share. If it is right here, add an exception for pmd/JpaManyToManyCascade in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
-//Annotation[pmd-java:typeIs('jakarta.persistence.ManyToMany')]
+//Annotation[(pmd-java:typeIs('jakarta.persistence.ManyToMany') or pmd-java:typeIs('javax.persistence.ManyToMany'))]
   /AnnotationMemberList/MemberValuePair[@Name = 'cascade'][.//*[@Name = ('ALL', 'REMOVE')]]
 ]]></value></property></properties>
   </rule>
@@ -809,8 +809,8 @@ return (
         message="Map @ManyToMany as a Set (or a List with @OrderColumn). A plain List makes Hibernate delete and re-insert every join row when one element is removed. If it is right here, add an exception for pmd/JpaManyToManySet in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-//FieldDeclaration[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.ManyToMany')]]
-  [not(ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.OrderColumn')])]
+//FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.ManyToMany') or pmd-java:typeIs('javax.persistence.ManyToMany'))]]
+  [not(ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.OrderColumn') or pmd-java:typeIs('javax.persistence.OrderColumn'))])]
   /ClassType[pmd-java:typeIs('java.util.List') or pmd-java:typeIsExactly('java.util.Collection')]
 ]]></value></property></properties>
   </rule>
@@ -819,15 +819,14 @@ return (
         message="Add a @Version field next to the @Id, so concurrent updates fail instead of overwriting each other. Mark entities that are never updated with @Immutable. If it is right here, add an exception for pmd/JpaVersion in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-//ClassDeclaration[not(ExtendsList)]
-  [ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Entity')]
-   or (ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MappedSuperclass')]
-       and ClassBody/FieldDeclaration/ModifierList/Annotation[
-         pmd-java:typeIs('jakarta.persistence.Id') or pmd-java:typeIs('jakarta.persistence.EmbeddedId')])]
+//ClassDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity')) or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]]
+  [(not(ExtendsList) and ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity'))])
+   or ClassBody/(FieldDeclaration | MethodDeclaration)/ModifierList/Annotation[
+     (pmd-java:typeIs('jakarta.persistence.Id') or pmd-java:typeIs('javax.persistence.Id')) or (pmd-java:typeIs('jakarta.persistence.EmbeddedId') or pmd-java:typeIs('javax.persistence.EmbeddedId'))]]
   [not(ModifierList/Annotation[pmd-java:typeIs('org.hibernate.annotations.Immutable')])]
-  [not(ClassBody/(FieldDeclaration | MethodDeclaration)/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Version')])]
-  /ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Entity')
-    or pmd-java:typeIs('jakarta.persistence.MappedSuperclass')]
+  [not(ClassBody/(FieldDeclaration | MethodDeclaration)/ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Version') or pmd-java:typeIs('javax.persistence.Version'))])]
+  /ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity'))
+    or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]
 ]]></value></property></properties>
   </rule>
 
@@ -835,7 +834,7 @@ return (
         message="Generate ids with GenerationType.SEQUENCE (or UUID). IDENTITY and TABLE ids disable JDBC insert batching. If it is right here, add an exception for pmd/JpaSequenceIds in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-//Annotation[pmd-java:typeIs('jakarta.persistence.GeneratedValue')]
+//Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]
   /AnnotationMemberList/MemberValuePair[@Name = 'strategy'][.//*[@Name = ('IDENTITY', 'TABLE')]]
 ]]></value></property></properties>
   </rule>
@@ -845,22 +844,22 @@ return (
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration[ModifierList/Annotation[
-    pmd-java:typeIs('jakarta.persistence.Entity')
-    or pmd-java:typeIs('jakarta.persistence.Embeddable')
-    or pmd-java:typeIs('jakarta.persistence.MappedSuperclass')]]
-  [not(ClassBody/MethodDeclaration/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Id')])]
+    (pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity'))
+    or (pmd-java:typeIs('jakarta.persistence.Embeddable') or pmd-java:typeIs('javax.persistence.Embeddable'))
+    or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]]
+  [not(ClassBody/MethodDeclaration/ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Id') or pmd-java:typeIs('javax.persistence.Id'))])]
   /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = ('static', 'transient'))]
   [not(ModifierList/Annotation[
-    pmd-java:typeIs('jakarta.persistence.Transient')
-    or pmd-java:typeIs('jakarta.persistence.Convert')
+    (pmd-java:typeIs('jakarta.persistence.Transient') or pmd-java:typeIs('javax.persistence.Transient'))
+    or (pmd-java:typeIs('jakarta.persistence.Convert') or pmd-java:typeIs('javax.persistence.Convert'))
     or pmd-java:typeIs('org.hibernate.annotations.JdbcTypeCode')
     or pmd-java:typeIs('org.hibernate.annotations.JdbcType')
     or pmd-java:typeIs('org.hibernate.annotations.Type')])]
-  [not(ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Enumerated')][.//*[@Name = 'STRING']])]
+  [not(ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Enumerated') or pmd-java:typeIs('javax.persistence.Enumerated'))][.//*[@Name = 'STRING']])]
   /ClassType[pmd-java:typeIs('java.lang.Enum')]
-  [not(@SimpleName = //ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Converter')]
+  [not(@SimpleName = //ClassDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Converter') or pmd-java:typeIs('javax.persistence.Converter'))]
       [AnnotationMemberList/MemberValuePair[@Name = 'autoApply']/BooleanLiteral[@True = true()]]]
-    /ImplementsList/ClassType[pmd-java:typeIs('jakarta.persistence.AttributeConverter')]/TypeArguments/ClassType[1]/@SimpleName)]
+    /ImplementsList/ClassType[(pmd-java:typeIs('jakarta.persistence.AttributeConverter') or pmd-java:typeIs('javax.persistence.AttributeConverter'))]/TypeArguments/ClassType[1]/@SimpleName)]
 ]]></value></property></properties>
   </rule>
 
@@ -869,23 +868,23 @@ return (
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration[ModifierList/Annotation[
-    pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('jakarta.persistence.MappedSuperclass')]]
-  /ClassBody[FieldDeclaration/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.GeneratedValue')]]
+    (pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity')) or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]]
+  /ClassBody[FieldDeclaration/ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]]
   /MethodDeclaration[@Name = 'hashCode'][@Arity = 0]
   /(.//*[
     ((self::VariableAccess or self::FieldAccess)
-      and @Name = ancestor::ClassBody[1]/FieldDeclaration[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.GeneratedValue')]]
+      and @Name = ancestor::ClassBody[1]/FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]]
         /VariableDeclarator/VariableId/@Name)
     or (self::MethodCall and not(ArgumentList/*)
-      and @MethodName = (ancestor::ClassBody[1]/FieldDeclaration[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.GeneratedValue')]]
+      and @MethodName = (ancestor::ClassBody[1]/FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]]
         /VariableDeclarator/VariableId/@Name ! concat('get', upper-case(substring(., 1, 1)), substring(., 2))))])[1]
 |
 //ClassDeclaration[ModifierList/Annotation[
-    pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('jakarta.persistence.MappedSuperclass')]]
+    (pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity')) or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]]
   [not(ClassBody/MethodDeclaration[@Name = 'hashCode'][@Arity = 0])]
   /ModifierList/Annotation[@SimpleName = ('Data', 'Value', 'EqualsAndHashCode')]
   [not(@SimpleName = ('Data', 'Value') and ../Annotation[@SimpleName = 'EqualsAndHashCode'])]
-  [let $ids := ancestor::ClassDeclaration[1]/ClassBody/FieldDeclaration[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.GeneratedValue')]],
+  [let $ids := ancestor::ClassDeclaration[1]/ClassBody/FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]],
        $names := $ids/VariableDeclarator/VariableId/@Name,
        $members := AnnotationMemberList/MemberValuePair
    return if ($members[@Name = 'onlyExplicitlyIncluded']/BooleanLiteral[@True = true()])
@@ -931,7 +930,7 @@ return (
 //Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.Query')]
   [AnnotationMemberList/MemberValuePair[@Name = 'nativeQuery']/BooleanLiteral[@True = true()]]
 |
-//MethodCall[@MethodName = 'createNativeQuery'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]]
+//MethodCall[@MethodName = 'createNativeQuery'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]]
 ]]></value></property></properties>
   </rule>
 
@@ -949,27 +948,30 @@ return (
         message="Do not save or delete one entity per loop iteration. Collect the entities and call saveAll or deleteAll once. If it is right here, add an exception for pmd/SpringDataNoSaveInLoop in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
-let $loop := function($node) {
+let $iterated := function($call) {
+  exists($call/*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+    or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')])
+},
+    $loop := function($node) {
   exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
-    [not(.//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])])
+    [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
   or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
-    [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
-    [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
-      or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
+    [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')][$iterated(.)]])
 },
     $entityWrite := function($node) {
   $node/@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')
   and exists($node/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
-    or pmd-java:typeIs('jakarta.persistence.EntityManager')])
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
 }
 return
 //MethodCall[$entityWrite(.)][$loop(.)]
 |
-//MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek')]/ArgumentList/MethodReference[$entityWrite(.)]
+//MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek')][$iterated(.)]
+  /ArgumentList/MethodReference[$entityWrite(.)]
 |
 //VariableDeclarator[let $name := VariableId/@Name
     return ancestor::MethodDeclaration[1]//(MethodCall[@MethodName = 'accept'][*[1][self::VariableAccess[@Name = $name]]][$loop(.)]
-      | MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek')]
+      | MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek')][$iterated(.)]
           /ArgumentList/VariableAccess[@Name = $name])]
   /MethodReference[$entityWrite(.)]
 ]]></value></property></properties>
@@ -980,8 +982,8 @@ return
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodCall[@MethodName = ('saveAndFlush', 'saveAllAndFlush', 'flush')]
-  [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
-  [not(ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement][1]//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])]
+  [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]]
+  [not(ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement][1]//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])]
 ]]></value></property></properties>
   </rule>
 
@@ -1047,7 +1049,7 @@ let $scope := function($node) {
      satisfies $dynamic($piece)]])
 }
 return //MethodCall[
-    (@MethodName = ('createQuery', 'createNativeQuery') and *[1][pmd-java:typeIs('jakarta.persistence.EntityManager')])
+    (@MethodName = ('createQuery', 'createNativeQuery') and *[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
     or (@MethodName = ('query', 'queryForList', 'queryForObject', 'queryForMap', 'queryForRowSet', 'queryForStream', 'update', 'execute', 'batchUpdate')
         and *[1][pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
           or pmd-java:typeIs('org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations')])
@@ -1068,7 +1070,7 @@ return //MethodCall[
     <properties><property name="xpath"><value><![CDATA[
 let $loop := function($node) {
   exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
-    [not(.//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])])
+    [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
   or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
     [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
     [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
@@ -1077,7 +1079,7 @@ let $loop := function($node) {
     $entityWrite := function($node) {
   $node/@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')
   and exists($node/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
-    or pmd-java:typeIs('jakarta.persistence.EntityManager')])
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
 }
 return //MethodCall[@MethodName = ('saveAll', 'saveAllAndFlush', 'deleteAll', 'deleteAllById', 'deleteAllInBatch')]
   [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]
@@ -1097,7 +1099,7 @@ return //MethodCall[@MethodName = ('saveAll', 'saveAllAndFlush', 'deleteAll', 'd
     <properties><property name="xpath"><value><![CDATA[
 let $loop := function($node) {
   exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
-    [not(.//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])])
+    [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
   or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
     [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
     [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
@@ -1106,7 +1108,7 @@ let $loop := function($node) {
     $entityWrite := function($node) {
   $node/@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')
   and exists($node/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
-    or pmd-java:typeIs('jakarta.persistence.EntityManager')])
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
 },
     $read := '^(find|get|read|count|exists|query|stream|search|load|fetch|list|is|has)',
     $write := '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)',
@@ -1119,7 +1121,7 @@ return (
     [parent::ExpressionStatement
      or parent::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'peek')]]
      or matches(@MethodName, $write)]
-  | //MethodCall[@MethodName = 'executeUpdate'][*[1][pmd-java:typeIs('jakarta.persistence.Query')]]
+  | //MethodCall[@MethodName = 'executeUpdate'][*[1][(pmd-java:typeIs('jakarta.persistence.Query') or pmd-java:typeIs('javax.persistence.Query'))]]
 )[$loop(.)]
 |
 //MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'peek')]
@@ -1134,7 +1136,7 @@ return (
     <properties><property name="xpath"><value><![CDATA[
 let $loop := function($node) {
   exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
-    [not(.//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])])
+    [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
   or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
     [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
     [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
@@ -1143,7 +1145,7 @@ let $loop := function($node) {
     $entityWrite := function($node) {
   $node/@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')
   and exists($node/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
-    or pmd-java:typeIs('jakarta.persistence.EntityManager')])
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
 }
 return //MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
   [let $name := @MethodName, $arity := count(ArgumentList/*)

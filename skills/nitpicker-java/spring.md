@@ -51,11 +51,11 @@ Web:
 
 JPA and Spring Data:
 
-- Entities are non-final classes (not records), with a `@Version` field next to the `@Id` and
-  `GenerationType.SEQUENCE` ids. Every `@ManyToOne` and `@OneToOne` says
-  `fetch = FetchType.LAZY`; nothing is `EAGER`. `@ManyToMany` is a `Set` and never cascades `ALL`
-  or `REMOVE`. Enum fields say `@Enumerated(EnumType.STRING)`. `hashCode` never uses the generated
-  id: return `getClass().hashCode()` or hash an immutable business key.
+- Entities are non-final classes (not records), with a `@Version` field next to the `@Id` (or
+  inherited from a `@MappedSuperclass`) and `GenerationType.SEQUENCE` ids. Every `@ManyToOne` and
+  `@OneToOne` says `fetch = FetchType.LAZY`; nothing is `EAGER`. `@ManyToMany` is a `Set` and never
+  cascades `ALL` or `REMOVE`. Enum fields say `@Enumerated(EnumType.STRING)`. `hashCode` never uses
+  the generated id: return `getClass().hashCode()` or hash an immutable business key.
 - Every repository method you declare has `@Query` (JPQL in a text block for JPA) with named parameters
   (`:email`); inherited methods such as `findById` and `save` need nothing. No derived names like
   `findByEmailAndStatus`.
@@ -79,8 +79,15 @@ JPA and Spring Data:
 - Native SQL only when JPQL can't express it, marked on that one method with
   `@SuppressWarnings("PMD.SpringDataNativeQuery")`, `EntityManager.createNativeQuery` too.
 
-`application*.properties` and `application*.yml` (findings `spring/<rule>`; test profiles, and
-local or dev ones where noted, are exempt):
+Tests:
+
+- `@SpringBootTest` is for integration and component tests that use the context (an injected bean,
+  `MockMvc`, `WebTestClient`, `TestRestTemplate`). Unit-test a class by creating it with `new`, and
+  test one layer with a slice such as `@WebMvcTest` or `@DataJpaTest` (`SpringUnusedContext`).
+
+`application*.properties` and `application*.yml` (findings `spring/<rule>`; test profiles, including
+the ones your tests activate with `@ActiveProfiles` or have a file for under `src/test/resources`,
+and local or dev ones where noted, are exempt):
 
 - With JPA, set `spring.jpa.open-in-view=false`.
 - `spring.jpa.hibernate.ddl-auto` is `none` or `validate` (schema changes go in migrations), and

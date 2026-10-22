@@ -12,6 +12,37 @@ function isInMainGuardTest(node) {
   );
 }
 
+function isThrowOnlyGuard(node) {
+  const body =
+    node.consequent?.type === 'BlockStatement' ? node.consequent.body : [node.consequent];
+  return (
+    node.type === 'IfStatement' &&
+    node.alternate === null &&
+    body.length === 1 &&
+    body[0]?.type === 'ThrowStatement'
+  );
+}
+
+const LOOP_TYPES = [
+  'ForStatement',
+  'ForInStatement',
+  'ForOfStatement',
+  'WhileStatement',
+  'DoWhileStatement',
+];
+const DEFAULT_VALUE_TYPES = new Set([
+  'Literal',
+  'TemplateLiteral',
+  'ObjectExpression',
+  'ArrayExpression',
+  'CallExpression',
+  'NewExpression',
+]);
+
+function isDefaultValue(node) {
+  return node.operator === '||' && DEFAULT_VALUE_TYPES.has(node.right.type);
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -21,7 +52,7 @@ export const rule = {
     schema: compositionRootOptionsSchema,
     messages: {
       branch:
-        "The composition root only wires features: it passes things in and does not branch. Move this lookup or decision into the feature's adapters/ or domain/. If this branch belongs here, add an exception for this rule in nitpicker.config.json.",
+        "The composition root only wires features: it passes things in and does not branch, loop or default a missing value (`??`, `||`). Move this lookup or decision into the feature's adapters/ or domain/. A guard that only throws may stay: `const container = document.getElementById('root'); if (container === null) { throw new Error('#root is missing'); }` and then `createRoot(container)`. If this branch belongs here, add an exception for this rule in nitpicker.config.json.",
     },
   },
   create(context) {
@@ -29,7 +60,7 @@ export const rule = {
       return {};
     }
     function report(node) {
-      if (!isMainGuard(node) && !isInMainGuardTest(node)) {
+      if (!isMainGuard(node) && !isInMainGuardTest(node) && !isThrowOnlyGuard(node)) {
         context.report({ node, messageId: 'branch' });
       }
     }
@@ -40,6 +71,12 @@ export const rule = {
       SwitchStatement: report,
       ChainExpression: report,
       'LogicalExpression[operator="??"]': report,
+      LogicalExpression(node) {
+        if (isDefaultValue(node)) {
+          report(node);
+        }
+      },
+      [LOOP_TYPES.join(', ')]: report,
     };
   },
 };

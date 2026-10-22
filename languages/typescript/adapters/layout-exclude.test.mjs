@@ -173,6 +173,7 @@ describe('custom layout and exclude for tools that need project dependencies', (
       'lib/live/types.ts',
       'lib/live/unused.ts',
       'lib/live/uses-spec.ts',
+      'package.json',
       'spec/helper.ts',
     ]);
     expect(paths.filter(isExcludedPath)).toEqual([]);
@@ -261,17 +262,16 @@ describe('applyLayout', () => {
     );
     expect(invocation.args).not.toContain('src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
     expect([...new Set(eslint.exclusions)].sort()).toEqual([
-      '**/*.d.ts',
-      '**/build/**',
-      '**/coverage/**',
-      '**/dist/**',
-      '**/generated/**',
       '**/node_modules/**',
-      '**/reports/**',
-      '**/target/**',
       '.stryker-tmp/**',
+      'build/**',
+      'coverage/**',
+      'dist/**',
+      'generated/**',
       'lib/legacy/**',
+      'reports/**',
       'spec/legacy/**',
+      'target/**',
     ]);
     const entryPoints = customAnalyzers
       .find(({ name }) => name === 'entry-points')

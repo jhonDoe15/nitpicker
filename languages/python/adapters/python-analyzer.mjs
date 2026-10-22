@@ -3,7 +3,6 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { RULES_TOOL } from '../rules/rule-hints.mjs';
-import { PINNED_VERSIONS_SOURCE } from './mutation/python-crap.mjs';
 import { createToolContext, mutationVersions, toolVersions } from './python-tools.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
@@ -33,11 +32,7 @@ function pythonResourceFiles() {
 }
 
 export function configurationFiles() {
-  const files = new Set([
-    ...pythonResourceFiles(),
-    ...importedRunnerFiles(),
-    PINNED_VERSIONS_SOURCE,
-  ]);
+  const files = new Set([...pythonResourceFiles(), ...importedRunnerFiles()]);
   return [...files].map((file) => path.relative(packageRoot, file)).sort();
 }
 
@@ -89,6 +84,7 @@ export function createPythonAnalyzer(settings = {}) {
       'coverage',
       'mypy',
       'pyright',
+      'basedpyright',
       'structure',
       'crap',
       RULES_TOOL,
@@ -96,6 +92,9 @@ export function createPythonAnalyzer(settings = {}) {
       'duplicates',
       'coupling',
       'import-linter',
+      'tests',
+      'test-runtime',
+      'dependencies',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation: pythonInvocation(settings, PYTHON_ANALYZER_NAME),
@@ -112,6 +111,7 @@ export function createMutationAnalyzer(settings = {}) {
     exclusions: [],
     reportedTools: ['mutmut'],
     dependencies: [PYTHON_ANALYZER_NAME],
+    toleratedDependencyErrors: ['tests', 'test-runtime', 'dependencies'],
     shardWeight: MUTATION_SHARD_WEIGHT,
     timeoutMs: MUTATION_TIMEOUT_MS,
     createInvocation: pythonInvocation(settings, MUTATION_ANALYZER_NAME),
