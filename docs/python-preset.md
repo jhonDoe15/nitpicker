@@ -769,12 +769,23 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `helper`, `helpers`, `manager`, `common`, `misc` and the like; a class that extends a type with the
   same ending (`class SessionManager(CacheManager)`) is not reported.
 - `hardcoded-secret` reports a secret-looking string (six characters or more with letters and
-  digits, or three character classes) assigned to a name ending in `password`, `token`, `secret`,
-  `api_key`, `credentials` and similar, also as a parameter default, keyword argument, dictionary
-  entry or `os.getenv` fallback; `credential-shape` reports strings shaped like an AWS key, a GitHub
-  or Slack token, a private key header, a URL with `user:password@` or a `Bearer` value anywhere;
-  `secret-in-log` reports such a name passed to a logger call. Placeholders, environment variable
-  names, header names and URLs are not secrets.
+  digits, or three character classes; eight or more characters that are not a plain identifier for a
+  passphrase) assigned to a name ending in `password`, `passwd`, `pwd`, `passphrase`, `secret`, `token`,
+  `credentials`, `api_key`, `private_key`, `access_key`, `secret_key`, `auth_key`, `signing_key`,
+  `encryption_key`, `hmac_key` or `jwt_key` (a trailing `value`, `raw`, `str`, `string`, `text` or
+  `plain` is ignored): a variable, attribute, parameter default, keyword argument, dictionary entry,
+  a subscript (`os.environ["DB_PASSWORD"] = ...`, `config["api_key"] = ...`), a `field(default=...)`,
+  a `SecretStr(...)`, a literal built from parts, `bytes`, `.encode()` or `str()`, or the fallback of
+  an environment read (`os.getenv(k, "...")`, `os.environ.get`, `setdefault`, `env.str(k, default="...")`
+  and any call whose first argument is a secret name, `x or "..."`, either branch of a conditional).
+  `credential-shape` reports strings shaped like an AWS key, a GitHub or Slack token, a private key
+  header, a URL with `user:password@` or a `Bearer` value anywhere. `secret-in-log` reports such a name
+  (not `has_*`/`is_*`, not a constant name) passed to a logger call, `print`, `sys.stdout.write` or
+  `sys.stderr.write`: as an argument, attribute, subscript, keyword argument, `extra` entry, in an
+  f-string, `%` or `.format` text, or wrapped in `str()`; `token is not None` and `len(token)` are fine.
+  Placeholders, environment variable names, header names, URLs and a value equal to the name are not
+  secrets. Test files are skipped, as in the other presets. A module name used as a key of a
+  documentation table (`'pwd': 'pwd#module-pwd'`) is a false positive; add an exception for the file.
 - `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
   comprehension; `asyncio.gather` over a comprehension, a paging loop (the condition reads a
   variable the body assigns) and a retry (a `try` in the loop that returns on success) are not.

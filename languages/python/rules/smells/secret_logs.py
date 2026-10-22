@@ -1,12 +1,13 @@
 import ast
 import re
 
-from checks.common import finding, is_log_call, words_of
+from checks.common import dotted_name, finding, is_log_call, words_of
 from smells.secrets import is_secret_name
 
 CONSTANT_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
 STATUS_KEYS = {"has", "is"}
 FORMATTERS = {"str", "repr", "format", "ascii", "bytes"}
+OUTPUT_FUNCTIONS = {"print", "pprint.pprint", "sys.stdout.write", "sys.stderr.write"}
 
 
 def own_names(node):
@@ -69,11 +70,19 @@ def dictionary_names(node):
     return names
 
 
+def keyword_name(node):
+    named = isinstance(node, ast.keyword) and node.arg is not None
+    if named and isinstance(node.value, (ast.Name, ast.Attribute, ast.Subscript)):
+        return [node.arg]
+    return []
+
+
 def logged_names(arguments):
     names = []
     pending = list(arguments)
     for node in pending:
         names.extend(own_names(node))
+        names.extend(keyword_name(node))
         names.extend(dictionary_names(node))
         pending.extend(logged_children(node))
     return names
@@ -83,10 +92,19 @@ def is_status_name(name):
     return (words_of(name) or [""])[0] in STATUS_KEYS
 
 
+def is_output_call(node, aliases):
+    return (
+        isinstance(node, ast.Call)
+        and dotted_name(node.func, aliases) in OUTPUT_FUNCTIONS
+    )
+
+
 def log_findings(context):
     found = []
     for node in ast.walk(context.tree):
-        if not is_log_call(node, context.aliases):
+        if not (
+            is_log_call(node, context.aliases) or is_output_call(node, context.aliases)
+        ):
             continue
         names = logged_names(list(node.args) + list(node.keywords))
         secrets = {

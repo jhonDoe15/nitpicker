@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { credentialLiterals, hardcodedSecrets, secretsInLogs } from './secrets.mjs';
+import { lineOf, scanKotlinSource } from '../../kotlin-source.mjs';
+import { credentialLiterals, hardcodedSecrets } from './hardcoded-secrets.mjs';
+import { secretsInLogs } from './secrets-in-logs.mjs';
 
 const PRIVATE_KEY_HEADER = ['-----BEGIN', 'RSA', 'PRIVATE KEY-----'].join(' ');
 
@@ -17,8 +18,31 @@ describe('hardcodedSecrets', () => {
     ['a map entry', 'val settings = mapOf("db.password" to "s3cret99")\n'],
     ['a property pair', 'props.setProperty("auth.token", "t0ken-value")\n'],
     ['an escaped dollar', 'val signingKey = "pa\\$\\$w0rd!"\n'],
+    ['a property assignment', 'config.dbPassword = "hunter22"\n'],
+    ['an indexed entry', 'settings["db.password"] = "hunter22"\n'],
+    ['a character array', 'val password = "hunter22".toCharArray()\n'],
+    ['a byte array', 'val secret = "s3cret-bytes".toByteArray()\n'],
+    ['a concatenation of literals', 'val apiKey = "prod-" + "Abc123Xyz789"\n'],
+    [
+      'an elvis fallback of an environment read',
+      'val token = System.getenv("TOKEN") ?: "a1b2c3d4e5"\n',
+    ],
+    ['a map fallback', 'val token = env.getOrDefault("TOKEN", "a1b2c3d4e5")\n'],
+    ['a property fallback', 'val password = System.getProperty("db.pw", "hunter22")\n'],
+    ['an optional fallback', 'val token = lookup().orElse("a1b2c3d4e5")\n'],
+    ['a lazy fallback', 'val token = lookup().orElseGet { "a1b2c3d4e5" }\n'],
+    ['a non-null fallback', 'val token = Objects.requireNonNullElse(read(), "a1b2c3d4e5")\n'],
+    ['an if branch', 'val token = if (prod) "a1b2c3d4e5" else read()\n'],
+    ['a name with a value suffix', 'val passwordText = "hunter22"\n'],
+    ['a key that signs', 'val jwtKey = "s3cr3t-jwt-2024"\n'],
   ])('flags %s', (_name, source) => {
     expect(found(hardcodedSecrets, source)).toEqual([['HardcodedSecret', 1]]);
+  });
+
+  it('flags a fallback on the next line at the literal', () => {
+    expect(found(hardcodedSecrets, 'val token = read()\n    ?: "a1b2c3d4e5"\n')).toEqual([
+      ['HardcodedSecret', 2],
+    ]);
   });
 
   it.each([
@@ -30,6 +54,13 @@ describe('hardcodedSecrets', () => {
     ['a URL', 'val tokenUrl = "https://auth.example.com/token1"\n'],
     ['a name that is not a secret', 'val username = "admin123"\n'],
     ['a comparison', 'val same = password == "hunter22"\n'],
+    ['a value that is the name', 'val password = "password"\n'],
+    ['a literal that is not the fallback', 'val token = lookup("a1b2c3d4e5")\n'],
+    ['a literal used in a call chain', 'val token = "a1b2c3d4e5".equals(read())\n'],
+    ['a literal with another operand', 'val token = "a1b2c3d4e5" + read()\n'],
+    ['an empty fallback', 'val token = System.getenv("TOKEN") ?: ""\n'],
+    ['a lambda parameter', 'val check = { password: String -> password == "hunter22" }\n'],
+    ['a template fallback', 'val token = System.getenv("TOKEN") ?: "$prefix-1a2b3c"\n'],
   ])('passes %s', (_name, source) => {
     expect(found(hardcodedSecrets, source)).toEqual([]);
   });
@@ -71,6 +102,13 @@ describe('secretsInLogs', () => {
     ['a bare value in a lambda', 'logger.debug { password }'],
     ['an Android log call', 'Log.d(TAG, "pw $password")'],
     ['a logger declared from a factory', 'audit.info("token {}", token)'],
+    ['a member of an object', 'log.info("token {}", session.token)'],
+    ['a getter', 'log.info("token {}", client.getToken())'],
+    ['a member in a template', 'logger.warn("key ${config.apiKey}")'],
+    ['a value converted to text', 'log.info("pw {}", password.toString())'],
+    ['a template followed by a dot', 'logger.warn("using $token.")'],
+    ['a key and value pair', 'log.info("login", kv("password", pw))'],
+    ['a pair in a map', 'log.info("login {}", mapOf("token" to t))'],
   ])('flags %s', (_name, line) => {
     const source = `val audit = LoggerFactory.getLogger("audit")\nfun f() {\n    ${line}\n}\n`;
 
@@ -86,6 +124,10 @@ describe('secretsInLogs', () => {
     ['a call on something that is not a logger', 'audit.info("token {}", token)'],
     ['a presence check in a lambda', 'logger.info { "token set: ${token != null}" }'],
     ['a dialog, which is not a logger', 'dialog.d(TAG, "pw $password")'],
+    ['a status getter', 'log.info("has {}", session.hasToken())'],
+    ['a call on the secret', 'log.info("token {}", token.hashCode())'],
+    ['a key with a literal value', 'log.info("login", kv("password", "hidden"))'],
+    ['a message that only mentions the word', 'log.info("refresh token expired")'],
   ])('passes %s', (_name, line) => {
     expect(found(secretsInLogs, `fun f() {\n    ${line}\n}\n`)).toEqual([]);
   });
