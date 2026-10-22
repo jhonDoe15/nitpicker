@@ -109,6 +109,24 @@ describe.skipIf(!enabled)('uncollected-tests in other configurations', () => {
     ]);
   });
 
+  it('reports a test the -m marker expression hides and keeps the ones it selects', () => {
+    const marked = (decorator) =>
+      `import pytest\n\n\n${decorator}\ndef test_c():\n    assert total() == 3\n`;
+    const files = {
+      'pyproject.toml': lines('[tool.pytest.ini_options]', 'addopts = "-m \'not slow\'"'),
+      'tests/test_slow.py': marked('@pytest.mark.slow'),
+      'tests/test_fast.py': marked('@pytest.mark.fast'),
+      'tests/test_slowly.py': marked('@pytest.mark.slowly'),
+      'tests/test_module.py': `import pytest\n\npytestmark = [pytest.mark.slow]\n\n\n${passing}`,
+    };
+
+    expect(findingsOf(files, pytest)).toEqual([
+      'uncollected-tests tests/test_module.py:6 test_a (-m)',
+      'uncollected-tests tests/test_module.py:10 test_b (-m)',
+      'uncollected-tests tests/test_slow.py:5 test_c (-m)',
+    ]);
+  });
+
   it('reads collect_ignore from a conftest and testpaths', () => {
     const files = {
       'pytest.ini': '[pytest]\ntestpaths = tests\n',

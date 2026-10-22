@@ -2,7 +2,6 @@ import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
-import { DUPLICATES_REPORT } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
 import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
 import { coveredByCpd } from '../../guards/cpd-duplicates.mjs';
 import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
@@ -60,10 +59,11 @@ export function readJavaFindings(projectRoot, options = {}) {
     findings: applyRuleMessages(
       [
         ...moduleFindings,
-        ...readDuplicateFindings(reportBase, DUPLICATES_REPORT, {
+        ...readDuplicateFindings(reportBase, {
+          projectRoot,
           skip: coveredByCpd(modules, projectRoot),
         }),
-        ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
+        ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase, projectRoot) : []),
         ...(projectWide
           ? projectWideFindings(projectRoot, {
               projects: modules.map((module) => ({

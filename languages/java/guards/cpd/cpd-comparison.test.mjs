@@ -72,7 +72,8 @@ function snapshotFindings(reports) {
       testRoots: [],
       module,
     }),
-    ...readDuplicateFindings(reportRoot, 'duplicates.json', {
+    ...readDuplicateFindings(reportRoot, {
+      reportFile: 'duplicates.json',
       skip: coveredByCpd([{ reportRoot }], root),
     }),
   ];
