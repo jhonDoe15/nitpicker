@@ -101,8 +101,7 @@ export function analyzeModule({
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const manifest = moduleManifest({ module, classpaths, pinned });
-  const { spring } = manifest;
-  const testRuntime = classpaths.testRuntime;
+  const { testRuntime } = classpaths;
   const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
   const kotlin = analyzeKotlinModule({
     module,
@@ -111,7 +110,7 @@ export function analyzeModule({
     classpaths,
     pinned,
     options: kotlinOptions,
-    spring,
+    spring: manifest.spring,
   });
   runSourceTools({
     module,
@@ -120,7 +119,7 @@ export function analyzeModule({
     classpaths,
     configs,
     pinned,
-    kotlin: { ...kotlin, spring },
+    kotlin: { ...kotlin, spring: manifest.spring },
     style,
   });
   runStructure(module, reportDir);
