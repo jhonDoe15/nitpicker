@@ -49,3 +49,31 @@ describe('ESLint analyzers do not report the same rule on the same file', () => 
     expect(byRule.get('nitpicker/no-silent-catch')).toEqual(['eslint-errors']);
   });
 });
+
+const TEST_AREA_RULES = [
+  'nitpicker/no-fixed-sleep-synchronization',
+  'nitpicker/no-interval-polling-in-tests',
+  'nitpicker/no-wait-for-with-fake-timers',
+  'nitpicker/no-partial-output-assertion',
+];
+
+describe('test-area rules reach every test-area file', () => {
+  it.each([
+    'tests/e2e/checkout.spec.ts',
+    'tests/unit/panel.test.tsx',
+    'src/main/features/orders/orders.test.ts',
+    'src/main/features/orders/__tests__/helpers.ts',
+  ])('%s', async (file) => {
+    const byRule = await errorRulesByAnalyzer(file);
+
+    expect(TEST_AREA_RULES.map((rule) => byRule.get(rule))).toEqual(
+      TEST_AREA_RULES.map(() => ['eslint-lint']),
+    );
+  });
+
+  it('stays off production files', async () => {
+    const byRule = await errorRulesByAnalyzer('src/main/features/orders/index.ts');
+
+    expect(TEST_AREA_RULES.filter((rule) => byRule.has(rule))).toEqual([]);
+  });
+});

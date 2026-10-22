@@ -28,4 +28,18 @@ describe('spawnedEntryFiles', () => {
     writeFileSync(path.join(root, 'node_modules/dep/x.mjs'), "new URL('./w.mjs', import.meta.url)");
     expect(spawnedEntryFiles(root)).toEqual(['src/sub/other.mjs', 'src/worker.mjs']);
   });
+
+  it('skips build output at the project root only', () => {
+    const project = path.join(root, 'output');
+    mkdirSync(path.join(project, 'dist'), { recursive: true });
+    mkdirSync(path.join(project, 'src/reports'), { recursive: true });
+    writeFileSync(path.join(project, 'dist/worker.mjs'), '');
+    writeFileSync(path.join(project, 'src/reports/worker.mjs'), '');
+    writeFileSync(path.join(project, 'dist/main.mjs'), "new URL('./worker.mjs', import.meta.url)");
+    writeFileSync(
+      path.join(project, 'src/reports/main.mjs'),
+      "new URL('./worker.mjs', import.meta.url)",
+    );
+    expect(spawnedEntryFiles(project)).toEqual(['src/reports/worker.mjs']);
+  });
 });

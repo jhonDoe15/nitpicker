@@ -10,18 +10,20 @@ import {
   normalizeCoupling,
   normalizeTestRuntime,
   normalizeStructure,
-  normalizeDeadCode,
 } from '../reporting/repository.mjs';
+import { normalizeDeadCode } from '../reporting/dead-code.mjs';
 import path from 'node:path';
 import { existsSync, readFileSync, writeFileSync, realpathSync, unlinkSync } from 'node:fs';
 import { existingRoots } from '../../../preset/layout.mjs';
-import { readLayout } from '../../../preset/head-policy.mjs';
+import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
 import { withFunctionSourceHashes, withDeadCodeSourceHashes } from '../reporting/source-hashes.mjs';
-import { typescriptFileLimitFindings } from '../../../preset/structure/file-limits.mjs';
+import { typescriptStructureProjectFindings } from '../../../preset/structure/project-findings.mjs';
 import { layoutJscpdConfig, layoutKnipConfig } from '../../../preset/tool-configs.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
+import { runTestOnlyExports, runUnusedApi } from './unused-api.mjs';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mjs';
+import { baselinePathsOf } from '../base-paths.mjs';
 
 export async function runCodingStandards(options) {
   const checker = await importPolicyModule(
@@ -39,7 +41,7 @@ export async function runCodingStandards(options) {
     rule: signal.rule,
     path: signal.file,
     identity: `source:${hash(signal.source)}|count:${String(signal.count)}`,
-    message: `New coding-standard site: ${signal.source}`,
+    message: signal.message ?? `New coding-standard site: ${signal.source}`,
     classification: 'enforceable',
   }));
   if (options.snapshot === 'head' && options.baselineRoot !== undefined) {
@@ -82,8 +84,13 @@ export async function runCoupling(options) {
     options,
     'languages/typescript/preset/coupling/analyze.mjs',
   );
+  const { exceptions } = readHeadPolicy();
   return perSourceRoot(options, layout, (root) =>
-    normalizeCoupling(analyzeCoupling(graph, root, { layout }), options.analyzerName),
+    normalizeCoupling(
+      analyzeCoupling(graph, root, { layout, projectRoot: options.projectRoot }),
+      options.analyzerName,
+      exceptions,
+    ),
   );
 }
 
@@ -124,7 +131,8 @@ export async function runStructure(options) {
   );
   return [
     ...functionFindings,
-    ...typescriptFileLimitFindings(options.projectRoot, options.analyzerName),
+    ...typescriptStructureProjectFindings({ ...options, baselinePaths: baselinePathsOf(options) }),
+    ...(await runUnusedApi(options)),
   ];
 }
 
@@ -189,28 +197,10 @@ function withSpawnedEntries(config, projectRoot) {
   return { ...config, entry: [...config.entry, ...spawnedEntryFiles(projectRoot)] };
 }
 
-export function runDeadCode(options) {
+function knipReport(options, config) {
   const configPath = path.join(options.projectRoot, '.nitpicker-diff-knip.json');
   trackTemporaryPath(configPath);
-  writeFileSync(
-    configPath,
-    `${JSON.stringify(
-      withSpawnedEntries(
-        layoutKnipConfig(
-          parseReportJson(
-            readFileSync(
-              path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
-              'utf8',
-            ),
-          ),
-          readLayout(),
-        ),
-        options.projectRoot,
-      ),
-      null,
-      2,
-    )}\n`,
-  );
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
   try {
     const result = runNodeTool({
       options,
@@ -218,11 +208,36 @@ export function runDeadCode(options) {
       arguments_: ['--config', configPath, '--reporter', 'json'],
       acceptedStatuses: [0, 1],
     });
-    return normalizeDeadCode(
-      withDeadCodeSourceHashes(JSON.parse(result.stdout), options.projectRoot),
-      options.analyzerName,
-    );
+    return JSON.parse(result.stdout);
   } finally {
     unlinkSync(configPath);
   }
+}
+
+export function runDeadCode(options) {
+  const config = withSpawnedEntries(
+    layoutKnipConfig(
+      parseReportJson(
+        readFileSync(
+          path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
+          'utf8',
+        ),
+      ),
+      readLayout(),
+    ),
+    options.projectRoot,
+  );
+  const normal = knipReport(options, config);
+  return [
+    ...normalizeDeadCode(
+      withDeadCodeSourceHashes(normal, options.projectRoot),
+      options.analyzerName,
+      { exceptions: readHeadPolicy().exceptions },
+    ),
+    ...runTestOnlyExports(options, {
+      config,
+      normal,
+      knip: (productionConfig) => knipReport(options, productionConfig),
+    }),
+  ];
 }

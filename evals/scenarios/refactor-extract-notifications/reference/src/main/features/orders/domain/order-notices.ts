@@ -9,10 +9,10 @@ import { orderTotalCents } from './order.js';
 import type { Order } from './order.js';
 
 export function orderReceipt(order: Order, customer: Recipient, now: string): Message {
-  const items: readonly string[] = order.lines.map(
-    (line) =>
-      `${String(line.quantity)} x ${line.name} @ ${formatMoney(line.unitCents)} = ${formatMoney(line.quantity * line.unitCents)}`,
-  );
+  const items: readonly string[] = order.lines.map((line) => {
+    const lineCents = formatMoney(line.quantity * line.unitCents);
+    return `${String(line.quantity)} x ${line.name} @ ${formatMoney(line.unitCents)} = ${lineCents}`;
+  });
   return receiptMessage({
     recipient: customer,
     now,

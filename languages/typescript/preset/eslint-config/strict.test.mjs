@@ -56,6 +56,23 @@ describe('strict declaration and control-flow rules', () => {
     expect(messages(code)).toEqual([]);
   });
 
+  it.each([
+    [
+      'a global interface in an ambient declaration file',
+      '/// <reference types="vite/client" />\ninterface ImportMetaEnv { readonly VITE_API: string }',
+    ],
+    [
+      'a default export in a declared module',
+      "declare module '*.svg' { const source: string; export default source; }",
+    ],
+  ])('allows %s', (_name, code) => {
+    expect(messages(code, 'src/env.d.ts')).toEqual([]);
+  });
+
+  it('bans a default export outside a declared module', () => {
+    expect(messages('const value = 1;\nexport default value;')).toHaveLength(1);
+  });
+
   describe('the interface ban', () => {
     const messageStartingWith = (prefix) =>
       restrictedSyntaxFor().source.find(({ selector }) => selector.startsWith(prefix)).message;

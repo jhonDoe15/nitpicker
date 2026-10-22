@@ -1,4 +1,5 @@
 import { comparisonKey } from './fingerprint.mjs';
+import { matchSimilarFindings } from './similar/match.mjs';
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { folderMoves, mainDestination } from '../git/patches/renames.mjs';
 
@@ -17,9 +18,17 @@ export function compareFindings({
   });
   const headByKey = indexFindings({ findings: headFindings, snapshot: 'head' });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });
-  const unmatchedBase = [...baseByKey]
+  const withoutExactMatch = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
     .map(([, baseFinding]) => baseFinding);
+  const similar = matchSimilarFindings({
+    headFindings: present.newFindings,
+    baseFindings: withoutExactMatch,
+    renames: baseToHeadRenames,
+  });
+  present.newFindings = similar.unmatched;
+  present.unchangedFindings.push(...similar.matched);
+  const unmatchedBase = withoutExactMatch.filter((finding) => !similar.matchedBase.has(finding));
   const ratcheted = holdRatchetedFindings({
     newFindings: present.newFindings,
     unmatchedBase,
@@ -117,7 +126,7 @@ function movedFolderKey(finding, moves) {
   const destinations = moves.get(normalizeGitPath(finding.path));
   const destination = mainDestination(destinations);
   const movedFiles = destination === undefined ? 0 : destinations.get(destination);
-  return movedFiles * 2 > finding.ratchet.value
+  return movedFiles * 2 > (finding.ratchet.folderFiles ?? finding.ratchet.value)
     ? ratchetKey({ ...finding, path: destination }, new Map(), new Map())
     : undefined;
 }

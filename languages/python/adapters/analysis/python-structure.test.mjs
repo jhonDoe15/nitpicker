@@ -94,7 +94,7 @@ describe('reading the structure report', () => {
         rule: 'function-control-nesting-limit',
         symbol: 'Service.run',
         message:
-          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An elif chain counts one level per branch; use match, a dict lookup or a helper function.',
+          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch.',
       },
     ]);
     expect(
@@ -122,6 +122,24 @@ describe('reading the structure report', () => {
       heldMessage:
         'Service.handle: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
     });
+  });
+
+  it('keeps the identity of a property setter when another function of that name is added above it', () => {
+    const getter = ['    @property', '    def value(self, a, b, c, d):', '        return a'];
+    const setter = ['    @value.setter', '    def value(self, a, b, c, d):', '        self.a = a'];
+    const source = (lines) => `class Service:\n${lines.join('\n')}\n`;
+    const named = (start) => entry({ name: 'Service.value', parameters: 4, start, end: start + 1 });
+    const setterIdentity = (lines, starts) => {
+      const findings = findingsFor(starts.map(named), {
+        'src/demo/service.py': source(lines),
+      });
+      return findings.at(-1).identity;
+    };
+
+    const before = setterIdentity([...getter, '', ...setter], [3, 7]);
+    const after = setterIdentity([...getter, '', ...getter, '', ...setter], [3, 7, 11]);
+
+    expect(after).toBe(before);
   });
 
   it('finds nothing when no function is over a limit', () => {
@@ -183,6 +201,14 @@ describe('Python file limits', () => {
     ]);
   });
 
+  it('counts the tests.py of a Django app as a test module', () => {
+    write(['manage.py', 'polls/models.py', 'polls/views.py', 'polls/admin.py', 'polls/tests.py']);
+
+    expect(findingsWith({ fileLimits: limits })).toEqual([
+      ['folder-files-limit', 'polls', 'folder-files:source:3'],
+    ]);
+  });
+
   it('leaves package markers out of the folder count', () => {
     write(['pkg/__init__.py', 'pkg/a.py', 'pkg/b.py']);
 
@@ -196,6 +222,18 @@ describe('Python file limits', () => {
     expect(findingsWith({}).map(([rule, findingPath]) => [rule, findingPath])).toEqual([
       ['file-lines-limit', 'src/app/long.py'],
       ['line-length-limit', 'src/app/wide.py'],
+    ]);
+  });
+
+  it('keeps production modules when python_files matches every file, testing the testpaths folders', () => {
+    write(
+      ['pyproject.toml'],
+      '[tool.pytest.ini_options]\ntestpaths = ["tests"]\npython_files = ["*.py"]\n',
+    );
+    write(['app/service.py', 'tests/checks.py'], 'VALUE = 1\n'.repeat(480));
+
+    expect(findingsWith({}).map(([rule, findingPath]) => [rule, findingPath])).toEqual([
+      ['file-lines-limit', 'app/service.py'],
     ]);
   });
 

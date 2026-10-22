@@ -15,3 +15,10 @@ export function variableNamed(sourceCode, identifier) {
     .map((scope) => scope.set.get(identifier.name))
     .find((variable) => variable !== undefined);
 }
+
+export function constantInitializer(sourceCode, identifier) {
+  const definition = variableNamed(sourceCode, identifier)?.defs.at(0);
+  return definition?.type === 'Variable' && definition.parent.kind === 'const'
+    ? (definition.node.init ?? undefined)
+    : undefined;
+}

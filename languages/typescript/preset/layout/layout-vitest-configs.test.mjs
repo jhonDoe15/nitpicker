@@ -32,15 +32,25 @@ describe('copied vitest configs', () => {
     expect(coverage.test.coverage.include).toEqual(['lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
     expect([...new Set(coverage.test.coverage.exclude)].sort()).toEqual([
       '**/*.d.ts',
-      '**/build/**',
-      '**/dist/**',
-      '**/generated/**',
+      'build/**',
+      'dist/**',
+      'generated/**',
       'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'lib/**/__tests__/**',
       'lib/legacy/**',
       'lib/main/vitest.config.ts',
       'lib/vitest.config.ts',
     ]);
+  });
+  it('the copied vitest config leaves test-support/ out of coverage in a colocated layout', async () => {
+    const colocated = { ...policy, layout: { ...policy.layout, colocatedTests: true } };
+    const coverage = await resolveVitestConfig('defaults/vitest.quality.config.ts', colocated);
+    const separate = await resolveVitestConfig('defaults/vitest.quality.config.ts', policy);
+    expect(
+      coverage.test.coverage.exclude.filter(
+        (glob) => !separate.test.coverage.exclude.includes(glob),
+      ),
+    ).toEqual(['lib/**/test-support/**']);
   });
   it('the copied vitest configs keep the default roots without a policy', async () => {
     const coverage = await resolveVitestConfig('defaults/vitest.quality.config.ts', undefined);
@@ -51,6 +61,8 @@ describe('copied vitest configs', () => {
       'src/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
     ]);
     expect([...new Set(coverage.test.projects[1].test.include)].sort()).toEqual([
+      '__tests__/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      '__tests__/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'test/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'test/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'tests/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',

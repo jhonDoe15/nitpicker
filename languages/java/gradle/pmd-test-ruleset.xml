@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Nitpicker's PMD rules for test sources only. Gradle and Maven reference this file from a
+     generated ruleset that excludes the main source roots. docs/java-preset.md lists the rules and
+     why each exists. -->
+<ruleset name="nitpicker-test-rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+  <description>Nitpicker's PMD rules for test sources.</description>
+  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">
+    <properties>
+      <property name="testClassPattern"
+                value="^(?:.*\.)?Test[^\.]*$|^(?:.*\.)?.*(?&lt;!Arch|Architecture)Tests?$|^(?:.*\.)?.*TestCase$"/>
+    </properties>
+  </rule>
+  <rule name="FixedSleepInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A fixed wait makes the test slow and flaky: a sleep or parkNanos outside a polling loop, after(ms) with a check that could pass sooner, or pollDelay(...).until(() -> true). Wait on the condition: a loop that checks it against a deadline (a sleep inside that loop is allowed), or verify(mock, timeout(1000)) for a mock. A timed wait, wait(ms) or join(ms), returns early but lets the test go on unchecked when the time runs out: assert the result of join(Duration) or of a latch await. A sleep in a mock answer, a thread body or a test fake that implements or extends a main class is allowed. If a real wait is unavoidable, add an exception for pmd/FixedSleepInTest in nitpicker.config.json.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodCall[pmd-java:matchesSig('java.lang.Thread#sleep(long)')
+    or pmd-java:matchesSig('java.lang.Thread#sleep(long,int)')
+    or pmd-java:matchesSig('java.lang.Thread#sleep(java.time.Duration)')
+    or pmd-java:matchesSig('java.util.concurrent.TimeUnit#sleep(long)')
+    or pmd-java:matchesSig('java.util.concurrent.locks.LockSupport#parkNanos(long)')
+    or pmd-java:matchesSig('java.util.concurrent.locks.LockSupport#parkNanos(java.lang.Object,long)')
+    or pmd-java:matchesSig('java.lang.Object#wait(long)')
+    or pmd-java:matchesSig('java.lang.Object#wait(long,int)')
+    or pmd-java:matchesSig('java.lang.Thread#join(long)')
+    or pmd-java:matchesSig('java.lang.Thread#join(long,int)')
+    or (pmd-java:matchesSig('java.lang.Thread#join(java.time.Duration)') and parent::ExpressionStatement)]
+    [let $boundary := ancestor::*[self::WhileStatement or self::DoStatement or self::ForStatement
+                                  or self::LambdaExpression or self::MethodDeclaration
+                                  or self::ConstructorDeclaration or self::Initializer][1],
+         $condition := ($boundary[self::WhileStatement]/*[1] | $boundary[self::DoStatement]/*[last()]
+                        | $boundary[self::ForStatement]/*[not(self::ForInit or self::ForUpdate)][position() < last()]),
+         $host := ($boundary[self::LambdaExpression]
+                   | $boundary[self::MethodDeclaration]/parent::ClassBody/parent::AnonymousClassDeclaration/parent::ConstructorCall)
+     return not(
+       exists($condition[not(self::BooleanLiteral[@True = true()])])
+       or $boundary[self::WhileStatement or self::DoStatement or self::ForStatement]
+           //MethodCall[pmd-java:matchesSig('java.lang.System#nanoTime()')
+                        or pmd-java:matchesSig('java.lang.System#currentTimeMillis()')
+                        or pmd-java:matchesSig('java.time.Instant#now()')
+                        or pmd-java:matchesSig('java.time.Instant#now(java.time.Clock)')
+                        or pmd-java:matchesSig('java.time.InstantSource#millis()')
+                        or pmd-java:matchesSig('java.time.InstantSource#instant()')]
+       or $host[pmd-java:typeIs('org.mockito.stubbing.Answer')]
+       or $host[self::ConstructorCall][pmd-java:typeIs('java.lang.Thread')]
+       or $host/parent::ArgumentList/parent::*
+           [self::ConstructorCall[pmd-java:typeIs('java.lang.Thread')]
+            or self::MethodCall[*[1][pmd-java:typeIs('java.util.concurrent.Executor')]]
+            or self::MethodCall[pmd-java:matchesSig('java.util.concurrent.CompletableFuture#runAsync(_*)')
+                                or pmd-java:matchesSig('java.util.concurrent.CompletableFuture#supplyAsync(_*)')
+                                or pmd-java:matchesSig('java.lang.Thread#startVirtualThread(_)')
+                                or pmd-java:matchesSig('java.lang.Thread$Builder#start(_)')
+                                or pmd-java:matchesSig('java.lang.Thread$Builder#unstarted(_)')
+                                or pmd-java:matchesSig('java.util.concurrent.ThreadFactory#newThread(_)')]]
+       or $boundary[self::MethodDeclaration][@Name = 'run']
+           [parent::ClassBody/parent::ClassDeclaration[pmd-java:typeIs('java.lang.Thread')]])]
+  | //MethodCall[pmd-java:matchesSig('org.mockito.Mockito#after(long)')]
+      [not(parent::MethodCall[@MethodName = ('never', 'atMost', 'atMostOnce')]
+           or parent::MethodCall[@MethodName = 'times'][ArgumentList/NumericLiteral[@ValueAsInt = 0]])]
+  | //MethodCall[@MethodName = 'waitForTimeout']
+      [*[1][pmd-java:typeIs('com.microsoft.playwright.Page') or pmd-java:typeIs('com.microsoft.playwright.Frame')]]
+  | //MethodCall[@MethodName = 'until']
+      [*[1][pmd-java:typeIs('org.awaitility.core.ConditionFactory')]]
+      [ArgumentList/LambdaExpression/BooleanLiteral[@True = true()]]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="NegativeWaitInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Do not prove that something does not happen by waiting out a delay: after(ms).never() and during(...) pass only after the full wait, so the test is slow and depends on the timing. Give the code a Clock or a scheduler the test controls, move it past the delay and assert at once. If a real wait is unavoidable, add an exception for pmd/NegativeWaitInTest in nitpicker.config.json.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('org.mockito.Mockito#after(long)')]
+  [parent::MethodCall[@MethodName = ('never', 'atMost', 'atMostOnce')]
+   or parent::MethodCall[@MethodName = 'times'][ArgumentList/NumericLiteral[@ValueAsInt = 0]]]
+| //MethodCall[pmd-java:matchesSig('org.awaitility.core.ConditionFactory#during(_)')
+  or pmd-java:matchesSig('org.awaitility.core.ConditionFactory#during(long,_)')]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+</ruleset>

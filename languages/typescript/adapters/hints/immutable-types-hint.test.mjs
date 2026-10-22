@@ -201,7 +201,7 @@ describe('prefer-immutable-types message for a return type and a property', () =
     const code = 'const listItems = () => [1];\n';
 
     expect(messageFor('Return type', code, '() => [1]')).toBe(
-      `Return type of \`listItems\` is mutable; ${TAIL} ${GENERIC}`,
+      `Return type of \`listItems\` is mutable (array); ${TAIL} ${ARRAY_HINT}`,
     );
   });
 
@@ -210,6 +210,66 @@ describe('prefer-immutable-types message for a return type and a property', () =
 
     expect(messageFor('Property', code, 'readonly tags: string[] = []')).toBe(
       `Property \`tags\` is mutable (array); ${TAIL} ${ARRAY_HINT}`,
+    );
+  });
+});
+
+describe('prefer-immutable-types message for forms that need an annotation', () => {
+  const CALLBACK_HINT =
+    "Annotate the callback's return type with readonly fields: `(item): Summary => ({ ... })`, or `(line): readonly string[] => ...`.";
+
+  it.each([
+    [
+      'an object-returning callback',
+      'const rows = items.map((item) => ({ id: item.id }));\n',
+      '(item) => ({ id: item.id })',
+    ],
+    [
+      'an array-returning callback',
+      'const rows = lines.map((line) => line.split(","));\n',
+      '(line) => line.split(",")',
+    ],
+  ])('tells %s to annotate its return type', (_, code, reported) => {
+    expect(messageFor('Return type', code, reported)).toBe(
+      `Return type is mutable (callback); ${TAIL} ${CALLBACK_HINT}`,
+    );
+  });
+
+  it('tells a destructured rest element to take an annotated slice', () => {
+    expect(messageFor('Variable', 'const [head, ...rest] = text.split(" ");\n', '...rest')).toBe(
+      `Variable \`rest\` is mutable (rest element); ${TAIL} A rest element is always mutable: take the tail into an annotated const, \`const rest: readonly T[] = xs.slice(1)\`.`,
+    );
+  });
+
+  it('names the Object.groupBy result type', () => {
+    const code =
+      'function byTag(items: readonly Item[]) {\n  return Object.groupBy(items, (i) => i.tag);\n}\n';
+
+    expect(messageFor('Return type', code, 'function byTag')).toBe(
+      `Return type of \`byTag\` is mutable (Object.groupBy result); ${TAIL} Type it \`Readonly<Partial<Record<Key, readonly T[]>>>\`.`,
+    );
+  });
+
+  it('tells an object literal variable to carry a readonly type', () => {
+    expect(messageFor('Variable', 'const totals = { paid: 0 };\n', 'totals')).toBe(
+      `Variable \`totals\` is mutable (object literal); ${TAIL} Give it a type with readonly fields: \`const x: { readonly a: number } = ...\`, or return it from a function with a readonly return type.`,
+    );
+  });
+
+  it('tells an Error field to use unknown', () => {
+    const code =
+      "type Failure = { readonly kind: 'failed'; readonly error: Error };\nfunction f(failure: Failure): void {}\n";
+
+    expect(messageFor('Parameter', code, 'failure: Failure')).toBe(
+      `Parameter \`failure\` is mutable (\`error: Error\`); ${TAIL} Error is a class and always mutable: type the field \`unknown\` (domain/ allows \`error\` and \`cause\` typed unknown for a caught error) or carry \`message: string\`.`,
+    );
+  });
+
+  it('tells a generic parameter to constrain with readonly fields', () => {
+    const code = 'function f<T extends { id: string }>(item: T): void {}\n';
+
+    expect(messageFor('Parameter', code, 'item: T')).toBe(
+      `Parameter \`item\` is mutable (generic type); ${TAIL} Constrain the type parameter with readonly fields: \`<T extends { readonly id: string }>\`.`,
     );
   });
 });

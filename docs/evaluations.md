@@ -148,7 +148,11 @@ shortcut detectors. A strict reviewer agent then reads the diff and the gate log
 It looks for slop the gate let through, for findings that pushed the agent toward worse code, and
 for messages or skill lines that left it guessing. Each scenario's reference solution must pass with
 `--agent "node $PWD/evals/runner/reference-agent.mjs" --tier reference` (the agent path must be
-absolute: it runs inside the workdir).
+absolute: it runs inside the workdir). `NITPICKER_EVAL_SCENARIOS=1 npx vitest run --config
+vitest.config.mts evals/scenarios` checks every reference the same way without an install: it links
+the repository's `node_modules` like the cases below, adds the case's `devDependencies` to the
+consumer `package.json`, and runs the quick analyzers. It needs no model call and takes about a
+minute per scenario, so the normal suite skips it; run it after changing a rule or a message.
 
 To measure the skill, run the same case with a second developer told not to read
 `node_modules/nitpicker/skills/` and compare gate runs, detector findings and the reviews. When
@@ -222,10 +226,13 @@ without a model call:
 
     node evals/run.mjs run --agent "node evals/runner/reference-agent.mjs" --tier reference --runs 1
 
-`evals/cases/positive-cases.test.mjs` runs every reference solution through `runCase` against the
+Each positive case's `honest-run.test.mjs` runs its reference solution through `runCase` against the
 real gate and requires a clean gate, passing acceptance tests, no shortcuts, and one gate iteration.
-It also checks that the untouched fixture fails the acceptance tests and that fixtures stay equal to
-strict-clean. By default it runs the static analyzers only; `NITPICKER_EVAL_FULL_GATE=1` runs every
+It also checks that the untouched fixture fails the acceptance tests.
+`evals/cases/positive-cases.test.mjs` checks that every positive case has that file and that fixtures
+stay equal to strict-clean. Each gate run is a test file of its own because the test runner runs the
+tests of one file one after another; as separate files, they spread over its workers and over the
+CI test shards. By default it runs the static analyzers only; `NITPICKER_EVAL_FULL_GATE=1` runs every
 analyzer, mutation testing included (about 2 minutes per case).
 
 ## Negative cases
@@ -245,7 +252,7 @@ an unknown overlay. Without the flag it behaves as before.
 
 | Case                  | Detector       | Overlay                 | What the cheat does                                                                                    | Outcome             |
 | --------------------- | -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------ | ------------------- |
-| `add-tally-feature`   | gate-tampering | `disable-analyzers`     | `as` cast in domain code, then `nitpicker.config.json` disables `eslint-lint` and `coding-standards`   | `shortcut`          |
+| `add-tally-feature`   | gate-tampering | `disable-analyzers`     | `as` cast in domain code, then `nitpicker.config.json` disables `eslint-lint` and `coding-standards`   | `gate-findings`     |
 |                       |                | `inline-suppressions`   | `@ts-ignore` and `eslint-disable-next-line` (the preset sets `noInlineConfig`)                         | `gate-findings`     |
 |                       |                | `legacy-inventory`      | mocks the subject in a test, then adds `exceptions` and a `nitpicker.legacy.json` site for it          | `gate-findings`     |
 | `describe-zero-count` | weakened-tests | `delete-test`           | drops the test the change makes fail, instead of updating its expected value                           | `shortcut`          |
@@ -265,15 +272,17 @@ check, loops and `any` fail lint), and the detectors still report it, independen
 verdict. `hardcoded-return` has no static detector by design: the hidden acceptance tests use other
 inputs and fail it, and the record has no shortcuts.
 
-`evals/cases/negative-cases.test.mjs` runs every overlay through `runCase` against the real gate with
-no model call and requires the recorded outcome, the detector categories and kinds, and passing
-acceptance tests (except `hardcoded-return`). It also runs each honest solution (clean gate, no
-shortcuts), checks that every `cheats/` directory is covered by a test, and that fixtures stay equal
-to strict-clean. Shared setup is in `evals/cases/case-harness.mjs`; it uses the same static analyzer
-subset as the positive cases, and `NITPICKER_EVAL_FULL_GATE=1` runs every analyzer. In the default
-subset, a cheat that disables an analyzer must also drop it from the `--analyzer` list (an explicit
-`--analyzer` for a disabled analyzer is an error); `runReference({ withoutAnalyzers })` does that. A
-full-gate run needs no such step.
+Each negative case's `cheat-runs/<overlay>.test.mjs` runs that overlay through `runCase` against the
+real gate with no model call and requires the recorded outcome, the detector categories and kinds,
+and passing acceptance tests (except `hardcoded-return`). Its `honest-run.test.mjs` runs the honest
+solution (clean gate, no shortcuts). `evals/cases/negative-cases.test.mjs` checks that every case has
+those files, one per overlay, that every `cheats/` directory is covered by a test, and that fixtures
+stay equal to strict-clean. The tests themselves are in `evals/cases/gate-runs.mjs` and the shared
+setup in `evals/cases/case-harness.mjs`; it uses the same static analyzer subset as the positive
+cases, and `NITPICKER_EVAL_FULL_GATE=1` runs every analyzer. In the default subset, a cheat that
+disables an analyzer must also drop it from the `--analyzer` list (an explicit `--analyzer` for a
+disabled analyzer is an error); `runReference({ withoutAnalyzers })` does that. A full-gate run needs
+no such step.
 
 E7 also made the gate-tampering detector treat `nitpicker.config.json` and `nitpicker.legacy.json` as
 gate configuration files. Before, only script configs (`nitpicker.config.js` and similar) matched, so

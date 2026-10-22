@@ -3,7 +3,7 @@ import { evaluateBaselineExpansions } from './baseline-expansion.mjs';
 import { branchCoverageFindings } from './branch-coverage.mjs';
 import { computeCoupling, evaluateCoupling } from './coupling.mjs';
 import { crapFindings } from './crap.mjs';
-import { evaluateDuplicates } from './duplicates.mjs';
+import { clonePartnerPath, evaluateDuplicates } from './duplicates.mjs';
 import { mutantFindings } from './mutation.mjs';
 import { evaluateStructure } from './structure.mjs';
 import { evaluateTestRuntime } from './test-runtime.mjs';
@@ -62,6 +62,41 @@ describe('structure rule on neutral function metrics', () => {
     );
     expect(first.identity).toBe('function:run:occurrence:1:source:a');
     expect(second.identity).toBe('function:run:occurrence:2:source:b');
+  });
+
+  it('numbers a violation among the entries of the same name and source over the limit when asked to, so no other entry renames it', () => {
+    const violations = (functions) =>
+      evaluateStructure({ functions }, 'structure')
+        .filter((finding) => finding.rule === 'function-control-nesting-limit')
+        .map((finding) => [finding.identity, finding.ratchet.key]);
+    const nested = (sourceHash) =>
+      fn({ name: 'Box.<init>', maxControlNesting: 3, numberedAmongSameSource: true, sourceHash });
+    const quiet = (sourceHash) =>
+      fn({ name: 'Box.<init>', maxControlNesting: 1, numberedAmongSameSource: true, sourceHash });
+    const legacy = [
+      [
+        'function:Box.<init>:occurrence:1:source:a',
+        'function:Box.<init>:occurrence:1:maxControlNesting',
+      ],
+    ];
+
+    expect(violations([nested('a')])).toEqual(legacy);
+    expect(violations([quiet('q'), nested('a')])).toEqual(legacy);
+    expect(violations([quiet('q'), quiet('r'), nested('a'), quiet('s')])).toEqual(legacy);
+    expect(violations([nested('b'), nested('a')])).toEqual([
+      [
+        'function:Box.<init>:occurrence:1:source:b',
+        'function:Box.<init>:occurrence:1:maxControlNesting',
+      ],
+      ...legacy,
+    ]);
+    expect(violations([nested('a'), nested('a')])).toEqual([
+      ...legacy,
+      [
+        'function:Box.<init>:occurrence:2:source:a',
+        'function:Box.<init>:occurrence:2:maxControlNesting',
+      ],
+    ]);
   });
 
   it('reports summary, distributions and class metrics as descriptive', () => {
@@ -169,11 +204,11 @@ describe('duplicates rule on neutral clones', () => {
     expect(failures.map((finding) => [finding.path, finding.message])).toEqual([
       [
         'a.java',
-        'This code repeats b.java:3 (6 lines). Keep one copy and call it from both places.',
+        'This code repeats b.java:3 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java or b.java to "exclude" in nitpicker.config.json.',
       ],
       [
         'a.java',
-        'This code repeats b.java:8 (6 lines). Keep one copy and call it from both places.',
+        'This code repeats b.java:8 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java or b.java to "exclude" in nitpicker.config.json.',
       ],
     ]);
     expect(failures[0].identity).toMatch(
@@ -181,6 +216,16 @@ describe('duplicates rule on neutral clones', () => {
     );
     expect(failures[1].identity).toMatch(/:occurrence:2$/);
     expect(failures[0].location).toEqual({ line: 8 });
+  });
+
+  it('names the file once when a file repeats itself', () => {
+    const [failure] = byRule(
+      evaluateDuplicates([clone('a.java', 'a.java')], 'duplicates'),
+      'duplicate-clone',
+    );
+    expect(failure.message).toBe(
+      'This code repeats a.java:8 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java to "exclude" in nitpicker.config.json.',
+    );
   });
 
   it('adds size metrics and omits a location for an unusable line', () => {
@@ -378,5 +423,44 @@ describe('coupling metrics on a neutral dependency graph', () => {
       packages: [],
       stabilityDirection: [],
     });
+  });
+});
+
+describe('clonePartnerPath', () => {
+  it('names the other file of the pair for a clone and its size metrics', () => {
+    const findings = evaluateDuplicates(
+      [
+        {
+          first: { file: 'b|c:d.java', line: 8 },
+          second: { file: 'a.java', line: 3 },
+          fragment: 'x',
+          lines: 6,
+          tokens: 60,
+        },
+      ],
+      'duplicates',
+    );
+
+    expect(findings.map((finding) => [finding.path, clonePartnerPath(finding)])).toEqual([
+      ['a.java', 'b|c:d.java'],
+      ['a.java', 'b|c:d.java'],
+      ['a.java', 'b|c:d.java'],
+    ]);
+  });
+
+  it('has no partner for other findings', () => {
+    expect(
+      clonePartnerPath({ rule: 'duplicate-clone', path: 'a.java', identity: 'something' }),
+    ).toBeUndefined();
+    expect(
+      clonePartnerPath({
+        rule: 'other',
+        path: 'a.java',
+        identity: 'pair:a.java|b.java:fragment:x',
+      }),
+    ).toBeUndefined();
+    expect(
+      clonePartnerPath({ rule: 'duplicate-clone', path: 'a.java', identity: 'pair:a.java|b.java' }),
+    ).toBeUndefined();
   });
 });

@@ -4,6 +4,7 @@ import { headPolicyEnvironment } from '../../../languages/typescript/preset/head
 import { analyzerName } from '../reporting/report-model.mjs';
 import { validateAnalyzer, validateInvocation } from './validation/analyzers.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
 import { fileURLToPath } from 'node:url';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -60,6 +61,7 @@ export function runAnalyzers({
   toolRoot,
   snapshot,
   baselineRoot,
+  baselineMovesFile,
   liveProjectRoot,
   headPolicyFile,
   runTasks = runScheduler,
@@ -74,14 +76,20 @@ export function runAnalyzers({
     toolRoot,
     snapshot,
     baselineRoot,
+    baselineMovesFile,
     liveProjectRoot,
   });
 
   const scheduled = scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot });
+  return namedRun(scheduled, toolErrors, { projectRoot, liveProjectRoot, snapshot });
+}
+
+function namedRun(scheduled, toolErrors, { projectRoot, liveProjectRoot, snapshot }) {
+  const snapshotRoot = projectRoot === liveProjectRoot ? undefined : { projectRoot, snapshot };
   return {
-    reports: scheduled.reports,
+    reports: namedReports(scheduled.reports, snapshotRoot),
     timings: scheduled.timings,
-    toolErrors: [...toolErrors, ...scheduled.toolErrors],
+    toolErrors: namedToolErrors([...toolErrors, ...scheduled.toolErrors], snapshotRoot),
     skipped: scheduled.skipped,
   };
 }
@@ -179,7 +187,7 @@ function prepareTasks(analyzers, context) {
 }
 
 function createTask(analyzer, context) {
-  const { projectRoot, policyRoot, toolRoot, snapshot, baselineRoot, liveProjectRoot } = context;
+  const { projectRoot, policyRoot, toolRoot, snapshot, liveProjectRoot } = context;
   resolveAnalyzerMetadata(analyzer, { liveProjectRoot, policyRoot });
   validateAnalyzer(analyzer);
   const invocation = analyzer.createInvocation({
@@ -188,13 +196,15 @@ function createTask(analyzer, context) {
     projectPolicyRoot: policyRoot,
     toolRoot,
     snapshot,
-    baselineRoot,
+    baselineRoot: context.baselineRoot,
+    baselineMovesFile: context.baselineMovesFile,
     liveProjectRoot,
   });
   validateInvocation(analyzer.name, invocation);
   return {
     name: analyzer.name,
     dependencies: analyzer.dependencies ?? [],
+    toleratedDependencyErrors: analyzer.toleratedDependencyErrors ?? [],
     concurrencyWeight: analyzer.concurrencyWeight ?? 1,
     concurrencyGroup: analyzer.concurrencyGroup,
     executionPriority: analyzer.executionPriority ?? 0,

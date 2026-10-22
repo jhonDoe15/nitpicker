@@ -7,11 +7,13 @@ import { withDefaultAnalyzerParallelism } from '../../../../../core/diff/executi
 import { copyGitTemplate } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
+const GIT_TIMEOUT_MS = 30_000;
 
 export function git(root, ...args) {
   return execFileSync('git', args, {
     cwd: root,
     env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
+    timeout: GIT_TIMEOUT_MS,
   });
 }
 

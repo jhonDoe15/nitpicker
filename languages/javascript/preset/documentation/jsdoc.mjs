@@ -216,20 +216,20 @@ export const jsdocOptionSchema = [
   { type: 'object', properties: { jsdoc: { type: 'boolean' } }, additionalProperties: false },
 ];
 
-function jsdocTagVisitor(context, selectTags, messageId) {
+function jsdocTagVisitor(context, selectTags, { messageId, data }) {
   return {
     Program() {
       for (const comment of context.sourceCode.getAllComments().filter(isJsdocBlock)) {
         if (selectTags(parseJsdoc(comment.value).tags).length > 0) {
-          context.report({ loc: comment.loc, messageId });
+          context.report({ loc: comment.loc, messageId, data });
         }
       }
     },
   };
 }
 
-export function withJsdoc(context, visitors, { selectTags, messageId }) {
+export function withJsdoc(context, visitors, { selectTags, messageId, data }) {
   return context.options[0]?.jsdoc === true
-    ? { ...visitors, ...jsdocTagVisitor(context, selectTags, messageId) }
+    ? { ...visitors, ...jsdocTagVisitor(context, selectTags, { messageId, data }) }
     : visitors;
 }

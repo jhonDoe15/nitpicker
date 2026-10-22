@@ -13,6 +13,10 @@ import { tmpdir } from 'node:os';
 import { runCli } from '../../../../../core/cli.mjs';
 import { fileURLToPath } from 'node:url';
 
+const LOCAL_COMMAND_TIMEOUT_MS = 30_000;
+const PROVISIONING_TIMEOUT_MS = 120_000;
+const UV_PROVISIONING_COMMANDS = new Set(['lock', 'sync', 'pip']);
+
 export const pythonE2eEnabled = process.env.NITPICKER_PYTHON_E2E === '1';
 
 export const fixture = path.resolve(
@@ -31,7 +35,16 @@ const gitEnvironment = {
 };
 
 export function command(cwd, program, args) {
-  const result = spawnSync(program, args, { cwd, encoding: 'utf8', env: gitEnvironment });
+  const timeout =
+    program === 'uv' && UV_PROVISIONING_COMMANDS.has(args[0])
+      ? PROVISIONING_TIMEOUT_MS
+      : LOCAL_COMMAND_TIMEOUT_MS;
+  const result = spawnSync(program, args, {
+    cwd,
+    encoding: 'utf8',
+    env: gitEnvironment,
+    timeout,
+  });
   if (result.status !== 0) {
     throw new Error(`${program} ${args.join(' ')} failed: ${result.stderr}${result.stdout}`);
   }
@@ -55,13 +68,13 @@ export function commitBranch(root, name, files) {
   git(root, 'commit', '-q', '-m', name);
 }
 
-export function gate(root, branch, extra = []) {
+export function gate(root, branch, { extra = [], environment = {} } = {}) {
   git(root, 'checkout', '-q', branch);
   const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-out-'));
   const output = { text: '' };
   const exitCode = runCli({
     arguments_: ['--base', 'main', '--output', reports, ...extra],
-    environment: { NO_COLOR: '1' },
+    environment: { NO_COLOR: '1', ...environment },
     currentProjectRoot: root,
     stdout: {
       write: (value) => {
