@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { lifecycleArgs, readReactor, usesSpring } from './maven-project.mjs';
+import { lifecycleArgs, readReactor, runsArchRules, usesSpring } from './maven-project.mjs';
 
 const roots = [];
 
@@ -481,5 +481,18 @@ describe('usesSpring', () => {
       usesSpring(classpaths('spring-web-6.2.10.jar', 'spring-boot-starter.jar.sha1')),
       usesSpring(classpaths()),
     ]).toEqual([false, false]);
+  });
+});
+
+describe('runsArchRules', () => {
+  const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
+
+  it('is true for Spring and for jmolecules-ddd on the main compile classpath', () => {
+    expect([
+      runsArchRules(classpaths('spring-context-6.2.10.jar')),
+      runsArchRules(classpaths('jmolecules-ddd-2.0.1.jar')),
+      runsArchRules(classpaths('jmolecules-layered-architecture-2.0.1.jar')),
+      runsArchRules(classpaths()),
+    ]).toEqual([true, true, false, false]);
   });
 });
