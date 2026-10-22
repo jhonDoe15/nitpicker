@@ -41,8 +41,6 @@ describe('repeatedStringLiterals', () => {
     ['annotation arguments', repeat('@Table(name = "orders_table")\nclass A')],
     ['annotation arrays', repeat('@Roles(["order-admin"])\nclass A')],
     ['file annotations', repeat('@file:Suppress("order-admin")')],
-    ['constant declarations', repeat('const val A: String = "order-admin"')],
-    ['private constant declarations', repeat('private const val A = "order-admin"')],
     ['named arguments', repeat('val a = field(label = "order-admin")')],
     ['named arguments on a new line', repeat('val a = field(\n  code = "order-admin")')],
     ['map keys', repeat('val a = mapOf("order-admin" to 1)')],
@@ -53,6 +51,13 @@ describe('repeatedStringLiterals', () => {
     ['bundle keys', repeat('val a = getString("order.title")')],
     ['named translation keys', repeat('val a = t(key = "order.title")')],
     ['gettext keys', repeat('val a = gettext("order.title")')],
+    ['encodings', repeat('val a = "utf-8"') + '\nval b = "latin-1"\nval c = "utf-16"'],
+    ['HTTP methods', repeat('val a = "DELETE"')],
+    ['MIME types', repeat('val a = "application/json"')],
+    ['argparse actions', repeat('val a = "store_true"')],
+    ['expression keys in a template', repeat('val a = "id: ${row["order_id"]} "')],
+    ['named arguments in a template', repeat('val a = "${fmt(style = "compact-style")}"')],
+    ['nested template keys', repeat('val a = "x ${y("t ${row["order_id"]}")}"')],
   ])('passes %s', (_name, source) => {
     expect(lines(source)).toEqual([]);
   });
@@ -111,6 +116,65 @@ describe('repeatedStringLiterals', () => {
     ].join('\n');
 
     expect(lines(source)).toEqual([3, 4]);
+  });
+
+  it('counts a constant declaration, so repeating the literal beside it fails', () => {
+    const source = 'const val A = "order-admin"\nval b = "order-admin"\nval c = "order-admin"\n';
+
+    expect(lines(source)).toEqual([3]);
+  });
+
+  it('counts labels and results written on one line', () => {
+    const source = [
+      'fun f(s: String) = when (s) { "a" -> "pending"; "b" -> "pending"; else -> "pending" }',
+      'val x = listOf("order-admin", "order-admin", when (s) { "order-admin" -> 1 }, "order-admin")',
+    ].join('\n');
+
+    expect(lines(source)).toEqual([1, 2]);
+  });
+
+  it('does not take code before a one-line when for its label', () => {
+    const source = [
+      'val a = "pending"; val b = "pending"; val c = when (s) { "x" -> 1; else -> "pending" }',
+    ].join('\n');
+
+    expect(lines(source)).toEqual([1]);
+  });
+
+  it('keeps a trailing-comma walk inside the when body', () => {
+    const source = [
+      'val p = Pair(',
+      '  "order-admin",',
+      '  when (s) {',
+      '    "a" -> 1',
+      '    else -> 2',
+      '  }',
+      ')',
+      'val q = listOf("order-admin", "order-admin")',
+    ].join('\n');
+
+    expect(lines(source)).toEqual([8]);
+  });
+
+  it.each([
+    ['this@Outer', 'val a = this@Outer.find("order-admin")'],
+    ['super@Base', 'val a = super@Base.find("order-admin")'],
+    ['a labeled return', 'val a = xs.forEach { return@forEach }.also { find("order-admin") }'],
+  ])('does not take %s for an annotation', (_name, line) => {
+    expect(lines([line, line, line].join('\n'))).toEqual([3]);
+  });
+
+  it('stays quick on a file of thousands of lines', () => {
+    const source = Array.from(
+      { length: 5000 },
+      (_, index) =>
+        `val value${String(index)} = lookup("key-${String(index % 40)}", when (x) { "a" -> 1; else -> 2 })`,
+    ).join('\n');
+    const started = performance.now();
+    const reported = repeatedStringLiterals(scanKotlinSource(source));
+
+    expect(reported.length).toBeGreaterThan(0);
+    expect(performance.now() - started).toBeLessThan(1500);
   });
 
   it('counts annotation-looking text that is not an annotation call', () => {

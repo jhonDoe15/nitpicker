@@ -65,6 +65,8 @@ export const ONE_WAY_RULES = [
   },
 ].map((rule) => ({ ...rule, id: `detekt.${rule.ruleset}.${rule.name}` }));
 
+export const DISABLED_DETEKT_RULES = ['detekt.complexity.StringLiteralDuplication'];
+
 export const SUPPRESSION_RULE = 'inline-suppression';
 export const TEST_ASSERTION_RULE = 'test-without-assertion';
 

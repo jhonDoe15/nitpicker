@@ -1,44 +1,42 @@
+import {
+  DISCRIMINANT_KEYS,
+  MAXIMUM_USES,
+  MINIMUM_LENGTH,
+  TRANSLATION_CALLS,
+  isIdiomaticText,
+} from '../../../../../../shared/literals/repeated-literal-exemptions.mjs';
 import { braceDepths, closingIndex } from '../kotlin-source.mjs';
 
-const MINIMUM_LENGTH = 5;
-const MAXIMUM_USES = 2;
 const SHOWN_LENGTH = 30;
+const BEFORE_WINDOW = 300;
+const AFTER_WINDOW = 100;
 const ALPHANUMERIC = /[A-Za-z0-9]/;
-const ANNOTATION = /@(?:[A-Za-z_]\w*:)?[A-Za-z_][\w.]*\s*\(/g;
+const ANNOTATION = /(?<![\w`])@(?:[A-Za-z_]\w*:)?[A-Za-z_][\w.]*\s*\(/g;
 const WHEN_SUBJECT = /\bwhen\s*\(/g;
-const ARROW = /->/g;
-const TRANSLATION_CALLS = [
-  '_',
-  '__',
-  '_t',
-  't',
-  'translate',
-  'formatMessage',
-  'getMessage',
-  'getString',
-  'getTranslations',
-  'getFixedT',
-  'useTranslation',
-  'useTranslations',
-  'gettext',
-  'ngettext',
-  'pgettext',
-];
+const WHEN_BODY = /\s*\{/y;
+const MARKS = /->|;/g;
+const DISCRIMINANTS = new Set(DISCRIMINANT_KEYS);
+const TRANSLATION_NAMES = TRANSLATION_CALLS.map((name) => name.replaceAll('$', String.raw`\$`));
 const TRANSLATION_KEY = new RegExp(
-  String.raw`(?<![\w$])(?:${TRANSLATION_CALLS.join('|')})\s*\(\s*(?:\w+\s*=\s*)?$`,
+  String.raw`(?<![\w$])(?:${TRANSLATION_NAMES.join('|')})\s*\(\s*(?:\w+\s*=\s*)?$`,
 );
-const CONSTANT_DECLARATION = /\bconst\s+val\s+\w+(?:\s*:\s*[\w.<>?]+)?\s*=\s*$/;
 const NAMED_ARGUMENT = /[(,]\s*\w+\s*=\s*$/;
 const PAIR_KEY = /^\s+to\s/;
 const PAIR_VALUE = /\bto\s+$/;
 const SUBSCRIPT_OPEN = /[\w)\]]\s*\[\s*$/;
 const SUBSCRIPT_CLOSE = /^\s*\]/;
-const DISCRIMINANT_KEYS = new Set(['type', 'kind', 'tag', 'variant']);
-
 const ADVICE =
   'Name it once as a constant (`private const val NAME = "..."`) and use the constant.';
 
-export const REPEATED_STRING_MESSAGE = `A string is repeated three times or more in the file. ${ADVICE}`;
+function repeatedMessage(subject) {
+  return `${subject} is repeated three times or more in the file. ${ADVICE}`;
+}
+
+export const REPEATED_STRING_MESSAGE = repeatedMessage('A string');
+
+function lineStart(code, offset) {
+  return code.lastIndexOf('\n', offset - 1) + 1;
+}
 
 function annotationRanges(code) {
   return [...code.matchAll(ANNOTATION)].map(({ index, 0: text }) => ({
@@ -47,75 +45,89 @@ function annotationRanges(code) {
   }));
 }
 
-function lineStart(code, offset) {
-  return code.lastIndexOf('\n', offset - 1) + 1;
-}
-
-function labelStart(code, arrow) {
-  const arrowLine = lineStart(code, arrow);
-  const earlier = code.slice(0, arrowLine).split('\n').slice(0, -1).toReversed();
-  let start = arrowLine;
-  for (const line of earlier) {
-    if (!line.trimEnd().endsWith(',')) {
-      break;
-    }
-    start -= line.length + 1;
-  }
-  return start;
-}
-
 function whenBodies(code) {
   return [...code.matchAll(WHEN_SUBJECT)].flatMap(({ index, 0: text }) => {
-    const afterSubject = closingIndex(code, index + text.length - 1) + 1;
-    const open = /^\s*\{/.exec(code.slice(afterSubject));
-    return open === null ? [] : [{ open: afterSubject + open[0].length - 1 }];
+    WHEN_BODY.lastIndex = closingIndex(code, index + text.length - 1) + 1;
+    const open = WHEN_BODY.exec(code);
+    return open === null ? [] : [WHEN_BODY.lastIndex - 1];
+  });
+}
+
+function continuedLabelStart(code, start, floor) {
+  if (start <= floor || code[start - 1] !== '\n') {
+    return start;
+  }
+  const previous = lineStart(code, start - 1);
+  if (
+    previous < floor ||
+    !code
+      .slice(previous, start - 1)
+      .trimEnd()
+      .endsWith(',')
+  ) {
+    return start;
+  }
+  return continuedLabelStart(code, previous, floor);
+}
+
+function branchLabels(code, depths, open) {
+  const bodyDepth = depths[open + 1];
+  const marks = [...code.slice(open, closingIndex(code, open)).matchAll(MARKS)]
+    .map(({ index, 0: text }) => ({ at: open + index, text }))
+    .filter(({ at }) => depths[at] === bodyDepth);
+  let floor = open + 1;
+  return marks.flatMap(({ at, text }) => {
+    if (text === ';') {
+      floor = at + 1;
+      return [];
+    }
+    const from = continuedLabelStart(code, Math.max(lineStart(code, at), floor), floor);
+    floor = at + 2;
+    return [{ from, to: at }];
   });
 }
 
 function labelRanges(code) {
   const depths = braceDepths(code);
-  return whenBodies(code).flatMap(({ open }) => {
-    const close = closingIndex(code, open);
-    return [...code.slice(open, close).matchAll(ARROW)]
-      .map(({ index }) => open + index)
-      .filter((arrow) => depths[arrow] === depths[open + 1])
-      .map((arrow) => ({ from: labelStart(code, arrow), to: arrow }));
-  });
+  return whenBodies(code).flatMap((open) => branchLabels(code, depths, open));
 }
 
-function within(ranges, offset) {
-  return ranges.some(({ from, to }) => offset >= from && offset <= to);
+function exemptMask(code) {
+  const mask = new Uint8Array(code.length + 1);
+  for (const { from, to } of [...annotationRanges(code), ...labelRanges(code)]) {
+    mask.fill(1, from, to + 1);
+  }
+  return mask;
 }
 
-function discriminantValue(scanned, before) {
+function isDiscriminantValue(before, windowStart, literalsByEnd) {
   const pair = PAIR_VALUE.exec(before);
   if (pair === null) {
     return false;
   }
-  const key = scanned.literals.find(
-    ({ end }) => end === before.slice(0, pair.index).trimEnd().length,
-  );
-  return key !== undefined && DISCRIMINANT_KEYS.has(key.text);
+  const keyEnd = windowStart + before.slice(0, pair.index).trimEnd().length;
+  return DISCRIMINANTS.has(literalsByEnd.get(keyEnd)?.text);
 }
 
-function isNamedForm(scanned, literal, ranges) {
-  const before = scanned.code.slice(0, literal.start);
-  const after = scanned.code.slice(literal.end);
+function isNamedForm(literal, { code, mask, literalsByEnd }) {
+  if (mask[literal.start] === 1) {
+    return true;
+  }
+  const windowStart = Math.max(0, literal.start - BEFORE_WINDOW);
+  const before = code.slice(windowStart, literal.start);
+  const after = code.slice(literal.end, literal.end + AFTER_WINDOW);
   return (
-    within(ranges.annotations, literal.start) ||
-    within(ranges.labels, literal.start) ||
     TRANSLATION_KEY.test(before) ||
-    CONSTANT_DECLARATION.test(before) ||
     NAMED_ARGUMENT.test(before) ||
     PAIR_KEY.test(after) ||
     (SUBSCRIPT_OPEN.test(before) && SUBSCRIPT_CLOSE.test(after)) ||
-    discriminantValue(scanned, before)
+    isDiscriminantValue(before, windowStart, literalsByEnd)
   );
 }
 
-function isCountable(literal) {
+function isCountable({ text, template }) {
   return (
-    !literal.template && literal.text.length >= MINIMUM_LENGTH && ALPHANUMERIC.test(literal.text)
+    !template && text.length >= MINIMUM_LENGTH && ALPHANUMERIC.test(text) && !isIdiomaticText(text)
   );
 }
 
@@ -125,11 +137,18 @@ function shown(text) {
 }
 
 export function repeatedStringLiterals(scanned) {
-  const ranges = { annotations: annotationRanges(scanned.code), labels: labelRanges(scanned.code) };
+  const code = scanned.contextCode;
+  const context = {
+    code,
+    mask: exemptMask(code),
+    literalsByEnd: new Map(scanned.literals.map((literal) => [literal.end, literal])),
+  };
   const uses = new Map();
   for (const literal of scanned.literals) {
-    if (isCountable(literal) && !isNamedForm(scanned, literal, ranges)) {
-      uses.set(literal.text, [...(uses.get(literal.text) ?? []), literal]);
+    if (isCountable(literal) && !isNamedForm(literal, context)) {
+      const sameText = uses.get(literal.text) ?? [];
+      sameText.push(literal);
+      uses.set(literal.text, sameText);
     }
   }
   return [...uses.entries()].flatMap(([text, literals]) =>
@@ -137,7 +156,7 @@ export function repeatedStringLiterals(scanned) {
       rule: 'RepeatedStringLiteral',
       offset: literal.start,
       subject: text,
-      message: `The string "${shown(text)}" is repeated three times or more in the file. ${ADVICE}`,
+      message: repeatedMessage(`The string "${shown(text)}"`),
     })),
   );
 }

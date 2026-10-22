@@ -764,11 +764,14 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `BaseModel`, `BaseSettings` or `RootModel` anywhere (v1 `Config` and `Extra.allow` too).
 - `repeated-string-literal` counts a string of five characters or more (with a letter or digit) used
   three times or more in a file (not tests, not generated migrations) and reports each use from the
-  third on. Annotations, f-string parts, keyword arguments, dictionary keys, subscript keys,
-  `match` patterns, docstrings and bare strings, `Literal[...]` subscripts, `__all__` and class-body
-  lists, translation calls (`_`, `gettext`, `t`, ...) and idiomatic text (encodings, HTTP methods,
-  argparse actions, MIME types, time formats) are not counted. The threshold, minimum length and
-  test exclusion are the same as the TypeScript, Java and Kotlin rules; the message ends with the
+  third on. Not counted: annotations, f-string parts, keyword arguments (Kotlin exempts named
+  arguments the same way; TypeScript and Java have none), dictionary keys, the value under a
+  `type`/`kind`/`tag`/`variant` key, subscript keys, `match` patterns, docstrings and bare strings,
+  `Literal[...]` subscripts, `__all__` and class-body lists, the first argument of a translation or
+  message-key call, and idiomatic text (encodings, HTTP methods, argparse actions, MIME types, time
+  formats). The minimum length, the number of allowed uses and those lists are defined once in
+  [`shared/literals/repeated-literal-exemptions.mjs`](../shared/literals/repeated-literal-exemptions.mjs);
+  `literal-exemptions.test.mjs` fails when `literals.py` drifts from it. The message ends with the
   `exceptions` route for the rule like every other Python rule.
 - `generic-name` reports a file, a folder or a top-level class whose last word is `util`, `utils`,
   `helper`, `helpers`, `manager`, `common`, `misc` and the like; a class that extends a type with the
