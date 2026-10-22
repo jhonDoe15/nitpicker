@@ -5,7 +5,9 @@ import {
   fixturePath,
   kotlinRuleCases,
 } from '../../kotlin/rules/test-support/kotlin-rule-cases.mjs';
-import { SUPPRESSION_RULE, addOneWayHint } from '../../kotlin/rules/kotlin-rules.mjs';
+import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
+import { withKotlinRuleMessage } from '../../kotlin/rules/kotlin-messages.mjs';
+import { SUPPRESSION_RULE } from '../../kotlin/rules/kotlin-rules.mjs';
 import {
   detektFindingsOf,
   fromTool,
@@ -14,8 +16,6 @@ import {
   summarize,
 } from '../test-support/kotlin-e2e-project.mjs';
 
-const FORBIDDEN_EXCEPTION =
-  ' To allow it on specific paths, add an "exceptions" entry for rule detekt.style.ForbiddenMethodCall in nitpicker.config.json.';
 const RUN_BLOCKING =
   'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. In a test, use `runTest`.';
 const RUN =
@@ -43,10 +43,12 @@ export function defineBannedCases(fixture, runWithPolicy) {
       const [finding] = detektFindingsOf(result.newEnforceable, testCase).filter(
         ({ rule }) => rule === testCase.rule,
       );
-      const recorded = addOneWayHint({
+      const recorded = withKotlinRuleMessage({
         tool: 'detekt',
         rule: testCase.rule,
+        path: finding.path,
         message: expectedMessage(testCase, 'banned'),
+        classification: 'enforceable',
       });
 
       expect(finding.message).toBe(recorded.message);
@@ -112,7 +114,14 @@ export function defineHostileConfigCases(fixture, failureRule) {
         .filter(({ rule }) => rule === 'detekt.style.ForbiddenMethodCall')
         .map(({ path: file }) => path.basename(file))
         .sort(),
-    ).toEqual(['Annotated.kt', 'Printer.kt', 'Qualified.kt', 'Sleeper.kt', 'Wildcard.kt']);
+    ).toEqual([
+      'Annotated.kt',
+      'Exiter.kt',
+      'Printer.kt',
+      'Qualified.kt',
+      'Sleeper.kt',
+      'Wildcard.kt',
+    ]);
     expect(extras.some(({ rule }) => rule === 'detekt.style.UseDataClass')).toBe(false);
   });
   it('adds the forbidden calls a project lists to the preset ones, and keeps the preset reason of a call both list', () => {
@@ -122,22 +131,31 @@ export function defineHostileConfigCases(fixture, failureRule) {
         (file.includes('/demo/extras/') || file.includes('/demo/scopeRun/')),
     );
 
+    const routed = (file, message) =>
+      `${message} ${exceptionHint('detekt.style.ForbiddenMethodCall', file)}`;
+    const expected = {
+      'Annotated.kt': RUN,
+      'Banned.kt': RUN,
+      'Exiter.kt': 'The method `java.lang.System.exit` has been forbidden in the detekt config.',
+      'Printer.kt':
+        'The method `kotlin.io.println` has been forbidden: Log through the application logger (`logger.info(...)`) instead of printing to the console.',
+      'Qualified.kt': RUN_BLOCKING,
+      'Sleeper.kt':
+        'The method `java.lang.Thread.sleep` has been forbidden: Do not sleep in production code. Schedule the work (`ScheduledExecutorService`) or wait on the condition.',
+      'Wildcard.kt': RUN_BLOCKING,
+    };
+    const fileOf = (name) =>
+      name === 'Banned.kt'
+        ? 'src/main/kotlin/demo/scopeRun/Banned.kt'
+        : `src/main/kotlin/demo/extras/${name}`;
+
     expect(
       forbidden.map(({ path: file, message }) => [path.basename(file), message]).sort(),
-    ).toEqual([
-      ['Annotated.kt', `${RUN}${FORBIDDEN_EXCEPTION}`],
-      ['Banned.kt', `${RUN}${FORBIDDEN_EXCEPTION}`],
-      [
-        'Printer.kt',
-        `The method \`kotlin.io.println\` has been forbidden in the detekt config.${FORBIDDEN_EXCEPTION}`,
-      ],
-      ['Qualified.kt', `${RUN_BLOCKING}${FORBIDDEN_EXCEPTION}`],
-      [
-        'Sleeper.kt',
-        `The method \`java.lang.Thread.sleep\` has been forbidden: Use a scheduler or a test clock instead of sleeping.${FORBIDDEN_EXCEPTION}`,
-      ],
-      ['Wildcard.kt', `${RUN_BLOCKING}${FORBIDDEN_EXCEPTION}`],
-    ]);
+    ).toEqual(
+      Object.entries(expected)
+        .map(([name, message]) => [name, routed(fileOf(name), message)])
+        .sort(),
+    );
   });
   it('does not analyze a Kotlin script among the sources', () => {
     const result = fixture.hostileConfigResult;
@@ -145,7 +163,7 @@ export function defineHostileConfigCases(fixture, failureRule) {
     expect(result.newFindings.some(({ path: file }) => file.endsWith('.kts'))).toBe(false);
     expect(result.newFindings.some(({ rule }) => rule === failureRule)).toBe(false);
   });
-  it('reports the suppressions that hide a detekt or ktlint rule, however they are written, and leaves compiler warnings alone', () => {
+  it('reports the suppressions that hide a detekt or ktlint rule or a compiler warning, however they are written, and leaves other compiler diagnostics alone', () => {
     const result = fixture.hostileConfigResult;
 
     const suppressions = result.newEnforceable
@@ -153,6 +171,7 @@ export function defineHostileConfigCases(fixture, failureRule) {
       .map(({ path: file, identity }) => `${path.basename(file)} ${identity}`);
 
     expect(suppressions.toSorted()).toEqual([
+      'Compiler.kt suppress:UNCHECKED_CAST',
       'Hidden.kt suppress:UnsafeCallOnNullableType',
       'Hidden.kt suppress:ktlint:standard:indent',
     ]);

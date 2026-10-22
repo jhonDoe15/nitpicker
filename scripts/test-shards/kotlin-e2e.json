@@ -3,6 +3,7 @@
   "languages/java/adapters/kotlin-e2e/coverage-and-structure/kotlin-preset-coverage-and-structure-generated-and-init.e2e.test.mjs": 80,
   "languages/java/adapters/kotlin-e2e/coverage-and-structure/kotlin-preset-coverage-and-structure-structure.e2e.test.mjs": 127,
   "languages/java/adapters/kotlin-e2e/kotest.e2e.test.mjs": 99,
+  "languages/java/adapters/kotlin-e2e/kotlin-preset-guards.e2e.test.mjs": 100,
   "languages/java/adapters/kotlin-e2e/kotlin-preset-review-rules.e2e.test.mjs": 170,
   "languages/java/adapters/kotlin-e2e/kotlin-preset-toolchain.e2e.test.mjs": 67,
   "languages/java/adapters/kotlin-e2e/kotlin-spring-arch.e2e.test.mjs": 120,

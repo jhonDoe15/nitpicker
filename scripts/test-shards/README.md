@@ -53,8 +53,13 @@ cases in total. Their unchanged files use measured module durations from success
 and 99 seconds for Kotest ([run 39408625035](https://github.com/jhonDoe15/nitpicker/actions/runs/39408625035)).
 These measured weights are integrated into the same deterministic partition.
 
-The Kotlin-on-Maven end-to-end files add fifty-three Kotlin cases, giving 76/115 cases in total. Their
-weights in `kotlin-e2e.json` are planning estimates until a CI run records them.
+The Kotlin parity guards file and the added one-way rules bring the Kotlin total to 71 cases, and the
+Kotlin review rules file (three cases) and the added `kotlin-psi` cases to 79; the guards and review
+rules files are planning estimates of 100 and 110 seconds for their single builds.
+
+The Kotlin-on-Maven end-to-end files and the Kotlin Spring file add XXADDED Kotlin cases, giving 76/XXTOTAL cases
+in total. Their weights in `kotlin-e2e.json` are measured where a CI run recorded a file and planning
+estimates otherwise.
 
 The split-file weights remain planning estimates, not measurements of the new split. Unchanged files
 use the successful isolated-shard log totals, including hooks. Split case groups sum their

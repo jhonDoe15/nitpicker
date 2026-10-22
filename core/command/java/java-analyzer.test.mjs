@@ -8,7 +8,7 @@ import { analyzeJavaSnapshot } from '../../../languages/java/adapters/java-runne
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
 import {
-  fakeGradle,
+  fakeGradleRun,
   gradleFailureMessage,
   useGradleFixtures,
 } from './test-support/java-cli-harness.mjs';
@@ -52,7 +52,14 @@ describe('Kotlin analyzer', () => {
     const invocation = analyzer.createInvocation({ projectRoot: '/project', toolRoot: '/tool' });
 
     expect(analyzer.name).toBe('kotlin');
-    expect(analyzer.reportedTools).toEqual([...JAVA_TOOLS, 'detekt', 'ktlint', 'ktfmt']);
+    expect(analyzer.reportedTools).toEqual([
+      ...JAVA_TOOLS,
+      'detekt',
+      'ktlint',
+      'ktfmt',
+      'kotlin-source',
+      'kotlinc',
+    ]);
     expect(invocation.args.slice(-2)).toEqual(['--preset', 'kotlin']);
     expect(createJavaAnalyzer().name).toBe('java');
     expect(createJavaAnalyzer().reportedTools).not.toContain('detekt');
@@ -62,7 +69,7 @@ describe('Kotlin analyzer', () => {
     writeFiles(root, { GRADLE_FAIL: 'detekt crashed\n' });
 
     const { findings } = analyzeJavaSnapshot(root, {
-      gradle: fakeGradle,
+      ...fakeGradleRun,
       policy: { preset: 'kotlin' },
     });
 
@@ -86,7 +93,7 @@ describe('a build without a project that applies the plugin', () => {
     const root = temporaryRoot('nitpicker-no-reports-');
     writeFiles(root, { NO_REPORTS: '' });
 
-    const { findings } = analyzeJavaSnapshot(root, { gradle: fakeGradle, policy: { preset } });
+    const { findings } = analyzeJavaSnapshot(root, { ...fakeGradleRun, policy: { preset } });
 
     expect(findings).toEqual([
       {
@@ -135,7 +142,7 @@ describe('Java analyzer', () => {
     const root = temporaryRoot('nitpicker-java-unit-');
     writeFiles(root, { GRADLE_FAIL: 'tool crashed\n' });
 
-    const { findings } = analyzeJavaSnapshot(root, { gradle: fakeGradle });
+    const { findings } = analyzeJavaSnapshot(root, { ...fakeGradleRun });
 
     expect(findings).toEqual([
       {
@@ -161,7 +168,7 @@ describe('Gradle failure diagnostics', () => {
       const root = temporaryRoot('nitpicker-gradle-diagnostic-');
       writeFiles(root, { GRADLE_FAIL: stderr, GRADLE_STDOUT: stdout });
 
-      const { findings } = analyzeJavaSnapshot(root, { gradle: fakeGradle });
+      const { findings } = analyzeJavaSnapshot(root, { ...fakeGradleRun });
       const message = findings[0].message;
       const log = /Full Gradle log: ([^\n]+)/u.exec(message)?.[1];
       try {
