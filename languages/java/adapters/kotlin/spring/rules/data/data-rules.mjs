@@ -1,12 +1,12 @@
 import {
-  FLUSHES,
+  flushCallNames,
   functionContexts,
   insideIteration,
   insideLoopWithoutClear,
   nearestLoopClears,
   persistenceCalls,
   repositoryTargets,
-  WRITES,
+  writeCallNames,
 } from './persistence-calls.mjs';
 import { defineRule, hitOn, memberSymbolOf } from '../rule-support.mjs';
 
@@ -24,7 +24,7 @@ const saveInLoop = defineRule(
   'Do not save or delete one entity per loop iteration. Collect the entities and call saveAll or deleteAll once.',
   (file, project) =>
     callHits(file, project, {
-      names: WRITES,
+      names: writeCallNames(),
       flagged: (context, call) =>
         call.reference
           ? insideIteration(context, call)
@@ -37,7 +37,7 @@ const noFlush = defineRule(
   'Do not flush by hand. Let the transaction write changes at commit; an early flush defeats JDBC batching and hides ordering bugs.',
   (file, project) =>
     callHits(file, project, {
-      names: FLUSHES,
+      names: flushCallNames(),
       flagged: (context, call) => !call.reference && !nearestLoopClears(context, call),
     }),
 );

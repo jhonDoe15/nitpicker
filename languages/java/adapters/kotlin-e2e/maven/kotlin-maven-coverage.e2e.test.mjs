@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../../adapters/java-diff.mjs';
-import { analyzeJavaSnapshot } from '../../../adapters/java-runner.mjs';
+import { collectJavaFindings } from '../../java-diff.mjs';
+import { analyzeJavaSnapshot } from '../../java-runner.mjs';
 import {
   BROKEN,
   GENERATED,
@@ -12,13 +12,8 @@ import {
   OFFSET,
   SPREAD,
   SPREAD_TEST,
-} from '../../../adapters/kotlin-e2e/test-support/kotlin-branch-coverage-data.mjs';
-import {
-  BOOTER,
-  BOOTER_TEST,
-  BOX_TEST,
-  boxes,
-} from '../../../adapters/kotlin-e2e/test-support/kotlin-initializer-data.mjs';
+} from '../test-support/kotlin-branch-coverage-data.mjs';
+import { BOOTER, BOOTER_TEST, BOX_TEST, boxes } from '../test-support/kotlin-initializer-data.mjs';
 import {
   COMBINE,
   COMBINE_TEST,
@@ -40,23 +35,25 @@ import {
   clonedClass,
   stabilityClass,
   stabilityFiles,
-} from '../../../adapters/kotlin-e2e/test-support/kotlin-structure-data.mjs';
+} from '../test-support/kotlin-structure-data.mjs';
 import {
   commitBranch,
   commitFromBranch,
   commitFromStructureBase,
-  mavenDiffOf,
   fromTool,
   git,
   initializeMavenProject,
-  maven,
   kotlinE2eEnabled,
   kotlinPolicy,
   kotlinSources,
+  mavenDiffRunner,
   onlyTools,
   removeProject,
   rulesOf,
 } from './test-support/kotlin-maven-project.mjs';
+
+const maven = process.env.NITPICKER_MAVEN;
+const mavenDiffOf = mavenDiffRunner(maven);
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structure', () => {
   let project;

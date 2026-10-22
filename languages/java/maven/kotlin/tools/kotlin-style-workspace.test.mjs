@@ -40,8 +40,10 @@ describe('withStyleWorkspace', () => {
     withStyleWorkspace({ module, options, files: [source] }, ({ cwd, defaultsFile }) => {
       seen = { cwd, defaultsFile };
       expect(readFileSync(path.join(cwd, 'src/main/kotlin/A.kt'), 'utf8')).toBe('class A\n');
-      expect(readFileSync(path.join(cwd, '.editorconfig'), 'utf8')).toContain('indent_size = 4');
-      expect(readFileSync(defaultsFile, 'utf8')).toContain('indent_size = 2');
+      expect(readFileSync(path.join(cwd, '.editorconfig'), 'utf8')).toBe(
+        '[*.kt]\nindent_size = 4\n',
+      );
+      expect(readFileSync(defaultsFile, 'utf8')).toBe('[*.{kt,kts}]\nindent_size = 2\n');
       expect(path.basename(path.dirname(cwd))).toBe('service');
     });
 

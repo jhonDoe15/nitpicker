@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { childAt, childrenAt } from '../../../../shared/ingest/common.mjs';
+import { jdkRequirements } from '../configuration/toolchain-jdk.mjs';
 import { executionsOf, goalsOf, pluginsOf, textAt } from '../configuration/pom-elements.mjs';
 
 const KOTLIN_PLUGIN = 'org.jetbrains.kotlin:kotlin-maven-plugin';
@@ -61,6 +62,7 @@ export function kotlinRoots(project, module) {
     return undefined;
   }
   return {
+    jdkToolchain: jdkRequirements(project),
     sourceRoots: compiledRoots(
       module,
       configuredDirectories(plugin, MAIN_GOALS, { pluginLevel: true }),

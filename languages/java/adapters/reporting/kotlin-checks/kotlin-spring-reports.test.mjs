@@ -6,11 +6,11 @@ import {
   projectWithKotlinReports,
   removeTemporaryProjects,
   rootReports,
-} from './test-support/kotlin-report-project.mjs';
+} from '../test-support/kotlin-report-project.mjs';
 
 afterEach(removeTemporaryProjects);
 
-const fixture = path.resolve(import.meta.dirname, '../fixtures/kotlin-spring');
+const fixture = path.resolve(import.meta.dirname, '../../fixtures/kotlin-spring');
 
 function projectWithSyntax(manifest) {
   const root = projectWithKotlinReports({

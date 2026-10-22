@@ -3,12 +3,20 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readPinnedTools } from '../../builds/java-build.mjs';
+import { forbiddenMethodsOf } from '../../adapters/kotlin/detekt/detekt-lists.mjs';
 import { kotlinSetup } from './kotlin-options.mjs';
 
 const roots = [];
 const pinned = readPinnedTools();
+const NITPICKER_DETEKT = path.resolve(import.meta.dirname, '../../detekt/nitpicker-detekt.yml');
 const KTLINT_POM = pomWith('ktlint-maven-plugin');
 const KTFMT_POM = pomWith('ktfmt-maven-plugin', '<style>KOTLINLANG</style>');
+
+const formatFacts = ({ formatter, ktfmtStyle, ktfmtEditorconfig }) => ({
+  formatter,
+  ktfmtStyle,
+  ktfmtEditorconfig,
+});
 
 function pomWith(artifactId, configuration = '') {
   const body = `<artifactId>${artifactId}</artifactId><configuration>${configuration}</configuration>`;
@@ -71,14 +79,15 @@ describe('kotlinSetup', () => {
   });
 
   it('follows the formatter the effective POM names, ktlint before ktfmt', () => {
-    expect(setup({ effectivePom: KTLINT_POM }).result.options).toMatchObject({
+    expect(formatFacts(setup({ effectivePom: KTLINT_POM }).result.options)).toEqual({
       formatter: 'ktlint',
       ktfmtStyle: 'meta',
       ktfmtEditorconfig: false,
     });
-    expect(setup({ effectivePom: KTFMT_POM }).result.options).toMatchObject({
+    expect(formatFacts(setup({ effectivePom: KTFMT_POM }).result.options)).toEqual({
       formatter: 'ktfmt',
       ktfmtStyle: 'kotlinlang',
+      ktfmtEditorconfig: false,
     });
     expect(setup({ effectivePom: '<name>plain</name>' }).result.options.formatter).toBe('none');
   });
@@ -93,11 +102,19 @@ describe('kotlinSetup', () => {
       policy: { kotlinFormatter: 'ktfmt', toolPrecedence: { ktfmt: ['project', 'nitpicker'] } },
     });
 
-    expect(ignored.result.options).toMatchObject({ formatter: 'ktfmt', ktfmtEditorconfig: false });
-    expect(opted.result.options).toMatchObject({ formatter: 'ktfmt', ktfmtEditorconfig: true });
-    expect(opted.result.options.style.editorconfigs.map(({ path: file }) => file)).toContain(
-      '.editorconfig',
-    );
+    expect(formatFacts(ignored.result.options)).toEqual({
+      formatter: 'ktfmt',
+      ktfmtStyle: 'meta',
+      ktfmtEditorconfig: false,
+    });
+    expect(formatFacts(opted.result.options)).toEqual({
+      formatter: 'ktfmt',
+      ktfmtStyle: 'meta',
+      ktfmtEditorconfig: true,
+    });
+    expect(opted.result.options.style.editorconfigs).toEqual([
+      { path: '.editorconfig', text: 'root = true\n\nroot = true\nindent_size = 2\n' },
+    ]);
     expect(opted.result.extraTools.map(({ name }) => name)).toEqual([
       'kotlin-compiler',
       'detekt',
@@ -116,7 +133,7 @@ describe('kotlinSetup', () => {
     expect(result.options.style.editorconfigs).toEqual([
       { path: '.editorconfig', text: 'root = true\n' },
     ]);
-    expect(result.options.style.ktlintDefaults).toContain('indent_size = 4');
+    expect(result.options.style.ktlintDefaults).toBe('[*.{kt,kts}]\nindent_size = 4\n');
   });
 
   it('layers the project detekt config when the project is opted in and merges its forbidden calls into a lists file outside the project', () => {
@@ -132,7 +149,38 @@ describe('kotlinSetup', () => {
       path.join(projectRoot, 'config/detekt/detekt.yml'),
     ]);
     expect(result.options.detektLists).toBe(path.join(work, 'detekt-lists.yml'));
-    expect(readFileSync(result.options.detektLists, 'utf8')).toContain('java.lang.Thread.sleep');
+    expect(forbiddenMethodsOf(readFileSync(result.options.detektLists, 'utf8'))).toEqual([
+      ...forbiddenMethodsOf(readFileSync(NITPICKER_DETEKT, 'utf8')),
+      { value: 'java.lang.Thread.sleep', reason: 'no sleeping' },
+    ]);
+  });
+
+  it('lays the followed conventions over the project detekt config again when the project is listed and the conventions are pinned', () => {
+    const { result, projectRoot, work } = setup({
+      files: { 'config/detekt/detekt.yml': 'style:\n  MaxLineLength:\n    maxLineLength: 140\n' },
+      policy: {
+        conventions: { 'kotlin.lineLength': 100, 'kotlin.wildcardImports': 'explicit' },
+        toolPrecedence: { detekt: ['project', 'nitpicker'] },
+      },
+    });
+
+    expect(result.options.detektLayers).toEqual([
+      path.join(work, 'followed-conventions.yml'),
+      path.join(projectRoot, 'config/detekt/detekt.yml'),
+      path.join(work, 'enforced-conventions.yml'),
+    ]);
+    expect(readFileSync(path.join(work, 'enforced-conventions.yml'), 'utf8')).toBe(
+      'style:\n  WildcardImport:\n    active: true\n  MaxLineLength:\n    maxLineLength: 100\n',
+    );
+  });
+
+  it('hands ktfmt the line length it follows', () => {
+    const { result } = setup({
+      effectivePom: KTFMT_POM,
+      policy: { conventions: { 'kotlin.lineLength': 100 } },
+    });
+
+    expect(result.options.ktfmtMaxWidth).toBe(100);
   });
 
   it('ignores the project detekt config by default', () => {

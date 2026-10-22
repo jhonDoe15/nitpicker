@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
+import {
+  readJavaFindings,
+  readProjectDuplicateFindings,
+} from '../adapters/reporting/java-reports.mjs';
 import { inModule } from './module-path.mjs';
 import { projectWideFindings } from './project-wide.mjs';
 
@@ -19,7 +22,7 @@ function readManifest(moduleDir, reportDirectory) {
   return JSON.parse(readFileSync(path.join(moduleDir, reportDirectory, 'manifest.json'), 'utf8'));
 }
 
-export function moduleReport(moduleDir, reportDirectory) {
+function moduleReport(moduleDir, reportDirectory) {
   const reportRoot = path.join(moduleDir, reportDirectory);
   const manifest = readManifest(moduleDir, reportDirectory);
   return {
@@ -36,7 +39,7 @@ function readModule(moduleDir, options) {
   }).findings;
 }
 
-function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
+export function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
   const roots = Object.fromEntries(MODULE_ROOT_LISTS.map((list) => [list, []]));
   for (const moduleDir of moduleDirs) {
     const prefix = prefixOf(projectRoot, moduleDir);
@@ -80,6 +83,10 @@ export function readModuleFindings(projectRoot, moduleDirs, options) {
   const roots = mergedRoots(projectRoot, moduleDirs, options.reportDirectory);
   return [
     ...moduleFindings,
+    ...readProjectDuplicateFindings(
+      path.join(projectRoot, options.reportDirectory),
+      options.preset,
+    ),
     ...projectWideFindings(projectRoot, {
       projects: moduleDirs.map((moduleDir) => moduleProject(projectRoot, moduleDir, options)),
       mergedRoot: path.join(projectRoot, options.reportDirectory),

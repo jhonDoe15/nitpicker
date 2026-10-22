@@ -49,8 +49,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+          cache: maven
+          cache-dependency-path: languages/java/maven/fixtures/**/pom.xml
       # Caches ~/.gradle: the Kotlin compiler, detekt, ktlint, ktfmt, PMD, SpotBugs and PIT jars the init script
-      # resolves, and the Kotlin Gradle plugin. Maven's tool jars land in ~/.m2, which a cold run downloads.
+      # resolves, and the Kotlin Gradle plugin. Maven's tool jars land in ~/.m2, which the setup-java step caches.
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.14.3

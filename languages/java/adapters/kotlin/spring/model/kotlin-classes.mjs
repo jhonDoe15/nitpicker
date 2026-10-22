@@ -32,26 +32,29 @@ function supertypesOf(source, node) {
   });
 }
 
-function memberOf(source, member, declaration) {
+function nestedShellOf(source, member, declaration) {
   switch (member.t) {
     case 'PROPERTY':
       declaration.properties.push(propertyOf(source, member, declaration));
-      break;
+      return undefined;
     case 'FUN':
       declaration.functions.push(functionOf(source, member, declaration));
-      break;
+      return undefined;
     case 'SECONDARY_CONSTRUCTOR':
       declaration.constructors.push(constructorOf(source, member, false));
-      break;
+      return undefined;
     case 'CLASS':
-    case 'OBJECT_DECLARATION':
-      declaration.nested.push(classOf(source, member, declaration));
-      break;
+    case 'OBJECT_DECLARATION': {
+      const nested = shellOf(source, member, declaration);
+      declaration.nested.push(nested);
+      return { node: member, declaration: nested };
+    }
     default:
+      return undefined;
   }
 }
 
-export function classOf(source, node, parent) {
+function shellOf(source, node, parent) {
   const modifiers = modifiersOf(node);
   const declaration = {
     node,
@@ -76,10 +79,28 @@ export function classOf(source, node, parent) {
         .map((parameter) => constructorProperty(parameter, declaration)),
     );
   }
-  kids(kid(node, 'CLASS_BODY')).forEach((member) => memberOf(source, member, declaration));
   return declaration;
 }
 
+function nestedClassesOf(source, { node, declaration }) {
+  return kids(kid(node, 'CLASS_BODY'))
+    .map((member) => nestedShellOf(source, member, declaration))
+    .filter((nested) => nested !== undefined);
+}
+
+export function classOf(source, node, parent) {
+  const root = shellOf(source, node, parent);
+  const pending = [{ node, declaration: root }];
+  for (const entry of pending) {
+    pending.push(...nestedClassesOf(source, entry));
+  }
+  return root;
+}
+
 export function flattenClasses(classes) {
-  return classes.flatMap((declaration) => [declaration, ...flattenClasses(declaration.nested)]);
+  const flat = [...classes];
+  for (const [index, declaration] of flat.entries()) {
+    flat.splice(index + 1, 0, ...declaration.nested);
+  }
+  return flat;
 }

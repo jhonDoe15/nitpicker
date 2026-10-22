@@ -20,6 +20,7 @@ export function ktfmtArguments({ module, options, files }) {
   return [
     `--${options.ktfmtStyle}-style`,
     '--dry-run',
+    ...(options.ktfmtMaxWidth === undefined ? [] : [`--max-width=${options.ktfmtMaxWidth}`]),
     ...(options.ktfmtEditorconfig ? ['--enable-editorconfig'] : []),
     ...files.map((file) => relativeTo(module.basedir, file)),
   ];
@@ -41,8 +42,8 @@ function runKtlint({ module, reportDir, tools, options, files }) {
 }
 
 function ktfmtResult({ module, tools, options, files }) {
-  const run = (cwd) =>
-    runJava({
+  function run(cwd) {
+    return runJava({
       tool: 'ktfmt',
       classpath: tools.ktfmt,
       mainClass: 'com.facebook.ktfmt.cli.Main',
@@ -50,6 +51,7 @@ function ktfmtResult({ module, tools, options, files }) {
       cwd,
       accept: (outcome) => outcome.status === 0 && !outcome.stderr.includes(KTFMT_ERROR),
     });
+  }
   return options.ktfmtEditorconfig
     ? withStyleWorkspace({ module, options, files }, ({ cwd }) => run(cwd))
     : run(module.basedir);

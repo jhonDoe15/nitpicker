@@ -6,7 +6,7 @@ import { archunitMatcher, collectTestResults, runJacocoReport, runPit } from '..
 import { copyTestResults, requireTestngRun } from '../results/maven-test-results.mjs';
 import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
-import { relativeTo } from '../kotlin/tools/kotlin-files.mjs';
+import { relativeRoots, relativeTo } from '../kotlin/tools/kotlin-files.mjs';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { writeJdepsReports } from '../../builds/jdeps-reports.mjs';
 
@@ -46,10 +46,6 @@ function runJdeps(module, reportDir) {
     testDirectory: module.testOutputDirectory,
     reportDir,
   });
-}
-
-function relativeRoots(module, roots) {
-  return roots.map((root) => relativeTo(module.basedir, root));
 }
 
 function hasJar(classpath, jar) {

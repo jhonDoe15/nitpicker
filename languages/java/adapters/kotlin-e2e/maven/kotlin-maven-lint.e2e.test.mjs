@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readFileSync, rmSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../../adapters/java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mjs';
 import {
   BAD,
   DANGER,
@@ -11,7 +11,7 @@ import {
   LEGACY_WITH_COMMENT,
   MAGIC_NUMBER_OFF_WITH_FORMATTING_RULESET,
   META,
-} from '../../../adapters/kotlin-e2e/test-support/kotlin-lint-data.mjs';
+} from '../test-support/kotlin-lint-data.mjs';
 import {
   commitBranch,
   fromTool,
@@ -23,12 +23,14 @@ import {
   kotlinSources,
   ktlintOf,
   ktlintRules,
-  maven,
-  mavenDiffOf,
+  mavenDiffRunner,
   removeProject,
   summarize,
   writeAll,
 } from './test-support/kotlin-maven-project.mjs';
+
+const maven = process.env.NITPICKER_MAVEN;
+const mavenDiffOf = mavenDiffRunner(maven);
 
 const BAD_DETEKT_FINDINGS = [
   ...Array(6).fill('detekt detekt.style.MagicNumber Bad.kt'),
@@ -50,6 +52,16 @@ const BAD_KTLINT_RULES = [
   'ktlint.standard:parameter-list-spacing',
   'ktlint.standard:statement-wrapping',
 ];
+
+const SPOTLESS_KTFMT = `<plugin>
+  <groupId>com.diffplug.spotless</groupId>
+  <artifactId>spotless-maven-plugin</artifactId>
+  <version>2.44.0</version>
+  <configuration>
+    <java><googleJavaFormat><style>GOOGLE</style></googleJavaFormat></java>
+    <kotlin><ktfmt><style>KOTLINLANG</style></ktfmt></kotlin>
+  </configuration>
+</plugin>`;
 
 const LEGACY_FINDINGS = [
   'detekt detekt.style.FunctionOnlyReturningConstant Legacy.kt',
@@ -84,6 +96,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: detekt, ktlint and k
     commitBranch(project, 'no-formatter', {
       [`${kotlinSources}/Bad.kt`]: BAD,
       '.editorconfig': null,
+      'pom.xml': readFileSync(path.join(project.root, 'pom.xml'), 'utf8').replace(
+        '</properties>',
+        '<formatter>com.facebook:ktfmt</formatter><ktlint.rules>ktlint</ktlint.rules></properties>',
+      ),
     });
     commitBranch(project, 'ktfmt', {
       [`${kotlinSources}/Bad.kt`]: BAD,
@@ -91,8 +107,8 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: detekt, ktlint and k
     });
     commitBranch(project, 'ktfmt-named', {
       'pom.xml': readFileSync(path.join(project.root, 'pom.xml'), 'utf8').replace(
-        '</properties>',
-        '<formatter>com.facebook:ktfmt</formatter></properties>',
+        '<plugins>',
+        `<plugins>${SPOTLESS_KTFMT}`,
       ),
     });
   });
@@ -155,7 +171,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: detekt, ktlint and k
     expect(fromTool(result.newEnforceable, 'jacoco')).toEqual(BAD_BRANCH_FINDINGS);
     expect(ktlintRules(result.newEnforceable)).toEqual(BAD_KTLINT_RULES);
   });
-  it('runs no format check for a project that names no formatter', () => {
+  it('runs no format check for a project that only mentions a formatter in a property', () => {
     const result = mavenDiffOf(project, 'no-formatter');
 
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_DETEKT_FINDINGS].sort());
@@ -173,7 +189,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: detekt, ktlint and k
       ['Greeter', 'GreeterTest', 'Legacy'].map((name) => `ktfmt format ${name}.kt`),
     );
   });
-  it('detects ktfmt from the effective POM when the project names it', () => {
+  it('detects ktfmt from the Spotless Kotlin step of the effective POM, next to a Java formatter', () => {
     git(project, 'checkout', '-q', 'ktfmt-named');
     const findings = collectJavaFindings(project.root, { maven, policy: kotlinPolicy });
     const formatters = new Set(

@@ -4,7 +4,7 @@ import { kids, textOf } from '../../syntax/kotlin-tree.mjs';
 import { ENTITY_MANAGER } from '../../names/spring-types.mjs';
 import { ITERABLES } from '../../names/spring-body-types.mjs';
 
-export const WRITES = new Set([
+const WRITES = new Set([
   'save',
   'saveAndFlush',
   'delete',
@@ -13,7 +13,7 @@ export const WRITES = new Set([
   'merge',
   'remove',
 ]);
-export const FLUSHES = new Set(['saveAndFlush', 'saveAllAndFlush', 'flush']);
+const FLUSHES = new Set(['saveAndFlush', 'saveAllAndFlush', 'flush']);
 const ITERATIONS = new Set([
   'forEach',
   'forEachIndexed',
@@ -64,33 +64,57 @@ function selectorName(source, selector) {
   return callee?.t === 'REFERENCE_EXPRESSION' ? textOf(source, callee) : '';
 }
 
-function isCollectionish(context, expression) {
-  if (expression === undefined) {
-    return false;
+function qualifiedStep(context, expression) {
+  const [first, , last] = kids(expression);
+  const name = selectorName(context.file.source, last);
+  if (PRODUCERS.has(name)) {
+    return { result: true };
   }
-  const { source } = context.file;
+  if (first.t === 'THIS_EXPRESSION') {
+    return { result: receiverMatches(context, { receiver: expression }, ITERABLES) };
+  }
+  return CHAINED.has(name) ? { next: first } : { result: false };
+}
+
+function collectionStep(context, expression) {
+  if (expression === undefined) {
+    return { result: false };
+  }
   if (expression.t === 'CALL_EXPRESSION') {
-    return PRODUCERS.has(selectorName(source, expression));
+    return { result: PRODUCERS.has(selectorName(context.file.source, expression)) };
   }
   if (expression.t === 'REFERENCE_EXPRESSION') {
-    return receiverMatches(context, { receiver: expression }, ITERABLES);
+    return { result: receiverMatches(context, { receiver: expression }, ITERABLES) };
   }
-  if (!['DOT_QUALIFIED_EXPRESSION', 'SAFE_ACCESS_EXPRESSION'].includes(expression.t)) {
-    return false;
+  return ['DOT_QUALIFIED_EXPRESSION', 'SAFE_ACCESS_EXPRESSION'].includes(expression.t)
+    ? qualifiedStep(context, expression)
+    : { result: false };
+}
+
+function isCollectionish(context, expression) {
+  const pending = [expression];
+  for (const current of pending) {
+    const { result, next } = collectionStep(context, current);
+    if (next === undefined) {
+      return result;
+    }
+    pending.push(next);
   }
-  const [first, , last] = kids(expression);
-  const name = selectorName(source, last);
-  return (
-    PRODUCERS.has(name) ||
-    (CHAINED.has(name) && isCollectionish(context, first)) ||
-    (first.t === 'THIS_EXPRESSION' && receiverMatches(context, { receiver: expression }, ITERABLES))
-  );
+  return false;
 }
 
 function loopClears(context, loop) {
   return callsIn(context.file.source, loop).some(
     (call) => call.name === 'clear' && receiverMatches(context, call, ENTITY_MANAGER),
   );
+}
+
+export function writeCallNames() {
+  return WRITES;
+}
+
+export function flushCallNames() {
+  return FLUSHES;
 }
 
 export function functionContexts(file) {

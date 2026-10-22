@@ -116,8 +116,8 @@ Kotlin classes (see [Mutation](#mutation-report-only-for-kotlin)), and jdeps rea
   would end the run on them. The price is that a misspelled key is not reported.
 - **Type resolution.** The task passes `--classpath` and `--jdk-home`, so rules that need types run.
   `--jdk-home` is the JDK of the project's Gradle Java toolchain (`java.toolchain`, `kotlin { jvmToolchain(17) }`)
-  when it declares one, otherwise the JDK that runs Gradle; on Maven it is `JAVA_HOME`, or the
-  JDK of the `java` on the PATH. The classpath is
+  when it declares one, otherwise the JDK that runs Gradle; on Maven it is the JDK of the build's
+  toolchain when it names one, otherwise `JAVA_HOME`, or the JDK of the `java` on the PATH. The classpath is
   the module's compile classpath, its compiled Java classes, and the Kotlin standard library that
   detekt itself embeds (2.0.21, pinned as `detektKotlin`), in place of the project's own. detekt 1.23
   cannot read the metadata of a newer standard library, and then no call to it resolves, so
@@ -293,13 +293,16 @@ detection, and every format finding names it.
 3. Otherwise `ktlint_` properties in `.editorconfig` mean ktlint.
 4. Otherwise none: no format check runs.
 
-On Maven the same search runs over the effective POM of the project (`mvn help:effective-pom`,
-lowercased, comments gone), which contains the plugins of the parent POMs and profiles of the active
-build: `ktlint` means ktlint (the `ktlint-maven-plugin`, `com.pinterest.ktlint`, an Antrun or
-exec call of the CLI), and `ktfmt` means ktfmt (`ktfmt-maven-plugin`, `com.facebook:ktfmt`,
-Spotless' `<ktfmt>` step). Both names mean ktlint, as on Gradle. The ktfmt style is the
-`<style>kotlinlang</style>` or `<style>google</style>` element (or the same word in a plugin
-configuration); no style means ktfmt's meta style, as on Gradle.
+On Maven the plugin declarations of the effective POM of the project (`mvn help:effective-pom`,
+which contains the plugins of the parent POMs and the active profiles) are read, not its text: a
+project name, a dependency or a comment that holds the word `ktlint` or `ktfmt` decides nothing.
+`ktlint` means ktlint (a plugin whose artifact is a `ktlint` one such as `ktlint-maven-plugin`, a
+Spotless `<kotlin><ktlint/></kotlin>` step, or an exec plugin that runs the `ktlint` CLI), and `ktfmt`
+means ktfmt (the same three forms with `ktfmt`). Both mean ktlint, as on Gradle. The ktfmt style is
+the `<style>` (`KOTLINLANG`, `DROPBOX`, `GOOGLE` or `META`) of the ktfmt step or plugin itself, never
+the `<style>` of another formatter such as the Java `googleJavaFormat` step; no style means the
+followed indentation decides, as on Gradle (`DROPBOX` is ktfmt's older name for the kotlinlang
+style, and `dropboxStyle()` in a Gradle build means the same).
 
 Build logic that lives in `buildSrc`, an included build or a submodule is not searched; use the
 override there.
@@ -660,24 +663,28 @@ Kotlin module when its effective POM (`mvn help:effective-pom`, parents, profile
 `pluginManagement` resolved) applies `org.jetbrains.kotlin:kotlin-maven-plugin`. A build where no
 module does is a `kotlin/maven-failure` tool error saying so.
 
-**Source roots** come from the effective POM, in this order: the `sourceDirs` of the plugin's
-`compile` and `kapt` executions for main code, those of `test-compile` and `test-kapt` for test code
-(a `sourceDirs` set on the plugin itself serves main code only), the Maven source roots, and the
-conventional `src/main/kotlin` and `src/test/kotlin`. Only directories that exist, lie inside the
-module and are not under its build directory are kept, so a generator that writes Kotlin to
+**Source roots** are the ones the build compiles, from the effective POM: the `sourceDirs` of the
+plugin's `compile` and `kapt` executions for main code, those of `test-compile` and `test-kapt` for
+test code (a `sourceDirs` set on the plugin itself serves main code only); where none are set, the
+plugin compiles the Maven source roots (`sourceDirectory`, `testSourceDirectory` and the roots
+build-helper adds), and so do these. A folder the build does not compile, such as a leftover
+`src/main/kotlin` that no `sourceDir` names, is not analyzed. A module counts as a Kotlin module
+when `org.jetbrains.kotlin:kotlin-maven-plugin` has an execution of a compile goal whose phase is not
+`none`. Only directories that exist, lie inside the module and are not under its build directory
+are kept, and of nested roots only the outermost, so a generator that writes Kotlin to
 `target/generated-sources` is neither linted nor measured, as on Gradle. `manifest.json` carries
 `sourceRoots`, `kotlinSourceRoots`, `kotlinTestSourceRoots` and `kotlinFormatter` per module, as for
 Gradle. The code is in `languages/java/maven/kotlin/` (roots, options, classes, module) and
 `languages/java/maven/kotlin/tools/` (one file per tool).
 
-| Tool               | On Maven                                                                                                                                                                                                                                                                 |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Compile and tests  | The project's own `mvn` run with the JaCoCo agent, so the Kotlin test frameworks Maven's Surefire runs (JUnit 5) work as in the Java preset. A compile error is `kotlin/maven-failure` and names the file.                                                               |
-| detekt             | Run outside Maven with the pinned jars. `--base-path` is the module directory, so paths and fingerprints match Gradle's. Exit codes 0 and 2 (findings) are accepted, as on Gradle.                                                                                       |
-| ktlint, ktfmt      | Run outside Maven with the pinned jars on the Kotlin files of the module; the formatter is detected from the effective POM (see [Format check](#format-check-ktlint-ktfmt-or-none)).                                                                                     |
-| KotlinMetrics      | The same `KotlinMetrics.java` as on Gradle, run on the pinned `kotlin-compiler-embeddable` (2.4.21) with the JDK that runs Maven. Structure limits, CRAP, and the clone and stability inputs are identical.                                                              |
-| JaCoCo, PIT, jdeps | Cover the Java and the Kotlin classes of the module together; the Kotlin handling (generated branches, report-only mutants, file modules) is the Gradle code, because it reads the reports and not the build.                                                            |
-| Java-only tools    | PMD, Checkstyle, google-java-format and Error Prone see only the `.java` files. SpotBugs runs on the classes whose `SourceFile` attribute is a `.java` file, copied to `target/nitpicker/java-classes`; the rest of the module's classes are on its auxiliary classpath. |
+| Tool               | On Maven                                                                                                                                                                                                                                                                                                         |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Compile and tests  | The project's own `mvn` run with the JaCoCo agent, so the Kotlin test frameworks Maven's Surefire runs (JUnit 5) work as in the Java preset. A compile error is `kotlin/maven-failure` and names the file.                                                                                                       |
+| detekt             | Run outside Maven with the pinned jars. `--base-path` is the module directory, so paths and fingerprints match Gradle's. Exit codes 0 and 2 (findings) are accepted, as on Gradle.                                                                                                                               |
+| ktlint, ktfmt      | Run outside Maven with the pinned jars on the Kotlin files of the module; the formatter is detected from the effective POM (see [Format check](#format-check-ktlint-ktfmt-or-none)).                                                                                                                             |
+| KotlinMetrics      | The same `KotlinMetrics.java` as on Gradle, run on the pinned `kotlin-compiler-embeddable` (2.4.21) with the JDK that runs Maven. Structure limits, CRAP, and the clone and stability inputs are identical.                                                                                                      |
+| JaCoCo, PIT, jdeps | Cover the Java and the Kotlin classes of the module together; the Kotlin handling (generated branches, report-only mutants, file modules) is the Gradle code, because it reads the reports and not the build.                                                                                                    |
+| Java-only tools    | PMD, Checkstyle, google-java-format and Error Prone see only the `.java` files. SpotBugs runs on the classes whose `SourceFile` attribute is a `.java` file (or that carry none, as with `-g:none`), copied to `target/nitpicker/java-classes`; the rest of the module's classes are on its auxiliary classpath. |
 
 **Tool jars** are resolved once per run through a generated tools project and
 `dependency:build-classpath`, from the same pinned map as Gradle (detekt 1.23.8, its Kotlin 2.0.21,
@@ -688,8 +695,10 @@ Maven Central, like the Java tools do.
 
 **detekt with type resolution.** The classpath is detekt's own Kotlin standard library (2.0.21), the
 module's Java classes (`target/nitpicker/java-classes`) and the module's compile classpath minus the project's `kotlin-stdlib`, for the reason given
-under [detekt](#detekt). `--jdk-home` is `JAVA_HOME`, or the JDK of the `java` on the PATH when it is
-unset. The config layering, the one-way rules and the `kotlin.detektConfig` override are the same
+under [detekt](#detekt). `--jdk-home` is the JDK that the build's toolchain selects (the `jdk` of a
+`maven-toolchains-plugin` configuration, or the `jdkToolchain` of `maven-compiler-plugin`, looked up
+in `~/.m2/toolchains.xml`; a toolchain that file does not list is an error), otherwise `JAVA_HOME`, or
+the JDK of the `java` on the PATH when it is unset; a run that finds no JDK home stops with an error. The config layering, the one-way rules and the `kotlin.detektConfig` override are the same
 code as on Gradle.
 
 **Mixed modules.** Kotlin and Java files in one module share the compile; Java files are linted by
@@ -698,23 +707,19 @@ Java and Kotlin, in main and test (the test classes of the module and its test c
 into detekt's type resolution). Multi-module reactors are analyzed module by module, with
 `filePrefix` set to the module folder in the findings, and a module without Kotlin (a Java-only
 module next to Kotlin ones) is analyzed exactly as in the Java preset; the project-wide steps
-(duplicates, coupling, file limits) take the merged Kotlin roots of all modules.
+(duplicates, coupling, file limits) take the merged Java and Kotlin roots of all modules. The clone
+scan runs once from the project root over those roots, one source root at a time, as on Gradle.
 
 **Failure.** A Maven failure on either snapshot (Kotlin does not compile, a test fails, a tool jar
 cannot be resolved, no `mvn` on the PATH) is one `kotlin/maven-failure` finding with classification
 `tool-error`, handled as for Gradle (see [Failure policy](#failure-policy)).
 
-**Mutation filter.** PIT runs through the Java preset's Maven PIT step on all classes, and the
-Kotlin mutants are descriptive, as on Gradle. A filter that makes them enforceable has one place to
-plug into on Maven: after PIT, only when `mutations.xml` has `SURVIVED` or `NO_COVERAGE` mutants, run
-a program from `languages/java/gradle/` on the pinned compiler with `runKotlinProgram`
-(`languages/java/maven/kotlin/tools/kotlin-programs.mjs`, the function that already runs
-`KotlinMetrics.java` and `KotlinSyntax.java`), write its facts next to the other reports in
-`target/nitpicker`, and add the generated source roots to the manifest. The reading side is the
-Gradle code.
+**Mutation.** PIT runs through the Java preset's Maven PIT step on all classes, and the Kotlin
+mutants are descriptive, as on Gradle.
 
 **Tests.** The Maven Kotlin unit tests sit next to the code (`kotlin-roots.test.mjs`,
-`kotlin-options.test.mjs`, `kotlin-classes.test.mjs`, `tools/kotlin-arguments.test.mjs`) and use the
+`kotlin-options.test.mjs`, `kotlin-classes.test.mjs`, `tools/kotlin-arguments.test.mjs`,
+`configuration/toolchain-jdk.test.mjs`) and use the
 fixture `languages/java/maven/fixtures/kotlin-single`; the real-Maven end-to-end suites are in
 [Tests](#tests).
 
@@ -746,7 +751,7 @@ KotlinSyntax.java (Kotlin PSI, parse only)  ->  <module report dir>/kotlin-synta
 ```
 
 `KotlinSyntax.java` runs only when the project uses Spring (the manifest says `spring: true`, from
-the Gradle compile classpath or the effective POM), on the pinned Kotlin compiler, and only when the
+the Gradle compile classpath or the Maven `dependency:list` of the module), on the pinned Kotlin compiler, and only when the
 module has Kotlin files. A finding has the tool `spring`, so it prints as `spring/<Rule>`, for
 example `spring/SpringConstructorInjection`, and an exception names the same: `{ "rule":
 "spring/SpringDataNoSaveInLoop", "paths": [...], "reason": "..." }`. Each message names the one
@@ -898,7 +903,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
   stability-direction violation between Kotlin packages, new and baselined. These cases share one
   head commit and one diff, and the project forces another Kotlin version onto the compiler
   configuration. It needs network access to Maven Central for the Kotlin compiler as well.
-- `languages/java/maven/kotlin/e2e/*.e2e.test.mjs`: real Maven, behind `NITPICKER_KOTLIN_E2E=1` (part of
+- `languages/java/adapters/kotlin-e2e/maven/*.e2e.test.mjs`: real Maven, behind `NITPICKER_KOTLIN_E2E=1` (part of
   `npm run test:kotlin`; `NITPICKER_MAVEN` overrides the `mvn` on the PATH). They run on the fixture
   `languages/java/maven/fixtures/kotlin-single` (the same sources as the Gradle fixture, with a
   `kotlin-maven-plugin` POM that generates `Api.kt` into `target/generated-sources`) and repeat the
@@ -910,8 +915,10 @@ fails only when it grows, and a package folder moved to a new path is matched to
   fixture on the same sources and asserts the findings are equal. Another runs the reactor
   `fixtures/kotlin-multi-module` (two Kotlin modules and a Java-only one) with a slow-test
   threshold of -1, and one runs the Kotlin Spring fixture on Maven with ArchUnit written in
-  Kotlin.
-- `languages/java/adapters/kotlin/spring/kotlin-spring.e2e.test.mjs`: the same Spring fixture on Gradle.
+  Kotlin. `kotlin-maven-build-config.e2e.test.mjs` covers what the build declares: a formatter named
+  by a Spotless step next to a Java formatter, a Java test that calls a Kotlin test helper, and a
+  folder the build does not compile.
+- `languages/java/adapters/kotlin-e2e/spring/kotlin-spring.e2e.test.mjs`: the same Spring fixture on Gradle.
 - `KotlinMetrics.java` on a fixture (units, lambda properties, package, multifile parts, byte order
   mark, parse error) is tested in the same opt-in suite, so a bump of the pinned compiler is checked
   with `npm run test:kotlin`.
@@ -945,6 +952,11 @@ fails only when it grows, and a package folder moved to a new path is matched to
 - The Kotlin Spring rules work on syntax without type resolution, so a type that is only inferred is
   not seen (see [Spring](#spring)); the Java rules' type-resolved matching is the one difference that
   cannot be closed without a Kotlin compiler analysis step.
-- On Maven the Kotlin source roots come from `kotlin-maven-plugin`'s `sourceDirs`, the POM's source
-  directory, `build-helper-maven-plugin` `add-source` roots and the conventional folders. A root
-  that a plugin adds in any other way is not read.
+- On Maven the Kotlin source roots come from `kotlin-maven-plugin`'s `sourceDirs`, else the POM's
+  source directory and `build-helper-maven-plugin` `add-source` roots, as the plugin compiles them.
+  A root that a plugin adds in any other way is not read.
+- On Maven the project's own ktlint and detekt plugins are skipped with `-Dktlint.skip` and
+  `-Ddetekt.skip` while nitpicker runs the build; a formatter plugin that uses another property
+  name still runs, and a failure of it fails the build.
+- On Maven the Kotlin metrics and syntax programs run on the JDK that runs Maven (`JAVA_HOME`), as on
+  Gradle they run on the JVM of Gradle; only detekt's `--jdk-home` follows the build's toolchain.

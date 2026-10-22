@@ -8,7 +8,7 @@ import {
   GRADLE_FILES,
   markedViolations,
   writeKotlinSpringProject,
-} from './test-support/kotlin-spring-projects.mjs';
+} from '../../kotlin/spring/test-support/kotlin-spring-projects.mjs';
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

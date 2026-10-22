@@ -15,7 +15,7 @@ export function programArguments({ program, output, module }) {
   ];
 }
 
-export function runKotlinProgram({ program, output, module, tools, pinned }) {
+function runKotlinProgram({ program, output, module, tools, pinned }) {
   runJava({
     tool: program,
     classpath: tools['kotlin-compiler'],

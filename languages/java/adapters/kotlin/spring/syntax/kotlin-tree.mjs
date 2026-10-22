@@ -8,17 +8,7 @@ export function createSource(file, rawText) {
 }
 
 export function lineOf(source, offset) {
-  let low = 0;
-  let high = source.lineStarts.length - 1;
-  while (low < high) {
-    const middle = Math.ceil((low + high) / 2);
-    if (source.lineStarts[middle] <= offset) {
-      low = middle;
-    } else {
-      high = middle - 1;
-    }
-  }
-  return low + 1;
+  return source.lineStarts.findLastIndex((start) => start <= offset) + 1;
 }
 
 export function textOf(source, node) {
@@ -35,16 +25,11 @@ export function kid(node, type) {
 }
 
 export function descendants(node, predicate = () => true) {
-  const found = [];
-  const pending = [node];
-  while (pending.length > 0) {
-    const current = pending.pop();
-    if (predicate(current)) {
-      found.push(current);
-    }
-    pending.push(...kids(current).toReversed());
+  const nodes = [node];
+  for (const [index, current] of nodes.entries()) {
+    nodes.splice(index + 1, 0, ...kids(current));
   }
-  return found;
+  return nodes.filter((current) => predicate(current));
 }
 
 export function identifierOf(source, node) {

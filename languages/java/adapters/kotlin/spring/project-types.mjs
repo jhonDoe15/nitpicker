@@ -2,8 +2,12 @@ import { REPOSITORY_ROOTS } from './names/spring-types.mjs';
 
 function qualifiedName(file, declaration) {
   const parts = [];
-  for (let current = declaration; current !== undefined; current = current.parent) {
+  const pending = [declaration];
+  for (const current of pending) {
     parts.unshift(current.name);
+    if (current.parent !== undefined) {
+      pending.push(current.parent);
+    }
   }
   return [file.packageName, ...parts].filter((part) => part !== '').join('.');
 }
@@ -30,8 +34,11 @@ function addRepositories(files, known) {
 
 export function repositoryTypesOf(files) {
   const known = new Set(REPOSITORY_ROOTS);
-  while (addRepositories(files, known)) {
-    continue;
+  const rounds = [known.size];
+  for (const size of rounds) {
+    if (addRepositories(files, known)) {
+      rounds.push(size + 1);
+    }
   }
   return known;
 }

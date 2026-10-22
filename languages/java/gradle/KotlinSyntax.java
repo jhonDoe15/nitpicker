@@ -2,14 +2,16 @@
 // (languages/java/adapters/kotlin/spring/). Run in the JDK's single-file source mode with the Kotlin
 // compiler on the class path, which parses (never compiles) the sources with the compiler's own PSI parser:
 //
-//   java -Dnitpicker.kotlinCompiler=<version> -cp <kotlin-compiler-embeddable and dependencies> KotlinSyntax.java <output.json> <projectDir> <sourceRoot>...
+//   java -Dnitpicker.kotlinCompiler=<version> -cp <kotlin-compiler-embeddable and dependencies>
+//        KotlinSyntax.java <output.json> <projectDir> <sourceRoot>...
 //
 // Output: {"files": [{"file": "<path relative to projectDir>", "tree": <node>}]} for every .kt file under the
 // source roots that mentions org.springframework, jakarta.persistence, javax.persistence or org.hibernate. A node is
 // {"t": <element type>, "s": <start offset>, "e": <end offset>, "c": [<child nodes>]}; leaves have no "c", and
-// neither do the package and import directives, whose text the reader parses. White space and comments are left out. The offsets index the file text after the byte order mark is dropped and line
-// endings are turned into \n, which is how the reader normalizes the text it slices them from. A syntax error ends
-// the run: the sources compiled, so the pinned compiler does not read them.
+// neither do the package and import directives, whose text the reader parses. White space and comments are
+// left out. The offsets index the file text after the byte order mark is dropped and line endings are turned
+// into \n, which is how the reader normalizes the text it slices them from. A syntax error ends the run: the
+// sources compiled, so the pinned compiler does not read them.
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -37,7 +39,8 @@ import org.jetbrains.kotlin.psi.KtFile;
 
 public final class KotlinSyntax {
   private static final Set<String> LEAVES = Set.of("PACKAGE_DIRECTIVE", "IMPORT_DIRECTIVE");
-  private static final List<String> MARKERS = List.of("org.springframework", "jakarta.persistence", "javax.persistence", "org.hibernate");
+  private static final List<String> MARKERS =
+      List.of("org.springframework", "jakarta.persistence", "javax.persistence", "org.hibernate");
 
   public static void main(String[] args) throws IOException {
     Path output = Path.of(args[0]);
@@ -74,7 +77,8 @@ public final class KotlinSyntax {
                 factory.createFileFromText(file.getFileName().toString(), KotlinLanguage.INSTANCE, text);
         PsiErrorElement error = PsiTreeUtil.findChildOfType(ktFile, PsiErrorElement.class);
         if (error != null) {
-          int line = text.substring(0, Math.min(error.getTextOffset(), text.length())).split("\n", -1).length;
+          int offset = Math.min(error.getTextOffset(), text.length());
+          int line = text.substring(0, offset).split("\n", -1).length;
           System.err.println(
               relative + ":" + line + ": " + error.getErrorDescription() + ". The sources compile, so the pinned"
                   + " Kotlin compiler " + System.getProperty("nitpicker.kotlinCompiler", "(unknown)")
@@ -83,7 +87,8 @@ public final class KotlinSyntax {
         }
         StringBuilder tree = new StringBuilder();
         write(ktFile.getNode(), tree);
-        entries.add("{\"file\":\"" + relative.replace("\\", "\\\\").replace("\"", "\\\"") + "\",\"tree\":" + tree + "}");
+        String name = relative.replace("\\", "\\\\").replace("\"", "\\\"");
+        entries.add("{\"file\":\"" + name + "\",\"tree\":" + tree + "}");
       }
     } finally {
       Disposer.dispose(disposable);

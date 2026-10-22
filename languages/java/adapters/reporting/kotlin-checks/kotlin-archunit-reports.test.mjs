@@ -6,7 +6,7 @@ import {
   projectWithKotlinReports,
   removeTemporaryProjects,
   rootReports,
-} from './test-support/kotlin-report-project.mjs';
+} from '../test-support/kotlin-report-project.mjs';
 
 afterEach(removeTemporaryProjects);
 

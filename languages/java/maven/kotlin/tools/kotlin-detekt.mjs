@@ -4,21 +4,28 @@ import path from 'node:path';
 import { javaCommand, runJava } from '../../maven-command.mjs';
 import { EMPTY_SARIF, kotlinFiles, lintedRoots } from './kotlin-files.mjs';
 import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
+import { toolchainJdkHome } from '../../configuration/toolchain-jdk.mjs';
 
 const DETEKT_DIRECTORY = path.resolve(GRADLE_DIRECTORY, '../detekt');
 const FINDINGS_EXIT_CODE = 2;
 const STDLIB_JAR = /^kotlin-stdlib/u;
 const JAVA_HOME_LINE = /java\.home = (.+)/u;
 
-export function jdkHome() {
-  const home = process.env.JAVA_HOME;
-  if (home !== undefined && home !== '') {
-    return home;
-  }
+function runningJdkHome() {
   const result = spawnSync(javaCommand('java'), ['-XshowSettings:properties', '-version'], {
     encoding: 'utf8',
   });
-  return JAVA_HOME_LINE.exec(`${result.stderr}${result.stdout}`)?.[1].trim();
+  const found = JAVA_HOME_LINE.exec(`${result.stderr}${result.stdout}`)?.[1].trim();
+  if (found === undefined) {
+    throw new Error(
+      'nitpicker could not find the JDK home that detekt resolves JDK types against: put a JDK on the PATH or set JAVA_HOME to it',
+    );
+  }
+  return found;
+}
+
+export function jdkHome({ jdkToolchain }, options = {}) {
+  return jdkToolchain === undefined ? runningJdkHome() : toolchainJdkHome(jdkToolchain, options);
 }
 
 export function detektClasspath({ detektStdlib, javaClassDirectories, libraries, ownOutputs }) {
@@ -51,7 +58,7 @@ export function detektArguments({ module, report, options, classpath, home }) {
     '--build-upon-default-config',
     ...['--config', configs.join(',')],
     ...['--classpath', classpath.join(path.delimiter)],
-    ...(home === undefined ? [] : ['--jdk-home', home]),
+    ...['--jdk-home', home],
   ];
 }
 
@@ -71,7 +78,7 @@ export function runDetekt({ module, reportDir, tools, classpaths, javaClassDirec
     tool: 'detekt',
     classpath: tools.detekt,
     mainClass: 'io.gitlab.arturbosch.detekt.cli.Main',
-    args: detektArguments({ module, report, options, classpath, home: jdkHome() }),
+    args: detektArguments({ module, report, options, classpath, home: jdkHome(module.kotlin) }),
     cwd: module.basedir,
     accept: (result) =>
       (result.status === 0 || result.status === FINDINGS_EXIT_CODE) && existsSync(report),

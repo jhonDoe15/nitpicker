@@ -2,19 +2,20 @@ import path from 'node:path';
 import { cpSync, existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { afterAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../../adapters/java-diff.mjs';
-import { BAD } from '../../../adapters/kotlin-e2e/test-support/kotlin-lint-data.mjs';
+import { collectJavaFindings } from '../../../java-diff.mjs';
+import { BAD } from '../../test-support/kotlin-lint-data.mjs';
 import {
   copyFixture,
   kotlinE2eEnabled,
   kotlinPolicy,
   kotlinSources,
-  maven,
   removeTree,
-} from './test-support/kotlin-maven-project.mjs';
+} from '../test-support/kotlin-maven-project.mjs';
+
+const maven = process.env.NITPICKER_MAVEN;
 
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-const adapters = path.resolve(import.meta.dirname, '../../../adapters');
+const adapters = path.resolve(import.meta.dirname, '../../..');
 const temporary = [];
 
 const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
