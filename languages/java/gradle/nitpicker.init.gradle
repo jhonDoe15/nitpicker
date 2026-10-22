@@ -298,8 +298,9 @@ allprojects {
         // PIT mutates the Java and the Kotlin classes alike; the Kotlin findings are report-only (see the Nitpicker side).
         def mutatedClassDirs = { sourceSets.main.output.classesDirs.files }
 
+        def springDeclared = nitpickerArgument('nitpicker.spring') == 'true'
         def usesSpring = {
-            sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
+            springDeclared || sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
         }
         def hasGuava = { sourceSet -> sourceSet.compileClasspath.files.any { it.name ==~ /guava-\d.*\.jar/ } }
         def hasAwaitility = { sourceSets.test.compileClasspath.files.any { it.name ==~ /awaitility-\d.*\.jar/ } }
