@@ -68,13 +68,30 @@ jobs:
           path: reports/java-e2e/
           if-no-files-found: warn
 
+  # Lists the suite without starting a JVM build: test:java must select every case its E2E flag enables,
+  # and the timing profile and the matrix above must split those files with none missing or repeated.
+  java-shard-plan:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: node scripts/test-shards/verify-e2e-shards.mjs java
+
   java:
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
-    needs: java-shard
+    needs: [java-shard-plan, java-shard]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Every Java end-to-end shard passed
+      - name: Every Java end-to-end shard passed and the shard plan holds
         env:
+          PLAN: ${{ needs.java-shard-plan.result }}
           RESULT: ${{ needs.java-shard.result }}
-        run: test "$RESULT" = success
+        run: test "$PLAN" = success && test "$RESULT" = success

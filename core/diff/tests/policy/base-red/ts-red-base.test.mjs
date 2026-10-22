@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../tooling/tool-resolution.mjs';
 import { createTypescriptProject } from './test-support/typescript-project.mjs';
 
-const enabled = process.env.NITPICKER_TYPESCRIPT_E2E === '1';
+const enabled = process.env.NITPICKER_TS_RED_BASE === '1';
 
 const PASSING_TEST =
   "import { expect, it } from 'vitest';\nimport { greet } from '../src/greeter.ts';\n\nit('greets', () => {\n  expect(greet('Ada')).toBe('Hello, Ada!');\n});\n";

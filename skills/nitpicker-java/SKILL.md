@@ -110,8 +110,8 @@ Before you change code other modules use, or fix a bug, read
 - Keep classes small: split by responsibility and prefer holding a collaborator to extending one.
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
-- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
-  a method.
+- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails, also
+  when the copy has other names and literals: extract a method.
 
 ## Tests
 
@@ -177,7 +177,9 @@ Before you change code other modules use, or fix a bug, read
   reason. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
   weaker test, to get past the gate yourself: stop and ask.
 - A violated ArchUnit rule is a finding (`archunit/<rule>`) on the offending class. Run the
-  `*ArchTest` class with the build's test task to read the full violation, and fix the code.
+  `*ArchTest` class with the build's test task to read the full violation, and fix the code. In a Spring
+  project nitpicker's own `archunit/spring-...` rules apply too; their message says what to change
+  (see [spring.md](spring.md)).
 
 ## Kotlin projects
 

@@ -196,6 +196,15 @@ loosens `process-env-access`, so the policy-change list reports it as a loosenin
 a change, like `layout.entryPoints`; the base snapshot is measured with the entry points both
 sides declare.
 
+The policy-change list also reads the project's own pytest and mutmut settings, because they shrink
+what the gate measures: `testpaths` that stop collecting a test file and an added `--ignore` or
+`--ignore-glob` in `addopts`, both counted only for files pytest collects (`python_files`), and a
+`do_not_mutate` pattern that covers production code are loosening. `-k`, `-m` and `--deselect` are
+not, because the run strips them and `uncollected-tests` reports the tests they hide (`languages/python/adapters/configuration/pytest/test-selection.mjs`). A hidden
+module that production code imports (`from legacy import feature`, followed through other hidden
+modules and parent packages) fails even under an established `exclude`. Changed `.py` files outside
+`python.sourceRoots` are named in a notice that never fails the run.
+
 The type checker is the one the project uses: `mypy` when it has a `[tool.mypy]` table (or
 `[mypy]` in `mypy.ini`, `setup.cfg` or `tox.ini`), `pyright` when it has `pyrightconfig.json` or a
 `[tool.pyright]` table (`[ tool.pyright ]` too), `basedpyright` when it has a `[tool.basedpyright]`
@@ -790,12 +799,13 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - Pytest-specific rules read the project: `uncollected-tests` applies when the test runner is
   pytest and reads the whole collection configuration from `pytest.ini`, `pyproject.toml`
   (`[tool.pytest.ini_options]`), `tox.ini` or `setup.cfg`: `python_files`, `python_classes`,
-  `python_functions`, `testpaths`, `norecursedirs`, and `--ignore`, `--ignore-glob`, `--deselect`
-  and `-k` in `addopts`; a `collect_ignore` in `conftest.py` counts as well. It reports a test
+  `python_functions`, `testpaths`, `norecursedirs`, and `--ignore`, `--ignore-glob`, `--deselect`,
+  `-k` and `-m` in `addopts`; a `collect_ignore` in `conftest.py` counts as well. It reports a test
   that pytest will not run and says why: a file that matches no `python_files` pattern, a file or
   folder excluded by `norecursedirs`, `--ignore` or `collect_ignore`, a class that matches no
   `python_classes` pattern or has an `__init__`, a function that matches no `python_functions`
-  pattern, a test deselected by `--deselect` or `-k`. For `unittest` it reports a file named like
+  pattern, a test deselected by `--deselect`, `-k` or `-m` (a `-m` expression matches marker
+  names exactly, from the function, its class and the module's `pytestmark`). For `unittest` it reports a file named like
   a test file (`tests.py`, `*_test.py`) that its default `test*.py` discovery does not find. `test-helper-in-source` reports `testing.py`, `testutils.py`,
   `fixtures.py` and the folders `testing/`, `testutils/`, `test_utils/`, `test_helpers/`,
   `test_support/`, `test_fixtures/` and `fixtures/` inside a source root.
@@ -1120,6 +1130,16 @@ the source root detection already does.
   file of the pair, and its message names both files and tells to add either one to `exclude` when
   the repetition is intended. An `exclude` glob or a `python.exceptions` entry for `duplicate-clone`
   that matches either file of the pair lifts the finding. A source root of `.` is supported.
+  A second jscpd run (100 tokens, 5 lines, `jscpd-renamed-config.json`) goes over a normalized copy
+  of the project's Python files, where names, strings, numbers and comments are one token each,
+  imports, `__all__` and literal-only lists, dicts and tuples are blanked and generated files are left
+  out, so a copy with renamed locals and changed literals is found: `duplicate-clone` with an
+  identity starting `renamed:`, the same message, lifted by the same `exclude` glob or
+  `python.exceptions` entry. It replaces a plain jscpd clone over the same two ranges and drops
+  clones made of class, field and enum member declarations only, and clones that only repeat one or
+  two statements (mapper calls, `add_argument` lists); dicts keyed by qualified names
+  (`Status.NEW: "new"`) are data. Findings are mapped back to the original lines
+  because the copy keeps every line break.
 - **Coupling.** `python -I languages/python/adapters/import-scan.py` (the project's interpreter,
   standard library only) parses every production file with `ast` and prints each file's `import`
   and `from ... import` statements, including those inside functions and `if TYPE_CHECKING:`
@@ -1403,7 +1423,7 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   pytest `addopts` (read from the first of `pytest.toml`, `.pytest.toml`, `pytest.ini`,
   `.pytest.ini`, `pyproject.toml`, `tox.ini`, `setup.cfg`, as pytest does) with `-o addopts=...`,
   and out of `PYTEST_ADDOPTS`: `-x`/`--exitfirst` (also inside `-vx`), `--maxfail`, `--sw`,
-  `--stepwise`, `--collect-only`, `--setup-only`, `--setup-plan`, `-k`, `--deselect`,
+  `--stepwise`, `--collect-only`, `--setup-only`, `--setup-plan`, `-k`, `-m`, `--deselect`,
   `--reruns`, `--only-rerun` and the other rerun and retry options, and `-p no:` for the
   plugins that collect or report results; with pytest-rerunfailures installed `-o reruns=0` is
   added. A run that collects no test is `python/no-tests-ran`, as before.
@@ -1555,10 +1575,14 @@ and CRAP rules.
   the one-way rules and `python.exceptions` end to end; `languages/python/adapters/e2e/` holds the
   basedpyright e2e (a configured and a weakened `[tool.basedpyright]` table) and the `if TYPE_CHECKING:`
   one (no stability inversion, import-linter still sees it), which share `helpers.mjs` with the preset e2e.
-- `languages/python/ruff/ruff-rules.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1` (the ruff
-  from the `PATH`, or `NITPICKER_RUFF`). Every stable `RUF` rule of the installed ruff must be
-  selected or ignored in `nitpicker-ruff.toml`, so a new stable rule fails the test until someone
-  reviews it.
+- `languages/python/ruff/ruff-rules.e2e.test.mjs` and `ruff-groups.e2e.test.mjs`: gated behind
+  `NITPICKER_PYTHON_E2E=1` and part of `npm run test:python` (the ruff from the `PATH`, or
+  `NITPICKER_RUFF`). Every stable `RUF` rule, and every stable rule of the listed groups, of the
+  installed ruff must be selected or ignored in `nitpicker-ruff.toml`, so a new stable rule fails the
+  test until someone reviews it. `adapters/configuration/python-ruff-config.e2e.test.mjs` (the
+  generated ruff config keeps the group selectors and the rules the installed ruff knows) and
+  `adapters/formatting/format-scope.e2e.test.mjs` (the formatters run isolated from the project
+  config) run in the same suite.
 - `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
   rules script, are in the npm package.
 - Slice 5 unit tests: `python-sources.test.mjs` (module naming, exclusions), `python-coupling.test.mjs`
