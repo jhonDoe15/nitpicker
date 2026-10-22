@@ -3,11 +3,9 @@ import {
   isPlainObject,
   configError,
   isNonEmptyString,
-  liftsOnlyRules,
   validateStringArray,
   validateThresholds,
   validateDuplicates,
-  validateExceptions,
   TYPESCRIPT_ONLY_KEYS,
   validateProjectRelativePath,
   validateFactRuleSettings,
@@ -18,6 +16,8 @@ import {
   PYTHON_TOP_LEVEL_EXCEPTION_RULES,
   validatePythonConfig,
 } from '../../languages/python/adapters/configuration/python-config.mjs';
+import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
+import { liftsOnlyRules, validateExceptions } from '../../shared/exceptions/validation.mjs';
 import { RULES } from '../../shared/policy.mjs';
 import { validateTools } from './tool-settings.mjs';
 import { rejectHeadBase } from './project-checks/project-config.mjs';
@@ -203,11 +203,12 @@ function exceptionRuleProblem(rule, preset) {
 }
 
 function validateProjectExceptions(exceptions, key, preset) {
-  validateExceptions(
-    exceptions,
-    key,
-    TYPESCRIPT_PRESETS.includes(preset) ? (rule) => NITPICKER_RULE_IDS.has(rule) : undefined,
-  );
+  validateExceptions(exceptions, key, {
+    preset: preset ?? 'typescript',
+    matchesOwnGlobs: TYPESCRIPT_PRESETS.includes(preset)
+      ? (rule) => NITPICKER_RULE_IDS.has(canonicalRule(rule))
+      : undefined,
+  });
 }
 
 function validateTypescriptExceptionRules(exceptions, preset) {
