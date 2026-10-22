@@ -35,4 +35,13 @@ public final class Literals {
     String first = properties.getProperty("orders.footer") + properties.getProperty("orders.footer");
     return first + properties.getProperty("orders.footer"); // violation: RepeatedStringLiteral
   }
+
+  public java.util.List<java.util.Map<String, String>> events(java.util.Map<String, String> last) {
+    last.put("kind", "order-placed");
+    last.put("customer", "first");
+    return java.util.List.of(
+        java.util.Map.of("type", "order-placed", "customer", "second"),
+        java.util.Map.of("type", "order-placed", "customer", "third"),
+        last);
+  }
 }
