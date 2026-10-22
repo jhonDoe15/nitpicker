@@ -17,7 +17,7 @@ export function failureMessagesFor({ config, filename, code }) {
   return lintFixture({ config, filename, code }).map((message) => message.message);
 }
 
-export function routedMessagesFor({ config, filename, code }) {
+function routedMessagesFor({ config, filename, code }) {
   return lintFixture({ config, filename, code }).map((message) =>
     message.ruleId === null
       ? message.message

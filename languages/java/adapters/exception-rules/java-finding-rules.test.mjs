@@ -24,22 +24,22 @@ describe('validateJavaFindingRule', () => {
   });
 
   it('names the check a Checkstyle class stands for', () => {
-    expect(() =>
+    expect(() => {
       validateJavaFindingRule(
         entry(
           'checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.AbbreviationAsWordInNameCheck',
         ),
         label,
-      ),
-    ).toThrow(
+      );
+    }).toThrow(
       '"exceptions[0].rule" names a Checkstyle check by class; findings print the check\'s name, so write "checkstyle/AbbreviationAsWordInName"',
     );
   });
 
   it('rejects a Java finding whose paths all name Kotlin sources, and accepts one that names a Java file too', () => {
-    expect(() =>
-      validateJavaFindingRule(entry('pmd/UnusedPrivateField', ['src/main/kotlin/A.kt']), label),
-    ).toThrow(
+    expect(() => {
+      validateJavaFindingRule(entry('pmd/UnusedPrivateField', ['src/main/kotlin/A.kt']), label);
+    }).toThrow(
       '"exceptions[0].rule" is a pmd finding, which is reported in .java files only: its paths name Kotlin sources',
     );
     expect(() =>

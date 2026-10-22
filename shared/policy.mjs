@@ -91,7 +91,6 @@ export const NAME_EXCEPTION_RULES = ['exports', 'types'];
 
 export const TEST_TIME_DEFAULTS = { unitTestSeconds: 5, integrationTestSeconds: 30 };
 
-/** Rules an exception lifts for a path only: such a finding has no function or declaration to name. */
 const FILE_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
