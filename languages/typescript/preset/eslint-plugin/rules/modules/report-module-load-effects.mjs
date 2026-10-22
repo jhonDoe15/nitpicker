@@ -158,7 +158,7 @@ export const rule = {
       topLevelControl: `Top-level {{kind}} executes control flow during module loading.${ENTRY_HINT}`,
       topLevelExpression: `Top-level expression executes work during module loading.${ENTRY_HINT}`,
       importTimeEffect:
-        '`{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. If it must run at import, add an exception for this rule in nitpicker.config.json.',
+        '`{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. An exception fits only when it must run at import.',
     },
   },
   create(context) {

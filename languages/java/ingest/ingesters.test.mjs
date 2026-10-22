@@ -219,18 +219,15 @@ describe('pit', () => {
     ]);
   });
 
-  it('names the equivalent-mutant cases and the exception route in a survived mutant', () => {
-    const message = (tool) =>
-      `Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for ${tool}/mutant-survived in nitpicker.config.json.`;
+  it('names the equivalent-mutant cases in a survived mutant, whichever tool names it', () => {
+    const message =
+      'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.';
     const named = ingestPit(fixture('pit-mutations.xml'), {
       tool: 'custom',
       resolvePath: resolveMainPath,
     });
 
-    expect([findings[0].message, named.findings[0].message]).toEqual([
-      message('pit'),
-      message('custom'),
-    ]);
+    expect([findings[0].message, named.findings[0].message]).toEqual([message, message]);
   });
 
   it('identifies mutants by class, method, mutator and description, never by line', () => {
@@ -259,6 +256,18 @@ describe('pit', () => {
 
     expect(identityAtLine(swapped, 5)).toBe(identityAtLine(fixture('pit-mutations.xml'), 5));
     expect(identityAtLine(swapped, 9)).toBe(identityAtLine(fixture('pit-mutations.xml'), 9));
+  });
+
+  it('names the declaration a lambda of an initializer sits in, not the constructor', () => {
+    const report = (method) =>
+      `<mutations><mutation detected='false' status='SURVIVED'><sourceFile>Wide.java</sourceFile><mutatedClass>demo.Wide</mutatedClass><mutatedMethod>${method}</mutatedMethod><methodDescription>()I</methodDescription><lineNumber>7</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.ConditionalsBoundaryMutator</mutator><description>changed conditional boundary</description></mutation></mutations>`;
+    const symbolOf = (method, functionAt) =>
+      ingestPit(report(method), { resolvePath: resolveMainPath, functionAt }).findings[0].symbol;
+    const functionAt = (file, line) => `${file}:${String(line)}:Wide.field`;
+
+    expect(symbolOf('lambda$new$0', functionAt)).toBe('src/main/java/demo/Wide.java:7:Wide.field');
+    expect(symbolOf('lambda$new$0')).toBe('Wide#lambda$new$0()I');
+    expect(symbolOf('lambda$run$0', functionAt)).toBe('Wide#lambda$run$0()I');
   });
 
   it('matches the mutants of a class moved to another package, as a git rename', () => {

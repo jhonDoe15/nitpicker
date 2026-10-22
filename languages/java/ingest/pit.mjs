@@ -1,9 +1,8 @@
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { decodeEntities } from '../../../shared/ingest/common.mjs';
 
-function pitWayOut(tool) {
-  return `If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for ${tool}/mutant-survived in nitpicker.config.json.`;
-}
+const PIT_WAY_OUT =
+  'If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.';
 
 const STATUS_NAMES = {
   KILLED: 'Killed',
@@ -27,7 +26,10 @@ export function ingestPit(xml, options = {}) {
     .filter((mutant) => mutant !== undefined);
 
   const { groups, statusCounts } = groupMutants(mutants, resolvePath);
-  const findings = mutantFindings(neutralMutants(groups), { tool, wayOut: pitWayOut(tool) });
+  const findings = mutantFindings(neutralMutants(groups, options.functionAt), {
+    tool,
+    wayOut: PIT_WAY_OUT,
+  });
   findings.push(...statusSummaries(statusCounts, tool));
   return { findings };
 }
@@ -57,7 +59,16 @@ function groupMutants(mutants, resolvePath) {
   return { groups, statusCounts };
 }
 
-function neutralMutants(groups) {
+const INITIALIZER_LAMBDA = /^lambda\$new\$\d+$/u;
+
+function mutantSymbol(mutant, filePath, functionAt) {
+  const symbol = `${simpleClassName(mutant.className)}#${mutant.method}${simpleDescriptor(mutant.methodDescription)}`;
+  return INITIALIZER_LAMBDA.test(mutant.method)
+    ? (functionAt?.(filePath, mutant.line) ?? symbol)
+    : symbol;
+}
+
+function neutralMutants(groups, functionAt) {
   const neutral = [];
   for (const group of groups.values()) {
     group.sort((a, b) => a.mutant.line - b.mutant.line || a.mutant.block - b.mutant.block);
@@ -67,7 +78,7 @@ function neutralMutants(groups) {
         identity: `${key}#${String(index + 1)}`,
         status,
         label: `${mutator(mutant.mutator)}: ${mutant.description}`,
-        symbol: `${simpleClassName(mutant.className)}#${mutant.method}${simpleDescriptor(mutant.methodDescription)}`,
+        symbol: mutantSymbol(mutant, filePath, functionAt),
         line: mutant.line,
       });
     }

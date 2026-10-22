@@ -1,5 +1,3 @@
-import { exceptionRoute } from '../review-finding.mjs';
-
 const ALLOWED = {
   SpringConstructorInjection:
     'Inject through the primary constructor into private val properties. Do not put @Autowired, @Inject, @Resource or @Value on properties, lateinit vars or setter functions, and drop @Autowired from the only constructor.',
@@ -76,5 +74,5 @@ export const SPRING_RULES = Object.keys(ALLOWED);
 export const JAVA_ONLY_SPRING_RULE = 'SpringQueryConcatenation';
 
 export function springMessage(rule) {
-  return `${ALLOWED[rule]} ${exceptionRoute(rule)}`;
+  return ALLOWED[rule];
 }

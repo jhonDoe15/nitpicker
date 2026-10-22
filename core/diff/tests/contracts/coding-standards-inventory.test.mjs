@@ -18,7 +18,7 @@ import { runAnalyzers } from '../../execution/run-analyzers.mjs';
 const packageAnalyzers = configuredAnalyzers();
 const LOST_CAUSE = [
   'Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`.',
-  ' If the original failure is deliberately dropped, add an exception for this rule in nitpicker.config.json.',
+  ' An exception fits only when the original failure is deliberately dropped.',
 ].join('');
 const temporaryRoots = [];
 

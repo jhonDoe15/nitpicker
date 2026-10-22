@@ -30,7 +30,7 @@ import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
-import { renderRuleFilterSection } from './diff/reporting/text.mjs';
+import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 
 export function runCli(options = {}) {
@@ -244,7 +244,7 @@ function writeComparisonOutcome({ cli, report, base, outputRoot }) {
       diagnosticsPath: absoluteTextReportPath(outputRoot),
     }),
   );
-  stdout.write(renderRuleFilterSection(report, options.ruleFilters));
+  stdout.write(renderClosingSections(cli, report));
   if (options.deferExit) {
     return 0;
   }

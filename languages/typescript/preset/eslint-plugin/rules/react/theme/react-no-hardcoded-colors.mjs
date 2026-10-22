@@ -161,7 +161,7 @@ export const rule = {
     schema: [],
     messages: {
       hardcodedColor:
-        'Take the color from the theme or design-system palette (a theme token, a CSS variable, or currentColor) instead of the literal {{color}}. If this file defines the palette, add an exception for nitpicker/react-no-hardcoded-colors in nitpicker.config.json; a theme or palette folder takes one glob exception (for example `src/theme/**`).',
+        'Take the color from the theme or design-system palette (a theme token, a CSS variable, or currentColor) instead of the literal {{color}}. A file that defines the palette, or a theme or palette folder, takes one glob exception (for example `src/theme/**`).',
     },
   },
   create(context) {
