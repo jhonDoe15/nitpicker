@@ -4,8 +4,9 @@ import { SOURCE_RULE_IDS } from '../../kotlin/rules/kotlin-rules.mjs';
 const PACKAGE = 'package demo.guards\n\n';
 const LOGGER = `${PACKAGE}import java.util.logging.Logger\n\n`;
 const LEVELS = `${PACKAGE}import java.util.logging.Level\nimport java.util.logging.Logger\n\n`;
-const parser = (handling) =>
-  `${LEVELS}class Parser(private val logger: Logger) {\n    fun parse(text: String): Result<Int> {\n        try {\n            return Result.success(text.toInt())\n        } catch (e: NumberFormatException) {\n            ${handling}\n            return Result.failure(e)\n        }\n    }\n}\n`;
+function parser(handling) {
+  return `${LEVELS}class Parser(private val logger: Logger) {\n    fun parse(text: String): Result<Int> {\n        try {\n            return Result.success(text.toInt())\n        } catch (e: NumberFormatException) {\n            ${handling}\n            return Result.failure(e)\n        }\n    }\n}\n`;
+}
 const methods = Array.from(
   { length: 21 },
   (_, index) => `    fun m${String(index)}(): String = "m${String(index)}"`,

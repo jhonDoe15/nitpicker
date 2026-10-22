@@ -3,7 +3,6 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../java-diff.mjs';
 import {
   FULL_COVERAGE,
-  HOOK_TIMEOUT_MS,
   comparable,
   coverage,
   enabled,
@@ -15,7 +14,7 @@ import {
   policy,
   slowTests,
   useIntegrationProjects,
-} from './integration-support.mjs';
+} from '../__tests__/integration-support.mjs';
 
 describe.skipIf(!enabled)('integration tests wired to check on Gradle and Maven', () => {
   const projectOf = useIntegrationProjects();
@@ -25,10 +24,10 @@ describe.skipIf(!enabled)('integration tests wired to check on Gradle and Maven'
       projectOf(path.join(fixtures, 'integration-tasks'), { sources: true }),
       { gradle, policy },
     );
-  }, HOOK_TIMEOUT_MS);
+  }, 180_000);
   beforeAll(() => {
     runs.maven = collectJavaFindings(projectOf(failsafeFixture), { maven, policy });
-  }, HOOK_TIMEOUT_MS);
+  }, 180_000);
 
   it('give a Test task wired to check the findings Failsafe gives the same sources under verify', () => {
     expect(comparable(runs.tasks)).toEqual(comparable(runs.maven));

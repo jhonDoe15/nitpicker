@@ -63,6 +63,6 @@ describe.skipIf(!pythonE2eEnabled)('Python preset type checker configuration end
 
     expect(result.exitCode, result.text).toBe(1);
     expect(withoutMutants(enforceable(result))).toEqual(['python-rules no-type-check hidden.py']);
-    expect(result.text).toMatch(/Remove the decorator and annotate the code/);
+    expect(/Remove the decorator and annotate the code/.test(result.text), result.text).toBe(true);
   });
 });

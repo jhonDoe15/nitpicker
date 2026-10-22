@@ -83,15 +83,16 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint and type gates end to end
       'ruff/F401',
       'ruff-format/format',
     ]);
-    expect(readFileSync(path.join(violation.reports, 'report.junit.xml'), 'utf8')).toMatch(/F401/);
-    expect(violation.text).toMatch(/ruff\/F401 src\/demo\/bad\.py:1\n/);
+    const junit = readFileSync(path.join(violation.reports, 'report.junit.xml'), 'utf8');
+    expect(/F401/.test(junit), junit).toBe(true);
+    expect(/ruff\/F401 src\/demo\/bad\.py:1\n/.test(violation.text), violation.text).toBe(true);
   });
   it('fails a new type error found by mypy, strict by default, and keeps the legacy ones baselined', () => {
     const result = gate(project, 'type-error');
 
     expect(result.exitCode, result.text).toBe(1);
     expect(withoutMutants(enforceable(result))).toEqual(['mypy return-value typed.py']);
-    expect(result.text).toMatch(/Fix the type; inline ignores are banned/);
+    expect(/Fix the type; inline ignores are banned/.test(result.text), result.text).toBe(true);
   });
   it('reports line coverage as a descriptive finding', () => {
     expect(violation.json('new-findings.json').filter(({ tool }) => tool === 'coverage')).toEqual([

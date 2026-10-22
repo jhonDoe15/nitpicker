@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../java-runner.mjs';
@@ -14,7 +14,7 @@ import {
   maven,
   summary,
   useFrameworkProjects,
-} from './test-support/test-frameworks-project.mjs';
+} from './__tests__/test-frameworks-project.mjs';
 
 describe.skipIf(!enabled)('Java preset on TestNG and Spock test frameworks', () => {
   const { projectOf, findingsOf } = useFrameworkProjects();
@@ -52,7 +52,7 @@ describe.skipIf(!enabled)('Java preset on TestNG and Spock test frameworks', () 
       readFileSync(pom, 'utf8').replace('<version>3.5.4</version>', '<version>3.6.0</version>'),
     );
 
-    const since = Date.now();
+    const since = statSync(pom).mtimeMs;
     runMaven({
       projectRoot: root,
       maven,

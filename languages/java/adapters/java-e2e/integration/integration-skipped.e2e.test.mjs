@@ -4,7 +4,6 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../java-diff.mjs';
 import {
   FULL_COVERAGE,
-  HOOK_TIMEOUT_MS,
   WITHOUT_FAREWELL,
   coverage,
   enabled,
@@ -14,7 +13,7 @@ import {
   policy,
   slowTests,
   useIntegrationProjects,
-} from './integration-support.mjs';
+} from '../__tests__/integration-support.mjs';
 
 describe.skipIf(!enabled)('a skipped integration task', () => {
   const projectOf = useIntegrationProjects();
@@ -24,7 +23,7 @@ describe.skipIf(!enabled)('a skipped integration task', () => {
     runs.beforeSkip = collectJavaFindings(project, { gradle, policy });
     writeFileSync(path.join(project, 'skip-integration-tests'), '');
     runs.afterSkip = collectJavaFindings(project, { gradle, policy });
-  }, HOOK_TIMEOUT_MS);
+  }, 180_000);
 
   it('count a skipped integration task nowhere, not even from its earlier run', () => {
     expect(coverage(runs.beforeSkip)).toEqual(FULL_COVERAGE);
