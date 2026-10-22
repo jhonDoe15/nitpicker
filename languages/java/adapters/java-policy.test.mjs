@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
-import { lintBaselineProperties } from './java-diff.mjs';
+import { lintBaselineProperties } from './gradle-wrapper/gradle-preset.mjs';
 import {
   configureJavaAnalyzer,
   parseJavaRunnerArguments,

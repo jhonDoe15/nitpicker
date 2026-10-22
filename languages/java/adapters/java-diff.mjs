@@ -26,12 +26,6 @@ import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
 
-export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
-  return snapshot === 'head' && baselineRoot !== undefined
-    ? [`-Pnitpicker.lintBaseline=${baselineRoot}`]
-    : [];
-}
-
 function withoutReportBase(error, reportBase) {
   return error instanceof Error && error.message.includes(reportBase)
     ? new Error(error.message.replaceAll(reportBase, '<report directory>'), { cause: error })

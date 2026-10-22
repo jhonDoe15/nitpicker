@@ -15,6 +15,23 @@ const MAX_FAILURE_LENGTH = 3500;
 const CLOCK_SLACK_MS = 2000;
 const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
 
+export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
+  return snapshot === 'head' && baselineRoot !== undefined
+    ? [`-Pnitpicker.lintBaseline=${baselineRoot}`]
+    : [];
+}
+
+function commonArguments({ reportBase, policy, kotlinArguments }) {
+  return [
+    '--console=plain',
+    '--quiet',
+    '--no-configuration-cache',
+    `-Pnitpicker.reportDir=${reportBase}`,
+    ...lintBaselineProperties(policy),
+    ...kotlinArguments,
+  ];
+}
+
 function assertSucceeded(result, projectRoot, { reportBase, since }) {
   if (result.error === undefined && result.status === 0) {
     return;
@@ -65,13 +82,7 @@ export function runJavaPreset(
   const since = Date.now() - CLOCK_SLACK_MS;
   const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
   withKotlin((kotlinArguments) => {
-    const common = [
-      '--console=plain',
-      '--quiet',
-      '--no-configuration-cache',
-      `-Pnitpicker.reportDir=${reportBase}`,
-      ...kotlinArguments,
-    ];
+    const common = commonArguments({ reportBase, policy, kotlinArguments });
     const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
     const stages = [
       ...(layersCheckstyle
