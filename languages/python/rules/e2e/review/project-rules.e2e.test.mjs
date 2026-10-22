@@ -48,6 +48,23 @@ describe.skipIf(!enabled)('unused-option', () => {
     ).toEqual(['total.cents']);
   });
 
+  it('judges only functions the module exports', () => {
+    const app = 'from shop.pricing import _total, total, helper\n_total(1)\ntotal(1)\nhelper()\n';
+    const helper = 'def helper(size: int = 1) -> int:\n    return size\n';
+    expect(
+      unused({
+        'shop/pricing.py': `${TOTAL}${helper}${TOTAL.replace('total', '_total')}`,
+        'shop/app.py': app,
+      }),
+    ).toEqual(['total.cents', 'total.rate', 'helper.size']);
+    expect(
+      unused({
+        'shop/pricing.py': `__all__ = ["helper"]\n${TOTAL}${helper}`,
+        'shop/app.py': 'from shop.pricing import total, helper\ntotal(1)\nhelper()\n',
+      }),
+    ).toEqual(['helper.size']);
+  });
+
   it('keeps an import inside a function to that function', () => {
     expect(
       only('unused-option', {

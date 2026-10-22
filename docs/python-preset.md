@@ -156,7 +156,8 @@ below. `layout` stays a config error with this preset: the Python preset has no 
 `shared-used-by-one-feature`. The
 top-level `exceptions` is accepted only for the file and size limits shared with the other languages
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
-`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), whose messages name it, the
+`class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`) and for `unused-option`,
+whose messages name it, the
 [dependency and repository checks](usage.md#dependency-and-repository-checks) and the
 [fact rules](../spec/checks.md#custom-rules) every preset shares (`test-console-output`, `test-only-export`, `duplicate-definition`,
 `exported-name-collision`, `sibling-copy-edit`, `doc-comment-content`), which the Python preset runs over its facts scan; the Python equivalent of
@@ -166,10 +167,11 @@ Where each kind of finding is lifted for some paths:
 | Findings                                                                                                                    | Lifted by                   |
 | --------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
 | ruff codes (or a prefix such as `PTH`), mypy codes, pyright and basedpyright `report*` rules                                | `python.exceptions`         |
-| `python-rules` ids (`sleep-in-test`, `unused-option`, `no-inline-suppression`, ...)                                         | `python.exceptions`         |
+| `python-rules` ids (`sleep-in-test`, `forwarding-wrapper`, `no-inline-suppression`, ...)                                    | `python.exceptions`         |
 | one third-party console message                                                                                             | `testConsole.allow`         |
 | `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `test-runtime/slow-test`, `test-console/test-console-output` | top-level `exceptions` only |
 | the fact rules (`facts/test-only-export`, `facts/doc-comment-content`, `facts/sibling-copy-edit`, ...)                      | top-level `exceptions` only |
+| the size limits (`folder-depth-limit`, `class-methods-limit`, ...) and `python-rules/unused-option`                         | top-level `exceptions` only |
 
 ```json
 {
@@ -956,9 +958,13 @@ members is not reported.
   plain function that returns an `async` target's coroutine is not a wrapper. Unannotated
   functions, methods and library targets are not checked. The message says to call the target
   directly, or to import or bind it under the old name.
-- `unused-option` (TypeScript: the same rule of the `structure` check): a parameter with a default
-  of an undecorated module-level function in production code that no call passes, by keyword, by
-  position, or through `*args` (positional parameters) or `**kwargs` (all). Calls are resolved
+- `unused-option` (TypeScript: the same rule of the `structure` check, with the same message and
+  the same top-level `exceptions` route): an option nobody sets. TypeScript judges the properties
+  of the options object of an exported function; Python has keyword parameters with defaults
+  instead, so it judges a parameter with a default of an undecorated public module-level function
+  in production code (no leading underscore, and listed in `__all__` when the module assigns it a
+  literal list once) that no call passes, by keyword, by position, or through `*args` (positional
+  parameters) or `**kwargs` (all). Calls are resolved
   through imports, aliases, module attributes and package re-exports (`from .pricing import total`
   in an `__init__.py`), using the module names the coupling check uses. A function nothing calls is
   not judged, nor one used as a value (passed, stored, decorating), one a star import exposes, one

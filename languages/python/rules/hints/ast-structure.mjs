@@ -1,3 +1,4 @@
+import { renderMessage, UNUSED_OPTION_TEXT } from '../../../../shared/messages/messages.mjs';
 import { validatorNamed } from '../libraries/library-tables.mjs';
 import { validatorsOf } from '../libraries/project-libraries.mjs';
 import { RULES_TOOL } from './tool.mjs';
@@ -34,8 +35,8 @@ function ownerOf(subject) {
 }
 
 const UNUSED_OPTION_SCOPES = {
-  private: 'by a call outside the tests',
-  published: "by any call, this package's own tests included",
+  private: 'tests do not count',
+  published: "this package's own tests count",
 };
 
 export const STRUCTURE_HINTS = [
@@ -211,8 +212,7 @@ export const STRUCTURE_HINTS = [
     tool: RULES_TOOL,
     rules: ['unused-option'],
     describe: (subject, _libraries, { scope }) =>
-      `Optional parameter \`${subject}\` is never passed ${UNUSED_OPTION_SCOPES[scope]}`,
-    allowed:
-      'Remove the parameter and use its default inside the function, or pass it from a real call.',
+      renderMessage(UNUSED_OPTION_TEXT, { name: subject, scope: UNUSED_OPTION_SCOPES[scope] }),
+    exception: 'top-level',
   },
 ];

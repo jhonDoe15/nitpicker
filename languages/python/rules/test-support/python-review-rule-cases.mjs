@@ -21,10 +21,11 @@ export const REVIEW_RULE_CASES = [
     mention: 'call the target directly',
   },
   {
-    name: 'an unused keyword parameter names passing it from a real call',
+    name: 'an unused keyword parameter names setting it from a real call',
     fixture: 'unused-option',
     tool: 'python-rules',
     rule: 'unused-option',
-    mention: 'pass it from a real call',
+    data: { scope: 'private' },
+    mention: 'set it from a real call',
   },
 ];
