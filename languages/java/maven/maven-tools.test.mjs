@@ -1,104 +1,143 @@
-import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cacheRoot, resolveTools, toolDependencies } from './maven-tools.mjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readPinnedTools } from '../builds/java-build.mjs';
+import {
+  archunitTool,
+  cacheRoot,
+  formatTool,
+  resolveTools,
+  toolDependencies,
+} from './maven-tools.mjs';
 
-const pinned = {
-  pmd: '1',
-  spotbugs: '2',
-  googleJavaFormat: '3',
-  checkstyle: '4',
-  jacoco: '5',
-  pitest: '6',
-  pitestJunit5: '7',
-  archunit: '8',
+const roots = [];
+const pinned = readPinnedTools();
+const GOOGLE = {
+  name: 'format',
+  coordinates: [`com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`],
 };
-const BASE_TOOLS = ['pmd', 'spotbugs', 'format', 'checkstyle', 'jacoco', 'pit'];
-
-let home;
-let savedCache;
-
-beforeEach(() => {
-  home = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-tools-'));
-  savedCache = process.env.XDG_CACHE_HOME;
-  process.env.XDG_CACHE_HOME = home;
-});
+const PALANTIR = {
+  name: 'format-palantir',
+  coordinates: [`com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}`],
+};
+const FAKE_MAVEN = [
+  '#!/bin/sh',
+  'previous=""',
+  'for argument in "$@"; do',
+  '  if [ "$previous" = "--file" ]; then pom="$argument"; fi',
+  '  previous="$argument"',
+  'done',
+  'directory=$(dirname "$pom")',
+  'for module in "$directory"/*/; do',
+  '  printf "%s" "$pom" > "${module}classpath.txt"',
+  'done',
+  '',
+].join('\n');
 
 afterEach(() => {
-  if (savedCache === undefined) {
-    delete process.env.XDG_CACHE_HOME;
-  } else {
-    process.env.XDG_CACHE_HOME = savedCache;
+  vi.unstubAllEnvs();
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
   }
-  rmSync(home, { recursive: true, force: true });
 });
 
-function seedCache(tools) {
-  const key = createHash('sha256').update(JSON.stringify(tools)).digest('hex').slice(0, 16);
-  const jar = path.join(home, 'tool.jar');
-  writeFileSync(jar, '');
-  for (const name of Object.keys(tools)) {
-    const directory = path.join(home, 'nitpicker', `maven-tools-${key}`, name);
-    mkdirSync(directory, { recursive: true });
-    writeFileSync(path.join(directory, 'classpath.txt'), jar);
-  }
-  return jar;
+function resolvedWith(javaStyle, spring = false) {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-tools-')));
+  roots.push(root);
+  const maven = path.join(root, 'fake-mvn');
+  writeFileSync(maven, FAKE_MAVEN);
+  chmodSync(maven, 0o755);
+  vi.stubEnv('XDG_CACHE_HOME', path.join(root, 'cache'));
+  return Object.keys(
+    resolveTools({
+      projectRoot: root,
+      maven,
+      pinned,
+      launcherVersions: [],
+      extraTools: [...formatTool(javaStyle, pinned), ...archunitTool(spring, pinned)],
+    }),
+  );
 }
 
-describe('toolDependencies', () => {
-  it('leaves the ArchUnit jar out unless the build uses Spring', () => {
-    expect(Object.keys(toolDependencies(pinned, ['1.11.4']))).toEqual([
-      ...BASE_TOOLS,
-      'launcher-1.11.4',
-    ]);
+describe('formatTool', () => {
+  it('asks for the google-java-format jar for the google and aosp styles, and by default', () => {
+    expect(formatTool('google', pinned)).toEqual([GOOGLE]);
+    expect(formatTool('aosp', pinned)).toEqual([GOOGLE]);
+    expect(formatTool(undefined, pinned)).toEqual([GOOGLE]);
   });
 
-  it('adds the pinned ArchUnit jar for a Spring build', () => {
-    const tools = toolDependencies(pinned, [], { spring: true });
+  it('asks for the palantir-java-format jar only for the palantir style, and for none when no formatter runs', () => {
+    expect(formatTool('palantir', pinned)).toEqual([PALANTIR]);
+    expect(formatTool('none', pinned)).toEqual([]);
+  });
+});
 
-    expect(Object.keys(tools)).toEqual([...BASE_TOOLS, 'archunit']);
-    expect(tools.archunit).toEqual([
-      '<dependency><groupId>com.tngtech.archunit</groupId><artifactId>archunit</artifactId><version>8</version></dependency>',
+describe('archunitTool', () => {
+  it('asks for the pinned ArchUnit jar only for a build with a Spring module', () => {
+    expect([archunitTool(true, pinned), archunitTool(false, pinned)]).toEqual([
+      [{ name: 'archunit', coordinates: [`com.tngtech.archunit:archunit:${pinned.archunit}`] }],
+      [],
     ]);
   });
 });
 
-describe('cacheRoot', () => {
-  it.skipIf(process.platform === 'win32')('is a private nitpicker directory', () => {
+describe.skipIf(process.platform === 'win32')('cacheRoot', () => {
+  it('is a private nitpicker directory under XDG_CACHE_HOME', () => {
+    const home = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-cache-root-')));
+    roots.push(home);
+    vi.stubEnv('XDG_CACHE_HOME', home);
     const root = cacheRoot();
 
     expect([root, statSync(root).mode & 0o077]).toEqual([path.join(home, 'nitpicker'), 0]);
   });
 });
 
-describe('resolveTools', () => {
-  it('reads the classpaths cached under maven-tools-<key> in the cache root', () => {
-    const jar = seedCache(toolDependencies(pinned, []));
+describe('toolDependencies', () => {
+  it('carries no formatter of its own, so a style that does not need one resolves none', () => {
+    expect(Object.keys(toolDependencies(pinned))).toEqual([
+      'pmd',
+      'spotbugs',
+      'checkstyle',
+      'errorprone',
+      'jacoco',
+      'pit',
+      'pit-junit5',
+      'pit-testng',
+    ]);
+    expect(Object.keys(toolDependencies(pinned, [], formatTool('palantir', pinned)))).toEqual([
+      'pmd',
+      'spotbugs',
+      'checkstyle',
+      'errorprone',
+      'jacoco',
+      'pit',
+      'pit-junit5',
+      'pit-testng',
+      'format-palantir',
+    ]);
+  });
+});
 
-    expect(
-      resolveTools({
-        projectRoot: home,
-        maven: 'unused',
-        pinned,
-        launcherVersions: [],
-        spring: false,
-      }),
-    ).toEqual(Object.fromEntries(BASE_TOOLS.map((name) => [name, [jar]])));
+describe.skipIf(process.platform === 'win32')('resolveTools', () => {
+  const common = [
+    'pmd',
+    'spotbugs',
+    'checkstyle',
+    'errorprone',
+    'jacoco',
+    'pit',
+    'pit-junit5',
+    'pit-testng',
+  ];
+
+  it('resolves the google jar for google, the palantir jar for palantir and no formatter for none', () => {
+    expect(resolvedWith('google')).toEqual([...common, 'format']);
+    expect(resolvedWith('palantir')).toEqual([...common, 'format-palantir']);
+    expect(resolvedWith('none')).toEqual(common);
   });
 
-  it('keys a Spring build separately and includes ArchUnit', () => {
-    const jar = seedCache(toolDependencies(pinned, [], { spring: true }));
-
-    expect(
-      resolveTools({
-        projectRoot: home,
-        maven: 'unused',
-        pinned,
-        launcherVersions: [],
-        spring: true,
-      }),
-    ).toEqual(Object.fromEntries([...BASE_TOOLS, 'archunit'].map((name) => [name, [jar]])));
+  it('resolves ArchUnit with the other tools, under its own cache key, when a module uses Spring', () => {
+    expect(resolvedWith('google', true)).toEqual([...common, 'format', 'archunit']);
   });
 });

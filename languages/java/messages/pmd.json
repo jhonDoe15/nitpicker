@@ -1,0 +1,594 @@
+{
+  "AbstractClassWithoutAbstractMethod": {
+    "fix": "Drop abstract if the class is complete, or declare the abstract method; use an interface or sealed interface for a pure contract.",
+    "mayBeIntended": true
+  },
+  "AccessorClassGeneration": {
+    "fix": "Make the constructor package-private, or have callers use a static factory method declared inside the class.",
+    "mayBeIntended": true
+  },
+  "AccessorMethodGeneration": {
+    "fix": "Make the member package-private, or move the access into the owning class and call a method there.",
+    "mayBeIntended": true
+  },
+  "ArrayIsStoredDirectly": {
+    "fix": "Store a copy: this.items = items.clone(), or take a List and keep List.copyOf(items).",
+    "mayBeIntended": false
+  },
+  "AssignmentInOperand": {
+    "fix": "Assign in its own statement before the condition; read lines with reader.lines() or for (String line = r.readLine(); line != null; line = r.readLine()).",
+    "mayBeIntended": true
+  },
+  "AssignmentToNonFinalStatic": {
+    "fix": "Make it an instance field, or a static final field set once at its declaration; a constructor must never write a static field.",
+    "mayBeIntended": false
+  },
+  "AvoidAccessibilityAlteration": {
+    "fix": "Call the public API or add a package-private accessor; do not use setAccessible or reflection to reach private members.",
+    "mayBeIntended": true
+  },
+  "AvoidAssertAsIdentifier": {
+    "fix": "Rename the variable, method or class that is called assert, since assert is a keyword in Java 1.4 and later.",
+    "mayBeIntended": false
+  },
+  "AvoidBranchingStatementAsLastInLoop": {
+    "fix": "Delete the trailing break, continue or return that makes the loop run once, or replace the loop with an if or a stream findFirst.",
+    "mayBeIntended": false
+  },
+  "AvoidCallingFinalize": {
+    "fix": "Delete the finalize() call; release resources with try-with-resources on an AutoCloseable or call close() explicitly.",
+    "mayBeIntended": false
+  },
+  "AvoidCatchingGenericException": {
+    "fix": "Catch the specific exception types the call throws, e.g. NumberFormatException, and keep the try around that one call; in a test, use assertThrows.",
+    "mayBeIntended": true
+  },
+  "AvoidCatchingNPE": {
+    "fix": "Remove the catch; check for null with Objects.requireNonNull or an if, or fix the code that produces the null.",
+    "mayBeIntended": false
+  },
+  "AvoidCatchingThrowable": {
+    "fix": "Catch the specific exception types the call can throw; let Error and other Throwables propagate.",
+    "mayBeIntended": true
+  },
+  "AvoidDecimalLiteralsInBigDecimalConstructor": {
+    "fix": "Pass the value as a String, new BigDecimal(\"0.1\"), so it is exact.",
+    "mayBeIntended": false
+  },
+  "AvoidDuplicateLiterals": {
+    "fix": "Extract the repeated string literal into a private static final constant and use the constant everywhere.",
+    "mayBeIntended": true
+  },
+  "AvoidEnumAsIdentifier": {
+    "fix": "Rename the identifier called enum, since enum is a keyword since Java 5.",
+    "mayBeIntended": false
+  },
+  "AvoidFieldNameMatchingMethodName": {
+    "fix": "Give the field and the method different names, or make the type a record so the accessor and the component are one thing.",
+    "mayBeIntended": true
+  },
+  "AvoidFieldNameMatchingTypeName": {
+    "fix": "Rename the field so it differs from the enclosing class name; name it for its role, not its type.",
+    "mayBeIntended": false
+  },
+  "AvoidInstanceofChecksInCatchClause": {
+    "fix": "Write one catch clause per exception type, or a multi-catch (catch (A | B e)), instead of testing e with instanceof.",
+    "mayBeIntended": false
+  },
+  "AvoidLiteralsInIfCondition": {
+    "fix": "Compare against a named private static final constant instead of the literal; 0 and -1 are fine.",
+    "mayBeIntended": true
+  },
+  "AvoidLosingExceptionInformation": {
+    "fix": "Delete the call whose result is thrown away, such as a bare e.getMessage();, or use its value; to keep the error, pass e on as the cause.",
+    "mayBeIntended": false
+  },
+  "AvoidMessageDigestField": {
+    "fix": "Call MessageDigest.getInstance(\"SHA-256\") inside the method that hashes, since MessageDigest is not thread-safe.",
+    "mayBeIntended": false
+  },
+  "AvoidMultipleUnaryOperators": {
+    "fix": "Delete the repeated unary operators (!!x, - -x, ~~x) or write the intended single operator.",
+    "mayBeIntended": false
+  },
+  "AvoidPrintStackTrace": {
+    "fix": "Log with the logger and pass the exception as the last argument: logger.log(Level.ERROR, \"message\", e).",
+    "mayBeIntended": false
+  },
+  "AvoidReassigningCatchVariables": {
+    "fix": "Copy the caught exception into a new local variable and change that instead of the catch parameter.",
+    "mayBeIntended": false
+  },
+  "AvoidReassigningLoopVariables": {
+    "fix": "Leave the loop variable alone: compute into a separate local, or use a while loop with its own counter when you must skip elements.",
+    "mayBeIntended": false
+  },
+  "AvoidReassigningParameters": {
+    "fix": "Copy the parameter into a new local variable and change the local.",
+    "mayBeIntended": false
+  },
+  "AvoidStringBufferField": {
+    "fix": "Keep the StringBuilder as a local in the method that builds the text and return the String.",
+    "mayBeIntended": true
+  },
+  "AvoidUsingHardCodedIP": {
+    "fix": "Read the address from configuration or take it as a parameter; for loopback use InetAddress.getLoopbackAddress() or the host name localhost.",
+    "mayBeIntended": true
+  },
+  "AvoidUsingOctalValues": {
+    "fix": "Drop the leading zero for a decimal value, or write hex (0x1F), so the number is not read as octal.",
+    "mayBeIntended": false
+  },
+  "BrokenNullCheck": {
+    "fix": "Fix the condition: use && for a != null guard and || for a == null guard, so the null case is checked before the dereference.",
+    "mayBeIntended": false
+  },
+  "CallSuperFirst": {
+    "fix": "Call super.onCreate(...) (or the matching super method) as the first statement of the override.",
+    "mayBeIntended": false
+  },
+  "CallSuperLast": {
+    "fix": "Call super.onDestroy(...) (or the matching super method) as the last statement of the override.",
+    "mayBeIntended": false
+  },
+  "CheckResultSet": {
+    "fix": "Use the boolean result: while (rs.next()) { ... } or if (rs.next()) { ... }, and read columns inside.",
+    "mayBeIntended": false
+  },
+  "CheckSkipResult": {
+    "fix": "Call in.skipNBytes(n), which skips exactly n bytes or throws, instead of skip(n).",
+    "mayBeIntended": false
+  },
+  "ClassCastExceptionWithToArray": {
+    "fix": "Pass a correctly typed array to toArray (list.toArray(new String[0])) or use list.toArray(String[]::new).",
+    "mayBeIntended": false
+  },
+  "CloneMethodMustBePublic": {
+    "fix": "Declare clone() public when you override it.",
+    "mayBeIntended": false
+  },
+  "CloneMethodMustImplementCloneable": {
+    "fix": "Make the class implement Cloneable, or drop clone() and offer a copy constructor or static copy factory.",
+    "mayBeIntended": false
+  },
+  "CloneMethodReturnTypeMustMatchClassName": {
+    "fix": "Declare clone() with the enclosing class as its covariant return type so callers need no cast.",
+    "mayBeIntended": false
+  },
+  "CloseResource": {
+    "fix": "Open the resource in a try-with-resources header so it is closed on every path, including exceptions.",
+    "mayBeIntended": true
+  },
+  "CompareObjectsWithEquals": {
+    "fix": "Compare objects with Objects.equals(a, b) or a.equals(b); use == only for primitives, enums and identity checks on purpose.",
+    "mayBeIntended": true
+  },
+  "ComparisonWithNaN": {
+    "fix": "Test with Double.isNaN(x) or Float.isNaN(x); a comparison with NaN is always false.",
+    "mayBeIntended": false
+  },
+  "ConfusingArgumentToVarargsMethod": {
+    "fix": "Pass an explicit array of the right type (new Object[] {x}) or cast the null so the intended varargs call is made.",
+    "mayBeIntended": false
+  },
+  "ConstantsInInterface": {
+    "fix": "Move the constants into a final class with a private constructor, or into an enum.",
+    "mayBeIntended": false
+  },
+  "ConstructorCallsOverridableMethod": {
+    "fix": "Make the called method private or final, or make the class final, or move the call out of the constructor into a factory.",
+    "mayBeIntended": true
+  },
+  "DefaultLabelNotLastInSwitch": {
+    "fix": "Move the default label to the end of the switch.",
+    "mayBeIntended": false
+  },
+  "DefaultLabelNotLastInSwitchStmt": {
+    "fix": "Move the default label to the end of the switch.",
+    "mayBeIntended": false
+  },
+  "DetachedTestCase": {
+    "fix": "Annotate the method with @Test so JUnit runs it, or make it private if it is a helper.",
+    "mayBeIntended": true
+  },
+  "DoNotCallGarbageCollectionExplicitly": {
+    "fix": "Delete the System.gc() or Runtime.gc() call; let the JVM manage memory, and fix the leak or tune the heap instead.",
+    "mayBeIntended": true
+  },
+  "DoNotExtendJavaLangThrowable": {
+    "fix": "Extend Exception for a checked failure or RuntimeException for an unchecked one.",
+    "mayBeIntended": false
+  },
+  "DoNotHardCodeSDCard": {
+    "fix": "Get the directory from context.getExternalFilesDir(null) or another Context storage method, never a /sdcard path literal.",
+    "mayBeIntended": false
+  },
+  "DoNotTerminateVM": {
+    "fix": "Return or throw to the caller and let main decide the exit code; only main may call System.exit.",
+    "mayBeIntended": false
+  },
+  "DoNotThrowExceptionInFinally": {
+    "fix": "Move the throw out of finally; keep finally for cleanup only, or use try-with-resources so close errors become suppressed exceptions.",
+    "mayBeIntended": false
+  },
+  "DontImportSun": {
+    "fix": "Use the public java.* or javax.* API instead of a sun.* class, or a supported library for the same job.",
+    "mayBeIntended": false
+  },
+  "DontUseFloatTypeForLoopIndices": {
+    "fix": "Use an int or long loop counter and compute the float value from it inside the body.",
+    "mayBeIntended": false
+  },
+  "DoubleBraceInitialization": {
+    "fix": "Build the collection with List.of, Set.of or Map.of, or create it and call add or put in plain statements.",
+    "mayBeIntended": false
+  },
+  "EmptyCatchBlock": {
+    "fix": "Handle the exception: return a failure value, log it and recover, or rethrow with the cause (throw new IllegalStateException(msg, e)).",
+    "mayBeIntended": false
+  },
+  "EmptyFinalizer": {
+    "fix": "Delete the empty finalize() method; use try-with-resources or java.lang.ref.Cleaner for cleanup.",
+    "mayBeIntended": false
+  },
+  "EqualsNull": {
+    "fix": "Replace x.equals(null) with x == null.",
+    "mayBeIntended": false
+  },
+  "FinalizeDoesNotCallSuperFinalize": {
+    "fix": "Delete finalize() and clean up with try-with-resources or Cleaner; if it stays, end it with super.finalize() in a finally.",
+    "mayBeIntended": false
+  },
+  "FinalizeOnlyCallsSuperFinalize": {
+    "fix": "Delete the finalize() override that only calls super.finalize().",
+    "mayBeIntended": false
+  },
+  "FinalizeOverloaded": {
+    "fix": "Rename the overloaded finalize(...) method, or delete finalize and use try-with-resources or Cleaner.",
+    "mayBeIntended": false
+  },
+  "FinalizeShouldBeProtected": {
+    "fix": "Delete finalize() and use try-with-resources or Cleaner; if it stays, declare it protected, not public.",
+    "mayBeIntended": false
+  },
+  "ForLoopCanBeForeach": {
+    "fix": "Iterate with for (Item item : items) since the index is only used to read the element.",
+    "mayBeIntended": false
+  },
+  "ForLoopVariableCount": {
+    "fix": "Keep one variable in the for header; declare the others before the loop or use a while loop.",
+    "mayBeIntended": false
+  },
+  "GuardLogStatement": {
+    "fix": "Pass only constants and locals with {} placeholders; for a computed value pass a Supplier lambda or wrap the call in an isLoggable check.",
+    "mayBeIntended": true
+  },
+  "IdempotentOperations": {
+    "fix": "Delete the self-assignment (x = x), or assign the value you meant.",
+    "mayBeIntended": false
+  },
+  "ImplicitSwitchFallThrough": {
+    "fix": "Rewrite the switch in arrow form, case A, B -> ..., which cannot fall through; in a colon-form switch end every case with break, return or throw.",
+    "mayBeIntended": false
+  },
+  "InstantiationToGetClass": {
+    "fix": "Write the class literal (Foo.class) instead of new Foo().getClass().",
+    "mayBeIntended": false
+  },
+  "InvalidLogMessageFormat": {
+    "fix": "Make the number of {} placeholders equal to the number of arguments, and pass a Throwable as the last argument only.",
+    "mayBeIntended": false
+  },
+  "JUnit4SuitesShouldUseSuiteAnnotation": {
+    "fix": "Declare the suite with JUnit 5 @Suite and @SelectClasses or @SelectPackages instead of a static suite() method.",
+    "mayBeIntended": false
+  },
+  "JUnit4TestShouldUseAfterAnnotation": {
+    "fix": "Annotate the cleanup method with @AfterEach; a method named tearDown does not run on its own.",
+    "mayBeIntended": false
+  },
+  "JUnit4TestShouldUseBeforeAnnotation": {
+    "fix": "Annotate the setup method with @BeforeEach; a method named setUp does not run on its own.",
+    "mayBeIntended": false
+  },
+  "JUnit4TestShouldUseTestAnnotation": {
+    "fix": "Annotate each test method with @Test; a name starting with test does not make it run.",
+    "mayBeIntended": false
+  },
+  "JUnit5TestShouldBePackagePrivate": {
+    "fix": "Drop public from JUnit 5 test classes and test methods; package-private is enough.",
+    "mayBeIntended": false
+  },
+  "JUnitAssertionsShouldIncludeMessage": {
+    "fix": "Add a failure message to the assertion, e.g. assertEquals(expected, actual, \"total after discount\"), or use assertThat(actual).as(\"total\").",
+    "mayBeIntended": true
+  },
+  "JUnitSpelling": {
+    "fix": "Rename the method to setUp or tearDown with that exact casing, or replace it with @BeforeEach or @AfterEach in JUnit 5.",
+    "mayBeIntended": false
+  },
+  "JUnitStaticSuite": {
+    "fix": "Delete the JUnit 3 suite() method and group tests with @Nested classes or a JUnit 5 suite; if it stays, declare it public static.",
+    "mayBeIntended": false
+  },
+  "JUnitTestContainsTooManyAsserts": {
+    "fix": "Split the test so each covers one behavior, or compare one whole record or list with a single assertThat(actual).isEqualTo(expected).",
+    "mayBeIntended": true
+  },
+  "JUnitTestsShouldIncludeAssert": {
+    "fix": "Assert on the result, e.g. assertThat(actual).isEqualTo(expected), or use assertThrows for an expected failure.",
+    "mayBeIntended": true
+  },
+  "JUnitUseExpected": {
+    "fix": "Replace the try/catch and fail() with assertThrows(IllegalStateException.class, () -> call()).",
+    "mayBeIntended": false
+  },
+  "JumbledIncrementer": {
+    "fix": "Use the loop's own variable in the update clause, and a different variable name in nested loops.",
+    "mayBeIntended": false
+  },
+  "LiteralsFirstInComparisons": {
+    "fix": "Put the literal first: \"yes\".equals(value), so a null value cannot throw.",
+    "mayBeIntended": false
+  },
+  "LooseCoupling": {
+    "fix": "Declare the type as the interface (List, Map, Set, Deque), not ArrayList, HashMap or LinkedList.",
+    "mayBeIntended": false
+  },
+  "MethodReturnsInternalArray": {
+    "fix": "Return items.clone(), or expose the data as List.copyOf(items) or an unmodifiable List.",
+    "mayBeIntended": false
+  },
+  "MethodWithSameNameAsEnclosingClass": {
+    "fix": "Rename the method so it is not the class name; use a static factory such as of or create, or fix the intended constructor.",
+    "mayBeIntended": false
+  },
+  "MisplacedNullCheck": {
+    "fix": "Move the null check before the dereference, or fix the condition so it does not dereference when the value is null.",
+    "mayBeIntended": false
+  },
+  "MissingOverride": {
+    "fix": "Add @Override to the method that overrides or implements a supertype method.",
+    "mayBeIntended": false
+  },
+  "MissingSerialVersionUID": {
+    "fix": "Declare private static final long serialVersionUID = 1L; in the class, or stop implementing Serializable if it is never serialized.",
+    "mayBeIntended": false
+  },
+  "MissingStaticMethodInNonInstantiatableClass": {
+    "fix": "Add a public static factory or accessor method, or make a constructor non-private, so the class can be used.",
+    "mayBeIntended": true
+  },
+  "MoreThanOneLogger": {
+    "fix": "Keep one private static final logger per class and use it everywhere in that class.",
+    "mayBeIntended": false
+  },
+  "NonCaseLabelInSwitch": {
+    "fix": "Move the label into a case, or delete it; a label inside a switch body that is not a case is never a jump target.",
+    "mayBeIntended": false
+  },
+  "NonCaseLabelInSwitchStatement": {
+    "fix": "Move the label into a case, or delete it; a label inside a switch body that is not a case is never a jump target.",
+    "mayBeIntended": false
+  },
+  "NonExhaustiveSwitch": {
+    "fix": "Make it an exhaustive switch expression, or add a default branch that throws IllegalStateException.",
+    "mayBeIntended": false
+  },
+  "NonSerializableClass": {
+    "fix": "Make the field's type Serializable or mark the field transient; if the class is never serialized, stop implementing Serializable.",
+    "mayBeIntended": true
+  },
+  "NonStaticInitializer": {
+    "fix": "Move the initializer block's code into a constructor, or make the block static if it sets up static state.",
+    "mayBeIntended": false
+  },
+  "NullAssignment": {
+    "fix": "Restructure so the variable gets its value once: declare it where the value is known, return early, or extract a method; never write x = null.",
+    "mayBeIntended": false
+  },
+  "OneDeclarationPerLine": {
+    "fix": "Declare each variable in its own statement: int width; int height;.",
+    "mayBeIntended": false
+  },
+  "OverrideBothEqualsAndHashcode": {
+    "fix": "Override equals and hashCode together, using Objects.hash and Objects.equals, or make the type a record.",
+    "mayBeIntended": false
+  },
+  "PreserveStackTrace": {
+    "fix": "Pass the caught exception as the cause: throw new IllegalStateException(\"message\", e).",
+    "mayBeIntended": false
+  },
+  "PrimitiveWrapperInstantiation": {
+    "fix": "Use Integer.valueOf(x), autoboxing, or the primitive itself instead of new Integer(x).",
+    "mayBeIntended": false
+  },
+  "ProperCloneImplementation": {
+    "fix": "Build the result with super.clone() and return it, or drop clone() for a copy constructor or static copy factory.",
+    "mayBeIntended": false
+  },
+  "ProperLogger": {
+    "fix": "Declare it private static final Log LOG = LogFactory.getLog(Foo.class), where Foo is the class that declares it.",
+    "mayBeIntended": false
+  },
+  "ReplaceEnumerationWithIterator": {
+    "fix": "Implement Iterator instead of Enumeration; where a legacy API demands an Enumeration, pass Collections.enumeration(list).",
+    "mayBeIntended": true
+  },
+  "ReplaceHashtableWithMap": {
+    "fix": "Declare Map and create a HashMap, or a ConcurrentHashMap when threads share it.",
+    "mayBeIntended": true
+  },
+  "ReplaceVectorWithList": {
+    "fix": "Declare List and create an ArrayList, or use CopyOnWriteArrayList when threads share it.",
+    "mayBeIntended": true
+  },
+  "ReturnEmptyCollectionRatherThanNull": {
+    "fix": "Return List.of(), Set.of(), Map.of() or Collections.emptyList(), or a new empty array, instead of null.",
+    "mayBeIntended": false
+  },
+  "ReturnFromFinallyBlock": {
+    "fix": "Move the return out of finally, and return from the try or after the whole statement, so exceptions are not lost.",
+    "mayBeIntended": false
+  },
+  "SimpleDateFormatNeedsLocale": {
+    "fix": "Use DateTimeFormatter.ofPattern(pattern, Locale.ROOT) from java.time; if SimpleDateFormat stays, pass a Locale.",
+    "mayBeIntended": false
+  },
+  "SimplifiableTestAssertion": {
+    "fix": "Use the assertion the message names, such as assertEquals, assertNull or assertFalse, in place of assertTrue on a comparison or negation.",
+    "mayBeIntended": false
+  },
+  "SingleMethodSingleton": {
+    "fix": "Keep one getInstance method that returns the same instance, or use an enum singleton or inject the dependency.",
+    "mayBeIntended": false
+  },
+  "SingletonClassReturningNewInstance": {
+    "fix": "Return the single cached instance from getInstance, or drop the singleton and pass the object in through the constructor.",
+    "mayBeIntended": false
+  },
+  "StaticEJBFieldShouldBeFinal": {
+    "fix": "Make the static field in the EJB final; keep per-call state in locals or a stateful bean field.",
+    "mayBeIntended": false
+  },
+  "StringBufferInstantiationWithChar": {
+    "fix": "Pass a String (new StringBuilder(\"a\")), since new StringBuilder('a') sets a capacity of 97 and an empty buffer.",
+    "mayBeIntended": false
+  },
+  "SuspiciousEqualsMethodName": {
+    "fix": "Rename the method to equals(Object) if it is meant to override, or to a different name; fix the parameter type to Object.",
+    "mayBeIntended": false
+  },
+  "SuspiciousHashcodeMethodName": {
+    "fix": "Rename the method to hashCode() if it is meant to override, or to a name that is not close to hashCode.",
+    "mayBeIntended": false
+  },
+  "SuspiciousOctalEscape": {
+    "fix": "Write the character as a unicode escape (\\u0008) or a three-digit octal escape so the digits are not read together.",
+    "mayBeIntended": false
+  },
+  "SwitchStmtsShouldHaveDefault": {
+    "fix": "Make it an exhaustive switch expression, or add a default branch that throws IllegalStateException.",
+    "mayBeIntended": false
+  },
+  "SystemPrintln": {
+    "fix": "Write through a logger, or take a PrintStream as a parameter so callers choose the stream.",
+    "mayBeIntended": true
+  },
+  "TestClassWithoutTestCases": {
+    "fix": "Add @Test methods to the class, or rename it if it is a helper (for example TestInputGenerator becomes InputGenerator).",
+    "mayBeIntended": true
+  },
+  "UnconditionalIfStatement": {
+    "fix": "Delete the if with a constant true or false condition and keep only the branch that runs.",
+    "mayBeIntended": false
+  },
+  "UnitTestAssertionsShouldIncludeMessage": {
+    "fix": "Add a failure message to the assertion, e.g. assertEquals(expected, actual, \"total after discount\"), or use assertThat(actual).as(\"total\").",
+    "mayBeIntended": true
+  },
+  "UnitTestContainsTooManyAsserts": {
+    "fix": "Split the test so each covers one behavior, or compare one whole record or list with a single assertThat(actual).isEqualTo(expected).",
+    "mayBeIntended": true
+  },
+  "UnitTestShouldIncludeAssert": {
+    "fix": "Assert on the result, e.g. assertThat(actual).isEqualTo(expected), or use assertThrows for an expected failure.",
+    "mayBeIntended": true
+  },
+  "UnitTestShouldUseAfterAnnotation": {
+    "fix": "Annotate the cleanup method with @AfterEach (or @AfterAll on a static method) or it never runs.",
+    "mayBeIntended": false
+  },
+  "UnitTestShouldUseBeforeAnnotation": {
+    "fix": "Annotate the setup method with @BeforeEach (or @BeforeAll on a static method) or it never runs.",
+    "mayBeIntended": false
+  },
+  "UnitTestShouldUseTestAnnotation": {
+    "fix": "Annotate the method with @Test (or @ParameterizedTest) so JUnit runs it, or rename it if it is a helper.",
+    "mayBeIntended": false
+  },
+  "UnnecessaryBooleanAssertion": {
+    "fix": "Delete assertTrue(true) and assertFalse(false) style calls, and assert on a real value of the code under test.",
+    "mayBeIntended": false
+  },
+  "UnnecessaryCaseChange": {
+    "fix": "Use equalsIgnoreCase in place of toUpperCase().equals(...) or toLowerCase().equals(...).",
+    "mayBeIntended": false
+  },
+  "UnnecessaryConversionTemporary": {
+    "fix": "Call the conversion on the value directly (Integer.toString(i), String.valueOf(i)) instead of building a wrapper object first.",
+    "mayBeIntended": false
+  },
+  "UnnecessaryVarargsArrayCreation": {
+    "fix": "Pass the elements directly: Arrays.asList(\"a\", \"b\") instead of wrapping them in new String[] { ... }.",
+    "mayBeIntended": false
+  },
+  "UnusedAssignment": {
+    "fix": "Remove the assignment, or use the value; drop the initializer when every path assigns before reading.",
+    "mayBeIntended": false
+  },
+  "UnusedFormalParameter": {
+    "fix": "Remove the parameter and update the callers, or use it in the method body.",
+    "mayBeIntended": true
+  },
+  "UnusedLocalVariable": {
+    "fix": "Remove the variable, or use it; keep the call's side effect as a plain statement.",
+    "mayBeIntended": false
+  },
+  "UnusedNullCheckInEquals": {
+    "fix": "Call equals on the value you just null-checked, a != null && a.equals(other), or drop the check and use Objects.equals(a, other).",
+    "mayBeIntended": false
+  },
+  "UnusedPrivateField": {
+    "fix": "Remove the field, or use it.",
+    "mayBeIntended": true
+  },
+  "UnusedPrivateMethod": {
+    "fix": "Remove the method, or call it.",
+    "mayBeIntended": true
+  },
+  "UseCollectionIsEmpty": {
+    "fix": "Call isEmpty() or !isEmpty() instead of comparing size() with 0 or 1.",
+    "mayBeIntended": false
+  },
+  "UseCorrectExceptionLogging": {
+    "fix": "Pass the exception as the last argument (log.error(\"msg\", e)), not as e.getMessage() or a placeholder value.",
+    "mayBeIntended": false
+  },
+  "UseEnumCollections": {
+    "fix": "Create EnumSet.noneOf(Key.class) or new EnumMap<>(Key.class) instead of a HashSet or HashMap keyed by the enum.",
+    "mayBeIntended": false
+  },
+  "UseEqualsToCompareStrings": {
+    "fix": "Compare strings with \"literal\".equals(x) or a.equals(b), never == or !=.",
+    "mayBeIntended": false
+  },
+  "UseLocaleWithCaseConversions": {
+    "fix": "Pass a locale: s.toUpperCase(Locale.ROOT) or s.toLowerCase(Locale.ROOT).",
+    "mayBeIntended": false
+  },
+  "UseProperClassLoader": {
+    "fix": "Use Thread.currentThread().getContextClassLoader() instead of calling getClassLoader() on a Class.",
+    "mayBeIntended": true
+  },
+  "UseStandardCharsets": {
+    "fix": "Use StandardCharsets.UTF_8 instead of Charset.forName(\"UTF-8\").",
+    "mayBeIntended": false
+  },
+  "UseTryWithResources": {
+    "fix": "Declare the resource in the try header, try (var in = Files.newInputStream(path)) { ... }, and drop the finally that closes it.",
+    "mayBeIntended": false
+  },
+  "UseVarargs": {
+    "fix": "Declare the last parameter as varargs: String... names.",
+    "mayBeIntended": true
+  },
+  "UselessOperationOnImmutable": {
+    "fix": "Assign the result (s = s.trim(), x = x.add(y)) or delete the call, since String and BigDecimal methods return a new value.",
+    "mayBeIntended": false
+  },
+  "WhileLoopWithLiteralBoolean": {
+    "fix": "Write do { } while (true) as while (true) { }, replace do { } while (false) with a plain block, and delete a while (false) loop.",
+    "mayBeIntended": false
+  }
+}

@@ -14,8 +14,10 @@ import {
   archunitMatcher,
   collectTestResults,
   junitLauncherVersion,
+  pitClasspath,
   pitTargets,
   pitTests,
+  freshExecFiles,
   runJacocoReport,
 } from './maven-tests.mjs';
 
@@ -102,6 +104,42 @@ describe('junitLauncherVersion', () => {
   });
 });
 
+describe('pitClasspath', () => {
+  const tools = {
+    pit: ['/m2/pitest-command-line.jar'],
+    'pit-junit5': ['/m2/pitest-junit5-plugin.jar'],
+    'pit-testng': ['/m2/pitest-testng-plugin.jar'],
+    'launcher-1.11.4': ['/m2/junit-platform-launcher-1.11.4.jar'],
+  };
+
+  it('adds each test plugin only for the test framework the project runs on', () => {
+    expect(
+      [
+        ['/m2/junit-4.13.2.jar'],
+        ['/m2/junit-platform-engine-1.11.4.jar'],
+        ['/m2/junit-platform-engine-1.11.4.jar', '/m2/junit-platform-launcher-1.11.4.jar'],
+        ['/m2/testng-7.10.2.jar', '/m2/testng-helper-1.0.jar'],
+        ['/m2/testng-7.10.2.jar', '/m2/junit-platform-engine-1.11.4.jar'],
+      ].map((testRuntime) => pitClasspath(tools, testRuntime)),
+    ).toEqual([
+      ['/m2/pitest-command-line.jar'],
+      [
+        '/m2/pitest-command-line.jar',
+        '/m2/pitest-junit5-plugin.jar',
+        '/m2/junit-platform-launcher-1.11.4.jar',
+      ],
+      ['/m2/pitest-command-line.jar', '/m2/pitest-junit5-plugin.jar'],
+      ['/m2/pitest-command-line.jar', '/m2/pitest-testng-plugin.jar'],
+      [
+        '/m2/pitest-command-line.jar',
+        '/m2/pitest-junit5-plugin.jar',
+        '/m2/junit-platform-launcher-1.11.4.jar',
+        '/m2/pitest-testng-plugin.jar',
+      ],
+    ]);
+  });
+});
+
 describe('collectTestResults', () => {
   const since = Date.now() - 1000;
 
@@ -119,7 +157,7 @@ describe('collectTestResults', () => {
     const reportDir = tree({});
 
     collectTestResults({
-      module: { basedir: '/m', surefireReports: reports },
+      module: { basedir: '/m', surefireReports: reports, failsafeReports: reports },
       reportDir,
       since,
       isArchunit: archunitMatcher(),
@@ -142,7 +180,7 @@ describe('collectTestResults', () => {
 
     expect(() => {
       collectTestResults({
-        module: { basedir: '/m', surefireReports: reports },
+        module: { basedir: '/m', surefireReports: reports, failsafeReports: reports },
         reportDir: tree({}),
         since,
         isArchunit: archunitMatcher(),
@@ -158,10 +196,42 @@ describe('collectTestResults', () => {
     );
   });
 
+  it('fails on failing Failsafe tests as on Surefire ones, reading a shared directory once', () => {
+    const surefire = tree({
+      'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals', 'no']]),
+    });
+    const failsafe = tree({ 'TEST-shop.OrderIT.xml': suite('shop.OrderIT', [['stores', 'gone']]) });
+    const run = (failsafeReports) => () => {
+      collectTestResults({
+        module: { basedir: '/m', surefireReports: surefire, failsafeReports },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher(),
+      });
+    };
+    const failing = (...lines) =>
+      new Error(
+        [
+          'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
+          ...lines,
+        ].join('\n'),
+      );
+
+    expect(run(failsafe)).toThrow(
+      failing('  shop.OrderTest.totals: no', '  shop.OrderIT.stores: gone'),
+    );
+    expect(run(`${surefire}/.`)).toThrow(failing('  shop.OrderTest.totals: no'));
+  });
+
   it('reports whether any test ran', () => {
     const run = (files) =>
       collectTestResults({
-        module: { basedir: '/m', surefireReports: tree(files), testOutputDirectory: tree({}) },
+        module: {
+          basedir: '/m',
+          surefireReports: tree(files),
+          failsafeReports: '/missing',
+          testOutputDirectory: tree({}),
+        },
         reportDir: tree({}),
         since,
         isArchunit: archunitMatcher(),
@@ -183,6 +253,7 @@ describe('collectTestResults', () => {
           surefireReports: tree({
             'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]),
           }),
+          failsafeReports: '/missing',
           testOutputDirectory: testClasses,
         },
         reportDir: tree({}),
@@ -191,14 +262,51 @@ describe('collectTestResults', () => {
       });
     }).toThrow(
       new Error(
-        'maven-surefire-plugin ran none of the ArchUnit classes in /m (shop.LayerRules). ' +
+        'Neither maven-surefire-plugin nor maven-failsafe-plugin ran any of the ArchUnit classes in /m ' +
+          '(shop.LayerRules). ' +
           'Let surefire run them (its <includes>, no skipTests) so nitpicker can read their results',
       ),
     );
   });
 });
 
+describe('freshExecFiles', () => {
+  it('keeps every coverage file written since the build started, once each', () => {
+    const target = tree({ 'unit.exec': 'u', 'it.exec': 'i', 'old.exec': 'o' });
+    const file = (name) => path.join(target, name);
+    utimesSync(file('old.exec'), new Date(2020, 0, 1), new Date(2020, 0, 1));
+
+    expect(
+      freshExecFiles(
+        ['unit.exec', 'it.exec', 'unit.exec', 'old.exec', 'missing.exec'].map(file),
+        Date.now() - 1000,
+      ),
+    ).toEqual([file('unit.exec'), file('it.exec')]);
+  });
+});
+
 describe('runJacocoReport', () => {
+  it('fails when tests ran but no coverage file is fresh', () => {
+    const reportDir = tree({ 'classes/demo/A.class': '' });
+    const module = { basedir: '/m', outputDirectory: path.join(reportDir, 'classes') };
+
+    expect(() => {
+      runJacocoReport({
+        module,
+        reportDir,
+        tools: {},
+        execFiles: ['/m/none.exec', '/m/none-it.exec'],
+        since: 0,
+        testsRan: true,
+      });
+    }).toThrow(
+      new Error(
+        'JaCoCo recorded no coverage in /m: the tests ran without its agent. If maven-surefire-plugin ' +
+          'sets <argLine>, start it with @{argLine} so the agent stays attached',
+      ),
+    );
+  });
+
   it('writes an empty report for a module without main classes', () => {
     const reportDir = tree({});
     const module = {
@@ -211,7 +319,7 @@ describe('runJacocoReport', () => {
       module,
       reportDir,
       tools: {},
-      execFile: '/m/none.exec',
+      execFiles: ['/m/none.exec'],
       since: 0,
       testsRan: true,
     });

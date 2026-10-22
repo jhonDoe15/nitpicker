@@ -5,7 +5,7 @@ import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schem
 import { comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
 import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
-import { decodeEntities, parseXml } from './common.mjs';
+import { decodeEntities, parseXml } from '../../../shared/ingest/common.mjs';
 import { ingestGoCoverprofile } from './coverage-reports/gocover.mjs';
 import { ingestJacoco } from './coverage-reports/jacoco.mjs';
 import { ingestLcov } from './coverage-reports/lcov.mjs';
@@ -175,6 +175,27 @@ describe('archunit', () => {
     expect(findings[0].message).not.toMatch(/\.java:\d/);
   });
 
+  it('passes the Kotlin or Groovy file a violation names to the path resolver', () => {
+    const resolved = [];
+    const report = (fileName) =>
+      `<testsuite name="demo.NamingArchTest"><testcase name="servicesOnly" classname="demo.NamingArchTest"><failure message="Rule violated (1 times):&#10;Class &lt;demo.Calc&gt; does not have simple name ending with 'Service' in (${fileName}:0)"/></testcase></testsuite>`;
+    for (const fileName of ['Calc.kt', 'Calc.groovy']) {
+      ingestArchunit(report(fileName), {
+        resolvePath: (className, sourceFile) => {
+          resolved.push([className, sourceFile]);
+          return undefined;
+        },
+      });
+    }
+
+    expect(resolved).toEqual([
+      ['demo.NamingArchTest', undefined],
+      ['demo.Calc', 'Calc.kt'],
+      ['demo.NamingArchTest', undefined],
+      ['demo.Calc', 'Calc.groovy'],
+    ]);
+  });
+
   it('ignores passing test cases and rejects other documents', () => {
     expect(findings.some((finding) => finding.rule === 'layers_are_respected')).toBe(false);
     expect(() => ingestArchunit('<report/>')).toThrow('<testsuite>');
@@ -195,6 +216,20 @@ describe('pit', () => {
       ['mutant-survived', 'enforceable', 'src/main/java/demo/Calc.java'],
       ['mutant-nocoverage', 'enforceable', 'src/main/java/demo/Greeter.java'],
       ['mutant-timeout', 'descriptive', 'src/main/java/demo/Greeter.java'],
+    ]);
+  });
+
+  it('names the equivalent-mutant cases and the exception route in a survived mutant', () => {
+    const message = (tool) =>
+      `Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for ${tool}/mutant-survived in nitpicker.config.json.`;
+    const named = ingestPit(fixture('pit-mutations.xml'), {
+      tool: 'custom',
+      resolvePath: resolveMainPath,
+    });
+
+    expect([findings[0].message, named.findings[0].message]).toEqual([
+      message('pit'),
+      message('custom'),
     ]);
   });
 

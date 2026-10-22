@@ -15,7 +15,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head; Maven builds: see below)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, spring-arch.json, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
+  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, errorprone.json, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, spring-arch.json, structure.json, classes.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/reporting/java-reports.mjs       (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -28,9 +28,26 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   same tools and versions as head, even if the base predates any adoption. It registers
   `nitpickerJava` in every project that applies the `java` plugin. Every tool version is pinned
   exactly in one map at the top of the file (PMD 7.7.0, SpotBugs 4.9.3, google-java-format 1.25.2,
-  JaCoCo 0.8.12, Checkstyle 10.21.1). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
-  touch the consumer's compile classpath. The task writes only below `build/nitpicker/`; that
-  directory is the contract between the two sides.
+  JaCoCo 0.8.12, Checkstyle 10.21.1, Error Prone 2.50.0, NullAway 0.14.2). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
+  touch the consumer's compile classpath. Nitpicker passes `-Pnitpicker.reportDir=<dir>`, a
+  temporary directory outside the project, and the task writes only below it, one subdirectory per
+  Gradle project (layout in [internals.md](internals.md#java-report-directory)). A build script
+  that writes to `build/nitpicker` therefore changes nothing nitpicker reads. Run by hand without the property, the task
+  writes to `build/nitpicker/` of each project.
+- **Multi-project builds.** Every project that applies the `java` plugin is analyzed, the root
+  included when it applies it; paths in findings are relative to the directory Gradle runs in, so a
+  subproject's findings carry its folder (`lib/src/main/java/...`). A build where no project applies
+  the plugin, or a project whose reports are missing, is a tool error, never a pass. Projects of
+  an `includeBuild` composite build and `buildSrc` are separate builds and are not analyzed. Each project
+  runs every tool (tests, JaCoCo, PIT included) in the one Gradle invocation, so a build of several
+  projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies.
+  File limits and coupling (with the stability direction) are evaluated once over all projects, as
+  for Maven modules, so a package dependency from one project to another counts. Packages and classes
+  of a project other than the root are named with its folder (`lib/demo.lib`), so two projects that
+  share a package or class name stay apart, and a dependency goes to the project that declares the
+  class (its own first). A project's names depend only on its own folder, never on how many projects
+  there are: a lone subproject is named with its folder too, and the root project's names and
+  identities are as in a one-project build, which reads its own jdeps reports unmerged.
 - **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
   `readJavaFindings` converts the reports, `runJavaDiff` does worktrees, rename map, comparison.
   `languages/java/adapters/java-analyzer.mjs` wraps all of it as one analyzer named `java` for the CLI (slice
@@ -47,21 +64,23 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
 ## Maven builds
 
 A project is built with Maven when its root has a `pom.xml` and no Gradle build file
-(`settings.gradle(.kts)`, `build.gradle(.kts)`); with both, a lone `mvnw` (no `gradlew`) picks Maven,
-anything else Gradle. Nothing is configured and the choice is never a finding: both builds are valid,
-so nitpicker follows the one the project uses (`detectJavaBuild` in
+(`settings.gradle(.kts)`, `build.gradle(.kts)`); with both, a lone `mvnw` (no `gradlew`) picks
+Maven, anything else Gradle. Nothing is configured and the choice is never a finding: both builds
+are valid, so nitpicker follows the one the project uses (`detectJavaBuild` in
 `languages/java/builds/java-build.mjs`). Maven 3.6.3 or newer is needed.
 
 The Maven side produces the same reports as the init script, one set per module in
 `<module>/target/nitpicker/`, so the same ingesters read them and the findings are identical: the
-end-to-end suite builds one source tree with Gradle and with Maven and compares the findings
-field by field. Per snapshot:
+end-to-end suite builds one source tree with Gradle and with Maven and compares the findings field
+by field. Per snapshot:
 
 1. `mvn help:effective-pom` (help plugin pinned): the modules, their source, test, resource and
    output directories (plus `build-helper-maven-plugin` `add-source`/`add-test-source` roots), the
-   surefire reports directory, a JaCoCo `destFile` the project configures, and the
-   `nitpicker.archunit.includes` property (read from the POM's `<properties>` only, not from `-D`
-   or `settings.xml`). Module directories come from following the effective `<modules>` (active
+   surefire and failsafe reports directories (an execution's `<reportsDirectory>` before the
+   plugin's), whether Failsafe runs (below), the `destFile` of every JaCoCo `prepare-agent` and
+   `prepare-agent-integration` execution the project configures, and the
+   `nitpicker.archunit.includes` property (read from the POM's `<properties>` only, not from `-D` or
+   `settings.xml`). Module directories come from following the effective `<modules>` (active
    profiles included) from the root `pom.xml`. Each module's `pom.xml` is matched to its effective
    project by `groupId:artifactId`, or, when the raw coordinates use a property, by the effective
    build directory inside the module directory. A declared module that matches nothing, a module
@@ -69,17 +88,21 @@ field by field. Per snapshot:
 2. One build: `mvn jacoco:prepare-agent test dependency:list` (JaCoCo at the init script's version,
    dependency plugin pinned), with `-Dmaven.test.failure.ignore=true` and the project's own
    Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped. `dependency:list` writes every
-   module's resolved classpath (reactor modules as their `target/classes`). Our coverage file
-   (`target/nitpicker-jacoco.exec`) and a project `destFile` inside `target` are deleted before the
-   build, so coverage never accumulates across runs.
+   module's resolved classpath (reactor modules as their `target/classes`, or as their packaged jar
+   in a `verify` build). Our coverage file (`target/nitpicker-jacoco.exec`) and every project
+   `destFile` inside `target` are deleted before the build, so coverage never accumulates across
+   runs. Maven gets 15 minutes; a build that takes longer is stopped and reported as a
+   `java/maven-failure` that names the limit and warns that its post-integration-test steps may not
+   have run.
 3. The tools resolved once from Maven Central through Maven itself (a generated tools project in
    `$XDG_CACHE_HOME/nitpicker` or `~/.cache/nitpicker`, private to the user, reused while the jars
    exist), so the project's `settings.xml` mirrors apply.
-4. Per module, outside Maven: PMD, SpotBugs, google-java-format, Checkstyle (the bundled Google checks
-   without inline suppression filters, as in the init script), `StructureMetrics.java`, jdeps, the
-   JaCoCo CLI report and PIT, with the same arguments and classpaths as the init script tasks (PMD's
-   auxiliary classpath is the main and test compile classpaths plus both class directories). The
-   versions are read from the init script's `pinned` map, so both builds always run the same tools.
+4. Per module, outside Maven: PMD, SpotBugs, google-java-format, Checkstyle (the bundled Google
+   checks without inline suppression filters, as in the init script), `StructureMetrics.java`,
+   jdeps, the JaCoCo CLI report and PIT, with the same arguments and classpaths as the init script
+   tasks (PMD's auxiliary classpath is the main and test compile classpaths plus both class
+   directories). The versions are read from the init script's `pinned` map, so both builds always
+   run the same tools.
    A module that uses Spring (`spring-context` or `spring-boot` on its main compile classpath) also
    runs the Spring architecture rules: ArchUnit is resolved with the other tools, but only when some
    module uses Spring, and the rule classes are compiled once into
@@ -87,37 +110,73 @@ field by field. Per snapshot:
    to the user; the hash is computed like Gradle's, but the cache is separate from Gradle's) and run in
    one extra JVM per module (`languages/java/maven/spring/maven-spring-arch.mjs`).
 
+- **Integration tests.** Failsafe runs in a module whose effective POM (`<build><plugins>`, so
+  neither `<pluginManagement>` alone nor an inactive profile) binds maven-failsafe-plugin's
+  `integration-test` goal in an execution, unless the project keeps it off: a `skipITs` or
+  `skipTests` property set to `true`, `<skip>`, `<skipITs>` or `<skipTests>` set to `true` in that
+  execution's or the plugin's configuration (the execution's wins), or the execution's phase `none`.
+  When any module runs Failsafe, the build runs `verify` instead of `test`, so the project's
+  `package`, `pre-integration-test` and `post-integration-test` steps run as they normally do and
+  containers it starts are stopped again. `-Dmaven.test.failure.ignore=true` also keeps
+  `failsafe:verify` from failing the build. The `verify` build adds `-Djacoco.haltOnFailure=false`,
+  so a `jacoco:check` the project binds to `verify` only warns (`haltOnFailure` belongs to `check`
+  alone, so our `prepare-agent` is unaffected), and skips the plugins that sign, publish, need the
+  network or check a release: `-Dgpg.skip=true`, `-Dmaven.javadoc.skip=true`,
+  `-Dmaven.source.skip=true`, `-Dmaven.deploy.skip=true`, `-Djib.skip=true` (all Jib goals,
+  `dockerBuild` too), `-Ddependency-check.skip=true`, `-Drat.skip=true`, `-Dlicense.skip=true`
+  (com.mycila's license plugin), `-Dlicense.skipDownloadLicenses=true` and
+  `-Dlicense.skipAggregateDownloadLicenses=true` (the Codehaus license plugin, which has no single
+  skip property), and `-Djapicmp.skip=true`. fabric8's `docker.skip` is not set: it also skips
+  `docker:start` and `docker:stop`, which integration tests rely on. A project without Failsafe, or
+  with Failsafe kept off in every module, stays on `test`.
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
-  `nitpicker.archunit.includes` property in the POM) become findings; any other failing test is a
-  `java/maven-failure` tool error that names up to ten failing tests. Surefire reports older than
-  the build are ignored. Gradle runs the ArchUnit classes in their own task, but Maven only has
-  surefire's results: when a module has ArchUnit classes and surefire ran none of them (its
-  `<includes>` miss them, as they would `*Rules`, or the module skips tests), that is a tool error
-  rather than a silent pass. ArchUnit reads bytecode without running it, so running these classes in
-  the covered test run does not change coverage.
-- **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` replaces it (the agent
-  replaces an earlier agent in `argLine`) and writes to its configured `destFile`, which is read
-  instead. A module whose tests ran but left no fresh coverage file is a tool error that points at a
-  surefire `<argLine>` without `@{argLine}`. A module whose test classes ran no test (only helpers,
-  or `*IT` classes surefire skips) gets zero coverage, as on Gradle, and a module without main
-  classes gets an empty report.
+  `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
+  Surefire's or Failsafe's reports, is a `java/maven-failure` tool error that names up to ten
+  failing tests. Reports older than the build are ignored. Gradle runs the ArchUnit classes in their
+  own task, but Maven only has the Surefire and Failsafe results: when a module has ArchUnit classes
+  and neither plugin ran any of them (Surefire's `<includes>` miss them, as they would `*Rules`, or
+  the module skips tests), that is a tool error rather than a silent pass. ArchUnit reads bytecode
+  without running it, so running these classes in the covered test run does not change coverage.
+- **Slow-test reports.** Per module, the fresh `TEST-*.xml` files of surefire's reports directory
+  (`<reportsDirectory>` of maven-surefire-plugin, default `<build directory>/surefire-reports`) are
+  copied to `target/nitpicker/test-results/surefire/` and those of maven-failsafe-plugin's (its
+  `<reportsDirectory>`, default `<build directory>/failsafe-reports`) to `test-results/failsafe/`,
+  without the ArchUnit rule classes (as Gradle leaves out its ArchUnit task). When both plugins
+  report to the same directory, it is copied once, as `surefire`, so unit tests keep the unit
+  budget. Only files written since the build started are copied, so results left by an earlier run
+  never count. `failsafe` counts as an integration task, so the tests Failsafe runs in a `verify`
+  build get the integration budget.
+- **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` or
+  `prepare-agent-integration` replaces it in `argLine` (the agent replaces an earlier agent there).
+  Without a configured `destFile` the project's agent still writes our file, because our
+  `-Djacoco.destFile` sets the default of both goals; a configured `destFile` is read as well. Every
+  fresh file among ours and the configured ones goes to one JaCoCo report. Failsafe reads the same
+  `argLine`, so integration tests append their coverage to the unit tests' file. A module whose
+  tests ran but left no fresh coverage file is a tool error that points at a surefire `<argLine>`
+  without `@{argLine}`. A module whose test classes ran no test (only helpers, or `*IT` classes
+  without a Failsafe that runs them) gets zero coverage, as on Gradle, and a module without main
+  classes gets an empty report. Failsafe tests the packaged jar; when that jar is shaded with
+  relocated packages, its classes no longer match `target/classes`, so the coverage integration
+  tests record for relocated classes is lost.
 - **Multi-module.** Each module (packaging other than `pom`) is analyzed on its own and its findings
   are prefixed with the module path (`core/src/main/java/...`). Coupling is computed once over all
   modules, so a dependency from one module to another counts, and file limits are evaluated once
   over every module's roots, so `exceptions` and `exclude` globs are relative to the project root
-  (`languages/java/builds/java-modules.mjs`, build-neutral). Duplicate detection runs per module, so
-  a clone between two modules is not found, as a clone between two source roots is not.
+  (`languages/java/builds/java-modules.mjs`; both builds share `builds/project-wide.mjs`). Duplicate
+  detection runs per module, so a clone between two modules is not found, as a clone between two
+  source roots is not.
 - **Binary.** `NITPICKER_MAVEN` when set; otherwise the project's `mvnw` (`mvnw.cmd` on Windows),
   run with `sh` when not executable; otherwise `mvn` from the PATH. A missing `mvn` is a tool error
   that names these three ways. The JDK tools (`java`, `jar`, `jdeps`) come from `JAVA_HOME` when
   set, else the PATH.
 - **Not covered.** The Kotlin preset needs Gradle and says so; use the java preset for a Maven
-  project's Java sources. A surefire configuration that sets
-  `<testFailureIgnore>false</testFailureIgnore>` explicitly overrides the command line, so a
-  violated ArchUnit rule stops the build as a tool error. Maven 3 cannot resolve a `test-jar`
-  dependency on another module in the `test` phase; such reactors fail as they would with
-  `mvn test`. Gradle multi-project builds still read only the root project's reports (see
-  [Slice 1](#slice-1-what-is-deliberately-not-included)).
+  project's Java sources. A surefire or Failsafe configuration that sets
+  `<testFailureIgnore>false</testFailureIgnore>`, or a `jacoco:check` that sets
+  `<haltOnFailure>true</haltOnFailure>`, explicitly overrides the command line, so a violated
+  ArchUnit rule or coverage rule stops the build as a tool error. Maven 3 cannot resolve a
+  `test-jar` dependency on another module in the `test` phase; such reactors fail as they would with
+  `mvn test` (a `verify` build packages them first). Gradle multi-project builds still read only the
+  root project's reports (see [Slice 1](#slice-1-what-is-deliberately-not-included)).
 
 ## Slices
 
@@ -144,14 +203,18 @@ for jscpd, a long-running PIT) and each is expensive enough to deserve its own r
 
 - **What runs.** The project's own ArchUnit rules, executed as JUnit tests by the init script's
   `nitpickerArchunit` task (a `Test` task on the project's test classes and runtime classpath,
-  JUnit Platform, `ignoreFailures`). The project must have `archunit-junit5` (or any ArchUnit
-  setup running on the JUnit Platform) on its test classpath; Nitpicker adds no dependency and so
-  pins no ArchUnit version (the version map is unchanged). Test classes named `*ArchTest` or
+  `ignoreFailures`). It runs on the framework the declared ArchUnit library needs: JUnit 4 for
+  `archunit-junit4` rules (`@RunWith(ArchUnitRunner.class)`), the JUnit Platform for
+  `archunit-junit5`; with both or neither declared, on the framework of the project's `test` task.
+  When the test classes hold ArchUnit classes and none of them produced a report, the task fails
+  (a Gradle failure, `tool-error`), as Maven does, instead of passing without findings. The
+  project must have one of the two libraries on its test classpath; Nitpicker adds no dependency
+  and so pins no ArchUnit version (the version map is unchanged). Test classes named `*ArchTest` or
   `*ArchitectureTest` are selected; `-Pnitpicker.archunit.includes=<Gradle class patterns,
 comma-separated>` changes that. Those classes are excluded from the regular `test` task in
   Nitpicker runs, so a violated rule produces findings instead of failing the JaCoCo step. No
-  matching classes means no `build/nitpicker/archunit` directory and no findings.
-- **Report.** Gradle's JUnit XML, one file per test class, in `build/nitpicker/archunit/`.
+  matching classes means no `archunit` report directory and no findings.
+- **Report.** Gradle's JUnit XML, one file per test class, in `archunit/` of the report directory.
   `manifest.json` additionally lists `testSourceRoots`.
 - **Ingester.** `languages/java/ingest/archunit.mjs` (`ingestArchunit`). Per failed test case it parses
   the violation lines of the assertion message (`Method <a.B.run()> calls ... in (B.java:12)`) and
@@ -183,15 +246,28 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `org.example` targets `org.example.*`. PIT refuses `org.*` because it matches PIT's own classes,
   so classes directly in `org` are named one by one), against the project's own tests. The only
   profile can produce enforceable findings.
-- **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the
-  `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
-  `build/nitpicker/pit/mutations.xml`. Tests are named class by class (`--targetTests`), and
-  `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
+- **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the test
+  plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
+  1.0.0, both pinned, added on the conditions below), default mutators, XML output, two threads, to
+  `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
+  `--mutableCodePaths` limits mutation to the main classes. For a JUnit Platform `test` task, its
+  `includeTags` and `excludeTags` also select the tests PIT runs during its green-suite check and
+  mutation testing, including method-level tags. The JUnit Platform is not pinned by
   Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
   launcher of the project's engine version added when the project does not declare one. PIT
-  requires a green test run: a failing test suite fails the task, which is a Gradle failure
-  (`tool-error` on the CLI path). Projects without main classes produce no report and no findings.
-  JUnit 5 (Jupiter) projects are the tested case; JUnit 4 projects are not covered by the e2e test.
+  requires a green test run: a failing test suite fails the build, which is a `java/gradle-failure`
+  tool error. When the failed build left JUnit reports with failing tests (the init script lists
+  the report directory of every test task in `test-results.json` of the report base), the error
+  names up to ten of them with the same text as on Maven (`Tests fail in <project>; nitpicker needs
+a passing test suite ...`) instead of Gradle's own failure output. Projects without main classes produce no report and no findings.
+  The `pitest-junit5-plugin` and the launcher are added only when the project's test runtime has
+  `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support. When the test
+  runtime has a `testng` jar, the pinned `pitest-testng-plugin` (1.0.0) is added too, without a
+  TestNG of its own: PIT refuses to run a TestNG project without it. Maven builds put the same
+  plugins on PIT's classpath on the same conditions. See [Test frameworks](#test-frameworks).
+- **Equivalent mutants.** A survived mutant's message names the common equivalent cases (a
+  `compareTo` boundary, a discarded lambda return) and the way out: simplify the code, or add an
+  exception for `pit/mutant-survived`.
 - **Ingester.** `languages/java/ingest/pit.mjs` (`ingestPit`). PIT statuses map to the names the
   Stryker-based area uses: `SURVIVED` and `NO_COVERAGE` give enforceable `mutant-survived` and
   `mutant-nocoverage`; `TIMED_OUT`, `MEMORY_ERROR`/`RUN_ERROR`, `NON_VIABLE` and `STARTED` give
@@ -217,15 +293,70 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   (glue), and gated e2e cases: a tested change with a surviving boundary mutant fails; the clean
   change now adds a test for its new method, because new untested code is a new `mutant-nocoverage`.
 
+## Test frameworks
+
+Coverage (JaCoCo), mutation testing (PIT), ArchUnit and the slow-test check work with these test
+frameworks, on Gradle and on Maven. Nitpicker detects the framework from the project's test runtime
+classpath and its `test` task, and adds no test library to the project.
+
+| Framework | Coverage | Mutation                                                    | ArchUnit                                                                                                                             | Slow tests                                                       |
+| --------- | -------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| JUnit 4   | yes      | PIT's built-in JUnit 4 support                              | `archunit-junit4`, run on JUnit 4                                                                                                    | method by name                                                   |
+| JUnit 5   | yes      | `pitest-junit5-plugin` and a launcher of the engine version | `archunit-junit5`, run on the JUnit Platform                                                                                         | method by name or `@DisplayName`                                 |
+| TestNG    | yes      | `pitest-testng-plugin`                                      | Gradle: `archunit-junit5` on the JUnit Platform. Maven: Surefire 3.6+, or an engine/separate execution on older providers, see below | method by name                                                   |
+| Spock 2   | yes      | `pitest-junit5-plugin` (Spock runs on the JUnit Platform)   | `archunit-junit5`, run on the JUnit Platform                                                                                         | feature by name, an unrolled iteration by its feature; see below |
+| Kotest    | yes      | `pitest-junit5-plugin` (Kotest runs on the JUnit Platform)  | `archunit-junit5`, run on the JUnit Platform                                                                                         | the spec file, no line; counted when the file changed            |
+
+- **Coverage.** JaCoCo's agent records whatever test framework the build's own test task runs, so
+  coverage needs nothing per framework.
+- **Mutation.** PIT needs a plugin per framework family: its JUnit 4 support is built in, JUnit
+  Platform engines (Jupiter, Spock 2, Kotest, the vintage engine) run through `pitest-junit5-plugin`,
+  and TestNG through `pitest-testng-plugin`. Each plugin is added only when its framework is on the
+  test runtime, so a JUnit 4 project does not get the JUnit 5 plugin, which fails without the JUnit
+  Platform. Kotest needs no `kotest-extensions-pitest`: through the JUnit Platform PIT already
+  tells killed, survived and uncovered mutants apart per Kotest test (pinned by the Kotest 6.0
+  end-to-end test).
+- **ArchUnit.** ArchUnit has runners for JUnit 4 and the JUnit Platform only. On Gradle
+  `nitpickerArchunit` takes the framework of the declared ArchUnit library (see
+  [Slice 4](#slice-4-archunit)); on Maven Surefire runs the rule classes with the provider it picks
+  for the project. A violation in a Kotlin or Groovy class is anchored at its `.kt` or `.groovy`
+  file, found under the Kotlin source roots too. Surefire 3.6 and newer can run TestNG beside
+  ArchUnit without a separate TestNG engine. Earlier Surefire versions select their JUnit Platform
+  provider when `archunit-junit5` puts the Platform on the test classpath; that provider runs TestNG
+  tests only through `org.junit.support:testng-engine`, so the project's own `mvn test` skips them too. When the
+  TestNG engine is missing and Surefire ran none of a module's tests but the ArchUnit classes,
+  nitpicker stops with a `java/maven-failure` that names the cause and the two ways out (add the
+  TestNG engine, or run TestNG in a Surefire execution of its own) instead of reporting 0% coverage.
+- **Slow tests.** Specifications are found under every test source root, `.groovy` files included:
+  Gradle's `allJava` source directories cover `src/test/groovy`; on Maven the GMavenPlus test
+  sources (its `testSources`, default `src/test/groovy`) and an existing `src/test/groovy` (as
+  groovy-eclipse-compiler builds it) are test source roots, and roots that lie outside the module
+  are dropped. A Spock feature is found by its quoted name (`def "ships an order"()`); an unrolled
+  iteration by its feature, its `#placeholders` read as wildcards (`adds 1 and 2` for
+  `def "adds #a and #b"()`) and the default iteration suffix (` [a: 1, b: 2, #0]`) ignored. A
+  feature with a `where:` block counts as a template, like a `@ParameterizedTest`. A test that
+  names no method (a Kotest test, a custom unroll name) in a file without templates is counted when
+  its file changed. `*IntegrationSpec` and `*ISpec` classes get the integration budget.
+- **Tests.** `adapters/java-e2e/test-frameworks.e2e.test.mjs` runs a JUnit 4 project with
+  `archunit-junit4` rules, a TestNG project and a Spock project, both with `archunit-junit5` rules,
+  on Gradle and on Maven (fixtures in `adapters/fixtures/test-frameworks/`), JUnit 4 tests with
+  `archunit-junit5` rules and an ArchUnit class no runner picks up on Gradle;
+  `adapters/kotlin-e2e/kotest.e2e.test.mjs` runs a Kotest project with `archunit-junit5` rules
+  under the Kotlin preset.
+
 ## Slice 2: CLI and reporter integration
 
-- **Selection.** Explicit only: `"preset": "java"` in `nitpicker.config.json`. There is no
-  auto-detection of `build.gradle`: a repository with both a `package.json` and a Gradle build
-  would otherwise change meaning silently. Without the key, nitpicker runs the TypeScript preset as
-  before. The key is read from the head checkout and applies to both snapshots, like the rest of
-  the config.
+- **Selection.** Explicit only: `"preset": "java"` in `nitpicker.config.json`. A Gradle or Maven
+  build is never picked up silently, because a repository with both a `package.json` and a Gradle
+  build would otherwise change meaning. Without the key, nitpicker runs the TypeScript preset, unless
+  the project has a Java build file and no TypeScript or JavaScript sources under its source roots
+  (bundled assets such as `src/main/resources/static/*.js` do not count): then it
+  stops with a config error that names `"preset": "java"` (`rejectUndeclaredPreset`, best-effort, see
+  [Using nitpicker](usage.md#configuration)). The head is measured with the head's config and the
+  base with its own (widened to the head's roots), and a change to `preset` is listed under "Policy
+  changed in this change"; declaring `java` on a project that had no preset is not a loosening.
 - **One analyzer, several tools.** The preset is a single analyzer, `java` (one Gradle run per
-  snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `google-java-format`, `jacoco`,
+  snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `errorprone` (Error Prone and NullAway, below), `google-java-format`, `jacoco`,
   `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5), `duplicates` (slice 6), `pit` (slice 7) and `spring` (configuration files, below). The analyzer declares them as
   `reportedTools` (a finding for a tool that is neither the analyzer nor a declared one is an error).
   Its version is the pinned tool versions from the init script, its configuration hash covers the
@@ -246,14 +377,29 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   project root (base and head are separate worktrees), so each side runs the Gradle version it pins.
   The wrapper downloads the Gradle distribution named in the head snapshot's
   `gradle-wrapper.properties`, and base and head each use their own wrapper.
+- **Gradle timeout.** Each Gradle command has a 15-minute budget by default, for both Java
+  and Kotlin. Set `NITPICKER_GRADLE_TIMEOUT_MINUTES` to a positive whole number of minutes,
+  for example `NITPICKER_GRADLE_TIMEOUT_MINUTES=45 npx nitpicker --base main` for a slow PIT
+  suite. The same budget applies to base and head. Empty values, fractions, units such as
+  `45m`, and values outside 1–17895 are errors. The upper bound keeps the analyzer's Node.js
+  timer within its supported range. The analyzer deadline allows two commands (the optional
+  Checkstyle configuration export and the analysis), plus one minute for reports. This does
+  not change Maven's command budget or configure individual PIT phases.
 - **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude` and
   `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
   part of the analyzer's configuration hash:
   - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
     `fileLines`, `testFileLines` and `folderFiles` the file limits, which count the `.java` files of
-    the main and test source sets (branch coverage and duplicates have fixed limits). Line length
-    is Checkstyle's; `thresholds.lineLength` is a config error.
+    the main and test source sets (branch coverage and duplicates have fixed limits). `classMethods`
+    (20), `classFields` (10), `inheritanceDepth` (3) and `folderDepth` (4) replace the limits
+    described under [Class and package size limits](#class-and-package-size-limits). Line length
+    is 100 characters, where google-java-format wraps (120 for palantir-java-format, or the
+    `java.lineLength` convention; see [Style](#style)); nitpicker's own `line-length-limit` rule
+    checks it (string literal text, text blocks, imports and URLs do not count, an old long line is
+    held and fails only when it grows) and takes an `exceptions` entry; `thresholds.lineLength` is a
+    config error, not the general 120. `unitTestSeconds` and
+    `integrationTestSeconds` are the [slow test](#slow-tests) budgets.
   - `exclude` drops findings whose project-relative path matches a glob (`**`, `*`, `?`, `{a,b}`);
     the tools still run on those files.
   - `legacyInventory` (default `nitpicker.legacy.json`) lists existing sites as
@@ -264,7 +410,9 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   - `exceptions` lifts one rule for some paths: `{ "rule", "paths", "reason" }`, where `rule` is the
     finding as printed, `<tool>/<rule>` (for example `pmd/UnusedPrivateField`), and `tool` is one of
     the tools the Java analyzer reports. Matching findings are dropped on both snapshots. The shared
-    `file-lines-limit` and `folder-files-limit` rules are named as they are. Each exception is listed
+    `file-lines-limit`, `folder-files-limit`, `folder-depth-limit`, `class-methods-limit`,
+    `class-fields-limit` and `inheritance-depth-limit` rules and the
+    [dependency and repository checks](usage.md#dependency-and-repository-checks) are named as they are. Each exception is listed
     in the report and changes the configuration hash.
   - `layout` and `tools` configure TypeScript source roots and tool configs; they have no Java
     meaning and stay a config error with `"preset": "java"` instead of being ignored.
@@ -283,12 +431,12 @@ finding that only moves stays baselined. The comparison key is already
 `tool, rule, path, symbol, identity, classification, metric name`; "identity" below is what each
 tool adds on top of rule and path.
 
-| Tool                                      | Report                     | Ingester                                                                       | Classification                                          | Identity                                                                                                            |
-| ----------------------------------------- | -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| PMD (`pmd`)                               | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
-| SpotBugs (`spotbugs`)                     | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
-| google-java-format (`google-java-format`) | file list from `--dry-run` | `ingestFormatCheck` (new, `languages/java/ingest/formatting/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
-| JaCoCo (`jacoco`)                         | XML                        | `ingestJacoco` (X6)                                                            | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
+| Tool                                                                             | Report                     | Ingester                                                    | Classification                                          | Identity                                                                                                            |
+| -------------------------------------------------------------------------------- | -------------------------- | ----------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| PMD (`pmd`)                                                                      | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                     | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
+| SpotBugs (`spotbugs`)                                                            | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                     | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
+| google-java-format (`google-java-format`; `palantir-java-format` for that style) | file list from `--dry-run` | `ingestFormatCheck` (new, `shared/ingest/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
+| JaCoCo (`jacoco`)                                                                | XML                        | `ingestJacoco` (X6)                                         | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
 
 Notes on the glue in `java-reports.mjs`:
 
@@ -301,6 +449,13 @@ Notes on the glue in `java-reports.mjs`:
   ingester's `fp:` identity path is used and the line is never involved. The alternative, the
   ingester's default hash of rule, path and symbol, would treat two different unused fields in one
   file as indistinguishable repeats; matching by what the finding is about is more precise.
+- **Several projects.** Each Gradle project's reports are read on their own and their findings
+  joined. A finding about a whole project (path `.`, such as the mutation summary) gets
+  `@<project path>` appended to its identity when the build has more than one project.
+- **SpotBugs entity associations.** `EI_EXPOSE_REP` and `EI_EXPOSE_REP2` are dropped for a field
+  annotated `@ManyToOne` or `@OneToOne`: an entity hands out its associated entity on purpose.
+  Collections and other mutable values still fail, and the message names the copy (`List.copyOf`,
+  `Map.copyOf`) or a record, and the exception.
 - **SpotBugs level.** SpotBugs marks lower-confidence findings with SARIF level `note`, which the
   SARIF ingester would classify as report-only. The preset instead fixes the threshold in the init
   script (`-medium`) and treats everything the tool reports as enforceable.
@@ -311,22 +466,61 @@ Notes on the glue in `java-reports.mjs`:
   remap them: a renamed file with such findings shows them as resolved plus new. `format` and
   `fp:` identities carry no path, so they follow renames.
 
+**The project's PMD ruleset.** With `tools.pmd.precedence` listing `"project"`, PMD runs
+nitpicker's ruleset and the project's together, on Gradle and Maven alike
+(`adapters/tool-config/pmd-layers.mjs`). A rule the project names on its own, or defines inline,
+is laid over nitpicker's definition of the rule: nitpicker's copy is excluded and the merged rule goes into
+the project's ruleset file (PMD keeps the first reference of a rule, and a ruleset's `exclude-pattern`
+applies to the file that holds it), so the project's priority, message and named properties win while the
+properties it leaves unset keep nitpicker's values (xpath, `violationSuppressXPath`, `ignore...`). A
+whole-category reference enables the rules nitpicker leaves out of that category (as single `<rule ref>`
+entries, minus the project's `<exclude>`s) and nothing nitpicker already runs, and an `<exclude>` in the
+project's file cannot turn a nitpicker rule off. With `["nitpicker", "project"]` nitpicker's values win
+where both set one. A rule nitpicker runs through its test-only ruleset (`TestClassWithoutTestCases`, from
+`pmd-test-only.xml`) is never added to the project's file, so a project category reference does not run
+it a second time; a project rule that names it is overlaid on that ruleset (`pmd-test-rules.xml`) instead.
+
+**PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
+default, and their messages name it:
+
+| Rule                               | What passes                                                                                                                                                                                        |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AvoidLiteralsInIfCondition`       | `-1`, `0`, `1` and `2`, and any string or char literal (`"abc".equals(s)`); any other number in a condition is a named constant.                                                                   |
+| `AvoidFieldNameMatchingMethodName` | `static final` constants, and a method named exactly like its field with at most one parameter: an accessor (`name()`), a fluent setter or builder step (`name(String)`).                          |
+| `AssignmentInOperand`              | An assignment in a `while` condition (`while ((line = reader.readLine()) != null)`).                                                                                                               |
+| `GuardLogStatement`                | `trace` and `debug` (and JUL `fine` levels) with placeholders whose values are variables, fields, literals or a no-argument call on one (`order.id()`); a guard only when an argument is computed. |
+| `LogStringConcatenation` (new)     | `info`, `warn` and `error` with placeholders, for SLF4J, Log4j 2, commons-logging, JUL and `System.Logger`.                                                                                        |
+| `GeneratedOnHandWrittenCode` (new) | No `@Generated` annotation on a class, method or constructor: JaCoCo and PIT skip what it marks.                                                                                                   |
+
 ## Slice 3: Checkstyle
 
 - **Gradle side.** The init script applies the Gradle `checkstyle` plugin (version pinned in the
-  map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on `checkstyleMain` and
-  `checkstyleTest`. `ignoreFailures` is on and the XML reports are written to
-  `build/nitpicker/checkstyle.xml` (main sources) and `build/nitpicker/checkstyle-test.xml` (test
-  sources, absent without any); the HTML report is off.
+  map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on the Checkstyle task of the
+  main source set and of every test source set (see [Coupling and stability](#coupling-and-stability-ticket-sh6)
+  for which source sets are tests; a `jmh` or `benchmark` set is not checked). `ignoreFailures` is on and the XML reports are written to `checkstyle.xml` (main
+  sources) and `checkstyle-<source set>.xml` (`checkstyle-test.xml`, `checkstyle-integration.xml`,
+  ...) in the report directory; the HTML report is off.
 - **Configuration.** The preset uses `google_checks.xml` from the pinned
-  Checkstyle jar, which matches google-java-format, with `MissingJavadocMethod` and
+  Checkstyle jar, with the layout checks the formatter owns (see [Style](#style)) and `MissingJavadocMethod` and
   `MissingJavadocType` suppressed (`languages/java/gradle/checkstyle-suppressions.xml`): Javadoc is
-  allowed on public API but not required, the same rule as the TypeScript preset. Javadoc that is
-  there still has to be well formed. Decision to review: google_checks is noisy on
+  allowed on public API but not required, the same rule as the TypeScript preset. Member and method
+  names may be a single lowercase letter (`x`, `y`), as record components can. Javadoc that is
+  there still has to be well formed. With this bundled config the tasks run on nitpicker's own
+  `nitpickerCheckstyle` configuration, so a project that declares its own Checkstyle version in
+  `checkstyle` (Spring PetClinic declares 12.3.1) still gets the pinned version and its config.
+  A project config chosen by policy (`tools.checkstyle.precedence` lists `"project"`) is merged
+  into this one module by module (`adapters/tool-config/checkstyle/checkstyle-layers.mjs`, run in
+  Node by `checkstyle-merge.mjs` between two Gradle runs (the first exports nitpicker's config, the second
+  gets the merged file as `-Pnitpicker.checkstyle.mergedConfig`) and by `writeCheckstyleSetup` for Maven): the project's property
+  values win for the modules both configs name, the modules only one names stay, so nitpicker's
+  checks are never dropped, and the merged file still runs on the pinned Checkstyle. Decision to review: google_checks is noisy on
   code that was never written for it, but the gate is differential, so existing violations stay
   baselined and only new ones fail.
 - **Ingestion.** `ingestCheckstyle` (X6) unchanged, `tool` `checkstyle`, absolute file paths made
-  project-relative. Severities `error` and `warning` are enforceable, `info` is descriptive.
+  project-relative. Severities `error` and `warning` are enforceable, `info` is descriptive. The
+  rule is the check's short name (`checkstyle/Indentation`, not the class
+  `com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck`), or the `id` the config
+  gives the module (`checkstyle/RightCurlySame`); see [Rule messages](#rule-messages).
 
 | Tool                      | Report         | Ingester           | Classification                                         | Identity                                                                                                                                                                                                                   |
 | ------------------------- | -------------- | ------------------ | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -335,22 +529,48 @@ Notes on the glue in `java-reports.mjs`:
 Messages that embed a measured value (for example "found 120" in a line-length violation) change
 identity when the value changes: editing such a line counts as a resolved plus a new finding.
 
+- **Wildcard imports follow the project.** Wildcard and explicit imports are both valid, so
+  the `java.wildcardImports` convention (`explicit` or `wildcard`, default `explicit`) marks a file
+  `wildcard` when it has any wildcard import except a static one in a test source set, and the plurality
+  of files wins. With `wildcard`, `checkstyle/AvoidStarImport` and `errorprone/WildcardImport` are
+  dropped on Gradle and on Maven alike (the Kotlin preset's Java files too); PMD and google-java-format
+  have no such rule. Static wildcards in test sources (`import static org.assertj.core.api.Assertions.*;`)
+  are their own convention, `java.testStaticImports`, measured over the test source sets
+  (`src/test`, `src/integrationTest`, ...): with `wildcard`, only star findings on a
+  `import static` line of a test file are dropped, and the ban stays everywhere else. Pin either in
+  `conventions` (see [Configuration](usage.md#configuration)).
+
 ## Slice 5: CRAP
 
 - **Complexity source.** `StructureMetrics.java` (the `nitpickerStructure` task, see
   [Structure limits (SH5)](#structure-limits-sh5)) writes the
-  cyclomatic complexity of each method and constructor into `build/nitpicker/structure.json`
+  cyclomatic complexity of each method and constructor into `structure.json` in the report directory
   (`complexity`), so the CRAP check needs no tool beyond the JDK that runs Gradle. It is
   McCabe's count: 1 plus each `if`, `for`, enhanced `for`, `while`,
   `do`, `catch`, `?:`, `&&`, `||` and each `case` that is not a default one (an arrow case and a case with
-  several constants count once; `default` and `case null, default` count 0). Lambda bodies count towards the
-  enclosing method; members of nested and anonymous classes are methods of their own.
+  several constants count once; `default` and `case null, default` count 0). A flat switch, a switch
+  expression or a pattern switch whose cases are all one-expression arrows, counts as one decision
+  plus one per `when` guard, at most its case count, so an exhaustive switch over an enum or sealed
+  type does not push a method over the limit. Lambda bodies, initializer blocks and members of
+  nested and anonymous classes are units of their own and do not count towards the enclosing
+  method; the same scanner counts all of them (see
+  [Structure limits (SH5)](#structure-limits-sh5)).
 - **Ingester.** `ingestCrap` (`languages/java/ingest/crap.mjs`) joins those methods with the JaCoCo
   report (same `jacoco.xml` as slice 1). A JaCoCo method belongs to a method of `structure.json` when
   the file, the method name (`<init>` is the class name) and the line match: the method's first line
-  lies in the method's line range. This also joins methods of anonymous classes. Lambdas and
-  `<clinit>` have no entry of their own and stay out of the join (a lambda body counts
-  toward its enclosing method's complexity but not toward its coverage).
+  lies in the method's line range. This also joins methods of anonymous classes. A constructor is
+  also joined by its parameter types (`parameterTypes` in `structure.json` against JaCoCo's
+  descriptor), because a class with field initializers starts its `<init>` at the first initializer,
+  before the constructor. A lambda is joined to the synthetic JaCoCo methods `lambda$<method>$<n>`
+  (`lambda$new$<n>` in a constructor, an instance initializer or a field initializer,
+  `lambda$static$<n>` in a static one) whose first line lies in the lambda's range and not in a lambda
+  nested in it, so a lambda inside a lambda is scored separately and an outer lambda is scored
+  without the inner one. An initializer block and a field initializer that branches (`entry.initializer`
+  in `structure.json`) have no JaCoCo method of their own: their code is part of the constructors'
+  `<init>` or of `<clinit>`, so their coverage is read from JaCoCo's per-line data (`jacoco.xml`
+  `<sourcefile><line>`: covered lines and branches) for the lines of the unit, minus the lines of a unit nested in
+  it, and the lower of the line and branch percentage is used as everywhere else. A constructor's
+  own score still counts the initializer lines that its `<init>` holds.
 - **Private empty constructors.** `private Util() {}` (also with an explicit `super();`), the
   utility-class idiom, is flagged `privateEmptyConstructor` in `structure.json` and left out of the
   join. JaCoCo leaves such a constructor out of its report only in some cases (inner classes, enums,
@@ -360,12 +580,24 @@ identity when the value changes: editing such a line counts as a resolved plus a
 - **Rules, as in the TypeScript `crap` check.** `crap = ccn^2 * (1 - coverage)^3 + ccn`, where
   coverage is the lower of the method's JaCoCo line coverage and branch coverage (whichever have
   counters). `crap-score-limit` (enforceable) when `crap >= 9`: a method at exactly the limit
-  fails, as it does for TypeScript. `crap-coverage-unknown` (enforceable) when no JaCoCo method
-  matches or the method has neither line nor branch counters. Only violations are findings; the
+  fails, as it does for TypeScript; for a fully covered method the message says to split off a
+  branchy part. `crap-coverage-unknown` (enforceable) when no JaCoCo method
+  matches or the method has neither line nor branch counters; its Java message names the two causes,
+  no test runs it or it is annotated `@Generated`.
+- **JaCoCo filters.** The project's own JaCoCo settings (`jacocoTestReport.classDirectories`
+  excludes, `test.jacoco` includes and excludes) are reset, so a class cannot leave the coverage
+  report through `build.gradle`. JaCoCo and PIT still skip code annotated `@Generated`; on
+  hand-written code that annotation is the `pmd/GeneratedOnHandWrittenCode` finding. Only violations are findings; the
   per-function metric findings of the TypeScript check are not produced.
 - **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
-  enclosing classes, method and parameter types (`signature` in `structure.json`), never a line.
-  Repeats (anonymous classes) get `#2`, `#3` in report order. The path
+  enclosing classes, method and parameter types (`signature` in `structure.json`), never a line;
+  a lambda is `function:Calc.classify.<lambda>` or `function:Calc.classify.callback` (named after the
+  variable it initializes), an initializer block `function:Calc.<clinit>` (static) or
+  `function:Calc.<init>`, a field initializer `function:Calc.LIMIT`.
+  Repeats (anonymous classes) get `#2`, `#3` in report order. The `<init>`, `<clinit>` and `<lambda>`
+  names repeat within a class by nature, so a finding on one is numbered only among the entries of
+  that name with the same source text that are over the limit: inserting, deleting or reordering other
+  blocks or lambdas never turns a legacy one into a new finding. The path
   is part of the comparison key, so, as with the hashed identities of slice 1, a renamed file shows
   its findings as resolved plus new. Changing a method's parameters is a different function, as in
   the TypeScript check, where an edit that moves a function changes its identity too.
@@ -376,12 +608,20 @@ identity when the value changes: editing such a line counts as a resolved plus a
 ## Slice 6: duplicates
 
 - **Where it runs.** jscpd is a Node tool, so it is not in the Gradle init script (which this slice
-  does not touch). After the Gradle task has written `build/nitpicker/manifest.json`,
-  `languages/java/adapters/metrics/java-duplicates.mjs` runs the package's own pinned jscpd (the one the TypeScript
-  `duplicates` check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once
-  per existing main source root with `--format java --mode mild` and a nitpicker-owned `--config`
-  (a project's `.jscpd.json` is not read), ignoring `build`, `generated`, `target` and `out`. Reports go to `build/nitpicker/jscpd/<n>/` and are merged into
-  `build/nitpicker/duplicates.json`. Clones across two source roots are not detected. A jscpd
+  does not touch). After the Gradle task has written `manifest.json` in the report directory,
+  `languages/java/adapters/metrics/java-duplicates.mjs` runs the package's own pinned jscpd (`runJscpd` in
+  `core/tooling/jscpd/run-jscpd.mjs`, shared with Python and the one the TypeScript `duplicates`
+  check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once per existing
+  main source root with `--format java --mode mild` and a nitpicker-owned `--config` (a project's
+  `.jscpd.json` is not read). It ignores the folders named `build`, `generated`, `target` and `out`
+  at any depth; the config key `duplicates.skippedFolders` replaces this list (an empty list
+  ignores nothing) and reaches the runner as `--duplicate-skipped-folders`. Clones made only of
+  `package` and `import` lines (the clone may end on the line where the following declaration
+  starts) are not reported (`core/tooling/jscpd/import-only/jvm-imports.mjs`). The message names
+  both files and tells to add either to `exclude`, and a glob that matches either file of the pair
+  lifts the finding. It runs once for the whole build, over the source roots of every Gradle project.
+  Reports go to `jscpd/<n>/` in the report directory and are merged into its `duplicates.json`.
+  Clones across two source roots, and so across two Gradle projects, are not detected (running jscpd once over all roots would detect them, at the price of changing the identity of every existing Java clone finding). A jscpd
   failure is a tool error like a Gradle failure.
 - **Findings.** The same normalizer as the TypeScript check (`normalizeDuplicates`), tool name
   `duplicates`: `duplicate-clone` (enforceable, one per clone) and `duplicate-clone-size`
@@ -406,7 +646,7 @@ resolved plus a new finding, as in the TypeScript check.
 - **What makes it "changed": the head-vs-base line mapping.** The differential comparison already
   maps head lines to the merge base through `git diff --unified=0` (`readChangedLines`, used for
   the strict-preset rules). `touchedCode.isStrictRule(rule, finding)` now also answers true for
-  this rule when the finding comes from `jacoco` (`languages/java/adapters/touched-rules.mjs`), so an
+  this rule when the finding comes from `jacoco` (`isTouchedCodeRule` in `shared/policy.mjs`), so an
   uncovered branch whose head line lies in a changed range, or in an added file, is new even if
   the base had it. An uncovered branch on an unchanged line stays baselined. The library entry
   `runJavaDiff` passes the same `touchedCode` as the CLI path. The TypeScript check of the same
@@ -426,6 +666,640 @@ resolved plus a new finding, as in the TypeScript check.
   for the glue; the gated e2e test adds three cases (moved line baselined, edited line fails, new
   uncovered branch fails while the old one stays baselined).
 
+## Slow tests
+
+- **Rule.** `slow-test` (tool `test-runtime`) fails a test the change adds or edits when it takes more than 5 s
+  as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
+  `thresholds.integrationTestSeconds`). The rule, message shape, budgets and exception are the same
+  for [TypeScript and JavaScript](typescript-strict-preset.md#slow-tests) and
+  [Python](python-preset.md#slow-tests); the finding prints the bare id `slow-test`, and
+  `test-runtime/slow-test` is accepted in `exceptions` as the same rule. Integration tests are those
+  of a test task other than `test` (Maven's `surefire` counts as `test`), classes named `*IT`,
+  `*ITCase`, `*IntegrationTest(s)`, `*IntegrationSpec` or `*ISpec`, and classes annotated `@SpringBootTest`, also through a
+  superclass or an annotation of their own that carries it, when that type's source is in a test root.
+  The message names the budget, the measured time, the fixes (no `Thread.sleep` or other waits, a
+  smaller Spring context or a test slice, or moving it to an integration test source set; on Maven,
+  making it an integration test that Failsafe runs, `*IT`) and the exception route.
+  Nitpicker runs only the tests its run needs: on Gradle the `test` task and any test task the build
+  makes it depend on, on Maven the `test` phase, so a test moved out of them is not timed.
+- **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
+  `TEST-*.xml` of every test task in the run (not `nitpickerArchunit`) to
+  `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
+  its slowest time; only passed tests are timed (failed, errored and skipped cases are left out).
+  A failing build reports its own error and no slow tests.
+  Unlike TypeScript and Python, a slow test is not run again without coverage: the build runs the
+  tests once, and a second build would double the cost, so the time is that of the build's own run
+  (with JaCoCo's agent when the same run measures coverage) and is checked against the budget as
+  measured. Maven builds copy Surefire's `TEST-*.xml` to `test-results/surefire/` and
+  Failsafe's to `test-results/failsafe/` (see [Maven builds](#maven-builds)); `surefire` counts as
+  the `test` task, `failsafe` as an integration task. Failsafe runs when the project binds its
+  `integration-test` goal and does not keep it off, because nitpicker then builds to `verify`.
+- **Edited or added.** Each test is keyed by class and testcase name (Gradle writes the display name,
+  so a parameterized case is keyed by its `[n] ...` name; Surefire writes the method name). The test
+  method is found in the source by that name (also `name()[n]` and JUnit 4's `name[n]`) or its
+  `@DisplayName`, with its annotations, inside the class the report names: a `@Nested` test
+  (`CalcTest$WhenFull`) is looked up in that nested class, and named `CalcTest.WhenFull` in the
+  message. `void` and `fun` methods count, and `@TestFactory` methods that return dynamic tests. A
+  test is counted when its method text differs from the base, or the file is new. A file the base
+  does not have at that path is first looked up by its file name under the base test roots, among
+  the base files the change removed or renamed, so a test file moved to another package with the
+  test unchanged reports nothing, while a copy next to an original that still exists is new. A test
+  the class inherits (an abstract contract test in a superclass) is found by following `extends` (or
+  Kotlin's `: Base()`) through the test roots, reported at the superclass method, and counted when
+  that method differs from the base, or the class is new or extends another class. A name that maps
+  to no method (a default `[1] 1` or custom parameterized name, a dynamic test) is counted when the
+  file is new or one of its class's `@ParameterizedTest`, `@RepeatedTest`, `@TestFactory` or
+  `@TestTemplate` methods changed. Slow tests the change does not touch stay baselined, and the base
+  snapshot reports none.
+- **Module paths.** The reader works in one module's folder, so a Maven submodule's test file is
+  found there and compared with the base file under the module path (`core/src/test/java/...`),
+  and the exception hint in the message names the project-relative path. `readModuleFindings`
+  passes each module's path (`modulePath`, `builds/module-path.mjs`), empty for a single module at the
+  project root; a Gradle build reads from the project root and passes none.
+- **Tests.** `adapters/test-times/slow-tests.test.mjs` (sample Gradle, Surefire and Failsafe XML,
+  module-path baseline), `builds/java-modules.test.mjs`, `maven/results/maven-test-results.test.mjs`
+  and the multi-module and `failsafe` Maven e2e fixtures.
+
+## Console output of tests
+
+- **Rule.** `test-runtime/test-console-output` fails a change whose tests print console output the
+  base run did not print, with the same semantics as the TypeScript preset's rule: the output is
+  compared as text after normalization, `testConsole.allow` in `nitpicker.config.json` skips a
+  third-party message (`{ "contains": "...", "paths": [...], "reason": "..." }`, with the same
+  matching), and an exception lifts a test file. The message quotes the normalized line, names the
+  test file and test that printed it, says to fix the cause (a warning the code under test now logs,
+  a mock or thread that outlives the test) and gives both routes.
+- **What counts.** From the JUnit XML the test tasks already write (`TEST-*.xml`, copied as for
+  [slow tests](#slow-tests)): every `system-err` block, and the `system-out` blocks that carry a
+  `WARN`, `WARNING`, `ERROR`, `FATAL` or `SEVERE` level, so Spring's banner and `INFO` startup lines
+  never count. A block is a line plus its indented continuation lines; stack frames
+  (`at ...`, `... 3 more`) are dropped. A JVM warning is several `WARNING:` lines and often follows
+  the line that caused it (Mockito's "self-attaching" notice and the agent warning after it on JDK
+  21); adjacent `WARNING:` lines and the line next to them are one block, so one finding. SLF4J's own
+  notices (`SLF4J(W): No SLF4J providers were found.`) describe the test classpath, not the code
+  under test, and land on whichever test first loads a logger: on Maven that is the first test,
+  because Surefire discovers the ArchUnit classes in the test JVM, while Gradle runs them in
+  `nitpickerArchunit`. Both builds drop them, so they report the same. Surefire's redirected output files (`<class>-output.txt`,
+  with `redirectTestOutputToFile`) are copied too and read with the stdout rule. The init script
+  sets `outputPerTestCase` on every test task, so Gradle names the test that printed a line as
+  Surefire does; a test name loses its parameter list (`totals()` is `totals`).
+- **Normalization.** As in TypeScript: ANSI colors, absolute paths (kept as the last segment),
+  timestamps and clock times, hex values, UUIDs, random-looking words and numbers (with their
+  units) are replaced, so `cache miss for order 42` and `... 43` are the same message. The thread
+  name of a Spring Boot (`--- [main]`) or Logback (`[main] WARN`) log line is replaced too: Gradle
+  runs tests on `Test worker`, Surefire on `main`.
+- **Keyed per module, not per file.** The finding's path is the module directory (`.` for the
+  root) and its identity a hash of the normalized message. The JVM shares state across test
+  classes: Spring caches one application context for every test class that asks for it, and a
+  library warns once per JVM, so the class that prints a startup warning changes when tests are
+  added or reordered. Keying per module keeps such a line baselined wherever it moves; a new line
+  in any test of the module still fails. The finding carries the message words as `tokens`, for the
+  shared matcher that tolerates one random-looking word.
+- **Limits.** Output a test prints from a thread after it ends is attributed by the build to
+  whatever runs then. A line printed only in some runs (a timing-dependent warning) shows up as new
+  in the run that has it; allow it in `testConsole.allow` with the reason.
+- **Tests.** `adapters/test-times/console-output.test.mjs`, `console-findings.test.mjs`,
+  `maven/results/maven-test-results.test.mjs`, and `spring/java-spring.e2e.test.mjs`, which
+  commits a test that prints a new line on top of the Spring fixture and asserts, on Gradle and on
+  Maven, that it is the only console finding: Spring's startup output, the WARN line a service logs
+  in an unchanged `@SpringBootTest`, and a renumbered line in an edited test all stay baselined.
+
+## Error Prone and NullAway
+
+- **What runs.** `nitpickerErrorProne`, a dependency of `nitpickerJava`, compiles the main Java
+  sources and those of every test source set (`test`, `integrationTest`, `testFixtures`, the same
+  ones Maven compiles as test sources with build-helper's `add-test-source`) a second time with javac and Error Prone 2.50.0 (Apache 2.0) as its
+  plugin, plus NullAway 0.14.2 (Uber, MIT), an Error Prone plugin for null safety. The task lives
+  in `languages/java/gradle/errorprone/` (`error-prone.gradle`, applied by the init script to
+  every `java` project, and `ErrorProneReport.java`). It uses the classpath, annotation processors,
+  compiler arguments and encoding of `compileJava` and of each test source set's compile task, writes classes only to
+  the throwaway `build/nitpicker/errorprone/`, and leaves the regular compile and the consumer
+  build alone. javac runs in its own JVM through `ErrorProneReport.java` in single-file source
+  mode, which writes every diagnostic to `build/nitpicker/errorprone.json`. Error Prone and
+  NullAway resolve from a detached configuration with their versions pinned in the init script's
+  map, so a dependency-management plugin of the project cannot move them. A compile error in this
+  second compile fails the task with javac's errors (a `tool-error` on the CLI path); it never
+  becomes an empty report. `module-info.java` is left out, so the sources compile in the unnamed
+  module. Kotlin preset: Java sources only, like PMD and SpotBugs.
+- **Which JDK.** Error Prone needs JDK 21 or newer. On Gradle the runner uses the JVM that runs
+  Gradle when it is at least 21 and at least the JDK of every compile task's toolchain; otherwise
+  it asks Gradle's toolchain service for a launcher of the version it needs (found locally or
+  downloaded, like the project's own toolchains), and when there is none it fails with a message
+  that says which JDK to install or how to let Gradle download it. With `--enable-preview` it runs
+  on exactly the project's JDK, since only that JDK compiles its preview features. On Maven the
+  runner uses the JDK Maven runs on (`JAVA_HOME`, else `java` on the PATH) when it is 21 or newer
+  (with `--enable-preview`, always that JDK); otherwise it takes the installed JDK closest to 21
+  from the `JAVA_HOME_<N>_X64`/`_ARM64` variables of hosted CI, the `jdkHome` entries of
+  `~/.m2/toolchains.xml`, SDKMAN, `/usr/lib/jvm` and `/Library/Java/JavaVirtualMachines`, so a
+  project on JDK 17 keeps working wherever a JDK 21 is installed. With none it fails before
+  anything compiles, naming the JDK it needs and where it looked; a missing `java` is reported as
+  `java not found`.
+- **Language level and options.** The runner mirrors the project's own form: `--release <n>` when
+  the build uses `release`, `-source <n> -target <n>` when it uses source and target compatibility
+  (a project on `-source 8` stays on 8). A `--release` next to an `--add-exports` of a JDK module
+  (`java.*`, `jdk.*`) becomes `-source`/`-target`, which javac requires. Of the build's compiler
+  arguments it keeps `--enable-preview`, the `-A` processor options and the module options javac
+  takes (`--add-exports`, `--add-modules`, `--add-reads`); `--add-opens`, a runtime option, is
+  dropped and so never changes the level. Argument files are
+  written as UTF-8.
+- **Maven.** Maven builds run the same `ErrorProneReport.java` from `languages/java/maven/errorprone/`
+  after `mvn test`. The compiler settings come from the effective POM (`help:effective-pom`), so
+  parents, `pluginManagement`, imported BOMs (Spring Boot's parent among them) and `${...}`
+  properties are already resolved; the `default-compile` execution's configuration wins over the
+  plugin's, and the test pass reads `default-testCompile` and `testRelease`, `testSource` and
+  `testTarget` the same way. `compilerArgs`, `compilerArgument` (split at spaces) and
+  `enablePreview` give the compiler arguments; an empty element such as `<release/>` counts as
+  missing. With no level at all, `maven-compiler-plugin` 3.x compiles for its own default (1.5 to
+  1.8, by version), which the runner gives javac as `-source 8 -target 8`, the oldest level JDK
+  21's javac takes; plugin 4.x has no such default and javac's own applies. An `annotationProcessorPaths` entry without a version takes it from the effective
+  `dependencyManagement`, as `maven-compiler-plugin` does; one with no version there, or an
+  unresolved one, is a tool error that names the coordinate, never a guessed version. Without
+  `annotationProcessorPaths` the processors come from the classpath, as javac finds them. The main
+  classpath ends with `target/classes`, so classes that code generators (protobuf, JAXB, OpenAPI,
+  jOOQ, ANTLR) compiled there resolve; the module's own sources are compiled from source and take
+  precedence over those classes. The runner turns `checks.json` into Error Prone flags, finds the
+  project's packages from its classes, and decides the language level and kept options, so the two
+  builds cannot drift apart; the Maven e2e test checks that both give the same findings.
+- **Findings.** `languages/java/ingest/errorprone/errorprone.mjs`, through
+  `languages/java/adapters/errorprone/java-errorprone.mjs`: tool `errorprone`, rule the check
+  name (`errorprone/FutureReturnValueIgnored`, `errorprone/NullAway`), every finding enforceable.
+  The message is the diagnostic's first line plus Error Prone's `Did you mean ...` fix when it has
+  one, rewritten by `ingest/errorprone/messages.mjs`: NullAway gets the allowed form (annotate with
+  the `@Nullable` the project already uses, JSpecify's only when it uses none, and check before
+  use, or give a non-null value), so no skill line is needed for it; `CheckReturnValue` says to use
+  the result or make the method return void, without Error Prone's `@CanIgnoreReturnValue`,
+  `verify(...)` and `var unused` alternatives; `JavaTimeDefaultTimeZone` says to inject a `Clock`
+  or `ZoneId`; `DefaultCharset` says the result depends on the runtime and the JDK version (JDK 18
+  made UTF-8 the default) and asks for the charset explicitly; a suggestion of punctuation alone
+  (`'{'`, `'*'`) is dropped; and where the source set's compile classpath has no Guava
+  (`guava`/`testGuava` in `manifest.json`), Guava suggestions are given in their JDK form
+  (`IllegalStateException` for `VerifyException`, `List.of` for `ImmutableList.of`) or dropped,
+  with the summary's Guava advice too. In the java preset, a finding of a
+  check that can flag correct code ends with the exceptions route, in the same words as the other
+  tools (`If this is intended, add {"rule":"errorprone/<Check>",...} to "exceptions" ...`, with the
+  file as the path). Only findings in main sources of the checks in `certainBugs` in `checks.json` go without it: a
+  curated list of ERROR checks whose finding in main code is a bug, not a severity filter (the
+  ERROR checks left out, and why, are listed below). Findings in test sources always keep the
+  route, since a test can build the broken case on purpose. The route is added after the identity is computed, so it
+  does not change it. Diagnostics outside the main and test source roots (annotation-processor
+  output) are dropped. Diagnostics with the same check, file, line, column and message are one
+  finding, and the `class is an internal JDK API` diagnostic `SunApi` adds at the `.class` of a
+  literal it already reported is dropped; different columns or messages on a line stay apart. Identity: a hash of the check and the
+  message's first line, with
+  `line <n>` removed, and `#2`, `#3` for repeats in one file in source order; no line, no path and
+  no `Did you mean` text, so moved or reformatted code stays baselined and a renamed file follows
+  the rename map.
+- **Policy: every check that catches a bug class or names one allowed form.** All 641 checks of
+  2.50.0 were reviewed, including the off-by-default, experimental and suggestion-level ones
+  (`reviewedChecks` in `checks.json`, with the reviewed Error Prone and NullAway versions under
+  `reviewed`; a unit test fails when the init script or the Maven path pins other versions, and
+  the e2e test fails when the jar's checks differ from the reviewed ones). On: every ERROR and
+  WARNING check Error Prone enables by default except 10, plus 109 of its off-by-default checks (for
+  example `FieldCanBeLocal`, `FieldCanBeFinal`, `IdentifierName`,
+  `PrivateConstructorForUtilityClass`, `RedundantThrows`, `CheckedExceptionNotThrown`,
+  `ThrowSpecificExceptions`, `NonFinalStaticField`, `BanSerializableRead`,
+  `UseCorrectAssertInTests`): 595 checks. A check is off only when another check that is always on
+  reports every case it does at the same place, it fights another tool, needs an annotation library a project would add only for it (Error Prone's own
+  annotations, Guava, auto-common), flags legitimate code with no allowed form, or picks one of two
+  forms that are both valid conventions (`var` or the explicit type, `final` on parameters and
+  locals or not, `getClass()` or `instanceof` in `equals`, an if-chain or a `switch`): those are
+  never flagged. One-way rules stay on, such as `StatementSwitchToExpressionSwitch`,
+  `UnnecessarilyFullyQualified`, `NegativeBoolean`, `UnnecessaryTestMethodPrefix` and
+  `UnnecessaryStaticImport`. Checks for libraries a project does not use (Guice, Dagger,
+  AutoValue, Flogger, Truth, protobuf, Android) stay on: they cost nothing and fire only where the
+  library is used. Error Prone's severities do not matter: everything is reported as a warning
+  (`-XepAllErrorsAsWarnings`) and every finding is enforceable. The checks that are off are below.
+- **Results of the project's own methods.** `CheckReturnValue` runs with `Packages` set to the
+  project's top-level packages (the shortest packages holding its main or test classes; Error
+  Prone matches subpackages too), so ignoring the result of any of the project's own methods
+  fails, in main and test code, test-only packages included. The message asks to use the result
+  or make the method return void; a value dropped on purpose can still be assigned to
+  `var unused = ...` (PMD's unused-variable rules skip names starting with `unused`).
+- **NullAway.** Main sources only: a test that passes `null` on purpose to check the failure is
+  legitimate. `AnnotatedPackages` is the project's main packages: its code is non-null unless
+  marked, and a field, parameter or return value that may be null carries a `@Nullable` (NullAway
+  accepts any annotation of that simple name, so whichever one the project uses is right and never
+  flagged; JSpecify's `org.jspecify.annotations.Nullable` is the one to add when it has none, and
+  Spring Framework 7 already depends on it). Libraries without nullness annotations are trusted.
+  Fields a framework sets are not reported as uninitialized (the `nullAway` options in
+  `checks.json`): `@Autowired`, `@Value`, `@Inject` (javax, jakarta, Guice), `@PersistenceContext`,
+  Mockito's `@Mock`, `@InjectMocks`, `@Spy` and `@Captor`, Spring Boot's `@MockBean`, `@SpyBean`,
+  `@MockitoBean` and `@MockitoSpyBean`, the fields of a JPA `@Entity`, `@Embeddable` or
+  `@MappedSuperclass` class (NullAway's `ExternalInitAnnotations`: its methods are still checked),
+  and fields a `@PostConstruct` method sets. A plain bean whose field
+  only a setter assigns keeps the finding. Without main classes in a named package,
+  `CheckReturnValue` keeps its defaults and NullAway is off.
+- **Annotated classes.** The runner records, for every diagnostic, the annotations of every
+  class around it (so a nested or anonymous class of an exempt class is exempt too),
+  meta-annotations included (`classAnnotations` in `errorprone.json`,
+  so `@SpringBootApplication` also lists `@SpringBootConfiguration` and `@Configuration`).
+  `classExemptions` in `checks.json` names the checks a class annotation rules out, and those
+  diagnostics are dropped; the table below gives the reason for each. `IdentifierName` also spares
+  a class named the way Maven's Failsafe plugin finds integration tests (`AdderIT`, `ITAdder`,
+  `AdderITCase`; `exemptions/test-class-names.mjs`).
+- **No inline escape.** Error Prone honors `@SuppressWarnings`, because Lombok marks the members
+  it generates with `@SuppressWarnings("all")` and Error Prone must skip them. The inline
+  suppression scan reads the source the project wrote, where Lombok's annotations are not, and
+  reports as `errorprone/InlineSuppression`: every `@SuppressWarnings` value that would silence a
+  check nitpicker runs (its name or an alternative name such as `"dep-ann"`, the `suppressible`
+  list in `checks.json`) or NullAway (`"NullAway"`, `"NullAway.Init"`); `@NullUnmarked`, which
+  turns NullAway off for the code under it; and a `@CanIgnoreReturnValue` annotation the project
+  declares itself (any one not from `com.google.errorprone.annotations`), which Error Prone honors
+  by simple name. `"all"` and `"unused"` are already `pmd/InlineSuppression`. So a suppression
+  still fails the gate, as with PMD. Code that is right despite a check takes an exception:
+  `{ "rule": "errorprone/<Check>", "paths": [...], "reason": "..." }`.
+  `SuppressWarningsWithoutExplanation` stays on, with a message that asks to explain an existing
+  suppression in a comment and says it is not a reason to add one.
+- **Lombok.** Lombok runs as an annotation processor of the second compile (Gradle's
+  `annotationProcessor` path, Maven's `annotationProcessorPaths` or classpath), so `@Data`,
+  `@Builder`, `@RequiredArgsConstructor`, `@Slf4j` and the rest compile. Lombok gives generated
+  members the position of the annotation that asked for them, and Error Prone 2.50.0 reports one
+  position per diagnostic (its start; javac's end position is the same point, so there is no span
+  to compare with the annotation's). `languages/java/adapters/errorprone/lombok/` therefore drops a
+  diagnostic only when both hold: its position is exactly the `@` of an annotation Lombok
+  processes (an explicit list of Lombok's annotations, resolved as javac does: a single-type
+  import, then a type of that name declared in the file or its package, then `import lombok.*;`, so
+  a project's own `Data` annotation is not Lombok's; never inside a comment; the offset is counted
+  in the source decoded with the compile's `-encoding`), and its check is one whose own findings in written code can never sit at an
+  annotation, because it reports an expression or statement (`UnnecessarySemicolon`,
+  `UnnecessarilyFullyQualified`, `CheckReturnValue`, `PatternMatchingInstanceof`,
+  `RedundantNullCheck`, `ExtendsObject`, `UnrecognisedJavadocTag`,
+  `SuppressWarningsWithoutExplanation`, and NullAway's passed or returned `@Nullable`), plus
+  `PrivateConstructorForUtilityClass` at `@FieldNameConstants` (the generated `Fields` class).
+  Declaration checks such as `FieldCanBeFinal` are kept even when the
+  declaration starts with a Lombok annotation, and so is NullAway's uninitialized-field finding at
+  `@Data` or `@NoArgsConstructor`, which NullAway reports for the same field without Lombok.
+  The sources whose nearest `lombok.config` (walking up from each source's directory until
+  `config.stopBubbling = true`) sets `lombok.addSuppressWarnings = false` are compiled in a pass of
+  their own, against the build's classes, with the checks listed under `lombokUnsuppressedOff` in
+  `checks.json` off: `StringConcatToTextBlock` and `StatementSwitchToExpressionSwitch`, which crash
+  on Lombok's generated code, and `UnnecessarilyFullyQualified`, `UnrecognisedJavadocTag`,
+  `MissingBraces`, `MissingSummary` and `MultiVariableDeclaration`, which then report generated
+  code at the annotation or field. The other sources keep every check, and the run does not fail.
+- **Overlaps.** Where Error Prone, PMD, SpotBugs or Checkstyle report the same issue, it is
+  reported once: every tool stays on, and after policy a finding is dropped only while the finding
+  that stands for it (its primary, in the same line, member, Javadoc comment, class, field or
+  file) is reported, so an exception for the primary or a primary tool that did not run brings it
+  back. The pairs, the
+  scopes and what "once" covers are under "Overlaps between the tools" below.
+- **Measured** (findings on the whole project, main and test code): 130 on a 57-file Maven
+  calculator project built with Gradle and 46 on Spring PetClinic, against 68 and 41 before the
+  overlap checks were turned back on. The rise is checks that now stand for another tool's finding
+  on the same code: on the calculator `LongLiteralLowerCaseSuffix` 37, `SystemOut` 17,
+  `WildcardImport` 7 and `MissingOverride` 3 in place of Checkstyle's `UpperEll` 37 and
+  `AvoidStarImport` 10 and PMD's `SystemPrintln` 14 and `MissingOverride` 3; on PetClinic
+  `SystemOut` 5, `EmptyBlockTag` 4, `WildcardImport` 2, `InterruptedExceptionSwallowed` 1,
+  `MissingOverride` 1 and `MissingSummary` 1 in place of their PMD and Checkstyle twins, plus
+  `AnnotationPosition` 1. `MethodCanBeStatic` (2 and 7) and `ThrowsUncheckedException` (0 and 3)
+  are off. Over all tools the enforceable findings went from 2875 to 2871 on the calculator and
+  from 4037 to 4028 on PetClinic. The `gradle-project` fixture has 1 (`UnnecessarilyFullyQualified`)
+  and the `spring-project` fixture 1 (`MissingOverride`). NullAway alone: 6, 4, 0 and 0, nearly all
+  `@Nullable` values returned or passed where a non-null one is declared.
+- **Cost.** A second compile of main and test sources: about 6 s on the fixtures and 30 s on the
+  calculator and PetClinic, most of it JVM start-up and Error Prone's own class loading.
+- **Limits.** A project whose own build already runs Error Prone gets nitpicker's run in
+  addition; its Error Prone jars are taken off the processor path of the second compile.
+- **Tests.** `ingest/errorprone/errorprone.test.mjs` (sample report, schema validity, line-shift and
+  suggested-fix stability, one finding with a stable identity for a repeated diagnostic),
+  `adapters/errorprone/java-errorprone.test.mjs` (paths, source roots, missing report, the
+  exceptions route on test findings of certain bugs too, JDK forms without Guava, Lombok-generated
+  diagnostics),
+  `adapters/errorprone/exemptions/class-exemptions.test.mjs` (which class annotations spare which
+  checks), `adapters/overlaps/static-overlaps.test.mjs` (each pair drops its secondary in its scope
+  and not outside it, and the table has no cycle), `resolved-overlaps.test.mjs` (the cross-tool
+  lines left on the probe, the partial-coverage cases kept, the order with policy, the docs list),
+  `java-spans.test.mjs` (classes, members and fields at a line), `ingest/errorprone/messages.test.mjs`
+  (message rewrites, Guava suggestions without Guava), `adapters/errorprone/lombok/lombok-generated.test.mjs`
+  (which positions and checks count as generated),
+  `adapters/errorprone/checks/checks-policy.test.mjs` (reviewed versions equal the pinned ones on
+  Gradle and Maven, every list names reviewed checks, sorted, and every check turned off, kept on
+  the exceptions route or spared in annotated classes is documented below),
+  `maven/errorprone/maven-compiler.test.mjs` and `maven-jdk.test.mjs` (Maven compiler settings,
+  processor-path errors, the JDK check), `suppressions/errorprone/errorprone-escapes.test.mjs` and
+  the inline suppression cases in `suppressions/java-suppressions.test.mjs`, and, in
+  `npm run test:java`: `adapters/errorprone/error-prone.e2e.test.mjs` (an ignored `Future`, ignored results
+  of the project's methods in test code, a test-only package included, a returned `null` and a
+  setter bean's field in main code, and no NullAway finding for `@Autowired`, `@Value`, a JPA
+  entity's fields or a `null` passed in a test, while the entity's `null` return is reported; a
+  utility class is reported and a `@SpringBootApplication` or `@Configuration` class is not; a
+  `@SuppressWarnings` in main code is honored; the regular classes are byte-identical; a source that
+  only the second compile sees fails the build with javac's error and no report; projects on
+  `--enable-preview` with `--release`, an `--add-exports` of `java.base`, and `-source`/`-target 8`
+  compile), `adapters/errorprone/lombok.e2e.test.mjs` (a Lombok project on Gradle, on Gradle with
+  `lombok.addSuppressWarnings = false`, and on Maven runs the whole preset with no tool error and
+  only the findings in written code, `import lombok.*;` with a `@Deprecated` method included),
+  `adapters/errorprone/checks/checks-catalog.e2e.test.mjs` (loads the pinned jar's checks: the
+  reviewed set is the jar's, `enable` names off-by-default checks and `disable` on-by-default ones,
+  `certainBugs` plus the documented ERROR checks are exactly the enabled ERROR checks,
+  `suppressible` is every name of every enabled check),
+  `maven/errorprone/maven-errorprone.e2e.test.mjs` (a Spring Initializr style build with a local
+  parent under `spring-boot-starter-parent`, MapStruct's processor configured in the parent's
+  `pluginManagement` with a property version, Lombok's appended in the child with no version, and a
+  class compiled into `target/classes` before the regular compile), and
+  `maven/maven-preset.e2e.test.mjs` (the same findings, Error Prone's included, from a Maven and a
+  Gradle build of the same sources). The JDK choice on Gradle was checked by hand: Gradle on JDK 17
+  runs Error Prone on a JDK 21 launcher, and a project with a JDK 25 toolchain on a JDK 21 Gradle
+  runs it on JDK 25.
+
+### Checks that are off
+
+`Default` is Error Prone's own default for the check.
+
+| Check                            | Default | Why it is off                                                                                                                                                                                                                             |
+| -------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AddNullMarkedToClass`           | off     | NullAway already treats the project's packages as null-marked, so the annotation (and a JSpecify dependency) adds nothing                                                                                                                 |
+| `AddNullMarkedToPackageInfo`     | off     | Same as AddNullMarkedToClass: NullAway's AnnotatedPackages already covers the project's packages                                                                                                                                          |
+| `AnnotateFormatMethod`           | on      | Its allowed form is Error Prone's @FormatMethod, a dependency nitpicker does not ask for                                                                                                                                                  |
+| `AnnotationMirrorToString`       | off     | Its allowed form is auto-common's AnnotationMirrors, a dependency nitpicker does not ask for                                                                                                                                              |
+| `AnnotationValueToString`        | off     | Its allowed form is auto-common's AnnotationValues, a dependency nitpicker does not ask for                                                                                                                                               |
+| `AvoidObjectArrays`              | off     | Its allowed form for returned arrays is Guava's ImmutableList, and pmd/UseVarargs already proposes another form for array parameters                                                                                                      |
+| `BooleanParameter`               | off     | Asks for /* name= */ comments on literal arguments; the clearer fix (an enum or a named method) is outside its message                                                                                                                    |
+| `CanIgnoreReturnValueSuggester`  | off     | Its allowed form is Error Prone's @CanIgnoreReturnValue, a dependency nitpicker does not ask for                                                                                                                                          |
+| `CannotMockFinalClass`           | off     | Mockito 5's default inline mock maker mocks final classes, so it flags working tests                                                                                                                                                      |
+| `CannotMockMethod`               | off     | Mockito 5's default inline mock maker mocks final methods, so it flags working tests                                                                                                                                                      |
+| `CatchingUnchecked`              | off     | pmd/AvoidCatchingGenericException already flags catch (Exception), and this check's fix (catch RuntimeException) is forbidden there too                                                                                                   |
+| `ConstantField`                  | off     | Static final fields that are not deep constants (mutable collections, loggers) may be named in CONSTANT_CASE or lowerCamelCase, Google style's choice that IdentifierName accepts; this check forces CONSTANT_CASE                        |
+| `DoNotCallSuggester`             | on      | Its allowed form is Error Prone's @DoNotCall, a dependency nitpicker does not ask for                                                                                                                                                     |
+| `EmptyIf`                        | off     | errorprone/UnnecessarySemicolon, which is always on, reports every if (c); at the same position with a clearer fix                                                                                                                        |
+| `EqualsGetClass`                 | on      | getClass() and instanceof in equals are both valid conventions, with different semantics for subclasses                                                                                                                                   |
+| `EqualsMissingNullable`          | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
+| `FieldMissingNullable`           | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
+| `IfChainToSwitch`                | on      | An if-chain and a switch are both valid forms                                                                                                                                                                                             |
+| `ImmutableMemberCollection`      | off     | Its allowed form is a Guava immutable type, even in projects without Guava                                                                                                                                                                |
+| `ImmutableRefactoring`           | off     | A migration to Error Prone's @Immutable annotation, a dependency nitpicker does not ask for                                                                                                                                               |
+| `InlineFormatString`             | on      | A format string inline or in a named constant are both valid forms                                                                                                                                                                        |
+| `InlineMeSuggester`              | on      | Its allowed form is Error Prone's @InlineMe, a dependency nitpicker does not ask for                                                                                                                                                      |
+| `InterfaceWithOnlyStatics`       | off     | Duplicates pmd/ConstantsInInterface for constant interfaces, and an interface of static methods is a valid form                                                                                                                           |
+| `Java8ApiChecker`                | off     | Checks compatibility with JDK 8 (Android); every Java preset project targets a newer JDK                                                                                                                                                  |
+| `MethodCanBeStatic`              | off     | An instance method that uses no instance state is a valid style (it can be overridden or mocked, and reads the same as its neighbours)                                                                                                    |
+| `NonApiType`                     | on      | Its collection advice duplicates pmd/LooseCoupling and its primitive-array advice needs Guava                                                                                                                                             |
+| `ParameterMissingNullable`       | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
+| `PreferredInterfaceType`         | off     | Fights pmd/LooseCoupling: it asks for the concrete type that rule forbids                                                                                                                                                                 |
+| `RemoveUnusedImports`            | off     | A formatter removes unused imports, so the file is already reported as unformatted; with no formatter, Checkstyle's UnusedImports reports them                                                                                            |
+| `ReturnMissingNullable`          | off     | Only asks for a @Nullable annotation; NullAway reports the returned null where it matters, and the fix is often a non-null value                                                                                                          |
+| `StaticOrDefaultInterfaceMethod` | off     | Forbids static and default interface methods for old Android; they are the normal form in modern Java                                                                                                                                     |
+| `StringFormatWithLiteral`        | off     | Crashes Error Prone 2.50.0 (IllegalFormatConversionException) on a format string that does not match its literal arguments, failing the whole run                                                                                         |
+| `ThrowsUncheckedException`       | off     | Declaring an unchecked exception in throws documents it to callers, a valid style                                                                                                                                                         |
+| `TooManyParameters`              | off     | The parameter limit is the project's choice; the structure rule function-parameters-limit sets it in nitpicker.config.json                                                                                                                |
+| `UnnamedVariable`                | on      | An unused variable named _ or a name are both valid forms, and its fix fights the var unused = ... form other checks ask for                                                                                                              |
+| `UnnecessaryDefaultInEnumSwitch` | off     | Fights checkstyle/MissingSwitchDefault, which wants the default this check removes                                                                                                                                                        |
+| `UnnecessaryFinal`               | off     | final on parameters and locals, or none, are both valid conventions; nitpicker never flags either                                                                                                                                         |
+| `UnnecessaryLambda`              | on      | A lambda in a constant or helper and a method are both valid forms                                                                                                                                                                        |
+| `UnusedVariable`                 | on      | Flags fields a framework reads or sets (JPA relations, @Autowired and @Value fields) with no allowed form but a suppression; PMD's UnusedPrivateField, UnusedLocalVariable, UnusedFormalParameter and UnusedAssignment cover written code |
+| `UseEnumSwitch`                  | off     | An if-chain over an enum and a switch are both valid forms                                                                                                                                                                                |
+| `UsingJsr305CheckReturnValue`    | off     | A migration to Error Prone's @CheckReturnValue annotation, a dependency nitpicker does not ask for                                                                                                                                        |
+| `Var`                            | off     | Requires Error Prone's @Var annotation on every reassigned variable, a dependency nitpicker does not ask for                                                                                                                              |
+| `VarWithPrimitive`               | off     | Fights the fix Error Prone itself suggests for an ignored primitive result (var unused = ...); int unused = ... satisfies both, but agents follow the suggestion                                                                          |
+| `Varifier`                       | off     | var and the explicit type are both valid conventions; nitpicker never flags either                                                                                                                                                        |
+| `VoidMissingNullable`            | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
+| `YodaCondition`                  | off     | Fights pmd/LiteralsFirstInComparisons, which wants the constant first                                                                                                                                                                     |
+
+### ERROR checks that keep the exceptions route
+
+ERROR-severity checks that are on but not in `certainBugs`, because they can flag correct code.
+Their findings end with the exceptions route.
+
+| Check                                   | Why it keeps the route                                                                                                                                 |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AutoValueBuilderDefaultsInConstructor` | A style rule for where AutoValue builder defaults go; defaults in the constructor work                                                                 |
+| `AutoValueConstructorOrderChecker`      | Matches argument names to parameter names, a heuristic that flags deliberate orders                                                                    |
+| `BanClassLoader`                        | Security policy: plugin loaders and frameworks load classes on purpose                                                                                 |
+| `BanJNDI`                               | Security policy: JNDI lookups are legitimate in application servers                                                                                    |
+| `BanSerializableRead`                   | Security policy: reading serialized data from a trusted source is legitimate                                                                           |
+| `ChainingConstructorIgnoresParameter`   | Matches parameter names, a heuristic that flags a deliberately different value                                                                         |
+| `CheckReturnValue`                      | Ignoring a result on purpose is legitimate; the allowed form is var unused = ...                                                                       |
+| `ClassName`                             | A file named after its first class when another top-level class is public compiles in some layouts; Checkstyle OuterTypeFilename reports the same case |
+| `ComparableType`                        | Comparable over a supertype or another type can be deliberate and consistent                                                                           |
+| `ConditionalExpressionNumericPromotion` | The promotion is often the intended result                                                                                                             |
+| `ConstantOverflow`                      | Intended wrap-around in hash and checksum constants is correct code                                                                                    |
+| `DeduplicateConstants`                  | A style suggestion: repeating a literal is correct code                                                                                                |
+| `DepAnn`                                | A documentation mismatch, not a bug: the code behaves the same                                                                                         |
+| `DoNotMock`                             | A library's advice against mocking a type; the mock works                                                                                              |
+| `DoubleBraceInitialization`             | An anonymous subclass is sometimes intended (a serializable or overriding instance), not only a collection initializer                                 |
+| `EqualsHashCode`                        | A hashCode-less equals is correct for objects never put in a hash structure (for example in a test double)                                             |
+| `EqualsWrongThing`                      | Compares field names; equals over differently named but matching fields is correct                                                                     |
+| `FloggerLogString`                      | A Flogger usage policy; a non-constant message logs correctly                                                                                          |
+| `FunctionalInterfaceMethodChanged`      | A behavior change that can be intended                                                                                                                 |
+| `GuardedBy`                             | Its lock analysis cannot follow every correct locking scheme                                                                                           |
+| `GuiceInjectOnFinalField`               | Guice injects final fields; visibility is a policy concern                                                                                             |
+| `HashtableContains`                     | Hashtable.contains is a correct, if old, name for containsValue                                                                                        |
+| `IdentityBinaryExpression`              | x != x is the standard NaN test                                                                                                                        |
+| `IdentityHashMapBoxing`                 | Boxed keys in an IdentityHashMap can be intended (cached values, identity on purpose)                                                                  |
+| `Immutable`                             | Its immutability analysis rejects some correct immutable types                                                                                         |
+| `ImpossibleNullComparison`              | A defensive null check on a value that cannot be null is redundant, not wrong                                                                          |
+| `InsecureCryptoUsage`                   | Security policy: interoperating with an existing protocol can need the flagged algorithm                                                               |
+| `IterablePathParameter`                 | A style rule about parameter types                                                                                                                     |
+| `JUnit3TestNotRun`                      | Matches method names; a helper named test... is correct                                                                                                |
+| `JUnit4TestNotRun`                      | Matches method names and shapes, a heuristic that flags helper methods named like tests                                                                |
+| `JodaToSelf`                            | A redundant call, not a wrong one                                                                                                                      |
+| `LabelledBreakTarget`                   | A style rule; a labelled block works                                                                                                                   |
+| `LockOnBoxedPrimitive`                  | A risky but correct lock when the instance is private and never shared                                                                                 |
+| `LoopConditionChecker`                  | Another thread can change the condition, which the check cannot see                                                                                    |
+| `MisleadingEscapedSpace`                | A readability rule; the text is what the author meant                                                                                                  |
+| `ModifyingCollectionWithItself`         | list.addAll(list) and similar calls can be intended                                                                                                    |
+| `MustBeClosedChecker`                   | Ownership can pass to a caller or a framework that closes the resource                                                                                 |
+| `NoCanIgnoreReturnValueOnClasses`       | A style rule about where the annotation goes                                                                                                           |
+| `NonCanonicalStaticImport`              | A style rule; the import compiles to the same member                                                                                                   |
+| `NullArgumentForNonNullParameter`       | A negative test passes null on purpose to check the failure                                                                                            |
+| `NullTernary`                           | Fires on conditionals the code never unboxes on the null branch                                                                                        |
+| `OptionalMapUnusedValue`                | A style rule: map with an unused value works                                                                                                           |
+| `OptionalOfRedundantMethod`             | A redundant call, not a wrong one                                                                                                                      |
+| `PackageInfo`                           | A style rule about package-info.java contents                                                                                                          |
+| `ProtoBuilderReturnValueIgnored`        | build() for its validation alone is intended                                                                                                           |
+| `ProtocolBufferOrdinal`                 | ordinal() is correct where the enum order is what the code wants                                                                                       |
+| `RefersToDaggerCodegen`                 | A Dagger policy; tests and wiring code refer to generated code on purpose                                                                              |
+| `RestrictedApi`                         | An API owner's allowlist; an allowed caller outside it is a review question, not a bug                                                                 |
+| `ReturnValueIgnored`                    | Ignoring a result on purpose is legitimate; the allowed form is var unused = ...                                                                       |
+| `SelfComparison`                        | Tests of compareTo reflexivity compare an object with itself on purpose                                                                                |
+| `SelfEquals`                            | Tests of equals reflexivity compare an object with itself on purpose                                                                                   |
+| `StaticQualifiedUsingExpression`        | A style rule; the static member is the same                                                                                                            |
+| `SubstringOfZero`                       | A redundant call, not a wrong one                                                                                                                      |
+| `SystemExitOutsideMain`                 | Command-line tools and launchers exit outside main on purpose                                                                                          |
+| `TestExceptionChecker`                  | A style rule; @Test(expected = ...) works                                                                                                              |
+| `UnicodeInCode`                         | Non-ASCII identifiers and literals are legal Java                                                                                                      |
+| `UnnecessaryCheckNotNull`               | A redundant check, not a wrong one                                                                                                                     |
+| `UnnecessaryTypeArgument`               | A redundant type argument, not a wrong one                                                                                                             |
+| `UnsafeWildcard`                        | Flags wildcard types that are correct in the code at hand                                                                                              |
+| `UnusedAnonymousClass`                  | An anonymous class created for its constructor's side effect is intended                                                                               |
+| `UseCorrectAssertInTests`               | A style rule; assert in a test runs with -ea, which build tools set                                                                                    |
+| `ZoneIdOfZ`                             | ZoneId.of("Z") is correct, only less direct than ZoneOffset.UTC                                                                                        |
+
+### Overlaps between the tools
+
+No Error Prone, PMD, SpotBugs or Checkstyle rule is turned off because one of the others reports
+the same code: there is no SpotBugs exclude file, and the PMD ruleset leaves out only the
+test-style rules named in its header. (Two Error Prone checks are still off as repeats:
+`RemoveUnusedImports`, whose unused import google-java-format already reports as an unformatted
+file (with no formatter, Checkstyle's `UnusedImports` reports it), and `EmptyIf`, whose `if (c);` Error Prone's own `UnnecessarySemicolon` reports at the same
+position.) Instead, `languages/java/adapters/overlaps/overlap-pairs.json` lists pairs of a
+primary rule and the secondary rules it stands for, with a scope:
+
+- `line`: the same file and line.
+- `member`: the same method, constructor or field initializer, from a scan of the source that skips
+  braces in comments, strings, characters and text blocks (`java-spans.mjs`).
+- `javadoc`: the same Javadoc comment, whichever of its lines each tool names (Checkstyle's
+  `SummaryJavadoc` reports the comment's first line, Error Prone's `MissingSummary` can name a
+  later one, such as the line of an `@author` tag).
+- `class`: the same class; a nested class is its own class.
+- `field`: the same class and field name. SpotBugs names a field `pkg.Class.field` and often gives
+  it no line, or the line of a write.
+- `file`: the same file. Error Prone's `WildcardImport` reports a file once, at its first wildcard
+  import, and its fix replaces them all, so it stands for every Checkstyle `AvoidStarImport` in
+  the file.
+
+`withoutOverlaps` (`static-overlaps.mjs`) runs in `collectJavaFindings`, on the base and the head
+alike, after the policy's `exclude` and `exceptions` and before the legacy inventory. A secondary
+finding is dropped only when a primary finding in the same scope is itself reported. So an
+exception for the primary, a primary tool that did not run (NullAway without packages) or a primary dropped for its own
+primary brings the secondary back, while a baselined primary still stands for its secondary, so a
+baselined issue does not come back under another tool's name. The primary is the finding with the
+clearest message: usually the Error Prone check with its fix over a SpotBugs pattern, the specific
+check over the general one (`OptionalEquality` or `BoxedPrimitiveEquality` over
+`ReferenceEquality`, over PMD's `CompareObjectsWithEquals` and SpotBugs `ES_COMPARING_*`), and the fullest switch check over the
+rest (`MissingCasesInEnumSwitch` over `NonExhaustiveSwitch`, `MissingDefault`, Checkstyle's
+`MissingSwitchDefault` and `SF_SWITCH_NO_DEFAULT`).
+
+Where the primary covers only some of the secondary's cases, both stay on and the secondary is
+dropped only in the scope the two share: `RV_RETURN_VALUE_IGNORED` on a method Error Prone's
+`ReturnValueIgnored` does not know, `DM_DEFAULT_ENCODING` where `DefaultCharset` is silent,
+`SS_SHOULD_BE_STATIC`, `RE_POSSIBLE_UNINTENDED_PATTERN`, `DMI_COLLECTION_OF_URLS`, `HE_*`,
+`SR_NOT_CHECKED`, `NP_TOSTRING_COULD_RETURN_NULL`, PMD's `ReturnEmptyCollectionRatherThanNull` on a
+method NullAway does not check, and `StringCharset` on a call `JdkObsolete` does not flag. `NM_BAD_EQUAL` (an `equal` method) is in no pair and stays on. The kotlin preset runs the same
+step; with no Error Prone, PMD or Checkstyle on Kotlin sources, SpotBugs findings in Kotlin files
+always stay.
+
+"Reported once" is per pair. Two tools can still report one line when they name different issues;
+on the probe project those are, among others, `LooseCoupling` and `JdkObsolete` on a `Vector`
+field, `HidingField` and `URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD`, `RandomModInteger` and
+`DMI_RANDOM_USED_ONLY_ONCE`, `ClassNewInstance` and `REFLC_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_CLASS`,
+`SelfAssignment` and `AvoidReassigningParameters`, and Checkstyle's `MemberName` with
+`FieldCanBeStatic`. `adapters/overlaps/resolved-overlaps.test.mjs` pins every cross-tool line left
+on the probe's findings (`fixtures/probe-findings.json`, every enabled check with nothing turned off
+for overlap), the partial-coverage cases kept, and the policy order;
+`static-overlaps.test.mjs` checks each pair in its scope; a unit test checks that this list is the
+table:
+
+- line: `errorprone/ArrayHashCode` over `spotbugs/DMI_INVOKING_HASHCODE_ON_ARRAY`
+- line: `errorprone/ArrayEquals` over `spotbugs/EC_BAD_ARRAY_COMPARE`
+- line: `errorprone/ArrayToString` over `spotbugs/DMI_INVOKING_TOSTRING_ON_ARRAY`
+- line: `errorprone/EqualsUnsafeCast` over `spotbugs/BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS`, `spotbugs/NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT`
+- line: `errorprone/DoubleCheckedLocking` over `spotbugs/DC_DOUBLECHECK`, `spotbugs/IS2_INCONSISTENT_SYNC`
+- line: `errorprone/DefaultCharset` over `spotbugs/DM_DEFAULT_ENCODING`
+- line: `errorprone/EqualsIncompatibleType` over `spotbugs/EC_UNRELATED_TYPES`
+- line: `errorprone/CollectionIncompatibleType` over `spotbugs/GC_UNRELATED_TYPES`
+- line: `errorprone/BadShiftAmount` over `spotbugs/ICAST_BAD_SHIFT_AMOUNT`
+- line: `errorprone/NarrowCalculation` over `spotbugs/ICAST_IDIV_CAST_TO_DOUBLE`
+- line: `errorprone/IntLongMath`, `errorprone/NarrowCalculation` over `spotbugs/ICAST_INTEGER_MULTIPLY_CAST_TO_LONG`
+- line: `errorprone/IntLongMath` over `errorprone/NarrowCalculation`
+- line: `errorprone/InfiniteRecursion` over `spotbugs/IL_INFINITE_RECURSIVE_LOOP`
+- line: `errorprone/ComparisonOutOfRange` over `spotbugs/INT_BAD_COMPARISON_WITH_SIGNED_BYTE`
+- line: `errorprone/NonFinalStaticField` over `spotbugs/MS_FINAL_PKGPROTECT`, `spotbugs/MS_SHOULD_BE_FINAL`, `errorprone/FieldCanBeFinal`
+- line: `errorprone/MutablePublicArray` over `spotbugs/MS_MUTABLE_ARRAY`, `spotbugs/MS_PKGPROTECT`
+- line: `errorprone/NullAway` over `pmd/NullAssignment`, `pmd/ReturnEmptyCollectionRatherThanNull`
+- line: `errorprone/InvalidPatternSyntax` over `spotbugs/RE_BAD_SYNTAX_FOR_REGULAR_EXPRESSION`
+- line: `errorprone/BareDotMetacharacter` over `spotbugs/RE_POSSIBLE_UNINTENDED_PATTERN`
+- line: `errorprone/RandomCast` over `spotbugs/RV_01_TO_INT`
+- line: `errorprone/MathAbsoluteNegative` over `spotbugs/RV_ABSOLUTE_VALUE_OF_RANDOM_INT`
+- line: `errorprone/DeadException` over `spotbugs/RV_EXCEPTION_NOT_THROWN`
+- line: `errorprone/CheckReturnValue`, `errorprone/ReturnValueIgnored` over `spotbugs/RV_RETURN_VALUE_IGNORED`, `pmd/UselessOperationOnImmutable`
+- line: `errorprone/SelfAssignment` over `spotbugs/SA_FIELD_SELF_ASSIGNMENT`, `spotbugs/SA_LOCAL_SELF_ASSIGNMENT`, `pmd/IdempotentOperations`
+- line: `pmd/CheckSkipResult` over `spotbugs/SR_NOT_CHECKED`
+- line: `errorprone/FieldCanBeStatic` over `spotbugs/SS_SHOULD_BE_STATIC`
+- line: `errorprone/UnnecessarySemicolon` over `spotbugs/UCF_USELESS_CONTROL_FLOW_NEXT_LINE`, `checkstyle/NeedBraces`, `errorprone/MissingBraces`
+- line: `checkstyle/NeedBraces` over `errorprone/MissingBraces`
+- line: `errorprone/LockNotBeforeTry` over `spotbugs/UL_UNRELEASED_LOCK`, `spotbugs/UL_UNRELEASED_LOCK_EXCEPTION_PATH`
+- line: `errorprone/WaitNotInLoop` over `spotbugs/UW_UNCOND_WAIT`, `spotbugs/WA_NOT_IN_LOOP`
+- line: `errorprone/NonAtomicVolatileUpdate` over `spotbugs/VO_VOLATILE_INCREMENT`
+- line: `errorprone/SubstringOfZero` over `spotbugs/DMI_USELESS_SUBSTRING`
+- line: `errorprone/IdentityBinaryExpression`, `errorprone/SelfComparison`, `errorprone/SelfEquals` over `spotbugs/SA_FIELD_SELF_COMPARISON`, `spotbugs/SA_LOCAL_SELF_COMPARISON`
+- line: `errorprone/LockOnBoxedPrimitive` over `spotbugs/DL_SYNCHRONIZATION_ON_*`
+- line: `errorprone/BoxedPrimitiveConstructor` over `spotbugs/DM_FP_NUMBER_CTOR`, `spotbugs/DM_NUMBER_CTOR`, `pmd/PrimitiveWrapperInstantiation`
+- line: `errorprone/DoNotCall` over `spotbugs/RU_INVOKE_RUN`
+- line: `errorprone/EqualsNaN` over `spotbugs/FE_TEST_IF_EQUAL_TO_NOT_A_NUMBER`, `pmd/ComparisonWithNaN`
+- line: `errorprone/BoxedPrimitiveEquality`, `errorprone/MemorySegmentReferenceEquality`, `errorprone/OptionalEquality`, `errorprone/ProtoStringFieldReferenceEquality` over `errorprone/ReferenceEquality`
+- line: `errorprone/BoxedPrimitiveEquality`, `errorprone/MemorySegmentReferenceEquality`, `errorprone/OptionalEquality`, `errorprone/ProtoStringFieldReferenceEquality`, `errorprone/ReferenceEquality` over `spotbugs/ES_COMPARING_*`, `spotbugs/RC_REF_COMPARISON*`, `pmd/CompareObjectsWithEquals`, `pmd/UseEqualsToCompareStrings`
+- line: `pmd/UseEqualsToCompareStrings` over `pmd/CompareObjectsWithEquals`, `spotbugs/ES_COMPARING_*`
+- line: `pmd/InstantiationToGetClass` over `spotbugs/DM_NEW_FOR_GETCLASS`
+- line: `pmd/MethodReturnsInternalArray` over `spotbugs/EI_EXPOSE_REP`
+- line: `pmd/ArrayIsStoredDirectly` over `spotbugs/EI_EXPOSE_REP2`
+- line: `errorprone/MissingCasesInEnumSwitch` over `pmd/NonExhaustiveSwitch`, `errorprone/MissingDefault`, `checkstyle/MissingSwitchDefault`, `spotbugs/SF_SWITCH_NO_DEFAULT`
+- line: `pmd/NonExhaustiveSwitch` over `errorprone/MissingDefault`, `checkstyle/MissingSwitchDefault`, `spotbugs/SF_SWITCH_NO_DEFAULT`
+- line: `errorprone/MissingDefault` over `checkstyle/MissingSwitchDefault`, `spotbugs/SF_SWITCH_NO_DEFAULT`
+- line: `checkstyle/MissingSwitchDefault` over `spotbugs/SF_SWITCH_NO_DEFAULT`
+- line: `errorprone/FallThrough` over `pmd/ImplicitSwitchFallThrough`, `checkstyle/FallThrough`
+- line: `pmd/ImplicitSwitchFallThrough` over `checkstyle/FallThrough`
+- member: `errorprone/FallThrough`, `pmd/ImplicitSwitchFallThrough`, `checkstyle/FallThrough` over `spotbugs/SF_SWITCH_FALLTHROUGH`
+- line: `errorprone/EmptyCatch` over `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
+- line: `pmd/EmptyCatchBlock` over `checkstyle/EmptyCatchBlock`
+- line: `errorprone/MultiVariableDeclaration` over `pmd/OneDeclarationPerLine`, `checkstyle/MultipleVariableDeclarations`
+- line: `pmd/OneDeclarationPerLine` over `checkstyle/MultipleVariableDeclarations`
+- line: `errorprone/InterruptedExceptionSwallowed` over `pmd/AvoidCatchingGenericException`
+- line: `errorprone/IdentifierName` over `checkstyle/CatchParameterName`, `checkstyle/LambdaParameterName`, `checkstyle/LocalVariableName`, `checkstyle/MemberName`, `checkstyle/MethodName`, `checkstyle/ParameterName`, `checkstyle/PatternVariableName`, `checkstyle/RecordComponentName`
+- line: `errorprone/TypeParameterNaming` over `checkstyle/ClassTypeParameterName`, `checkstyle/InterfaceTypeParameterName`, `checkstyle/MethodTypeParameterName`, `checkstyle/RecordTypeParameterName`
+- file: `errorprone/WildcardImport` over `checkstyle/AvoidStarImport`
+- line: `errorprone/LongLiteralLowerCaseSuffix` over `checkstyle/UpperEll`
+- line: `errorprone/MixedArrayDimensions` over `checkstyle/ArrayTypeStyle`
+- line: `errorprone/BigDecimalLiteralDouble` over `pmd/AvoidDecimalLiteralsInBigDecimalConstructor`, `spotbugs/DMI_BIGDECIMAL_CONSTRUCTED_FROM_DOUBLE`
+- line: `errorprone/StringBuilderInitWithChar` over `pmd/StringBufferInstantiationWithChar`
+- line: `pmd/EqualsNull` over `errorprone/EqualsNull`, `spotbugs/EC_NULL_ARG`
+- line: `errorprone/EqualsNull` over `spotbugs/EC_NULL_ARG`
+- line: `errorprone/ExplicitArrayForVarargs` over `pmd/UnnecessaryVarargsArrayCreation`
+- line: `errorprone/SystemExitOutsideMain` over `pmd/DoNotTerminateVM`, `spotbugs/DM_EXIT`
+- line: `pmd/DoNotTerminateVM` over `spotbugs/DM_EXIT`
+- line: `errorprone/CatchAndPrintStackTrace` over `pmd/AvoidPrintStackTrace`, `errorprone/SystemOut`
+- line: `errorprone/SystemOut` over `pmd/SystemPrintln`
+- line: `errorprone/MissingOverride` over `pmd/MissingOverride`
+- line: `pmd/DefaultLabelNotLastInSwitch` over `errorprone/SwitchDefault`
+- line: `checkstyle/JavadocMethod` over `errorprone/InvalidParam`
+- line: `errorprone/ReturnFromVoid` over `checkstyle/JavadocMethod`
+- line: `errorprone/NotJavadoc` over `checkstyle/InvalidJavadocPosition`
+- line: `errorprone/EmptyBlockTag` over `checkstyle/NonEmptyAtclauseDescription`
+- javadoc: `errorprone/MissingSummary` over `checkstyle/SummaryJavadoc`
+- line: `errorprone/AnnotationPosition` over `checkstyle/AnnotationLocationMostCases`, `checkstyle/AnnotationLocationVariables`
+- line: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
+- line: `errorprone/AssignmentExpression` over `pmd/AssignmentInOperand`
+- line: `errorprone/HardCodedSdCardPath` over `pmd/DoNotHardCodeSDCard`
+- line: `errorprone/ForEachIterable` over `pmd/ForLoopCanBeForeach`
+- line: `errorprone/Finally` over `pmd/DoNotThrowExceptionInFinally`, `pmd/ReturnFromFinallyBlock`
+- member: `errorprone/DoubleBraceInitialization` over `pmd/DoubleBraceInitialization`
+- line: `errorprone/JdkObsolete` over `pmd/ReplaceEnumerationWithIterator`, `pmd/ReplaceHashtableWithMap`, `pmd/ReplaceVectorWithList`
+- line: `errorprone/JdkObsolete` over `errorprone/StringCharset`
+- line: `errorprone/NonOverridingEquals` over `pmd/SuspiciousEqualsMethodName`
+- line: `errorprone/DefaultLocale` over `pmd/SimpleDateFormatNeedsLocale`
+- line: `pmd/UseLocaleWithCaseConversions` over `errorprone/StringCaseLocaleUsage`
+- line: `spotbugs/ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD` over `errorprone/StaticAssignmentInConstructor`, `pmd/AssignmentToNonFinalStatic`
+- line: `errorprone/StaticAssignmentInConstructor` over `pmd/AssignmentToNonFinalStatic`
+- line: `pmd/UnitTestShouldUseBeforeAnnotation` over `errorprone/JUnit4SetUpNotRun`, `errorprone/JUnit4TestNotRun`, `pmd/DetachedTestCase`
+- line: `pmd/UnitTestShouldUseAfterAnnotation` over `errorprone/JUnit4TearDownNotRun`, `errorprone/JUnit4TestNotRun`, `pmd/DetachedTestCase`
+- line: `pmd/DetachedTestCase`, `errorprone/JUnit4SetUpNotRun`, `errorprone/JUnit4TearDownNotRun` over `errorprone/JUnit4TestNotRun`
+- line: `errorprone/EqualsHashCode` over `pmd/OverrideBothEqualsAndHashcode`
+- line: `pmd/UnusedPrivateMethod` over `errorprone/UnusedMethod`
+- member: `pmd/PreserveStackTrace` over `errorprone/UnusedException`
+- member: `pmd/AvoidReassigningLoopVariables` over `errorprone/IncrementInForLoopAndHeader`
+- line: `errorprone/Finalize` over `pmd/EmptyFinalizer`, `spotbugs/FI_EMPTY`
+- member: `errorprone/Finalize` over `checkstyle/NoFinalizer`
+- class: `errorprone/UngroupedOverloads` over `checkstyle/OverloadMethodsDeclarationOrder`
+- file: `checkstyle/OneTopLevelClass` over `errorprone/MultipleTopLevelClasses`
+- file: `errorprone/SunApi` over `pmd/DontImportSun`
+- member: `errorprone/EqualsHashCode`, `pmd/OverrideBothEqualsAndHashcode` over `spotbugs/HE_*`
+- member: `errorprone/NullAway`, `errorprone/ToStringReturnsNull` over `spotbugs/NP_TOSTRING_COULD_RETURN_NULL`
+- member: `errorprone/NullAway` over `errorprone/ToStringReturnsNull`
+- member: `errorprone/NonOverridingEquals` over `spotbugs/EQ_SELF_NO_OBJECT`, `spotbugs/EQ_SELF_USE_OBJECT`
+- member: `errorprone/SynchronizeOnNonFinalField` over `spotbugs/ML_SYNC_ON_FIELD_TO_GUARD_CHANGING_THAT_FIELD`
+- field: `errorprone/URLEqualsHashCode` over `spotbugs/DMI_COLLECTION_OF_URLS`
+- field: `pmd/UnusedPrivateField` over `spotbugs/URF_UNREAD_FIELD`, `spotbugs/UUF_UNUSED_FIELD`
+- field: `errorprone/NullAway` over `spotbugs/NP_UNWRITTEN_FIELD`, `spotbugs/UWF_UNWRITTEN_FIELD`
+
+### Checks spared in annotated classes
+
+`classExemptions` in `checks.json`; a unit test checks that this table lists exactly its checks.
+
+| Check                               | Spared in classes annotated                                                                       | Why                                                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `FieldCanBeFinal`                   | `@Entity`, `@Embeddable`, `@MappedSuperclass` (jakarta and javax persistence)                     | JPA forbids final persistent fields                                                                  |
+| `IdentifierName`                    | `@AnalyzeClasses`                                                                                 | ArchUnit names a rule after its `@ArchTest` field, and its convention is a lower_snake_case sentence |
+| `PrivateConstructorForUtilityClass` | `@Configuration` (and so `@SpringBootApplication`, `@SpringBootConfiguration`), `@AnalyzeClasses` | Spring's CGLIB proxy and ArchUnit's runner need a non-private constructor                            |
+
 ## Structure limits (SH5)
 
 - **Rules.** The shared structure rule (`shared/rules/structure.mjs`) runs on Java too, so a method
@@ -437,7 +1311,7 @@ resolved plus a new finding, as in the TypeScript check.
 - **Metric source (decision to review).** `languages/java/gradle/StructureMetrics.java` parses the main sources
   (parse only, no compilation) with the JDK's compiler tree API (`jdk.compiler`) in single-file
   source mode, run by the JVM that runs Gradle (task `nitpickerStructure`, report
-  `build/nitpicker/structure.json`). It needs no dependency and no pin beyond the JDK. A syntax error (for
+  `structure.json` in the report directory). It needs no dependency and no pin beyond the JDK. A syntax error (for
   example syntax newer than the JVM that runs Gradle) is not skipped: the program prints `file:line` and
   the compiler message of up to five errors and exits with status 1, so the task fails and the run is a
   tool error instead of a report with missing or shortened methods. All four
@@ -446,31 +1320,205 @@ resolved plus a new finding, as in the TypeScript check.
   its rules do not expose per-method statements). A small JavaParser step was the alternative; it would add a
   pinned artifact for nothing the JDK does not already provide.
 - **Definitions** (the TypeScript analyzer's, so both languages gate the same way). Unit: each
-  method and constructor with a body. `lines`: last line - first line + 1, annotations and
+  method and constructor with a body, each static and instance initializer block with a statement
+  (`Class.<clinit>`, `Class.<init>`), each field initializer that is a lambda (`Class.field`) or
+  branches (`?:`, `&&`, `||`, a `switch` expression) and each lambda (`Class.method.<lambda>`; one
+  assigned to a variable or field is named after it, one inside another unit is named after that unit,
+  as in `Class.method.<lambda>.<lambda>`), as every arrow function and callback is in TypeScript. `lines`: last line - first line + 1, annotations and
   modifiers included, Javadoc not. `statements`: every statement in the body except blocks (`for`
   initializers and updates, `catch` parameters and `try` resources are not statements).
   `maxControlNesting`: deepest nesting of `if`, `for`, enhanced `for`, `while`, `do`, `switch`
-  (statement or expression) and `catch`; an `else if` nests like in TypeScript. `parameters`:
-  declared parameters. Anonymous, local and member class bodies are separate units and do not count
-  towards the method that contains them; lambda bodies count towards the enclosing method.
+  (statement or expression) and `catch`; an `else if` stays on the level of the `if` it continues,
+  as in the Python and Kotlin presets. `parameters`:
+  declared parameters (the parameters of the lambda). Anonymous, local and member class bodies,
+  lambdas and initializer blocks are separate units and do not count towards the method that
+  contains them: the statements, control nesting and complexity of a lambda are its own, as in
+  TypeScript (`lines` is the physical span, so the lines of a nested unit still count towards the one
+  around it). A lambda with an expression body has 1 statement. A field initializer unit has 1 statement.
 - **Findings.** `languages/java/adapters/metrics/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
   the enforceable limit findings only (tool `structure`); the per-method descriptive metrics of the
   TypeScript check are not emitted, since they would add four findings per method to every report.
-  Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`),
+  Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`;
+  initializer blocks `Outer.<clinit>` and `Outer.<init>`, lambdas `Outer.method.<lambda>`),
   identity: name, occurrence among equal names in the file and a hash of the method text with
   indentation removed, no line number. A moved or re-indented method stays baselined; editing a
   method that already violates produces a new finding, as in TypeScript.
-- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mjs` and the shared structure
+- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mjs`, `structure-report.mjs` and the shared structure
   rule files are in the Java analyzer's configuration hash.
 - **Tests.** `java-structure.test.mjs` (fast: limits, messages, identity stability);
   the gated e2e adds a branch with a method over the parameter limit (fails) and keeps a legacy
   oversize method baselined.
 
+## Class and package size limits
+
+Three limits on classes of the main sources and one on package depth, all failing only when the
+change makes them worse (the same ratchet as the file limits): a class already over a limit is
+held at its value and fails when it grows, and a new class over a limit fails. Each message names
+the allowed form and the `exceptions` entry that lifts it.
+
+| Rule                      | Default limit                                                                            | Threshold          |
+| ------------------------- | ---------------------------------------------------------------------------------------- | ------------------ |
+| `class-methods-limit`     | 20 methods per class; getters and setters count, constructors do not                     | `classMethods`     |
+| `class-fields-limit`      | 10 instance fields per class; record components count, statics and enum constants do not | `classFields`      |
+| `inheritance-depth-limit` | 3 superclasses; a superclass outside the project counts as one level                     | `inheritanceDepth` |
+| `folder-depth-limit`      | 4 package levels below the root package (test sources too)                               | `folderDepth`      |
+
+- **Classes.** `languages/java/gradle/StructureMetrics.java` (the Gradle task `nitpickerStructure`,
+  and the structure step of the Maven run for each module) writes `classes.json` next to
+  `structure.json` in the same parse, so each module's sources are parsed once. Gradle and Maven
+  projects get the same limits. Member and
+  local classes, interfaces, enums, records and annotation types are measured on their own;
+  anonymous classes are not. Tests are not measured: a test class legitimately holds many methods.
+  The inheritance chain is resolved from the source text (same package, imports, wildcard imports,
+  nested names, names in full), not compiled, so a superclass that only the compiler can find counts
+  as one level and ends the chain, so a hierarchy that continues in another module or a library is
+  undercounted. A record over `classFields` gets its own message (components, not fields). A kotlin-preset project gets the class limits for its `.java`
+  files; Kotlin classes are not measured.
+- **Package depth.** The root package is the longest package prefix all main and test code of the
+  base shares, so adding a package outside it (`db/migration`, the default package) moves nothing:
+  the head run reads the root from the base snapshot, and a project with no base code uses its
+  own. A package with code in it that lies more than four levels below the root fails once per
+  kind of file (source, test); a package outside the root counts its own levels. Packages are the
+  folders under the source roots.
+- **A missing report is an error.** If `classes.json` is absent the run fails with a tool error
+  naming the structure step (`StructureMetrics.java`), so a build that skipped it cannot silently
+  drop the limits.
+- **Allowed form.** Split a class by responsibility, group fields into a record, prefer composition
+  to a deep hierarchy, and keep packages flat: group by responsibility instead of nesting.
+- **Exceptions.** A class limit is lifted for the file the class is in
+  (`{ "rule": "class-methods-limit", "paths": ["src/main/java/app/Mapper.java"], "reason": "..." }`);
+  `folder-depth-limit` for the package folder (`"paths": ["src/main/java/app/a/b/c/d/e/**"]`).
+
+## Style
+
+The formatter owns layout, and nitpicker follows the formatter the project uses. The
+`java.formatter` convention is `google` (google-java-format, the default), `palantir`
+(palantir-java-format, Apache-2.0, pinned like google-java-format and resolved the same way on Gradle
+and Maven) or `none` (no format check). It comes, in this order, from:
+
+1. A pin in `"conventions": { "java.formatter": "..." }`.
+2. The build files, with no opt-in: Spotless `googleJavaFormat()` or `palantirJavaFormat()` in
+   Gradle, `spotless-maven-plugin` with `<googleJavaFormat>` or `<palantirJavaFormat>`,
+   `fmt-maven-plugin`, the `com.palantir.java-format` plugin, or either formatter's artifact in a
+   version catalog. `googleJavaFormat().aosp()`, `.style("AOSP")` and a `<style>aosp</style>` read as
+   google-java-format with 4 spaces; `palantirJavaFormat().style("GOOGLE")` reads as google (with
+   `"AOSP"`, google with 4 spaces); `eclipse()` and `prettier()` in a Spotless `java` block read as
+   `none`. The scan covers the root and module `build.gradle(.kts)` and `settings.gradle(.kts)`, the
+   `gradle/*.versions.toml` catalogs, the convention plugins under `buildSrc/` and `build-logic/`
+   (`.gradle`, `.gradle.kts`, `.kt`, `.groovy`) and every `pom.xml` of the project (module and parent
+   poms), at most 200 files, shallowest first. Files under `src/`, `node_modules`, `build`,
+   `target`, `out`, `fixtures` and `testdata`, and paths in `exclude`, are skipped. Comments are
+   removed by a reader that knows string literals (`//` and `/* */` only outside quotes in Gradle
+   files, `#` in TOML; the XML parser skips pom comments), so a glob such as `'**/*.java'` or
+   `**/*Test.java` around the plugin does not hide it. Within a file palantir wins when both are
+   named; across files the most common declaration wins and a tie declares nothing.
+3. The Java files, when the build names nothing: each file votes from a call the formatter wrapped
+   after `(`, never from its longest line, and a file with no such call votes for nothing. Two spaces
+   or four spaces wrapped at 100 vote `google`, four spaces wrapped at 120 `palantir`, and block
+   indentation with tabs, 140 columns or two spaces at 120 vote `none` (tabs inside text blocks and
+   comments do not count). The winner needs at least 3 voting files and more than half of the
+   votes. With weaker or no evidence the choice stays `google`, and the measured indentation picks
+   `--aosp`. An IntelliJ project with four spaces and 120 columns looks like palantir-java-format to
+   the measure; pin `java.formatter` to `none` for it.
+
+The formatter a build file declares (`googleJavaFormat()`, `palantirJavaFormat()`, `aosp()`, a style
+name, the Maven plugins) is a fact about which formatter the project uses, so it is detected without
+any opt-in; the Kotlin preset does the same for the ktfmt style its build names. Config files (the
+Checkstyle config, detekt, `.editorconfig`, `ruff.toml`) are read only once their tool lists
+`"project"`.
+
+The build files are read from the same snapshot as the measured conventions: the merge base in a
+comparison (so a pull request that adds `palantirJavaFormat()` is still judged at the limits of its
+base, and starts being judged at 120 once it is merged), the checked-out tree for `--all`, and the
+pull request's own tree only when the base has no Java sources yet. The Checkstyle config below is
+read from the same snapshot. Nothing in `nitpicker.config.json` is involved, so the policy gate has
+nothing to report here; the printed "Following this project's conventions" block names the
+formatter and where it came from.
+
+The formatter fixes what it can: google-java-format wraps at 100 and indents with 2 spaces (4 spaces,
+8 for a continuation line, with `--aosp`, which nitpicker uses for the `java.indentation` convention
+`"4"`; a declared `googleJavaFormat()` without `.aosp()` fixes it at `"2"`); palantir-java-format
+indents with 4 and wraps at 120. `java.indentation` is `"2"`, `"4"` or `"tab"`. `java.lineLength` is
+any whole number of columns from 10 to 999 (`"100"`, `"120"` and `"140"` are the measured ones);
+it drives the limit of `line-length-limit` for Java files. When the formatter comes from a pin or the
+build file, a pin that contradicts what it fixes is a config error that names where the formatter
+came from (`"conventions.java.lineLength" is "120", but google-java-format (declared in your build
+file) fixes it at "100"`). When the formatter is only the default or was measured, the contradiction
+means the project does not use it: the formatter becomes `none` and the run prints why (`from your
+conventions.java.lineLength pin in nitpicker.config.json`). A repository without Java files never
+fails on this. With `java.formatter` set to `none`, `java.lineLength` is measured from wrapped
+code the way `kotlin.lineLength` is (unbreakable lines, such as imports, URLs, string literals and
+text blocks, do not vote).
+
+When `tools.checkstyle.precedence` lists `"project"` and `config/checkstyle/checkstyle.xml` has a
+`LineLength` module, its `max` (any number; Checkstyle's default 80 for a module without one) wins
+over the formatter and the files (the project overrides only what it sets). A formatter that was
+only the default or measured gives way to it and becomes `none`; a declared or pinned one stays, and
+runs at the Checkstyle width, because listing `"project"` is the project's own decision about the
+width. A `LineLength` module with `severity` `ignore` is not read, and a `max` outside 10 to 999 is
+ignored with a printed note. Checkstyle's own `LineLength` stays suppressed, so the limit is checked once, by
+`line-length-limit`. The run prints each choice and its source. The conventions apply to the Java
+sources of a kotlin-preset project too. They come from the head policy file at run time, and the
+function `javaStyle()` in `languages/java/adapters/style/java-style.mjs` turns them into the style
+(`google`, `aosp`, `palantir` or `none`), which reaches Gradle as `-Pnitpicker.java.style` and Maven
+as `javaStyle`.
+
+A badly formatted file is one `google-java-format`, `google-java-format --aosp` or
+`palantir-java-format` finding (the one that ran), not hundreds. Its message gives the command that
+fixes the file (`google-java-format --replace <Java files>`, with `--aosp`, or `palantir-java-format
+--palantir --replace <Java files>`) and says how to pin `conventions.java.formatter` (`"google"`,
+`"palantir"` or `"none"`) in nitpicker.config.json when it is not your formatter. The Checkstyle
+checks that only restate the formatter's layout are suppressed in both styles (`Indentation`,
+`CommentsIndentation`, `WhitespaceAround`, `WhitespaceAfter`, `GenericWhitespace`, `MethodParamPad`,
+`ParenPad`, `NoWhitespaceBefore`, `OperatorWrap`, `SeparatorWrap`, `NoLineWrap`, `CustomImportOrder`,
+`EmptyLineSeparator`, `LeftCurly`, `RightCurly`, `AnnotationLocation`, `FileTabCharacter` and the
+empty-block spacing regex), in `languages/java/gradle/checkstyle-suppressions.xml`. Checkstyle keeps
+everything that is not layout: naming, `NeedBraces`, `AvoidStarImport`, empty catch blocks, the
+Javadoc rules, `OneStatementPerLine` and the rest. Checkstyle's `LineLength` is suppressed too: the
+line-length rule above replaces it. A project's own
+Checkstyle config (`tools.checkstyle.precedence`) is layered over nitpicker's, and these suppressions apply to the
+merged config as well: the formatter and the line-length rule own layout and line length, so a project's settings
+for those checks change nothing.
+
+With no formatter (`none`), nothing else reports the layout and the unused imports that
+google-java-format used to remove, so the Gradle and Maven runs use
+`languages/java/gradle/checkstyle-suppressions-unformatted.xml`, which suppresses only the layout
+checks the formatters disagree on or that depend on a house style (`CommentsIndentation`,
+`OperatorWrap`, `SeparatorWrap`, `NoLineWrap`, `CustomImportOrder`, `EmptyLineSeparator`,
+`AnnotationLocation`, the empty-block spacing regex), `LineLength` and, by id, `LeftCurlyNl` (it asks
+for the brace of `case X: {` on its own line, which neither formatter does). The checks both
+formatters agree on stay on: `WhitespaceAround`, `WhitespaceAfter`, `GenericWhitespace`,
+`MethodParamPad`, `ParenPad`, `NoWhitespaceBefore`, `LeftCurlyEol` (the other `LeftCurly`) and
+`RightCurly`, `FileTabCharacter`, and
+`Indentation` at the measured width (2 by default; at 4 the `basicOffset`, `caseIndent` and
+`arrayInitIndent` of the bundled check become 4; for tab-indented files `Indentation` and
+`FileTabCharacter` are removed). Checkstyle's `UnusedImports` is added to the bundled checks, so an
+unused import is still a finding; Error Prone's `RemoveUnusedImports` stays off and PMD has no
+unused-import rule in the ruleset. The init script (`nitpicker.init.gradle`, reading
+`-Pnitpicker.java.style` and `-Pnitpicker.java.indentation`) and `unformatted-checks.mjs` (Maven)
+make the same edits, and these findings say to fix the layout by hand. The Java sources of a
+kotlin-preset project get the same checks.
+
+The style reaches Gradle as the command-line property `-Pnitpicker.java.style=aosp`, never through
+`gradle.properties`. The runner reads the convention from the head policy file at run time, like the
+other policy values, so it is not part of the analyzer's configuration hash; the base run gets the
+same policy file, so a change of style in the same pull request does not fail the files it makes
+differ. The Maven run resolves only the formatter jar its style needs (google-java-format, or
+palantir-java-format, or neither for `none`).
+
 ## Coupling and stability (ticket SH6)
 
 - **What runs.** The init script's `nitpickerJdeps` task (a dependency of `nitpickerJava`) runs the
-  JDK's `jdeps -verbose:class -filter:none` over the main class directories and writes
-  `build/nitpicker/jdeps.txt` plus `jdeps-classes.txt` (the main classes, one binary name per line).
+  JDK's `jdeps -verbose:class -filter:none` once over the main and test class directories and
+  splits the edges by the side that declares the source class: `jdeps.txt` in the report directory
+  (main classes), `jdeps-classes.txt` (the main classes, one binary name per line) and
+  `jdeps-test.txt` (test classes), which only the [test-only class check](#review-rules) reads. A
+  test source set is one a `Test` task runs or one whose name contains `test` (`integrationTest`,
+  `testFixtures`); the task compiles only those, so a `jmh` or `benchmark` source set is neither
+  compiled for it nor counted as a test. Maven runs the same single jdeps call over
+  `target/classes` and `target/test-classes` (`builds/jdeps-reports.mjs`). Neither build holds
+  the jdeps output in memory: Gradle splits it line by line as jdeps writes it, Maven writes it to
+  a file in the report directory and splits that in 1 MB chunks, so a module of any size works.
   jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The
   block is delimited by `// --- coupling (SH6)` comments in the init script.
 - **Conversion.** `languages/java/adapters/metrics/java-coupling.mjs` parses the class graph, folds nested classes
@@ -509,7 +1557,7 @@ Spring ruleset, [`languages/java/gradle/spring-ruleset.xml`](../languages/java/g
 added to its PMD run, next to nitpicker's rule set `pmd-ruleset.xml` (and the project's own `config/pmd/ruleset.xml` when
 `tools.pmd.precedence` lists `"project"` too). Every
 project's PMD run now gets the main and test compile classpaths and the main and test classes as
-its auxiliary classpath (`build/nitpicker/pmd-aux-classpath.txt`), so the rules match annotation and
+its auxiliary classpath (`pmd-aux-classpath.txt` in the report directory), so the rules match annotation and
 supertype names exactly; `nitpickerPmd` therefore compiles the main and test classes first, and a
 test compile error stops it. The manifest records `spring` and the
 main `resourceRoots`.
@@ -525,6 +1573,7 @@ the `rule` of a config exception.
 | Web           | `SpringComposedMapping`, `SpringRestController`, `SpringValidRequestBody`, `SpringNoCrossOrigin`, `SpringPasswordEncoder`                                                                                                                                                                                                                                              |
 | JPA           | `JpaLazyFetching`, `JpaEntityClass`, `JpaManyToManyCascade`, `JpaManyToManySet`, `JpaVersion`, `JpaSequenceIds`                                                                                                                                                                                                                                                        |
 | Spring Data   | `SpringDataDerivedQuery` (every declared repository method has `@Query`; inherited methods such as `findById` and `save` stay legal), `SpringDataNativeQuery`, `SpringDataModifyingQuery`, `SpringDataNoSaveInLoop`, `SpringDataNoFlush`, `SpringDataNamedParameters`, `SpringDataQueryTextBlock`                                                                      |
+| Tests         | `SpringUnusedContext` (test sources only, from `spring-test-ruleset.xml`; see [Review rules](#review-rules))                                                                                                                                                                                                                                                           |
 
 **Inline suppressions.** PMD would let a change silence any rule without review. nitpicker runs PMD
 with `--suppress-marker` set to a string no code uses, so `// NOPMD` comments do nothing. PMD still
@@ -560,22 +1609,32 @@ Checkstyle tasks after the build script runs, so a `checkstyle { configFile = ..
 project's build does not replace it either.
 
 **Test sources are linted too.** PMD, Checkstyle (`checkstyleTest`, reported in
-`build/nitpicker/checkstyle-test.xml`), google-java-format and the inline suppression scan cover
-`src/test/java` as well as the main sources, the way the TypeScript preset lints its tests; the
-file and folder limits already counted test files. PMD runs nitpicker's own rule set,
+`checkstyle-test.xml`), Error Prone, google-java-format and the inline suppression scan cover
+`src/test/java` and every other test source set (`integrationTest`, `testFixtures`; on Maven the
+test roots, `build-helper-maven-plugin` `add-test-source` ones included) as well as the main
+sources, with the test rules, the way the TypeScript preset lints its tests; the
+file and folder limits already counted test files. A `jmh` or `benchmark` source set is neither main nor test code: nitpicker
+neither compiles nor lints it on Gradle, as Maven ignores a source folder build-helper does not add. PMD runs nitpicker's own rule set,
 [`languages/java/gradle/pmd-ruleset.xml`](../languages/java/gradle/pmd-ruleset.xml): the
 errorprone and bestpractices categories without `UnitTestAssertionsShouldIncludeMessage` and
 `UnitTestContainsTooManyAsserts`, which set an assertion style the TypeScript preset does not have,
 plus design's `AvoidCatchingGenericException` (no `catch (Exception e)`, `RuntimeException` or
 `NullPointerException`; errorprone already covers `Throwable`), as the TypeScript and Python presets
-forbid broad catches. A test with no assertion still fails (`UnitTestShouldIncludeAssert`, which
-also counts MockMvc's `andExpect`), and a class named like a test but without test methods fails
-(`TestClassWithoutTestCases`), except `*ArchTest` and `*ArchitectureTest` classes, which hold
-ArchUnit rules. The Spring rule set reads main sources only: the init script wraps it in
-`build/nitpicker/pmd-spring-main.xml` with an exclude pattern per test source directory, since
-field injection and package-private test methods are the norm in tests. A PMD rule that flags
-legitimate test code, such as `SystemPrintln` in a test of console output, takes an exception like
-any other: `{ "rule": "pmd/<rule>", "paths": [...],
+forbid broad catches (the message says that a test uses `assertThrows`, as Checkstyle's `EmptyCatchBlock` message does). A test with no assertion still fails (`UnitTestShouldIncludeAssert`, which
+also counts MockMvc's `andExpect` and `andExpectAll`, BDDMockito's `then(...).should()`,
+`WebTestClient`'s `expectStatus`/`expectBody`/`expectHeader` and `StepVerifier`'s `expectNext`,
+`verifyComplete` and friends), and a class in test sources named like a test but without test
+methods fails (`TestClassWithoutTestCases`), except `*ArchTest` and `*ArchitectureTest` classes,
+which hold ArchUnit rules. The rules that only make sense in tests live in
+[`pmd-test-ruleset.xml`](../languages/java/gradle/pmd-test-ruleset.xml) (and, for a Spring project,
+[`spring-test-ruleset.xml`](../languages/java/gradle/spring-test-ruleset.xml)); the init script and
+the Maven side wrap them in `pmd-tests.xml` in the report directory, which excludes the main source
+directories, so a main class such as `TestDataGenerator` is not a test (see
+[Review rules](#review-rules)). The Spring rule set reads main sources only: the init script and the Maven side wrap it, with
+`pmd-main-ruleset.xml`, in `pmd-main.xml` in the report directory with an exclude pattern per test
+source directory, since field injection and package-private test methods are the norm in tests. A PMD rule that flags
+legitimate test code, such as `SystemPrintln` in a test of console output, or `CloseResource` on a
+`PrintStream` handed to `System.setOut`, takes an exception like any other: `{ "rule": "pmd/<rule>", "paths": [...],
 "reason": "..." }`. PMD messages that name a line ("first occurrence is on line 12") lose the number
 in the finding's identity, so moving code does not re-report them. SpotBugs, the structure limits
 and CRAP stay on main code, as in the TypeScript preset.
@@ -584,10 +1643,11 @@ and CRAP stay on main code, as in the TypeScript preset.
 when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "paths": [...],
 "reason": "..." }`.
 
-**Limits.** Rules are per file. `JpaVersion` checks the root of each entity hierarchy: an `@Entity`
-without a superclass, or a `@MappedSuperclass` that declares the `@Id`, so the `@Version` field
-belongs next to the `@Id`. An entity with a superclass is skipped, because its `@Version` may be
-inherited. The JPA rules match `jakarta.persistence` only; `javax.persistence` code gets none of
+**Limits.** `JpaVersion` checks each `@Entity` or `@MappedSuperclass` that declares the `@Id`,
+and each entity without a superclass, so the `@Version` field belongs next to the `@Id`. A finding
+is dropped when a superclass found in the project's sources declares `@Version`; a superclass from
+a library counts as having none. `AbstractClassWithoutAbstractMethod` skips `@MappedSuperclass`
+classes, which are abstract to stop instantiation. The JPA rules match `jakarta.persistence` only; `javax.persistence` code gets none of
 them. `SpringDataDerivedQuery` leaves redeclared CRUD methods alone (`findById`, `findAll`, `save`,
 `deleteById` and the rest of `ListCrudRepository`, `ListPagingAndSortingRepository`,
 `JpaRepository` and `QueryByExampleExecutor`), since Spring implements those without parsing the
@@ -596,8 +1656,9 @@ Elasticsearch modules; the other Spring Data rules know only the JPA annotations
 on interface methods are accepted, because Spring reads them for both proxy kinds.
 `SpringProxySelfCall` matches by name and argument count, and skips a call from one `@Transactional`
 method to another with a plain `@Transactional` (same transaction). `SpringDataNoSaveInLoop` covers
-`for`, `while` and `do` loops and `forEach`, `map` and `peek` callbacks, lambdas and method
-references (`forEach(repository::save)`) alike. It and `SpringDataNoFlush` skip a loop that also
+`for`, `while` and `do` loops and `forEach`, `map` and `peek` callbacks on a stream, an `Iterable`
+or a `Map`, lambdas and method references (`forEach(repository::save)`) alike; `Optional.map` and
+`ifPresent` run at most once and are not loops. It and `SpringDataNoFlush` skip a loop that also
 calls `EntityManager.clear()`, the JPA batch idiom.
 `SpringNoSwallowedTransactionException` reports catching `Exception`, `RuntimeException`,
 `Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
@@ -609,7 +1670,9 @@ described next.
 `npm run test:java`) runs PMD through the init script on `adapters/fixtures/spring-project`, whose
 sources mark every expected violation with a `// violation: <rule>` comment, and asserts the
 reported set equals the marked set. The fixture also holds the legitimate forms each rule must
-accept.
+accept. It also runs Error Prone on the fixture and asserts its only finding is `MethodCanBeStatic`
+in `OrderService`: no `FieldCanBeFinal` in the JPA entities and no
+`PrivateConstructorForUtilityClass` on the application or configuration classes.
 
 ## Spring architecture rules
 
@@ -671,8 +1734,8 @@ base classes are not tests themselves and are never placed.
 | `spring-test-placement`     | such a test is in a package without an `integration` or `it` segment (`shop.orders.integration`, `shop.it`); plain unit tests live anywhere |
 | `spring-no-dirties-context` | a test class or method has `@DirtiesContext`, anywhere                                                                                      |
 
-Sources in a separate Gradle source set (`src/integrationTest/java`) are not part of the `test`
-source set and are not read at all. A test that sleeps is covered by the test-honesty rules for
+Every test source set is read, a separate one such as `src/integrationTest/java` included. A test
+that sleeps is covered by the test-honesty rules for
 Java, not here.
 
 **Limits.** The rules read bytecode, so generated classes without a source file are skipped (no
@@ -680,8 +1743,11 @@ finding can be placed), and a use of another package's compile-time constant (`s
 primitive or `String`) is invisible, because `javac` inlines its value. A controller that uses the
 `EntityManager` directly is not a repository use for `spring-controller-repository`, and a service
 reaching the request through the static `RequestContextHolder` is not caught by
-`spring-service-web`. Only classes of the `main` and `test` source sets are checked, and only in
-the root project. Kotlin modules run the same rules on their compiled classes.
+`spring-service-web`. Each Gradle project and Maven module that uses Spring is checked on its own,
+over its main and test classes. Kotlin modules run the same rules on their compiled classes, and the
+findings point at the `.kt` files; the file facade of top-level functions (`ShopApplicationKt`, with
+`fun main`) next to the application or a `@Configuration` class in the root package is not a
+`spring-layout` finding, as the class it sits beside is allowed there.
 
 ## Spring configuration files
 
@@ -708,8 +1774,26 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   YAML, a `#---` or `!---` document in a properties file. The plain `application.*` main document has
   none. The expression is split on `, | & ! ( )` and spaces. A document is exempt from a rule only
   when it has at least one profile, every positive token is exempt for that rule, and the expression
-  has no `!`. Test profiles are `test` or a name starting with `test`, `it` and `integration-test`;
-  local profiles are `local`, `dev` and `development`.
+  has no `!`. Test profiles are `test`, a name starting with `test`, any name with a `test`, `tests`,
+  `it` or `integration` word (words split on `-`, `_` and `.`, so `integration-test` and `ci-test`),
+  and every profile the project's tests use that is not also configured for the main application.
+  A profile counts as used by the tests when `application-<profile>.(properties|yml|yaml)` or a
+  `spring.profiles.active` value sits under test resources (`src/test/resources`, the sibling
+  `resources` of each test source root), or the profile is named by `@ActiveProfiles` or
+  `spring.profiles.active=` in the test sources (`src/test/java`, `src/test/kotlin` or the manifest's
+  `testSourceRoots`). A profile is not test-only when
+  `application-<profile>.(properties|yml|yaml)` also exists in main resources, so `docker`, `k8s` or
+  `qa` stay checked; a main-resources file for a profile is exempt only through a test word in its
+  name. The set the tests use is measured on the merge base when the run has one, so a branch cannot exempt a profile
+  by adding a test that activates it. Words are compared case-insensitively, trailing digits are
+  dropped from each word (`prod2`, `stage1`), and a word that begins or ends with a production word
+  followed or preceded by a two-letter region or a known word (`testprod`, `prodeu`) counts too, while
+  `product`, `staged` and `livestock` do not. A name with a `prod`, `prd`, `production`, `live`,
+  `preprod`, `staging`, `stage`, `stg` or `uat` word is never a test or local profile, whatever its
+  other words (`prod-test`, `prod-dev`) and even when a test activates it. Local profiles are names
+  with a `local`, `dev` or `development` word, so `local-dev` counts. A profile built from a constant
+  (`@ActiveProfiles(Profiles.TEST)`) cannot be read; name it with a literal or add an exception for
+  the rule.
 - **True.** Wherever a rule needs `true`, Spring's spellings `true`, `on`, `yes` and `1` count, in
   any case.
 - **Rules**, all enforceable. Each message ends with the exception line to add to
@@ -749,8 +1833,8 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   its nesting, but `<<: *b` merges and `*ref` values are not expanded. A flow map or sequence that
   continues on later lines (`include: [` ... `]`), multi-line quoted or plain scalars (their
   continuation lines are skipped) and `? ` complex keys are not read; a YAML list of maps is
-  skipped. Profile groups, `spring.config.import` files and `spring.profiles.active` are not
-  followed.
+  skipped. Profile groups and `spring.config.import` files are not followed, and
+  `spring.profiles.active` is read only to learn the profiles the tests use.
 - **Tests.** `spring-config-parser.test.mjs` (properties and YAML parsing, line endings, byte
   order mark, continuations, escapes, indexes, flow collections, anchors), `spring-secrets.test.mjs`
   (key words, value judgement), `java-spring.test.mjs` (relaxed keys, open-in-view, ddl-auto,
@@ -758,13 +1842,164 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   (the other rules) and `java-reports.test.mjs`
   (glue, the `spring: true` gate).
 
+## Review rules
+
+Rules that carry review findings over from the TypeScript preset. Each works the same on Gradle
+and Maven: the PMD rules are in the shared rule set files, and `spring/java-spring.e2e.test.mjs`
+builds one Spring project (`java-e2e/fixtures/review-rules`, every expected violation marked with
+`// violation: <rule>`) with both and asserts the same findings, and exactly the marked ones.
+Every message names the allowed form and the exception that keeps code that is right.
+
+**Rule set scopes.** `pmd-test-ruleset.xml` (and `spring-test-ruleset.xml` when the compile
+classpath has Spring) run on test sources only, through the generated `pmd-tests.xml` that
+excludes the main source directories. `pmd-main-ruleset.xml` (and `spring-ruleset.xml` with Spring)
+run on main sources only, through the generated `pmd-main.xml` that excludes the test directories.
+The init script and `maven/maven-lint.mjs` generate both, so the scopes are the same on both
+builds. The main-only set holds the API design rules (`ExhaustiveEnumPredicate`,
+`StaticForwardingWrapper`, `SingularAndPluralMember`): like the TypeScript preset's
+`exhaustive-union-predicate`, `no-forwarding-wrapper` and `no-singular-and-plural-prop`, which run
+on production files only, they leave test helpers alone, since tests are not an API anyone calls.
+Two manifest flags feed the messages and checks below: `testAwaitility` (Awaitility on the test
+classpath) and `published` (a library module that is deployed, see `test-only-export`).
+
+| Rule (prints as)                | Flags                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Allowed form                                                                                                                                                                                                                                                                         |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pmd/FixedSleepInTest`          | In tests: `Thread.sleep`, `TimeUnit.X.sleep`, `LockSupport.parkNanos`, `wait(ms)` and `join(ms)` (and an unchecked `join(Duration)`) outside a polling loop; Mockito's `after(ms)` with a check that could pass sooner (`after(ms)`, `.atLeastOnce()`, `.times(n)`); Playwright's `page.waitForTimeout(...)`; Awaitility's `until(() -> true)`. A sleep in a mock answer (`doAnswer`, `thenAnswer`) or in a thread body (`new Thread`, an executor, `CompletableFuture.runAsync`) is not flagged, nor one in a test-source class without test methods that implements or extends a type of the main sources (a fake that simulates latency; `messages/latency-fakes.mjs`). `join(ms)` and `wait(ms)` get a timed-wait message: they return early, so the advice is to assert the result of `join(Duration)` or a latch `await`, not to poll.                                                             | Wait on the condition. When the project's tests use Awaitility, the message names `await().atMost(...).until(...)`; otherwise a loop that checks it against a deadline (a sleep inside it is fine). `verify(mock, timeout(ms))` for a mock, a checked `join(Duration)` for a thread. |
+| `pmd/NegativeWaitInTest`        | In tests: Mockito's `after(ms)` with `never()`, `times(0)`, `atMost(n)` or `atMostOnce()`, and Awaitility's `during(...)`, which prove that nothing happens by waiting out a delay.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | A `Clock` or scheduler the test controls: move it past the delay and assert at once.                                                                                                                                                                                                 |
+| `pmd/SpringUnusedContext`       | A `@SpringBootTest` class (no superclass, no `RANDOM_PORT` or `DEFINED_PORT`, also static-imported, no type-level `@MockBean`, `@MockitoBean`, `@SpyBean` or `@MockitoSpyBean`) with a non-empty test method that injects nothing: no `@Autowired`, `@Inject`, `@Resource`, `@Value`, `@MockBean`/`@MockitoBean`/`@SpyBean`/`@TestBean` or server port field, parameter or setter, no `MockMvc`, `WebTestClient`, `TestRestTemplate`, `ApplicationContext`, `CapturedOutput` or `ApplicationEvents`, no constructor parameters, Lombok's `@AllArgsConstructor` with an instance field or `@RequiredArgsConstructor` with a `final` or `@NonNull` field counted as one (JUnit can only call such a constructor when Spring autowires it, through `@TestConstructor(autowireMode = ALL)`, `spring.test.constructor.autowire.mode=all` or an `@Autowired` constructor, so the class needs no check of how). | A unit test that creates the class with `new`, or a slice (`@WebMvcTest`); `@SpringBootTest` is for integration and component tests. An empty `contextLoads()` test is exempt.                                                                                                       |
+| `pmd/TestClassWithoutTestCases` | A test-named class (`Test*`, `*Test`, `*Tests`, `*TestCase`) without a test method. Classes named `*ArchTest`, `*ArchTests` or `*ArchitectureTest` are left to ArchUnit.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Add the tests, or rename a helper so it does not look like a test class.                                                                                                                                                                                                             |
+| `pmd/ExhaustiveEnumPredicate`   | In main sources: a boolean in a value position (returned, assigned, a lambda body, also inside a larger `&&`/`\|\|` or as a ternary condition there) that compares one subject that reading cannot change (a variable, a `this` field, a no-argument `getX()`/`isX()` call, a record accessor; not `it.next()` or another call) with some constants of one enum, qualified or static-imported (`s == PAID \|\| s == SHIPPED`, `o.status() != A && o.status() != B`, `EnumSet.of(A, B).contains(s)`).                                                                                                                                                                                                                                                                                                                                                                                                     | A `switch` expression without `default`, or a boolean each constant declares (`PAID(true)`).                                                                                                                                                                                         |
+| `pmd/StaticForwardingWrapper`   | In main sources: a static method with parameters whose body only passes them, in order, to another static or same-class method (`return Prices.sum(a, b);`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Call the target directly. Factories named `of` or `from` and copies (`List.copyOf`, `Collections.unmodifiableList`) are allowed.                                                                                                                                                     |
+| `pmd/SingularAndPluralMember`   | In main sources: a record, or a `@ConfigurationProperties` class or a class nested in one, with both `tag` and `tags` (`-s`, `-es`, `y`/`ies`) where the plural is a `List`, `Set`, `Collection`, `Iterable` or array of the singular's type.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Keep the plural; pass one item as a one-element list.                                                                                                                                                                                                                                |
+| `coupling/test-only-export`     | A main class that only test classes use.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Move it to the test sources, or use it from production code.                                                                                                                                                                                                                         |
+
+**Precision notes.**
+
+- `FixedSleepInTest` and `NegativeWaitInTest` match by resolved type (`java.lang.Thread`,
+  `java.util.concurrent.TimeUnit`, `LockSupport`, `org.mockito.Mockito`, Awaitility's
+  `ConditionFactory`, Playwright's `Page` and `Frame`), so a project's own `sleep` method is not
+  flagged. A polling loop is a `while`, `do` or `for` loop with a condition other than `true`, or a
+  `while (true)` / `for (;;)` loop that reads the clock (`System.nanoTime()`,
+  `System.currentTimeMillis()`, `Instant.now()`, a `Clock`). Both Awaitility and a deadline loop
+  are valid, so the message follows the project (`messages/wait-advice.mjs`): it names Awaitility
+  when the module has it on the test classpath or a test file imports `org.awaitility`, and it
+  then says that `pollDelay(...).until(() -> true)` is a fixed sleep too.
+- `ExhaustiveEnumPredicate` needs at least two comparisons with distinct constants of one enum on
+  one subject. A condition in an `if` or a loop, or a predicate passed as an argument, is not a
+  value and is not flagged. The Node side (`adapters/review-rules/enum-predicates.mjs`) then keeps
+  a finding only when the enum is declared in the project's sources (same package, imported, or
+  the only enum with those constants), has at least three constants and the predicate lists some
+  but not all of them; the message names the enum. A static-imported constant is resolved through
+  its `import static`, and through a wildcard static import when one project enum declares it.
+  Library enums (`TimeUnit`, `HttpStatus`) are not the project's to classify.
+- `StaticForwardingWrapper` skips annotated methods, generic methods, `main`, `valueOf`,
+  `fromString`, `of` and `from` (names frameworks and callers look up), methods of Spring
+  stereotype and configuration classes, wrappers around `copyOf`, `copyOfRange`, `unmodifiable*`,
+  `synchronized*` and `checked*` (they change the type or the guarantees), and wrappers that add
+  type arguments, reorder or drop parameters.
+- `SingularAndPluralMember` compares declared types by simple name, with primitives boxed, and is
+  reported on the plural member. Method parameters and varargs record components
+  (`record Keys(String key, String... keys)`) are not checked, as the Python preset leaves required
+  parameters alone.
+- `test-only-export` (`adapters/review-rules/test-only-classes.mjs`, run project-wide) reads
+  `jdeps.txt`, `jdeps-classes.txt` and `jdeps-test.txt` of every module and resolves a class to its
+  own module first. A main class is reported when test classes use it and no other main class
+  does, unless:
+  - it carries a wiring annotation, directly or through a project annotation that carries one
+    (`adapters/review-rules/test-only-usage.mjs`): Spring stereotypes, `@Configuration`,
+    `@SpringBootApplication`, `@AutoConfiguration`, `@ConfigurationProperties`, actuator
+    `@Endpoint` and its variants, `@FeignClient`, Spring Data repositories, JPA `@Entity`,
+    `@Embeddable`, `@MappedSuperclass` and `@Converter`, `@Named`, `@Singleton`, CDI scopes,
+    interceptors and decorators, EJB beans, JAX-RS `@Path`, `@ApplicationPath` and `@Provider`,
+    servlet `@WebServlet`, `@WebFilter` and `@WebListener`, `@ServerEndpoint`, Spring Boot
+    `@SpringBootConfiguration` and `@JsonComponent`, Micronaut controllers, clients, factories,
+    `@ConfigurationProperties`, `@Context`, `@Prototype`, `@Bean` and filters, MicroProfile
+    `@RegisterRestClient` and `@ConfigProperties`, SmallRye `@ConfigMapping`, Quarkus `@Startup`;
+    a class also counts as wired when one of its methods or parameters carries a framework callback
+    annotation: `@Bean`, `@Scheduled` (Spring, Micronaut, Quarkus), `@EventListener`,
+    `@TransactionalEventListener`, `@KafkaListener`, `@RabbitListener`, `@JmsListener`, AWS
+    `@SqsListener`, `@MessageMapping`, MicroProfile `@Incoming` and `@Outgoing`, CDI `@Observes`.
+    jdeps names every annotation a class uses, so a method annotation shows as a class dependency.
+    Meta-annotations are followed only for the project's own annotations: a library annotation's
+    own annotations are not in the reports, so the known ones are listed;
+  - it has an entry point: a Java `static void main`, a Kotlin `@JvmStatic fun main`, or a Kotlin
+    file with a top-level `fun main` (its `FileKt` facade);
+  - its qualified name appears in a file the project reads by name: main sources, resources
+    (`logback.xml`, `META-INF/spring/...`, `META-INF/services/...`), `src/main/webapp` (`web.xml`),
+    or a file directly in the root or a module folder (build scripts with `implementationClass`,
+    `Main-Class` or a shade `mainClass`, `template.yaml`, `plugin.xml`), and a `Dockerfile`,
+    `*.Dockerfile` or `Containerfile` in any folder outside build output; comments (`//` and
+    `/* */` in Java, Kotlin and Gradle scripts, `<!-- -->` in XML and `pom.xml`, `#` in YAML, TOML,
+    properties and container files) and documents (`.md`, `.adoc`, `.rst`, `.txt`) not counted;
+  - its simple name appears in the code of a main source file that sees its package (same package
+    or a wildcard import);
+  - or its module is a published library: on Gradle a project with a `publishing` publication, on
+    Maven a `jar`, `bundle` or `maven-plugin` module with `distributionManagement` or a publishing
+    plugin (`central-publishing-maven-plugin`, `nexus-staging-maven-plugin`,
+    `maven-release-plugin`) whose deploy is not skipped. Its classes are its consumers' API, so its
+    own and its sibling modules' tests are legitimate callers. A module with an entry point or a
+    `@SpringBootApplication` is an application, not a library, even when it is deployed.
+
+  Kotlin sources are read the same way: each top-level class, object or interface of a `.kt` file
+  is a declaration, and a file with top-level functions or properties declares its `FileKt` facade
+  (or the `@file:JvmName` name). The message names the exception for a class that a file
+  nitpicker does not read loads by name. A module without all three reports is skipped.
+
+**Not built.** Unused builder parameters (a Lombok `@Builder` or record builder field no caller
+sets) are not checked: builders are filled by reflection (Jackson's `@Jacksonized`, MapStruct,
+Spring binding) as often as by calls, and a text match on `.name(` collides with every method of
+that name, so the rule would need compiler symbol facts to stay precise.
+
+## Rule messages
+
+PMD, Checkstyle and SpotBugs messages say what is wrong, rarely how to fix it, and never how to keep
+code that is right as it is. `languages/java/messages/` holds one catalog per tool (`pmd.json`,
+`checkstyle.json`, `spotbugs.json`) with an entry for every rule the preset can report: the
+errorprone and bestpractices PMD categories plus `AvoidCatchingGenericException`, every check in
+`google_checks.xml`, and every SpotBugs pattern. Each entry has:
+
+- `fix`: one sentence, in our words, naming the allowed form (`null` when the tool's message already
+  says it);
+- `mayBeIntended`: whether the rule can fire on code a careful team keeps (a CLI printing with
+  `System.out`, a catch-all at a boundary);
+- `layout` (Checkstyle only): a layout check the formatter fixes; the message then says to run the
+  formatter that ran (`google-java-format`, `palantir-java-format`, or "your Java formatter" when the
+  style is not known), or to fix the layout by hand when none runs, instead of a fix of its own.
+
+`readJavaFindings` passes every finding through `applyRuleMessages`
+(`languages/java/messages/rule-messages.mjs`). It shortens Checkstyle rule names, then appends the
+fix to the tool's message, and for an enforceable finding of a rule that may be intended (or one
+the catalog does not know, from a project's own config) the exception route with the finding's own
+path:
+
+```
+Usage of System.out/err. Write through a logger, or take a PrintStream as a parameter so callers
+choose the stream. If this is intended, add {"rule":"pmd/SystemPrintln","paths":["src/main/java/demo/Cli.java"],"reason":"..."}
+to "exceptions" in nitpicker.config.json.
+```
+
+The Kotlin preset, which runs the same tools on a mixed module's Java files, gets the fix but not
+the exception route: its `exceptions` only lift detekt rules. An `exceptions` entry that names a
+Checkstyle check by class (`checkstyle/com.puppycrawl...IndentationCheck`) is a config error that
+gives the name to write instead.
+
+Messages that already name `nitpicker.config.json` (the Spring rules) are left as they are, and
+identities are computed before, so neither the new text nor the short Checkstyle name moves a
+finding between base and head. `rule-catalog.e2e.test.mjs` downloads the pinned PMD, Checkstyle and
+SpotBugs jars and fails when the catalogs and the tools' rule lists differ, so a version bump
+cannot add a rule without fix text.
+
+Error Prone findings are in no catalog and pass through unchanged: their allowed form and exception
+route come from `ingest/errorprone/messages.mjs` and `adapters/errorprone/java-errorprone.mjs`, so
+they carry one exception route, not two. The overlap step runs after this, so
+`overlap-pairs.json` names Checkstyle checks the same short way, or by the module id
+`google_checks.xml` gives (`checkstyle/AnnotationLocationMostCases`); a unit test checks every rule
+in it against the catalogs and Error Prone's check list.
+
 ## Slice 1: what is deliberately not included
 
 - Nothing from the proposed slices 4 to 8 is left out: ArchUnit, CRAP, jscpd, PIT and the changed-line
   branch-coverage gate are described in their own sections.
-- Multi-module reporting beyond "each project writes its own `build/nitpicker`": the e2e test and
-  the ingestion cover a single project. `nitpickerJava` is registered in subprojects, but the Nitpicker
-  side reads one project root.
 - Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources, Maven (since added, see
   [Maven builds](#maven-builds)).
 
@@ -772,8 +2007,14 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 
 - `languages/java/adapters/reporting/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
-- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `spring-arch/spring-arch.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs` and `languages/java/maven/maven-preset.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
-  warm. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
+- `languages/java/adapters/review-rules/*.test.mjs` and `messages/wait-advice.test.mjs`: fast,
+  always on. The enum filter, the test-only class check and the Awaitility advice.
+- `languages/java/messages/rule-messages.test.mjs`: fast, always on. Short Checkstyle names, fix
+  text, the exception route, and the shape of every catalog entry.
+- `languages/java/messages/rule-catalog.e2e.test.mjs`: gated like the other e2e tests. The catalogs
+  name exactly the rules of the pinned tool versions.
+- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `spring/e2e/spring-arch.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `languages/java/maven/maven-preset.e2e.test.mjs`, `languages/java/adapters/errorprone/error-prone.e2e.test.mjs`, the other Error Prone e2e tests and `rule-catalog.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle, Maven and network access to Maven Central; about 85 seconds
+  warm. `.github/workflows/java-e2e.yml` runs it (Temurin 21, Gradle 8.14.3, Maven 3.9.11) on a push to `main` that changes `languages/java/**`, `core/**`, `shared/**`, `package.json`, `package-lock.json`, `vitest.config.mts` or the workflow, by hand (`workflow_dispatch`), and on a pull request when the `run-ci` label is added. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
   `String` (SpotBugs) and misformatted code fails with exactly those three findings as new.
@@ -783,3 +2024,12 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   Java-specific part of X11's done criterion ("passes the conformance suite") is that the findings
   produced here satisfy the findings schema, which `collectJavaFindings` enforces on every run via
   `parseAnalyzerReport`.
+
+Gradle commands default to a 15-minute deadline, configurable with
+`NITPICKER_GRADLE_TIMEOUT_MINUTES` as described above. On Linux and macOS, nitpicker starts each command
+in its own process group and stops that group with SIGTERM at the deadline, then SIGKILL
+after 500 ms. This also stops inherited Gradle/test-worker processes when the launcher exits
+first or ignores SIGTERM. On Windows, the deadline force-stops the command tree with
+`taskkill /T /F`. Cleanup adds at most 1.5 seconds on Linux/macOS or 2 seconds on Windows, plus process-launch overhead. Processes
+that deliberately leave the command group, including a pre-existing shared Gradle daemon,
+are outside this boundary; use `--no-daemon` when the whole build must stop with the command.

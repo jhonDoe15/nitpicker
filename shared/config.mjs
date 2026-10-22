@@ -5,6 +5,7 @@
 // Language-neutral: no imports from `core/`, `languages/` or tool packages.
 
 import path from 'node:path';
+import { PACKAGE_EXCEPTION_RULES } from './project-rules/hygiene-rules.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
@@ -15,15 +16,33 @@ export const THRESHOLD_KEYS = [
   'testFileLines',
   'lineLength',
   'folderFiles',
+  'folderDepth',
+  'classMethods',
+  'classFields',
+  'inheritanceDepth',
+  'unitTestSeconds',
+  'integrationTestSeconds',
 ];
+const THRESHOLD_PRESETS = {
+  folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python'],
+  classMethods: ['java', 'kotlin', 'python'],
+  classFields: ['java', 'kotlin', 'python'],
+  inheritanceDepth: ['java', 'kotlin', 'python'],
+};
 const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'fileLines',
   'testFileLines',
   'lineLength',
   'folderFiles',
+  'folderDepth',
+  'classMethods',
+  'classFields',
+  'inheritanceDepth',
 ]);
 
-const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
+const EXCEPTION_KEYS = ['rule', 'paths', 'packages', 'reason'];
+
+export const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'i18n', 'tools'];
 
 export function configError(message) {
   return new Error(`${CONFIG_FILE_NAME}: ${message}`);
@@ -43,7 +62,23 @@ export function validateStringArray(value, name) {
   }
 }
 
-export function validateThresholds(thresholds) {
+const PRINTED_RULES = new Map([['test-runtime/slow-test', 'slow-test']]);
+
+export function withCanonicalRules(config) {
+  if (!isPlainObject(config) || !Array.isArray(config.exceptions)) {
+    return config;
+  }
+  return {
+    ...config,
+    exceptions: config.exceptions.map((entry) =>
+      isPlainObject(entry) && PRINTED_RULES.has(entry.rule)
+        ? { ...entry, rule: PRINTED_RULES.get(entry.rule) }
+        : entry,
+    ),
+  };
+}
+
+export function validateThresholds(thresholds, preset = 'typescript') {
   if (!isPlainObject(thresholds)) {
     throw configError('"thresholds" must be an object');
   }
@@ -53,12 +88,50 @@ export function validateThresholds(thresholds) {
         `unknown threshold "${key}". Allowed thresholds: ${THRESHOLD_KEYS.join(', ')}`,
       );
     }
+    if (THRESHOLD_PRESETS[key] !== undefined && !THRESHOLD_PRESETS[key].includes(preset)) {
+      throw configError(
+        `"thresholds.${key}" is only supported with "preset": ${THRESHOLD_PRESETS[key].map((name) => `"${name}"`).join(', ')}`,
+      );
+    }
     if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
       throw configError(`"thresholds.${key}" must be a positive number`);
     }
     if (WHOLE_NUMBER_THRESHOLD_KEYS.has(key) && !Number.isInteger(value)) {
       throw configError(`"thresholds.${key}" must be a whole number`);
     }
+  }
+}
+
+const DUPLICATES_KEYS = ['skippedFolders'];
+
+export function validateDuplicates(duplicates) {
+  if (!isPlainObject(duplicates)) {
+    throw configError('"duplicates" must be an object');
+  }
+  for (const key of Object.keys(duplicates)) {
+    if (!DUPLICATES_KEYS.includes(key)) {
+      throw configError(
+        `unknown duplicates key "${key}". Allowed duplicates keys: ${DUPLICATES_KEYS.join(', ')}`,
+      );
+    }
+  }
+  if (duplicates.skippedFolders !== undefined) {
+    validateSkippedFolders(duplicates.skippedFolders);
+  }
+}
+
+function validateSkippedFolders(folders) {
+  validateStringArray(folders, 'duplicates.skippedFolders');
+  const invalid = folders.find(
+    (name) => !/^[^/\\*?{}[\],]+$/.test(name) || name.startsWith('!') || ['.', '..'].includes(name),
+  );
+  if (invalid !== undefined) {
+    throw configError(
+      `"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": ${invalid}`,
+    );
+  }
+  if (new Set(folders).size !== folders.length) {
+    throw configError('"duplicates.skippedFolders" must not contain duplicates');
   }
 }
 
@@ -106,5 +179,20 @@ function validateException(entry, label) {
   }
   if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
     throw configError(`"${label}.reason" is required: say why the rule is lifted for these paths`);
+  }
+  if (entry.packages !== undefined) {
+    validatePackages(entry, label);
+  }
+}
+
+function validatePackages(entry, label) {
+  if (!PACKAGE_EXCEPTION_RULES.includes(entry.rule)) {
+    throw configError(
+      `"${label}.packages" is only for the rules ${PACKAGE_EXCEPTION_RULES.join(', ')}`,
+    );
+  }
+  validateStringArray(entry.packages, `${label}.packages`);
+  if (entry.packages.length === 0) {
+    throw configError(`"${label}.packages" needs at least one package name`);
   }
 }

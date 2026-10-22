@@ -6,8 +6,18 @@ import { GREW_MESSAGES, HELD_MESSAGES, MESSAGES, renderMessage } from '../../../
 import { ingestPythonCrap } from './crap.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
-const ingest = (options = {}, lizard = fixture('crap-lizard.csv')) =>
-  ingestPythonCrap(lizard, fixture('crap-coverage.json'), options).findings;
+const functionEntries = () => JSON.parse(fixture('crap-functions.json'));
+const entry = (file, name, [definition, end], complexity = 1) => ({
+  file,
+  name,
+  start: definition,
+  definition,
+  bodyStart: definition + 1,
+  end,
+  complexity,
+});
+const ingest = (options = {}, functions = functionEntries()) =>
+  ingestPythonCrap(functions, fixture('crap-coverage.json'), options).findings;
 
 const scores = (options) =>
   ingest(options).map((finding) => {
@@ -52,7 +62,7 @@ describe('ingestPythonCrap', () => {
     expect(() => parseAnalyzerReport({ findings }, 'python')).not.toThrow();
   });
 
-  it('names a function by the qualified name coverage.py reports and scores the lower of line and branch coverage', () => {
+  it('names a function by its qualified name, which is the name coverage.py reports, and scores the lower of line and branch coverage', () => {
     expect(scores({ limit: 2 })).toEqual([
       'A.m.inner 2.50',
       'A.m 2.00',
@@ -72,9 +82,7 @@ describe('ingestPythonCrap', () => {
   });
 
   it('treats a file missing from the coverage report as unknown coverage', () => {
-    const lizard = '2,1,7,1,2,"f@1-2@other.py","other.py","f","f( )",1,2\n';
-
-    expect(ingest({}, lizard)).toEqual([
+    expect(ingest({}, [entry('other.py', 'f', [1, 2])])).toEqual([
       {
         tool: 'crap',
         rule: 'crap-coverage-unknown',
@@ -91,8 +99,8 @@ describe('ingestPythonCrap', () => {
 
   it('makes the coverage report paths relative to the given roots', () => {
     const coverage = fixture('crap-coverage.json').replace('"never.py"', '"/work/never.py"');
-    const lizard = '2,1,7,1,2,"never.py@8-9","never.py","coro","coro( )",8,9\n';
-    const findings = ingestPythonCrap(lizard, coverage, { roots: ['/work'], limit: 2 }).findings;
+    const functions = [entry('never.py', 'coro', [8, 9])];
+    const findings = ingestPythonCrap(functions, coverage, { roots: ['/work'], limit: 2 }).findings;
 
     expect(findings).toEqual([
       {
@@ -123,20 +131,21 @@ describe('ingestPythonCrap', () => {
     }
   });
 
-  it('does not match coverage of lines outside the lizard range', () => {
-    const shifted = fixture('crap-lizard.csv').replaceAll(
-      /,(\d+),(\d+)$/gm,
-      (_, a, b) => `,${Number(a) + 40},${Number(b) + 40}`,
-    );
+  it('does not take the coverage of a same-named entry whose lines lie outside the range of the function', () => {
+    const shifted = functionEntries().map(({ start, definition, bodyStart, end, ...rest }) => ({
+      ...rest,
+      start: start + 40,
+      definition: definition + 40,
+      bodyStart: bodyStart + 40,
+      end: end + 40,
+    }));
 
-    expect(new Set(ingest({}, shifted).map((finding) => finding.rule))).toEqual(
-      new Set(['crap-coverage-unknown']),
-    );
+    expect(ingest({ limit: 4 }, shifted)).toEqual([]);
   });
 
   it('includes the source hash in the identity of a function with known coverage only', () => {
-    const lizard = `${fixture('crap-lizard.csv')}2,1,7,1,2,"f@1-2@other.py","other.py","f","f( )",1,2\n`;
-    const [known, unknown] = ingest({ limit: 4, sourceHash: () => 'abc' }, lizard).filter(
+    const functions = [...functionEntries(), entry('other.py', 'f', [1, 2])];
+    const [known, unknown] = ingest({ limit: 4, sourceHash: () => 'abc' }, functions).filter(
       (finding) => finding.symbol !== 'top',
     );
 
@@ -144,14 +153,36 @@ describe('ingestPythonCrap', () => {
     expect(unknown.identity).toBe('function:f');
   });
 
+  it('numbers same-named definitions among those of the same text, so adding one above does not rename another', () => {
+    const sourceHash = ({ start }) => (start === 30 ? 'setter' : 'getter');
+    const coverage = JSON.stringify({
+      files: { 'm.py': { executed_lines: [], missing_lines: [6, 11, 31], functions: {} } },
+    });
+    const identities = (starts) =>
+      ingestPythonCrap(
+        starts.map((start) => entry('m.py', 'A.value', [start, start + 1])),
+        coverage,
+        { limit: 1.5, sourceHash },
+      ).findings.map((finding) => finding.identity);
+
+    expect(identities([10, 30])).toEqual([
+      'function:A.value:source:getter',
+      'function:A.value:source:setter',
+    ]);
+    expect(identities([5, 10, 30])).toEqual([
+      'function:A.value:source:getter',
+      'function:A.value#2:source:getter',
+      'function:A.value:source:setter',
+    ]);
+  });
+
   it('scores same-named definitions from the per-line data of their own ranges', () => {
-    const lizard = [
-      '2,1,9,1,2,"x@6-7@m.py","m.py","x","x( self )",6,7',
-      '5,2,22,2,5,"x@10-14@m.py","m.py","x","x( self , v )",10,14',
-      '2,1,9,1,2,"_@23-24@m.py","m.py","_","_( a : int )",23,24',
-      '2,1,9,1,2,"_@28-29@m.py","m.py","_","_( a : str )",28,29',
-      '',
-    ].join('\n');
+    const functions = [
+      entry('m.py', 'A.x', [6, 7]),
+      entry('m.py', 'A.x', [10, 14], 2),
+      entry('m.py', '_', [23, 24]),
+      entry('m.py', '_', [28, 29]),
+    ];
     const coverage = JSON.stringify({
       files: {
         'm.py': {
@@ -187,7 +218,7 @@ describe('ingestPythonCrap', () => {
       },
     });
 
-    const findings = ingestPythonCrap(lizard, coverage, { limit: 2 }).findings;
+    const findings = ingestPythonCrap(functions, coverage, { limit: 2 }).findings;
 
     expect(findings.map(({ rule, symbol, location }) => [rule, symbol, location.line])).toEqual([
       ['crap-score-limit', 'A.x', 10],
@@ -200,26 +231,107 @@ describe('ingestPythonCrap', () => {
   });
 
   it('keeps a same-named definition out of the findings when its own lines are covered', () => {
-    const lizard = '2,1,9,1,2,"x@6-7@m.py","m.py","x","x( self )",6,7\n';
+    const functions = [entry('m.py', 'A.x', [6, 7])];
     const coverage = JSON.stringify({
       files: { 'm.py': { executed_lines: [6, 7], missing_lines: [], functions: {} } },
     });
 
-    expect(ingestPythonCrap(lizard, coverage, { limit: 2 }).findings).toEqual([]);
+    expect(ingestPythonCrap(functions, coverage, { limit: 2 }).findings).toEqual([]);
   });
 
-  it('leaves coverage unknown for a function whose range holds no statement of the file', () => {
-    const lizard = '2,1,9,1,2,"x@6-7@m.py","m.py","x","x( self )",6,7\n';
+  it('counts a function whose range holds no statement of a reported file as covered', () => {
+    const functions = [entry('m.py', 'A.x', [6, 7], 4)];
     const coverage = JSON.stringify({
       files: { 'm.py': { executed_lines: [1], missing_lines: [], functions: {} } },
     });
 
-    expect(ingestPythonCrap(lizard, coverage, {}).findings.map(({ rule }) => rule)).toEqual([
-      'crap-coverage-unknown',
+    expect(ingestPythonCrap(functions, coverage, { limit: 5 }).findings).toEqual([]);
+    expect(ingestPythonCrap(functions, coverage, { limit: 4 }).findings).toHaveLength(1);
+  });
+
+  it('scores a lambda by whether the statement that creates it ran, however it is spread over lines, and numbers repeated lambdas by their source', () => {
+    const lambda = (name, line, complexity, statementLine) => ({
+      ...entry('m.py', name, [line, line], complexity),
+      bodyStart: line,
+      lambda: true,
+      statementLine,
+    });
+    const functions = [
+      lambda('run.<lambda>', 5, 4, 5),
+      lambda('run.<lambda>', 9, 4, 8),
+      lambda('run.<lambda>', 12, 4, 12),
+      lambda('run.key', 13, 1, 13),
+    ];
+    const coverage = JSON.stringify({
+      files: { 'm.py': { executed_lines: [5, 12, 13], missing_lines: [8], functions: {} } },
+    });
+
+    const findings = ingestPythonCrap(functions, coverage, { limit: 4 }).findings;
+
+    expect(
+      findings.map(({ symbol, identity, location, message }) => [
+        symbol,
+        identity,
+        location.line,
+        /CRAP (\d+\.\d+)/.exec(message)[1],
+      ]),
+    ).toEqual([
+      ['run.<lambda>', 'function:run.<lambda>', 5, '4.00'],
+      ['run.<lambda>', 'function:run.<lambda>#2', 9, '20.00'],
+      ['run.<lambda>', 'function:run.<lambda>#3', 12, '4.00'],
     ]);
   });
 
+  it('does not score an overload stub, whatever the shape of its signature', () => {
+    const stub = { ...entry('m.py', 'A.get', [6, 9], 3), overload: true };
+    const coverage = JSON.stringify({
+      files: { 'm.py': { executed_lines: [1], missing_lines: [], functions: {} } },
+    });
+
+    expect(ingestPythonCrap([stub], coverage, { limit: 1 }).findings).toEqual([]);
+  });
+
+  it('scores a branchy getter from its own lines when the setter that shares its name has none', () => {
+    const functions = [entry('m.py', 'A.x', [6, 10], 5), entry('m.py', 'A.x', [12, 13])];
+    const coverage = JSON.stringify({
+      files: {
+        'm.py': {
+          executed_lines: [5, 6, 11, 12],
+          missing_lines: [7, 8, 9, 10],
+          executed_branches: [],
+          missing_branches: [
+            [7, 8],
+            [7, 9],
+          ],
+          functions: {
+            'A.x': {
+              executed_lines: [],
+              missing_lines: [],
+              summary: {
+                covered_lines: 0,
+                num_statements: 0,
+                covered_branches: 0,
+                num_branches: 0,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const findings = ingestPythonCrap(functions, coverage, { limit: 9 }).findings;
+
+    expect(findings.map(({ symbol, location }) => [symbol, location.line])).toEqual([['A.x', 6]]);
+    expect(findings[0].message).toMatch(/CRAP 30\.00/);
+  });
+
+  it('does not score a function whose body starts on its def line', () => {
+    const oneLiner = { ...entry('never.py', 'one', [8, 8], 3), bodyStart: 8 };
+
+    expect(ingest({ limit: 1 }, [oneLiner])).toEqual([]);
+  });
+
   it('rejects a coverage report without files', () => {
-    expect(() => ingestPythonCrap('', '{}')).toThrow('must contain a files object');
+    expect(() => ingestPythonCrap([], '{}')).toThrow('must contain a files object');
   });
 });

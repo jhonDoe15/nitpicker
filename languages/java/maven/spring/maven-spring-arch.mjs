@@ -72,7 +72,7 @@ function compileRules({ classes, sources, libraries, cwd }) {
   try {
     runJava({
       tool: TOOL,
-      executable: 'javac',
+      java: javaCommand('javac'),
       jvmArgs: ['-proc:none', '-nowarn', '-d', staging],
       classpath: libraries,
       args: sources,

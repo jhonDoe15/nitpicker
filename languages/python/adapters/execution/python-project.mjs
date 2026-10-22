@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { isDirectory } from '../../libraries/project-files.mjs';
 
 const HINT_FILES = [
   'pyproject.toml',
@@ -35,6 +36,11 @@ const TYPE_CHECKER_HINTS = {
     configFiles: ['pyrightconfig.json'],
     declared: /(?:^\s*|["'])pyright(?![\w.-])|pyright-python/m,
   },
+  basedpyright: {
+    configured: /^\s*\[\s*tool\.basedpyright\s*\]/m,
+    configFiles: [],
+    declared: /(?:^\s*|["'])basedpyright(?![\w.-])|basedpyright-pre-commit/m,
+  },
 };
 const CONFIGURED_WEIGHT = 2;
 const RUFF_FORMAT_HINT = /^\s*\[tool\.ruff\.format\]|ruff-format|^\s*\[format\]/m;
@@ -59,7 +65,7 @@ export const NON_SOURCE_DIRECTORIES = new Set([
 ]);
 export const NON_SOURCE_FILES = new Set(['conftest.py']);
 
-function readFileEntries(projectRoot, names) {
+export function readFileEntries(projectRoot, names) {
   return names
     .filter((name) => isFile(path.join(projectRoot, name)))
     .map((name) => [name, readFileSync(path.join(projectRoot, name), 'utf8')]);
@@ -89,12 +95,28 @@ export function readProjectHints(projectRoot) {
   return readFiles(projectRoot, [...HINT_FILES, ...requirementFiles(projectRoot)]).join('\n');
 }
 
+function formatterOf(hints) {
+  return BLACK_HINT.test(hints) && !RUFF_FORMAT_HINT.test(hints) ? 'black' : 'ruff';
+}
+
 export function detectFormatter(projectRoot, setting) {
+  return setting ?? formatterOf(readProjectHints(projectRoot));
+}
+
+function isHintFile(file) {
+  return (
+    HINT_FILES.includes(file) ||
+    (!file.includes('/') && REQUIREMENT_FILE.test(file)) ||
+    new RegExp(String.raw`^${REQUIREMENT_DIRECTORY}/[^/]+\.(?:txt|in)$`).test(file)
+  );
+}
+
+export function detectFormatterFromSource(source, setting) {
   if (setting !== undefined) {
     return setting;
   }
-  const hints = readProjectHints(projectRoot);
-  return BLACK_HINT.test(hints) && !RUFF_FORMAT_HINT.test(hints) ? 'black' : 'ruff';
+  const texts = source.readMany(source.paths().filter(isHintFile));
+  return formatterOf([...texts.values()].join('\n'));
 }
 
 function lowestMinor(specifier) {
@@ -127,18 +149,19 @@ export function detectTypeCheckers(projectRoot, setting) {
     ...requirementFiles(projectRoot),
     ...TYPE_CONFIG_FILES,
   ]);
+  const basedpyright = typeCheckerScore(texts, TYPE_CHECKER_HINTS.basedpyright);
   const scores = Object.entries(TYPE_CHECKER_HINTS).map(([checker, hints]) => [
     checker,
-    typeCheckerScore(texts, hints),
+    typeCheckerScore(texts, hints, checker === 'pyright' && basedpyright > 0),
   ]);
   const best = Math.max(...scores.map(([, score]) => score));
   return best === 0 ? [] : scores.filter(([, score]) => score === best).map(([checker]) => checker);
 }
 
-function typeCheckerScore(texts, { configured, configFiles, declared }) {
-  const hasConfig = texts.some(
-    ([file, text]) => configFiles.includes(file) || configured.test(text),
-  );
+function typeCheckerScore(texts, { configured, configFiles, declared }, sharesConfig = false) {
+  const hasConfig =
+    !sharesConfig &&
+    texts.some(([file, text]) => configFiles.includes(file) || configured.test(text));
   const isDeclared = texts.some(([, text]) => declared.test(text));
   return (hasConfig ? CONFIGURED_WEIGHT : 0) + (isDeclared ? 1 : 0);
 }
@@ -173,10 +196,10 @@ export function importRoots(projectRoot, sourceRoots) {
   return [...new Set(roots)];
 }
 
-function isFile(file) {
-  return existsSync(file) && statSync(file).isFile();
+export function readOptional(file) {
+  return existsSync(file) ? readFileSync(file, 'utf8') : '';
 }
 
-function isDirectory(directory) {
-  return existsSync(directory) && statSync(directory).isDirectory();
+function isFile(file) {
+  return existsSync(file) && statSync(file).isFile();
 }

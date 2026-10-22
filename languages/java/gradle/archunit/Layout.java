@@ -49,7 +49,7 @@ final class Layout {
         continue;
       }
       if (path.length == 0) {
-        rootClass(type, sink);
+        rootClass(type, main, sink);
       } else if (LAYER_PACKAGES.contains(path[0])) {
         Found.add(sink, LAYOUT, type, path[0]);
       }
@@ -75,13 +75,28 @@ final class Layout {
         : null;
   }
 
-  private static void rootClass(JavaClass type, Set<Found> sink) {
+  private static void rootClass(JavaClass type, JavaClasses main, Set<Found> sink) {
     JavaClass owner = Spring.owner(type);
-    if (!owner.isMetaAnnotatedWith(CONFIGURATION)
-        && !owner.isAnnotatedWith(PROPERTIES)
-        && !owner.isAssignableTo(SERVLET_INITIALIZER)) {
+    if (!allowedAtRoot(owner) && !(Spring.isFileFacade(owner) && sharesFileWithAllowed(owner, main))) {
       Found.add(sink, LAYOUT, type, "");
     }
+  }
+
+  private static boolean allowedAtRoot(JavaClass owner) {
+    return owner.isMetaAnnotatedWith(CONFIGURATION)
+        || owner.isAnnotatedWith(PROPERTIES)
+        || owner.isAssignableTo(SERVLET_INITIALIZER);
+  }
+
+  private static boolean sharesFileWithAllowed(JavaClass facade, JavaClasses main) {
+    String file = Spring.sourceFile(facade);
+    return !file.isEmpty()
+        && main.stream()
+            .anyMatch(
+                other -> other != facade
+                    && other.getPackageName().equals(facade.getPackageName())
+                    && Spring.sourceFile(other).equals(file)
+                    && allowedAtRoot(Spring.owner(other)));
   }
 
   private static void featureClass(JavaClass type, String feature, String root, Set<Found> sink) {
