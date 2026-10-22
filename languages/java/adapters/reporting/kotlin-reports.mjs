@@ -1,16 +1,28 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
+import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
+import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
 import { createGeneratedFilter } from '../../ingest/kotlin-mutants/generated-filter.mjs';
-import { ingestSarif } from '../../ingest/sarif.mjs';
-import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
+import { readKotlinClassLimitFindings } from '../kotlin/kotlin-class-limits.mjs';
+import { readSarifReport } from './sarif/sarif-reports.mjs';
+import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
   readKotlinCrapFindings,
   readKotlinMetrics,
   readKotlinStructureFindings,
 } from '../kotlin/kotlin-metrics.mjs';
-import { addOneWayHint } from '../kotlin/rules/kotlin-rules.mjs';
+import { readCompilerFindings } from '../kotlin/rules/kotlin-compiler.mjs';
+import { applyKotlinRuleMessages } from '../kotlin/rules/kotlin-messages.mjs';
+import { ONE_WAY_RULE_IDS } from '../kotlin/rules/kotlin-rules.mjs';
+import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
+import {
+  readCatchLogFindings,
+  readTestAssertionFindings,
+} from '../kotlin/rules/kotlin-source-rules.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
+import { withFrameworkAllowances } from '../kotlin/scan/framework-allowances.mjs';
+import { readKotlinSourceFindings } from '../kotlin/scan/kotlin-scan.mjs';
+import { readKotlinReviewFindings } from '../kotlin/review-rules/review-findings.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -18,6 +30,8 @@ const KTLINT_REPORT = 'ktlint.sarif';
 const KTFMT_REPORT = 'ktfmt.txt';
 const MUTATION_FACTS_REPORT = 'kotlin-mutation-facts.json';
 const KTLINT_PREFIX = 'ktlint.';
+const DEFAULT_ADVICE = kotlinFormatAdvice({ ktfmtStyle: 'meta' }, {});
+const NOT_YOUR_FORMATTER = 'Not your formatter: set kotlin.formatter';
 const PACKAGE_DECLARATION = /^\s*package\s+([\w.`]+)/m;
 
 export function requireKotlinManifest(manifest) {
@@ -49,6 +63,15 @@ export function sourceLocator(projectRoot, sourceRoots) {
   };
 }
 
+export function sourceFileOf(locate, className, fileName) {
+  const parts = className.split('.');
+  const simple = parts.pop().split('$')[0];
+  const directory = parts.join('/');
+  return fileName === undefined
+    ? (locate(directory, `${simple}.java`) ?? locate(directory, `${simple}.kt`))
+    : locate(directory, fileName);
+}
+
 function declaredKotlinFiles(projectRoot, sourceRoots) {
   return sourceRoots.flatMap((sourceRoot) => {
     const directory = path.join(projectRoot, sourceRoot);
@@ -68,40 +91,50 @@ function declaredPackage(file) {
   return PACKAGE_DECLARATION.exec(readFileSync(file, 'utf8'))?.[1].replaceAll('`', '') ?? '';
 }
 
-export function kotlinGeneratedFilter({ reportRoot, projectRoot, manifest }) {
-  const facts = JSON.parse(readFileSync(path.join(reportRoot, MUTATION_FACTS_REPORT), 'utf8'));
-  return createGeneratedFilter(
-    facts,
-    generatedSourceKeys(projectRoot, manifest.kotlinGeneratedSourceRoots ?? []),
-  );
-}
-
-function generatedSourceKeys(projectRoot, roots) {
-  return new Set(
-    roots
-      .filter((root) => existsSync(path.join(projectRoot, root)))
-      .flatMap((root) =>
-        readdirSync(path.join(projectRoot, root), { recursive: true })
-          .filter((entry) => /\.(?:kt|java)$/.test(entry))
-          .map((entry) => entry.replaceAll('\\', '/')),
-      ),
-  );
+export function kotlinGeneratedFilter({ reportRoot }) {
+  const report = path.join(reportRoot, MUTATION_FACTS_REPORT);
+  if (!existsSync(report)) {
+    throw new Error(
+      `The Kotlin mutation filter needs ${MUTATION_FACTS_REPORT} beside kotlin-facts.json in ${reportRoot}; the kotlin-psi program writes it.`,
+    );
+  }
+  return createGeneratedFilter(JSON.parse(readFileSync(report, 'utf8')));
 }
 
 export function readKotlinFindings(context, crapLimit) {
-  const { reportRoot, manifest, projectRoot, jacoco } = context;
+  const { reportRoot, manifest, projectRoot, jacoco, formatAdvice = DEFAULT_ADVICE } = context;
   const metrics = readKotlinMetrics(reportRoot);
+  const testRoots = manifest.kotlinTestSourceRoots ?? [];
+  const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
+  const ruleFindings = applyKotlinRuleMessages([
+    ...withFrameworkAllowances(detektFindings(reportRoot, formatAdvice), {
+      projectRoot,
+      spring: manifest.spring === true,
+      testRoots,
+    }),
+    ...readKotlinSourceFindings(projectRoot, manifest),
+    ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),
+  ]);
   return [
-    ...detektFindings(reportRoot),
-    ...readSuppressionFindings(projectRoot, manifest.kotlinSourceRoots),
-    ...formatterFindings(reportRoot, manifest.kotlinFormatter),
+    ...ruleFindings,
+    ...readSuppressionFindings(projectRoot, {
+      sourceRoots: manifest.kotlinSourceRoots ?? [],
+      testRoots,
+    }),
+    ...readCatchLogFindings(projectRoot, {
+      sourceRoots: manifest.kotlinSourceRoots ?? [],
+      testRoots,
+    }),
+    ...readTestAssertionFindings(projectRoot, testRoots, helpers),
+    ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
+    ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
     ...readKotlinStructureFindings(metrics, projectRoot),
+    ...readKotlinClassLimitFindings(metrics, context.classLimits),
     ...readKotlinCrapFindings(metrics, {
       projectRoot,
       jacoco,
       crapLimit,
     }),
-    ...readKotlinDuplicateFindings(reportRoot),
   ];
 }
 
@@ -123,12 +156,18 @@ function identifiedBySubject(log) {
 }
 
 function readSarif(reportRoot, file) {
-  return identifiedBySubject(JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8')));
+  return identifiedBySubject(readSarifReport(path.join(reportRoot, file)));
 }
 
-function detektFindings(reportRoot) {
+function withProjectConfigRoute(finding, advice) {
+  return advice.detekt === undefined || ONE_WAY_RULE_IDS.includes(finding.rule)
+    ? finding
+    : { ...finding, message: appendSentence(finding.message, advice.detekt) };
+}
+
+function detektFindings(reportRoot, advice) {
   return ingestSarif(readSarif(reportRoot, DETEKT_REPORT), { tool: DETEKT_TOOL }).findings.map(
-    addOneWayHint,
+    (finding) => withProjectConfigRoute(finding, advice),
   );
 }
 
@@ -136,26 +175,26 @@ function ktlintSwitch(ruleId) {
   return `ktlint_${ruleId.replace(':', '_')}`;
 }
 
-function ktlintFindings(reportRoot) {
+function ktlintFindings(reportRoot, advice) {
   return ingestSarif(readSarif(reportRoot, KTLINT_REPORT), { tool: 'ktlint' }).findings.map(
     (finding) => ({
       ...finding,
       rule: `${KTLINT_PREFIX}${finding.rule}`,
-      message: `${finding.message}. Lift this rule: ${ktlintSwitch(finding.rule)} = disabled in .editorconfig. Not your formatter: set kotlin.formatter`,
+      message: `${finding.message}. ${advice.ktlint(ktlintSwitch(finding.rule))} ${NOT_YOUR_FORMATTER}`,
     }),
   );
 }
 
-function ktfmtFindings(reportRoot) {
+function ktfmtFindings(reportRoot, advice) {
   return ingestFormatCheck(readFileSync(path.join(reportRoot, KTFMT_REPORT), 'utf8'), {
     tool: 'ktfmt',
-    message: 'File is not formatted with ktfmt. Not your formatter: set kotlin.formatter',
+    message: `File is not formatted with ktfmt. ${advice.ktfmt} ${NOT_YOUR_FORMATTER}`,
   }).findings;
 }
 
-function formatterFindings(reportRoot, formatter) {
+function formatterFindings(reportRoot, formatter, advice) {
   if (formatter === 'ktlint') {
-    return ktlintFindings(reportRoot);
+    return ktlintFindings(reportRoot, advice);
   }
-  return formatter === 'ktfmt' ? ktfmtFindings(reportRoot) : [];
+  return formatter === 'ktfmt' ? ktfmtFindings(reportRoot, advice) : [];
 }

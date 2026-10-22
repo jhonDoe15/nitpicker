@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Nitpicker's PMD rules for main sources only: API design rules that, like their TypeScript
+     counterparts, leave test code alone. Gradle and Maven reference this file from a generated
+     ruleset that excludes the test source roots. docs/java-preset.md lists the rules and why each
+     exists. -->
+<ruleset name="nitpicker-main-rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+  <description>Nitpicker's PMD rules for main sources.</description>
+  <rule name="ExhaustiveEnumPredicate" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="These comparisons list only some constants of an enum of the project, so a constant added later silently falls into the other case. Classify every constant: a switch expression without default (adding a constant then fails to compile), or a boolean each constant declares (PAID(true)).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //InfixExpression[@Operator = ('||', '&&')][not(parent::InfixExpression/@Operator = @Operator)]
+    [let $root := ., $op := @Operator, $test := if ($op = '||') then '==' else '!=',
+         $statics := /CompilationUnit/ImportDeclaration[@Static = true()],
+         $singles := $statics[not(@ImportOnDemand)]/@ImportedSimpleName,
+         $onDemand := exists($statics[@ImportOnDemand]),
+         $operands := descendant::*[not(self::InfixExpression[@Operator = $op])]
+           [ancestor::*[not(self::InfixExpression[@Operator = $op])][1] is $root/..]
+           [parent::InfixExpression[@Operator = $op]],
+         $constants := $operands/*[pmd-java:typeIs('java.lang.Enum')]
+           [self::FieldAccess[TypeExpression] or self::VariableAccess[@Name = $singles]
+            or self::VariableAccess[$onDemand][matches(@Name, '^[A-Z][A-Z0-9_]*$')]],
+         $subjects := $operands/* except $constants
+       return count($operands) >= 2
+         and (every $o in $operands satisfies $o[self::InfixExpression[@Operator = $test]]
+               [count(* intersect $constants) = 1]
+               [(* except $constants)[self::VariableAccess or self::FieldAccess[ThisExpression]
+                  or self::MethodCall[ArgumentList/@Size = 0]
+                    [*[1][self::ArgumentList or self::VariableAccess or self::ThisExpression
+                          or self::FieldAccess[ThisExpression]]]
+                    [matches(@MethodName, '^(get|is)[A-Z]')
+                     or *[1][not(self::ArgumentList)][pmd-java:typeIs('java.lang.Record')]
+                     or (*[1][self::ArgumentList or self::ThisExpression]
+                         and @MethodName = ancestor::RecordDeclaration[1]/RecordComponentList/RecordComponent/VariableId/@Name)]]])
+         and count(distinct-values(for $s in $subjects return
+               if ($s[self::MethodCall])
+               then string-join(($s/*[1][self::VariableAccess or self::FieldAccess]/@Name, $s/@MethodName), '.') || '()'
+               else string($s/@Name))) = 1
+         and count(distinct-values($constants/@Name)) = count($constants)]
+  | //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1]
+      [*[1][self::MethodCall[pmd-java:matchesSig('java.util.EnumSet#of(_*)')]]
+        [ArgumentList/@Size >= 2]
+        [let $statics := /CompilationUnit/ImportDeclaration[@Static = true()],
+             $singles := $statics[not(@ImportOnDemand)]/@ImportedSimpleName,
+             $onDemand := exists($statics[@ImportOnDemand])
+         return every $c in ArgumentList/* satisfies
+           $c[self::FieldAccess[TypeExpression] or self::VariableAccess[@Name = $singles]
+              or self::VariableAccess[$onDemand][matches(@Name, '^[A-Z][A-Z0-9_]*$')]]]]
+)
+  [let $self := .,
+       $holder := ancestor::*[not(self::InfixExpression[@Operator = ('&&', '||')] or self::ConditionalExpression
+                                  or self::UnaryExpression[@Operator = '!'])][1]
+   return $holder[self::ReturnStatement or self::LambdaExpression or self::VariableDeclarator]
+     or $holder[self::AssignmentExpression][not(*[1] intersect $self/ancestor-or-self::*)]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="StaticForwardingWrapper" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This static method only passes its parameters, in order, to another method. Call that method directly where this one is used and delete the wrapper. Factories named of or from and copies such as List.copyOf are allowed.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodDeclaration[pmd-java:modifiers() = 'static'][not(ModifierList/Annotation)][not(TypeParameters)]
+  [not(@Name = ('main', 'valueOf', 'fromString', 'of', 'from'))]
+  [FormalParameters/@Size > 0]
+  [not(ancestor::*[self::ClassDeclaration or self::RecordDeclaration or self::EnumDeclaration]/ModifierList/Annotation
+       [pmd-java:typeIs('org.springframework.stereotype.Component')
+        or pmd-java:typeIs('org.springframework.stereotype.Service')
+        or pmd-java:typeIs('org.springframework.stereotype.Repository')
+        or pmd-java:typeIs('org.springframework.stereotype.Controller')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')
+        or pmd-java:typeIs('org.springframework.context.annotation.Configuration')
+        or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')])]
+  [let $method := ., $parameters := FormalParameters/FormalParameter/VariableId/@Name,
+       $call := Block[count(*) = 1]/(ReturnStatement | ExpressionStatement[$method/VoidType])/MethodCall
+     return exists($call)
+       and not($call/TypeArguments)
+       and not($call/@MethodName = ('copyOf', 'copyOfRange')
+               or starts-with($call/@MethodName, 'unmodifiable')
+               or starts-with($call/@MethodName, 'synchronized')
+               or starts-with($call/@MethodName, 'checked'))
+       and ($call/*[1][self::TypeExpression] or ($call/*[1][self::ArgumentList] and $call/@MethodName != $method/@Name))
+       and $call/ArgumentList/@Size = count($parameters)
+       and (every $i in 1 to count($parameters)
+            satisfies $call/ArgumentList/*[$i][self::VariableAccess]/@Name = $parameters[$i])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="SingularAndPluralMember" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A member and its plural (tag and tags) are two ways to pass the same data. Keep the plural and pass one item as a one-element list.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //RecordDeclaration/RecordComponentList/RecordComponent[not(@Varargs = true())]
+  | //ClassDeclaration[ancestor-or-self::ClassDeclaration/ModifierList/Annotation
+                         [pmd-java:typeIs('org.springframework.boot.context.properties.ConfigurationProperties')]]
+      /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'static')]
+)
+  [let $boxes := map { 'boolean': 'Boolean', 'byte': 'Byte', 'char': 'Character', 'short': 'Short',
+                       'int': 'Integer', 'long': 'Long', 'float': 'Float', 'double': 'Double' },
+       $type := (ClassType | ArrayType | PrimitiveType)[1],
+       $element := if ($type[self::ArrayType]) then $type/*[1]
+                   else $type[self::ClassType][@SimpleName = ('List', 'Set', 'Collection', 'Iterable', 'SortedSet')]
+                          /TypeArguments[count(*) = 1]/*[1],
+       $plural := (VariableId | VariableDeclarator/VariableId)[1]/@Name
+   return exists($element)
+     and (some $other in ../(RecordComponent | FieldDeclaration[not(pmd-java:modifiers() = 'static')])
+          satisfies
+            let $name := ($other/VariableId | $other/VariableDeclarator/VariableId)[1]/@Name,
+                $own := ($other/ClassType | $other/ArrayType | $other/PrimitiveType)[1],
+                $ownName := if ($own[self::PrimitiveType]) then $boxes($own/@Kind) else $own/@SimpleName,
+                $elementName := if ($element[self::PrimitiveType]) then $boxes($element/@Kind) else $element/@SimpleName
+            return $plural = ($name || 's', $name || 'es',
+                              if (matches($name, '[^aeiou]y$')) then substring($name, 1, string-length($name) - 1) || 'ies' else ())
+              and $own[self::ClassType or self::PrimitiveType] and $ownName = $elementName)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+</ruleset>

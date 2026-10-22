@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { kotlinConfig, useGradleFixtures } from './test-support/java-cli-harness.mjs';
@@ -30,7 +31,10 @@ describe('nitpicker with "preset": "kotlin"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['kotlin']);
+    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
+      'kotlin',
+      'repository-hygiene',
+    ]);
   });
   it('fails on a new detekt finding and reports it in text and SARIF', () => {
     const root = kotlinRepository();
@@ -46,7 +50,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         rule: 'detekt.style.MagicNumber',
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'fp:nitpicker/subject=Added magic number',
-        message: 'Added magic number',
+        message: `Added magic number. ${exceptionHint('detekt.style.MagicNumber', 'src/main/kotlin/demo/K.kt')}`,
         classification: 'enforceable',
         location: { line: 4 },
       },
@@ -73,7 +77,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         identity: 'fp:nitpicker/subject=Wildcard import',
         location: { line: 3 },
         message:
-          'Wildcard import. Lift this rule: ktlint_standard_no-wildcard-imports = disabled in .editorconfig. Not your formatter: set kotlin.formatter',
+          'Wildcard import. Lift this rule with ktlint_standard_no-wildcard-imports = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run). Not your formatter: set kotlin.formatter',
         classification: 'enforceable',
       },
     ]);
@@ -92,7 +96,8 @@ describe('nitpicker with "preset": "kotlin"', () => {
         rule: 'format',
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'format',
-        message: 'File is not formatted with ktfmt. Not your formatter: set kotlin.formatter',
+        message:
+          'File is not formatted with ktfmt. Format it with the "Format with ktfmt" command printed at the start of the run. Not your formatter: set kotlin.formatter',
         classification: 'enforceable',
       },
     ]);
@@ -117,7 +122,8 @@ describe('nitpicker with "preset": "kotlin"', () => {
         rule: 'changed-branch-coverage',
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'branch-source:2523a9a20c75ac9a',
-        message: 'Branch coverage is 50.00%; minimum is 95%',
+        message:
+          'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 5 },
       },
@@ -149,11 +155,11 @@ describe('nitpicker with "preset": "kotlin"', () => {
         tool: 'pit',
         rule: 'mutant-survived',
         path: 'src/main/kotlin/demo/K.kt',
-        identity: 'demo.KKt|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
+        identity: 'KKt|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
         message:
-          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/kotlin/demo/K.kt"],"function":"KKt.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
-        symbol: 'demo.KKt#fee(I)I',
+        symbol: 'KKt#fee(I)I',
         location: { line: 3 },
       },
     ]);
@@ -186,11 +192,11 @@ describe('nitpicker with "preset": "kotlin"', () => {
         tool: 'pit',
         rule: 'mutant-survived',
         path: 'src/main/java/demo/A.java',
-        identity: 'demo.A|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
+        identity: 'A|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
         message:
-          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/A.java"],"function":"A.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
-        symbol: 'demo.A#fee(I)I',
+        symbol: 'A#fee(I)I',
         location: { line: 3 },
       },
     ]);

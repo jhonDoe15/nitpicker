@@ -15,7 +15,7 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globToRegExp } from '../glob.mjs';
+import { escapeGlob, exceptionEntryText } from '../messages/exception-sentence.mjs';
 import {
   FILE_LIMIT_DEFAULTS,
   GREW_MESSAGES,
@@ -24,11 +24,12 @@ import {
   RULE_IDS,
   renderMessage,
 } from '../policy.mjs';
+import { exceptionMatcher } from './exceptions.mjs';
 import { hash, nextOccurrence } from './finding-helpers.mjs';
 
 export const FILE_LIMIT_CHECKS = ['fileLines', 'lineLength', 'folderFiles'];
 
-const TEST_DATA_FOLDER = /(?:^|\/)(?:__)?fixtures(?:__)?\//u;
+export const TEST_DATA_FOLDER = /(?:^|\/)(?:__)?fixtures(?:__)?\//u;
 const IMPORT_LINES = [
   /^import\s[^;]*;?$/u,
   /^export\s+(?:type\s+)?(?:\*|\{[^}]*\})(?:\s+as\s+[\w$]+)?\s+from\s+['"][^'"]*['"];?$/u,
@@ -53,7 +54,7 @@ export function collectFileLimitFindings(projectRoot, entries, options) {
 
 /**
  * `options`: `analyzerName`, `thresholds` (the config's, over `FILE_LIMIT_DEFAULTS`), `exceptions`
- * (`{ rule, paths }` config entries or `{ rule, glob }` runner entries; an excepted file is neither checked nor counted in its folder, and a
+ * (`{ rule, paths }` entries; an excepted file is neither checked nor counted in its folder, and a
  * folder-files exception may also name the folder itself) and `checks`, the subset of
  * `FILE_LIMIT_CHECKS` this language leaves to nitpicker.
  */
@@ -78,23 +79,6 @@ export function evaluateFileLimits(files, options) {
   ];
 }
 
-function exceptionMatcher(exceptions) {
-  const matchers = exceptions.map(({ rule, paths, glob }) => ({
-    rule,
-    patterns: (paths ?? [glob]).map((pattern) => globToRegExp(pattern)),
-  }));
-  return (rule, ...candidates) =>
-    matchers.some(
-      (matcher) =>
-        matcher.rule === rule &&
-        matcher.patterns.some((pattern) => candidates.some((candidate) => pattern.test(candidate))),
-    );
-}
-
-function exceptionText(rule, glob) {
-  return JSON.stringify({ rule, paths: [glob], reason: '...' });
-}
-
 function lineCount(text) {
   const lines = text.split(/\r?\n/u);
   return lines.at(-1) === '' ? lines.length - 1 : lines.length;
@@ -106,7 +90,7 @@ function fileLineFindings(file, context) {
   if (value <= limit || context.isExcepted(RULE_IDS.fileLines, file.path)) {
     return [];
   }
-  const exception = exceptionText(RULE_IDS.fileLines, file.path);
+  const exception = exceptionEntryText({ rule: RULE_IDS.fileLines, path: file.path });
   return [
     ratchetedFinding(context, {
       rule: RULE_IDS.fileLines,
@@ -124,7 +108,7 @@ function lineFindings(file, context) {
   if (context.isExcepted(RULE_IDS.lineLength, file.path)) {
     return [];
   }
-  const exception = exceptionText(RULE_IDS.lineLength, file.path);
+  const exception = exceptionEntryText({ rule: RULE_IDS.lineLength, path: file.path });
   const occurrences = new Map();
   return file.text.split(/\r?\n/u).flatMap((text, index) => {
     const value = [...text].length;
@@ -174,8 +158,8 @@ function folderFindings(files, context) {
 
 function folderFinding(context, { key, value, limit }) {
   const [folder, kind] = key.split('\0');
-  const glob = folder === '.' ? '*' : `${folder}/*`;
-  const exception = exceptionText(RULE_IDS.folderFiles, glob);
+  const glob = folder === '.' ? '*' : `${escapeGlob(folder)}/*`;
+  const exception = exceptionEntryText({ rule: RULE_IDS.folderFiles, glob });
   return ratchetedFinding(context, {
     rule: RULE_IDS.folderFiles,
     path: folder,
@@ -187,7 +171,7 @@ function folderFinding(context, { key, value, limit }) {
   });
 }
 
-function messagesFor(name, values) {
+export function messagesFor(name, values) {
   return {
     message: renderMessage(MESSAGES[name], values),
     worseMessage: renderMessage(GREW_MESSAGES[name], values),
@@ -195,9 +179,9 @@ function messagesFor(name, values) {
   };
 }
 
-function ratchetedFinding(
+export function ratchetedFinding(
   context,
-  { rule, path: findingPath, identity, key, value, messages, pathIsFolder },
+  { rule, path: findingPath, identity, key, value, messages, pathIsFolder, folderFiles },
 ) {
   return {
     tool: context.analyzerName,
@@ -212,6 +196,7 @@ function ratchetedFinding(
       worseMessage: messages.worseMessage,
       heldMessage: messages.heldMessage,
       ...(pathIsFolder ? { pathIsFolder } : {}),
+      ...(folderFiles === undefined ? {} : { folderFiles }),
     },
   };
 }

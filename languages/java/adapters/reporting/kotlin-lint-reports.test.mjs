@@ -1,9 +1,12 @@
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { readJavaFindings } from './java-reports.mjs';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
+  readJavaFindings,
+  rootReports,
   KOTLIN_SOURCE,
   kotlinFindings,
   projectWithKotlinReports,
@@ -42,11 +45,26 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
     ]);
     expect(detekt[0].location).toEqual({ line: 6, column: 26 });
   });
+  it('tells a project whose detekt config is left out how to use it', () => {
+    const root = projectWithKotlinReports();
+    const formatAdvice = kotlinFormatAdvice(
+      { ktfmtStyle: 'meta', detektIgnored: 'detekt.yml' },
+      {},
+    );
+
+    const { findings } = readJavaFindings(root, { preset: 'kotlin', formatAdvice });
+
+    expect(findings.find(({ rule }) => rule === 'detekt.style.MagicNumber').message).toBe(
+      'This expression contains a magic number. Consider defining it to a well named constant. ' +
+        'Nitpicker runs detekt without your detekt.yml (see the start of the run). ' +
+        exceptionHint('detekt.style.MagicNumber', bad),
+    );
+  });
   it('treats note-level detekt results as descriptive', () => {
     const root = projectWithKotlinReports();
     const at = { physicalLocation: { artifactLocation: { uri: bad }, region: { startLine: 3 } } };
     writeFileSync(
-      path.join(root, 'build/nitpicker/detekt.sarif'),
+      path.join(rootReports(root), 'detekt.sarif'),
       JSON.stringify({
         runs: [
           {
@@ -74,7 +92,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
   it('ends the message of a one-way rule with the allowed form and the exception route, keeping the identity', () => {
     const root = projectWithKotlinReports();
     writeFileSync(
-      path.join(root, 'build/nitpicker/detekt.sarif'),
+      path.join(rootReports(root), 'detekt.sarif'),
       JSON.stringify({
         runs: [
           {
@@ -102,22 +120,15 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
     const [finding] = kotlinFindings(root, 'detekt');
 
     expect(finding.identity).toBe('fp:nitpicker/subject=Calling !! on a nullable type will throw.');
-    expect(finding.message).toMatch(
-      new RegExp(
-        [
-          '^Calling !! on a nullable type will throw\\. Handle null with `value \\?: return`',
-          '.*checkNotNull\\(value\\).*"exceptions" entry for rule',
-          ' detekt\\.potential-bugs\\.UnsafeCallOnNullableType in nitpicker\\.config\\.json\\.$',
-        ].join(''),
-        '',
-      ),
+    expect(finding.message).toBe(
+      'Calling !! on a nullable type will throw. Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug. If this is intended, add {"rule":"detekt.potential-bugs.UnsafeCallOnNullableType","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
   it('reports an inline suppression of a one-way rule in a Kotlin source file', () => {
     const root = projectWithKotlinReports();
     writeFileSync(
       path.join(root, bad),
-      `${KOTLIN_SOURCE}\n@Suppress("UnsafeCallOnNullableType", "UNCHECKED_CAST")\nfun f(text: String?) = text!!.length\n`,
+      `${KOTLIN_SOURCE}\n@Suppress("UnsafeCallOnNullableType", "unused")\nfun f(text: String?) = text!!.length\n`,
     );
 
     expect(
@@ -129,9 +140,41 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
         path: bad,
         identity: 'suppress:UnsafeCallOnNullableType',
         message:
-          'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags. To lift a one-way rule for some paths, add an "exceptions" entry for it in nitpicker.config.json; to skip generated code, add it to "exclude" there.',
+          'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. If this is intended, add {"rule":"inline-suppression","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
+    ]);
+  });
+  it('reports a handled catch that logs without the exception and tests without an assertion', () => {
+    const root = projectWithKotlinReports({
+      manifest: { kotlinTestSourceRoots: ['src/test/kotlin'] },
+    });
+    const test = 'src/test/kotlin/demo/BadTest.kt';
+    writeFileSync(
+      path.join(root, bad),
+      `${KOTLIN_SOURCE}\nval log = LoggerFactory.getLogger(Bad::class.java)\nfun g() {\n  try { run() } catch (e: Exception) { log.error(e.message); throw IllegalStateException("failed") }\n}\n`,
+    );
+    mkdirSync(path.dirname(path.join(root, test)), { recursive: true });
+    writeFileSync(
+      path.join(root, test),
+      'class BadTest {\n  @Test fun asserts() { assertEquals(1, one()) }\n  @Test fun helper() { prepare(); ensureReady() }\n  @Test fun forgot() { run() }\n}\n',
+    );
+    const rules = (policy) =>
+      readJavaFindings(root, { preset: 'kotlin', ...policy })
+        .findings.filter(({ tool }) => tool === 'detekt')
+        .filter(({ rule }) =>
+          ['catch-log-without-exception', 'test-without-assertion'].includes(rule),
+        )
+        .map(({ rule, path: file, identity }) => [rule, file, identity]);
+
+    expect(rules()).toEqual([
+      ['catch-log-without-exception', bad, 'catch-log:log.error'],
+      ['test-without-assertion', test, 'test:helper'],
+      ['test-without-assertion', test, 'test:forgot'],
+    ]);
+    expect(rules({ conventions: { 'kotlin.assertionHelpers': ['ensureReady'] } })).toEqual([
+      ['catch-log-without-exception', bad, 'catch-log:log.error'],
+      ['test-without-assertion', test, 'test:forgot'],
     ]);
   });
   describe('identity of a finding with a measured value', () => {
@@ -139,7 +182,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
     const identitiesOf = (messages) => {
       const root = projectWithKotlinReports();
       writeFileSync(
-        path.join(root, 'build/nitpicker/detekt.sarif'),
+        path.join(rootReports(root), 'detekt.sarif'),
         JSON.stringify({
           runs: [
             {
@@ -213,7 +256,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
       },
     ]);
     expect(ktlint[0].message).toBe(
-      'Wildcard import. Lift this rule: ktlint_standard_no-wildcard-imports = disabled in .editorconfig. Not your formatter: set kotlin.formatter',
+      'Wildcard import. Lift this rule with ktlint_standard_no-wildcard-imports = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run). Not your formatter: set kotlin.formatter',
     );
     expect(ktlint[0].message).not.toContain('--format');
   });
@@ -226,7 +269,8 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
         rule: 'format',
         path: bad,
         identity: 'format',
-        message: 'File is not formatted with ktfmt. Not your formatter: set kotlin.formatter',
+        message:
+          'File is not formatted with ktfmt. Format it with the "Format with ktfmt" command printed at the start of the run. Not your formatter: set kotlin.formatter',
         classification: 'enforceable',
       },
     ]);

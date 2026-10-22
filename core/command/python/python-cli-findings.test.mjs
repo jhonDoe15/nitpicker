@@ -2,10 +2,11 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
-import { jscpdVersion } from '../../../languages/java/adapters/metrics/java-duplicates.mjs';
+import { jscpdVersion } from '../../tooling/jscpd/run-jscpd.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { RUFF_FORMAT_ADVICE } from '../../../languages/python/adapters/test-support/ruff-format-advice.mjs';
 
 const { callsLog, pythonRepository, run, temporaryRoot } = usePythonFixtures(nitpickerCli);
 
@@ -15,15 +16,18 @@ const FAILING_SUMMARY = [
   'Quality gate summary',
   '✖ 2 new enforceable violations',
   '  ruff/B006 src/demo/a.py:2',
-  '    Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. To allow it for some paths, add a "python.exceptions" entry for B006 in nitpicker.config.json.',
+  '    Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. If this is intended, add {"rule":"B006","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
   '  ruff-format/format src/demo/a.py',
-  '    File is not formatted with ruff (detected; set "python.formatter" if wrong)',
+  `    File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
   'Full diagnostics: <path>',
   '',
 ].join('\n');
 
 function summaryOf({ output }) {
-  return output.out.replace(/Full diagnostics: .*/, 'Full diagnostics: <path>');
+  expect(output.out).toMatch(/^Format with ruff: ruff format --isolated /);
+  return output.out
+    .replace(/^Format with ruff: .*\n/, '')
+    .replace(/Full diagnostics: .*/, 'Full diagnostics: <path>');
 }
 
 describe('nitpicker with "preset": "python"', () => {
@@ -35,13 +39,10 @@ describe('nitpicker with "preset": "python"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
-      'python',
-      'mutation',
-    ]);
-    expect(result.json('summary.json').tools.map(({ version }) => version)).toEqual([
-      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;jscpd@${jscpdVersion()}`,
-      'mutmut@3.8.0;pytest@8.3.1',
+    expect(result.json('summary.json').tools.map(({ name, version }) => [name, version])).toEqual([
+      ['python', `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;jscpd@${jscpdVersion()}`],
+      ['mutation', 'mutmut@3.8.0;pytest@8.3.1;pytest-django@missing'],
+      ['repository-hygiene', '1'],
     ]);
   });
   it('fails on a new lint finding and a new unformatted file in every report format', () => {
@@ -63,7 +64,7 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/demo/a.py',
         identity: 'fp:nitpicker/subject=Do not use mutable data structures for argument defaults',
         message:
-          'Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. To allow it for some paths, add a "python.exceptions" entry for B006 in nitpicker.config.json.',
+          'Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. If this is intended, add {"rule":"B006","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 2, column: 1 },
       },
@@ -72,7 +73,7 @@ describe('nitpicker with "preset": "python"', () => {
         rule: 'format',
         path: 'src/demo/a.py',
         identity: 'format',
-        message: 'File is not formatted with ruff (detected; set "python.formatter" if wrong)',
+        message: `File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
         classification: 'enforceable',
       },
     ]);
@@ -106,17 +107,17 @@ describe('nitpicker with "preset": "python"', () => {
       [
         'mypy/return-value',
         'Incompatible return value type (got "int", expected "str")',
-        'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for return-value in nitpicker.config.json.',
+        'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. If this is intended, add {"rule":"return-value","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       ],
       [
         'python-rules/frozen-dataclass',
         'Order',
-        'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. To allow it for some paths, add a "python.exceptions" entry for frozen-dataclass in nitpicker.config.json.',
+        'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. If this is intended, add {"rule":"frozen-dataclass","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       ],
       [
         'python-rules/no-inline-suppression',
         'noqa',
-        'Inline suppression `# noqa`. Remove the comment and fix the code. If it must stay, add a "python.exceptions" entry for no-inline-suppression for this path.',
+        'Inline suppression `# noqa`. Remove the comment and fix the code. If this is intended, add {"rule":"no-inline-suppression","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       ],
     ]);
   });
@@ -159,7 +160,7 @@ describe('nitpicker with "preset": "python"', () => {
     expect(result.json('new-findings.json').map(({ rule, message }) => [rule, message])).toEqual([
       [
         'T201',
-        '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
+        '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       ],
     ]);
   });
@@ -191,7 +192,7 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/demo/a.py',
         identity: 'Bad',
         message:
-          'Bad. Fix the type; inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for reportReturnType in nitpicker.config.json.',
+          'Bad. Fix the type; inline ignores are banned. If this is intended, add {"rule":"reportReturnType","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -202,10 +203,9 @@ describe('nitpicker with "preset": "python"', () => {
   });
   it('reports a project without a type checker as a tool error', () => {
     const root = pythonRepository();
-    rmSync(path.join(root, '.venv/bin/mypy'));
-    rmSync(path.join(root, '.venv/bin/pyright'));
     const broken = temporaryRoot('nitpicker-python-broken-checkers-');
-    for (const name of ['mypy', 'pyright']) {
+    for (const name of ['mypy', 'pyright', 'basedpyright']) {
+      rmSync(path.join(root, '.venv/bin', name));
       writeFileSync(path.join(broken, name), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
     }
     vi.stubEnv('PATH', `${broken}${path.delimiter}${process.env.PATH}`);

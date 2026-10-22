@@ -10,6 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { RUFF_FORMAT_ADVICE } from './test-support/ruff-format-advice.mjs';
 import { installFakeToolchain } from './test-support/fake-toolchain.mjs';
 import { analyzePythonSnapshot, parsePythonArguments } from './python-runner.mjs';
 
@@ -93,7 +94,7 @@ describe('analyzing a Python snapshot', () => {
       path: 'src/demo/a.py',
       identity: 'fp:nitpicker/subject=`os` imported but unused',
       message:
-        '`os` imported but unused. To allow it for some paths, add a "python.exceptions" entry for F401 in nitpicker.config.json.',
+        '`os` imported but unused. If this is intended, add {"rule":"F401","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
       location: { line: 1, column: 1 },
     });
@@ -107,11 +108,11 @@ describe('analyzing a Python snapshot', () => {
     );
 
     expect(messages).toEqual([
-      'format: File is not formatted with ruff (detected; set "python.formatter" if wrong)',
+      `format: File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
     ]);
     expect(
       enforceable(analyze(root, { settings: { formatter: 'ruff' } }).findings).at(-1).message,
-    ).toBe('File is not formatted with ruff');
+    ).toBe(`File is not formatted with ruff. ${RUFF_FORMAT_ADVICE}`);
   });
 
   it('reports a run without tests as an enforceable finding, so only a change that removes them fails', () => {
@@ -147,9 +148,33 @@ describe('analyzing a Python snapshot', () => {
       'python-rules frozen-dataclass Order',
     ]);
     expect(findings.map(({ message }) => message)).toEqual([
-      '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
-      'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for return-value in nitpicker.config.json.',
-      'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. To allow it for some paths, add a "python.exceptions" entry for frozen-dataclass in nitpicker.config.json.',
+      '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. If this is intended, add {"rule":"return-value","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. If this is intended, add {"rule":"frozen-dataclass","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+    ]);
+  });
+
+  it('words the logging and validation hints after the libraries the project declares', () => {
+    const root = project({
+      'requirements.txt': 'loguru\nmarshmallow\n',
+      'violations.txt': 'T201|src/demo/a.py|`print` found\n',
+      'rules.json': JSON.stringify([
+        { rule: 'pydantic-boundary', path: 'src/demo/a.py', subject: 'marshmallow', line: 1 },
+        {
+          rule: 'catch-log-without-exception',
+          path: 'src/demo/a.py',
+          subject: 'logger.error(...)',
+          line: 9,
+        },
+      ]),
+    });
+
+    const findings = withoutCoupling(analyze(root));
+
+    expect(findings.map(({ message }) => message)).toEqual([
+      '`print` found. Use loguru: `from loguru import logger`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      'marshmallow is imported outside an adapters/ package. Use marshmallow only in an `adapters/` package to parse untrusted input (`Schema().load(data)`), and pass frozen dataclasses on from there. If this is intended, add {"rule":"pydantic-boundary","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      '`logger.error(...)` logs a caught error without its traceback. Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes. If this is intended, add {"rule":"catch-log-without-exception","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
     ]);
   });
 
@@ -159,7 +184,7 @@ describe('analyzing a Python snapshot', () => {
     });
     const exceptions = [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }];
 
-    const findings = withoutCoupling(analyze(root, { settings: { exceptions } }));
+    const findings = withoutCoupling(analyze(root, { policy: { exceptions } }));
 
     expect(findings.map(({ path: file }) => file)).toEqual(['src/demo/a.py']);
   });
@@ -187,7 +212,7 @@ describe('analyzing a Python snapshot', () => {
         identity: 'f|1→2#1',
         symbol: 'f',
         message:
-          'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+          'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 2 },
       },
@@ -430,6 +455,10 @@ describe('runner arguments', () => {
   });
 
   it('rejects unknown options', () => {
-    expect(() => parsePythonArguments(['--project-root', '/p', '--nope', 'x'])).toThrow('Usage');
+    expect(() => parsePythonArguments(['--project-root', '/p', '--nope', 'x'])).toThrow(
+      new Error(
+        'Usage: python-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <json>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>] [--<tool>-precedence <layers>]...',
+      ),
+    );
   });
 });

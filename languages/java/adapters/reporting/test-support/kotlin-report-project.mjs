@@ -1,7 +1,16 @@
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { readJavaFindings } from '../java-reports.mjs';
+import { readJavaFindings as readFindings } from '../java-reports.mjs';
+import {
+  readingFrom,
+  reportBaseOf,
+  rootReports,
+  writeModules,
+} from '../../test-support/report-base.mjs';
+
+export { reportBaseOf, rootReports };
+export const readJavaFindings = readingFrom(readFindings);
 
 const temporaryRoots = [];
 
@@ -129,7 +138,7 @@ export function projectWithKotlinReports({
   formatList = 'src/main/kotlin/demo/Bad.kt\n',
 } = {}) {
   const root = temporaryProjectRoot();
-  const reports = 'build/nitpicker';
+  const reports = path.relative(root, writeModules(root));
   writeFiles(root, {
     'src/main/kotlin/demo/Bad.kt': KOTLIN_SOURCE,
     'src/main/java/demo/Legacy.java': JAVA_SOURCE,
@@ -150,7 +159,8 @@ export function projectWithKotlinReports({
     [`${reports}/pit/mutations.xml`]: PIT,
     [`${reports}/structure.json`]: '[]',
     [`${reports}/kotlin-mutation-facts.json`]: '{"files":[]}',
-    [`${reports}/duplicates.json`]: JSON.stringify({ runs: [] }),
+    [`${reports}/classes.json`]: JSON.stringify({ files: {}, classes: [] }),
+    [`${path.relative(root, reportBaseOf(root))}/duplicates.json`]: JSON.stringify({ runs: [] }),
     [`${reports}/detekt.sarif`]: readFileSync(DETEKT_SARIF, 'utf8'),
     [`${reports}/ktfmt.txt`]: formatList,
     [`${reports}/ktlint.sarif`]: KTLINT_SARIF,

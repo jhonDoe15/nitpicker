@@ -11,6 +11,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 If your change edits a function that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
 
+Before you change code other modules use, fix a bug, or add a UI state, read
+[beyond-the-gate.md](beyond-the-gate.md).
+
 ## Finish with the gate
 
 1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.
@@ -18,7 +21,8 @@ If your change edits a function that existed before it, read
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. It applies ESLint and Prettier fixes with its own
-   configs (don't format with plain `prettier`), then checks your change against the merge base. It
+   configs (don't format with plain `prettier`; its quotes, semicolons, indentation and width follow
+   most of the project's files), then checks your change against the merge base. It
    takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
    - 0: done.
@@ -28,8 +32,14 @@ If your change edits a function that existed before it, read
      missing package) and rerun. Exit 2 is never a pass. If it says another run is in progress,
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, coverage or mutation ignore comments
-   (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`, legacy entries,
-   or weakened tests. If a finding seems wrong, stop and ask.
+   (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`/`exceptions`, legacy entries, generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
+   `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
+   accept.
+5. Code that is right despite a rule: each message ends with the `exceptions` entry that would
+   accept it (`If this is intended, add {...} to "exceptions" in nitpicker.config.json.`). That
+   entry is for a human reviewer. Never add one, and never fill in its
+   `reason`, to get past the gate: stop and ask a human, and quote the finding with its entry. A
+   TypeScript compiler error has no entry; fix the type.
 
 ## Layout
 
@@ -40,8 +50,8 @@ If your change edits a function that existed before it, read
 - Export only what another module imports; an exported type nobody imports fails dead-code.
   Callers in another feature derive result types: `Awaited<ReturnType<typeof importContacts>>`;
   inside a feature, extend the named type (`TransitionResult | { kind: 'blank-reason' }`).
-- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it
-  if it isn't a dependency). Field rules and conversions live in the schema
+- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with the project's
+  validation library (zod if it has none; add it then). Field rules and conversions live in the schema
   (`z.string().trim().min(1)`, `z.email()`, `z.iso.date()`, `.transform(toCents)`), never
   `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the first issue's
   `path` (`[index, field]`) names the bad record.
@@ -51,7 +61,14 @@ If your change edits a function that existed before it, read
 - `src/main/composition-root.ts` only passes things in, through named functions. A new feature is
   a new directory, never a new `if`, `?:` or `??` in a shared entry point: lookups and their
   missing-value checks go in the feature's `adapters/`.
+- New code goes under the source roots (`layout.sourceRoots`); the gate reports anything outside.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist.
+
+## Dependencies and files
+
+- The gate fails unlisted, unused and unresolved dependencies, production imports of a
+  `devDependency`, and committed secrets, binaries, build output and files over 1 MB; each message
+  names the fix. Don't add an `exceptions` entry to get past one: stop and ask.
 
 ## Write it this way
 
@@ -74,11 +91,20 @@ If your change edits a function that existed before it, read
 - A file stays within 300 lines (a test file 500) and a line within 120 characters. A folder holds
   at most 6 source files and 6 test files directly: group the rest into subfolders by what they do.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`), in source or tests, fails:
-  extract a function.
+  extract a function, also when the copy has other names and literals.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
+
+## Production rules
+
+- Wire clients, servers, pools and config in the composition root (`src/main/composition-root.ts`,
+  `main.ts` or `server.ts`) and pass them into factories; read `process.env` only there.
+- Parse untrusted input once with zod in `adapters/`; `domain/` takes readonly types it declares.
+- Run programs with `execFile(command, [args])`, never a command string.
+- Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
+  `exceptions` (rule, paths, reason), never inline.
 
 ## domain/ is deeply readonly
 
@@ -116,6 +142,9 @@ If your change edits a function that existed before it, read
 
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.
+- Keep an assertion unless another test covers the same behaviour.
+- A test run that prints new `console.error` or `console.warn` output fails
+  (`test-console-output`): cancel the timer or subscription in the cleanup.
 - Test features through their `index.ts` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
   `vi.fn().mockRejectedValue(42)`, a non-Error throw is `const value: unknown = 7; throw value;`.
@@ -125,28 +154,28 @@ If your change edits a function that existed before it, read
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
   Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
   not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
-- A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`.
+- Tests assert exact values and are deterministic and fast; each finding names the allowed form.
+- A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`, or in a `test-support/` folder beside the code when the tests sit next to it.
   When an existing test defines the same helper, make it import the shared one.
+- Test roots are `test/`, `tests/`, `__tests__/` and `e2e/` at the repo root. A Playwright or Cypress
+  spec in `e2e/` imports no production code and is not mutated; a Jest `__tests__/` goes in `exclude`.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test; never
   delete a schema rule to silence it.
 - No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
+- Give synchronous `child_process` calls in integration tests and shared test helpers a positive
+  subprocess `timeout`, such as `{ timeout: 10_000 }`. The runner's test timeout cannot interrupt
+  `spawnSync`, `execSync` or `execFileSync` while they block the event loop.
+- Plan tests to be fast (`slow-test`): a test you add or edit that takes over 5 s fails, over 30 s
+  for an integration test (under an `integration`, `e2e` or `functional` folder, or named
+  `*.integration.test.ts`, folders counted under the test roots). Use fake timers instead of waits
+  and fakes instead of network or disk. A test over budget is run again alone without coverage and
+  fails only if it is still over. A slow test you did not touch stays baselined.
 
 ## React
 
-Applies when `react` is in `package.json`.
+Applies when `react` is in `package.json`. Every React finding names the allowed form and its
+exception route in the message: write that form, don't work around the rule.
 
-- Function components only. Hooks follow the rules of hooks, and every effect lists its
-  dependencies. No array index as `key`: use the item's id.
-- Compute derived values while rendering (`useMemo` if costly); never copy props or state into
-  state in an effect. Reset state with a `key`.
-- Fetch with the project's data library (`useQuery`) or the framework's loader, never in `useEffect`.
-- Style with `className` (CSS Modules or utility classes), not `style={{ ... }}`. A runtime value
-  goes in a custom property, `style={{ '--progress': percent }}`, typed once with
-  `declare module 'csstype' { interface Properties { '--progress'?: number } }`. If the project
-  styles with CSS-in-JS (or `react.styling` says so), follow that instead.
-- `null` only as the argument of `useRef` and `createContext`; elsewhere `undefined`.
-- Accessible markup: `alt` on images, buttons for clicks, labels on inputs.
-- Component tests: query by role (`screen.getByRole`), not test ids, class selectors or `container`;
-  `await userEvent`, not `fireEvent`; assert what the user sees, never component state, instances
-  or hook internals.
+- Component tests query through `screen` and assert what the user sees (text, roles, focus), never
+  component state, instances or hook internals.

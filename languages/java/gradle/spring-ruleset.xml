@@ -3,8 +3,7 @@
      project whose compile classpath has Spring on it, next to the PMD categories or the project's own
      config/pmd/ruleset.xml. Rules match annotation types through PMD type resolution, so the init
      script passes the compile classpath as the auxiliary classpath. Each message names the allowed
-     form; an exception is `{ "rule": "pmd/<rule name>", "paths": [...], "reason": "..." }` in
-     nitpicker.config.json. docs/java-preset.md lists the rules and why each exists. -->
+     form and the exception entry that accepts it. docs/java-preset.md lists the rules and why each exists. -->
 <ruleset name="nitpicker-spring"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -14,27 +13,27 @@
   <!-- Dependency injection and beans -->
 
   <rule name="SpringConstructorInjection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Inject through the constructor into private final fields. Do not put @Autowired, @Inject, @Resource or @Value on fields or setters. If it is right here, add an exception for pmd/SpringConstructorInjection in nitpicker.config.json.">
+        message="Inject through the constructor into private final fields. Do not put @Autowired, @Inject, @Resource or @Value on fields or setters.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 (
   //FieldDeclaration/ModifierList/Annotation
   | //MethodDeclaration/ModifierList/Annotation
 )[pmd-java:typeIs('org.springframework.beans.factory.annotation.Autowired')
-  or pmd-java:typeIs('jakarta.inject.Inject')
-  or pmd-java:typeIs('jakarta.annotation.Resource')
+  or (pmd-java:typeIs('jakarta.inject.Inject') or pmd-java:typeIs('javax.inject.Inject'))
+  or (pmd-java:typeIs('jakarta.annotation.Resource') or pmd-java:typeIs('javax.annotation.Resource'))
   or (pmd-java:typeIs('org.springframework.beans.factory.annotation.Value')
       and (parent::ModifierList/parent::FieldDeclaration
            or parent::ModifierList/parent::MethodDeclaration[not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')])]))]
 |
 //ConstructorDeclaration[count(../ConstructorDeclaration) = 1]/ModifierList/Annotation[
   pmd-java:typeIs('org.springframework.beans.factory.annotation.Autowired')
-  or pmd-java:typeIs('jakarta.inject.Inject')]
+  or (pmd-java:typeIs('jakarta.inject.Inject') or pmd-java:typeIs('javax.inject.Inject'))]
 ]]></value></property></properties>
   </rule>
 
   <rule name="SpringImmutableBeans" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Make this bean field final. Beans are shared singletons, so keep per-call state in locals. If it is right here, add an exception for pmd/SpringImmutableBeans in nitpicker.config.json.">
+        message="Make this field of a bean final, static fields too. Beans are shared singletons, so keep per-call state in locals.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration[ModifierList/Annotation[
@@ -45,14 +44,14 @@
     or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
     or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
     or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')]]
-  /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'static') and not(pmd-java:modifiers() = 'final')]
-  [not(ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.PersistenceContext')
-    or pmd-java:typeIs('jakarta.persistence.PersistenceUnit')])]
+  /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'final')]
+  [not(ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.PersistenceContext') or pmd-java:typeIs('javax.persistence.PersistenceContext'))
+    or (pmd-java:typeIs('jakarta.persistence.PersistenceUnit') or pmd-java:typeIs('javax.persistence.PersistenceUnit'))])]
 ]]></value></property></properties>
   </rule>
 
   <rule name="SpringNoServiceLocator" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Inject the bean you need through the constructor instead of looking it up in the ApplicationContext or BeanFactory. Use ObjectProvider for optional or prototype beans. If it is right here, add an exception for pmd/SpringNoServiceLocator in nitpicker.config.json.">
+        message="Inject the bean you need through the constructor instead of looking it up in the ApplicationContext or BeanFactory. Use ObjectProvider for optional or prototype beans.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration[not(ModifierList/Annotation[
@@ -74,7 +73,7 @@
   </rule>
 
   <rule name="SpringNoLazyInjection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Remove @Lazy from this injection point. It hides a dependency cycle; break the cycle with a new component or an event instead. If it is right here, add an exception for pmd/SpringNoLazyInjection in nitpicker.config.json.">
+        message="Remove @Lazy from this injection point. It hides a dependency cycle; break the cycle with a new component or an event instead.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 (//FieldDeclaration | //FormalParameter)/ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Lazy')]
@@ -82,7 +81,7 @@
   </rule>
 
   <rule name="SpringLiteConfiguration" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean method parameters instead of calling other @Bean methods. If it is right here, add an exception for pmd/SpringLiteConfiguration in nitpicker.config.json.">
+        message="Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean method parameters instead of calling other @Bean methods.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration/ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Configuration')]
@@ -91,7 +90,7 @@
   </rule>
 
   <rule name="SpringNoComponentScan" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Put the @SpringBootApplication class in the top package and let it scan its own packages; do not add @ComponentScan or scanBasePackages. If it is right here, add an exception for pmd/SpringNoComponentScan in nitpicker.config.json.">
+        message="Put the @SpringBootApplication class in the top package and let it scan its own packages; do not add @ComponentScan or scanBasePackages.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[pmd-java:typeIs('org.springframework.context.annotation.ComponentScan')]
@@ -104,7 +103,7 @@
   <!-- Configuration -->
 
   <rule name="SpringTypedConfiguration" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Read configuration through a @ConfigurationProperties record, not @Value, System.getenv, System.getProperty or Environment.getProperty. If it is right here, add an exception for pmd/SpringTypedConfiguration in nitpicker.config.json.">
+        message="Read configuration through a @ConfigurationProperties record and pass the values in through constructors or parameters, not @Value, System.getenv, System.getProperty or Environment.getProperty. JVM properties such as java.*, user.*, javax.*, jdk.* and http.* are fine.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //FormalParameter/ModifierList/Annotation[pmd-java:typeIs('org.springframework.beans.factory.annotation.Value')]
@@ -114,21 +113,31 @@
     or pmd-java:typeIs('org.springframework.boot.autoconfigure.AutoConfiguration')
     or pmd-java:typeIs('org.springframework.boot.test.context.TestConfiguration')])]
 |
+//MethodCall[@MethodName = ('getenv', 'getProperty') and *[1][self::TypeExpression and pmd-java:typeIs('java.lang.System')]
+  and not(ArgumentList/StringLiteral[1][matches(@ConstValue, '^(java|user|os|file|line|path|javax|jdk|sun|com\.sun|http|https|ftp)\.|^socks')])
+  and (ArgumentList/* or parent::MethodCall[@MethodName = ('get', 'getOrDefault', 'containsKey')])]
+  [not(ancestor::ClassDeclaration[last()]/ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.context.annotation.Configuration')
+    or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')
+    or pmd-java:typeIs('org.springframework.boot.autoconfigure.AutoConfiguration')
+    or pmd-java:typeIs('org.springframework.boot.test.context.TestConfiguration')])]
+  [not(ancestor::ClassDeclaration[last()]/ImplementsList/ClassType[
+    pmd-java:typeIs('org.springframework.boot.env.EnvironmentPostProcessor')
+    or pmd-java:typeIs('org.springframework.context.ApplicationContextInitializer')])]
+  [not(ancestor::MethodDeclaration[1][@Name = 'main'][pmd-java:modifiers() = 'static'])]
+|
 //ClassDeclaration[ModifierList/Annotation[
     pmd-java:typeIs('org.springframework.stereotype.Component')
     or pmd-java:typeIs('org.springframework.stereotype.Service')
     or pmd-java:typeIs('org.springframework.stereotype.Repository')
     or pmd-java:typeIs('org.springframework.stereotype.Controller')
     or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')]]
-  //MethodCall[
-    (@MethodName = ('getenv', 'getProperty') and *[1][self::TypeExpression and pmd-java:typeIs('java.lang.System')]
-      and not(ArgumentList/StringLiteral[1][matches(@ConstValue, '^(java|user|os|file|line|path)\.')]))
-    or (@MethodName = ('getProperty', 'getRequiredProperty') and *[1][pmd-java:typeIs('org.springframework.core.env.PropertyResolver')])]
+  //MethodCall[@MethodName = ('getProperty', 'getRequiredProperty') and *[1][pmd-java:typeIs('org.springframework.core.env.PropertyResolver')]]
 ]]></value></property></properties>
   </rule>
 
   <rule name="SpringProfileOnConfiguration" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Put @Profile only on a @Configuration class or a @Bean method, so profiles choose beans and never branch business code. If it is right here, add an exception for pmd/SpringProfileOnConfiguration in nitpicker.config.json.">
+        message="Put @Profile only on a @Configuration class or a @Bean method, so profiles choose beans and never branch business code.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration[not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Configuration')])]
@@ -139,10 +148,272 @@
 ]]></value></property></properties>
   </rule>
 
+  <rule name="SpringBeanCollectionState" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Fill a plain collection of a shared singleton bean only at startup (the constructor, @PostConstruct or afterPropertiesSet) and keep it as Map.copyOf or List.copyOf, or use a ConcurrentHashMap or a cache (@Cacheable). Changed after startup, request threads would write to it at once.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassDeclaration[ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.stereotype.Component')
+    or pmd-java:typeIs('org.springframework.stereotype.Service')
+    or pmd-java:typeIs('org.springframework.stereotype.Repository')
+    or pmd-java:typeIs('org.springframework.stereotype.Controller')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')]]
+  [not(ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.web.context.annotation.RequestScope')
+    or pmd-java:typeIs('org.springframework.web.context.annotation.SessionScope')
+    or (pmd-java:typeIs('org.springframework.context.annotation.Scope')
+        and not(AnnotationMemberList/MemberValuePair[@Name = ('value', 'scopeName')]/StringLiteral[@ConstValue = 'singleton']))])]
+  /ClassBody/FieldDeclaration[pmd-java:modifiers() = 'final']
+  [let $name := VariableDeclarator/VariableId/@Name,
+       $body := ancestor::ClassBody[1],
+       $starts := ($body/ConstructorDeclaration, $body/Initializer,
+         $body/MethodDeclaration[ModifierList/Annotation[
+           pmd-java:typeIs('jakarta.annotation.PostConstruct') or pmd-java:typeIs('javax.annotation.PostConstruct')]],
+         $body[parent::ClassDeclaration[pmd-java:typeIs('org.springframework.beans.factory.InitializingBean')]]
+           /MethodDeclaration[@Name = 'afterPropertiesSet'][@Arity = 0],
+         $body[parent::ClassDeclaration[pmd-java:typeIs('org.springframework.beans.factory.SmartInitializingSingleton')]]
+           /MethodDeclaration[@Name = 'afterSingletonsInstantiated'][@Arity = 0],
+         $body/MethodDeclaration[@Arity = 0][@Name = //Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]
+           /AnnotationMemberList/MemberValuePair[@Name = 'initMethod']//StringLiteral/@ConstValue]),
+       $onlyFrom := function($method, $callers) {
+         let $uses := $body//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+             | MethodReference[*[1][self::ThisExpression[not(*)]]])[@MethodName = $method/@Name]
+         return $method/@Visibility = 'private' and exists($uses)
+           and (every $use in $uses satisfies exists($use/ancestor::* intersect $callers))
+       },
+       $helpers := $body/MethodDeclaration[$onlyFrom(., $starts)],
+       $startup := ($starts, $helpers, $body/MethodDeclaration[$onlyFrom(., ($starts, $helpers))])
+   return exists($body/MethodDeclaration[not(exists(. intersect $startup))][not(pmd-java:modifiers() = 'synchronized')]
+     [not(.//MethodCall[@MethodName = ('lock', 'lockInterruptibly', 'tryLock')]
+       [*[1][pmd-java:typeIs('java.util.concurrent.locks.Lock') or pmd-java:typeIs('java.util.concurrent.locks.StampedLock')]])]
+     //MethodCall[@MethodName = ('add', 'addAll', 'put', 'putAll', 'remove', 'removeIf', 'removeAll', 'retainAll', 'clear',
+       'putIfAbsent', 'computeIfAbsent', 'computeIfPresent', 'compute', 'merge', 'replace', 'replaceAll',
+       'push', 'pop', 'poll', 'offer', 'addFirst', 'addLast')]
+     [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]]
+     [not(ancestor::SynchronizedStatement)])]
+  /VariableDeclarator/ConstructorCall/ClassType[
+    pmd-java:typeIsExactly('java.util.HashMap')
+    or pmd-java:typeIsExactly('java.util.LinkedHashMap')
+    or pmd-java:typeIsExactly('java.util.TreeMap')
+    or pmd-java:typeIsExactly('java.util.ArrayList')
+    or pmd-java:typeIsExactly('java.util.LinkedList')
+    or pmd-java:typeIsExactly('java.util.HashSet')
+    or pmd-java:typeIsExactly('java.util.LinkedHashSet')
+    or pmd-java:typeIsExactly('java.util.TreeSet')
+    or pmd-java:typeIsExactly('java.util.ArrayDeque')]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringHttpClientPerCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Build the HTTP client once, from the injected RestClient.Builder or RestTemplateBuilder, and keep it in a final field or a @Bean. A client built in each call throws away its connection pool.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $onlyFrom := function($method, $callers) {
+  let $uses := $method/parent::ClassBody//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+      | MethodReference[*[1][self::ThisExpression[not(*)]]])[@MethodName = $method/@Name]
+  return $method/@Visibility = 'private' and exists($uses)
+    and (every $use in $uses satisfies exists($use/ancestor::* intersect $callers))
+},
+    $setupMethod := function($method) {
+  let $body := $method/parent::ClassBody,
+      $starts := ($body/ConstructorDeclaration, $body/Initializer, $body/FieldDeclaration,
+        $body/MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]]),
+      $helpers := $body/MethodDeclaration[$onlyFrom(., $starts)]
+  return exists($method intersect ($starts, $helpers, $body/MethodDeclaration[$onlyFrom(., ($starts, $helpers))]))
+},
+    $setup := function($node) {
+  not($node/ancestor::MethodDeclaration)
+  or $setupMethod($node/ancestor::MethodDeclaration[1])
+  or $node/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'static']
+    [exists($node/ancestor::ReturnStatement[ancestor::MethodDeclaration[1] is $node/ancestor::MethodDeclaration[1]])]
+}
+return (
+  //ConstructorCall[pmd-java:typeIs('org.springframework.web.client.RestTemplate')
+    or pmd-java:typeIs('org.springframework.boot.web.client.RestTemplateBuilder')
+    or pmd-java:typeIs('org.springframework.boot.restclient.RestTemplateBuilder')]
+  | //MethodCall[@MethodName = ('create', 'builder')]
+      [*[1][self::TypeExpression and (pmd-java:typeIs('org.springframework.web.client.RestClient')
+        or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient'))]]
+  | //MethodCall[@MethodName = ('newHttpClient', 'newBuilder')]
+      [*[1][self::TypeExpression and pmd-java:typeIs('java.net.http.HttpClient')]]
+)[not($setup(.))]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringHttpClientTimeouts" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Build this HTTP client with connect and read timeouts, from the injected RestClient.Builder or RestTemplateBuilder (spring.http.client.* properties), with a request factory or connector that sets them, or with connectTimeout and readTimeout on the builder; give a Reactor Netty HttpClient a responseTimeout. A client without timeouts waits forever for a slow server.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $onlyFrom := function($method, $callers) {
+  let $uses := $method/parent::ClassBody//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+      | MethodReference[*[1][self::ThisExpression[not(*)]]])[@MethodName = $method/@Name]
+  return $method/@Visibility = 'private' and exists($uses)
+    and (every $use in $uses satisfies exists($use/ancestor::* intersect $callers))
+},
+    $setupMethod := function($method) {
+  let $body := $method/parent::ClassBody,
+      $starts := ($body/ConstructorDeclaration, $body/Initializer, $body/FieldDeclaration,
+        $body/MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]]),
+      $helpers := $body/MethodDeclaration[$onlyFrom(., $starts)]
+  return exists($method intersect ($starts, $helpers, $body/MethodDeclaration[$onlyFrom(., ($starts, $helpers))]))
+},
+    $setup := function($node) {
+  not($node/ancestor::MethodDeclaration)
+  or $setupMethod($node/ancestor::MethodDeclaration[1])
+  or $node/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'static']
+    [exists($node/ancestor::ReturnStatement[ancestor::MethodDeclaration[1] is $node/ancestor::MethodDeclaration[1]])]
+},
+    $chain := function($node) {
+      $node/ancestor::MethodCall[let $call := . return
+        not($node/ancestor-or-self::*[exists(ancestor::*[. is $call])][preceding-sibling::*])]
+    },
+    $target := function($node) {
+      string(($node/parent::VariableDeclarator/VariableId/@Name, $node/parent::AssignmentExpression/*[1]/@Name)[1])
+    },
+    $scope := function($node) {
+      ($node/parent::VariableDeclarator/parent::LocalVariableDeclaration
+        /ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+       $node/ancestor::ClassBody[last()])[1]
+    }
+return (
+  //ConstructorCall[pmd-java:typeIs('org.springframework.web.client.RestTemplate')][not(ArgumentList/*)]
+    [not(let $name := $target(.)
+      return $scope(.)//MethodCall[@MethodName = 'setRequestFactory'][*[1][@Name = $name]])]
+  | //ConstructorCall[pmd-java:typeIs('org.springframework.http.client.SimpleClientHttpRequestFactory')
+      or pmd-java:typeIs('org.springframework.http.client.HttpComponentsClientHttpRequestFactory')][not(ArgumentList/*)]
+    [not(let $name := $target(.)
+      return $scope(.)//MethodCall[@MethodName = ('setConnectTimeout', 'setReadTimeout', 'setConnectionRequestTimeout')]
+        [*[1][@Name = $name]])]
+  | //MethodCall[@MethodName = 'create']
+      [*[1][self::TypeExpression and (pmd-java:typeIs('org.springframework.web.client.RestClient')
+        or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient'))]]
+      [not(ArgumentList/*[pmd-java:typeIs('org.springframework.web.client.RestTemplate')])]
+  | //MethodCall[@MethodName = 'newHttpClient']
+      [*[1][self::TypeExpression and pmd-java:typeIs('java.net.http.HttpClient')]]
+  | //MethodCall[@MethodName = ('builder', 'newBuilder')][not(ArgumentList/*)]
+      [*[1][self::TypeExpression and (pmd-java:typeIs('org.springframework.web.client.RestClient')
+        or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient')
+        or pmd-java:typeIs('java.net.http.HttpClient'))]]
+      [not($chain(.)[@MethodName = ('requestFactory', 'clientConnector', 'connectTimeout')])]
+  | //ConstructorCall[pmd-java:typeIs('org.springframework.boot.web.client.RestTemplateBuilder')
+      or pmd-java:typeIs('org.springframework.boot.restclient.RestTemplateBuilder')][not(ArgumentList/*)]
+      [not($chain(.)[@MethodName = ('connectTimeout', 'readTimeout', 'setConnectTimeout', 'setReadTimeout',
+        'requestFactory', 'requestFactorySettings', 'requestFactoryBuilder')])]
+  | //MethodCall[@MethodName = ('create', 'newConnection')]
+      [*[1][self::TypeExpression and pmd-java:typeIs('reactor.netty.http.client.HttpClient')]]
+      [not($chain(.)[@MethodName = 'responseTimeout'])]
+      [not(let $name := $target(.)
+        return $scope(.)//MethodCall[@MethodName = 'responseTimeout'][*[1][@Name = $name]])]
+  | //ConstructorCall[pmd-java:typeIs('org.springframework.http.client.reactive.ReactorClientHttpConnector')][not(ArgumentList/*)]
+)[$setup(.)]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringNoPostConstructIo" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Move startup work that calls a database or a remote service out of @PostConstruct into an ApplicationRunner or an @EventListener(ApplicationReadyEvent). @PostConstruct runs before the context is ready: there is no transaction around this call, other beans may not be proxied yet, and a failure stops the application from starting.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration[ModifierList/Annotation[
+    pmd-java:typeIs('jakarta.annotation.PostConstruct') or pmd-java:typeIs('javax.annotation.PostConstruct')]]
+  //MethodCall[*[1][
+    pmd-java:typeIs('org.springframework.data.repository.Repository')
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))
+    or pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
+    or pmd-java:typeIs('org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations')
+    or pmd-java:typeIs('org.springframework.jdbc.core.simple.JdbcClient')
+    or pmd-java:typeIs('org.springframework.web.client.RestOperations')
+    or pmd-java:typeIs('org.springframework.web.client.RestClient')
+    or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient')
+    or pmd-java:typeIs('java.net.http.HttpClient')]]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringValueSecretDefault" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Read this secret without a default, so a missing value fails at startup; a secret with a built-in fallback ships to production unnoticed.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $words := function($segment) {
+  tokenize(lower-case(replace(replace(replace(string($segment), '\[\d+\]', ''),
+    '([a-z\d])([A-Z])', '$1-$2'), '([A-Z])([A-Z][a-z])', '$1-$2')), '[-_]+')[. != '']
+},
+    $secret := function($key) {
+  let $segments := tokenize(string($key), '\.'),
+      $last := $words($segments[last()]),
+      $owner := $words($segments[last() - 1])[last()],
+      $names := ('password', 'passwd', 'passphrase', 'secret', 'token', 'credential', 'credentials', 'apikey', 'privatekey',
+        'secretkey', 'accesskey', 'signingkey', 'encryptionkey', 'hmackey', 'jwtkey', 'cryptokey', 'masterkey')
+  return $last[last()] = $names
+    or (count($last) > 1 and string-join(subsequence($last, count($last) - 1), '') = $names)
+    or (count($last) = 1 and $last = 'key'
+      and $owner = ('api', 'jwt', 'encryption', 'signing', 'hmac', 'crypto', 'master', 'access', 'secret', 'private'))
+},
+    $fallback := function($value) {
+  string-length($value) > 0 and not(matches($value, '^[#$]'))
+}
+return
+//Annotation[pmd-java:typeIs('org.springframework.beans.factory.annotation.Value')]
+  //StringLiteral[matches(@ConstValue, '^\$\{[^}:]+:[^}]*\}$')]
+  [$secret(substring-before(substring-after(@ConstValue, '${'), ':'))]
+  [$fallback(replace(@ConstValue, '^\$\{[^}:]+:(.*)\}$', '$1'))]
+|
+//Annotation[pmd-java:typeIs('org.springframework.boot.context.properties.bind.DefaultValue')]
+  [$secret(../../VariableId/@Name)]
+  [.//StringLiteral[$fallback(@ConstValue)]]
+|
+//MethodCall[@MethodName = 'getProperty'][*[1][pmd-java:typeIs('org.springframework.core.env.PropertyResolver')]]
+  [ArgumentList[count(*) = 2]/*[1][self::StringLiteral][$secret(@ConstValue)]]
+  [ArgumentList/*[2][self::StringLiteral][$fallback(@ConstValue)]]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringNoErrorLeak" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Log the exception and return a ProblemDetail with a fixed detail from this @ExceptionHandler. The message or stack trace of a generic, JDK or persistence exception exposes internals; messages of your own exception types are fine.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $logged := function($node) {
+  exists($node/ancestor::MethodCall[*[1][
+    pmd-java:typeIs('org.slf4j.Logger')
+    or pmd-java:typeIs('org.apache.commons.logging.Log')
+    or pmd-java:typeIs('org.apache.logging.log4j.Logger')
+    or pmd-java:typeIs('java.util.logging.Logger')
+    or pmd-java:typeIs('java.lang.System$Logger')]])
+}
+return //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.ExceptionHandler')]]
+  //*[let $handler := ancestor::MethodDeclaration[1],
+          $names := $handler/FormalParameters/FormalParameter[ClassType[
+            pmd-java:typeIsExactly('java.lang.Exception')
+            or pmd-java:typeIsExactly('java.lang.Throwable')
+            or pmd-java:typeIsExactly('java.lang.RuntimeException')
+            or pmd-java:typeIsExactly('java.lang.IllegalArgumentException')
+            or pmd-java:typeIsExactly('java.lang.IllegalStateException')
+            or pmd-java:typeIsExactly('java.lang.NullPointerException')
+            or pmd-java:typeIs('java.io.IOException')
+            or pmd-java:typeIs('java.io.UncheckedIOException')
+            or pmd-java:typeIs('org.springframework.dao.DataAccessException')
+            or pmd-java:typeIs('org.springframework.transaction.TransactionException')
+            or (pmd-java:typeIs('jakarta.persistence.PersistenceException') or pmd-java:typeIs('javax.persistence.PersistenceException'))
+            or pmd-java:typeIs('java.sql.SQLException')]]/VariableId/@Name,
+          $exception := function($node) {
+            exists($node[self::VariableAccess[@Name = $names]
+              or self::MethodCall[@MethodName = ('getCause', 'getRootCause', 'getMostSpecificCause')]/*[1][self::VariableAccess[@Name = $names]]])
+          }
+      return (self::MethodCall[@MethodName = ('getStackTrace', 'printStackTrace')]
+        or self::MethodCall[@MethodName = ('getMessage', 'getLocalizedMessage', 'toString')][$exception(*[1])]
+        or self::InfixExpression[@Operator = '+'][*[$exception(.)]]
+        or self::MethodCall[@MethodName = ('valueOf', 'toString', 'format', 'formatted')][ArgumentList/*[$exception(.)]])
+      and not($logged(.))
+      and (let $local := ancestor::VariableDeclarator[parent::LocalVariableDeclaration][1]/VariableId/@Name
+           return empty($local)
+             or exists($handler//VariableAccess[@Name = $local][not($logged(.))]))]
+]]></value></property></properties>
+  </rule>
+
   <!-- Proxies and transactions -->
 
   <rule name="SpringProxyMethodVisibility" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Make this proxied method public, non-final and non-static, in a non-final class. Spring never proxies final or static methods, and nitpicker keeps proxied methods public. If it is right here, add an exception for pmd/SpringProxyMethodVisibility in nitpicker.config.json.">
+        message="Make this proxied method public, non-final and non-static, in a non-final class. Spring never proxies final or static methods, and nitpicker keeps proxied methods public.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[
@@ -167,7 +438,7 @@
   </rule>
 
   <rule name="SpringProxySelfCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This call stays inside the class, so it skips the proxy and the called method's annotation does nothing. Move the annotated method to another bean and call it there. If it is right here, add an exception for pmd/SpringProxySelfCall in nitpicker.config.json.">
+        message="This call stays inside the class, so it skips the proxy and the called method''s annotation does nothing. Move the annotated method to another bean and call it there.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodCall[*[1][self::ArgumentList or self::TypeArguments or self::ThisExpression[not(*)]]][
@@ -191,11 +462,32 @@
     [not($callerTransactional and not(AnnotationMemberList)
          and pmd-java:typeIs('org.springframework.transaction.annotation.Transactional'))])
 ]
+|
+//MethodReference[*[1][self::ThisExpression[not(*)]]][
+  let $name := @MethodName,
+      $callerTransactional := exists(ancestor::MethodDeclaration[1]/ModifierList/Annotation[
+        pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')])
+  return exists(ancestor::ClassDeclaration[1]/ClassBody/MethodDeclaration[@Name = $name]
+    /ModifierList/Annotation[
+      pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
+      or pmd-java:typeIs('org.springframework.scheduling.annotation.Async')
+      or pmd-java:typeIs('org.springframework.cache.annotation.Cacheable')
+      or pmd-java:typeIs('org.springframework.cache.annotation.CachePut')
+      or pmd-java:typeIs('org.springframework.cache.annotation.CacheEvict')
+      or pmd-java:typeIs('org.springframework.cache.annotation.Caching')
+      or pmd-java:typeIs('org.springframework.retry.annotation.Retryable')
+      or pmd-java:typeIs('org.springframework.resilience.annotation.Retryable')
+      or pmd-java:typeIs('org.springframework.security.access.prepost.PreAuthorize')
+      or pmd-java:typeIs('org.springframework.security.access.prepost.PostAuthorize')
+      or pmd-java:typeIs('org.springframework.security.access.annotation.Secured')]
+    [not($callerTransactional and not(AnnotationMemberList)
+         and pmd-java:typeIs('org.springframework.transaction.annotation.Transactional'))])
+]
 ]]></value></property></properties>
   </rule>
 
   <rule name="SpringTransactionalAnnotation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Use org.springframework.transaction.annotation.Transactional. The jakarta and javax annotations have no readOnly or timeout and roll back on different exceptions. If it is right here, add an exception for pmd/SpringTransactionalAnnotation in nitpicker.config.json.">
+        message="Use org.springframework.transaction.annotation.Transactional. The jakarta and javax annotations have no readOnly or timeout and roll back on different exceptions.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')]
@@ -203,7 +495,7 @@
   </rule>
 
   <rule name="SpringNoTransactionalController" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Put @Transactional on a service method, not on a controller; a controller transaction spans the whole request and response serialization. If it is right here, add an exception for pmd/SpringNoTransactionalController in nitpicker.config.json.">
+        message="Put @Transactional on a service method, not on a controller; a controller transaction spans the whole request and response serialization.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration[ModifierList/Annotation[
@@ -215,7 +507,7 @@
   </rule>
 
   <rule name="SpringNoRequiresNew" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Avoid Propagation.REQUIRES_NEW: each nested transaction holds a second connection and can exhaust the pool under load. If it is right here, add an exception for pmd/SpringNoRequiresNew in nitpicker.config.json.">
+        message="Avoid Propagation.REQUIRES_NEW: each nested transaction holds a second connection and can exhaust the pool under load.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
@@ -224,12 +516,16 @@
   </rule>
 
   <rule name="SpringNoSwallowedTransactionException" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not swallow a broad or persistence exception inside a @Transactional method: the transaction may already be rollback-only, so the commit fails anyway. Rethrow it, or catch it in the caller. If it is right here, add an exception for pmd/SpringNoSwallowedTransactionException in nitpicker.config.json.">
+        message="Do not swallow a broad or persistence exception inside a @Transactional method: the transaction may already be rollback-only, so the commit fails anyway. Rethrow it, or catch it in the caller.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodDeclaration[
     ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
-    or (@Visibility = 'public' and ancestor::ClassDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')])]
+    or ancestor::ClassDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+    or (@Visibility != 'public' and (let $name := @Name, $arity := @Arity
+        return exists(ancestor::ClassDeclaration[1]/ClassBody/MethodDeclaration
+          [ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]]
+          //MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]][@MethodName = $name][count(ArgumentList/*) = $arity])))]
   //CatchClause[not(.//ThrowStatement)][not(ancestor::LambdaExpression or ancestor::ClassBody[parent::ConstructorCall])]
   [CatchParameter//ClassType[
     pmd-java:typeIsExactly('java.lang.Exception')
@@ -237,12 +533,12 @@
     or pmd-java:typeIsExactly('java.lang.Throwable')
     or pmd-java:typeIs('org.springframework.dao.DataAccessException')
     or pmd-java:typeIs('org.springframework.transaction.TransactionException')
-    or pmd-java:typeIs('jakarta.persistence.PersistenceException')]]
+    or (pmd-java:typeIs('jakarta.persistence.PersistenceException') or pmd-java:typeIs('javax.persistence.PersistenceException'))]]
 ]]></value></property></properties>
   </rule>
 
   <rule name="SpringAsyncExecutor" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Name a bounded executor bean, @Async(&quot;executorName&quot;), and return CompletableFuture so failures reach the caller. If it is right here, add an exception for pmd/SpringAsyncExecutor in nitpicker.config.json.">
+        message="Name a bounded executor bean, @Async(&quot;executorName&quot;), and return CompletableFuture so failures reach the caller.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[pmd-java:typeIs('org.springframework.scheduling.annotation.Async')][not(AnnotationMemberList/MemberValuePair)]
@@ -253,7 +549,7 @@
   </rule>
 
   <rule name="SpringScheduledFixedDelay" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Use fixedDelay or cron instead of fixedRate, so a slow run never overlaps the next one. If it is right here, add an exception for pmd/SpringScheduledFixedDelay in nitpicker.config.json.">
+        message="Use fixedDelay or cron instead of fixedRate, so a slow run never overlaps the next one.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[pmd-java:typeIs('org.springframework.scheduling.annotation.Scheduled')]
@@ -261,10 +557,49 @@
 ]]></value></property></properties>
   </rule>
 
+  <rule name="SpringTransactionalCheckedRollback" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Add rollbackFor = Exception.class to this @Transactional, or throw an unchecked exception. A checked exception commits the work done so far instead of rolling it back.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration[
+    ThrowsList/ClassType[pmd-java:typeIs('java.lang.Throwable')]
+      [not(pmd-java:typeIs('java.lang.RuntimeException') or pmd-java:typeIs('java.lang.Error'))]]
+  [ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+      [not(AnnotationMemberList/MemberValuePair[@Name = ('rollbackFor', 'rollbackForClassName')])]
+      [not(AnnotationMemberList/MemberValuePair[@Name = 'readOnly']/BooleanLiteral[@True = true()])]
+   or (@Visibility = 'public'
+       and not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')])
+       and ancestor::ClassDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+         [not(AnnotationMemberList/MemberValuePair[@Name = ('rollbackFor', 'rollbackForClassName')])]
+         [not(AnnotationMemberList/MemberValuePair[@Name = 'readOnly']/BooleanLiteral[@True = true()])])]
+  /ThrowsList
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringTransactionalReadOnlyWrite" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Put @Transactional without readOnly on this method: a write inside a read-only transaction is skipped or fails.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration[
+    ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+      [AnnotationMemberList/MemberValuePair[@Name = 'readOnly']/BooleanLiteral[@True = true()]]
+    or (not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
+          or pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')])
+        and ancestor::ClassDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+          [AnnotationMemberList/MemberValuePair[@Name = 'readOnly']/BooleanLiteral[@True = true()]])]
+  //(MethodCall | MethodReference)[
+    (@MethodName = ('save', 'saveAll', 'saveAndFlush', 'saveAllAndFlush', 'delete', 'deleteAll', 'deleteById',
+      'deleteAllById', 'deleteAllInBatch', 'persist', 'merge', 'remove')
+     and *[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
+    or (matches(@MethodName, '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)')
+     and *[1][pmd-java:typeIs('org.springframework.data.repository.Repository')])]
+]]></value></property></properties>
+  </rule>
+
   <!-- Web -->
 
   <rule name="SpringComposedMapping" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Use @GetMapping, @PostMapping, @PutMapping, @PatchMapping or @DeleteMapping on methods. @RequestMapping belongs only on the class, for the path prefix. If it is right here, add an exception for pmd/SpringComposedMapping in nitpicker.config.json.">
+        message="Use @GetMapping, @PostMapping, @PutMapping, @PatchMapping or @DeleteMapping on methods. @RequestMapping belongs only on the class, for the path prefix.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodDeclaration/ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.RequestMapping')]
@@ -272,7 +607,7 @@
   </rule>
 
   <rule name="SpringRestController" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Use @RestController for a JSON controller and drop @ResponseBody. If it is right here, add an exception for pmd/SpringRestController in nitpicker.config.json.">
+        message="Use @RestController for a JSON controller and drop @ResponseBody.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')]]
@@ -284,12 +619,12 @@
   </rule>
 
   <rule name="SpringValidRequestBody" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Add @Valid to this @RequestBody; without it the record's constraints are never checked. If it is right here, add an exception for pmd/SpringValidRequestBody in nitpicker.config.json.">
+        message="Add @Valid to this @RequestBody; without it the record''s constraints are never checked.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //FormalParameter[ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.RequestBody')]]
   [not(ModifierList/Annotation[
-    pmd-java:typeIs('jakarta.validation.Valid')
+    (pmd-java:typeIs('jakarta.validation.Valid') or pmd-java:typeIs('javax.validation.Valid'))
     or pmd-java:typeIs('org.springframework.validation.annotation.Validated')])]
   [not(ClassType[
     pmd-java:typeIs('java.lang.CharSequence')
@@ -303,13 +638,16 @@
     or pmd-java:typeIs('tools.jackson.databind.JsonNode')])]
   [not(ClassType[pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Optional')]
     /TypeArguments/ClassType[pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.lang.Number')
-      or pmd-java:typeIs('java.lang.Boolean')])]
+      or pmd-java:typeIs('java.lang.Boolean') or pmd-java:typeIsExactly('java.lang.Object')
+      or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('com.fasterxml.jackson.databind.JsonNode')
+      or pmd-java:typeIs('tools.jackson.databind.JsonNode')])]
+  [not(ClassType/TypeArguments/WildcardType)]
   [not(ArrayType or PrimitiveType)]
 ]]></value></property></properties>
   </rule>
 
   <rule name="SpringNoCrossOrigin" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Configure CORS once, in a CorsConfigurationSource bean with origins from configuration, instead of @CrossOrigin on controllers. If it is right here, add an exception for pmd/SpringNoCrossOrigin in nitpicker.config.json.">
+        message="Configure CORS once, in a CorsConfigurationSource bean with origins from configuration, instead of @CrossOrigin on controllers.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.CrossOrigin')]
@@ -317,89 +655,321 @@
   </rule>
 
   <rule name="SpringPasswordEncoder" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Hash passwords with PasswordEncoderFactories.createDelegatingPasswordEncoder(); NoOpPasswordEncoder stores them in plain text. If it is right here, add an exception for pmd/SpringPasswordEncoder in nitpicker.config.json.">
+        message="Hash passwords with PasswordEncoderFactories.createDelegatingPasswordEncoder(). NoOpPasswordEncoder stores them in plain text, and the MD4, message-digest, LDAP SHA and standard SHA-256 encoders and User.withDefaultPasswordEncoder() are not safe for passwords.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
-//ClassType[pmd-java:typeIs('org.springframework.security.crypto.password.NoOpPasswordEncoder')]
+//ClassType[
+    pmd-java:typeIs('org.springframework.security.crypto.password.NoOpPasswordEncoder')
+    or pmd-java:typeIs('org.springframework.security.crypto.password.MessageDigestPasswordEncoder')
+    or pmd-java:typeIs('org.springframework.security.crypto.password.Md4PasswordEncoder')
+    or pmd-java:typeIs('org.springframework.security.crypto.password.LdapShaPasswordEncoder')
+    or pmd-java:typeIs('org.springframework.security.crypto.password.StandardPasswordEncoder')]
   [not(ancestor::ImportDeclaration)]
 |
 //MethodCall[pmd-java:matchesSig('org.springframework.security.crypto.password.NoOpPasswordEncoder#getInstance()')]
   [not(*[1][self::TypeExpression])]
+|
+//MethodCall[@MethodName = 'withDefaultPasswordEncoder']
+  [*[1][self::TypeExpression and pmd-java:typeIs('org.springframework.security.core.userdetails.User')]]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringTypedResponse" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Return a record or a specific type from this handler, never Object, JsonNode, Map&lt;String, Object&gt;, ResponseEntity&lt;?&gt;, a list or Optional of those, or null. For no body return void or ResponseEntity&lt;Void&gt;, and for an error throw an exception that a @RestControllerAdvice maps to a ProblemDetail.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $leaf := function($type) {
+  exists($type[self::ClassType[pmd-java:typeIsExactly('java.lang.Object')
+      or pmd-java:typeIs('com.fasterxml.jackson.databind.JsonNode') or pmd-java:typeIs('tools.jackson.databind.JsonNode')]
+    or self::WildcardType[not(*) or ClassType[pmd-java:typeIsExactly('java.lang.Object')]]
+    or self::ClassType[pmd-java:typeIs('java.util.Map')]
+      [not(TypeArguments) or TypeArguments/*[2][self::WildcardType[not(*) or ClassType[pmd-java:typeIsExactly('java.lang.Object')]]
+        or self::ClassType[pmd-java:typeIsExactly('java.lang.Object')]]]])
+},
+    $inner := function($type) {
+  $type[self::ClassType[pmd-java:typeIs('java.util.Map')]]/TypeArguments/*[2]
+  | $type[self::ClassType[pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Optional')
+      or pmd-java:typeIs('org.springframework.http.HttpEntity') or pmd-java:typeIs('java.util.concurrent.CompletionStage')
+      or pmd-java:typeIs('org.reactivestreams.Publisher')]]/TypeArguments/*
+},
+    $untyped := function($type) {
+  $leaf($type)
+  or exists($type[self::ClassType[pmd-java:typeIs('org.springframework.http.HttpEntity')][not(TypeArguments)]])
+  or (some $argument in $inner($type) satisfies ($leaf($argument) or (some $nested in $inner($argument) satisfies $leaf($nested))))
+}
+return
+//MethodDeclaration[ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.web.bind.annotation.GetMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.PostMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.PutMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.PatchMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.DeleteMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RequestMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.ExceptionHandler')]]
+  /ClassType[$untyped(.)]
+|
+//ReturnStatement[NullLiteral]
+  [ancestor::*[self::MethodDeclaration or self::LambdaExpression][1][self::MethodDeclaration][ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.web.bind.annotation.GetMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.PostMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.PutMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.PatchMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.DeleteMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RequestMapping')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.ExceptionHandler')]]]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringTypedRequestBody" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Bind this @RequestBody to a record with validation annotations, not to Object, JsonNode, Map&lt;String, Object&gt; or a list of those. Untyped payloads skip validation and allow mass assignment. A Map with typed values, such as Map&lt;String, String&gt;, is fine.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $leaf := function($type) {
+  exists($type[self::ClassType[pmd-java:typeIsExactly('java.lang.Object')
+      or pmd-java:typeIs('com.fasterxml.jackson.databind.JsonNode') or pmd-java:typeIs('tools.jackson.databind.JsonNode')]
+    or self::WildcardType[not(*) or ClassType[pmd-java:typeIsExactly('java.lang.Object')]]
+    or self::ClassType[pmd-java:typeIs('java.util.Map')]
+      [not(TypeArguments) or TypeArguments/*[2][self::WildcardType[not(*) or ClassType[pmd-java:typeIsExactly('java.lang.Object')]]
+        or self::ClassType[pmd-java:typeIsExactly('java.lang.Object')]]]])
+},
+    $inner := function($type) {
+  $type[self::ClassType[pmd-java:typeIs('java.util.Map')]]/TypeArguments/*[2]
+  | $type[self::ClassType[pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.Optional')
+      or pmd-java:typeIs('org.springframework.http.HttpEntity') or pmd-java:typeIs('java.util.concurrent.CompletionStage')
+      or pmd-java:typeIs('org.reactivestreams.Publisher')]]/TypeArguments/*
+},
+    $untyped := function($type) {
+  $leaf($type)
+  or exists($type[self::ClassType[pmd-java:typeIs('org.springframework.http.HttpEntity')][not(TypeArguments)]])
+  or (some $argument in $inner($type) satisfies ($leaf($argument) or (some $nested in $inner($argument) satisfies $leaf($nested))))
+}
+return //FormalParameter[ModifierList/Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.RequestBody')]]
+  /ClassType[$untyped(.)]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringCorsWildcard" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="List the allowed origins from configuration instead of &quot;*&quot; when credentials are allowed; any site could then call this API as the signed-in user.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[@MethodName = ('setAllowedOrigins', 'setAllowedOriginPatterns', 'allowedOrigins', 'allowedOriginPatterns',
+    'addAllowedOrigin', 'addAllowedOriginPattern')]
+  /ArgumentList//StringLiteral[@ConstValue = '*']
+  [ancestor::MethodDeclaration[1]//MethodCall[@MethodName = ('setAllowCredentials', 'allowCredentials')]
+    /ArgumentList/*[self::BooleanLiteral[@True = true()] or self::FieldAccess[@Name = 'TRUE']]]
+|
+//Annotation[pmd-java:typeIs('org.springframework.web.bind.annotation.CrossOrigin')]
+  [AnnotationMemberList/MemberValuePair[@Name = 'allowCredentials']//StringLiteral[@ConstValue = 'true']]
+  /AnnotationMemberList/MemberValuePair[@Name = ('value', 'origins', 'originPatterns')]//StringLiteral[@ConstValue = '*']
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringPermitAllAnyRequest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Name the public paths in requestMatchers(...).permitAll(), or pathMatchers(...).permitAll() on WebFlux, and end with anyRequest().authenticated(), or anyExchange().authenticated(), so a new endpoint is protected by default.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $root := function($node) {
+  let $statement := $node/ancestor::*[self::ExpressionStatement or self::ReturnStatement or self::LocalVariableDeclaration][last()],
+      $chain := ($statement/VariableDeclarator/*[2], $statement/*[1])[1]
+  return string(($chain/descendant-or-self::*[not(*)]
+    [not(ancestor-or-self::*[exists(ancestor::*[. is $chain])][preceding-sibling::*])])[1]/@Name)
+}
+return (
+//MethodCall[@MethodName = 'permitAll']
+  [*[1][self::MethodCall[@MethodName = ('anyRequest', 'anyExchange')]
+    or self::MethodCall[@MethodName = ('requestMatchers', 'antMatchers', 'mvcMatchers', 'pathMatchers')]
+         [ArgumentList/StringLiteral[@ConstValue = ('/**', '/*', '**')]]
+         [not(ArgumentList/*[pmd-java:typeIs('org.springframework.http.HttpMethod')])]]]
+  [let $chain := $root(.)
+   return not(ancestor::MethodDeclaration[1]//MethodCall[@MethodName = ('securityMatcher', 'securityMatchers')][$root(.) = $chain])]
+|
+//MethodCall[@MethodName = ('requestMatchers', 'antMatchers', 'mvcMatchers')]
+  [*[1][self::MethodCall[@MethodName = 'ignoring']]]
+  [ArgumentList/StringLiteral[@ConstValue = ('/**', '/*', '**')]]
+)
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringCsrfDisabled" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Keep CSRF protection on for session-based security. Turn it off only for a stateless API, in the same filter chain: SessionCreationPolicy.STATELESS or a NullSecurityContextRepository on servlet security, NoOpServerSecurityContextRepository on WebFlux, or oauth2ResourceServer with jwt or opaqueToken and every login form disabled.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $root := function($node) {
+  let $statement := $node/ancestor::*[self::ExpressionStatement or self::ReturnStatement or self::LocalVariableDeclaration][last()],
+      $chain := ($statement/VariableDeclarator/*[2], $statement/*[1])[1]
+  return string(($chain/descendant-or-self::*[not(*)]
+    [not(ancestor-or-self::*[exists(ancestor::*[. is $chain])][preceding-sibling::*])])[1]/@Name)
+}
+return (
+  //MethodCall[@MethodName = 'csrf'][ArgumentList/LambdaExpression//MethodCall[@MethodName = 'disable']]
+  | //MethodCall[@MethodName = 'csrf'][ArgumentList/MethodReference[@MethodName = 'disable']]
+  | //MethodCall[@MethodName = 'disable'][*[1][self::MethodCall[@MethodName = 'csrf'][not(ArgumentList/*)]]]
+)[let $chain := $root(.), $calls := ancestor::MethodDeclaration[1]//MethodCall[$root(.) = $chain]
+  return not($calls[@MethodName = 'sessionCreationPolicy'][.//*[@Name = 'STATELESS']]
+    or $calls[@MethodName = ('securityContext', 'securityContextRepository')][.//*[
+      pmd-java:typeIs('org.springframework.security.web.context.NullSecurityContextRepository')
+      or pmd-java:typeIs('org.springframework.security.web.server.context.NoOpServerSecurityContextRepository')]]
+    or ($calls[@MethodName = 'oauth2ResourceServer'][.//(MethodCall | MethodReference)[@MethodName = ('jwt', 'opaqueToken')]]
+        and not($calls[@MethodName = ('formLogin', 'httpBasic', 'rememberMe', 'oauth2Login', 'saml2Login')]
+          [not(ArgumentList/MethodReference[@MethodName = 'disable']
+            or ArgumentList/LambdaExpression[.//MethodCall[@MethodName = 'disable']]
+            or parent::MethodCall[@MethodName = 'disable'])])))]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringHardcodedUser" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Load users from a UserDetailsService backed by the database, with passwords hashed by the delegating encoder. Do not put a user password in source code.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[@MethodName = 'password']
+  [*[1][pmd-java:typeIs('org.springframework.security.core.userdetails.User$UserBuilder')
+        or pmd-java:typeIs('org.springframework.security.config.annotation.authentication.configurers.provisioning.UserDetailsManagerConfigurer$UserDetailsBuilder')]]
+  [(ArgumentList/*, ArgumentList/MethodCall[@MethodName = 'encode']/ArgumentList/*)[
+     self::StringLiteral
+     or self::VariableAccess[@Name = (ancestor::MethodDeclaration[1]//VariableDeclarator[StringLiteral]/VariableId/@Name,
+       ancestor::ClassBody[last()]/FieldDeclaration/VariableDeclarator[StringLiteral]/VariableId/@Name)]]]
 ]]></value></property></properties>
   </rule>
 
   <!-- JPA entities -->
 
   <rule name="JpaLazyFetching" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Write fetch = FetchType.LAZY on every @ManyToOne and @OneToOne (they are eager by default) and never use EAGER; load what a query needs with join fetch. If it is right here, add an exception for pmd/JpaLazyFetching in nitpicker.config.json.">
+        message="Write fetch = FetchType.LAZY on every @ManyToOne and @OneToOne (they are eager by default) and never use EAGER; load what a query needs with join fetch.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-//Annotation[pmd-java:typeIs('jakarta.persistence.ManyToOne') or pmd-java:typeIs('jakarta.persistence.OneToOne')]
+//Annotation[(pmd-java:typeIs('jakarta.persistence.ManyToOne') or pmd-java:typeIs('javax.persistence.ManyToOne')) or (pmd-java:typeIs('jakarta.persistence.OneToOne') or pmd-java:typeIs('javax.persistence.OneToOne'))]
   [not(AnnotationMemberList/MemberValuePair[@Name = 'fetch'][.//*[@Name = 'LAZY']])]
 |
-//Annotation[pmd-java:typeIs('jakarta.persistence.OneToMany') or pmd-java:typeIs('jakarta.persistence.ManyToMany')
-    or pmd-java:typeIs('jakarta.persistence.ElementCollection')]
+//Annotation[(pmd-java:typeIs('jakarta.persistence.OneToMany') or pmd-java:typeIs('javax.persistence.OneToMany')) or (pmd-java:typeIs('jakarta.persistence.ManyToMany') or pmd-java:typeIs('javax.persistence.ManyToMany'))
+    or (pmd-java:typeIs('jakarta.persistence.ElementCollection') or pmd-java:typeIs('javax.persistence.ElementCollection'))]
   [AnnotationMemberList/MemberValuePair[@Name = 'fetch'][.//*[@Name = 'EAGER']]]
 ]]></value></property></properties>
   </rule>
 
   <rule name="JpaEntityClass" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Make the entity a non-final class. Records and final classes cannot be JPA entities; use records for DTOs. If it is right here, add an exception for pmd/JpaEntityClass in nitpicker.config.json.">
+        message="Make the entity a non-final class. Records and final classes cannot be JPA entities; use records for DTOs.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 //(RecordDeclaration | ClassDeclaration[pmd-java:modifiers() = 'final'])
-  /ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Entity')]
+  /ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity'))]
 ]]></value></property></properties>
   </rule>
 
   <rule name="JpaManyToManyCascade" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not cascade ALL or REMOVE on @ManyToMany: removing one parent deletes rows that other parents still share. If it is right here, add an exception for pmd/JpaManyToManyCascade in nitpicker.config.json.">
+        message="Do not cascade ALL or REMOVE on @ManyToMany: removing one parent deletes rows that other parents still share.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
-//Annotation[pmd-java:typeIs('jakarta.persistence.ManyToMany')]
+//Annotation[(pmd-java:typeIs('jakarta.persistence.ManyToMany') or pmd-java:typeIs('javax.persistence.ManyToMany'))]
   /AnnotationMemberList/MemberValuePair[@Name = 'cascade'][.//*[@Name = ('ALL', 'REMOVE')]]
 ]]></value></property></properties>
   </rule>
 
   <rule name="JpaManyToManySet" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Map @ManyToMany as a Set (or a List with @OrderColumn). A plain List makes Hibernate delete and re-insert every join row when one element is removed. If it is right here, add an exception for pmd/JpaManyToManySet in nitpicker.config.json.">
+        message="Map @ManyToMany as a Set (or a List with @OrderColumn). A plain List makes Hibernate delete and re-insert every join row when one element is removed.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-//FieldDeclaration[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.ManyToMany')]]
-  [not(ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.OrderColumn')])]
+//FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.ManyToMany') or pmd-java:typeIs('javax.persistence.ManyToMany'))]]
+  [not(ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.OrderColumn') or pmd-java:typeIs('javax.persistence.OrderColumn'))])]
   /ClassType[pmd-java:typeIs('java.util.List') or pmd-java:typeIsExactly('java.util.Collection')]
 ]]></value></property></properties>
   </rule>
 
   <rule name="JpaVersion" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Add a @Version field next to the @Id, so concurrent updates fail instead of overwriting each other. Mark entities that are never updated with @Immutable. If it is right here, add an exception for pmd/JpaVersion in nitpicker.config.json.">
+        message="Add a @Version field next to the @Id, so concurrent updates fail instead of overwriting each other. Mark entities that are never updated with @Immutable.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-//ClassDeclaration[not(ExtendsList)]
-  [ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Entity')]
-   or (ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MappedSuperclass')]
-       and ClassBody/FieldDeclaration/ModifierList/Annotation[
-         pmd-java:typeIs('jakarta.persistence.Id') or pmd-java:typeIs('jakarta.persistence.EmbeddedId')])]
+//ClassDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity')) or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]]
+  [(not(ExtendsList) and ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity'))])
+   or ClassBody/(FieldDeclaration | MethodDeclaration)/ModifierList/Annotation[
+     (pmd-java:typeIs('jakarta.persistence.Id') or pmd-java:typeIs('javax.persistence.Id')) or (pmd-java:typeIs('jakarta.persistence.EmbeddedId') or pmd-java:typeIs('javax.persistence.EmbeddedId'))]]
   [not(ModifierList/Annotation[pmd-java:typeIs('org.hibernate.annotations.Immutable')])]
-  [not(ClassBody/(FieldDeclaration | MethodDeclaration)/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Version')])]
-  /ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Entity')
-    or pmd-java:typeIs('jakarta.persistence.MappedSuperclass')]
+  [not(ClassBody/(FieldDeclaration | MethodDeclaration)/ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Version') or pmd-java:typeIs('javax.persistence.Version'))])]
+  /ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity'))
+    or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]
 ]]></value></property></properties>
   </rule>
 
   <rule name="JpaSequenceIds" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Generate ids with GenerationType.SEQUENCE (or UUID). IDENTITY and TABLE ids disable JDBC insert batching. If it is right here, add an exception for pmd/JpaSequenceIds in nitpicker.config.json.">
+        message="Generate ids with GenerationType.SEQUENCE (or UUID). IDENTITY and TABLE ids disable JDBC insert batching.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-//Annotation[pmd-java:typeIs('jakarta.persistence.GeneratedValue')]
+//Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]
   /AnnotationMemberList/MemberValuePair[@Name = 'strategy'][.//*[@Name = ('IDENTITY', 'TABLE')]]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="JpaEnumString" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write @Enumerated(EnumType.STRING) on this enum field or element collection, and @MapKeyEnumerated(EnumType.STRING) on a map with enum keys. The default stores the ordinal, so adding or reordering constants silently corrupts stored rows.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $fields := //ClassDeclaration[ModifierList/Annotation[
+    (pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity'))
+    or (pmd-java:typeIs('jakarta.persistence.Embeddable') or pmd-java:typeIs('javax.persistence.Embeddable'))
+    or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]]
+  [not(ClassBody/MethodDeclaration/ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Id') or pmd-java:typeIs('javax.persistence.Id'))])]
+  /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = ('static', 'transient'))]
+  [not(ModifierList/Annotation[
+    (pmd-java:typeIs('jakarta.persistence.Transient') or pmd-java:typeIs('javax.persistence.Transient'))
+    or (pmd-java:typeIs('jakarta.persistence.Convert') or pmd-java:typeIs('javax.persistence.Convert'))
+    or pmd-java:typeIs('org.hibernate.annotations.JdbcTypeCode')
+    or pmd-java:typeIs('org.hibernate.annotations.JdbcType')
+    or pmd-java:typeIs('org.hibernate.annotations.Type')])],
+    $converted := //ClassDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Converter') or pmd-java:typeIs('javax.persistence.Converter'))]
+      [AnnotationMemberList/MemberValuePair[@Name = 'autoApply']/BooleanLiteral[@True = true()]]]
+    /ImplementsList/ClassType[(pmd-java:typeIs('jakarta.persistence.AttributeConverter') or pmd-java:typeIs('javax.persistence.AttributeConverter'))]/TypeArguments/ClassType[1]/@SimpleName,
+    $string := function($field) {
+  exists($field/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Enumerated') or pmd-java:typeIs('javax.persistence.Enumerated')]
+    [.//*[@Name = 'STRING']])
+},
+    $stringKey := function($field) {
+  exists($field/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MapKeyEnumerated') or pmd-java:typeIs('javax.persistence.MapKeyEnumerated')]
+    [.//*[@Name = 'STRING']])
+},
+    $collections := $fields[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.ElementCollection') or pmd-java:typeIs('javax.persistence.ElementCollection')]]
+return (
+  $fields[not($string(.))]/ClassType[pmd-java:typeIs('java.lang.Enum')]
+  | $collections[not($string(.))]/ClassType[not(pmd-java:typeIs('java.util.Map'))]/TypeArguments/*[1]
+  | $collections[not($string(.))]/ClassType[pmd-java:typeIs('java.util.Map')]/TypeArguments/*[2]
+  | $collections[not($stringKey(.))]/ClassType[pmd-java:typeIs('java.util.Map')]/TypeArguments/*[1]
+)[self::ClassType[pmd-java:typeIs('java.lang.Enum')]][not(@SimpleName = $converted)]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="JpaIdentityHashCode" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Return getClass().hashCode() from the hashCode of an entity, or hash an immutable business key; with Lombok, write @EqualsAndHashCode(onlyExplicitlyIncluded = true) and mark that key with @EqualsAndHashCode.Include. A hash of the generated id or of every field changes when the entity is saved, and a hash set then loses it.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassDeclaration[ModifierList/Annotation[
+    (pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity')) or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]]
+  /ClassBody[FieldDeclaration/ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]]
+  /MethodDeclaration[@Name = 'hashCode'][@Arity = 0]
+  /(.//*[
+    ((self::VariableAccess or self::FieldAccess)
+      and @Name = ancestor::ClassBody[1]/FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]]
+        /VariableDeclarator/VariableId/@Name)
+    or (self::MethodCall and not(ArgumentList/*)
+      and @MethodName = (ancestor::ClassBody[1]/FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]]
+        /VariableDeclarator/VariableId/@Name ! concat('get', upper-case(substring(., 1, 1)), substring(., 2))))])[1]
+|
+//ClassDeclaration[ModifierList/Annotation[
+    (pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity')) or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]]
+  [not(ClassBody/MethodDeclaration[@Name = 'hashCode'][@Arity = 0])]
+  /ModifierList/Annotation[@SimpleName = ('Data', 'Value', 'EqualsAndHashCode')]
+  [not(@SimpleName = ('Data', 'Value') and ../Annotation[@SimpleName = 'EqualsAndHashCode'])]
+  [let $ids := ancestor::ClassDeclaration[1]/ClassBody/FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]],
+       $names := $ids/VariableDeclarator/VariableId/@Name,
+       $members := AnnotationMemberList/MemberValuePair
+   return if ($members[@Name = 'onlyExplicitlyIncluded']/BooleanLiteral[@True = true()])
+     then exists($ids/ModifierList/Annotation[@SimpleName = 'Include'])
+     else if ($members[@Name = 'of']) then $members[@Name = 'of']//StringLiteral/@ConstValue = $names
+     else not($members[@Name = 'exclude']//StringLiteral/@ConstValue = $names)]
 ]]></value></property></properties>
   </rule>
 
   <!-- Spring Data repositories -->
 
   <rule name="SpringDataDerivedQuery" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Write this repository method with @Query (JPQL in a text block for JPA), naming the entity and every condition, instead of a query derived from the method name. If it is right here, add an exception for pmd/SpringDataDerivedQuery in nitpicker.config.json.">
+        message="Write this repository method with @Query (JPQL in a text block for JPA), naming the entity and every condition, instead of a query derived from the method name.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration[@Interface = true()][ExtendsList/ClassType[pmd-java:typeIs('org.springframework.data.repository.Repository')]]
@@ -431,11 +1001,13 @@
 |
 //Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.Query')]
   [AnnotationMemberList/MemberValuePair[@Name = 'nativeQuery']/BooleanLiteral[@True = true()]]
+|
+//MethodCall[@MethodName = 'createNativeQuery'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]]
 ]]></value></property></properties>
   </rule>
 
   <rule name="SpringDataModifyingQuery" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Write @Modifying(clearAutomatically = true, flushAutomatically = true), so pending changes are flushed first and no stale entities stay in the persistence context. If it is right here, add an exception for pmd/SpringDataModifyingQuery in nitpicker.config.json.">
+        message="Write @Modifying(clearAutomatically = true, flushAutomatically = true), so pending changes are flushed first and no stale entities stay in the persistence context.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.Modifying')]
@@ -445,32 +1017,50 @@
   </rule>
 
   <rule name="SpringDataNoSaveInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not save or delete one entity per loop iteration. Collect the entities and call saveAll or deleteAll once. If it is right here, add an exception for pmd/SpringDataNoSaveInLoop in nitpicker.config.json.">
+        message="Do not save or delete one entity per loop iteration. Collect the entities and call saveAll or deleteAll once.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
-//MethodCall[@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')]
-  [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
-  [ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement][not(.//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])]
-   or ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]]]
+let $iterated := function($call) {
+  exists($call/*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+    or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')])
+},
+    $loop := function($node) {
+  exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
+    [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
+  or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
+    [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')][$iterated(.)]])
+},
+    $entityWrite := function($node) {
+  $node/@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')
+  and exists($node/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
+}
+return
+//MethodCall[$entityWrite(.)][$loop(.)]
 |
-//MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]/ArgumentList
-  /MethodReference[@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')]
-  [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
+//MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek')][$iterated(.)]
+  /ArgumentList/MethodReference[$entityWrite(.)]
+|
+//VariableDeclarator[let $name := VariableId/@Name
+    return ancestor::MethodDeclaration[1]//(MethodCall[@MethodName = 'accept'][*[1][self::VariableAccess[@Name = $name]]][$loop(.)]
+      | MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek')][$iterated(.)]
+          /ArgumentList/VariableAccess[@Name = $name])]
+  /MethodReference[$entityWrite(.)]
 ]]></value></property></properties>
   </rule>
 
   <rule name="SpringDataNoFlush" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not flush by hand. Let the transaction write changes at commit; an early flush defeats JDBC batching and hides ordering bugs. If it is right here, add an exception for pmd/SpringDataNoFlush in nitpicker.config.json.">
+        message="Do not flush by hand. Let the transaction write changes at commit; an early flush defeats JDBC batching and hides ordering bugs.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodCall[@MethodName = ('saveAndFlush', 'saveAllAndFlush', 'flush')]
-  [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
-  [not(ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement][1]//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])]
+  [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]]
+  [not(ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement][1]//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])]
 ]]></value></property></properties>
   </rule>
 
   <rule name="SpringDataNamedParameters" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Bind query parameters by name (:email), not by position (?1); positions break silently when parameters are reordered. If it is right here, add an exception for pmd/SpringDataNamedParameters in nitpicker.config.json.">
+        message="Bind query parameters by name (:email), not by position (?1); positions break silently when parameters are reordered.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.Query')
@@ -480,7 +1070,7 @@
   </rule>
 
   <rule name="SpringDataQueryTextBlock" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Write a multi-part query as one text block (&quot;&quot;&quot;) instead of joining strings with +. If it is right here, add an exception for pmd/SpringDataQueryTextBlock in nitpicker.config.json.">
+        message="Write a multi-part query as one text block (&quot;&quot;&quot;) instead of joining strings with +.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.Query')
@@ -488,4 +1078,173 @@
   /AnnotationMemberList/MemberValuePair[@Name = ('value', 'countQuery')]/InfixExpression[@Operator = '+']
 ]]></value></property></properties>
   </rule>
+  <rule name="SpringQueryConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write the query as constant text (a text block) and pass values as bind parameters; for a list of values use NamedParameterJdbcTemplate or JdbcClient with in (:ids). Joining or formatting values into SQL or JPQL allows injection.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $scope := function($node) {
+  $node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer or self::FieldDeclaration][1]
+},
+    $parts := function($expression) {
+  $expression/descendant-or-self::*[not(self::InfixExpression[@Operator = '+'])]
+    [every $up in ancestor::*[exists(ancestor-or-self::*[. is $expression])] satisfies $up[self::InfixExpression[@Operator = '+']]]
+},
+    $constant := function($node) {
+  exists($node[self::StringLiteral or self::NumericLiteral or self::CharLiteral or self::BooleanLiteral
+    or self::VariableAccess[matches(@Name, '^[A-Z][A-Z0-9_]*$')] or self::FieldAccess[matches(@Name, '^[A-Z][A-Z0-9_]*$')]
+    or self::ConditionalExpression[*[2][self::StringLiteral]][*[3][self::StringLiteral]]
+    or self::MethodCall[@MethodName = 'join'][*[1][pmd-java:typeIs('java.lang.String')]]
+      [ArgumentList[count(*) = 2]/*[2][self::MethodCall[@MethodName = 'nCopies'][ArgumentList/*[2][self::StringLiteral[@ConstValue = '?']]]]]
+    or self::MethodCall[@MethodName = ('format', 'formatted')][*[1][pmd-java:typeIs('java.lang.String')]]
+      [every $argument in ArgumentList/* satisfies $argument[self::StringLiteral or self::NumericLiteral]]])
+},
+    $fixedLocal := function($node) {
+  exists($node[self::VariableAccess]) and (
+    let $name := $node/@Name, $within := $scope($node),
+        $values := $within//VariableDeclarator[VariableId/@Name = $name]/*[2]
+    return exists($values) and empty($within//AssignmentExpression[*[1][@Name = $name]])
+      and (every $value in $values satisfies (every $part in $parts($value) satisfies $constant($part))))
+},
+    $dynamic := function($expression) {
+  some $part in $parts($expression) satisfies not($constant($part) or $fixedLocal($part))
+},
+    $built := function($expression) {
+  ($expression[self::InfixExpression[@Operator = '+']] and $dynamic($expression))
+  or exists($expression[self::MethodCall[not($constant(.))]
+    [@MethodName = ('format', 'formatted', 'concat', 'replace', 'join') and *[1][pmd-java:typeIs('java.lang.String')]
+     or @MethodName = 'format' and *[1][pmd-java:typeIs('java.text.MessageFormat')]]
+    [some $argument in (ArgumentList/*, *[1][not(self::TypeExpression)]) satisfies $dynamic($argument)]])
+  or exists($expression[self::MethodCall[@MethodName = 'toString']
+    [*[1][pmd-java:typeIs('java.lang.StringBuilder') or pmd-java:typeIs('java.lang.StringBuffer')]]
+    [some $piece in ($scope(.)//MethodCall[@MethodName = 'append']/ArgumentList/*,
+        $scope(.)//ConstructorCall[ClassType[pmd-java:typeIs('java.lang.StringBuilder') or pmd-java:typeIs('java.lang.StringBuffer')]]/ArgumentList/*)
+     satisfies $dynamic($piece)]])
+}
+return //MethodCall[
+    (@MethodName = ('createQuery', 'createNativeQuery') and *[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
+    or (@MethodName = ('query', 'queryForList', 'queryForObject', 'queryForMap', 'queryForRowSet', 'queryForStream', 'update', 'execute', 'batchUpdate')
+        and *[1][pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
+          or pmd-java:typeIs('org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations')])
+    or (@MethodName = 'sql' and *[1][pmd-java:typeIs('org.springframework.jdbc.core.simple.JdbcClient')])]
+  /ArgumentList/*[1][
+    $built(.)
+    or self::VariableAccess[let $name := @Name, $within := $scope(.)
+      return some $value in ($within//VariableDeclarator[VariableId/@Name = $name]/*[2],
+          $within//AssignmentExpression[@Operator = '='][*[1][@Name = $name]]/*[2])
+        satisfies $built($value)
+      or (some $value in $within//AssignmentExpression[@Operator = '+='][*[1][@Name = $name]]/*[2] satisfies $dynamic($value))]]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringDataBatchOfOne" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Collect the entities of the whole loop and call saveAll or deleteAll once. Calling it with a one-element list on each iteration is still one write per entity.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $loop := function($node) {
+  exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
+    [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
+  or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
+    [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
+    [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+      or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
+},
+    $entityWrite := function($node) {
+  $node/@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')
+  and exists($node/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
+}
+return //MethodCall[@MethodName = ('saveAll', 'saveAllAndFlush', 'deleteAll', 'deleteAllById', 'deleteAllInBatch')]
+  [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]
+  [ArgumentList[count(*) = 1]/*[
+    self::MethodCall[@MethodName = ('of', 'singletonList', 'singleton')][*[1][self::TypeExpression]][ArgumentList[count(*) = 1]]
+    or self::VariableAccess[let $name := @Name
+      return exists(ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement or self::LambdaExpression][1]
+        //VariableDeclarator[VariableId/@Name = $name]
+        /MethodCall[@MethodName = ('of', 'singletonList', 'singleton')][*[1][self::TypeExpression]][ArgumentList[count(*) = 1]])]]]
+  [$loop(.)]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringDataRowWriteInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Write one set-based @Query that takes the whole list, for example where id in :ids, and call it once after the loop instead of one repository update or delete per iteration.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $loop := function($node) {
+  exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
+    [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
+  or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
+    [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
+    [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+      or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
+},
+    $entityWrite := function($node) {
+  $node/@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')
+  and exists($node/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
+},
+    $read := '^(find|get|read|count|exists|query|stream|search|load|fetch|list|is|has)',
+    $write := '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)',
+    $standard := ('save', 'saveAndFlush', 'saveAll', 'saveAllAndFlush', 'delete', 'deleteById', 'deleteAll',
+      'deleteAllById', 'deleteAllInBatch', 'deleteAllByIdInBatch', 'flush')
+return (
+  //MethodCall[*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]
+    [not(@MethodName = $standard) and not(matches(@MethodName, $read))]
+    [not(ArgumentList/*[pmd-java:typeIs('java.lang.Iterable')])]
+    [parent::ExpressionStatement
+     or parent::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'peek')]]
+     or matches(@MethodName, $write)]
+  | //MethodCall[@MethodName = 'executeUpdate'][*[1][(pmd-java:typeIs('jakarta.persistence.Query') or pmd-java:typeIs('javax.persistence.Query'))]]
+)[$loop(.)]
+|
+//MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'peek')]
+  /ArgumentList/MethodReference[*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]
+    [not(@MethodName = $standard) and not(matches(@MethodName, $read))]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringDataSaveInLoopHelper" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Collect the entities and call saveAll or deleteAll once after the loop; when rows must fail one by one, call saveAll per batch and handle the error per batch. This loop calls a method of this class that saves or deletes one entity, so it still writes once per iteration.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $loop := function($node) {
+  exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
+    [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
+  or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
+    [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
+    [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
+      or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
+},
+    $entityWrite := function($node) {
+  $node/@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')
+  and exists($node/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
+}
+return //MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+  [let $name := @MethodName, $arity := count(ArgumentList/*)
+   return exists(ancestor::ClassDeclaration[1]/ClassBody/MethodDeclaration[@Name = $name][@Arity = $arity]
+     //MethodCall[$entityWrite(.)])]
+  [$loop(.)]
+|
+//MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
+  /ArgumentList/MethodReference[*[1][self::ThisExpression[not(*)]]]
+  [let $name := @MethodName
+   return exists(ancestor::ClassDeclaration[1]/ClassBody/MethodDeclaration[@Name = $name]//MethodCall[$entityWrite(.)])]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="SpringDataFilterInQuery" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Filter and count in the database, with an @Query that has a where clause, a count query or an exists query, instead of loading the whole table with findAll().">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[@MethodName = ('filter', 'count', 'anyMatch', 'allMatch', 'noneMatch', 'findFirst', 'findAny')]
+  [*[1][self::MethodCall[@MethodName = 'stream']
+    [*[1][self::MethodCall[@MethodName = 'findAll'][not(ArgumentList/*)]
+      [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]]]]]
+|
+//MethodCall[@MethodName = ('size', 'isEmpty')]
+  [*[1][self::MethodCall[@MethodName = 'findAll'][not(ArgumentList/*)]
+    [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]]]
+]]></value></property></properties>
+  </rule>
+
 </ruleset>

@@ -1,12 +1,15 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
+import { withKotlinRuleMessage } from './kotlin-messages.mjs';
 import {
-  addOneWayHint,
+  compilerWarningRule,
   isBannedSuppression,
   ONE_WAY_RULE_IDS,
   ONE_WAY_RULES,
   SUPPRESSION_RULE,
+  withAllowedForm,
 } from './kotlin-rules.mjs';
 import { expectedMessage, kotlinRuleCases } from './test-support/kotlin-rule-cases.mjs';
 import { fileURLToPath } from 'node:url';
@@ -26,7 +29,7 @@ describe('one-way rule messages', () => {
   it.each(detektCases.map((testCase) => [testCase.id, testCase]))(
     '%s names the allowed form and the exception route',
     (_id, testCase) => {
-      const { message } = addOneWayHint(
+      const { message } = withKotlinRuleMessage(
         detektFinding(testCase.rule, expectedMessage(testCase, 'banned')),
       );
 
@@ -34,7 +37,7 @@ describe('one-way rule messages', () => {
         id: testCase.id,
         namesAllowedForm: message.toLowerCase().includes(testCase.allowedForm.toLowerCase()),
         namesExceptionRoute: message.endsWith(
-          `"exceptions" entry for rule ${testCase.rule} in nitpicker.config.json.`,
+          exceptionHint(testCase.rule, 'src/main/kotlin/demo/A.kt'),
         ),
         keepsDetektText: message.startsWith(expectedMessage(testCase, 'banned').replace(/\.$/, '')),
       };
@@ -59,40 +62,52 @@ describe('one-way rule messages', () => {
   });
 
   it('keeps a message that ends without a period readable', () => {
-    const { message } = addOneWayHint(
+    const { message } = withAllowedForm(
       detektFinding('detekt.style.UnnecessaryLet', 'let expression can be omitted'),
     );
 
     expect(message).toBe(
-      'let expression can be omitted. Call the member directly; `let` is for `value?.let { ... }`. To allow it on specific paths, add an "exceptions" entry for rule detekt.style.UnnecessaryLet in nitpicker.config.json.',
+      'let expression can be omitted. Call the member directly; `let` is for `value?.let { ... }`.',
     );
   });
 
-  it('gives a rule whose detekt message names the allowed form only the exception route', () => {
-    const { message } = addOneWayHint(
+  it('gives a rule whose detekt message names the allowed form no second one', () => {
+    const finding = detektFinding(
+      'detekt.style.UseDataClass',
+      'The class A defines no functionality and only holds data. Consider converting it to a data class.',
+    );
+
+    expect(withAllowedForm(finding)).toBe(finding);
+  });
+
+  it('tells a test to use assertFailsWith for a broad catch', () => {
+    const file = 'src/main/kotlin/demo/A.kt';
+    const { message } = withKotlinRuleMessage(
       detektFinding(
-        'detekt.style.UseDataClass',
-        'The class A defines no functionality and only holds data. Consider converting it to a data class.',
+        'detekt.exceptions.TooGenericExceptionCaught',
+        'The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled.',
       ),
     );
 
     expect(message).toBe(
-      'The class A defines no functionality and only holds data. Consider converting it to a data class. To allow it on specific paths, add an "exceptions" entry for rule detekt.style.UseDataClass in nitpicker.config.json.',
+      `The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled. In a test, use \`assertFailsWith\`. ${exceptionHint('detekt.exceptions.TooGenericExceptionCaught', file)}`,
     );
   });
 
-  it('leaves other detekt rules and other tools alone', () => {
+  it('leaves other detekt rules and other tools without an allowed form', () => {
     const other = detektFinding('detekt.style.MagicNumber', 'magic');
     const sameRuleOtherTool = { ...detektFinding(ONE_WAY_RULES[0].id, 'x'), tool: 'ktlint' };
 
-    expect(addOneWayHint(other)).toBe(other);
-    expect(addOneWayHint(sameRuleOtherTool)).toBe(sameRuleOtherTool);
+    expect(withAllowedForm(other)).toBe(other);
+    expect(withAllowedForm(sameRuleOtherTool)).toBe(sameRuleOtherTool);
   });
 
   it('lists each rule once under the id detekt reports', () => {
     expect(new Set(ONE_WAY_RULE_IDS).size).toBe(ONE_WAY_RULE_IDS.length);
     for (const id of ONE_WAY_RULE_IDS) {
-      expect(id).toMatch(/^detekt\.(?:potential-bugs|coroutines|style)\.[A-Z]\w+$/);
+      expect(id).toMatch(
+        /^detekt\.(?:potential-bugs|exceptions|coroutines|style|complexity)\.[A-Z]\w+$/,
+      );
     }
   });
 });
@@ -173,13 +188,14 @@ describe('isBannedSuppression', () => {
     'ktlint',
     'ktlint:standard:indent',
     'ktlint.standard.indent',
+    'UNCHECKED_CAST',
+    'DEPRECATION',
+    'TYPEALIAS_EXPANSION_DEPRECATION',
   ])('bans %s', (token) => {
     expect(isBannedSuppression(token)).toBe(true);
   });
 
   it.each([
-    'UNCHECKED_CAST',
-    'DEPRECATION',
     'UNUSED_VARIABLE',
     'unchecked',
     'unused',
@@ -191,5 +207,15 @@ describe('isBannedSuppression', () => {
     '',
   ])('allows the compiler diagnostic or unrelated token %s', (token) => {
     expect(isBannedSuppression(token)).toBe(false);
+  });
+});
+
+describe('compilerWarningRule', () => {
+  it('names the kotlinc rule a compiler warning suppression hides', () => {
+    expect(
+      ['UNCHECKED_CAST', 'DEPRECATION', 'TYPEALIAS_EXPANSION_DEPRECATION', 'unused'].map(
+        compilerWarningRule,
+      ),
+    ).toEqual(['kotlinc/unchecked', 'kotlinc/deprecation', 'kotlinc/deprecation', undefined]);
   });
 });

@@ -1,4 +1,5 @@
 import { SUPPRESSION_RULE } from '../kotlin-rules.mjs';
+import { kotlinGuardCases } from './kotlin-guard-cases.mjs';
 
 const COROUTINE_IMPORTS =
   'import kotlinx.coroutines.GlobalScope\nimport kotlinx.coroutines.launch\n';
@@ -23,6 +24,17 @@ export const kotlinRuleCases = [
     allowed: 'fun text(value: Any?): String = value as? String ?: "none"\n',
   },
   {
+    id: 'broadCatch',
+    rule: 'detekt.exceptions.TooGenericExceptionCaught',
+    message:
+      'The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled.',
+    allowedForm: 'catching specific exceptions',
+    banned:
+      'fun number(text: String): Int =\n    try {\n        text.toInt()\n    } catch (error: Exception) {\n        error.hashCode()\n    }\n',
+    allowed:
+      'fun number(text: String): Int =\n    try {\n        text.toInt()\n    } catch (error: NumberFormatException) {\n        0\n    }\n',
+  },
+  {
     id: 'globalScope',
     rule: 'detekt.coroutines.GlobalCoroutineUsage',
     message: 'This use of GlobalScope should be replaced by `CoroutineScope` or `coroutineScope`.',
@@ -35,7 +47,7 @@ export const kotlinRuleCases = [
     id: 'runBlocking',
     rule: 'detekt.style.ForbiddenMethodCall',
     message:
-      'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.',
+      'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. In a test, use `runTest`.',
     allowedForm: 'suspend fun main()',
     banned: 'import kotlinx.coroutines.runBlocking\n\nfun wait(): Int = runBlocking { 1 }\n',
     allowed: 'import kotlinx.coroutines.delay\n\nsuspend fun wait() {\n    delay(1)\n}\n',
@@ -119,6 +131,7 @@ export const kotlinRuleCases = [
       '@Suppress("UnsafeCallOnNullableType")\nfun length(text: String?): Int = text!!.length\n',
     allowed: 'fun length(text: String?): Int = text?.length ?: 0\n',
   },
+  ...kotlinGuardCases,
 ];
 
 const VARIANT_NAMES = { banned: 'Banned', allowed: 'Allowed' };

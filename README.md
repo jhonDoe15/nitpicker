@@ -34,14 +34,17 @@ nitpicker fails the change and says what to write instead:
 $ npx nitpicker
 ✖ 4 new enforceable violations
   eslint-errors/nitpicker/no-silent-catch src/main/features/greeting/adapters/load-names.ts:8
-    This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. If dropping it is intended, add an exception for this rule in nitpicker.config.json.
+    This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. An exception fits only when dropping it is intended. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
   eslint-lint/nitpicker/no-handwritten-boundary-guard src/main/features/greeting/adapters/load-names.ts:6
-    Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`.
+    Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`. An exception fits only when the text is trusted and already typed. If this is intended, add {"rule":"nitpicker/no-handwritten-boundary-guard","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
   eslint-lint/no-restricted-syntax src/main/features/greeting/adapters/load-names.ts:6
-    Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.
+    Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed. If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
   mutation/mutant-survived src/main/features/greeting/adapters/load-names.ts:9
-    Survived ArrayDeclaration at column 12: replacing `[]` with `["Stryker was here"]` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.
+    Survived ArrayDeclaration at column 12: replacing `[]` with `["Stryker was here"]` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
 ```
+
+The messages name zod, the default validation library; in a project that depends on another one
+(valibot, yup, joi and others) they name that library instead.
 
 ## Why nitpicker
 
@@ -52,7 +55,7 @@ $ npx nitpicker
   [Adopting nitpicker on existing code](docs/usage.md#adopting-nitpicker-on-existing-code).
 - **Beyond lint.** Depending on the language, it also checks that changed code is covered by
   tests, that tests can fail (mutation testing), function size, duplication, module boundaries,
-  dead code and slow test patterns.
+  dead code, slow tests, unused or unlisted dependencies, committed secrets and slow test patterns.
 - **Teaches first, gates second.** An agent skill for each preset teaches the allowed forms before
   the agent writes code. The gate in CI is the backstop.
 
@@ -61,21 +64,24 @@ $ npx nitpicker
 nitpicker needs Node.js 22.14 or newer and a Git repository. For a TypeScript project:
 
 ```sh
-npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node
+npm install --save-dev nitpicker typescript @types/node
 npx nitpicker
 ```
+
+Tests run with the runner your project already uses: Vitest, Jest, `node:test` or Mocha. A Vitest
+project also needs `@vitest/coverage-v8` at its Vitest version.
 
 The TypeScript preset assumes a feature-folder [layout](docs/typescript-strict-preset.md#layout-and-boundaries).
 For another language, put the preset in `nitpicker.config.json`, for example
 `{ "preset": "python" }`, and run `npx nitpicker`. Each guide lists what your project provides.
 
-| Language                                                  | Preset                 | Agent skill            |
-| --------------------------------------------------------- | ---------------------- | ---------------------- |
-| [TypeScript](docs/typescript-strict-preset.md), and React | `typescript` (default) | `nitpicker-typescript` |
-| [JavaScript](docs/usage.md#javascript-preset)             | `javascript`           | `nitpicker-javascript` |
-| [Python](docs/python-preset.md)                           | `python`               | `nitpicker-python`     |
-| [Java](docs/java-preset.md)                               | `java`                 | `nitpicker-java`       |
-| [Kotlin](docs/kotlin-preset.md)                           | `kotlin`               | `nitpicker-kotlin`     |
+| Language                                                              | Preset                 | Agent skill            |
+| --------------------------------------------------------------------- | ---------------------- | ---------------------- |
+| [TypeScript](docs/typescript-strict-preset.md), React, and react-intl | `typescript` (default) | `nitpicker-typescript` |
+| [JavaScript](docs/usage.md#javascript-preset)                         | `javascript`           | `nitpicker-javascript` |
+| [Python](docs/python-preset.md)                                       | `python`               | `nitpicker-python`     |
+| [Java](docs/java-preset.md)                                           | `java`                 | `nitpicker-java`       |
+| [Kotlin](docs/kotlin-preset.md)                                       | `kotlin`               | `nitpicker-kotlin`     |
 
 Then teach your agent the allowed forms. Install the skill for your preset with
 [skills](https://skills.sh), which works with Claude Code, Cursor, Codex and other agents:
@@ -99,8 +105,8 @@ example `fetch-depth: 0`). It exits non-zero when a change adds a problem.
 
 ## Disagree with a rule?
 
-If a rule flags code that is right, its message says how to add an exception in
-`nitpicker.config.json`: the rule, the paths and a reason. Review sees it, and every report lists
+If a rule flags code that is right, its message ends with the entry to add to
+`exceptions` in `nitpicker.config.json`: the rule, the paths and a reason a reviewer fills in. Review sees it, and every report lists
 it. If a rule flags right code often, [open an issue](https://github.com/jhonDoe15/nitpicker/issues):
 the fix is a narrower rule, not a rule that is off. [Mindset](docs/mindset.md) explains how rules
 are chosen.

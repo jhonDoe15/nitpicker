@@ -1,9 +1,9 @@
 import { MINIMUM_BRANCH_COVERAGE } from '../../../../shared/policy.mjs';
 import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
-import { hashIdentity, normalizeReportPath } from '../../../java/ingest/common.mjs';
+import { enclosingFunctionName } from '../../../../shared/rules/finding-helpers.mjs';
+import { hashIdentity, normalizeReportPath } from '../../../../shared/ingest/common.mjs';
 
 const SCOPE_START = /^(?:async\s+def|def|class)\s+(\w+)/;
-const EXCEPTION_ROUTE = 'To exempt a file, add it to exclude in nitpicker.config.json.';
 
 export function ingestCoverageBranches(text, options = {}) {
   const report = JSON.parse(text);
@@ -20,12 +20,18 @@ export function ingestCoverageBranches(text, options = {}) {
     const source = filePath === undefined ? undefined : options.sourceText?.(filePath);
     return source === undefined
       ? []
-      : fileFindings(data, { path: filePath, lines: source.split(/\r?\n/), tool, minimum });
+      : fileFindings(data, {
+          path: filePath,
+          lines: source.split(/\r?\n/),
+          tool,
+          minimum,
+          options,
+        });
   });
   return { findings };
 }
 
-function fileFindings(data, { path, lines, tool, minimum }) {
+function fileFindings(data, { path, lines, tool, minimum, options }) {
   const branches = [];
   for (const [line, outcomes] of outcomesByLine(data)) {
     const source = lines[line - 1]?.trim().replaceAll(/\s+/g, ' ');
@@ -38,13 +44,14 @@ function fileFindings(data, { path, lines, tool, minimum }) {
       key: hashIdentity('branch-source', [enclosingScope(lines, line - 1), source]),
       percent: (outcomes.taken / (outcomes.taken + outcomes.missed.length)) * 100,
       arms: outcomes.missed.map(describeArm),
+      symbol: enclosingFunctionName(options.functions ?? [], path, line),
     });
   }
   return branchCoverageFindings(branches, {
     tool,
     minimum,
     identify: (key, occurrence) => (occurrence === 1 ? key : `${key}#${String(occurrence)}`),
-  }).map((finding) => ({ ...finding, message: `${finding.message} ${EXCEPTION_ROUTE}` }));
+  });
 }
 
 function indentOf(text) {

@@ -2,9 +2,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
 import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
-import { decodeEntities, parseXml } from './common.mjs';
+import { decodeEntities, parseXml } from '../../../shared/ingest/common.mjs';
 import { ingestGoCoverprofile } from './coverage-reports/gocover.mjs';
 import { ingestJacoco } from './coverage-reports/jacoco.mjs';
 import { ingestLcov } from './coverage-reports/lcov.mjs';
@@ -174,6 +175,27 @@ describe('archunit', () => {
     expect(findings[0].message).not.toMatch(/\.java:\d/);
   });
 
+  it('passes the Kotlin or Groovy file a violation names to the path resolver', () => {
+    const resolved = [];
+    const report = (fileName) =>
+      `<testsuite name="demo.NamingArchTest"><testcase name="servicesOnly" classname="demo.NamingArchTest"><failure message="Rule violated (1 times):&#10;Class &lt;demo.Calc&gt; does not have simple name ending with 'Service' in (${fileName}:0)"/></testcase></testsuite>`;
+    for (const fileName of ['Calc.kt', 'Calc.groovy']) {
+      ingestArchunit(report(fileName), {
+        resolvePath: (className, sourceFile) => {
+          resolved.push([className, sourceFile]);
+          return undefined;
+        },
+      });
+    }
+
+    expect(resolved).toEqual([
+      ['demo.NamingArchTest', undefined],
+      ['demo.Calc', 'Calc.kt'],
+      ['demo.NamingArchTest', undefined],
+      ['demo.Calc', 'Calc.groovy'],
+    ]);
+  });
+
   it('ignores passing test cases and rejects other documents', () => {
     expect(findings.some((finding) => finding.rule === 'layers_are_respected')).toBe(false);
     expect(() => ingestArchunit('<report/>')).toThrow('<testsuite>');
@@ -197,13 +219,24 @@ describe('pit', () => {
     ]);
   });
 
+  it('names the equivalent-mutant cases in a survived mutant, whichever tool names it', () => {
+    const message =
+      'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.';
+    const named = ingestPit(fixture('pit-mutations.xml'), {
+      tool: 'custom',
+      resolvePath: resolveMainPath,
+    });
+
+    expect([findings[0].message, named.findings[0].message]).toEqual([message, message]);
+  });
+
   it('identifies mutants by class, method, mutator and description, never by line', () => {
     expect(findings.slice(0, 2).map((finding) => finding.identity)).toEqual([
-      'demo.Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
-      'demo.Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
+      'Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
+      'Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
     ]);
     expect(findings[2].identity).toEqual(
-      'demo.Greeter|shout(Ljava/lang/String;)Ljava/lang/String;|EmptyObjectReturnValsMutator|replaced return value with "" for demo/Greeter::shout#1',
+      'Greeter|shout(LString;)LString;|EmptyObjectReturnValsMutator|replaced return value with "" for Greeter::shout#1',
     );
     expect(findings.every((finding) => !/line/i.test(finding.identity))).toBe(true);
   });
@@ -223,6 +256,47 @@ describe('pit', () => {
 
     expect(identityAtLine(swapped, 5)).toBe(identityAtLine(fixture('pit-mutations.xml'), 5));
     expect(identityAtLine(swapped, 9)).toBe(identityAtLine(fixture('pit-mutations.xml'), 9));
+  });
+
+  it('names the declaration a lambda of an initializer sits in, not the constructor', () => {
+    const report = (method) =>
+      `<mutations><mutation detected='false' status='SURVIVED'><sourceFile>Wide.java</sourceFile><mutatedClass>demo.Wide</mutatedClass><mutatedMethod>${method}</mutatedMethod><methodDescription>()I</methodDescription><lineNumber>7</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.ConditionalsBoundaryMutator</mutator><description>changed conditional boundary</description></mutation></mutations>`;
+    const symbolOf = (method, functionAt) =>
+      ingestPit(report(method), { resolvePath: resolveMainPath, functionAt }).findings[0].symbol;
+    const functionAt = (file, line) => `${file}:${String(line)}:Wide.field`;
+
+    expect(symbolOf('lambda$new$0', functionAt)).toBe('src/main/java/demo/Wide.java:7:Wide.field');
+    expect(symbolOf('lambda$new$0')).toBe('Wide#lambda$new$0()I');
+    expect(symbolOf('lambda$run$0', functionAt)).toBe('Wide#lambda$run$0()I');
+  });
+
+  it('matches the mutants of a class moved to another package, as a git rename', () => {
+    const report = (packageName) =>
+      `<mutations><mutation detected='false' status='NO_COVERAGE'><sourceFile>AuditService.java</sourceFile><mutatedClass>shop.${packageName}.AuditService</mutatedClass><mutatedMethod>agent</mutatedMethod><methodDescription>(Lshop/${packageName}/Request;)Ljava/lang/String;</methodDescription><lineNumber>9</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.EmptyObjectReturnValsMutator</mutator><description>replaced return value with &quot;&quot; for shop/${packageName}/AuditService::agent</description></mutation></mutations>`;
+    const keys = (packageName, renames) =>
+      ingestPit(report(packageName), { resolvePath: resolveJavaPath })
+        .findings.filter((finding) => finding.rule === 'mutant-nocoverage')
+        .map((finding) => comparisonKey(finding, renames));
+    const moved = 'src/main/java/shop/audit/AuditService.java';
+
+    expect(
+      keys('service', new Map([['src/main/java/shop/service/AuditService.java', moved]])),
+    ).toEqual(keys('audit'));
+  });
+
+  it('numbers the mutants of same-named classes in different packages independently', () => {
+    const mutant = (packageName, line, status) =>
+      `<mutation detected='false' status='${status}'><sourceFile>Mapper.java</sourceFile><mutatedClass>shop.${packageName}.Mapper</mutatedClass><mutatedMethod>map</mutatedMethod><methodDescription>()I</methodDescription><lineNumber>${String(line)}</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.MathMutator</mutator><description>Replaced integer addition with subtraction</description></mutation>`;
+    const billing = (ordersStatus) =>
+      ingestPit(
+        `<mutations>${mutant('orders', 10, ordersStatus)}${mutant('billing', 20, 'SURVIVED')}</mutations>`,
+        { resolvePath: resolveJavaPath },
+      ).findings.filter((finding) => finding.path === 'src/main/java/shop/billing/Mapper.java');
+
+    expect(billing('SURVIVED').map((finding) => finding.identity)).toEqual([
+      'Mapper|map()I|MathMutator|Replaced integer addition with subtraction#1',
+    ]);
+    expect(billing('KILLED')).toEqual(billing('SURVIVED'));
   });
 
   it('summarizes status counts as descriptive metrics and skips unresolvable sources', () => {

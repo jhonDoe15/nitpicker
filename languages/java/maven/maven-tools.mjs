@@ -33,29 +33,60 @@ function dependency(coordinates, exclusions = []) {
   ].join('');
 }
 
-export function toolDependencies(pinned, launcherVersions = []) {
+export function formatTool(javaStyle, pinned) {
+  if (javaStyle === 'none') {
+    return [];
+  }
+  const palantir = javaStyle === 'palantir';
+  return [
+    {
+      name: palantir ? 'format-palantir' : 'format',
+      coordinates: [
+        palantir
+          ? `com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}`
+          : `com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`,
+      ],
+    },
+  ];
+}
+
+export function archunitTool(spring, pinned) {
+  return spring
+    ? [{ name: 'archunit', coordinates: [`com.tngtech.archunit:archunit:${pinned.archunit}`] }]
+    : [];
+}
+
+export function toolDependencies(pinned, launcherVersions = [], extraTools = []) {
   return {
     pmd: [
       dependency(`net.sourceforge.pmd:pmd-cli:${pinned.pmd}`),
       dependency(`net.sourceforge.pmd:pmd-java:${pinned.pmd}`),
     ],
     spotbugs: [dependency(`com.github.spotbugs:spotbugs:${pinned.spotbugs}`)],
-    format: [
-      dependency(`com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`),
-    ],
     checkstyle: [dependency(`com.puppycrawl.tools:checkstyle:${pinned.checkstyle}`)],
+    errorprone: [
+      dependency(`com.google.errorprone:error_prone_core:${pinned.errorProne}`),
+      dependency(`com.uber.nullaway:nullaway:${pinned.nullAway}`),
+    ],
     jacoco: [dependency(`org.jacoco:org.jacoco.cli:${pinned.jacoco}:nodeps`)],
-    pit: [
-      dependency(`org.pitest:pitest-command-line:${pinned.pitest}`),
+    pit: [dependency(`org.pitest:pitest-command-line:${pinned.pitest}`)],
+    'pit-junit5': [
       dependency(
         `org.pitest:pitest-junit5-plugin:${pinned.pitestJunit5}`,
         JUNIT_PLATFORM_EXCLUSIONS,
       ),
     ],
+    'pit-testng': [dependency(`org.pitest:pitest-testng-plugin:${pinned.pitestTestng}`)],
     ...Object.fromEntries(
       launcherVersions.map((version) => [
         `launcher-${version}`,
         [dependency(`org.junit.platform:junit-platform-launcher:${version}`)],
+      ]),
+    ),
+    ...Object.fromEntries(
+      extraTools.map(({ name, coordinates }) => [
+        name,
+        coordinates.map((entry) => dependency(entry)),
       ]),
     ),
   };
@@ -103,16 +134,16 @@ function missing(classpaths) {
     .map(([name]) => name);
 }
 
-function cacheDirectory(key) {
+export function cacheDirectory(name) {
   const root = path.join(process.env.XDG_CACHE_HOME ?? path.join(homedir(), '.cache'), 'nitpicker');
   mkdirSync(root, { recursive: true, mode: 0o700 });
-  return path.join(root, `maven-tools-${key}`);
+  return path.join(root, name);
 }
 
-export function resolveTools({ projectRoot, maven, pinned, launcherVersions }) {
-  const tools = toolDependencies(pinned, launcherVersions);
+export function resolveTools({ projectRoot, maven, pinned, launcherVersions, extraTools }) {
+  const tools = toolDependencies(pinned, launcherVersions, extraTools);
   const key = createHash('sha256').update(JSON.stringify(tools)).digest('hex').slice(0, 16);
-  const directory = cacheDirectory(key);
+  const directory = cacheDirectory(`maven-tools-${key}`);
   const cached = readClasspaths(directory, Object.keys(tools));
   if (missing(cached).length === 0) {
     return cached;

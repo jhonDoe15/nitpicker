@@ -1,3 +1,4 @@
+import { rule as noDevDependencyInProduction } from './rules/dependencies/no-dev-dependency-in-production.mjs';
 import { rule as integrationTestUsesApprovedHarness } from './rules/testing/processes/integration-test-uses-approved-harness.mjs';
 import { rule as containerPauseRequiresFinallyUnpause } from './rules/testing/lifecycle/container-pause-requires-finally-unpause.mjs';
 import { rule as boundedContainerTeardown } from './rules/testing/lifecycle/bounded-container-teardown.mjs';
@@ -10,6 +11,9 @@ import { rule as noModuleLevelLet } from './rules/modules/no-module-level-let.mj
 import { rule as noMockingSubjectUnderTest } from './rules/testing/assertions/no-mocking-subject-under-test.mjs';
 import { rule as cognitiveComplexity } from './rules/analysis/cognitive-complexity.mjs';
 import { rule as noComments } from './rules/modules/no-comments.mjs';
+import { rule as fileNameCasing } from './rules/naming/file-name-casing.mjs';
+import { rule as noUiFrameworkInDomain } from './rules/syntax/no-ui-framework-in-domain.mjs';
+import { noDefaultExport, noNull, noPromiseChain } from './rules/syntax/syntax-bans.mjs';
 import { rule as noProductionConsole } from './rules/modules/no-production-console.mjs';
 import { rule as noSelfRecursion } from './rules/control/no-self-recursion.mjs';
 import { rule as noSilentCatch } from './rules/errors/no-silent-catch.mjs';
@@ -31,13 +35,43 @@ import { rule as hermeticGitInTests } from './rules/testing/processes/hermetic-g
 import { rule as noNodeProcessPerTest } from './rules/testing/processes/no-node-process-per-test.mjs';
 import { rule as noServerOrWorkerPerTest } from './rules/testing/processes/no-server-or-worker-per-test.mjs';
 import { rule as noRaisedTestTimeout } from './rules/testing/assertions/no-raised-test-timeout.mjs';
+import { rule as requireTestProcessTimeout } from './rules/testing/processes/timeouts/require-test-process-timeout.mjs';
+import { rule as noUnusedDomEnvironment } from './rules/testing/environment/no-unused-dom-environment.mjs';
 import { rule as noPartialOutputAssertion } from './rules/testing/assertions/no-partial-output-assertion.mjs';
 import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mjs';
 import { rule as testTsconfigPinsLibAndTypes } from './rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
+import { rule as exhaustiveUnionPredicate } from './rules/api-shape/exhaustive-union-predicate.mjs';
+import { rule as hoverTestNeedsKeyboard } from './rules/react-tests/hover-test-needs-keyboard.mjs';
+import { rule as noForwardingWrapper } from './rules/api-shape/no-forwarding-wrapper.mjs';
+import { rule as noRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
+import { rule as noSingularAndPluralProp } from './rules/react-props/no-singular-and-plural-prop.mjs';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
+import { rule as reactNoHardcodedColors } from './rules/react/theme/react-no-hardcoded-colors.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mjs';
 import { rule as reactSingleStylingApproach } from './rules/react/react-single-styling-approach.mjs';
-import { rule as reactTestNoImplementationDetails } from './rules/react/react-test-no-implementation-details.mjs';
+import { rule as reactControlledInput } from './rules/react/forms/react-controlled-input.mjs';
+import { rule as reactFieldHasLabel } from './rules/react/forms/react-field-has-label.mjs';
+import { rule as reactNoDirectDom } from './rules/react/render/react-no-direct-dom.mjs';
+import { rule as reactNoEffectEventHandling } from './rules/react/render/react-no-effect-event-handling.mjs';
+import { rule as reactNoRandomKey } from './rules/react/render/react-no-random-key.mjs';
+import { rule as reactTestNoImplementationDetails } from './rules/react-tests/react-test-no-implementation-details.mjs';
+
+import { rule as noModuleLevelMutableState } from './rules/guards/no-module-level-mutable-state.mjs';
+import { rule as noProcessAccessOutsideCompositionRoot } from './rules/guards/no-process-access-outside-composition-root.mjs';
+import { rule as noShellStringCommand } from './rules/guards/no-shell-string-command.mjs';
+import { rule as noDisabledTlsVerification } from './rules/security/tls/no-disabled-tls-verification.mjs';
+import { rule as noSqlStringBuilding } from './rules/security/sql/no-sql-string-building.mjs';
+import { rule as noUnsafeDeserialization } from './rules/security/deserialization/no-unsafe-deserialization.mjs';
+import { rule as noWeakHash } from './rules/security/hash/no-weak-hash.mjs';
+import { rule as requireHttpTimeout } from './rules/security/http/require-http-timeout.mjs';
+import { rule as noUnknownMainFolder } from './rules/guards/no-unknown-main-folder.mjs';
+import { rule as noUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
+import { rule as noMagicNumbers } from './rules/wrapped/no-magic-numbers.mjs';
+import { rule as namingConvention } from './rules/wrapped/naming-convention.mjs';
+import { testAssertionRules } from './test-assertions/rules.mjs';
+import { rule as noTestHelpersInSource } from './test-placement/no-test-helpers-in-source.mjs';
+import { testIsolationRules } from './test-isolation/rules.mjs';
+import { testQualityRules } from './test-quality/rules.mjs';
 
 export const nitpickerRules = {
   meta: {
@@ -45,6 +79,10 @@ export const nitpickerRules = {
     version: '0.1.0',
   },
   rules: {
+    'no-default-export': noDefaultExport,
+    'no-ui-framework-in-domain': noUiFrameworkInDomain,
+    'no-null': noNull,
+    'no-promise-chain': noPromiseChain,
     'container-pause-requires-finally-unpause': containerPauseRequiresFinallyUnpause,
     'bounded-container-teardown': boundedContainerTeardown,
     'no-fixed-sleep-synchronization': noFixedSleepSynchronization,
@@ -59,12 +97,26 @@ export const nitpickerRules = {
     'no-managed-resource-construction-outside-composition-roots':
       noManagedResourceConstructionOutsideCompositionRoots,
     'no-module-level-let': noModuleLevelLet,
+    'no-module-level-mutable-state': noModuleLevelMutableState,
+    'no-process-access-outside-composition-root': noProcessAccessOutsideCompositionRoot,
+    'no-shell-string-command': noShellStringCommand,
+    'no-disabled-tls-verification': noDisabledTlsVerification,
+    'no-sql-string-building': noSqlStringBuilding,
+    'no-unsafe-deserialization': noUnsafeDeserialization,
+    'no-weak-hash': noWeakHash,
+    'require-http-timeout': requireHttpTimeout,
+    'no-unknown-main-folder': noUnknownMainFolder,
+    'no-magic-numbers': noMagicNumbers,
+    'naming-convention': namingConvention,
+    'no-unsafe-path-join': noUnsafePathJoin,
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
     'cognitive-complexity': cognitiveComplexity,
     'no-comments': noComments,
+    'file-name-casing': fileNameCasing,
     'no-production-console': noProductionConsole,
     'no-self-recursion': noSelfRecursion,
     'no-silent-catch': noSilentCatch,
+    'no-dev-dependency-in-production': noDevDependencyInProduction,
     'no-throw': noThrow,
     'no-unknown-in-domain': noUnknownInDomain,
     'no-mutating-method-in-domain': noMutatingMethodInDomain,
@@ -79,12 +131,29 @@ export const nitpickerRules = {
     'no-node-process-per-test': noNodeProcessPerTest,
     'no-server-or-worker-per-test': noServerOrWorkerPerTest,
     'no-raised-test-timeout': noRaisedTestTimeout,
+    'require-test-process-timeout': requireTestProcessTimeout,
     'no-partial-output-assertion': noPartialOutputAssertion,
+    'no-unused-dom-environment': noUnusedDomEnvironment,
     'no-process-globals-outside-main-guard': noProcessGlobalsOutsideMainGuard,
     'test-tsconfig-pins-lib-and-types': testTsconfigPinsLibAndTypes,
+    'exhaustive-union-predicate': exhaustiveUnionPredicate,
+    'hover-test-needs-keyboard': hoverTestNeedsKeyboard,
+    'no-forwarding-wrapper': noForwardingWrapper,
+    'no-runtime-exclusive-props-check': noRuntimeExclusivePropsCheck,
+    'no-singular-and-plural-prop': noSingularAndPluralProp,
     'react-no-effect-data-fetching': reactNoEffectDataFetching,
     'react-no-effect-derived-state': reactNoEffectDerivedState,
+    'react-no-hardcoded-colors': reactNoHardcodedColors,
     'react-single-styling-approach': reactSingleStylingApproach,
+    'react-controlled-input': reactControlledInput,
+    'react-field-has-label': reactFieldHasLabel,
+    'react-no-direct-dom': reactNoDirectDom,
+    'react-no-effect-event-handling': reactNoEffectEventHandling,
+    'react-no-random-key': reactNoRandomKey,
     'react-test-no-implementation-details': reactTestNoImplementationDetails,
+    'no-test-helpers-in-source': noTestHelpersInSource,
+    ...testAssertionRules,
+    ...testIsolationRules,
+    ...testQualityRules,
   },
 };

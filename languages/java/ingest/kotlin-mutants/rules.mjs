@@ -32,10 +32,6 @@ const UNIT_BUILDERS = new Set([
   'invokeOnCompletion',
 ]);
 
-function sourceKey({ className, sourceFile }) {
-  return [...className.split('.').slice(0, -1), sourceFile].join('/');
-}
-
 function inlineBody({ mutant, file }) {
   const base = unmangled(mutant.method.replace(/(?:\$default|\$\$forInline)$/, ''));
   return (
@@ -150,7 +146,6 @@ function nullCheckIntrinsic({ mutant, file }) {
 }
 
 export const SOURCE_FREE_RULES = [
-  ['generated-source', ({ mutant, generatedSources }) => generatedSources.has(sourceKey(mutant))],
   [
     'coroutine-throw-on-failure',
     ({ mutant }) => mutant.description === 'removed call to kotlin/ResultKt::throwOnFailure',

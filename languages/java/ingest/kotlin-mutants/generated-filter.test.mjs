@@ -74,32 +74,6 @@ describe('rules that need no source facts', () => {
   });
 });
 
-describe('generated-source', () => {
-  const filter = createGeneratedFilter(
-    { files: [] },
-    new Set(['demo/Dao_Impl.java', 'demo/api/Client.kt']),
-  );
-  const dao = { className: 'demo.Dao_Impl', sourceFile: 'Dao_Impl.java', ...returns };
-
-  it('drops the mutants of a file in a KSP or KAPT source directory, nested classes included', () => {
-    expect([
-      filter(mutant(dao), undefined),
-      filter(mutant({ ...dao, className: 'demo.Dao_Impl$1' }), undefined),
-      filter(
-        mutant({ className: 'demo.api.Client', sourceFile: 'Client.kt', ...returns }),
-        undefined,
-      ),
-    ]).toEqual(['generated-source', 'generated-source', 'generated-source']);
-  });
-
-  it('keeps a file of the same name in another package and a file the project wrote', () => {
-    expect([
-      filter(mutant({ ...dao, className: 'other.Dao_Impl' }), undefined),
-      filter(mutant({ className: 'demo.Dao', sourceFile: 'Dao.kt', ...returns }), FILE),
-    ]).toEqual([undefined, undefined]);
-  });
-});
-
 const suspendDescription = '(ILkotlin/coroutines/Continuation;)Ljava/lang/Object;';
 
 describe('state-machine-branch', () => {

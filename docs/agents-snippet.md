@@ -61,9 +61,10 @@ and metric changes are reported but never fail.
 1. Read the message. It says what is wrong.
 2. Fix the code so the finding goes away, then rerun `npx nitpicker` until it exits 0.
 3. **Never suppress a finding.** Do not add `eslint-disable` comments, `@ts-ignore` or
-   `@ts-expect-error`, edit the rule configuration, add to `exclude` or `disable` in
-   `nitpicker.config.json`, add to `nitpicker.legacy.json`, or delete or weaken tests to make the
-   gate pass. Those overrides are listed in the report and change the policy hash, so they are
-   visible in review.
+   `@ts-expect-error`, edit the rule configuration, add to `exclude`, `disable` or `exceptions` in
+   `nitpicker.config.json`, add to `nitpicker.legacy.json`, mark a file you wrote as generated
+   (`@generated`, `DO NOT EDIT`), or delete or weaken tests to make the gate pass. Those overrides are listed in the report and change the policy hash, so they are
+   visible in review. Never pass `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`:
+   a `nitpicker-config/policy-loosened` finding means stop and ask a person to review the change.
 4. If a finding looks wrong, or fixing it needs a decision you cannot make, stop and ask the
    maintainer. Do not work around it.

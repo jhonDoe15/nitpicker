@@ -1,13 +1,9 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import ts from 'typescript';
-import { depthFirst } from '../../../../shared/traversal.mjs';
 import { describe, expect, it } from 'vitest';
 import { failureMessagesFor } from '../failure-messages/test-support/harness.mjs';
 import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
+import { testTimeouts } from '../../adapters/test-runners/test-run.mjs';
 import { resolveLayout } from '../layout.mjs';
 import { isStrictRule } from '../strict-rules.mjs';
-import { syntaxChildren } from '../syntax/children.mjs';
 import { strictPresetConfig } from './strict.mjs';
 import {
   strictTestConfigFor,
@@ -16,13 +12,13 @@ import {
   strictTestsConfig,
 } from './strict-tests.mjs';
 
-const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const raisedTimeout = "it('slow', () => {}, 60_000);";
 const loopMessage =
   'for...of is the only loop; iterate the items with for...of, or give each case its own test with it.each.';
 const forEachMessage = 'Use a for...of loop instead of forEach.';
 const chainMessage =
-  'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.';
+  'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.' +
+  ' An exception fits only when a framework or library requires it.';
 const asMessage =
   'Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.';
 const angleMessage =
@@ -33,33 +29,29 @@ function messages(code, filename, config = strictTestsConfig) {
   return failureMessagesFor({ config, filename, code });
 }
 
-function timeoutSettings(file) {
-  const source = ts.createSourceFile(
-    file,
-    readFileSync(path.join(packageRoot, file), 'utf8'),
-    ts.ScriptTarget.Latest,
-  );
-  const settings = [];
-  for (const node of depthFirst(source, syntaxChildren)) {
-    if (ts.isPropertyAssignment(node) && node.name.getText(source) === 'testTimeout') {
-      settings.push(['testTimeout', Number(node.initializer.getText(source).replaceAll('_', ''))]);
-    }
-    if (ts.isArrayLiteralExpression(node)) {
-      const values = node.elements.map((element) =>
-        ts.isStringLiteral(element) ? element.text : undefined,
-      );
-      const index = values.indexOf('--testTimeout');
-      if (index !== -1) settings.push(['--testTimeout', Number(values[index + 1])]);
-    }
-  }
-  return settings;
-}
-
 describe('strict test rules', () => {
+  it('requires subprocess deadlines in integration tests and their shared helpers', () => {
+    const code = "import { spawnSync } from 'node:child_process'; spawnSync('tool', []);";
+    const expected = [
+      'Give spawnSync a positive subprocess timeout, such as { timeout: 10_000 }. A test runner timeout cannot interrupt a synchronous child process, so a stuck command can hang the suite. An exception fits only when this process must wait without a deadline.',
+    ];
+    expect(
+      [
+        'test/integration/build.test.ts',
+        'tests/support/command.mjs',
+        'src/__tests__/helper.js',
+        'src/build/test-support/command.ts',
+      ].map((file) => messages(code, file)),
+    ).toEqual([expected, expected, expected, expected]);
+    expect(messages(code, 'src/main/command.ts')).toEqual([
+      'No matching configuration found for src/main/command.ts.',
+    ]);
+  });
+
   it('apply to test files under the test roots and next to sources', () => {
     for (const file of ['test/a.test.ts', 'tests/unit/a.spec.ts', 'src/a.test.ts']) {
       expect(messages(raisedTimeout, file)).toEqual([
-        'Do not raise a test or hook timeout above 10000 ms, the testTimeout nitpicker runs tests with. Make the test faster instead: import code rather than spawning it, and share expensive setup in beforeAll. A genuinely long end-to-end suite can add an exception for this rule in nitpicker.config.json.',
+        'Keep the test timeout between 1 and 10000 ms for this test project. Make the test faster or configure its named project timeout in tools.tests.timeouts.',
       ]);
     }
     expect(messages(raisedTimeout, 'src/__tests__/helpers.ts')).toHaveLength(1);
@@ -69,9 +61,10 @@ describe('strict test rules', () => {
     expect(messages(raisedTimeout, 'src/main/service.ts')).toEqual([
       'No matching configuration found for src/main/service.ts.',
     ]);
-    expect(messages(raisedTimeout, 'tests/generated/a.test.ts')).toEqual([
-      'No matching configuration found for tests/generated/a.test.ts.',
+    expect(messages(raisedTimeout, 'tests/node_modules/a.test.ts')).toEqual([
+      'No matching configuration found for tests/node_modules/a.test.ts.',
     ]);
+    expect(messages(raisedTimeout, 'tests/generated/a.test.ts')).toHaveLength(1);
   });
 
   it('hold helper and fixture scripts, not test files, to the main guard', () => {
@@ -132,12 +125,8 @@ describe('strict test rules', () => {
     }
   });
 
-  it('cap timeouts at the testTimeout nitpicker runs tests with', () => {
-    expect(
-      timeoutSettings('languages/typescript/preset/defaults/vitest.quality.config.ts'),
-    ).toEqual([['testTimeout', TEST_TIMEOUT_CEILING_MS]]);
-    expect(
-      timeoutSettings('languages/typescript/adapters/quality-areas/runners/tests.mjs'),
-    ).toEqual([['--testTimeout', TEST_TIMEOUT_CEILING_MS]]);
+  it('keeps declaration ceilings separate from resolved runtime deadlines', () => {
+    expect(testTimeouts().testDeclarationCeilingMs).toBe(TEST_TIMEOUT_CEILING_MS);
+    expect(testTimeouts().testTimeoutMs).toBe(40_000);
   });
 });

@@ -1,26 +1,3 @@
-// Per-method structure metrics for the Java preset (languages/java/gradle/nitpicker.init.gradle, task
-// nitpickerStructure). Run in the JDK's single-file source mode, so it needs no dependency beyond
-// the JDK that already runs Gradle: it parses (never compiles) the main sources with the compiler
-// tree API (jdk.compiler) and writes one JSON object per method and constructor.
-//
-//   java StructureMetrics.java <output.json> <projectDir> <sourceRoot>...
-//
-// Metrics follow the TypeScript structure analyzer so both languages enforce the same limits:
-//   lines              last line - first line + 1 (annotations and modifiers included, Javadoc not)
-//   statements         every statement below the body except blocks
-//   maxControlNesting  deepest nesting of if, for, enhanced for, while, do, switch and catch
-//   parameters         declared parameters
-//   complexity         cyclomatic complexity (the CRAP input): 1 + if, for, enhanced for, while, do, catch,
-//                      ?:, &&, || and every `case` except a default one (`default`, `case null, default`);
-//                      an arrow case and a case with several constants count once
-//   signature          Owner.method(parameter types), the identity of the method in the CRAP check
-//   privateEmptyConstructor  true for `private Name() {}`, which JaCoCo often leaves out of its report
-// Members of nested classes (anonymous, local or member) are reported as methods of their own and
-// do not count towards the enclosing method; lambda bodies count towards the enclosing method.
-//
-// A syntax error (for example syntax newer than the JVM that runs Gradle) prints file:line and the compiler
-// message to stderr and exits with status 1, so the Gradle task fails instead of dropping methods.
-
 import com.sun.source.tree.*;
 import com.sun.source.util.*;
 import java.io.IOException;
@@ -45,9 +22,10 @@ public final class StructureMetrics {
 
   public static void main(String[] args) throws IOException {
     Path output = Path.of(args[0]);
-    Path projectDir = Path.of(args[1]).toAbsolutePath().normalize();
+    Path classesOutput = Path.of(args[1]);
+    Path projectDir = Path.of(args[2]).toAbsolutePath().normalize();
     List<Path> files = new ArrayList<>();
-    for (int i = 2; i < args.length; i++) {
+    for (int i = 3; i < args.length; i++) {
       Path root = projectDir.resolve(args[i]);
       if (Files.isDirectory(root)) {
         try (Stream<Path> walk = Files.walk(root)) {
@@ -60,6 +38,8 @@ public final class StructureMetrics {
       throw new IllegalStateException("Running on a JRE without jdk.compiler; a JDK is required");
     }
     List<String> entries = new ArrayList<>();
+    List<String> classes = new ArrayList<>();
+    List<String> fileEntries = new ArrayList<>();
     List<String> errors = new ArrayList<>();
     try (StandardJavaFileManager fm =
         compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8)) {
@@ -81,6 +61,8 @@ public final class StructureMetrics {
         String relative = relative(projectDir, file);
         for (CompilationUnitTree unit : task.parse()) {
           new Collector(unit, positions, relative, entries).scan(unit, "");
+          fileEntries.add(describeFile(relative, unit));
+          new ClassCollector(unit, positions, relative, classes).scan(unit, "");
         }
       }
     }
@@ -91,14 +73,20 @@ public final class StructureMetrics {
     }
     Files.writeString(
         output, "[" + String.join(",", entries) + "]\n", StandardCharsets.UTF_8);
+    Files.writeString(
+        classesOutput,
+        "{\"files\":{" + String.join(",", fileEntries) + "},\"classes\":["
+            + String.join(",", classes) + "]}\n",
+        StandardCharsets.UTF_8);
   }
 
-  /** Walks types and reports each method and constructor with the name of its enclosing types. */
+  /** Walks types and reports each method, constructor, initializer and lambda with the name of its enclosing types. */
   private static final class Collector extends TreeScanner<Void, String> {
     private final CompilationUnitTree unit;
     private final SourcePositions positions;
     private final String file;
     private final List<String> entries;
+    private final Deque<List<? extends TypeParameterTree>> typeScopes = new ArrayDeque<>();
 
     Collector(
         CompilationUnitTree unit, SourcePositions positions, String file, List<String> entries) {
@@ -113,9 +101,11 @@ public final class StructureMetrics {
       String simple = tree.getSimpleName().toString();
       String name = simple.isEmpty() ? "<anonymous>" : simple;
       String qualified = owner.isEmpty() ? name : owner + "." + name;
+      typeScopes.push(tree.getTypeParameters());
       for (Tree member : tree.getMembers()) {
         scan(member, qualified);
       }
+      typeScopes.pop();
       return null;
     }
 
@@ -123,83 +113,196 @@ public final class StructureMetrics {
     public Void visitMethod(MethodTree tree, String owner) {
       if (tree.getBody() != null) {
         report(tree, owner);
-        visitNestedTypes(tree.getBody(), owner);
+        typeScopes.push(tree.getTypeParameters());
+        nested(tree.getBody(), owner, owner + "." + methodName(tree, owner));
+        typeScopes.pop();
       }
       return null;
     }
 
     @Override
     public Void visitVariable(VariableTree tree, String owner) {
-      // Field initializers can hold anonymous classes with methods.
-      if (tree.getInitializer() != null) {
-        visitNestedTypes(tree.getInitializer(), owner);
+      ExpressionTree initializer = tree.getInitializer();
+      if (initializer == null) {
+        return null;
       }
+      String scope = owner + "." + tree.getName();
+      LambdaExpressionTree lambda = lambdaOf(initializer);
+      if (lambda != null) {
+        lambdaUnit(lambda, owner, scope);
+        return null;
+      }
+      Body body = new Body();
+      body.statements = 1;
+      body.scan(initializer, 0);
+      Complexity complexity = new Complexity();
+      complexity.scan(initializer, null);
+      if (complexity.branches > 0 || body.maxNesting > 0) {
+        add(tree, new Metrics(scope, scope, body, complexity, 0, "\"initializer\":true"));
+      }
+      nested(initializer, owner, scope);
       return null;
     }
 
     @Override
     public Void visitBlock(BlockTree tree, String owner) {
-      // Initializer blocks are not methods, but may declare nested types.
-      visitNestedTypes(tree, owner);
+      String scope = owner + (tree.isStatic() ? ".<clinit>" : ".<init>");
+      if (!tree.getStatements().isEmpty()) {
+        Body body = new Body();
+        body.scan(tree, 0);
+        Complexity complexity = new Complexity();
+        complexity.scan(tree, null);
+        add(tree, new Metrics(scope, scope, body, complexity, 0, "\"initializer\":true"));
+      }
+      nested(tree, owner, scope);
       return null;
     }
 
-    private void visitNestedTypes(Tree root, String owner) {
-      new TreeScanner<Void, Void>() {
+    private void lambdaUnit(LambdaExpressionTree lambda, String owner, String scope) {
+      Body body = new Body();
+      body.statements = lambda.getBody() instanceof BlockTree ? 0 : 1;
+      body.scan(lambda.getBody(), 0);
+      Complexity complexity = new Complexity();
+      complexity.scan(lambda.getBody(), null);
+      add(
+          lambda,
+          new Metrics(scope, scope, body, complexity, lambda.getParameters().size(), "\"lambda\":true"));
+      nested(lambda.getBody(), owner, scope);
+    }
+
+    /** Finds the classes and lambdas below a unit's body; each is a unit of its own. */
+    private void nested(Tree root, String owner, String scope) {
+      new TreeScanner<Void, String>() {
         @Override
-        public Void visitClass(ClassTree inner, Void ignored) {
+        public Void visitClass(ClassTree inner, String parent) {
           Collector.this.visitClass(inner, owner);
           return null;
         }
-      }.scan(root, null);
+
+        @Override
+        public Void visitLambdaExpression(LambdaExpressionTree lambda, String parent) {
+          lambdaUnit(lambda, owner, parent + ".<lambda>");
+          return null;
+        }
+
+        @Override
+        public Void visitVariable(VariableTree variable, String parent) {
+          LambdaExpressionTree lambda =
+              variable.getInitializer() == null ? null : lambdaOf(variable.getInitializer());
+          if (lambda == null) {
+            return super.visitVariable(variable, parent);
+          }
+          lambdaUnit(lambda, owner, parent + "." + variable.getName());
+          return null;
+        }
+      }.scan(root, scope);
+    }
+
+    private Map<String, TypeParameterTree> typeVariables(MethodTree tree) {
+      Map<String, TypeParameterTree> variables = new HashMap<>();
+      typeScopes.descendingIterator().forEachRemaining(scope -> declare(variables, scope));
+      declare(variables, tree.getTypeParameters());
+      return variables;
+    }
+
+    private static void declare(
+        Map<String, TypeParameterTree> variables, List<? extends TypeParameterTree> scope) {
+      scope.forEach(parameter -> variables.put(parameter.getName().toString(), parameter));
+    }
+
+    private static String methodName(MethodTree tree, String owner) {
+      return tree.getName().contentEquals("<init>")
+          ? owner.substring(owner.lastIndexOf('.') + 1)
+          : tree.getName().toString();
     }
 
     private void report(MethodTree tree, String owner) {
-      long start = positions.getStartPosition(unit, tree);
-      long end = positions.getEndPosition(unit, tree);
-      LineMap lines = unit.getLineMap();
-      long startLine = lines.getLineNumber(start);
-      long endLine = lines.getLineNumber(Math.max(start, end - 1));
       Body body = new Body();
       body.scan(tree.getBody(), 0);
       Complexity complexity = new Complexity();
       complexity.scan(tree.getBody(), null);
-      String name =
-          tree.getName().contentEquals("<init>")
-              ? owner.substring(owner.lastIndexOf('.') + 1)
-              : tree.getName().toString();
+      String name = methodName(tree, owner);
+      add(
+          tree,
+          new Metrics(
+              owner + "." + name,
+              signature(owner, name, tree),
+              body,
+              complexity,
+              tree.getParameters().size(),
+              "\"parameterTypes\":"
+                  + parameterTypes(tree, typeVariables(tree))
+                  + (isPrivateEmptyConstructor(tree) ? ",\"privateEmptyConstructor\":true" : "")));
+    }
+
+    private void add(Tree node, Metrics metrics) {
+      long start = positions.getStartPosition(unit, node);
+      long end = positions.getEndPosition(unit, node);
+      LineMap lines = unit.getLineMap();
+      long startLine = lines.getLineNumber(start);
+      long endLine = lines.getLineNumber(Math.max(start, end - 1));
       entries.add(
           "{\"file\":" + quote(file)
-              + ",\"name\":" + quote(owner + "." + name)
+              + ",\"name\":" + quote(metrics.name)
               + ",\"start\":" + startLine
               + ",\"end\":" + endLine
               + ",\"lines\":" + (endLine - startLine + 1)
-              + ",\"statements\":" + body.statements
-              + ",\"maxControlNesting\":" + body.maxNesting
-              + ",\"parameters\":" + tree.getParameters().size()
-              + ",\"complexity\":" + (1 + complexity.branches)
-              + ",\"signature\":" + quote(signature(owner, name, tree))
-              + (isPrivateEmptyConstructor(tree) ? ",\"privateEmptyConstructor\":true" : "")
+              + ",\"statements\":" + metrics.body.statements
+              + ",\"maxControlNesting\":" + metrics.body.maxNesting
+              + ",\"parameters\":" + metrics.parameters
+              + ",\"complexity\":" + (1 + metrics.complexity.branches)
+              + ",\"signature\":" + quote(metrics.signature)
+              + "," + metrics.extra
               + "}");
     }
+  }
+
+  private record Metrics(
+      String name, String signature, Body body, Complexity complexity, int parameters, String extra) {}
+
+  private static LambdaExpressionTree lambdaOf(ExpressionTree expression) {
+    return switch (expression) {
+      case LambdaExpressionTree lambda -> lambda;
+      case ParenthesizedTree parenthesized -> lambdaOf(parenthesized.getExpression());
+      case TypeCastTree cast -> lambdaOf(cast.getExpression());
+      default -> null;
+    };
   }
 
   /** Statement count and control nesting of one body; nested classes are not entered. */
   private static final class Body extends TreeScanner<Void, Integer> {
     int statements = 0;
     int maxNesting = 0;
+    private final Set<Tree> continuedIfs = Collections.newSetFromMap(new IdentityHashMap<>());
 
     @Override
     public Void scan(Tree tree, Integer depth) {
-      if (tree == null || tree instanceof ClassTree) {
-        return null; // nested classes are reported on their own
+      if (tree == null || tree instanceof ClassTree || tree instanceof LambdaExpressionTree) {
+        return null; // nested classes and lambdas are reported on their own
       }
       if (tree instanceof StatementTree && !(tree instanceof BlockTree)) {
         statements += 1;
       }
-      int next = isControl(tree) ? depth + 1 : depth;
+      if (tree instanceof IfTree branch && branch.getElseStatement() instanceof IfTree continued) {
+        continuedIfs.add(continued);
+      }
+      int next = isControl(tree) && !continuedIfs.contains(tree) ? depth + 1 : depth;
       maxNesting = Math.max(maxNesting, next);
       return super.scan(tree, next);
+    }
+
+    // An `else if` continues the chain of its `if` and opens no level of its own, as in the TypeScript analyzer.
+    @Override
+    public Void visitIf(IfTree tree, Integer depth) {
+      scan(tree.getCondition(), depth);
+      scan(tree.getThenStatement(), depth);
+      Tree other = tree.getElseStatement();
+      if (other instanceof IfTree chained) {
+        statements += 1;
+        return visitIf(chained, depth);
+      }
+      scan(other, depth);
+      return null;
     }
 
     // A `for` header's initializers and updates, a `catch` parameter and a `try` resource are javac statements or
@@ -231,7 +334,7 @@ public final class StructureMetrics {
 
     @Override
     public Void scan(Tree tree, Void ignored) {
-      if (tree == null || tree instanceof ClassTree) {
+      if (tree == null || tree instanceof ClassTree || tree instanceof LambdaExpressionTree) {
         return null;
       }
       if (isBranch(tree)) {
@@ -239,6 +342,47 @@ public final class StructureMetrics {
       }
       return super.scan(tree, ignored);
     }
+
+    @Override
+    public Void visitSwitchExpression(SwitchExpressionTree tree, Void ignored) {
+      return isFlat(tree.getKind(), tree.getCases())
+          ? countOnce(tree.getExpression(), tree.getCases())
+          : super.visitSwitchExpression(tree, ignored);
+    }
+
+    @Override
+    public Void visitSwitch(SwitchTree tree, Void ignored) {
+      return isFlat(tree.getKind(), tree.getCases())
+          ? countOnce(tree.getExpression(), tree.getCases())
+          : super.visitSwitch(tree, ignored);
+    }
+
+    private Void countOnce(ExpressionTree selector, List<? extends CaseTree> cases) {
+      long counted = cases.stream().filter(arm -> !isDefault(arm)).count();
+      long guards = cases.stream().filter(arm -> arm.getGuard() != null).count();
+      branches += (int) Math.min(counted, 1 + guards);
+      scan(selector, null);
+      for (CaseTree arm : cases) {
+        scan(arm.getGuard(), null);
+        scan(arm.getBody(), null);
+      }
+      return null;
+    }
+  }
+
+  private static boolean isFlat(Tree.Kind kind, List<? extends CaseTree> cases) {
+    boolean exhaustive =
+        kind == Tree.Kind.SWITCH_EXPRESSION
+            || cases.stream()
+                .flatMap(arm -> arm.getLabels().stream())
+                .anyMatch(label -> label.getKind() == Tree.Kind.PATTERN_CASE_LABEL);
+    return exhaustive
+        && !cases.isEmpty()
+        && cases.stream()
+            .allMatch(
+                arm ->
+                    arm.getCaseKind() == CaseTree.CaseKind.RULE
+                        && !(arm.getBody() instanceof BlockTree));
   }
 
   private static boolean isBranch(Tree tree) {
@@ -262,6 +406,31 @@ public final class StructureMetrics {
     return owner + "." + name + "(" + types + ")";
   }
 
+  private static String parameterTypes(
+      MethodTree tree, Map<String, TypeParameterTree> variables) {
+    return tree.getParameters().stream()
+        .map(parameter -> quote(erasedName(parameter.getType(), variables)))
+        .collect(Collectors.joining(",", "[", "]"));
+  }
+
+  private static String erasedName(Tree type, Map<String, TypeParameterTree> variables) {
+    return switch (type) {
+      case ParameterizedTypeTree parameterized -> erasedName(parameterized.getType(), variables);
+      case ArrayTypeTree array -> erasedName(array.getType(), variables) + "[]";
+      case AnnotatedTypeTree annotated -> erasedName(annotated.getUnderlyingType(), variables);
+      case MemberSelectTree select -> select.getIdentifier().toString();
+      case IdentifierTree identifier when variables.containsKey(identifier.getName().toString()) ->
+          erasure(variables.get(identifier.getName().toString()), variables);
+      default -> type.toString();
+    };
+  }
+
+  private static String erasure(TypeParameterTree variable, Map<String, TypeParameterTree> variables) {
+    Map<String, TypeParameterTree> outer = new HashMap<>(variables);
+    outer.remove(variable.getName().toString());
+    return variable.getBounds().isEmpty() ? "Object" : erasedName(variable.getBounds().get(0), outer);
+  }
+
   private static boolean isPrivateEmptyConstructor(MethodTree tree) {
     List<? extends StatementTree> statements = tree.getBody().getStatements();
     return tree.getName().contentEquals("<init>")
@@ -283,6 +452,89 @@ public final class StructureMetrics {
           CATCH -> true;
       default -> false;
     };
+  }
+
+  private static String describeFile(String file, CompilationUnitTree unit) {
+    String packageName = unit.getPackageName() == null ? "" : unit.getPackageName().toString();
+    String imports =
+        unit.getImports().stream()
+            .filter(i -> !i.isStatic())
+            .map(i -> quote(i.getQualifiedIdentifier().toString()))
+            .collect(Collectors.joining(","));
+    return quote(file) + ":{\"package\":" + quote(packageName) + ",\"imports\":[" + imports + "]}";
+  }
+
+  private static final class ClassCollector extends TreeScanner<Void, String> {
+    private final CompilationUnitTree unit;
+    private final SourcePositions positions;
+    private final String file;
+    private final List<String> classes;
+
+    ClassCollector(
+        CompilationUnitTree unit, SourcePositions positions, String file, List<String> classes) {
+      this.unit = unit;
+      this.positions = positions;
+      this.file = file;
+      this.classes = classes;
+    }
+
+    @Override
+    public Void visitClass(ClassTree tree, String owner) {
+      String simple = tree.getSimpleName().toString();
+      if (simple.isEmpty()) {
+        return super.visitClass(tree, owner);
+      }
+      String qualified = owner.isEmpty() ? simple : owner + "." + simple;
+      classes.add(describe(tree, qualified));
+      for (Tree member : tree.getMembers()) {
+        scan(member, qualified);
+      }
+      return null;
+    }
+
+    private String describe(ClassTree tree, String name) {
+      int methods = 0;
+      int fields = 0;
+      for (Tree member : tree.getMembers()) {
+        if (member instanceof MethodTree method && !method.getName().contentEquals("<init>")) {
+          methods += 1;
+        } else if (member instanceof VariableTree variable && countsAsField(tree, variable)) {
+          fields += 1;
+        }
+      }
+      long start = positions.getStartPosition(unit, tree);
+      String extendsName = tree.getKind() == Tree.Kind.CLASS ? superclass(tree) : null;
+      return "{\"file\":" + quote(file)
+          + ",\"name\":" + quote(name)
+          + ",\"start\":" + unit.getLineMap().getLineNumber(start)
+          + ",\"kind\":" + quote(tree.getKind().toString().toLowerCase(Locale.ROOT).replace("_type", ""))
+          + ",\"methods\":" + methods
+          + ",\"fields\":" + fields
+          + (extendsName == null ? "" : ",\"extends\":" + quote(extendsName))
+          + "}";
+    }
+  }
+
+  private static String superclass(ClassTree tree) {
+    Tree extendsClause = tree.getExtendsClause();
+    if (extendsClause == null) {
+      return null;
+    }
+    Tree raw = extendsClause instanceof ParameterizedTypeTree generic ? generic.getType() : extendsClause;
+    return raw.toString();
+  }
+
+  private static boolean countsAsField(ClassTree owner, VariableTree variable) {
+    Set<Modifier> flags = variable.getModifiers().getFlags();
+    boolean inInterface =
+        owner.getKind() == Tree.Kind.INTERFACE || owner.getKind() == Tree.Kind.ANNOTATION_TYPE;
+    return !inInterface && !flags.contains(Modifier.STATIC) && !isEnumConstant(owner, variable);
+  }
+
+  private static boolean isEnumConstant(ClassTree owner, VariableTree variable) {
+    return owner.getKind() == Tree.Kind.ENUM
+        && variable.getInitializer() instanceof NewClassTree
+        && variable.getType().toString().equals(owner.getSimpleName().toString());
   }
 
   private static String quote(String text) {
