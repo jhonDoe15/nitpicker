@@ -14,20 +14,25 @@ SHIELDABLE = {
 }
 
 
-def is_shield(node, aliases):
+def is_true(node, bindings, at):
+    value = bindings.resolve(node, at)
+    return isinstance(value, ast.Constant) and value.value is True
+
+
+def is_shield(node, aliases, bindings, at):
+    node = bindings.resolve(node, at)
     return (
         isinstance(node, ast.Call)
         and dotted_name(node.func, aliases) in SHIELDABLE
         and any(
-            keyword.arg == "shield"
-            and isinstance(keyword.value, ast.Constant)
-            and keyword.value.value is True
+            keyword.arg == "shield" and is_true(keyword.value, bindings, at)
             for keyword in node.keywords
         )
     )
 
 
-def shielding(statement, aliases):
+def shielding(statement, aliases, bindings):
     return isinstance(statement, (ast.With, ast.AsyncWith)) and any(
-        is_shield(item.context_expr, aliases) for item in statement.items
+        is_shield(item.context_expr, aliases, bindings, statement)
+        for item in statement.items
     )

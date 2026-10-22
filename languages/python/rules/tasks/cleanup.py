@@ -1,10 +1,10 @@
 import ast
 
-from checks.common import dotted_name, finding, type_text
+from checks.common import dotted_name, finding, own_nodes
+from tasks.bindings import SCOPES, Bindings, canonical
 from tasks.shields import shielding
 
 RULE = "unshielded-cleanup-await"
-BACKENDS = {"trio", "anyio"}
 CANCELLED = {"trio.Cancelled"}
 CANCELLED_CALL = "anyio.get_cancelled_exc_class"
 SAFE_AWAITS = {
@@ -12,35 +12,55 @@ SAFE_AWAITS = {
     "anyio.lowlevel.cancel_shielded_checkpoint",
     "trio.aclose_forcefully",
 }
-DEFINITIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
+EVIDENCE = {
+    "trio.run",
+    "trio.open_nursery",
+    "trio.CancelScope",
+    "trio.move_on_after",
+    "trio.move_on_at",
+    "trio.fail_after",
+    "trio.fail_at",
+    "trio.Cancelled",
+    "anyio.run",
+    "anyio.create_task_group",
+    "anyio.CancelScope",
+    "anyio.move_on_after",
+    "anyio.fail_after",
+    "anyio.get_cancelled_exc_class",
+}
 TRIES = (ast.Try, getattr(ast, "TryStar", ast.Try))
 
 
-def imports_backend(tree):
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            modules = [alias.name for alias in node.names]
-        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-            modules = [node.module]
-        else:
-            continue
-        if any(module.split(".")[0] in BACKENDS for module in modules):
+def imports_trio(node):
+    if isinstance(node, ast.Import):
+        return any(alias.name.split(".")[0] == "trio" for alias in node.names)
+    return (
+        isinstance(node, ast.ImportFrom)
+        and node.level == 0
+        and (node.module or "").split(".")[0] == "trio"
+    )
+
+
+def has_cancellation_semantics(context):
+    aliases = context.aliases
+    for node in ast.walk(context.tree):
+        if imports_trio(node):
             return True
+        if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            if any(f"{node.module}.{a.name}" in EVIDENCE for a in node.names):
+                return True
+        elif isinstance(node, (ast.Name, ast.Attribute)):
+            if dotted_name(node, aliases) in EVIDENCE:
+                return True
     return False
 
 
-def is_cancellation_type(node, aliases):
-    if isinstance(node, ast.Tuple):
-        return any(is_cancellation_type(part, aliases) for part in node.elts)
+def callee(node, aliases):
     if isinstance(node, ast.Call):
-        return dotted_name(node.func, aliases) == CANCELLED_CALL
-    return dotted_name(node, aliases) in CANCELLED
-
-
-def callee(node):
-    if isinstance(node, ast.Call):
-        return f"{type_text(node.func)}()"
-    return type_text(node) if isinstance(node, (ast.Name, ast.Attribute)) else "value"
+        return f"{canonical(node.func, aliases)}()"
+    if isinstance(node, (ast.Name, ast.Attribute)):
+        return canonical(node, aliases)
+    return "value"
 
 
 def checkpoint(node, aliases):
@@ -49,63 +69,79 @@ def checkpoint(node, aliases):
         called = (
             dotted_name(value.func, aliases) if isinstance(value, ast.Call) else None
         )
-        return None if called in SAFE_AWAITS else f"await {callee(value)}"
+        if called in SAFE_AWAITS:
+            return None
+        return node, f"await {callee(value, aliases)}"
     if isinstance(node, ast.AsyncWith):
-        return f"async with {callee(node.items[0].context_expr)}"
+        return node, f"async with {callee(node.items[0].context_expr, aliases)}"
     if isinstance(node, ast.AsyncFor):
-        return f"async for {callee(node.iter)}"
+        return node, f"async for {callee(node.iter, aliases)}"
+    if isinstance(node, ast.comprehension) and node.is_async:
+        return node.iter, f"async for {callee(node.iter, aliases)}"
     return None
-
-
-def checkpoints(statements, aliases):
-    pending = list(reversed(statements))
-    while pending:
-        node = pending.pop()
-        if isinstance(node, DEFINITIONS) or shielding(node, aliases):
-            continue
-        found = checkpoint(node, aliases)
-        if found:
-            yield node, found
-        pending.extend(reversed(list(ast.iter_child_nodes(node))))
 
 
 class Cleanup:
     def __init__(self, context):
         self.context = context
         self.aliases = context.aliases
+        self.bindings = Bindings(context)
         self.reported = set()
         self.findings = []
 
-    def shielded_around(self, node):
-        current = self.context.parents.get(id(node))
-        while current is not None and not isinstance(current, DEFINITIONS):
-            if shielding(current, self.aliases):
+    def shielded(self, node):
+        current = node
+        while current is not None and not isinstance(current, SCOPES):
+            if shielding(current, self.aliases, self.bindings):
                 return True
             current = self.context.parents.get(id(current))
         return False
 
-    def region(self, label, statements, owner):
-        if self.shielded_around(owner):
-            return
-        for node, text in checkpoints(statements, self.aliases):
-            if id(node) in self.reported:
+    def first_checkpoint(self, statements):
+        found = []
+        for statement in statements:
+            if isinstance(statement, SCOPES):
                 continue
-            self.reported.add(id(node))
-            self.findings.append(
-                finding(self.context.path, RULE, f"{text} in {label}", node)
-            )
+            for node in [statement, *own_nodes(statement)]:
+                hit = checkpoint(node, self.aliases)
+                if hit and not self.shielded(node) and id(hit[0]) not in self.reported:
+                    found.append(hit)
+        return min(
+            found, key=lambda hit: (hit[0].lineno, hit[0].col_offset), default=None
+        )
+
+    def region(self, label, statements, owner):
+        first = self.first_checkpoint(statements)
+        if first is None:
             return
+        node, text = first
+        self.reported.add(id(node))
+        function = self.bindings.function_name(owner)
+        where = f"{label} of {function}" if function else label
+        self.findings.append(
+            finding(self.context.path, RULE, f"{text} in {where}", node)
+        )
+
+    def is_cancellation(self, node):
+        node = self.bindings.resolve(node, node)
+        if isinstance(node, ast.Tuple):
+            return any(self.is_cancellation(part) for part in node.elts)
+        if isinstance(node, ast.Call):
+            return dotted_name(node.func, self.aliases) == CANCELLED_CALL
+        return dotted_name(node, self.aliases) in CANCELLED
 
     def visit(self, node):
         self.region("finally", node.finalbody, node)
         for handler in node.handlers:
-            if is_cancellation_type(handler.type, self.aliases):
-                label = f"except {type_text(handler.type)}"
-                self.region(label, handler.body, node)
+            if handler.type is not None and self.is_cancellation(handler.type):
+                caught = canonical(
+                    self.bindings.resolve(handler.type, handler), self.aliases
+                )
+                self.region(f"except {caught}", handler.body, node)
 
 
 def check(context):
-    if not imports_backend(context.tree):
+    if not has_cancellation_semantics(context):
         return []
     cleanup = Cleanup(context)
     for node in ast.walk(context.tree):

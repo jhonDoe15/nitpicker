@@ -29,65 +29,65 @@ describe.skipIf(!enabled)('task-outlives-resource in a task group', () => {
       [
         'positional argument',
         nested('nursery.start_soon(consume, handle)'),
-        found(10, 'handle passed to nursery.start_soon'),
+        found(10, 'handle passed to start_soon in run'),
       ],
       [
         'awaited start',
         nested('await nursery.start(consume, 1, handle)'),
-        found(10, 'handle passed to nursery.start'),
+        found(10, 'handle passed to start in run'),
       ],
       [
         'bound method as the task',
         nested('nursery.start_soon(handle.serve)'),
-        found(10, 'handle passed to nursery.start_soon'),
+        found(10, 'handle passed to start_soon in run'),
       ],
       [
         'lambda closure',
         nested('nursery.start_soon(lambda: consume(handle))'),
-        found(10, 'handle passed to nursery.start_soon'),
+        found(10, 'handle passed to start_soon in run'),
       ],
       [
         'functools.partial',
         nested('nursery.start_soon(functools.partial(consume, handle))'),
-        found(10, 'handle passed to nursery.start_soon'),
+        found(10, 'handle passed to start_soon in run'),
       ],
       [
         'nested function closure',
         nested('async def child():\n    await consume(handle)\n\nnursery.start_soon(child)'),
-        found(13, 'handle passed to nursery.start_soon'),
+        found(13, 'handle passed to start_soon in run'),
       ],
       [
         'AnyIO task group with an async resource',
         code(
           'async with anyio.create_task_group() as group:\n    async with connect(path) as conn:\n        group.start_soon(serve, conn)',
         ),
-        found(10, 'conn passed to group.start_soon'),
+        found(10, 'conn passed to start_soon in run'),
       ],
       [
         'asyncio.TaskGroup with a coroutine',
         code(
           'async with asyncio.TaskGroup() as group:\n    with open(path) as handle:\n        group.create_task(consume(handle))',
         ),
-        found(10, 'handle passed to group.create_task'),
+        found(10, 'handle passed to create_task in run'),
       ],
       [
         'asyncio.TaskGroup with a coroutine method',
         code(
           'async with asyncio.TaskGroup() as group:\n    with open(path) as handle:\n        group.create_task(handle.serve())',
         ),
-        found(10, 'handle passed to group.create_task'),
+        found(10, 'handle passed to create_task in run'),
       ],
       [
         'imported names',
         'from trio import open_nursery\n\n\nasync def run(path):\n    async with open_nursery() as nursery:\n        with open(path) as handle:\n            nursery.start_soon(consume, handle)\n',
-        found(7, 'handle passed to nursery.start_soon'),
+        found(7, 'handle passed to start_soon in run'),
       ],
       [
         'second item of the same with statement',
         code(
           'async with trio.open_nursery() as nursery, open(path) as handle:\n    nursery.start_soon(consume, handle)',
         ),
-        found(9, 'handle passed to nursery.start_soon'),
+        found(9, 'handle passed to start_soon in run'),
       ],
     ];
     const [actual, expected] = outcomes(cases);
@@ -181,6 +181,101 @@ describe.skipIf(!enabled)('task-outlives-resource in a task group', () => {
 
     expect(actual).toEqual(expected);
   });
+
+  it('follows task handles, closure parameters and group variables', () => {
+    const src = (lines) =>
+      `${HEADER}\n\nasync def run(path, res):\n${lines.map((line) => `    ${line}`).join('\n')}\n`;
+    const group = ['async with asyncio.TaskGroup() as group:', '    with open(path) as handle:'];
+    const cases = [
+      [
+        'task awaited in the block',
+        src([...group, '        task = group.create_task(consume(handle))', '        await task']),
+        [],
+      ],
+      [
+        'task waited on in the block',
+        src([
+          ...group,
+          '        task = group.create_task(consume(handle))',
+          '        await asyncio.wait([task])',
+        ]),
+        [],
+      ],
+      [
+        'task never used',
+        src([...group, '        task = group.create_task(consume(handle))']),
+        found(10, 'handle passed to create_task in run'),
+      ],
+      [
+        'discarded task handle',
+        src([...group, '        group.create_task(consume(handle))']),
+        found(10, 'handle passed to create_task in run'),
+      ],
+      [
+        'closure with a parameter of the same name',
+        src([
+          'async with trio.open_nursery() as nursery:',
+          '    with open(path) as handle:',
+          '        async def child(handle):',
+          '            await consume(handle)',
+          '',
+          '        nursery.start_soon(child, 1)',
+        ]),
+        [],
+      ],
+      [
+        'closure that rebinds the name',
+        src([
+          'async with trio.open_nursery() as nursery:',
+          '    with open(path) as handle:',
+          '        async def child():',
+          '            handle = 1',
+          '            await consume(handle)',
+          '',
+          '        nursery.start_soon(child)',
+        ]),
+        [],
+      ],
+      [
+        'lambda comprehension shadows the name',
+        src([
+          'async with trio.open_nursery() as nursery:',
+          '    with open(path) as handle:',
+          '        nursery.start_soon(lambda: [handle for handle in path])',
+        ]),
+        [],
+      ],
+      [
+        'group held in a variable',
+        src([
+          'tg = anyio.create_task_group()',
+          'async with tg:',
+          '    with open(path) as handle:',
+          '        tg.start_soon(consume, handle)',
+        ]),
+        found(11, 'handle passed to start_soon in run'),
+      ],
+      [
+        'imported TaskGroup',
+        'from asyncio import TaskGroup\n\n\nasync def run(path):\n    async with TaskGroup() as group:\n        with open(path) as handle:\n            group.create_task(consume(handle))\n',
+        found(7, 'handle passed to create_task in run'),
+      ],
+    ];
+    const [actual, expected] = outcomes(cases);
+
+    expect(actual).toEqual(expected);
+  });
+
+  it('advises awaiting the task only where a task handle exists', () => {
+    const message = (subject) =>
+      applyRuleHints(
+        ingestRulesReport(JSON.stringify([{ rule: RULE, path: 'a.py', subject, line: 3 }])),
+      )[0].message;
+
+    expect(message('handle passed to start_soon in run')).not.toContain('await the task');
+    expect(message('handle passed to create_task in run')).toContain('await the task');
+    expect(message('handle passed to asyncio.create_task in run')).toContain('await the task');
+  });
 });
 
 describe.skipIf(!enabled)('task-outlives-resource for asyncio.create_task', () => {
@@ -189,27 +284,27 @@ describe.skipIf(!enabled)('task-outlives-resource for asyncio.create_task', () =
       [
         'discarded task',
         code('async with res:\n    asyncio.create_task(use(res))'),
-        found(9, 'res passed to asyncio.create_task'),
+        found(9, 'res passed to asyncio.create_task in run'),
       ],
       [
         'stored but never used',
         code('with open(path) as handle:\n    task = asyncio.create_task(use(handle))\nawait task'),
-        found(9, 'handle passed to asyncio.create_task'),
+        found(9, 'handle passed to asyncio.create_task in run'),
       ],
       [
         'bound method coroutine',
         code('async with res:\n    asyncio.create_task(res.serve())'),
-        found(9, 'res passed to asyncio.create_task'),
+        found(9, 'res passed to asyncio.create_task in run'),
       ],
       [
         'ensure_future',
         code('async with res:\n    asyncio.ensure_future(use(res))'),
-        found(9, 'res passed to asyncio.ensure_future'),
+        found(9, 'res passed to asyncio.ensure_future in run'),
       ],
       [
         'task in a loop',
         code('async with res:\n    for item in path:\n        asyncio.create_task(use(res, item))'),
-        found(10, 'res passed to asyncio.create_task'),
+        found(10, 'res passed to asyncio.create_task in run'),
       ],
     ];
     const [actual, expected] = outcomes(cases);
@@ -292,7 +387,7 @@ describe.skipIf(!enabled)('task-outlives-resource reporting', () => {
     expect(verdict).toEqual({
       ok: true,
       messages: [
-        '`stream passed to nursery.start_soon`: the resource closes when its `with` block ends, while the child task can still use it. Put the `with` that opens the resource around the whole task group (`async with trio.open_nursery()` or `asyncio.TaskGroup()` inside it), or open the resource inside the child task, or await the task before the block ends. A value derived from the resource (`resource.name`, `stack.pop_all()`) is not reported. If this is intended, add {"rule":"task-outlives-resource","paths":["worker.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        '`stream passed to start_soon in run`: the resource closes when its `with` block ends, while the child task can still use it. Open the resource around the whole task group, or inside the child task. If this is intended, add {"rule":"task-outlives-resource","paths":["worker.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       ],
     });
   });
@@ -301,7 +396,7 @@ describe.skipIf(!enabled)('task-outlives-resource reporting', () => {
     const raw = {
       rule: RULE,
       path: 'src/worker.py',
-      subject: 'stream passed to nursery.start_soon',
+      subject: 'stream passed to start_soon in run',
       line: 5,
     };
     const before = applyRuleHints(ingestRulesReport(JSON.stringify([raw])));
