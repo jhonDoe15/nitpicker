@@ -458,12 +458,12 @@ project itself silences is not seen, because it never prints: Vitest's `onConsol
 `false`, a `console.error` replaced by a stub or a Jest spy that does not call through. How exactly
 the output is attributed depends on the runner:
 
-| Runner      | Attributed to                | How it is read                                                                                      |
-| ----------- | ---------------------------- | --------------------------------------------------------------------------------------------------- |
-| Vitest      | test file and test           | A reporter added to the coverage run.                                                               |
-| `node:test` | test file and test           | A preload (`--require`) that wraps the console in each test process and tracks the running test.     |
-| Mocha       | test file and test           | A root hook plugin (`--require`) that wraps the console; also works with `--parallel`.              |
-| Jest        | test file only               | A reporter that reads the console buffer of each file, which Jest does not split by test.           |
+| Runner      | Attributed to      | How it is read                                                                               |
+| ----------- | ------------------ | -------------------------------------------------------------------------------------------- |
+| Vitest      | test file and test | A reporter added to the coverage run.                                                        |
+| `node:test` | test file and test | The coverage preload wraps the console in each test process and tracks the running test.     |
+| Mocha       | test file and test | A root hook plugin names the running test to the same preload; also works with `--parallel`. |
+| Jest        | test file only     | A reporter that reads the console buffer of each file, which Jest does not split by test.    |
 
 For Jest the run uses Jest's `default` reporter and nitpicker's console reporter in place of the
 `reporters` of the project config (as the Vitest and Mocha runs replace theirs), and runs with
@@ -472,7 +472,7 @@ whichever way it is attributed, because findings are keyed by test file and mess
 finding just does not name a test. With Mocha, output printed while the spec files load, or in a
 root-level `before` or `after` hook, has no test file. With `node:test`, tests of one file that run
 concurrently can swap the test name, and `--test-isolation=none` (one process for every file) is not
-read, because the file of a call is not known there.
+read, because the file of a call is not known there. A Node process that a test starts inherits the preload, so its own console calls are seen too (for `node:test`, under the path of the script it runs).
 
 It does not see:
 

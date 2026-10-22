@@ -2,10 +2,11 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { TEST_CONSOLE_REPORT_PATH } from '../quality-areas/reporting/test-report.mjs';
 import { temporaryProjectPath } from './test-run.mjs';
-import { LINES_VARIABLE } from '../../preset/test-console/console-capture.mjs';
 import {
+  LINES_VARIABLE,
   REPORT_VARIABLE,
   ROOT_VARIABLE,
+  consoleEntry,
   writeReportFile,
 } from '../../preset/test-console/console-report.mjs';
 
@@ -15,20 +16,18 @@ const CONSOLE_PRODUCERS = {
   vitest: `${PRODUCER_FOLDER}/vitest-reporter.config.mjs`,
   jest: `${PRODUCER_FOLDER}/runners/jest-reporter.config.mjs`,
   mocha: `${PRODUCER_FOLDER}/runners/mocha-hooks.config.mjs`,
-  node: `${PRODUCER_FOLDER}/runners/node-test-preload.config.cjs`,
 };
 
 export function consoleProducerPath(options, runner) {
   return path.join(options.policyRoot, CONSOLE_PRODUCERS[runner]);
 }
 
-function entriesOf(linesPath) {
-  return existsSync(linesPath)
-    ? readFileSync(linesPath, 'utf8')
-        .split('\n')
-        .filter((line) => line !== '')
-        .map((line) => JSON.parse(line))
-    : [];
+function entriesOf(linesPath, root) {
+  const lines = existsSync(linesPath) ? readFileSync(linesPath, 'utf8').split('\n') : [];
+  return lines
+    .filter((line) => line !== '')
+    .map((line) => consoleEntry({ ...JSON.parse(line), root }))
+    .filter((entry) => entry !== undefined);
 }
 
 export function startTestConsole(options, { collectsLines }) {
@@ -47,7 +46,7 @@ export function startTestConsole(options, { collectsLines }) {
     },
     finish() {
       if (linesPath !== undefined) {
-        writeReportFile(reportPath, entriesOf(linesPath));
+        writeReportFile(reportPath, entriesOf(linesPath, options.projectRoot));
       }
     },
     remove() {

@@ -8,7 +8,7 @@ import {
 } from '../../../preset/test-runner/runners.mjs';
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
-import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
+import { startTestConsole } from '../test-console-run.mjs';
 import {
   readRun,
   removeTemporary,
@@ -109,11 +109,10 @@ export function nodeTestSelection(options, command) {
   };
 }
 
-function testArguments(options, command, { reportPath, testConsole }) {
+function testArguments(options, command, reportPath) {
   const { nodeArguments, scriptOptions, testFiles } = nodeTestSelection(options, command);
   return [
     ...nodeArguments,
-    ...(testConsole.enabled ? [`--require=${consoleProducerPath(options, 'node')}`] : []),
     '--test',
     `--test-reporter=${REPORTER}`,
     `--test-reporter-destination=${reportPath}`,
@@ -133,10 +132,7 @@ export async function runNodeTest(options, command) {
   try {
     const result = spawnNodeTool({
       options,
-      nodeArguments: [
-        ...coverage.nodeArguments,
-        ...testArguments(options, command, { reportPath, testConsole }),
-      ],
+      nodeArguments: [...coverage.nodeArguments, ...testArguments(options, command, reportPath)],
       environment: { ...coverage.environment, ...testConsole.environment },
       arguments_: [],
     });
