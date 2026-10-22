@@ -1,13 +1,12 @@
 import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { normalizeArchitectureViolations } from '../../../languages/typescript/adapters/static-checks-runner.mjs';
 import {
   normalizeCoupling,
-  normalizeDeadCode,
   normalizeStructure,
   normalizeTestRuntime,
 } from '../../../languages/typescript/adapters/quality-areas/reporting/repository.mjs';
+import { normalizeDeadCode } from '../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mjs';
 import {
   normalizeCrap,
   normalizeMutation,
@@ -15,13 +14,10 @@ import {
 import { normalizeDuplicates } from '../../../languages/typescript/preset/duplicates/normalize.mjs';
 import { toEntryPointDiffFindings } from '../../../languages/typescript/adapters/entry-points.mjs';
 import { parseAnalyzerReport, parseFinding } from './finding-schema.mjs';
-import { fileURLToPath } from 'node:url';
+import { sampleCrapFunctions } from './test-support/crap-samples.mjs';
 
 const schema = JSON.parse(
-  readFileSync(
-    path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../../spec/findings.schema.json'),
-    'utf8',
-  ),
+  readFileSync(new URL('../../../spec/findings.schema.json', import.meta.url), 'utf8'),
 );
 
 const SUPPORTED_KEYWORDS = new Set([
@@ -56,7 +52,7 @@ function assertSupportedKeywords(node) {
   }
 }
 
-function validateReference(value, node, errors, at) {
+function validateReference(value, node, { errors, at }) {
   if (node.$ref === undefined) {
     return;
   }
@@ -64,16 +60,16 @@ function validateReference(value, node, errors, at) {
     .replace(/^#\//, '')
     .split('/')
     .reduce((current, key) => current[key], schema);
-  validate(value, target, errors, at);
+  validate(value, target, { errors, at });
 }
 
-function checkNumber(value, node, errors, at) {
+function checkNumber(value, node, { errors, at }) {
   if (typeof value === 'number' && node.minimum !== undefined && value < node.minimum) {
     errors.push(`${at} must be >= ${String(node.minimum)}`);
   }
 }
 
-function checkAllowedValues(value, node, errors, at) {
+function checkAllowedValues(value, node, { errors, at }) {
   if (node.enum !== undefined && !node.enum.includes(value)) {
     errors.push(`${at} must be one of ${node.enum.join(', ')}`);
   }
@@ -82,49 +78,53 @@ function checkAllowedValues(value, node, errors, at) {
   }
 }
 
-function checkCombinators(value, node, errors, at) {
+function checkCombinators(value, node, { errors, at }) {
   for (const part of node.allOf ?? []) {
-    validate(value, part, errors, at);
+    validate(value, part, { errors, at });
   }
-  if (node.not !== undefined && validate(value, node.not, [], at).length === 0) {
+  if (node.not !== undefined && validate(value, node.not, { errors: [], at }).length === 0) {
     errors.push(`${at} matches a forbidden schema`);
   }
-  if (node.if !== undefined && validate(value, node.if, [], at).length === 0 && node.then) {
-    validate(value, node.then, errors, at);
+  if (
+    node.if !== undefined &&
+    validate(value, node.if, { errors: [], at }).length === 0 &&
+    node.then
+  ) {
+    validate(value, node.then, { errors, at });
   }
 }
 
-function validate(value, node = schema, errors = [], at = '$') {
+function validate(value, node = schema, { errors = [], at = '$' } = {}) {
   assertSupportedKeywords(node);
-  validateReference(value, node, errors, at);
-  checkType(value, node, errors, at);
+  validateReference(value, node, { errors, at });
+  checkType(value, node, { errors, at });
   if (typeof value === 'string') {
-    checkString(value, node, errors, at);
+    checkString(value, node, { errors, at });
   }
-  checkNumber(value, node, errors, at);
-  checkAllowedValues(value, node, errors, at);
-  checkCombinators(value, node, errors, at);
-  if (isRecord(value)) {
-    checkObject(value, node, errors, at);
+  checkNumber(value, node, { errors, at });
+  checkAllowedValues(value, node, { errors, at });
+  checkCombinators(value, node, { errors, at });
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    checkObject(value, node, { errors, at });
   }
   if (Array.isArray(value)) {
-    checkArray(value, node, errors, at);
+    checkArray(value, node, { errors, at });
   }
   return errors;
 }
 
-function checkArray(items, node, errors, at) {
+function checkArray(items, node, { errors, at }) {
   if (node.minItems !== undefined && items.length < node.minItems) {
     errors.push(`${at} has fewer than ${String(node.minItems)} items`);
   }
   for (const [index, item] of node.items === undefined ? [] : items.entries()) {
-    validate(item, node.items, errors, `${at}[${String(index)}]`);
+    validate(item, node.items, { errors, at: `${at}[${String(index)}]` });
   }
 }
 
-function checkType(value, node, errors, at) {
+function checkType(value, node, { errors, at }) {
   const checks = {
-    object: isRecord(value),
+    object: typeof value === 'object' && value !== null && !Array.isArray(value),
     array: Array.isArray(value),
     string: typeof value === 'string',
     number: typeof value === 'number' && Number.isFinite(value),
@@ -136,7 +136,7 @@ function checkType(value, node, errors, at) {
   }
 }
 
-function checkString(value, node, errors, at) {
+function checkString(value, node, { errors, at }) {
   if (node.minLength !== undefined && value.length < node.minLength) {
     errors.push(`${at} is shorter than ${String(node.minLength)}`);
   }
@@ -145,7 +145,7 @@ function checkString(value, node, errors, at) {
   }
 }
 
-function checkObject(value, node, errors, at) {
+function checkObject(value, node, { errors, at }) {
   for (const key of node.required ?? []) {
     if (!(key in value)) {
       errors.push(`${at}.${key} is required`);
@@ -153,34 +153,20 @@ function checkObject(value, node, errors, at) {
   }
   for (const [key, child] of Object.entries(node.properties ?? {})) {
     if (key in value) {
-      validate(value[key], child, errors, `${at}.${key}`);
+      validate(value[key], child, { errors, at: `${at}.${key}` });
     }
   }
-  if (node.additionalProperties === false) {
-    for (const key of Object.keys(value)) {
-      if (!(key in (node.properties ?? {}))) {
-        errors.push(`${at}.${key} is not allowed`);
-      }
+  if (node.additionalProperties !== false) {
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!(key in (node.properties ?? {}))) {
+      errors.push(`${at}.${key} is not allowed`);
     }
   }
-}
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function sampleFindings() {
-  const crapEntry = (crap) => ({
-    source: 'src/main/value.ts',
-    function: 'value',
-    sourceHash: 'h',
-    lines: { start: 1, end: 3 },
-    complexity: 1,
-    statementCoverage: { percent: 100 },
-    branchCoverage: { percent: 100 },
-    effectiveCoverage: { percent: 100 },
-    crap,
-  });
   return [
     ...normalizeCoupling(
       {
@@ -236,7 +222,7 @@ function sampleFindings() {
       },
       'dead-code',
     ),
-    ...normalizeCrap({ functions: [crapEntry(10), crapEntry(null)] }, 'crap'),
+    ...normalizeCrap({ functions: sampleCrapFunctions([10, null]) }, 'crap'),
     ...normalizeMutation(
       {
         files: {
@@ -461,6 +447,24 @@ describe('spec/findings.schema.json', () => {
       ...finding,
       notRunScope: ['.', '.', 'core/src'],
     });
+  });
+
+  it('accepts tokens and rejects an empty one', () => {
+    const finding = {
+      tool: 'tool',
+      rule: 'rule',
+      path: 'src/a.ts',
+      identity: 'id',
+      message: 'message',
+      classification: 'enforceable',
+      tokens: ['a', 'b', 'c'],
+    };
+    const empty = { ...finding, tokens: ['a', ''] };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(empty)).toThrow(TypeError);
+    expect(validate({ findings: [empty] })).not.toEqual([]);
   });
 
   it('accepts the number of files of a folder finding and rejects zero', () => {

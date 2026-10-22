@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { normalizeReportPath } from '../../ingest/common.mjs';
+import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
 import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mjs';
 import { isClassExempt } from './exemptions/class-exemptions.mjs';
 import { isIntegrationTestName } from './exemptions/test-class-names.mjs';

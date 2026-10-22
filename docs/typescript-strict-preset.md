@@ -154,11 +154,12 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
 - Illegal states are made unrepresentable with discriminated unions.
 - `nitpicker/no-unknown-in-domain`: no `unknown` in a parameter or property type (including inside
   `readonly unknown[]`, `Record<string, unknown>` and index signatures). `domain/` receives values
-  already parsed and typed; the zod schema that parses untrusted input lives in `adapters/`, and
-  `domain/` writes its own readonly type for the value. Do not write `z.infer<typeof schema>`
-  in `domain/`: importing the schema type from `adapters/` breaks the layer rule, and a schema
-  defined in `domain/` is itself mutable. A zod output is assignable to the readonly type, so
-  `adapters/` parses and passes the result in. An alias that is or contains `unknown`
+  already parsed and typed; the schema that parses untrusted input (zod by default, otherwise the
+  project's validation library) lives in `adapters/`, and `domain/` writes its own readonly type for
+  the value. Do not write `z.infer<typeof schema>` or the library's equivalent in `domain/`:
+  importing the schema type from `adapters/` breaks the layer rule, and a schema defined in `domain/`
+  is itself mutable. The parsed output is assignable to the readonly type, so `adapters/` parses and
+  passes the result in. An alias that is or contains `unknown`
   (`type Raw = unknown`, `type JsonObject = Readonly<Record<string, unknown>>`), also one imported
   from another file, is reported like `unknown`. `unknown` as a
   generic bound or default (`<T extends unknown>`, `<T = unknown>`), a return type, a variable or a
@@ -214,6 +215,14 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   or a success shape (`undefined`, `''`, `[]`, `{}`, `{ ok: true, items: [] }`) and carries on is
   reported, and so is `.catch(() => undefined)`. A deliberately dropped error needs an exception
   in the config file.
+- `nitpicker/no-dev-dependency-in-production` (all production code): a value import (`import`,
+  `export ... from`, `import()`, `require`) of a package that package.json lists only under
+  `devDependencies` is reported. Move the package to `dependencies` (zod included). Type-only imports
+  are not reported. An app a bundler builds (a bundler config or `build` script, and no `main`,
+  `module`, `exports` or `bin` in package.json) and test support files (`setupTests.*`,
+  `test-utils`, `testing/`, `__mocks__/`, stories) are skipped. The nearest package.json that lists
+  dependencies is used; one that is not a JSON object is reported. Unlisted packages and unused dependencies are reported by the
+  `dead-code` analyzer, see [Dependency and repository checks](usage.md#dependency-and-repository-checks).
 - `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
   (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers, `z.optional(...)`,
   `z.nullable(...)`, `z.nullish(...)` and `z.readonly(...)`) as a field of `z.object`,
@@ -227,8 +236,8 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   without a check function is a cast, and `z.looseObject()`, `.loose()`, `.passthrough()` and
   `.catchall(z.unknown())` let unknown keys through: use `z.object({...})` or
   `z.strictObject({...})`.
-- Untrusted input is parsed once, at the boundary, with zod. Hand-written type guards for external
-  data are not allowed (`nitpicker/no-handwritten-boundary-guard`, in `adapters/`, `shared/` and
+- Untrusted input is parsed once, at the boundary, with a schema library (zod by default). Hand-written
+  type guards for external data are not allowed (`nitpicker/no-handwritten-boundary-guard`, in `adapters/`, `shared/` and
   the other layers outside `domain/`): a predicate whose parameter is `unknown`, `any`, `object`,
   `{}` or `Record<string, unknown>`, an `unknown` value narrowed inline with `typeof x ===
 'object'` or `'key' in x`, and an overload whose implementation returns `unknown` or `any`. A
@@ -239,6 +248,59 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   (`error instanceof Error && 'code' in error`). `instanceof Object` or any other class does not
   count as a guard.
   `JSON.parse(JSON.stringify(value))` as a copy is reported: use `structuredClone(value)`.
+
+### Libraries follow the project
+
+The rules keep their reason (validate at the boundary, keep the caught error on the log call) and
+only the library follows the project. Nitpicker reads `dependencies`, `peerDependencies`,
+`optionalDependencies` and `devDependencies` (presence, not a vote over files).
+
+- **Where it reads.** The head policy carries the libraries of the head checkout:
+  `libraries: { validation, logger, packages }`, where `validation` and `logger` come from the root
+  `package.json` and `packages` maps each project-relative directory with a `package.json` (`.` for
+  the root; `node_modules` and excluded folders are skipped) to the libraries it declares. A base
+  run with its own `nitpicker.config.json` still takes the head's libraries, like the other facts of
+  the head checkout, so base and head are checked against the same libraries, and the policy hash
+  and cache key include them. The rules that report per file (the boundary guard, `unknown` in
+  `domain/`, catch logging) pick, from `packages`, the entry of the directory nearest the file and
+  every one above it up to the project root, so a monorepo package that declares valibot is
+  checked against valibot; they read no `package.json` while linting. Within the list
+  `dependencies` come before `devDependencies`, nearest package first; the first entry names the
+  library in messages. The static `as`, `any` and JSDoc-cast messages read the root list only, so
+  they name the root's library.
+- **Validation library.** Recognised: zod, valibot, yup, joi (and `@hapi/joi`), io-ts, arktype,
+  class-validator (with class-transformer), ajv, typebox, superstruct, runtypes, typia, effect
+  (`effect`, `@effect/schema`) and valita. With none found the preset names zod.
+  `nitpicker/no-handwritten-boundary-guard` accepts a parse of any detected library, matched by
+  receiver and method. Calls on a schema built from the library (a value whose chain starts at an
+  import or `require` of it) count for the library's parse methods: zod `parse`/`safeParse` and
+  the async forms, yup `validate`/`validateSync`/`isValid` and the `At` forms, joi `validate`/
+  `validateAsync`, io-ts `decode`, arktype `assert` and calling the schema, ajv `validate` and
+  calling a function from `compile`, typebox `Decode`/`Parse` on a compiled type, runtypes `check`/
+  `parse`/`assert`/`guard`/`validate`, valita `parse`/`try`. Functions of the library namespace or
+  named import count too: valibot `parse`/`safeParse`/`assert`/`is` and `parser(schema)(data)`,
+  `Joi.attempt`/`Joi.assert`, typebox `Value.Parse`/`Decode`/`Assert`, superstruct `create`/
+  `assert`/`validate`/`mask`/`is`, typia `assert`/`is`/`validate`, effect
+  `Schema.decodeUnknownSync(schema)(data)` and the other `decode` forms, class-validator
+  `validate`/`validateSync`/`validateOrReject` (with `plainToInstance` in between). The forms
+  `const { parse } = schema`, `schema['parse']`, `schema.parse.bind(schema)`, `pipe(data, codec.decode)`,
+  casts (`as`, `!`) and `await` around the `JSON.parse` call are followed.
+  A receiver the file cannot resolve (imported from your own module, a parameter, `this.schema`,
+  a class field) counts for those same methods when type information shows a type declared by the
+  library, or, without it, when its text matches `schema`, `codec`, `validat`, `type`, `ajv`,
+  `struct` or `parser`. Other calls with the same names (`console.assert`, `form.validate`,
+  `Value.Check`, yup `cast`) do not count. The guard and `unknown` messages are grammatical
+  per library ("an io-ts codec", "an ajv schema") and the guard messages say how to add an
+  exception. `nitpicker/no-unvalidated-schema-field` only looks at zod schemas, so it stays silent
+  without zod.
+- **Logger.** `nitpicker/structured-catch-logging` is never turned off; it checks the shape each
+  detected logger reads. pino, nestjs-pino, pino-http and bunyan take the caught value as
+  `logger.<level>({ err: error, ...context }, message)`. winston, log4js, loglevel, consola, tslog,
+  roarr and signale take the caught value itself, passed as an argument or as a field of an object
+  argument (`logger.error('message', error)`, `logger.error('message', { error })`), not its
+  `.message` or a template string. With several loggers any of their shapes passes; with none
+  found the `err` shape applies. `nitpicker/no-production-console` and `no-silent-catch` apply to
+  every logger.
 
 ## Everywhere
 
@@ -577,6 +639,30 @@ for a file takes that file out of the rule, so a pair of copies that must both s
   other files, once per name and file; the identity is the name and file, so existing copies are
   baselined. The message tells an exported copy to keep one definition and import it, a private copy
   to import the exported copy when there is one, and otherwise to move to one module and import it.
+- `sibling-copy-edit`: a change edits a function or class so that it drifts from a copy with the
+  same name and kind in another module of the package, and leaves that copy unedited. The two must
+  be at least 80% the same tokens (twice the longest common token sequence over the tokens of both)
+  both before and after the edit, and the edit must lower that figure: an edit that brings two
+  copies closer, or that leaves them under 80% alike, is not reported. A pair that is identical
+  before the edit counts as 100%; a pair that is identical after it is left to
+  `duplicate-definition` and the `duplicates` check. It covers functions (declarations, function
+  expressions and arrow-function `const`s) and classes of 20 tokens or more in parameters and body;
+  types, interfaces, enums and constants are skipped, as are default exports and exported `GET`,
+  `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD` and `OPTIONS` handlers, whose name is the framework's and
+  not a shared one (a route's `Page`, `Layout` or `GET`); ordinary names such as `handler` or
+  `render` are compared. A copy is edited when its normalized text differs from the definition of
+  the same name in the base (whitespace, comments, quote style and semicolons do not count), and
+  untouched when it is equal; a copy with no base counterpart is new and left to
+  `duplicate-definition`. A file that the diff reports as moved or renamed (the diff engine's own
+  rename detection: at least 50% of the content kept, within git's rename limit of 20000 files) is
+  read at its old path, so a moved copy counts as edited or untouched like any other; a rename that
+  detection misses leaves the copy new. The token comparison stops as soon as 80% can no longer be
+  reached, so large functions with scattered small edits are compared; a pair is skipped only when
+  what lies between its shared start and shared end is more than 20,000 tokens in the two together.
+  Only the edited copy is reported, naming the untouched ones, so copies that are all edited, in the
+  same way or differently, report nothing. Only the head snapshot reports it, as it reads the base
+  checkout; the identity is the name and file. It covers the same files as `duplicate-definition`,
+  and an exception for either copy's path lifts it. Edit the other copy too, or merge the two.
 - `exported-name-collision`: two modules export different definitions under one name and a module
   imports both without aliasing both, so a reader and auto-import can mistake one for the other. A
   module that aliases every colliding import (`import { handler as getUser }`, `import type`,
@@ -637,11 +723,24 @@ hop, and type-only imports do not count.
   them included), `*.test.*`/`*.spec.*` next to sources, and `__tests__` directories (their
   fixtures are skipped). A wait that cannot be avoided gets an exception for the rule.
 - `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
-  `testTimeout` nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
-  Stryker also uses, and the coverage runner's `--testTimeout`; a test keeps them in step).
+  test timeout nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
+  Stryker also uses, and the timeout it passes to Vitest, Jest, `node:test` and Mocha; a test keeps them in step; the
+  coverage run adds the larger slow-test budget to it, see [Slow tests](#slow-tests)).
   The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
   `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
   no e2e exemption; a genuinely long suite needs an exception in the config file.
+- `nitpicker/require-test-process-timeout`: synchronous `spawnSync`, `execSync` and `execFileSync`
+  calls from `node:child_process` or `child_process` in test-area files need a positive subprocess
+  timeout, for example `spawnSync(program, args, { timeout: 10_000 })`. A runner's timeout cannot
+  interrupt a synchronous call that blocks Node's event loop. Named import aliases, namespace and
+  default imports, CommonJS bindings, local constant options and object spreads count. A missing,
+  zero or negative timeout is reported; a timeout or options supplied dynamically is left to the
+  caller's contract. The rule sets no maximum: the process budget depends on the operation.
+  It covers integration tests and test helpers as well as unit tests, including `test-support/`
+  folders under the source roots, and works in the TypeScript,
+  JavaScript and React presets. If a process must wait without a deadline, add a reviewed exception
+  for the rule in `nitpicker.config.json`. A child that ignores its termination signal can still
+  outlive Node's subprocess timeout; this rule checks the configured deadline, not OS containment.
 - `nitpicker/no-first-test-charged-setup`: no lazily memoized shared setup that tests reach. It
   reports a call whose value is stored in a module-level `let`/`var` only while that variable is
   empty (`x ??= expensive()`, `x ||= call()`, `x = x ?? call()`, `if (!x) x = call()`,
@@ -717,13 +816,26 @@ hop, and type-only imports do not count.
   typescript-eslint's `no-explicit-any` and `no-non-null-assertion`. Like the other bans, these are
   strict rules: a finding on a line a change edits, or in a new test file, fails the run. An exception for
   `no-restricted-syntax` lifts all the syntax bans for those paths.
+- `vitest/no-conditional-expect` (from the vitest recommended set) reports an `expect` inside a `catch` or a branch; the message adds that a test asserts a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)`.
 - `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
   inside a test body. Give each outcome its own `it.each` table row instead of branching on it.
 - The vitest config nitpicker runs tests with (`defaults/vitest.quality.config.ts`, used for
   coverage and mutation) sets `restoreMocks: true`, so a `vi.spyOn` spy is restored after every test
   even when an assertion fails, and cannot leak into the next test. It also overrides a
-  `restoreMocks` value in the project's own vitest config for these runs. Vitest has no option that
-  restores fake timers automatically: call `vi.useRealTimers()` in `afterEach`.
+  `restoreMocks` value in the project's own vitest config for these runs. Jest runs with
+  `--restoreMocks` for the same reason, and `node:test` restores a test's `t.mock` itself. Neither
+  Vitest nor Jest restores fake timers automatically: call `vi.useRealTimers()` (or
+  `jest.useRealTimers()`) in `afterEach`.
+
+- `test-console-output` (the `test-console` check, not an ESLint rule): a test file that prints
+  `console.error` or `console.warn` output the base run did not print fails, with the message and
+  the test that printed it. A change that makes a suite start printing one (a React update on an
+  unmounted component from a timer that survives the test, a key warning, a logged error) is
+  usually a bug, and warnings in a suite hide the next real one. The allowed forms are fixing the
+  cause (cancel the timer or subscription in the cleanup), a `testConsole.allow` entry for a known
+  third-party message, or an `exceptions` entry for the test file. Messages are compared by their
+  normalized text, per test file, so an old warning that only moved is not new. See
+  [Console output from tests](usage.md#console-output-from-tests).
 
 Left out, from the same write-up: recomputing one expensive result in every test, and running the
 whole pipeline to check a decision made earlier. Both need a heuristic (repeated constant arguments
@@ -731,6 +843,52 @@ across tests, or what an assertion depends on), so a finding would not reliably 
 Vitest's worker count in CI is a CI setting, not code. It belongs in the CI workflow or in a check
 of the project's CI files, not in these rules. That check would need its own analyzer (a runner
 kind, a version entry, a check definition and project-level findings) and is not built yet.
+
+## Slow tests
+
+- **Rule.** `slow-test` fails a test the change adds or edits when it takes more than 5 s as a unit
+  test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
+  `thresholds.integrationTestSeconds`), the same rule, message shape and budgets as for
+  [Java and Kotlin](java-preset.md#slow-tests) and [Python](python-preset.md#slow-tests). Its tool
+  is `test-runtime`; the finding prints the bare route `slow-test`, and `test-runtime/slow-test` is
+  accepted in `exceptions` as the same rule. The message names the budget, the measured time, the
+  fixes (fake timers instead of waits, fakes for network, database and disk, or moving the test to
+  an integration test) and the exception. It is reported by the `coverage` analyzer, which already
+  runs the tests, so a failing test run reports `tests-failed` and no slow tests, and disabling `coverage` also
+  turns the check off. TypeScript,
+  JavaScript and React share it. `exclude` applies: a test in an excluded file is not checked.
+- **Measurement.** Head only, from the per-test `duration` of the report the project's runner
+  writes for the coverage run (Vitest and Jest JSON, the `node:test` reporter, Mocha JSON), which
+  runs with coverage instrumentation, four workers at most, and so measures slower than a plain run.
+  Only passed tests are timed (a failed or skipped test has no meaningful duration), and a test that
+  ran more than once keeps its slowest time. A test over the smaller budget in that run is run again
+  once, alone: only its file, selected by its full name, with one worker and without coverage, through
+  the same runner seam. It is reported only when it is still over its budget, with the time of the
+  second run; a second run that fails or finds nothing keeps the first time. So one noisy
+  instrumented timing never fails a change, and the rerun starts no extra process when no test is
+  slow. The seam's per-test timeout is 10 000 ms plus the larger of the two budgets (40 000 ms by
+  default), so a test that takes longer than 10 s can be measured at all;
+  `nitpicker/no-raised-test-timeout` still bans a project from raising its own timeout past
+  10 000 ms.
+- **Unit or integration.** A test is an integration test when its file is under the `e2e/` test
+  root, or has a folder named `integration`, `integrations`, `e2e`, `end-to-end`, `functional`,
+  `acceptance` or `system` (also with a `-tests` or `_tests` suffix, and `__integration__`) below
+  one of the test roots (or below an `__tests__` folder), or is named `*.integration.test.*`,
+  `*.e2e.test.*`, `*.int.test.*` or `*.it.test.*` (also `.spec.`). A production folder such as
+  `src/integrations` is not a test folder. Every other test is a unit test.
+- **Edited or added.** A test is found in its file by its full name (the `describe` titles and the
+  test title joined by spaces, the way the runners report it); `it.each` and `describe.each` titles
+  (`%s`, `%i`, `$name`), template titles and concatenated titles match as patterns, and a title the
+  source does not spell out matches any name. A test counts when its call text (whitespace
+  collapsed) differs from the base file's call with the same titles, or the file is new. A reported
+  test no call names counts when its file differs from the base. Slow tests the change does not
+  touch stay baselined, and the base snapshot reports none.
+- **Exception.** `{ "rule": "slow-test", "paths": ["test/db/**"], "reason": "..." }` in the
+  top-level `exceptions`, as printed in the message.
+- **Tests.** `languages/typescript/adapters/slow-tests/` (fake runner reports with a temporary
+  project and baseline, the rerun, the title patterns, the path rules) and
+  `slow-tests-runners.test.mjs` (a test that really waits, on each of the four runners, asserting
+  only that the rule fires).
 
 ## React
 
@@ -1243,7 +1401,23 @@ from a real caller) and the `exceptions` entry that lifts it.
   `vite.config.ts`, `bin` and `exports` stay entries) lists what production code does not use, and
   what the normal run does not list is used only by tests. That covers whole modules too: a module
   that only tests import should move to a `test-support/` folder, and modules under `test-support/`
-  are not reported.
+  are not reported. A re-export (`export { x } from`, `export * from`, `export * as ns from`, an import that is only
+  exported again, or `export const y = x` for an import the file does not otherwise read, which
+  `export default y`, `export { y as z }` and `export const w = y` pass onward as further aliases of
+  the same import) is not a use by itself: re-exporting a function from an entry such as
+  `src/main/main.ts` or a composition root does not clear the finding, and the finding names the
+  re-exporting file. It counts only when something imports the name onward from the re-exporting
+  module; barrels, renames and imports that are only exported again are followed to the
+  declaration, and the importer at the end decides (production code counts, a test does not). A
+  declaration that nothing imports, tests included, is not reported. Production that uses an
+  `export * as ns` of an entry as a whole value (`use(ns)`, `Object.keys(ns)`) uses every member;
+  `ns.member` uses only that member. Entries are found by the same walk as the rest of the project,
+  so a file in a dot, `dist`, `build`, `generated` or `node_modules` directory, a symlink or a
+  declaration file is not an entry here either. Exceptions: a re-export from a
+  public entry of a published package (see below), a re-export from a file listed in
+  `layout.entryPoints` (a handler, worker or plugin config that a host loads instead of importing
+  it), and what a framework plugin consumes from an entry. An entry that spreads a namespace
+  (`{ ...feat }`) counts as using it.
 - **Callers the check cannot see.** A component or function that is used as a value (passed as
   `component={X}`, put in a route or config object, `.call`ed, mapped over, assigned) is left alone,
   as are all exports of a module that is loaded with `import()` or `require()` (`lazy`, route
@@ -1257,7 +1431,10 @@ from a real caller) and the `exceptions` entry that lifts it.
   no `"private": true`, and says what it ships (`main`, `exports`, `bin`, `files` or
   `publishConfig`); it can have callers outside the repository. Its own tests, stories and examples
   count as callers, so a new public prop or option must at least be exercised there, and its
-  `test-only-export` findings are not reported. In any other package, or an app whose manifest has
+  `test-only-export` findings are not reported, and a re-export from its public entries (the files
+  that `main`, `module`, `types`, `typings`, `source` and `exports` of its `package.json` name, or
+  else its source-root `index`, and the files that `layout.entryPoints` lists) counts as a use of
+  what it re-exports, wherever that is declared. In any other package, or an app whose manifest has
   no name, only production callers count: a prop that only a test or story passes fails. Callers
   in the other packages of an npm, Yarn or pnpm workspace count for the package that declares the
   prop; a package name resolves to the source file its `package.json` names, or else to the
@@ -1328,22 +1505,25 @@ from a real caller) and the `exceptions` entry that lifts it.
   (`nitpicker/no-ui-framework-in-domain`), used to be `no-restricted-syntax` selectors. An existing
   `no-restricted-syntax` exception no longer lifts them; add an entry for the new rule id with the
   same paths.
-- The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
+- The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) and `slow-test` take exceptions the
   same way; each failure message spells out the entry that would lift it.
 - `folder-depth-limit`: code may sit at most one folder below `features/<feature>/<layer>/` (a file in
   `domain/orders/x.ts` is fine, one in `domain/orders/rules/x.ts` is not), so nesting cannot dodge
   the 6-files-per-folder limit. `thresholds.folderDepth` changes the one folder. `__tests__` and `__mocks__` folders do not
   count as a level. A folder already deeper on the base fails only when it gets deeper, and the rule takes exceptions like the file
   limits.
-- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`,
-  `redefined-library-component`, `new-icon-asset`) come from the `coupling` and `structure` checks,
-  not from ESLint, and take exceptions the same way; the JavaScript preset runs them too.
+- The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`,
+  `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
+  `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
+  JavaScript preset runs them too.
+
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders only, so
   `src/crypto/e2e/` stays production code; a missing one is ignored). Type checking, duplicate
   detection, dead-code analysis and the test-file lint scopes cover all four. The roots must be
   directories; `excludedGlobs` are globs and replace the built-in exclusions;
-  `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;
+  `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported (what
+  they re-export is not reported as `test-only-export`);
   the module-load-effects check does not apply to them, since running at load is what a script does.
 - A root `e2e/` of Playwright or Cypress specs needs no exception. Its specs need no production
   import (`nitpicker/test-must-use-production-runtime` and the `test-runtime` analysis skip it, as
@@ -1352,10 +1532,8 @@ from a real caller) and the `exceptions` entry that lifts it.
   `page.evaluate` compile (the lib then applies to every file in that check). The default quality
   test run does not run `e2e`, since end-to-end runners start those tests themselves; a `testRoots`
   you list yourself is always run, so list `e2e` to keep a vitest or supertest suite there.
-- A Jest project with tests in a root `__tests__/` gets them run by Vitest in the quality test run,
-  and they fail on `jest.*` (Jest support is issue #162). Either list `layout.testRoots` without
-  `__tests__`, or add `"__tests__/**"` to `exclude`, which also leaves the folder out of the other
-  tools.
+- A Jest project with tests in a root `__tests__/` gets them run by Jest in the quality test run,
+  like every other test file (see [Test runners](usage.md#test-runners)).
 
 ## Enforcement sources
 
@@ -1382,14 +1560,16 @@ change in review.
 
 Recommendation: documented expectation, not a peer dependency.
 
-The preset only requires that adapter code parse untrusted input with zod. Nitpicker's own runtime
-never imports zod (it is not in `package.json`), so a peer dependency would make every
-consumer install a package nitpicker does not use, and would break installs for projects that
-choose to have no external-input boundary. The `strict` ESLint rule that would check this works on
-syntax (a hand-written type guard on external data), not on which library parses it. Document in the
-preset README that adapters are expected to use zod, and have the rule message name zod as the
-allowed form. Revisit as a peer dependency (optional, via `peerDependenciesMeta`) only if a rule
-needs to import from zod at lint time.
+The preset only requires that adapter code parse untrusted input with a schema library, and zod is
+the default. Nitpicker's own runtime never imports zod (it is not in `package.json`), so a peer
+dependency would make every consumer install a package nitpicker does not use, and would break
+installs for projects that choose to have no external-input boundary. The rule that checks this
+works on syntax (a hand-written type guard on external data, an unparsed `JSON.parse`) and on which
+calls count as a parse, not on importing the library. Document in the preset README that adapters
+are expected to use zod unless the project has another validation library, and have the rule
+message name the project's library, or zod when it has none (see "Libraries follow the project").
+Revisit as a peer dependency (optional, via `peerDependenciesMeta`) only if a rule needs to import
+from zod at lint time.
 
 ### Does nitpicker's own code follow the preset
 

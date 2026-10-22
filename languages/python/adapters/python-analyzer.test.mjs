@@ -2,7 +2,7 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
+import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { installFakeToolchain } from './test-support/fake-toolchain.mjs';
 import {
   configurationFiles,
@@ -47,6 +47,9 @@ describe('Python analyzer', () => {
       'duplicates',
       'coupling',
       'import-linter',
+      'tests',
+      'test-runtime',
+      'dependencies',
     ]);
     expect(analyzer.exclusions).toEqual([]);
     expect(analyzer.timeoutMs).toBe(30 * 60 * 1000);
@@ -60,6 +63,7 @@ describe('Python analyzer', () => {
     expect(analyzer.name).toBe(MUTATION_ANALYZER_NAME);
     expect(analyzer.reportedTools).toEqual(['mutmut']);
     expect(analyzer.dependencies).toEqual([PYTHON_ANALYZER_NAME]);
+    expect(analyzer.toleratedDependencyErrors).toEqual(['tests', 'test-runtime', 'dependencies']);
     expect(analyzer.timeoutMs).toBe(70 * 60 * 1000);
     expect(analyzer.version).toBe('unresolved');
   });
@@ -71,7 +75,7 @@ describe('Python analyzer', () => {
       'languages/python/ruff/nitpicker-ruff.toml',
       'languages/python/adapters/execution/python-test-runner.mjs',
       'languages/python/ingest/coverage-reports/coverage-json.mjs',
-      'languages/java/ingest/sarif.mjs',
+      'shared/ingest/sarif.mjs',
       'shared/policy.mjs',
       'shared/rules/baseline-expansion.mjs',
       'languages/python/metrics/structure_metrics.py',
@@ -166,7 +170,9 @@ describe('Python analyzer', () => {
     expect(
       createPythonAnalyzer({ typeChecker: 'pyright', testRunner: 'pytest' }).resolveVersion(live),
     ).toBe(`ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1;${jscpd}`);
-    expect(createMutationAnalyzer().resolveVersion(live)).toBe('mutmut@3.8.0;pytest@8.3.1');
+    expect(createMutationAnalyzer().resolveVersion(live)).toBe(
+      'mutmut@3.8.0;pytest@8.3.1;pytest-django@missing',
+    );
   });
 
   it('reports a missing environment when resolving the version', () => {
