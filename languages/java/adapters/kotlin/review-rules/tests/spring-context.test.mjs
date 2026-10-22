@@ -42,7 +42,7 @@ describe('unused Spring test context in Kotlin', () => {
     expect(summary(findings)).toEqual([`${SPRING_UNUSED_CONTEXT_RULE} SampleTest 1`]);
     expect(findings[0].tool).toBe('pmd');
     expect(routeOf(findings[0].message)).toBe(
-      'add an exception for pmd/SpringUnusedContext in nitpicker.config.json.',
+      'If this is intended, add {"rule":"pmd/SpringUnusedContext","paths":["src/test/kotlin/demo/SampleTest.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

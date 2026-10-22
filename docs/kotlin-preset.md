@@ -244,9 +244,18 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `unused-option`), a class limit, a file
-limit or `test-runtime/slow-test` (anything else is a config error naming them). Every enforceable Kotlin
-finding ends with that entry in the shared exception sentence. Findings of that rule under the globs are
-dropped on both snapshots, like `exclude`, and the exception changes the analyzer's cache key. The rule is
+limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
+`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
+`function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown` or `changed-branch-coverage`
+with an optional `function` (required for the last one); `duplicate-clone` and `stability-direction`
+(the package name as printed, for example `"paths": ["stable"]`) per path; and, for the Java sources of
+the project, a Java finding as it is printed, `<tool>/<rule>` (`pmd/UnusedPrivateField`) or
+`mutant-survived` and `mutant-nocoverage` for the PIT mutants of Java classes (Kotlin mutants are
+report-only and need none). Anything else is a config error naming them. `function` is the name the
+finding prints, matched exactly: `Big.run`, `Boot.<init>` for an `init` block, `Boot.table` for a
+property initializer that holds a block, a backtick name in full. Every enforceable Kotlin finding ends
+with that entry in the shared exception sentence. Findings of that rule under the globs are dropped on
+both snapshots, like `exclude`, and the exception changes the analyzer's cache key. The rule is
 lifted for the whole file, so one exception for
 `kotlin.run` also lifts `kotlin.with`, `kotlin.also` and `runBlocking` there (they share a
 detekt rule).
@@ -617,8 +626,10 @@ Limits. A line that branches and also suspends (`if (ready) emit(1)`, `for (n in
 counts the generated outcome too, so it can fail with every branch the author wrote taken. The
 message then names the call (`Not taken: emit suspending (move the call to its own line if no
 branch of yours is untested)`); put the suspension call on a line of its own, or, when that is not
-possible, lift the rule for the file with `exclude` in `nitpicker.config.json` (path-level, so it
-also stops gating the real branches of that file). A line is judged as a whole, as for Java, and a
+possible, accept the function with an `exceptions` entry for `changed-branch-coverage` that names it
+(`function` is required; the name is the one the structure findings print, from the Kotlin metrics,
+and only that function's branches are accepted), or `exclude` the file in `nitpicker.config.json`
+(path-level, so it also stops gating every other finding of that file). A line is judged as a whole, as for Java, and a
 reformatted line is a changed line. Lines of inline functions that the compiler copies into other
 files are not in the report (JaCoCo maps them outside the file).
 
@@ -722,9 +733,11 @@ The shared structure rule (`shared/rules/structure.mjs`) runs on Kotlin function
 that number grew (`{name} grew from 4 to 5 parameters (limit 3)...`); a function that only moved,
 or was edited without getting worse, stays baselined. That is the shared "only if worse" ratchet,
 keyed by function name and occurrence in the file, with a hash of the function text in the identity.
-The only exception mechanism is `nitpicker.config.json`: `exclude` drops the findings under a path
-(generated code, a legitimately wide function), `thresholds.crapLimit` changes the CRAP limit;
-there are no inline disables.
+The exception mechanisms are in `nitpicker.config.json`: an `exceptions` entry for the rule accepts
+one function (`{ "rule": "function-lines-limit", "paths": ["src/main/kotlin/app/Big.kt"],
+"function": "Big.run", "reason": "..." }`, `function` optional here) or the whole path, and the
+message of each finding prints the entry; `exclude` drops every finding under a path (generated code);
+`thresholds.crapLimit` changes the CRAP limit; there are no inline disables.
 
 **Metric source (decision).** `languages/java/gradle/kotlin-psi` parses the Kotlin sources
 (parse only, no compilation) with the PSI parser of the Kotlin compiler and writes
@@ -912,9 +925,11 @@ the [one-way rules](#one-way-rules), the [source checks](#source-checks), the
 [review rules](#review-rules), the [class limits](#class-limits), the file limits
 `file-lines-limit` and `folder-files-limit`, `slow-test` (or `test-runtime/slow-test`),
 `test-runtime/test-not-run` (a test source set no test task runs, see
-[java-preset.md](java-preset.md#tests-that-never-run)) and the
-[dependency and repository checks](usage.md#dependency-and-repository-checks) per path. `layout` is
-a config error until the Kotlin preset runs the rule that reads it (`shared-used-by-one-feature`).
+[java-preset.md](java-preset.md#tests-that-never-run)), the
+[dependency and repository checks](usage.md#dependency-and-repository-checks), stability, and the
+mutants of Java classes per path, and the structure, CRAP and coverage rules per function. Java rule
+ids are accepted for the Java sources of the project. `layout` is a config error until the Kotlin
+preset runs the rule that reads it (`shared-used-by-one-feature`).
 
 ## Slow tests
 

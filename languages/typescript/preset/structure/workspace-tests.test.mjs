@@ -44,7 +44,7 @@ function findings(files, exceptions = []) {
 }
 
 const fix =
-  "Add a `test` script to its package.json, or add the package to the root test config's `projects`. If its tests run some other way, add an exception for nitpicker/no-uncollected-tests with the path packages/web/package.json in nitpicker.config.json.";
+  'Add a `test` script to its package.json, or add the package to the root test config\'s `projects`. If this is intended, add {"rule":"nitpicker/no-uncollected-tests","paths":["packages/web/package.json"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
 
 describe('workspace packages whose tests nothing runs', () => {
   it('are reported on their package.json, once per package, counting its test files', () => {

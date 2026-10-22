@@ -36,15 +36,19 @@ function addFileCoverage(findings, coverage, { analyzerName, relativePath }) {
     metricName: 'branches',
     value: coveragePercent(branchOutcomes),
   });
-  const branches = branchEntries.map(([branchId, outcomes]) => ({
-    path: relativePath,
-    key:
-      coverage.branchSourceHashes?.[branchId] ??
-      hash(JSON.stringify(coverage.branchMap?.[branchId] ?? { branchId })),
-    percent: coveragePercent(outcomes),
-    line: coverage.branchMap?.[branchId]?.loc?.start?.line,
-    arms: coverage.uncoveredArms?.[branchId],
-  }));
+  const branches = branchEntries.map(([branchId, outcomes]) => {
+    const line = coverage.branchMap?.[branchId]?.loc?.start?.line;
+    return {
+      path: relativePath,
+      key:
+        coverage.branchSourceHashes?.[branchId] ??
+        hash(JSON.stringify(coverage.branchMap?.[branchId] ?? { branchId })),
+      percent: coveragePercent(outcomes),
+      line,
+      arms: coverage.uncoveredArms?.[branchId],
+      symbol: coverage.branchFunctions?.[branchId],
+    };
+  });
   findings.push(
     ...branchCoverageFindings(branches, {
       tool: analyzerName,
@@ -208,6 +212,7 @@ function neutralMutant(mutant, { filePath, status, occurrences }) {
     status,
     ...(status === 'Ignored' ? { hiddenByComment: true } : {}),
     label: mutant.mutatorName ?? 'mutant',
+    ...(mutant.functionName === undefined ? {} : { symbol: mutant.functionName }),
     line: mutant.location?.start?.line,
     ...(positiveInteger(mutant.location?.start?.column) === undefined
       ? {}

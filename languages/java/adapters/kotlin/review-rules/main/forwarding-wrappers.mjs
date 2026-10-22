@@ -1,9 +1,8 @@
 import { annotationNamed, append, compactType } from '../kotlin-facts.mjs';
-import { exceptionSentence } from '../review-finding.mjs';
 
 export const FORWARDING_RULE = 'StaticForwardingWrapper';
 
-const MESSAGE = `This function only passes its parameters, in order, to another function. Call that function directly where this one is used and delete the wrapper. Factories named of or from and copies such as List.copyOf are allowed. If the wrapper is intended (a public alias, or a name a framework looks up), ${exceptionSentence(FORWARDING_RULE)}`;
+const MESSAGE = `This function only passes its parameters, in order, to another function. Call that function directly where this one is used and delete the wrapper. Factories named of or from and copies such as List.copyOf are allowed.`;
 const SPRING_STEREOTYPES = new Set([
   'Component',
   'Service',

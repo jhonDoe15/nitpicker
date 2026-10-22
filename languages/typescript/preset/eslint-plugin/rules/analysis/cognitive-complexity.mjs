@@ -84,7 +84,7 @@ export const rule = {
     schema: [{ type: 'integer', minimum: 0 }],
     messages: {
       tooComplex:
-        'This function has a cognitive complexity of {{value}}; the limit is {{max}}. Move nested branches and conditions into smaller named functions. If it must stay this way, add an exception for this rule in nitpicker.config.json.',
+        'This function has a cognitive complexity of {{value}}; the limit is {{max}}. Move nested branches and conditions into smaller named functions.',
     },
   },
   create(context) {

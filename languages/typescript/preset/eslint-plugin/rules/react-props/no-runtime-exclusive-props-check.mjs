@@ -92,7 +92,7 @@ export const rule = {
     schema: [],
     messages: {
       exclusiveProps:
-        'Props {{ props }} are checked together at runtime. Make the props a discriminated union (`{ icon: Icon; image?: never } | { image: string; icon?: never }`) so the compiler rejects the combination. If a runtime check is still needed, add an exception for this rule in nitpicker.config.json.',
+        'Props {{ props }} are checked together at runtime. Make the props a discriminated union (`{ icon: Icon; image?: never } | { image: string; icon?: never }`) so the compiler rejects the combination.',
     },
   },
   create(context) {

@@ -120,7 +120,12 @@ function writeJavaReports(module) {
       ? bytes(run, 'checkstyle-report.xml')
       : '<checkstyle version="10.21.1"></checkstyle>',
   );
-  writeFileSync(moduleFile(module, 'structure.json'), '[]');
+  writeFileSync(
+    moduleFile(module, 'structure.json'),
+    exists(run, inside(module, 'structure.json'))
+      ? bytes(run, inside(module, 'structure.json'))
+      : '[]',
+  );
   writeFileSync(moduleFile(module, 'classes.json'), '{"files":{},"classes":[]}');
 }
 
