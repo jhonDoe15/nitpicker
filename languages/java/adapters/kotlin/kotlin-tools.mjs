@@ -101,7 +101,7 @@ function detektLayerSettings({ configRoot, detektConfig, snapshot, toolPrecedenc
   return { detektConfig: found, detektNitpickerFirst: layers.nitpickerFirst };
 }
 
-function kotlinFormatterOf(projectRoot, configured, effectivePom) {
+export function kotlinFormatterOf(projectRoot, configured, effectivePom) {
   return configured ?? detectFormatter(kotlinFilesOf(projectRoot, effectivePom));
 }
 
