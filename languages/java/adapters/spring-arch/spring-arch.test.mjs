@@ -14,11 +14,7 @@ afterEach(() => {
   }
 });
 
-function read(
-  violations,
-  resolvePath = (className) => `src/${className}.java`,
-  isExcepted = undefined,
-) {
+function read(violations, resolvePath = (className) => `src/${className}.java`, isExcepted) {
   const reportRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-spring-arch-'));
   temporaryRoots.push(reportRoot);
   writeFileSync(
