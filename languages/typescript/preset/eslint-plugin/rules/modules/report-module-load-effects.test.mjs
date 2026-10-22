@@ -52,3 +52,35 @@ describe('module-load messages name the entry point exception', () => {
     });
   });
 });
+
+const script = '/repo/scripts/report.mjs';
+
+tester.run('report-module-load-effects for main guards', rule, {
+  valid: [
+    'if (import.meta.main) { await main(process.argv.slice(2)); }',
+    'if (import.meta.url === pathToFileURL(process.argv[1]).href) { await run(); }',
+    [
+      'if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href)',
+      '{ for (const name of names) { await check(name); } }',
+    ].join(' '),
+    'if (require.main === module) { run(); }',
+  ].map((code) => ({ filename: script, code })),
+  invalid: [
+    {
+      code: 'if (import.meta.env.DEV) { await connect(); }',
+      errors: [{ messageId: 'topLevelControl' }, { messageId: 'topLevelAwait' }],
+    },
+    {
+      code: 'if (import.meta.main) { await run(); } else { await other(); }',
+      errors: [
+        { messageId: 'topLevelControl' },
+        { messageId: 'topLevelAwait' },
+        { messageId: 'topLevelAwait' },
+      ],
+    },
+    {
+      code: 'if (import.meta.main) { run(); }\nsetup();',
+      errors: [{ messageId: 'topLevelExpression' }],
+    },
+  ].map((entry) => ({ filename: script, ...entry })),
+});
