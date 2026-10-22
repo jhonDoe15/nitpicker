@@ -68,13 +68,12 @@ function appendHeldSummary(lines, unchangedFindings, color) {
 }
 
 function violationHeadline({ violations, incomplete, policyCount }, color) {
-  const failing = (text) => style(text, [ANSI.bold, ANSI.red], color);
   const policy = `${String(policyCount)} unapproved policy ${pluralize('change', policyCount)}`;
   const code = `${String(violations.length)} code ${pluralize('violation', violations.length)}`;
   if (violations.length === 0 && policyCount > 0) {
     const verb = policyCount === 1 ? 'fails' : 'fail';
     const tail = incomplete ? ' and the run is incomplete:' : '';
-    return failing(`✖ No new code violations, but ${policy} ${verb} the gate${tail}`);
+    return failing(`✖ No new code violations, but ${policy} ${verb} the gate${tail}`, color);
   }
   if (violations.length === 0) {
     return incomplete
@@ -86,7 +85,12 @@ function violationHeadline({ violations, incomplete, policyCount }, color) {
     policyCount === 0
       ? `✖ ${String(total)} new enforceable ${pluralize('violation', total)}`
       : `✖ ${String(total)} new enforceable violations: ${code} and ${policy}`,
+    color,
   );
+}
+
+function failing(text, color) {
+  return style(text, [ANSI.bold, ANSI.red], color);
 }
 
 function appendViolationSummary(lines, summary, color) {
