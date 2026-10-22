@@ -85,7 +85,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
         functions: readStructureFunctions(reportRoot),
         sourceText: (file) => readSource(projectRoot, file),
       }).findings,
-      ...readDuplicateFindings(reportRoot),
+      ...readDuplicateFindings(reportRoot, projectRoot),
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),
       ...testFailureFindings(manifest, policy.snapshot),

@@ -40,6 +40,8 @@ function cloneMetrics({ analyzerName, sides, clone, pair, occurrence }) {
   return metrics;
 }
 
+export const RENAMED_IDENTITY_PREFIX = 'renamed:';
+
 export function evaluateDuplicates(clones, analyzerName) {
   const findings = [];
   const occurrences = new Map();

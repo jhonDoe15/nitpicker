@@ -1,4 +1,5 @@
 import { globMatcher } from '../paths/glob.mjs';
+import { RENAMED_IDENTITY_PREFIX } from '../rules/duplicates.mjs';
 
 /** A test for a path against any of `globs`. */
 export function pathMatcher(globs) {
@@ -32,13 +33,16 @@ const PAIR_END = /:(?:fragment|occurrence):/;
 
 export function clonePartnerPath(finding) {
   const prefix = `pair:${finding.path}|`;
+  const identity = finding.identity.startsWith(RENAMED_IDENTITY_PREFIX)
+    ? finding.identity.slice(RENAMED_IDENTITY_PREFIX.length)
+    : finding.identity;
   if (
     !['duplicate-clone', 'duplicate-clone-size'].includes(finding.rule) ||
-    !finding.identity.startsWith(prefix)
+    !identity.startsWith(prefix)
   ) {
     return undefined;
   }
-  const rest = finding.identity.slice(prefix.length);
+  const rest = identity.slice(prefix.length);
   const end = rest.search(PAIR_END);
   return end < 0 ? undefined : rest.slice(0, end);
 }

@@ -458,7 +458,26 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   timers, a `...Sync` call from `fs`, `child_process`, `crypto` or `zlib` such as `readFileSync`
   (a project's own `buildTableSync()` is fine), any `process.*` call, `new Date()` with no
   argument, `new Worker`, `new WebSocket`) and any top-level `await`. Pure initialisers
-  (`z.object(...)`, `new RegExp(...)`, `path.dirname(...)`) are fine.
+  (`z.object(...)`, `new RegExp(...)`, `path.dirname(...)`) are fine. A main guard is not module
+  load work: an `if` with no `else` runs its body only when the file is started as a script, so
+  neither the `if` nor what it runs is reported, when its condition is exactly one of
+  `import.meta.main`, `require.main === module`, or `import.meta.url` compared with
+  `process.argv[1]`, `pathToFileURL(process.argv[1]).href`,
+  `pathToFileURL(realpathSync(process.argv[1])).href` or `` `file://${process.argv[1]}` ``,
+  optionally joined by `&&` with `process.argv[1]` or `process.argv[1] !== undefined`. The allowed
+  form, which also holds when the script is started through a symlink, is:
+
+  ```js
+  if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
+    await run();
+  }
+  ```
+
+  `process`, `require`, `module` and `undefined` must be the globals (an import of `node:process`
+  counts) and `pathToFileURL` and `realpathSync` the imports from `node:url` and `node:fs`, not a
+  local binding of the same name. Any other condition, such as `import.meta.env.DEV`, a bare
+  `import.meta.url`, a call or a comma expression inside the comparison, is still reported.
+
 - `nitpicker/no-production-console` also reports `console['error']` and, outside the composition
   root, `process.stdout.write` and `process.stderr.write`.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
@@ -620,6 +639,16 @@ The `duplicates` check scans test files too, but between two test files it repor
 that defines a named function (a copied helper: keep one in a non-test file such as
 `test/support/` and import it). Repeated expected values and assertions between tests are left
 alone.
+
+The `duplicates` check also runs jscpd over a copy of the sources where every name, string, number and
+comment is the same token, with at least 100 tokens and 5 lines, so a copy-pasted function whose
+locals and literals were renamed fails too (`duplicate-clone`, identity starting `renamed:`).
+Imports and re-exports, `interface`, `type` and `enum` declarations, literal-only objects and
+arrays, field declarations and JSX markup (tags, attributes, text and plain `{name}` holders) are
+left out of that copy, and so are generated files, so test tables, import lists and components that
+only share markup structure are not clones, and neither is code that only repeats one or two
+statements (constructor mappers, enum `switch` tables); handlers and conditions inside the markup count. The
+message names the same route as for any clone: add either file of the pair to `exclude`. Between two test files it points at a helper or a table-driven test.
 
 Every runnable test imports production code at runtime
 (`nitpicker/test-must-use-production-runtime`), directly or through a relative test helper that
