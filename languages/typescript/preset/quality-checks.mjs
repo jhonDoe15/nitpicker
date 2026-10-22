@@ -242,7 +242,7 @@ function repositoryChecksFor(exclusions) {
       kind: 'duplicates',
       version: jscpdVersion,
       exclusions: exclusions.general,
-      timeoutMs: MINUTE_MS,
+      timeoutMs: 2 * MINUTE_MS,
       shardWeight: 2,
       configurationFiles: [...DUPLICATES_CONFIGURATION_FILES, JAVASCRIPT_PRESET_FILE],
     },
