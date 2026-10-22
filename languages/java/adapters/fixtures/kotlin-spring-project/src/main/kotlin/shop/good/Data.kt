@@ -60,3 +60,31 @@ class ShipmentService(private val shipments: ShipmentRepository, private val ent
         const val BATCH = 50
     }
 }
+
+interface StockRepository : JpaRepository<Shipment, Long> {
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Shipment s set s.status = 'VOID' where s.id in :ids")
+    fun deactivate(ids: Collection<Long>): Int
+}
+
+@Service
+class StockService(private val stock: StockRepository, private val shipments: ShipmentRepository) {
+    @Transactional
+    fun retire(ids: List<Long>, groups: Map<String, List<Long>>) {
+        ids.chunked(CHUNK).forEach { chunk -> stock.deactivate(chunk) }
+        for (chunk in ids.chunked(CHUNK)) {
+            stock.deactivate(chunk)
+        }
+        ids.chunked(CHUNK).forEach { stock.deactivate(it) }
+        ids.windowed(CHUNK, CHUNK, true).forEach { chunk: List<Long> -> stock.deactivate(chunk) }
+        groups.forEach { (_, grouped) -> stock.deactivate(grouped) }
+    }
+
+    @Transactional
+    fun reopen(id: Long): Shipment? =
+        shipments.findById(id).filter { it.status == Status.PAID }.map { shipments.save(it) }.orElse(null)
+
+    private companion object {
+        const val CHUNK = 500
+    }
+}

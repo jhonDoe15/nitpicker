@@ -57,11 +57,22 @@ function stored(view, member, fqns) {
   );
 }
 
+function enclosingCandidates(view, owner, name) {
+  const parts = owner.split('.');
+  return parts
+    .map((_, index) => parts.slice(0, parts.length - index).join('.'))
+    .map((prefix) => [view.file.package, prefix, name].filter(Boolean).join('.'));
+}
+
 function isEnumType(view, context, type) {
+  if (type === undefined || context.converted.has(simpleName(type))) {
+    return false;
+  }
+  const name = typeName(type);
+  const candidates = [...enclosingCandidates(view, context.owner, name), ...view.resolve(name)];
   return (
-    type !== undefined &&
-    !context.converted.has(simpleName(type)) &&
-    view.resolve(typeName(type)).some((name) => context.enums.has(name) || JDK_ENUMS.has(name))
+    candidates.some((candidate) => context.enums.has(candidate) || JDK_ENUMS.has(candidate)) ||
+    view.isJavaEnum([[view.file.package, name].filter(Boolean).join('.'), ...view.resolve(name)])
   );
 }
 
@@ -93,7 +104,7 @@ function enumStrings(view, { projectFiles }) {
     membersOf(view, declared)
       .filter((member) => annotatedWith(view, member, NOT_COLUMNS) === undefined)
       .flatMap((member) =>
-        enumColumns(view, member, context).map((part) => ({
+        enumColumns(view, member, { ...context, owner: declared.qualified }).map((part) => ({
           ...report('JpaEnumString', member, `${declared.qualified}.${member.name}`),
           key: `${declared.qualified}.${member.name}:${part}`,
         })),

@@ -23,9 +23,24 @@ const MAPPING = new Set([
   'associate',
 ]);
 const LOOPS = new Set(['loop', 'foreach']);
+const CHAIN_LIMIT = 8;
 const BOUNDARIES = new Set(['fun', 'class', 'object']);
 const COLLECTION_LITERAL =
   /^(?:listOf|setOf|mutableListOf|mutableSetOf|arrayOf|sequenceOf)\(|\.\.|\buntil\b/u;
+const COLLECTION_FACTORIES = new Set([
+  'listOf',
+  'setOf',
+  'mutableListOf',
+  'mutableSetOf',
+  'arrayListOf',
+  'hashSetOf',
+  'linkedSetOf',
+  'arrayOf',
+  'sequenceOf',
+  'emptyList',
+  'emptySet',
+]);
+const REFERENCE = /^(?:this\.)?(\w*)::(\w+)$/u;
 
 export function entityReceiver(view, invocation) {
   const type = view.typeOf(invocation.scope, invocation.receiver);
@@ -45,13 +60,47 @@ export function isCollection(view, scopeId, text) {
     return true;
   }
   const type = view.typeOf(scopeId, text);
-  return type !== undefined && COLLECTION_TYPES.has(typeName(type).split('.').at(-1));
+  return (
+    type !== undefined &&
+    (COLLECTION_TYPES.has(typeName(type).split('.').at(-1)) || COLLECTION_FACTORIES.has(type))
+  );
+}
+
+function previousCall(view, invocation) {
+  const previous = invocation.previous?.name;
+  return view.file.invocations.find(
+    (candidate) =>
+      previous !== undefined &&
+      candidate.name === previous &&
+      candidate.scope === invocation.scope &&
+      (candidate.after ?? []).includes(invocation.name) &&
+      (invocation.receiver ?? '').startsWith(candidate.receiver ?? '\0'),
+  );
+}
+
+function overCollection(view, start) {
+  const chain = start === undefined ? [] : [start];
+  for (const invocation of chain) {
+    if (isCollection(view, invocation.scope, invocation.receiver)) {
+      return true;
+    }
+    const previous = previousCall(view, invocation);
+    chain.push(...(previous === undefined || chain.length > CHAIN_LIMIT ? [] : [previous]));
+  }
+  return false;
 }
 
 function iteratingCall(view, invocation) {
   return (
     ITERATING.has(invocation.name) ||
-    (MAPPING.has(invocation.name) && isCollection(view, invocation.scope, invocation.receiver))
+    (MAPPING.has(invocation.name) && overCollection(view, invocation))
+  );
+}
+
+function hostOf(view, scope) {
+  return view.file.invocations.find(
+    ({ name, scope: parent, receiver }) =>
+      name === scope.host && parent === scope.parent && receiver === scope.qualifier,
   );
 }
 
@@ -59,7 +108,9 @@ function iteratingLambda(view, scope) {
   return (
     scope.k === 'lambda' &&
     (ITERATING.has(scope.host) ||
-      (MAPPING.has(scope.host) && isCollection(view, scope.parent, scope.qualifier)))
+      (MAPPING.has(scope.host) &&
+        (isCollection(view, scope.parent, scope.qualifier) ||
+          overCollection(view, hostOf(view, scope)))))
   );
 }
 
@@ -93,7 +144,7 @@ export function inClearedLoop(view, scopeId) {
 export function references(view, invocation) {
   return iteratingCall(view, invocation)
     ? invocation.arguments
-        .map(({ text }) => /^(\w*)::(\w+)$/u.exec(text.trim()))
+        .map(({ text }) => REFERENCE.exec(text.trim()))
         .filter((match) => match !== null)
         .map(([, receiver, name]) => ({
           ...invocation,

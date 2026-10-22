@@ -75,7 +75,7 @@ const ALLOWED = {
   JpaEntityClass:
     'Make the entity an open class that is not a data class: apply the all-open plugin for @Entity, @MappedSuperclass and @Embeddable (allOpen { annotation("jakarta.persistence.Entity") ... } next to kotlin("plugin.jpa")), or write open class. Hibernate cannot proxy a final class, so lazy loading stops working, and a data class compares and hashes every property; use data classes for DTOs.',
   JpaManyToManyCascade:
-    'Do not cascade ALL or REMOVE on @ManyToMany: removing one parent deletes rows that other parents still share.',
+    'Cascade only PERSIST and MERGE on @ManyToMany, never ALL or REMOVE: removing one parent deletes rows that other parents still share.',
   JpaManyToManySet:
     'Map @ManyToMany as a MutableSet (or a MutableList with @OrderColumn). A plain list makes Hibernate delete and re-insert every join row when one element is removed.',
   JpaVersion:
@@ -93,9 +93,9 @@ const ALLOWED = {
   SpringDataModifyingQuery:
     'Write @Modifying(clearAutomatically = true, flushAutomatically = true), so pending changes are flushed first and no stale entities stay in the persistence context.',
   SpringDataNoSaveInLoop:
-    'Do not save or delete one entity per loop iteration. Collect the entities and call saveAll or deleteAll once.',
+    'Collect the entities and call saveAll or deleteAll once, instead of saving or deleting one entity per loop iteration.',
   SpringDataNoFlush:
-    'Do not flush by hand. Let the transaction write changes at commit; an early flush defeats JDBC batching and hides ordering bugs.',
+    'Let the transaction write changes at commit and remove this flush; an early flush defeats JDBC batching and hides ordering bugs.',
   SpringDataNamedParameters:
     'Bind query parameters by name (:email), not by position (?1); positions break silently when parameters are reordered.',
   SpringDataQueryTextBlock:

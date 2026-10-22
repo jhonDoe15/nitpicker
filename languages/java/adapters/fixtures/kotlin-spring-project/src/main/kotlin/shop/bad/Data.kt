@@ -67,3 +67,81 @@ class InvoiceService(private val invoices: InvoiceRepository, private val entity
     @Transactional(readOnly = true)
     fun total(): Int = invoices.findAll().size
 }
+
+const val BASE_QUERY = "select i from Invoice i "
+const val OPEN_FILTER = "where i.status = 'OPEN'"
+
+interface ArchiveRepository : JpaRepository<Invoice, Long> {
+    @Query(BASE_QUERY + OPEN_FILTER)
+    fun openOnes(): List<Invoice>
+
+    @Query(
+        """
+        select i from Invoice i
+        where i.status = 'OPEN'
+          and i.customer is not null
+          and i.version > 0
+          and i.receipt is null
+          and exists (select t from Tag t where t.id = i.id)
+          and i.customer.name is not null
+          and i.customer.name <> ''
+          and i.lines is not empty
+          and i.tags is not empty
+          and i.history is not empty
+          and i.id = ?1
+        """,
+    )
+    fun longPositional(id: Long): List<Invoice>
+
+    @Query(
+        """
+        select i from Invoice i
+        where i.customer is not null
+          and i.version > 0
+          and i.receipt is null
+          and exists (select t from Tag t where t.id = i.id)
+          and i.customer.name is not null
+          and i.customer.name <> ''
+          and i.lines is not empty
+          and i.tags is not empty
+          and i.history is not empty
+          and i.status = :status
+        """ + " order by i.id",
+    )
+    fun longJoined(status: Status): List<Invoice>
+}
+
+class Batch(val items: List<Invoice>, val byId: Map<Long, Invoice>)
+
+fun InvoiceRepository.saveEach(items: List<Invoice>) = items.forEach { save(it) }
+
+fun InvoiceRepository.saveLoop(items: List<Invoice>) {
+    for (item in items) {
+        this.save(item)
+    }
+}
+
+fun EntityManager.persistAll(items: List<Tag>) {
+    items.forEach { persist(it) }
+}
+
+@Service
+class BatchService(private val invoices: InvoiceRepository) {
+    @Transactional
+    fun importBatch(batch: Batch, items: List<Invoice>) {
+        batch.items.map { invoices.save(it) }
+        items.filter { it.status == Status.OPEN }.map { invoices.save(it) }
+        items.asSequence().map { invoices.save(it) }.toList()
+        batch.byId.values.map { invoices.save(it) }
+        val repository = invoices
+        items.forEach { repository.save(it) }
+        items.forEach(this.invoices::save)
+        items.forEach { keep(it) }
+    }
+
+    private fun keep(invoice: Invoice, audit: Boolean = true) {
+        if (audit) {
+            invoices.save(invoice)
+        }
+    }
+}

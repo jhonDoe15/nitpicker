@@ -53,3 +53,13 @@ abstract class BaseEntity {
 class Payment : BaseEntity() {
     var amount: Long = 0
 }
+
+@Entity
+class Refund(
+    @Id @GeneratedValue(strategy = GenerationType.SEQUENCE) var id: Long? = null,
+    @Version var version: Long = 0,
+    var state: State = State.NEW,
+    var priority: Priority = Priority.LOW,
+) {
+    enum class State { NEW, DONE }
+}

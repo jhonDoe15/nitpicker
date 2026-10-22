@@ -14,7 +14,8 @@ import { entityReceiver, inClearedLoop, repositoryReceiver } from './loop-scopes
 
 const QUERIES = new Set([...JPA_QUERY, ...NATIVE_QUERY]);
 const POSITIONAL = /\?\d/u;
-const JOINED = /"\s*\+|\+\s*"/u;
+const STRINGS = /"""[\s\S]*?"""|"(?:[^"\\]|\\.)*"/gu;
+const PLUS = /\+/u;
 const NATIVE_MARKER = '"PMD.SpringDataNativeQuery"';
 const FILTERS = new Set([
   'filter',
@@ -115,7 +116,8 @@ function queryAnnotations(view) {
       ['SpringDataNamedParameters', query?.arguments.some(({ text }) => POSITIONAL.test(text))],
       [
         'SpringDataQueryTextBlock',
-        query !== undefined && queryTexts(query).some((text) => JOINED.test(text)),
+        query !== undefined &&
+          queryTexts(query).some((text) => PLUS.test(text.replaceAll(STRINGS, ''))),
       ],
       [
         'SpringDataModifyingQuery',

@@ -23,7 +23,9 @@ const BATCH_BREAKING_IDS = /\b(?:IDENTITY|TABLE)\b/u;
 export function membersOf(view, declared) {
   return [
     ...declared.primaryParameters.filter(({ property }) => property !== undefined),
-    ...view.propertiesOf(declared.qualified),
+    ...view
+      .propertiesOf(declared.qualified)
+      .filter(({ computed, delegated }) => computed !== true && delegated !== true),
   ];
 }
 
