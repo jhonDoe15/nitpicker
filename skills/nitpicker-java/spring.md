@@ -44,7 +44,7 @@ Web:
   on the class for the path prefix. Records in and out, `@Valid` on every `@RequestBody`.
 - No `Object`, `JsonNode`, `Map<String, Object>`, `ResponseEntity<?>` or `null` in or out of a
   handler. An `@ExceptionHandler` never returns a generic exception's message or stack trace.
-- Security: end with `anyRequest().authenticated()`, keep CSRF on for session-based chains, no `"*"`
+- Security: end with `anyRequest().authenticated()` (`anyExchange()` on WebFlux), keep CSRF on for session-based chains, no `"*"`
   origin with credentials, no user passwords in source.
 - No `@CrossOrigin`; CORS is configured once. Passwords through
   `PasswordEncoderFactories.createDelegatingPasswordEncoder()`, never a weak encoder.
@@ -54,7 +54,7 @@ JPA and Spring Data:
 - Entities are non-final classes (not records), with a `@Version` field next to the `@Id` (or
   inherited from a `@MappedSuperclass`) and `GenerationType.SEQUENCE` ids. Every `@ManyToOne` and
   `@OneToOne` says `fetch = FetchType.LAZY`; nothing is `EAGER`. `@ManyToMany` is a `Set` and never
-  cascades `ALL` or `REMOVE`. Enum fields say `@Enumerated(EnumType.STRING)`. `hashCode` never uses
+  cascades `ALL` or `REMOVE`. Enum fields and enum element collections say `@Enumerated(EnumType.STRING)`. `hashCode` never uses
   the generated id: return `getClass().hashCode()` or hash an immutable business key.
 - Every repository method you declare has `@Query` (JPQL in a text block for JPA) with named parameters
   (`:email`); inherited methods such as `findById` and `save` need nothing. No derived names like

@@ -150,7 +150,7 @@
   </rule>
 
   <rule name="SpringBeanCollectionState" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not change a plain collection of a shared singleton bean after startup: request threads would write to it at once. Fill it only in the constructor and keep it as Map.copyOf or List.copyOf, or use a ConcurrentHashMap or a cache (@Cacheable). If it is right here, add an exception for pmd/SpringBeanCollectionState in nitpicker.config.json.">
+        message="Fill a plain collection of a shared singleton bean only at startup (the constructor, @PostConstruct or afterPropertiesSet) and keep it as Map.copyOf or List.copyOf, or use a ConcurrentHashMap or a cache (@Cacheable). Changed after startup, request threads would write to it at once. If it is right here, add an exception for pmd/SpringBeanCollectionState in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration[ModifierList/Annotation[
@@ -171,7 +171,13 @@
        $body := ancestor::ClassBody[1],
        $starts := ($body/ConstructorDeclaration, $body/Initializer,
          $body/MethodDeclaration[ModifierList/Annotation[
-           pmd-java:typeIs('jakarta.annotation.PostConstruct') or pmd-java:typeIs('javax.annotation.PostConstruct')]]),
+           pmd-java:typeIs('jakarta.annotation.PostConstruct') or pmd-java:typeIs('javax.annotation.PostConstruct')]],
+         $body[parent::ClassDeclaration[pmd-java:typeIs('org.springframework.beans.factory.InitializingBean')]]
+           /MethodDeclaration[@Name = 'afterPropertiesSet'][@Arity = 0],
+         $body[parent::ClassDeclaration[pmd-java:typeIs('org.springframework.beans.factory.SmartInitializingSingleton')]]
+           /MethodDeclaration[@Name = 'afterSingletonsInstantiated'][@Arity = 0],
+         $body/MethodDeclaration[@Arity = 0][@Name = //Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]
+           /AnnotationMemberList/MemberValuePair[@Name = 'initMethod']//StringLiteral/@ConstValue]),
        $onlyFrom := function($method, $callers) {
          let $uses := $body//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
              | MethodReference[*[1][self::ThisExpression[not(*)]]])[@MethodName = $method/@Name]
@@ -205,14 +211,29 @@
         message="Build the HTTP client once, from the injected RestClient.Builder or RestTemplateBuilder, and keep it in a final field or a @Bean. A client built in each call throws away its connection pool. If it is right here, add an exception for pmd/SpringHttpClientPerCall in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-let $setup := function($node) {
+let $onlyFrom := function($method, $callers) {
+  let $uses := $method/parent::ClassBody//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+      | MethodReference[*[1][self::ThisExpression[not(*)]]])[@MethodName = $method/@Name]
+  return $method/@Visibility = 'private' and exists($uses)
+    and (every $use in $uses satisfies exists($use/ancestor::* intersect $callers))
+},
+    $setupMethod := function($method) {
+  let $body := $method/parent::ClassBody,
+      $starts := ($body/ConstructorDeclaration, $body/Initializer, $body/FieldDeclaration,
+        $body/MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]]),
+      $helpers := $body/MethodDeclaration[$onlyFrom(., $starts)]
+  return exists($method intersect ($starts, $helpers, $body/MethodDeclaration[$onlyFrom(., ($starts, $helpers))]))
+},
+    $setup := function($node) {
   not($node/ancestor::MethodDeclaration)
-  or $node/ancestor::MethodDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]
+  or $setupMethod($node/ancestor::MethodDeclaration[1])
   or $node/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'static']
     [exists($node/ancestor::ReturnStatement[ancestor::MethodDeclaration[1] is $node/ancestor::MethodDeclaration[1]])]
 }
 return (
-  //ConstructorCall[pmd-java:typeIs('org.springframework.web.client.RestTemplate')]
+  //ConstructorCall[pmd-java:typeIs('org.springframework.web.client.RestTemplate')
+    or pmd-java:typeIs('org.springframework.boot.web.client.RestTemplateBuilder')
+    or pmd-java:typeIs('org.springframework.boot.restclient.RestTemplateBuilder')]
   | //MethodCall[@MethodName = ('create', 'builder')]
       [*[1][self::TypeExpression and (pmd-java:typeIs('org.springframework.web.client.RestClient')
         or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient'))]]
@@ -223,12 +244,25 @@ return (
   </rule>
 
   <rule name="SpringHttpClientTimeouts" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Build this HTTP client with connect and read timeouts, from the injected RestClient.Builder or RestTemplateBuilder (spring.http.client.* properties) or with a request factory or connector that sets them. A client without timeouts waits forever for a slow server. If it is right here, add an exception for pmd/SpringHttpClientTimeouts in nitpicker.config.json.">
+        message="Build this HTTP client with connect and read timeouts, from the injected RestClient.Builder or RestTemplateBuilder (spring.http.client.* properties), with a request factory or connector that sets them, or with connectTimeout and readTimeout on the builder; give a Reactor Netty HttpClient a responseTimeout. A client without timeouts waits forever for a slow server. If it is right here, add an exception for pmd/SpringHttpClientTimeouts in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-let $setup := function($node) {
+let $onlyFrom := function($method, $callers) {
+  let $uses := $method/parent::ClassBody//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+      | MethodReference[*[1][self::ThisExpression[not(*)]]])[@MethodName = $method/@Name]
+  return $method/@Visibility = 'private' and exists($uses)
+    and (every $use in $uses satisfies exists($use/ancestor::* intersect $callers))
+},
+    $setupMethod := function($method) {
+  let $body := $method/parent::ClassBody,
+      $starts := ($body/ConstructorDeclaration, $body/Initializer, $body/FieldDeclaration,
+        $body/MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]]),
+      $helpers := $body/MethodDeclaration[$onlyFrom(., $starts)]
+  return exists($method intersect ($starts, $helpers, $body/MethodDeclaration[$onlyFrom(., ($starts, $helpers))]))
+},
+    $setup := function($node) {
   not($node/ancestor::MethodDeclaration)
-  or $node/ancestor::MethodDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]
+  or $setupMethod($node/ancestor::MethodDeclaration[1])
   or $node/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'static']
     [exists($node/ancestor::ReturnStatement[ancestor::MethodDeclaration[1] is $node/ancestor::MethodDeclaration[1]])]
 },
@@ -264,6 +298,16 @@ return (
         or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient')
         or pmd-java:typeIs('java.net.http.HttpClient'))]]
       [not($chain(.)[@MethodName = ('requestFactory', 'clientConnector', 'connectTimeout')])]
+  | //ConstructorCall[pmd-java:typeIs('org.springframework.boot.web.client.RestTemplateBuilder')
+      or pmd-java:typeIs('org.springframework.boot.restclient.RestTemplateBuilder')][not(ArgumentList/*)]
+      [not($chain(.)[@MethodName = ('connectTimeout', 'readTimeout', 'setConnectTimeout', 'setReadTimeout',
+        'requestFactory', 'requestFactorySettings', 'requestFactoryBuilder')])]
+  | //MethodCall[@MethodName = ('create', 'newConnection')]
+      [*[1][self::TypeExpression and pmd-java:typeIs('reactor.netty.http.client.HttpClient')]]
+      [not($chain(.)[@MethodName = 'responseTimeout'])]
+      [not(let $name := $target(.)
+        return $scope(.)//MethodCall[@MethodName = 'responseTimeout'][*[1][@Name = $name]])]
+  | //ConstructorCall[pmd-java:typeIs('org.springframework.http.client.reactive.ReactorClientHttpConnector')][not(ArgumentList/*)]
 )[$setup(.)]
 ]]></value></property></properties>
   </rule>
@@ -288,13 +332,23 @@ return (
   </rule>
 
   <rule name="SpringValueSecretDefault" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Drop the default from this secret: a secret with a built-in fallback ships to production unnoticed. Read it without a default, so a missing value fails at startup. If it is right here, add an exception for pmd/SpringValueSecretDefault in nitpicker.config.json.">
+        message="Read this secret without a default, so a missing value fails at startup; a secret with a built-in fallback ships to production unnoticed. If it is right here, add an exception for pmd/SpringValueSecretDefault in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
-let $secret := function($key) {
-  let $last := tokenize(string($key), '\.')[last()]
-  return matches($last, '(password|passwd|pwd|passphrase|secret|token|credentials?|apikey|privatekey)$', 'i')
-    or matches($last, '(^|[-_])key$', 'i') or matches($last, '[a-z0-9]Key$')
+let $words := function($segment) {
+  tokenize(lower-case(replace(replace(replace(string($segment), '\[\d+\]', ''),
+    '([a-z\d])([A-Z])', '$1-$2'), '([A-Z])([A-Z][a-z])', '$1-$2')), '[-_]+')[. != '']
+},
+    $secret := function($key) {
+  let $segments := tokenize(string($key), '\.'),
+      $last := $words($segments[last()]),
+      $owner := $words($segments[last() - 1])[last()],
+      $names := ('password', 'passwd', 'passphrase', 'secret', 'token', 'credential', 'credentials', 'apikey', 'privatekey',
+        'secretkey', 'accesskey', 'signingkey', 'encryptionkey', 'hmackey', 'jwtkey', 'cryptokey', 'masterkey')
+  return $last[last()] = $names
+    or (count($last) > 1 and string-join(subsequence($last, count($last) - 1), '') = $names)
+    or (count($last) = 1 and $last = 'key'
+      and $owner = ('api', 'jwt', 'encryption', 'signing', 'hmac', 'crypto', 'master', 'access', 'secret', 'private'))
 },
     $fallback := function($value) {
   string-length($value) > 0 and not(matches($value, '^[#$]'))
@@ -316,7 +370,7 @@ return
   </rule>
 
   <rule name="SpringNoErrorLeak" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not put the message or stack trace of a generic, JDK or persistence exception into the response of an @ExceptionHandler; it exposes internals. Log the exception and return a ProblemDetail with a fixed detail. Messages of your own exception types are fine. If it is right here, add an exception for pmd/SpringNoErrorLeak in nitpicker.config.json.">
+        message="Log the exception and return a ProblemDetail with a fixed detail from this @ExceptionHandler. The message or stack trace of a generic, JDK or persistence exception exposes internals; messages of your own exception types are fine. If it is right here, add an exception for pmd/SpringNoErrorLeak in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 let $logged := function($node) {
@@ -524,7 +578,7 @@ return //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springfr
   </rule>
 
   <rule name="SpringTransactionalReadOnlyWrite" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not write inside a read-only transaction: the write is skipped or fails. Put @Transactional without readOnly on this method. If it is right here, add an exception for pmd/SpringTransactionalReadOnlyWrite in nitpicker.config.json.">
+        message="Put @Transactional without readOnly on this method: a write inside a read-only transaction is skipped or fails. If it is right here, add an exception for pmd/SpringTransactionalReadOnlyWrite in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodDeclaration[
@@ -712,7 +766,7 @@ return //FormalParameter[ModifierList/Annotation[pmd-java:typeIs('org.springfram
   </rule>
 
   <rule name="SpringPermitAllAnyRequest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Name the public paths in requestMatchers(...).permitAll() and end with anyRequest().authenticated(), so a new endpoint is protected by default. If it is right here, add an exception for pmd/SpringPermitAllAnyRequest in nitpicker.config.json.">
+        message="Name the public paths in requestMatchers(...).permitAll(), or pathMatchers(...).permitAll() on WebFlux, and end with anyRequest().authenticated(), or anyExchange().authenticated(), so a new endpoint is protected by default. If it is right here, add an exception for pmd/SpringPermitAllAnyRequest in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 let $root := function($node) {
@@ -723,8 +777,8 @@ let $root := function($node) {
 }
 return (
 //MethodCall[@MethodName = 'permitAll']
-  [*[1][self::MethodCall[@MethodName = 'anyRequest']
-    or self::MethodCall[@MethodName = ('requestMatchers', 'antMatchers', 'mvcMatchers')]
+  [*[1][self::MethodCall[@MethodName = ('anyRequest', 'anyExchange')]
+    or self::MethodCall[@MethodName = ('requestMatchers', 'antMatchers', 'mvcMatchers', 'pathMatchers')]
          [ArgumentList/StringLiteral[@ConstValue = ('/**', '/*', '**')]]
          [not(ArgumentList/*[pmd-java:typeIs('org.springframework.http.HttpMethod')])]]]
   [let $chain := $root(.)
@@ -738,7 +792,7 @@ return (
   </rule>
 
   <rule name="SpringCsrfDisabled" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Keep CSRF protection on for session-based security. Turn it off only for a stateless API: set SessionCreationPolicy.STATELESS in the same filter chain. If it is right here, add an exception for pmd/SpringCsrfDisabled in nitpicker.config.json.">
+        message="Keep CSRF protection on for session-based security. Turn it off only for a stateless API, in the same filter chain: SessionCreationPolicy.STATELESS or a NullSecurityContextRepository on servlet security, NoOpServerSecurityContextRepository on WebFlux, or oauth2ResourceServer with jwt or opaqueToken and every login form disabled. If it is right here, add an exception for pmd/SpringCsrfDisabled in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 let $root := function($node) {
@@ -753,8 +807,14 @@ return (
   | //MethodCall[@MethodName = 'disable'][*[1][self::MethodCall[@MethodName = 'csrf'][not(ArgumentList/*)]]]
 )[let $chain := $root(.), $calls := ancestor::MethodDeclaration[1]//MethodCall[$root(.) = $chain]
   return not($calls[@MethodName = 'sessionCreationPolicy'][.//*[@Name = 'STATELESS']]
+    or $calls[@MethodName = ('securityContext', 'securityContextRepository')][.//*[
+      pmd-java:typeIs('org.springframework.security.web.context.NullSecurityContextRepository')
+      or pmd-java:typeIs('org.springframework.security.web.server.context.NoOpServerSecurityContextRepository')]]
     or ($calls[@MethodName = 'oauth2ResourceServer'][.//(MethodCall | MethodReference)[@MethodName = ('jwt', 'opaqueToken')]]
-        and not($calls[@MethodName = ('formLogin', 'httpBasic', 'rememberMe', 'oauth2Login', 'saml2Login')])))]
+        and not($calls[@MethodName = ('formLogin', 'httpBasic', 'rememberMe', 'oauth2Login', 'saml2Login')]
+          [not(ArgumentList/MethodReference[@MethodName = 'disable']
+            or ArgumentList/LambdaExpression[.//MethodCall[@MethodName = 'disable']]
+            or parent::MethodCall[@MethodName = 'disable'])])))]
 ]]></value></property></properties>
   </rule>
 
@@ -840,10 +900,10 @@ return (
   </rule>
 
   <rule name="JpaEnumString" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Write @Enumerated(EnumType.STRING) on this enum field. The default stores the ordinal, so adding or reordering constants silently corrupts stored rows. If it is right here, add an exception for pmd/JpaEnumString in nitpicker.config.json.">
+        message="Write @Enumerated(EnumType.STRING) on this enum field or element collection, and @MapKeyEnumerated(EnumType.STRING) on a map with enum keys. The default stores the ordinal, so adding or reordering constants silently corrupts stored rows. If it is right here, add an exception for pmd/JpaEnumString in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-//ClassDeclaration[ModifierList/Annotation[
+let $fields := //ClassDeclaration[ModifierList/Annotation[
     (pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity'))
     or (pmd-java:typeIs('jakarta.persistence.Embeddable') or pmd-java:typeIs('javax.persistence.Embeddable'))
     or (pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass'))]]
@@ -854,17 +914,30 @@ return (
     or (pmd-java:typeIs('jakarta.persistence.Convert') or pmd-java:typeIs('javax.persistence.Convert'))
     or pmd-java:typeIs('org.hibernate.annotations.JdbcTypeCode')
     or pmd-java:typeIs('org.hibernate.annotations.JdbcType')
-    or pmd-java:typeIs('org.hibernate.annotations.Type')])]
-  [not(ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Enumerated') or pmd-java:typeIs('javax.persistence.Enumerated'))][.//*[@Name = 'STRING']])]
-  /ClassType[pmd-java:typeIs('java.lang.Enum')]
-  [not(@SimpleName = //ClassDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Converter') or pmd-java:typeIs('javax.persistence.Converter'))]
+    or pmd-java:typeIs('org.hibernate.annotations.Type')])],
+    $converted := //ClassDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Converter') or pmd-java:typeIs('javax.persistence.Converter'))]
       [AnnotationMemberList/MemberValuePair[@Name = 'autoApply']/BooleanLiteral[@True = true()]]]
-    /ImplementsList/ClassType[(pmd-java:typeIs('jakarta.persistence.AttributeConverter') or pmd-java:typeIs('javax.persistence.AttributeConverter'))]/TypeArguments/ClassType[1]/@SimpleName)]
+    /ImplementsList/ClassType[(pmd-java:typeIs('jakarta.persistence.AttributeConverter') or pmd-java:typeIs('javax.persistence.AttributeConverter'))]/TypeArguments/ClassType[1]/@SimpleName,
+    $string := function($field) {
+  exists($field/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Enumerated') or pmd-java:typeIs('javax.persistence.Enumerated')]
+    [.//*[@Name = 'STRING']])
+},
+    $stringKey := function($field) {
+  exists($field/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MapKeyEnumerated') or pmd-java:typeIs('javax.persistence.MapKeyEnumerated')]
+    [.//*[@Name = 'STRING']])
+},
+    $collections := $fields[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.ElementCollection') or pmd-java:typeIs('javax.persistence.ElementCollection')]]
+return (
+  $fields[not($string(.))]/ClassType[pmd-java:typeIs('java.lang.Enum')]
+  | $collections[not($string(.))]/ClassType[not(pmd-java:typeIs('java.util.Map'))]/TypeArguments/*[1]
+  | $collections[not($string(.))]/ClassType[pmd-java:typeIs('java.util.Map')]/TypeArguments/*[2]
+  | $collections[not($stringKey(.))]/ClassType[pmd-java:typeIs('java.util.Map')]/TypeArguments/*[1]
+)[self::ClassType[pmd-java:typeIs('java.lang.Enum')]][not(@SimpleName = $converted)]
 ]]></value></property></properties>
   </rule>
 
   <rule name="JpaIdentityHashCode" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not build hashCode from the generated id or from every field: the id changes when the entity is saved, and a hash set then loses it. Return getClass().hashCode(), or hash an immutable business key; with Lombok, write @EqualsAndHashCode(onlyExplicitlyIncluded = true) and mark that key with @EqualsAndHashCode.Include. If it is right here, add an exception for pmd/JpaIdentityHashCode in nitpicker.config.json.">
+        message="Return getClass().hashCode() from the hashCode of an entity, or hash an immutable business key; with Lombok, write @EqualsAndHashCode(onlyExplicitlyIncluded = true) and mark that key with @EqualsAndHashCode.Include. A hash of the generated id or of every field changes when the entity is saved, and a hash set then loses it. If it is right here, add an exception for pmd/JpaIdentityHashCode in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration[ModifierList/Annotation[
@@ -1094,7 +1167,7 @@ return //MethodCall[@MethodName = ('saveAll', 'saveAllAndFlush', 'deleteAll', 'd
   </rule>
 
   <rule name="SpringDataRowWriteInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not run a repository update or delete once per loop iteration. Write one set-based @Query that takes the whole list, for example where id in :ids, and call it once. If it is right here, add an exception for pmd/SpringDataRowWriteInLoop in nitpicker.config.json.">
+        message="Write one set-based @Query that takes the whole list, for example where id in :ids, and call it once after the loop instead of one repository update or delete per iteration. If it is right here, add an exception for pmd/SpringDataRowWriteInLoop in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 let $loop := function($node) {
@@ -1131,7 +1204,7 @@ return (
   </rule>
 
   <rule name="SpringDataSaveInLoopHelper" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This loop calls a method of this class that saves or deletes one entity, so it still writes once per iteration. Collect the entities and call saveAll or deleteAll once after the loop; when rows must fail one by one, call saveAll per batch and handle the error per batch. If it is right here, add an exception for pmd/SpringDataSaveInLoopHelper in nitpicker.config.json.">
+        message="Collect the entities and call saveAll or deleteAll once after the loop; when rows must fail one by one, call saveAll per batch and handle the error per batch. This loop calls a method of this class that saves or deletes one entity, so it still writes once per iteration. If it is right here, add an exception for pmd/SpringDataSaveInLoopHelper in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 let $loop := function($node) {
@@ -1161,7 +1234,7 @@ return //MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
   </rule>
 
   <rule name="SpringDataFilterInQuery" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not load a whole table with findAll() to filter or count it in memory. Write an @Query with a where clause, a count query or an exists query. If it is right here, add an exception for pmd/SpringDataFilterInQuery in nitpicker.config.json.">
+        message="Filter and count in the database, with an @Query that has a where clause, a count query or an exists query, instead of loading the whole table with findAll(). If it is right here, add an exception for pmd/SpringDataFilterInQuery in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodCall[@MethodName = ('filter', 'count', 'anyMatch', 'allMatch', 'noneMatch', 'findFirst', 'findAny')]

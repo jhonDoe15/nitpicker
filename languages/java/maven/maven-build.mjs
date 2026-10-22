@@ -117,6 +117,7 @@ export function moduleManifest({ module, classpaths, pinned }) {
     versions: pinned,
     build: 'maven',
     sourceRoots: relativeRoots(module, module.sourceRoots),
+    kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
     resourceRoots: relativeRoots(module, module.resourceRoots),
     spring: hasJar(classpaths.mainCompile, SPRING_JAR),

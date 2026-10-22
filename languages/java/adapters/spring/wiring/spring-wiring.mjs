@@ -102,7 +102,7 @@ export function springWiringProblems(projectRoot, sourceRoots, resourceRoots = [
             path: file,
             line: lineOf(code, use.offset),
             key: `enable-${enabler[0].slice('Enable'.length).toLowerCase()}`,
-            message: `@${use.simple} does nothing: no class has @${enabler[0]}. Add @${enabler[0]} to one @Configuration class.`,
+            message: `Add @${enabler[0]} to one @Configuration class; without it @${use.simple} does nothing.`,
           })),
       ),
   );

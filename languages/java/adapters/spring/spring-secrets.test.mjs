@@ -30,6 +30,9 @@ describe('isLiteralSecret: keys', () => {
     'stripe.api.key',
     'security.jwt.key',
     'app.signing.key',
+    'app.db.passphrase',
+    'app.passwd',
+    'app.credential',
   ])('flags a literal under %s', (key) => {
     expect(isLiteralSecret(key, 'hunter2')).toBe(true);
   });
@@ -50,6 +53,8 @@ describe('isLiteralSecret: keys', () => {
     'spring.data.redis.key',
     'app.cache.key',
     'app.key-prefix',
+    'app.rabbit.routing-key',
+    'app.cache.partitionKey',
     'key',
     '',
   ])('does not treat %s as a secret key', (key) => {
@@ -146,6 +151,8 @@ describe('credentialUrl', () => {
     'jdbc:postgresql://db/shop?sslpassword=abc123',
     'jdbc:oracle:thin:scott/tiger@db:1521:orcl',
     'jdbc:oracle:thin:scott/tiger@//db:1521/shop',
+    'https://maps.example.com/api/geocode/json?key=AIzaSyA1234567890abcdefghijklmnopq',
+    'https://api.example.com/v1?api_key=abc123',
   ])('flags %s', (value) => {
     expect(credentialUrl(value)).toBe(true);
   });
@@ -166,6 +173,8 @@ describe('credentialUrl', () => {
     'https://api.example.com/v1?token_type=bearer',
     'jdbc:oracle:thin:@db:1521:orcl',
     'jdbc:oracle:thin:@//db:1521/shop',
+    'https://cache.example.com/get?key=orders',
+    'https://cache.example.com/get?key={key}&region=eu-west-1-primary',
   ])('does not flag %j', (value) => {
     expect(credentialUrl(value)).toBe(false);
   });

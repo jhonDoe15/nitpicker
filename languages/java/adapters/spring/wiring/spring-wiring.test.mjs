@@ -52,7 +52,7 @@ describe('missing-enable', () => {
         line: 4,
         key: 'enable-scheduling',
         message:
-          '@Scheduled does nothing: no class has @EnableScheduling. Add @EnableScheduling to one @Configuration class.',
+          'Add @EnableScheduling to one @Configuration class; without it @Scheduled does nothing.',
       },
     ]);
   });
@@ -88,7 +88,7 @@ describe('missing-enable', () => {
         line: 4,
         key: 'enable-scheduling',
         message:
-          '@Scheduled does nothing: no class has @EnableScheduling. Add @EnableScheduling to one @Configuration class.',
+          'Add @EnableScheduling to one @Configuration class; without it @Scheduled does nothing.',
       },
     ]);
     expect(
@@ -174,7 +174,7 @@ describe('missing-enable', () => {
         path: `${MAIN}/S.java`,
         line: 4,
         key: `enable-${enabler.slice('Enable'.length).toLowerCase()}`,
-        message: `@${annotation} does nothing: no class has @${enabler}. Add @${enabler} to one @Configuration class.`,
+        message: `Add @${enabler} to one @Configuration class; without it @${annotation} does nothing.`,
       },
     ]);
   });
@@ -211,7 +211,7 @@ describe('missing-enable', () => {
         file: `${MAIN}/Jobs.java`,
         identity: 'enable-scheduling',
         message:
-          '@Scheduled does nothing: no class has @EnableScheduling. Add @EnableScheduling to one @Configuration class.',
+          'Add @EnableScheduling to one @Configuration class; without it @Scheduled does nothing.',
         line: 4,
       }),
     ]);
