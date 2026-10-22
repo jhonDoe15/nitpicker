@@ -4,6 +4,10 @@ import { CRAP_CHECK_FILES } from '../crap/check-files.mjs';
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
 export const POLICY_FILES = [
+  'shared/test-timeouts/resolve.mjs',
+  'shared/glob.mjs',
+  'shared/head-policy.mjs',
+  'shared/policy.mjs',
   'shared/traversal.mjs',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',

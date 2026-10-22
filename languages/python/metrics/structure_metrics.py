@@ -6,6 +6,9 @@ import warnings
 
 from class_metrics import FUNCTIONS, SCOPES, blocks_of, class_entries, first_line, has_decorator
 
+UNITS = (*SCOPES, ast.Lambda)
+LAMBDA = "<lambda>"
+
 CONTROL = tuple(
     getattr(ast, name)
     for name in ("If", "For", "AsyncFor", "While", "Match", "ExceptHandler")
@@ -85,13 +88,13 @@ def decision_points(node):
     return isinstance(node, DECISIONS)
 
 
-def complexity(function):
+def complexity(body):
     total = 1
-    pending = list(function.body)
+    pending = list(body)
     while pending:
         node = pending.pop()
         total += decision_points(node)
-        if not isinstance(node, SCOPES):
+        if not isinstance(node, UNITS):
             pending.extend(ast.iter_child_nodes(node))
     return total
 
@@ -113,7 +116,7 @@ def function_entry(function, owners):
     statements, deepest = body_metrics(function)
     start = first_line(function)
     return {
-        "name": ".".join(owner.name for owner in (*owners, function)),
+        "name": ".".join(name for name in (*owners.names, function.name)),
         "start": start,
         "definition": function.lineno,
         "bodyStart": function.body[0].lineno,
@@ -121,22 +124,93 @@ def function_entry(function, owners):
         "lines": function.end_lineno - start + 1 - docstring_lines(function),
         "statements": statements,
         "maxControlNesting": deepest,
-        "parameters": parameter_count(function, owners[-1] if owners else None),
-        "complexity": complexity(function),
+        "parameters": parameter_count(function, owners.nodes[-1] if owners.nodes else None),
+        "complexity": complexity(function.body),
         "overload": has_decorator(function, "overload"),
     }
 
 
+def assigned_name(lambda_node, parent):
+    if isinstance(parent, ast.Assign) and len(parent.targets) == 1:
+        target = parent.targets[0]
+    elif isinstance(parent, ast.AnnAssign):
+        target = parent.target
+    else:
+        return LAMBDA
+    return target.id if isinstance(target, ast.Name) and parent.value is lambda_node else LAMBDA
+
+
+def lambda_entry(node, name, owners, statement):
+    return {
+        "name": ".".join((*owners.names, name)),
+        "start": node.lineno,
+        "definition": node.lineno,
+        "bodyStart": node.body.lineno,
+        "end": node.end_lineno,
+        "lines": node.end_lineno - node.lineno + 1,
+        "statements": 1,
+        "maxControlNesting": 0,
+        "parameters": parameter_count(node, None),
+        "complexity": complexity([node.body]),
+        "overload": False,
+        "lambda": True,
+        "statementLine": statement,
+    }
+
+
+class Owners:
+    def __init__(self, nodes=(), names=()):
+        self.nodes = nodes
+        self.names = names
+
+    def inside(self, node, name):
+        return Owners((*self.nodes, node), (*self.names, name))
+
+
+OUTSIDE_FIELDS = {
+    ast.ClassDef: ("bases", "keywords", "decorator_list"),
+    ast.FunctionDef: ("args", "decorator_list", "returns"),
+    ast.AsyncFunctionDef: ("args", "decorator_list", "returns"),
+}
+
+
+def children_of(node, owners, inner):
+    outside = OUTSIDE_FIELDS.get(type(node), ())
+    children = []
+    for field, value in ast.iter_fields(node):
+        for child in value if isinstance(value, list) else [value]:
+            if isinstance(child, ast.AST):
+                children.append((child, owners if field in outside else inner))
+    return children
+
+
+def statement_line(node):
+    decorators = getattr(node, "decorator_list", [])
+    return min([node.lineno] + [item.lineno for item in decorators])
+
+
 def function_entries(module):
     entries = []
-    pending = [(child, ()) for child in reversed(blocks_of(module))]
+    pending = [(module, Owners(), 0, None)]
     while pending:
-        node, owners = pending.pop()
+        node, owners, statement, parent = pending.pop()
+        inner = owners
+        if isinstance(node, ast.stmt):
+            statement = statement_line(node)
         if isinstance(node, FUNCTIONS):
             entries.append(function_entry(node, owners))
-        inner = (*owners, node) if isinstance(node, SCOPES) else owners
-        pending.extend((child, inner) for child in reversed(blocks_of(node)))
-    return entries
+            inner = owners.inside(node, node.name)
+        elif isinstance(node, ast.ClassDef):
+            inner = owners.inside(node, node.name)
+        elif isinstance(node, ast.Lambda):
+            name = assigned_name(node, parent)
+            entries.append(lambda_entry(node, name, owners, statement))
+            inner = owners.inside(node, name)
+        pending.extend(
+            (child, scope, statement, node)
+            for child, scope in reversed(children_of(node, owners, inner))
+        )
+    return sorted(entries, key=lambda entry: (entry["start"], -entry["end"]))
 
 
 def import_entries(module):
@@ -157,8 +231,14 @@ def parse_file(project, relative):
         source = handle.read()
     try:
         return ast.parse(source, relative)
-    except (SyntaxError, ValueError, RecursionError, MemoryError):
+    except (SyntaxError, ValueError):
         return None
+    except (RecursionError, MemoryError) as error:
+        raise SystemExit(
+            f"structure_metrics: {relative} is too deeply nested for the Python parser "
+            f"({type(error).__name__}), so its functions cannot be measured: "
+            "split the very long expression or data literal into smaller parts"
+        )
 
 
 def file_entries(project, relative):

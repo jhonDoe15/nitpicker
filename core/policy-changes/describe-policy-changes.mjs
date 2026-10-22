@@ -4,8 +4,16 @@ import { coveredPathChanges } from './paths/covered-paths.mjs';
 import { hiddenCodeChanges } from './paths/hidden-code.mjs';
 import { tsconfigChanges } from './paths/tsconfig-changes.mjs';
 import { listedChanges, loosensSetting } from './loosenings.mjs';
+import { timeoutChanges } from './timeout-changes.mjs';
 
-const LISTED_KEYS = new Set(['exclude', 'disable', 'exceptions', 'thresholds', 'analyzers']);
+const LISTED_KEYS = new Set([
+  'exclude',
+  'disable',
+  'exceptions',
+  'thresholds',
+  'analyzers',
+  'duplicates',
+]);
 const LISTED_LAYOUT_KEYS = new Set(['excludedGlobs', 'entryPoints']);
 
 function withoutKeys(object, keys) {
@@ -34,6 +42,14 @@ function settingLeaves(config) {
   const nested = {
     ...nestedWithout(settings, 'python', new Set(['exceptions', 'entryPoints'])),
     ...nestedWithout(settings, 'layout', LISTED_LAYOUT_KEYS),
+    ...(isPlainObject(settings.tools) && isPlainObject(settings.tools.tests)
+      ? {
+          tools: {
+            ...settings.tools,
+            tests: withoutKeys(settings.tools.tests, new Set(['timeouts'])),
+          },
+        }
+      : {}),
   };
   return new Map(
     Object.entries({ ...settings, ...nested }).flatMap(([key, value]) => leaves(value, key)),
@@ -66,6 +82,7 @@ function describedEntries(baseConfig, headConfig, scope) {
   const parts = [
     ...coveredPathChanges(baseConfig, headConfig, scope),
     ...listedChanges(baseConfig, headConfig),
+    timeoutChanges(baseConfig, headConfig),
     hiddenCodeChanges(baseConfig, headConfig, scope),
     tsconfigChanges(scope),
   ];

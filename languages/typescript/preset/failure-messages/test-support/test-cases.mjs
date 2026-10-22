@@ -57,7 +57,7 @@ export const testFailureMessageCases = [
   testCase({
     name: 'computed test timeout names a number written in the file',
     banned: "it('x', () => {}, Number(process.env.T));",
-    allowed: 'number of at most 10000 ms',
+    allowed: 'number between 1 and 10000 ms written in this file',
   }),
   testCase({
     name: 'first-test-charged setup names beforeAll and the exception path',

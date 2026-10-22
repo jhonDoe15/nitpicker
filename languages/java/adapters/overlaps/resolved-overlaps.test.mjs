@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { applyJavaPolicy } from '../java-policy.mjs';
+import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import { OVERLAP_PAIRS, withoutOverlaps } from './static-overlaps.mjs';
 
 const DOCS = path.resolve(import.meta.dirname, '../../../../docs/java-preset.md');
@@ -137,11 +137,11 @@ describe('overlaps after policy', () => {
   it('report the secondary when the primary is excepted or not run', () => {
     const exceptions = [{ rule: 'errorprone/DefaultCharset', glob: 'src/A.java' }];
 
-    expect(applyJavaPolicy([primary, secondary], {}, resolve)).toStrictEqual([primary]);
-    expect(applyJavaPolicy([primary, secondary], { exceptions }, resolve)).toStrictEqual([
+    expect(applyFindingPolicy([primary, secondary], {}, resolve)).toStrictEqual([primary]);
+    expect(applyFindingPolicy([primary, secondary], { exceptions }, resolve)).toStrictEqual([
       secondary,
     ]);
-    expect(applyJavaPolicy([secondary], {}, resolve)).toStrictEqual([secondary]);
+    expect(applyFindingPolicy([secondary], {}, resolve)).toStrictEqual([secondary]);
   });
 
   it('keep the secondary dropped when the primary is baselined', () => {
@@ -149,9 +149,14 @@ describe('overlaps after policy', () => {
     roots.push(root);
     const site = { file: 'src/A.java', rule: 'DefaultCharset', source: primary.identity, count: 1 };
     writeFileSync(path.join(root, 'nitpicker.legacy.json'), JSON.stringify({ sites: [site] }));
-    const policy = { legacyInventory: 'nitpicker.legacy.json', policyRoot: root, snapshot: 'base' };
+    const policy = {
+      legacyInventory: 'nitpicker.legacy.json',
+      policyRoot: root,
+      snapshot: 'base',
+      inventoryTool: 'java',
+    };
 
-    expect(applyJavaPolicy([primary, secondary], policy, resolve)).toStrictEqual([]);
+    expect(applyFindingPolicy([primary, secondary], policy, resolve)).toStrictEqual([]);
   });
 });
 
