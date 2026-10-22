@@ -569,8 +569,11 @@ Kotlin-specific choices:
   function (`fun OrderRepository.saveEach(...)`).
 - Set-based writes. A repository call in a loop that passes a collection is one statement per batch,
   not a row write: a parameter of a `chunked(n)` or `windowed(...)` lambda or `for` loop, a lambda
-  parameter declared as a collection, and a destructured map value (`groups.forEach { (_, ids) -> ... }`)
-  of a declared `Map<K, List<V>>` all count as collections.
+  parameter declared as a collection, a destructured map value (`groups.forEach { (_, ids) -> ... }`,
+  also `for ((_, ids) in groups)`) or an element of `groups.values` of a declared `Map<K, List<V>>` or of
+  a local `val groups = items.groupBy { ... }`, and either side of a local
+  `val (open, closed) = items.partition { ... }` all count as collections. A `groups.keys` element or an
+  element of one grouped list is still one row.
 - One finding per site: `kotlin-source/IoCallInLoop` is dropped where `SpringDataNoSaveInLoop`,
   `SpringDataBatchOfOne`, `SpringDataRowWriteInLoop` or `SpringDataSaveInLoopHelper` reports the same line.
 

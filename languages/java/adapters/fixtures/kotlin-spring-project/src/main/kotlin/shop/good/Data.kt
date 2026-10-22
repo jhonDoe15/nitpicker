@@ -88,3 +88,27 @@ class StockService(private val stock: StockRepository, private val shipments: Sh
         const val CHUNK = 500
     }
 }
+
+@Service
+class GroupedStockService(private val stock: StockRepository) {
+    @Transactional
+    fun retireGroups(ids: List<Long>) {
+        val groups = ids.groupBy { it % CHUNK }
+        groups.forEach { (_, grouped) -> stock.deactivate(grouped) }
+        groups.values.forEach { stock.deactivate(it) }
+        groups.values.forEach { grouped -> stock.deactivate(grouped) }
+        for ((_, grouped) in groups) {
+            stock.deactivate(grouped)
+        }
+        ids.chunked(BATCH).forEach { chunk ->
+            val (active, retired) = chunk.partition { it > 0L }
+            stock.deactivate(active)
+            stock.deactivate(retired)
+        }
+    }
+
+    private companion object {
+        const val CHUNK = 500L
+        const val BATCH = 100
+    }
+}

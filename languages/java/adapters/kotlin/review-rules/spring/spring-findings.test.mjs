@@ -102,6 +102,10 @@ const EXPECTED = [
   'bad/Data.kt:137 SpringDataNoSaveInLoop BatchService.importBatch.save',
   'bad/Data.kt:138 SpringDataNoSaveInLoop BatchService.importBatch.save',
   'bad/Data.kt:139 SpringDataSaveInLoopHelper BatchService.importBatch.keep',
+  'bad/Data.kt:154 SpringDataRowWriteInLoop GroupedService.closeGroups.markStatus',
+  'bad/Data.kt:156 SpringDataRowWriteInLoop GroupedService.closeGroups.markStatus',
+  'bad/Data.kt:157 SpringDataRowWriteInLoop GroupedService.closeGroups.markStatus',
+  'bad/Data.kt:159 SpringDataRowWriteInLoop GroupedService.closeGroups.markStatus',
   'bad/Defaults.kt:17 SpringValueSecretDefault JwtProps.secret',
   'bad/Defaults.kt:23 SpringNoServiceLocator Receipts.context',
   'bad/Defaults.kt:26 SpringProxySelfCall Receipts.issue.record',
@@ -256,6 +260,7 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'good/Data.kt:57 SpringProxyMethodVisibility ShipmentService.openCount',
       'good/Data.kt:73 SpringProxyMethodVisibility StockService.retire',
       'good/Data.kt:84 SpringProxyMethodVisibility StockService.reopen',
+      'good/Data.kt:95 SpringProxyMethodVisibility GroupedStockService.retireGroups',
       'good/Defaults.kt:23 SpringProxyMethodVisibility Accounts.duplicate',
       'good/Defaults.kt:32 SpringProxyMethodVisibility Accounts.helper',
       'good/Defaults.kt:43 SpringProxyMethodVisibility Accounts.onFailure',
@@ -280,6 +285,26 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'good/Proxies.kt:38 SpringProxyMethodVisibility Billing.notifyLater',
       'good/Proxies.kt:47 SpringProxyMethodVisibility Audit.write',
       'good/StarImports.kt:13 SpringProxyMethodVisibility Parser.parse',
+    ]);
+  });
+});
+
+describe('Kotlin Spring Data loop rules on grouped and partitioned locals', () => {
+  const rowWrites = (owner) =>
+    summary(findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN })).filter(
+      (line) => line.includes('SpringDataRowWriteInLoop') && line.includes(` ${owner}.`),
+    );
+
+  it('reads groupBy values and both sides of partition as collections, so passing them is set-based', () => {
+    expect(rowWrites('GroupedStockService')).toEqual([]);
+  });
+
+  it('still reports a per-id write over a partition side, the groupBy keys or one grouped list', () => {
+    expect(rowWrites('GroupedService').map((line) => line.split(' ')[0])).toEqual([
+      'bad/Data.kt:154',
+      'bad/Data.kt:156',
+      'bad/Data.kt:157',
+      'bad/Data.kt:159',
     ]);
   });
 });

@@ -145,3 +145,18 @@ class BatchService(private val invoices: InvoiceRepository) {
         }
     }
 }
+
+@Service
+class GroupedService(private val invoices: InvoiceRepository) {
+    @Transactional
+    fun closeGroups(ids: List<Long>) {
+        val (paid, open) = ids.partition { it > 0L }
+        open.forEach { invoices.markStatus(it, Status.PAID) }
+        val groups = ids.groupBy { it % 2L }
+        groups.keys.forEach { invoices.markStatus(it, Status.VOID) }
+        groups.forEach { (_, grouped) -> grouped.forEach { invoices.markStatus(it, Status.OPEN) } }
+        for (id in paid) {
+            invoices.markStatus(id, Status.PAID)
+        }
+    }
+}
