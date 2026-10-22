@@ -182,11 +182,12 @@ function analyzeTests(context, { ran, failedClasses }) {
   return skipped === undefined ? [] : [skipped];
 }
 
-function analyzeModule({ project, ...options }) {
+function analyzeModule({ project, spring: declared, ...options }) {
   const { module, classpaths, since, pinned } = options;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const manifest = moduleManifest({ module, classpaths, pinned });
+  const found = moduleManifest({ module, classpaths, pinned });
+  const manifest = { ...found, spring: declared === true || found.spring };
   const context = { ...options, reportDir, isArchunit, spring: manifest.spring };
   const { testRuntime } = classpaths;
   const results = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
@@ -279,6 +280,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
           javaStyle: policy.javaStyle,
           indentation: checkstyleIndentation(policy.conventions),
         },
+        spring: policy.spring,
       });
     }
     return modules.map((module) => module.basedir);

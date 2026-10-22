@@ -26,7 +26,7 @@ function reasonFor(set, file, scope) {
   return set.importable && scope.productionReach().has(file) ? 'imported' : undefined;
 }
 
-function listed(entries, limit) {
+export function listed(entries, limit) {
   const more = entries.length > limit ? `, and ${entries.length - limit} more` : '';
   return `${entries.slice(0, limit).join(', ')}${more}`;
 }

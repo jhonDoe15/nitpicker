@@ -388,7 +388,9 @@ line, so a moved block is not a new finding.
 
 The format check runs only for a project that uses a Kotlin formatter: Nitpicker does not make a
 project adopt ktlint's style. `kotlin.formatter` (`"ktlint"`, `"ktfmt"` or `"none"`) overrides the
-detection, and every format finding names it.
+detection, and every format finding names it. The head checkout's choice
+is read once and handed to the base run through the head policy, so a change that adds ktlint or
+ktfmt checks the base with the same formatter and legacy formatting is not a new finding.
 
 1. `"kotlin": { "formatter": "ktlint" | "ktfmt" | "none" }` in `nitpicker.config.json`.
 2. Otherwise the build files (`build.gradle(.kts)`, `settings.gradle(.kts)`,
