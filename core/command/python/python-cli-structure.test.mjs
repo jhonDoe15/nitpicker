@@ -62,20 +62,21 @@ describe('nitpicker with "preset": "python" and function structure', () => {
           rule: 'crap-score-limit',
           symbol: 'value',
           message:
-            'value has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+            'value has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         },
         {
           tool: 'crap',
           rule: 'crap-coverage-unknown',
           symbol: 'ghost',
           message:
-            'ghost has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
+            'ghost has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/demo/b.py"],"function":"ghost","reason":"..."} to "exceptions" in nitpicker.config.json.',
         },
         {
           tool: 'structure',
           rule: 'function-parameters-limit',
           symbol: 'fresh',
-          message: 'fresh has 4 parameters; limit is 3',
+          message:
+            'fresh has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"fresh","reason":"..."} to "exceptions" in nitpicker.config.json.',
         },
       ]);
       expect(grown.exitCode, grown.text).toBe(1);
@@ -85,7 +86,7 @@ describe('nitpicker with "preset": "python" and function structure', () => {
           rule: 'function-parameters-limit',
           symbol: 'value',
           message:
-            'value grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+            'value grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         },
       ]);
     });
@@ -105,7 +106,7 @@ describe('nitpicker with "preset": "python" and function structure', () => {
         path: 'src/demo/a.py',
         identity: 'pair:src/demo/a.py|src/demo/b.py:fragment:8e33a9ff56a22a94c8efc96f:occurrence:1',
         message:
-          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/demo/a.py or src/demo/b.py to "exclude" in nitpicker.config.json. To allow it for some paths, add a "python.exceptions" entry for duplicate-clone in nitpicker.config.json.',
+          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/demo/a.py or src/demo/b.py to "exclude" in nitpicker.config.json. If this is intended, add {"rule":"duplicate-clone","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
         ratchet: {

@@ -3,8 +3,7 @@
      project whose compile classpath has Spring on it, next to the PMD categories or the project's own
      config/pmd/ruleset.xml. Rules match annotation types through PMD type resolution, so the init
      script passes the compile classpath as the auxiliary classpath. Each message names the allowed
-     form; an exception is `{ "rule": "pmd/<rule name>", "paths": [...], "reason": "..." }` in
-     nitpicker.config.json. docs/java-preset.md lists the rules and why each exists. -->
+     form and the exception entry that accepts it. docs/java-preset.md lists the rules and why each exists. -->
 <ruleset name="nitpicker-spring"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

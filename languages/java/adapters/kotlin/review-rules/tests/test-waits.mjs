@@ -4,16 +4,15 @@ import {
   timedWaitAdvice,
 } from '../../../../messages/wait-advice.mjs';
 import { importsFrom, insideClass } from '../kotlin-facts.mjs';
-import { exceptionSentence } from '../review-finding.mjs';
 
 export const NEGATIVE_WAIT_RULE = 'NegativeWaitInTest';
 
 const SLEEP_MESSAGE =
-  'A fixed wait makes the test slow and flaky: Thread.sleep, TimeUnit sleep or parkNanos outside a polling loop, after(ms) with a check that could pass sooner, or pollDelay(...).until { true }. Wait on the condition: a loop that checks it against a deadline (a sleep inside that loop is allowed), or verify(mock, timeout(1000)) for a mock. A sleep in a mock answer, a thread body or a test fake that implements or extends a main class is allowed. If a real wait is unavoidable, ';
+  'A fixed wait makes the test slow and flaky: Thread.sleep, TimeUnit sleep or parkNanos outside a polling loop, after(ms) with a check that could pass sooner, or pollDelay(...).until { true }. Wait on the condition: a loop that checks it against a deadline (a sleep inside that loop is allowed), or verify(mock, timeout(1000)) for a mock. A sleep in a mock answer, a thread body or a test fake that implements or extends a main class is allowed.';
 const DELAY_MESSAGE =
-  'delay inside runBlocking waits for real, so the test is slow and flaky. Use runTest, where delay runs in virtual time and advanceTimeBy or advanceUntilIdle moves it, or wait on the condition in a loop against a deadline. A delay in a launch, async or flow body, a mock answer or a test fake that implements or extends a main class is allowed. If a real wait is unavoidable, ';
+  'delay inside runBlocking waits for real, so the test is slow and flaky. Use runTest, where delay runs in virtual time and advanceTimeBy or advanceUntilIdle moves it, or wait on the condition in a loop against a deadline. A delay in a launch, async or flow body, a mock answer or a test fake that implements or extends a main class is allowed.';
 const NEGATIVE_MESSAGE =
-  'Do not prove that something does not happen by waiting out a delay: after(ms).never(), during(...) and kotest continually pass only after the full wait, so the test is slow and depends on the timing. Give the code a Clock or a scheduler the test controls, move it past the delay and assert at once. If a real wait is unavoidable, ';
+  'Do not prove that something does not happen by waiting out a delay: after(ms).never(), during(...) and kotest continually pass only after the full wait, so the test is slow and depends on the timing. Give the code a Clock or a scheduler the test controls, move it past the delay and assert at once.';
 
 const SPARED_HOSTS = new Set([
   'thread',
@@ -214,17 +213,16 @@ function isSpared(wait, file, isProduction) {
 
 export function waitMessage(found, awaitility = false) {
   const { rule, kind } = found;
-  const tail = exceptionSentence(rule);
   if (rule === NEGATIVE_WAIT_RULE) {
-    return `${NEGATIVE_MESSAGE}${tail}`;
+    return NEGATIVE_MESSAGE;
   }
   if (kind === 'timed') {
-    return `${timedWaitAdvice(awaitility)} If going on after the timeout is intended, ${tail}`;
+    return timedWaitAdvice(awaitility);
   }
   if (kind === 'sleep' && awaitility) {
-    return `${AWAITILITY_ADVICE} If a real wait is unavoidable, ${tail}`;
+    return AWAITILITY_ADVICE;
   }
-  return `${kind === 'sleep' ? SLEEP_MESSAGE : DELAY_MESSAGE}${tail}`;
+  return kind === 'sleep' ? SLEEP_MESSAGE : DELAY_MESSAGE;
 }
 
 function symbolOf(wait) {

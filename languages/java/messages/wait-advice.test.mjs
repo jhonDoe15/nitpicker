@@ -44,10 +44,10 @@ describe('withWaitAdvice', () => {
       /^A fixed wait .* with Awaitility, which the project's tests use: /u,
     );
     expect(advised.message).toMatch(/not pollDelay\(\.\.\.\)\.until\(\(\) -> true\)/u);
+    expect(advised.message).toMatch(/A sleep in a mock answer or a thread body is allowed\.$/u);
     expect(applyRuleMessages([advised])[0].message).toBe(
       `${advised.message} ${exceptionHint('pmd/FixedSleepInTest', sleep.path)}`,
     );
-    expect(applyRuleMessages([advised], { preset: 'kotlin' })[0].message).toBe(advised.message);
     expect(untouched).toBe(other);
   });
 

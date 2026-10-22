@@ -1,4 +1,3 @@
-import { exceptionHint } from '../../../../../../shared/rules/exceptions.mjs';
 import { describe, it, expect } from 'vitest';
 import { summarize } from '../../../test-support/gradle-e2e.mjs';
 import {
@@ -17,10 +16,8 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       'coupling test-only-export Calc.java',
       'pit mutant-survived Calc.java',
     ]);
-    const mutant = survivor.newEnforceable.find((finding) => finding.tool === 'pit');
-    expect(mutant.message).toEqual(
-      'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears. ' +
-        exceptionHint('pit/mutant-survived', mutant.path),
+    expect(survivor.newEnforceable.find((finding) => finding.tool === 'pit').message).toEqual(
+      'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/Calc.java"],"function":"Calc.clamp","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     // The legacy uncovered mutants (Greeter.shout, Legacy.value) stay baselined.
     expect([...new Set(summarize(survivor.unchangedFindings))].sort()).toEqual(BASELINED_FINDINGS);

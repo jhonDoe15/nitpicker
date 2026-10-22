@@ -32,12 +32,12 @@ describe('spring-ruleset.xml', () => {
     expect(ruleset.match(/<rule name=/g)).toHaveLength(names.length);
   });
 
-  it('leaves the exception line to the shared rule messages', () => {
-    const routed = rules
-      .filter(({ message }) => message.includes('nitpicker.config.json'))
+  it('leaves the exception route to the gate, which adds the shared sentence', () => {
+    const handWritten = rules
+      .filter(({ message }) => /nitpicker\.config|add an exception|"exceptions"/u.test(message))
       .map(({ name }) => name);
 
-    expect(routed).toEqual([]);
+    expect(handWritten).toEqual([]);
   });
 
   it('keeps braces out of messages, which PMD formats as patterns', () => {
