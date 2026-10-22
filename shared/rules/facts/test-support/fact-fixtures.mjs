@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { sharedFactFindings } from '../evaluate.mjs';
-import { FACT_RULE_LANGUAGES } from '../registry.mjs';
+import { FACT_RULE_LANGUAGES } from '../../../project-rules/fact-rules.mjs';
 
 export function factFixture(name) {
   return JSON.parse(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url), 'utf8'));

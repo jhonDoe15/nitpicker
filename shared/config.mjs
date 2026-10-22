@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { FACT_RULE_SETTINGS, factRuleSettings } from './rules/facts/registry.mjs';
+import { FACT_RULE_SETTINGS, factRuleSettings } from './project-rules/fact-rules.mjs';
 import { PACKAGE_EXCEPTION_RULES } from './project-rules/hygiene-rules.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
@@ -170,18 +170,22 @@ function validateException(entry, label, matchesOwnGlobs) {
   if (!isNonEmptyString(entry.rule)) {
     throw configError(`"${label}.rule" must be a non-empty rule id`);
   }
+  validateExceptionPaths(entry, label, matchesOwnGlobs);
+  if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
+    throw configError(`"${label}.reason" is required: say why the rule is lifted for these paths`);
+  }
+  if (entry.packages !== undefined) {
+    validatePackages(entry, label);
+  }
+}
+
+function validateExceptionPaths(entry, label, matchesOwnGlobs) {
   validateStringArray(entry.paths, `${label}.paths`);
   if (entry.paths.length === 0) {
     throw configError(`"${label}.paths" needs at least one path glob`);
   }
   if (matchesOwnGlobs(entry.rule)) {
     validateGlobs(entry.paths, `${label}.paths`, filesFix);
-  }
-  if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
-    throw configError(`"${label}.reason" is required: say why the rule is lifted for these paths`);
-  }
-  if (entry.packages !== undefined) {
-    validatePackages(entry, label);
   }
 }
 

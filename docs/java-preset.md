@@ -407,7 +407,7 @@ classpath and its `test` task, and adds no test library to the project.
   - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
     keys are TypeScript only, and `layout.sharedRoots` and `layout.featureRoots` are accepted once the
     Java preset registers the rule that reads them (`shared-used-by-one-feature`) in
-    `shared/rules/facts/registry.mjs`. `testConsole` is accepted because the registry lists Java and
+    `shared/project-rules/fact-rules.mjs`. `testConsole` is accepted because the registry lists Java and
     Kotlin for `test-console-output`. `tools` takes `pmd` and `checkstyle`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`

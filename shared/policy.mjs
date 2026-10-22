@@ -9,10 +9,14 @@ import {
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { reuseRules } from './project-rules/reuse-rules.mjs';
 import { testConsoleRule } from './project-rules/test-runtime-rules.mjs';
-import { SOURCE_RULE_IDS, sourceRuleMessages, sourceRules } from './project-rules/source-rules.mjs';
-import { docCommentRule } from './project-rules/doc-comment-rules.mjs';
+import {
+  docCommentRule,
+  SOURCE_RULE_IDS,
+  sourceRuleMessages,
+  sourceRules,
+} from './project-rules/source-rules.mjs';
 import { HYGIENE_EXCEPTION_RULES, HYGIENE_RULES } from './project-rules/hygiene-rules.mjs';
-import { sharedFactExceptionRules, withLanguageColumns } from './rules/facts/registry.mjs';
+import { sharedFactExceptionRules, withLanguageColumns } from './project-rules/fact-rules.mjs';
 
 import {
   BASE_GREW_MESSAGES,
