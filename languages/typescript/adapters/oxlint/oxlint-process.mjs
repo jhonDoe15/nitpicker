@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file.mjs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -41,7 +41,7 @@ export function withCompileCache(environment) {
 }
 
 export function spawnJson(argumentList, { cwd, env, context, timeoutMs, acceptedStatuses = [0] }) {
-  const result = spawnSync(process.execPath, argumentList, {
+  const result = spawnSyncWithOutputFile(process.execPath, argumentList, {
     cwd,
     env: withCompileCache(env),
     encoding: 'utf8',

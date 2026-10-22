@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TOOL_TIMEOUT_MS = 25 * 60 * 1000;
@@ -13,7 +13,7 @@ export function execute(
 ) {
   const [tool, ...args] = command;
   const launch = context.launcher.launch(tool, args);
-  return (context.spawn ?? spawnSync)(launch.command, launch.args, {
+  return (context.spawn ?? spawnSyncWithOutputFile)(launch.command, launch.args, {
     cwd: cwd ?? context.projectRoot,
     env: { ...defaultEnv, ...process.env, ...launch.env, ...context.env, ...env },
     encoding: 'utf8',

@@ -13,7 +13,7 @@ import { prettierExtensions, prettierExclusions, typescriptExtensions } from './
 import { linkPolicyFile } from '../tooling/policy-links.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../tooling/tool-resolution.mjs';
 import { layoutTransformFor } from '../../languages/typescript/preset/tool-configs.mjs';
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../tooling/output-file.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
 
@@ -264,7 +264,7 @@ function run({
   };
   const result =
     executeFixCommand?.(invocation) ??
-    spawnSync(invocation.command, invocation.args, {
+    spawnSyncWithOutputFile(invocation.command, invocation.args, {
       cwd,
       input,
       env: { ...process.env, ...environment },

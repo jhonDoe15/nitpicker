@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file.mjs';
 import path from 'node:path';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { readHeadPolicy } from '../../preset/head-policy.mjs';
@@ -53,7 +53,7 @@ function eslintInvocation({ options, projectConfigPath, policyConfigPath, testEn
 
 function runEslintCli(invocation, patterns, extraEnvironment = {}) {
   const { options } = invocation;
-  const result = spawnSync(
+  const result = spawnSyncWithOutputFile(
     process.execPath,
     [
       invocation.eslintCliPath,

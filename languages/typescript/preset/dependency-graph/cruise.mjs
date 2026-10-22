@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file.mjs';
 import path from 'node:path';
 import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
 import { readLayout } from '../head-policy.mjs';
@@ -33,7 +33,7 @@ function withProjectTypeScriptConfig({ policyRoot, projectRoot: root, name }, op
 }
 
 function spawnDependencyCruiser(paths, environment) {
-  return spawnSync(
+  return spawnSyncWithOutputFile(
     process.execPath,
     [
       dependencyCruiser,

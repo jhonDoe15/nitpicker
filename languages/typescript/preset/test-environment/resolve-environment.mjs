@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file.mjs';
 import path from 'node:path';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { projectConfigFile } from './config-files.mjs';
@@ -16,7 +16,7 @@ const UNKNOWN = { environment: undefined, scopes: [] };
 const WHOLE_PROJECT_GLOBS = new Set(['**', '**/*']);
 
 function runReader({ configFile, projectRoot, resolveRoots, timeoutMs }) {
-  const result = spawnSync(process.execPath, [READER, configFile, projectRoot, ...resolveRoots], {
+  const result = spawnSyncWithOutputFile(process.execPath, [READER, configFile, projectRoot, ...resolveRoots], {
     cwd: projectRoot,
     env: { ...process.env, VITEST: 'true', NODE_ENV: 'test' },
     encoding: 'utf8',

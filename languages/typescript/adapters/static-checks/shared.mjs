@@ -1,5 +1,5 @@
 import { toolNameForPath, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file.mjs';
 import { realpathSync, lstatSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { normalizedRelativePath } from './arguments.mjs';
@@ -13,7 +13,7 @@ export function runNodeTool({ options, relativeToolPath, arguments_, acceptedSta
     projectRoot: options.liveProjectRoot,
     bin: relativeToolPath.slice(name.length + 1),
   }).binPath;
-  const result = spawnSync(process.execPath, [toolPath, ...arguments_], {
+  const result = spawnSyncWithOutputFile(process.execPath, [toolPath, ...arguments_], {
     cwd: options.projectRoot,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
