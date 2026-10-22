@@ -59,12 +59,6 @@ export const ONE_WAY_RULES = [
   { name: 'ForbiddenImport', ruleset: 'style' },
   { name: 'ForbiddenComment', ruleset: 'style' },
   {
-    name: 'StringLiteralDuplication',
-    ruleset: 'complexity',
-    mainOnly: true,
-    allowed: 'Name it once as a constant (`private const val NAME = "..."`) and use the constant.',
-  },
-  {
     name: 'DataClassShouldBeImmutable',
     ruleset: 'style',
     allowed: 'Make the property a `val` and build a changed copy with `copy(...)`.',
