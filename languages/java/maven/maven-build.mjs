@@ -142,6 +142,10 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
   return testsRan;
 }
 
+function withDeclaredSpring(manifest, declared) {
+  return { ...manifest, spring: declared === true || manifest.spring };
+}
+
 function analyzeModule({
   module,
   classpaths,
@@ -154,8 +158,7 @@ function analyzeModule({
 }) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const detected = moduleManifest({ module, classpaths, pinned });
-  const manifest = { ...detected, spring: declared === true || detected.spring };
+  const manifest = withDeclaredSpring(moduleManifest({ module, classpaths, pinned }), declared);
   const testRuntime = classpaths.testRuntime;
   const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
   runPmd({ module, reportDir, tools, classpaths, configs, spring: manifest.spring });
