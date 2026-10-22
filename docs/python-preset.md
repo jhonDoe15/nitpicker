@@ -970,8 +970,19 @@ is defined.
   `logger.exception`), or raised as a warning (`DeprecationWarning: ...`). Standard output
   (`print`) never counts, and neither does a log record of a test that takes the `caplog` fixture,
   because that test asserts on its logs. A logger with its own handler on standard error is reported
-  once, from standard error. A warning raised, or standard error printed, while pytest imports and
-  collects a file is given to that file with no test name.
+  once, from standard error, also in a test that takes `capsys`. Standard error printed while pytest
+  imports and collects a file is given to that file with no test name; a warning raised then is
+  given to the file the warning points at (its `location`, which can be the production module that
+  warns), or to the project root when that file is outside the project. What a fixture with a
+  wider scope than a function (`session`, `package`, `module`, `class`) logs, prints to standard
+  error or warns while it sets up or tears down is given to the file that defines it (a
+  `conftest.py`, or the test module, with the class name for a fixture defined in a class), not to
+  the test that happened to run first, so a new test that uses it adds no message. The TypeScript
+  preset does the same with Vitest, which gives the output of a `beforeAll` hook to its file or
+  suite; Java findings name the module, not the test class, so they do not move either.
+- **Logging.** The plugin does not add a handler: it reads each record as a logger hands it to its
+  handlers, so `logging.basicConfig` in a `conftest.py` or at import still configures the root
+  logger, and `dictConfig` or `basicConfig(force=True)` cannot remove it.
 - **Matching.** The same as TypeScript, with the same code: a stderr traceback is one message
   without its frames and source lines, numbers, paths, times and ids are normalized, each message is
   reported once per test file, and a message that differs from a base message by one random-looking
@@ -989,9 +1000,11 @@ is defined.
   reading standard input raises pytest's "reading from stdin while output is captured" error instead
   of reaching the end of input. `--capture=sys` and `tee-sys` are left as they are. `unittest` runs
   are not checked.
-- **Missing report.** When pytest ran tests but left no `test-console.json` (a test called
-  `os._exit`, or a plugin stopped pytest before it finished), the run gets a
-  `test-console/console-report-missing` tool error instead of passing unchecked.
+- **Missing report.** The plugin writes `test-console.json` first thing when pytest unconfigures.
+  When pytest ran tests but left no report (the process was killed, or ended itself without
+  unwinding), the run gets a `test-console/test-console-report-missing` tool error, the id the
+  TypeScript preset uses, instead of passing unchecked. A test that calls `os._exit` ends the
+  coverage run too, so that run fails on its missing coverage data first.
 
 ## Slice 1: tools, reports and identities
 
@@ -1020,7 +1033,9 @@ is defined.
   failure is a tool error.
 - **Tests under coverage.** `coverage run --rcfile <nitpicker> -m pytest -q -o cache_dir=<report
 directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own `discover`, with
-  `-s tests` or `-s test` when that directory exists and `-t .` when it is a package, through a
+  `-s tests` or `-s test` when that directory exists, else `-s testing` when a top-level `testing`
+  folder holds a `test*.py` file (a folder of only helpers is not a start directory), and `-t .`
+  when it is a package, through a
   `TextTestRunner` whose result records each test's time and writes the JUnit report),
   `manage.py test --noinput` (the project's own settings, from `manage.py`, run from the directory
   `manage.py` is in) or `-m nose2`, then `coverage json`. The project's pytest configuration keeps

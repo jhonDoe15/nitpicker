@@ -6,7 +6,7 @@ import { testConsoleFindings } from '../../../../shared/rules/console/console-fi
 export const TEST_CONSOLE_TOOL = 'test-console';
 const CONSOLE_REPORT = 'test-console.json';
 const REPORT_VARIABLE = 'NITPICKER_CONSOLE_REPORT';
-const REPORT_MISSING_RULE = 'console-report-missing';
+const REPORT_MISSING_RULE = 'test-console-report-missing';
 
 export function consoleReportEnvironment({ project, reportRoot }) {
   return project.testRunner === 'pytest'
@@ -20,7 +20,7 @@ function missingReportFinding() {
     rule: REPORT_MISSING_RULE,
     path: '.',
     identity: REPORT_MISSING_RULE,
-    message: `Test console output was not checked: the pytest run left no ${CONSOLE_REPORT}. A test that ends the process (os._exit) or a plugin that stops pytest early keeps nitpicker's console plugin from writing it.`,
+    message: `Test console output was not checked: the pytest run left no ${CONSOLE_REPORT}. nitpicker's console plugin writes it first thing when pytest unconfigures, so the run ended before that: the pytest process was killed or ended itself without unwinding.`,
     classification: 'tool-error',
   };
 }
