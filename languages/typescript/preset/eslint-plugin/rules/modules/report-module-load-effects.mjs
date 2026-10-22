@@ -1,3 +1,4 @@
+import { depthFirst, objectChildren } from '../../../../../../shared/traversal.mjs';
 import { stylesheetSpecifier } from '../../../layout.mjs';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
@@ -26,12 +27,47 @@ function isDirective(node) {
   return typeof node.directive === 'string';
 }
 
+const ENTRY_MEMBERS = new Set(['import.meta.main', 'import.meta.url', 'require.main']);
+
+function entryMemberText(node) {
+  if (node.type !== 'MemberExpression' || node.computed) {
+    return undefined;
+  }
+  const object = node.object.type === 'MetaProperty' ? 'import.meta' : segmentName(node.object);
+  return `${object}.${node.property.name}`;
+}
+
+function isMainGuard(statement) {
+  if (statement.type !== 'IfStatement' || statement.alternate !== null) {
+    return false;
+  }
+  for (const current of depthFirst(statement.test, objectChildren)) {
+    if (ENTRY_MEMBERS.has(entryMemberText(current))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function guardedByMain(statement, node) {
+  if (!isMainGuard(statement)) {
+    return false;
+  }
+  const [start, end] = statement.consequent.range;
+  return start <= node.range[0] && node.range[1] <= end;
+}
+
+function isTopLevelControl(node) {
+  return node.parent?.type === 'Program' && TOP_LEVEL_CONTROL.has(node.type) && !isMainGuard(node);
+}
+
 function executesAtModuleLoad(node) {
   for (const current of ancestorsOf(node)) {
     if (
       current.type === 'ArrowFunctionExpression' ||
       current.type === 'FunctionDeclaration' ||
-      current.type === 'FunctionExpression'
+      current.type === 'FunctionExpression' ||
+      guardedByMain(current, node)
     ) {
       return false;
     }
@@ -188,7 +224,7 @@ export const rule = {
         }
       },
       ':statement'(node) {
-        if (node.parent?.type === 'Program' && TOP_LEVEL_CONTROL.has(node.type)) {
+        if (isTopLevelControl(node)) {
           context.report({
             node,
             messageId: 'topLevelControl',

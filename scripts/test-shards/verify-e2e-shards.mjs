@@ -2,20 +2,19 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { parse } from 'yaml';
 import { createVitest, parseCLI } from 'vitest/node';
 import { assignShards, readDurations } from './sequencer.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+const EXPECTED_CASES = { java: 76, kotlin: 54 };
+const VITEST_CONFIG = path.join(root, 'vitest.config.mts');
 
-// Collect through the package script's real flags and Vitest config without running JVM builds.
-function discover(language, extra = []) {
-  const command = pkg.scripts[`test:${language}`].split(' ');
-  const args = command.slice(command.indexOf('run') + 1);
+function discover(language, args) {
   const result = spawnSync(
     process.execPath,
-    [path.join(root, 'node_modules/vitest/vitest.mjs'), 'list', ...args, '--json', ...extra],
+    [path.join(root, 'node_modules/vitest/vitest.mjs'), 'list', ...args, '--json'],
     {
       cwd: root,
       encoding: 'utf8',
@@ -26,52 +25,81 @@ function discover(language, extra = []) {
   return JSON.parse(result.stdout);
 }
 
-for (const language of process.argv.slice(2).length ? process.argv.slice(2) : ['java', 'kotlin']) {
-  const workflow = parse(
-    readFileSync(path.join(root, `.github/workflows/${language}-e2e.yml`), 'utf8'),
-  );
-  const matrix = workflow.jobs[`${language}-shard`].strategy.matrix.shard;
-  const cases = discover(language);
-  const files = [...new Set(cases.map(({ file }) => path.relative(root, file)))].toSorted();
-  const durations = readDurations(path.join(import.meta.dirname, `${language}-e2e.json`));
+function scriptCases(language) {
+  const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const command = pkg.scripts[`test:${language}`].split(' ');
+  return discover(language, command.slice(command.indexOf('run') + 1));
+}
+
+function readProfile(profile, files) {
+  const durations = readDurations(profile);
   assert.deepEqual(
     [...durations.keys()].toSorted(),
     files,
     'timing profile must cover every selected file',
   );
-  const shards = assignShards(files, durations, matrix.length);
-  process.env[`NITPICKER_${language.toUpperCase()}_E2E`] = '1';
-  const actual = [];
-  for (const index of matrix) {
-    const { options } = parseCLI(['vitest', 'run', `--shard=${index}/${matrix.length}`]);
-    const context = await createVitest('test', {
-      ...options,
-      config: path.join(root, 'vitest.config.mts'),
-    });
-    let relative;
-    try {
-      assert.deepEqual(context.config.shard, { index, count: matrix.length });
-      const sequencer = context.config.sequence.sequencer(context);
-      const selected = sequencer.shard(files.map((file) => ({ moduleId: path.join(root, file) })));
-      relative = selected.map(({ moduleId }) => path.relative(root, moduleId)).toSorted();
-    } finally {
-      await context.close();
-    }
-    assert.ok(relative.length > 0, `empty ${language} shard ${index}`);
-    assert.deepEqual(relative, shards[index - 1].toSorted());
-    actual.push(relative);
+  return durations;
+}
+
+function readMatrix(workflowFile, language) {
+  return parse(readFileSync(workflowFile, 'utf8')).jobs[`${language}-shard`].strategy.matrix.shard;
+}
+
+async function selectedFiles(files, durations, { index, count }) {
+  const { options } = parseCLI(['vitest', 'run', `--shard=${index}/${count}`]);
+  const context = await createVitest('test', { ...options, config: VITEST_CONFIG });
+  try {
+    assert.deepEqual(context.config.shard, { index, count });
+    const sequencer = context.config.sequence.sequencer(context, durations);
+    const selected = sequencer.shard(files.map((file) => ({ moduleId: path.join(root, file) })));
+    return selected.map(({ moduleId }) => path.relative(root, moduleId)).toSorted();
+  } finally {
+    await context.close();
   }
-  delete process.env[`NITPICKER_${language.toUpperCase()}_E2E`];
-  assert.deepEqual(actual.flat().toSorted(), files, 'every file must occur exactly once');
-  assert.equal(cases.length, language === 'java' ? 76 : 54, 'behavioral case coverage changed');
+}
+
+async function assertShardPartition({ files, durations, shards, matrix }) {
+  const selections = [];
+  for (const index of matrix) {
+    const selected = await selectedFiles(files, durations, { index, count: matrix.length });
+    assert.ok(selected.length > 0, `empty shard ${index}`);
+    assert.deepEqual(selected, shards[index - 1].toSorted());
+    selections.push(selected);
+  }
+  assert.deepEqual(selections.flat().toSorted(), files, 'every file must occur exactly once');
+}
+
+async function verifyLanguage(language) {
+  const cases = scriptCases(language);
+  const files = [...new Set(cases.map(({ file }) => path.relative(root, file)))].toSorted();
+  const durations = readProfile(path.join(import.meta.dirname, `${language}-e2e.json`), files);
+  const workflowFile = path.join(root, `.github/workflows/${language}-e2e.yml`);
+  const matrix = readMatrix(workflowFile, language);
+  const shards = assignShards(files, durations, matrix.length);
+  await assertShardPartition({ files, durations, shards, matrix });
+  assert.equal(cases.length, EXPECTED_CASES[language], 'behavioral case coverage changed');
   const loads = shards.map((shard) => shard.reduce((sum, file) => sum + durations.get(file), 0));
-  console.log(
-    JSON.stringify({
-      language,
-      cases: cases.length,
-      files: files.length,
-      shards: matrix.length,
-      estimatedSeconds: loads,
-    }),
-  );
+  return { cases, files, matrix, loads };
+}
+
+function requestedLanguages(args) {
+  const languages = args.length > 0 ? args : Object.keys(EXPECTED_CASES);
+  const unknown = languages.filter((language) => !Object.hasOwn(EXPECTED_CASES, language));
+  assert.deepEqual(unknown, [], `the JVM suites are ${Object.keys(EXPECTED_CASES).join(' and ')}`);
+  return languages;
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  for (const language of requestedLanguages(process.argv.slice(2))) {
+    const { cases, files, matrix, loads } = await verifyLanguage(language);
+    console.log(
+      JSON.stringify({
+        language,
+        cases: cases.length,
+        files: files.length,
+        shards: matrix.length,
+        estimatedSeconds: loads,
+      }),
+    );
+  }
 }
