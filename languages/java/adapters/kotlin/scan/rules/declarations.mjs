@@ -65,7 +65,10 @@ const MUTABLE_TYPES =
   'Mutable\\w+|Array|IntArray|LongArray|DoubleArray|ByteArray|ArrayList|HashMap|HashSet|StringBuilder|Atomic\\w+';
 const MUTABLE_TYPE = new RegExp(String.raw`^\s*:\s*(?:${MUTABLE_TYPES})\b`);
 
-const capitalized = (word) => word.charAt(0).toUpperCase() + word.slice(1);
+function capitalized(word) {
+  return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
 const GENERIC_WORDS = new Set(GENERIC_NAME_WORDS);
 const GENERIC_SUFFIX = GENERIC_NAME_WORDS.map(capitalized).join('|');
 const GENERIC_TYPE = new RegExp(`(?:^|[A-Za-z0-9])(${GENERIC_SUFFIX})$`);
@@ -179,7 +182,7 @@ function nameWords(name) {
 function isGenericFile(stem) {
   const words = nameWords(stem);
   const last = words.at(-1);
-  const managerRole = MANAGER_WORDS.has(last) && MANAGER_ROLES.has(words.at(-2));
+  const managerRole = MANAGER_WORDS.has(last) && MANAGER_ROLES.has(words.at(words.length - 2));
   return GENERIC_WORDS.has(last) && !managerRole;
 }
 
