@@ -1,7 +1,7 @@
-import { depthFirst, objectChildren } from '../../../../../../shared/traversal.mjs';
 import { stylesheetSpecifier } from '../../../layout.mjs';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
+import { guardedByMain, isMainGuard } from './entry/main-guard.mjs';
 
 const SYNC_MODULES = new Set(
   ['fs', 'child_process', 'crypto', 'zlib'].flatMap((name) => [name, `node:${name}`]),
@@ -27,94 +27,21 @@ function isDirective(node) {
   return typeof node.directive === 'string';
 }
 
-function memberText(node) {
-  if (node.type !== 'MemberExpression' || node.computed) {
-    return undefined;
-  }
-  const object = node.object.type === 'MetaProperty' ? 'import.meta' : segmentName(node.object);
-  return `${object}.${node.property.name}`;
-}
-
-function readsScriptPath(node) {
-  for (const current of depthFirst(node, objectChildren)) {
-    if (
-      current.type === 'MemberExpression' &&
-      current.computed &&
-      memberText(current.object) === 'process.argv' &&
-      current.property.value === 1
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function isEqualityWith(test, left, right) {
+function isTopLevelControl(node, sourceCode) {
   return (
-    test.type === 'BinaryExpression' &&
-    (test.operator === '===' || test.operator === '==') &&
-    ((left(test.left) && right(test.right)) || (left(test.right) && right(test.left)))
+    node.parent?.type === 'Program' &&
+    TOP_LEVEL_CONTROL.has(node.type) &&
+    !isMainGuard(node, sourceCode)
   );
 }
 
-function isEntryComparison(test) {
-  return (
-    memberText(test) === 'import.meta.main' ||
-    isEqualityWith(test, (side) => memberText(side) === 'import.meta.url', readsScriptPath) ||
-    isEqualityWith(
-      test,
-      (side) => memberText(side) === 'require.main',
-      (side) => side.type === 'Identifier' && side.name === 'module',
-    )
-  );
-}
-
-function conjuncts(test) {
-  const pending = [test];
-  const operands = [];
-  for (const node of pending) {
-    if (node.type === 'LogicalExpression' && node.operator === '&&') {
-      pending.push(node.left, node.right);
-    } else {
-      operands.push(node);
-    }
-  }
-  return operands;
-}
-
-function isEntryCheck(test) {
-  const operands = conjuncts(test);
-  return (
-    operands.some(isEntryComparison) &&
-    operands.every((operand) => isEntryComparison(operand) || readsScriptPath(operand))
-  );
-}
-
-function isMainGuard(statement) {
-  return (
-    statement.type === 'IfStatement' && statement.alternate === null && isEntryCheck(statement.test)
-  );
-}
-
-function guardedByMain(statement, node) {
-  if (!isMainGuard(statement)) {
-    return false;
-  }
-  const [start, end] = statement.consequent.range;
-  return start <= node.range[0] && node.range[1] <= end;
-}
-
-function isTopLevelControl(node) {
-  return node.parent?.type === 'Program' && TOP_LEVEL_CONTROL.has(node.type) && !isMainGuard(node);
-}
-
-function executesAtModuleLoad(node) {
+function executesAtModuleLoad(node, sourceCode) {
   for (const current of ancestorsOf(node)) {
     if (
       current.type === 'ArrowFunctionExpression' ||
       current.type === 'FunctionDeclaration' ||
       current.type === 'FunctionExpression' ||
-      guardedByMain(current, node)
+      guardedByMain(current, node, sourceCode)
     ) {
       return false;
     }
@@ -202,10 +129,10 @@ function isCommonJsExport(expression) {
   );
 }
 
-function importTimeEffectAtLoad(node, syncBindings) {
+function importTimeEffectAtLoad(node, { syncBindings, sourceCode }) {
   const call = importTimeEffect(node, syncBindings);
   return call !== undefined &&
-    executesAtModuleLoad(node) &&
+    executesAtModuleLoad(node, sourceCode) &&
     ancestorsOf(node).some(isModuleLevelDeclaration)
     ? call
     : undefined;
@@ -236,7 +163,8 @@ export const rule = {
   },
   create(context) {
     const commonJsExports = context.options[0]?.commonJsExports === true;
-    const syncBindings = moduleBindings(context.sourceCode.ast, SYNC_MODULES);
+    const { sourceCode } = context;
+    const syncBindings = moduleBindings(sourceCode.ast, SYNC_MODULES);
     return {
       ImportDeclaration(node) {
         if (node.specifiers.length === 0 && !stylesheetSpecifier.test(node.source.value)) {
@@ -244,12 +172,12 @@ export const rule = {
         }
       },
       AwaitExpression(node) {
-        if (executesAtModuleLoad(node)) {
+        if (executesAtModuleLoad(node, sourceCode)) {
           context.report({ node, messageId: 'topLevelAwait' });
         }
       },
       'NewExpression, CallExpression'(node) {
-        const call = importTimeEffectAtLoad(node, syncBindings);
+        const call = importTimeEffectAtLoad(node, { syncBindings, sourceCode });
         if (call !== undefined) {
           context.report({ node, messageId: 'importTimeEffect', data: { call } });
         }
@@ -266,12 +194,12 @@ export const rule = {
         context.report({ node, messageId: 'topLevelExpression' });
       },
       StaticBlock(node) {
-        if (executesAtModuleLoad(node)) {
+        if (executesAtModuleLoad(node, sourceCode)) {
           context.report({ node, messageId: 'staticBlock' });
         }
       },
       ':statement'(node) {
-        if (isTopLevelControl(node)) {
+        if (isTopLevelControl(node, sourceCode)) {
           context.report({
             node,
             messageId: 'topLevelControl',

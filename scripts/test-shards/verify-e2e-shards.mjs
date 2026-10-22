@@ -1,30 +1,49 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parse } from 'yaml';
 import { createVitest, parseCLI } from 'vitest/node';
+import {
+  SUITES,
+  caseId,
+  classifyGates,
+  gateCandidates,
+  suiteFlag,
+  workflowProblems,
+} from './e2e-gates.mjs';
 import { assignShards, readDurations } from './sequencer.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
-const JVM_LANGUAGES = ['java', 'kotlin'];
-const E2E_FILE_FILTER = '.e2e.test.';
 const VITEST_CONFIG = path.join(root, 'vitest.config.mts');
 
-function discover(language, args) {
+function suiteFile(base, name) {
+  const full = path.resolve(base, name);
+  if (!full.startsWith(base + path.sep)) {
+    throw new Error(`${name} is outside ${base}`);
+  }
+  return full;
+}
+
+function listCases(args, flag) {
+  const unset = SUITES.flatMap((suite) => ['-u', suiteFlag(suite)]);
   const result = spawnSync(
-    process.execPath,
-    [path.join(root, 'node_modules/vitest/vitest.mjs'), 'list', ...args, '--json'],
-    {
-      cwd: root,
-      encoding: 'utf8',
-      env: { ...process.env, [`NITPICKER_${language.toUpperCase()}_E2E`]: '1' },
-    },
+    'env',
+    [
+      ...unset,
+      ...(flag === undefined ? [] : [`${flag}=1`]),
+      process.execPath,
+      path.join(root, 'node_modules/vitest/vitest.mjs'),
+      'list',
+      ...args,
+      '--json',
+    ],
+    { cwd: root, encoding: 'utf8' },
   );
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return JSON.parse(result.stdout).map(({ file, name }) => ({
-    file: path.relative(root, file),
+    file: path.relative(root, file).split(path.sep).join('/'),
     name,
   }));
 }
@@ -32,26 +51,26 @@ function discover(language, args) {
 function scriptCases(language) {
   const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
   const command = pkg.scripts[`test:${language}`].split(' ');
-  return discover(language, command.slice(command.indexOf('run') + 1));
+  assert.equal(command[0], `${suiteFlag(language)}=1`, `test:${language} must set its E2E flag`);
+  return listCases(command.slice(command.indexOf('run') + 1), suiteFlag(language));
 }
 
-function caseIds(cases) {
-  return cases.map(({ file, name }) => `${file} > ${name}`).toSorted();
-}
-
-function gatedCaseIds(language) {
-  const filter = ['--config', VITEST_CONFIG, E2E_FILE_FILTER];
-  const otherSuite = JVM_LANGUAGES.find((other) => other !== language);
-  const ungated = new Set(caseIds(discover(otherSuite, filter)));
-  return caseIds(discover(language, filter)).filter((id) => !ungated.has(id));
-}
-
-function assertScriptSelectsGatedCases(language, cases) {
+function suiteGates() {
+  const candidates = gateCandidates(root);
+  const filters = ['--config', VITEST_CONFIG, ...candidates.map(({ file }) => file)];
+  const listings = {
+    baseline: listCases(filters),
+    listed: Object.fromEntries(
+      SUITES.map((suite) => [suite, listCases(filters, suiteFlag(suite))]),
+    ),
+  };
+  const gates = classifyGates(candidates, listings);
   assert.deepEqual(
-    caseIds(cases),
-    gatedCaseIds(language),
-    `test:${language} must select exactly the cases that its E2E flag enables`,
+    gates.problems,
+    [],
+    'every E2E test file must be gated by exactly one suite flag',
   );
+  return gates.expected;
 }
 
 function readProfile(profile, files) {
@@ -64,8 +83,12 @@ function readProfile(profile, files) {
   return durations;
 }
 
-function readMatrix(workflowFile, language) {
-  return parse(readFileSync(workflowFile, 'utf8')).jobs[`${language}-shard`].strategy.matrix.shard;
+function readMatrix(language) {
+  const workflow = parse(
+    readFileSync(suiteFile(root, `.github/workflows/${language}-e2e.yml`), 'utf8'),
+  );
+  assert.deepEqual(workflowProblems(workflow, language), []);
+  return workflow.jobs[`${language}-shard`].strategy.matrix.shard;
 }
 
 async function selectedFiles(files, durations, { index, count }) {
@@ -92,13 +115,16 @@ async function assertShardPartition({ files, durations, shards, matrix }) {
   assert.deepEqual(selections.flat().toSorted(), files, 'every file must occur exactly once');
 }
 
-async function verifyLanguage(language) {
+async function verifyLanguage(language, expected) {
   const cases = scriptCases(language);
-  assertScriptSelectsGatedCases(language, cases);
+  assert.deepEqual(
+    cases.map(caseId).toSorted(),
+    expected[language],
+    `test:${language} must select exactly the cases that its E2E flag enables`,
+  );
   const files = [...new Set(cases.map(({ file }) => file))].toSorted();
-  const durations = readProfile(path.join(import.meta.dirname, `${language}-e2e.json`), files);
-  const workflowFile = path.join(root, `.github/workflows/${language}-e2e.yml`);
-  const matrix = readMatrix(workflowFile, language);
+  const durations = readProfile(suiteFile(import.meta.dirname, `${language}-e2e.json`), files);
+  const matrix = readMatrix(language);
   const shards = assignShards(files, durations, matrix.length);
   await assertShardPartition({ files, durations, shards, matrix });
   const loads = shards.map((shard) => shard.reduce((sum, file) => sum + durations.get(file), 0));
@@ -106,15 +132,17 @@ async function verifyLanguage(language) {
 }
 
 function requestedLanguages(args) {
-  const languages = args.length > 0 ? args : JVM_LANGUAGES;
-  const unknown = languages.filter((language) => !JVM_LANGUAGES.includes(language));
-  assert.deepEqual(unknown, [], `the JVM suites are ${JVM_LANGUAGES.join(' and ')}`);
+  const languages = args.length > 0 ? args : SUITES;
+  const unknown = languages.filter((language) => !SUITES.includes(language));
+  assert.deepEqual(unknown, [], `the E2E suites are ${SUITES.join(', ')}`);
   return languages;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  for (const language of requestedLanguages(process.argv.slice(2))) {
-    const { cases, files, matrix, loads } = await verifyLanguage(language);
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
+  const languages = requestedLanguages(process.argv.slice(2));
+  const expected = suiteGates();
+  for (const language of languages) {
+    const { cases, files, matrix, loads } = await verifyLanguage(language, expected);
     console.log(
       JSON.stringify({
         language,
