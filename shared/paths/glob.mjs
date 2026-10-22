@@ -10,6 +10,15 @@ function isNotLineTerminator(character) {
 
 function globToken(glob, index) {
   const character = glob[index];
+  if (character === '\\' && index + 1 < glob.length) {
+    const literal = glob[index + 1];
+    return {
+      kind: 'one',
+      test: (other) => other === literal,
+      length: 2,
+      source: escapeRegExp(literal),
+    };
+  }
   if (character === '*' && glob[index + 1] === '*') {
     return glob[index + 2] === '/'
       ? { kind: 'directories', length: 3, source: '(?:|.*/)' }

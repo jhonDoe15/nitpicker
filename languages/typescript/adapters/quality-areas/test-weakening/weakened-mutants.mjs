@@ -1,4 +1,5 @@
 import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
+import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import { mutantRuleId } from '../../../../../shared/policy.mjs';
 import { baseLineOf } from './line-shifts.mjs';
 
@@ -127,7 +128,7 @@ function weakenedMessage(filePath, mutant) {
       ? `${mutant.mutatorName} mutant`
       : `${mutant.mutatorName} mutant (${inlineCode(mutant.original)} replaced with ${inlineCode(mutant.replacement)})`;
   const outcome = mutant.status === 'NoCoverage' ? 'no test runs it now' : 'it survives now';
-  return `This change weakened the tests of ${filePath}: the base tests caught this ${change}, but ${outcome}. Restore the assertion that caught it, or add one. If the tests are weaker on purpose, add an exception for ${mutantRuleId(mutant.status)} with this path in nitpicker.config.json.`;
+  return `This change weakened the tests of ${filePath}: the base tests caught this ${change}, but ${outcome}. Restore the assertion that caught it, or add one. ${exceptionRoute({ rule: mutantRuleId(mutant.status), path: filePath })}`;
 }
 
 function weakenedFinding(analyzerName, filePath, { mutant, key }) {

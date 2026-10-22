@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { findingFactory } from '../review-finding.mjs';
+import { routed } from '../test-support/facts.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../review-rules.mjs';
 import { springFindings, withoutCoveredSourceFindings } from './spring-findings.mjs';
 import { ALLOWED_FORM_FIRST } from '../../../spring/test-support/allowed-form.mjs';
@@ -19,9 +20,6 @@ const BUILD_PLUGIN = { annotations: ENTITY_ANNOTATIONS, presets: ['spring'] };
 const SKIPPED = {
   SpringQueryConcatenation:
     'kotlin-source/SqlStringBuilding flags SQL built from runtime values on the same calls',
-};
-const OWN_ROUTE = {
-  SpringDataNativeQuery: 'the only inline suppression nitpicker accepts.',
 };
 
 function findingsWith(manifest, { projectRoot = PROJECT, javaRoots = ['src/main/java'] } = {}) {
@@ -222,12 +220,7 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
     for (const finding of findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN })) {
       expect(finding.tool).toBe('pmd');
       expect(finding.classification).toBe('enforceable');
-      expect(
-        finding.message.endsWith(
-          OWN_ROUTE[finding.rule] ??
-            `If it is right here, add an exception for pmd/${finding.rule} in nitpicker.config.json.`,
-        ),
-      ).toBe(true);
+      expect(finding.message).toBe(routed(springMessage(finding.rule), finding.rule, finding.path));
     }
   });
 

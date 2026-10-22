@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { KOTLIN_EXCEPTION_RULES } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
+import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { kotlinConfig, useGradleFixtures } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
@@ -70,7 +71,7 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
 
       expect(result.exitCode).toBe(2);
       expect(result.output.err).toBe(
-        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "MagicNumber", which is not a rule with exceptions. Write the rule as the finding prints it; rules with exceptions for the kotlin preset: detekt.<ruleset>.<Rule>, ${KOTLIN_EXCEPTION_RULES.join(', ')}\n`,
+        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "MagicNumber", which is not a rule with exceptions. Write the rule as the finding prints it; rules with exceptions for the kotlin preset: detekt.<ruleset>.<Rule>, ${KOTLIN_EXCEPTION_RULES.join(', ')}, and, for the Java sources of the project, a finding as it is printed, "<tool>/<rule>" (for example "pmd/UnusedPrivateField"; tools: ${JAVA_TOOLS.join(', ')})\n`,
       );
     });
   });

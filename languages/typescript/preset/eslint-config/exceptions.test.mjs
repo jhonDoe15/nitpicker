@@ -92,6 +92,21 @@ describe('strict rule exceptions', () => {
     ).toThrow(/unknown rules: nitpicker\/nope/);
   });
 
+  it('leaves the function-scoped nitpicker rules to the analyzers that report them', async () => {
+    const config = applyRuleExceptions(presetConfig, [
+      { rule: 'function-lines-limit', paths: ['src/legacy/**'], function: 'big', reason: 'Legacy' },
+      {
+        rule: 'changed-branch-coverage',
+        paths: ['src/legacy/**'],
+        function: 'f',
+        reason: 'Legacy',
+      },
+      exception,
+    ]);
+    await expect(ruleSeverity(config, 'src/legacy/old.ts')).resolves.toBe(0);
+    await expect(ruleSeverity(config, 'src/fresh/new.ts')).resolves.toBe(2);
+  });
+
   it('lifts a rule in a narrower production analyzer and ignores rules it does not run', async () => {
     const silentCatch = 'nitpicker/no-silent-catch';
     const config = applyMatchingRuleExceptions(errorsConfig, [
