@@ -400,6 +400,17 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `Object.groupBy`, `Map.groupBy` or `flatMap`, or push into an array (or `set` into a `Map`)
   created before the loop. An object accumulator whose type has a fixed set of keys
   (`Record<Status, number>`) is not reported: copying it costs the same on every step.
+- `nitpicker/no-lazy-relation-in-loop` (all production code, needs the type checker):
+  `await item.relation` in a loop or iteration callback over the result of a TypeORM `find`,
+  `findAndCount`, `findBy`, `findAndCountBy` or query builder `getMany` in the same function, where
+  `relation` is declared lazy (`@ManyToOne(() => Customer, { lazy: true })` or a relation property
+  typed `Promise<T>`), is reported: each item runs one more query. Fetch it in that query: name it
+  in `relations` (`relations: { customer: true }` or `['customer']`) or join it with
+  `leftJoinAndSelect('order.customer', 'customer')`. Only proven cases are reported: a collection
+  of unknown origin (a parameter, a field), options that are not a literal, and a query builder
+  that does not start from `createQueryBuilder` in the same chain are not. Prisma has no lazy
+  loading, and Sequelize association getters (`order.getCustomer()`) are explicit calls that
+  `nitpicker/no-io-in-loop` reports.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise

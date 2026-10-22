@@ -74,6 +74,7 @@ import { rule as noHardcodedSecret } from './rules/code-smells/hardcoded-secret.
 import { rule as noBooleanFlagParameter } from './rules/code-smells/boolean-flag-parameter.mjs';
 import { rule as noIoInLoop } from './rules/loops/no-io-in-loop.mjs';
 import { rule as noAccumulatorSpreadInReduce } from './rules/loops/no-accumulator-spread-in-reduce.mjs';
+import { rule as noLazyRelationInLoop } from './rules/effects/no-lazy-relation-in-loop.mjs';
 import { testAssertionRules } from './test-assertions/rules.mjs';
 import { rule as noTestHelpersInSource } from './test-placement/no-test-helpers-in-source.mjs';
 import { testIsolationRules } from './test-isolation/rules.mjs';
@@ -163,6 +164,7 @@ export const nitpickerRules = {
     'no-boolean-flag-parameter': noBooleanFlagParameter,
     'no-io-in-loop': noIoInLoop,
     'no-accumulator-spread-in-reduce': noAccumulatorSpreadInReduce,
+    'no-lazy-relation-in-loop': noLazyRelationInLoop,
     'no-test-helpers-in-source': noTestHelpersInSource,
     ...testAssertionRules,
     ...testIsolationRules,
