@@ -14,6 +14,6 @@ export const CRAP_CHECK_FILES = [
   'languages/typescript/preset/crap/functions/describe.mjs',
   'languages/typescript/preset/crap/functions/names.mjs',
   'languages/typescript/preset/crap/functions/own-nodes.mjs',
-  'shared/glob.mjs',
+  'shared/paths/glob.mjs',
   'shared/config.mjs',
 ];
