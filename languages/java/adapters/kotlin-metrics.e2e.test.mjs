@@ -26,6 +26,7 @@ const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const pinned = /kotlinCompiler\s*:\s*'([^']+)'/.exec(readFileSync(INIT_SCRIPT, 'utf8'))[1];
 const metricsSource = path.resolve(import.meta.dirname, '../gradle/KotlinMetrics.java');
+const supportSource = path.resolve(import.meta.dirname, '../gradle/MetricsSupport.java');
 
 const PRINT_CLASSPATH = `allprojects {
     plugins.withId('org.jetbrains.kotlin.jvm') {
@@ -52,6 +53,7 @@ configurations.matching { it.name == "nitpickerKotlinCompiler" }.configureEach {
 let workspace;
 let java;
 let classpath;
+let support;
 
 function gradleClasspath(project) {
   const script = path.join(workspace, 'print.init.gradle');
@@ -93,7 +95,7 @@ function measure(project) {
     [
       `-Dnitpicker.kotlinCompiler=${pinned}`,
       '-cp',
-      classpath,
+      [support, classpath].join(path.delimiter),
       metricsSource,
       output,
       project,
@@ -120,6 +122,13 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       `${readFileSync(path.join(project, 'build.gradle.kts'), 'utf8')}${FORCE_OTHER_KOTLIN}`,
     );
     ({ javaHome: java, classpath } = gradleClasspath(project));
+    support = path.join(workspace, 'metrics-support');
+    const compiled = spawnSync(
+      path.join(java, 'bin/javac'),
+      ['-proc:none', '-d', support, supportSource],
+      { encoding: 'utf8', timeout: 180_000 },
+    );
+    expect(compiled.status, compiled.stderr).toBe(0);
   });
 
   afterAll(() => {

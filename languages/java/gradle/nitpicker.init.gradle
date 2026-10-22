@@ -51,6 +51,21 @@ gradle.projectsEvaluated {
     }
 }
 
+def compileMetricsSupport = { File outputDir ->
+    def compiler = javax.tools.ToolProvider.systemJavaCompiler
+    if (compiler == null) {
+        throw new GradleException('The metrics steps need a JDK: Gradle runs on a JRE without jdk.compiler')
+    }
+    outputDir.mkdirs()
+    def errors = new ByteArrayOutputStream()
+    def status = compiler.run(null, null, errors, '-proc:none', '-d', outputDir.absolutePath,
+            new File(initScriptDir, 'MetricsSupport.java').absolutePath)
+    if (status != 0) {
+        throw new GradleException("MetricsSupport did not compile: ${errors.toString('UTF-8').trim()}")
+    }
+    outputDir.absolutePath
+}
+
 def escapeXml = { String text -> groovy.xml.XmlUtil.escapeXml(text) }
 
 def rulesetExcluding = { String name, String description, List<String> rules, Collection<File> excludedDirectories ->
@@ -528,7 +543,8 @@ allprojects {
                 def output = reportDir.get().file('structure.json').asFile
                 def classesOutput = reportDir.get().file('classes.json').asFile
                 def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-                def process = new ProcessBuilder([java, metricsSource.absolutePath,
+                def support = compileMetricsSupport(new File(temporaryDir, 'metrics-support'))
+                def process = new ProcessBuilder([java, '-cp', support, metricsSource.absolutePath,
                         output.absolutePath, classesOutput.absolutePath, analysisRoot.absolutePath] + roots)
                     .directory(projectDir).redirectErrorStream(true).start()
                 def log = process.inputStream.getText('UTF-8')
@@ -909,9 +925,11 @@ allprojects {
                             return
                         }
                         def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
+                        def support = compileMetricsSupport(new File(temporaryDir, 'metrics-support'))
                         def process = new ProcessBuilder([java, '-Djava.awt.headless=true',
                                 "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(), '-cp',
-                                configurations.nitpickerKotlinCompiler.asPath, metricsSource.absolutePath,
+                                support + File.pathSeparator + configurations.nitpickerKotlinCompiler.asPath,
+                                metricsSource.absolutePath,
                                 output.absolutePath, analysisRoot.absolutePath] + roots)
                             .directory(projectDir).redirectErrorStream(true).start()
                         def log = process.inputStream.getText('UTF-8')

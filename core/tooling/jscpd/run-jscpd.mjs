@@ -1,11 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../shared/filesystem.mjs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { DUPLICATES_MODE } from '../../../shared/policy.mjs';
 import { RENAMED_SETTINGS, withNormalizedTree } from '../../../shared/renamed-clones/tree.mjs';
 import { resolveTool } from '../tool-resolution.mjs';
+import { rootsPattern } from './skipped-folders.mjs';
 
 export const DUPLICATES_TOOL = 'duplicates';
 export const DUPLICATES_REPORT = 'duplicates.json';
@@ -28,27 +29,10 @@ export function jscpdVersion() {
   return resolveTool('jscpd', { bin: 'run-jscpd.js' }).version;
 }
 
-function relativeNames(report, cwd) {
-  const bases = [cwd, realpathSync(cwd)].map((base) => `${base.replaceAll('\\', '/')}/`);
-  function relative(name) {
-    const normalized = name.replaceAll('\\', '/');
-    const base = bases.find((candidate) => normalized.startsWith(candidate));
-    return base === undefined ? normalized : normalized.slice(base.length);
-  }
-  return {
-    ...report,
-    duplicates: (report.duplicates ?? []).map((duplicate) => ({
-      ...duplicate,
-      firstFile: { ...duplicate.firstFile, name: relative(duplicate.firstFile.name) },
-      secondFile: { ...duplicate.secondFile, name: relative(duplicate.secondFile.name) },
-    })),
-  };
-}
-
 function jscpdArguments({ jscpd, paths, config, format, output, ignore, together }) {
   return [
     jscpd,
-    ...paths,
+    ...(together ? ['.', '--pattern', rootsPattern(paths)] : paths),
     '--config',
     config,
     '--format',
@@ -61,7 +45,6 @@ function jscpdArguments({ jscpd, paths, config, format, output, ignore, together
     output,
     '--silent',
     ...(ignore.length > 0 ? ['--ignore', ignore.join(',')] : []),
-    ...(together ? ['--absolute'] : []),
   ];
 }
 
@@ -95,9 +78,7 @@ function runGroups({ cwd, roots, together, settings, names, reportRoot, ...tool 
     const output = insideReportRoot(reportRoot, names.output, String(index));
     const args = jscpdArguments({ jscpd, paths, config, output, together, ...tool });
     const report = runJscpdOnce({ cwd, output, args });
-    return together
-      ? { root: '.', report: relativeNames(report, cwd) }
-      : { root: paths[0], report };
+    return together ? { root: '.', report } : { root: paths[0], report };
   });
 }
 

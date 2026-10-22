@@ -19,6 +19,7 @@ import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
 import { withFunctionSourceHashes, withDeadCodeSourceHashes } from '../reporting/source-hashes.mjs';
 import { typescriptStructureProjectFindings } from '../../../preset/structure/project-findings.mjs';
 import { layoutJscpdConfig, layoutKnipConfig } from '../../../preset/tool-configs.mjs';
+import { rootsPattern } from '../../../../../core/tooling/jscpd/skipped-folders.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
 import { renamedDuplicatesReport } from '../../../preset/duplicates/renamed.mjs';
@@ -174,14 +175,15 @@ function duplicatesNormalizeOptions(options, renamed) {
 
 function runDuplicatesReport(options, config, outputDirectory) {
   const runJscpd = jscpdRunner(options);
-  const configPath = path.join(options.projectRoot, '.nitpicker-diff-jscpd.json');
+  const configName = '.nitpicker-diff-jscpd.json';
+  const configPath = path.join(options.projectRoot, configName);
   trackTemporaryPath(configPath);
   writeFileSync(
     configPath,
-    `${JSON.stringify({ ...config, absolute: true, reporters: ['json'], output: outputDirectory })}\n`,
+    `${JSON.stringify({ ...config, path: ['.'], pattern: rootsPattern(config.path), absolute: false, reporters: ['json'], output: outputDirectory })}\n`,
   );
   try {
-    runJscpd({ configPath });
+    runJscpd({ configPath: configName });
     const report = JSON.parse(
       readFileSync(path.join(outputDirectory, 'jscpd-report.json'), 'utf8'),
     );
