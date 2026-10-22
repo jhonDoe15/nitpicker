@@ -13,9 +13,10 @@ import {
 
 const route = (rule) => exceptionRoute({ rule, path: 'src/a.py', key: 'python.exceptions' });
 
-const sample = ({ tool, rule }) => ({
+const sample = ({ tool, rule, subject }) => ({
   tool,
   rule,
+  subject,
   path: 'src/a.py',
   identity: 'x',
   message: 'The base message.',

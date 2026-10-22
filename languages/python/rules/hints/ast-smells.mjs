@@ -117,13 +117,6 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
-    rules: ['io-in-loop'],
-    describe: (subject) => `\`${subject}\` runs once per item of a loop`,
-    allowed:
-      'Batch it: fetch or write all items in one call, or run the calls together with `asyncio.gather` or a `ThreadPoolExecutor.map` when there is no batch API.',
-  },
-  {
-    tool: RULES_TOOL,
     rules: ['skipped-test-without-reason'],
     describe: (subject) => skipDescription(subject),
     allowed: (subject) => skipAllowed(subject),
