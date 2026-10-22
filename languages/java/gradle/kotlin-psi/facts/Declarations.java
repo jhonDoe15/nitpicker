@@ -3,6 +3,7 @@ package nitpicker.kotlinpsi.facts;
 import static nitpicker.kotlinpsi.common.Psi.*;
 
 import java.util.*;
+import nitpicker.kotlinpsi.bodies.Initializers;
 import nitpicker.kotlinpsi.common.Frame;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.lexer.KtTokens;
@@ -82,9 +83,19 @@ final class Declarations {
             "local", local, "visibility", effective(own, frame),
             "constructorVisibility", primary == null ? "public" : visibility(primary),
             "annotations", annotationTexts(klass), "supers", supertypes(klass), "superCall", superCall,
-            "primaryParameters", constructor, "entries", entries));
+            "primaryParameters", constructor, "entries", entries, "superClass", superClass(klass),
+            "constructorAnnotations", primary == null ? null : annotationEntries(primary)));
     return new Frame(frame, m("k", "class", "name", simple, "qualified", qualified,
         "supers", supertypes(klass), "visibility", own));
+  }
+
+  private static String superClass(KtClassOrObject klass) {
+    for (KtSuperTypeListEntry entry : klass.getSuperTypeListEntries()) {
+      if (entry instanceof KtSuperTypeCallEntry && entry.getTypeReference() != null) {
+        return withoutTypeArguments(entry.getTypeReference().getText()).trim();
+      }
+    }
+    return null;
   }
 
   private Map<String, Object> parameter(KtParameter parameter) {
@@ -92,14 +103,16 @@ final class Declarations {
         "name", parameter.getName(), "type", clip(parameter.getTypeReference()),
         "vararg", parameter.isVarArg(), "default", parameter.hasDefaultValue(),
         "property", parameter.hasValOrVar() ? (parameter.isMutable() ? "var" : "val") : null,
-        "line", state.lineOf(parameter.getTextOffset()), "annotations", annotationNames(parameter));
+        "line", state.lineOf(parameter.getTextOffset()), "annotations", annotationNames(parameter),
+        "annotationEntries", annotationEntries(parameter));
   }
 
   private List<Object> modifiers(KtModifierListOwner owner) {
     List<Object> names = new ArrayList<>();
     for (var token : List.of(KtTokens.OVERRIDE_KEYWORD, KtTokens.OPEN_KEYWORD, KtTokens.ABSTRACT_KEYWORD,
         KtTokens.INFIX_KEYWORD, KtTokens.OPERATOR_KEYWORD, KtTokens.INLINE_KEYWORD, KtTokens.SUSPEND_KEYWORD,
-        KtTokens.ACTUAL_KEYWORD, KtTokens.EXPECT_KEYWORD, KtTokens.LATEINIT_KEYWORD)) {
+        KtTokens.ACTUAL_KEYWORD, KtTokens.EXPECT_KEYWORD, KtTokens.LATEINIT_KEYWORD, KtTokens.FINAL_KEYWORD,
+        KtTokens.PROTECTED_KEYWORD)) {
       if (owner.hasModifier(token)) {
         names.add(token.getValue());
       }
@@ -126,7 +139,7 @@ final class Declarations {
             "owner", anonymous ? "<anonymous>" : owner == null ? "" : owner.data.get("qualified"),
             "local", local, "visibility", local ? "private" : effective(visibility(function), frame),
             "modifiers", modifiers(function), "annotations", annotationNames(function),
-            "typeParameters", !function.getTypeParameters().isEmpty(),
+            "annotationEntries", annotationEntries(function), "typeParameters", !function.getTypeParameters().isEmpty(),
             "receiver", clip(function.getReceiverTypeReference()),
             "returnType", clip(function.getTypeReference()), "parameters", parameters,
             "hasBody", body != null,
@@ -162,7 +175,9 @@ final class Declarations {
             "name", property.getName(), "line", state.lineOf(property.getTextOffset()),
             "owner", owner.data.get("qualified"), "type", clip(property.getTypeReference()),
             "var", property.isVar(), "lateinit", property.hasModifier(KtTokens.LATEINIT_KEYWORD),
-            "delegated", property.getDelegate() != null, "annotations", annotationNames(property)));
+            "delegated", property.getDelegate() != null, "annotations", annotationNames(property),
+            "annotationEntries", annotationEntries(property), "initializer", Initializers.callee(property),
+            "literal", Initializers.literal(property)));
   }
 
   void declareTypeAlias(KtTypeAlias alias) {
