@@ -1,6 +1,16 @@
+import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import { createIdentityCounter } from '../../../../../shared/ingest/common.mjs';
+import { appendSentence, hasExceptionRoute } from '../../../../../shared/messages/exception-sentence.mjs';
 
 export const REVIEW_TOOL = 'pmd';
+
+function withRoute({ tool, rule, file, message }) {
+  if (hasExceptionRoute(message)) {
+    return message;
+  }
+  const exceptionRule = tool === REVIEW_TOOL ? `${tool}/${rule}` : rule;
+  return appendSentence(message, exceptionRoute({ rule: exceptionRule, path: file }));
+}
 
 export function findingFactory() {
   const next = createIdentityCounter();
@@ -11,11 +21,7 @@ export function findingFactory() {
     identity: next(`${rule}:${key ?? symbol}`),
     symbol,
     location: { line },
-    message,
+    message: withRoute({ tool, rule, file, message }),
     classification: 'enforceable',
   });
-}
-
-export function exceptionSentence(rule) {
-  return `add an exception for ${REVIEW_TOOL}/${rule} in nitpicker.config.json.`;
 }

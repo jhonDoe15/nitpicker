@@ -1,13 +1,9 @@
+import { exceptionEntryText, exceptionSentence } from '../messages/exception-sentence.mjs';
 import { globMatcher } from '../paths/glob.mjs';
 
-export function exceptionEntry(rule, glob, packageName) {
+export function exceptionHint(rule, path, packageName) {
   const packages = packageName === undefined ? {} : { packages: [packageName] };
-  return JSON.stringify({ rule, paths: [glob], ...packages, reason: '...' });
-}
-
-export function exceptionHint(rule, glob, packageName) {
-  const entry = exceptionEntry(rule, glob, packageName);
-  return `If this is intended, add ${entry} to "exceptions" in nitpicker.config.json.`;
+  return exceptionSentence(exceptionEntryText({ rule, path, ...packages }));
 }
 
 export function isExcepted(exceptions, { rule, path: filePath, packageName, symbol }) {

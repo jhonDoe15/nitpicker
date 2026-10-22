@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { hasExceptionRoute } from '../../../shared/messages/exception-sentence.mjs';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../adapters/style/java-style.mjs';
 
@@ -7,7 +8,6 @@ const CATALOGS = new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)]))
 const CHECKSTYLE_CHECK =
   /^com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?$/u;
 const SENTENCE_END = /[.!?;]$/u;
-const CONFIG_FILE = 'nitpicker.config.json';
 
 export function readCatalog(tool) {
   return JSON.parse(readFileSync(new URL(`./${tool}.json`, import.meta.url), 'utf8'));
@@ -45,7 +45,7 @@ export function applyRuleMessages(findings, options) {
 
 function ruleMessage(finding, entry, { preset, javaStyle }) {
   const message = finding.message.trim();
-  if (message.includes(CONFIG_FILE)) {
+  if (hasExceptionRoute(message)) {
     return message;
   }
   const fix = entry?.layout === true ? layoutFix(javaStyle) : entry?.fix;

@@ -7,7 +7,7 @@ import {
   validateGlobs,
   validateStringArray,
 } from '../config.mjs';
-import { PLACEHOLDER_REASONS } from '../messages/exception-sentence.mjs';
+import { isPlaceholderReason } from '../messages/exception-sentence.mjs';
 import {
   FUNCTION_EXCEPTION_RULES,
   FUNCTION_REQUIRED_RULES,
@@ -19,6 +19,31 @@ import { canonicalRule, toolPrefixError } from './rule-names.mjs';
 const EXCEPTION_KEYS = ['rule', 'paths', 'packages', 'function', 'name', 'reason'];
 
 const COMPILER_DIAGNOSTIC = /^(?:[\w-]+\/)?TS\d+$/u;
+
+function canonicalEntries(entries) {
+  return entries.map((entry) =>
+    isPlainObject(entry) && typeof entry.rule === 'string'
+      ? { ...entry, rule: canonicalRule(entry.rule) }
+      : entry,
+  );
+}
+
+/** The config with every exception's `<tool>/<rule>` read as the bare rule, so each matcher sees one spelling. */
+export function withCanonicalRules(config) {
+  if (!isPlainObject(config)) {
+    return config;
+  }
+  const python = config.python;
+  return {
+    ...config,
+    ...(Array.isArray(config.exceptions)
+      ? { exceptions: canonicalEntries(config.exceptions) }
+      : {}),
+    ...(isPlainObject(python) && Array.isArray(python.exceptions)
+      ? { python: { ...python, exceptions: canonicalEntries(python.exceptions) } }
+      : {}),
+  };
+}
 
 /** Whether every `exceptions` entry lifts one of `rules` (the file limits a non-ESLint preset honours). */
 export function liftsOnlyRules(exceptions, rules) {
@@ -33,17 +58,13 @@ export function liftsOnlyRules(exceptions, rules) {
 export function validateExceptions(
   exceptions,
   name = 'exceptions',
-  { preset, functionOptional = false, matchesOwnGlobs = () => true } = {},
+  { preset, matchesOwnGlobs = () => true } = {},
 ) {
   if (!Array.isArray(exceptions)) {
     throw configError(`"${name}" must be an array`);
   }
   for (const [index, entry] of exceptions.entries()) {
-    validateException(entry, `${name}[${String(index)}]`, {
-      preset,
-      functionOptional,
-      matchesOwnGlobs,
-    });
+    validateException(entry, `${name}[${String(index)}]`, { preset, matchesOwnGlobs });
   }
 }
 
@@ -80,21 +101,40 @@ function validateExceptionReason(entry, label) {
   if (reason === '') {
     throw configError(`"${label}.reason" is required: say why the rule is lifted for these paths`);
   }
-  if (PLACEHOLDER_REASONS.includes(reason)) {
+  if (isPlaceholderReason(reason)) {
     throw configError(
-      `"${label}.reason" is the placeholder a message prints: say why this is intended`,
+      `"${label}.reason" is a placeholder like the "..." a message prints: say why this is intended`,
     );
   }
 }
 
-function validateException(entry, label, { preset, functionOptional, matchesOwnGlobs }) {
+function validateException(entry, label, { preset, matchesOwnGlobs }) {
   validateExceptionShape(entry, label);
   validateExceptionRule(entry, label, preset);
   validateExceptionPaths(entry, label, matchesOwnGlobs);
-  validateNarrowing(entry, label, functionOptional);
+  validateNarrowing(entry, label);
   validateExceptionReason(entry, label);
   if (entry.packages !== undefined) {
     validatePackages(entry, label);
+  }
+}
+
+const WINDOWS_SEPARATOR = /\\(?![{}[\],*?\\])/u;
+
+function validateExceptionPath(glob, pathsLabel) {
+  if (glob.trim() === '') {
+    throw configError(`"${pathsLabel}" has an empty path glob`);
+  }
+  if (path.isAbsolute(glob) || /^[A-Za-z]:/u.test(glob)) {
+    throw configError(`"${pathsLabel}" has "${glob}": use a glob relative to the project root`);
+  }
+  if (WINDOWS_SEPARATOR.test(glob)) {
+    throw configError(
+      `"${pathsLabel}" has "${glob}": separate folders with "/"; a backslash only escapes one of { } [ ] , * ? \\`,
+    );
+  }
+  if (glob.split('/').includes('..')) {
+    throw configError(`"${pathsLabel}" has "${glob}": use a glob without \`..\``);
   }
 }
 
@@ -106,29 +146,19 @@ function validateExceptionPaths(entry, label, matchesOwnGlobs) {
     throw configError(`"${pathsLabel}" needs at least one path glob`);
   }
   for (const glob of paths) {
-    const normalized = glob.replaceAll('\\', '/');
-    if (
-      glob.trim() === '' ||
-      path.isAbsolute(glob) ||
-      /^[A-Za-z]:/u.test(glob) ||
-      normalized.split('/').includes('..')
-    ) {
-      throw configError(
-        `"${pathsLabel}" has "${glob}": use a glob relative to the project root, without \`..\``,
-      );
-    }
+    validateExceptionPath(glob, pathsLabel);
   }
   if (matchesOwnGlobs(entry.rule)) {
     validateGlobs(paths, pathsLabel, filesFix);
   }
 }
 
-function validateNarrowing(entry, label, functionOptional) {
+function validateNarrowing(entry, label) {
   const rule = canonicalRule(entry.rule);
   validateNarrowingKey(entry, label, {
     key: 'function',
     supported: FUNCTION_EXCEPTION_RULES,
-    required: functionOptional ? [] : FUNCTION_REQUIRED_RULES,
+    required: FUNCTION_REQUIRED_RULES,
     requiredText: `name the function whose uncovered branches are accepted. To accept a whole file, add it to "exclude"`,
   });
   validateNarrowingKey(entry, label, {

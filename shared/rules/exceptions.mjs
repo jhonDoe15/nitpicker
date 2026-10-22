@@ -1,4 +1,5 @@
 import { pathMatcher } from '../exceptions/matching.mjs';
+import { canonicalRule } from '../exceptions/rule-names.mjs';
 import { exceptionEntryText } from '../messages/exception-sentence.mjs';
 import { EXCEPTION_HINT, renderMessage } from '../policy.mjs';
 
@@ -8,7 +9,7 @@ import { EXCEPTION_HINT, renderMessage } from '../policy.mjs';
  */
 export function exceptionMatcher(exceptions) {
   const matchers = exceptions.map(({ rule, paths, glob }) => ({
-    rule,
+    rule: canonicalRule(rule),
     matches: pathMatcher(paths ?? [glob]),
   }));
   return (rule, ...candidates) =>

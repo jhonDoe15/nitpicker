@@ -1,3 +1,4 @@
+import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 import { globToRegExpSource } from '../../../../shared/paths/glob.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { layoutFeatures } from './strict-layout.mjs';
@@ -178,7 +179,7 @@ function withExceptionRoute(rule) {
 
 function withExceptions(rule, exceptions) {
   const lifted = exceptions
-    .filter((exception) => exception.rule === rule.name)
+    .filter((exception) => canonicalRule(exception.rule) === rule.name)
     .flatMap(({ paths }) => paths.map(globToRegExpSource));
   if (lifted.length === 0) {
     return rule;

@@ -1,9 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import {
-  exceptionEntryText,
-  exceptionSentence,
-} from '../../../../shared/messages/exception-sentence.mjs';
+import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
+import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { hash, nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import { ERROR_PRONE_MESSAGE, errorProneEscapes } from './errorprone/errorprone-escapes.mjs';
 
@@ -38,11 +36,6 @@ const MESSAGE =
   'Do not silence PMD inline: fix the finding. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
 const SPOTBUGS_MESSAGE = 'Do not silence SpotBugs inline: fix the bug.';
 const MESSAGES = { pmd: MESSAGE, spotbugs: SPOTBUGS_MESSAGE, errorprone: ERROR_PRONE_MESSAGE };
-const ROUTED_RULES = {
-  pmd: 'pmd/<PMD rule>',
-  spotbugs: 'spotbugs/<bug pattern>',
-  errorprone: 'errorprone/<check>',
-};
 
 export function readInlineSuppressionFindings(projectRoot, sourceRoots) {
   return sourceRoots.flatMap((sourceRoot) =>
@@ -84,9 +77,7 @@ export function fileFindings(source, filePath) {
     ...spotbugsSuppressions(views, spotbugsOwnsSuppressWarnings),
   ].sort((left, right) => left.offset - right.offset);
   return suppressions.map(({ tool, offset, found }) => {
-    const route = exceptionSentence(
-      exceptionEntryText({ rule: ROUTED_RULES[tool], path: filePath }),
-    );
+    const route = exceptionRoute({ rule: `${tool}/${INLINE_SUPPRESSION_RULE}`, path: filePath });
     const key = `${found}\0${declarationAfter(views.code, offset)}\0${lineText(views.code, offset)}`;
     const occurrence = nextOccurrence(occurrences, `${tool}\0${key}`);
     return {
@@ -94,7 +85,7 @@ export function fileFindings(source, filePath) {
       rule: INLINE_SUPPRESSION_RULE,
       path: filePath,
       identity: `${INLINE_SUPPRESSION_RULE}:${hash(key)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
-      message: `${MESSAGES[tool]} Found: ${found}. ${route}`,
+      message: appendSentence(`${MESSAGES[tool]} Found: ${found}.`, route),
       classification: 'enforceable',
       location: { line: lineOf(views.code, offset) },
     };

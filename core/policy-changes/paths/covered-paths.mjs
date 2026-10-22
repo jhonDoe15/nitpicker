@@ -1,7 +1,8 @@
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { isUnder, matcherOf } from '../policy-scope.mjs';
-import { exceptionPathsByRule, keyedExclusions, testRootReclassifier } from './hiding.mjs';
+import { globsCovering, globsOfSubject, subjectLabel, subjectsOf } from './exception-scopes.mjs';
+import { keyedExclusions, testRootReclassifier } from './hiding.mjs';
 import { duplicateFolderExclusions } from './duplicate-folders.mjs';
 
 const NOTHING_NEW = 'covers no checked file it did not cover before';
@@ -61,10 +62,10 @@ function exclusionChangesOf(base, head, scope) {
 }
 
 function exceptionChanges(baseExceptions = [], headExceptions = [], scope) {
-  const basePaths = exceptionPathsByRule(baseExceptions);
-  const headPaths = exceptionPathsByRule(headExceptions);
-  const added = headExceptions.map(({ rule, paths, reason }) => {
-    const before = basePaths.get(rule) ?? [];
+  const added = headExceptions.map((entry) => {
+    const { paths, reason } = entry;
+    const rule = subjectLabel(entry);
+    const before = globsCovering(baseExceptions, entry);
     const coverage = paths
       .filter((glob) => !before.includes(glob))
       .map((glob) => ({ glob, covered: newlyCovered(before, glob, { paths: scope.keptPaths }) }));
@@ -93,9 +94,12 @@ function exceptionChanges(baseExceptions = [], headExceptions = [], scope) {
           : [`exception added: ${rule} for ${idle.join(', ')} (${NOTHING_NEW})`],
     };
   });
-  const removed = [...basePaths].flatMap(([rule, paths]) => {
-    const dropped = paths.filter((glob) => !(headPaths.get(rule) ?? []).includes(glob));
-    return dropped.length === 0 ? [] : [`exception removed: ${rule} for ${dropped.join(', ')}`];
+  const removed = subjectsOf(baseExceptions).flatMap((subject) => {
+    const kept = globsOfSubject(headExceptions, subject);
+    const dropped = subject.paths.filter((glob) => !kept.includes(glob));
+    return dropped.length === 0
+      ? []
+      : [`exception removed: ${subjectLabel(subject)} for ${dropped.join(', ')}`];
   });
   return [...added, { loosened: [], changed: removed }];
 }
