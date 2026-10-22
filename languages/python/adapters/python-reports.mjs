@@ -51,34 +51,10 @@ function readSource(projectRoot, file) {
   return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
 }
 
-function testResultFindings({ reportRoot, projectRoot, roots, crapLimit, manifest }) {
-  const coverage = readReport(reportRoot, COVERAGE_REPORT);
-  return [
-    ...ingestCoverageJson(coverage, { roots }).findings,
-    ...readPythonCrapFindings({
-      functions: readPythonFunctions(reportRoot),
-      coverage,
-      projectRoot,
-      roots,
-      crapLimit,
-    }),
-    ...(manifest.testsRan === false ? [noTestsFinding()] : []),
-    ...ingestCoverageBranches(coverage, {
-      roots,
-      sourceText: (file) => readSource(projectRoot, file),
-    }).findings,
-  ];
-}
-
-export function readPythonFindings({
-  projectRoot,
-  reportRoot,
-  crapLimit,
-  policy = {},
-  testsFailed = false,
-}) {
+export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy = {} }) {
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
+  const coverage = readReport(reportRoot, COVERAGE_REPORT);
   const imports = readImportsReport(reportRoot);
   const libraries = { ...detectLibraries(projectRoot), pytestStyle: pytestStyle(projectRoot) };
   const found = applyRuleHints(
@@ -92,11 +68,21 @@ export function readPythonFindings({
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
       ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
       ...ingestRulesReport(readReport(reportRoot, RULES_REPORT), libraries),
+      ...ingestCoverageJson(coverage, { roots }).findings,
       ...readPythonStructureFindings(reportRoot, projectRoot),
       ...pythonFileLimitFindings(projectRoot, policy),
-      ...(testsFailed
-        ? []
-        : testResultFindings({ reportRoot, projectRoot, roots, crapLimit, manifest })),
+      ...readPythonCrapFindings({
+        functions: readPythonFunctions(reportRoot),
+        coverage,
+        projectRoot,
+        roots,
+        crapLimit,
+      }),
+      ...(manifest.testsRan === false ? [noTestsFinding()] : []),
+      ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
+        roots,
+        sourceText: (file) => readSource(projectRoot, file),
+      }).findings,
       ...readDuplicateFindings(reportRoot),
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),

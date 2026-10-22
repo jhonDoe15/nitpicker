@@ -22,6 +22,7 @@ import { formatTool, jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-t
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
+import { moduleName } from '../builds/test-failures.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
@@ -138,8 +139,20 @@ function readClasspaths(work, module) {
   );
 }
 
-function readTestRuns({ module, reportDir, since, isArchunit, testRuntime, tolerateFailures }) {
-  const results = collectTestResults({ module, reportDir, since, isArchunit, tolerateFailures });
+function moduleNameOf(module, projectRoot) {
+  return moduleName(path.relative(projectRoot, module.basedir).replaceAll('\\', '/'));
+}
+
+function readTestRuns(context) {
+  const { module, reportDir, since, isArchunit, testRuntime, tolerateFailures } = context;
+  const results = collectTestResults({
+    module,
+    reportDir,
+    since,
+    isArchunit,
+    tolerateFailures,
+    moduleName: moduleNameOf(module, context.projectRoot),
+  });
   requireTestngRun({ module, since, isArchunit, testRuntime });
   copyTestResults({ module, reportDir, since, isArchunit });
   return results;
@@ -168,7 +181,7 @@ function analyzeModule(context) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
-  const { testsRan, testsFailure } = readTestRuns({
+  const { testsRan, failure } = readTestRuns({
     ...context,
     module,
     reportDir,
@@ -176,19 +189,24 @@ function analyzeModule(context) {
     testRuntime: classpaths.testRuntime,
   });
   runStaticAnalysis({ ...context, reportDir, spring });
-  if (testsFailure === undefined) {
+  if (failure === undefined) {
     runCoverageTools({ ...context, reportDir, testsRan, isArchunit });
   }
-  const testsFailed = testsFailure !== undefined;
-  writeManifest({ module, reportDir, pinned, spring, classpaths, testsFailed });
-  return testsFailure;
+  writeManifest({
+    module,
+    reportDir,
+    pinned,
+    spring,
+    classpaths,
+    testsFailed: failure !== undefined,
+  });
+  return failure;
 }
 
 function analyzeModules({ analyzed, ...shared }) {
-  const failures = analyzed
+  return analyzed
     .map(({ module, classpaths }) => analyzeModule({ ...shared, module, classpaths }))
     .filter((failure) => failure !== undefined);
-  return failures.length === 0 ? undefined : failures.join('\n');
 }
 
 function jacocoExecFiles(module) {
@@ -259,7 +277,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
     };
     return {
       moduleDirs: modules.map((module) => module.basedir),
-      testsFailure: analyzeModules({
+      testsFailures: analyzeModules({
         analyzed,
         tools,
         pinned,
@@ -267,6 +285,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
         since,
         style,
         tolerateFailures: policy.snapshot === 'base',
+        projectRoot,
       }),
     };
   } finally {

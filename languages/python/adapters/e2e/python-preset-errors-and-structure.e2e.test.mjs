@@ -201,7 +201,7 @@ describe.skipIf(!pythonE2eEnabled)(
             message:
               'pipeline.score has CRAP 10.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function.',
             classification: 'enforceable',
-            location: { line: 2 },
+            location: { line: 2, endLine: 12 },
             ratchet: {
               key: 'function:pipeline.score:crap',
               value: 10,

@@ -59,24 +59,11 @@ describe.skipIf(!pythonE2eEnabled)('Python preset on a base whose tests fail', (
     expect(enforceable(result)).toEqual([]);
     expect(result.json('notes.json')).toEqual([
       {
-        tool: 'mutation',
-        snapshot: 'base',
-        rule: 'tests-failed-skipped',
-        path: '.',
-        message:
-          'Mutation testing (mutmut) did not run in the base snapshot: every test module fails (tests/test_greeter.py), so no passing test is left to run against the mutants. Make the tests pass.',
-      },
-      {
         tool: 'python',
         snapshot: 'base',
         rule: 'tests-failed',
         path: '.',
-        message: [
-          'Tests fail in the base snapshot. Make each failing test pass:',
-          '  tests/test_greeter.py::test_greet',
-          'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
-          'Mutation testing (mutmut) leaves out the test modules tests/test_greeter.py.',
-        ].join('\n'),
+        message: 'Tests fail on the base:\n  tests/test_greeter.py::test_greet',
       },
     ]);
   });

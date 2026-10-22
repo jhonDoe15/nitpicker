@@ -35,6 +35,10 @@ function contained(base, name) {
 function writeFiles(root, files) {
   for (const [file, content] of Object.entries(files)) {
     const full = contained(root, file);
+    if (content === null) {
+      rmSync(full);
+      continue;
+    }
     mkdirSync(path.dirname(full), { recursive: true });
     writeFileSync(full, content);
   }
@@ -64,7 +68,10 @@ function enforceableFindings(outputRoot) {
 function runGate({ project, branch, options }) {
   const { base, analyzers = ['coverage', 'crap'], extraArguments = [] } = options;
   git(project.root, 'checkout', '-q', branch);
-  const outputRoot = path.join(project.output, `${branch}-${base}-${extraArguments.length}`);
+  const outputRoot = path.join(
+    project.output,
+    `${branch}-${base}-${String(analyzers.length)}-${String(extraArguments.length)}`,
+  );
   const analyzerArguments = analyzers.flatMap((name) => ['--analyzer', name]);
   const result = spawnSync(
     'node',

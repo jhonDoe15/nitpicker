@@ -10,12 +10,7 @@ import {
 import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
-import {
-  failedCases,
-  failingTestsError,
-  failingTestsNote,
-  freshReports,
-} from '../builds/test-failures.mjs';
+import { failedCases, failingTestsError, freshReports } from '../builds/test-failures.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
@@ -53,7 +48,25 @@ export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
 
-export function collectTestResults({ module, reportDir, since, isArchunit, tolerateFailures }) {
+function testOutcome({ module, moduleName, failures, testsRan, tolerateFailures }) {
+  if (failures.length === 0) {
+    return { testsRan, failure: undefined };
+  }
+  const failure = { module: moduleName, tests: failures };
+  if (tolerateFailures === true) {
+    return { testsRan, failure };
+  }
+  throw failingTestsError(module.basedir, [failure]);
+}
+
+export function collectTestResults({
+  module,
+  reportDir,
+  since,
+  isArchunit,
+  tolerateFailures,
+  moduleName = '.',
+}) {
   const reports = testReportDirectories(module).flatMap(([, directory]) =>
     freshReports(directory, since),
   );
@@ -68,14 +81,13 @@ export function collectTestResults({ module, reportDir, since, isArchunit, toler
     }
   }
   requireArchunitRun(module, reports, isArchunit);
-  const testsRan = reports.length > 0;
-  if (failures.length === 0) {
-    return { testsRan, testsFailure: undefined };
-  }
-  if (tolerateFailures === true) {
-    return { testsRan, testsFailure: failingTestsNote(module.basedir, failures) };
-  }
-  throw failingTestsError(module.basedir, failures);
+  return testOutcome({
+    module,
+    moduleName,
+    failures,
+    testsRan: reports.length > 0,
+    tolerateFailures,
+  });
 }
 
 function requireArchunitRun(module, reports, isArchunit) {

@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  baseFailuresOf,
   baseNoteOf,
   changedByDiff,
-  isBaseUnknown,
   isTestResultFinding,
   redBaseAnalyzers,
   testFailuresOf,
+  unknownOnBaseFor,
 } from './unknown-base.mjs';
 
 const testsFailed = {
@@ -43,6 +44,11 @@ describe('which findings depend on test results', () => {
     ['mutant-survived', true],
     ['mutant-nocoverage', true],
     ['mutant-timeout', true],
+    ['slow-test', true],
+    ['test-console-output', true],
+    ['uncovered-function', true],
+    ['uncovered-method', true],
+    ['line-coverage', true],
     ['function-lines-limit', false],
     ['no-production-runtime', false],
     ['F401', false],
@@ -56,6 +62,10 @@ describe('changedByDiff', () => {
     changedLines: new Map([
       ['added.py', { path: 'added.py', added: true, ranges: [[1, 40]], inserted: [] }],
       ['edited.py', { path: 'edited.py', added: false, ranges: [[10, 12]], inserted: [] }],
+      [
+        'deleted.py',
+        { path: 'deleted.py', added: false, ranges: [], inserted: [], deletions: [15] },
+      ],
     ]),
   };
   const at = (path, location) => ({
@@ -78,6 +88,21 @@ describe('changedByDiff', () => {
       false,
     ],
     ['a finding without a location in an edited file', at('edited.py'), false],
+    [
+      'a function with lines deleted inside its body',
+      at('deleted.py', { line: 10, endLine: 20 }),
+      true,
+    ],
+    [
+      'a function next to a deletion just after its last line',
+      at('deleted.py', { line: 10, endLine: 15 }),
+      false,
+    ],
+    [
+      'a function next to a deletion just before its first line',
+      at('deleted.py', { line: 16, endLine: 20 }),
+      false,
+    ],
     ['a finding in an untouched file', at('other.py', { line: 1 }), false],
   ])('%s', (_name, finding, expected) => {
     expect(changedByDiff(finding, touchedCode)).toBe(expected);
@@ -130,6 +155,14 @@ describe('redBaseAnalyzers', () => {
     expect(redBaseAnalyzers({ names, baseRun, headRun: run(head) })).toEqual(new Map());
   });
 
+  it('is empty when no test failed on the base, only the analyzers that depend on them', () => {
+    const baseRun = run({ reports: { coverage: [skipped] } });
+
+    expect(
+      redBaseAnalyzers({ names, baseRun, headRun: run({ reports: { coverage: [] } }) }),
+    ).toEqual(new Map());
+  });
+
   it('is empty when the base analyzer crashed as well', () => {
     const baseRun = run({
       reports: { coverage: [testsFailed] },
@@ -142,32 +175,63 @@ describe('redBaseAnalyzers', () => {
   });
 });
 
-describe('isBaseUnknown', () => {
+describe('baseFailuresOf', () => {
   const redBase = new Map([['coverage', [testsFailed]]]);
   const headRun = run({ reports: { coverage: [], crap: [] } });
 
-  it('is true for the red analyzer and for one skipped because of it', () => {
+  it('is the failures for the red analyzer and for one skipped because of it', () => {
     const baseRun = run({ reports: { coverage: [testsFailed] }, skipped: { crap: 'coverage' } });
 
     expect(
       ['coverage', 'crap', 'ruff'].map((name) =>
-        isBaseUnknown({ name, baseRun, headRun, redBase }),
+        baseFailuresOf({ name, baseRun, headRun, redBase }),
       ),
-    ).toEqual([true, true, false]);
+    ).toEqual([[testsFailed], [testsFailed], undefined]);
   });
 
-  it('is false for an analyzer skipped because of another failure', () => {
+  it('is undefined for an analyzer skipped because of another failure', () => {
     const baseRun = run({ skipped: { crap: 'duplicates' } });
 
-    expect(isBaseUnknown({ name: 'crap', baseRun, headRun, redBase })).toBe(false);
+    expect(baseFailuresOf({ name: 'crap', baseRun, headRun, redBase })).toBeUndefined();
   });
 
-  it('is false when the head of the skipped analyzer did not run', () => {
+  it('is undefined when the head of the skipped analyzer did not run', () => {
     const baseRun = run({ skipped: { crap: 'coverage' } });
 
-    expect(isBaseUnknown({ name: 'crap', baseRun, headRun: run({ reports: {} }), redBase })).toBe(
-      false,
-    );
+    expect(
+      baseFailuresOf({ name: 'crap', baseRun, headRun: run({ reports: {} }), redBase }),
+    ).toBeUndefined();
+  });
+});
+
+describe('unknownOnBaseFor', () => {
+  const crap = { ...lint, rule: 'crap-score-limit' };
+  const inModule = (path, finding = crap) => ({ ...finding, path });
+
+  it('covers the test results of the whole analyzer when a failure names no module', () => {
+    const unknown = unknownOnBaseFor([testsFailed], { changedLines: new Map() });
+
+    expect([unknown(inModule('a/src/A.java')), unknown(lint)]).toEqual([true, false]);
+  });
+
+  it('covers only the modules whose tests fail', () => {
+    const unknown = unknownOnBaseFor([{ ...testsFailed, symbol: 'core' }], undefined);
+
+    expect([
+      unknown(inModule('core/src/A.java')),
+      unknown(inModule('coreutils/src/A.java')),
+      unknown(inModule('api/src/A.java')),
+    ]).toEqual([true, false, false]);
+  });
+
+  it('treats the root module as the whole project', () => {
+    const unknown = unknownOnBaseFor([{ ...testsFailed, symbol: '.' }], undefined);
+
+    expect(unknown(inModule('api/src/A.java'))).toBe(true);
+  });
+
+  it('knows nothing about the base when the change removes tests', () => {
+    expect(unknownOnBaseFor([testsFailed], { testsRemoved: true })).toBeUndefined();
   });
 });
 

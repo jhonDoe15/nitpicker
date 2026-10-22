@@ -8,6 +8,7 @@ import { resolveComparison, captureWorkingTree } from '../git/repository/git.mjs
 import { readRepositoryChanges } from '../git/patches/changes.mjs';
 import { resolveBaseProjectPath, readProjectMoves } from '../git/patches/project-moves.mjs';
 import { readChangedLines } from '../git/patches/changed-lines.mjs';
+import { readRemovesTests } from '../git/patches/test-removal.mjs';
 import { withTemporaryWorktree, withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
 import { runAnalyzers } from '../execution/run-analyzers.mjs';
@@ -84,7 +85,18 @@ function readSnapshotLayout({ repositoryRoot, projectRelativePath }, comparison)
   return {
     baseProjectRelativePath,
     moves,
-    touchedCode: { changedLines, isStrictRule, mustMeetOnEditedLines },
+    touchedCode: {
+      changedLines,
+      isStrictRule,
+      mustMeetOnEditedLines,
+      testsRemoved: readRemovesTests({
+        repositoryRoot,
+        mergeBaseSha,
+        headSha,
+        projectRelativePath,
+        baseProjectRelativePath,
+      }),
+    },
   };
 }
 

@@ -1,11 +1,7 @@
 import { compareFindings } from '../compare.mjs';
 import { analyzerMetadata, analyzerName } from '../../reporting/report-model.mjs';
-import {
-  baseNoteOf,
-  isBaseUnknown,
-  isTestResultFinding,
-  redBaseAnalyzers,
-} from './unknown-base.mjs';
+import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
+import { baseFailuresOf, baseNoteOf, redBaseAnalyzers, unknownOnBaseFor } from './unknown-base.mjs';
 
 export function compareAnalyzers(context) {
   const { analyzers, baseRun, headRun, toolErrors } = context;
@@ -15,7 +11,39 @@ export function compareAnalyzers(context) {
   const outcomes = analyzers.map((analyzer, index) =>
     compareAnalyzer({ ...context, analyzer, index, toolErrors, notes, redBase }),
   );
-  return { outcomes, notes };
+  const failureNotes = withoutConsequenceNotes(notes);
+  return {
+    outcomes,
+    notes:
+      context.touchedCode?.testsRemoved === true
+        ? [...failureNotes, ...removalNotes(failureNotes)]
+        : failureNotes,
+  };
+}
+
+const TESTS_REMOVED_MESSAGE = [
+  'The change removes tests, so the base cannot show what they covered:',
+  'every coverage, CRAP, mutation, slow-test and test-console result of the head counts as new.',
+].join(' ');
+
+function removalNotes(failureNotes) {
+  return failureNotes.length === 0
+    ? []
+    : [
+        {
+          tool: 'nitpicker',
+          snapshot: 'head',
+          rule: 'tests-removed',
+          path: '.',
+          message: TESTS_REMOVED_MESSAGE,
+        },
+      ];
+}
+
+function withoutConsequenceNotes(notes) {
+  return notes.some(({ rule }) => rule === TESTS_FAILED_RULE)
+    ? notes.filter(({ rule }) => rule === TESTS_FAILED_RULE)
+    : notes;
 }
 
 function baseFindingsOf({ name, baseRun, toolErrors, notes, redBase }) {
@@ -34,22 +62,22 @@ function compareAnalyzer(context) {
   const headReport = headRun.reports.get(name);
   const baseFindings = baseFindingsOf({ ...context, name });
   const headFindings = withoutEmittedToolErrors(headReport?.findings ?? [], 'head', toolErrors);
-  const baseUnknown = isBaseUnknown({ ...context, name });
+  const unknownFailures = baseFailuresOf({ ...context, name });
   const comparable =
-    (baseRun.reports.get(name) !== undefined || baseUnknown) &&
+    (baseRun.reports.get(name) !== undefined || unknownFailures !== undefined) &&
     headReport !== undefined &&
     !toolErrors.some((error) => error.tool === name);
   const result = comparable
-    ? compareOrReportError({ ...context, name, baseFindings, headFindings, baseUnknown })
+    ? compareOrReportError({ ...context, name, baseFindings, headFindings, unknownFailures })
     : emptyComparison();
   return {
     result,
-    tool: toolSummary({ ...context, name, baseFindings, headFindings, result, baseUnknown }),
+    tool: toolSummary({ ...context, name, baseFindings, headFindings, result, unknownFailures }),
   };
 }
 
 function compareOrReportError(context) {
-  const { name, baseFindings, headFindings, toolErrors, baseUnknown } = context;
+  const { name, baseFindings, headFindings, toolErrors, unknownFailures } = context;
   try {
     return compareFindings({
       baseFindings,
@@ -57,7 +85,10 @@ function compareOrReportError(context) {
       baseToHeadRenames: context.baseToHeadRenames,
       baseToHeadDirectories: context.baseToHeadDirectories,
       touchedCode: context.touchedCode,
-      unknownOnBase: baseUnknown ? isTestResultFinding : undefined,
+      unknownOnBase:
+        unknownFailures === undefined
+          ? undefined
+          : unknownOnBaseFor(unknownFailures, context.touchedCode),
     });
   } catch (error) {
     toolErrors.push({
@@ -74,7 +105,8 @@ function toolSummary(context) {
   const baseElapsedMs = baseRun.timings.get(name);
   const headElapsedMs = headRun.timings.get(name);
   const skippedBecause =
-    headRun.skipped?.get(name) ?? (context.baseUnknown ? undefined : baseRun.skipped?.get(name));
+    headRun.skipped?.get(name) ??
+    (context.unknownFailures === undefined ? baseRun.skipped?.get(name) : undefined);
   return {
     name,
     ...(skippedBecause === undefined ? {} : { skippedBecause }),

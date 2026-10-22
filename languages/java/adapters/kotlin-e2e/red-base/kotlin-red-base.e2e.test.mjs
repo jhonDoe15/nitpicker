@@ -24,9 +24,11 @@ describe.skipIf(process.env.NITPICKER_KOTLIN_E2E !== '1')(
   () => {
     redBaseCases({
       gradle,
+      environment: process.env,
       policy: { preset: 'kotlin' },
       setup: () => {
         const root = createRepository({
+          preset: 'kotlin',
           fixture: 'kotlin-project',
           ignored: '/build/\n/.gradle/\n/.kotlin/\n',
           files: {},

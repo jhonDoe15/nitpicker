@@ -231,6 +231,69 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
       },
     ]);
   });
+  describe('on a base whose tests fail', () => {
+    const failing = (name) =>
+      `<testsuite name="demo.ATest"><testcase classname="demo.ATest" name="${name}">` +
+      '<failure message="expected: 1"/></testcase></testsuite>';
+    const redBase = (modules, files = {}) =>
+      gradleRepository({ TESTS_FAIL: JSON.stringify(modules), ...files });
+
+    it('records the failing base as a note and passes a change that repairs it', () => {
+      const root = redBase({ '': failing('works') });
+      fixtureGit(root, ['rm', '-q', 'TESTS_FAIL']);
+      commit(root, 'repair the tests');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('tool-errors.json')).toEqual([]);
+      expect(result.json('notes.json')).toEqual([
+        {
+          tool: 'java',
+          snapshot: 'base',
+          rule: 'tests-failed',
+          path: '.',
+          message: 'Tests fail on the base:\n  demo.ATest.works: expected: 1',
+        },
+      ]);
+      expect(result.output.out.split('\n').filter((line) => line.startsWith('Note:'))).toEqual([
+        "Note: the project's tests fail on the base (java).",
+      ]);
+    });
+
+    it('names the failing module of a multi-module build', () => {
+      const root = redBase({ core: failing('works') }, { 'modules.txt': 'core\napi\n' });
+      fixtureGit(root, ['rm', '-q', 'TESTS_FAIL']);
+      commit(root, 'repair the tests');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('notes.json').map(({ message }) => message)).toEqual([
+        'Tests fail on the base in core:\n  demo.ATest.works: expected: 1',
+      ]);
+    });
+
+    it('stays a tool error on both snapshots when the head tests fail too', () => {
+      const root = redBase({ '': failing('works') });
+      writeFiles(root, {
+        'src/main/java/demo/B.java': 'package demo;\n\npublic final class B {}\n',
+      });
+      commit(root, 'change something else');
+
+      const result = run(root);
+
+      expect({
+        exitCode: result.exitCode,
+        errors: result.json('tool-errors.json').map(({ snapshot, rule }) => `${snapshot} ${rule}`),
+        notes: result.json('notes.json'),
+      }).toEqual({
+        exitCode: 2,
+        errors: ['head gradle-failure', 'base tests-failed'],
+        notes: [],
+      });
+    });
+  });
   it('reports a missing gradle binary as a tool error', () => {
     vi.stubEnv('NITPICKER_GRADLE', path.join(temporaryRoot('nitpicker-java-none-'), 'no-gradle'));
     const root = gradleRepository();

@@ -23,7 +23,10 @@ describe('assertGradleSucceeded', () => {
     temporaryRoots.push(root);
     const results = path.join(root, 'build/test-results/test');
     mkdirSync(results, { recursive: true });
-    writeFileSync(path.join(root, 'test-results.json'), JSON.stringify([results]));
+    writeFileSync(
+      path.join(root, 'test-results.json'),
+      JSON.stringify([{ dir: 'core', results: [results] }]),
+    );
     writeFileSync(path.join(results, 'TEST-shop.CartTest.xml'), suite);
     return root;
   }
@@ -41,33 +44,35 @@ describe('assertGradleSucceeded', () => {
     expect(thrownBy({ status: 0, stdout: '', stderr: '' }, '/none')).toBeUndefined();
   });
 
-  it('marks a failure whose test reports name failing tests and keeps their list as the detail', () => {
+  it('keeps the failing tests of each module on a failure whose test reports name them', () => {
     const reportBase = reportsWith(
       '<testsuite name="shop.CartTest"><testcase classname="shop.CartTest" name="adds"><failure message="no"/></testcase></testsuite>',
     );
     const error = thrownBy({ ...failed, stderr: 'FAILURE: Build failed' }, reportBase);
 
-    expect({ testsFailed: error.testsFailed, detail: error.detail }).toEqual({
-      testsFailed: true,
-      detail: 'Tests fail in /p:\n  shop.CartTest.adds: no',
-    });
+    expect(error.failures).toEqual([{ module: 'core', tests: ['shop.CartTest.adds: no'] }]);
+    expect(error.message.split('\n').slice(1)).toEqual([
+      'Tests fail in /p; nitpicker needs a passing test suite for coverage and mutation testing:',
+      '  shop.CartTest.adds: no',
+    ]);
   });
 
-  it('marks a failed test task from the Gradle output when there are no test reports', () => {
+  it('is an ordinary build failure when a test task failed without naming a failing test', () => {
     const error = thrownBy(failed, '/none');
 
-    expect({ testsFailed: error.testsFailed, detail: error.detail }).toEqual({
-      testsFailed: true,
-      detail: TEST_TASK_OUTPUT,
-    });
+    expect(error.failures).toBeUndefined();
+    expect(error.message.split('\n').slice(1).join('\n')).toBe(
+      `Java preset failed in /p: ${TEST_TASK_OUTPUT}`,
+    );
   });
 
-  it('does not mark a run that could not start, even beside failing test reports', () => {
+  it('keeps a run that could not start apart from failing test reports', () => {
     const reportBase = reportsWith(
       '<testsuite name="shop.CartTest"><testcase classname="shop.CartTest" name="adds"><failure message="no"/></testcase></testsuite>',
     );
     const error = thrownBy({ error: new Error('timed out'), status: null }, reportBase);
 
-    expect(error.testsFailed).toBe(false);
+    expect(error.failures).toBeUndefined();
+    expect(error.message.split('\n').slice(1)).toEqual(['timed out']);
   });
 });

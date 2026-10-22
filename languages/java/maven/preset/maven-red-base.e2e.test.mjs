@@ -4,6 +4,8 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runJavaDiff } from '../../adapters/java-diff.mjs';
 import { commitBranch, runGitIn, summarize } from '../../adapters/test-support/gradle-e2e.mjs';
+import { gateRedBase } from '../../adapters/red-base/test-support/red-base-cases.mjs';
+import { testsFailOnBase } from '../../../../shared/rules/finding-helpers.mjs';
 
 const maven = process.env.NITPICKER_MAVEN;
 const gradleFixture = path.join(import.meta.dirname, '../../adapters/fixtures/gradle-project');
@@ -32,6 +34,7 @@ function createRedBaseRepository() {
   }
   const passing = readFileSync(path.join(root, TEST_PATH), 'utf8');
   writeFileSync(path.join(root, '.gitignore'), 'target/\n');
+  writeFileSync(path.join(root, 'nitpicker.config.json'), '{ "preset": "java" }\n');
   writeFileSync(path.join(root, TEST_PATH), passing.replace('"Hello, Ada!"', '"Hi, Ada!"'));
   runGitIn(root, 'init', '-q', '-b', 'main');
   runGitIn(root, 'add', '-A');
@@ -84,9 +87,38 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
           {
             tool: 'java',
             rule: 'tests-failed',
-            message: expect.stringMatching(
-              /^Tests fail in .*:\n {2}demo\.GreeterTest\.greetsByName: /u,
-            ),
+            message: testsFailOnBase([
+              'demo.GreeterTest.greetsByName: expected: <Hi, Ada!> but was: <Hello, Ada!>',
+            ]),
+          },
+        ],
+      });
+    });
+
+    it('passes the repairing change through the command line and records the failing base as a note', () => {
+      const result = gateRedBase({
+        root,
+        branch: 'repaired',
+        base: 'main',
+        environment: { ...process.env, NITPICKER_MAVEN: maven },
+      });
+
+      expect({
+        exitCode: result.exitCode,
+        toolErrors: result.json('tool-errors.json'),
+        notes: result.json('notes.json'),
+      }).toEqual({
+        exitCode: 0,
+        toolErrors: [],
+        notes: [
+          {
+            tool: 'java',
+            snapshot: 'base',
+            rule: 'tests-failed',
+            path: '.',
+            message: testsFailOnBase([
+              'demo.GreeterTest.greetsByName: expected: <Hi, Ada!> but was: <Hello, Ada!>',
+            ]),
           },
         ],
       });

@@ -2,8 +2,10 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { noteSectionLines, noteSummaryText } from './format/notes.mjs';
+import { noteSectionLines, noteSummaryLines } from './format/notes.mjs';
+import { renderJunitReport } from './junit.mjs';
 import { writeDiffReports } from './reporters.mjs';
+import { renderSarifReport } from './sarif.mjs';
 import { renderConsoleSummary } from './summary.mjs';
 import { renderTextReport } from './text.mjs';
 
@@ -58,14 +60,37 @@ describe('red-base notes in the reports', () => {
   it('adds nothing without notes', () => {
     expect({
       section: [noteSectionLines([]), noteSectionLines(undefined)],
-      summary: [noteSummaryText([]), noteSummaryText(undefined)],
-    }).toEqual({ section: [[], []], summary: [undefined, undefined] });
+      summary: [noteSummaryLines([]), noteSummaryLines(undefined)],
+    }).toEqual({ section: [[], []], summary: [[], []] });
+  });
+
+  it('indents the continuation lines of a note under its first line', () => {
+    const note = { ...NOTE, message: 'Tests fail on the base:\n  tests/a.py::test_x' };
+
+    expect(noteSectionLines([note])).toEqual([
+      '',
+      'Notes:',
+      'python (base): Tests fail on the base:',
+      '    tests/a.py::test_x',
+    ]);
   });
 
   it('names each tool once in the console note', () => {
-    expect(noteSummaryText([NOTE, NOTE, JAVA_NOTE])).toEqual(
-      "Note: the project's tests fail on the base (python, java), so its coverage, CRAP and mutation results are unknown there. Only added files and edited lines are judged on them.",
-    );
+    expect(noteSummaryLines([NOTE, NOTE, JAVA_NOTE])).toEqual([
+      "Note: the project's tests fail on the base (python, java).",
+      'Coverage, CRAP, mutation, slow-test and test-console results are unknown there, ' +
+        'so only added files and edited lines are judged on them.',
+    ]);
+  });
+
+  it('says the head counts as new when the change removes tests', () => {
+    const removed = { ...NOTE, tool: 'nitpicker', snapshot: 'head', rule: 'tests-removed' };
+
+    expect(noteSummaryLines([NOTE, removed])).toEqual([
+      "Note: the project's tests fail on the base (python).",
+      'The change removes tests, so every coverage, CRAP, mutation, slow-test and test-console ' +
+        'result of the head counts as new.',
+    ]);
   });
 
   it('keeps a red-base report green and lists the note in text and console output', () => {
@@ -78,10 +103,43 @@ describe('red-base notes in the reports', () => {
       'python (base): pytest exited with 1: 2 failed',
       '',
     ]);
-    expect(summary.split('\n').filter((line) => line.startsWith('Note:'))).toEqual([
-      "Note: the project's tests fail on the base (python), so its coverage, CRAP and mutation results are unknown there. Only added files and edited lines are judged on them.",
+    expect(summary.split('\n')).toEqual([
+      '',
+      'Quality gate summary',
+      '✓ No new enforceable violations',
+      ...noteSummaryLines([NOTE]),
+      'Full diagnostics: reports/quality/diff/combined/report.txt',
+      '',
     ]);
-    expect(summary.includes('✓ No new enforceable violations')).toBe(true);
+  });
+
+  it('puts the notes in the JUnit output without failing the suite', () => {
+    const xml = renderJunitReport(report([NOTE, JAVA_NOTE]));
+
+    expect(xml.split('\n')).toEqual([
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<testsuite name="quality.diff" tests="1" failures="0" errors="0" time="0.010">',
+      '  <testcase classname="quality.diff" name="framework" time="0"></testcase>',
+      '  <system-out>Notes:',
+      'python (base): pytest exited with 1: 2 failed',
+      'java (base): Execution failed for task test</system-out>',
+      '</testsuite>',
+      '',
+    ]);
+  });
+
+  it('puts the notes in the SARIF output as note-level notifications', () => {
+    const [run] = JSON.parse(renderSarifReport(report([NOTE, JAVA_NOTE]))).runs;
+
+    expect(run.invocations).toEqual([
+      {
+        executionSuccessful: true,
+        toolExecutionNotifications: [
+          { level: 'note', message: { text: 'python (base): pytest exited with 1: 2 failed' } },
+          { level: 'note', message: { text: 'java (base): Execution failed for task test' } },
+        ],
+      },
+    ]);
   });
 
   it('writes notes.json, empty when the base is green', () => {
