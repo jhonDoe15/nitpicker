@@ -10,6 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { RUFF_FORMAT_ADVICE } from './test-support/ruff-format-advice.mjs';
 import { installFakeToolchain } from './test-support/fake-toolchain.mjs';
 import { analyzePythonSnapshot, parsePythonArguments } from './python-runner.mjs';
 
@@ -107,11 +108,11 @@ describe('analyzing a Python snapshot', () => {
     );
 
     expect(messages).toEqual([
-      'format: File is not formatted with ruff (detected; set "python.formatter" if wrong)',
+      `format: File is not formatted with ruff (detected; set "python.formatter" if wrong). ${RUFF_FORMAT_ADVICE}`,
     ]);
     expect(
       enforceable(analyze(root, { settings: { formatter: 'ruff' } }).findings).at(-1).message,
-    ).toBe('File is not formatted with ruff');
+    ).toBe(`File is not formatted with ruff. ${RUFF_FORMAT_ADVICE}`);
   });
 
   it('reports a run without tests as an enforceable finding, so only a change that removes them fails', () => {
@@ -153,6 +154,30 @@ describe('analyzing a Python snapshot', () => {
     ]);
   });
 
+  it('words the logging and validation hints after the libraries the project declares', () => {
+    const root = project({
+      'requirements.txt': 'loguru\nmarshmallow\n',
+      'violations.txt': 'T201|src/demo/a.py|`print` found\n',
+      'rules.json': JSON.stringify([
+        { rule: 'pydantic-boundary', path: 'src/demo/a.py', subject: 'marshmallow', line: 1 },
+        {
+          rule: 'catch-log-without-exception',
+          path: 'src/demo/a.py',
+          subject: 'logger.error(...)',
+          line: 9,
+        },
+      ]),
+    });
+
+    const findings = withoutCoupling(analyze(root));
+
+    expect(findings.map(({ message }) => message)).toEqual([
+      '`print` found. Use loguru: `from loguru import logger`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
+      'marshmallow is imported outside an adapters/ package. Use marshmallow only in an `adapters/` package to parse untrusted input (`Schema().load(data)`), and pass frozen dataclasses on from there. To allow it for some paths, add a "python.exceptions" entry for pydantic-boundary in nitpicker.config.json.',
+      '`logger.error(...)` logs a caught error without its traceback. Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes. To allow it for some paths, add a "python.exceptions" entry for catch-log-without-exception in nitpicker.config.json.',
+    ]);
+  });
+
   it('lifts a rule for the paths of a python exception and nothing else', () => {
     const root = project({
       'violations.txt': 'T201|scripts/run.py|`print` found\nT201|src/demo/a.py|`print` found\n',
@@ -187,7 +212,7 @@ describe('analyzing a Python snapshot', () => {
         identity: 'f|1→2#1',
         symbol: 'f',
         message:
-          'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+          'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. To allow it for some paths, add a "python.exceptions" entry for mutant-survived in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 2 },
       },
@@ -430,6 +455,10 @@ describe('runner arguments', () => {
   });
 
   it('rejects unknown options', () => {
-    expect(() => parsePythonArguments(['--project-root', '/p', '--nope', 'x'])).toThrow('Usage');
+    expect(() => parsePythonArguments(['--project-root', '/p', '--nope', 'x'])).toThrow(
+      new Error(
+        'Usage: python-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>] [--<tool>-precedence <layers>]...',
+      ),
+    );
   });
 });

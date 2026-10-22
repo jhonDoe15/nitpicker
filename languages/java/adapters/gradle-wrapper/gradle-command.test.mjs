@@ -1,4 +1,5 @@
 import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { exactText } from '../../../../core/diff/reporting/test-support/output-expectations.mjs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -138,16 +139,20 @@ describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
   it('runs the wrapper of the analyzed project when no command is configured', () => {
     const root = project(wrapper(failing));
 
-    expect(messageOf(root, { gradle: undefined })).toBe(
-      `Java preset failed in ${root}: ran ${root}/gradlew in ${root}`,
+    expect(messageOf(root, { gradle: undefined })).toEqual(
+      expect.stringMatching(
+        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nJava preset failed in ${root}: ran ${root}/gradlew in ${root}`,
+      ),
     );
   });
 
   it('runs a wrapper without the executable bit through sh', () => {
     const root = project({ gradlew: { text: failing, mode: 0o644 } });
 
-    expect(messageOf(root, { gradle: undefined })).toBe(
-      `Java preset failed in ${root}: ran ${root}/gradlew in ${root}`,
+    expect(messageOf(root, { gradle: undefined })).toEqual(
+      expect.stringMatching(
+        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nJava preset failed in ${root}: ran ${root}/gradlew in ${root}`,
+      ),
     );
   });
 
@@ -157,8 +162,10 @@ describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
       'other-gradle': { text: failing.replace('ran', 'configured'), mode: 0o755 },
     });
 
-    expect(messageOf(root, { gradle: path.join(other, 'other-gradle') })).toBe(
-      `Java preset failed in ${root}: configured ${other}/other-gradle in ${root}`,
+    expect(messageOf(root, { gradle: path.join(other, 'other-gradle') })).toEqual(
+      expect.stringMatching(
+        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nJava preset failed in ${root}: configured ${other}/other-gradle in ${root}`,
+      ),
     );
   });
 });

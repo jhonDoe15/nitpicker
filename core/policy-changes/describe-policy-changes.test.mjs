@@ -144,6 +144,24 @@ describe('describePolicyChanges', () => {
     ]);
   });
 
+  it('counts a slow test budget raised above the base or the default, or dropped back to a looser default', () => {
+    expect(
+      loosened(
+        { thresholds: { unitTestSeconds: 2, integrationTestSeconds: 60 } },
+        { thresholds: { integrationTestSeconds: 90 } },
+      ),
+    ).toEqual([
+      'threshold unitTestSeconds raised from 2 to 5',
+      'threshold integrationTestSeconds raised from 60 to 90',
+    ]);
+    expect(loosened({}, { thresholds: { unitTestSeconds: 600 } })).toEqual([
+      'threshold unitTestSeconds raised from 5 to 600',
+    ]);
+    expect(
+      loosened({ thresholds: { unitTestSeconds: 3 } }, { thresholds: { unitTestSeconds: 2 } }),
+    ).toEqual([]);
+  });
+
   it('counts a removed or changed custom analyzer and lists an added one', () => {
     expect(
       changes(

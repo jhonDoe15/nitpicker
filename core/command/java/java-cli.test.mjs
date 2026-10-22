@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
@@ -12,9 +13,27 @@ import {
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { acceptedDigest } from '../test-support/accepted-digest.mjs';
 
+const EXCEPTION_ENTRY = /\{"rule":"[^"]+","paths":\[[^\]]+\],"reason":"\.\.\."\}/u;
+const TEST_REPORTS = {
+  'src/test/java/demo/ATest.java': 'package demo;\n\nfinal class ATest {}\n',
+  'jdeps/jdeps-classes.txt': 'demo.A\n',
+  'jdeps/jdeps.txt': '',
+  'jdeps/jdeps-test.txt': '   demo.ATest -> demo.A   classes\n',
+  'test-results/test/TEST-demo.ATest.xml':
+    '<testsuite name="demo.ATest"><testcase classname="demo.ATest" name="works">' +
+    '<system-err>Connection pool leaked a worker thread</system-err></testcase></testsuite>\n',
+};
+const LIFTABLE_RULES = ['test-only-export', 'test-console-output'];
 const addedField = unusedFieldMessage('added');
 const xmlText = (text) =>
   text.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
+
+const CLONE_MESSAGE = [
+  'This code repeats src/main/java/demo/Second.java:3 (30 lines).',
+  'Keep one copy and call it from both places.',
+  'If the repetition is intended, add src/main/java/demo/First.java or',
+  'src/main/java/demo/Second.java to "exclude" in nitpicker.config.json.',
+].join(' ');
 
 const addedFieldOutput = expect.stringMatching(exactText`Base: comparison-base (argument)
 
@@ -22,7 +41,7 @@ Quality gate summary
 ✖ 1 new enforceable violation
   pmd/UnusedPrivateField src/main/java/demo/A.java:4
     ${addedField}
-Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
+Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
 
 describe.each([
@@ -40,7 +59,10 @@ describe.each([
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['java']);
+    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
+      'java',
+      'repository-hygiene',
+    ]);
   });
   it('fails on a new enforceable finding and reports it in text, JSON, SARIF and JUnit', () => {
     const root = repository();
@@ -122,8 +144,9 @@ describe.each([
     );
     expect(readFileSync(path.join(result.reports, 'report.junit.xml'), 'utf8')).toEqual(
       expect.stringMatching(exactText`<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="quality.diff" tests="2" failures="1" errors="0" time="${/[0-9]+(?:\.[0-9]+)?/}">
+<testsuite name="quality.diff" tests="3" failures="1" errors="0" time="${/[0-9]+(?:\.[0-9]+)?/}">
   <testcase classname="quality.diff" name="java" time="${/[0-9]+(?:\.[0-9]+)?/}"></testcase>
+  <testcase classname="quality.diff" name="repository-hygiene" time="${/[0-9]+(?:\.[0-9]+)?/}"></testcase>
   <testcase classname="quality.diff.new-findings" name="pmd/UnusedPrivateField src/main/java/demo/A.java:4" time="${/[0-9]+(?:\.[0-9]+)?/}"><failure message="${xmlText(addedField)}" type="pmd/UnusedPrivateField">${xmlText(addedField)}</failure></testcase>
 </testsuite>
 `),
@@ -167,8 +190,8 @@ describe.each([
 Quality gate summary
 ✖ 1 new enforceable violation
   duplicates/duplicate-clone src/main/java/demo/First.java:3
-    This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places.
-Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
+    ${CLONE_MESSAGE}
+Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
     const clones = result
@@ -181,8 +204,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         path: 'src/main/java/demo/First.java',
         identity:
           'pair:src/main/java/demo/First.java|src/main/java/demo/Second.java:fragment:41aa749b80d76291fc31cc1b:occurrence:1',
-        message:
-          'This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places.',
+        message: CLONE_MESSAGE,
         classification: 'enforceable',
         location: { line: 3 },
       },
@@ -298,6 +320,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         '',
         'Per-tool counts:',
         `java: total=${String(1 + build.descriptive.length)} enforceable=1 descriptive=${String(build.descriptive.length)}`,
+        'repository-hygiene: total=0 enforceable=0 descriptive=0',
         '',
         'Enforceable findings:',
         `pmd/UnusedPrivateField src/main/java/demo/A.java:3 ${unusedFieldMessage('legacy')}`,
@@ -307,5 +330,44 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
           : ['Descriptive findings:', ...build.descriptive, '']),
       ].join('\n'),
     );
+  });
+});
+
+describe('the exceptions of a Gradle build', () => {
+  const { gradleRepository, kotlinRepository, run } = useGradleFixtures(nitpickerCli);
+  describe.each([
+    ['java', gradleRepository],
+    ['kotlin', kotlinRepository],
+  ])('the exception a %s finding message suggests', (preset, repository) => {
+    function liftableFindings(root) {
+      writeFiles(root, TEST_REPORTS);
+      commit(root, 'add a test-only class and console output');
+      const result = run(root);
+      return {
+        result,
+        found: result.json('new-findings.json').filter(({ rule }) => LIFTABLE_RULES.includes(rule)),
+      };
+    }
+    it('is accepted by the preset and lifts the finding', () => {
+      const { found } = liftableFindings(repository());
+      const exceptions = found.map(({ message }) => ({
+        ...JSON.parse(EXCEPTION_ENTRY.exec(message)[0]),
+        reason: 'Loaded by name from a plugin descriptor of another build.',
+      }));
+      const config = JSON.parse(readFileSync(path.join(repository(), 'nitpicker.config.json')));
+
+      const { result, found: lifted } = liftableFindings(
+        repository({
+          'nitpicker.config.json': `${JSON.stringify({ ...config, exceptions })}\n`,
+        }),
+      );
+
+      expect(found.map(({ rule }) => rule).toSorted()).toEqual(LIFTABLE_RULES.toSorted());
+      expect({ exitCode: result.exitCode, lifted }, result.text).toEqual({
+        exitCode: 0,
+        lifted: [],
+      });
+      expect(preset).toBe(config.preset);
+    });
   });
 });

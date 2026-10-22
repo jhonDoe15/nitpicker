@@ -6,6 +6,13 @@ const lines = (file) =>
   existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean) : [];
 const sarif = (name, results) =>
   JSON.stringify({ version: '2.1.0', runs: [{ tool: { driver: { name } }, results }] });
+const GOOGLE_CHECKS = [
+  '<module name="Checker">',
+  ...['MemberName', 'MethodName'].map(
+    (name) => `<module name="${name}"><property name="format" value="^[a-z]+$"/></module>`,
+  ),
+  '</module>',
+].join('\n');
 const put = (file, text) => {
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, text);
@@ -78,7 +85,7 @@ const TOOLS = {
   java,
   jdeps: () =>
     process.stdout.write(existsSync('jdeps.txt') ? readFileSync('jdeps.txt', 'utf8') : ''),
-  jar: () => put('google_checks.xml', '<module name="Checker"></module>'),
+  jar: () => put('google_checks.xml', GOOGLE_CHECKS),
 };
 
 TOOLS[tool]();
