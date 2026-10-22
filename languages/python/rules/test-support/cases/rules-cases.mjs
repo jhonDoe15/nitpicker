@@ -29,6 +29,7 @@ export const RULES_CASES = [
   ...rulesCases('todo-without-issue', [['todo-without-issue', '# todo(#123)']]),
   ...rulesCases('skipped-test', [['skipped-test-without-reason', 'reason=']]),
   ...rulesCases('sleep-in-test', [['sleep-in-test', 'fake clock']]),
+  ...rulesCases('negative-wait-in-test', [['negative-wait-in-test', 'event.is_set()']]),
   ...rulesCases('tautological-assert', [['tautological-assert', 'result of the code under test']]),
   ...rulesCases('test-without-assertion', [
     ['test-without-assertion', 'assert result == expected'],
