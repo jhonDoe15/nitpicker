@@ -6,7 +6,7 @@ import { globToRegExp } from '../../shared/glob.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
 import { readBuildSources } from '../../languages/java/builds/narrowing/build-sources.mjs';
-import { jvmProductionReach } from '../../languages/java/builds/source-reach.mjs';
+import { jvmProductionReach } from '../../languages/java/builds/reach/source-reach.mjs';
 import { pythonProductionReach } from '../../languages/python/adapters/analysis/reach/python-reach.mjs';
 import { readPythonSelection } from '../../languages/python/adapters/configuration/pytest/test-selection.mjs';
 import { detectSourceRoots } from '../../languages/python/adapters/execution/python-project.mjs';
