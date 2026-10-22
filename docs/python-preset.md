@@ -602,6 +602,7 @@ are listed at the end.
 | Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
 | Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
 | Input or output per item | one batch call; no batch endpoint: a bounded fan-out (`asyncio.Semaphore`, `CapacityLimiter`, fixed-size chunks)                                 | `io-in-loop` (script)                                                                                                                                |
+| Accumulator copies       | `append` in the loop, a comprehension, `itertools.chain.from_iterable`, `dict(pairs)`, `collections.defaultdict`                                 | `accumulator-copy` (script), ruff `RUF017` for `sum(lists, [])`                                                                                      |
 | Task markers             | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
 | Commented-out code       | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
 | Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                         | ruff `S` (see below)                                                                                                                                 |
@@ -792,6 +793,14 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `publish`, Pub/Sub, NATS, Celery `delay`, `apply_async` and `send_task`) is not reported: one publish
   per item is the protocol. A paging loop (the condition reads a variable the body assigns) and a
   retry (a `try` in the loop that returns on success) are not reported either.
+- `accumulator-copy` reports a name that is rebuilt from a copy of itself on every step, so the work
+  grows with the square of the list: a `functools.reduce` callback (a lambda, or a function of the same
+  file) that returns `acc + [x]`, `[x] + acc`, `[*acc, x]`, `(*acc, x)`, `{**acc, k: v}` or `acc | {k: v}`,
+  and a `for` or `while` loop that assigns the same forms (or `acc += (x,)` on a tuple) to a name bound
+  before the loop. `acc + other` counts when the name starts as a list, tuple, dict or set (`[]`, `()`,
+  `{}`, `list()`, a `reduce` initial value); an accumulator of unknown type, a number or a string is not
+  reported. `acc += [x]` and `acc |= {k: v}` change the object in place and are fine. `sum(lists, [])` is
+  ruff's `RUF017`, which the preset already selects, so the script does not report it twice.
 - `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
   comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
   `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and

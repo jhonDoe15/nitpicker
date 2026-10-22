@@ -32,6 +32,9 @@ export const RULES_CASES = [
     [LOOP_RULE, 'concurrently still sends one query', 'repo.get()|database|concurrent'],
   ]),
   ...rulesCases('io-in-loop-remote', [[LOOP_RULE, 'asyncio.Semaphore', 'requests.get()|remote']]),
+  ...rulesCases('accumulator-copy', [
+    ['accumulator-copy', 'itertools.chain', 'merged|merged + [...]|loop'],
+  ]),
   ...rulesCases('todo-without-issue', [['todo-without-issue', '# todo(#123)']]),
   ...rulesCases('skipped-test', [['skipped-test-without-reason', 'reason=']]),
   ...rulesCases('sleep-in-test', [['sleep-in-test', 'fake clock']]),

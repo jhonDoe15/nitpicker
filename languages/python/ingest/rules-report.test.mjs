@@ -91,6 +91,11 @@ describe('rules script report', () => {
       'load_order() > repo.find_by_id()|database|concurrent',
       '`load_order()` (which calls `repo.find_by_id()`) sends a database query once per item of a loop, started concurrently',
     ],
+    [
+      'accumulator-copy',
+      'acc|acc + [...]|reduce',
+      '`acc` is replaced by a copy of itself (`acc + [...]`) on every step of the `reduce`, so the work grows with the square of the list',
+    ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
       'skipped-test-without-reason',
