@@ -38,11 +38,20 @@ export function exceptionSentence(entryText, key = 'exceptions') {
   return `If this is intended, add ${entryText} to "${key}" in nitpicker.config.json.`;
 }
 
+const ROUTE_SENTENCE =
+  /If this is intended, add \{.*\} to "(?:python\.)?exceptions" in nitpicker\.config\.json\.$/su;
+
 /** Whether `message` already ends with a sentence that names its exception entry. */
 export function hasExceptionRoute(message) {
-  return /If this is intended, add \{.*\} to "(?:python\.)?exceptions" in nitpicker\.config\.json\.$/su.test(
-    message,
-  );
+  return ROUTE_SENTENCE.test(message);
+}
+
+/** `message` with `text` added so that the exception sentence, if it has one, stays last. */
+export function insertBeforeRoute(message, text) {
+  const route = ROUTE_SENTENCE.exec(message);
+  return route === null
+    ? `${message} ${text}`
+    : `${message.slice(0, route.index)}${text} ${route[0]}`;
 }
 
 /** `message` ended with a full stop, then `sentence`; `message` as it is without a sentence. */

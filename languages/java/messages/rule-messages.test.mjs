@@ -117,11 +117,11 @@ describe('withRuleMessage', () => {
     ).toBe(`Usage of System.out/err. ${readCatalog('pmd').SystemPrintln.fix}`);
   });
 
-  it('keeps messages that already name the config file, and findings of other tools', () => {
+  it('keeps messages that already end with the route, and findings of other tools', () => {
     const spring = finding(
       'pmd',
       'SpringConstructorInjection',
-      'Inject through the constructor. If it is right here, add an exception for pmd/SpringConstructorInjection in nitpicker.config.json.',
+      `Inject through the constructor. ${hint('pmd/SpringConstructorInjection')}`,
     );
     const pit = finding('pit', 'mutant-survived', 'Survived');
 

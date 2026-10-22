@@ -48,10 +48,6 @@ describe('python config validation', () => {
     'arg-type',
     'import-not-found',
     'reportReturnType',
-    'function-lines-limit',
-    'crap-score-limit',
-    'changed-branch-coverage',
-    'mutant-survived',
     'reportAny',
     'reportImplicitOverride',
     'reportUnusedCallResult',
@@ -119,7 +115,17 @@ describe('python config validation', () => {
     ],
     [
       { exceptions: [{ rule: 'folder-files-limit', paths: ['a'], reason: 'r' }] },
-      'a rule shared by every preset: lift it in the top-level "exceptions" instead',
+      '"python.exceptions[0].rule" is "folder-files-limit", a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead',
+    ],
+    [
+      {
+        exceptions: [{ rule: 'function-lines-limit', paths: ['a'], function: 'run', reason: 'r' }],
+      },
+      '"python.exceptions[0].rule" is "function-lines-limit", a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead',
+    ],
+    [
+      { exceptions: [{ rule: 'structure/changed-branch-coverage', paths: ['a'], reason: 'r' }] },
+      '"python.exceptions[0].rule" is "structure/changed-branch-coverage", a rule that every preset reports with a function or a path',
     ],
     [
       { exceptions: [{ rule: 'E501', paths: ['a'], reason: 'r' }] },

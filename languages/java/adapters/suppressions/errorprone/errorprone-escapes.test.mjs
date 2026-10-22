@@ -3,7 +3,7 @@ import { fileFindings } from '../java-suppressions.mjs';
 import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import { ERROR_PRONE_MESSAGE } from './errorprone-escapes.mjs';
 
-const ROUTE = exceptionRoute({ rule: 'errorprone/<check>', path: 'A.java' });
+const ROUTE = exceptionRoute({ rule: 'errorprone/InlineSuppression', path: 'A.java' });
 
 const found = (source) =>
   fileFindings(source, 'A.java').map((finding) => [

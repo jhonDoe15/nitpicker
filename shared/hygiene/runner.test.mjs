@@ -57,10 +57,10 @@ describe('runHygieneCheck', () => {
         path: 'svc/package.json',
         identity: 'svc/build|build-output',
         message:
-          'svc/build/ looks like build output tracked in git. If it holds sources or build scripts, add ' +
-          '{"rule":"committed-build-output","paths":["svc/build/**"],"reason":"..."} to "exceptions" in ' +
-          'nitpicker.config.json, or rename it. Otherwise untrack it with `git rm -r --cached svc/build`, ' +
-          'add `svc/build/` to .gitignore, and let CI produce it.',
+          'svc/build/ looks like build output tracked in git. Untrack it with `git rm -r --cached svc/build`, ' +
+          'add `svc/build/` to .gitignore, and let CI produce it; if it holds sources or build scripts, rename it. ' +
+          'If this is intended, add {"rule":"committed-build-output","paths":["svc/build/**"],"reason":"..."} to ' +
+          '"exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);

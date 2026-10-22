@@ -33,7 +33,7 @@ const finding = (file, rule, identity, message) => ({
   rule,
   path: file,
   identity,
-  message,
+  message: `${message} If this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
   classification: 'enforceable',
 });
 

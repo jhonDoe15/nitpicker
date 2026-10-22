@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JAVA_TOOLS } from '../../languages/java/adapters/gradle-presets.mjs';
+import { JAVA_FINDING_TOOLS } from '../../languages/java/adapters/java-finding-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
 import { JAVA_SIZE_RULES } from '../../shared/project-rules/size-rules.mjs';
 import { validateConfig } from '../configuration/validate.mjs';
@@ -41,7 +41,7 @@ describe('config exceptions', () => {
       const other = { ...exception, rule: 'pmd.SomeRule' };
 
       expect(() => validateConfig({ preset: 'java', exceptions: [other] })).toThrow(
-        `"exceptions[0].rule" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${[...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES].join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}`,
+        `"exceptions[0].rule" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${[...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES].join(', ')}. Tools: ${JAVA_FINDING_TOOLS.join(', ')}`,
       );
     });
   });
@@ -169,17 +169,129 @@ describe('config exceptions', () => {
       );
     });
 
-    it.each(['...', ' ... ', '...', '', '   '])('rejects the reason %j', (reason) => {
+    it.each(['...', ' ... ', '..', '…', '-', '', '   '])('rejects the reason %j', (reason) => {
       expect(rejected({ reason })).toThrow('"exceptions[0].reason" is');
     });
 
-    it.each(['/abs/a.ts', 'C:/a.ts', '../a.ts', 'src/../a.ts', ' '])(
-      'rejects the path %j',
-      (glob) => {
-        expect(rejected({ paths: [glob] })).toThrow(
-          `"exceptions[0].paths" has "${glob}": use a glob relative to the project root, without \`..\``,
+    it('accepts a reason that says something', () => {
+      expect(() => rejected({ reason: 'Needed: 1 case' })()).not.toThrow();
+    });
+
+    it.each([
+      ['/abs/a.ts', 'use a glob relative to the project root'],
+      ['C:/a.ts', 'use a glob relative to the project root'],
+      ['../a.ts', 'use a glob without `..`'],
+      ['src/../a.ts', 'use a glob without `..`'],
+      ['src\\a.ts', 'separate folders with "/"; a backslash only escapes one of { } [ ] , * ? \\'],
+    ])('rejects the path %j', (glob, fix) => {
+      expect(rejected({ paths: [glob] })).toThrow(`"exceptions[0].paths" has "${glob}": ${fix}`);
+    });
+
+    it('rejects an empty path', () => {
+      expect(rejected({ paths: [' '] })).toThrow('"exceptions[0].paths" has an empty path glob');
+    });
+
+    it('accepts the escaped path a message prints', () => {
+      expect(() => rejected({ paths: ['src/\\[id\\]/\\{x\\}/a.ts'] })()).not.toThrow();
+    });
+  });
+
+  describe('exceptions of the Python preset', () => {
+    const pythonEntry = (rule, extra = {}) => ({
+      rule,
+      paths: ['src/a.py'],
+      reason: 'A reviewed reason.',
+      ...extra,
+    });
+
+    it('keeps function and file rules in the top-level list and every other rule in python.exceptions', () => {
+      const top = pythonEntry('function-lines-limit', { function: 'Service.run' });
+      const nested = pythonEntry('T201');
+
+      expect(
+        validateConfig({
+          preset: 'python',
+          exceptions: [top],
+          python: { exceptions: [nested] },
+        }),
+      ).toEqual({ preset: 'python', exceptions: [top], python: { exceptions: [nested] } });
+    });
+
+    it.each(['function-lines-limit', 'changed-branch-coverage', 'file-lines-limit', 'slow-test'])(
+      'rejects %s in python.exceptions',
+      (rule) => {
+        expect(() =>
+          validateConfig({
+            preset: 'python',
+            python: { exceptions: [pythonEntry(rule, { function: 'run' })] },
+          }),
+        ).toThrow(
+          `"python.exceptions[0].rule" is "${rule}", a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead`,
         );
       },
     );
+
+    it('rejects a ruff rule in the top-level exceptions', () => {
+      expect(() => validateConfig({ preset: 'python', exceptions: [pythonEntry('T201')] })).toThrow(
+        '"exceptions" is not supported with "preset": "python"',
+      );
+    });
+
+    it('reads a function rule printed as <tool>/<rule> in the top-level list, and rejects it in the other', () => {
+      expect(() =>
+        validateConfig({
+          preset: 'python',
+          exceptions: [pythonEntry('structure/function-lines-limit', { function: 'run' })],
+        }),
+      ).not.toThrow();
+      expect(() =>
+        validateConfig({
+          preset: 'python',
+          python: {
+            exceptions: [pythonEntry('structure/function-lines-limit', { function: 'run' })],
+          },
+        }),
+      ).toThrow('"python.exceptions[0].rule" is "structure/function-lines-limit"');
+    });
+  });
+
+  describe('exceptions of the Java and Kotlin presets', () => {
+    const printed = (rule) => ({ rule, paths: ['src/main/java/a/A.java'], reason: 'A reason.' });
+
+    it.each(['java', 'kotlin'])('accept %s findings of every tool as printed', (preset) => {
+      const exceptions = JAVA_FINDING_TOOLS.map((tool) => printed(`${tool}/SomeRule`));
+
+      expect(validateConfig({ preset, exceptions }).exceptions).toEqual(exceptions);
+    });
+
+    it.each(['java', 'kotlin'])('reject a bare tool and an unknown tool in %s', (preset) => {
+      for (const rule of ['pmd/', 'pmd', 'bogus/Rule']) {
+        expect(() => validateConfig({ preset, exceptions: [printed(rule)] })).toThrow(
+          `"exceptions[0].rule"`,
+        );
+      }
+    });
+
+    it.each(['java', 'kotlin'])('reject a Checkstyle check named by its class in %s', (preset) => {
+      expect(() =>
+        validateConfig({
+          preset,
+          exceptions: [
+            printed(
+              'checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.AbbreviationAsWordInNameCheck',
+            ),
+          ],
+        }),
+      ).toThrow('findings print the check\'s name, so write "checkstyle/AbbreviationAsWordInName"');
+    });
+
+    it.each(['java', 'kotlin'])('reject a Java finding whose paths are Kotlin in %s', (preset) => {
+      expect(() =>
+        validateConfig({
+          preset,
+          exceptions: [{ ...printed('pmd/UnusedPrivateField'), paths: ['src/main/kotlin/A.kt'] }],
+        }),
+      ).toThrow('which is reported in .java files only');
+    });
   });
 });

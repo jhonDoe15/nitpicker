@@ -32,20 +32,22 @@ const enforceable = (result) =>
 const EXCEPTING_CONFIG = JSON.stringify({
   preset: 'python',
   disable: ['mutation'],
-  exceptions: [
-    { rule: 'PTH118', paths: ['src/demo/rules.py'], reason: 'fixture' },
-    { rule: 'frozen-dataclass', paths: ['src/demo/*.py'], reason: 'fixture' },
-    { rule: 'no-inline-suppression', paths: ['src/**'], reason: 'fixture' },
-  ],
+  python: {
+    exceptions: [
+      { rule: 'PTH118', paths: ['src/demo/rules.py'], reason: 'fixture' },
+      { rule: 'frozen-dataclass', paths: ['src/demo/*.py'], reason: 'fixture' },
+      { rule: 'no-inline-suppression', paths: ['src/**'], reason: 'fixture' },
+    ],
+  },
 });
 
 const EXCEPTION_LOOSENINGS = [
   'analyzer disabled: mutation',
   'exception added: frozen-dataclass for src/demo/*.py (fixture)',
   'exception added: no-inline-suppression for src/** (fixture)',
-  'exceptions for PTH118 hide code this change adds or moves where the base config checked it: src/demo/rules.py',
-  'exceptions for frozen-dataclass hide code this change adds or moves where the base config checked it: src/demo/rules.py',
-  'exceptions for no-inline-suppression hide code this change adds or moves where the base config checked it: src/demo/rules.py',
+  'python.exceptions for PTH118 hide code this change adds or moves where the base config checked it: src/demo/rules.py',
+  'python.exceptions for frozen-dataclass hide code this change adds or moves where the base config checked it: src/demo/rules.py',
+  'python.exceptions for no-inline-suppression hide code this change adds or moves where the base config checked it: src/demo/rules.py',
 ];
 
 function sourcePython(root) {
@@ -158,7 +160,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
     expect(result.text).toMatch(/Use `pathlib\.Path`/);
     expect(result.text).toMatch(/Remove the comment and fix the code/);
     expect(result.text).toMatch(
-      /add \{"rule":"PTH118","paths":\["src\/demo\/rules\.py"\],"reason":"..."\} to "exceptions" in nitpicker\.config\.json\./,
+      /add \{"rule":"PTH118","paths":\["src\/demo\/rules\.py"\],"reason":"..."\} to "python\.exceptions" in nitpicker\.config\.json\./,
     );
   });
   it('fails the exceptions that hide checked code until a person accepts exactly those loosenings', () => {

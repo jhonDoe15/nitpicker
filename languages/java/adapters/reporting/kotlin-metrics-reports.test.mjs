@@ -110,7 +110,7 @@ describe('readJavaFindings with the kotlin preset: metrics and errors', () => {
       ['FixedSleepInTest', testFile],
     ]);
     expect(routeOf(review[0].message)).toBe(
-      'add an exception for pmd/FixedSleepInTest in nitpicker.config.json.',
+      'If this is intended, add {"rule":"pmd/FixedSleepInTest","paths":["src/test/kotlin/demo/WaitTest.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
   });

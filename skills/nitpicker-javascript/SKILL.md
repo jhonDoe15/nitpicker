@@ -43,8 +43,8 @@ Before you change code other modules use or fix a bug, read
    `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
    accept.
 5. Code that is right despite a rule: each message ends with the `exceptions` entry that would
-   accept it (`If this is intended, add {...} to "exceptions" in
-nitpicker.config.json`). That entry is for a human reviewer. Never add one, and never fill in its
+   accept it (`If this is intended, add {...} to "exceptions" in nitpicker.config.json.`). That
+   entry is for a human reviewer. Never add one, and never fill in its
    `reason`, to get past the gate: stop and ask a human, and quote the finding with its entry. A
    TypeScript compiler error has no entry; fix the type.
 

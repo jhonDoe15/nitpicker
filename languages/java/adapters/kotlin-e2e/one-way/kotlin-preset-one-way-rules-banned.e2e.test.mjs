@@ -42,6 +42,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
       const recorded = addOneWayHint({
         tool: 'detekt',
         rule: testCase.rule,
+        path: finding.path,
         message: expectedMessage(testCase, 'banned'),
       });
 
