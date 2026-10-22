@@ -68,6 +68,12 @@ function normalizeResult({ result, resultIndex, projectRoot, analyzerName }) {
 }
 
 const supersedingRules = new Map([['no-restricted-properties', 'nitpicker/react-no-random-key']]);
+const folderMessages = new Map([['nitpicker/no-generic-names', /^The folder '([^']+\/)'/u]]);
+
+function folderIdentity(ruleId, messageText) {
+  const folder = folderMessages.get(ruleId)?.exec(messageText)?.[1];
+  return folder === undefined ? undefined : `folder:${folder}`;
+}
 
 function startOf(ruleId, message) {
   return `${String(ruleId)}@${String(message.line)}:${String(message.column)}`;
@@ -162,12 +168,14 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
     tool: analyzerName,
     rule: ruleId,
     path: relativePath,
-    identity: [
-      `message:${messageIdentity}`,
-      `node:${report.nodeType}`,
-      `syntax:${report.syntax}`,
-      ...(metric === undefined ? [] : [`value:${String(metric.value)}`]),
-    ].join('|'),
+    identity:
+      folderIdentity(ruleId, messageText) ??
+      [
+        `message:${messageIdentity}`,
+        `node:${report.nodeType}`,
+        `syntax:${report.syntax}`,
+        ...(metric === undefined ? [] : [`value:${String(metric.value)}`]),
+      ].join('|'),
     message: hintedMessage({
       ruleId,
       messageText,
