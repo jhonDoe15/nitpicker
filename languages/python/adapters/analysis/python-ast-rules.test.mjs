@@ -80,7 +80,6 @@ describe('running the rules script', () => {
       modules: { 'src/demo/a.py': 'demo.a' },
       published: false,
       entryPoints: [],
-      invalidFiles: [],
     });
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');
     expect(readFileSync(path.join(reportRoot, 'rules.json'), 'utf8')).toBe('[{"rule":"x"}]');
@@ -101,10 +100,10 @@ describe('running the rules script', () => {
 
     checkRules(context);
 
-    const { modules, testFiles, entryModules, published, entryPoints, invalidFiles } = JSON.parse(
+    const { modules, testFiles, entryModules, published, entryPoints } = JSON.parse(
       readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8'),
     );
-    expect({ modules, testFiles, entryModules, published, entryPoints, invalidFiles }).toEqual({
+    expect({ modules, testFiles, entryModules, published, entryPoints }).toEqual({
       modules: {
         'src/shop/__init__.py': 'shop',
         'src/shop/cli.py': 'shop.cli',
@@ -114,7 +113,6 @@ describe('running the rules script', () => {
       entryModules: ['shop.cli'],
       published: true,
       entryPoints: ['shop.cli:main'],
-      invalidFiles: [],
     });
   });
 

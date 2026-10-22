@@ -236,6 +236,10 @@ describe.skipIf(!enabled)('unused-option', () => {
     };
     expect(unused(files)).toEqual(['total.cents', 'total.rate']);
     expect(unused({ ...files, 'pyproject.toml': PUBLISHED })).toEqual([]);
+    expect(unused({ ...files, 'setup.cfg': '[metadata]\nname = shop\n' })).toEqual([]);
+    expect(
+      unused({ ...files, 'setup.py': 'from setuptools import setup\nsetup(name="shop")\n' }),
+    ).toEqual([]);
   });
 
   it.each([
@@ -282,6 +286,14 @@ describe.skipIf(!enabled)('unused-option', () => {
       },
     ],
     [
+      'a poetry plugin names it',
+      {
+        'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
+        'pyproject.toml':
+          '[tool.poetry]\nname = "shop"\n[tool.poetry.plugins."shop.exporters"]\nprice = "shop.pricing:total"\n',
+      },
+    ],
+    [
       'setup.py names it',
       {
         'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
@@ -324,28 +336,20 @@ describe.skipIf(!enabled)('unused-option', () => {
     ).toEqual([]);
   });
 
-  it('reports a setup.cfg it cannot read and still checks the code', () => {
-    const report = reportOf({
-      'shop/__init__.py': '',
-      'shop/pricing.py': TOTAL,
-      'shop/app.py': 'from shop.pricing import total\ntotal(1)\n',
-      'setup.cfg': '[options.entry_points\nconsole_scripts = x\n',
-    });
+  it('fails on a setup.cfg it cannot read, naming it', () => {
+    expect(() => reportOf({ 'shop/app.py': 'x = 1\n', 'setup.cfg/stray.txt': '' })).toThrow(
+      'setup.cfg could not be read (EISDIR): fix or remove it',
+    );
+  });
 
-    expect(report.filter(({ rule }) => rule !== 'unused-option')).toEqual([
-      {
-        rule: 'project-file-invalid',
-        path: 'setup.cfg',
-        subject: 'setup.cfg',
-        line: 1,
-        data: {
-          problem: expect.stringMatching(
-            /^MissingSectionHeaderError: File contains no section headers/,
-          ),
-        },
-      },
-    ]);
-    expect(report.filter(({ rule }) => rule === 'unused-option')).toHaveLength(2);
+  it('reads a setup.cfg the way the other readers do, so a stray tool section is no error', () => {
+    expect(
+      reportOf({
+        'shop/__init__.py': '',
+        'shop/app.py': 'x = 1\n',
+        'setup.cfg': '[flake8]\nmax-line-length = 100\nmax-line-length = 120\n',
+      }),
+    ).toEqual([]);
   });
 
   it('fails on a pyproject.toml it cannot parse, as the dependency reader does', () => {

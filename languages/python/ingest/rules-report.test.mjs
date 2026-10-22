@@ -265,32 +265,6 @@ describe('rules script report', () => {
     ]);
   });
 
-  it('turns a project file that cannot be read into a tool error naming the problem', () => {
-    const report = [
-      entry({
-        rule: 'project-file-invalid',
-        path: 'setup.cfg',
-        subject: 'setup.cfg',
-        line: 3,
-        data: { problem: 'ParsingError: bad line' },
-      }),
-    ];
-
-    expect(ingestRulesReport(JSON.stringify(report))).toEqual([
-      {
-        tool: 'python-rules',
-        rule: 'project-file-invalid',
-        path: 'setup.cfg',
-        identity: 'setup.cfg',
-        subject: 'setup.cfg',
-        message:
-          'setup.cfg could not be read (ParsingError: bad line), so python-rules took the package as unpublished with no entry points from it, and unused-option may name a parameter an entry point passes. Fix the file.',
-        classification: 'tool-error',
-        location: { line: 3 },
-      },
-    ]);
-  });
-
   it('names an unused parameter with a default, and which calls count', () => {
     const report = [
       entry({ rule: 'unused-option', subject: 'total.rate', data: { scope: 'private' } }),
