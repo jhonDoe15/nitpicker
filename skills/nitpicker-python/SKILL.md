@@ -53,6 +53,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
 - Per-item input or output: one query or one batch request for all items, not one call per item; a `gather` over repository calls still runs one query per item. Without a batch endpoint, bound the fan-out with `asyncio.Semaphore` or fixed-size chunks.
+- Accumulating: append to one list (or fill one dict) in the loop, or use a comprehension or `itertools.chain.from_iterable`; `acc = acc + [x]`, `[*acc, x]` and `{**acc, k: v}` copy the whole accumulator on every step.
 - Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
   test honesty) reports the allowed form in its message: follow the form the message names.
 - Tests: use the project's runner (pytest, unittest, Django or nose2). Every test asserts something. Every branch you add needs a test, and a
