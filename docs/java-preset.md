@@ -943,7 +943,7 @@ resolved plus a new finding, as in the TypeScript check.
   `AnnotationPosition` 1. `MethodCanBeStatic` (2 and 7) and `ThrowsUncheckedException` (0 and 3)
   are off. Over all tools the enforceable findings went from 2875 to 2871 on the calculator and
   from 4037 to 4028 on PetClinic. The `gradle-project` fixture has 1 (`UnnecessarilyFullyQualified`)
-  and the `spring-project` fixture 1 (`MissingOverride`). NullAway alone: 6, 4, 0 and 0, nearly all
+  and the `spring-project` fixture 1 (`MissingOverride`) before it held the Spring rule examples. NullAway alone: 6, 4, 0 and 0, nearly all
   `@Nullable` values returned or passed where a non-null one is declared.
 - **Cost.** A second compile of main and test sources: about 6 s on the fixtures and 30 s on the
   calculator and PetClinic, most of it JVM start-up and Error Prone's own class loading.
@@ -1776,9 +1776,11 @@ placement need a cross-class view and come with nitpicker's ArchUnit rules.
 `npm run test:java`) runs PMD through the init script on `adapters/fixtures/spring-project`, whose
 sources mark every expected violation with a `// violation: <rule>` comment, and asserts the
 reported set equals the marked set. The fixture also holds the legitimate forms each rule must
-accept. It also runs Error Prone on the fixture and asserts its only finding is `MethodCanBeStatic`
-in `OrderService`: no `FieldCanBeFinal` in the JPA entities and no
-`PrivateConstructorForUtilityClass` on the application or configuration classes.
+accept. It also runs Error Prone on the fixture and asserts its `FieldCanBeFinal`,
+`PrivateConstructorForUtilityClass` and `MissingOverride` findings: `MissingOverride` in
+`ProductRepository` and the one plain utility class, but no `FieldCanBeFinal` in the JPA entities
+and no `PrivateConstructorForUtilityClass` on the application or configuration classes. The other
+Error Prone checks fire on the deliberate violations the Spring rule examples hold.
 
 ## Spring configuration files
 
