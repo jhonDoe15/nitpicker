@@ -1,0 +1,15 @@
+[project]
+name = "library-app"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+library = "library_app.cli:run"
+
+[dependency-groups]
+dev = ["coverage", "mutmut", "mypy", "pytest", "ruff"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
