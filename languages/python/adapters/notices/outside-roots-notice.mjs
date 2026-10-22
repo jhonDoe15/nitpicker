@@ -1,5 +1,5 @@
 import { outsideRootsNotice } from '../../../../shared/notices/outside-roots-message.mjs';
-import { globToRegExp } from '../../../../shared/glob.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { isUnder } from '../analysis/python-sources.mjs';
 import { isGeneratedPython } from '../../libraries/generated-files.mjs';
 import {
@@ -32,7 +32,7 @@ function isQuiet(file) {
 
 export function pythonOutsideRootsNotices(changedFiles, project) {
   const { projectRoot, sourceRoots, exclude = [], isTestFile } = project;
-  const excluded = exclude.map((glob) => globToRegExp(glob));
+  const excluded = exclude.map((glob) => globMatcher(glob));
   const outside = [...changedFiles]
     .map((file) => file.replaceAll('\\', '/'))
     .filter(

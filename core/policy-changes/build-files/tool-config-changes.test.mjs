@@ -105,3 +105,86 @@ describe('project tool configs the project opted into', () => {
     ).toEqual(['prettier project config changed: package.json']);
   });
 });
+
+describe('what counts as an edit of a project tool config', () => {
+  const java = { preset: 'java', tools: { checkstyle: PROJECT } };
+  const checkstyle = (rules, extra = {}) => ({
+    'config/checkstyle/checkstyle.xml': rules,
+    'src/main/java/A.java': 'class A {}\n',
+    ...extra,
+  });
+  const RULES = '<module name="Checker">\n  <module name="LineLength"/>\n</module>\n';
+
+  it('reads only the XML rule files of the Checkstyle folder, without comments or layout', () => {
+    const notes = { 'config/checkstyle/README.md': 'notes\n' };
+    const reformatted =
+      '<!-- house rules -->\n<module name="Checker">\n\n    <module   name="LineLength"/>\n</module>';
+
+    expect(
+      between({
+        base: checkstyle(RULES, notes),
+        head: checkstyle(RULES, { 'config/checkstyle/README.md': 'more notes\n' }),
+        config: java,
+      }).policyLoosenings,
+    ).toEqual([]);
+    expect(
+      between({ base: checkstyle(RULES), head: checkstyle(reformatted), config: java })
+        .policyLoosenings,
+    ).toEqual([]);
+    expect(
+      between({
+        base: checkstyle(RULES),
+        head: checkstyle('<module name="Checker"/>\n'),
+        config: java,
+      }).policyLoosenings,
+    ).toEqual(['checkstyle project config changed: config/checkstyle/checkstyle.xml']);
+  });
+
+  it('reads only the editorconfig sections that apply to Kotlin files, and detekt rules without comments', () => {
+    const kotlin = { preset: 'kotlin', tools: { detekt: PROJECT, ktlint: PROJECT } };
+    const at = (editorconfig, detekt = 'style:\n  MaxLineLength:\n    active: true\n') => ({
+      '.editorconfig': editorconfig,
+      'config/detekt/detekt.yml': detekt,
+      'src/main/kotlin/A.kt': 'class A\n',
+    });
+    const base = at('root = true\n\n[*.{kt,kts}]\nktlint_code_style = ktlint_official\n');
+    const commented = at(
+      'root=true\n# style\n[*.{kt,kts}]\nktlint_code_style = ktlint_official\n\n[*.md]\ntrim_trailing_whitespace = false\n',
+      '# rules\nstyle:\n  MaxLineLength:\n\n    active: true\n',
+    );
+
+    expect(between({ base, head: commented, config: kotlin }).policyLoosenings).toEqual([]);
+    expect(
+      between({
+        base,
+        head: at('root = true\n\n[*.kt]\nktlint_code_style = intellij_idea\n'),
+        config: kotlin,
+      }).policyLoosenings,
+    ).toEqual(['ktlint project config changed: .editorconfig']);
+  });
+
+  it('reads only the editorconfig sections Prettier formats and ignores layout in its config', () => {
+    const typescript = { tools: { prettier: PROJECT } };
+    const at = (editorconfig, prettierrc = '{"semi": true}\n') => ({
+      '.editorconfig': editorconfig,
+      '.prettierrc': prettierrc,
+      'src/a.ts': 'export const a = 1;\n',
+    });
+    const base = at('[*]\nindent_size = 2\n');
+
+    expect(
+      between({
+        base,
+        head: at('[*]\nindent_size = 2\n\n[*.py]\nindent_size = 4\n', '{\n  "semi": true\n}'),
+        config: typescript,
+      }).policyLoosenings,
+    ).toEqual([]);
+    expect(
+      between({
+        base,
+        head: at('[*]\nindent_size = 2\n\n[*.ts]\nindent_size = 8\n'),
+        config: typescript,
+      }).policyLoosenings,
+    ).toEqual(['prettier project config changed: .editorconfig']);
+  });
+});

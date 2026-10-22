@@ -14,12 +14,15 @@ const JAVA_TYPE = new RegExp(
   'gmu',
 );
 const KOTLIN_DECLARATION = new RegExp(
-  String.raw`^(?:(?:${KOTLIN_MODIFIERS})\s+)*(?:class|interface|object|typealias|fun|val|var)\s+` +
-    String.raw`(?:<[^>\n]*>\s*)?(?:[\w.<>?]+\.)?(\w+)`,
+  String.raw`^(?:(?:${KOTLIN_MODIFIERS})\s+)*(class|interface|object|typealias|fun|val|var)\s+` +
+    String.raw`(?:<[^>\n]*>\s*)?([\w.<>?]+\.)?(\w+)`,
   'gmu',
 );
+const CALLABLES = new Set(['fun', 'val', 'var']);
+const ALIAS = /[ \t]as[ \t]+(\w+)/u;
 const QUALIFIED = /\b[a-z_]\w*(?:\.\w+)+/gu;
 const IDENTIFIER = /\b[A-Za-z_]\w*\b/gu;
+const BARE_IDENTIFIER = /(?<!\.\s*)\b[A-Za-z_]\w*\b/gu;
 const SOURCE_FILE = /\.(?:java|kt)$/u;
 
 function codeOf(text) {
@@ -28,8 +31,22 @@ function codeOf(text) {
 
 function declaredNames(file, code) {
   const stem = path.posix.basename(file).replace(/\.\w+$/u, '');
-  const pattern = file.endsWith('.kt') ? KOTLIN_DECLARATION : JAVA_TYPE;
-  return new Set([stem, ...[...code.matchAll(pattern)].map((match) => match[1])]);
+  if (!file.endsWith('.kt')) {
+    return { types: new Set([stem, ...[...code.matchAll(JAVA_TYPE)].map((match) => match[1])]) };
+  }
+  const declarations = [...code.matchAll(KOTLIN_DECLARATION)];
+  const isCallable = ([, keyword, receiver]) => CALLABLES.has(keyword) && receiver === undefined;
+  return {
+    types: new Set([
+      stem,
+      ...declarations.filter((match) => !isCallable(match)).map((match) => match[3]),
+    ]),
+    callables: new Set(declarations.filter(isCallable).map((match) => match[3])),
+  };
+}
+
+function importedName({ name, alias }) {
+  return alias ?? name.split('.').at(-1);
 }
 
 function describe(file, text) {
@@ -37,14 +54,20 @@ function describe(file, text) {
   const imports = [...code.matchAll(IMPORT)].map((match) => ({
     name: match[1],
     wildcard: match[2] !== undefined,
+    alias: ALIAS.exec(match[0])?.[1],
   }));
   const body = code.replaceAll(IMPORT, ' ').replace(PACKAGE, ' ');
+  const declared = declaredNames(file, code);
   return {
     file,
     package: PACKAGE.exec(code)?.[1] ?? '',
-    names: declaredNames(file, code),
+    names: new Set([...declared.types, ...(declared.callables ?? [])]),
+    types: declared.types,
+    callables: declared.callables ?? new Set(),
     imports,
+    explicit: new Set(imports.filter(({ wildcard }) => !wildcard).map(importedName)),
     identifiers: new Set(body.match(IDENTIFIER) ?? []),
+    bare: new Set(body.match(BARE_IDENTIFIER) ?? []),
     qualified: body.match(QUALIFIED) ?? [],
   };
 }
@@ -74,9 +97,14 @@ function usedFrom(importer, { byName, byPackage }) {
     importer.package,
     ...importer.imports.filter(({ wildcard }) => wildcard).map(({ name }) => name),
   ]);
+  const unshadowed = (name) => !importer.explicit.has(name);
   const sameOrWildcard = [...packages]
     .flatMap((name) => byPackage.get(name) ?? [])
-    .filter((entry) => [...entry.names].some((name) => importer.identifiers.has(name)));
+    .filter(
+      (entry) =>
+        [...entry.types].some((name) => unshadowed(name) && importer.identifiers.has(name)) ||
+        [...entry.callables].some((name) => unshadowed(name) && importer.bare.has(name)),
+    );
   const named = [...importer.imports.map(({ name }) => name), ...importer.qualified]
     .map((name) => longestKnown(name, byName))
     .filter((entry) => entry !== undefined);

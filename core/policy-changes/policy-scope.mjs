@@ -21,6 +21,7 @@ import {
 } from '../../languages/typescript/preset/modules/tsconfig-files.mjs';
 import { presetToDeclare } from '../configuration/project-checks/preset-detection.mjs';
 import { readToolConfigs } from './build-files/tool-config-files.mjs';
+import { generatedReaders } from './paths/generated-marking.mjs';
 
 const GRADLE_EXTENSIONS = ['java', 'kt', 'kts'];
 const PRESET_EXTENSIONS = new Map([
@@ -128,6 +129,7 @@ export function createPolicyScope({
   toolConfigs = [],
   reach = () => new Map(),
   blobOf = () => 'unread',
+  generated = { base: () => false, head: () => false },
 }) {
   const code = codeOf(files, headConfig);
   const baseFileSet = new Set(baseFiles);
@@ -151,6 +153,7 @@ export function createPolicyScope({
     toolConfigs,
     productionReach: computedOnce(reach),
     blobOf,
+    generated,
   };
 }
 
@@ -254,5 +257,6 @@ export function readPolicyScope({
     ),
     reach: () => productionReachOf({ headProjectRoot, headConfig, files, headRoots, headSources }),
     blobOf: blobReader(headProjectRoot),
+    generated: generatedReaders(headConfig.preset, baseProjectRoot, headProjectRoot),
   });
 }
