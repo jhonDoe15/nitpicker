@@ -43,13 +43,20 @@ function suppressionFinding(file, token, identity) {
   };
 }
 
-export function readSuppressionFindings(projectRoot, sourceRoots) {
-  return [...new Set(sourceRoots.flatMap((root) => kotlinFiles(projectRoot, root)))]
-    .toSorted()
-    .flatMap((file) => {
-      const next = createIdentityCounter();
-      return suppressionTokens(readFileSync(path.join(projectRoot, file), 'utf8'))
-        .filter(isBannedSuppression)
-        .map((token) => suppressionFinding(file, token, next(`suppress:${token}`)));
-    });
+function filesOf(projectRoot, roots) {
+  return [...new Set(roots.flatMap((root) => kotlinFiles(projectRoot, root)))].toSorted();
+}
+
+export function readSuppressionFindings(projectRoot, { sourceRoots, testRoots = [] }) {
+  const compiled = new Set(filesOf(projectRoot, sourceRoots));
+  return filesOf(projectRoot, [...sourceRoots, ...testRoots]).flatMap((file) => {
+    const next = createIdentityCounter();
+    return suppressionTokens(readFileSync(path.join(projectRoot, file), 'utf8'))
+      .filter(
+        (token) =>
+          isBannedSuppression(token) &&
+          (compilerWarningRule(token) === undefined || compiled.has(file)),
+      )
+      .map((token) => suppressionFinding(file, token, next(`suppress:${token}`)));
+  });
 }

@@ -15,7 +15,7 @@ const SUPERTYPE_CALL = /^\s*[A-Z][\w.]*\s*(?:<[^>]*>\s*)?\(/;
 const SUITE = /@(?:Suite|SelectClasses|SelectPackages|RunWith|Cucumber\w*|IncludeEngines)\b/;
 const FUNCTION_MODIFIERS = 'private|public|internal|protected|override|suspend|open';
 const FUNCTION = new RegExp(
-  String.raw`(^|\n)([ \t]*)((?:(?:${FUNCTION_MODIFIERS})\s+)*)fun\s+(\`[^\`]+\`|[A-Za-z_]\w*)\s*\(\s*\)`,
+  String.raw`(^|\n)([ \t]*)((?:(?:${FUNCTION_MODIFIERS})\s+)*)fun\s+(\`[^\`]+\`|[A-Za-z_]\w*)\s*\(\s*\)(?:\s*:\s*Unit\b)?\s*\{`,
   'g',
 );
 const TEST_NAME = /^`.+`$|^test[A-Z_]|^should[A-Z_]/;

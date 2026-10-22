@@ -139,6 +139,30 @@ describe('sqlStringBuilding', () => {
     ).toEqual([]);
   });
 
+  it('reads a one-line companion constant as inert, and a runtime value next to it as runtime', () => {
+    const header = 'class Repo(private val jdbc: JdbcTemplate) {';
+    const companion = 'companion object { private const val table = "users" }';
+
+    expect(
+      found(
+        [
+          companion,
+          'fun find(id: Long) = jdbc.queryForList("SELECT * FROM $table WHERE id = ?", id)',
+        ],
+        header,
+      ),
+    ).toEqual([]);
+    expect(
+      found(
+        [
+          companion,
+          'fun find(name: String) = jdbc.queryForList("SELECT * FROM $table WHERE name = \'$name\'")',
+        ],
+        header,
+      ),
+    ).toEqual([3]);
+  });
+
   it('does not take a list a function fills for a literal one', () => {
     expect(
       found([

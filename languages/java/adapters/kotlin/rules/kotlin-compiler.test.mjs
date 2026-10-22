@@ -57,7 +57,7 @@ describe('readCompilerFindings', () => {
       path: 'src/main/kotlin/demo/A.kt',
       identity: expect.stringMatching(/^deprecation:[0-9a-f]+$/),
       message:
-        "'fun a(): Int' is deprecated. use b. Call the replacement the deprecation names (its `ReplaceWith`, or the Javadoc of a Java API).",
+        "Call the replacement the deprecation names (its `ReplaceWith`, or the Javadoc of a Java API). The compiler warns: 'fun a(): Int' is deprecated. use b.",
       classification: 'enforceable',
       location: { line: 7 },
     });
@@ -68,7 +68,7 @@ describe('readCompilerFindings', () => {
       'unchecked',
     ]);
     expect(findings[3].identity).toBe(`${findings[2].identity}#2`);
-    expect(findings[1].message).toBe('Cast is redundant. Remove the cast.');
+    expect(findings[1].message).toBe('Remove the cast. The compiler warns: Cast is redundant.');
   });
 
   it('reports a lint compile that failed as not run, naming its first error', () => {

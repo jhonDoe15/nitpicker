@@ -119,6 +119,14 @@ describe('disabledTlsVerification', () => {
       2,
     ],
     ['a switch by environment', ['if (insecure) builder.hostnameVerifier { _, _ -> true }'], 2],
+    [
+      'the use of an imported no-op verifier, not its import',
+      [
+        'import org.apache.hc.client5.http.ssl.NoopHostnameVerifier',
+        'val factory = SSLConnectionSocketFactory(context, NoopHostnameVerifier.INSTANCE)',
+      ],
+      3,
+    ],
   ])('flags %s', (_name, lines, line) => {
     expect(found(disabledTlsVerification, lines)).toEqual([line]);
   });

@@ -63,8 +63,18 @@ describe('secretsInLogs', () => {
     ['a template expression', 'logger.warn("key ${apiKey}")'],
     ['a concatenation', 'log.debug("secret " + clientSecret)'],
     ['a print', 'println("token: $token")'],
+    ['a lambda message', 'logger.info { "token $token" }'],
+    [
+      'a lambda message after the exception',
+      'logger.error(e) { "refresh failed for $refreshToken" }',
+    ],
+    ['a bare value in a lambda', 'logger.debug { password }'],
+    ['an Android log call', 'Log.d(TAG, "pw $password")'],
+    ['a logger declared from a factory', 'audit.info("token {}", token)'],
   ])('flags %s', (_name, line) => {
-    expect(found(secretsInLogs, `fun f() {\n    ${line}\n}\n`)).toEqual([['SecretInLog', 2]]);
+    const source = `val audit = LoggerFactory.getLogger("audit")\nfun f() {\n    ${line}\n}\n`;
+
+    expect(found(secretsInLogs, source)).toEqual([['SecretInLog', 3]]);
   });
 
   it.each([
@@ -74,6 +84,8 @@ describe('secretsInLogs', () => {
     ['a constant name', 'log.info("reading {}", PASSWORD)'],
     ['a member of the secret', 'log.info("token ${token.length}")'],
     ['a call on something that is not a logger', 'audit.info("token {}", token)'],
+    ['a presence check in a lambda', 'logger.info { "token set: ${token != null}" }'],
+    ['a dialog, which is not a logger', 'dialog.d(TAG, "pw $password")'],
   ])('passes %s', (_name, line) => {
     expect(found(secretsInLogs, `fun f() {\n    ${line}\n}\n`)).toEqual([]);
   });

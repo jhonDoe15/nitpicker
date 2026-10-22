@@ -109,7 +109,11 @@ function referencedNames(scanned, argument) {
 
 export function secretsInLogs(scanned) {
   return logCalls(scanned.code, { console: true }).flatMap((call) => {
-    const names = call.arguments.flatMap((argument) => referencedNames(scanned, argument));
+    const message =
+      call.lambda === undefined ? [] : [{ start: call.lambda.open + 1, end: call.lambda.close }];
+    const names = [...call.arguments, ...message].flatMap((argument) =>
+      referencedNames(scanned, argument),
+    );
     const secret = names.find(isLoggedSecret);
     return secret === undefined
       ? []

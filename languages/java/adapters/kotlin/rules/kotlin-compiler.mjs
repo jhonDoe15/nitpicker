@@ -60,7 +60,7 @@ function warningFinding({ file, line, rule, text }, next) {
     rule,
     path: file,
     identity: next(`${rule}:${hash(subject)}`),
-    message: `${text.replace(/\.$/, '')}. ${ADVICE[rule]}`,
+    message: `${ADVICE[rule]} The compiler warns: ${text.replace(/\.$/, '')}.`,
     classification: 'enforceable',
     location: { line },
   };

@@ -1,5 +1,6 @@
 import { closingIndex, enclosingOpen, splitArguments } from '../kotlin-source.mjs';
-import { withoutLogCalls } from '../log-calls.mjs';
+import { reportingCalls, withoutCalls } from '../log-calls.mjs';
+import { isRetry } from '../loops.mjs';
 
 const CATCH = /\bcatch\s*\(\s*([A-Za-z_]\w*|`[^`]+`)\s*:([^)]*)\)\s*\{/g;
 const ERROR_CALLS = [
@@ -17,8 +18,6 @@ const ERROR_CALLS = [
   String.raw`Result\s*\.\s*failure`,
 ];
 const ERROR_RESPONSE = new RegExp(String.raw`\b(?:${ERROR_CALLS.join('|')})\s*[.(<]`);
-const LOOP_LOOKBACK = 200;
-const LOOP_HEADER = /(?:\b(?:for|while)\s*\([^{}]*\)|\bdo|\brepeat\s*\([^()]*\))\s*$/;
 const FUNCTION = /(?<![\w.])fun\s+(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?([A-Za-z_]\w*)\s*\(/g;
 const HIDDEN = /\b(?:private|internal|protected|override)\b/;
 const BUILDER_NAME = /^(?:set|with)[A-Z]|^(?:of|from|valueOf|builder)$/;
@@ -41,15 +40,6 @@ function tryBlockBefore(code, catchIndex) {
   return /\btry\s*$/.test(code.slice(0, open)) ? { open, close } : undefined;
 }
 
-function isRetry(code, tryBlock) {
-  const body = code.slice(tryBlock.open, tryBlock.close);
-  if (!/\b(?:return|break)\b/.test(body)) {
-    return false;
-  }
-  const outer = enclosingOpen(code, tryBlock.open);
-  return outer !== -1 && LOOP_HEADER.test(code.slice(Math.max(0, outer - LOOP_LOOKBACK), outer));
-}
-
 function handles(body, name, type) {
   if (/\bthrow\b/.test(body) || ERROR_RESPONSE.test(body)) {
     return true;
@@ -60,23 +50,44 @@ function handles(body, name, type) {
   return name !== '_' && new RegExp(`(?<![\\w.])${name}\\b`).test(body);
 }
 
+function onlyLogs(code, { index, open, close, name, type }, calls) {
+  const tryBlock = tryBlockBefore(code, index);
+  return !(
+    code.slice(open + 1, close).trim() === '' ||
+    handles(
+      withoutCalls(code, { from: open + 1, to: close }, calls),
+      name.replaceAll('`', ''),
+      type,
+    ) ||
+    (tryBlock !== undefined && isRetry(code, tryBlock))
+  );
+}
+
+function swallowingHandlers(code) {
+  const calls = reportingCalls(code);
+  return [...code.matchAll(CATCH)]
+    .map((match) => {
+      const open = match.index + match[0].length - 1;
+      return {
+        index: match.index,
+        open,
+        close: closingIndex(code, open),
+        name: match[1],
+        type: match[2],
+      };
+    })
+    .filter((handler) => onlyLogs(code, handler, calls));
+}
+
+export function swallowedCatchBlocks(code) {
+  return new Set(swallowingHandlers(code).map(({ open }) => open));
+}
+
 export function catchOnlyLogs(scanned) {
-  const { code } = scanned;
-  return [...code.matchAll(CATCH)].flatMap((match) => {
-    const [, name, type] = match;
-    const open = match.index + match[0].length - 1;
-    const close = closingIndex(code, open);
-    const tryBlock = tryBlockBefore(code, match.index);
-    const rest = withoutLogCalls(code, open + 1, close);
-    if (
-      code.slice(open + 1, close).trim() === '' ||
-      handles(rest, name.replaceAll('`', ''), type) ||
-      (tryBlock !== undefined && isRetry(code, tryBlock))
-    ) {
-      return [];
-    }
-    return [{ rule: 'CatchOnlyLogsOrReturnsDefault', offset: match.index }];
-  });
+  return swallowingHandlers(scanned.code).map(({ index }) => ({
+    rule: 'CatchOnlyLogsOrReturnsDefault',
+    offset: index,
+  }));
 }
 
 function bodyOf(code, close) {

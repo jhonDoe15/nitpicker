@@ -257,15 +257,7 @@ complexity:
   StringLiteralDuplication:
     active: true
     severity: warning
-    excludes:
-      - '**/test/**'
-      - '**/androidTest/**'
-      - '**/commonTest/**'
-      - '**/jvmTest/**'
-      - '**/androidUnitTest/**'
-      - '**/androidInstrumentedTest/**'
-      - '**/jsTest/**'
-      - '**/iosTest/**'
+    excludes: []
     ignoreAnnotated: []
     includes: []
     threshold: 3

@@ -152,14 +152,14 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
       },
     ]);
   });
-  it('reports a catch that logs without the exception and tests without an assertion', () => {
+  it('reports a handled catch that logs without the exception and tests without an assertion', () => {
     const root = projectWithKotlinReports({
       manifest: { kotlinTestSourceRoots: ['src/test/kotlin'] },
     });
     const test = 'src/test/kotlin/demo/BadTest.kt';
     writeFileSync(
       path.join(root, bad),
-      `${KOTLIN_SOURCE}\nval log = LoggerFactory.getLogger(Bad::class.java)\nfun g() {\n  try { run() } catch (e: Exception) { log.error(e.message) }\n}\n`,
+      `${KOTLIN_SOURCE}\nval log = LoggerFactory.getLogger(Bad::class.java)\nfun g() {\n  try { run() } catch (e: Exception) { log.error(e.message); throw IllegalStateException("failed") }\n}\n`,
     );
     mkdirSync(path.dirname(path.join(root, test)), { recursive: true });
     writeFileSync(

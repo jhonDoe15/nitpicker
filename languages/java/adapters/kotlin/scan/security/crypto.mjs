@@ -1,4 +1,4 @@
-import { literalAt, splitArguments } from '../kotlin-source.mjs';
+import { inImport, literalAt, splitArguments } from '../kotlin-source.mjs';
 
 const ALGORITHM_CALL =
   /\b(MessageDigest|Mac|Signature|KeyGenerator)\s*\.\s*getInstance\s*\(|\bDigestUtils\s*\(/g;
@@ -115,7 +115,9 @@ export function weakHashes(scanned) {
 
 export function disabledTlsVerification(scanned) {
   const offsets = TRUST_ALL.flatMap((pattern) =>
-    [...scanned.code.matchAll(pattern)].map(({ index }) => index),
+    [...scanned.code.matchAll(pattern)]
+      .map(({ index }) => index)
+      .filter((index) => !inImport(scanned.code, index)),
   );
   return [...new Set(offsets)]
     .toSorted((left, right) => left - right)

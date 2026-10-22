@@ -10,6 +10,7 @@ import {
   TEST_ASSERTION_MESSAGE,
 } from './kotlin-source-rules.mjs';
 import { TEST_ASSERTION_RULE } from './kotlin-rules.mjs';
+import { readKotlinSourceFindings } from '../scan/kotlin-scan.mjs';
 
 const roots = [];
 
@@ -39,20 +40,68 @@ const finding = (file, rule, identity, message) => ({
 });
 
 describe('readCatchLogFindings', () => {
-  it('flags a catch that logs without the exception, once per call, in main and test roots', () => {
-    const logging = (call) =>
-      `val log = LoggerFactory.getLogger(A::class.java)\nfun f() {\n  try { run() } catch (e: Exception) {\n    ${call}\n    log.error("again")\n  }\n}\n`;
-    const root = projectWith({
-      'src/main/kotlin/A.kt': logging('log.error("failed", e)'),
-      'src/test/kotlin/ATest.kt': logging('log.warn("failed: ${e.message}")'),
-      'src/main/kotlin/B.kt': 'fun g() = 1\n',
-    });
+  const catching = (body) =>
+    `val log = LoggerFactory.getLogger(A::class.java)\nfun f(): Result<Int> {\n  try { return Result.success(run()) } catch (e: Exception) {\n${body}\n  }\n}\n`;
+  const files = {
+    'src/main/kotlin/Swallowed.kt': catching(
+      '    log.error("failed: ${e.message}")\n    return Result.success(0)',
+    ),
+    'src/main/kotlin/Handled.kt': catching(
+      '    log.error("failed: ${e.message}")\n    log.warn("again")\n    return Result.failure(e)',
+    ),
+    'src/main/kotlin/Fixed.kt': catching(
+      '    log.error("failed", e)\n    return Result.failure(e)',
+    ),
+    'src/main/kotlin/Rethrown.kt': catching(
+      '    log.error("failed")\n    throw IllegalStateException("failed", e)',
+    ),
+    'src/test/kotlin/ATest.kt': catching(
+      '    log.warn("failed: ${e.message}")\n    return Result.success(0)',
+    ),
+    'src/main/kotlin/B.kt': 'fun g() = 1\n',
+  };
+  const manifest = {
+    kotlinSourceRoots: ['src/main/kotlin'],
+    kotlinTestSourceRoots: ['src/test/kotlin'],
+  };
 
-    expect(readCatchLogFindings(root, ['src/main/kotlin', 'src/test/kotlin'])).toEqual([
-      finding('src/main/kotlin/A.kt', CATCH_LOG_RULE, 'catch-log:log.error', CATCH_LOG_MESSAGE),
+  it('flags a log call without the exception, once per call, in a catch that handles the error some other way', () => {
+    const root = projectWith(files);
+
+    expect(
+      readCatchLogFindings(root, {
+        sourceRoots: ['src/main/kotlin'],
+        testRoots: ['src/test/kotlin'],
+      }),
+    ).toEqual([
+      finding(
+        'src/main/kotlin/Handled.kt',
+        CATCH_LOG_RULE,
+        'catch-log:log.error',
+        CATCH_LOG_MESSAGE,
+      ),
+      finding(
+        'src/main/kotlin/Handled.kt',
+        CATCH_LOG_RULE,
+        'catch-log:log.warn',
+        CATCH_LOG_MESSAGE,
+      ),
       finding('src/test/kotlin/ATest.kt', CATCH_LOG_RULE, 'catch-log:log.warn', CATCH_LOG_MESSAGE),
-      finding('src/test/kotlin/ATest.kt', CATCH_LOG_RULE, 'catch-log:log.error', CATCH_LOG_MESSAGE),
     ]);
+  });
+
+  it('leaves a catch that only logs to CatchOnlyLogsOrReturnsDefault in main sources, so it is reported once', () => {
+    const root = projectWith(files);
+    const swallowed = readKotlinSourceFindings(root, manifest)
+      .filter(({ rule }) => rule === 'CatchOnlyLogsOrReturnsDefault')
+      .map(({ path: file }) => file);
+    const logged = readCatchLogFindings(root, {
+      sourceRoots: ['src/main/kotlin'],
+      testRoots: ['src/test/kotlin'],
+    }).map(({ path: file }) => file);
+
+    expect(swallowed).toEqual(['src/main/kotlin/Swallowed.kt']);
+    expect(logged.filter((file) => swallowed.includes(file))).toEqual([]);
   });
 });
 

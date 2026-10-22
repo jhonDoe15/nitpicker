@@ -21,12 +21,36 @@ describe('testClassesWithoutTests', () => {
   });
 
   it('flags a test-named function that lacks @Test next to ones that have it', () => {
-    const source = `${IMPORT}class OrderTest {\n    @Test\n    fun totals() {}\n\n    fun \`rounds the total\`() {}\n\n    fun testRefund() {}\n\n    private fun order() = 1\n\n    fun shouldBeHelper(x: Int) = x\n}\n`;
+    const source = `${IMPORT}class OrderTest {\n    @Test\n    fun totals() {}\n\n    fun \`rounds the total\`() {}\n\n    fun testRefund() {}\n\n    private fun order() = 1\n\n    fun shouldBeHelper(x: Int) = x\n\n    fun testVoid(): Unit {\n    }\n}\n`;
 
     expect(found(testClassesWithoutTests, source)).toEqual([
       ['DetachedTestCase', 7, '`rounds the total`'],
       ['DetachedTestCase', 9, 'testRefund'],
+      ['DetachedTestCase', 15, 'testVoid'],
     ]);
+  });
+
+  it('passes test-named helpers and data providers that return a value', () => {
+    const source = [
+      IMPORT,
+      'class PriceTest {',
+      '    fun testCases(): List<Int> = listOf(1, 2)',
+      '',
+      '    fun testOrder(): Order = Order(1)',
+      '',
+      '    fun shouldRound(): Boolean {',
+      '        return true',
+      '    }',
+      '',
+      '    fun `sample order`() = Order(2)',
+      '',
+      '    @ParameterizedTest',
+      '    @MethodSource("testCases")',
+      '    fun prices(n: Int) { assertEquals(n, testOrder().id) }',
+      '}',
+    ].join('\n');
+
+    expect(found(testClassesWithoutTests, source)).toEqual([]);
   });
 
   it.each([
