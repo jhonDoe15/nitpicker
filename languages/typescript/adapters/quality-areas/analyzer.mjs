@@ -18,6 +18,7 @@ export function createQualityAreaAnalyzer({
   concurrencyWeight = 1,
   concurrencyGroup,
   executionPriority = 0,
+  reportedTools = [],
   shardWeight = 1,
 }) {
   return {
@@ -30,6 +31,7 @@ export function createQualityAreaAnalyzer({
     concurrencyWeight,
     concurrencyGroup,
     executionPriority,
+    reportedTools,
     shardWeight,
     requiresDependencies: true,
     createInvocation({ projectRoot, policyRoot, toolRoot, snapshot, ...optionalRoots }) {
@@ -46,10 +48,16 @@ export function createQualityAreaAnalyzer({
   };
 }
 
-function optionalRootArguments({ liveProjectRoot, projectPolicyRoot, baselineRoot }) {
+function optionalRootArguments({
+  liveProjectRoot,
+  projectPolicyRoot,
+  baselineRoot,
+  baselineMovesFile,
+}) {
   return [
     ...(liveProjectRoot === undefined ? [] : ['--live-project-root', liveProjectRoot]),
     ...(projectPolicyRoot === undefined ? [] : ['--project-policy-root', projectPolicyRoot]),
     ...(baselineRoot === undefined ? [] : ['--baseline-root', baselineRoot]),
+    ...(baselineMovesFile === undefined ? [] : ['--baseline-moves-file', baselineMovesFile]),
   ];
 }

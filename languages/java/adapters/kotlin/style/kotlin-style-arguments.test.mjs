@@ -24,7 +24,7 @@ const styleOf = (root, options = {}) =>
   kotlinStyleFile(resolveKotlinTools(root, options), options.conventions ?? {});
 
 describe('what runs without the project', () => {
-  it('passes the isolated defaults for ktfmt: no build style, no editorconfig, no mirror, no detekt file', () => {
+  it('passes the declared ktfmt style for ktfmt, but no editorconfig, no mirror and no detekt file', () => {
     const root = project({
       'build.gradle.kts': 'ktfmt { googleStyle() }',
       '.editorconfig': 'indent_size = 8\n',
@@ -34,7 +34,7 @@ describe('what runs without the project', () => {
     expect(kotlinGradleArguments(root, {})).toEqual([
       '-Pnitpicker.kotlin=true',
       '-Pnitpicker.kotlin.formatter=ktfmt',
-      '-Pnitpicker.kotlin.ktfmtStyle=meta',
+      '-Pnitpicker.kotlin.ktfmtStyle=google',
     ]);
     expect(styleOf(root)).toBeUndefined();
   });
@@ -82,7 +82,7 @@ describe('what runs without the project', () => {
 });
 
 describe('what runs with the project listed', () => {
-  it('puts the .editorconfig files of the head checkout into the ktlint style file', () => {
+  it('puts the .editorconfig files of the head checkout into the ktlint style file, nested ones included, with the followed values last', () => {
     const base = project({ 'build.gradle.kts': 'ktlint', '.editorconfig': 'indent_size = 2\n' });
     const head = project({
       'build.gradle.kts': 'ktlint',
@@ -100,9 +100,80 @@ describe('what runs with the project listed', () => {
       offset: '',
       editorconfigs: [
         { path: '.editorconfig', text: 'root = true\n\nindent_size = 8\n' },
-        { path: 'src/main/kotlin/.editorconfig', text: '[*.kt]\nindent_size = 2\n' },
+        {
+          path: 'src/main/kotlin/.editorconfig',
+          text: '[*.kt]\nindent_size = 2\n\n[*.{kt,kts}]\nindent_size = 4\n',
+        },
       ],
       ktlintDefaults: '[*.{kt,kts}]\nindent_size = 4\n',
+    });
+  });
+
+  it('lets the followed limits win over the head .editorconfig, so an edited width is not enforced', () => {
+    const base = project({ 'build.gradle.kts': 'ktlint' });
+    const head = project({
+      'build.gradle.kts': 'ktlint',
+      '.editorconfig': '[*.{kt,kts}]\nindent_size = 8\nmax_line_length = 160\n',
+    });
+
+    const style = styleOf(base, {
+      policyRoot: head,
+      toolPrecedence: { ktlint: ['project', 'nitpicker'] },
+      conventions: { 'kotlin.indentation': '8', 'kotlin.lineLength': '100' },
+    });
+
+    expect(style).toEqual({
+      offset: '',
+      editorconfigs: [
+        {
+          path: '.editorconfig',
+          text: 'root = true\n\n[*.{kt,kts}]\nindent_size = 8\nmax_line_length = 160\n\n[*.{kt,kts}]\nmax_line_length = 100\n',
+        },
+      ],
+      ktlintDefaults: '[*.{kt,kts}]\nindent_size = 8\nmax_line_length = 100\n',
+      detektConventions: 'style:\n  MaxLineLength:\n    maxLineLength: 100\n',
+    });
+  });
+
+  it('enforces the followed values over nested and ancestor .editorconfig files too', () => {
+    const base = project({ 'build.gradle.kts': 'ktlint' });
+    const head = project({
+      'build.gradle.kts': 'ktlint',
+      '.editorconfig': '[*.kt]\nmax_line_length = 300\n',
+      'src/.editorconfig': '[*.kt]\nmax_line_length = 400\nij_kotlin_allow_trailing_comma = true\n',
+    });
+
+    const style = styleOf(base, {
+      policyRoot: head,
+      toolPrecedence: { ktlint: ['project', 'nitpicker'] },
+      conventions: { 'kotlin.lineLength': '100', 'kotlin.trailingCommas': 'never' },
+    });
+
+    expect(style.editorconfigs.map(({ path: file, text }) => [file, text])).toEqual([
+      [
+        '.editorconfig',
+        'root = true\n\n[*.kt]\nmax_line_length = 300\n\n[*.{kt,kts}]\nmax_line_length = 100\n',
+      ],
+      [
+        'src/.editorconfig',
+        '[*.kt]\nmax_line_length = 400\nij_kotlin_allow_trailing_comma = true\n\n[*.{kt,kts}]\nmax_line_length = 100\nij_kotlin_allow_trailing_comma = false\n',
+      ],
+    ]);
+  });
+
+  it('re-asserts every followed detekt rule in a last layer of its own', () => {
+    const base = project({ 'build.gradle.kts': 'plugins {}' });
+    const head = project({ 'detekt.yml': 'style:\n  WildcardImport:\n    active: false\n' });
+    const options = {
+      policyRoot: head,
+      toolPrecedence: { detekt: ['project', 'nitpicker'] },
+      conventions: { 'kotlin.wildcardImports': 'explicit', 'kotlin.lineLength': '100' },
+    };
+
+    expect(styleOf(base, options)).toEqual({
+      detektConventions: 'style:\n  MaxLineLength:\n    maxLineLength: 100\n',
+      detektEnforced:
+        'style:\n  WildcardImport:\n    active: true\n  MaxLineLength:\n    maxLineLength: 100\n',
     });
   });
 
@@ -125,7 +196,7 @@ describe('what runs with the project listed', () => {
     ]);
   });
 
-  it('layers the project detekt file above the conventions and names it by its head path', () => {
+  it('layers the project detekt file above the conventions, re-applies the followed conventions last and names it by its head path', () => {
     const base = project({ 'build.gradle.kts': 'plugins {}' });
     const head = project({ 'config/detekt/detekt.yml': 'style:\n' });
     const options = {
@@ -139,7 +210,7 @@ describe('what runs with the project listed', () => {
       );
 
     expect(layersOf(['project', 'nitpicker'])).toEqual([
-      '-Pnitpicker.kotlin.detektLayers=conventions,project',
+      '-Pnitpicker.kotlin.detektLayers=conventions,project,enforced',
       `-Pnitpicker.kotlin.detektConfig=${path.join(head, 'config/detekt/detekt.yml')}`,
     ]);
     expect(layersOf(['nitpicker', 'project'])).toEqual([

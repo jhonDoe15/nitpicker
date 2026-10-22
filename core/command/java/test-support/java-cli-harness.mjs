@@ -1,4 +1,6 @@
-import { afterEach, beforeEach, vi } from 'vitest';
+import { tmpdir } from 'node:os';
+import { afterEach, beforeEach, expect, vi } from 'vitest';
+import { exactText } from '../../../diff/reporting/test-support/output-expectations.mjs';
 import {
   fakeGradle,
   useInProcessGradle,
@@ -53,4 +55,10 @@ export function useGradleFixtures(runNitpickerCli) {
 export function unusedFieldMessage(name, file = 'src/main/java/demo/A.java') {
   const { fix } = readCatalog('pmd').UnusedPrivateField;
   return `Avoid unused field: ${name}. ${fix} ${exceptionHint('pmd/UnusedPrivateField', file)}`;
+}
+
+export function gradleFailureMessage(detail) {
+  const suffix = /[A-Za-z0-9]{6}/;
+  return expect.stringMatching(exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${suffix}/gradle.log
+${detail}`);
 }

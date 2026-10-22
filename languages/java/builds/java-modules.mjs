@@ -41,6 +41,21 @@ function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
   return roots;
 }
 
+function moduleProject(projectRoot, moduleDir, { reportDirectory }) {
+  const prefix = prefixOf(projectRoot, moduleDir);
+  const manifest = readManifest(moduleDir, reportDirectory);
+  function roots(name) {
+    return (manifest[name] ?? []).map((root) => inModule(prefix, root));
+  }
+  return {
+    reportRoot: path.join(moduleDir, reportDirectory),
+    qualifier: prefix,
+    sourceRoots: roots('sourceRoots'),
+    kotlinSourceRoots: roots('kotlinSourceRoots'),
+    resourceRoots: roots('resourceRoots'),
+  };
+}
+
 export function readModuleFindings(projectRoot, moduleDirs, options) {
   if (moduleDirs.length === 1 && path.resolve(moduleDirs[0]) === path.resolve(projectRoot)) {
     return readModule(projectRoot, { ...options, modulePath: '' });
@@ -58,13 +73,7 @@ export function readModuleFindings(projectRoot, moduleDirs, options) {
   return [
     ...moduleFindings,
     ...projectWideFindings(projectRoot, {
-      projects: moduleDirs.map((moduleDir) => ({
-        reportRoot: path.join(moduleDir, options.reportDirectory),
-        qualifier: prefixOf(projectRoot, moduleDir),
-        sourceRoots: (readManifest(moduleDir, options.reportDirectory).sourceRoots ?? []).map(
-          (root) => inModule(prefixOf(projectRoot, moduleDir), root),
-        ),
-      })),
+      projects: moduleDirs.map((moduleDir) => moduleProject(projectRoot, moduleDir, options)),
       mergedRoot: path.join(projectRoot, options.reportDirectory),
       manifest: roots,
       kotlin: false,

@@ -1,15 +1,9 @@
-import { spawnSync } from 'node:child_process';
 import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runJavaDiff } from '../java-diff.mjs';
-import {
-  commitBranch,
-  GRADLE_STEP_TIMEOUT_MS,
-  runGitIn,
-  summarize,
-} from '../test-support/gradle-e2e.mjs';
+import { commitBranch, runGitIn, summarize } from '../test-support/gradle-e2e.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -38,14 +32,31 @@ const PROJECT_PMD_RULESET = `<?xml version="1.0"?>
 </ruleset>
 `;
 
-const EMPTY_CHECKSTYLE_CONFIG = `<?xml version="1.0"?>
+const PROJECT_CHECKSTYLE_CONFIG = `<?xml version="1.0"?>
 <!DOCTYPE module PUBLIC "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
   "https://checkstyle.org/dtds/configuration_1_3.dtd">
-<module name="Checker"/>
+<module name="Checker">
+  <module name="SuppressionFilter">
+    <property name="file" value="\${config_loc}/suppressions.xml"/>
+  </module>
+  <module name="LineLength">
+    <property name="max" value="200"/>
+  </module>
+  <module name="TreeWalker">
+    <module name="FinalParameters"/>
+  </module>
+</module>
+`;
+
+const PROJECT_CHECKSTYLE_SUPPRESSIONS = `<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+  "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<suppressions>
+  <suppress checks="NoSuchCheck" files="Nothing\\.java"/>
+</suppressions>
 `;
 
 const GRADLE_PROPERTIES_OPT_IN = [
-  'nitpicker.pmd.nitpickerConfig=false',
   'nitpicker.pmd.projectConfig=config/pmd/ruleset.xml',
   'nitpicker.checkstyle.projectConfig=config/checkstyle/checkstyle.xml',
   '',
@@ -94,14 +105,14 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
     commitBranch(repository, 'hatches', {
       'src/main/java/demo/Bad.java': SUPPRESSED,
       'config/pmd/ruleset.xml': PROJECT_PMD_RULESET,
-      'config/checkstyle/checkstyle.xml': EMPTY_CHECKSTYLE_CONFIG,
+      'config/checkstyle/checkstyle.xml': PROJECT_CHECKSTYLE_CONFIG,
+      'config/checkstyle/suppressions.xml': PROJECT_CHECKSTYLE_SUPPRESSIONS,
       'gradle.properties': GRADLE_PROPERTIES_OPT_IN,
       'src/test/java/demo/SwallowingTest.java': SWALLOWING_TEST,
     });
   });
 
   afterAll(() => {
-    spawnSync(gradle, ['--stop'], { stdio: 'ignore' });
     rmSync(repository, { recursive: true, force: true });
   });
 
@@ -110,43 +121,44 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
   let defaultResult;
   const defaultDiff = () => (defaultResult ??= diffOf());
 
-  it(
-    "ignores inline Checkstyle suppressions and the project's configs without an opt-in",
-    () => {
-      const result = defaultDiff();
+  it("ignores inline Checkstyle suppressions and the project's configs without an opt-in", () => {
+    const result = defaultDiff();
 
-      expect(result.failed).toBe(true);
-      expect(ofFile(result, 'Bad.java')).toEqual([
-        'errorprone DefaultCharset Bad.java',
-        'errorprone EmptyCatch Bad.java',
-        'google-java-format format Bad.java',
-        'pit mutant-nocoverage Bad.java',
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(result.failed).toBe(true);
+    expect(ofFile(result, 'Bad.java')).toEqual([
+      'errorprone DefaultCharset Bad.java',
+      'errorprone EmptyCatch Bad.java',
+      'google-java-format format Bad.java',
+      'pit mutant-nocoverage Bad.java',
+    ]);
+  }, 180_000);
 
-  it(
-    'lints test sources with PMD, Error Prone, the formatter and the line length, without the assertion-style rules',
-    () => {
-      expect(ofFile(defaultDiff(), 'SwallowingTest.java')).toEqual([
-        'errorprone EmptyCatch SwallowingTest.java',
-        'google-java-format format SwallowingTest.java',
-        'pmd AvoidCatchingGenericException SwallowingTest.java',
-        'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
-        'structure line-length-limit SwallowingTest.java',
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+  it('lints test sources with PMD, Error Prone, the formatter and the line length, without the assertion-style rules', () => {
+    expect(ofFile(defaultDiff(), 'SwallowingTest.java')).toEqual([
+      'errorprone EmptyCatch SwallowingTest.java',
+      'google-java-format format SwallowingTest.java',
+      'pmd AvoidCatchingGenericException SwallowingTest.java',
+      'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
+      'structure line-length-limit SwallowingTest.java',
+    ]);
+  }, 180_000);
 
-  it(
-    "uses the project's PMD rule set when tools.pmd opts in",
-    () => {
-      const result = diffOf({ policyRoot: repository, toolPrecedence: { pmd: ['project'] } });
+  it("adds the project's PMD rules to nitpicker's when tools.pmd opts in", () => {
+    const result = diffOf({ policyRoot: repository, toolPrecedence: { pmd: ['project'] } });
 
-      expect(ofTool(result, 'pmd')).toEqual(['pmd MethodArgumentCouldBeFinal Bad.java']);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(ofTool(result, 'pmd')).toEqual([
+      'pmd AvoidCatchingGenericException SwallowingTest.java',
+      'pmd MethodArgumentCouldBeFinal Bad.java',
+      'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
+    ]);
+  }, 180_000);
+
+  it("lays the project's Checkstyle config over nitpicker's when tools.checkstyle opts in", () => {
+    const result = diffOf({
+      policyRoot: repository,
+      toolPrecedence: { checkstyle: ['project'] },
+    });
+
+    expect(ofTool(result, 'checkstyle')).toEqual(['checkstyle FinalParameters Bad.java']);
+  }, 180_000);
 });
