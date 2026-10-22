@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../shared/filesystem.mjs';
-import { globToRegExp } from '../../../shared/glob.mjs';
+import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { DUPLICATES_MODE } from '../../../shared/policy.mjs';
 import { RENAMED_SETTINGS, withNormalizedTree } from '../../../shared/renamed-clones/tree.mjs';
 import { resolveTool } from '../tool-resolution.mjs';
@@ -106,7 +106,7 @@ export function renamedReportFile(reportFile) {
 }
 
 function runRenamedJscpd({ cwd, roots, renamed, reportFile, ignore, reportRoot, ...tool }) {
-  const ignored = ignore.map((glob) => globToRegExp(glob));
+  const ignored = ignore.map((glob) => globMatcher(glob));
   const files = renamed.files.filter((file) => !ignored.some((pattern) => pattern.test(file)));
   const runs = withNormalizedTree(
     { projectRoot: cwd, files, syntaxOf: () => renamed.syntax, scratchRoot: reportRoot },
