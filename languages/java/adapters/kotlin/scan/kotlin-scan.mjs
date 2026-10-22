@@ -26,7 +26,7 @@ import { kotlinDeclarations } from './security/sql-values.mjs';
 
 const KOTLIN_SOURCE_TOOL = 'kotlin-source';
 
-const MESSAGES = {
+export const KOTLIN_SOURCE_MESSAGES = {
   ...MARKER_MESSAGES,
   ...DECLARATION_MESSAGES,
   ...CALL_MESSAGES,
@@ -38,7 +38,7 @@ const MESSAGES = {
   ...CLIENT_MESSAGES,
 };
 
-export const KOTLIN_SOURCE_RULES = Object.keys(MESSAGES).map(
+export const KOTLIN_SOURCE_RULES = Object.keys(KOTLIN_SOURCE_MESSAGES).map(
   (rule) => `${KOTLIN_SOURCE_TOOL}/${rule}`,
 );
 
@@ -105,7 +105,7 @@ function finding({ file, scanned, occurrences }, reported) {
     rule: reported.rule,
     path: file,
     identity: `${reported.rule}:${hash(subject)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
-    message: reported.message ?? MESSAGES[reported.rule],
+    message: reported.message ?? KOTLIN_SOURCE_MESSAGES[reported.rule],
     classification: 'enforceable',
     location: { line },
   };
