@@ -172,7 +172,7 @@ export const rule = {
     schema: [],
     messages: {
       unsafePath:
-        "A path built from a parameter can leave the base directory with `../`. Resolve it into a variable and check containment on that variable in an `if` that returns or throws: `const full = path.resolve(base, name); if (!full.startsWith(base + path.sep)) { return { kind: 'outside-base' }; }`. If the parameter is a fixed file name, add an exception for this rule in nitpicker.config.json.",
+        "A path built from a parameter can leave the base directory with `../`. Resolve it into a variable and check containment on that variable in an `if` that returns or throws: `const full = path.resolve(base, name); if (!full.startsWith(base + path.sep)) { return { kind: 'outside-base' }; }`. An exception fits only when the parameter is a fixed file name.",
     },
   },
   create(context) {

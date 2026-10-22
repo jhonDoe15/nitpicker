@@ -7,9 +7,9 @@ export const exceptionHintCases = [
   ['null', 'export const value = null;'],
   ['null type', 'export type Maybe = string | null;'],
 ].map(([name, banned]) => ({
-  name: `${name} names an exception for its own rule`,
+  name: `${name} says when an exception fits`,
   config: strictSyntaxConfig,
   filename: 'src/main/ui/fixture.tsx',
   banned,
-  allowed: 'add an exception for this rule for those paths in nitpicker.config.json',
+  allowed: 'An exception fits only when a framework or library requires it',
 }));
