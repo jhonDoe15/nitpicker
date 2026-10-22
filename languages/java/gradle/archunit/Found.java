@@ -30,6 +30,16 @@ final class Found {
     sink.add(new Found(rule, owner.getName(), Spring.sourceFile(owner), detail));
   }
 
+  static void dropShadowed(Set<Found> sink, String rule, Set<String> preferred) {
+    sink.removeIf(
+        found -> found.rule.equals(rule)
+            && sink.stream()
+                .anyMatch(
+                    other -> preferred.contains(other.rule)
+                        && other.className.equals(found.className)
+                        && other.detail.equals(found.detail)));
+  }
+
   String toJson() {
     return "{\"rule\":" + quote(rule) + ",\"className\":" + quote(className) + ",\"fileName\":"
         + quote(fileName) + ",\"detail\":" + quote(detail) + "}";

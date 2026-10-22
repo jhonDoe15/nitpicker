@@ -26,6 +26,14 @@ const MESSAGES = {
   },
   'spring-service-web': ({ simple, detail }) =>
     `Keep ${simple} free of web types: take and return plain values, throw a domain exception for errors, and map them to and from ${detail} in the controller or a @ControllerAdvice.`,
+  'spring-controller-controller': ({ simple, detail }) =>
+    `Move what ${simple} needs from ${detail} into a service both controllers call: a controller handles its own requests and does not hold another controller.`,
+  'spring-repository-service': ({ simple, detail }) =>
+    `Have the service call ${simple} and pass it what it needs from ${detail}: a repository only reads and writes data and depends on no service.`,
+  'spring-scope-capture': ({ simple, detail }) => {
+    const [scope, bean] = detail.split(':');
+    return `Inject ObjectProvider<${bean}> into ${simple} and call getObject() where it is used, or give ${bean} a scoped proxy (proxyMode = ScopedProxyMode.TARGET_CLASS, which @RequestScope and @SessionScope set): ${simple} is a singleton, so it gets one ${bean} when it is created: outside a ${scope} that fails, and inside one it keeps that ${scope}'s bean for every later caller.`;
+  },
   'spring-test-placement': ({ simple }) =>
     `Test ${simple} with new and mocks, or run it as an integration test: name it ${simple.replace(/Tests?$/u, '')}IT (Failsafe runs *IT on Maven) or put it in an integration test source set. Both keep its package, so package-private classes stay visible; a package named integration or it also counts.`,
   'spring-no-dirties-context': ({ simple }) =>

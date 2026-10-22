@@ -10,6 +10,7 @@ const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixture = path.resolve(import.meta.dirname, '../fixtures/spring-arch-kotlin-project');
 
 const EXPECTED = [
+  'spring-controller-controller shop.carts.CartController shop.orders.OrderController CartController.kt',
   'spring-controller-entity shop.orders.OrderController all:shop.orders.Order OrderController.kt',
   'spring-controller-repository shop.customers.CustomerReport org.springframework.jdbc.core.JdbcTemplate CustomerReport.kt',
   'spring-controller-repository shop.orders.OrderController shop.orders.OrderRepository OrderController.kt',
@@ -19,6 +20,9 @@ const EXPECTED = [
   'spring-layout shop.domain.model.Payment domain Payment.kt',
   'spring-layout shop.service.Legacy service Legacy.kt',
   'spring-no-dirties-context shop.OrderFlowTest  OrderFlowTest.kt',
+  'spring-repository-service shop.carts.CartRepository shop.carts.CartService CartController.kt',
+  'spring-scope-capture shop.carts.CartConfig request:shop.carts.Basket CartConfig.kt',
+  'spring-scope-capture shop.carts.CartService request:shop.carts.Basket CartService.kt',
   'spring-service-web shop.billing.BillingService org.springframework.http.ResponseEntity BillingService.kt',
   'spring-service-web shop.billing.Refunds org.springframework.web.server.ResponseStatusException Refunds.kt',
   'spring-service-web shop.billing.Refunds org.springframework.web.server.ServerWebExchange Refunds.kt',

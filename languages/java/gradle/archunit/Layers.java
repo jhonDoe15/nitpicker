@@ -13,6 +13,10 @@ final class Layers {
   static final String CONTROLLER_REPOSITORY = "spring-controller-repository";
   static final String CONTROLLER_ENTITY = "spring-controller-entity";
   static final String SERVICE_WEB = "spring-service-web";
+  static final String CONTROLLER_CONTROLLER = "spring-controller-controller";
+  static final String REPOSITORY_SERVICE = "spring-repository-service";
+  static final Set<String> DEPENDENCY_RULES =
+      Set.of(CONTROLLER_REPOSITORY, CONTROLLER_CONTROLLER, REPOSITORY_SERVICE, SERVICE_WEB);
   private static final List<String> HANDLER_ANNOTATIONS =
       List.of(
           "org.springframework.web.bind.annotation.RequestMapping",
@@ -20,23 +24,56 @@ final class Layers {
 
   private Layers() {}
 
-  static void check(JavaClasses main, Set<Found> sink) {
+  static void check(JavaClasses main, Roles roles, Set<Found> sink) {
     for (JavaClass type : main) {
       JavaClass owner = Spring.owner(type);
-      if (Spring.isController(owner)) {
-        controllerDependsOnRepository(type, sink);
+      if (roles.isController(owner)) {
+        controllerDependsOnRepository(type, roles, sink);
+        controllerHoldsController(type, roles, sink);
         entityInSignature(type, sink);
       }
-      if (Spring.isService(owner) || Spring.isRepository(owner)) {
-        dependsOnWebLayer(type, sink);
+      if (roles.isService(owner) || roles.isRepository(owner)) {
+        dependsOnWebLayer(type, roles, sink);
+      }
+      if (roles.isRepository(owner)) {
+        repositoryDependsOnService(type, roles, sink);
       }
     }
   }
 
-  private static void controllerDependsOnRepository(JavaClass type, Set<Found> sink) {
+  private static void controllerDependsOnRepository(JavaClass type, Roles roles, Set<Found> sink) {
     for (Dependency dependency : type.getDirectDependenciesFromSelf()) {
-      if (Spring.isDataAccess(dependency.getTargetClass())) {
+      if (roles.isDataAccess(dependency.getTargetClass())) {
         Found.add(sink, CONTROLLER_REPOSITORY, type, dependency.getTargetClass().getName());
+      }
+    }
+  }
+
+  private static void controllerHoldsController(JavaClass type, Roles roles, Set<Found> sink) {
+    JavaClass owner = Spring.owner(type);
+    heldTypes(type).stream()
+        .filter(target -> roles.isController(target) && !Spring.owner(target).equals(owner))
+        .forEach(target -> Found.add(sink, CONTROLLER_CONTROLLER, type, target.getName()));
+  }
+
+  private static Set<JavaClass> heldTypes(JavaClass type) {
+    Set<JavaClass> types = new LinkedHashSet<>();
+    for (JavaField field : type.getFields()) {
+      types.addAll(field.getType().getAllInvolvedRawTypes());
+    }
+    for (JavaCodeUnit codeUnit : type.getCodeUnits()) {
+      for (JavaType parameter : codeUnit.getParameterTypes()) {
+        types.addAll(parameter.getAllInvolvedRawTypes());
+      }
+    }
+    return types;
+  }
+
+  private static void repositoryDependsOnService(JavaClass type, Roles roles, Set<Found> sink) {
+    for (Dependency dependency : type.getDirectDependenciesFromSelf()) {
+      JavaClass target = dependency.getTargetClass();
+      if (roles.isService(target) && !Spring.owner(target).equals(Spring.owner(type))) {
+        Found.add(sink, REPOSITORY_SERVICE, type, target.getName());
       }
     }
   }
@@ -69,10 +106,10 @@ final class Layers {
     return types;
   }
 
-  private static void dependsOnWebLayer(JavaClass type, Set<Found> sink) {
+  private static void dependsOnWebLayer(JavaClass type, Roles roles, Set<Found> sink) {
     for (Dependency dependency : type.getDirectDependenciesFromSelf()) {
       JavaClass target = dependency.getTargetClass();
-      if (Spring.isWebLayer(target) && !Spring.owner(target).equals(Spring.owner(type))) {
+      if (roles.isWebLayer(target) && !Spring.owner(target).equals(Spring.owner(type))) {
         Found.add(sink, SERVICE_WEB, type, target.getName());
       }
     }
