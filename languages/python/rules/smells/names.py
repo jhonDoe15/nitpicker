@@ -23,19 +23,6 @@ GENERIC_WORDS = {
 FRAMEWORK_BASES = ("Manager", "QuerySet")
 COMPOUND_TERMS = {"manager": "context", "managers": "context"}
 VERSION_WORD = re.compile(r"^v?\d*$")
-CONTAINER_WORDS = {
-    "functions",
-    "funcs",
-    "methods",
-    "module",
-    "modules",
-    "mixin",
-    "mixins",
-    "base",
-    "classes",
-    "tools",
-    "code",
-}
 ACCEPTED_MANAGER_WORDS = {
     "authentication",
     "transaction",
@@ -65,13 +52,13 @@ def is_generic(name):
     if not words:
         return False
     last = words[-1]
-    if last in GENERIC_WORDS:
-        return not (
-            last in {"manager", "managers"}
-            and len(words) > 1
-            and words[-2] in ACCEPTED_MANAGER_WORDS
-        )
-    return last in CONTAINER_WORDS and len(words) > 1 and words[-2] in GENERIC_WORDS
+    if last not in GENERIC_WORDS:
+        return False
+    return not (
+        last in {"manager", "managers"}
+        and len(words) > 1
+        and words[-2] in ACCEPTED_MANAGER_WORDS
+    )
 
 
 def follows_framework_type(node):
