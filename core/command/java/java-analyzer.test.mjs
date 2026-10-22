@@ -103,6 +103,7 @@ describe('a build without a project that applies the plugin', () => {
 const PINNED_TOOLS = [
   'pmd',
   'spotbugs',
+  'findSecBugs',
   'googleJavaFormat',
   'palantirJavaFormat',
   'jacoco',

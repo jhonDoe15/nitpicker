@@ -8,6 +8,8 @@ const PERMISSIVE_LICENSES = new Set([
   'CC0-1.0',
   'ISC',
   'MIT',
+  'PSF-2.0',
+  'Public Domain',
   'Unlicense',
 ]);
 

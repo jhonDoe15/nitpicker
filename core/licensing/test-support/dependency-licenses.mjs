@@ -13,16 +13,21 @@ export const JAVA_TOOL_LICENSES = {
   spotbugs: 'LGPL-2.1',
   findSecBugs: 'LGPL-3.0',
   googleJavaFormat: 'Apache-2.0',
+  palantirJavaFormat: 'Apache-2.0',
   jacoco: 'EPL-2.0',
   checkstyle: 'LGPL-2.1',
   lizard: 'MIT',
   pitest: 'Apache-2.0',
   pitestJunit5: 'Apache-2.0',
+  pitestTestng: 'Apache-2.0',
+  archunit: 'Apache-2.0',
   detekt: 'Apache-2.0',
   detektKotlin: 'Apache-2.0',
   ktlint: 'MIT',
   ktfmt: 'Apache-2.0',
   kotlinCompiler: 'Apache-2.0',
+  errorProne: 'Apache-2.0',
+  nullAway: 'MIT',
 };
 
 const JAVA_ONLY_PERMISSIVE = new Set(['BSD-style']);

@@ -130,4 +130,108 @@
       </property>
     </properties>
   </rule>
+  <rule name="HttpWithoutTimeout" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Give this HTTP call a timeout: HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)) on every request, HttpClient.newBuilder().connectTimeout(...) for the client, and setConnectTimeout and setReadTimeout on an HttpURLConnection. Without one a slow or silent server holds the thread forever. If it is right here, add an exception for pmd/HttpWithoutTimeout in nitpicker.config.json.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $chain := function($node) {
+      $node/ancestor::MethodCall[let $call := . return
+        not($node/ancestor-or-self::*[exists(ancestor::*[. is $call])][preceding-sibling::*])]
+    },
+    $stored := function($node) {
+      string(($node/parent::VariableDeclarator/VariableId/@Name,
+              $node/parent::CastExpression/parent::VariableDeclarator/VariableId/@Name,
+              $node/parent::AssignmentExpression/*[1]/@Name,
+              $node/parent::CastExpression/parent::AssignmentExpression/*[1]/@Name)[1])
+    },
+    $scope := function($node) {
+      ($node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer
+                         or self::LambdaExpression][1], $node/ancestor::ClassBody[last()])[1]
+    },
+    $unset := function($node, $setters) {
+      let $chained := $chain($node)
+      return if ($chained[@MethodName = $setters]) then false()
+        else if ($chained[@MethodName = 'build']) then true()
+        else let $name := $stored($node) return $name != ''
+          and not($scope($node)//MethodCall[@MethodName = $setters][.//VariableAccess[@Name = $name]])
+    }
+return (
+  //MethodCall[@MethodName = 'newHttpClient'][*[1][self::TypeExpression][pmd-java:typeIs('java.net.http.HttpClient')]]
+  | //MethodCall[@MethodName = 'newBuilder'][*[1][self::TypeExpression][pmd-java:typeIs('java.net.http.HttpClient')]]
+      [$unset(., 'connectTimeout')]
+  | //MethodCall[@MethodName = 'newBuilder'][*[1][self::TypeExpression][pmd-java:typeIs('java.net.http.HttpRequest')]]
+      [$unset(., 'timeout')]
+  | //MethodCall[@MethodName = 'openConnection'][*[1][pmd-java:typeIs('java.net.URL')]]
+      [parent::CastExpression[pmd-java:typeIs('java.net.HttpURLConnection')]
+       or parent::VariableDeclarator/parent::LocalVariableDeclaration[pmd-java:typeIs('java.net.HttpURLConnection')]]
+      [let $name := $stored(.) return $name != ''
+        and not($scope(.)//MethodCall[@MethodName = 'setConnectTimeout'][.//VariableAccess[@Name = $name]]
+                and $scope(.)//MethodCall[@MethodName = 'setReadTimeout'][.//VariableAccess[@Name = $name]])]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="WeakHmac" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Sign with HMAC-SHA256: Mac.getInstance(&quot;HmacSHA256&quot;) (or Hashing.hmacSha256, HmacAlgorithms.HMAC_SHA_256). HMAC-SHA1 stays allowed where a protocol fixes it; HMAC-MD5 is not. If it is right here, add an exception for pmd/WeakHmac in nitpicker.config.json.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[@MethodName = 'getInstance'][*[1][self::TypeExpression][pmd-java:typeIs('javax.crypto.Mac')]]
+  [ArgumentList/*[1][let $name := self::VariableAccess/@Name
+     return (string(@ConstValue), //VariableDeclarator[VariableId/@Name = $name]/StringLiteral/@ConstValue)
+       [matches(., '^hmac(md2|md4|md5)$', 'i')]]]
+| //MethodCall[@MethodName = 'hmacMd5'][*[1][self::TypeExpression][pmd-java:typeIs('com.google.common.hash.Hashing')]]
+| //MethodCall[starts-with(@MethodName, 'hmacMd5') or @MethodName = 'getHmacMd5']
+    [*[1][self::TypeExpression][pmd-java:typeIs('org.apache.commons.codec.digest.HmacUtils')]]
+| //*[self::FieldAccess or self::VariableAccess][@Name = 'HMAC_MD5']
+    [pmd-java:typeIs('org.apache.commons.codec.digest.HmacAlgorithms')]
+| //ConstructorCall[pmd-java:typeIs('org.bouncycastle.crypto.macs.HMac')]
+    [ArgumentList/ConstructorCall[pmd-java:typeIs('org.bouncycastle.crypto.digests.MD5Digest')
+      or pmd-java:typeIs('org.bouncycastle.crypto.digests.MD4Digest')
+      or pmd-java:typeIs('org.bouncycastle.crypto.digests.MD2Digest')]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="TlsVerificationOff" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Keep certificate and hostname verification on in every environment, also behind a flag or an environment variable. For a private or self-signed CA, trust that CA: a KeyStore holding it, given to a TrustManagerFactory (or a Spring SSL bundle). Trusting every certificate or host lets anyone on the network read and change the traffic. If it is right here, add an exception for pmd/TlsVerificationOff in nitpicker.config.json.">
+    <priority>1</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $trustAll := function($node) {
+      $node[pmd-java:typeIs('io.netty.handler.ssl.util.InsecureTrustManagerFactory')
+        or pmd-java:typeIs('org.apache.http.conn.ssl.NoopHostnameVerifier')
+        or pmd-java:typeIs('org.apache.hc.client5.http.ssl.NoopHostnameVerifier')
+        or pmd-java:typeIs('org.apache.http.conn.ssl.AllowAllHostnameVerifier')
+        or pmd-java:typeIs('org.apache.http.conn.ssl.TrustAllStrategy')
+        or pmd-java:typeIs('org.apache.http.conn.ssl.TrustSelfSignedStrategy')
+        or pmd-java:typeIs('org.apache.hc.client5.http.ssl.TrustAllStrategy')
+        or pmd-java:typeIs('org.apache.hc.client5.http.ssl.TrustSelfSignedStrategy')]
+    },
+    $acceptsAll := function($lambda) {
+      $lambda/*[last()][self::BooleanLiteral[@True = true()]
+        or self::Block[count(*) = 1]/ReturnStatement/BooleanLiteral[@True = true()]]
+    }
+return (
+  //FieldAccess[@Name = 'INSTANCE'][TypeExpression[$trustAll(.)]]
+  | //ConstructorCall[$trustAll(.)]
+  | //FieldAccess[@Name = 'ALLOW_ALL_HOSTNAME_VERIFIER']
+  | //LambdaExpression[$acceptsAll(.)]
+      [pmd-java:typeIs('javax.net.ssl.HostnameVerifier')
+       or pmd-java:typeIs('org.apache.http.ssl.TrustStrategy')
+       or pmd-java:typeIs('org.apache.hc.core5.ssl.TrustStrategy')
+       or parent::ArgumentList/parent::MethodCall[@MethodName = ('setHostnameVerifier', 'setDefaultHostnameVerifier',
+            'hostnameVerifier', 'setSSLHostnameVerifier', 'loadTrustMaterial')]]
+  | //MethodCall[@MethodName = 'setProperty'][*[1][self::TypeExpression][pmd-java:typeIs('java.lang.System')]]
+      [ArgumentList/*[1][@ConstValue = 'jdk.internal.httpclient.disableHostnameVerification']]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
 </ruleset>

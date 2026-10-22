@@ -1711,10 +1711,11 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   initializer, a constructor, a `@Bean` method or returned from a `static` factory method;
   `SpringHttpClientTimeouts` checks those places and reports `new RestTemplate()` without a later
   `setRequestFactory(...)`, `RestClient.create(...)`/`WebClient.create(...)` (except
-  `RestClient.create(restTemplate)`, which keeps the template's factory), `HttpClient.newHttpClient()`,
-  a `RestClient.builder()`, `WebClient.builder()` or `HttpClient.newBuilder()` whose call chain has
-  no `requestFactory`, `clientConnector` or `connectTimeout`, and a `SimpleClientHttpRequestFactory`
-  or `HttpComponentsClientHttpRequestFactory` whose variable never gets a timeout setter.
+  `RestClient.create(restTemplate)`, which keeps the template's factory), a `RestClient.builder()`
+  or `WebClient.builder()` whose call chain has no `requestFactory` or `clientConnector`, and a
+  `SimpleClientHttpRequestFactory` or `HttpComponentsClientHttpRequestFactory` whose variable never
+  gets a timeout setter. The JDK `HttpClient` is left to `HttpWithoutTimeout`, which runs on every
+  Java project.
 - `SpringNoErrorLeak` fires for `getStackTrace()` and, for an `Exception`, `RuntimeException`,
   `Throwable`, `IllegalArgumentException`, `IllegalStateException`, `NullPointerException`,
   `IOException`, `UncheckedIOException`, `DataAccessException`, `TransactionException`,
@@ -1855,6 +1856,23 @@ choose the column from a fixed set. Identity ignores the counters of lambdas and
 is reported for a log line built from a tainted value. Not detected: a view or response body
 written from input in a `@ResponseBody` string, a value stored in a field and used later, and
 taint that leaves the analyzed classes through a library call.
+
+**What find-sec-bugs misses, as PMD rules.** Three checks the TypeScript and Python presets have
+are not in the plugin, so `pmd-main-ruleset.xml` adds them for main sources of every Java project
+(Gradle and Maven, Spring or not):
+
+| Rule                     | Reports                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Allowed form                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `pmd/HttpWithoutTimeout` | `HttpClient.newHttpClient()`; an `HttpClient.newBuilder()` without `connectTimeout`, or an `HttpRequest.newBuilder()` without `timeout`, either in the chain that builds it or on the variable that holds the builder; an `HttpURLConnection` from `openConnection()` whose variable does not get both `setConnectTimeout` and `setReadTimeout`. A builder returned or passed on unbuilt is not judged, nor is a plain `URLConnection` (it may be a file or jar resource).                                                                                               | `HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10))`, `HttpClient.newBuilder().connectTimeout(...)` |
+| `pmd/WeakHmac`           | `Mac.getInstance` with `HmacMD5`, `HmacMD4` or `HmacMD2` (any case, also through a constant), Guava `Hashing.hmacMd5`, commons-codec `HmacUtils.hmacMd5*` and `HmacAlgorithms.HMAC_MD5`, and Bouncy Castle `new HMac(new MD5Digest())`. HMAC-SHA1 passes, as in the other presets: HMAC does not rest on collision resistance and protocols such as TOTP fix it.                                                                                                                                                                                                         | `Mac.getInstance("HmacSHA256")`, `Hashing.hmacSha256`, `HmacAlgorithms.HMAC_SHA_256`                         |
+| `pmd/TlsVerificationOff` | Trust-all and accept-any-host objects from libraries, which the plugin does not see because they are not project classes: Netty `InsecureTrustManagerFactory`, Apache HttpClient 4 and 5 `NoopHostnameVerifier`, `AllowAllHostnameVerifier`, `ALLOW_ALL_HOSTNAME_VERIFIER`, `TrustAllStrategy` and `TrustSelfSignedStrategy`; a lambda that returns `true` as a `HostnameVerifier` or `TrustStrategy`; and `System.setProperty("jdk.internal.httpclient.disableHostnameVerification", ...)`. They are reported also inside an `if` on a flag or an environment variable. | A trust store holding the private CA, given to a `TrustManagerFactory` (or a Spring SSL bundle)              |
+
+A trust-all `X509TrustManager` or `HostnameVerifier` class of the project, anonymous ones included,
+is find-sec-bugs' `WEAK_TRUST_MANAGER` and `WEAK_HOSTNAME_VERIFIER`, so the PMD rule leaves classes
+alone and each site is reported once. Test sources are not checked: a test server with a
+self-signed certificate is normal there. `languages/java/adapters/java-e2e/fixtures/review-rules`
+marks the reported and the allowed forms; `java-spring-review.e2e.test.mjs` checks them on Gradle and
+Maven.
 
 ## Spring configuration files
 
