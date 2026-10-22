@@ -6,6 +6,7 @@ import java.util.*;
 import nitpicker.kotlinpsi.bodies.Initializers;
 import nitpicker.kotlinpsi.common.Frame;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
+import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.*;
 
@@ -102,6 +103,7 @@ final class Declarations {
     return m(
         "name", parameter.getName(), "type", clip(parameter.getTypeReference()),
         "vararg", parameter.isVarArg(), "default", parameter.hasDefaultValue(),
+        "defaultValue", clip(parameter.getDefaultValue()),
         "property", parameter.hasValOrVar() ? (parameter.isMutable() ? "var" : "val") : null,
         "line", state.lineOf(parameter.getTextOffset()), "annotations", annotationNames(parameter),
         "annotationEntries", annotationEntries(parameter));
@@ -144,6 +146,8 @@ final class Declarations {
             "returnType", clip(function.getTypeReference()), "parameters", parameters,
             "hasBody", body != null,
             "emptyBody", body instanceof KtBlockExpression && ((KtBlockExpression) body).getStatements().isEmpty(),
+            "expressionBody", body != null && !(body instanceof KtBlockExpression) ? Boolean.TRUE : null,
+            "returns", body instanceof KtNameReferenceExpression ? nameOf(body) : null,
             "forward", forward(function)));
     return new Frame(frame, m("k", "fun", "name", function.getName()));
   }
@@ -159,7 +163,8 @@ final class Declarations {
             "name", "<init>", "line", state.lineOf(constructor.getTextOffset()),
             "owner", owner == null ? "" : owner.data.get("qualified"), "local", false,
             "visibility", effective(visibility(constructor), frame), "modifiers", List.of(),
-            "annotations", annotationNames(constructor), "typeParameters", false, "receiver", null,
+            "annotations", annotationNames(constructor), "annotationEntries", annotationEntries(constructor),
+            "typeParameters", false, "receiver", null,
             "returnType", null, "parameters", parameters, "hasBody", true, "emptyBody", false, "forward", null));
     return new Frame(frame, m("k", "fun", "name", "<init>"));
   }
@@ -175,9 +180,26 @@ final class Declarations {
             "name", property.getName(), "line", state.lineOf(property.getTextOffset()),
             "owner", owner.data.get("qualified"), "type", clip(property.getTypeReference()),
             "var", property.isVar(), "lateinit", property.hasModifier(KtTokens.LATEINIT_KEYWORD),
-            "delegated", property.getDelegate() != null, "annotations", annotationNames(property),
+            "delegated", property.getDelegate() != null, "computed", computed(property),
+            "annotations", annotationNames(property),
             "annotationEntries", annotationEntries(property), "initializer", Initializers.callee(property),
             "literal", Initializers.literal(property)));
+  }
+
+  private static Boolean computed(KtProperty property) {
+    KtPropertyAccessor getter = property.getGetter();
+    if (property.hasInitializer() || property.hasDelegate() || getter == null || !getter.hasBody()) {
+      return null;
+    }
+    for (KtPropertyAccessor accessor : property.getAccessors()) {
+      for (KtNameReferenceExpression name
+          : PsiTreeUtil.collectElementsOfType(accessor, KtNameReferenceExpression.class)) {
+        if ("field".equals(name.getReferencedName())) {
+          return null;
+        }
+      }
+    }
+    return Boolean.TRUE;
   }
 
   void declareTypeAlias(KtTypeAlias alias) {
@@ -215,6 +237,7 @@ final class Declarations {
     String name = nameOf(call.getCalleeExpression());
     return name == null ? null
         : m("name", name, "qualifier", clip(receiver), "typeArguments", !call.getTypeArguments().isEmpty(),
+            "typeArgumentList", clip(call.getTypeArgumentList()),
             "arguments", arguments(call));
   }
 }

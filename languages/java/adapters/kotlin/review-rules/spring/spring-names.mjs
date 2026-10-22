@@ -11,6 +11,50 @@ const DEFAULT_PACKAGES = [
   'kotlin.jvm',
   'java.lang',
 ];
+const BUILTIN_TYPES = new Set([
+  'Any',
+  'Error',
+  'Exception',
+  'Throwable',
+  'RuntimeException',
+  'IllegalArgumentException',
+  'IllegalStateException',
+  'NullPointerException',
+  'NumberFormatException',
+  'IndexOutOfBoundsException',
+  'ArrayIndexOutOfBoundsException',
+  'StringIndexOutOfBoundsException',
+  'ClassCastException',
+  'ArithmeticException',
+  'UnsupportedOperationException',
+  'NoSuchElementException',
+  'ConcurrentModificationException',
+  'InterruptedException',
+  'CloneNotSupportedException',
+  'SecurityException',
+  'AssertionError',
+  'NotImplementedError',
+  'UninitializedPropertyAccessException',
+  'NoWhenBranchMatchedException',
+  'ClassNotFoundException',
+  'ReflectiveOperationException',
+  'IllegalMonitorStateException',
+  'NegativeArraySizeException',
+  'ArrayStoreException',
+  'OutOfMemoryError',
+  'StackOverflowError',
+  'String',
+  'Int',
+  'Long',
+  'Boolean',
+  'Double',
+  'Float',
+  'Short',
+  'Byte',
+  'Char',
+  'Unit',
+  'Nothing',
+]);
 const STRING_LITERAL = /^"((?:[^"\\$]|\\.|\$(?![{\w]))*)"$/su;
 const ESCAPE = /\\(.)/gu;
 const ESCAPES = { n: '\n', t: '\t', r: '\r', b: '\b' };
@@ -35,7 +79,13 @@ function candidatesOf(name, { file, declared, explicit, stars }) {
   if (declared.has(local)) {
     return [local];
   }
-  return [...stars, ...DEFAULT_PACKAGES].map((prefix) => `${prefix}.${name}`);
+  const starred = stars.map((prefix) => `${prefix}.${name}`);
+  const declaredStar = starred.filter((candidate) => declared.has(candidate));
+  if (declaredStar.length > 0) {
+    return declaredStar;
+  }
+  const defaults = DEFAULT_PACKAGES.map((prefix) => `${prefix}.${name}`);
+  return BUILTIN_TYPES.has(name) ? defaults : [...starred, ...defaults];
 }
 
 export function nameResolver(file, declared) {

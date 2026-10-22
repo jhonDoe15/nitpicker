@@ -6,6 +6,7 @@ import {
   BEAN_FACTORIES,
   BOOT_APPLICATION,
   COMPONENT_SCAN,
+  CONFIG_INITIALIZERS,
   CONFIGURATION,
   INJECT,
   LAZY,
@@ -119,7 +120,7 @@ function immutableBeans(view) {
       .filter(({ property }) => property === 'var')
       .map((parameter) => report('SpringImmutableBeans', parameter, declared.qualified)),
     ...view
-      .propertiesOf(declared.qualified)
+      .memberPropertiesOf(declared.qualified)
       .filter((property) => property.var && !has(view, property, PERSISTENCE_INJECTION))
       .map((property) => report('SpringImmutableBeans', property, declared.qualified)),
   ]);
@@ -133,7 +134,9 @@ function serviceLocator(view) {
     if (
       classHas(view, declared, CONFIGURATION) ||
       classHas(view, declared, BOOT_APPLICATION) ||
-      declared.supers.some((type) => view.is(type, POST_PROCESSORS))
+      declared.supers.some(
+        (type) => view.is(type, POST_PROCESSORS) || view.is(type, CONFIG_INITIALIZERS),
+      )
     ) {
       return aware;
     }
@@ -192,19 +195,27 @@ function singletonBean(view, declared) {
   );
 }
 
+function mutates(view, invocation, name) {
+  const target = view.receiverOf(invocation);
+  if (target === undefined || target.text.replace(THIS, '') !== name) {
+    return false;
+  }
+  return THIS.test(target.text) || !view.declaresLocally(target.scope, name);
+}
+
 function collectionState(view) {
   const startup = startupScopes(view);
   return beans(view)
     .filter((declared) => singletonBean(view, declared))
     .flatMap((declared) =>
       view
-        .propertiesOf(declared.qualified)
+        .memberPropertiesOf(declared.qualified)
         .filter((property) => !property.var && PLAIN_COLLECTIONS.has(property.initializer))
         .filter((property) =>
           view.file.invocations.some(
             (invocation) =>
               MUTATORS.has(invocation.name) &&
-              (invocation.receiver ?? '').replace(THIS, '') === property.name &&
+              mutates(view, invocation, property.name) &&
               view
                 .chain(invocation.scope)
                 .some(({ qualified }) => qualified === declared.qualified) &&

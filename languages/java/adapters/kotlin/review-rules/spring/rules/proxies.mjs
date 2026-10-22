@@ -1,7 +1,16 @@
-import { annotationIn, argumentOf } from '../spring-names.mjs';
-import { entriesOf, isSelfCall, ownerOf, report, symbolOf } from '../spring-scopes.mjs';
+import { annotationIn, argumentOf, typeName } from '../spring-names.mjs';
+import {
+  acceptsArguments,
+  entriesOf,
+  isSelfCall,
+  ownerOf,
+  report,
+  returnTypeOf,
+  symbolOf,
+} from '../spring-scopes.mjs';
 import {
   ASYNC,
+  COMPLETABLE_FUTURE,
   CONTROLLERS,
   JAKARTA_TRANSACTIONAL,
   PROXIED,
@@ -12,7 +21,6 @@ import {
 
 const OPEN_MODIFIERS = new Set(['open', 'abstract', 'override']);
 const STATIC_OWNERS = new Set(['object', 'companion']);
-const COMPLETABLE_FUTURE = new Set(['java.util.concurrent.CompletableFuture']);
 
 function pluginOpener(view, allOpen) {
   if (allOpen === undefined) {
@@ -25,9 +33,7 @@ function pluginOpener(view, allOpen) {
   return (declared) =>
     declared.annotations.some((annotation) => {
       const name = annotation.type ?? annotation.name;
-      return (
-        view.is(name, fqns) || view.resolve(name).some((candidate) => view.declared.has(candidate))
-      );
+      return view.is(name, fqns) || view.metaAnnotated(typeName(name), fqns);
     });
 }
 
@@ -84,7 +90,9 @@ function exempt(view, annotation, callerTransactional) {
 function selfCalls(view) {
   return view.file.invocations.flatMap((invocation) => {
     const reference = invocation.reference === true;
-    if (reference ? !['this', undefined].includes(invocation.receiver) : !isSelfCall(invocation)) {
+    if (
+      reference ? !['this', undefined].includes(invocation.receiver) : !isSelfCall(view, invocation)
+    ) {
       return [];
     }
     const caller = view.functionAt(invocation.scope);
@@ -96,7 +104,7 @@ function selfCalls(view) {
       .filter(
         (fn) =>
           fn.name === invocation.name &&
-          (reference || fn.parameters.length === invocation.arguments.length),
+          (reference || acceptsArguments(fn, invocation.arguments.length)),
       )
       .find((fn) =>
         entriesOf(fn).some(
@@ -159,7 +167,7 @@ function scheduling(view) {
   return annotatedDeclarations(view).flatMap(({ declared, entries, symbol, fn }) => {
     const async = annotationIn(view.resolve, entries, ASYNC);
     const scheduled = annotationIn(view.resolve, entries, SCHEDULED);
-    const future = fn !== undefined && view.is(fn.returnType, COMPLETABLE_FUTURE);
+    const future = fn !== undefined && view.is(returnTypeOf(view, fn), COMPLETABLE_FUTURE);
     return [
       ...(async !== undefined && async.arguments.length === 0
         ? [{ ...report('SpringAsyncExecutor', declared, symbol), key: `${symbol}:executor` }]

@@ -30,15 +30,15 @@ const ALLOWED = {
   SpringProxyMethodVisibility:
     'Make this proxied function public, and let Spring subclass it: apply the kotlin("plugin.spring") compiler plugin (or write open class and open fun), and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public.',
   SpringProxySelfCall:
-    "This call stays inside the class, so it skips the proxy and the called function's annotation does nothing. Move the annotated function to another bean and call it there.",
+    "Move the annotated function to another bean and call it there. This call stays inside the class, so it skips the proxy and the called function's annotation does nothing.",
   SpringTransactionalAnnotation:
     'Use org.springframework.transaction.annotation.Transactional. The jakarta and javax annotations have no readOnly or timeout and roll back on different exceptions.',
   SpringNoTransactionalController:
     'Put @Transactional on a service function, not on a controller; a controller transaction spans the whole request and response serialization.',
   SpringNoRequiresNew:
-    'Avoid Propagation.REQUIRES_NEW: each nested transaction holds a second connection and can exhaust the pool under load.',
+    'Keep the default REQUIRED propagation and drop Propagation.REQUIRES_NEW: each nested transaction holds a second connection and can exhaust the pool under load.',
   SpringNoSwallowedTransactionException:
-    'Do not swallow a broad or persistence exception inside a @Transactional function (a catch without throw, or runCatching without getOrThrow): the transaction may already be rollback-only, so the commit fails anyway. Rethrow it, or catch it in the caller.',
+    'Rethrow a broad or persistence exception caught inside a @Transactional function (throw, error(), getOrThrow(), or a getOrElse, onFailure or fold that throws), or catch it in the caller. Swallowed there, by a catch without throw or a runCatching that never rethrows, it leaves the transaction rollback-only, so the commit fails anyway.',
   SpringTransactionalCheckedRollback:
     'Add rollbackFor = [Exception::class] to this @Transactional, or throw an unchecked exception. Kotlin lets any function throw a checked exception, and a checked exception commits the work done so far instead of rolling it back.',
   SpringTransactionalReadOnlyWrite:
@@ -73,6 +73,7 @@ const ALLOWED = {
 };
 
 export const SPRING_RULES = Object.keys(ALLOWED);
+export const JAVA_ONLY_SPRING_RULE = 'SpringQueryConcatenation';
 
 export function springMessage(rule) {
   return `${ALLOWED[rule]} ${exceptionRoute(rule)}`;

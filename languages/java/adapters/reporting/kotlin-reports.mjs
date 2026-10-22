@@ -111,27 +111,30 @@ export function readKotlinFindings(context, crapLimit) {
     ...readKotlinSourceFindings(projectRoot, manifest),
     ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),
   ]);
-  return withoutCoveredSourceFindings([
-    ...ruleFindings,
-    ...readSuppressionFindings(projectRoot, {
-      sourceRoots: manifest.kotlinSourceRoots ?? [],
-      testRoots,
-    }),
-    ...readCatchLogFindings(projectRoot, {
-      sourceRoots: manifest.kotlinSourceRoots ?? [],
-      testRoots,
-    }),
-    ...readTestAssertionFindings(projectRoot, testRoots, helpers),
-    ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
-    ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
-    ...readKotlinStructureFindings(metrics, projectRoot),
-    ...readKotlinClassLimitFindings(metrics, context.classLimits),
-    ...readKotlinCrapFindings(metrics, {
-      projectRoot,
-      jacoco,
-      crapLimit,
-    }),
-  ]);
+  return withoutCoveredSourceFindings(
+    [
+      ...ruleFindings,
+      ...readSuppressionFindings(projectRoot, {
+        sourceRoots: manifest.kotlinSourceRoots ?? [],
+        testRoots,
+      }),
+      ...readCatchLogFindings(projectRoot, {
+        sourceRoots: manifest.kotlinSourceRoots ?? [],
+        testRoots,
+      }),
+      ...readTestAssertionFindings(projectRoot, testRoots, helpers),
+      ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
+      ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
+      ...readKotlinStructureFindings(metrics, projectRoot),
+      ...readKotlinClassLimitFindings(metrics, context.classLimits),
+      ...readKotlinCrapFindings(metrics, {
+        projectRoot,
+        jacoco,
+        crapLimit,
+      }),
+    ],
+    context.classLimits,
+  );
 }
 
 function subjectOf(text) {
