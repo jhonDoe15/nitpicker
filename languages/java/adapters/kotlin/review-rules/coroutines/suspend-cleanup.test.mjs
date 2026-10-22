@@ -204,6 +204,30 @@ describe('cleanup the rule leaves alone', () => {
     ).toHaveLength(1);
   });
 
+  it('reports a suspend member of a class declared in another file and skips ambiguous names', () => {
+    const user = file({
+      imports: [COROUTINES],
+      cleanupCalls: [
+        cleanupCall('close', { receiver: 'name', qualifier: 'cache', receiverType: 'Cache' }),
+      ],
+    });
+    const declaring = (path) =>
+      file({
+        file: path,
+        classes: [klass('Cache')],
+        functions: [suspendFun('close', { owner: 'Cache' })],
+      });
+
+    expect(
+      run(suspendCleanupFindings, [user], { declaredIn: [user, declaring('a/Cache.kt')] }),
+    ).toHaveLength(1);
+    expect(
+      run(suspendCleanupFindings, [user], {
+        declaredIn: [user, declaring('a/Cache.kt'), declaring('b/Cache.kt')],
+      }),
+    ).toEqual([]);
+  });
+
   it('reads files without facts for the rule', () => {
     expect(run(suspendCleanupFindings, [file()])).toEqual([]);
   });

@@ -65,7 +65,7 @@ export function readKotlinReviewFindings(context) {
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
     ...singularPluralFindings(own, { finding }),
-    ...suspendCleanupFindings(own, { finding }),
+    ...suspendCleanupFindings(own, { finding, declaredIn: projectFiles }),
     ...childLifetimeFindings(own, { finding }),
     ...unusedOptionFindings(own, {
       finding,
