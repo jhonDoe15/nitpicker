@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { pythonUsable } from '../../metrics/python-helpers.mjs';
 import { collectImports } from '../analysis/python-coupling.mjs';
 import { pythonFeatureAnalysis, pythonImportFacts } from './python-feature-facts.mjs';
@@ -68,7 +68,13 @@ describe('the import facts of the Python scan', () => {
       reexport: true,
       typeOnly: false,
     });
-    expect(typeOnly).toMatchObject({ to: `${FEATURES}/orders/cart.py`, typeOnly: true });
+    expect(typeOnly).toEqual({
+      from: `${FEATURES}/billing/__init__.py`,
+      to: `${FEATURES}/orders/cart.py`,
+      names: [{ name: 'Cart' }],
+      reexport: false,
+      typeOnly: true,
+    });
   });
 
   it('leaves out imports of the module itself and of code outside the sources', () => {
@@ -94,6 +100,7 @@ describe('the import facts of the Python scan', () => {
   });
 });
 
+const SCAN_TIMEOUT_MS = 30_000;
 const fixture = path.resolve(import.meta.dirname, '../fixtures/feature-project');
 const reportRoots = [];
 
@@ -107,7 +114,7 @@ function scanFixture() {
   const reportRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-features-'));
   reportRoots.push(reportRoot);
   const run = (_, [, ...args]) => {
-    const scanned = spawnSync('python3', args, { encoding: 'utf8' });
+    const scanned = spawnSync('python3', args, { encoding: 'utf8', timeout: SCAN_TIMEOUT_MS });
     expect(scanned.status).toBe(0);
     return scanned;
   };
@@ -117,18 +124,16 @@ function scanFixture() {
   );
 }
 
-let scanned;
-
 describe.skipIf(!pythonUsable())('the feature rules on a scanned project', () => {
-  const scannedReport = () => {
-    scanned ??= scanFixture();
-    return scanned;
-  };
+  let report;
+  beforeAll(() => {
+    report = scanFixture();
+  });
   const rows = (findings) =>
     findings.map(({ rule, path: file, identity }) => [rule, file, identity]);
 
   it('reports internal imports, shared code importing a feature and the feature cycle', () => {
-    expect(rows(pythonFeatureAnalysis(scannedReport()).findings)).toEqual([
+    expect(rows(pythonFeatureAnalysis(report).findings)).toEqual([
       ['feature-cycle', `${FEATURES}/billing/invoice.py`, `${FEATURES}/shipping|feature-cycle`],
       [
         'feature-internal-import',
@@ -151,7 +156,6 @@ describe.skipIf(!pythonUsable())('the feature rules on a scanned project', () =>
   });
 
   it('drops the package cycle the feature cycle already reports', () => {
-    const report = scannedReport();
     const { cycleEdges } = pythonFeatureAnalysis(report);
 
     expect(cycleFindings(report).map(({ identity }) => identity)).toEqual([
@@ -166,8 +170,6 @@ describe.skipIf(!pythonUsable())('the feature rules on a scanned project', () =>
       layout: { featureRoots: ['src/app/modules'] },
       exceptions: [{ rule: 'feature-cycle', paths: ['src/**'], reason: 'test' }],
     };
-
-    const report = scannedReport();
 
     expect(pythonFeatureAnalysis(report, { policy }).findings).toEqual([]);
     expect(

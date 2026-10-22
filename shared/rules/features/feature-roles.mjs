@@ -1,6 +1,6 @@
 import { globMatcher } from '../../paths/glob.mjs';
 
-export const DEFAULT_FEATURE_LAYOUT = { sharedRoots: ['**/shared'], featureRoots: ['**/features'] };
+const DEFAULT_FEATURE_LAYOUT = { sharedRoots: ['**/shared'], featureRoots: ['**/features'] };
 
 const INIT_MODULE = /^__init__\.pyi?$/u;
 

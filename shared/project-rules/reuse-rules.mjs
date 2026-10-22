@@ -1,4 +1,4 @@
-export function reuseRules(ids, reactEnforcedBy) {
+function featureFolderRules(ids) {
   return [
     {
       id: ids.sharedUsedByOneFeature,
@@ -24,6 +24,12 @@ export function reuseRules(ids, reactEnforcedBy) {
       limit:
         'a runtime import between two features that closes a cycle of features (imports only for the type checker do not count); TypeScript and JavaScript: dependency-cruiser `no-production-cycles`, which reports every module cycle',
     },
+  ];
+}
+
+export function reuseRules(ids, reactEnforcedBy) {
+  return [
+    ...featureFolderRules(ids),
     {
       id: ids.duplicateDefinition,
       check: 'structure',

@@ -16,6 +16,14 @@ describe('feature roles', () => {
   });
 });
 
+const BILLING = 'src/app/features/billing';
+const PYTHON_FACE = `its __init__.py (a name it imports from an internal module counts) or a module directly in ${BILLING}/ whose name does not start with "_"`;
+const JVM_FACE = `a class directly in the feature package ${BILLING}/`;
+
+function billing(isPublic, face) {
+  return { kind: 'feature', directory: BILLING, name: 'billing', isPublic, face };
+}
+
 describe('the feature role contract', () => {
   const layout = { featureRoots: ['src/app/features'] };
   const python = featureRoleContract(layout, PUBLIC_FACES.python);
@@ -29,28 +37,17 @@ describe('the feature role contract', () => {
     ['internal/rates.py', false],
     ['internal/__init__.py', false],
   ])('Python: billing/%s is public: %s', (file, isPublic) => {
-    expect(python(`src/app/features/billing/${file}`)).toMatchObject({
-      kind: 'feature',
-      name: 'billing',
-      directory: 'src/app/features/billing',
-      isPublic,
-    });
+    expect(python(`${BILLING}/${file}`)).toEqual(billing(isPublic, PYTHON_FACE));
   });
 
   it.each([
     ['Invoice.java', true],
     ['internal/Rates.java', false],
   ])('JVM: billing/%s is public: %s', (file, isPublic) => {
-    expect(jvm(`src/app/features/billing/${file}`)).toMatchObject({ isPublic });
+    expect(jvm(`${BILLING}/${file}`)).toEqual(billing(isPublic, JVM_FACE));
   });
 
-  it('describes the public face it judges by, and leaves shared and other files as they are', () => {
-    expect(python('src/app/features/billing/_rates.py').face).toBe(
-      'its __init__.py (a name it imports from an internal module counts) or a module directly in src/app/features/billing/ whose name does not start with "_"',
-    );
-    expect(jvm('src/app/features/billing/Invoice.java').face).toBe(
-      'a class directly in the feature package src/app/features/billing/',
-    );
+  it('leaves shared and other files as they are', () => {
     expect(python('src/app/shared/money.py')).toEqual({ kind: 'shared' });
     expect(python('src/app/main.py')).toEqual({ kind: 'other' });
   });
@@ -58,7 +55,13 @@ describe('the feature role contract', () => {
   it('defaults to the **/features and **/shared folders', () => {
     const roleOf = featureRoleContract(undefined, PUBLIC_FACES.python);
 
-    expect(roleOf('pkg/features/orders/cart.py')).toMatchObject({ name: 'orders' });
+    expect(roleOf('pkg/features/orders/_cart.py')).toEqual({
+      kind: 'feature',
+      directory: 'pkg/features/orders',
+      name: 'orders',
+      isPublic: false,
+      face: PUBLIC_FACES.python.describe('pkg/features/orders'),
+    });
     expect(roleOf('pkg/shared/ids.py')).toEqual({ kind: 'shared' });
   });
 

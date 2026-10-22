@@ -62,7 +62,9 @@ describe('feature-cycle', () => {
       `${FEATURES}/orders/cart.py`,
       `${FEATURES}/shipping/label.py`,
     ]);
-    expect(findings[1].message).toContain('a cycle between features billing, orders, shipping.');
+    expect(findings[1].message).toBe(
+      `Keep dependencies between features one-way: ${FEATURES}/orders/cart.py in feature orders imports feature shipping (${FEATURES}/shipping/__init__.py), and shipping depends back on orders, a cycle between features billing, orders, shipping. Move what both need to a shared root, invert this dependency behind an interface orders owns that the composition root wires, or merge the features. ${exceptionHint(RULE, `${FEATURES}/orders/cart.py`)}`,
+    );
   });
 
   it('leaves out imports only the type checker reads, tests, and modules outside features', () => {
