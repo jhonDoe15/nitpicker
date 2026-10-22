@@ -118,6 +118,7 @@ const PINNED_TOOLS = [
   'pitest',
   'pitestJunit5',
   'pitestTestng',
+  'archunit',
   'detekt',
   'detektKotlin',
   'ktlint',
