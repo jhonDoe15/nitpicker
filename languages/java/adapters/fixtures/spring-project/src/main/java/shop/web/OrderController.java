@@ -38,7 +38,9 @@ public class OrderController {
   }
 
   @PostMapping("/raw")
-  public void raw(@RequestBody String body, @RequestBody Map<String, String> fields) {}
+  public void raw(
+      @RequestBody String body,
+      @RequestBody Map<String, String> fields) {}
 
   @PostMapping("/flags")
   public void flags(@RequestBody boolean enabled, @RequestBody List<String> skus) {}
