@@ -48,7 +48,7 @@ public class BulkService {
     stock.touch(ids.get(0));
     int total = 0;
     for (Long id : ids) {
-      total += stock.countVersion(id);
+      total += stock.countVersion(id); // violation: IoCallInLoop
     }
   }
 
@@ -67,6 +67,18 @@ public class BulkService {
     for (Product product : incoming) {
       describe(product);
     }
+  }
+
+  @Transactional
+  public void rowForms(List<Long> ids, List<List<Long>> chunks) {
+    ids.stream().forEach(id -> stock.touch(id)); // violation: SpringDataRowWriteInLoop
+    for (int index = 0; index < ids.size(); index++) {
+      stock.touch(ids.get(index)); // violation: SpringDataRowWriteInLoop
+    }
+    for (List<Long> chunk : chunks) {
+      stock.touchAll(chunk);
+    }
+    chunks.forEach(chunk -> stock.touchAll(chunk));
   }
 
   private Product store(Product product) {

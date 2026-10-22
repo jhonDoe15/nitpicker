@@ -57,16 +57,22 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
     );
   });
 
-  it('reports each Spring Data write or flush in a loop or stream callback once', () => {
+  it('reports each Spring Data write, flush or row write in a loop or stream callback once', () => {
     const linesOf = (rule) =>
       reported((reportedRule) => reportedRule === rule).map((violation) => violation.split(' ')[0]);
-    const spring = [...linesOf('SpringDataNoSaveInLoop'), ...linesOf('SpringDataNoFlush')];
+    const spring = [
+      'SpringDataNoSaveInLoop',
+      'SpringDataNoFlush',
+      'SpringDataRowWriteInLoop',
+      'SpringDataBatchOfOne',
+      'SpringDataSaveInLoopHelper',
+    ].flatMap((rule) => linesOf(rule));
     const loops = linesOf('IoCallInLoop');
     expect({
       spring: spring.length,
       loops: loops.length,
       twice: loops.filter((line) => spring.includes(line)),
-    }).toEqual({ spring: 6, loops: 3, twice: [] });
+    }).toEqual({ spring: 30, loops: 6, twice: [] });
   });
 
   it('runs the pinned Checkstyle with the bundled config even when the project declares its own', () => {

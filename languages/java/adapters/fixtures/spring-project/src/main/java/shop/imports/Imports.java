@@ -46,10 +46,10 @@ public class Imports {
   @Transactional(readOnly = true)
   public List<Product> reads(List<Long> ids) {
     for (Long id : ids) {
-      products.findById(id).ifPresent(product -> LOG.info("{}", product));
+      products.findById(id).ifPresent(product -> LOG.info("{}", product)); // violation: IoCallInLoop
     }
-    ids.forEach(id -> products.findById(id));
-    return ids.stream().map(id -> products.findById(id).orElseThrow()).toList();
+    ids.forEach(id -> products.findById(id)); // violation: IoCallInLoop
+    return ids.stream().map(id -> products.findById(id).orElseThrow()).toList(); // violation: IoCallInLoop
   }
 
   @Transactional
