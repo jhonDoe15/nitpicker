@@ -15,11 +15,10 @@ export function runKotlinDuplicates(projectRoot, { reportRoot, manifest, skipped
 
 export function readKotlinDuplicateFindings(reportRoot, projectRoot) {
   return existsSync(path.join(reportRoot, KOTLIN_DUPLICATES.reportFile))
-    ? readDuplicateFindings(
-        reportRoot,
-        KOTLIN_DUPLICATES.reportFile,
-        KOTLIN_DUPLICATES.format,
+    ? readDuplicateFindings(reportRoot, {
+        reportFile: KOTLIN_DUPLICATES.reportFile,
+        format: KOTLIN_DUPLICATES.format,
         projectRoot,
-      )
+      })
     : [];
 }

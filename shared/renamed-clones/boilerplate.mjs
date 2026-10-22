@@ -13,7 +13,7 @@ const PATTERNS = {
     /^@\w+(?:\(.*\))?$/u,
     /^return\s+(?:this\.)?\w+;?$/u,
     /^this\.\w+ = \w+;?$/u,
-    new RegExp(`^${TS_MODIFIERS}(?:override\s+)?\\w+\\??: [^=]+;?,?$`, 'u'),
+    new RegExp(`^${TS_MODIFIERS}(?:override\\s+)?\\w+\\??: [^=]+;?,?$`, 'u'),
     new RegExp(`^${TS_MODIFIERS}(?:(?:get|set)\\s+)?\\w+\\([^)]*\\)(?: ?: [^{]+)? ?\\{$`, 'u'),
     /^(?:export\s+)?(?:default\s+)?(?:abstract\s+)?class\s+\w.*\{$/u,
   ],
