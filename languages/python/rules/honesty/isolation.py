@@ -1,6 +1,6 @@
 import ast
 
-from checks.common import call_name, dotted_name, finding
+from checks.common import call_name, dotted_name, finding, overlap_sites
 from honesty.fakes import CLOCK, NETWORK, RANDOM, SLEEP, fakes_of
 
 CLOCK_CALLS = {
@@ -97,6 +97,10 @@ INTEGRATION_DIRECTORIES = {
     "smoke",
 }
 SLEEP_CALLS = {"time.sleep"}
+TEST_OVERLAPS = {
+    "real-clock-in-test": ("DTZ002", "DTZ003", "DTZ005", "DTZ011"),
+    "sleep-in-test": ("ASYNC251",),
+}
 
 
 def is_random(name, node):
@@ -192,3 +196,18 @@ def check(context):
             if (matches(name, node) or is_helper) and kind not in fakes.kinds_at(node):
                 found.append(finding(context.path, rule, name, node))
     return found
+
+
+def busy_wait_sites(context, sleeps):
+    return [
+        {"rule": "ASYNC110", "path": context.path, "line": node.lineno}
+        for node in ast.walk(context.tree)
+        if isinstance(node, ast.While)
+        and any(statement.lineno in sleeps for statement in node.body)
+    ]
+
+
+def allowances(context):
+    found = check(context)
+    sleeps = {item["line"] for item in found if item["rule"] == "sleep-in-test"}
+    return overlap_sites(found, TEST_OVERLAPS) + busy_wait_sites(context, sleeps)

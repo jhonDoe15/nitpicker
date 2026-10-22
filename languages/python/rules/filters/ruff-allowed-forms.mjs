@@ -8,6 +8,7 @@ const FIXED_COMMAND = /seems safe, but may be changed in the future/;
 const TEST_FILE_NOISE = /^(?:ARG|FBT|PLR2004|S\d)/u;
 const COMMENT_LABEL = /^\s*#+\s*(?:[A-Z][A-Za-z]*(?: [A-Za-z]+){0,2}:\s+\S|e\.g\.|i\.e\.)/u;
 const COMMENTED_CODE_RULE = 'ERA001';
+const SAME_LINE_OVERLAPS = { LOG015: ['G010'] };
 
 function isAllowedNumber(message) {
   const text = MAGIC_VALUE.exec(message)?.[1];
@@ -23,6 +24,18 @@ function isLabelComment({ rule, path, location }, lineOf) {
 
 function siteKey({ rule, path, line }) {
   return `${rule}\0${path}\0${String(line)}`;
+}
+
+function overlapSites(findings) {
+  return findings.flatMap(({ tool, rule, path, location }) =>
+    tool === 'ruff' && location?.line !== undefined
+      ? (SAME_LINE_OVERLAPS[rule] ?? []).map((other) => ({
+          rule: other,
+          path,
+          line: location.line,
+        }))
+      : [],
+  );
 }
 
 function isAllowedSite({ rule, path, location }, sites) {
@@ -53,7 +66,7 @@ export function withoutAllowedForms(
   const context = {
     testFiles: new Set(testFiles),
     supportFiles: new Set(supportFiles),
-    sites: new Set(allowed.map(siteKey)),
+    sites: new Set([...allowed, ...overlapSites(findings)].map(siteKey)),
     lineOf,
   };
   return findings.filter((finding) => finding.tool !== 'ruff' || !isAllowedForm(finding, context));

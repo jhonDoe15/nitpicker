@@ -209,7 +209,6 @@ select = [
   "PLE0100",
   "PLE0101",
   "PLE0115",
-  "PLE0116",
   "PLE0117",
   "PLE0118",
   "PLE0237",
@@ -298,7 +297,7 @@ ignore-names = [
 [lint.flake8-unused-arguments]
 ignore-variadic-names = true
 
-# Reviewed exclusions for the pitfall families (Ruff 0.16.8 stable catalog).
+# Reviewed exclusions: stable codes of the listed groups that are not selected (Ruff 0.16.9).
 # S101: assert is the native pytest assertion API; stripping it is not evidence of a defect.
 # S103, S104: a file mode or server bind address alone does not establish exposure.
 # S105, S106, S107: hardcoded-secret owns credential recognition with narrower evidence.
@@ -310,6 +309,9 @@ ignore-variadic-names = true
 # S608: sql-string-formatting owns query construction and parameterization evidence.
 # TRY003: exception messages may be constructed at the raise site without changing semantics.
 # TRY300, TRY301: moving a return or raise to another block does not establish better handling.
+# FBT003: a boolean argument at a call site is often the callee's own API; FBT001/FBT002 own the definition.
+# PT009, PT027: unittest-style assertions are the native API of unittest projects.
+# PLE0116: continue in finally is reported only for targets below Python 3.8, under the 3.10 minimum.
 # PLW1641: defining equality without hashing intentionally makes mutable objects unhashable.
 # Historical codes exposed by Ruff 0.9 catalogs, removed in the current stable catalog:
 # S320, S410: lxml's hardened defaults make a blanket insecure-parser/import claim invalid.

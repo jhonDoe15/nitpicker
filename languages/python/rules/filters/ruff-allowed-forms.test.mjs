@@ -118,6 +118,37 @@ describe('sites the rules script allowed', () => {
 
     expect(withoutAllowedForms([other], { allowed })).toEqual([other]);
   });
+
+  it.each([
+    ['DTZ005', 'clock-now'],
+    ['DTZ011', 'real-clock-in-test'],
+    ['ASYNC251', 'sleep-in-test'],
+  ])('drop %s on a line where %s already reports', (rule) => {
+    const clockSites = [{ rule, path: 'a.py', line: 7 }];
+
+    expect(withoutAllowedForms([at(rule, 7), at(rule, 8)], { allowed: clockSites })).toEqual([
+      at(rule, 8),
+    ]);
+  });
+});
+
+describe('ruff rules that overlap on one line', () => {
+  const at = (rule, line) => ({
+    ...finding(rule, 'm'),
+    path: 'a.py',
+    location: { line, column: 1 },
+  });
+
+  it('keep the root-logger finding of `logging.warn` and drop the `warn` one', () => {
+    expect(withoutAllowedForms([at('LOG015', 3), at('G010', 3)])).toEqual([at('LOG015', 3)]);
+  });
+
+  it('keep G010 on a logger that is not the root logger', () => {
+    expect(withoutAllowedForms([at('LOG015', 3), at('G010', 4)])).toEqual([
+      at('LOG015', 3),
+      at('G010', 4),
+    ]);
+  });
 });
 
 describe('comment labels', () => {

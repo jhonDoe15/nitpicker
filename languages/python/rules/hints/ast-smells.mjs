@@ -154,7 +154,7 @@ export const SMELL_HINTS = [
     rules: ['real-clock-in-test'],
     describe: (subject) => `\`${subject}()\` reads the real clock in a test`,
     allowed:
-      'Freeze or inject the time: pass a fixed `datetime` in, use `freezegun` or `time_machine`, or patch the clock with `monkeypatch`.',
+      'Freeze or inject the time: pass a fixed aware `datetime` in (`datetime(2026, 1, 1, tzinfo=timezone.utc)`), use `freezegun` or `time_machine`, or patch the clock with `monkeypatch`.',
   },
   {
     tool: RULES_TOOL,
