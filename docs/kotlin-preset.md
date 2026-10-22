@@ -225,6 +225,57 @@ not a rule with `exceptions`.
 - Type resolution reports less where a library is built with a newer Kotlin than detekt's (above);
   `!!` on a value of such a type is not seen.
 
+## Review rules
+
+Six checks that detekt has no rule for run on a syntax tree of the Kotlin sources. They use the rule
+ids and the exception route of the Java preset's PMD rules, so a finding reads the same in both
+languages and one `exceptions` entry style covers either.
+
+How it works: `nitpickerKotlinFacts` (`languages/java/gradle/KotlinFacts.java`, run like the metrics
+step with the pinned Kotlin compiler's parser) writes `kotlin-facts.json` for the main and the test
+source roots: classes, functions, properties, calls, waits and comparison chains. The rules are
+evaluated in Node (`languages/java/adapters/kotlin/review-rules/`) from those facts, so they have no
+type resolution. A name is matched through the file's imports and the project's own declarations; a
+call that cannot be tied to one declaration is left alone, so an unclear case is never flagged.
+
+| Rule id                                  | Where                                       | Flags                                                                                                                                                                  |
+| ---------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during` |
+| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                        |
+| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                           |
+| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                           |
+| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                   |
+| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                               |
+
+Limits, all chosen to flag less rather than guess:
+
+- Waits: a sleep inside a loop that checks a deadline, in a `launch`, `async`, `flow`, `thread` or
+  mock-answer body, or in a test fake that implements or extends a main class is allowed. `delay`
+  is judged only inside `runBlocking`; `runTest` runs it in virtual time. A name is a wait only
+  when its import or qualifier says so (`Thread`, `TimeUnit`, `LockSupport`, Awaitility, kotest,
+  Mockito); a function of the same name declared in the file is not.
+- Forwarding wrappers: functions with `override`, `operator`, `infix`, `inline`, `open`, `abstract`,
+  `actual`, `expect`, annotations or a Spring stereotype owner are skipped, as are `main`,
+  `of`, `from`, `invoke`, `copy` and `copyOf`/`unmodifiable`/`synchronized`/`checked` prefixes.
+- Singular and plural: both members must have the same element type (the plural a list, set,
+  collection or array of it); `@ConfigurationProperties` classes are read through their properties.
+- Spring context: any injected or mock bean, `MockMvc`, `WebTestClient`, `TestRestTemplate`,
+  `CapturedOutput`, `ApplicationEvents`, `ApplicationContext` or a random or defined port counts
+  as use.
+- Enum predicate: the enum is found among the project's Kotlin and Java declarations and needs at
+  least three constants; one that is not found, a test that lists every constant and a `when` are
+  not flagged. Only a result, a variable, a lambda or an assignment holds the test, so an `if`
+  condition does not count.
+- Unused option: only private and internal declarations, `final` classes without annotations,
+  where no call (in main or tests) sets the parameter by name or position, no callable reference
+  exists and no Java file mentions the name. A call that cannot match the signature is ignored,
+  and a call with a spread sets every parameter.
+
+Every message names the allowed form and ends with the exception route. For the pmd-id rules it is
+`exceptions` with `pmd/<RuleId>` and a path glob; for `unused-option` it is
+`exceptions` with `unused-option`, as in the TypeScript preset. Identities follow the symbol, not the
+line, so a moved block is not a new finding.
+
 ## Format check: ktlint, ktfmt or none
 
 The format check runs only for a project that uses a Kotlin formatter: Nitpicker does not make a
@@ -663,6 +714,9 @@ fails only when it grows, and a package folder moved to a new path is matched to
   than that version ends the run with an error naming the file and the version. A version that the
   project forces on `org.jetbrains.kotlin` (a `resolutionStrategy` rule, Spring's dependency
   management) does not reach that compiler: the pin is applied last.
+- The review rules read syntax only (see [Review rules](#review-rules)): a call is tied to a
+  declaration by name and imports, so an extension or a same-named function from another module
+  can hide a finding, and generated sources under the build directory are not read.
 - `inline` functions are not measured by CRAP (see [CRAP](#crap)); their structure limits still apply.
 - Kotlin Multiplatform and Android modules are not covered (`org.jetbrains.kotlin.jvm` only).
 - detekt's type resolution uses detekt's own Kotlin standard library (see [detekt](#detekt)), so its
