@@ -63,10 +63,10 @@ const TEST_ONLY_FILES = {
   ].join('\n'),
 };
 // Each file gets its own fixture tree and retains the original setup and cleanup.
-export function useKotlinCoverageProject() {
+export function useKotlinCoverageProject({ initialize = initializeProject } = {}) {
   let project;
   beforeAll(() => {
-    project = initializeProject();
+    project = initialize();
     commitBranch(project, 'one-sided-branch', {
       [`${kotlinSources}/Label.kt`]: LABEL,
       'src/test/kotlin/demo/LabelTest.kt': LABEL_ONE_SIDED_TEST,

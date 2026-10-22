@@ -30,7 +30,7 @@ describe.skipIf(!enabled)('Kotlin Spring rules on a Gradle project end to end', 
   it('reports exactly the violations marked in the Kotlin sources', () => {
     expect(
       findings
-        .filter(({ tool, rule }) => tool === 'spring' && SPRING_RULE.test(rule))
+        .filter(({ tool, rule }) => tool === 'pmd' && SPRING_RULE.test(rule))
         .map(
           ({ path: file, location, rule }) =>
             `${path.basename(file)}:${String(location.line)} ${rule}`,

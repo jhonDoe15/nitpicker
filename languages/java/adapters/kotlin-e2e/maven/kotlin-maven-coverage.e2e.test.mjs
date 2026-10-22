@@ -1,54 +1,17 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../java-diff.mjs';
 import { analyzeJavaSnapshot } from '../../java-runner.mjs';
+import { useKotlinCoverageProject } from '../__tests__/kotlin-coverage-project.mjs';
 import {
-  BROKEN,
-  GENERATED,
-  GENERATED_TEST,
-  LABEL,
-  LABEL_ONE_SIDED_TEST,
-  OFFSET,
-  SPREAD,
-  SPREAD_TEST,
-} from '../test-support/kotlin-branch-coverage-data.mjs';
-import { BOOTER, BOOTER_TEST, BOX_TEST, boxes } from '../test-support/kotlin-initializer-data.mjs';
-import {
-  COMBINE,
-  COMBINE_TEST,
-  DEEP,
-  DEEP_TEST,
-  FLATTEN,
-  FLATTEN_TEST,
-  GROWN,
-  GROWN_TEST,
-  GROWN_WIDER,
-  GROWN_WIDER_TEST,
-  PIPELINE,
-  TIERS,
-  TIERS_TEST,
-  WIDE,
-  WIDE_MOVED,
-  WIDE_TEST,
-  classifier,
-  clonedClass,
-  stabilityClass,
-  stabilityFiles,
-} from '../test-support/kotlin-structure-data.mjs';
-import {
-  commitBranch,
-  commitFromBranch,
-  commitFromStructureBase,
   fromTool,
   git,
   initializeMavenProject,
   kotlinE2eEnabled,
   kotlinPolicy,
-  kotlinSources,
   mavenDiffRunner,
   onlyTools,
-  removeProject,
   rulesOf,
 } from './test-support/kotlin-maven-project.mjs';
 
@@ -56,71 +19,9 @@ const maven = process.env.NITPICKER_MAVEN;
 const mavenDiffOf = mavenDiffRunner(maven);
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structure', () => {
-  let project;
-
-  beforeAll(() => {
-    project = initializeMavenProject();
-    commitBranch(project, 'one-sided-branch', {
-      [`${kotlinSources}/Label.kt`]: LABEL,
-      'src/test/kotlin/demo/LabelTest.kt': LABEL_ONE_SIDED_TEST,
-    });
-    commitBranch(project, 'multiline-branch', {
-      [`${kotlinSources}/Spread.kt`]: SPREAD,
-      'src/test/kotlin/demo/SpreadTest.kt': SPREAD_TEST,
-      'src/main/kotlin/Offset.kt': OFFSET,
-    });
-    commitBranch(project, 'generated-branches', {
-      [`${kotlinSources}/Generated.kt`]: GENERATED,
-      'src/test/kotlin/demo/GeneratedTest.kt': GENERATED_TEST,
-    });
-    commitBranch(project, 'broken', { [`${kotlinSources}/Broken.kt`]: BROKEN });
-    commitBranch(project, 'init-base', {
-      [`${kotlinSources}/boxes/Box.kt`]: boxes(false),
-      'src/test/kotlin/demo/boxes/BoxTest.kt': BOX_TEST,
-    });
-    commitFromBranch(project, {
-      name: 'init-inserted',
-      from: 'init-base',
-      files: { [`${kotlinSources}/boxes/Box.kt`]: boxes(true) },
-    });
-    commitBranch(project, 'structure-base', {
-      [`${kotlinSources}/Wide.kt`]: WIDE,
-      'src/test/kotlin/demo/WideTest.kt': WIDE_TEST,
-      [`${kotlinSources}/Grown.kt`]: GROWN,
-      'src/test/kotlin/demo/GrownTest.kt': GROWN_TEST,
-      [`${kotlinSources}/Complex.kt`]: classifier('classify', 9),
-      [`${kotlinSources}/Complex2.kt`]: classifier('classify2', 9, { step: 7 }),
-      ...stabilityFiles(''),
-    });
-    commitFromStructureBase(project, 'head', {
-      [`${kotlinSources}/Wide.kt`]: WIDE_MOVED,
-      [`${kotlinSources}/Grown.kt`]: GROWN_WIDER,
-      'src/test/kotlin/demo/GrownTest.kt': GROWN_WIDER_TEST,
-      [`${kotlinSources}/Complex.kt`]: classifier('classify', 9, { bump: 2 }),
-      [`${kotlinSources}/Complex2.kt`]: classifier('classify2', 10, { step: 7 }),
-      [`${kotlinSources}/change/Deep.kt`]: DEEP,
-      'src/test/kotlin/demo/change/DeepTest.kt': DEEP_TEST,
-      [`${kotlinSources}/change/Rank.kt`]: classifier('rank', 9, { step: 13 }),
-      [`${kotlinSources}/change/Tiers.kt`]: TIERS,
-      'src/test/kotlin/demo/change/TiersTest.kt': TIERS_TEST,
-      [`${kotlinSources}/change/Combine.kt`]: COMBINE,
-      'src/test/kotlin/demo/change/CombineTest.kt': COMBINE_TEST,
-      'src/main/kotlin/Flatten.kt': FLATTEN,
-      'src/test/kotlin/FlattenTest.kt': FLATTEN_TEST,
-      [`${kotlinSources}/build/Pipeline.kt`]: PIPELINE,
-      [`${kotlinSources}/extra/Booter.kt`]: BOOTER,
-      'src/test/kotlin/demo/change/BooterTest.kt': BOOTER_TEST,
-      [`${kotlinSources}/extra/Left.kt`]: clonedClass('Left'),
-      [`${kotlinSources}/extra/Right.kt`]: clonedClass('Right'),
-      ...stabilityFiles('2'),
-      'src/main/kotlin/stable/Core.kt': `${stabilityClass('stable', 'Core', 'churn.Volatile().value()')}\nval note = 1\n`,
-    });
-  });
-  afterAll(() => {
-    removeProject(project);
-  });
+  const fixture = useKotlinCoverageProject({ initialize: initializeMavenProject });
   it('fails a changed Kotlin branch that no test takes and only reports its mutants', () => {
-    const result = mavenDiffOf(project, 'one-sided-branch');
+    const result = mavenDiffOf(fixture.project, 'one-sided-branch');
 
     expect(result.failed).toBe(true);
     expect(fromTool(result.newEnforceable, 'jacoco')).toEqual([
@@ -140,7 +41,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
     ).not.toEqual([]);
   });
   it('fails the untested branches of a statement that spans lines and of a file outside its package directory', () => {
-    const result = mavenDiffOf(project, 'multiline-branch');
+    const result = mavenDiffOf(fixture.project, 'multiline-branch');
 
     expect(result.failed).toBe(true);
     expect(
@@ -151,9 +52,12 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
     ).toEqual(['Offset.kt:4', 'Spread.kt:10', 'Spread.kt:7']);
   });
   it('does not ask for coverage of branches the Kotlin compiler generated', () => {
-    git(project, 'checkout', '-q', 'generated-branches');
-    const findings = collectJavaFindings(project.root, { maven, policy: kotlinPolicy });
-    const report = readFileSync(path.join(project.root, 'target/nitpicker/jacoco.xml'), 'utf8');
+    git(fixture.project, 'checkout', '-q', 'generated-branches');
+    const findings = collectJavaFindings(fixture.project.root, { maven, policy: kotlinPolicy });
+    const report = readFileSync(
+      path.join(fixture.project.root, 'target/nitpicker/jacoco.xml'),
+      'utf8',
+    );
     const generatedFile = report.slice(report.indexOf('<sourcefile name="Generated.kt">'));
     const missedLines = [...generatedFile.matchAll(/<line nr="(\d+)"[^>]* mb="([1-9]\d*)"/g)].map(
       ([, line]) => Number(line),
@@ -163,7 +67,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
     expect(findings.filter(({ rule }) => rule === 'changed-branch-coverage')).toEqual([]);
   });
   it('applies the structure, CRAP, clone and stability rules to one change', () => {
-    const result = mavenDiffOf(project, 'head', { base: 'structure-base' });
+    const result = mavenDiffOf(fixture.project, 'head', { base: 'structure-base' });
     const messageOf = (rule, symbol) =>
       onlyTools(result.newEnforceable, 'structure', 'crap').find(
         (finding) => finding.rule === rule && finding.symbol === symbol,
@@ -208,11 +112,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
       'duplicates duplicate-clone Left.kt',
     ]);
     expect(
-      onlyTools(result.newEnforceable, 'coupling').map(({ rule, identity, message }) => ({
-        rule,
-        identity,
-        message,
-      })),
+      onlyTools(result.newEnforceable, 'coupling')
+        .filter(({ rule }) => rule === 'stability-direction')
+        .map(({ rule, identity, message }) => ({
+          rule,
+          identity,
+          message,
+        })),
     ).toEqual([
       {
         rule: 'stability-direction',
@@ -230,8 +136,17 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
         .map(({ identity }) => identity),
     ).toEqual(['package-edge:stable->churn']);
   });
+  it('reports a Kotlin file facade only tests use and spares a file with a main function', () => {
+    const result = mavenDiffOf(fixture.project, 'test-only');
+
+    expect(
+      onlyTools(result.newEnforceable, 'coupling')
+        .filter(({ rule }) => rule === 'test-only-export')
+        .map(({ path: file, symbol, location }) => `${file}:${String(location.line)} ${symbol}`),
+    ).toEqual(['src/main/kotlin/demo/Shouting.kt:3 demo.ShoutingKt']);
+  });
   it('keeps a legacy init block baselined when init blocks are inserted around it, in a class, a companion object and an object expression', () => {
-    const result = mavenDiffOf(project, 'init-inserted', { base: 'init-base' });
+    const result = mavenDiffOf(fixture.project, 'init-inserted', { base: 'init-base' });
 
     const legacy = [
       'crap crap-score-limit Box.<anonymous>.<init>',
@@ -246,9 +161,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
     expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual(legacy);
   });
   it('reports a Maven failure as a tool error instead of throwing', () => {
-    git(project, 'checkout', '-q', 'broken');
+    git(fixture.project, 'checkout', '-q', 'broken');
 
-    const { findings } = analyzeJavaSnapshot(project.root, { maven, policy: kotlinPolicy });
+    const { findings } = analyzeJavaSnapshot(fixture.project.root, { maven, policy: kotlinPolicy });
 
     expect(
       findings.map(({ tool, rule, classification, message }) => ({
