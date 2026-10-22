@@ -248,3 +248,11 @@ style:
     excludes: []
     ignoreAnnotated: []
     includes: []
+
+complexity:
+  active: true
+  excludes: []
+  ignoreAnnotated: []
+  includes: []
+  StringLiteralDuplication:
+    active: false
