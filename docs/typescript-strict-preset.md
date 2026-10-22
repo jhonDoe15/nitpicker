@@ -429,6 +429,31 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `await mutex.acquire()` (a receiver named like a lock, mutex or semaphore) and the next
   `release()`/`unlock()`. Every waiter queues behind the remote latency. Make the remote call
   before taking the lock or after releasing it and keep only the shared-state change under it.
+- `nitpicker/no-retry-without-idempotency` (all production code): a write with no idempotency
+  contract, direct or through project helpers, inside a retry is reported, since a timeout after
+  the server accepted the write makes the retry run it twice. Retries are `p-retry`, `async-retry`,
+  `exponential-backoff` `backOff`, a cockatiel policy's `execute` (the policy built in the same
+  expression or held in a `const`), and the hand-written retry loop that
+  `nitpicker/no-io-in-loop` exempts (a `try` in the loop that leaves on success while its `catch`
+  goes on). The supported writes are: a Stripe `create` without `{ idempotencyKey }` in its request
+  options; a broker publish (`kafkajs`, `amqplib`, `@google-cloud/pubsub`, `nats` without a
+  JetStream `msgID`, BullMQ `add` without `jobId`, SQS `SendMessage` or SNS `Publish` without
+  `MessageDeduplicationId`); and SQL `INSERT` text without `ON CONFLICT`, `ON DUPLICATE KEY UPDATE`,
+  `INSERT IGNORE` or `INSERT OR IGNORE`/`REPLACE` sent through a recognized database call. Options
+  that are not a literal count as a contract, an HTTP `POST` alone is not reported, and other writes
+  are not judged. Give the write a stable idempotency key derived from the request, a provider
+  deduplication id, an upsert, or retry only the read.
+- `nitpicker/no-dual-write` (all production code): a function that writes to the database
+  (`save`, `insert`, `update`, `upsert`, `delete`, `remove`, `destroy`, `create`, `persist`, Redis
+  `set`/`hset`/`lpush`-style commands, DynamoDB `Put`/`Update`/`Delete` commands, SQL `INSERT`,
+  `UPDATE`, `DELETE` or `MERGE` text) at one call and publishes a broker message at another, each
+  direct or through helpers, is reported at the publish. A helper call that does both counts for
+  neither, so only the lowest function that does both is reported; a function defined inside
+  another is judged on its own, while callbacks passed to a call (a transaction callback) belong to
+  the function that passes them. A publish inside a Sequelize `transaction.afterCommit(...)` hook
+  gets its own message: it no longer publishes a rolled-back change, but a crash after the commit
+  still loses the message. Write the message to an outbox table in the same transaction and let a
+  relay publish it, or use change data capture or a database-backed queue.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise

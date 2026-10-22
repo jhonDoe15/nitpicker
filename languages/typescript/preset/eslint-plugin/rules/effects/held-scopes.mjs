@@ -56,7 +56,7 @@ function runsWithCaller(node) {
   return !isFunction(node) || (node.parent.type === CALL && node.parent.arguments.includes(node));
 }
 
-function callsWithin(root, visitorKeys) {
+export function callsWithin(root, visitorKeys) {
   const calls = [];
   const pending = [root];
   for (const node of pending) {
