@@ -110,8 +110,8 @@ Before you change code other modules use, or fix a bug, read
 - Keep classes small: split by responsibility and prefer holding a collaborator to extending one.
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
-- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
-  a method.
+- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails, also
+  when the copy has other names and literals: extract a method.
 
 ## Tests
 

@@ -96,8 +96,11 @@ tests run with a three-minute deadline; Java hooks have five minutes and Kotlin 
 The timeout lint rule remains active for these suites. These are bounded execution limits,
 separate from slow-test thresholds and measured shard duration; see [timeout tiers](docs/usage.md#test-timeout-tiers).
 
-After moving E2E files or changing their package-script filters, verify real Vitest discovery,
-case counts, profile coverage and the configured matrix partition without starting JVM builds:
+After moving E2E files or changing their package-script filters, verify real Vitest discovery
+(every E2E test file is gated by exactly one suite flag, and each script selects exactly the cases
+its flag enables), profile coverage, the workflow wiring and the configured matrix partition
+without starting a JVM build or a Python project (CI runs the same check in the shard-plan job of the
+Java, Kotlin and Python workflows):
 
 ```sh
 node scripts/test-shards/verify-e2e-shards.mjs
