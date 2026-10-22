@@ -9,9 +9,7 @@ const STATIC_IMPORT = /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"](\.[^'
 function resourceFiles(directory) {
   return readdirSync(path.join(packageRoot, directory), { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
-    .map((entry) =>
-      path.relative(packageRoot, path.join(entry.parentPath, entry.name)).split(path.sep).join('/'),
-    );
+    .map((entry) => path.relative(packageRoot, path.join(entry.parentPath, entry.name)));
 }
 
 function staticImports(file) {

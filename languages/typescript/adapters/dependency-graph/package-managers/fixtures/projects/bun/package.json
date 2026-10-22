@@ -1,0 +1,12 @@
+{
+  "name": "pm-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "node -e \"require('fs').writeFileSync('ROOT_POSTINSTALL', '1')\""
+  },
+  "dependencies": {
+    "fixture-lib": "file:vendor/fixture-lib"
+  },
+  "packageManager": "bun@1.4.2"
+}

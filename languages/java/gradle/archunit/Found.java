@@ -27,9 +27,7 @@ final class Found {
 
   static void add(Set<Found> sink, String rule, JavaClass origin, String detail) {
     JavaClass owner = Spring.owner(origin);
-    String fileName =
-        owner.getSource().flatMap(source -> source.getFileName()).orElse("");
-    sink.add(new Found(rule, owner.getName(), fileName, detail));
+    sink.add(new Found(rule, owner.getName(), Spring.sourceFile(owner), detail));
   }
 
   String toJson() {

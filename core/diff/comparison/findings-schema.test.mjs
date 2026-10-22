@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { normalizeArchitectureViolations } from '../../../languages/typescript/adapters/static-checks-runner.mjs';
 import {
   normalizeCoupling,
-  normalizeDeadCode,
   normalizeStructure,
   normalizeTestRuntime,
 } from '../../../languages/typescript/adapters/quality-areas/reporting/repository.mjs';
+import { normalizeDeadCode } from '../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mjs';
 import {
   normalizeCrap,
   normalizeMutation,
@@ -125,6 +125,7 @@ function checkType(value, node, errors, at) {
     string: typeof value === 'string',
     number: typeof value === 'number' && Number.isFinite(value),
     integer: Number.isInteger(value),
+    boolean: typeof value === 'boolean',
   };
   if (node.type !== undefined && !checks[node.type]) {
     errors.push(`${at} must be ${node.type}`);
@@ -378,6 +379,42 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [finding] })).toEqual([]);
     expect(() => parseFinding(empty)).toThrow(TypeError);
     expect(validate({ findings: [empty] })).not.toEqual([]);
+  });
+
+  it('accepts tokens and rejects an empty one', () => {
+    const finding = {
+      tool: 'tool',
+      rule: 'rule',
+      path: 'src/a.ts',
+      identity: 'id',
+      message: 'message',
+      classification: 'enforceable',
+      tokens: ['a', 'b', 'c'],
+    };
+    const empty = { ...finding, tokens: ['a', ''] };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(empty)).toThrow(TypeError);
+    expect(validate({ findings: [empty] })).not.toEqual([]);
+  });
+
+  it('accepts the number of files of a folder finding and rejects zero', () => {
+    const finding = {
+      tool: 'tool',
+      rule: 'rule',
+      path: 'src/a',
+      identity: 'id',
+      message: 'message',
+      classification: 'enforceable',
+      ratchet: { key: 'depth', value: 5, pathIsFolder: true, folderFiles: 3 },
+    };
+    const none = { ...finding, ratchet: { ...finding.ratchet, folderFiles: 0 } };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(none)).toThrow(TypeError);
+    expect(validate({ findings: [none] })).not.toEqual([]);
   });
 
   it('is exercised by a validator that covers every keyword the schema uses', () => {

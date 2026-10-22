@@ -1,175 +1,178 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { readCouplingFindings } from '../metrics/java-coupling.mjs';
-import { ingestCheckstyle } from '../../ingest/formatting/checkstyle.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
 import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
+import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
+import {
+  isEmptyModule,
+  readMainCheckstyle,
+  readModuleJacoco,
+  readReportModules,
+} from '../gradle-reports/report-modules.mjs';
+import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readSpringArchFindings } from '../spring-arch/spring-arch.mjs';
-import {
-  methodText,
-  readJavaFileLimitFindings,
-  readJavaStructureFindings,
-} from '../metrics/java-structure.mjs';
+import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
+import { methodText } from '../../../../shared/ingest/structure-report.mjs';
+import { readClassLimitFindings } from '../size/class-limits.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
-import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
+import { checkstyleFindings, formatFindings } from './format-findings.mjs';
+import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
+import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
-import { ingestSarif, prepareSarif, projectRelative } from '../../ingest/sarif.mjs';
-import { kotlinModules, readKotlinMetrics } from '../kotlin/kotlin-metrics.mjs';
+import { sarifFindings } from './sarif/sarif-reports.mjs';
+import { projectWideFindings } from '../../builds/project-wide.mjs';
+import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
   jacocoSourceRoots,
   readKotlinFindings,
   reportOnlyKotlinMutants,
   requireKotlinManifest,
+  sourceFileOf,
   sourceLocator,
 } from './kotlin-reports.mjs';
 
-export const REPORT_DIRECTORY = 'build/nitpicker';
-const LINE_NUMBER = /\bline \d+\b/g;
+const MODULE_IDENTITY_SEPARATOR = '@';
+const ROOT_MODULE = 'root';
 
-export function readJavaFindings(
-  projectRoot,
-  {
-    crapLimit,
-    preset = 'java',
-    fileLimits,
-    exclude,
-    exceptions,
-    reportDirectory = REPORT_DIRECTORY,
-    projectWide = true,
-  } = {},
-) {
-  const kotlin = preset === 'kotlin';
-  const reportRoot = path.join(projectRoot, reportDirectory);
-  const manifest = readManifest(projectRoot, { reportDirectory, preset });
-  const context = {
-    projectRoot,
-    reportRoot,
-    manifest,
-    sourceRoots: manifest.sourceRoots ?? [],
-    lintedRoots: lintedRoots(manifest),
-    roots: projectRoots(projectRoot),
-    kotlin,
-    jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
-  };
-  return {
-    findings: [
-      ...sarifFindings(context),
-      ...formatFindings(context),
-      ...checkstyleFindings(context),
-      ...readDuplicateFindings(reportRoot),
-      ...jacocoFindings(context, context.jacoco),
-      ...archunitFindings(context),
-      ...crapFindings(context, context.jacoco, crapLimit),
-      ...pitFindings(context),
-      ...readJavaStructureFindings(reportRoot, projectRoot),
-      ...(projectWide ? projectWideFindings(context, { fileLimits, exclude, exceptions }) : []),
-      ...branchFindings(context, context.jacoco),
-      ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-      ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
-      ...springFindings(context),
-      ...springArchFindings(context),
-    ],
-  };
-}
-
-function readManifest(projectRoot, { reportDirectory, preset }) {
-  if (reportDirectory === REPORT_DIRECTORY) {
-    requireGradleReports(projectRoot, preset);
-  }
-  const manifest = JSON.parse(
-    readFileSync(path.join(projectRoot, reportDirectory, 'manifest.json'), 'utf8'),
-  );
-  if (preset === 'kotlin') {
+export function readJavaFindings(projectRoot, options = {}) {
+  const { reportBase, report, preset = 'java', projectWide = true } = options;
+  const kotlinPreset = preset === 'kotlin';
+  const { modules, manifest } = report ?? readReportModules(reportBase, preset);
+  if (kotlinPreset) {
     requireKotlinManifest(manifest);
   }
-  return manifest;
+  const moduleFindings = modules
+    .filter((module) => !isEmptyModule(projectRoot, module))
+    .flatMap((module) =>
+      withModuleIdentity(moduleContextFindings(projectRoot, module, { manifest, options }), module),
+    );
+  return {
+    findings: applyRuleMessages(
+      [
+        ...moduleFindings,
+        ...readDuplicateFindings(reportBase),
+        ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
+        ...(projectWide
+          ? projectWideFindings(projectRoot, {
+              projects: modules.map((module) => ({
+                reportRoot: module.reportRoot,
+                qualifier: module.key === ROOT_MODULE ? '' : module.dir,
+                sourceRoots: module.manifest.sourceRoots ?? [],
+                kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
+                resourceRoots: module.manifest.resourceRoots ?? [],
+              })),
+              mergedRoot: path.join(reportBase, 'project'),
+              manifest,
+              kotlin: kotlinPreset,
+              policy: options,
+            })
+          : []),
+        ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
+        ...springFindings(projectRoot, manifest, options),
+      ],
+      { preset, javaStyle: options.javaStyle },
+    ),
+  };
 }
 
-function projectWideFindings(context, { fileLimits, exclude, exceptions }) {
-  const { projectRoot, reportRoot, manifest, kotlin } = context;
-  return [
-    ...readJavaFileLimitFindings(projectRoot, {
-      manifest,
-      kotlin,
-      policy: { thresholds: fileLimits, exclude, exceptions },
-    }),
-    ...readCouplingFindings(reportRoot, {
+function moduleContextFindings(projectRoot, module, { manifest, options }) {
+  const preset = options.preset ?? 'java';
+  const { fileLimits: thresholds, exceptions, modulePath } = options;
+  return readModuleFindings(
+    {
       projectRoot,
-      sourceRoots: context.sourceRoots,
-      kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
-    }),
+      roots: projectRoots(projectRoot),
+      reportRoot: module.reportRoot,
+      manifest: module.manifest,
+      sourceRoots: module.manifest.sourceRoots ?? [],
+      lintedRoots: lintedRoots(module.manifest),
+      allSourceRoots: manifest.sourceRoots,
+      kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
+      formatAdvice: options.formatAdvice,
+      conventions: options.conventions,
+      javaStyle: options.javaStyle,
+      classLimits: { thresholds, exceptions, modulePath },
+      jacoco: readModuleJacoco(module, preset),
+      mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
+      testTimes: {
+        limits: options.testSeconds,
+        baseline: options.baseline,
+        modulePath,
+      },
+      testConsole: {
+        allow: options.testConsoleAllow,
+        exceptions: options.exceptions,
+        modulePath: options.modulePath,
+        moduleRoot: module.dir,
+      },
+    },
+    options.crapLimit,
+  );
+}
+
+function testRootsOf(manifest) {
+  return [...(manifest.testSourceRoots ?? []), ...(manifest.kotlinTestSourceRoots ?? [])];
+}
+
+function readModuleFindings(context, crapLimit) {
+  const { reportRoot, projectRoot, kotlin, jacoco } = context;
+  const testRoots = testRootsOf(context.manifest);
+  return [
+    ...sarifFindings(context),
+    ...readErrorProneFindings(context),
+    ...formatFindings(context),
+    ...checkstyleFindings(context),
+    ...jacocoFindings(context, jacoco),
+    ...archunitFindings(context),
+    ...springArchFindings(context),
+    ...crapFindings(context, jacoco, crapLimit),
+    ...pitFindings(context),
+    ...readJavaStructureFindings(reportRoot, projectRoot),
+    ...readClassLimitFindings(reportRoot, context.classLimits),
+    ...branchFindings(context, jacoco),
+    ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
+    ...readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),
+    ...readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
   ];
+}
+
+function withModuleIdentity(findings, module) {
+  return module.key === ROOT_MODULE
+    ? findings
+    : findings.map((finding) =>
+        finding.path === '.'
+          ? {
+              ...finding,
+              identity: `${finding.identity}${MODULE_IDENTITY_SEPARATOR}${module.path}`,
+            }
+          : finding,
+      );
 }
 
 function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
   return [...new Set([...sourceRoots, ...testSourceRoots])];
 }
 
-export function requireGradleReports(projectRoot, preset) {
-  if (!existsSync(path.join(projectRoot, REPORT_DIRECTORY, 'manifest.json'))) {
-    const plugin = preset === 'kotlin' ? 'org.jetbrains.kotlin.jvm' : 'java';
-    throw new Error(
-      `The ${preset} preset found no Gradle reports in ${REPORT_DIRECTORY}: the root project must apply the ${plugin} plugin. Reports of submodules are not read`,
-    );
-  }
+function baselineRootOf({ baseline, modulePath }) {
+  return baseline?.snapshot === 'head' && baseline.baselineRoot !== undefined
+    ? path.join(baseline.baselineRoot, modulePath ?? '')
+    : undefined;
 }
 
-function springFindings({ projectRoot, manifest, sourceRoots }) {
+function springFindings(projectRoot, manifest, options) {
   return manifest.spring === true
-    ? readSpringConfigFindings(projectRoot, { sourceRoots, resourceRoots: manifest.resourceRoots })
+    ? readSpringConfigFindings(projectRoot, {
+        sourceRoots: manifest.sourceRoots,
+        resourceRoots: manifest.resourceRoots,
+        testSourceRoots: manifest.testSourceRoots,
+        baselineRoot: baselineRootOf(options),
+      })
     : [];
-}
-
-function springArchFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
-  if (manifest.springArch !== true) {
-    return [];
-  }
-  const locate = sourceLocator(projectRoot, [...sourceRoots, ...(manifest.testSourceRoots ?? [])]);
-  return readSpringArchFindings(reportRoot, {
-    resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
-  });
-}
-
-function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
-  const findings = [];
-  function sarif(file, tool, identityKey) {
-    const log = JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8'));
-    const normalized = prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey });
-    findings.push(...ingestSarif(normalized, { tool }).findings);
-  }
-  sarif('pmd.sarif', 'pmd', (result) => result.message?.text?.replace(LINE_NUMBER, 'line'));
-  sarif('spotbugs.sarif', 'spotbugs', (result) => spotbugsSubject(result));
-  return findings;
-}
-
-function formatFindings({ reportRoot, roots }) {
-  const formatLines = readFileSync(path.join(reportRoot, 'format.txt'), 'utf8')
-    .split(/\r?\n/)
-    .map((line) => projectRelative(line.trim(), roots) ?? line);
-  return ingestFormatCheck(formatLines.join('\n'), {
-    tool: 'google-java-format',
-    message: 'File is not formatted with google-java-format',
-  }).findings;
-}
-
-function checkstyleFindings({ reportRoot, roots, projectRoot }) {
-  const testReport = path.join(reportRoot, 'checkstyle-test.xml');
-  return [
-    path.join(reportRoot, 'checkstyle.xml'),
-    ...(existsSync(testReport) ? [testReport] : []),
-  ].flatMap((report) => {
-    const checkstyle = readFileSync(report, 'utf8');
-    return roots.flatMap((root) =>
-      ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
-        existsSync(path.join(projectRoot, finding.path)),
-      ),
-    );
-  });
 }
 
 function jacocoFindings(context, jacoco) {
@@ -181,6 +184,25 @@ function jacocoFindings(context, jacoco) {
   );
 }
 
+function classLocator({ projectRoot, sourceRoots, manifest }) {
+  return sourceLocator(projectRoot, [
+    ...sourceRoots,
+    ...(manifest.testSourceRoots ?? []),
+    ...(manifest.kotlinSourceRoots ?? []),
+    ...(manifest.kotlinTestSourceRoots ?? []),
+  ]);
+}
+
+function springArchFindings(context) {
+  if (context.manifest.springArch !== true) {
+    return [];
+  }
+  const locate = classLocator(context);
+  return readSpringArchFindings(context.reportRoot, {
+    resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
+  });
+}
+
 function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
   const archunitRoot = path.join(reportRoot, 'archunit');
   const archunitReports = existsSync(archunitRoot)
@@ -188,7 +210,7 @@ function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
         .filter((name) => name.endsWith('.xml'))
         .sort()
     : [];
-  const locate = sourceLocator(projectRoot, [...sourceRoots, ...(manifest.testSourceRoots ?? [])]);
+  const locate = classLocator({ projectRoot, sourceRoots, manifest });
   return archunitReports.flatMap(
     (name) =>
       ingestArchunit(readFileSync(path.join(archunitRoot, name), 'utf8'), {
@@ -234,19 +256,8 @@ function branchFindings(context, jacoco) {
   }).findings;
 }
 
-function sourceFileOf(locate, className, fileName) {
-  const parts = className.split('.');
-  const simple = parts.pop().split('$')[0];
-  return locate(parts.join('/'), fileName ?? `${simple}.java`);
-}
-
 function projectRoots(projectRoot) {
   const roots = new Set([path.resolve(projectRoot)]);
   roots.add(realpathSync(projectRoot));
   return [...roots];
-}
-
-function spotbugsSubject(result) {
-  const args = result.message?.arguments;
-  return Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
 }

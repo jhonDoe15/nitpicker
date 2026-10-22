@@ -1,5 +1,4 @@
 import { rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
   trackTemporaryPath,
@@ -70,21 +69,12 @@ export function lintWithOxlint({ options, environment, projectConfigPath, runEsl
   }
 }
 
-function nativeRules(environment) {
-  const listed = spawnJson([oxlintBinary(), '--rules', '--format', 'json'], {
-    cwd: tmpdir(),
-    env: environment,
-    context: 'oxlint rule listing',
-  });
-  return { nativeRules: nativeRuleIndex(listed) };
-}
-
 function lintUntilAccepted({ plan, environment, ...run }) {
   const context = {
     plan,
     environment,
     ...run,
-    native: nativeRules(environment),
+    native: { nativeRules: nativeRuleIndex(plan.nativeRules) },
     bridgedRules: new Set(PARITY_BRIDGED_RULES),
   };
   const attempts = Array.from({ length: MAX_CONFIGURATION_ATTEMPTS }, () => context);
@@ -120,6 +110,7 @@ function lintAttempt({
     neutralized,
   };
   try {
+    checkNativeConfigs({ stage, configs, sampleFile, ...run });
     return {
       translation,
       results: configs.flatMap((config) =>
@@ -129,6 +120,25 @@ function lintAttempt({
   } catch (error) {
     bridgeRejectedRules(error, translation.ruleNames, bridgedRules);
     return { translation, results: undefined };
+  }
+}
+
+function checkNativeConfigs({ stage, configs, sampleFile, environment, timeoutMs }) {
+  if (sampleFile === undefined) return;
+  for (const { nativeConfigPath } of configs) {
+    spawnJson(
+      [
+        oxlintBinary(),
+        '--config',
+        nativeConfigPath,
+        '--format',
+        'json',
+        '--no-ignore',
+        '--disable-nested-config',
+        sampleFile,
+      ],
+      { cwd: stage, env: environment, context: 'oxlint', timeoutMs, acceptedStatuses: [0, 1] },
+    );
   }
 }
 

@@ -35,6 +35,7 @@ describe('tool context', () => {
       targetVersion: 'py38',
       typeCheckers: [],
       sourceRoots: ['src'],
+      entryPoints: [],
     });
   });
   it('takes the environment from the live checkout and the sources from the snapshot', () => {
@@ -61,6 +62,7 @@ describe('tool context', () => {
       testRunner: 'unittest',
       targetVersion: 'py38',
       sourceRoots: ['src'],
+      entryPoints: [],
     });
   });
 });
@@ -87,8 +89,10 @@ describe('running the tools', () => {
       formatterDetected: true,
       sourceRoots: ['src'],
       testsRan: true,
+      testFailures: [],
+      testRunner: 'unittest',
     });
-    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
+    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc(root, ['src']));
   });
   it('checks formatting with black when the project uses it', () => {
     const root = project({
@@ -101,21 +105,63 @@ describe('running the tools', () => {
 
     expect(readReport(reportRoot, 'format.txt')).toBe(path.join(root, 'src/demo/a.py'));
   });
-  it('measures branches without honoring pragmas, the project config or test files', () => {
-    const { context, reportRoot } = contextFor(
-      project({ 'pyproject.toml': '[tool.coverage.run]\n' }),
-    );
+  it('measures branches without honoring pragmas, the report settings of the project or test files', () => {
+    const root = project({
+      'pyproject.toml':
+        '[tool.coverage.run]\nbranch = false\nconcurrency = ["multiprocessing"]\n[tool.coverage.report]\nexclude_also = ["pragma: no cover"]\n',
+    });
+    const { context, reportRoot } = contextFor(root);
 
     runPythonTools(context);
 
-    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
+    expect(readReport(reportRoot, 'coveragerc')).toBe(
+      coverageRc(root, ['src'], { carried: ['concurrency =', '    multiprocessing'] }),
+    );
+  });
+  it('combines the data files of the processes the tests started before the report', () => {
+    const calls = callsLog();
+    const { context, reportRoot } = contextFor(project({ 'parallel-coverage.txt': '' }));
+
+    expect(runPythonTools(context)).toEqual([]);
+
+    expect(calls('coverage', 'combine').map(({ args }) => args)).toEqual([
+      ['combine', '--rcfile', path.join(reportRoot, 'coveragerc')],
+    ]);
+  });
+  it('runs no combine when the tests wrote one data file', () => {
+    const calls = callsLog();
+
+    runPythonTools(contextFor(project()).context);
+
+    expect(calls('coverage', 'combine')).toEqual([]);
+  });
+  it('reports a failing combine as a coverage failure', () => {
+    const root = project({
+      'parallel-coverage.txt': '',
+      'fail.json': JSON.stringify({ 'coverage combine': 'No data to combine' }),
+    });
+
+    expect(runPythonTools(contextFor(root).context)).toEqual([
+      {
+        rule: 'coverage-failed',
+        message: 'coverage combine exited 2 in the virtualenv environment:\nNo data to combine',
+      },
+    ]);
+  });
+  it('leaves the Django test module names out of coverage only in a Django project', () => {
+    const root = project({ 'manage.py': '' });
+    const { context, reportRoot } = contextFor(root);
+
+    runPythonTools(context);
+
+    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc(root, ['src'], { django: true }));
   });
   it('measures the source roots that exist and writes an empty report when none does', () => {
     const calls = callsLog();
     const root = project({ 'lib/a.py': '' });
     const both = contextFor(root, { sourceRoots: ['src', 'lib', 'missing'] });
     runPythonTools(both.context);
-    expect(readReport(both.reportRoot, 'coveragerc')).toBe(coverageRc('src', 'lib'));
+    expect(readReport(both.reportRoot, 'coveragerc')).toBe(coverageRc(root, ['src', 'lib']));
 
     const none = contextFor(root, { sourceRoots: ['missing'] });
     expect(runPythonTools(none.context)).toEqual([]);
@@ -144,6 +190,7 @@ describe('running the tools', () => {
         ['types-failed', 'mypy', 'mypy'],
         ['rules-failed', 'python', 'python'],
         ['structure-failed', `python ${structureScript}`, 'python'],
+        ['dependencies-failed', 'python', 'python'],
       ].map(([rule, command, call]) => ({
         rule,
         message: `${command} exited 2 in the virtualenv environment:\n${call} blew up`,

@@ -1,0 +1,76 @@
+name: kotlin-e2e
+
+# The Kotlin end-to-end suite (npm run test:kotlin): real Gradle builds of a small Kotlin and Java project,
+# sharded across isolated runners. It runs on a push to main that touches the Java and Kotlin preset code, the core and
+# shared code it imports, the package and test configuration, or this file; by hand from the Actions tab;
+# and on a pull request only when the `run-ci` label is added, like the typescript workflow.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'languages/java/**'
+      - 'core/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vitest.config.mts'
+      - 'scripts/test-shards/**'
+      - '.github/workflows/kotlin-e2e.yml'
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+# A newer request cancels the older run on the same pull request, other labels do not; runs on main
+# always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  kotlin-shard:
+    name: kotlin shard ${{ matrix.shard }}/${{ strategy.job-total }}
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    # Files run serially inside each isolated shard to avoid competing JVM builds.
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      # Caches ~/.gradle: the Kotlin compiler, detekt, ktlint, ktfmt, PMD, SpotBugs and PIT jars the init script
+      # resolves, and the Kotlin Gradle plugin.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+      - run: npm ci
+      - name: Kotlin end-to-end suite
+        run: npm run test:kotlin -- --no-file-parallelism --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/kotlin-e2e/shard-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kotlin-e2e-${{ matrix.shard }}-${{ github.run_attempt }}
+          path: reports/kotlin-e2e/
+          if-no-files-found: warn
+
+  kotlin:
+    if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
+    needs: kotlin-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every Kotlin end-to-end shard passed
+        env:
+          RESULT: ${{ needs.kotlin-shard.result }}
+        run: test "$RESULT" = success
