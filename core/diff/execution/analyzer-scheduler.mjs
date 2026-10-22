@@ -88,7 +88,7 @@ async function runTask(
   { semaphore, groupSemaphores, maxParallel, execute, signal },
 ) {
   const dependencyOutcomes = await Promise.all(dependencies);
-  const failedDependency = dependencyOutcomes.find(hasFailed);
+  const failedDependency = blockingDependency(task, dependencyOutcomes);
   if (failedDependency !== undefined) {
     return skippedOutcome(task.name, failedDependency);
   }
@@ -139,6 +139,21 @@ function hasFailed(outcome) {
     outcome.error !== undefined ||
     outcome.skippedBecause !== undefined ||
     (outcome.report?.findings ?? []).some((finding) => finding.classification === 'tool-error')
+  );
+}
+
+function blockingDependency(task, dependencyOutcomes) {
+  const tolerated = new Set(task.toleratedDependencyErrors ?? []);
+  return dependencyOutcomes.find((outcome) => blocksDependents(outcome, tolerated));
+}
+
+function blocksDependents(outcome, tolerated) {
+  return (
+    outcome.error !== undefined ||
+    outcome.skippedBecause !== undefined ||
+    (outcome.report?.findings ?? []).some(
+      (finding) => finding.classification === 'tool-error' && !tolerated.has(finding.tool),
+    )
   );
 }
 

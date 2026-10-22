@@ -27,14 +27,26 @@ const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const POLICY_PATHS = [
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
+  'core/tooling/jscpd/skipped-folders.mjs',
   'languages/typescript/preset/defaults',
   'languages/javascript/preset/javascript-preset.mjs',
   'languages/javascript/preset/documentation/jsdoc.mjs',
   'languages/javascript/preset/eslint-dialect.mjs',
+  'languages/typescript/conventions/file-name-casing.mjs',
+  'languages/typescript/conventions/layout-measures.mjs',
+  'languages/typescript/conventions/measures',
+  'languages/typescript/conventions/prettier-conventions.mjs',
+  'languages/typescript/conventions/print-width.mjs',
+  'languages/typescript/conventions/type-import-style.mjs',
   'languages/typescript/preset/layout.mjs',
+  'languages/typescript/preset/layout/generated-files.mjs',
+  'languages/typescript/preset/layout/path-patterns.mjs',
   'languages/typescript/preset/head-policy.mjs',
+  'languages/typescript/preset/libraries',
   'languages/typescript/preset/tool-configs.mjs',
+  'languages/typescript/preset/architecture/outside-roots/outside-roots.mjs',
   'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
+  'languages/typescript/preset/architecture/domain-packages.mjs',
   'languages/typescript/preset/architecture/strict-layout.mjs',
   'languages/typescript/preset/dependency-graph',
   'languages/typescript/preset/entry-points/analyze.mjs',
@@ -42,11 +54,19 @@ const POLICY_PATHS = [
   'languages/typescript/preset/eslint-config',
   'languages/typescript/preset/eslint-plugin/index.mjs',
   'languages/typescript/preset/eslint-plugin/rules',
+  'languages/typescript/preset/eslint-plugin/test-assertions',
+  'languages/typescript/preset/eslint-plugin/test-isolation',
+  'languages/typescript/preset/eslint-plugin/test-placement',
+  'languages/typescript/preset/eslint-plugin/test-quality',
+  'languages/typescript/preset/eslint-plugin/type-identity',
   'languages/typescript/adapters/static-checks',
   'languages/typescript/adapters/quality-areas',
   'languages/typescript/adapters/eslint',
   'languages/typescript/adapters/immutable-types',
+  'languages/typescript/preset/structure/reuse/reuse-paths.mjs',
   'languages/typescript/preset/syntax',
+  'languages/typescript/preset/modules',
+  'languages/typescript/preset/test-environment',
   'shared',
 ];
 const temporaryRoots = [];
@@ -223,6 +243,42 @@ describe('default configs used in place', () => {
   });
 });
 
+describe('with a noisy jsdom project config', () => {
+  const noisyConfig = [
+    "console.log('loading the test config');",
+    "console.warn('Your Vite config uses features that are unsupported by configLoader');",
+    "export default { test: { environment: 'jsdom' } };",
+    '',
+  ].join('\n');
+
+  it('lints without tool errors and reports only the test that never uses the DOM', () => {
+    const lintCheck = eslintChecks.find(({ name }) => name === 'eslint-lint');
+    const projectRoot = createProject({
+      ...oldLayoutFiles(),
+      'vitest.config.mjs': noisyConfig,
+      'tests/unit/page.test.ts': [
+        "import { expect, it } from 'vitest';",
+        '',
+        "it('has a document', () => {",
+        '  expect(globalThis.document).toBeDefined();',
+        '});',
+        '',
+      ].join('\n'),
+    });
+    const run = runInPlace(
+      createEslintAnalyzer({ ...lintCheck, version: 'fixture', configurationHash: 'fixture' }),
+      projectRoot,
+    );
+    expect(run.toolErrors).toEqual([]);
+    expect(
+      run.reports
+        .get('eslint-lint')
+        ?.findings.filter(({ rule }) => rule === 'nitpicker/no-unused-dom-environment')
+        .map(({ path: findingPath }) => findingPath),
+    ).toEqual(['tests/unit/greeting.test.ts']);
+  });
+});
+
 function runInPlace(analyzers, projectRoot) {
   return withDefaultAnalyzerParallelism(() =>
     runAnalyzers({
@@ -256,21 +312,21 @@ function createProject(files = oldLayoutFiles()) {
 
 function oldLayoutFiles() {
   return {
-    'src/main/greeting.ts': [
+    'src/main/shared/greeting.ts': [
       'export function greeting(name: string): string {',
       '  return `Hello, ${name}`;',
       '}',
       '',
     ].join('\n'),
     'src/main/index.ts': [
-      "import { greeting } from './greeting.js';",
+      "import { greeting } from './shared/greeting.js';",
       '',
       "export const message = greeting('world');",
       '',
     ].join('\n'),
     'tests/unit/greeting.test.ts': [
       "import { describe, expect, it } from 'vitest';",
-      "import { greeting } from '../../src/main/greeting.js';",
+      "import { greeting } from '../../src/main/shared/greeting.js';",
       '',
       "describe('greeting', () => {",
       "  it('greets by name', () => {",

@@ -212,7 +212,7 @@ export function computeCoupling({ modules, edges, packageOf, runtime = false }) 
   const packageByName = new Map(packages.map((entry) => [entry.name, entry]));
   const stabilityDirection = [];
   const seenPackageEdges = new Set();
-  for (const edge of edges) {
+  for (const edge of edges.filter(({ kind }) => kind !== 'type-only')) {
     const sourcePackage = packageOf(edge.source);
     const targetPackage = packageOf(edge.target);
     if (sourcePackage === targetPackage) {
@@ -255,24 +255,27 @@ function byName(left, right) {
  * The `CouplingReport` for a module graph: drops self, repeated and external edges, then adds the
  * summary, per-module and per-package metrics and the stability-direction violations.
  * `fileOf(module)` gives the project-relative path a module's metrics are reported against.
+ * An edge of `kind: 'type-only'` (a dependency that exists only for the type checker) counts in
+ * every metric, including package instability, but is never itself reported as a
+ * stability-direction violation; a repeated edge is type-only only when every copy is.
  */
 export function buildCouplingReport({ modules, edges, packageOf, fileOf }) {
   const moduleSet = new Set(modules);
-  const edgeKeys = new Set();
-  const moduleEdges = [];
-  for (const { source, target } of edges) {
+  const moduleEdges = new Map();
+  for (const { source, target, kind = 'runtime' } of edges) {
     const key = `${source}\0${target}`;
-    if (source !== target && moduleSet.has(source) && moduleSet.has(target) && !edgeKeys.has(key)) {
-      edgeKeys.add(key);
-      moduleEdges.push({ source, target });
+    if (source !== target && moduleSet.has(source) && moduleSet.has(target)) {
+      const seen = moduleEdges.get(key);
+      moduleEdges.set(key, { source, target, kind: seen?.kind === 'runtime' ? 'runtime' : kind });
     }
   }
-  const metrics = computeCoupling({ modules, edges: moduleEdges, packageOf });
+  const allEdges = [...moduleEdges.values()];
+  const metrics = computeCoupling({ modules, edges: allEdges, packageOf });
   const packages = metrics.packages.sort(byName);
   return {
     summary: {
       modules: modules.length,
-      dependencies: moduleEdges.length,
+      dependencies: allEdges.length,
       packages: packages.length,
     },
     modules: metrics.modules.map(({ module, fanIn, fanOut, totalCoupling, instability }) => ({

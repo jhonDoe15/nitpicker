@@ -1,4 +1,5 @@
 import { ENFORCED_MUTATION_STATUSES, mutantRuleId } from '../policy.mjs';
+import { exceptionHint } from './exceptions.mjs';
 import { positiveInteger } from './finding-helpers.mjs';
 
 // Neutral input: one entry per non-killed mutant,
@@ -10,19 +11,22 @@ import { positiveInteger } from './finding-helpers.mjs';
 // replacement code when the adapter knows it.
 
 const REPLACEMENT_LIMIT = 80;
+const HIDDEN_BY_COMMENT =
+  'an ignore comment hides this code from mutation testing. Remove the comment and test the code; an ignore comment is not an exception route.';
 const EQUIVALENT_MUTANT_WAY_OUT =
   'If no input can tell the two apart, simplify the code so this mutant disappears.';
 
-export function mutantFindings(mutants, { tool }) {
+export function mutantFindings(mutants, { tool, wayOut = EQUIVALENT_MUTANT_WAY_OUT }) {
   return mutants.map((mutant) => ({
     tool,
     rule: mutantRuleId(mutant.status),
     path: mutant.path,
     identity: mutant.identity,
-    message: mutantMessage(mutant),
-    classification: ENFORCED_MUTATION_STATUSES.includes(mutant.status)
-      ? 'enforceable'
-      : 'descriptive',
+    message: mutantMessage(mutant, wayOut),
+    classification:
+      ENFORCED_MUTATION_STATUSES.includes(mutant.status) || mutant.hiddenByComment === true
+        ? 'enforceable'
+        : 'descriptive',
     ...(mutant.symbol === undefined ? {} : { symbol: mutant.symbol }),
     ...mutantLocation(mutant),
   }));
@@ -48,8 +52,14 @@ function inlineCode(value) {
   return shown.includes('`') ? `\`\` ${shown} \`\`` : `\`${shown}\``;
 }
 
-export function mutantMessage({ status, label, replacement, original, column }) {
+export function mutantMessage(
+  { path, status, label, replacement, original, column, hiddenByComment },
+  wayOut = EQUIVALENT_MUTANT_WAY_OUT,
+) {
   const name = `${status} ${label}${positiveInteger(column) === undefined ? '' : ` at column ${String(column)}`}`;
+  if (hiddenByComment === true) {
+    return `${name}: ${HIDDEN_BY_COMMENT} ${exceptionHint('mutant-ignored', path)}`;
+  }
   if (status === 'NoCoverage') {
     return `${name}: no test runs this code. Add a test that reaches it.`;
   }
@@ -57,8 +67,8 @@ export function mutantMessage({ status, label, replacement, original, column }) 
     return name;
   }
   if (replacement === undefined) {
-    return `${name}: no test fails when this code changes. Add an assertion that would. ${EQUIVALENT_MUTANT_WAY_OUT}`;
+    return `${name}: no test fails when this code changes. Add an assertion that would. ${wayOut}`;
   }
   const subject = original === undefined ? 'this code' : inlineCode(original);
-  return `${name}: replacing ${subject} with ${inlineCode(replacement)} fails no test. Add an assertion that would. ${EQUIVALENT_MUTANT_WAY_OUT}`;
+  return `${name}: replacing ${subject} with ${inlineCode(replacement)} fails no test. Add an assertion that would. ${wayOut}`;
 }

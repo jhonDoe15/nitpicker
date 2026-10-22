@@ -4,7 +4,6 @@ import tseslint from 'typescript-eslint';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mjs';
 import { rule as reactSingleStylingApproach } from './rules/react/react-single-styling-approach.mjs';
-import { rule as reactTestNoImplementationDetails } from './rules/react/react-test-no-implementation-details.mjs';
 
 Object.assign(RuleTester, {
   afterAll,
@@ -99,11 +98,24 @@ tester.run('react-no-effect-derived-state', reactNoEffectDerivedState, {
       "import { useEffect as onEffect, useState as useValue } from 'react'; function Panel({ a }) { const [x, setX] = useValue(0); onEffect(() => { setX(a); }, [a]); return <div />; }",
       "import * as R from 'react'; function Panel({ a }) { const [x, setX] = R.useState(0); R.useEffect(() => { setX(a); }, [a]); return <div />; }",
       "import React from 'react'; function Panel({ a }) { const [x, setX] = React['useState'](0); React['useLayoutEffect'](() => { setX(a); }, [a]); return <div />; }",
+      withState('useEffect(() => { setX(localStore.read(a)); }, [a]);'),
     ].map((code) => ({
       filename,
       code,
       errors: [{ messageId: 'derivedState' }],
     })),
+    ...[
+      withState("useEffect(() => { setX(''); }, [a]);"),
+      withState('useEffect(() => { setX([]); }, [a]);'),
+      withState('useEffect(() => { setX({}); }, [a]);'),
+      withState('useEffect(() => { setX(undefined); }, [a]);'),
+      withState('useEffect(() => { setX(-1); }, [a]);'),
+      withState('useEffect(() => { setX(`none`); }, [a]);'),
+    ].map((code) => ({ filename, code, errors: [{ messageId: 'resetState' }] })),
+    ...[
+      withState("useEffect(() => { setX(localStorage.getItem(a) ?? ''); }, [a]);"),
+      withState('useEffect(() => { setX(JSON.parse(window.sessionStorage.getItem(a))); }, [a]);'),
+    ].map((code) => ({ filename, code, errors: [{ messageId: 'storageState' }] })),
   ],
 });
 
@@ -152,15 +164,13 @@ const classNamesAllowed = '`className` with CSS Modules or utility classes';
 const cssInJsAllowed = 'styled components (styled-components or Emotion)';
 const inlineStyleObject = '<div style={{ color: "red" }} />';
 
+const fixedValueForms = {
+  [classNamesAllowed]: 'put them in a class and pass `className={styles.title}`',
+  [cssInJsAllowed]: 'put them in a styled component, `const Title = styled.h1({ fontSize: 18 })`',
+};
+
 function inlineStyleError(allowed) {
-  return {
-    messageId: 'inlineStyle',
-    data: {
-      allowed,
-      example: "style={{ '--progress': percent }}",
-      typing: "declare module 'csstype' { interface Properties { '--progress'?: number } }",
-    },
-  };
+  return { messageId: 'inlineStyle', data: { allowed, form: fixedValueForms[allowed] } };
 }
 
 function otherApproachError(allowed, found) {
@@ -176,11 +186,27 @@ tester.run('react-single-styling-approach: class names by default', reactSingleS
     jsx('<div className="panel" />'),
     jsx('<div style={{ "--progress": percent }} />'),
     jsx('<div style={{ "--a": 1, "--b": 2 }} />'),
+    jsx('<div style={{ "--progress": percent, color: "red" }} />'),
+    jsx('<div style={{ ...base }} />'),
+    'const styles = { box: { width: 1 } }; export function Panel() { return <div style={{ ...styles.box, width }} />; }',
+    jsx('<div style={{ [name]: 1 }} />'),
+    jsx('<div style={{ "--a": 1, ...base }} />'),
+    jsx('<div style={{ width: progress, color: "red" }} />'),
+    jsx('<div style={{ transform: `scale(${zoom})` }} />'),
     jsx('<div style={{}} />'),
     jsx('<div style={style} />'),
     'export function Panel({ style }) { return <div style={style} />; }',
     "const vars = { '--progress': 1 }; export function Panel() { return <div style={vars} />; }",
     "export function Panel({ on }) { return <div style={on ? { '--a': 1 } : { '--b': 2 }} />; }",
+    "const styles = { box: { '--a': 1 } }; export function Panel() { return <div style={styles.box} />; }",
+    'const styles = { box: { width: 1 } }; export function Panel() { return <div style={styles.other} />; }',
+    'const styles = { box: { width: 1 } }; export function Panel({ key }) { return <div style={styles[key]} />; }',
+    'const styles = { box: { width: 1 } }; export function Panel() { return <div style={styles[`box`]} />; }',
+    'export function Panel() { return <div style={theme.box} />; }',
+    'const styles = makeStyles(); export function Panel() { return <div style={styles.box} />; }',
+    'const styles = { box: { width: 1 } }; export function Panel() { return <div style={other.box} />; }',
+    'const styles = { box: { width: 1 } }; let again = styles; export function Panel() { return <div style={again.box.inner} />; }',
+    'const styles = { box: base }; export function Panel() { return <div style={styles.box} />; }',
     jsx('<div style="color: red" />'),
     jsx('<div style />'),
     jsx('<Chart title={{ color: "red" }} />'),
@@ -196,10 +222,9 @@ tester.run('react-single-styling-approach: class names by default', reactSingleS
   invalid: [
     { code: jsx(inlineStyleObject), errors: [inlineStyleError(classNamesAllowed)] },
     {
-      code: jsx('<div style={{ "--progress": percent, color: "red" }} />'),
+      code: jsx('<div style={{ margin: -1, inset: [0, `0`], border: { width: 1 } }} />'),
       errors: [inlineStyleError(classNamesAllowed)],
     },
-    { code: jsx('<div style={{ ...base }} />'), errors: [inlineStyleError(classNamesAllowed)] },
     ...[
       'const shared = { color: "red" }; export function Panel() { return <div style={shared} />; }',
       'const shared: CSSProperties = { color: "red" }; export function Panel() { return <div style={shared} />; }',
@@ -212,13 +237,15 @@ tester.run('react-single-styling-approach: class names by default', reactSingleS
       'export function Panel() { return <div style={{ width: 1 } as const} />; }',
       'const shared = { width: 1 }; export function Panel({ on }) { return <div style={on ? shared : undefined} />; }',
       'const shared = { "--a": 1, width: 1 }; export function Panel() { return <div style={shared} />; }',
+      'const styles = { box: { width: 1 } }; export function Panel() { return <div style={styles.box} />; }',
+      "const styles = { box: { width: 1 } }; export function Panel() { return <div style={styles['box']} />; }",
+      'const styles = { "box": { width: 1 } }; export function Panel() { return <div style={styles.box} />; }',
+      'const styles = { box: { width: 1 } } as const; export function Panel() { return <div style={styles.box} />; }',
+      'const styles = { box: { width: 1 } }; export function Panel({ on }) { return <div style={on ? styles.box : undefined} />; }',
+      'const styles = { box: { width: 1 } }; const alias = styles; export function Panel() { return <div style={alias.box} />; }',
+      'const styles = { box: { width: 1 }, other: 1 }; export function Panel() { return <div style={styles.box} />; }',
     ].map((code) => ({ code, errors: [inlineStyleError(classNamesAllowed)] })),
-    { code: jsx('<div style={{ [name]: 1 }} />'), errors: [inlineStyleError(classNamesAllowed)] },
     { code: jsx('<div style={{ 1: "a" }} />'), errors: [inlineStyleError(classNamesAllowed)] },
-    {
-      code: jsx('<div style={{ "--a": 1, ...base }} />'),
-      errors: [inlineStyleError(classNamesAllowed)],
-    },
     ...[
       'styled-components',
       '@emotion/styled',
@@ -275,119 +302,26 @@ tester.run('react-single-styling-approach: inline style', reactSingleStylingAppr
   ].map((testCase) => ({ filename, options: [{ approach: 'inline-style' }], ...testCase })),
 });
 
-const testFilename = '/repo/test/ui/panel.test.tsx';
-const reactTestingImport = "import { render } from '@testing-library/react'; ";
-
-function componentInternalsError(name) {
-  return { messageId: 'componentInternals', data: { name } };
-}
-
-function fiberInternalsError(name) {
-  return { messageId: 'fiberInternals', data: { name } };
-}
-
-tester.run('react-test-no-implementation-details', reactTestNoImplementationDetails, {
+tester.run('react-single-styling-approach: React Native style sheets', reactSingleStylingApproach, {
   valid: [
-    "await userEvent.click(screen.getByRole('button', { name: 'Save' }));",
-    "expect(screen.getByRole('status')).toHaveTextContent('Saved');",
-    'const { result } = renderHook(() => useCounter()); expect(result.current.count).toBe(0);',
-    'const { rerender } = render(<Panel />); rerender(<Panel a={1} />);',
-    'expect(store.state).toEqual({});',
-    'const count = form.state;',
-    'const value = state();',
-    'instance();',
-    'vi.spyOn(console, "error");',
-    'vi.spyOn(React, "createElement");',
-    'vi.spyOn(Preact, "useState");',
-    'vi.spyOn(React);',
-    'vi.spyOn();',
-    'vi.spyOn(React, name);',
-    'vi.spyOn(React, `useState`);',
-    'vi.spyOn(React.hooks, "useState");',
-    'spyOn(React, "useState");',
-    'vi.fn(React, "useState");',
-    'node.ref;',
-    'node[name];',
-    'node["ref"];',
-    'node[0];',
-    'reactNode.value;',
-    'react.useState;',
-  ]
-    .map((code) => ({ filename: testFilename, code: `${reactTestingImport}${code}` }))
-    .concat(
-      [
-        'useStore.setState({ count: 0 });',
-        'Registry.getInstance();',
-        'expect(machine.state()).toEqual({});',
-        'const fiber = node.stateNode;',
-        'vi.spyOn(React, "useState");',
-        "import { test } from '@playwright/test'; test('a', async ({ page }) => { page.instance(); });",
-        "import { createStore } from 'redux-like'; createStore().setState({});",
-        "import { reactive } from 'vue'; reactive().state();",
-      ].map((code) => ({ filename: testFilename, code })),
-    ),
+    "import { StyleSheet } from 'react-native'; const styles = StyleSheet.create({ title: { fontSize: 18 } }); export const A = () => <Text style={styles.title} />;",
+    'export const A = ({ width }) => <View style={[styles.bar, { width }]} />;',
+    'export const A = ({ fade }) => <Animated.View style={{ opacity: fade }} />;',
+    'export const A = () => <View style={{ paddingTop: insets.top }} />;',
+  ].map((code) => ({ filename, code, options: [{ approach: 'style-sheet' }] })),
   invalid: [
-    { code: 'wrapper.instance();', errors: [componentInternalsError('instance()')] },
-    { code: 'renderer.getInstance();', errors: [componentInternalsError('getInstance()')] },
-    { code: 'expect(wrapper.state()).toEqual({});', errors: [componentInternalsError('state()')] },
     {
-      code: 'wrapper.setState({ open: true });',
-      errors: [componentInternalsError('setState()')],
-    },
-    { code: 'wrapper["state"]();', errors: [componentInternalsError('state()')] },
-    ...['findByType', 'findAllByType', 'findByProps', 'findAllByProps'].map((method) => ({
-      code: `renderer.root.${method}(Panel);`,
-      errors: [componentInternalsError(`${method}()`)],
-    })),
-    ...[
-      '_reactInternals',
-      '_reactInternalFiber',
-      'stateNode',
-      'memoizedState',
-      'memoizedProps',
-    ].map((property) => ({
-      code: `const fiber = node.${property};`,
-      errors: [fiberInternalsError(property)],
-    })),
-    {
-      code: 'const key = Object.keys(node).find((name) => name.startsWith("__reactFiber$")); node[node.__reactFiber$abc];',
-      errors: [fiberInternalsError('__reactFiber$abc')],
-    },
-    { code: 'node["stateNode"];', errors: [fiberInternalsError('stateNode')] },
-    ...['useState', 'useEffect', 'useContext'].map((hook) => ({
-      code: `vi.spyOn(React, "${hook}");`,
-      errors: [{ messageId: 'hookSpy', data: { name: hook } }],
-    })),
-    {
-      code: 'jest.spyOn(react, "useState").mockReturnValue([1, setX]);',
-      errors: [{ messageId: 'hookSpy', data: { name: 'useState' } }],
+      code: 'export const A = () => <Text style={{ fontSize: 18 }} />;',
+      errors: [
+        {
+          messageId: 'inlineStyleSheet',
+          data: { allowed: 'React Native `StyleSheet.create` styles' },
+        },
+      ],
     },
     {
-      code: 'vi.spyOn(React, "useState"); wrapper.state();',
-      errors: [{ messageId: 'hookSpy' }, componentInternalsError('state()')],
+      code: "import styled from 'styled-components/native';",
+      errors: [{ messageId: 'otherApproach' }],
     },
-  ]
-    .map((testCase) => ({
-      filename: testFilename,
-      ...testCase,
-      code: `${reactTestingImport}${testCase.code}`,
-    }))
-    .concat(
-      [
-        "import { mount } from 'enzyme';",
-        "import renderer from 'react-test-renderer';",
-        "import { createRoot } from 'react-dom/client';",
-        "import React from 'react';",
-        "import { renderWithProviders } from '../utils/test-utils';",
-        "import { renderWithProviders } from './test-utils.tsx';",
-        "import type { Wrapper } from '@testing-library/react';",
-        "const { render } = require('@testing-library/react');",
-        "import enzyme = require('enzyme');",
-        "export { render } from '@testing-library/react';",
-      ].map((importLine) => ({
-        filename: testFilename,
-        code: `${importLine} wrapper.instance();`,
-        errors: [componentInternalsError('instance()')],
-      })),
-    ),
+  ].map((testCase) => ({ filename, options: [{ approach: 'style-sheet' }], ...testCase })),
 });

@@ -1,4 +1,5 @@
-import { variableNamed } from '../analysis/ancestry.mjs';
+import { memberName } from '../analysis/test-code-analysis.mjs';
+import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
 
 const effectHooks = new Set(['useEffect', 'useLayoutEffect']);
 const functionTypes = new Set([
@@ -11,6 +12,10 @@ const REACT_NAMESPACE = 'React';
 
 export function isFunctionNode(node) {
   return functionTypes.has(node.type);
+}
+
+export function enclosingFunction(node) {
+  return ancestorsOf(node).find(isFunctionNode);
 }
 
 function importDefinition(variable) {
@@ -27,15 +32,6 @@ function namespaceName(sourceCode, identifier) {
   return definition !== undefined && definition.node.type !== 'ImportSpecifier';
 }
 
-function memberName(property, computed) {
-  if (!computed) {
-    return property.name;
-  }
-  return property.type === 'Literal' && typeof property.value === 'string'
-    ? property.value
-    : undefined;
-}
-
 export function hookName(sourceCode, callee) {
   if (callee.type === 'Identifier') {
     const variable = variableNamed(sourceCode, callee);
@@ -49,7 +45,7 @@ export function hookName(sourceCode, callee) {
     callee.type === 'MemberExpression' &&
     callee.object.type === 'Identifier' &&
     namespaceName(sourceCode, callee.object);
-  return isNamespaceMember ? memberName(callee.property, callee.computed) : undefined;
+  return isNamespaceMember ? memberName(callee) : undefined;
 }
 
 export function isEffectCallback(sourceCode, node) {

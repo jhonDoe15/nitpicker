@@ -37,6 +37,7 @@ export const JAVASCRIPT_ONLY_RULES = {
 };
 
 const TYPESCRIPT_SYNTAX_SELECTOR = /\bTS[A-Z]\w*/;
+const SELECTOR_RULES = new Set(['no-restricted-syntax', 'nitpicker/no-null']);
 const ACTIVE_SEVERITIES = ['error', 'warn', 1, 2];
 
 function selectorText(restriction) {
@@ -66,7 +67,7 @@ function withOptions(setting, options) {
 }
 
 function dialectSetting(name, setting) {
-  if (name === 'no-restricted-syntax' && Array.isArray(setting)) {
+  if (SELECTOR_RULES.has(name) && Array.isArray(setting)) {
     return withoutTypeScriptSyntax(setting);
   }
   return Object.hasOwn(JSDOC_RULE_OPTIONS, name)
@@ -106,6 +107,6 @@ export function applyJavascriptDialect(entries, policy) {
   return isJavascriptPolicy(policy) ? entries.flatMap(dialectEntries) : entries;
 }
 
-export function javascriptRuleEntries(policy, files) {
-  return isJavascriptPolicy(policy) ? [{ files, rules: JAVASCRIPT_ONLY_RULES }] : [];
+export function scriptRuleEntries(files) {
+  return [{ files, rules: JAVASCRIPT_ONLY_RULES }];
 }

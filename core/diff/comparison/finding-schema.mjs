@@ -61,6 +61,9 @@ function parseOptionalFields(value, classification, context) {
   if (value.ratchet !== undefined) {
     fields.ratchet = parseRatchet(value.ratchet, `${context}.ratchet`);
   }
+  if (value.tokens !== undefined) {
+    fields.tokens = parseTokens(value.tokens, `${context}.tokens`);
+  }
 
   return fields;
 }
@@ -105,6 +108,9 @@ function parseRatchet(value, context) {
     throw new TypeError(`${context}.value must be a finite number`);
   }
   const ratchet = { key: requiredString(value.key, `${context}.key`), value: value.value };
+  if (value.folderFiles !== undefined) {
+    ratchet.folderFiles = positiveInteger(value.folderFiles, `${context}.folderFiles`);
+  }
   for (const name of RATCHET_TEXT_FIELDS) {
     if (value[name] !== undefined) {
       ratchet[name] = requiredString(value[name], `${context}.${name}`);
@@ -117,6 +123,13 @@ function parseRatchet(value, context) {
     ratchet[name] = value[name];
   }
   return ratchet;
+}
+
+function parseTokens(value, context) {
+  if (!Array.isArray(value)) {
+    throw new TypeError(`${context} must be an array`);
+  }
+  return value.map((token, index) => requiredString(token, `${context}[${String(index)}]`));
 }
 
 function positiveInteger(value, context) {

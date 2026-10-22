@@ -3,6 +3,7 @@ import { readSpringDocuments, stripBracketsAndQuotes, usesJpa } from './spring-c
 import { DIAGNOSTIC_RULES } from './config-rules/diagnostics.mjs';
 import { isPlaceholder, isTest, isTestOrLocal, isTrue } from './config-rules/profiles.mjs';
 import { relaxKey } from './spring-config-parser.mjs';
+import { readTestProfiles, withProfileKinds } from './spring-profiles.mjs';
 import { credentialUrl, isLiteralSecret, secretVariable } from './spring-secrets.mjs';
 import { springWiringProblems } from './wiring/spring-wiring.mjs';
 
@@ -97,9 +98,12 @@ function allowance(rule) {
   return `To allow it here, add an exception for spring/${rule} in nitpicker.config.json.`;
 }
 
-export function readSpringConfigFindings(projectRoot, { sourceRoots = [], resourceRoots } = {}) {
+export function readSpringConfigFindings(
+  projectRoot,
+  { sourceRoots = [], resourceRoots, testSourceRoots, baselineRoot } = {},
+) {
   const resources = Array.isArray(resourceRoots) ? resourceRoots : DEFAULT_RESOURCE_ROOTS;
-  const documents = readSpringDocuments(projectRoot, resources);
+  const read = readSpringDocuments(projectRoot, resources);
   const occurrences = new Map();
   return [
     ...springWiringProblems(projectRoot, sourceRoots, resources).map(
@@ -113,9 +117,17 @@ export function readSpringConfigFindings(projectRoot, { sourceRoots = [], resour
           occurrences,
         }),
     ),
-    ...(documents.length === 0
+    ...(read.length === 0
       ? []
-      : documentFindings({ projectRoot, sourceRoots, documents, occurrences })),
+      : documentFindings({
+          projectRoot,
+          sourceRoots,
+          documents: withProfileKinds(
+            read,
+            readTestProfiles(baselineRoot ?? projectRoot, testSourceRoots),
+          ),
+          occurrences,
+        })),
   ];
 }
 

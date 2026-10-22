@@ -41,10 +41,11 @@ function renderTable(rows: readonly Row[]): string {
     revenue: Math.max(...lines.map((cells) => cells.revenue.length)),
   };
   return lines
-    .map(
-      (cells) =>
-        `${cells.product.padEnd(width.product)}  ${cells.units.padStart(width.units)}  ${cells.revenue.padStart(width.revenue)}\n`,
-    )
+    .map((cells) => {
+      const units = cells.units.padStart(width.units);
+      const revenue = cells.revenue.padStart(width.revenue);
+      return `${cells.product.padEnd(width.product)}  ${units}  ${revenue}\n`;
+    })
     .join('');
 }
 
