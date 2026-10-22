@@ -23,6 +23,8 @@ const duplicate = "use('pending'); use('pending'); use('pending');";
 const secret = "const password = 'hunter2';";
 const flag = 'export function render(loud: boolean) { return loud ? 1 : 0; }';
 const loop = 'for (const id of ids) { await repository.findById(id); }';
+const request = 'for (const id of ids) { await httpClient.get(id); }';
+const concurrentQuery = 'await Promise.all(ids.map((id) => repository.findById(id)));';
 
 export const codeSmellFailureMessageCases = [
   ...[
@@ -35,6 +37,8 @@ export const codeSmellFailureMessageCases = [
     ['boolean flag names the exception', flag, EXCEPTION],
     ['I/O in a loop names the batched call', loop, 'findByIds'],
     ['I/O in a loop names the exception', loop, EXCEPTION],
+    ['request in a loop names bounded concurrency', request, 'p-limit'],
+    ['query in Promise.all names one query', concurrentQuery, 'in one query'],
     [
       'accumulator spread names Object.fromEntries',
       'xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {});',

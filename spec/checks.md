@@ -42,6 +42,17 @@ number about a function (`nitpicker/cognitive-complexity`, `complexity`, `max-li
 | `eslint-logging`        | production source (tests excluded) | `languages/typescript/preset/eslint-config/policies/logging.config.mjs`        | enforceable |
 | `eslint-module-effects` | production source (tests excluded) | `languages/typescript/preset/eslint-config/policies/module-effects.config.mjs` | enforceable |
 
+### I/O and write rules
+
+The `nitpicker/` rules below read one shared notion of a call's effect (`database`, `remote` or
+`message`), resolved from the type checker first, then from summaries of project helpers, then
+from receiver names where no type is known. Each finding is enforceable and names the path through
+helpers.
+
+| Rule                      | Reports                                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `nitpicker/no-io-in-loop` | a database query per loop item (also inside `Promise.all`), a remote request per item of a sequential loop |
+
 ## Entry points
 
 | Check          | Rule                        | Threshold                                         | Status      |

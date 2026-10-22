@@ -73,8 +73,9 @@ export function enclosingLoop(node, sourceCode) {
       return { loop: parent, child };
     }
     if (FUNCTIONS.has(parent.type)) {
-      const sequential = isIterationCallback(parent) && !isConcurrentBatch(parent, sourceCode);
-      return sequential ? { callback: parent } : undefined;
+      return isIterationCallback(parent)
+        ? { callback: parent, concurrent: isConcurrentBatch(parent, sourceCode) }
+        : undefined;
     }
     child = parent;
   }
