@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { END_TO_END_ROOT } from '../layout.mjs';
-import { readHeadPolicy } from '../head-policy.mjs';
-import { hasDomDirectiveTests } from './dom-code/dom-tests.mjs';
+import { END_TO_END_ROOT } from '../../layout.mjs';
+import { readHeadPolicy } from '../../head-policy.mjs';
+import { hasDomDirectiveTests } from './dom-tests.mjs';
 
 const DOM_LIB = 'dom';
 function hasEndToEndRoot(name, { projectDirectory, layout }) {

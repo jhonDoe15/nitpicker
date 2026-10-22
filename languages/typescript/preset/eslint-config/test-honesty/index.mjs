@@ -67,6 +67,39 @@ function testPlacementBlock(layout, { testAreaGlobs, testRootsOnDisk }) {
   };
 }
 
+function honestyRulesBlock(layout, files, runner) {
+  const runnerOption = { runner };
+  return {
+    files,
+    ignores: layout.excludedGlobs,
+    linterOptions: escapeHatchLinterOptions,
+    plugins: { nitpicker: nitpickerRules, ...MATCHER_PLUGINS[runner] },
+    rules: {
+      'nitpicker/no-comments': ['error', { suppressionsOnly: true }],
+      'nitpicker/no-shared-test-state': 'error',
+      'nitpicker/no-copy-pasted-tests': ['error', runnerOption],
+      'nitpicker/fake-timers-require-restore': 'error',
+      'nitpicker/no-real-time-random-or-network': ['error', runnerOption],
+      'nitpicker/no-switched-off-tests': 'error',
+      'nitpicker/no-unpinned-assertion': 'error',
+      ...matcherRules(runner),
+    },
+  };
+}
+
+function setupFileBlocks(setupFiles) {
+  if (setupFiles.length === 0) {
+    return [];
+  }
+  return [
+    {
+      files: setupFiles,
+      plugins: { nitpicker: nitpickerRules },
+      rules: { 'nitpicker/no-production-imports-in-setup-files': 'error' },
+    },
+  ];
+}
+
 export function testHonestyConfigFor(
   layout,
   {
@@ -79,22 +112,7 @@ export function testHonestyConfigFor(
   const files = testAreaGlobsFor(layout);
   const runnerOption = { runner };
   return [
-    {
-      files,
-      ignores: layout.excludedGlobs,
-      linterOptions: escapeHatchLinterOptions,
-      plugins: { nitpicker: nitpickerRules, ...MATCHER_PLUGINS[runner] },
-      rules: {
-        'nitpicker/no-comments': ['error', { suppressionsOnly: true }],
-        'nitpicker/no-shared-test-state': 'error',
-        'nitpicker/no-copy-pasted-tests': ['error', runnerOption],
-        'nitpicker/fake-timers-require-restore': 'error',
-        'nitpicker/no-real-time-random-or-network': ['error', runnerOption],
-        'nitpicker/no-switched-off-tests': 'error',
-        'nitpicker/no-unpinned-assertion': 'error',
-        ...matcherRules(runner),
-      },
-    },
+    honestyRulesBlock(layout, files, runner),
     {
       files: unitTestGlobsFor(layout),
       ignores: layout.excludedGlobs,
@@ -111,14 +129,6 @@ export function testHonestyConfigFor(
       plugins: { nitpicker: nitpickerRules },
       rules: { 'nitpicker/no-uncollected-tests': ['error', runnerOption] },
     },
-    ...(setupFiles.length === 0
-      ? []
-      : [
-          {
-            files: setupFiles,
-            plugins: { nitpicker: nitpickerRules },
-            rules: { 'nitpicker/no-production-imports-in-setup-files': 'error' },
-          },
-        ]),
+    ...setupFileBlocks(setupFiles),
   ];
 }

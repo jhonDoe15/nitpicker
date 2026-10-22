@@ -20,7 +20,7 @@ import {
 import { readHeadPolicy } from './head-policy.mjs';
 import { policyTestRunner } from './test-runner/project-runner.mjs';
 import { withRunnerTypes } from './test-runner/runner-types.mjs';
-import { libsWithTestDom, withTestDom } from './test-environment/test-dom-tsconfig.mjs';
+import { libsWithTestDom, withTestDom } from './test-environment/dom-code/test-dom-tsconfig.mjs';
 import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mjs';
 import { END_TO_END_ROOT, sourceRoots, testRoots } from './layout.mjs';
 

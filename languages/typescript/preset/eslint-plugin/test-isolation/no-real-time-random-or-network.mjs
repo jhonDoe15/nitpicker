@@ -89,6 +89,17 @@ function isNetworkCall({ sourceCode, bindings }, node) {
   return binding !== undefined && binding.allowed.has(callee.property.name);
 }
 
+function reportUnfaked(context, state, { clockCalls, randomCalls }) {
+  const { fakeClock, fixRandom } = vocabularyOf(context);
+  const unfaked = [
+    ...(state.fakeClock ? [] : clockCalls.map((node) => ({ node, messageId: 'clock' }))),
+    ...(state.randomSpy ? [] : randomCalls.map((node) => ({ node, messageId: 'random' }))),
+  ];
+  for (const report of unfaked) {
+    context.report({ ...report, data: { fakeClock, fixRandom } });
+  }
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -117,7 +128,6 @@ export const rule = {
     const network = { sourceCode: context.sourceCode, bindings: networkBindings };
     const apis = createRunnerApis();
     const visitors = runnerApiVisitors(apis);
-    const { fakeClock, fixRandom } = vocabularyOf(context);
     return {
       ...visitors,
       ImportDeclaration(node) {
@@ -150,16 +160,7 @@ export const rule = {
         }
       },
       'Program:exit'() {
-        if (!state.fakeClock) {
-          for (const node of clockCalls) {
-            context.report({ node, messageId: 'clock', data: { fakeClock } });
-          }
-        }
-        if (!state.randomSpy) {
-          for (const node of randomCalls) {
-            context.report({ node, messageId: 'random', data: { fixRandom } });
-          }
-        }
+        reportUnfaked(context, state, { clockCalls, randomCalls });
       },
     };
   },
