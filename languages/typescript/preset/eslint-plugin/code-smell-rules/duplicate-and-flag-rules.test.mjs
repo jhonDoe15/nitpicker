@@ -29,6 +29,8 @@ ruleTester.run('no-duplicate-string-literals', duplicates, {
       "'use strict'; 'use strict'; 'use strict';",
       "const a = require('pkg'); const b = require('pkg'); const c = require('pkg');",
       "enum A { X = 'value' } enum B { X = 'value' } enum C { X = 'value' }",
+      "a['pending'] = 1; b['pending'] = 2; c?.['pending'];",
+      "declare module 'orders-api' {} declare module 'orders-api' {} declare module 'orders-api' {}",
     ]),
     ...cases([
       "t('orders.title'); t('orders.title'); t('orders.title');",

@@ -2034,9 +2034,11 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
 [`languages/java/gradle/code-smells-ruleset.xml`](../languages/java/gradle/code-smells-ruleset.xml) holds nitpicker's
 own PMD rules for patterns coding agents repeat. They run on main sources, with or without Spring
 (`languages/java/builds/rulesets/pmd-rulesets.mjs`, which both the init script and the Maven PMD
-run use, wraps them like the guard rules: test directories excluded); test sources get `code-smells-test-ruleset.xml` instead (PMD's `AvoidDuplicateLiterals` and its
-private-method `UnusedFormalParameter`, with nitpicker's messages; annotation values such as
-`@Tag("slow")` are not counted as duplicate literals). The Java preset is the only Gradle preset with these
+run use, wraps them like the guard rules: test directories excluded); test sources get `code-smells-test-ruleset.xml` instead (PMD's private-method
+`UnusedFormalParameter`, with nitpicker's message). Repeated string literals are checked in main
+sources only, by `RepeatedStringLiteral`, as in the TypeScript, JavaScript, Python and Kotlin
+presets: PMD's stock `AvoidDuplicateLiterals` runs nowhere (`pmd-ruleset.xml` excludes it), so a
+test's repeated expected value is not reported on either build. The Java preset is the only Gradle preset with these
 rules for now: the Kotlin preset does not run them. Each message names the allowed form and ends
 with the exception to add when the code is right: `{ "rule": "pmd/<rule>", "paths": [...], "reason": "..." }`.
 Like every PMD finding, they fail a change only when it adds one.
