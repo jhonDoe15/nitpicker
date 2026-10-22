@@ -7,7 +7,6 @@ import {
   fixtureFindings,
   rows,
 } from '../facts/test-support/fact-fixtures.mjs';
-import { featureRoles } from './shared-usage.mjs';
 
 const RULE = 'shared-used-by-one-feature';
 const SHARED = 'src/main/java/com/acme/shared';
@@ -66,18 +65,22 @@ describe('shared-used-by-one-feature import roles', () => {
 
     expect(rows(findingsOf(facts, [RULE]))).toEqual([[RULE, 'src/shared/money.py', RULE]]);
   });
-});
 
-describe('feature roles', () => {
-  const roleOf = featureRoles({ sharedRoots: ['**/shared'], featureRoots: ['app/features'] });
+  it('counts a shared folder inside a feature as part of that feature', () => {
+    const facts = {
+      modules: [
+        { file: 'src/features/billing/shared/tax.py', role: 'production' },
+        { file: 'src/features/billing/invoice.py', role: 'production' },
+      ],
+      imports: [
+        {
+          from: 'src/features/billing/invoice.py',
+          to: 'src/features/billing/shared/tax.py',
+          names: [],
+        },
+      ],
+    };
 
-  it.each([
-    ['app/shared/money.py', { kind: 'shared' }],
-    ['app/features/billing/invoice.py', { kind: 'feature', directory: 'app/features/billing' }],
-    ['app/features/readme.py', { kind: 'other' }],
-    ['lib/features/billing/invoice.py', { kind: 'other' }],
-    ['app/features/billing/shared/tax.py', { kind: 'shared' }],
-  ])('%s is %j', (file, role) => {
-    expect(roleOf(file)).toEqual(role);
+    expect(findingsOf(facts, [RULE])).toEqual([]);
   });
 });

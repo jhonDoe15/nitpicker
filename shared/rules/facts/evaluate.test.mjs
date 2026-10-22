@@ -5,6 +5,7 @@ import { sharedFactFindings } from './evaluate.mjs';
 import {
   FACT_RULE_LANGUAGES,
   FACT_RULE_LISTS,
+  OWN_TOOL,
   registeredFactRules,
   sharedFactExceptionRules,
 } from '../../project-rules/fact-rules.mjs';
@@ -16,6 +17,13 @@ import {
 } from './test-support/fact-fixtures.mjs';
 
 const CONSOLE = 'test-console-output';
+const FEATURE_RULES = ['feature-internal-import', 'shared-imports-feature', 'feature-cycle'];
+
+function factRulesOf(language) {
+  return Object.entries(FACT_RULE_LANGUAGES)
+    .filter(([, languages]) => [true, 'partial'].includes(languages[language]))
+    .map(([rule]) => rule);
+}
 
 describe('the shared fact rules', () => {
   it('registers rules the catalog knows, each with the lists it reads', () => {
@@ -29,14 +37,34 @@ describe('the shared fact rules', () => {
 
   it('is the one source of the checks table columns for a registered rule', () => {
     for (const [rule, languages] of Object.entries(FACT_RULE_LANGUAGES)) {
+      const columns = Object.fromEntries(
+        Object.entries(languages).map(([language, value]) => [
+          language,
+          value === OWN_TOOL || value,
+        ]),
+      );
       expect(Object.keys(languages).toSorted(), rule).toEqual(LANGUAGES.toSorted());
-      expect(RULES.find(({ id }) => id === rule).enforcedBy, rule).toEqual(languages);
+      expect(RULES.find(({ id }) => id === rule).enforcedBy, rule).toEqual(columns);
     }
   });
 
+  it('shows a rule a language enforces with its own tool as enforced, without running it', () => {
+    for (const rule of FEATURE_RULES) {
+      expect(RULES.find(({ id }) => id === rule).enforcedBy).toEqual({
+        typescript: true,
+        javascript: true,
+        java: false,
+        python: true,
+        kotlin: false,
+      });
+    }
+    expect(registeredFactRules('typescript')).not.toContain(FEATURE_RULES[0]);
+  });
+
   it('runs every rule registered for a language', () => {
-    expect(registeredFactRules('typescript')).toEqual(Object.keys(FACT_RULE_LANGUAGES));
-    expect(registeredFactRules('javascript')).toEqual(Object.keys(FACT_RULE_LANGUAGES));
+    expect(registeredFactRules('typescript')).toEqual(factRulesOf('typescript'));
+    expect(registeredFactRules('javascript')).toEqual(factRulesOf('javascript'));
+    expect(registeredFactRules('python')).toEqual(['shared-used-by-one-feature', ...FEATURE_RULES]);
     expect(registeredFactRules('cobol')).toEqual([]);
   });
 
@@ -55,7 +83,7 @@ describe('the shared fact rules', () => {
     ).toThrow(/test-console-output is not registered for cobol/u);
   });
 
-  it.each([['python'], ['typscript']])(
+  it.each([['rust'], ['typscript']])(
     'fails for %s, which registers no rule yet, instead of finding nothing',
     (language) => {
       expect(() => sharedFactFindings({}, { language, analyzerName: 'facts' })).toThrow(
@@ -138,15 +166,11 @@ describe('the shared fact rules', () => {
   });
 
   it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
-    expect(sharedFactExceptionRules()).toEqual(['test-only-export', CONSOLE]);
-    expect(registeredFactRules('python')).toEqual([]);
+    const lifted = ['shared-used-by-one-feature', ...FEATURE_RULES, 'test-only-export'];
+    expect(sharedFactExceptionRules()).toEqual([...lifted, CONSOLE]);
     withLanguageRegistered('doc-comment-content', 'python', () => {
-      expect(sharedFactExceptionRules()).toEqual([
-        'test-only-export',
-        'doc-comment-content',
-        CONSOLE,
-      ]);
-      expect(registeredFactRules('python')).toEqual(['doc-comment-content']);
+      expect(sharedFactExceptionRules()).toEqual([...lifted, 'doc-comment-content', CONSOLE]);
+      expect(registeredFactRules('python')).toContain('doc-comment-content');
     });
   });
 });

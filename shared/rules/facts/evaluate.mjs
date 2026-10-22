@@ -3,11 +3,12 @@ import { testConsoleFindings } from '../console/console-findings.mjs';
 import { docCommentFindings } from '../doc-comments/doc-comments.mjs';
 import { exceptionMatcher } from '../exceptions.mjs';
 import {
-  DEFAULT_FEATURE_LAYOUT,
-  featureRoles,
-  sharedUsageFindings,
-  sharedUsedByOneFeature,
-} from '../features/shared-usage.mjs';
+  featureInternalImportFindings,
+  sharedImportsFeatureFindings,
+} from '../features/feature-boundaries.mjs';
+import { featureCycleFindings } from '../features/feature-cycles.mjs';
+import { featureLayout, featureRoleContract, featureRoles } from '../features/feature-roles.mjs';
+import { sharedUsageFindings, sharedUsedByOneFeature } from '../features/shared-usage.mjs';
 import { duplicateDefinitionFindings } from '../reuse/duplicate-definitions.mjs';
 import { exportedNameCollisionFindings } from '../reuse/name-collisions.mjs';
 import { uniqueFindings } from '../reuse/reuse-finding.mjs';
@@ -20,15 +21,16 @@ import { validateFacts } from './schema.mjs';
 
 const REGISTRY = 'FACT_RULE_LANGUAGES (shared/project-rules/fact-rules.mjs)';
 
-function featureLayout(layout = {}) {
-  return {
-    sharedRoots: layout.sharedRoots ?? DEFAULT_FEATURE_LAYOUT.sharedRoots,
-    featureRoots: layout.featureRoots ?? DEFAULT_FEATURE_LAYOUT.featureRoots,
-  };
-}
-
 function productionFiles(modules) {
   return modules.filter(({ role }) => role !== 'test').map(({ file }) => file);
+}
+
+function featureBoundaryRule(findings) {
+  return ({ facts, context, options }) =>
+    findings(facts, {
+      ...context,
+      roleOf: featureRoleContract(options.policy.layout, options.publicFace),
+    });
 }
 
 const EVALUATORS = {
@@ -49,6 +51,9 @@ const EVALUATORS = {
       ),
       context,
     ),
+  'feature-internal-import': featureBoundaryRule(featureInternalImportFindings),
+  'shared-imports-feature': featureBoundaryRule(sharedImportsFeatureFindings),
+  'feature-cycle': featureBoundaryRule(featureCycleFindings),
   'test-only-export': ({ facts, context }) => testOnlyFactFindings(facts, context),
   'doc-comment-content': ({ facts, context }) => docCommentFindings(facts.docComments, context),
   'test-console-output': ({ facts, context, options }) =>

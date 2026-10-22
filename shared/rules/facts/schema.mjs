@@ -98,6 +98,7 @@ const SHAPES = {
     to: isProjectPath,
     names: isNames,
     reexport: optional(isBoolean),
+    typeOnly: optional(isBoolean),
   },
   docComments: {
     file: isProjectPath,
