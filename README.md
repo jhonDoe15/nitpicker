@@ -61,7 +61,9 @@ The messages name zod, the default validation library; in a project that depends
 
 ## Getting started
 
-nitpicker needs Node.js 22.14 or newer and a Git repository. For a TypeScript project:
+nitpicker needs Node.js 22.14 or newer and a Git repository. [Compatibility](docs/compatibility.md)
+lists the operating systems, runtimes (Deno too), build tools and test runners CI tests, with
+their versions. For a TypeScript project:
 
 ```sh
 npm install --save-dev nitpicker typescript @types/node
@@ -117,6 +119,8 @@ are chosen.
 - [Usage](docs/usage.md): the command line, reports, exit codes, configuration, caching and
   sharding in CI.
 - [Checks](spec/checks.md): every check and rule, and what fails.
+- [Compatibility](docs/compatibility.md): the tested operating systems, runtimes, build tools and
+  test runners per preset, and the limits on Windows, Deno and Bun.
 
 ## Contributing
 
