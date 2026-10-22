@@ -37,6 +37,11 @@ function precedenceLoosened({ before = DEFAULT_PRECEDENCE, after = DEFAULT_PRECE
     : projectWeight(after) > projectWeight(before);
 }
 
+function contractsDropped({ before = [], after = [] }) {
+  const kept = new Set(after.map((contract) => JSON.stringify(contract)));
+  return before.some((contract) => !kept.has(JSON.stringify(contract)));
+}
+
 function turnedOff(offValue) {
   return ({ before, after }) => after === offValue && before !== offValue;
 }
@@ -49,6 +54,7 @@ const LOOSENING_SETTINGS = [
   [/^kotlin\.formatter$/u, turnedOff('none')],
   [/^kotlin\.detektConfig$/u, () => true],
   [/^tools\.[^.]+\.precedence$/u, precedenceLoosened],
+  [/^protocols$/u, contractsDropped],
 ];
 
 export function loosensSetting(change, scope) {

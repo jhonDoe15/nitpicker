@@ -26,6 +26,7 @@ import { validateConventions } from '../../shared/conventions/settings.mjs';
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
+import { validateProtocols } from './scopes/protocol-settings.mjs';
 import { TYPESCRIPT_PRESETS, validateLayout } from './scopes/layout-settings.mjs';
 
 const OPTIONAL_VALIDATORS = [
@@ -65,6 +66,7 @@ export const KEYS = [
   'python',
   'tools',
   'testConsole',
+  'protocols',
   'kotlin',
   'conventions',
 ];
@@ -90,6 +92,7 @@ export function validateConfig(config) {
   validateReact(config.react);
   validateI18n(config.i18n);
   validateTestConsole(config.testConsole);
+  validateProtocols(config.protocols);
   validateOptional(config);
   validateProjectConventions(config);
   return config;
