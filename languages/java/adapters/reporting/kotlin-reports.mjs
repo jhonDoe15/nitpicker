@@ -12,7 +12,8 @@ import {
 } from '../kotlin/kotlin-metrics.mjs';
 import { readCompilerFindings } from '../kotlin/rules/kotlin-compiler.mjs';
 import { applyKotlinRuleMessages } from '../kotlin/rules/kotlin-messages.mjs';
-import { appendSentence, ONE_WAY_RULE_IDS } from '../kotlin/rules/kotlin-rules.mjs';
+import { ONE_WAY_RULE_IDS } from '../kotlin/rules/kotlin-rules.mjs';
+import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import {
   readCatchLogFindings,
   readTestAssertionFindings,
