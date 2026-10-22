@@ -576,7 +576,7 @@ Details that are decisions rather than the table:
 These rules bring the Python preset to the rules the TypeScript and Java presets enforce. Each
 finding names the allowed form first and ends with the usual exception sentence (`python.exceptions`, or `exceptions` for the shared rules). The
 rules marked "script" are `python-rules` findings of `nitpicker_rules.py` (one module per concern
-under `languages/python/rules/`: `checks`, `boundary`, `smells`, `honesty`); the others are ruff
+under `languages/python/rules/`: `checks`, `boundary`, `smells`, `honesty`, `concurrency`); the others are ruff
 rules. Rules that are not enforced because they flag idiomatic code with no clean alternative
 are listed at the end.
 
