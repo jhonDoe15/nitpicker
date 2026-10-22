@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import nitpicker.kotlinpsi.common.Json;
@@ -110,9 +111,18 @@ public final class KotlinPsi {
       collector.collect();
       return collector.result();
     } catch (StackOverflowError tooDeep) {
-      System.err.println(relative + ": too deeply nested to collect review facts; the file is skipped");
-      return Map.of("file", relative, "test", test, "skipped", true);
+      return skipped(relative, test);
+    } catch (PatternSyntaxException failed) {
+      if (!failed.getDescription().startsWith("Stack overflow")) {
+        throw failed;
+      }
+      return skipped(relative, test);
     }
+  }
+
+  private static Object skipped(String relative, boolean test) {
+    System.err.println(relative + ": too deeply nested to collect review facts; the file is skipped");
+    return Map.of("file", relative, "test", test, "skipped", true);
   }
 
   private static Map<Path, Boolean> sources(Path projectDir, List<String> roots) throws IOException {

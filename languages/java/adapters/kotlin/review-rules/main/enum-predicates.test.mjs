@@ -150,6 +150,36 @@ describe('exhaustive enum predicate in Kotlin', () => {
     expect(run(enumPredicateFindings, [statusFile, star])).toHaveLength(1);
   });
 
+  it('resolves a backticked entry, qualified or imported', () => {
+    const quoted = klass('Phase', { kind: 'enum', entries: ['in', 'is', 'done', 'new phase'] });
+    const phaseFile = file({ file: 'src/main/kotlin/demo/Phase.kt', classes: [quoted] });
+    const qualified = file({
+      predicates: [
+        chain([comparison('phase', 'Phase.`in`'), comparison('phase', 'Phase.`new phase`')]),
+      ],
+    });
+    const imported = file({
+      imports: [
+        { path: 'demo.Phase.in', all: false },
+        { path: 'demo.Phase.is', all: false },
+      ],
+      predicates: [chain([comparison('phase', '`in`'), comparison('phase', '`is`')])],
+    });
+    const every = file({
+      predicates: [
+        chain(
+          ['`in`', '`is`', 'done', '`new phase`'].map((name) =>
+            comparison('phase', `Phase.${name}`),
+          ),
+        ),
+      ],
+    });
+
+    expect(run(enumPredicateFindings, [phaseFile, qualified])).toHaveLength(1);
+    expect(run(enumPredicateFindings, [phaseFile, imported])).toHaveLength(1);
+    expect(run(enumPredicateFindings, [phaseFile, every])).toEqual([]);
+  });
+
   it('knows an enum declared in a Java source file of the project', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-enums-'));
     roots.push(root);

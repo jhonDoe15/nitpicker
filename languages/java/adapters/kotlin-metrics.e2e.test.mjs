@@ -1,11 +1,13 @@
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -22,6 +24,7 @@ import {
   MULTIFILE_A,
   MULTIFILE_B,
   NESTING,
+  PREDICATE_SYMBOLS,
   ROOT_PACKAGE,
   UNITS,
 } from './test-support/kotlin-metrics-sources.mjs';
@@ -57,6 +60,18 @@ configurations.matching { it.name == "nitpickerKotlinCompiler" }.configureEach {
     }
 }
 `;
+
+const fixtureBuild = readFileSync(
+  path.resolve(import.meta.dirname, 'fixtures/kotlin-project/build.gradle.kts'),
+  'utf8',
+);
+const kotlinPlugin = /kotlin\("jvm"\) version "([^"]+)"/u.exec(fixtureBuild)[1];
+const MODULE_BUILD = [
+  'plugins {\n    kotlin("jvm")\n}\n',
+  'repositories {\n    mavenCentral()\n}\n',
+  'kotlin {\n    jvmToolchain(21)\n}\n',
+].join('\n');
+const PSI_CLASS = 'nitpicker/kotlinpsi/KotlinPsi.class';
 
 let workspace;
 let java;
@@ -94,6 +109,41 @@ function writeSources(name, files) {
     writeFileSync(path.join(dir, relative), content);
   }
   return dir;
+}
+
+function twoModuleProject() {
+  return writeSources('modules', {
+    'settings.gradle.kts': 'rootProject.name = "modules"\ninclude("one", "two")\n',
+    'build.gradle.kts': `plugins {\n    kotlin("jvm") version "${kotlinPlugin}" apply false\n}\n`,
+    'one/build.gradle.kts': MODULE_BUILD,
+    'two/build.gradle.kts': MODULE_BUILD,
+    'one/src/main/kotlin/One.kt': 'package demo.one\n\nfun one() = 1\n',
+    'two/src/main/kotlin/Two.kt': 'package demo.two\n\nfun two() = 2\n',
+  });
+}
+
+function runPsiTasks(project, options = []) {
+  return spawnSync(
+    gradle,
+    [
+      '--console=plain',
+      '--quiet',
+      '--no-configuration-cache',
+      '--parallel',
+      '-Pnitpicker.kotlin=true',
+      '-I',
+      INIT_SCRIPT,
+      ...options,
+      ':one:nitpickerKotlinPsi',
+      ':two:nitpickerKotlinPsi',
+    ],
+    { cwd: project, encoding: 'utf8', timeout: 170_000 },
+  );
+}
+
+function functionsOf(project, module) {
+  const report = path.join(project, module, 'build/nitpicker/kotlin-metrics.json');
+  return JSON.parse(readFileSync(report, 'utf8')).functions.map(({ name }) => name);
 }
 
 function compilePsiProgram() {
@@ -304,6 +354,29 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
     expect(facts.files.map(({ file }) => file)).toEqual(['src/Deep.kt']);
   });
 
+  it('names a predicate in a property initializer after the property and keeps backticked constants', () => {
+    const { facts } = measure(writeSources('symbols', { 'src/Symbols.kt': PREDICATE_SYMBOLS }));
+    const [symbols] = facts.files;
+
+    expect(symbols.classes.find(({ name }) => name === 'Phase').entries).toEqual([
+      'NEW',
+      'in',
+      'DONE',
+    ]);
+    expect(
+      symbols.predicates.map(
+        ({ symbol, comparisons }) =>
+          `${symbol}: ${comparisons.map(({ right }) => right).join(' ')}`,
+      ),
+    ).toEqual([
+      'Holder.k: Phase.NEW Phase.DONE',
+      'Holder.g: Phase.NEW Phase.`in`',
+      'Holder.l: Phase.NEW Phase.DONE',
+      'Holder.f: Phase.`in` Phase.DONE',
+      'isStart: Phase.NEW Phase.`in`',
+    ]);
+  });
+
   it('collects facts of test roots without measuring them, and words a test syntax error for tests', () => {
     const project = writeSources('roots', {
       'src/main/Main.kt': FLAT,
@@ -323,5 +396,65 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
     expect(reported).toMatch(
       /^src\/test\/Broken\.kt:4: .*\. This test source is not compiled by this step: .*$/u,
     );
+  });
+});
+
+describe.skipIf(!enabled)('kotlin-psi in a Gradle build of several modules', () => {
+  let project;
+  let shared;
+
+  beforeAll(() => {
+    workspace = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-psi-build-'));
+    project = twoModuleProject();
+    shared = path.join(project, 'build/tmp/nitpickerKotlinPsi');
+  });
+
+  afterAll(() => {
+    rmSync(workspace, { recursive: true, force: true });
+  });
+
+  it('compiles the program once into the root build and every module runs it, in this build and the next', () => {
+    const first = runPsiTasks(project);
+    expect(first.status, first.stdout + first.stderr).toBe(0);
+    const compiled = readdirSync(shared);
+    const classFile = path.join(shared, compiled[0], PSI_CLASS);
+    const compiledAt = statSync(classFile).mtimeMs;
+    const second = runPsiTasks(project);
+
+    expect(second.status, second.stdout + second.stderr).toBe(0);
+    expect([compiled.length, readdirSync(shared)]).toEqual([1, compiled]);
+    expect(statSync(classFile).mtimeMs).toBe(compiledAt);
+    expect([functionsOf(project, 'one'), functionsOf(project, 'two')]).toEqual([['one'], ['two']]);
+    expect(existsSync(path.join(project, 'one/build/tmp/nitpickerKotlinPsi'))).toBe(false);
+  });
+
+  it('fails with a request for a JDK when Gradle runs on a Java runtime without javac', () => {
+    const settings = spawnSync(
+      'sh',
+      ['-c', 'exec "${JAVA_HOME:+$JAVA_HOME/bin/}java" -XshowSettings:properties -version'],
+      { encoding: 'utf8', timeout: 30_000 },
+    );
+    const jdk = /java\.home = (.+)/u.exec(settings.stderr)[1];
+    const runtime = path.join(workspace, 'runtime');
+    cpSync(jdk, runtime, { recursive: true });
+    rmSync(path.join(runtime, 'bin/javac'));
+
+    const result = runPsiTasks(project, [
+      '--no-daemon',
+      `-Dorg.gradle.java.home=${runtime}`,
+      `-Porg.gradle.java.installations.paths=${jdk}`,
+    ]);
+
+    const reasons = (result.stdout + result.stderr)
+      .split('\n')
+      .filter((line) => line.includes('without javac'))
+      .map((line) => line.trim());
+
+    expect(result.status).not.toBe(0);
+    expect([...new Set(reasons)]).toEqual([
+      `> The kotlin preset compiles its Kotlin parser with javac, and Gradle runs on ${runtime}, ` +
+        'a Java runtime without javac. Run the build on a JDK (Java 21): point JAVA_HOME or ' +
+        'org.gradle.java.home at one.',
+    ]);
   });
 });

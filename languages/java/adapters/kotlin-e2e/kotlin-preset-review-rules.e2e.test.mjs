@@ -1,10 +1,14 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   EXPECTED_REVIEW_FINDINGS,
   REVIEW_RULE_FILES,
+  runtimeSerializationFiles,
 } from './test-support/review/kotlin-review-data.mjs';
 import {
   commitBranch,
+  commitFromBranch,
   diffOf,
   initializeProject,
   kotlinE2eEnabled,
@@ -61,5 +65,20 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       'StaticForwardingWrapper absOf',
       'StaticForwardingWrapper total',
     ]);
+  });
+
+  it('skips data classes when a serialization library is only on the runtime classpath', () => {
+    const build = readFileSync(path.join(project.root, 'build.gradle.kts'), 'utf8');
+    commitFromBranch(project, {
+      name: 'runtime-serialization',
+      from: 'review-rules',
+      files: runtimeSerializationFiles(build),
+    });
+
+    const result = diffOf(project, 'runtime-serialization');
+
+    expect(reviewFindings(result.newEnforceable)).toEqual(
+      EXPECTED_REVIEW_FINDINGS.filter((entry) => entry !== 'unused-option Envelope.retries'),
+    );
   });
 });

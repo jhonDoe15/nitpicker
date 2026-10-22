@@ -51,7 +51,9 @@ internal class Mailer(private val host: String, private val retries: Int = 3) {
     fun send(): String = host + retries
 }
 
-fun report(): String = pad(1) + label(2) + Mailer("h").send() + label(3, "m")
+internal data class Envelope(val id: String, val retries: Int = 3)
+
+fun report(): String = pad(1) + label(2) + Mailer("h").send() + label(3, "m") + Envelope("e").id
 `;
 
 const WAITING_TEST = `package demo.orders
@@ -160,6 +162,20 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
   'StaticForwardingWrapper total',
+  'unused-option Envelope.retries',
   'unused-option Mailer.retries',
   'unused-option pad.width',
 ];
+
+const EMPTY_JAR = Buffer.from([0x50, 0x4b, 0x05, 0x06, ...Array.from({ length: 18 }, () => 0)]);
+
+export function runtimeSerializationFiles(build) {
+  return {
+    'build.gradle.kts': `${build}
+dependencies {
+    runtimeOnly(files("libs/jackson-module-kotlin-2.17.2.jar"))
+}
+`,
+    'libs/jackson-module-kotlin-2.17.2.jar': EMPTY_JAR,
+  };
+}

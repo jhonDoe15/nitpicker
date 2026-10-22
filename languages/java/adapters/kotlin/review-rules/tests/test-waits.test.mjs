@@ -101,6 +101,25 @@ describe('fixed sleeps in Kotlin tests', () => {
     expect(summary(findings)).toEqual([`${FIXED_SLEEP_RULE} SampleTest.waits 3`]);
   });
 
+  it('looks through inline lambdas to the polling loop or thread body around them', () => {
+    const clocked = loop('true', true);
+
+    const findings = waitsIn([
+      wait('sleep', { scopes: scopes(lambda('run'), clocked), line: 1 }),
+      wait('sleep', { scopes: scopes(lambda('let'), lambda('repeat'), clocked), line: 2 }),
+      wait('sleep', { scopes: scopes(lambda('also'), lambda('thread')), line: 3 }),
+      wait('sleep', { scopes: scopes(lambda('run'), loop('true')), line: 4 }),
+      wait('sleep', { scopes: scopes(lambda('apply')), line: 5 }),
+      wait('sleep', { scopes: scopes(lambda('map'), clocked), line: 6 }),
+    ]);
+
+    expect(summary(findings)).toEqual([
+      `${FIXED_SLEEP_RULE} SampleTest.waits 4`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 5`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 6`,
+    ]);
+  });
+
   it('allows a sleep in a mock answer or a thread body and reports it in other lambdas', () => {
     const findings = waitsIn([
       wait('sleep', { scopes: scopes(lambda('answers')), line: 1 }),

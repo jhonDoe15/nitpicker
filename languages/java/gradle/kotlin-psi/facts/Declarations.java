@@ -19,7 +19,7 @@ final class Declarations {
     List<Object> supers = new ArrayList<>();
     for (KtSuperTypeListEntry entry : klass.getSuperTypeListEntries()) {
       if (entry.getTypeReference() != null) {
-        supers.add(entry.getTypeReference().getText().replaceAll("<.*", "").trim());
+        supers.add(withoutTypeArguments(entry.getTypeReference().getText()).trim());
       }
     }
     return supers;
@@ -168,7 +168,7 @@ final class Declarations {
   void declareTypeAlias(KtTypeAlias alias) {
     if (alias.getName() != null && alias.getTypeReference() != null) {
       state.typeAliases.add(
-          m("name", alias.getName(), "target", clip(alias.getTypeReference().getText().replaceAll("<.*", ""), 200)));
+          m("name", alias.getName(), "target", clip(withoutTypeArguments(alias.getTypeReference().getText()), 200)));
     }
   }
 
