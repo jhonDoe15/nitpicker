@@ -3,7 +3,7 @@ import {
   DESIGN_RULE_LISTS,
   DESIGN_RULE_SETTINGS,
   DESIGN_RULES,
-} from './design-rules.mjs';
+} from './design/design-rules.mjs';
 
 const TYPESCRIPT_AND_JAVASCRIPT = {
   typescript: true,

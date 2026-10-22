@@ -1,4 +1,4 @@
-import { DESIGN_RULE_IDS } from '../../../project-rules/design-rules.mjs';
+import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs';
 import { quoted } from '../design-finding.mjs';
 import { displayName, listSites } from '../design-index.mjs';
 
@@ -25,18 +25,27 @@ function classGroups(decision, cases) {
     .filter((group) => cases === undefined || group.length < cases.length);
 }
 
+function callableGroups(callable, index) {
+  return (callable.decisions ?? []).flatMap((decision) => {
+    const owner = subjectOwner(decision.subject, index);
+    return (owner === undefined ? [] : classGroups(decision, owner.cases)).map((group) => ({
+      subject: decision.subject,
+      owner,
+      group,
+      site: { callable, line: decision.line },
+    }));
+  });
+}
+
 function decisionSites(index) {
   const sites = new Map();
-  for (const callable of index.callables) {
-    for (const decision of callable.decisions ?? []) {
-      const owner = subjectOwner(decision.subject, index);
-      for (const group of owner === undefined ? [] : classGroups(decision, owner.cases)) {
-        const key = `${decision.subject}\0${group.join('\0')}`;
-        const entry = sites.get(key) ?? { subject: decision.subject, owner, group, sites: [] };
-        entry.sites.push({ callable, line: decision.line });
-        sites.set(key, entry);
-      }
-    }
+  for (const { subject, owner, group, site } of index.callables.flatMap((callable) =>
+    callableGroups(callable, index),
+  )) {
+    const key = `${subject}\0${group.join('\0')}`;
+    const entry = sites.get(key) ?? { subject, owner, group, sites: [] };
+    entry.sites.push(site);
+    sites.set(key, entry);
   }
   return [...sites.values()];
 }
@@ -48,7 +57,8 @@ function siteLabel({ callable, line }) {
 function suggestion(owner, sites, index) {
   const home = sites.find(({ callable }) => callable.file === owner.type.file);
   if (home !== undefined) {
-    return `${displayName(home.callable, index)} already answers it next to ${owner.type.name}; call it from the other places`;
+    const answer = `${displayName(home.callable, index)} already answers it next to ${owner.type.name}`;
+    return `${answer}; call it from the other places`;
   }
   const form = owner.type.kind === 'enum' ? 'function' : 'method or function';
   return `give ${owner.type.name} one ${form} that answers it, and call it from each place`;
@@ -68,7 +78,11 @@ export function repeatedPolicyDecisionFindings(index, finding) {
         path: first.callable.file,
         identity: `${subject}|${group.join(',')}`,
         line: first.line,
-        message: `${String(ordered.length)} decisions over ${owner.label} treat ${quoted(group)} as one case: ${listSites(ordered.map(siteLabel))}. That grouping is a rule of its own: ${suggestion(owner, ordered, index)}.`,
+        message: [
+          `${String(ordered.length)} decisions over ${owner.label} treat ${quoted(group)} as one case:`,
+          `${listSites(ordered.map(siteLabel))}. That grouping is a rule of its own:`,
+          `${suggestion(owner, ordered, index)}.`,
+        ].join(' '),
       });
     });
 }

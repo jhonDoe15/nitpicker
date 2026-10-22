@@ -11,8 +11,8 @@ import {
   shapeProblem,
 } from '../../facts/checks.mjs';
 
-export const TYPE_KINDS = ['class', 'data', 'interface', 'module', 'enum'];
-export const CALLABLE_KINDS = ['function', 'method', 'constructor', 'accessor'];
+const TYPE_KINDS = ['class', 'data', 'interface', 'module', 'enum'];
+const CALLABLE_KINDS = ['function', 'method', 'constructor', 'accessor'];
 
 function isArgumentIndex(value) {
   return Number.isInteger(value) && value >= -1;

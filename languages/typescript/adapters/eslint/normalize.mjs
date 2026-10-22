@@ -21,6 +21,7 @@ import {
   withoutFatalDirectives,
 } from '../hints/eslint-hints.mjs';
 import { requiredString, positiveInteger } from './arguments.mjs';
+import { isRecord } from '../../../../shared/rules/facts/checks.mjs';
 
 export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
   if (!Array.isArray(value)) {
@@ -282,8 +283,4 @@ function nonRuleDiagnosticId(message, context) {
     return 'eslint/inline-config-disabled';
   }
   throw new Error(`${context} has no rule identifier: ${message}`);
-}
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

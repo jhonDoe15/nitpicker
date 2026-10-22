@@ -1,4 +1,4 @@
-import { DESIGN_RULE_IDS } from '../../../project-rules/design-rules.mjs';
+import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs';
 import { quoted } from '../design-finding.mjs';
 import { listSites, siteText } from '../design-index.mjs';
 
@@ -25,17 +25,21 @@ function decidedReads(callable, index) {
   });
 }
 
+function callablePairs(callable, index) {
+  return decidedReads(callable, index).flatMap((read) =>
+    pairs(read.decided).map((pair) => ({ read, pair, callable })),
+  );
+}
+
 function pairSites(index) {
   const sites = new Map();
-  for (const callable of index.callables.filter(({ entry }) => entry !== true)) {
-    for (const read of decidedReads(callable, index)) {
-      for (const pair of pairs(read.decided)) {
-        const key = `${read.type.id}\0${pair.join('\0')}`;
-        const entry = sites.get(key) ?? { type: read.type, sites: new Map() };
-        entry.sites.set(callable.id, { callable, decided: read.decided, line: read.line });
-        sites.set(key, entry);
-      }
-    }
+  for (const { read, pair, callable } of index.callables
+    .filter(({ entry }) => entry !== true)
+    .flatMap((item) => callablePairs(item, index))) {
+    const key = `${read.type.id}\0${pair.join('\0')}`;
+    const entry = sites.get(key) ?? { type: read.type, sites: new Map() };
+    entry.sites.set(callable.id, { callable, decided: read.decided, line: read.line });
+    sites.set(key, entry);
   }
   return [...sites.values()].filter((entry) => entry.sites.size >= MIN_SITES);
 }
@@ -67,7 +71,12 @@ export function foreignStateDecisionFindings(index, finding) {
       path: first.callable.file,
       identity: `${type.id}|${fields.join(',')}`,
       line: first.line,
-      message: `${String(sites.length)} functions outside ${type.name} decide on its ${quoted(fields)}: ${listSites(sites.map(({ callable }) => siteText(callable, index)))}. ${type.name} already has behaviour; give it a method that answers this question and call that, so the rule lives with the state it reads.`,
+      message: [
+        `${String(sites.length)} functions outside ${type.name} decide on its ${quoted(fields)}:`,
+        `${listSites(sites.map(({ callable }) => siteText(callable, index)))}.`,
+        `${type.name} already has behaviour; give it a method that answers this question and call that,`,
+        'so the rule lives with the state it reads.',
+      ].join(' '),
     });
   });
 }

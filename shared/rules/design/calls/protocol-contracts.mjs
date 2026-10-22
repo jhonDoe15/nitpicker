@@ -1,4 +1,4 @@
-import { DESIGN_RULE_IDS } from '../../../project-rules/design-rules.mjs';
+import { DESIGN_RULE_IDS } from '../../../project-rules/design/design-rules.mjs';
 import { quoted } from '../design-finding.mjs';
 import { displayName } from '../design-index.mjs';
 import { receiverCalls } from './receiver-calls.mjs';
@@ -30,9 +30,14 @@ function violations(entry, contract) {
 function violationMessage({ kind, call, open }, { entry, contract, caller, index }) {
   const where = `${displayName(caller, index)} calls \`${entry.receiver}.${call.member.name}\``;
   if (kind === 'unclosed') {
-    return `${where} but closes ${entry.owner.name} with ${quoted(contract.close)} on no exit path that always runs. The \`protocols\` contract for ${entry.owner.name} needs the close in a finally block (or with, use, try-with-resources, using), or one operation that owns both steps.`;
+    return [
+      `${where} but closes ${entry.owner.name} with ${quoted(contract.close)} on no exit path that always runs.`,
+      `The \`protocols\` contract for ${entry.owner.name} needs the close in a finally block`,
+      '(or with, use, try-with-resources, using), or one operation that owns both steps.',
+    ].join(' ');
   }
-  return `${where} before \`${open.member.name}\`, which the \`protocols\` contract for ${entry.owner.name} requires first. Call \`${open.member.name}\` before it.`;
+  const required = `which the \`protocols\` contract for ${entry.owner.name} requires first`;
+  return `${where} before \`${open.member.name}\`, ${required}. Call \`${open.member.name}\` before it.`;
 }
 
 export function protocolContractFindings(index, finding, contracts) {

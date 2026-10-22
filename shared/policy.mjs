@@ -17,7 +17,7 @@ import {
 } from './project-rules/source-rules.mjs';
 import { HYGIENE_EXCEPTION_RULES, HYGIENE_RULES } from './project-rules/hygiene-rules.mjs';
 import { sharedFactExceptionRules, withLanguageColumns } from './project-rules/fact-rules.mjs';
-import { DESIGN_RULE_IDS, designRules } from './project-rules/design-rules.mjs';
+import { DESIGN_RULE_IDS, designRules } from './project-rules/design/design-rules.mjs';
 
 import {
   BASE_GREW_MESSAGES,

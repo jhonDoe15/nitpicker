@@ -1,4 +1,4 @@
-import { DESIGN_RULE_IDS } from '../../project-rules/design-rules.mjs';
+import { DESIGN_RULE_IDS } from '../../project-rules/design/design-rules.mjs';
 import { repeatedProtocolFindings } from './calls/caller-protocol.mjs';
 import { forwardingChainFindings } from './calls/forwarding-chain.mjs';
 import { protocolContractFindings } from './calls/protocol-contracts.mjs';
@@ -25,19 +25,10 @@ const RULES = {
   [DESIGN_RULE_IDS.foreignStateDecision]: foreignStateDecisionFindings,
 };
 
-const indexes = new WeakMap();
-
-function indexOf(facts) {
-  if (!indexes.has(facts)) {
-    indexes.set(facts, designIndex(facts));
-  }
-  return indexes.get(facts);
-}
-
 export const DESIGN_EVALUATORS = Object.fromEntries(
   Object.entries(RULES).map(([rule, findings]) => [
     rule,
     ({ facts, context, options }) =>
-      findings(indexOf(facts), designFindingFactory(context), options.policy),
+      findings(designIndex(facts), designFindingFactory(context), options.policy),
   ]),
 );

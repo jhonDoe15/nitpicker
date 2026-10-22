@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { isRecord } from '../rules/facts/checks.mjs';
 
 const ENFORCEABLE_LEVELS = new Set(['error', 'warning']);
 const SKIPPED_KINDS = new Set(['pass', 'notApplicable']);
@@ -155,10 +156,6 @@ function identityOf({ result, rule, filePath, symbol }) {
 
 function nonEmpty(value) {
   return typeof value === 'string' && value !== '' ? value : undefined;
-}
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey }) {
