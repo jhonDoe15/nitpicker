@@ -9,7 +9,11 @@ public final class Initializers {
   private Initializers() {}
 
   public static String callee(KtProperty property) {
-    KtExpression value = property.getInitializer();
+    return callee(property.getInitializer());
+  }
+
+  static String callee(KtExpression initializer) {
+    KtExpression value = initializer;
     if (value instanceof KtQualifiedExpression) {
       value = ((KtQualifiedExpression) value).getSelectorExpression();
     }
