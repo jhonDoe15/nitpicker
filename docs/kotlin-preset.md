@@ -402,9 +402,10 @@ data classes; parameters with an annotation (`@RequestParam`, `@PathVariable`) a
 
 ## Review rules
 
-Six checks that detekt has no rule for run on a syntax tree of the Kotlin sources. They use the rule
-ids and the exception route of the Java preset's PMD rules, so a finding reads the same in both
-languages and one `exceptions` entry style covers either.
+Six checks that detekt has no rule for, and in a Spring project the Java preset's Spring rules
+([Spring rules](#spring-rules)), run on a syntax tree of the Kotlin sources. They use the rule ids and
+the exception route of the Java preset's PMD rules, so a finding reads the same in both languages and
+one `exceptions` entry style covers either.
 
 How it works: task `nitpickerKotlinPsi` compiles the sources of `languages/java/gradle/kotlin-psi/` with the `javac`
 of the JVM that runs Gradle, once per build into the root project's `build/tmp/nitpickerKotlinPsi`, and runs them
@@ -486,6 +487,58 @@ Every message names the allowed form and ends with the exception route. For the 
 `exceptions` with `pmd/<RuleId>` and a path glob; for `unused-option` it is
 `exceptions` with `unused-option`, as in the TypeScript preset. Identities follow the symbol, not the
 line, so a moved block is not a new finding.
+
+### Spring rules
+
+In a Spring project (Spring on the compile classpath) the rules of the Java preset's
+`spring-ruleset.xml` that make sense in Kotlin run on the main Kotlin sources, with the same ids
+(`pmd/SpringProxySelfCall`), the same allowed form written the Kotlin way, and the same exception route.
+They live in `review-rules/spring/` and read the facts of [Review rules](#review-rules): annotations
+with their arguments, calls with their receiver, chain and scope, catch clauses, `return null`, and the
+uses of an `@ExceptionHandler`'s exception.
+
+| Area          | Rules and the Kotlin forms they flag                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Beans         | `SpringConstructorInjection` (`@Autowired`, `@Inject`, `@Resource` or `@Value` on a property, a `lateinit var` or a setter function, `@Autowired` on the only constructor), `SpringImmutableBeans` (a `var` property or `var` constructor property of a stereotype bean; `@PersistenceContext` is allowed), `SpringNoServiceLocator`, `SpringNoLazyInjection`, `SpringLiteConfiguration`, `SpringNoComponentScan`, `SpringBeanCollectionState` (a `val` holding `HashMap()`, `mutableMapOf()`, `mutableListOf()`, ... of a singleton bean changed outside startup and outside `synchronized`, `withLock`, `lock()` or `@Synchronized`, also through `map[key] = value` and `+=`), `SpringHttpClientPerCall`, `SpringHttpClientTimeouts` (also an `apply { setConnectTimeout(...) }` on the request factory counts as configured), `SpringNoPostConstructIo` (repository, `EntityManager`, JDBC or HTTP calls in `@PostConstruct`, `afterPropertiesSet`, a `@Bean(initMethod = ...)` function, or a private helper only they call) |
+| Configuration | `SpringTypedConfiguration` (`@Value` outside `@Configuration` classes, `System.getProperty` of application keys outside `@Configuration`, `@SpringBootApplication`, `EnvironmentPostProcessor`, `ApplicationContextInitializer` and `main`, `Environment.getProperty` in beans), `SpringValueSecretDefault`, `SpringProfileOnConfiguration`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Proxies       | `SpringProxyMethodVisibility` (a proxied function that is `private`, `protected`, `final`, in an `object` or `companion object`, or in a class the compiler leaves final), `SpringProxySelfCall` (also `this::name` references), `SpringTransactionalAnnotation`, `SpringNoTransactionalController`, `SpringNoRequiresNew`, `SpringNoSwallowedTransactionException` (a broad or persistence `catch` without `throw`, or `runCatching` without `getOrThrow()`, in a `@Transactional` function or a private helper only it calls), `SpringTransactionalCheckedRollback` (`@Throws` of a checked exception, also a project exception extending one, without `rollbackFor`), `SpringTransactionalReadOnlyWrite`, `SpringAsyncExecutor`, `SpringScheduledFixedDelay`                                                                                                                                                                                                                                                                   |
+| Web           | `SpringComposedMapping`, `SpringRestController`, `SpringValidRequestBody`, `SpringTypedResponse` (`Any`, `JsonNode`, `Map<String, Any>`, `ResponseEntity<*>`, a list, `Optional`, `Mono` or `Flux` of those, or `null`), `SpringTypedRequestBody`, `SpringNoErrorLeak` (the stack trace, or the `message`, `localizedMessage` or `toString()` of a generic, JDK or persistence exception or its cause, in a template, concatenation or argument of the response, also through a local `val`; logging it is fine), `SpringNoCrossOrigin`, `SpringCorsWildcard`, `SpringPasswordEncoder`, `SpringPermitAllAnyRequest` (also `authorize(anyRequest, permitAll)` in the Kotlin DSL), `SpringCsrfDisabled` (also `csrf { disable() }`), `SpringHardcodedUser` (also a password held in a local `val` or a property with a string literal)                                                                                                                                                                                              |
+
+Kotlin-specific choices:
+
+- Finality. Kotlin classes and functions are final unless `open`, and Spring cannot subclass a final
+  class to proxy it. The build tells which classes the compiler opens: the init script reads the
+  `allopen` options of `compileKotlin` (`kotlin("plugin.spring")` is the `spring` preset, which opens
+  classes annotated with `@Component` or an annotation built on it, such as `@Service`, `@Configuration`
+  or `@RestController`, and `@Async`, `@Transactional`, `@Cacheable` or `@SpringBootTest`) into
+  `manifest.kotlinAllOpen` (`{ annotations, presets }`). A proxied function in a class neither `open` nor opened by the plugin is
+  flagged, as is an `open` class whose function is not `open`. An annotation the project declares
+  itself counts as opening the class (it may be meta-annotated). When the build does not report the
+  plugin's options (an older Kotlin Gradle plugin), finality is not checked at all.
+- Allowed idioms are not flagged: `data class` DTOs and `@ConfigurationProperties` data classes,
+  `runApplication<App>(*args)`, `ObjectProvider<T>`, `@Bean` function parameters, a `companion object`
+  factory of a client with timeouts, `HashMap` filled in `init` and then read only.
+- Startup and setup. A client built in a `@Bean` function, a constructor, an `init` block, a property
+  initializer, a top-level or `object` factory, or a private helper only those call (two levels deep) is
+  setup and is checked for timeouts; one built elsewhere is per call.
+- Names are resolved from the file's imports (with aliases), qualified names, the file's package and the
+  Kotlin default imports, so `jakarta.*` and `javax.*` twins are both known. A repository is an interface
+  that extends a Spring Data repository, directly or through the project's Kotlin interfaces or Java
+  interfaces read from the Java source roots.
+- One finding per site: `kotlin-source/HttpWithoutTimeout` is dropped where `SpringHttpClientTimeouts` or
+  `SpringHttpClientPerCall` reports the same line, since the Spring message names the Spring form.
+- `System.getenv` is not part of `SpringTypedConfiguration` here: detekt's `ForbiddenMethodCall`
+  already bans it outside the composition root (see [One-way rules](#one-way-rules)).
+
+Not ported:
+
+- The JPA rules (`JpaLazyFetching`, `JpaEntityClass`, `JpaManyToManyCascade`, `JpaManyToManySet`,
+  `JpaVersion`, `JpaSequenceIds`, `JpaEnumString`, `JpaIdentityHashCode`) and the Spring Data rules
+  (`SpringDataDerivedQuery`, `SpringDataNativeQuery`, `SpringDataModifyingQuery`, `SpringDataNoSaveInLoop`,
+  `SpringDataBatchOfOne`, `SpringDataRowWriteInLoop`, `SpringDataSaveInLoopHelper`, `SpringDataFilterInQuery`,
+  `SpringQueryConcatenation`, `SpringDataNoFlush`, `SpringDataNamedParameters`, `SpringDataQueryTextBlock`)
+  do not run on Kotlin yet.
+- `SpringUnusedContext` runs on Kotlin tests already (see the table above).
 
 ## Format check: ktlint, ktfmt or none
 
@@ -990,6 +1043,13 @@ fails only when it grows, and a package folder moved to a new path is matched to
   exception sentence for the rule it prints, the config accepts that rule, and no Kotlin message
   file writes a route of its own except the suppression scan. `kotlin-compiler.test.mjs` and
   `kotlin-class-limits.test.mjs`: the kotlinc lint reader and the class limits.
+- `languages/java/adapters/kotlin/review-rules/spring/spring-findings.test.mjs`: the Spring rules on facts
+  recorded from `languages/java/adapters/fixtures/kotlin-spring-project` (`kotlin-spring-facts.json`): every
+  banned form in `bad/` is reported, nothing in `good/`, every ported rule has a banned case, the ids exist
+  in `spring-ruleset.xml` and accept an exception, finality only with the all-open options, and a
+  repository declared in Java. `kotlin-e2e/kotlin-spring-rules.e2e.test.mjs` runs the same project through
+  real Gradle, checks that the findings equal those of the recorded facts (so the recording stays
+  current and the all-open options reach the manifest), and lifts one rule with an exception.
 - `languages/java/adapters/kotlin-e2e/kotlin-preset-guards.e2e.test.mjs`: real Gradle on the source
   checks, the compiler warnings and the class limits, banned and allowed, with their exception route
   and an exception for one path.
