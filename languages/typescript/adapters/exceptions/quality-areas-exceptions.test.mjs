@@ -178,7 +178,7 @@ function deadCodeProject() {
 describe('exceptions for duplicate and dead-code findings in the TypeScript analyzers', () => {
   const lift = (rule, file) => ({ rule, paths: [file], reason: 'A reviewed reason.' });
 
-  it('names the route of a duplicate and drops it once the exception is configured', async () => {
+  it('names the exclude route of a duplicate and drops it once the exception is configured', async () => {
     const files = duplicateProject();
 
     const before = failures(await areaFindings(files, [], 'duplicates'));
@@ -190,7 +190,7 @@ describe('exceptions for duplicate and dead-code findings in the TypeScript anal
       [
         'duplicate-clone',
         'src/main/a.ts',
-        'This code repeats src/main/b.ts:1 (16 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicate-clone","paths":["src/main/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'This code repeats src/main/b.ts:1 (16 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/a.ts or src/main/b.ts to "exclude" in nitpicker.config.json.',
       ],
     ]);
     expect(after).toEqual([]);

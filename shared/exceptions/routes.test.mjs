@@ -18,7 +18,6 @@ describe('withExceptionRoutes', () => {
   it.each([
     ['mutant-survived', 'mutation'],
     ['mutant-nocoverage', 'pit'],
-    ['duplicate-clone', 'duplicates'],
     ['stability-direction', 'coupling'],
     ['no-production-runtime', 'test-runtime'],
     ['type-only-production-dependency', 'test-runtime'],
@@ -53,10 +52,10 @@ describe('withExceptionRoutes', () => {
   it('escapes the glob characters of a printed path', () => {
     expect(
       withExceptionRoutes([
-        finding('duplicate-clone', { tool: 'duplicates', path: 'src/[id]/{x}/a.ts' }),
+        finding('stability-direction', { tool: 'coupling', path: 'src/[id]/{x}/a.ts' }),
       ])[0].message,
     ).toBe(
-      `The base message. ${route('{"rule":"duplicate-clone","paths":["src/\\\\[id\\\\]/\\\\{x\\\\}/a.ts"],"reason":"..."}')}`,
+      `The base message. ${route('{"rule":"stability-direction","paths":["src/\\\\[id\\\\]/\\\\{x\\\\}/a.ts"],"reason":"..."}')}`,
     );
   });
 

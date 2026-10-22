@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
+import { KOTLIN_EXCEPTION_RULES } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { kotlinConfig, useGradleFixtures } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
@@ -70,7 +71,7 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
 
       expect(result.exitCode).toBe(2);
       expect(result.output.err).toBe(
-        'nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "detekt.style.MagicNumber", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: detekt.potential-bugs.UnsafeCallOnNullableType, detekt.potential-bugs.CastNullableToNonNullableType, detekt.exceptions.TooGenericExceptionCaught, detekt.coroutines.GlobalCoroutineUsage, detekt.style.ForbiddenMethodCall, detekt.style.UnnecessaryLet, detekt.style.UnnecessaryApply, detekt.style.UseLet, detekt.style.UseDataClass, detekt.style.DataClassShouldBeImmutable, function-lines-limit, function-statements-limit, function-control-nesting-limit, function-parameters-limit, crap-score-limit, crap-coverage-unknown, changed-branch-coverage, mutant-survived, mutant-nocoverage, duplicate-clone, stability-direction, file-lines-limit, line-length-limit, folder-files-limit, folder-depth-limit, class-methods-limit, class-fields-limit, inheritance-depth-limit, test-runtime/slow-test, and, for the Java sources of the project, a finding as it is printed, "<tool>/<rule>" (for example "pmd/UnusedPrivateField"; tools: pmd, spotbugs, errorprone, archunit, google-java-format, jacoco, checkstyle, crap, duplicates, pit, structure, coupling, spring, test-runtime). Tune any other detekt rule in config/detekt/detekt.yml\n',
+        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "detekt.style.MagicNumber", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml\n`,
       );
     });
   });

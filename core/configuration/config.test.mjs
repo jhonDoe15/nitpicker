@@ -43,22 +43,24 @@ describe('config file', () => {
     ]);
   });
 
-  it('lists each exception separately in the config overrides of a python project', () => {
+  it('lists each python exception separately in the config overrides', () => {
     const exception = { rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' };
 
     expect(
       describeConfigOverrides({
-        python: { typeChecker: 'mypy' },
-        exceptions: [exception, { ...exception, rule: 'B006' }],
+        python: { typeChecker: 'mypy', exceptions: [exception, { ...exception, rule: 'B006' }] },
       }),
     ).toEqual([
-      'exception: ' + JSON.stringify(exception),
-      'exception: ' + JSON.stringify({ ...exception, rule: 'B006' }),
       'python: {"typeChecker":"mypy"}',
+      `exception: ${JSON.stringify(exception)}`,
+      `exception: ${JSON.stringify({ ...exception, rule: 'B006' })}`,
+    ]);
+    expect(describeConfigOverrides({ python: { exceptions: [exception] } })).toEqual([
+      `exception: ${JSON.stringify(exception)}`,
     ]);
   });
 
-  it('shares thresholds, exclude, legacyInventory and exceptions with the python preset', () => {
+  it('shares thresholds, exclude, legacyInventory and file-limit exceptions with the python preset', () => {
     const shared = {
       thresholds: { crapLimit: 12 },
       exclude: ['generated/**'],
@@ -76,18 +78,27 @@ describe('config file', () => {
       preset: 'python',
       exceptions,
     });
+    const functionException = {
+      rule: 'crap-score-limit',
+      paths: ['src/a.py'],
+      function: 'Service.wide',
+      reason: 'Legacy',
+    };
     expect(
-      validateConfig({
-        preset: 'python',
-        exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
-      }).exceptions,
-    ).toHaveLength(1);
+      validateConfig({ preset: 'python', exceptions: [functionException] }).exceptions,
+    ).toEqual([functionException]);
     expect(() =>
       validateConfig({
         preset: 'python',
         exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
       }),
-    ).toThrow('"exceptions[0].rule" names no rule nitpicker reports: "nitpicker/no-throw"');
+    ).toThrow('"exceptions" is not supported with "preset": "python"');
+    expect(() =>
+      validateConfig({
+        preset: 'python',
+        exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
+      }),
+    ).toThrow('"exceptions" is not supported with "preset": "python"');
   });
 
   describe('kotlin options', () => {

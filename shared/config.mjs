@@ -162,16 +162,20 @@ export function validateProjectRelativePath(value, name) {
   }
 }
 
-export function validateExceptions(exceptions, name = 'exceptions', { preset } = {}) {
+export function validateExceptions(
+  exceptions,
+  name = 'exceptions',
+  { preset, functionOptional = false } = {},
+) {
   if (!Array.isArray(exceptions)) {
     throw configError(`"${name}" must be an array`);
   }
   for (const [index, entry] of exceptions.entries()) {
-    validateException(entry, `${name}[${String(index)}]`, preset);
+    validateException(entry, `${name}[${String(index)}]`, { preset, functionOptional });
   }
 }
 
-function validateException(entry, label, preset) {
+function validateException(entry, label, { preset, functionOptional }) {
   if (!isPlainObject(entry)) {
     throw configError(`"${label}" must be an object`);
   }
@@ -195,7 +199,7 @@ function validateException(entry, label, preset) {
     throw configError(`"${label}.rule" has an ${prefixError}`);
   }
   validatePaths(entry.paths, `${label}.paths`);
-  validateNarrowing(entry, label);
+  validateNarrowing(entry, label, functionOptional);
   const reason = typeof entry.reason === 'string' ? entry.reason.trim() : '';
   if (reason === '') {
     throw configError(`"${label}.reason" is required: say why the rule is lifted for these paths`);
@@ -230,12 +234,12 @@ function validatePaths(paths, label) {
   }
 }
 
-function validateNarrowing(entry, label) {
+function validateNarrowing(entry, label, functionOptional) {
   const rule = canonicalRule(entry.rule);
   validateNarrowingKey(entry, label, {
     key: 'function',
     supported: FUNCTION_EXCEPTION_RULES,
-    required: FUNCTION_REQUIRED_RULES,
+    required: functionOptional ? [] : FUNCTION_REQUIRED_RULES,
     requiredText: `name the function whose uncovered branches are accepted. To accept a whole file, add it to "exclude"`,
   });
   validateNarrowingKey(entry, label, {

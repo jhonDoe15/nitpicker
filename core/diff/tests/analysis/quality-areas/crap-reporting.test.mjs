@@ -143,7 +143,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         path: 'src/main/value.ts',
         identity: 'function:value:occurrence:1:source:unknown',
         message:
-          'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
+          'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'value',
         location: { line: 1 },
@@ -167,7 +167,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         path: 'src/main/value.ts',
         identity: 'function:value:occurrence:1:source:missing',
         message:
-          'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
+          'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'value',
         location: { line: 1 },

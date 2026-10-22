@@ -2,11 +2,14 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyJavaPolicy } from '../java-policy.mjs';
+import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
+import { javaRouteRule } from '../java-policy.mjs';
 import { readJavaFindings as readFindings } from './java-reports.mjs';
 import { readingFrom, reportBaseOf, writeModules } from '../test-support/report-base.mjs';
 
 const readJavaFindings = readingFrom(readFindings);
+const policed = (findings, policy = {}) =>
+  applyFindingPolicy(findings, { ...policy, routeRule: javaRouteRule });
 
 const BAD = 'src/main/java/demo/Bad.java';
 const JACOCO = `<?xml version="1.0" encoding="UTF-8"?>
@@ -82,12 +85,12 @@ describe('readJavaFindings exception routes', () => {
       ['function-parameters-limit', 'Bad.decode'],
       ['changed-branch-coverage', 'Bad.decode'],
     ]);
-    expect(routed.map(({ message }) => message.match(/If a reviewer.*$/)[0])).toEqual([
+    expect(routed.map(({ message }) => message.match(/If this is intended.*$/)[0])).toEqual([
       'If this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"..."} to "exceptions" in nitpicker.config.json.',
       'If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"..."} to "exceptions" in nitpicker.config.json.',
       'If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
-    const lifted = applyJavaPolicy(findings, {
+    const lifted = policed(findings, {
       exceptions: [
         entry('function-parameters-limit', 'Bad.decode'),
         entry('crap-score-limit', 'Bad.decode'),
@@ -96,8 +99,8 @@ describe('readJavaFindings exception routes', () => {
     });
     expect(lifted.filter((finding) => routed.includes(finding))).toEqual([]);
     expect(lifted).toHaveLength(findings.length - routed.length);
-    expect(
-      applyJavaPolicy(findings, { exceptions: [entry('changed-branch-coverage', 'encode')] }),
-    ).toEqual(applyJavaPolicy(findings));
+    expect(policed(findings, { exceptions: [entry('changed-branch-coverage', 'encode')] })).toEqual(
+      policed(findings),
+    );
   });
 });

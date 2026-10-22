@@ -378,8 +378,9 @@ Every finding of a rule nitpicker adds ends with the entry that accepts it, in t
 `exceptions` of every preset. That covers the function size limits (`function-lines-limit`,
 `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`), CRAP
 (`crap-score-limit`, `crap-coverage-unknown`), changed-branch coverage (`changed-branch-coverage`),
-surviving and uncovered mutants (`mutant-survived`, `mutant-nocoverage`), `duplicate-clone` and
-`stability-direction`. The TypeScript and JavaScript presets add the dead-code findings (`files`,
+surviving and uncovered mutants (`mutant-survived`, `mutant-nocoverage`) and `stability-direction`;
+a `duplicate-clone` message keeps its sentence naming the files to add to `exclude`, and an
+`exceptions` entry for `duplicate-clone` lifts it too. The TypeScript and JavaScript presets add the dead-code findings (`files`,
 `exports`, `types`), `no-production-runtime`, `type-only-production-dependency`,
 `public-alternative-bypass`, the coding-standards findings (`public-contract-production-use`,
 `runtime-boundary/*`, `callback-protocol/*`) and the dependency-cruiser rules (for example
@@ -448,9 +449,9 @@ an exception.
   shows up in review. Removing or narrowing an exception in a change never turns the findings it
   lifted into new ones, and adding one in the same change accepts the new finding: both snapshots
   are analysed with the exceptions of the head.
-- Python uses the same `exceptions` list for the rules above and for its ruff, type-checker,
-  import-linter (`contract-broken`) and one-way rules, each by the id the finding prints; there is
-  no `python.exceptions`.
+- Python uses the same `exceptions` list for the function rules above (with `function`) and its
+  file and size limits; its ruff, type-checker, import-linter (`contract-broken`) and one-way
+  rules, each by the id the finding prints, take `python.exceptions`, and their messages name it.
 
 ### Internationalized messages
 
@@ -773,8 +774,8 @@ gate, and mutants that survived on the base stay baselined. `"disable": ["mutati
 (disabling `python` turns `mutation` off too, because `mutation` depends on it), and it is also what to do
 when mutmut cannot be installed. A project's own `[tool.mutmut]` is used as it is; without one
 nitpicker mutates the source roots, skipping test files and the `exclude` globs. A mutant that no
-test can tell from the original (an equivalent mutant) is lifted with a `python.exceptions` entry
-for `mutant-survived`, or by listing the path in `exclude`, which drops its findings; code hidden
+test can tell from the original (an equivalent mutant) is lifted with an `exceptions` entry
+for `mutant-survived` and the `function` (the message prints it), or by listing the path in `exclude`, which drops its findings; code hidden
 with `# pragma: no mutate` or a `do_not_mutate` in your `[tool.mutmut]` is reported as
 `mutant-ignored`, whatever `tools.mutmut` says. mutmut needs
 `fork`, so on native Windows the analyzer is skipped with a note: run nitpicker in WSL. Add

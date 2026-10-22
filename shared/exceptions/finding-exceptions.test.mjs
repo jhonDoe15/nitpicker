@@ -104,18 +104,18 @@ describe('applyFindingExceptions', () => {
     'lifts the finding of %s with the entry its message prints',
     (path) => {
       const entry = JSON.parse(
-        /add (\{.*\}) to/u.exec(exceptionRoute({ rule: 'duplicate-clone', path }))[1],
+        /add (\{.*\}) to/u.exec(exceptionRoute({ rule: 'stability-direction', path }))[1],
       );
 
       expect(
         applyFindingExceptions(
           [
-            { tool: 'duplicates', rule: 'duplicate-clone', path },
-            { tool: 'duplicates', rule: 'duplicate-clone', path: 'src/other/a.ts' },
+            { tool: 'coupling', rule: 'stability-direction', path },
+            { tool: 'coupling', rule: 'stability-direction', path: 'src/other/a.ts' },
           ],
           [entry],
         ),
-      ).toEqual([{ tool: 'duplicates', rule: 'duplicate-clone', path: 'src/other/a.ts' }]);
+      ).toEqual([{ tool: 'coupling', rule: 'stability-direction', path: 'src/other/a.ts' }]);
     },
   );
 

@@ -2,6 +2,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { kotlinRuleCases } from '../../kotlin/rules/test-support/kotlin-rule-cases.mjs';
 import { SUPPRESSION_RULE } from '../../kotlin/rules/kotlin-rules.mjs';
+import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import { detektFindingsOf, kotlinE2eEnabled } from '../test-support/kotlin-e2e-project.mjs';
 import { useKotlinOneWayProject } from '../__tests__/kotlin-one-way-project.mjs';
 
@@ -41,30 +42,40 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
         (file.includes('/demo/extras/') || file.includes('/demo/scopeRun/')),
     );
 
-    const exception =
-      ' To allow it on specific paths, add an "exceptions" entry for rule detekt.style.ForbiddenMethodCall in nitpicker.config.json.';
+    function route(file) {
+      return ` ${exceptionRoute({ rule: 'detekt.style.ForbiddenMethodCall', path: file })}`;
+    }
     const runBlocking =
       'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. In a test, use `runTest`.';
 
     const run =
       'The method `kotlin.run` has been forbidden: Use `let` to name a value for a block (`value?.let { ... }` for null), or call the code directly.';
 
+    const sleeping =
+      'The method `java.lang.Thread.sleep` has been forbidden: Use a scheduler or a test clock instead of sleeping.';
+    const printing = 'The method `kotlin.io.println` has been forbidden in the detekt config.';
+    const bodies = {
+      'Annotated.kt': run,
+      'Banned.kt': run,
+      'Printer.kt': printing,
+      'Qualified.kt': runBlocking,
+      'Sleeper.kt': sleeping,
+      'Wildcard.kt': runBlocking,
+    };
+
     expect(
       forbidden.map(({ path: file, message }) => [path.basename(file), message]).sort(),
-    ).toEqual([
-      ['Annotated.kt', `${run}${exception}`],
-      ['Banned.kt', `${run}${exception}`],
-      [
-        'Printer.kt',
-        `The method \`kotlin.io.println\` has been forbidden in the detekt config.${exception}`,
-      ],
-      ['Qualified.kt', `${runBlocking}${exception}`],
-      [
-        'Sleeper.kt',
-        `The method \`java.lang.Thread.sleep\` has been forbidden: Use a scheduler or a test clock instead of sleeping.${exception}`,
-      ],
-      ['Wildcard.kt', `${runBlocking}${exception}`],
-    ]);
+    ).toEqual(
+      forbidden
+        .map(({ path: file }) => [
+          path.basename(file),
+          `${bodies[path.basename(file)]}${route(file)}`,
+        ])
+        .sort(),
+    );
+    expect(forbidden.map(({ path: file }) => path.basename(file)).sort()).toEqual(
+      Object.keys(bodies),
+    );
   });
   it('does not analyze a Kotlin script among the sources', () => {
     const result = fixture.hostileConfigResult;

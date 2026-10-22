@@ -229,7 +229,7 @@ describe('eslintMessageWithHint', () => {
   describe('vitest/no-disabled-tests', () => {
     const ruleId = 'vitest/no-disabled-tests';
     const hint =
-      '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`. A justified exception goes in nitpicker.config.json.';
+      '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`.';
 
     it.each([
       ['Disabled test', 'a test'],
@@ -255,7 +255,7 @@ describe('eslintMessageWithHint', () => {
   describe('vitest matchers with a nitpicker message under either lint engine', () => {
     const relativePath = 'test/a.test.ts';
     const defined =
-      '`toBeDefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. If the value cannot be pinned, add an exception for vitest/no-restricted-matchers in nitpicker.config.json.';
+      '`toBeDefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned.';
 
     it.each([
       ['Use of `toBeDefined` is disallowed', defined],
@@ -272,12 +272,12 @@ describe('eslintMessageWithHint', () => {
       [
         'vitest/prefer-called-with',
         'Suggest using `toBeCalledWith()` or `toHaveBeenCalledWith()`.',
-        'A bare `toHaveBeenCalled()` passes for a call with any arguments. Assert them with `toHaveBeenCalledWith(...)`. If the arguments cannot be pinned, add an exception for vitest/prefer-called-with in nitpicker.config.json.',
+        'A bare `toHaveBeenCalled()` passes for a call with any arguments. Assert them with `toHaveBeenCalledWith(...)`. An exception fits only when the arguments cannot be pinned.',
       ],
       [
         'vitest/require-to-throw-message',
         'Require a message for "toThrow".',
-        "A bare `toThrow()` passes for any error. Pass the expected message: `toThrow('the message')`. If the message cannot be pinned, add an exception for vitest/require-to-throw-message in nitpicker.config.json.",
+        "A bare `toThrow()` passes for any error. Pass the expected message: `toThrow('the message')`. An exception fits only when the message cannot be pinned.",
       ],
     ])('replaces the native text of %s', (ruleId, text, expected) => {
       expect(eslintMessageWithHint({ ruleId, text, relativePath })).toBe(expected);

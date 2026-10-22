@@ -37,7 +37,7 @@ describe('test honesty rules', () => {
     expect(found).toEqual([
       "'/* eslint-disable */' has no effect because you have 'noInlineConfig' setting in your config.",
       'Fix the violation; inline ESLint disables are not allowed. A reviewed exception belongs in the nitpicker config file.',
-      'Shared mutable state makes tests depend on their order. Keep `calls` inside the test, or declare it without a value and set it in `beforeEach`. A justified exception goes in nitpicker.config.json.',
+      'Shared mutable state makes tests depend on their order. Keep `calls` inside the test, or declare it without a value and set it in `beforeEach`.',
     ]);
   });
 
@@ -60,7 +60,7 @@ describe('test honesty rules', () => {
 
     expect(messages(stub, 'test/setup.ts')).toEqual([]);
     expect(messages(`it('x', () => { ${stub} expect(run()).toBe(1); });`)).toEqual([
-      'This stubbed global stays stubbed for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllGlobals(); });`, or stub it once in a setup file. A justified exception goes in nitpicker.config.json.',
+      'This stubbed global stays stubbed for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllGlobals(); });`, or stub it once in a setup file.',
     ]);
   });
 
@@ -73,10 +73,10 @@ describe('test honesty rules', () => {
     const code = 'export const labels = [1, -1, 0];';
 
     expect(messages(code, 'src/main/features/labels/testing/make-labels.ts')).toEqual([
-      'This looks like a test helper (testing/), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under test/, so move it to a test-support/ folder there (test/test-support/). If it is real production code, add an exception for nitpicker/no-test-helpers-in-source in nitpicker.config.json.',
+      'This looks like a test helper (testing/), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under test/, so move it to a test-support/ folder there (test/test-support/). An exception fits only when it is real production code.',
     ]);
     expect(messages(code, 'src/main/features/labels/test-support/make-labels.ts')).toEqual([
-      'This looks like a test helper (test-support/), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under test/, so move it to a test-support/ folder there (test/test-support/). If it is real production code, add an exception for nitpicker/no-test-helpers-in-source in nitpicker.config.json.',
+      'This looks like a test helper (test-support/), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under test/, so move it to a test-support/ folder there (test/test-support/). An exception fits only when it is real production code.',
     ]);
     expect(messages(code, 'src/main/features/labels/domain/labels.ts')).toEqual([]);
     expect(messages(code, 'test/support/make-labels.ts')).toEqual([]);
@@ -91,15 +91,14 @@ describe('test honesty rules', () => {
     ).toEqual([]);
     expect(messages(code, 'src/main/test-support/fixtures/labels.ts', colocated)).toEqual([]);
     expect(messages(code, 'src/main/features/labels/testing/make-labels.ts', colocated)).toEqual([
-      'This looks like a test helper (testing/), but it sits in production source outside a test-support/ folder. Tests in this project sit next to the code, and test-only modules go in a test-support/ folder beside the code they serve: move it there. If it is real production code, add an exception for nitpicker/no-test-helpers-in-source in nitpicker.config.json.',
+      'This looks like a test helper (testing/), but it sits in production source outside a test-support/ folder. Tests in this project sit next to the code, and test-only modules go in a test-support/ folder beside the code they serve: move it there. An exception fits only when it is real production code.',
     ]);
   });
 
   it('keep the real network out of unit tests only', () => {
     const code = "it('x', async () => { await fetch('http://127.0.0.1:9'); });";
 
-    const networkMessage =
-      'A unit test must not reach the network. Inject the client and fake it. A justified exception goes in nitpicker.config.json.';
+    const networkMessage = 'A unit test must not reach the network. Inject the client and fake it.';
 
     expect(messages(code, 'src/main/features/a/__tests__/a.test.ts')).toEqual([networkMessage]);
     expect(messages(code, 'src/main/features/a/a.test.ts')).toEqual([networkMessage]);
@@ -110,7 +109,7 @@ describe('test honesty rules', () => {
     const code = "it('ships express in 2 days', () => { expect(days('express')).toBe(2); });";
 
     expect(messages(code, 'test/orders-check.ts')).toEqual([
-      'This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). If another test file runs it on purpose, add an exception for nitpicker/no-uncollected-tests in nitpicker.config.json.',
+      'This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose.',
     ]);
     expect(messages(code, 'test/orders.test.ts')).toEqual([]);
   });
@@ -119,7 +118,7 @@ describe('test honesty rules', () => {
     const code = "import { classify } from '../src/main/classify.js';\nclassify(1);";
 
     expect(messages(code, 'test/setup.ts')).toEqual([
-      'A setup file runs before every test file, so production code imported here is covered without a test. Import ../src/main/classify.js in the tests that need it. A justified exception goes in nitpicker.config.json.',
+      'A setup file runs before every test file, so production code imported here is covered without a test. Import ../src/main/classify.js in the tests that need it.',
     ]);
     expect(messages(code, 'test/helpers/build.ts')).toEqual([]);
   });
@@ -246,7 +245,7 @@ describe('stub restores the project vitest config switches on', () => {
     const code = "it('x', () => { vi.stubGlobal('fetch', run); vi.stubEnv('MODE', 'x'); });";
 
     expect(messages(code, 'test/a.test.ts', scoped)).toEqual([
-      'This stubbed environment variable stays set for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllEnvs(); });`. A justified exception goes in nitpicker.config.json.',
+      'This stubbed environment variable stays set for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllEnvs(); });`.',
     ]);
     expect(messages(code, 'test/web/a.test.ts', scoped)).toEqual([]);
   });

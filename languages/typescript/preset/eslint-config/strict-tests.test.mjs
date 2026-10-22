@@ -33,7 +33,7 @@ describe('strict test rules', () => {
   it('requires subprocess deadlines in integration tests and their shared helpers', () => {
     const code = "import { spawnSync } from 'node:child_process'; spawnSync('tool', []);";
     const expected = [
-      'Give spawnSync a positive subprocess timeout, such as { timeout: 10_000 }. A test runner timeout cannot interrupt a synchronous child process, so a stuck command can hang the suite. If this process must wait without a deadline, add an exception for this rule in nitpicker.config.json.',
+      'Give spawnSync a positive subprocess timeout, such as { timeout: 10_000 }. A test runner timeout cannot interrupt a synchronous child process, so a stuck command can hang the suite. An exception fits only when this process must wait without a deadline.',
     ];
     expect(
       [

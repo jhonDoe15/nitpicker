@@ -156,7 +156,7 @@ export const RULE_TOOLS = new Map([
   [RULE_IDS.publicAlternativeBypass, ['entry-points']],
   [RULE_IDS.unusedProp, ['structure']],
   [RULE_IDS.unusedOption, ['structure']],
-  [RULE_IDS.testOnlyExport, ['dead-code']],
+  [RULE_IDS.testOnlyExport, ['dead-code', 'coupling']],
   [RULE_IDS.sharedUsedByOneFeature, ['coupling']],
   [RULE_IDS.duplicateDefinition, ['structure']],
   [RULE_IDS.exportedNameCollision, ['structure']],

@@ -102,7 +102,9 @@ describe('readErrorProneFindings', () => {
       manifest: { testSourceRoots: ['src/test/java'], guava: false, testGuava: true },
     });
 
-    expect(findings.map((finding) => finding.message.split(' If a reviewer')[0])).toStrictEqual([
+    expect(
+      findings.map((finding) => finding.message.split(' If this is intended')[0]),
+    ).toStrictEqual([
       "Throw something specific. Did you mean 'throw new IllegalStateException('?",
       "Throw something specific. Did you mean 'throw new VerifyException('?",
     ]);
