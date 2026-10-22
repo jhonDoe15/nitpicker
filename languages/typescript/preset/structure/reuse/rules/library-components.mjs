@@ -1,6 +1,6 @@
 import { RULE_IDS } from '../../../../../../shared/policy.mjs';
 import { isScopePackage } from '../../../eslint-config/scope-support.mjs';
-import { reuseFinding } from '../finding.mjs';
+import { reuseFinding } from '../../../../../../shared/rules/reuse/reuse-finding.mjs';
 
 const COMPONENT_FILE = /\.[jt]sx$/u;
 const COMPONENT_NAME = /^[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*$/u;

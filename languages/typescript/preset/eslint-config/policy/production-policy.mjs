@@ -4,12 +4,11 @@ import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { domainGlobsFor } from '../strict/strict-domain.mjs';
 import { SECURITY_RULES, securityRules, securitySupportGlobs } from './security-facts.mjs';
 
-const ERROR_SEVERITY = 'error';
 const JAVASCRIPT_FILES = '**/*.{js,jsx,mjs,cjs}';
 const MAGIC_NUMBER_ALLOWED = [-1, 0, 1, 2, 10, 100, 1000];
 
 const RANDOM_MESSAGE =
-  'Math.random() is predictable, so it must not make ids or tokens: use crypto.randomUUID() or crypto.randomInt(), or take the random value as a parameter. For a simulation or UI jitter, add an exception for this rule in nitpicker.config.json.';
+  'Math.random() is predictable, so it must not make ids or tokens: use crypto.randomUUID() or crypto.randomInt(), or take the random value as a parameter. An exception fits only for a simulation or UI jitter.';
 
 const productionRestrictedProperties = [
   { object: 'Math', property: 'random', message: RANDOM_MESSAGE },
@@ -37,7 +36,7 @@ const routeHandlerNames = {
 function namingConvention({ react, routeHandlers }) {
   const underscores = 'allowSingleOrDouble';
   return [
-    ERROR_SEVERITY,
+    'error',
     ...(routeHandlers ? [routeHandlerNames] : []),
     { selector: 'typeLike', format: ['PascalCase'] },
     {
@@ -61,14 +60,14 @@ function namingConvention({ react, routeHandlers }) {
 
 function productionRules({ react, routeHandlers }) {
   return {
-    curly: [ERROR_SEVERITY, 'all'],
-    'no-eval': ERROR_SEVERITY,
-    'no-param-reassign': [ERROR_SEVERITY, { props: false }],
-    'no-duplicate-imports': [ERROR_SEVERITY, { allowSeparateTypeImports: true }],
-    'no-restricted-properties': [ERROR_SEVERITY, ...productionRestrictedProperties],
+    curly: ['error', 'all'],
+    'no-eval': 'error',
+    'no-param-reassign': ['error', { props: false }],
+    'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
+    'no-restricted-properties': ['error', ...productionRestrictedProperties],
     'nitpicker/naming-convention': namingConvention({ react, routeHandlers }),
     'nitpicker/no-magic-numbers': [
-      ERROR_SEVERITY,
+      'error',
       {
         ignore: MAGIC_NUMBER_ALLOWED,
         ignoreArrayIndexes: true,
@@ -79,19 +78,18 @@ function productionRules({ react, routeHandlers }) {
         ignoreTypeIndexes: true,
       },
     ],
-    'nitpicker/no-repeated-string-literal': ERROR_SEVERITY,
-    'regexp/no-super-linear-backtracking': ERROR_SEVERITY,
+    'regexp/no-super-linear-backtracking': 'error',
   };
 }
 
 function productionGuardRules({ react, security }) {
   return {
     'nitpicker/no-process-access-outside-composition-root': [
-      ERROR_SEVERITY,
+      'error',
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
-    'nitpicker/no-shell-string-command': ERROR_SEVERITY,
-    'nitpicker/no-unsafe-path-join': ERROR_SEVERITY,
+    'nitpicker/no-shell-string-command': 'error',
+    'nitpicker/no-unsafe-path-join': 'error',
     ...securityRules({ react, security }),
   };
 }
@@ -108,7 +106,7 @@ export function productionLayoutConfigFor(layout, options = {}) {
       plugins: { nitpicker: nitpickerRules },
       rules: {
         'nitpicker/no-unknown-main-folder': [
-          ERROR_SEVERITY,
+          'error',
           { sourceRoots: layout.sourceRoots, react: options.react === true },
         ],
       },
@@ -145,7 +143,7 @@ export function productionPolicyConfigFor(layout, options = {}) {
       plugins: { '@typescript-eslint': tseslint.plugin },
       rules: {
         '@typescript-eslint/explicit-module-boundary-types': [
-          ERROR_SEVERITY,
+          'error',
           { allowArgumentsExplicitlyTypedAsAny: true },
         ],
       },
@@ -154,7 +152,7 @@ export function productionPolicyConfigFor(layout, options = {}) {
       files: layout.sourceGlobs,
       ignores: [...production.ignores, ...domainGlobsFor(layout.sourceRoots)],
       plugins: { nitpicker: nitpickerRules },
-      rules: { 'nitpicker/no-module-level-mutable-state': ERROR_SEVERITY },
+      rules: { 'nitpicker/no-module-level-mutable-state': 'error' },
     },
     {
       files: [...(layout.entryPoints ?? []), ...configFileGlobsFor(layout)],

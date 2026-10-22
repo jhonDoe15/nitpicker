@@ -6,7 +6,7 @@ import { withMovesFile } from '../../../../core/diff/git/patches/moves-file.mjs'
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { runQualityArea } from '../quality-areas-runner.mjs';
 import { parseArguments } from './arguments.mjs';
-import { baselinePathsOf } from './base-paths.mjs';
+import { baselinePathsOf } from '../../../../shared/rules/facts/baseline.mjs';
 
 const PRICE = [
   'export function formatPrice(cents: number, currency: string): string {',

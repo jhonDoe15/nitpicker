@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { lifecycleArgs, readReactor } from './maven-project.mjs';
+import { lifecycleArgs, readReactor, usesSpring } from './maven-project.mjs';
 
 const roots = [];
 
@@ -100,6 +100,7 @@ function defaultModule(basedir, coordinates, packaging) {
     outputDirectory: path.join(target, 'classes'),
     testOutputDirectory: path.join(target, 'test-classes'),
     sourceRoots: [path.join(basedir, 'src/main/java')],
+    kotlinSourceRoots: [],
     testSourceRoots: [path.join(basedir, 'src/test/java')],
     resourceRoots: [],
     surefireReports: path.join(target, 'surefire-reports'),
@@ -136,6 +137,7 @@ describe('readReactor', () => {
       outputDirectory: `${root}/core/out/classes`,
       testOutputDirectory: `${root}/core/out/test-classes`,
       sourceRoots: [`${root}/core/src/main/java`, path.join(root, 'core/src/generated/java')],
+      kotlinSourceRoots: [],
       testSourceRoots: [`${root}/core/src/test/java`],
       resourceRoots: [`${root}/core/src/main/resources`],
       surefireReports: `${root}/core/out/tests`,
@@ -461,5 +463,23 @@ describe('describeModule publishing', () => {
         `<packaging>bundle</packaging>${DISTRIBUTION}`,
       ].map((inner) => soloModule(inner).published),
     ).toEqual([true, true, false, false, true]);
+  });
+});
+
+describe('usesSpring', () => {
+  const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
+
+  it('is true for spring-context and spring-boot jars on the main compile classpath', () => {
+    expect([
+      usesSpring(classpaths('spring-context-6.2.10.jar')),
+      usesSpring(classpaths('guava.jar', 'spring-boot-3.5.5.jar')),
+    ]).toEqual([true, true]);
+  });
+
+  it('is false for other jars, other Spring modules and no jars', () => {
+    expect([
+      usesSpring(classpaths('spring-web-6.2.10.jar', 'spring-boot-starter.jar.sha1')),
+      usesSpring(classpaths()),
+    ]).toEqual([false, false]);
   });
 });

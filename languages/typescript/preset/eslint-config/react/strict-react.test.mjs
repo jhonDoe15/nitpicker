@@ -114,7 +114,7 @@ describe('null in a React project', () => {
     expect(message).toBe(
       'Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. ' +
         '`null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument, and the `useRef` and `createContext` argument.' +
-        ' If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
+        ' An exception fits only when a framework or library requires it.',
     );
   });
 });
@@ -288,7 +288,7 @@ describe('the preset config', () => {
     expect(pickerNames).toEqual(restrictedBrowserGlobals.slice(1).map((entry) => entry.name));
     expect(pickerNames).toHaveLength(58);
     expect(restrictedBrowserGlobals.find((entry) => entry.name === 'event').message).toBe(
-      '`event` here is the browser global, not a local value. Write `window.event` when you mean the global; otherwise take the value as a parameter (`onClick={(event) => ...}`) or declare it. If this is intentional, add an exception for this rule in nitpicker.config.json.',
+      '`event` here is the browser global, not a local value. Write `window.event` when you mean the global; otherwise take the value as a parameter (`onClick={(event) => ...}`) or declare it.',
     );
     expect(await restrictedOf(reactManifest, 'test/picker.test.tsx')).toEqual(pickerNames);
     expect(await restrictedOf(native, 'src/main/ui/picker.jsx')).toEqual([]);
