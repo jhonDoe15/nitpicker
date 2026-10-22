@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { childAt, childrenAt, parseXml } from '../../ingest/common.mjs';
+import { childAt, childrenAt, parseXml } from '../../../../shared/ingest/common.mjs';
 import { excludeCovers } from './source-patterns.mjs';
 
 const TEST_PLUGINS = new Set(['maven-surefire-plugin', 'maven-failsafe-plugin']);
