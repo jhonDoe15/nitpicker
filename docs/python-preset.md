@@ -1544,12 +1544,53 @@ and CRAP rules.
 
 ## Tests
 
-- `core/command/python/python-cli-*.test.mjs`: fast, always on. The CLI end to end with a fake toolchain
-  (`languages/python/adapters/fixtures/fake-python-tools.mjs` behind wrapper scripts in a
-  `.venv/bin`): clean and failing changes in every report format, a change that removes every test,
-  tool errors (failing tests, no environment), `--all`, rejected TypeScript-only keys, and that
-  base and head each run with their own sources on `PYTHONPATH`. One test per behaviour that no
-  unit test below covers.
+- `core/command/python/python-cli-*.test.mjs`: fast, always on. The CLI end to end with a fake
+  toolchain: the tools of a `.venv/bin` are wrapper scripts that start
+  `languages/python/adapters/fixtures/fake-python-tools.mjs`, which calls `runFake` of
+  `languages/python/adapters/test-support/fake-tools/`. The harness runs the analyzers in process
+  through `runTasksInProcess`, as the Java CLI tests do, and hands it `spawnFakeTools`, which
+  `createToolContext` takes as `spawn`: calls to an installed fake tool run `runFake` in the test
+  process, every other call starts a real process. The runner entry (`runPython`) is the same
+  function the process entry calls, and one test runs it as a child process (`subprocess: true`) to
+  pin the process boundary. They cover clean and failing changes in every report format, a change that
+  removes every test, tool errors (failing tests, no environment), `--all`, rejected TypeScript-only
+  keys, and that base and head each run with their own sources on `PYTHONPATH`. One test per
+  behaviour that no unit test below covers. The Python end-to-end suite starts the runner as a
+  program. Environment detection (`poetry`, `uv`, `pip`) always starts real programs, which the
+  environment tests replace with shell scripts on `PATH`. The project directory controls the fake:
+  - `fail.json`: { "<tool>" or "<tool> <subcommand>": "message" }: that call exits 2 with the message on stderr (`--version` always works)
+  - `violations.txt`: one `rule|path|message` per line: ruff check findings
+  - `unformatted.txt`: one path per line: files ruff format / black would reformat
+  - `test-exit.txt`: exit status of `coverage run` (default 0); its output says the tests failed
+  - `junit.xml`: written as the pytest JUnit report when `coverage run` passes --junitxml (default: one passing test, or one failing test when test-exit.txt is 1)
+  - `coverage-data.json`: written as the coverage.py JSON report (default: no files)
+  - `parallel-coverage.txt`: `coverage run` leaves a per-process data file next to $COVERAGE_FILE
+  - `unparsable.txt`: one path per line: files the formatter cannot parse (it exits like the real formatter does and names them on stderr)
+  - `no-pytest.txt`: `python -c "import pytest"` fails
+  - `no-<name>.txt`: the version probe of that distribution (Django, nose2) fails; it prints 5.1.0 otherwise
+  - `pytest-cov.txt`, `xdist.txt`, `rerunfailures.txt`, `pytest-django.txt`: the pytest probe reports that plugin as installed
+  - `ruff-rules.json`: printed by `ruff rule --all` (default: that call exits 2, as an old ruff does)
+  - `sources.txt`: one path per line: what `ruff check --show-files` lists (default: every .py file below the project, except .venv)
+  - `type-errors.txt`: printed by mypy as its report (exit 1 when not empty)
+  - `mypy-version.txt`: the version mypy prints for --version (default 1.13.0)
+  - `pyright.json`: { generalDiagnostics } printed by pyright and basedpyright as their report, relative files made absolute (exit 1 when it has diagnostics)
+  - `rules.json`: written by the nitpicker rules script (default: no findings)
+  - `structure-data.json`: written as the structure metrics report of `python structure_metrics.py` (default: no functions)
+  - `classes-data.json`: written as its classes report (default: no classes)
+  - `no-mutmut.txt`: the mutmut version probe fails
+  - `mutmut-version.txt`: the version the mutmut probe prints (default 3.8.0)
+  - `mutants-data.json`: { "<source path>": { "exitCodes": {...}, "mutated": "<text>" } }: what `mutmut run` leaves in mutants/ (default: an empty mutants/)
+  - `mutmut-exit.txt`: exit status of `mutmut run` (default 0); 1 says no mutant is covered, any other status says the clean test run failed
+  - `mutmut-output.txt`: what `mutmut run` prints instead of those messages
+  - `mutmut-failing-tests.txt`: one test module per line: `mutmut run` fails its stats run until PYTEST_ADDOPTS ignores each (`python pytest_timings.py` writes junit.xml for them)
+  - `mutmut-only-failing.txt`: with those ignored, no test is left (the stats run collects none)
+  - `python-version.txt`: the `major.minor` the interpreter version probe prints (default 3.12)
+  - `import-scan.json`: printed by the import scan script (default: no imports)
+  - `distributions.json`: printed by the distribution scan script (default: Python 3.12, nothing installed)
+  - `lint-imports.txt`: printed by lint-imports (default: a report with no broken contracts); its exit status is 1 when the text says BROKEN
+  - `python -c` with `sys.executable` prints `$VIRTUAL_ENV/bin/python` and always works. When
+    `FAKE_PYTHON_LOG` is set, every call appends a JSON line with the tool, arguments, cwd,
+    `PYTHONPATH`, `MYPYPATH`, `PYTEST_ADDOPTS` and `DJANGO_SETTINGS_MODULE`.
 - Unit tests next to the code: environment (including uv, poetry and workspace launchers), formatter,
   test runner, target version and source root detection, the tool steps (arguments, long output,
   missing tools, unparsable files), the runner (exclude, legacy inventory, messages) and its

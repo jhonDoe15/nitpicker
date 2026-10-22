@@ -15,6 +15,7 @@ import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 import { TEST_ONLY_EXCEPTION_RULE } from '../review-rules/test-only-classes.mjs';
 import { CONSOLE_EXCEPTION_RULE } from '../test-times/console-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules/review-rules.mjs';
+import { UNRUN_TEST_EXCEPTION_RULE } from '../test-runs/unrun-tests.mjs';
 
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
 const KOTLIN_KEYS = ['formatter', 'detektConfig'];
@@ -26,6 +27,7 @@ export const KOTLIN_EXCEPTION_RULES = [
   ...JAVA_SIZE_RULES,
   'test-runtime/slow-test',
   CONSOLE_EXCEPTION_RULE,
+  UNRUN_TEST_EXCEPTION_RULE,
   TEST_ONLY_EXCEPTION_RULE,
   ...KOTLIN_REVIEW_EXCEPTION_RULES,
 ];

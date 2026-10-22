@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { qualifiedName, sourceOfType } from './spring-boot-tests.mjs';
+import { qualifiedName, sourceOfType } from './integration-tests.mjs';
 import { testMethod } from './test-methods.mjs';
 
 const MAX_LEVELS = 10;
