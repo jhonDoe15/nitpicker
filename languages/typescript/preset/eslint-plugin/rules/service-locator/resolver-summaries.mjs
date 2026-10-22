@@ -60,20 +60,32 @@ function resolvedCallee(context, node) {
   return callee === undefined || isInRegistrationCallback(node) ? undefined : callee;
 }
 
+function scanBody(context, fn) {
+  const callees = [];
+  for (const node of depthFirst(fn.body, syntaxChildren)) {
+    const evidence = directEvidence(context, node);
+    if (evidence !== undefined) {
+      return { evidence, callees };
+    }
+    const callee = resolvedCallee(context, node);
+    if (callee !== undefined) {
+      callees.push(callee);
+    }
+  }
+  return { callees };
+}
+
 function searchFrom(context, start) {
   const queue = [start];
   const seen = new Set(queue);
   for (const fn of queue) {
-    for (const node of depthFirst(fn.body, syntaxChildren)) {
-      const evidence = directEvidence(context, node);
-      if (evidence !== undefined) {
-        return { evidence };
-      }
-      const callee = resolvedCallee(context, node);
-      if (callee !== undefined && !seen.has(callee)) {
-        seen.add(callee);
-        queue.push(callee);
-      }
+    const { evidence, callees } = scanBody(context, fn);
+    if (evidence !== undefined) {
+      return { evidence };
+    }
+    for (const callee of callees.filter((candidate) => !seen.has(candidate))) {
+      seen.add(callee);
+      queue.push(callee);
     }
   }
   return { searched: queue };
