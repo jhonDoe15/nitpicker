@@ -96,6 +96,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
+- Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. Never `Promise.all(items.map(send))` over a runtime collection.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 
 ## Production rules

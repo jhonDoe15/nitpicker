@@ -72,6 +72,25 @@ function uncollectedAllowed(subject = '') {
   );
 }
 
+function fanOutParts(subject = '') {
+  const [combinator = '', collection = '', operation = '', via = '', kind = ''] =
+    subject.split('|');
+  return { combinator, collection, operation, via, kind };
+}
+
+function fanOutDescription(subject) {
+  const { combinator, collection, operation, via, kind } = fanOutParts(subject);
+  const verb = kind === 'message' ? 'publishes through' : 'calls';
+  const through = via === '' ? '' : ` (which ${verb} \`${via}\`)`;
+  return `\`${combinator}\` starts \`${operation}\`${through} for every element of \`${collection}\` at once, with no bound on how many run together`;
+}
+
+function fanOutAllowed(subject) {
+  const { collection, kind } = fanOutParts(subject);
+  const target = kind === 'message' ? 'the broker' : 'the remote service';
+  return `Every element becomes a call in flight, so a large \`${collection}\` exhausts connections, rate limits or ${target}. Bound it: share one \`asyncio.Semaphore(8)\` (or an anyio/trio \`CapacityLimiter\`) created outside the task and \`async with limit:\` around the call in the task body, or work through fixed-size chunks (\`for chunk in batched(items, 20): await asyncio.gather(...)\`), or send one batch request when the API has one. A semaphore created inside the task, or a limit constant that nothing acquires, bounds nothing.`;
+}
+
 export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
@@ -120,7 +139,13 @@ export const SMELL_HINTS = [
     rules: ['io-in-loop'],
     describe: (subject) => `\`${subject}\` runs once per item of a loop`,
     allowed:
-      'Batch it: fetch or write all items in one call, or run the calls together with `asyncio.gather` or a `ThreadPoolExecutor.map` when there is no batch API.',
+      'Batch it: fetch or write all items in one call, or run the calls together with a bounded `asyncio.gather` (a shared `asyncio.Semaphore` acquired in the task) or a `ThreadPoolExecutor.map` when there is no batch API.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['unbounded-fan-out'],
+    describe: fanOutDescription,
+    allowed: fanOutAllowed,
   },
   {
     tool: RULES_TOOL,

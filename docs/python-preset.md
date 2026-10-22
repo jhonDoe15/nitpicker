@@ -601,7 +601,8 @@ are listed at the end.
 | Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                      | `generic-name` (script)                                                                                                                              |
 | Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
 | Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
-| Input or output per item | one batch call, or `asyncio.gather`                                                                                                              | `io-in-loop` (script)                                                                                                                                |
+| Input or output per item | one batch call, or `asyncio.gather` over a comprehension                                                                                         | `io-in-loop` (script)                                                                                                                                |
+| Concurrent remote calls  | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                             | `unbounded-fan-out` (script)                                                                                                                         |
 | Task markers             | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
 | Commented-out code       | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
 | Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                         | ruff `S` (see below)                                                                                                                                 |
@@ -776,8 +777,31 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `secret-in-log` reports such a name passed to a logger call. Placeholders, environment variable
   names, header names and URLs are not secrets.
 - `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
-  comprehension; `asyncio.gather` over a comprehension, a paging loop (the condition reads a
+  comprehension; `asyncio.gather` over a comprehension, a task created for the call
+  (`create_task`, `ensure_future`), a paging loop (the condition reads a
   variable the body assigns) and a retry (a `try` in the loop that returns on success) are not.
+- `unbounded-fan-out` reports `asyncio.gather`, `asyncio.wait` and `asyncio.as_completed` over a
+  generator, a list comprehension, `map(f, xs)`, a name bound to one, or a list filled by
+  `append` in a `for` loop, and `asyncio.create_task`, `ensure_future`, `tg.create_task` and
+  `nursery.start_soon` inside a loop or comprehension, when the coroutine makes a remote call
+  (`requests`, `httpx`, `aiohttp`, `urllib3`, `urllib.request.urlopen`, `boto3` clients, OpenAI and
+  Anthropic clients) or publishes to a broker (`aiokafka`, `kafka`, `confluent_kafka`, `pika`,
+  `aio_pika`, `redis` `publish`, `nats`, Pub/Sub, `paho.mqtt`, SQS, SNS, EventBridge and Kinesis
+  through `boto3`) and runs over a collection that is not fixed. The coroutine is resolved when it
+  is a client call, a nested or module-level `async def` of the project, a method of the same
+  class or an imported project function, up to three calls deep. A client is recognized from its
+  factory (`httpx.AsyncClient()` in an assignment or `async with`, also `self.x`), or from a
+  parameter, `self` attribute or variable annotated with the library type. Database calls are the
+  business of `io-in-loop`. Allowed: an `asyncio.Semaphore`, `BoundedSemaphore`, `Lock`, anyio or
+  trio `CapacityLimiter` or `Semaphore`, `aiolimiter.AsyncLimiter` created outside the task and
+  entered in the task body (`async with limit:`), a limiter passed in as a parameter, an
+  `await gate.acquire()` or a `gather` that drains a window inside the loop, a literal or constant
+  collection, `range(3)`, a slice or `islice` with an explicit size, and chunks from `batched`,
+  `chunked`, `chunks` or `partition_all` with a size. A semaphore created inside the task, or a
+  limit constant that nothing acquires, bounds nothing. Test files are exempt. Limits: an
+  unannotated `client` parameter and a library outside the list are not recognized, and a
+  collection that is small in practice but not by construction is reported; lift such a path with
+  a `python.exceptions` entry.
 - `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
   comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
   `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and
