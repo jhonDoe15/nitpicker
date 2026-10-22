@@ -1,4 +1,5 @@
-import { evaluateDuplicates, RENAMED_IDENTITY_PREFIX } from '../rules/duplicates.mjs';
+import { RENAMED_IDENTITY_PREFIX } from '../exceptions/matching.mjs';
+import { evaluateDuplicates } from '../rules/duplicates.mjs';
 import { isBoilerplate } from './boilerplate.mjs';
 import { readProjectFile } from './files.mjs';
 import { isRepeatingShape } from './repetition.mjs';

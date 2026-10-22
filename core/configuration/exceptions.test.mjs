@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { exceptionEntryText } from '../../shared/messages/exception-sentence.mjs';
 import { exceptionMatcher } from '../../shared/rules/exceptions.mjs';
 import { validateConfig } from './validate.mjs';
 
@@ -95,6 +96,26 @@ describe('config exceptions', () => {
 
     expect(isExcepted('test-only-export', 'src/app/[id]/page.tsx')).toBe(true);
     expect(isExcepted('test-only-export', 'src/app/i/page.tsx')).toBe(false);
+  });
+
+  it('lifts with a rule written as the finding prints it, in the matcher every rule calls', () => {
+    const isExcepted = exceptionMatcher([
+      { rule: 'structure/folder-files-limit', paths: ['src/big'], reason: 'Legacy' },
+      { rule: 'test-runtime/slow-test', paths: ['tests/**'], reason: 'Legacy' },
+    ]);
+
+    expect(isExcepted('folder-files-limit', 'src/big')).toBe(true);
+    expect(isExcepted('slow-test', 'tests/db.test.ts')).toBe(true);
+    expect(isExcepted('file-lines-limit', 'src/big')).toBe(false);
+  });
+
+  it('lifts the file whose escaped path a message prints', () => {
+    const printed = exceptionEntryText({ rule: 'large-file', path: 'cfg/{a,b}/[id]/s*r.bin' });
+    const isExcepted = exceptionMatcher([JSON.parse(printed)]);
+
+    expect(isExcepted('large-file', 'cfg/{a,b}/[id]/s*r.bin')).toBe(true);
+    expect(isExcepted('large-file', 'cfg/a/i/ser.bin')).toBe(false);
+    expect(isExcepted('large-file', 'cfg/{a,b}/[id]/sxr.bin')).toBe(false);
   });
 
   it('leaves the path globs of an ESLint rule to ESLint, which reads character classes', () => {

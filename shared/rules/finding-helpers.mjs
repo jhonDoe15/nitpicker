@@ -81,3 +81,18 @@ export function listed(members) {
     ? `${shown} and ${String(members.length - LISTED_MEMBERS)} more`
     : shown;
 }
+
+/** The name of the narrowest function of `file` (`{ file, name, start, end }[]`) that holds `line`. */
+export function enclosingFunctionName(functions, file, line) {
+  let found;
+  for (const candidate of functions) {
+    const holds = candidate.file === file && candidate.start <= line && line <= candidate.end;
+    if (
+      holds &&
+      (found === undefined || candidate.end - candidate.start < found.end - found.start)
+    ) {
+      found = candidate;
+    }
+  }
+  return found?.name;
+}

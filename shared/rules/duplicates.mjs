@@ -27,25 +27,6 @@ function cloneMetrics({ analyzerName, sides, clone, pair, occurrence }) {
   return metrics;
 }
 
-const PAIR_END = /:(?:fragment|occurrence):/;
-export const RENAMED_IDENTITY_PREFIX = 'renamed:';
-const IDENTITY_KIND_PREFIXES = [RENAMED_IDENTITY_PREFIX, 'cpd:'];
-
-export function clonePartnerPath(finding) {
-  const prefix = `pair:${finding.path}|`;
-  const kind = IDENTITY_KIND_PREFIXES.find((candidate) => finding.identity.startsWith(candidate));
-  const identity = finding.identity.slice(kind?.length ?? 0);
-  if (
-    !['duplicate-clone', 'duplicate-clone-size'].includes(finding.rule) ||
-    !identity.startsWith(prefix)
-  ) {
-    return undefined;
-  }
-  const rest = identity.slice(prefix.length);
-  const end = rest.search(PAIR_END);
-  return end < 0 ? undefined : rest.slice(0, end);
-}
-
 function clonedRange(side, lines) {
   const startLine = positiveInteger(side.line);
   if (startLine === undefined) {
