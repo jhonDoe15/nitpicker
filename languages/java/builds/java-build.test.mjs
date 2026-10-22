@@ -50,6 +50,7 @@ describe('readPinnedTools', () => {
       'pitest',
       'pitestJunit5',
       'pitestTestng',
+      'archunit',
       'detekt',
       'detektKotlin',
       'ktlint',

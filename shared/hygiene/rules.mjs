@@ -1,21 +1,18 @@
-import { globToRegExp } from '../glob.mjs';
+import { exceptionEntryText, exceptionSentence } from '../messages/exception-sentence.mjs';
+import { globMatcher } from '../paths/glob.mjs';
 
-export function exceptionEntry(rule, glob, packageName) {
+export function exceptionHint(rule, path, packageName) {
   const packages = packageName === undefined ? {} : { packages: [packageName] };
-  return JSON.stringify({ rule, paths: [glob], ...packages, reason: '...' });
+  return exceptionSentence(exceptionEntryText({ rule, path, ...packages }));
 }
 
-export function exceptionHint(rule, glob, packageName) {
-  const entry = exceptionEntry(rule, glob, packageName);
-  return `If this is intended, add ${entry} to "exceptions" in nitpicker.config.json.`;
-}
-
-export function isExcepted(exceptions, { rule, path: filePath, packageName }) {
+export function isExcepted(exceptions, { rule, path: filePath, packageName, symbol }) {
   return exceptions.some(
     (entry) =>
       entry.rule === rule &&
-      entry.paths.some((pattern) => globToRegExp(pattern).test(filePath)) &&
-      (entry.packages === undefined || entry.packages.includes(packageName)),
+      entry.paths.some((pattern) => globMatcher(pattern).test(filePath)) &&
+      (entry.packages === undefined || entry.packages.includes(packageName)) &&
+      (entry.name === undefined || entry.name === symbol),
   );
 }
 
@@ -33,6 +30,6 @@ export function withoutExcepted(findings, exceptions = []) {
 }
 
 export function withoutExcluded(filePaths, exclude = []) {
-  const patterns = exclude.map((glob) => globToRegExp(glob));
+  const patterns = exclude.map((glob) => globMatcher(glob));
   return filePaths.filter((filePath) => !patterns.some((pattern) => pattern.test(filePath)));
 }

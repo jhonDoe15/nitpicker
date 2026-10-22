@@ -1,19 +1,10 @@
 import { SUPPRESSION_RULE } from '../kotlin-rules.mjs';
+import { kotlinGuardCases } from './kotlin-guard-cases.mjs';
 
 const COROUTINE_IMPORTS =
   'import kotlinx.coroutines.GlobalScope\nimport kotlinx.coroutines.launch\n';
 
 export const kotlinRuleCases = [
-  {
-    id: 'repeatedStrings',
-    rule: 'detekt.complexity.StringLiteralDuplication',
-    message:
-      'Multiple occurrences of the same string literal within a single file detected. Prefer extracting the string literal into a property or constant.',
-    allowedForm: 'Name a constant',
-    banned: 'fun labels(): List<String> = listOf("pending", "pending", "pending")\n',
-    allowed:
-      'private const val PENDING = "pending"\nfun labels(): List<String> = listOf(PENDING, PENDING, PENDING)\n',
-  },
   {
     id: 'nullAssertion',
     rule: 'detekt.potential-bugs.UnsafeCallOnNullableType',
@@ -140,6 +131,7 @@ export const kotlinRuleCases = [
       '@Suppress("UnsafeCallOnNullableType")\nfun length(text: String?): Int = text!!.length\n',
     allowed: 'fun length(text: String?): Int = text?.length ?: 0\n',
   },
+  ...kotlinGuardCases,
 ];
 
 const VARIANT_NAMES = { banned: 'Banned', allowed: 'Allowed' };

@@ -1,7 +1,7 @@
 import { chainOf } from '../../analysis/ancestry.mjs';
 import { isExpectCall, memberName } from '../../analysis/test-code-analysis.mjs';
 
-const PARTIAL_MATCHERS = new Set(['toContain', 'toContainEqual']);
+const PARTIAL_MATCHERS = new Set(['toContain', 'toContainEqual', 'toMatch']);
 const WHOLE_VALUE_MATCHERS = new Set(['toEqual', 'toStrictEqual']);
 const PARTIAL_ASYMMETRIC_MATCHERS = new Set([
   'objectContaining',
@@ -32,16 +32,38 @@ function isTextArgument(node) {
   );
 }
 
+function isAnchoredPattern(node) {
+  const pattern = node.regex?.pattern;
+  return pattern?.startsWith('^') === true && pattern.endsWith('$') && !pattern.endsWith('\\$');
+}
+
+function isFragmentMatch(node) {
+  const argument = node.arguments[0];
+  if (argument?.type === 'Literal' && argument.regex !== undefined) {
+    return !isAnchoredPattern(argument);
+  }
+  return isTextArgument(argument);
+}
+
 function isPositiveExpectation(callee) {
   return startsFromExpect(callee) && !isNegatedExpectation(callee);
 }
 
 function isPartialAssertion(node) {
   const callee = node.callee;
-  if (callee.type !== 'MemberExpression') return false;
+  if (callee.type !== 'MemberExpression') {
+    return false;
+  }
   const matcher = memberName(callee);
-  if (!PARTIAL_MATCHERS.has(matcher)) return false;
-  if (matcher === 'toContain' && !isTextArgument(node.arguments[0])) return false;
+  if (!PARTIAL_MATCHERS.has(matcher)) {
+    return false;
+  }
+  if (matcher === 'toContain' && !isTextArgument(node.arguments[0])) {
+    return false;
+  }
+  if (matcher === 'toMatch' && !isFragmentMatch(node)) {
+    return false;
+  }
   return isPositiveExpectation(callee);
 }
 
@@ -61,15 +83,21 @@ function expectedValueParts(node) {
       property.type === 'Property' ? property.value : property,
     );
   }
-  if (node.type === 'ArrayExpression') return node.elements.filter((element) => element !== null);
-  if (node.type === 'SpreadElement') return [node.argument];
+  if (node.type === 'ArrayExpression') {
+    return node.elements.filter((element) => element !== null);
+  }
+  if (node.type === 'SpreadElement') {
+    return [node.argument];
+  }
   return [];
 }
 
 function containsPartialMatcher(expected) {
   const pending = [expected];
   for (const node of pending) {
-    if (isPartialAsymmetricMatcher(node)) return true;
+    if (isPartialAsymmetricMatcher(node)) {
+      return true;
+    }
     pending.push(...expectedValueParts(node));
   }
   return false;
@@ -77,9 +105,13 @@ function containsPartialMatcher(expected) {
 
 function isPartialMatcherAssertion(node) {
   const callee = node.callee;
-  if (callee.type !== 'MemberExpression' || !isPositiveExpectation(callee)) return false;
+  if (callee.type !== 'MemberExpression' || !isPositiveExpectation(callee)) {
+    return false;
+  }
   const matcher = memberName(callee);
-  if (matcher === 'toMatchObject') return true;
+  if (matcher === 'toMatchObject') {
+    return true;
+  }
   return WHOLE_VALUE_MATCHERS.has(matcher) && node.arguments.some(containsPartialMatcher);
 }
 
@@ -92,9 +124,9 @@ export const rule = {
     schema: [],
     messages: {
       partialOutput:
-        'Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment: a fragment passes even when the rest is wrong. If the output is too large or unordered to pin, add an exception for this rule in nitpicker.config.json.',
+        'Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment (`toContain`, or `toMatch` with a pattern that is not anchored `^...$`): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.',
       partialMatcher:
-        'Pass the whole expected value to `toEqual` instead of a partial match (`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`): the rest of the value goes unchecked. Use `expect.any(Type)` for a field that varies. If the value is too large or unordered to pin, add an exception for this rule in nitpicker.config.json.',
+        'Pass the whole expected value to `toEqual` instead of a partial match (`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`): the rest of the value goes unchecked. Use `expect.any(Type)` for a field that varies. An exception fits only when the value is too large or unordered to pin.',
     },
   },
   create(context) {

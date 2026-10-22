@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
+import { fakeGradleRun } from '../test-support/in-process-gradle.mjs';
 import { withoutFollowedImports } from './followed-imports.mjs';
 
-const fakeGradle = path.resolve(import.meta.dirname, '../fixtures/fake-gradle.mjs');
 const MAIN = 'src/main/java/demo/A.java';
 const TEST = 'src/test/java/demo/ATest.java';
 const SOURCES = {
@@ -104,7 +104,7 @@ describe('the Gradle run', () => {
   }
 
   const starImportsOf = (root, conventions) =>
-    collectJavaFindings(root, { gradle: fakeGradle, policy: { preset: 'java', conventions } })
+    collectJavaFindings(root, { ...fakeGradleRun, policy: { preset: 'java', conventions } })
       .filter(({ rule }) => rule === 'AvoidStarImport')
       .map(({ path: file, location }) => `${file}:${String(location.line)}`);
 

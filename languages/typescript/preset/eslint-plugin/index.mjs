@@ -42,7 +42,6 @@ import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-pro
 import { rule as testTsconfigPinsLibAndTypes } from './rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
 import { rule as exhaustiveUnionPredicate } from './rules/api-shape/exhaustive-union-predicate.mjs';
 import { rule as hoverTestNeedsKeyboard } from './rules/react-tests/hover-test-needs-keyboard.mjs';
-import { rule as noRepeatedStringLiteral } from './rules/api-shape/no-repeated-string-literal.mjs';
 import { rule as noForwardingWrapper } from './rules/api-shape/no-forwarding-wrapper.mjs';
 import { rule as noRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as noSingularAndPluralProp } from './rules/react-props/no-singular-and-plural-prop.mjs';
@@ -69,6 +68,10 @@ import { rule as noUnknownMainFolder } from './rules/guards/no-unknown-main-fold
 import { rule as noUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
 import { rule as noMagicNumbers } from './rules/wrapped/no-magic-numbers.mjs';
 import { rule as namingConvention } from './rules/wrapped/naming-convention.mjs';
+import { testAssertionRules } from './test-assertions/rules.mjs';
+import { rule as noTestHelpersInSource } from './test-placement/no-test-helpers-in-source.mjs';
+import { testIsolationRules } from './test-isolation/rules.mjs';
+import { testQualityRules } from './test-quality/rules.mjs';
 
 export const nitpickerRules = {
   meta: {
@@ -136,7 +139,6 @@ export const nitpickerRules = {
     'exhaustive-union-predicate': exhaustiveUnionPredicate,
     'hover-test-needs-keyboard': hoverTestNeedsKeyboard,
     'no-forwarding-wrapper': noForwardingWrapper,
-    'no-repeated-string-literal': noRepeatedStringLiteral,
     'no-runtime-exclusive-props-check': noRuntimeExclusivePropsCheck,
     'no-singular-and-plural-prop': noSingularAndPluralProp,
     'react-no-effect-data-fetching': reactNoEffectDataFetching,
@@ -149,5 +151,9 @@ export const nitpickerRules = {
     'react-no-effect-event-handling': reactNoEffectEventHandling,
     'react-no-random-key': reactNoRandomKey,
     'react-test-no-implementation-details': reactTestNoImplementationDetails,
+    'no-test-helpers-in-source': noTestHelpersInSource,
+    ...testAssertionRules,
+    ...testIsolationRules,
+    ...testQualityRules,
   },
 };
