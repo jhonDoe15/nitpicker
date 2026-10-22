@@ -1,7 +1,5 @@
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.domain.JavaField;
-import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.domain.JavaParameterizedType;
 import com.tngtech.archunit.core.domain.JavaType;
 import com.tngtech.archunit.core.domain.JavaTypeVariable;
@@ -24,44 +22,36 @@ final class DddModel {
   private static final String ROOT_TYPE = TYPES + "AggregateRoot";
   private static final String ENTITY_TYPE = TYPES + "Entity";
   private static final String VALUE_TYPE = TYPES + "ValueObject";
-  private static final String ASSOCIATION_TYPE = TYPES + "Association";
   private static final String ROOT_ANNOTATION = ANNOTATIONS + "AggregateRoot";
   private static final String ENTITY_ANNOTATION = ANNOTATIONS + "Entity";
   private static final String VALUE_ANNOTATION = ANNOTATIONS + "ValueObject";
-  private static final String ASSOCIATION_ANNOTATION = ANNOTATIONS + "Association";
 
   private final Set<JavaClass> roots = new LinkedHashSet<>();
   private final Map<JavaClass, Set<JavaClass>> entityOwners = new LinkedHashMap<>();
+  private final Set<JavaClass> annotatedEntities = new LinkedHashSet<>();
   private final Set<JavaClass> values = new LinkedHashSet<>();
 
   DddModel(JavaClasses main) {
-    List<JavaClass> annotatedEntities = new ArrayList<>();
     for (JavaClass type : main) {
-      if (type.isInterface() || type.getModifiers().contains(JavaModifier.ABSTRACT)) {
+      if (type.isAnnotation()) {
         continue;
       }
       if (isRoot(type)) {
         roots.add(type);
-      } else if (type.isAssignableTo(ENTITY_TYPE)) {
-        declaredOwner(type).ifPresent(owner -> entityOwners.put(type, ownerSet(owner)));
+      } else if (type.isAssignableTo(ENTITY_TYPE) && !type.getName().equals(ENTITY_TYPE)) {
+        declaredOwner(type).ifPresent(owner -> entityOwners.put(type, new LinkedHashSet<>(List.of(owner))));
       } else if (type.isMetaAnnotatedWith(ENTITY_ANNOTATION)) {
         annotatedEntities.add(type);
+        entityOwners.put(type, new TreeSet<>(Comparator.comparing(JavaClass::getName)));
       }
       if (type.isAssignableTo(VALUE_TYPE) || type.isMetaAnnotatedWith(VALUE_ANNOTATION)) {
         values.add(type);
       }
     }
-    for (JavaClass entity : annotatedEntities) {
-      entityOwners.put(entity, new TreeSet<>(Comparator.comparing(JavaClass::getName)));
-    }
     for (JavaClass root : roots) {
       collectHeld(root, root, new HashSet<>());
     }
     entityOwners.values().removeIf(Set::isEmpty);
-  }
-
-  Set<JavaClass> roots() {
-    return roots;
   }
 
   Set<JavaClass> values() {
@@ -90,38 +80,15 @@ final class DddModel {
     return members;
   }
 
-  static Set<JavaClass> heldTypes(JavaClass type) {
-    Set<JavaClass> held = new LinkedHashSet<>();
-    for (JavaField field : type.getAllFields()) {
-      if (!field.getModifiers().contains(JavaModifier.STATIC)
-          && !field.getModifiers().contains(JavaModifier.SYNTHETIC)
-          && !field.isMetaAnnotatedWith(ASSOCIATION_ANNOTATION)) {
-        collectTypes(field.getType(), held);
-      }
-    }
-    return held;
+  static boolean sameAggregate(Set<JavaClass> aggregates, JavaClass root) {
+    return aggregates.stream()
+        .anyMatch(aggregate -> root.isAssignableTo(aggregate.getName()) || aggregate.isAssignableTo(root.getName()));
   }
 
-  private static void collectTypes(JavaType type, Set<JavaClass> sink) {
-    if (type instanceof JavaWildcardType) {
-      ((JavaWildcardType) type).getUpperBounds().forEach(bound -> collectTypes(bound, sink));
-      return;
-    }
-    if (type instanceof JavaTypeVariable) {
-      return;
-    }
-    JavaClass raw = type.toErasure();
-    if (raw.isArray()) {
-      collectTypes(raw.getBaseComponentType(), sink);
-      return;
-    }
-    if (raw.isAssignableTo(ASSOCIATION_TYPE)) {
-      return;
-    }
-    sink.add(raw);
-    if (type instanceof JavaParameterizedType) {
-      ((JavaParameterizedType) type).getActualTypeArguments().forEach(argument -> collectTypes(argument, sink));
-    }
+  Set<JavaClass> heldTypes(JavaClass type) {
+    return HeldTypes.of(type, supertype -> roots.contains(supertype)
+        || entityOwners.containsKey(supertype)
+        || values.contains(supertype));
   }
 
   private void collectHeld(JavaClass holder, JavaClass root, Set<JavaClass> visited) {
@@ -130,17 +97,16 @@ final class DddModel {
     }
     for (JavaClass held : heldTypes(holder)) {
       Set<JavaClass> owners = entityOwners.get(held);
-      if (owners instanceof TreeSet) {
+      if (owners == null) {
+        continue;
+      }
+      if (annotatedEntities.contains(held)) {
         owners.add(root);
+        collectHeld(held, root, visited);
+      } else if (sameAggregate(owners, root)) {
         collectHeld(held, root, visited);
       }
     }
-  }
-
-  private static Set<JavaClass> ownerSet(JavaClass owner) {
-    Set<JavaClass> owners = new LinkedHashSet<>();
-    owners.add(owner);
-    return owners;
   }
 
   private static Optional<JavaClass> declaredOwner(JavaClass type) {

@@ -78,7 +78,7 @@ describe.skipIf(!enabled)('Aggregate rules on a jMolecules project without Sprin
     }
   });
 
-  it('runs the architecture rules for jmolecules-ddd on the classpath and reports the aggregate reference', () => {
+  it('runs only the aggregate rules for jmolecules-ddd without Spring, through subtypes, interface roots and bound type variables', () => {
     const report = JSON.parse(
       readFileSync(path.join(projectRoot, 'build', 'nitpicker', 'spring-arch.json'), 'utf8'),
     );
@@ -91,6 +91,12 @@ describe.skipIf(!enabled)('Aggregate rules on a jMolecules project without Sprin
           className: 'sales.Order',
           fileName: 'Order.java',
           detail: 'sales.Customer',
+        },
+        {
+          rule: 'ddd-aggregate-reference',
+          className: 'sales.Wishlist',
+          fileName: 'Wishlist.java',
+          detail: 'sales.Product',
         },
       ],
     });

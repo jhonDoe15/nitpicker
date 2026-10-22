@@ -256,7 +256,7 @@ function extraTools({ modules, analyzed, policy, pinned }) {
     ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     ...formatTool(policy.javaStyle, pinned),
     ...archunitTool(
-      analyzed.some(({ classpaths }) => runsArchRules(classpaths)),
+      policy.spring === true || analyzed.some(({ classpaths }) => runsArchRules(classpaths)),
       pinned,
     ),
   ];

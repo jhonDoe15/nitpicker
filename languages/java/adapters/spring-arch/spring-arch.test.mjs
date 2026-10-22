@@ -80,7 +80,7 @@ describe('readSpringArchFindings messages', () => {
         'com.shop.orders.Order',
         'com.shop.carts.Cart:com.shop.carts.LineItem',
       ),
-      "Keep LineItem inside one aggregate and reach it from Order through its root, by the root's identifier: an entity belongs to exactly one aggregate, and LineItem is also part of Cart.",
+      'Refer to Cart by its identifier in Order instead of holding LineItem: LineItem belongs to the aggregate Cart, and an entity belongs to exactly one aggregate.',
     ],
     [
       violation(

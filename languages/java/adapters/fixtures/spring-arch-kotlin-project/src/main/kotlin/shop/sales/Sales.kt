@@ -31,3 +31,14 @@ class Order(
 ) : AggregateRoot<Order, OrderId> {
     override fun getId(): OrderId = id
 }
+
+data class InvoiceId(val value: Long) : Identifier
+
+class Invoice(
+    private val id: InvoiceId,
+    @org.jmolecules.ddd.annotation.Association val customer: Customer,
+) : AggregateRoot<Invoice, InvoiceId> {
+    override fun getId(): InvoiceId = id
+}
+
+data class Receipt(val order: Order, val total: Long) : org.jmolecules.ddd.types.ValueObject
