@@ -10,6 +10,7 @@ import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-grap
 import { MINUTE_MS, eslintVersion, vitestVersion } from './checks/constants.mjs';
 import { COUPLING_CHECK_FILES } from './coupling/check-files.mjs';
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
+import { PROJECT_TOOL_FILES } from './project-tools/project-config-files.mjs';
 
 const dependencyCruiserVersion = 'unresolved';
 
@@ -271,6 +272,10 @@ function repositoryChecksFor(exclusions) {
         'languages/typescript/preset/unused-api/workspace/packages.mjs',
         'languages/typescript/preset/unused-api/workspace/pnpm-workspace.mjs',
         'languages/typescript/adapters/quality-areas/runners/unused-api.mjs',
+        'languages/typescript/adapters/quality-areas/knip/knip-layers.mjs',
+        'languages/typescript/adapters/quality-areas/knip/knip-run.mjs',
+        'languages/typescript/adapters/quality-areas/knip/manifest-guard.mjs',
+        ...PROJECT_TOOL_FILES,
         'shared/policy.mjs',
         'shared/rules/exceptions.mjs',
         'shared/rules/test-only/test-only-judgement.mjs',

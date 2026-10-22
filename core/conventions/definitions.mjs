@@ -8,6 +8,7 @@ import {
   JAVASCRIPT_CONVENTIONS,
   TYPESCRIPT_CONVENTIONS,
 } from '../../languages/typescript/conventions/typescript-conventions.mjs';
+import { scriptProjectToolStyle } from '../../languages/typescript/preset/project-tools/ignored-notices.mjs';
 
 const BY_PRESET = new Map([
   ['typescript', TYPESCRIPT_CONVENTIONS],
@@ -22,6 +23,8 @@ export function conventionDefinitions(preset = 'typescript') {
 }
 
 const STYLES_BY_PRESET = new Map([
+  ['typescript', [scriptProjectToolStyle]],
+  ['javascript', [scriptProjectToolStyle]],
   ['java', [javaProjectStyle]],
   ['kotlin', [javaProjectStyle, kotlinStyle]],
   ['python', [pythonStyle]],
@@ -40,6 +43,6 @@ function mergedStyle(styles) {
 }
 
 export function conventionStyle(preset, context) {
-  const styles = STYLES_BY_PRESET.get(preset)?.map((style) => style(context));
+  const styles = STYLES_BY_PRESET.get(preset ?? 'typescript')?.map((style) => style(context));
   return styles === undefined ? NO_STYLE : mergedStyle(styles);
 }
