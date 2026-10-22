@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
 import { comparisonKey } from '../comparison/fingerprint.mjs';
+import {
+  entryForFinding,
+  readReferenceIndex,
+  referenceUrl,
+} from '../../../shared/reference/store.mjs';
 
 const SARIF_SCHEMA_URL = 'https://json.schemastore.org/sarif-2.1.0.json';
 
@@ -24,12 +29,24 @@ function toSarifResult(finding) {
   };
 }
 
+function sarifRule(finding, index) {
+  const entry = index === undefined ? undefined : entryForFinding(index, finding);
+  return {
+    id: `${finding.tool}/${finding.rule}`,
+    name: finding.rule,
+    ...(entry === undefined
+      ? {}
+      : { shortDescription: { text: entry.summary }, helpUri: referenceUrl(entry) }),
+  };
+}
+
 function collectSarifRules(findings) {
+  const index = findings.length === 0 ? undefined : readReferenceIndex();
   const rules = new Map();
   for (const finding of findings) {
     const ruleId = `${finding.tool}/${finding.rule}`;
     if (!rules.has(ruleId)) {
-      rules.set(ruleId, { id: ruleId, name: finding.rule });
+      rules.set(ruleId, sarifRule(finding, index));
     }
   }
   return [...rules.values()];

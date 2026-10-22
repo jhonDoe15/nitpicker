@@ -3,6 +3,7 @@ import path from 'node:path';
 import { renderTextReport } from './text.mjs';
 import { renderJunitReport } from './junit.mjs';
 import { renderSarifReport } from './sarif.mjs';
+import { withHelpUris } from '../../../shared/reference/store.mjs';
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
 
@@ -31,7 +32,7 @@ export function clearDiffReports(outputRoot) {
 export function writeDiffReports(outputRoot, report) {
   mkdirSync(outputRoot, { recursive: true });
   writeJson(path.join(outputRoot, 'summary.json'), report.summary);
-  writeJson(path.join(outputRoot, 'new-findings.json'), report.newFindings);
+  writeJson(path.join(outputRoot, 'new-findings.json'), withHelpUris(report.newFindings));
   writeJson(path.join(outputRoot, 'resolved-findings.json'), report.resolvedFindings);
   writeJson(path.join(outputRoot, 'changed-metrics.json'), report.changedMetrics);
   writeJson(
