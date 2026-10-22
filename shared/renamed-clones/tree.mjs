@@ -1,6 +1,5 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { trackTemporaryPath, untrackTemporaryPath } from '../../core/tooling/temporary-files.mjs';
 import { hasGeneratorHeader, hasGeneratorMarker } from '../conventions/generator-marker.mjs';
 import { pathInside } from '../filesystem.mjs';
 import { readProjectFile } from './files.mjs';
@@ -27,9 +26,13 @@ function writeNormalizedTree({ projectRoot, files, syntaxOf, directory, typescri
   }
 }
 
-export function withNormalizedTree({ projectRoot, files, syntaxOf, typescript, scratchRoot }, run) {
+export function withNormalizedTree(
+  { projectRoot, files, syntaxOf, typescript, scratchRoot, temporaryPaths },
+  run,
+) {
   mkdirSync(scratchRoot, { recursive: true });
-  const scratch = trackTemporaryPath(mkdtempSync(path.resolve(scratchRoot, 'renamed-')));
+  const scratch = mkdtempSync(path.resolve(scratchRoot, 'renamed-'));
+  temporaryPaths.track(scratch);
   const tree = path.resolve(scratch, 'tree');
   try {
     mkdirSync(tree);
@@ -37,6 +40,6 @@ export function withNormalizedTree({ projectRoot, files, syntaxOf, typescript, s
     return run({ tree, scratch });
   } finally {
     rmSync(scratch, { recursive: true, force: true });
-    untrackTemporaryPath(scratch);
+    temporaryPaths.untrack(scratch);
   }
 }

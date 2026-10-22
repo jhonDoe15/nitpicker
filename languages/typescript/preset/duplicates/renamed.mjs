@@ -3,6 +3,10 @@ import { realpathSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { sourceFilesUnder } from '../../../../shared/renamed-clones/files.mjs';
 import { RENAMED_SETTINGS, withNormalizedTree } from '../../../../shared/renamed-clones/tree.mjs';
+import {
+  trackTemporaryPath,
+  untrackTemporaryPath,
+} from '../../../../core/tooling/temporary-files.mjs';
 import { codeExtensionNames, existingRoots } from '../layout.mjs';
 
 const EXTENSIONS = codeExtensionNames.map((name) => `.${name}`);
@@ -10,7 +14,14 @@ const EXTENSIONS = codeExtensionNames.map((name) => `.${name}`);
 export function renamedDuplicatesReport({ projectRoot, config, runJscpd, scratchRoot }) {
   const files = sourceFilesUnder(projectRoot, config.path, EXTENSIONS);
   return withNormalizedTree(
-    { projectRoot, files, syntaxOf: () => 'typescript', typescript: ts, scratchRoot },
+    {
+      projectRoot,
+      files,
+      syntaxOf: () => 'typescript',
+      typescript: ts,
+      scratchRoot,
+      temporaryPaths: { track: trackTemporaryPath, untrack: untrackTemporaryPath },
+    },
     ({ tree, scratch }) => {
       const roots = existingRoots(tree, config.path);
       if (roots.length === 0) {
