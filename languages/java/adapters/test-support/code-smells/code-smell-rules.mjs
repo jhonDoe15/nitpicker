@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const CODE_SMELL_RULESET = path.resolve(
   import.meta.dirname,
-  '../../gradle/code-smells-ruleset.xml',
+  '../../../gradle/code-smells-ruleset.xml',
 );
 
 export function codeSmellRules() {
