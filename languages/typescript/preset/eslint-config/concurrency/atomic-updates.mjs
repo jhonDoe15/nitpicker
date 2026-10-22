@@ -1,4 +1,4 @@
-export const atomicUpdateRules = {
+const atomicUpdateRules = {
   'require-atomic-updates': ['error', { allowProperties: false }],
 };
 
