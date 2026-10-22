@@ -128,22 +128,20 @@ function hasJar(classpath, jar) {
   return classpath.some((entry) => jar.test(path.basename(entry)));
 }
 
-function writeManifest({ module, reportDir, pinned, spring, classpaths }) {
-  writeFileSync(
-    path.join(reportDir, 'manifest.json'),
-    JSON.stringify({
-      versions: pinned,
-      build: 'maven',
-      sourceRoots: relativeRoots(module, module.sourceRoots),
-      testSourceRoots: relativeRoots(module, module.testSourceRoots),
-      resourceRoots: relativeRoots(module, module.resourceRoots),
-      spring,
-      guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
-      testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
-      testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
-      published: module.published,
-    }),
-  );
+export function moduleManifest({ module, classpaths, pinned }) {
+  return {
+    versions: pinned,
+    build: 'maven',
+    sourceRoots: relativeRoots(module, module.sourceRoots),
+    kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
+    testSourceRoots: relativeRoots(module, module.testSourceRoots),
+    resourceRoots: relativeRoots(module, module.resourceRoots),
+    spring: hasJar(classpaths.mainCompile, SPRING_JAR),
+    guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
+    testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
+    testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
+    published: module.published,
+  };
 }
 
 function readClasspaths(work, module) {
@@ -163,10 +161,10 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
 function analyzeModule({ module, classpaths, tools, pinned, configs, since, style }) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
+  const manifest = moduleManifest({ module, classpaths, pinned });
   const testRuntime = classpaths.testRuntime;
   const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
-  runPmd({ module, reportDir, tools, classpaths, configs, spring });
+  runPmd({ module, reportDir, tools, classpaths, configs, spring: manifest.spring });
   runSpotbugs({ module, reportDir, tools });
   runErrorProne({ module, reportDir, tools, classpaths });
   runFormat({ module, reportDir, tools, javaStyle: style.javaStyle });
@@ -182,7 +180,7 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since, styl
     testsRan,
   });
   runPit({ module, reportDir, tools, classpaths, isArchunit });
-  writeManifest({ module, reportDir, pinned, spring, classpaths });
+  writeFileSync(path.join(reportDir, 'manifest.json'), JSON.stringify(manifest));
 }
 
 function jacocoExecFiles(module) {
