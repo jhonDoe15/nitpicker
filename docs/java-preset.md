@@ -1072,7 +1072,8 @@ class in a module without Failsafe).
   turns NullAway off for the code under it; and a `@CanIgnoreReturnValue` annotation the project
   declares itself (any one not from `com.google.errorprone.annotations`), which Error Prone honors
   by simple name. `"all"` and `"unused"` are already `pmd/InlineSuppression`. So a suppression
-  still fails the gate, as with PMD. Code that is right despite a check takes an exception:
+  still fails the gate, as with PMD. A check nitpicker turns off, such as `UnusedVariable`, is not
+  reported: Error Prone does not run it, so its suppression has nothing to hide. Code that is right despite a check takes an exception:
   `{ "rule": "errorprone/<Check>", "paths": [...], "reason": "..." }`.
   `SuppressWarningsWithoutExplanation` stays on, with a message that asks to explain an existing
   suppression in a comment and says it is not a reason to add one.
@@ -2173,7 +2174,8 @@ prefixed name ending in `SuppressWarnings` (such as a project's own `@AcmeSuppre
 `spotbugs/EI_EXPOSE_REP`. Checkstyle's bundled `google_checks.xml` honors
 `@SuppressWarnings("checkstyle:...")` and `CHECKSTYLE.OFF`, `CHECKSTYLE.SUPPRESS` comments;
 nitpicker writes a copy without those filters (and without the optional xpath suppression file
-the bundled config would read from the working directory), so they suppress nothing.
+the bundled config would read from the working directory) on both builds, so they suppress
+nothing: `@SuppressWarnings("checkstyle:magicnumber")` leaves the `MagicNumber` finding in place.
 
 **Project configs are an explicit opt-in.** A project's `config/pmd/ruleset.xml` or
 `config/checkstyle/checkstyle.xml` used to replace nitpicker's rules silently. Now they are read only

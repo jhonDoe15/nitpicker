@@ -1,4 +1,8 @@
 import { nitpickerCheckstyleConfig } from './configuration/checkstyle-config.mjs';
+import {
+  nitpickerCheckstyleConfig as gradleCheckstyleConfig,
+  withGuardChecks,
+} from '../builds/rulesets/checkstyle-config.mjs';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -61,6 +65,45 @@ describe('nitpickerCheckstyleConfig', () => {
       'nitpicker could not find MemberName in google_checks.xml',
     );
   });
+});
+
+describe('an inline Checkstyle suppression', () => {
+  const INLINE_FILTERS = [
+    'SuppressWarningsFilter',
+    'SuppressionCommentFilter',
+    'SuppressWithNearbyCommentFilter',
+    'SuppressWithNearbyTextFilter',
+    'SuppressWithPlainTextCommentFilter',
+    'SuppressionXpathFilter',
+  ];
+  const bundled = [
+    '<module name="Checker">',
+    ...INLINE_FILTERS.map((name) => `<module name="${name}"/>`),
+    '<module name="TreeWalker"><module name="SuppressWarningsHolder"/></module>',
+    NAME_MODULES,
+    '</module>',
+  ].join('\n');
+  const moduleNames = (config) =>
+    [...config.matchAll(/<module name="(\w+)"/g)].map(([, name]) => name);
+
+  it.each([
+    ['Gradle', gradleCheckstyleConfig],
+    ['Maven', nitpickerCheckstyleConfig],
+  ])(
+    'such as @SuppressWarnings("checkstyle:magicnumber") has no effect on the %s run',
+    (_, checkstyleConfig) => {
+      const names = moduleNames(
+        withGuardChecks(checkstyleConfig(bundled), ['checkstyle-all.xml', 'checkstyle-main.xml']),
+      );
+
+      expect({
+        magicNumber: names.includes('MagicNumber'),
+        honored: names.filter((name) =>
+          [...INLINE_FILTERS, 'SuppressWarningsHolder'].includes(name),
+        ),
+      }).toEqual({ magicNumber: true, honored: [] });
+    },
+  );
 });
 
 describe('writeCheckstyleSetup', () => {
