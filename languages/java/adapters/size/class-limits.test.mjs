@@ -219,7 +219,7 @@ describe('readClassLimitFindings', () => {
     ).toEqual(['class-methods-limit', 'class-fields-limit', 'class-methods-limit']);
     expect(
       find(sample, { ...wide, classMethods: 1, classFields: 2 }, [
-        { rule: 'class-methods-limit', glob: `${SOURCE_ROOT}/**` },
+        { rule: 'class-methods-limit', paths: [`${SOURCE_ROOT}/**`] },
       ]).map(({ rule }) => rule),
     ).toEqual(['class-fields-limit']);
   });
