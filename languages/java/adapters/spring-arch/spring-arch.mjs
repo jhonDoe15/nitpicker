@@ -31,8 +31,10 @@ const MESSAGES = {
   'spring-repository-service': ({ simple, detail }) =>
     `Have the service call ${simple} and pass it what it needs from ${detail}: a repository only reads and writes data and depends on no service.`,
   'spring-scope-capture': ({ simple, detail }) => {
-    const [scope, bean] = detail.split(':');
-    return `Inject ObjectProvider<${bean}> into ${simple} and call getObject() where it is used, or give ${bean} a scoped proxy (proxyMode = ScopedProxyMode.TARGET_CLASS, which @RequestScope and @SessionScope set): ${simple} is a singleton, so it gets one ${bean} when it is created: outside a ${scope} that fails, and inside one it keeps that ${scope}'s bean for every later caller.`;
+    const [method, scope, bean] =
+      detail.split(':').length === 3 ? detail.split(':') : ['', ...detail.split(':')];
+    const consumer = method === '' ? simple : `the bean ${simple}.${method}`;
+    return `Inject ObjectProvider<${bean}> into ${consumer} and call getObject() per use, or give ${bean} a scoped proxy (proxyMode = ScopedProxyMode.TARGET_CLASS): a singleton gets one ${bean} when it is created, which fails outside a ${scope} and otherwise keeps the first ${scope}'s bean.`;
   },
   'spring-test-placement': ({ simple }) =>
     `Test ${simple} with new and mocks, or run it as an integration test: name it ${simple.replace(/Tests?$/u, '')}IT (Failsafe runs *IT on Maven) or put it in an integration test source set. Both keep its package, so package-private classes stay visible; a package named integration or it also counts.`,
@@ -41,6 +43,13 @@ const MESSAGES = {
 };
 
 const PLACEMENT = 'spring-test-placement';
+const BOUNDARY = 'spring-feature-boundary';
+const DEPENDENCY_RULES = new Set([
+  'spring-controller-repository',
+  'spring-controller-controller',
+  'spring-repository-service',
+  'spring-service-web',
+]);
 
 function simpleName(name) {
   return name.slice(name.lastIndexOf('.') + 1);
@@ -51,9 +60,7 @@ function packageOf(name) {
 }
 
 function shortDetail(detail) {
-  return detail.includes(':')
-    ? `${detail.split(':')[0]}:${simpleName(detail.split(':')[1])}`
-    : simpleName(detail);
+  return detail.split(':').map(simpleName).join(':');
 }
 
 function targetOf(detail, root) {
@@ -62,22 +69,43 @@ function targetOf(detail, root) {
   return { packageName, rootPackage: `${root}.${segment}` };
 }
 
-export function readSpringArchFindings(reportRoot, { resolvePath }) {
+function dependencyKey({ className, detail }) {
+  return `${className}|${detail}`;
+}
+
+function shownDependencies(violations, filePathOf, isExcepted) {
+  return new Set(
+    violations
+      .filter(
+        (violation) =>
+          DEPENDENCY_RULES.has(violation.rule) &&
+          !isExcepted(`${TOOL}/${violation.rule}`, filePathOf(violation)),
+      )
+      .map(dependencyKey),
+  );
+}
+
+export function readSpringArchFindings(reportRoot, { resolvePath, isExcepted = () => false }) {
   const file = path.join(reportRoot, SPRING_ARCH_REPORT);
   if (!existsSync(file)) {
     throw new Error(`The Spring architecture report ${SPRING_ARCH_REPORT} is missing`);
   }
   const { root, violations } = JSON.parse(readFileSync(file, 'utf8'));
+  const filePathOf = ({ className, fileName }) =>
+    resolvePath(className, fileName === '' ? undefined : fileName);
+  const shown = shownDependencies(violations, filePathOf, isExcepted);
   const counters = new Map();
-  return violations.flatMap(({ rule, className, fileName, detail }) => {
-    const filePath = resolvePath(className, fileName === '' ? undefined : fileName);
+  return violations.flatMap((violation) => {
+    const { rule, className, detail } = violation;
+    const filePath = filePathOf(violation);
     const describe = MESSAGES[rule];
     if (describe === undefined) {
       throw new Error(`Unknown Spring architecture rule ${rule} in ${SPRING_ARCH_REPORT}`);
     }
     if (
       filePath === undefined ||
-      (rule === PLACEMENT && isIntegrationTest({ className, unitSource: true }))
+      (rule === PLACEMENT && isIntegrationTest({ className, unitSource: true })) ||
+      (rule === BOUNDARY && shown.has(dependencyKey(violation)))
     ) {
       return [];
     }

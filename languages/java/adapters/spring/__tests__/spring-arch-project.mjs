@@ -7,10 +7,15 @@ export const SPRING_ARCH_FIXTURE = path.join(
   'spring-arch-project',
 );
 
-export const SPRING_ARCH_ROLES = { service: ['shop.carts.UseCase'] };
+export const SPRING_ARCH_ROLES = {
+  controller: ['shop.wiring.Endpoint'],
+  service: ['shop.carts.UseCase'],
+  repository: ['shop.wiring.Store'],
+};
 
 export const SPRING_ARCH_VIOLATIONS = [
   'spring-controller-controller shop.carts.CartController shop.orders.OrderController',
+  'spring-controller-controller shop.wiring.HealthController shop.wiring.StatusEndpoint',
   'spring-controller-entity shop.orders.OrderController all:shop.orders.Order',
   'spring-controller-entity shop.orders.OrderController create:shop.orders.Order',
   'spring-controller-entity shop.orders.OrdersApiController list:shop.orders.Order',
@@ -21,8 +26,10 @@ export const SPRING_ARCH_VIOLATIONS = [
   'spring-controller-repository shop.customers.CustomerReport jakarta.persistence.EntityManager',
   'spring-controller-repository shop.customers.CustomerReport org.springframework.jdbc.core.JdbcTemplate',
   'spring-controller-repository shop.orders.OrderController shop.orders.OrderRepository',
+  'spring-controller-repository shop.wiring.StatusEndpoint shop.wiring.AuditStore',
   'spring-feature-boundary shop.billing.BillingService shop.orders.internal.Audit',
   'spring-feature-boundary shop.billing.Invoices shop.catalog.internal.Formats',
+  'spring-feature-boundary shop.carts.CartController shop.catalog.internal.CatalogRepository',
   'spring-layout shop.Helper ',
   'spring-layout shop.adapter.in.web.PaymentController adapter',
   'spring-layout shop.adapter.out.persistence.PaymentJpaAdapter adapter',
@@ -37,10 +44,17 @@ export const SPRING_ARCH_VIOLATIONS = [
   'spring-no-dirties-context shop.orders.integration.CheckoutIT ',
   'spring-repository-service shop.carts.CartRepository shop.carts.CartService',
   'spring-repository-service shop.carts.CartRepository shop.carts.CheckoutUseCase',
-  'spring-scope-capture shop.carts.CartConfig request:shop.carts.Basket',
-  'spring-scope-capture shop.carts.CartConfig request:shop.carts.Receipt',
+  'spring-repository-service shop.wiring.AuditStore shop.wiring.WiringService',
+  'spring-scope-capture shop.carts.CartConfig pricing:request:shop.carts.Basket',
+  'spring-scope-capture shop.carts.CartConfig pricing:request:shop.carts.Receipt',
   'spring-scope-capture shop.carts.CartService request:shop.carts.Basket',
   'spring-scope-capture shop.carts.CartService request:shop.carts.Visit',
+  'spring-scope-capture shop.wiring.WiringConfig audit:request:shop.wiring.Wallet',
+  'spring-scope-capture shop.wiring.WiringService request:shop.wiring.Badge',
+  'spring-scope-capture shop.wiring.WiringService request:shop.wiring.Checkout',
+  'spring-scope-capture shop.wiring.WiringService request:shop.wiring.Token',
+  'spring-scope-capture shop.wiring.WiringService request:shop.wiring.Wallet',
+  'spring-scope-capture shop.wiring.WiringService session:shop.wiring.Ledger',
   'spring-service-web shop.billing.BillingService org.springframework.http.ResponseEntity',
   'spring-service-web shop.billing.Refunds org.springframework.http.server.reactive.ServerHttpRequest',
   'spring-service-web shop.billing.Refunds org.springframework.web.server.ResponseStatusException',
