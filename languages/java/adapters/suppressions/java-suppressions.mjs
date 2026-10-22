@@ -1,6 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { exceptionEntryText, exceptionSentence } from '../../../../shared/exceptions/sentence.mjs';
+import {
+  exceptionEntryText,
+  exceptionSentence,
+} from '../../../../shared/messages/exception-sentence.mjs';
 import { hash, nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import { ERROR_PRONE_MESSAGE, errorProneEscapes } from './errorprone/errorprone-escapes.mjs';
 

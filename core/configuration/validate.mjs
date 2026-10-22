@@ -3,11 +3,9 @@ import {
   isPlainObject,
   configError,
   isNonEmptyString,
-  liftsOnlyRules,
   validateStringArray,
   validateThresholds,
   validateDuplicates,
-  validateExceptions,
   TYPESCRIPT_ONLY_KEYS,
   validateProjectRelativePath,
   validateFactRuleSettings,
@@ -19,6 +17,7 @@ import {
   validatePythonConfig,
 } from '../../languages/python/adapters/configuration/python-config.mjs';
 import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
+import { liftsOnlyRules, validateExceptions } from '../../shared/exceptions/validation.mjs';
 import { RULES } from '../../shared/policy.mjs';
 import { validateTools } from './tool-settings.mjs';
 import { rejectHeadBase } from './project-checks/project-config.mjs';

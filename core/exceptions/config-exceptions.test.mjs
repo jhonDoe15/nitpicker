@@ -169,12 +169,9 @@ describe('config exceptions', () => {
       );
     });
 
-    it.each(['...', ' ... ', '...', '', '   '])(
-      'rejects the reason %j',
-      (reason) => {
-        expect(rejected({ reason })).toThrow('"exceptions[0].reason" is');
-      },
-    );
+    it.each(['...', ' ... ', '...', '', '   '])('rejects the reason %j', (reason) => {
+      expect(rejected({ reason })).toThrow('"exceptions[0].reason" is');
+    });
 
     it.each(['/abs/a.ts', 'C:/a.ts', '../a.ts', 'src/../a.ts', ' '])(
       'rejects the path %j',

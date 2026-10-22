@@ -1,5 +1,3 @@
-import { existsSync } from 'node:fs';
-import path from 'node:path';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { renderRuleFilterSection } from '../diff/reporting/text.mjs';
 import { exceptionsMatchingNoPath } from '../../shared/exceptions/finding-exceptions.mjs';
@@ -8,19 +6,28 @@ import { RULE_IDS } from '../../shared/policy.mjs';
 
 const PACKAGE_PRESETS = ['java', 'kotlin'];
 
+function labeled(entries = [], name) {
+  return entries.map((entry, index) => ({ entry, label: `${name}[${index}]` }));
+}
+
 function listedExceptions(config) {
-  const listed = (entries, name) =>
-    (entries ?? []).map((entry, index) => ({ entry, label: `${name}[${index}]` }));
   return [
-    ...listed(config.exceptions, 'exceptions'),
-    ...listed(config.python?.exceptions, 'python.exceptions'),
+    ...labeled(config.exceptions, 'exceptions'),
+    ...labeled(config.python?.exceptions, 'python.exceptions'),
   ];
 }
 
-function headFiles(projectRoot) {
-  return runGit(projectRoot, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])
+function gitFiles(projectRoot, options) {
+  return runGit(projectRoot, ['ls-files', '-z', ...options])
     .split('\0')
-    .filter((file) => file !== '' && existsSync(path.join(projectRoot, file)));
+    .filter((file) => file !== '');
+}
+
+function headFiles(projectRoot) {
+  const deleted = new Set(gitFiles(projectRoot, ['--deleted']));
+  return gitFiles(projectRoot, ['--cached', '--others', '--exclude-standard']).filter(
+    (file) => !deleted.has(file),
+  );
 }
 
 export function staleExceptionLines(config, projectRoot) {

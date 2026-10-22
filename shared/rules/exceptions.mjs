@@ -1,9 +1,5 @@
-// Config `exceptions` entries as a rule+path matcher, and the entry that would lift one finding.
-//
-// Language-neutral: shared by the file limits and the project-level checks of a language preset.
-
 import { pathMatcher } from '../exceptions/matching.mjs';
-import { exceptionEntryText } from '../exceptions/sentence.mjs';
+import { exceptionEntryText } from '../messages/exception-sentence.mjs';
 import { EXCEPTION_HINT, renderMessage } from '../policy.mjs';
 
 /**

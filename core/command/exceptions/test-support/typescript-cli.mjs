@@ -5,6 +5,14 @@ import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mj
 
 const COMPARISON_BASE_REF = 'comparison-base';
 
+function readReport(reports, name) {
+  const file = path.resolve(reports, name);
+  if (!file.startsWith(reports + path.sep)) {
+    throw new Error(`report outside the output folder: ${name}`);
+  }
+  return JSON.parse(readFileSync(file, 'utf8'));
+}
+
 export function useTypescriptCli(runCli) {
   const git = useGitFixtures();
 
@@ -44,7 +52,7 @@ export function useTypescriptCli(runCli) {
     });
     return {
       exitCode,
-      json: (name) => JSON.parse(readFileSync(path.join(reports, name), 'utf8')),
+      json: (name) => readReport(reports, name),
       text: output.stdoutText + output.stderrText,
     };
   }

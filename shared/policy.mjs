@@ -1,7 +1,3 @@
-// The single source for the custom checks nitpicker adds on top of third-party tools: rule ids,
-// default limits, failure-message templates and the languages that enforce each rule. Every
-// language adapter reads it, and `spec/checks.md` is generated from it (`npm run gen:checks`).
-
 import {
   FILE_RULE_IDS,
   SIZE_HELD_MESSAGES,

@@ -15,7 +15,7 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { escapeGlob, exceptionEntryText } from '../exceptions/sentence.mjs';
+import { escapeGlob, exceptionEntryText } from '../messages/exception-sentence.mjs';
 import {
   FILE_LIMIT_DEFAULTS,
   GREW_MESSAGES,

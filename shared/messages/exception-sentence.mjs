@@ -34,7 +34,10 @@ export function appendSentence(message, sentence) {
 const FOLDER_SUFFIXES = ['', '/**', '/*'];
 
 function pathWithSuffix(path, suffix) {
-  return path === '.' ? (suffix === '' ? path : suffix.slice(1)) : `${escapeGlob(path)}${suffix}`;
+  if (path !== '.') {
+    return `${escapeGlob(path)}${suffix}`;
+  }
+  return suffix === '' ? path : suffix.slice(1);
 }
 
 /** `message` with the file or folder the sentence names replaced, for a finding whose path gained a prefix. */

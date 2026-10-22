@@ -1,5 +1,5 @@
 import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
-import { appendSentence } from '../../../../shared/exceptions/sentence.mjs';
+import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import { immutableTypesMessage } from './immutable-types-hint.mjs';
 import { restrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mjs';

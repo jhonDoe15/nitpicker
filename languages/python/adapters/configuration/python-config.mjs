@@ -2,10 +2,10 @@ import path from 'node:path';
 import {
   configError,
   isPlainObject,
-  validateExceptions,
   validateProjectRelativePath,
   validateStringArray,
 } from '../../../../shared/config.mjs';
+import { validateExceptions } from '../../../../shared/exceptions/validation.mjs';
 import { COMMON_EXCEPTION_RULES, FILE_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { PYTHON_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 

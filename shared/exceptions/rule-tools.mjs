@@ -33,7 +33,7 @@ export const DEPENDENCY_RULES = [
  * valid with the finding's own tool. The TypeScript and JavaScript presets also print the rules
  * listed after the shared ones.
  */
-export const RULE_TOOLS = new Map([
+const RULE_TOOLS = new Map([
   ...STRUCTURE_RULES.map((rule) => [rule, ['structure']]),
   [RULE_IDS.crapScoreLimit, ['crap']],
   [RULE_IDS.crapCoverageUnknown, ['crap']],
@@ -61,29 +61,38 @@ export const RULE_TOOLS = new Map([
   ...DEPENDENCY_RULES.map((rule) => [rule, ['dependency-architecture']]),
 ]);
 
-/** The tool of a `coding-standards` rule with a prefix, such as `runtime-boundary/<rule>`. */
-export const PREFIXED_RULE_TOOLS = CODING_STANDARDS_RULE_PREFIXES.map((prefix) => [
+const PREFIXED_RULE_TOOLS = CODING_STANDARDS_RULE_PREFIXES.map((prefix) => [
   prefix,
   ['coding-standards'],
 ]);
 
+/** The tools that print `rule` when nitpicker adds it, or undefined. */
+export function toolsOf(rule) {
+  return (
+    RULE_TOOLS.get(rule) ?? PREFIXED_RULE_TOOLS.find(([prefix]) => rule.startsWith(prefix))?.[1]
+  );
+}
+
+const TYPESCRIPT_TOOLS = [
+  'structure',
+  'crap',
+  'coverage',
+  'mutation',
+  'duplicates',
+  'coupling',
+  'dead-code',
+  'test-runtime',
+  'entry-points',
+  'coding-standards',
+  'dependency-architecture',
+];
+const JAVA_TOOLS = ['structure', 'crap', 'jacoco', 'pit', 'duplicates', 'coupling'];
+
 /** The tools of each preset that print rules an `exceptions` entry can name. */
 export const PRESET_TOOLS = {
-  typescript: [
-    'structure',
-    'crap',
-    'coverage',
-    'mutation',
-    'duplicates',
-    'coupling',
-    'dead-code',
-    'test-runtime',
-    'entry-points',
-    'coding-standards',
-    'dependency-architecture',
-  ],
-  java: ['structure', 'crap', 'jacoco', 'pit', 'duplicates', 'coupling'],
+  typescript: TYPESCRIPT_TOOLS,
+  javascript: TYPESCRIPT_TOOLS,
+  java: JAVA_TOOLS,
+  kotlin: JAVA_TOOLS,
   python: ['structure', 'crap', 'coverage-py', 'mutmut', 'duplicates', 'coupling'],
 };
-PRESET_TOOLS.javascript = PRESET_TOOLS.typescript;
-PRESET_TOOLS.kotlin = PRESET_TOOLS.java;

@@ -1,4 +1,4 @@
-import { exceptionSentence } from '../exceptions/sentence.mjs';
+import { exceptionSentence } from './exception-sentence.mjs';
 
 export const EXCEPTION_HINT = exceptionSentence('{exception}');
 
