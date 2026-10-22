@@ -15,7 +15,7 @@ import {
 import {
   builtInExcludedGlobs,
   existingRoots,
-  globToRegExp,
+  globMatcher,
   resolveLayout,
   resolveLayoutFor,
   sourceRoots,
@@ -93,7 +93,7 @@ function withProjectFacts(policy, config, projectRoot) {
 }
 
 function excludedPathMatcher(policy) {
-  const matchers = resolveLayoutFor(policy).excludedGlobs.map(globToRegExp);
+  const matchers = resolveLayoutFor(policy).excludedGlobs.map(globMatcher);
   return (file) => matchers.some((matcher) => matcher.test(file));
 }
 
@@ -137,7 +137,6 @@ const HEAD_CHECKOUT_FACTS = [
   'libraries',
 ];
 const SCOPE_FACTS = [
-  ['layout', ['colocatedTests']],
   ['react', ['enabled', 'iconPackage', 'major', 'styling', 'autoCleanup']],
   ['i18n', ['enabled']],
 ];
@@ -156,9 +155,16 @@ function headPrettierDigest(policy, headPolicy) {
     : { tools: { ...policy.tools, prettier: { ...prettier, projectConfigDigest: digest } } };
 }
 
+function headTestPlacement(policy, headPolicy) {
+  return headPolicy.layout?.colocatedTests === true
+    ? { layout: { ...policy.layout, colocatedTests: true } }
+    : {};
+}
+
 export function withHeadCheckoutFacts(policy, headPolicy = {}) {
   return {
     ...policy,
+    ...headTestPlacement(policy, headPolicy),
     ...picked(headPolicy, HEAD_CHECKOUT_FACTS),
     ...Object.fromEntries(
       SCOPE_FACTS.filter(([scope]) => headPolicy[scope] !== undefined).map(([scope, keys]) => [
