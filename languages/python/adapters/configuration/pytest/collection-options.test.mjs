@@ -63,6 +63,8 @@ describe('the collection options for the rules script', () => {
         '-k',
         'not slow',
         '-knot flaky',
+        '-m',
+        'not slow',
       ],
     };
 
@@ -76,6 +78,7 @@ describe('the collection options for the rules script', () => {
       ignored: ['tests/old'],
       ignoredGlobs: ['tests/gen_*'],
       keywords: ['not slow', 'not flaky'],
+      marks: ['not slow'],
     });
   });
 });

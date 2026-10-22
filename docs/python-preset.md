@@ -211,6 +211,15 @@ loosens `process-env-access`, so the policy-change list reports it as a loosenin
 a change, like `layout.entryPoints`; the base snapshot is measured with the entry points both
 sides declare.
 
+The policy-change list also reads the project's own pytest and mutmut settings, because they shrink
+what the gate measures: `testpaths` that stop collecting a test file and an added `--ignore` or
+`--ignore-glob` in `addopts`, both counted only for files pytest collects (`python_files`), and a
+`do_not_mutate` pattern that covers production code are loosening. `-k`, `-m` and `--deselect` are
+not, because the run strips them and `uncollected-tests` reports the tests they hide (`languages/python/adapters/configuration/pytest/test-selection.mjs`). A hidden
+module that production code imports (`from legacy import feature`, followed through other hidden
+modules and parent packages) fails even under an established `exclude`. Changed `.py` files outside
+`python.sourceRoots` are named in a notice that never fails the run.
+
 The type checker is the one the project uses: `mypy` when it has a `[tool.mypy]` table (or
 `[mypy]` in `mypy.ini`, `setup.cfg` or `tox.ini`), `pyright` when it has `pyrightconfig.json` or a
 `[tool.pyright]` table (`[ tool.pyright ]` too), `basedpyright` when it has a `[tool.basedpyright]`
@@ -817,12 +826,13 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - Pytest-specific rules read the project: `uncollected-tests` applies when the test runner is
   pytest and reads the whole collection configuration from `pytest.ini`, `pyproject.toml`
   (`[tool.pytest.ini_options]`), `tox.ini` or `setup.cfg`: `python_files`, `python_classes`,
-  `python_functions`, `testpaths`, `norecursedirs`, and `--ignore`, `--ignore-glob`, `--deselect`
-  and `-k` in `addopts`; a `collect_ignore` in `conftest.py` counts as well. It reports a test
+  `python_functions`, `testpaths`, `norecursedirs`, and `--ignore`, `--ignore-glob`, `--deselect`,
+  `-k` and `-m` in `addopts`; a `collect_ignore` in `conftest.py` counts as well. It reports a test
   that pytest will not run and says why: a file that matches no `python_files` pattern, a file or
   folder excluded by `norecursedirs`, `--ignore` or `collect_ignore`, a class that matches no
   `python_classes` pattern or has an `__init__`, a function that matches no `python_functions`
-  pattern, a test deselected by `--deselect` or `-k`. For `unittest` it reports a file named like
+  pattern, a test deselected by `--deselect`, `-k` or `-m` (a `-m` expression matches marker
+  names exactly, from the function, its class and the module's `pytestmark`). For `unittest` it reports a file named like
   a test file (`tests.py`, `*_test.py`) that its default `test*.py` discovery does not find. `test-helper-in-source` reports `testing.py`, `testutils.py`,
   `fixtures.py` and the folders `testing/`, `testutils/`, `test_utils/`, `test_helpers/`,
   `test_support/`, `test_fixtures/` and `fixtures/` inside a source root.
@@ -1623,7 +1633,7 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   pytest `addopts` (read from the first of `pytest.toml`, `.pytest.toml`, `pytest.ini`,
   `.pytest.ini`, `pyproject.toml`, `tox.ini`, `setup.cfg`, as pytest does) with `-o addopts=...`,
   and out of `PYTEST_ADDOPTS`: `-x`/`--exitfirst` (also inside `-vx`), `--maxfail`, `--sw`,
-  `--stepwise`, `--collect-only`, `--setup-only`, `--setup-plan`, `-k`, `--deselect`,
+  `--stepwise`, `--collect-only`, `--setup-only`, `--setup-plan`, `-k`, `-m`, `--deselect`,
   `--reruns`, `--only-rerun` and the other rerun and retry options, and `-p no:` for the
   plugins that collect or report results; with pytest-rerunfailures installed `-o reruns=0` is
   added. A run that collects no test is `python/no-tests-ran`, as before.
