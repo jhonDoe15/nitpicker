@@ -30,7 +30,7 @@ export function resource(name) {
 }
 
 const OPEN_IN_VIEW_MESSAGE =
-  'Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries. Set spring.jpa.open-in-view=false.';
+  'Set spring.jpa.open-in-view=false. Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries.';
 export const MAIN_PROPERTIES = 'src/main/resources/application.properties';
 
 export function finding({ rule, file, identity, message, line }) {
@@ -62,8 +62,8 @@ export function secretFinding({ key, variable, file = MAIN_PROPERTIES, line = 1,
     identity: identity.toLowerCase().replaceAll(/[-_]/g, ''),
     message:
       variable === undefined
-        ? `${key} falls back to a literal secret. Drop the default from the placeholder.`
-        : `${key} holds a literal secret. Remove it and set ${variable} in the environment, or read it from a secret store.`,
+        ? `Drop the default from the placeholder of ${key}, so a missing secret fails at startup; it falls back to a literal secret.`
+        : `Set ${variable} in the environment, or read it from a secret store, and remove the literal secret from ${key}.`,
     line,
   });
 }
