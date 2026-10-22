@@ -76,7 +76,9 @@ final class Updates {
     boolean branching;
 
     void walk(PsiElement element) {
-      if (element instanceof KtLambdaExpression || element instanceof KtFunction || element instanceof KtClassOrObject) {
+      if (element instanceof KtLambdaExpression
+          || element instanceof KtFunction
+          || element instanceof KtClassOrObject) {
         return;
       }
       if (element instanceof KtIfExpression || element instanceof KtWhenExpression
