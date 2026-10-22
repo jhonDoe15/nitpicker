@@ -145,6 +145,7 @@ function withGradleReports(projectRoot, options) {
 function mavenFindings(projectRoot, options) {
   const { moduleDirs, testsFailures } = runMavenPreset(projectRoot, {
     maven: options.maven,
+    spawn: options.spawn,
     policy: options.policy,
     configs: toolConfigChoices(projectRoot, options.policy),
   });

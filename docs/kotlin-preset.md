@@ -899,7 +899,7 @@ comparison and exiting with 2. Nothing is silently skipped and nothing throws.
 
 **A base whose tests fail (decision).** Failing tests are not a Gradle failure on the base when the
 fresh test reports of a `Test` task name them. The base runs with `--continue`, then once more
-with `-Pnitpicker.testsFailed=<project dirs>`: the init script skips `test`, JaCoCo and PIT of the
+with `-Pnitpicker.testsFailed=<project dirs>`: the init script disables every checked test task, the per-task PIT, the aggregate PIT and JaCoCo of the
 failing Gradle projects and sets `testsFailed` in their manifest, and the other checks (detekt,
 ktlint, PMD, SpotBugs, structure, duplicates, coupling) run as usual. The failing projects get one
 `kotlin/tests-failed` tool error each, which the core reads as a red base and writes to
