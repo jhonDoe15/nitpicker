@@ -34,7 +34,7 @@ export function runStructure(module, reportDir) {
   });
 }
 
-export function runJdeps(module, reportDir) {
+export function runJdepsMetrics(module, reportDir) {
   writeJdepsReports({
     command: javaCommand('jdeps'),
     cwd: module.basedir,

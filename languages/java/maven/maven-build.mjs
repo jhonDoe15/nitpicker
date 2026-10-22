@@ -30,7 +30,7 @@ import {
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
-import { runJdeps, runStructure } from './metrics/maven-metrics.mjs';
+import { runJdepsMetrics, runStructure } from './metrics/maven-metrics.mjs';
 import { TEST_FAILURES_REPORT } from '../adapters/reporting/outcomes/test-results.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
@@ -137,7 +137,7 @@ function analyzeSources(context, project) {
   runFormat({ module, reportDir, tools, javaStyle: style.javaStyle });
   runCheckstyle({ module, reportDir, tools, configs, pinned, style });
   runStructure(module, reportDir);
-  runJdeps(module, reportDir);
+  runJdepsMetrics(module, reportDir);
   runGuardJdeps(module, reportDir);
   runGuards({ module, reportDir, tools, classpaths }, project);
 }
