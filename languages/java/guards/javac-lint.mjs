@@ -5,9 +5,12 @@ import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { rootsScope } from '../builds/module-path.mjs';
 
 const LINT_TOOL = 'javac';
-const LINT_REPORT = 'javac-lint.txt';
-const LINT_FAILURE = 'javac-lint-failed.txt';
 const LINT_NOT_RUN = 'lint-not-run';
+const MAIN_SET = { identity: LINT_NOT_RUN, sources: 'the main sources, the compile class path' };
+const TEST_SET = {
+  identity: `test-${LINT_NOT_RUN}`,
+  sources: 'the test sources, the test compile class path',
+};
 const WARNING = /^(.+\.java):(\d+): warning: \[(\w+)\] (.+)$/;
 const ADVICE = {
   rawtypes: 'Add the type arguments, as in List<String>.',
@@ -40,8 +43,7 @@ export function parseLintWarnings(text) {
   });
 }
 
-function lintNotRun(reportRoot, sourceRoots, module) {
-  const failure = path.join(reportRoot, LINT_FAILURE);
+function lintNotRun({ set, failure, roots, module }) {
   if (!existsSync(failure)) {
     return [];
   }
@@ -49,17 +51,17 @@ function lintNotRun(reportRoot, sourceRoots, module) {
     readFileSync(failure, 'utf8')
       .split(/\r?\n/)
       .find((line) => /error:/.test(line)) ?? 'javac exited with an error';
-  const scope = rootsScope(sourceRoots, module);
+  const scope = rootsScope(roots, module);
   return [
     {
       tool: LINT_TOOL,
       rule: LINT_NOT_RUN,
       path: '.',
-      identity: LINT_NOT_RUN,
+      identity: set.identity,
       message:
         `No javac lint report from the lint compile (${firstError.trim()}), so raw types, ` +
         'unchecked operations, deprecated calls and redundant casts were not checked. ' +
-        'Fix what that compile reports (the main sources, the compile class path and Lombok). ' +
+        `Fix what that compile reports (${set.sources} and Lombok). ` +
         exceptionHint(`${LINT_TOOL}/${LINT_NOT_RUN}`, '**'),
       classification: 'descriptive',
       ...(scope.length === 0 ? {} : { toolNotRun: true, notRunScope: scope }),
@@ -78,14 +80,38 @@ function projectFileCheck(projectRoot) {
   };
 }
 
-export function readLintFindings(reportRoot, { projectRoot, sourceRoots = [], module }) {
-  const report = path.join(reportRoot, LINT_REPORT);
+function sourceSetFindings({ set, report, failure, roots, module, read }) {
   if (!existsSync(report)) {
-    return lintNotRun(reportRoot, sourceRoots, module);
+    return lintNotRun({ set, failure, roots, module });
   }
+  return read(report);
+}
+
+export function readLintFindings(reportRoot, options) {
+  const { projectRoot, sourceRoots = [], testRoots = [], module } = options;
   const identity = createLineIdentity('javac', projectRoot);
   const inProject = projectFileCheck(projectRoot);
-  return parseLintWarnings(readFileSync(report, 'utf8'))
-    .filter(({ file }) => inProject(file))
-    .map((warning) => warningFinding(warning, identity));
+  function read(report) {
+    return parseLintWarnings(readFileSync(report, 'utf8'))
+      .filter(({ file }) => inProject(file))
+      .map((warning) => warningFinding(warning, identity));
+  }
+  return [
+    ...sourceSetFindings({
+      set: MAIN_SET,
+      report: path.join(reportRoot, 'javac-lint.txt'),
+      failure: path.join(reportRoot, 'javac-lint-failed.txt'),
+      roots: sourceRoots,
+      module,
+      read,
+    }),
+    ...sourceSetFindings({
+      set: TEST_SET,
+      report: path.join(reportRoot, 'javac-lint-test.txt'),
+      failure: path.join(reportRoot, 'javac-lint-test-failed.txt'),
+      roots: testRoots,
+      module,
+      read,
+    }),
+  ];
 }

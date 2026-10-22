@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { zipOf } from '../test-support/zip-writer.mjs';
@@ -7,6 +7,7 @@ import {
   JAVAC,
   RAW_NAMES,
   baseCache,
+  compileClasses,
   javaPlan,
   lint,
   namesWarning,
@@ -235,6 +236,74 @@ describe('runJavacLint', () => {
         '',
       ],
       failure: undefined,
+    });
+  });
+
+  it('lints the test sources against the main classes and the test class path into their own report', () => {
+    const head = temporaries.directory();
+    writeFiles(head, {
+      'src/main/java/demo/Box.java': 'package demo;\npublic class Box<T> {\n  public T value;\n}\n',
+      'src/test/java/demo/BoxTest.java': [
+        'package demo;',
+        'class BoxTest {',
+        '  Box raw;',
+        '  @SuppressWarnings("unchecked")',
+        '  Box<String> typed(Object value) {',
+        '    return (Box<String>) value;',
+        '  }',
+        '}',
+        '',
+      ].join('\n'),
+    });
+    const plan = javaPlan(head);
+    compileClasses(plan);
+    const reportDir = path.join(head, 'target/nitpicker');
+    const test = {
+      sources: [path.join(head, 'src/test/java/demo/BoxTest.java')],
+      generatedSources: [],
+      classDirectory: path.join(head, 'target/test-classes'),
+      classpath: [plan.classDirectory],
+      processorPath: [],
+      compiler: plan.compiler,
+    };
+
+    expect(lint({ ...plan, test }, undefined)).toEqual({ report: [''], failure: undefined });
+    expect(
+      warningHeaders(readFileSync(path.join(reportDir, 'javac-lint-test.txt'), 'utf8').split('\n')),
+    ).toEqual([
+      'src/test/java/demo/BoxTest.java:3: warning: [rawtypes] found raw type: Box',
+      'src/test/java/demo/BoxTest.java:6: warning: [unchecked] unchecked cast',
+    ]);
+    expect(existsSync(path.join(reportDir, 'javac-lint-test-failed.txt'))).toBe(false);
+  });
+
+  it('writes the test compile output to the test failure report and removes a stale test report', () => {
+    const head = temporaries.directory();
+    writeFiles(head, {
+      'src/main/java/demo/A.java': 'package demo;\nclass A {}\n',
+      'src/test/java/demo/ATest.java': 'package demo;\nclass ATest { Missing missing; }\n',
+    });
+    const plan = javaPlan(head);
+    const reportDir = path.join(head, 'target/nitpicker');
+    writeFiles(reportDir, { 'javac-lint-test.txt': 'stale' });
+    const test = {
+      sources: [path.join(head, 'src/test/java/demo/ATest.java')],
+      generatedSources: [],
+      classDirectory: path.join(head, 'target/test-classes'),
+      classpath: [],
+      processorPath: [],
+      compiler: plan.compiler,
+    };
+    lint({ ...plan, test }, undefined);
+
+    expect({
+      report: existsSync(path.join(reportDir, 'javac-lint-test.txt')),
+      failure: readFileSync(path.join(reportDir, 'javac-lint-test-failed.txt'), 'utf8').split(
+        '\n',
+      )[0],
+    }).toEqual({
+      report: false,
+      failure: 'src/test/java/demo/ATest.java:2: error: cannot find symbol',
     });
   });
 });
