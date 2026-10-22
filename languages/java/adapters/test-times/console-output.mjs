@@ -1,4 +1,4 @@
-import { sourceOf } from './spring-boot-tests.mjs';
+import { sourceOf } from './integration-tests.mjs';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 import { sourceLocator } from '../reporting/kotlin-reports.mjs';
