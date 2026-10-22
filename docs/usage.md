@@ -129,9 +129,24 @@ tool error carries the manager's message. Installing the base is not supported o
 
 ### Reports
 
-Reports are written to `reports/quality/diff/` (`reports/quality/snapshot/` for `--all`):
-`report.txt`, `report.junit.xml`, `summary.json`, `new-findings.json`, `resolved-findings.json`,
-`changed-metrics.json` and `tool-errors.json`. The summary records every config override, a
+A comparison run writes these files to `reports/quality/diff/`:
+
+- `report.txt`: the readable report.
+- `summary.json`: totals, per-tool counts and the fields below.
+- `new-findings.json`: the new findings, the ones that count against the change.
+- `resolved-findings.json`: findings that were in the base and are gone.
+- `changed-metrics.json`: metrics that moved.
+- `held-findings.json`: findings that were already there and are no worse than at the base (for
+  example a file over a size limit that did not grow); they are allowed, and any increase fails.
+- `tool-errors.json`: the tool errors, whatever the exit code.
+- `report.junit.xml`: JUnit XML for CI test reports.
+- `report.sarif`: SARIF 2.1.0 for code-scanning tools, described below.
+
+`--all` has no baseline, so it writes `reports/quality/snapshot/` with `report.txt`, `summary.json`,
+`findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml` and
+`report.sarif`.
+
+The summary records every config override, a
 policy hash, the `policyChanges` the head config makes against the base and any `notices`. A notice
 is information that never fails the run. Today there is one kind: changed code files that lie
 outside the roots the preset checks. For TypeScript those are `layout.sourceRoots` and
@@ -140,6 +155,46 @@ Python, `python.sourceRoots`; for Java and Kotlin, the build's source sets (`src
 `src/<set>/kotlin` of a module, or a directory the build file declares). To leave files unchecked,
 list them in `exclude`. Choose another directory
 with `--output <dir>`. Set `NO_COLOR` to disable colored console output.
+
+#### SARIF
+
+`report.sarif` has one run with one result per finding. `ruleId` is `<tool>/<rule>`, `level` is
+`error` for an enforceable finding and `note` for a descriptive one, and
+`partialFingerprints["nitpickerIdentity/v1"]` is the hash of the finding's comparison key, so a
+consumer matches a finding across runs when its line moves. A tool error makes the run's
+invocation unsuccessful and adds a notification.
+
+| Run        | Results                  | `baselineState`                                |
+| ---------- | ------------------------ | ---------------------------------------------- |
+| comparison | `new-findings.json`      | `new`                                          |
+| comparison | `held-findings.json`     | `unchanged`                                    |
+| comparison | `resolved-findings.json` | not written (no `absent` results)              |
+| `--all`    | `findings.json`          | not set (there is no baseline to compare with) |
+
+Fixed findings stay out of `results` because most consumers, code scanning among them, read every
+result as a problem in the current code. Other findings that were in both snapshots are in no
+report file, so they are not in the SARIF either. To upload only the new ones, filter by
+`baselineState`:
+`jq '.runs[].results |= map(select(.baselineState == "new"))' report.sarif > new.sarif`.
+
+Every location has `uriBaseId: "%SRCROOT%"` and a `uri` relative to the project folder, and the
+run's `originalUriBaseIds` maps `%SRCROOT%` to that folder as a `file://` URI ending in `/`. The
+project folder is the one you ran nitpicker in, so a project in a subfolder of the repository
+(`packages/app`) resolves to `packages/app/src/a.ts`, not `src/a.ts`. Paths are percent-encoded.
+
+To upload with `github/codeql-action/upload-sarif`, run nitpicker in the same checkout and keep the
+default `checkout_path` (`${{ github.workspace }}`), which the action uses to relativize absolute
+paths in the file, so the absolute source root becomes a repository-relative one. A job that runs nitpicker in a container that mounts the
+repository elsewhere sets `checkout_path` to that mount point.
+
+```yaml
+- run: npx nitpicker
+  working-directory: packages/app
+- uses: github/codeql-action/upload-sarif@v3
+  if: always()
+  with:
+    sarif_file: packages/app/reports/quality/diff/report.sarif
+```
 
 ## Exit codes
 
@@ -567,13 +622,17 @@ code importing a package that is only in `devDependencies`: move it to `dependen
 reads the nearest `package.json` that lists dependencies, skips an app a bundler builds (a Vite,
 webpack, Next.js, Rsbuild, Rspack, Astro, Nuxt, SvelteKit, Remix, Vue CLI, Parcel or Angular
 config, or a `build` script that runs one, and no `main`, `module`, `exports` or `bin`) and test
-support next to the code (`setupTests.*`, `test-utils`, `testing/`, `__mocks__/`, `*.stories.*`,
+support next to the code (`setupTests.*`, `test-utils`, `testing/`, `test-support/`, `__mocks__/`, `*.stories.*`,
 `.storybook/`), and reports a `package.json` that is not a JSON object. `nitpicker`,
 `vitest`, `@vitest/coverage-v8`, `typescript`, `@types/node`, `jsdom` and `happy-dom` are never
 reported as unused, because nitpicker or Vitest loads them by name. A tool that loads a package by
 name (a plugin in a config file) needs an `unused-dependency` exception for `package.json` that
 names the package:
 `{ "rule": "unused-dependency", "paths": ["package.json"], "packages": ["prettier-plugin-x"], "reason": "Loaded by .prettierrc" }`.
+
+The Python preset fails a new `unused-dependency` and `unlisted-dependency` the same way, reading the
+dependencies from `pyproject.toml`, `Pipfile`, `requirements*.txt` or `setup.cfg` (see
+[python-preset.md](python-preset.md)); the Java and Kotlin presets have neither rule.
 
 ### Console output from tests
 

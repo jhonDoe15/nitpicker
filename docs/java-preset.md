@@ -393,8 +393,9 @@ classpath and its `test` task, and adds no test library to the project.
   init script and the Java adapter files, so a tool bump invalidates the base cache.
 - **Everything else is shared.** `nitpicker`, `--all`, `--base`, `--output`, `--defer-exit`,
   `cache publish` and `nitpicker aggregate` take the same path as for TypeScript, so the exit codes
-  (0 pass, 1 new enforceable findings, 2 tool error), the console summary, `new-findings.json`,
-  `summary.json`, `report.sarif` and `report.junit.xml` are the ones described in the CLI README.
+  (0 pass, 1 new enforceable findings, 2 tool error), the console summary and the report files
+  (`new-findings.json`, `summary.json`, `report.sarif`, `report.junit.xml` and the rest; `--all`
+  writes `findings.json`) are the ones described under [Reports](usage.md#reports).
 - **Gradle failure.** `languages/java/adapters/java-runner.mjs` catches any failure of the preset on a
   snapshot and returns one finding, `java/gradle-failure` (`java/maven-failure` on a Maven build) with
   classification `tool-error`, whose message is the build's diagnostic output. The comparison turns it into a tool error for that

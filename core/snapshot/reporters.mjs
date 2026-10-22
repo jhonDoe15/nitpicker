@@ -1,21 +1,23 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
 
-const REPORT_FILE_NAMES = [
+export const SNAPSHOT_REPORT_FILE_NAMES = [
   'summary.json',
   'findings.json',
   'tool-errors.json',
   'report.txt',
   'report.junit.xml',
+  'report.sarif',
 ];
 
 export function clearSnapshotReports(outputRoot) {
-  for (const reportFileName of REPORT_FILE_NAMES) {
+  for (const reportFileName of SNAPSHOT_REPORT_FILE_NAMES) {
     rmSync(path.join(outputRoot, reportFileName), { force: true });
   }
 }
 
-export function writeSnapshotReports(outputRoot, report) {
+export function writeSnapshotReports(outputRoot, report, { projectRoot } = {}) {
   mkdirSync(outputRoot, { recursive: true });
   writeJson(path.join(outputRoot, 'summary.json'), report.summary);
   writeJson(path.join(outputRoot, 'findings.json'), report.findings);
@@ -24,6 +26,10 @@ export function writeSnapshotReports(outputRoot, report) {
   const text = renderTextReport(report);
   writeFileSync(path.join(outputRoot, 'report.txt'), text);
   writeFileSync(path.join(outputRoot, 'report.junit.xml'), renderJunitReport(report));
+  writeFileSync(
+    path.join(outputRoot, 'report.sarif'),
+    renderSnapshotSarifReport(report, { projectRoot }),
+  );
   return text;
 }
 
