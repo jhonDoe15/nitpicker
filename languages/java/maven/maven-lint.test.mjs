@@ -263,7 +263,8 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       [
         `#!${process.execPath}`,
         "const fs = require('node:fs');",
-        "const args = fs.readFileSync(process.argv[2].slice(1), 'utf8').split('\\n').map((l) => JSON.parse(l));",
+        "const lines = fs.readFileSync(process.argv[2].slice(1), 'utf8').split('\\n');",
+        'const args = lines.map((line) => JSON.parse(line));',
         `fs.writeFileSync(${JSON.stringify(path.join(basedir, 'arguments.json'))}, JSON.stringify(args));`,
         "fs.writeFileSync(args[args.indexOf('--report-file') + 1], '{}');",
       ].join('\n'),
@@ -287,34 +288,41 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       spring,
     });
     const args = JSON.parse(readFileSync(path.join(basedir, 'arguments.json'), 'utf8'));
-    const read = (name) => readFileSync(path.join(reportDir, name), 'utf8');
+    const refs = (name) =>
+      [...readFileSync(path.join(reportDir, name), 'utf8').matchAll(/<rule ref="([^"]+)"/g)].map(
+        ([, ref]) => ref,
+      );
     return {
       rulesets: args[args.indexOf('--rulesets') + 1].split(','),
-      mainRules: read('pmd-main.xml'),
-      testRules: read('pmd-tests.xml'),
+      mainRules: refs('pmd-main.xml'),
+      testRules: refs('pmd-tests.xml'),
       reportDir,
     };
   }
 
-  const springRuleset = path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml');
-  const springTestRuleset = path.join(GRADLE_DIRECTORY, 'spring-test-ruleset.xml');
+  const shipped = (name) => path.join(GRADLE_DIRECTORY, name);
 
   it('adds the Spring rule sets to the main-only and test-only wrappers of a Spring module', () => {
     const run = pmdRun(true);
 
     expect(run.rulesets).toEqual([
-      path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml'),
+      shipped('pmd-ruleset.xml'),
       path.join(run.reportDir, 'pmd-tests.xml'),
       path.join(run.reportDir, 'pmd-main.xml'),
     ]);
-    expect(run.mainRules).toContain(`<rule ref="${springRuleset}"/>`);
-    expect(run.testRules).toContain(`<rule ref="${springTestRuleset}"/>`);
+    expect(run.mainRules).toEqual([shipped('pmd-main-ruleset.xml'), shipped('spring-ruleset.xml')]);
+    expect(run.testRules).toEqual([
+      shipped('pmd-test-ruleset.xml'),
+      shipped('spring-test-ruleset.xml'),
+    ]);
   });
 
   it('leaves the Spring rule sets out of a module without Spring', () => {
     const run = pmdRun(false);
 
-    expect(run.mainRules).not.toContain('spring-ruleset.xml');
-    expect(run.testRules).not.toContain('spring-test-ruleset.xml');
+    expect({ main: run.mainRules, tests: run.testRules }).toEqual({
+      main: [shipped('pmd-main-ruleset.xml')],
+      tests: [shipped('pmd-test-ruleset.xml')],
+    });
   });
 });

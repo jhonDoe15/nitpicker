@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { blankLiterals } from '../../review-rules/java-sources.mjs';
 
 const SCHEDULING = 'org.springframework.scheduling.annotation';
 const CACHE = 'org.springframework.cache.annotation';
@@ -36,18 +37,6 @@ const FEATURES = [
   },
 ];
 const SOURCE_FILE = /\.(?:java|kt)$/;
-const LITERALS_AND_COMMENTS =
-  /"""(?:[^\\]|\\[\s\S])*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\/[^\n]*|\/\*[\s\S]*?\*\//g;
-
-function blank(text) {
-  return text.replaceAll(/[^\n]/g, ' ');
-}
-
-function codeOf(source) {
-  return source.replaceAll(LITERALS_AND_COMMENTS, (token) =>
-    token.startsWith('/') ? blank(token) : `${token[0]}${blank(token.slice(1, -1))}${token.at(-1)}`,
-  );
-}
 
 function escaped(text) {
   return text.replaceAll('.', String.raw`\.`);
@@ -100,7 +89,7 @@ function enabled(feature, files, xmlFiles) {
 export function springWiringProblems(projectRoot, sourceRoots, resourceRoots = []) {
   const files = readSources(projectRoot, sourceRoots, SOURCE_FILE).map(({ path: file, text }) => ({
     path: file,
-    code: codeOf(text),
+    code: blankLiterals(text),
   }));
   const xmlFiles = readSources(projectRoot, [...sourceRoots, ...resourceRoots], /\.xml$/);
   return FEATURES.filter((feature) => !enabled(feature, files, xmlFiles)).flatMap(
