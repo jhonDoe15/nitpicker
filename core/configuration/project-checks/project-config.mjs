@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { configError } from '../../../shared/config.mjs';
 import { filesUnder, pathInside } from '../../../shared/filesystem.mjs';
-import { globToRegExp } from '../../../shared/glob.mjs';
+import { globMatcher } from '../../../shared/paths/glob.mjs';
 import {
   sourceRoots as defaultSourceRoots,
   testRoots as defaultTestRoots,
@@ -41,7 +41,7 @@ export function rejectUnreadableSources(config, projectRoot) {
     ...(config.layout?.sourceRoots ?? defaultSourceRoots),
     ...(config.layout?.testRoots ?? defaultTestRoots),
   ];
-  const excluded = (config.exclude ?? []).map(globToRegExp);
+  const excluded = (config.exclude ?? []).map(globMatcher);
   const found = roots
     .flatMap((root) => existingJsxFiles(projectRoot, root))
     .find((file) => !excluded.some((matcher) => matcher.test(file)));
