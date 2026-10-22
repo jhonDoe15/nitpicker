@@ -1,4 +1,4 @@
-import { escapeRegExp } from '../../../shared/glob.mjs';
+import { escapeRegExp } from '../../../shared/paths/glob.mjs';
 import { FIXTURE_PATH } from '../preset/layout.mjs';
 
 const SOURCE_FILES = ['**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'];
