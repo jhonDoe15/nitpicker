@@ -9,9 +9,11 @@ import {
 import { readProjectPyright } from '../../../languages/python/adapters/project-tools/pyright/pyright-project-config.mjs';
 import { parseToml } from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
 
-export const PYTHON_TOOLS = ['ruff', 'black', 'pyright', 'mypy', 'mutmut'];
+export const PYTHON_TOOLS = ['ruff', 'black', 'pyright', 'mypy', 'mutmut', 'coverage'];
 const PYPROJECT = 'pyproject.toml';
 const SETUP_CFG = 'setup.cfg';
+const TOX_INI = 'tox.ini';
+const COVERAGERC = '.coveragerc';
 const MYPY_FILES = ['mypy.ini', '.mypy.ini'];
 const PYRIGHT_CHECKERS = ['pyright', 'basedpyright'];
 const MYPY_SECTION = /^mypy(?:-|$)/u;
@@ -21,12 +23,21 @@ const TOML_TABLES = {
   pyright: ['pyright', 'basedpyright'],
   mypy: ['mypy'],
   mutmut: ['mutmut'],
+  coverage: ['coverage'],
 };
-const SETUP_CFG_SECTIONS = {
-  mypy: (name) => MYPY_SECTION.test(name),
-  mutmut: (name) => name === 'mutmut',
+const SHARED_INI_SECTIONS = {
+  mypy: { matches: (name) => MYPY_SECTION.test(name), required: (names) => names.includes('mypy') },
+  mutmut: { matches: (name) => name === 'mutmut', required: (names) => names.includes('mutmut') },
+  coverage: {
+    matches: (name) => name.startsWith('coverage:'),
+    required: (names) => names.length > 0,
+  },
 };
-const SETUP_CFG_REQUIRED = { mypy: 'mypy', mutmut: 'mutmut' };
+const FIRST_FILES = {
+  mypy: [...MYPY_FILES, PYPROJECT, SETUP_CFG],
+  mutmut: [PYPROJECT, SETUP_CFG],
+  coverage: [COVERAGERC, SETUP_CFG, TOX_INI, PYPROJECT],
+};
 
 function sortedKeys(value) {
   if (Array.isArray(value)) {
@@ -58,10 +69,10 @@ function pyprojectPart(tool, text) {
     : Object.fromEntries(kept.map((name) => [name, tables[name]]));
 }
 
-function setupCfgPart(tool, text) {
-  const matches = SETUP_CFG_SECTIONS[tool];
-  const sections = matches === undefined ? {} : iniSections(text, matches);
-  return sections[SETUP_CFG_REQUIRED[tool]] === undefined ? undefined : sections;
+function sharedIniPart(tool, text) {
+  const shared = SHARED_INI_SECTIONS[tool];
+  const sections = shared === undefined ? {} : iniSections(text, shared.matches);
+  return shared?.required(Object.keys(sections)) === true ? sections : undefined;
 }
 
 function relevantPart(tool, file, text) {
@@ -69,11 +80,14 @@ function relevantPart(tool, file, text) {
   if (name === PYPROJECT) {
     return pyprojectPart(tool, text);
   }
-  if (name === SETUP_CFG) {
-    return setupCfgPart(tool, text);
+  if (name === SETUP_CFG || name === TOX_INI) {
+    return sharedIniPart(tool, text);
   }
   if (MYPY_FILES.includes(name)) {
     return iniSections(text, (section) => MYPY_SECTION.test(section));
+  }
+  if (name === COVERAGERC) {
+    return iniSections(text, () => true);
   }
   return name.endsWith('.json') ? parseJsonc(text) : parseToml(text);
 }
@@ -116,11 +130,7 @@ function candidatesOf(tool, root) {
     );
     return relativeTo(root, [...new Set(files)]);
   }
-  return firstConfigured(
-    tool,
-    root,
-    tool === 'mypy' ? [...MYPY_FILES, PYPROJECT, SETUP_CFG] : [PYPROJECT, SETUP_CFG],
-  );
+  return firstConfigured(tool, root, FIRST_FILES[tool]);
 }
 
 export function pythonConfigEntries(tool, root) {

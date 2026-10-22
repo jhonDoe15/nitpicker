@@ -359,4 +359,24 @@ describe('python tool configs the project opted into', () => {
       ),
     ).toEqual(['ruff project config changed: ruff.toml']);
   });
+
+  it('reads the coverage sections of the file coverage reads', () => {
+    const cfg = (flake8, excluded) => ({
+      'setup.cfg': `[flake8]\nmax-line-length = ${flake8}\n\n[coverage:report]\nexclude_also =\n    ${excluded}\n`,
+      'pyproject.toml': '[tool.coverage.report]\nexclude_also = ["unused"]\n',
+    });
+    const config = python('coverage');
+
+    expect(loosenings(cfg(80, 'def __repr__'), cfg(120, 'def __repr__'), config)).toEqual([]);
+    expect(loosenings(cfg(80, 'def __repr__'), cfg(80, 'pragma: no cover'), config)).toEqual([
+      'coverage project config changed: setup.cfg',
+    ]);
+    expect(
+      loosenings(
+        { '.coveragerc': '[report]\nexclude_also = x\n' },
+        { '.coveragerc': '# kept\n[report]\nexclude_also =   x\n' },
+        config,
+      ),
+    ).toEqual([]);
+  });
 });

@@ -192,6 +192,35 @@ describe('Python mutmut config of the project', () => {
   });
 });
 
+describe('Python coverage config of the project', () => {
+  const fixed = `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n`;
+  const notice = (what) =>
+    `Ignoring ${what} except omit, concurrency, patch and plugins; opt in with "tools": { "coverage": { "precedence": ["project", "nitpicker"] } }\n`;
+
+  it('names the coverage settings that are ignored, until the project is listed', () => {
+    const excluded = '[tool.coverage.report]\nexclude_also = ["def __repr__"]\n';
+
+    expect(follow({ preset: 'python' }, { 'pyproject.toml': excluded }).printed).toBe(
+      fixed + notice('[tool.coverage] in pyproject.toml'),
+    );
+    expect(follow({ preset: 'python' }, { '.coveragerc': '[run]\ntimid = True\n' }).printed).toBe(
+      fixed + notice('.coveragerc'),
+    );
+    expect(
+      follow(
+        { preset: 'python', tools: { coverage: { precedence: LISTED } } },
+        { 'pyproject.toml': excluded },
+      ).printed,
+    ).toBe(fixed);
+  });
+
+  it('says nothing when the config only holds what the run reads or never applies', () => {
+    const read = '[coverage:run]\nomit = gen/*\n\n[coverage:report]\nfail_under = 90\n';
+
+    expect(follow({ preset: 'python' }, { 'setup.cfg': read }).printed).toBe(fixed);
+  });
+});
+
 describe('Python conventions that black can apply', () => {
   const black = { preset: 'python', python: { formatter: 'black' } };
 

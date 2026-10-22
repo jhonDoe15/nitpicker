@@ -2,6 +2,11 @@ import {
   ignoredConfigNotice,
   precedenceLayers,
 } from '../../../../shared/conventions/tool-precedence.mjs';
+import {
+  COVERAGE_TOOL,
+  optInKeys,
+  readCoverageSettings,
+} from '../configuration/coverage-config/python-coverage-config.mjs';
 import { readMypyConfig } from '../configuration/mypy/mypy-config.mjs';
 import { detectTypeCheckers } from '../execution/python-project.mjs';
 import { ignoredMutmutKeys, MUTMUT_TOOL, readMutmutConfig } from './mutmut/mutmut-config.mjs';
@@ -71,11 +76,27 @@ function mutmutNotices(projectRoot, config) {
     : [ignoredConfigNotice(`${MUTMUT_LABELS[found.file]}${MUTMUT_NOTE}`, MUTMUT_TOOL)];
 }
 
+const COVERAGE_LABELS = {
+  '.coveragerc': '.coveragerc',
+  'setup.cfg': '[coverage:*] in setup.cfg',
+  'tox.ini': '[coverage:*] in tox.ini',
+  'pyproject.toml': '[tool.coverage] in pyproject.toml',
+};
+const COVERAGE_NOTE = ' except omit, concurrency, patch and plugins';
+
+function coverageNotices(projectRoot, config) {
+  const found = notOptedIn(config, COVERAGE_TOOL) ? readCoverageSettings(projectRoot) : undefined;
+  return found === undefined || optInKeys(found).length === 0
+    ? []
+    : [ignoredConfigNotice(`${COVERAGE_LABELS[found.file]}${COVERAGE_NOTE}`, COVERAGE_TOOL)];
+}
+
 export function ignoredProjectToolNotices({ config, projectRoot }) {
   const { value = [] } = attempt(() => [
     ...pyrightNotices(projectRoot, config),
     ...mypyNotices(projectRoot, config),
     ...mutmutNotices(projectRoot, config),
+    ...coverageNotices(projectRoot, config),
   ]);
   return value;
 }
