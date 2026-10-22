@@ -10,10 +10,7 @@ import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy
 import { withHeadPolicyFile } from '../../shared/head-policy.mjs';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { resolveComparison } from '../diff/git/repository/git.mjs';
-import {
-  fakeGradle,
-  useInProcessGradle,
-} from '../../languages/java/adapters/test-support/in-process-gradle.mjs';
+import { fakeGradleRun } from '../../languages/java/adapters/test-support/in-process-gradle.mjs';
 import { comparisonPolicy } from './resolve.mjs';
 
 const { createGitRepository } = useGitFixtures();
@@ -21,8 +18,6 @@ const { createGitRepository } = useGitFixtures();
 const indented = (width) =>
   `package demo;\n\npublic final class A {\n${' '.repeat(width)}private int a;\n}\n`;
 const projects = [];
-
-useInProcessGradle();
 
 afterEach(() => {
   for (const root of projects.splice(0)) {
@@ -56,7 +51,7 @@ function gradleProperties(width) {
   );
   const project = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-style-')));
   projects.push(project);
-  analyzeJavaSnapshot(project, { gradle: fakeGradle, policy });
+  analyzeJavaSnapshot(project, { ...fakeGradleRun, policy });
   return JSON.parse(readFileSync(path.join(project, 'build/gradle-args.json'), 'utf8'));
 }
 

@@ -3,14 +3,19 @@ import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { exactText } from '../../../diff/reporting/test-support/output-expectations.mjs';
 import {
   fakeGradle,
-  useInProcessGradle,
+  fakeGradleRun,
+  spawnFakeGradle,
 } from '../../../../languages/java/adapters/test-support/in-process-gradle.mjs';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 
-export { fakeGradle };
+export { fakeGradle, fakeGradleRun };
+
+export function runTasksWithFakeGradle(tasks, headPolicyFile, options) {
+  return runTasksInProcess(tasks, headPolicyFile, { ...options, spawn: spawnFakeGradle });
+}
 
 const GRADLE_TEMPLATE_FILES = {
   'nitpicker.config.json': '{ "preset": "java" }\n',
@@ -24,7 +29,6 @@ export function kotlinConfig(formatter) {
 }
 
 export function useGradleFixtures(runNitpickerCli) {
-  useInProcessGradle();
   beforeEach(() => {
     vi.stubEnv('NITPICKER_GRADLE', fakeGradle);
   });
@@ -35,7 +39,7 @@ export function useGradleFixtures(runNitpickerCli) {
     runCli: runNitpickerCli,
     name: 'java',
     templateFiles: GRADLE_TEMPLATE_FILES,
-    runOptions: { runTasks: runTasksInProcess },
+    runOptions: { runTasks: runTasksWithFakeGradle },
   });
 
   return {

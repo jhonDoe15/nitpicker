@@ -1,12 +1,12 @@
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { processes } from '../../../../core/tooling/processes.mjs';
 
 export const SUPERVISOR = fileURLToPath(new URL('./gradle-supervisor.mjs', import.meta.url));
 const JSON_OVERHEAD = 6;
 const ENVELOPE_OVERHEAD_BYTES = 4096;
 
-export function runGradle(command, args, options) {
-  const result = processes.spawn(process.execPath, [SUPERVISOR], {
+export function runGradle(command, args, { spawn = spawnSync, ...options }) {
+  const result = spawn(process.execPath, [SUPERVISOR], {
     input: JSON.stringify({ command, args, options }),
     encoding: 'utf8',
     maxBuffer: options.maxBuffer * JSON_OVERHEAD + ENVELOPE_OVERHEAD_BYTES,

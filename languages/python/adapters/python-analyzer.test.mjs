@@ -219,6 +219,18 @@ describe('Python analyzer', () => {
       expect(calls()).toEqual([...resolvedOnce, ...pythonProbes(other)]);
     });
 
+    it('probes again for an analyzer created on its own, even for the same checkout', () => {
+      const live = temporaryRoot();
+      installFakeToolchain(path.join(live, '.venv/bin'));
+      const calls = useCallsLog();
+
+      createPythonAnalyzer({ testRunner: 'pytest' }).resolveVersion(live);
+      const once = calls();
+      createPythonAnalyzer({ testRunner: 'pytest' }).resolveVersion(live);
+
+      expect(calls()).toEqual([...once, ...once]);
+    });
+
     it('probes a tool again once it is installed in the environment', () => {
       const live = temporaryRoot();
       installFakeToolchain(path.join(live, '.venv/bin'), ['ruff', 'coverage', 'python']);

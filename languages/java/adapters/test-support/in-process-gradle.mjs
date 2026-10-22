@@ -1,39 +1,45 @@
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { afterEach, beforeEach, vi } from 'vitest';
-import { processes } from '../../../../core/tooling/processes.mjs';
 import { SUPERVISOR } from '../gradle-wrapper/gradle-process.mjs';
-import { runFakeGradle } from '../fixtures/fake-gradle.mjs';
+import { runFakeGradle } from './fake-gradle/run-fake-gradle.mjs';
 
 export const fakeGradle = path.resolve(import.meta.dirname, '../fixtures/fake-gradle.mjs');
 
-function spawnFakeGradle(realSpawn) {
-  return (command, args, options) => {
-    if (command !== process.execPath || args[0] !== SUPERVISOR) {
-      return realSpawn(command, args, options);
-    }
-    const invocation = JSON.parse(options.input);
-    if (invocation.command !== fakeGradle) {
-      return realSpawn(command, args, options);
-    }
-    const { status, stdout, stderr } = runFakeGradle({
-      args: invocation.args,
-      cwd: invocation.options.cwd,
-    });
+function answerOf(invocation) {
+  const { maxBuffer } = invocation.options;
+  let run;
+  try {
+    run = runFakeGradle({ args: invocation.args, cwd: invocation.options.cwd });
+  } catch (error) {
+    run = { status: 1, stdout: '', stderr: `${error.message}\n` };
+  }
+  const bytes = Buffer.byteLength(run.stdout) + Buffer.byteLength(run.stderr);
+  if (bytes > maxBuffer) {
     return {
-      status: 0,
-      signal: undefined,
-      stdout: JSON.stringify({ status, signal: undefined, stdout, stderr }),
+      status: undefined,
+      stdout: '',
       stderr: '',
+      error: { message: 'Gradle output exceeded maxBuffer (ENOBUFS)', code: 'ENOBUFS' },
     };
+  }
+  return { ...run, signal: undefined, error: undefined };
+}
+
+export function spawnFakeGradle(command, args, options) {
+  if (command !== process.execPath || args[0] !== SUPERVISOR) {
+    return spawnSync(command, args, options);
+  }
+  const invocation = JSON.parse(options.input);
+  if (invocation.command !== fakeGradle) {
+    return spawnSync(command, args, options);
+  }
+  return {
+    status: 0,
+    signal: undefined,
+    stdout: JSON.stringify(answerOf(invocation)),
+    stderr: '',
+    error: undefined,
   };
 }
 
-export function useInProcessGradle() {
-  beforeEach(() => {
-    const realSpawn = processes.spawn;
-    vi.spyOn(processes, 'spawn').mockImplementation(spawnFakeGradle(realSpawn));
-  });
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-}
+export const fakeGradleRun = { gradle: fakeGradle, spawn: spawnFakeGradle };

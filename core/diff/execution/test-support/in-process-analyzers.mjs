@@ -1,12 +1,7 @@
 import { spawnSync } from 'node:child_process';
-import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import { analyzeJavaSnapshot } from '../../../../languages/java/adapters/java-runner.mjs';
-import { parseJavaRunnerArguments } from '../../../../languages/java/adapters/java-policy.mjs';
-import {
-  analyzePythonSnapshot,
-  parsePythonArguments,
-} from '../../../../languages/python/adapters/python-runner.mjs';
+import { runJava } from '../../../../languages/java/adapters/java-runner.mjs';
+import { runPython } from '../../../../languages/python/adapters/python-runner.mjs';
 import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
 import { progressEvent } from '../analyzer-scheduler.mjs';
 import { reportFromAnalyzerOutput } from '../process.mjs';
@@ -26,11 +21,11 @@ const pythonRunnerPath = path.resolve(
 
 const inProcessScripts = new Map([
   [fakeAnalyzerPath, runFakeAnalyzer],
-  [javaRunnerPath, runJavaRunner],
-  [pythonRunnerPath, runPythonRunner],
+  [javaRunnerPath, inProcessRunner(runJava)],
+  [pythonRunnerPath, inProcessRunner(runPython)],
 ]);
 
-export function runTasksInProcess(tasks, headPolicyFile, { progress } = {}) {
+export function runTasksInProcess(tasks, headPolicyFile, { progress, spawn } = {}) {
   const reportSettled =
     progress === undefined
       ? undefined
@@ -43,7 +38,7 @@ export function runTasksInProcess(tasks, headPolicyFile, { progress } = {}) {
   const outcomes = new Map();
   withPolicyFile(headPolicyFile, () => {
     for (const task of dependencyOrder(tasks, tasksByName)) {
-      const outcome = settleTask(task, { tasksByName, outcomes });
+      const outcome = settleTask(task, { tasksByName, outcomes, spawn });
       outcomes.set(task.name, outcome);
       reportSettled?.(progressEvent(outcome));
     }
@@ -110,13 +105,13 @@ function deferTask(pending, task, taskCount) {
   pending.push(task);
 }
 
-function settleTask(task, { tasksByName, outcomes }) {
+function settleTask(task, { tasksByName, outcomes, spawn }) {
   const dependencyOutcomes = task.dependencies.map((name) =>
     tasksByName.has(name) ? outcomes.get(name) : missingDependency(name, task),
   );
   const failedDependency = dependencyOutcomes.find(hasFailed);
   return failedDependency === undefined
-    ? executeTask(task)
+    ? executeTask(task, spawn)
     : dependentOutcome(task, failedDependency);
 }
 
@@ -147,10 +142,10 @@ function dependentOutcome(task, failedDependency) {
   };
 }
 
-function executeTask(task) {
+function executeTask(task, spawn) {
   const startedAt = Date.now();
   try {
-    const output = inProcessOutput(task) ?? spawnedOutput(task);
+    const output = inProcessOutput(task, spawn) ?? spawnedOutput(task);
     return {
       name: task.name,
       report: reportFromAnalyzerOutput(task, output),
@@ -165,13 +160,13 @@ function executeTask(task) {
   }
 }
 
-function inProcessOutput(task) {
+function inProcessOutput(task, spawn) {
   const { command, args, env } = task.invocation;
   const script = command === process.execPath ? inProcessScripts.get(args[0]) : undefined;
   if (script === undefined || env !== undefined) {
     return undefined;
   }
-  return script(args.slice(1));
+  return script(args.slice(1), { spawn });
 }
 
 function spawnedOutput(task) {
@@ -200,38 +195,18 @@ function spawnedOutput(task) {
   };
 }
 
-function runJavaRunner(argv) {
-  let parsed;
-  try {
-    parsed = parseJavaRunnerArguments(argv);
-  } catch (error) {
-    return { status: 2, signal: undefined, stdoutText: '', stderrText: error.message };
-  }
-  const report = analyzeJavaSnapshot(realpathSync(parsed.projectRoot), { policy: parsed.policy });
-  return {
-    status: 0,
-    signal: undefined,
-    stdoutText: `${JSON.stringify(report)}\n`,
-    stderrText: '',
-  };
-}
-
-function runPythonRunner(argv) {
-  let parsed;
-  try {
-    parsed = parsePythonArguments(argv);
-  } catch (error) {
-    return { status: 2, signal: undefined, stdoutText: '', stderrText: error.message };
-  }
-  const report = analyzePythonSnapshot({
-    ...parsed,
-    projectRoot: realpathSync(parsed.projectRoot),
-    liveRoot: realpathSync(parsed.liveRoot),
-  });
-  return {
-    status: 0,
-    signal: undefined,
-    stdoutText: `${JSON.stringify(report)}\n`,
-    stderrText: '',
+function inProcessRunner(analyze) {
+  return (argv, options) => {
+    try {
+      const report = analyze(argv, options);
+      return {
+        status: 0,
+        signal: undefined,
+        stdoutText: `${JSON.stringify(report)}\n`,
+        stderrText: '',
+      };
+    } catch (error) {
+      return { status: 2, signal: undefined, stdoutText: '', stderrText: error.message };
+    }
   };
 }

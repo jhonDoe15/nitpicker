@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { probe } from '../execution/python-process.mjs';
+import { execute } from '../execution/python-process.mjs';
 
 export const RUFF_CONFIG = path.resolve(
   fileURLToPath(new URL('../', import.meta.url)),
@@ -27,7 +27,7 @@ export function isStableRule(rule) {
 }
 
 function installedRules(context) {
-  const result = probe(context, ['ruff', 'rule', '--all', '--output-format', 'json']);
+  const result = execute(context, ['ruff', 'rule', '--all', '--output-format', 'json']);
   const parsed = result.error === undefined && result.status === 0 ? parseRules(result.stdout) : {};
   if (parsed.kind !== 'rules' || !Array.isArray(parsed.rules)) {
     return undefined;

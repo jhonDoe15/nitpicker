@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import { collectJavaFindings } from '../../java-diff.mjs';
 import { kotlinGradleArguments, kotlinStyleFile, resolveKotlinTools } from '../kotlin-tools.mjs';
-import { fakeGradle, useInProcessGradle } from '../../test-support/in-process-gradle.mjs';
+import { fakeGradleRun } from '../../test-support/in-process-gradle.mjs';
 import { kotlinProjects } from '../test-support/kotlin-project.mjs';
 
 const FOLLOWED = {
@@ -15,8 +15,6 @@ const FOLLOWED = {
 const ISOLATED = { offset: '', editorconfigs: [{ path: '.editorconfig', text: 'root = true\n' }] };
 
 const { project, remove } = kotlinProjects();
-
-useInProcessGradle();
 
 afterEach(remove);
 
@@ -259,7 +257,7 @@ describe('what runs with the project listed', () => {
 
 describe('the Gradle hand-off', () => {
   const argumentsOf = (root, policy) => {
-    collectJavaFindings(root, { gradle: fakeGradle, policy });
+    collectJavaFindings(root, { ...fakeGradleRun, policy });
     return JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8')).filter(
       (argument) => !argument.startsWith('-Pnitpicker.reportDir='),
     );

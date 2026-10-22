@@ -1,7 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, beforeEach, vi } from 'vitest';
-import { processes } from '../../../tooling/processes.mjs';
+import { afterEach, vi } from 'vitest';
 import {
   installFakeToolchain,
   spawnFakeTools,
@@ -23,20 +22,19 @@ export function newFindings(result, rule) {
   return result.json('new-findings.json').filter((finding) => finding.rule === rule);
 }
 
+function runTasksWithFakeTools(tasks, headPolicyFile, options) {
+  return runTasksInProcess(tasks, headPolicyFile, { ...options, spawn: spawnFakeTools });
+}
+
 export function usePythonFixtures(runNitpickerCli) {
-  beforeEach(() => {
-    const realSpawn = processes.spawn;
-    vi.spyOn(processes, 'spawn').mockImplementation(spawnFakeTools(realSpawn));
-  });
   afterEach(() => {
-    vi.restoreAllMocks();
     vi.unstubAllEnvs();
   });
   const fixtures = usePresetFixtures({
     runCli: runNitpickerCli,
     name: 'python',
     templateFiles: PYTHON_TEMPLATE_FILES,
-    runOptions: { runTasks: runTasksInProcess },
+    runOptions: { runTasks: runTasksWithFakeTools },
     prepareRepository(root) {
       installFakeToolchain(path.join(root, '.venv/bin'));
     },

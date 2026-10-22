@@ -5,11 +5,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { commit, fixtureGit } from '../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
 import { runJavaDiff } from './java-diff.mjs';
-import { fakeGradle, useInProcessGradle } from './test-support/in-process-gradle.mjs';
+import { fakeGradleRun } from './test-support/in-process-gradle.mjs';
 
 const roots = [];
-
-useInProcessGradle();
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -30,7 +28,7 @@ function diff(root, policy) {
   return runJavaDiff({
     repositoryRoot: root,
     requestedBaseRef: 'main',
-    gradle: fakeGradle,
+    ...fakeGradleRun,
     policy: { preset: 'kotlin', ...policy },
   });
 }

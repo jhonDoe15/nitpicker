@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
-import { fakeGradle, useInProcessGradle } from '../test-support/in-process-gradle.mjs';
+import { fakeGradleRun } from '../test-support/in-process-gradle.mjs';
 import { withoutFollowedImports } from './followed-imports.mjs';
 
 const MAIN = 'src/main/java/demo/A.java';
@@ -77,8 +77,6 @@ describe('withoutFollowedImports', () => {
 describe('the Gradle run', () => {
   const roots = [];
 
-  useInProcessGradle();
-
   afterEach(() => {
     for (const root of roots.splice(0)) {
       rmSync(root, { recursive: true, force: true });
@@ -106,7 +104,7 @@ describe('the Gradle run', () => {
   }
 
   const starImportsOf = (root, conventions) =>
-    collectJavaFindings(root, { gradle: fakeGradle, policy: { preset: 'java', conventions } })
+    collectJavaFindings(root, { ...fakeGradleRun, policy: { preset: 'java', conventions } })
       .filter(({ rule }) => rule === 'AvoidStarImport')
       .map(({ path: file, location }) => `${file}:${String(location.line)}`);
 
