@@ -15,10 +15,10 @@ afterEach(() => {
 });
 
 describe('write-rules', () => {
-  it('writes the PMD rulesets of a plan file and lists them for the init script', () => {
+  it('writes the guard rulesets of a plan file and lists them for the init script', () => {
     const reportDir = mkdtempSync(path.join(tmpdir(), 'nitpicker-write-rules-'));
     roots.push(reportDir);
-    const plan = path.join(reportDir, 'pmd-plan.json');
+    const plan = path.join(reportDir, 'pmd-guards-plan.json');
     writeFileSync(
       plan,
       JSON.stringify({
@@ -27,18 +27,14 @@ describe('write-rules', () => {
         testDirectories: [],
         compiler: { release: null, source: '11', target: '11', encoding: null, args: [] },
         spring: false,
-        nitpicker: true,
-        project: null,
       }),
     );
 
-    main(['pmd', plan]);
+    main(['pmd-guards', plan]);
 
     expect(readFileSync(path.join(reportDir, 'pmd-rulesets.txt'), 'utf8').split(',')).toEqual([
-      path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml'),
       path.join(reportDir, 'pmd-guards-main.xml'),
       path.join(reportDir, 'pmd-code-smells-main.xml'),
-      path.join(reportDir, 'pmd-tests.xml'),
     ]);
     expect(readFileSync(path.join(reportDir, 'pmd-guards-main.xml'), 'utf8')).toBe(
       scopedRuleset(

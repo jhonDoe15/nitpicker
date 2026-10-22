@@ -1,23 +1,8 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
-import { zipOf } from '../test-support/zip-writer.mjs';
-import {
-  nitpickerCheckstyleConfig,
-  withGuardChecks,
-  writeCheckstyleConfigs,
-} from './checkstyle-config.mjs';
+import { nitpickerCheckstyleConfig, withGuardChecks } from './checkstyle-config.mjs';
 
 const CAMEL_CASE = '^[a-z]([a-z0-9][a-zA-Z0-9]*)?$';
-const roots = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
 
 function leaf(name) {
   return { name, modules: [] };
@@ -183,29 +168,25 @@ describe('withGuardChecks', () => {
   });
 });
 
-describe('writeCheckstyleConfigs', () => {
-  it('writes the main and test configs from the google_checks.xml of the Checkstyle jar', () => {
-    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkstyle-config-'));
-    roots.push(directory);
-    const jar = path.join(directory, 'checkstyle-13.5.0.jar');
-    const bundled = [
-      '<module name="Checker">',
-      '<module name="TreeWalker">',
-      METHOD_NAME,
-      FIELD_NAME,
-      TODO,
-      '</module>',
-      '</module>',
-    ].join('');
-    writeFileSync(jar, zipOf({ 'google_checks.xml': bundled }));
+describe('the configs both builds compose', () => {
+  it('adds the main and test guard checks to the strict Google config', () => {
+    const bundled = nitpickerCheckstyleConfig(
+      [
+        '<module name="Checker">',
+        '<module name="TreeWalker">',
+        METHOD_NAME,
+        FIELD_NAME,
+        TODO,
+        '</module>',
+        '</module>',
+      ].join(''),
+    );
+    const written = {
+      main: withGuardChecks(bundled, ['checkstyle-all.xml', 'checkstyle-main.xml']),
+      test: withGuardChecks(bundled, ['checkstyle-all.xml']),
+    };
 
-    const written = writeCheckstyleConfigs({ checkstyleJar: jar, directory });
-
-    const names = (file) => moduleTree(parseXml(readFileSync(file, 'utf8'))).modules[0].modules;
-    expect(written).toEqual({
-      main: path.join(directory, 'checkstyle.xml'),
-      test: path.join(directory, 'checkstyle-test.xml'),
-    });
+    const names = (text) => moduleTree(parseXml(text)).modules[0].modules;
     expect(names(written.main).map((module) => module.name)).toEqual([
       'ConstantName',
       'SuppressionXpathSingleFilter',

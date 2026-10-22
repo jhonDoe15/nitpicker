@@ -1,7 +1,6 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../java-build.mjs';
-import { readZip } from '../zip-entries.mjs';
 
 const TREE_WALKER = '<module name="TreeWalker">';
 const TREE_WALKER_START = /<module name="TreeWalker">/u;
@@ -119,22 +118,4 @@ export function withGuardChecks(config, files) {
   }
   const modules = files.map((file) => checkstyleRuleModules(file)).join('\n');
   return config.replace(TREE_WALKER, () => `${TREE_WALKER}\n${SKIP_UNPARSEABLE}\n${modules}`);
-}
-
-function bundledGoogleChecks(checkstyleJar) {
-  const text = readZip(checkstyleJar).text('google_checks.xml');
-  if (text === undefined) {
-    throw new Error(`could not read google_checks.xml from ${checkstyleJar}`);
-  }
-  return text;
-}
-
-export function writeCheckstyleConfigs({ checkstyleJar, directory }) {
-  const bundled = nitpickerCheckstyleConfig(bundledGoogleChecks(checkstyleJar));
-  const main = path.join(directory, 'checkstyle.xml');
-  const test = path.join(directory, 'checkstyle-test.xml');
-  mkdirSync(directory, { recursive: true });
-  writeFileSync(main, withGuardChecks(bundled, ['checkstyle-all.xml', 'checkstyle-main.xml']));
-  writeFileSync(test, withGuardChecks(bundled, ['checkstyle-all.xml']));
-  return { main, test };
 }

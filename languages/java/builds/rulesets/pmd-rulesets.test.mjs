@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { GRADLE_DIRECTORY } from '../java-build.mjs';
-import { javaRelease, scopedRuleset, writePmdRulesets } from './pmd-rulesets.mjs';
+import { javaRelease, scopedRuleset, writeGuardRulesets } from './pmd-rulesets.mjs';
 
 const roots = [];
 const tests = path.join('/work', 'my.app', 'src', 'test', 'java');
@@ -99,70 +99,42 @@ describe('javaRelease', () => {
   });
 });
 
-describe('writePmdRulesets', () => {
-  it('writes the test-class rule for every directory but the main ones, before the spring wrapper', () => {
+describe('writeGuardRulesets', () => {
+  function plannedProject() {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-rulesets-'));
     roots.push(root);
-    const main = path.join(root, 'src/main/java');
     const test = path.join(root, 'src/test/java');
     mkdirSync(test, { recursive: true });
     const reportDir = path.join(root, 'report');
+    mkdirSync(reportDir);
+    return {
+      root,
+      test,
+      plan: {
+        reportDir,
+        mainDirectories: [path.join(root, 'src/main/java')],
+        testDirectories: [test],
+        compiler: { target: '21', args: [] },
+        spring: false,
+      },
+    };
+  }
 
-    const rulesets = writePmdRulesets({
-      reportDir,
-      mainDirectories: [main],
-      testDirectories: [test],
-      compiler: { target: '21', args: [] },
-      spring: true,
-      nitpicker: true,
-      project: undefined,
-    });
+  it('writes the guard wrappers in the order both builds run them', () => {
+    const { plan } = plannedProject();
 
-    expect(rulesets).toEqual([
-      path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml'),
-      path.join(reportDir, 'pmd-guards-main.xml'),
-      path.join(reportDir, 'pmd-code-smells-main.xml'),
-      path.join(reportDir, 'pmd-code-smells-test.xml'),
-      path.join(reportDir, 'pmd-test-honesty.xml'),
-      path.join(reportDir, 'pmd-tests.xml'),
-      path.join(reportDir, 'pmd-spring-main.xml'),
+    expect(writeGuardRulesets(plan)).toEqual([
+      path.join(plan.reportDir, 'pmd-guards-main.xml'),
+      path.join(plan.reportDir, 'pmd-code-smells-main.xml'),
+      path.join(plan.reportDir, 'pmd-code-smells-test.xml'),
+      path.join(plan.reportDir, 'pmd-test-honesty.xml'),
     ]);
-    expect(readFileSync(path.join(reportDir, 'pmd-tests.xml'), 'utf8')).toBe(
-      [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<ruleset name="nitpicker-tests" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
-        '  <description>nitpicker-tests</description>',
-        `  <exclude-pattern>${main}/.*</exclude-pattern>`,
-        '  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">',
-        '    <properties>',
-        '      <property name="testClassPattern"',
-        '                value="^(?:.*\\.)?Test[^\\.]*$|^(?:.*\\.)?.*(?&lt;!Arch|Architecture)Tests?$|' +
-          '^(?:.*\\.)?.*TestCase$"/>',
-        '    </properties>',
-        '  </rule>',
-        '</ruleset>',
-        '',
-      ].join('\n'),
-    );
   });
 
   it('keeps the code smell rules off test sources and the test code smell rules on them', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-rulesets-'));
-    roots.push(root);
-    const test = path.join(root, 'src/test/java');
-    mkdirSync(test, { recursive: true });
-    const reportDir = path.join(root, 'report');
-    const plan = {
-      reportDir,
-      mainDirectories: [path.join(root, 'src/main/java')],
-      testDirectories: [test],
-      compiler: { target: '21', args: [] },
-      spring: false,
-      nitpicker: true,
-      project: undefined,
-    };
-    writePmdRulesets(plan);
-    const text = (file) => readFileSync(path.join(reportDir, file), 'utf8');
+    const { root, test, plan } = plannedProject();
+    writeGuardRulesets(plan);
+    const text = (file) => readFileSync(path.join(plan.reportDir, file), 'utf8');
 
     expect([text('pmd-code-smells-main.xml'), text('pmd-code-smells-test.xml')]).toEqual([
       scopedRuleset(
@@ -176,7 +148,7 @@ describe('writePmdRulesets', () => {
         { directories: [test], onlyThere: true },
       ),
     ]);
-    writePmdRulesets({ ...plan, spring: true });
+    writeGuardRulesets({ ...plan, spring: true });
     expect(text('pmd-code-smells-main.xml')).toBe(
       scopedRuleset(
         'nitpicker-code-smells-main',
@@ -188,12 +160,10 @@ describe('writePmdRulesets', () => {
       ),
     );
     expect(
-      writePmdRulesets({ ...plan, testDirectories: [path.join(root, 'src/it/java')] }),
+      writeGuardRulesets({ ...plan, testDirectories: [path.join(root, 'src/it/java')] }),
     ).toEqual([
-      path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml'),
-      path.join(reportDir, 'pmd-guards-main.xml'),
-      path.join(reportDir, 'pmd-code-smells-main.xml'),
-      path.join(reportDir, 'pmd-tests.xml'),
+      path.join(plan.reportDir, 'pmd-guards-main.xml'),
+      path.join(plan.reportDir, 'pmd-code-smells-main.xml'),
     ]);
   });
 });

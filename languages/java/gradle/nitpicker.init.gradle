@@ -195,7 +195,6 @@ allprojects {
         project.ext.nitpickerToolCommandInputs = [toolCommandsFile, toolCommandsScript]
         project.ext.nitpickerToolLauncher = toolLauncher
         project.ext.nitpickerRunNode = runNode
-        project.ext.nitpickerWriteRules = writeRules
         project.apply from: new File(initScriptDir, 'tasks/analysis/tool-jdk.gradle')
         def javaStyle = nitpickerArgument('nitpicker.java.style') ?: 'google'
         def javaIndentation = nitpickerArgument('nitpicker.java.indentation') ?: '2'
