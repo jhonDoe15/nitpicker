@@ -1,17 +1,22 @@
-import { ingestCrapRows } from '../../java/ingest/crap.mjs';
-import { normalizeReportPath } from '../../java/ingest/common.mjs';
+import { ingestCrapRows } from '../../../shared/ingest/lizard-crap.mjs';
+import { normalizeReportPath } from '../../../shared/ingest/common.mjs';
 
 const FULLY_COVERED = 100;
 
 function scoredFunctions(entries) {
   return entries
-    .filter((entry) => entry.bodyStart > entry.definition && !entry.overload)
+    .filter(
+      (entry) => (entry.lambda === true || entry.bodyStart > entry.definition) && !entry.overload,
+    )
     .map((entry) => ({
       ccn: entry.complexity,
       file: entry.file,
       name: entry.name,
       start: entry.definition,
       end: entry.end,
+      lambda: entry.lambda === true,
+      statementLine: entry.statementLine,
+      numberedAmongSameSource: true,
     }));
 }
 
@@ -27,6 +32,9 @@ export function ingestPythonCrap(functions, coverageJson, options = {}) {
     if (data === undefined) {
       return { name: fn.name };
     }
+    if (fn.lambda) {
+      return { coverage: statementCoverage(data.lines, fn.statementLine), name: fn.name };
+    }
     const found = matchFunction(data.functions, fn);
     if (found !== undefined) {
       return { coverage: found.percent, name: fn.name };
@@ -39,6 +47,10 @@ export function ingestPythonCrap(functions, coverageJson, options = {}) {
       name: fn.name,
     };
   });
+}
+
+function statementCoverage(lines, statementLine) {
+  return lines.missing.includes(statementLine) ? 0 : FULLY_COVERED;
 }
 
 function coverageFiles(text, roots) {

@@ -1,4 +1,5 @@
 import { RULE_IDS } from '../../../../../../shared/policy.mjs';
+import { copyGroups } from '../copy-groups.mjs';
 import { listPaths, reuseFinding } from '../finding.mjs';
 
 const SAME = {
@@ -35,20 +36,6 @@ function fixFor(exported, otherCopies) {
   return exportedOther === undefined ? FIX.private : `Import it from ${exportedOther} instead.`;
 }
 
-function copyGroups(facts, isExcepted) {
-  const groups = new Map();
-  for (const { path: filePath, packageRoot, definitions } of facts) {
-    const comparable = isExcepted(RULE_IDS.duplicateDefinition, filePath)
-      ? []
-      : definitions.filter(isComparable);
-    for (const definition of comparable) {
-      const key = `${packageRoot}\0${definition.kind}\0${definition.name}\0${definition.key}`;
-      groups.set(key, [...(groups.get(key) ?? []), { path: filePath, definition }]);
-    }
-  }
-  return [...groups.values()];
-}
-
 function copyFinding({ copy, copies, analyzerName }) {
   const { name, kind, line, exported } = copy.definition;
   const otherCopies = copies.filter(({ path: other }) => other !== copy.path);
@@ -69,7 +56,10 @@ function copyFinding({ copy, copies, analyzerName }) {
 }
 
 export function duplicateDefinitionFindings(facts, { analyzerName, isExcepted }) {
-  return copyGroups(facts, isExcepted)
-    .filter((copies) => new Set(copies.map(({ path: p }) => p)).size >= 2)
-    .flatMap((copies) => copies.map((copy) => copyFinding({ copy, copies, analyzerName })));
+  return copyGroups(facts, {
+    rule: RULE_IDS.duplicateDefinition,
+    isExcepted,
+    isComparable,
+    keyOf: ({ kind, name, key }) => `${kind}\0${name}\0${key}`,
+  }).flatMap((copies) => copies.map((copy) => copyFinding({ copy, copies, analyzerName })));
 }

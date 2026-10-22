@@ -48,7 +48,10 @@ function levelLines(compiler) {
   ];
 }
 
-function writeArguments(work, { name, roots, classpath, own, processors, compiler, test }) {
+function writeArguments(
+  work,
+  { name, roots, classpath, compiled = [], own, processors, compiler, test },
+) {
   const sources = javaFiles(roots).filter((file) => path.basename(file) !== 'module-info.java');
   if (sources.length === 0) {
     return [];
@@ -58,7 +61,14 @@ function writeArguments(work, { name, roots, classpath, own, processors, compile
   mkdirSync(classes, { recursive: true });
   mkdirSync(generated, { recursive: true });
   const lines = [
-    ...['-d', classes, '-s', generated, '-classpath', classpath.join(path.delimiter)],
+    ...[
+      '-d',
+      classes,
+      '-s',
+      generated,
+      '-classpath',
+      [...classpath, ...compiled].join(path.delimiter),
+    ],
     ...['-processorpath', processors.join(path.delimiter)],
     ...['-XDcompilePolicy=simple', '-XDaddTypeAnnotationsToSymbol=true'],
     ...['--should-stop=ifError=FLOW', '-Xmaxwarns', '1000000', '-Xmaxerrs', '1000000'],
@@ -92,6 +102,7 @@ export function runErrorProne({ module, reportDir, tools, classpaths }) {
       name: 'test',
       roots: module.testSourceRoots,
       classpath: [module.outputDirectory, ...classpaths.testCompile],
+      compiled: [module.testOutputDirectory],
       own: [module.outputDirectory, module.testOutputDirectory],
       test: true,
     },

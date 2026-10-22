@@ -1,7 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
-import { ingestSarif } from '../../ingest/sarif.mjs';
+import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
+import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
+import { readSarifReport } from './sarif/sarif-reports.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
   readKotlinCrapFindings,
@@ -9,6 +10,10 @@ import {
   readKotlinStructureFindings,
 } from '../kotlin/kotlin-metrics.mjs';
 import { addOneWayHint, appendSentence } from '../kotlin/rules/kotlin-rules.mjs';
+import {
+  readCatchLogFindings,
+  readTestAssertionFindings,
+} from '../kotlin/rules/kotlin-source-rules.mjs';
 import { readKotlinSpringFindings } from '../kotlin/spring/kotlin-spring.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
 
@@ -54,6 +59,15 @@ export function sourceLocator(projectRoot, sourceRoots) {
   };
 }
 
+export function sourceFileOf(locate, className, fileName) {
+  const parts = className.split('.');
+  const simple = parts.pop().split('$')[0];
+  const directory = parts.join('/');
+  return fileName === undefined
+    ? (locate(directory, `${simple}.java`) ?? locate(directory, `${simple}.kt`))
+    : locate(directory, fileName);
+}
+
 function declaredKotlinFiles(projectRoot, sourceRoots) {
   return sourceRoots.flatMap((sourceRoot) => {
     const directory = path.join(projectRoot, sourceRoot);
@@ -84,9 +98,13 @@ export function reportOnlyKotlinMutants(findings) {
 export function readKotlinFindings(context, crapLimit) {
   const { reportRoot, manifest, projectRoot, jacoco, formatAdvice = DEFAULT_ADVICE } = context;
   const metrics = readKotlinMetrics(reportRoot);
+  const testRoots = manifest.kotlinTestSourceRoots ?? [];
+  const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
   return [
     ...detektFindings(reportRoot, formatAdvice),
     ...readSuppressionFindings(projectRoot, kotlinLintedRoots(manifest)),
+    ...readCatchLogFindings(projectRoot, kotlinLintedRoots(manifest)),
+    ...readTestAssertionFindings(projectRoot, testRoots, helpers),
     ...(manifest.spring === true ? readKotlinSpringFindings({ projectRoot, reportRoot }) : []),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
     ...readKotlinStructureFindings(metrics, projectRoot),
@@ -116,7 +134,7 @@ function identifiedBySubject(log) {
 }
 
 function readSarif(reportRoot, file) {
-  return identifiedBySubject(JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8')));
+  return identifiedBySubject(readSarifReport(path.join(reportRoot, file)));
 }
 
 function withProjectConfigRoute(finding, advice) {

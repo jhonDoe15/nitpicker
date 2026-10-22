@@ -83,6 +83,15 @@ describe('every message names the allowed form', () => {
     );
   });
 
+  it.each([
+    ['ruff', 'E722'],
+    ['ruff', 'BLE001'],
+  ])('tells a test to use pytest.raises for %s %s', (tool, rule) => {
+    expect(withHint(sample({ tool, rule })).message).toBe(
+      `The base message. Catch the specific exception and handle it, or re-raise it with its cause (\`raise DomainError(...) from error\`); \`contextlib.suppress(SpecificError)\` ignores one expected error. In a test, use \`pytest.raises(SpecificError)\` (\`self.assertRaises\` in unittest). ${exceptionSentence(rule)}`,
+    );
+  });
+
   it('keeps the type error boilerplate short', () => {
     expect(withHint(sample({ tool: 'mypy', rule: 'return-value' })).message).toBe(
       `The base message. Fix the type; inline ignores are banned. ${exceptionSentence('return-value')}`,

@@ -1,20 +1,21 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { RULE_IDS, TEST_TIME_DEFAULTS } from '../../../../shared/policy.mjs';
+import {
+  slowTestBudget,
+  slowTestFindings,
+} from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
 import { insideProject, readProjectFile } from '../../libraries/project-files.mjs';
 import { listOtherModules } from '../analysis/python-sources.mjs';
-import { readJunit } from './junit-results.mjs';
+import { JUNIT_REPORT, RERUN_REPORT, readJunit } from './junit-results.mjs';
 import { classHeader, functionBlocks, mentions, withoutParamCalls } from './python-blocks.mjs';
 
 const SLOW_TEST_TOOL = 'test-runtime';
 const INTEGRATION_FOLDERS = new Set(['integration', 'integration_tests', 'e2e', 'end_to_end']);
 const INTEGRATION_MARKS = new Set(['integration', 'e2e']);
 const INTEGRATION_MARK = /\bmark\s*\.\s*(?:integration|e2e)\b/u;
-const MOVE_ADVICE = {
-  pytest:
-    ', or move it to a tests/integration/ folder or mark it @pytest.mark.integration if it is one',
-  unittest: ', or move it to a tests/integration/ folder if it is one',
-};
+const NOT_TIMED =
+  'The test run wrote no timing report, so slow tests were not checked ' +
+  '(a project that disables the JUnit report is not timed)';
 
 function readText(root, file) {
   return root === undefined || file === '' ? undefined : readProjectFile(root, file);
@@ -128,39 +129,113 @@ function slowestRuns(runs) {
   return [...byTest.values()];
 }
 
-function slowTestMessage({ testCase, collected, limit, integration, testRunner }) {
-  const name = [collected.className, testCase.functionName].filter(Boolean).join('.');
-  const move = integration ? '' : (MOVE_ADVICE[testRunner] ?? MOVE_ADVICE.pytest);
-  return `${name} took ${testCase.seconds.toFixed(1)} s; ${integration ? 'an integration' : 'a unit'} test may take ${String(limit)} s. Remove time.sleep and other real waits, and use smaller fixtures${move}.`;
-}
-
-function slowTestFinding(run, testRunner) {
-  const { testCase, block } = run;
+function notice(file, message) {
   return {
     tool: SLOW_TEST_TOOL,
-    rule: RULE_IDS.slowTest,
-    path: testCase.file,
-    identity: `test:${keyOf(run)}`,
-    ...(block === undefined ? {} : { location: { line: block.definition + 1 } }),
-    message: slowTestMessage({ ...run, testRunner }),
-    classification: 'enforceable',
+    rule: 'slow-test-not-timed',
+    path: file,
+    identity: `slow-test-not-timed:${file}`,
+    message,
+    classification: 'descriptive',
   };
 }
 
-export function readSlowTestFindings(options) {
-  const { reportRoot, projectRoot, limits, baselineRoot, snapshot, testRunner } = options;
-  if (snapshot === 'base') {
-    return [];
+function unreadable(file, error) {
+  const reason = error instanceof Error ? error.message : String(error);
+  return notice(file, `${file} is not checked for slow tests: reading its tests failed, ${reason}`);
+}
+
+function safely(testCase, step) {
+  try {
+    return { value: step() };
+  } catch (error) {
+    return { notice: unreadable(testCase.file, error) };
   }
-  const budget = { ...TEST_TIME_DEFAULTS, ...limits };
+}
+
+export function slowCandidates(options) {
+  const { reportRoot, projectRoot, limits, baselineRoot } = options;
+  const budget = slowTestBudget(limits);
   const floor = Math.min(budget.unitTestSeconds, budget.integrationTestSeconds);
   const isChanged =
     baselineRoot === undefined ? () => true : changeReader({ baselineRoot, projectRoot });
-  const runs = readJunit(reportRoot)
-    .filter(({ name, seconds }) => name !== undefined && seconds > floor)
-    .map(measured(projectRoot, budget))
-    .filter(({ testCase, limit }) => testCase.seconds > limit);
-  return slowestRuns(runs)
-    .filter((run) => isChanged(run))
-    .map((run) => slowTestFinding(run, testRunner));
+  const tried = readJunit(reportRoot)
+    .filter(
+      ({ name, seconds, outcome }) => name !== undefined && seconds > floor && outcome === 'passed',
+    )
+    .map((testCase) => ({
+      testCase,
+      ...safely(testCase, () => measured(projectRoot, budget)(testCase)),
+    }));
+  const over = slowestRuns(
+    tried
+      .filter(({ value }) => value !== undefined && value.testCase.seconds > value.limit)
+      .map(({ value }) => value),
+  );
+  const checked = over.map((run) => ({ run, ...safely(run.testCase, () => isChanged(run)) }));
+  return {
+    runs: checked.filter(({ value }) => value === true).map(({ run }) => run),
+    notices: [...tried, ...checked].flatMap((entry) =>
+      entry.notice === undefined ? [] : [entry.notice],
+    ),
+  };
+}
+
+function retimes(reportRoot) {
+  return new Map(
+    readJunit(reportRoot, RERUN_REPORT)
+      .filter(({ outcome }) => outcome === 'passed')
+      .map(({ id, seconds }) => [id, seconds]),
+  );
+}
+
+function slowTestFinding(run, options) {
+  const { testCase, collected, block, integration } = run;
+  return slowTestFindings({
+    tool: SLOW_TEST_TOOL,
+    language: 'python',
+    advice: options.testRunner === 'unittest' ? 'unittest' : 'pytest',
+    test: {
+      path: testCase.file,
+      name: [collected.className, testCase.functionName].filter(Boolean).join('.'),
+      identity: `test:${keyOf(run)}`,
+      seconds: testCase.seconds,
+      ...(block === undefined ? {} : { line: block.definition + 1 }),
+    },
+    integration,
+    limits: options.limits,
+  });
+}
+
+function untimed({ reportRoot, testsRan }) {
+  const missing = !existsSync(path.join(reportRoot, JUNIT_REPORT));
+  return missing && testsRan === true ? [notice('.', NOT_TIMED)] : [];
+}
+
+function findingsOf(options) {
+  const { runs, notices } = slowCandidates(options);
+  const times = retimes(options.reportRoot);
+  function retimed(run) {
+    return {
+      ...run,
+      testCase: { ...run.testCase, seconds: times.get(run.testCase.id) ?? run.testCase.seconds },
+    };
+  }
+  return [
+    ...untimed(options),
+    ...notices,
+    ...runs.flatMap((run) => slowTestFinding(retimed(run), options)),
+  ];
+}
+
+export function readSlowTestFindings(options) {
+  if (options.snapshot === 'base') {
+    return [];
+  }
+  try {
+    return findingsOf(options);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return [notice('.', `Slow tests were not checked: reading the test report failed, ${reason}`)];
+  }
 }

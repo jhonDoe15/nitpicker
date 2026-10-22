@@ -1,63 +1,75 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { childAt, childrenAt } from '../../ingest/common.mjs';
-import { textAt } from '../errorprone/maven-compiler.mjs';
+import { childAt, childrenAt } from '../../../../shared/ingest/common.mjs';
+import { executionsOf, goalsOf, pluginsOf, textAt } from '../configuration/pom-elements.mjs';
 
-const KOTLIN_PLUGIN = 'kotlin-maven-plugin';
+const KOTLIN_PLUGIN = 'org.jetbrains.kotlin:kotlin-maven-plugin';
 const MAIN_GOALS = ['compile', 'kapt'];
 const TEST_GOALS = ['test-compile', 'test-kapt'];
-const CONVENTIONAL = { main: 'src/main/kotlin', test: 'src/test/kotlin' };
 
-export function kotlinPlugin(project) {
-  return childrenAt(project, 'build', 'plugins', 'plugin').find(
-    (plugin) => textAt(plugin, 'artifactId') === KOTLIN_PLUGIN,
+function runs(execution, goals) {
+  return (
+    textAt(execution, 'phase') !== 'none' && goalsOf(execution).some((goal) => goals.includes(goal))
   );
 }
 
 function directoriesOf(configuration) {
   return childrenAt(configuration ?? { children: [] }, 'sourceDirs', 'sourceDir')
-    .map((element) => element.text?.trim())
+    .map((element) => element.text)
     .filter((text) => text !== undefined && text !== '');
 }
 
 function configuredDirectories(plugin, goals, { pluginLevel }) {
-  const executions = childrenAt(plugin, 'executions', 'execution').filter((execution) =>
-    childrenAt(execution, 'goals', 'goal').some((goal) => goals.includes(goal.text)),
-  );
-  const own = executions.flatMap((execution) => directoriesOf(childAt(execution, 'configuration')));
+  const own = executionsOf(plugin)
+    .filter((execution) => runs(execution, goals))
+    .flatMap((execution) => directoriesOf(childAt(execution, 'configuration')));
   return own.length > 0 || !pluginLevel ? own : directoriesOf(childAt(plugin, 'configuration'));
 }
 
+function within(parent, directory) {
+  const relative = path.relative(parent, directory);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
 function insideModule({ basedir, buildDirectory }, directory) {
-  const within = (parent) => {
-    const relative = path.relative(parent, directory);
-    return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
-  };
-  return within(basedir) && !within(buildDirectory);
+  return within(basedir, directory) && !within(buildDirectory, directory);
+}
+
+function outermost(directories) {
+  return directories.filter(
+    (directory) => !directories.some((other) => other !== directory && within(other, directory)),
+  );
 }
 
 function existingRoots(module, candidates) {
   const roots = candidates
     .map((candidate) => path.resolve(module.basedir, candidate))
     .filter((directory) => insideModule(module, directory) && existsSync(directory));
-  return [...new Set(roots)].sort();
+  return outermost([...new Set(roots)]).sort();
+}
+
+function compiledRoots(module, configured, mavenRoots) {
+  return existingRoots(module, configured.length > 0 ? configured : mavenRoots);
 }
 
 export function kotlinRoots(project, module) {
-  const plugin = kotlinPlugin(project);
-  if (plugin === undefined) {
+  const plugin = pluginsOf(project).get(KOTLIN_PLUGIN);
+  const compiles =
+    plugin !== undefined &&
+    executionsOf(plugin).some((execution) => runs(execution, [...MAIN_GOALS, ...TEST_GOALS]));
+  if (!compiles) {
     return undefined;
   }
   return {
-    sourceRoots: existingRoots(module, [
-      ...configuredDirectories(plugin, MAIN_GOALS, { pluginLevel: true }),
-      ...module.sourceRoots,
-      CONVENTIONAL.main,
-    ]),
-    testSourceRoots: existingRoots(module, [
-      ...configuredDirectories(plugin, TEST_GOALS, { pluginLevel: false }),
-      ...module.testSourceRoots,
-      CONVENTIONAL.test,
-    ]),
+    sourceRoots: compiledRoots(
+      module,
+      configuredDirectories(plugin, MAIN_GOALS, { pluginLevel: true }),
+      module.sourceRoots,
+    ),
+    testSourceRoots: compiledRoots(
+      module,
+      configuredDirectories(plugin, TEST_GOALS, { pluginLevel: false }),
+      module.testSourceRoots,
+    ),
   };
 }
