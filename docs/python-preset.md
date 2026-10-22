@@ -1542,7 +1542,9 @@ results when that is safe: the `mutants/*.meta` files of the base work tree are 
 head work tree before `mutmut run`, and mutmut re-tests the mutants of the functions whose code
 changed and the ones it has no result for. This happens when every file changed between the base
 commit and head is an added or modified `.py` file under a source root that is not a test
-(a test file as defined under the rules). Anything else (a test, a dependency
+(a test file as defined under the rules: a file the project's pytest `python_files` and `testpaths`
+collect, a `conftest.py`, a Django `tests.py` only in a Django project, or a file in a test
+folder; the CRAP check leaves out the same files). Anything else (a test, a dependency
 file, a deleted or renamed file, a file outside the project) runs every mutant. When the base side
 comes from the findings cache, there are no base results to copy and head runs every mutant.
 
