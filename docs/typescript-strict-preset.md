@@ -344,12 +344,21 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   (`X-XSRF-TOKEN`, `auth_token`) and translation keys are not secrets. Like the other guards
   below, it fails a change only when the change adds a finding.
 - `nitpicker/no-generic-names` (all production code): a file or folder whose name ends in
-  `util`, `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `common`, `commons` or
-  `misc` (also `string-utils.ts`, `OrderManager.ts`), and an exported class, type, interface, enum
-  or `const` named that way (`OrderHelper`), is reported. A class that extends or implements a type
-  with the same ending (`class SessionManager implements CacheManager`) is not. Name it for its
-  job (`price-rounding.ts`); pure logic shared between features lives in `shared/` under such a
-  name. The Java preset uses the same word list.
+  `util`, `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `managers`, `common`,
+  `commons`, `misc` or `miscellaneous` (`GENERIC_NAME_WORDS` in `shared/naming/smell-words.mjs`;
+  also `string-utils.ts`, `OrderManager.ts`) is reported, and so is every class, type, interface
+  or enum named that way, exported or not (`OrderHelper`, `class Util {}`), and an exported `const`
+  (ESM `export` or CommonJS `module.exports`/`exports.name`). An exported function is reported
+  when its whole name is generic (`helpers()`, `commonUtils()`), not when it names what it returns
+  (`getManager()`). A generic folder is reported once, on its first source file in path order (test
+  files left out), with the identity `folder:<path>/`, which the comparison keys on the folder, so a
+  new file that sorts first and takes the report does not make it new; a workspace package root
+  such as `packages/common/` is a folder like any other, as in the Python and Kotlin presets. A
+  class that extends or implements a type with the same ending (`class SessionManager implements
+CacheManager`) is not reported, nor are the framework manager roles of `ACCEPTED_MANAGER_ROLES`
+  (`SessionManager`, `TransactionManager`, ...), as in the Java preset. Name it for its job
+  (`price-rounding.ts`); pure logic shared between features lives in `shared/` under such a name.
+  The Java, Kotlin and Python presets use the same word list.
 - `nitpicker/no-boolean-flag-parameter` (all production code): a `boolean` parameter
   (`flag: boolean`, `flag?: boolean`, `flag = false`) of an exported function, exported arrow or
   function `const`, or public method of an exported class is reported when it switches the

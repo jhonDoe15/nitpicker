@@ -1,20 +1,37 @@
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { GENERIC_NAME_WORDS } from '../../../../../../shared/naming/smell-words.mjs';
+import {
+  ACCEPTED_MANAGER_ROLES,
+  GENERIC_NAME_WORDS,
+} from '../../../../../../shared/naming/smell-words.mjs';
 import { wordsOf } from '../support/identifier-words.mjs';
 
 const GENERIC_WORDS = new Set(GENERIC_NAME_WORDS);
+const MANAGER_WORDS = new Set(['manager', 'managers']);
+const MANAGER_ROLES = new Set(ACCEPTED_MANAGER_ROLES);
 const EXPORTS = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
-const DECLARATION_TYPES = new Set([
+const TYPE_DECLARATIONS = [
   'ClassDeclaration',
   'TSInterfaceDeclaration',
   'TSTypeAliasDeclaration',
   'TSEnumDeclaration',
-]);
+];
 const FILE_START = { line: 1, column: 0 };
 const SOURCE_EXTENSION = /(?:\.d)?\.[cm]?[jt]sx?$/;
+const TEST_FILE = /(?:^|\/)(?:__tests__|__mocks__)\/|\.(?:test|spec)\.[cm]?[jt]sx?$/;
 
 function isGenericContainer(name) {
-  return GENERIC_WORDS.has(wordsOf(name).at(-1) ?? '');
+  const words = wordsOf(name);
+  const last = words.at(-1) ?? '';
+  if (!GENERIC_WORDS.has(last)) {
+    return false;
+  }
+  return !(MANAGER_WORDS.has(last) && MANAGER_ROLES.has(words.at(-2) ?? ''));
+}
+
+function isGenericFunction(name) {
+  const words = wordsOf(name);
+  return words.length > 0 && words.every((word) => GENERIC_WORDS.has(word));
 }
 
 function lastWord(node) {
@@ -33,19 +50,41 @@ function followsFrameworkType(declaration) {
   );
 }
 
-function pathReports(relativePath) {
-  const parts = relativePath.split(/[\\/]/);
+function firstSourceFile(directory) {
+  return readdirSync(directory, { recursive: true })
+    .map((name) => String(name).split(path.sep).join('/'))
+    .filter((name) => SOURCE_EXTENSION.test(name) && !TEST_FILE.test(name))
+    .sort()
+    .at(0);
+}
+
+function isFirstFileOf(folder, { cwd, relativePath }) {
+  const directory = path.resolve(cwd, folder);
+  const first = existsSync(directory) ? firstSourceFile(directory) : undefined;
+  return first === undefined || `${folder}${first}` === relativePath;
+}
+
+function folderReport(parts, location) {
+  const index = parts.findIndex(isGenericContainer);
+  if (index === -1) {
+    return [];
+  }
+  const folder = `${parts.slice(0, index + 1).join('/')}/`;
+  return isFirstFileOf(folder, location) ? [{ messageId: 'folder', data: { folder } }] : [];
+}
+
+function pathReports(location) {
+  const parts = location.relativePath.split('/');
   const file = (parts.pop() ?? '').replace(SOURCE_EXTENSION, '');
-  const folder = parts.find(isGenericContainer);
   return [
     ...(isGenericContainer(file) ? [{ messageId: 'file', data: { name: file } }] : []),
-    ...(folder === undefined ? [] : [{ messageId: 'folder', data: { name: folder } }]),
+    ...folderReport(parts, location),
   ];
 }
 
-function declaredIdentifiers(node) {
-  if (DECLARATION_TYPES.has(node?.type)) {
-    return node.id && !followsFrameworkType(node) ? [node.id] : [];
+function exportableIdentifiers(node) {
+  if (node?.type === 'FunctionDeclaration') {
+    return node.id ? [node.id] : [];
   }
   if (node?.type !== 'VariableDeclaration') {
     return [];
@@ -53,20 +92,66 @@ function declaredIdentifiers(node) {
   return node.declarations.map(({ id }) => id).filter(({ type }) => type === 'Identifier');
 }
 
-function exportedIdentifiers(program) {
-  const exportedNames = new Set(
-    program.body
-      .filter(
-        (statement) => statement.type === 'ExportNamedDeclaration' && statement.source === null,
-      )
-      .flatMap((statement) => statement.specifiers.map(({ local }) => local.name)),
+function isNamed(node, name) {
+  return node?.type === 'Identifier' && node.name === name;
+}
+
+function exportedValueNames(value) {
+  if (value.type === 'Identifier') {
+    return [value.name];
+  }
+  return value.type === 'ObjectExpression'
+    ? value.properties
+        .filter((property) => property.type === 'Property' && property.value.type === 'Identifier')
+        .map((property) => property.value.name)
+    : [];
+}
+
+function commonJsExportNames(statement) {
+  const assignment = statement.type === 'ExpressionStatement' ? statement.expression : undefined;
+  if (assignment?.type !== 'AssignmentExpression' || assignment.left.type !== 'MemberExpression') {
+    return [];
+  }
+  const { object, property, computed } = assignment.left;
+  if (computed) {
+    return [];
+  }
+  if (isNamed(object, 'module') && property.name === 'exports') {
+    return exportedValueNames(assignment.right);
+  }
+  const exportsObject =
+    isNamed(object, 'exports') ||
+    (object.type === 'MemberExpression' &&
+      isNamed(object.object, 'module') &&
+      isNamed(object.property, 'exports'));
+  return exportsObject ? [property.name] : [];
+}
+
+function exportedNames(program) {
+  return new Set(
+    program.body.flatMap((statement) => [
+      ...(statement.type === 'ExportNamedDeclaration' && statement.source === null
+        ? statement.specifiers.map(({ local }) => local.name)
+        : []),
+      ...commonJsExportNames(statement),
+    ]),
   );
+}
+
+function exportedIdentifiers(program) {
+  const names = exportedNames(program);
   return program.body.flatMap((statement) => {
-    if (EXPORTS.has(statement.type)) {
-      return declaredIdentifiers(statement.declaration);
-    }
-    return declaredIdentifiers(statement).filter(({ name }) => exportedNames.has(name));
+    const exported = EXPORTS.has(statement.type);
+    return exportableIdentifiers(exported ? statement.declaration : statement).filter(
+      ({ name }) => exported || names.has(name),
+    );
   });
+}
+
+function isGenericDeclaration(node) {
+  return node.parent.type === 'FunctionDeclaration'
+    ? isGenericFunction(node.name)
+    : isGenericContainer(node.name);
 }
 
 export const rule = {
@@ -77,19 +162,27 @@ export const rule = {
     messages: {
       file: "The file name '{{name}}' says nothing about what the file does. Name it for its job (`price-rounding.ts`); pure logic shared between features goes in the shared folder under such a name. An exception fits only when the name is intended.",
       folder:
-        "The folder '{{name}}' says nothing about what it holds. Group files by feature, and put pure logic shared between features in the shared folder under a name that says what it does. An exception fits only when the name is intended.",
+        "The folder '{{folder}}' says nothing about what it holds (reported once, on its first file). Group files by feature, and put pure logic shared between features in the shared folder under a name that says what it does. An exception fits only when the name is intended.",
       declaration:
         "'{{name}}' says nothing about what it does. Name it for its job (`PriceRounder`, `OrderTotals`) instead of Utils, Helper, Manager, Common or Misc. An exception fits only when the name is intended.",
     },
   },
   create(context) {
+    const types = [];
+    const relativePath = path.relative(context.cwd, context.filename).split(path.sep).join('/');
+    function addType(node) {
+      if (node.id && !followsFrameworkType(node) && isGenericContainer(node.id.name)) {
+        types.push(node.id);
+      }
+    }
     return {
-      Program(program) {
-        for (const report of pathReports(path.relative(context.cwd, context.filename))) {
+      ...Object.fromEntries(TYPE_DECLARATIONS.map((type) => [type, addType])),
+      'Program:exit'(program) {
+        for (const report of pathReports({ cwd: context.cwd, relativePath })) {
           context.report({ loc: FILE_START, ...report });
         }
-        const identifiers = exportedIdentifiers(program);
-        for (const node of identifiers.filter(({ name }) => isGenericContainer(name))) {
+        const declared = exportedIdentifiers(program).filter(isGenericDeclaration);
+        for (const node of [...types, ...declared]) {
           context.report({ node, messageId: 'declaration', data: { name: node.name } });
         }
       },
