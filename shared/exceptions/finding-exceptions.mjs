@@ -26,12 +26,14 @@ export function applyFindingExceptions(findings, exceptions = []) {
   if (exceptions.length === 0) {
     return findings;
   }
-  const entries = exceptions.filter(({ packages }) => packages === undefined).map(({ rule, paths, function: functionName, name }) => ({
-    rule,
-    functionName,
-    name,
-    matches: pathMatcher(paths),
-  }));
+  const entries = exceptions
+    .filter(({ packages }) => packages === undefined)
+    .map(({ rule, paths, glob, function: functionName, name }) => ({
+      rule,
+      functionName,
+      name,
+      matches: pathMatcher(paths ?? [glob]),
+    }));
   return findings.filter((finding) => !entries.some((entry) => lifts(entry, finding)));
 }
 
