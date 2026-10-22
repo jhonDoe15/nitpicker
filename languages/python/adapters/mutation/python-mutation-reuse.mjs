@@ -93,22 +93,26 @@ function isStaleSource(context, changes) {
   return (file) => !known.has(file) || affected.has(file);
 }
 
+function reusableChanges({ baselineRoot, projectRoot, project }, baseMutants) {
+  if (!existsSync(baseMutants)) {
+    return undefined;
+  }
+  const changes = changesSinceBase({ baselineRoot, projectRoot });
+  const isTest = testFileMatcher(projectRoot);
+  const reusable = changes?.every((change) =>
+    isMutatedSourceChange(change, { sourceRoots: project.sourceRoots, isTest }),
+  );
+  return reusable === true ? changes : undefined;
+}
+
 export function seedMutantsFromBase(context) {
-  const { snapshot, baselineRoot, projectRoot, project } = context;
+  const { snapshot, baselineRoot, projectRoot } = context;
   if (snapshot !== 'head' || baselineRoot === undefined) {
     return false;
   }
   const baseMutants = path.join(baselineRoot, MUTANTS_DIRECTORY);
-  const isTest = testFileMatcher(projectRoot);
-  const changes = existsSync(baseMutants)
-    ? changesSinceBase({ baselineRoot, projectRoot })
-    : undefined;
-  if (
-    changes === undefined ||
-    !changes.every((change) =>
-      isMutatedSourceChange(change, { sourceRoots: project.sourceRoots, isTest }),
-    )
-  ) {
+  const changes = reusableChanges(context, baseMutants);
+  if (changes === undefined) {
     return false;
   }
   const isStale = isStaleSource(context, changes);

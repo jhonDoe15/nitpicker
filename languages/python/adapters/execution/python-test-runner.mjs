@@ -216,7 +216,10 @@ function holdsUnittestFiles(directory) {
 }
 
 function startDirectory(projectRoot, name) {
-  const directory = path.join(projectRoot, name);
+  const directory = path.resolve(projectRoot, name);
+  if (!directory.startsWith(`${projectRoot}${path.sep}`)) {
+    return false;
+  }
   return (
     existsSync(directory) &&
     (!TOP_LEVEL_TEST_DIRECTORIES.includes(name) || holdsUnittestFiles(directory))
