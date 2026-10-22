@@ -29,11 +29,7 @@ const FUN_FRAME = { k: 'fun', name: 'waits' };
 function lambda(host) {
   return { k: 'lambda', host };
 }
-const loop = (condition, text = 'while (...) { Thread.sleep(10) }') => ({
-  k: 'loop',
-  condition,
-  text,
-});
+const loop = (condition, clock = false) => ({ k: 'loop', condition, clock });
 const scopes = (...inner) => [...inner, FUN_FRAME, CLASS_FRAME];
 
 const roots = [];
@@ -93,10 +89,7 @@ describe('fixed sleeps in Kotlin tests', () => {
 
   it('allows a sleep in a polling loop that tests its condition or reads a clock', () => {
     const polling = loop('!done');
-    const clocked = loop(
-      'true',
-      'while (true) { if (System.nanoTime() > end) break; Thread.sleep(10) }',
-    );
+    const clocked = loop('true', true);
     const blind = loop('true');
 
     const findings = waitsIn([
@@ -278,5 +271,96 @@ describe('fixed sleeps in Kotlin tests', () => {
     });
 
     expect(findings).toEqual([]);
+  });
+});
+
+describe('fixed sleeps in Kotlin tests: parity details', () => {
+  const foreach = { k: 'foreach', condition: 'for', clock: false };
+
+  it('does not read a loop over a collection as a polling loop, as the Java rule does', () => {
+    const findings = waitsIn([
+      wait('sleep', { scopes: scopes(foreach), line: 1 }),
+      wait('sleep', { scopes: scopes(loop('for')), line: 2 }),
+    ]);
+
+    expect(summary(findings)).toEqual([`${FIXED_SLEEP_RULE} SampleTest.waits 1`]);
+  });
+
+  it('reports sleep and parkNanos called through an import or an alias of an import', () => {
+    const findings = waitsIn([
+      wait('sleep', { qualifier: undefined, imported: 'java.lang.Thread.sleep', line: 1 }),
+      wait('sleep', { qualifier: undefined, imported: 'com.example.sleep', line: 2 }),
+      wait('sleep', { qualifier: undefined, line: 3 }),
+      wait('parkNanos', {
+        qualifier: undefined,
+        imported: 'java.util.concurrent.locks.LockSupport.parkNanos',
+        line: 4,
+      }),
+    ]);
+
+    expect(summary(findings)).toEqual([
+      `${FIXED_SLEEP_RULE} SampleTest.waits 1`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 4`,
+    ]);
+  });
+
+  it('reports join(ms) wherever it is, and join(Duration) only as a statement', () => {
+    const findings = waitsIn([
+      wait('join', {
+        qualifier: 'worker',
+        statement: false,
+        line: 1,
+        arguments: [argument('1000')],
+      }),
+      wait('join', {
+        qualifier: 'worker',
+        statement: false,
+        line: 2,
+        arguments: [argument('Duration.ofSeconds(1)')],
+      }),
+      wait('join', {
+        qualifier: 'worker',
+        statement: true,
+        line: 3,
+        arguments: [argument('Duration.ofSeconds(1)')],
+      }),
+      wait('join', { qualifier: 'names', statement: false, line: 4, arguments: [argument('sep')] }),
+    ]);
+
+    expect(summary(findings)).toEqual([
+      `${FIXED_SLEEP_RULE} SampleTest.waits 1`,
+      `${FIXED_SLEEP_RULE} SampleTest.waits 3`,
+    ]);
+  });
+
+  it('reads after and during only from Mockito or Awaitility, with a delay argument', () => {
+    const imports = [
+      { path: 'org.mockito.Mockito', all: false },
+      { path: 'org.awaitility.Awaitility.await', all: false },
+    ];
+    const findings = waitsIn(
+      [
+        wait('after', { qualifier: 'deadline', line: 1, arguments: [argument('other')] }),
+        wait('after', { qualifier: undefined, line: 2, arguments: [argument('other')] }),
+        wait('after', { qualifier: 'Mockito', line: 3, arguments: [argument('250')] }),
+        wait('during', { qualifier: 'await()', line: 4, arguments: [] }),
+      ],
+      { imports },
+    );
+
+    expect(summary(findings)).toEqual([`${FIXED_SLEEP_RULE} SampleTest.waits 3`]);
+  });
+
+  it('names Awaitility in the sleep and timed advice only when the module has it', () => {
+    const sleep = { rule: FIXED_SLEEP_RULE, kind: 'sleep' };
+    const timed = { rule: FIXED_SLEEP_RULE, kind: 'timed' };
+
+    const names = (message) => message.includes('Awaitility');
+
+    expect([sleep, timed].map((kind) => names(waitMessage(kind)))).toEqual([false, false]);
+    expect([sleep, timed].map((kind) => names(waitMessage(kind, true)))).toEqual([true, true]);
+    expect(waitsIn([wait('sleep')], {}, { awaitility: true })[0].message).toBe(
+      waitMessage(sleep, true),
+    );
   });
 });

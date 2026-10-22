@@ -127,12 +127,12 @@ export function enumMessage(type) {
   return MESSAGE.replace('{type}', type);
 }
 
-export function enumPredicateFindings(files, { projectRoot, finding }) {
+export function enumPredicateFindings(files, { projectRoot, finding, declaredIn = files }) {
   const main = files.filter(({ test }) => !test);
   if (!main.some((file) => file.predicates.length > 0)) {
     return [];
   }
-  const enums = allEnums(files, projectRoot);
+  const enums = allEnums(declaredIn, projectRoot);
   return main.flatMap((file) =>
     file.predicates.flatMap((predicate) => {
       const type = predicateType(predicate, file, enums);

@@ -175,4 +175,12 @@ describe('exhaustive enum predicate in Kotlin', () => {
 
     expect(findings).toEqual([]);
   });
+
+  it('finds an enum declared in another module through the project facts', () => {
+    const sibling = file({ file: 'other/src/main/kotlin/demo/Status.kt', classes: [status] });
+    const files = [file({ predicates: [SETTLED] })];
+
+    expect(run(enumPredicateFindings, files, { declaredIn: [...files, sibling] })).toHaveLength(1);
+    expect(run(enumPredicateFindings, files)).toEqual([]);
+  });
 });

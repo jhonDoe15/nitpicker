@@ -45,7 +45,7 @@ const CLIENTS = new Set([
   'ApplicationEvents',
 ]);
 const TEST_METHODS = new Set(['Test', 'ParameterizedTest', 'RepeatedTest']);
-const RANDOM_PORT = /webEnvironment\s*=\s*(?:\w+\.)*(?:RANDOM_PORT|DEFINED_PORT)/u;
+const RANDOM_PORT = /(?:^|\.)(?:RANDOM_PORT|DEFINED_PORT)$/u;
 
 function importsSpringBootTest(file) {
   return file.imports.some(
@@ -97,12 +97,17 @@ function hasTestBody(file, klass) {
   );
 }
 
+function usesPort(annotation) {
+  const environment = annotation.arguments?.find(({ name }) => name === 'webEnvironment');
+  return RANDOM_PORT.test(environment?.text ?? '');
+}
+
 function springTest(file, klass) {
   const annotation = klass.annotations.find(({ name }) => name === 'SpringBootTest');
   return (
     annotation !== undefined &&
     !klass.superCall &&
-    !RANDOM_PORT.test(annotation.text) &&
+    !usesPort(annotation) &&
     !klass.annotations.some(({ name }) => MOCK_BEANS.has(name)) &&
     importsSpringBootTest(file)
   );

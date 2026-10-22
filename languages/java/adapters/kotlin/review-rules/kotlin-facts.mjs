@@ -7,15 +7,32 @@ const GENERIC_ARGUMENTS = /<.*$/u;
 
 export function readKotlinFacts(reportRoot) {
   const report = path.join(reportRoot, FACTS_REPORT);
-  return existsSync(report) ? JSON.parse(readFileSync(report, 'utf8')) : { files: [] };
+  if (!existsSync(report)) {
+    return { files: [] };
+  }
+  const { files } = JSON.parse(readFileSync(report, 'utf8'));
+  return { files: files.filter(({ skipped }) => skipped !== true) };
+}
+
+export function append(map, key, value) {
+  const list = map.get(key);
+  if (list === undefined) {
+    map.set(key, [value]);
+  } else {
+    list.push(value);
+  }
+}
+
+export function compactType(type) {
+  return (type ?? '').replaceAll(/\s+/gu, '');
+}
+
+export function bareType(type) {
+  return compactType(type).replace(NULLABLE, '');
 }
 
 export function simpleTypeName(type) {
-  const bare = (type ?? '')
-    .replaceAll(/\s+/gu, '')
-    .replace(NULLABLE, '')
-    .replace(GENERIC_ARGUMENTS, '');
-  return bare.split('.').at(-1);
+  return bareType(type).replace(GENERIC_ARGUMENTS, '').split('.').at(-1);
 }
 
 export function insideClass(owner, qualified) {

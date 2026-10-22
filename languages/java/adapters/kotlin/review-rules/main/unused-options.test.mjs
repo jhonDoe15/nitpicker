@@ -208,4 +208,57 @@ describe('unused option in Kotlin', () => {
 
     expect(findingsFor(files)).toEqual([]);
   });
+
+  it('counts a call through a type alias as a call of the class', () => {
+    const mailer = klass('Mailer', {
+      visibility: 'internal',
+      primaryParameters: [
+        parameter('host', 'String'),
+        parameter('retries', 'Int', { default: true }),
+      ],
+    });
+    const files = [
+      file({
+        classes: [mailer],
+        typeAliases: [{ name: 'Sender', target: 'Mailer' }],
+        calls: [call('Sender', { positional: 2 })],
+      }),
+    ];
+
+    expect(findingsFor(files)).toEqual([]);
+  });
+
+  it('counts a copy call with a named argument as setting that parameter of a data class', () => {
+    const settings = klass('Settings', {
+      data: true,
+      visibility: 'internal',
+      primaryParameters: [
+        parameter('host', 'String'),
+        parameter('retries', 'Int', { default: true }),
+      ],
+    });
+    const plain = (calls) => [file({ classes: [settings], calls })];
+    const construct = call('Settings', { positional: 1 });
+
+    expect(findingsFor(plain([construct]))).toHaveLength(1);
+    expect(findingsFor(plain([construct, call('copy', { named: ['retries'] })]))).toEqual([]);
+    expect(findingsFor(plain([call('copy', { named: ['retries'] })]))).toEqual([]);
+  });
+
+  it('skips data classes when the module serializes Kotlin classes', () => {
+    const settings = klass('Settings', {
+      data: true,
+      visibility: 'internal',
+      primaryParameters: [
+        parameter('host', 'String'),
+        parameter('retries', 'Int', { default: true }),
+      ],
+    });
+    const files = [file({ classes: [settings], calls: [call('Settings', { positional: 1 })] })];
+
+    expect(findingsFor(files)).toHaveLength(1);
+    expect(
+      run(unusedOptionFindings, files, { mentionedInJava: never, serialization: true }),
+    ).toEqual([]);
+  });
 });
