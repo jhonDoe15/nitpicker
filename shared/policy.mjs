@@ -220,7 +220,7 @@ const CATALOG = [
   {
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
-    limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
+    limit: `jscpd in \`${DUPLICATES_MODE}\` mode, also over sources with names and literals normalized (at least 100 tokens, except code that only repeats one or two statements); any new clone fails`,
     enforcedBy: withKotlin(ALL, true),
   },
   {
