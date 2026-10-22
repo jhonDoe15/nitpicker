@@ -17,6 +17,7 @@ import { baselineFromFacts, baselinePathsOf } from './baseline.mjs';
 import { FACT_RULE_LISTS, registeredFactRules } from '../../project-rules/fact-rules.mjs';
 import { reuseModules, withImportRoles } from './reuse-modules.mjs';
 import { validateFacts } from './schema.mjs';
+import { DESIGN_EVALUATORS } from '../design/design-findings.mjs';
 
 const REGISTRY = 'FACT_RULE_LANGUAGES (shared/project-rules/fact-rules.mjs)';
 
@@ -60,6 +61,7 @@ const EVALUATORS = {
         exceptions: options.policy.exceptions ?? [],
       },
     ),
+  ...DESIGN_EVALUATORS,
 };
 
 function missingList(facts, rules, language) {

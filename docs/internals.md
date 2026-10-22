@@ -141,6 +141,175 @@ A facts bundle is one JSON object. Each list is optional in the schema, but a ru
 
 **Feature layout.** `shared-used-by-one-feature` needs to know which folders are shared and which are features. `layout.sharedRoots` and `layout.featureRoots` are folder globs (a Java or Kotlin package is its source folder, such as `**/com/acme/shared`). A file under a shared root is shared; a file under `<feature root>/<name>/` belongs to feature `<name>`. The TypeScript default is `<source root>/main/shared` and `<source root>/main/features` (the folder names `architecture/strict-layout.mjs` shares with the import boundary rules, which do not follow the config keys); the other presets default to `**/shared` and `**/features`. Without a feature folder the rule finds nothing.
 
+## Design facts (`shared/rules/design/`)
+
+The deep-module design signals are written once, over two more lists of the facts bundle: `types`
+and `callables`. A language produces them from its own parser; `sharedFactFindings` runs the rules.
+Every path follows the facts path rules, and every `types[].file` and `callables[].file` must be a
+file of `modules`. Only production modules are judged; facts of `test` modules may be left out
+(when present they count as test callers, which never make a finding). Generated files (the
+generated-code policy of the language) are left out of `modules`, `types` and `callables`.
+
+Ids are opaque strings, unique within their list. Use `<file>#<qualified name>` (for example
+`src/orders/cart.ts#Cart`, `src/orders/cart.ts#Cart.add`, `app/orders/cart.py#total`); overloads
+add the parameter count or types (`Money.java#Money.of(int)`), and a module's own entry is its file.
+A reference to an id that is not in its list is an error, so only emit references the producer
+resolved: an unresolved call is not listed in `calls`, it makes the uses it touches `opaque`.
+
+```json
+{
+  "types": [
+    {
+      "id": "src/orders/cart.ts#Cart",
+      "file": "src/orders/cart.ts",
+      "name": "Cart",
+      "line": 3,
+      "kind": "class",
+      "exported": true,
+      "fields": [{ "name": "items", "mutable": true, "private": true }]
+    }
+  ],
+  "callables": [
+    {
+      "id": "src/orders/cart.ts#Cart.lines",
+      "file": "src/orders/cart.ts",
+      "name": "lines",
+      "line": 9,
+      "kind": "method",
+      "owner": "src/orders/cart.ts#Cart",
+      "exported": true,
+      "params": [],
+      "returnsField": "items"
+    },
+    {
+      "id": "src/checkout/pay.ts#pay",
+      "file": "src/checkout/pay.ts",
+      "name": "pay",
+      "line": 4,
+      "kind": "function",
+      "owner": "src/checkout/pay.ts",
+      "exported": true,
+      "params": [{ "name": "cart", "type": "src/orders/cart.ts#Cart" }],
+      "calls": [
+        {
+          "target": "src/orders/cart.ts#Cart.lines",
+          "line": 5,
+          "receiver": "cart",
+          "mutation": "push"
+        }
+      ]
+    }
+  ]
+}
+```
+
+- **`types`**: the project's own types and modules that own members. `kind` is one of:
+
+  | `kind`      | What it is                                                                                                                                                                                                                                                     |
+  | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `class`     | a class with behaviour: TypeScript/JavaScript, Java, Kotlin and Python classes that declare methods                                                                                                                                                            |
+  | `data`      | a type that only carries values: a TypeScript interface or object type, a Java `record`, a Kotlin `data class`, a Python dataclass, `TypedDict` or pydantic model without methods, any class with no methods besides accessors, `equals`/`hashCode`/`toString` |
+  | `interface` | a contract other types implement: a Java or Kotlin `interface`, a TypeScript interface that a class `implements`, a Python `Protocol` or ABC                                                                                                                   |
+  | `module`    | a file seen as the owner of its top-level functions and state (TypeScript, JavaScript, Python modules, a Kotlin file's top-level functions)                                                                                                                    |
+  | `enum`      | an enum, or a union of literals (TypeScript `'a' \| 'b'`, Python `Literal[...]`); `cases` lists its members                                                                                                                                                    |
+
+  `name` is the declared name (a module's is its file name without extension). `exported` says
+  whether other modules can use it (the definitions rule: TypeScript `export`, Python a public name,
+  Java and Kotlin `public`, `protected` or `internal`; a module is always exported). Optional fields:
+  - `fields` (default `[]`): the state the type owns. `name`; `mutable` (default false) when the
+    owner creates the value as a mutable collection or object and never replaces it with a copy
+    (`[]`, `{}`, `new Map()`, `new ArrayList<>()`, `mutableListOf()`, `list()`, `dict()`, `set()`);
+    `private` (default false) when no other module can reach the field itself (TypeScript
+    `private`/`#field` or a module-level `const` that is not exported, Java and Kotlin `private`,
+    Python a leading `_`). A `data` type lists every property; a `class` its instance fields; a
+    `module` its top-level variables.
+  - `cases` (enums only): the member names, in declaration order (string literals without quotes).
+  - `package` (default: from `packages`): as for definitions.
+
+- **`callables`**: functions, methods and constructors with a body, in production modules and
+  (optionally) test modules. `kind` is `function`, `method`, `constructor` or `accessor` (a getter
+  or a Kotlin property getter). `owner` is the id of the `types` entry that declares it (a class, or
+  the module for a top-level function); leave it out for a local function. `exported` says whether
+  another module can call it: an exported top-level function, or a public (`public`, `protected`,
+  `internal`, Python without a leading `_`) member of an exported type. Optional fields:
+  - `entry` (default false): the framework or the language calls it, not the project: an override
+    or an implementation of an interface member, a decorated or annotated function (`@Get`,
+    `@Transactional`, `@app.route`, `@Bean`, `@Override` aside from `toString`/`equals`), a `main`,
+    a callback the producer sees passed to a framework registration. Entries are never judged as
+    forwarding hops, data clumps or context owners.
+  - `params` (default `[]`): `{ name, type? }` in declaration order. `type` is the id of a `types`
+    entry when the declared (or, for TypeScript, checked) type resolves to one, otherwise the
+    type's normalized text with whitespace removed and without generic arguments of project types
+    (`string`, `int`, `List`); leave `type` out when the parameter has no declared type. A
+    variadic, a default value, or a destructuring pattern make `variadic: true`, `optional: true`
+    or `pattern: true` (each default false).
+  - `returns`: the return type, normalized like a parameter type; leave it out when not declared.
+  - `forward`: set only when the whole body is one call of a resolved project callable that passes
+    some parameters unchanged and returns its result unchanged (or the callable returns nothing and
+    the call is the only statement): `{ target, arguments, returned }`. `arguments` holds, per
+    argument of the call, the index of the parameter passed (`-1` for anything else: a literal, an
+    expression, a field, `this`); `returned` says whether the call's result is the return value.
+  - `calls` (default `[]`): every call of a resolved project callable, in source order, as
+    `{ target, line, receiver?, cleanup?, mutation? }`. `receiver` is a key for the value the call
+    is made on, the same key for every call on the same value within this callable: the
+    parameter or local name, `this.<field>` (Python `self.<field>`) for a field of the owner, or
+    `this` (Python `self`) for the owner itself; leave it out for a static or top-level call.
+    `cleanup` is true when the call runs on every exit: in a `finally` block, a TypeScript `using`
+    declaration's disposal, Python `with`, Java try-with-resources, Kotlin `use { }`. `mutation`
+    names the first change the caller makes to the value the call returned, directly
+    (`cart.lines().push(x)`) or through a local that holds it and is never reassigned
+    (`const lines = cart.lines(); lines.push(x)`): the mutating method (`push`, `add`, `put`, `set`,
+    `delete`, `remove`, `clear`, `sort`, `splice`, `append`, `extend`, `update`, `pop`), or
+    `assign` for an element or property assignment (`lines[0] = x`, `config.timeout = 3`).
+  - `paramUses` (default `[]`): how each parameter whose type is a project `class`, `data` or
+    `interface` type is used: `{ param, fields, forwards, opaque }`. `param` is the parameter's
+    index; `fields` the names of its members read or called (`ctx.clock`, `ctx.clock.now()` reads
+    `clock`; a destructuring reads each name); `forwards` the calls that receive the whole value as
+    `{ target, position }` (the argument position in that call); `opaque` (default false) is true
+    when any other use exists: the value is returned, stored, spread, captured by a closure, read
+    with a computed key, passed to an unresolved callable or to a resolved one at a position it
+    does not declare. Opaque uses make the evidence incomplete, never "unused".
+  - `ownFields` (default `[]`): the names of the owner's `fields` this callable reads or writes
+    (`this.items`, `self._items`, a module-level variable).
+  - `returnsField`: the name of a field of the owner that a `return` (or an expression body)
+    returns itself, not a copy; leave it out when every return is a copy, a new value or another
+    expression.
+  - `decisions` (default `[]`): every branch on one subject compared with constants: a `switch`,
+    `when` or `match` over it, or an `if`/`else if` chain (or `&&`/`||` condition) of equality tests
+    (`===`, `==`, `equals`, `is`, `in` with a literal tuple or set of constants) on it.
+    `{ subject, groups, line, otherwise }`: `subject` is the id of an `enum` entry when the tested
+    value has that type, or `<type id>.<field>` when it is a field of a project type
+    (`order.status` of `Order` gives `src/orders/order.ts#Order.status`); leave out decisions on
+    other values. `groups` lists, per arm in source order, the constants that lead to it (enum
+    member names or literal texts without quotes); `otherwise` (default false) says the decision
+    has a `default`, `else` or wildcard arm.
+  - `reads` (default `[]`): per value of a project `class` or `data` type other than the owner
+    itself (a parameter, a local or a field of the owner): `{ type, fields, decides, line }`, with
+    `fields` the members read on it and `decides` true when at least one of them is part of a
+    branch condition (`if`, `while`, a ternary, `switch`/`when`/`match` subject, a `&&`/`||`
+    operand). `line` is the first read.
+
+### Design rules
+
+All rules skip test modules, entries, and owners in a published package (`packages`), whose
+callers outside the project are unknown. Each finding names the caller, the owner and the public
+surface it is about, and says which smaller contract would remove it. Findings are report-only
+(`descriptive`) unless the table says otherwise: these are review signals, not proofs of a design
+defect, and their thresholds are explicit here.
+
+| Rule                       | Lists it reads                              | Fires when                                                                                                                                                                                                            |
+| -------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mutable-state-escape`     | `modules`, `types`, `callables`             | enforceable: a caller in another module mutates the value an exported member returned, and that value is a private mutable field of the member's owner                                                                |
+| `context-threading`        | `modules`, `types`, `callables`             | a parameter of a type with 5 or more fields is passed whole through at least two callables, one in another module, and all of them together read at most a third of its fields (at least 2)                           |
+| `caller-protocol`          | `modules`, `types`, `callables`             | the same ordered steps (3 or more members) on one value of a project class are repeated by 3 or more callables in 2 or more modules outside the class's module; or a call breaks a `protocols` contract (enforceable) |
+| `forwarding-chain`         | `modules`, `types`, `callables`             | two or more forwarding hops in a row, each into another module, pass the same parameters in order with the same parameter and return types                                                                            |
+| `disjoint-consumer-groups` | `modules`, `packages`, `types`, `callables` | the exported members of one owner used from other modules split into 2 or more groups of 2 or more members that no caller module uses together and that share no field or helper inside the owner                     |
+| `data-clump`               | `modules`, `types`, `callables`             | 3 or more typed parameters (same names and types) appear together in 3 or more exported callables in 2 or more modules                                                                                                |
+| `repeated-policy-decision` | `modules`, `types`, `callables`             | two decisions in different modules over the same subject group its constants the same way, with at least one arm covering 2 or more constants                                                                         |
+| `foreign-state-decision`   | `modules`, `types`, `callables`             | 2 or more callables outside a `class` (one with behaviour) branch on the same 2 or more of its fields                                                                                                                 |
+
+**Protocol contracts.** `protocols` in `nitpicker.config.json` lists the lifecycles a project wants enforced: `[{ "type": "Session", "open": ["begin"], "close": ["commit", "rollback"], "steps": ["write"] }]`. `type` is a `types[].name` (or id); `open` and `close` are required member names, `steps` optional. A callable that calls an `open` member on a receiver must call a `close` member on the same receiver with `cleanup: true` (in `finally`, `with`, `use`, try-with-resources or a `using` disposal), and must not call a `steps` member on that receiver before its first `open`. Violations are enforceable `caller-protocol` findings at the `open` (or the early step); the discovered repeated sequences stay report-only. A contract is a reviewed decision, so the rule never infers a mandatory lifecycle from names.
+
 ## TypeScript preset (`languages/typescript/`)
 
 - **Strict preset assembly.** Flat config replaces rather than merges a rule's options when several entries match a file, so each scope in `eslint-config/strict.mjs` carries its full `no-restricted-syntax` list: the everywhere selectors plus the scope's own. Add a selector to its scope's list, never as a separate entry for a narrower glob. `domain/` has its own loop and forEach selectors, so it drops those from the production set. Default exports, `null` and promise chains are not in these lists: `nitpicker/no-default-export`, `nitpicker/no-null` and `nitpicker/no-promise-chain` (`eslint-plugin/rules/syntax/syntax-bans.mjs`) take the same `{ selector, message }` options as `no-restricted-syntax`, are set once on the source entry (domain/ and adapters/ inherit them, the config-file entry turns the default-export and promise-chain ones off) and in the test entry (promise chains), so an exception for one lifts only that ban. The JavaScript dialect strips TypeScript-only selectors from `nitpicker/no-null` as it does from `no-restricted-syntax`. `strictSyntaxConfig` (`strict.mjs`), `strictAdaptersConfig` (`strict-adapters.mjs`) and `strictTestsConfig` (`strict-tests.mjs`) are standalone configs so the failure-message harness can lint one rule family alone; no tool loads them by path, which is why they are ordinary modules and not `*.config.mjs` files. The typed ones (`strictConfig(parserOptions)`, `strictAdaptersTypedConfig`) need `parserOptions` (e.g. `{ project: './tsconfig.quality.json', tsconfigRootDir }`) and later entries win.
