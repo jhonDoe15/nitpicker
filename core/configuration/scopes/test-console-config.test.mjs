@@ -11,6 +11,9 @@ describe('testConsole config', () => {
     [{ testConsole: {} }],
     [{ testConsole: { allow: [] } }],
     [{ testConsole: { allow: [allowed, { ...allowed, paths: ['test/legacy/**'] }] } }],
+    ...['typescript', 'javascript', 'java', 'kotlin'].map((preset) => [
+      { preset, testConsole: { allow: [allowed] } },
+    ]),
     [{ preset: 'python', testConsole: { allow: [{ ...allowed, paths: ['tests/legacy/**'] }] } }],
   ])('accepts %j', (config) => {
     expect(validateConfig(config)).toEqual(config);
@@ -35,14 +38,6 @@ describe('testConsole config', () => {
     [{ testConsole: { allow: [{ ...allowed, paths: 'test/**' }] } }, /paths" must be an array/],
     [{ testConsole: { allow: [{ contains: 'abc' }] } }, /reason" is required/],
     [{ testConsole: { allow: [{ contains: 'abc', reason: ' ' }] } }, /reason" is required/],
-    [
-      { preset: 'java', testConsole: { allow: [allowed] } },
-      `nitpicker.config.json: "testConsole" is not supported with "preset": "java": its tests' console output is not checked yet. Supported with: typescript, javascript, python`,
-    ],
-    [
-      { preset: 'kotlin', testConsole: {} },
-      '"testConsole" is not supported with "preset": "kotlin"',
-    ],
   ])('rejects %j', (config, message) => {
     expect(() => validateConfig(config)).toThrow(message);
   });
@@ -111,7 +106,7 @@ describe('config keys the python preset shares', () => {
   it('names what python does not support and what it shares', () => {
     expect(() => validateConfig({ preset: 'python', layout: {} })).toThrow(
       new Error(
-        'nitpicker.config.json: "layout" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, i18n, except exceptions for file-lines-limit, line-length-limit, folder-files-limit, folder-depth-limit, class-methods-limit, class-fields-limit, inheritance-depth-limit, test-console-output. Shared by all presets: thresholds, exclude, legacyInventory; shared with TypeScript: testConsole',
+        'nitpicker.config.json: "layout" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, i18n, except exceptions for file-lines-limit, line-length-limit, folder-files-limit, slow-test, committed-env-file, committed-private-key, committed-binary, large-file, committed-build-output, folder-depth-limit, class-methods-limit, class-fields-limit, inheritance-depth-limit, test-console-output. Shared by all presets: thresholds, exclude, legacyInventory',
       ),
     );
   });

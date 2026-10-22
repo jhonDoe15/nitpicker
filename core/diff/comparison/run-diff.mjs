@@ -11,6 +11,7 @@ import { readChangedLines } from '../git/patches/changed-lines.mjs';
 import { withTemporaryWorktree, withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
 import { runAnalyzers } from '../execution/run-analyzers.mjs';
+import { withMovesFile } from '../git/patches/moves-file.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { combineAnalyzerReports } from './results.mjs';
 import { runBaseWithCache, createFindingsCache } from '../cache/findings-cache.mjs';
@@ -148,17 +149,20 @@ function withBasePolicyFile({ basePolicy, headPolicy, headPolicyFile }, operatio
 function runAndCombine(context) {
   const { settings, comparison, layout, roots, startedAt, headPolicyFile } = context;
   const baseRun = runBaseSide(context);
-  const headRun = runAnalyzers({
-    analyzers: settings.analyzers,
-    projectRoot: roots.headSnapshotRoot,
-    policyRoot: roots.headSnapshotRoot,
-    toolRoot: PACKAGE_ROOT,
-    liveProjectRoot: settings.headProjectRoot,
-    headPolicyFile,
-    snapshot: 'head',
-    baselineRoot: roots.baseProjectRoot,
-    runTasks: settings.runTasks,
-  });
+  const headRun = withMovesFile(layout.moves.files, (baselineMovesFile) =>
+    runAnalyzers({
+      analyzers: settings.analyzers,
+      projectRoot: roots.headSnapshotRoot,
+      policyRoot: roots.headSnapshotRoot,
+      toolRoot: PACKAGE_ROOT,
+      liveProjectRoot: settings.headProjectRoot,
+      headPolicyFile,
+      snapshot: 'head',
+      baselineRoot: roots.baseProjectRoot,
+      baselineMovesFile,
+      runTasks: settings.runTasks,
+    }),
+  );
   return combineAnalyzerReports({
     analyzers: settings.analyzers,
     baseRun,

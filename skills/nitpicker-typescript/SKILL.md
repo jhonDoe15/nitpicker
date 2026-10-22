@@ -60,6 +60,12 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - New code goes under the source roots (`layout.sourceRoots`); the gate reports anything outside.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist.
 
+## Dependencies and files
+
+- The gate fails unlisted, unused and unresolved dependencies, production imports of a
+  `devDependency`, and committed secrets, binaries, build output and files over 1 MB; each message
+  names the fix. Don't add an `exceptions` entry to get past one: stop and ask.
+
 ## Write it this way
 
 - `function` declarations for named functions, nested helpers too; arrows only as callbacks, with a block body when
@@ -132,6 +138,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.
+- Keep an assertion unless another test covers the same behaviour.
 - A test run that prints new `console.error` or `console.warn` output fails
   (`test-console-output`): cancel the timer or subscription in the cleanup.
 - Test features through their `index.ts` with fakes: plain functions returning
@@ -143,7 +150,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
   Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
   not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
-- A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`.
+- Tests assert exact values and are deterministic and fast; each finding names the allowed form.
+- A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`, or in a `test-support/` folder beside the code when the tests sit next to it.
   When an existing test defines the same helper, make it import the shared one.
 - Test roots are `test/`, `tests/`, `__tests__/` and `e2e/` at the repo root. A Playwright or Cypress
   spec in `e2e/` imports no production code and is not mutated; a Jest `__tests__/` goes in `exclude`.
@@ -151,6 +159,14 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   Don't pin call order or messages just to kill it. If an input can kill it, add that test; never
   delete a schema rule to silence it.
 - No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
+- Give synchronous `child_process` calls in integration tests and shared test helpers a positive
+  subprocess `timeout`, such as `{ timeout: 10_000 }`. The runner's test timeout cannot interrupt
+  `spawnSync`, `execSync` or `execFileSync` while they block the event loop.
+- Plan tests to be fast (`slow-test`): a test you add or edit that takes over 5 s fails, over 30 s
+  for an integration test (under an `integration`, `e2e` or `functional` folder, or named
+  `*.integration.test.ts`, folders counted under the test roots). Use fake timers instead of waits
+  and fakes instead of network or disk. A test over budget is run again alone without coverage and
+  fails only if it is still over. A slow test you did not touch stays baselined.
 
 ## React
 

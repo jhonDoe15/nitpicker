@@ -14,9 +14,9 @@ const LIMIT_RULES = [...SHARED_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
 
 /** The shared limits the top-level "exceptions" lift; python.exceptions lifts every other rule. */
 export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...LIMIT_RULES, RULE_IDS.testConsoleOutput];
-const ENVIRONMENTS = ['uv', 'poetry', 'path'];
+const ENVIRONMENTS = ['uv', 'poetry', 'path', 'pipenv', 'hatch', 'conda'];
 const FORMATTERS = ['ruff', 'black'];
-const TEST_RUNNERS = ['pytest', 'unittest'];
+const TEST_RUNNERS = ['pytest', 'unittest', 'django', 'nose2'];
 const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
 const SETTING_KEYS = [
   'environment',
@@ -39,7 +39,7 @@ export function validatePythonConfig(config, typescriptOnlyKeys) {
   const unsupported = typescriptOnlyKeys.filter((key) => config[key] !== undefined);
   if (unsupported.length > 0) {
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: ${typescriptOnlyKeys.join(', ')}, except exceptions for ${PYTHON_TOP_LEVEL_EXCEPTION_RULES.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory; shared with TypeScript: testConsole`,
+      `"${unsupported[0]}" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: ${typescriptOnlyKeys.join(', ')}, except exceptions for ${PYTHON_TOP_LEVEL_EXCEPTION_RULES.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
     );
   }
   if (config.python !== undefined) {
@@ -91,7 +91,7 @@ function validateRuleIds(exceptions) {
   for (const [index, { rule }] of exceptions.entries()) {
     if (LIMIT_RULES.includes(rule)) {
       throw configError(
-        `"python.exceptions[${String(index)}].rule" is "${rule}", a file limit shared by every preset: lift it in the top-level "exceptions" instead`,
+        `"python.exceptions[${String(index)}].rule" is "${rule}", a rule shared by every preset: lift it in the top-level "exceptions" instead`,
       );
     }
     const problem = ruleIdProblem(rule);

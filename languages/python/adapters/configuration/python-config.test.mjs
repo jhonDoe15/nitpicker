@@ -51,7 +51,6 @@ describe('python config validation', () => {
     'reportAny',
     'reportImplicitOverride',
     'reportUnusedCallResult',
-    'slow-test',
   ])('accepts the exception rule %s', (rule) => {
     expect(() => {
       validate({
@@ -98,13 +97,13 @@ describe('python config validation', () => {
       'unknown key "interpreter" in "python". Allowed keys: environment',
     ],
     [{ formatter: 'yapf' }, '"python.formatter" must be one of: ruff, black'],
-    [{ testRunner: 'nose' }, '"python.testRunner" must be one of: pytest, unittest'],
+    [{ testRunner: 'nose' }, '"python.testRunner" must be one of: pytest, unittest, django, nose2'],
     [{ typeChecker: 'pytype' }, '"python.typeChecker" must be one of: mypy, pyright, basedpyright'],
     [{ exceptions: {} }, '"python.exceptions" must be an array'],
     [{ exceptions: ['T201'] }, '"python.exceptions[0]" must be an object'],
     [
       { exceptions: [{ rule: 'T201', paths: ['a'], reason: 'r', why: 'x' }] },
-      'unknown key "why" in "python.exceptions[0]". Allowed keys: rule, paths, reason',
+      'unknown key "why" in "python.exceptions[0]". Allowed keys: rule, paths, packages, reason',
     ],
     [
       { exceptions: [{ paths: ['a'], reason: 'r' }] },
@@ -124,7 +123,7 @@ describe('python config validation', () => {
     ],
     [
       { exceptions: [{ rule: 'folder-files-limit', paths: ['a'], reason: 'r' }] },
-      'a file limit shared by every preset: lift it in the top-level "exceptions" instead',
+      'a rule shared by every preset: lift it in the top-level "exceptions" instead',
     ],
     [
       { exceptions: [{ rule: 'E501', paths: ['a'], reason: 'r' }] },
@@ -150,10 +149,6 @@ describe('python config validation', () => {
     [
       { exceptions: [{ rule: 'frozen-dataclas', paths: ['a'], reason: 'r' }] },
       '"frozen-dataclas"; did you mean "frozen-dataclass"?',
-    ],
-    [
-      { exceptions: [{ rule: 'slow-tst', paths: ['a'], reason: 'r' }] },
-      '"slow-tst"; did you mean "slow-test"?',
     ],
     [{ importLinter: 'yes' }, '"python.importLinter" must be true or false'],
     [{ environment: '' }, '"python.environment" must be a non-empty string'],
