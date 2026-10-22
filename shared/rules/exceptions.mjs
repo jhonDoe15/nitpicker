@@ -11,7 +11,10 @@ import { EXCEPTION_HINT, renderMessage } from '../policy.mjs';
  * exception for `rule` matches any of the `candidates`.
  */
 export function exceptionMatcher(exceptions) {
-  const matchers = exceptions.map(({ rule, paths }) => ({ rule, matches: pathMatcher(paths) }));
+  const matchers = exceptions.map(({ rule, paths, glob }) => ({
+    rule,
+    matches: pathMatcher(paths ?? [glob]),
+  }));
   return (rule, ...candidates) =>
     matchers.some(
       (matcher) =>
