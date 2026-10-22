@@ -491,15 +491,16 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   for the rule when a partial test is intended.
 - `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
   whose body is one `return` (or an expression body) of a call that passes exactly its own
-  parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`) is
-  flagged when its parameter types and return type are identical to the callee's, so a wrapper that
+  parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`; an
+  `async` one may `await` the call) is flagged when its parameter types and return type are identical to the callee's, so a wrapper that
   brands, narrows or widens a type passes. The callee must be a module-level binding or an import
   that the file could re-export or the caller could import directly. Not flagged: member callees
   (`repo.find(id)`, `Math.abs(x)`, `api.get(url)`), callees that are parameters or closure variables
   (injected dependencies), functions declared inside a component, factory or other function,
   overload implementations, type-predicate and `asserts` functions (on either side), parameters
   whose optional or rest form differs from the callee's (`b?: number` over `b: number | undefined`),
-  methods, `async` and generator functions, functions with type
+  methods, generator functions, an `async` function over a callee that does not return the same
+  promise type, functions with type
   parameters, calls with type arguments, optional calls, PascalCase names (components), functions
   without parameters, default, destructured or transformed parameters, and a `const` with a type
   annotation. A wrapper around a hook (`useUser(key)` over an imported `useQuery(key)`) is reported

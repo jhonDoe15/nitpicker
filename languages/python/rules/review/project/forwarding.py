@@ -1,6 +1,7 @@
 import ast
 
 from review.common import (
+    FUNCTION_TYPES,
     body_without_docstring,
     finding,
     positional,
@@ -15,29 +16,38 @@ def is_name(node, name):
 
 def forwarded_call(fn):
     body = body_without_docstring(fn.body)
-    if len(body) == 1 and isinstance(body[0], ast.Return) and isinstance(body[0].value, ast.Call):
-        return body[0].value
-    return None
+    if len(body) != 1 or not isinstance(body[0], ast.Return):
+        return None
+    value = body[0].value
+    if isinstance(fn, ast.AsyncFunctionDef):
+        value = value.value if isinstance(value, ast.Await) else None
+    return value if isinstance(value, ast.Call) else None
 
 
 def forwards_positionals(fn, call):
     names = [parameter.arg for parameter in positional(fn)]
+    passed = list(call.args)
     vararg = fn.args.vararg
-    expected = len(names) + (1 if vararg else 0)
-    if len(call.args) != expected:
-        return False
     if vararg is not None:
-        last = call.args[-1]
+        last = passed.pop() if passed else None
         if not (isinstance(last, ast.Starred) and is_name(last.value, vararg.arg)):
-            return False
-    return all(is_name(argument, name) for argument, name in zip(call.args, names))
+            return None
+        if len(passed) != len(names):
+            return None
+    if len(passed) > len(names):
+        return None
+    if not all(is_name(argument, name) for argument, name in zip(passed, names)):
+        return None
+    rest = names[len(passed):]
+    posonly = {parameter.arg for parameter in fn.args.posonlyargs}
+    return None if posonly.intersection(rest) else rest
 
 
-def forwards_keywords(fn, call):
+def forwards_keywords(fn, call, rest):
     named = {keyword.arg: keyword.value for keyword in call.keywords if keyword.arg is not None}
     spread = [keyword.value for keyword in call.keywords if keyword.arg is None]
-    kwonly = [parameter.arg for parameter in fn.args.kwonlyargs]
-    if set(named) != set(kwonly) or not all(is_name(named[name], name) for name in kwonly):
+    expected = rest + [parameter.arg for parameter in fn.args.kwonlyargs]
+    if set(named) != set(expected) or not all(is_name(named[name], name) for name in expected):
         return False
     kwarg = fn.args.kwarg
     if kwarg is None:
@@ -50,7 +60,12 @@ def forwards_own_parameters(fn, call):
     has_parameters = bool(
         positional(fn) or arguments.vararg or arguments.kwonlyargs or arguments.kwarg
     )
-    return has_parameters and forwards_positionals(fn, call) and forwards_keywords(fn, call)
+    rest = forwards_positionals(fn, call) if has_parameters else None
+    return rest is not None and forwards_keywords(fn, call, rest)
+
+
+def positional_kind(fn, parameter):
+    return "positional" if parameter in fn.args.posonlyargs else "either"
 
 
 def shape_of(fn):
@@ -58,16 +73,23 @@ def shape_of(fn):
     keyword_only = sorted(
         zip(arguments.kwonlyargs, arguments.kw_defaults), key=lambda pair: pair[0].arg
     )
+    spreads = [parameter for parameter in (arguments.vararg, arguments.kwarg) if parameter]
     return (
-        [(parameter.arg, parameter.annotation, default) for parameter, default in positional_defaults(fn)]
-        + [(parameter.arg, parameter.annotation, default) for parameter, default in keyword_only]
-        + [(f"*{p.arg}", p.annotation, None) for p in (arguments.vararg, arguments.kwarg) if p]
+        [
+            (parameter.arg, positional_kind(fn, parameter), parameter.annotation, default)
+            for parameter, default in positional_defaults(fn)
+        ]
+        + [
+            (parameter.arg, "keyword", parameter.annotation, default)
+            for parameter, default in keyword_only
+        ]
+        + [(f"*{parameter.arg}", "spread", parameter.annotation, None) for parameter in spreads]
     )
 
 
 def is_annotated(fn):
     return fn.returns is not None and all(
-        annotation is not None for _, annotation, _ in shape_of(fn)
+        annotation is not None for _, _, annotation, _ in shape_of(fn)
     )
 
 
@@ -80,7 +102,9 @@ def same_signature(wrapper, target):
         and bool(wrapper.args.kwarg) == bool(target.args.kwarg)
         and len(own) == len(theirs)
         and all(
-            mine[0] == other[0] and same_node(mine[1], other[1]) and same_node(mine[2], other[2])
+            mine[:2] == other[:2]
+            and same_node(mine[2], other[2])
+            and same_node(mine[3], other[3])
             for mine, other in zip(own, theirs)
         )
         and same_node(wrapper.returns, target.returns)
@@ -89,7 +113,7 @@ def same_signature(wrapper, target):
 
 def is_plain(fn):
     return (
-        isinstance(fn, ast.FunctionDef)
+        isinstance(fn, FUNCTION_TYPES)
         and not fn.decorator_list
         and not getattr(fn, "type_params", None)
     )
@@ -100,7 +124,7 @@ def target_of(index, path, call):
     if resolved is None:
         return None
     target_path, name, nodes = resolved
-    if len(nodes) != 1 or not isinstance(nodes[0], (ast.FunctionDef, ast.AsyncFunctionDef)):
+    if len(nodes) != 1 or not isinstance(nodes[0], FUNCTION_TYPES):
         return None
     if nodes[0].decorator_list:
         return None
@@ -112,15 +136,11 @@ def wrapper_finding(index, path, fn):
     if call is None or not forwards_own_parameters(fn, call):
         return None
     target = target_of(index, path, call)
-    if target is None or target[2] is fn or not same_signature(fn, target[2]):
+    if target is None or target[2] is fn or type(target[2]) is not type(fn):
         return None
-    target_path, name, _ = target
-    data = {
-        "target": name,
-        "module": None if target_path == path else index.modules.get(target_path),
-        "exported": not fn.name.startswith("_"),
-    }
-    return finding("forwarding-wrapper", path, fn.name, fn.lineno, data)
+    if not same_signature(fn, target[2]):
+        return None
+    return finding("forwarding-wrapper", path, fn.name, fn.lineno, {"target": target[1]})
 
 
 def forwarding_findings(index):
