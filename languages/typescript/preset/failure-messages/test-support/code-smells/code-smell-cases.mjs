@@ -59,6 +59,16 @@ export const codeSmellFailureMessageCases = [
       'await mutex.runExclusive(async () => { await fetch(url); });',
       'after releasing it',
     ],
+    [
+      'retried insert names the upsert',
+      "import pRetry from 'p-retry';\nawait pRetry(() => db.query('INSERT INTO t (id) VALUES (1)'));",
+      'ON CONFLICT',
+    ],
+    [
+      'dual write names the outbox',
+      "import { send } from 'kafkajs';\nexport async function run(o) { await orderRepository.save(o); await send(o); }",
+      'outbox table',
+    ],
     ['generic file name names the exception', 'export const a = 1;', EXCEPTION, GENERIC_FILE],
     [
       'generic file name names the shared folder',

@@ -2,7 +2,7 @@ import { typeServices } from '../security/security-values.mjs';
 import { estreeCallView } from './io/call-views.mjs';
 import { directEffects, namedKind } from './io/call-tags.mjs';
 import { libraryKind } from './io/packages.mjs';
-import { typedCallEffects } from './io/summaries.mjs';
+import { typedCallEffects, typedReferenceEffects } from './io/summaries.mjs';
 
 const KINDS = ['database', 'remote', 'message'];
 
@@ -60,6 +60,13 @@ export function ioEffect(call, context) {
 
 export function ioKind(call, context) {
   return ioEffect(call, context)?.kind;
+}
+
+export function referenceEffects(node, context) {
+  const services = typeServices(context);
+  return services === undefined
+    ? new Map()
+    : typedReferenceEffects(services.esTreeNodeToTSNodeMap.get(node), services.program);
 }
 
 export function describePath(path) {

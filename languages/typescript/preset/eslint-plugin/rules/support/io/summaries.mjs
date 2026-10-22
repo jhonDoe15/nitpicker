@@ -1,5 +1,6 @@
 import ts from 'typescript';
 import { memoized } from '../memo.mjs';
+import { functionLike, resolvedSymbol } from './implementations.mjs';
 import { resolveCall } from './typed-calls.mjs';
 
 const MAX_HOPS = 3;
@@ -105,4 +106,15 @@ export function typedCallEffects(call, program) {
     summarize(state, descriptor.targets);
   }
   return combined(state, descriptor, MAX_HOPS);
+}
+
+export function typedReferenceEffects(node, program) {
+  const state = stateOf(program);
+  const declaration = resolvedSymbol(state.checker, node)?.declarations?.[0];
+  const fn = declaration && functionLike(declaration);
+  if (fn === undefined) {
+    return new Map();
+  }
+  summarize(state, [fn]);
+  return prefixed(`${node.getText()}()`, summaryAt(state, fn, MAX_HOPS));
 }
