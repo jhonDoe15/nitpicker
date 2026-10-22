@@ -62,7 +62,10 @@ describe('jscpd project config', () => {
     'accepts all four orderings for %s',
     (preset) => {
       for (const [precedence] of ORDERINGS) {
-        expect(validateConfig({ preset, tools: { jscpd: { precedence } } })).toBeDefined();
+        expect(validateConfig({ preset, tools: { jscpd: { precedence } } })).toEqual({
+          preset,
+          tools: { jscpd: { precedence } },
+        });
       }
       for (const precedence of [[], ['project', 'project'], ['unknown'], 'project']) {
         expect(() => validateConfig({ preset, tools: { jscpd: { precedence } } })).toThrow(
