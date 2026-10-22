@@ -89,6 +89,12 @@ function isCountable(node, value) {
   if (KEY_PARENTS.has(parent.type) && parent.key === node && !parent.computed) {
     return false;
   }
+  if (parent.type === 'MemberExpression' && parent.computed && parent.property === node) {
+    return false;
+  }
+  if (parent.type === 'TSModuleDeclaration' && parent.id === node) {
+    return false;
+  }
   return !(parent.type === CALL && parent.callee.name === 'require');
 }
 

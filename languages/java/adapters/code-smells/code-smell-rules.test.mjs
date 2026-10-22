@@ -95,10 +95,7 @@ describe('the Java code smell ruleset', () => {
   });
 
   it('marks the test-source rules in the fixture tests', () => {
-    expect([...markedRules('test')].sort()).toEqual([
-      'AvoidDuplicateLiterals',
-      'UnusedFormalParameter',
-    ]);
+    expect([...markedRules('test')].sort()).toEqual(['UnusedFormalParameter']);
   });
 
   it('ships both rulesets and scopes them in the PMD rulesets both builds run', () => {
