@@ -28,8 +28,8 @@ const MESSAGE =
 
 const route = (rule, file) =>
   `If this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
-const ERROR_PRONE_ROUTE = route('errorprone/<check>', 'A.java');
-const PMD_ROUTE = route('pmd/<PMD rule>', 'A.java');
+const ERROR_PRONE_ROUTE = route('errorprone/InlineSuppression', 'A.java');
+const PMD_ROUTE = route('pmd/InlineSuppression', 'A.java');
 const afterMessage = (message, prefix) =>
   message.slice(prefix.length, message.indexOf(' If this is intended'));
 
@@ -67,7 +67,7 @@ describe('fileFindings', () => {
       rule: 'InlineSuppression',
       path: 'src/main/java/A.java',
       identity: expect.stringMatching(/^InlineSuppression:\w+$/),
-      message: `${MESSAGE} Found: "PMD.UnusedPrivateField". ${route('pmd/<PMD rule>', 'src/main/java/A.java')}`,
+      message: `${MESSAGE} Found: "PMD.UnusedPrivateField". ${route('pmd/InlineSuppression', 'src/main/java/A.java')}`,
       classification: 'enforceable',
       location: { line: 2 },
     });
@@ -180,7 +180,7 @@ describe('fileFindings for SpotBugs', () => {
       rule: 'InlineSuppression',
       path: 'src/main/java/A.java',
       identity: expect.stringMatching(/^InlineSuppression:\w+$/),
-      message: `${SPOTBUGS_MESSAGE} Found: "EI_EXPOSE_REP", "NP_NULL". ${route('spotbugs/<bug pattern>', 'src/main/java/A.java')}`,
+      message: `${SPOTBUGS_MESSAGE} Found: "EI_EXPOSE_REP", "NP_NULL". ${route('spotbugs/InlineSuppression', 'src/main/java/A.java')}`,
       classification: 'enforceable',
       location: { line: 3 },
     });

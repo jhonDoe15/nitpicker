@@ -65,10 +65,13 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
-  `nitpicker.config.json`, under `exceptions`, with an entry such as
+  `nitpicker.config.json`. A ruff, type-checker, `python-rules`, import-linter, duplicate or coupling
+  finding goes under `python.exceptions`, with an entry such as
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
-  message. A structure, CRAP, changed-branch coverage, mutation, duplicate or coupling finding takes the same list
-  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`).
+  message. A function, CRAP, changed-branch coverage, mutation, file or size finding goes under the
+  top-level `exceptions`
+  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`). Each
+  message ends with the entry and the list that takes it; each list rejects the other's rules.
   Don't add one to get past the gate: stop and ask.
 
 ## Repository files

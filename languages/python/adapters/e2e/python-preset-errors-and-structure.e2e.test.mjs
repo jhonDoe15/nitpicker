@@ -199,14 +199,14 @@ describe.skipIf(!pythonE2eEnabled)(
             symbol: 'pipeline.score',
             identity: expect.any(String),
             message:
-              'pipeline.score has CRAP 10.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function.',
+              'pipeline.score has CRAP 10.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
             classification: 'enforceable',
             location: { line: 2 },
             ratchet: {
               key: 'function:pipeline.score:crap',
               value: 10,
               worseMessage:
-                'pipeline.score CRAP rose from {base} to 10 (limit 9). Put new code in a new function and cover it with tests.',
+                'pipeline.score CRAP rose from {base} to 10 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
               heldMessage:
                 'pipeline.score: CRAP 10.00 (limit 9), allowed because base was {base}; any increase fails.',
             },

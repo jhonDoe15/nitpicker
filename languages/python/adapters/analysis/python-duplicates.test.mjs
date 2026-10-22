@@ -310,8 +310,8 @@ describe('duplicates whose names and literals were renamed', () => {
     expect(withHint(clonesOf(context)[0]).message).toBe(
       'This code repeats src/app/parcel.py:1 (17 lines). Keep one copy and call it from both places. ' +
         'If the repetition is intended, add src/app/invoice.py or src/app/parcel.py to "exclude" in nitpicker.config.json. ' +
-        'To allow it for some paths, add a "python.exceptions" entry for duplicate-clone in ' +
-        'nitpicker.config.json.',
+        'If this is intended, add {"rule":"duplicate-clone","paths":["src/app/invoice.py"],"reason":"..."} to ' +
+        '"python.exceptions" in nitpicker.config.json.',
     );
   });
 

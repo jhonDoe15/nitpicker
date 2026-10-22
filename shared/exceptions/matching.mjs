@@ -32,14 +32,14 @@ export function functionNameOf(finding) {
 const PAIR_END = /:(?:fragment|occurrence):/;
 
 export function clonePartnerPath(finding) {
+  if (!['duplicate-clone', 'duplicate-clone-size'].includes(finding.rule)) {
+    return undefined;
+  }
   const prefix = `pair:${finding.path}|`;
   const identity = finding.identity.startsWith(RENAMED_IDENTITY_PREFIX)
     ? finding.identity.slice(RENAMED_IDENTITY_PREFIX.length)
     : finding.identity;
-  if (
-    !['duplicate-clone', 'duplicate-clone-size'].includes(finding.rule) ||
-    !identity.startsWith(prefix)
-  ) {
+  if (!identity.startsWith(prefix)) {
     return undefined;
   }
   const rest = identity.slice(prefix.length);

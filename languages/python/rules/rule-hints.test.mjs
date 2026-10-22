@@ -104,7 +104,7 @@ describe('hints', () => {
     expect(withHint(sample({ tool: 'ruff', rule: 'T201' }))).toEqual({
       ...sample({ tool: 'ruff', rule: 'T201' }),
       message:
-        'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
+        'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
     });
   });
 

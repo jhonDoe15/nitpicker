@@ -159,9 +159,9 @@ top-level `exceptions` is accepted only for the rules shared with the other lang
 `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`,
 `mutant-survived`, `mutant-nocoverage`, which take `function` to name one function), whose messages
 name it, and the [dependency and repository checks](usage.md#dependency-and-repository-checks); the
-Python equivalent of `exceptions` for every other rule is `python.exceptions`. A `python.exceptions`
-entry for a function rule still lifts it for its path. `python` is an error with any other preset.
-
+Python equivalent of `exceptions` for every other rule is `python.exceptions`. Each list rejects the
+other's rules (a function or file rule in `python.exceptions`, or a ruff code in `exceptions`, is a
+config error that names the right list). `python` is an error with any other preset.
 
 ```json
 {
@@ -231,8 +231,9 @@ yours to fix (generated code) is dropped with `exclude`.
 ### Exceptions
 
 There is no inline disable: `# noqa`, `# type: ignore`, `# pyright: ignore` and the other comments
-in the table below are findings themselves. The way out is `exceptions` in
-`nitpicker.config.json`, the same list and shape as in every preset: `rule` (the id printed in the finding, for example `T201`, `PTH118`, `frozen-dataclass`,
+in the table below are findings themselves. The way out is `python.exceptions` in
+`nitpicker.config.json` (the top-level `exceptions` for the function, file and size rules, below),
+the same shape as in every preset: `rule` (the id printed in the finding, for example `T201`, `PTH118`, `frozen-dataclass`,
 `return-value`, `reportReturnType`), `paths` (a non-empty array of globs relative to the project)
 and `reason` (required text). It lifts that rule for those paths, in the base and in the head
 snapshot alike, and every exception is listed in the report's config overrides. The id is checked
@@ -255,7 +256,7 @@ error.
 handed to ruff or black either. The rules most likely to flag code that is right for its place are
 `T201` (`print` in a command-line tool or a notebook), `PERF203` (`try` in a loop that must handle
 each item) and `F401` (an `__init__.py` that re-exports): lift them for the path with
-`exceptions`, or `exclude` the path, for example
+`python.exceptions`, or `exclude` the path, for example
 `"exclude": ["src/demo/cli.py", "**/__init__.py"]`. The project's own ruff configuration
 (`[tool.ruff]`, `ruff.toml`) is not read for linting, and of the coverage configuration only the
 settings that say how the tests run are kept (see the test step below), so the result means the
@@ -350,7 +351,7 @@ pytest section (`[pytest]`, `[tool:pytest]`, `[tool.pytest.ini_options]`) names 
 
 The purpose of this slice is the "one way" for each construct. Every finding message names the
 allowed form, and, because any rule can flag legitimate code, ends with how to add the exception.
-Every enforceable finding of ruff, the type checkers, the rules, coverage, duplicates, coupling, import-linter, the dependency checks, the test times and mutmut ends with the one `python.exceptions` sentence (`To allow it for some paths, add a "python.exceptions" entry for <rule> in nitpicker.config.json.`), except mypy `unused-ignore` (delete the comment), `no-import-outside-roots` (whose way out is `python.sourceRoots`), findings on `.`, the shared file and size limits and the function rules (the function limits, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`), whose message names the top-level `exceptions` entry, with `function` for the function rules, instead. The allowed forms live in `languages/python/rules/hints/` and the route in one place, `exceptionSentence` in `languages/python/rules/rule-hints.mjs`, which assembles them and applies them to both analyzers' findings with `applyRuleHints`; `languages/python/rules/exception-sentences.test.mjs` fails on any other Python file that writes a route of its own, and a test checks that each rule's message
+Every enforceable finding of ruff, the type checkers, the rules, coverage, duplicates, coupling, import-linter, the dependency checks, the test times and mutmut ends with the one exception sentence (`If this is intended, add {"rule":"<rule>","paths":["<path>"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`), except mypy `unused-ignore` (delete the comment), `no-import-outside-roots` (whose way out is `python.sourceRoots`), findings on `.`, the shared file and size limits and the function rules (the function limits, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`), whose message names the top-level `exceptions` entry, with `function` for the function rules, instead. The allowed forms live in `languages/python/rules/hints/` and the route in one place, `exceptionSentence` in `languages/python/rules/rule-hints.mjs`, which assembles them and applies them to both analyzers' findings with `applyRuleHints`; `languages/python/rules/exception-sentences.test.mjs` fails on any other Python file that writes a route of its own, and a test checks that each rule's message
 names its allowed form, and an opt-in test runs a banned and an allowed fixture of every rule
 through the real tools.
 
@@ -530,7 +531,7 @@ Details that are decisions rather than the table:
   `# type: ignore`, `# noqa`, `# ruff: noqa`, `# flake8: noqa`, `# pyright: ignore`, the
   `# pyright: basic|standard|off` modes and `# pyright: reportX=false|none|warning|information`,
   `# fmt: off` and `# fmt: skip`, and any `# mypy:` directive except `strict`. The message says
-  to remove the comment and fix the code; when it must stay, the way out is an `exceptions`
+  to remove the comment and fix the code; when it must stay, the way out is a `python.exceptions`
   entry for `no-inline-suppression` itself with the path. `# pyright: strict` is allowed. Mypy has no switch
   that ignores `# type: ignore` comments, so there the comment still silences the checker; the
   rule reports it all the same, and pyright is run with `enableTypeIgnoreComments: false`.
@@ -573,7 +574,7 @@ Details that are decisions rather than the table:
 ### The shared one-way rules
 
 These rules bring the Python preset to the rules the TypeScript and Java presets enforce. Each
-finding names the allowed form first and ends with the usual `exceptions` sentence. The
+finding names the allowed form first and ends with the usual exception sentence (`python.exceptions`, or `exceptions` for the shared rules). The
 rules marked "script" are `python-rules` findings of `nitpicker_rules.py` (one module per concern
 under `languages/python/rules/`: `checks`, `boundary`, `smells`, `honesty`); the others are ruff
 rules. Rules that are not enforced because they flag idiomatic code with no clean alternative
@@ -1184,7 +1185,7 @@ the source root detection already does.
   the enforceable `stability-direction` (`<package> depends on less stable package <package>`),
   tool name `coupling`, identity `package-edge:<source>-><target>`. Its path is the source
   package's `__init__.py` (the package's first file when it has none), and the message says to
-  depend on an abstraction in a more stable package, and ends with the `exceptions` entry for that
+  depend on an abstraction in a more stable package, and ends with the `python.exceptions` entry for that
   file, for when the inversion is intended. An edge can appear without anyone touching it, because package
   instability moves when other packages change. As in Java, packages are flat
   (`a.b` and `a.b.c` are different packages) and fan-in and fan-out count distinct files. A file
