@@ -1,8 +1,8 @@
 import ast
 
+from checks.common import dotted_name
 from review.common import (
     FUNCTION_TYPES,
-    decorator_name,
     defaulted_parameters,
     finding,
     last_segment,
@@ -13,8 +13,21 @@ from review.common import (
     unwrapped,
 )
 
-RECORD_DECORATORS = {"dataclass", "define"}
-RECORD_BASES = {"BaseModel", "BaseSettings", "TypedDict", "NamedTuple"}
+ATTRS_DECORATORS = ("define", "frozen", "mutable")
+RECORD_DECORATORS = {
+    "dataclass",
+    "dataclasses.dataclass",
+    "pydantic.dataclasses.dataclass",
+    *(f"{module}.{name}" for module in ("attr", "attrs") for name in ATTRS_DECORATORS),
+    "attr.s",
+    "attr.attrs",
+    "attr.dataclass",
+}
+RECORD_BASES = {"BaseModel", "BaseSettings", "NamedTuple"}
+TYPED_DICT = "TypedDict"
+FIELD_FACTORIES = {"field", "Field", "ib", "attrib"}
+FACTORY_KEYWORDS = {"default_factory", "factory"}
+MAX_BASE_DEPTH = 10
 COLLECTIONS = {
     "list",
     "List",
@@ -71,7 +84,7 @@ def plurals_of(name):
     if len(last) > 1 and last.endswith("y") and last[-2] not in "aeiou":
         plurals.append(name[:-1] + "ies")
     plurals.extend(prefix + plural for plural in IRREGULAR_PLURALS.get(last, ()))
-    return plurals
+    return list(dict.fromkeys(plurals))
 
 
 def singular_and_plural(inputs):
@@ -84,10 +97,44 @@ def singular_and_plural(inputs):
     return pairs
 
 
-def is_record(node, aliases):
+def project_classes(project):
+    classes = {}
+    for path, context in project.contexts.items():
+        module = project.module_name(path)
+        for statement in context.tree.body:
+            if isinstance(statement, ast.ClassDef):
+                classes[f"{module}.{statement.name}"] = (context, statement)
+    return classes
+
+
+def base_class(context, base):
+    classes = context.project.memo("review-fields-classes", project_classes)
+    name = dotted_name(base, context.aliases)
+    if name is None:
+        return None
+    module = context.project.module_name(context.path)
+    return classes.get(name) or classes.get(f"{module}.{name}")
+
+
+def decorator_target(decorator, aliases):
+    return dotted_name(decorator.func if isinstance(decorator, ast.Call) else decorator, aliases)
+
+
+def record_kind(context, node, depth=0):
     bases = {last_segment(base) for base in node.bases}
-    decorators = {decorator_name(decorator, aliases) for decorator in node.decorator_list}
-    return bool(bases & RECORD_BASES or decorators & RECORD_DECORATORS)
+    if TYPED_DICT in bases:
+        return TYPED_DICT
+    decorators = {decorator_target(decorator, context.aliases) for decorator in node.decorator_list}
+    if bases & RECORD_BASES or decorators & RECORD_DECORATORS:
+        return "record"
+    if depth >= MAX_BASE_DEPTH:
+        return None
+    for base in node.bases:
+        found = base_class(context, base)
+        kind = None if found is None else record_kind(found[0], found[1], depth + 1)
+        if kind is not None:
+            return kind
+    return None
 
 
 def is_total_false(node):
@@ -99,8 +146,20 @@ def is_total_false(node):
     )
 
 
-def optional_fields(node):
-    typed_dict = any(last_segment(base) == "TypedDict" for base in node.bases)
+def has_default(value):
+    if not isinstance(value, ast.Call) or last_segment(value.func) not in FIELD_FACTORIES:
+        return not (isinstance(value, ast.Constant) and value.value is Ellipsis)
+    keywords = {keyword.arg: keyword.value for keyword in value.keywords}
+    if keywords.keys() & FACTORY_KEYWORDS:
+        return True
+    default = keywords.get("default", value.args[0] if value.args else None)
+    return default is not None and not (
+        isinstance(default, ast.Constant) and default.value is Ellipsis
+    )
+
+
+def optional_fields(node, kind):
+    typed_dict = kind == TYPED_DICT
     total_false = is_total_false(node)
     fields = {}
     for statement in node.body:
@@ -114,7 +173,7 @@ def optional_fields(node):
         optional = (
             (total_false and wrapper != "Required") or wrapper == "NotRequired"
             if typed_dict
-            else statement.value is not None
+            else statement.value is not None and has_default(statement.value)
         )
         if optional:
             fields[statement.target.id] = annotation
@@ -125,11 +184,13 @@ def optional_parameters(fn):
     return {p.arg: p.annotation for p, _ in defaulted_parameters(fn) if p.annotation is not None}
 
 
-def field_findings(path, scoped, aliases):
+def field_findings(context, scoped):
     found = []
+    path = context.path
     for node, scope in scoped:
-        if isinstance(node, ast.ClassDef) and is_record(node, aliases):
-            inputs, kind = optional_fields(node), "fields"
+        record = record_kind(context, node) if isinstance(node, ast.ClassDef) else None
+        if record is not None:
+            inputs, kind = optional_fields(node, record), "fields"
         elif isinstance(node, FUNCTION_TYPES):
             inputs, kind = optional_parameters(node), "parameters"
         else:
@@ -144,4 +205,4 @@ def field_findings(path, scoped, aliases):
 def check(context):
     if context.tests:
         return []
-    return field_findings(context.path, scoped_definitions(context.tree), context.aliases)
+    return field_findings(context, scoped_definitions(context.tree))

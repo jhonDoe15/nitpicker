@@ -59,8 +59,60 @@ describe.skipIf(!enabled)('singular-and-plural-field', () => {
     ['different element types', 'def find(tag: str = "", tags: list[int] = ()) -> None: ...\n', []],
     ['a plain class', 'class Q:\n    tag: str = ""\n    tags: list[str] = []\n', []],
     ['unannotated parameters', 'def find(tag="", tags=()): ...\n', []],
+    [
+      'index and indexes, once',
+      'def find(index: int = 0, indexes: list[int] = (), sub_index: int = 0, sub_indexes: list[int] = ()) -> None: ...\n',
+      [
+        'singular-and-plural-field src/mod.py:1 find.indexes',
+        'singular-and-plural-field src/mod.py:1 find.sub_indexes',
+      ],
+    ],
+    [
+      'a pydantic field required through Field(...)',
+      'class Q(BaseModel):\n    name: str = Field(..., description="x")\n    names: list[str] = Field(default_factory=list)\n',
+      [],
+    ],
+    [
+      'a pydantic field with a Field default',
+      'class Q(BaseModel):\n    name: str = Field("", description="x")\n    names: list[str] = Field(default_factory=list)\n',
+      ['singular-and-plural-field src/mod.py:1 Q.names'],
+    ],
+    [
+      'a dataclass field with only metadata',
+      '@dataclass\nclass Q:\n    tag: str = field(metadata={"a": 1})\n    tags: list[str] = field(default_factory=list)\n',
+      [],
+    ],
+    [
+      'attrs decorators',
+      'import attr\nfrom attrs import frozen\n\n\n@attr.s(auto_attribs=True)\nclass Q:\n    tag: str = ""\n    tags: list[str] = attr.ib(factory=list)\n\n\n@frozen\nclass R:\n    tag: str = ""\n    tags: list[str] = ()\n',
+      [
+        'singular-and-plural-field src/mod.py:6 Q.tags',
+        'singular-and-plural-field src/mod.py:12 R.tags',
+      ],
+    ],
+    [
+      'a decorator that only shares a name',
+      'from shop.routes import define\n\n\n@define\nclass Q:\n    tag: str = ""\n    tags: list[str] = ()\n',
+      [],
+    ],
   ])('%s', (_name, code, expected) => {
     expect(pairs(code)).toEqual(expected);
+  });
+
+  it('checks a model whose base is a project model', () => {
+    expect(
+      findingsOf(
+        {
+          'src/shop/base.py':
+            'from pydantic import BaseModel\n\n\nclass AppBase(BaseModel):\n    pass\n',
+          'src/shop/query.py':
+            'from shop.base import AppBase\n\n\nclass Q(AppBase):\n    tag: str = ""\n    tags: list[str] = []\n',
+          'src/shop/totals.py':
+            'from typing import TypedDict\n\n\nclass Base(TypedDict, total=False):\n    pass\n\n\nclass T(Base):\n    tag: str\n    tags: list[str]\n',
+        },
+        { sourceRoots: ['src'] },
+      ).filter((finding) => finding.startsWith('singular-and-plural-field ')),
+    ).toEqual(['singular-and-plural-field src/shop/query.py:4 Q.tags']);
   });
 
   it('names both fields and their kind', () => {
