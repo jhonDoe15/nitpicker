@@ -83,7 +83,7 @@ const PATH_METHODS = [
   'readAttributes',
 ];
 
-export const STATIC_EFFECTS = new Map([
+const STATIC_EFFECTS = new Map([
   ['java.sql.DriverManager', ['getConnection']],
   ['jakarta.persistence.Persistence', ['createEntityManagerFactory']],
   ['javax.persistence.Persistence', ['createEntityManagerFactory']],
@@ -104,7 +104,7 @@ export const STATIC_EFFECTS = new Map([
   ['java.util.Locale', ['setDefault']],
 ]);
 
-export const INSTANCE_EFFECTS = new Map([
+const INSTANCE_EFFECTS = new Map([
   ['javax.sql.DataSource', ['getConnection']],
   ['com.zaxxer.hikari.HikariDataSource', ['getConnection']],
   ['java.net.http.HttpClient', ['send', 'sendAsync']],
@@ -122,7 +122,7 @@ export const INSTANCE_EFFECTS = new Map([
   ['kotlinx.coroutines.CoroutineScope', ['launch', 'async', 'produce']],
 ]);
 
-export const CHAIN_EFFECTS = new Map([
+const CHAIN_EFFECTS = new Map([
   ['okhttp3.OkHttpClient', ['execute', 'enqueue']],
   ['retrofit2.Retrofit', ['execute', 'enqueue']],
   ['org.springframework.web.client.RestTemplate', REST_OPERATIONS],
@@ -132,7 +132,7 @@ export const CHAIN_EFFECTS = new Map([
   ['org.apache.http.impl.client.CloseableHttpClient', ['execute']],
 ]);
 
-export const CONSTRUCTOR_EFFECTS = new Map([
+const CONSTRUCTOR_EFFECTS = new Map([
   ['java.io.FileInputStream', 'any'],
   ['java.io.FileOutputStream', 'any'],
   ['java.io.FileReader', 'any'],
@@ -156,13 +156,13 @@ export const CONSTRUCTOR_EFFECTS = new Map([
   ['java.util.Scanner', 'file'],
 ]);
 
-export const TOP_LEVEL_EFFECTS = new Set([
+const TOP_LEVEL_EFFECTS = new Set([
   'kotlin.system.exitProcess',
   'kotlin.concurrent.timer',
   'kotlin.concurrent.fixedRateTimer',
 ]);
 
-export const FACTORIES = new Map([
+const FACTORIES = new Map([
   ['java.net.http.HttpClient#newHttpClient', 'java.net.http.HttpClient'],
   ['java.net.http.HttpClient#newBuilder', 'java.net.http.HttpClient.Builder'],
   ['java.lang.Runtime#getRuntime', 'java.lang.Runtime'],
@@ -209,7 +209,7 @@ export const FACTORIES = new Map([
 
 const factoryOwners = [...FACTORIES.keys()].map((key) => key.split('#')[0]);
 
-export const KNOWN_TYPES = new Set([
+const KNOWN_TYPES = new Set([
   ...STATIC_EFFECTS.keys(),
   ...INSTANCE_EFFECTS.keys(),
   ...CHAIN_EFFECTS.keys(),
@@ -221,7 +221,7 @@ export const KNOWN_TYPES = new Set([
   'retrofit2.Retrofit',
 ]);
 
-export function matchesMethod(entries, name, argumentCount) {
+function matchesMethod(entries, name, argumentCount) {
   return (entries ?? []).some((entry) => {
     if (entry === '*') {
       return true;
@@ -241,4 +241,34 @@ export function factoryResult(type, name) {
   return [...FACTORIES].find(
     ([key]) => key.endsWith('*') && `${type}#${name}`.startsWith(key.slice(0, -1)),
   )?.[1];
+}
+
+const EFFECT_TABLES = new Map([
+  ['static', STATIC_EFFECTS],
+  ['instance', INSTANCE_EFFECTS],
+  ['chain', CHAIN_EFFECTS],
+]);
+
+export function hasEffect(table, type, { name, argumentCount }) {
+  return matchesMethod(EFFECT_TABLES.get(table).get(type), name, argumentCount);
+}
+
+export function isKnownType(name) {
+  return KNOWN_TYPES.has(name);
+}
+
+export function knownTypes() {
+  return [...KNOWN_TYPES];
+}
+
+export function isTopLevelEffect(name) {
+  return TOP_LEVEL_EFFECTS.has(name);
+}
+
+export function constructorKind(type) {
+  return CONSTRUCTOR_EFFECTS.get(type);
+}
+
+export function createdType(type) {
+  return FACTORIES.get(type) ?? type;
 }

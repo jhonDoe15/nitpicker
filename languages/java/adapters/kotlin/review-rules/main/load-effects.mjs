@@ -2,26 +2,27 @@ import path from 'node:path';
 import { LOAD_EFFECT_RULE, shortCall } from '../../../../messages/load-effects.mjs';
 import { simpleTypeName } from '../kotlin-facts.mjs';
 import {
-  CHAIN_EFFECTS,
-  CONSTRUCTOR_EFFECTS,
-  FACTORIES,
-  INSTANCE_EFFECTS,
-  KNOWN_TYPES,
-  STATIC_EFFECTS,
-  TOP_LEVEL_EFFECTS,
+  constructorKind,
+  createdType,
   factoryResult,
-  matchesMethod,
+  hasEffect,
+  isKnownType,
+  isTopLevelEffect,
 } from './load-effect-types.mjs';
 
 const DEFAULT_PACKAGES = ['java.lang', 'kotlin', 'kotlin.io'];
-const MAX_DEPTH = 3;
+const EXPANSIONS = 3;
 const UNKNOWN = { kind: 'unknown' };
+const OPAQUE = { opaque: true };
+const AMBIGUOUS = { ambiguous: true };
 const CAPITALIZED = /^[A-Z]/u;
 const BUILDER = '.Builder';
 const FILE_ARGUMENT = /^(?:java\.io\.)?File\(|^(?:java\.nio\.file\.)?Paths?\.(?:of|get)\(/u;
 const FILE_NAME_ARGUMENT = /^"|^(?:java\.io\.)?File\(/u;
 
-const instance = (type) => ({ kind: 'instance', type, via: type });
+function instance(type) {
+  return { kind: 'instance', type, via: type };
+}
 
 function importedPath(name, file) {
   return file.imports.find(
@@ -41,56 +42,70 @@ function resolveName(name, scope) {
   return [
     ...file.imports.filter(({ all }) => all).map(({ path: target }) => `${target}.${name}`),
     ...DEFAULT_PACKAGES.map((target) => `${target}.${name}`),
-  ].find((candidate) => KNOWN_TYPES.has(candidate) || TOP_LEVEL_EFFECTS.has(candidate));
+  ].find((candidate) => isKnownType(candidate) || isTopLevelEffect(candidate));
 }
 
 function createdBy(type) {
-  return type === undefined ? UNKNOWN : instance(FACTORIES.get(type) ?? type);
+  return type === undefined ? UNKNOWN : instance(createdType(type));
 }
 
 function declaredType(text, scope) {
   const bare = simpleTypeName(text);
   const written = text.replaceAll(/[?\s]|<.*$/gu, '');
-  return KNOWN_TYPES.has(written) ? written : resolveName(bare, scope);
+  return isKnownType(written) ? written : resolveName(bare, scope);
 }
 
-function bindingState(binding, scope, depth) {
-  if (binding.type !== undefined) {
-    const type = declaredType(binding.type, scope);
-    return type === undefined ? UNKNOWN : instance(type);
-  }
-  return depth < MAX_DEPTH ? chainState(binding.init, scope, depth + 1) : UNKNOWN;
-}
-
-function boundState(name, scope, depth) {
+function bindingOf(name, scope) {
   const named = scope.file.bindings.filter((binding) => binding.name === name);
-  if (named.length === 0) {
-    return undefined;
-  }
   const own = named.filter(({ owner }) => owner === scope.owner);
-  const states = (own.length > 0 ? own : named).map((binding) =>
-    JSON.stringify(bindingState(binding, scope, depth)),
+  const chosen = own.length > 0 ? own : named;
+  const forms = new Set(
+    chosen.map(({ type, init }) => JSON.stringify(type === undefined ? { init } : { type })),
   );
-  return new Set(states).size === 1 ? JSON.parse(states[0]) : UNKNOWN;
+  return forms.size > 1 ? AMBIGUOUS : chosen[0];
+}
+
+function isVariable(segment) {
+  return (
+    segment !== undefined &&
+    segment.opaque !== true &&
+    !segment.call &&
+    !CAPITALIZED.test(segment.name)
+  );
+}
+
+function expandOnce(segments, scope) {
+  const [first, ...rest] = segments;
+  const binding = isVariable(first) ? bindingOf(first.name, scope) : undefined;
+  if (binding === undefined || binding.type !== undefined) {
+    return segments;
+  }
+  return (binding.init ?? []).length === 0 ? [OPAQUE, ...rest] : [...binding.init, ...rest];
+}
+
+function typedState(binding, scope) {
+  const type = binding.type === undefined ? undefined : declaredType(binding.type, scope);
+  return type === undefined ? UNKNOWN : instance(type);
 }
 
 function qualifiedRoot(segments) {
-  for (let used = 2; used <= segments.length; used += 1) {
-    const name = segments
-      .slice(0, used)
-      .map((segment) => segment.name)
-      .join('.');
-    if (KNOWN_TYPES.has(name)) {
-      return {
-        state: segments[used - 1].call ? createdBy(name) : { kind: 'static', type: name },
-        used,
-      };
-    }
+  const names = segments.map((_, index) =>
+    segments
+      .slice(0, index + 1)
+      .map(({ name }) => name)
+      .join('.'),
+  );
+  const index = names.findIndex((name, at) => at > 0 && isKnownType(name));
+  if (index < 0) {
+    return { state: UNKNOWN, used: segments.length };
   }
-  return { state: UNKNOWN, used: segments.length };
+  const state = segments[index].call
+    ? createdBy(names[index])
+    : { kind: 'static', type: names[index] };
+  return { state, used: index + 1 };
 }
 
-function rootState(segments, scope, depth) {
+function rootState(segments, scope) {
   const [first] = segments;
   if (first.opaque === true) {
     return { state: UNKNOWN, used: 1 };
@@ -98,12 +113,14 @@ function rootState(segments, scope, depth) {
   if (first.call) {
     return { state: createdBy(resolveName(first.name, scope)), used: 1 };
   }
-  if (!CAPITALIZED.test(first.name)) {
-    const bound = boundState(first.name, scope, depth);
-    return bound === undefined ? qualifiedRoot(segments) : { state: bound, used: 1 };
+  if (CAPITALIZED.test(first.name)) {
+    const type = resolveName(first.name, scope);
+    return { state: type === undefined ? UNKNOWN : { kind: 'static', type }, used: 1 };
   }
-  const type = resolveName(first.name, scope);
-  return { state: type === undefined ? UNKNOWN : { kind: 'static', type }, used: 1 };
+  const binding = bindingOf(first.name, scope);
+  return binding === undefined
+    ? qualifiedRoot(segments)
+    : { state: typedState(binding, scope), used: 1 };
 }
 
 function getterOf(name) {
@@ -138,28 +155,34 @@ function step(state, segment) {
   return state.kind === 'static' ? staticStep(state.type, segment) : instanceStep(state, segment);
 }
 
-function chainState(segments, scope, depth) {
-  if (segments === undefined || segments.length === 0) {
+function chainState(segments, scope) {
+  const expanded = Array.from({ length: EXPANSIONS }).reduce(
+    (current) => expandOnce(current, scope),
+    segments,
+  );
+  if (expanded.length === 0) {
     return UNKNOWN;
   }
-  const { state, used } = rootState(segments, scope, depth);
-  return segments.slice(used).reduce(step, state);
+  const { state, used } = rootState(expanded, scope);
+  return expanded.slice(used).reduce(step, state);
 }
 
 function memberEffect(state, item) {
-  const count = item.arguments?.length ?? 0;
+  const argumentCount = item.arguments?.length ?? 0;
   if (state.kind === 'static') {
-    return item.call && matchesMethod(STATIC_EFFECTS.get(state.type), item.name, count);
+    return item.call && hasEffect('static', state.type, { name: item.name, argumentCount });
   }
   const names = item.call ? [item.name] : [item.name, getterOf(item.name)];
-  const tables = [
-    INSTANCE_EFFECTS.get(state.type),
-    CHAIN_EFFECTS.get(state.via),
-    CHAIN_EFFECTS.get(state.type),
+  const lookups = [
+    ['instance', state.type],
+    ['chain', state.via],
+    ['chain', state.type],
   ];
   return (
     state.kind === 'instance' &&
-    names.some((name) => tables.some((entries) => matchesMethod(entries, name, count)))
+    names.some((name) =>
+      lookups.some(([table, type]) => hasEffect(table, type, { name, argumentCount })),
+    )
   );
 }
 
@@ -178,22 +201,20 @@ function namedEffect(resolved, item) {
   if (resolved === undefined) {
     return false;
   }
-  const constructor = CONSTRUCTOR_EFFECTS.get(resolved);
-  if (constructor !== undefined) {
-    return constructorEffect(constructor, item);
+  const kind = constructorKind(resolved);
+  if (kind !== undefined) {
+    return constructorEffect(kind, item);
   }
   const owner = resolved.split('.').slice(0, -1).join('.');
-  return (
-    TOP_LEVEL_EFFECTS.has(resolved) ||
-    matchesMethod(STATIC_EFFECTS.get(owner), resolved.split('.').at(-1), item.arguments.length)
-  );
+  const call = { name: resolved.split('.').at(-1), argumentCount: item.arguments.length };
+  return isTopLevelEffect(resolved) || hasEffect('static', owner, call);
 }
 
 function isPackagePath(segments) {
   return segments.every((segment) => !segment.call && !CAPITALIZED.test(segment.name ?? 'X'));
 }
 
-export function isLoadEffect(item, scope) {
+function isLoadEffect(item, scope) {
   if (item.receiver.length === 0) {
     return item.call && namedEffect(resolveName(item.name, scope), item);
   }
@@ -201,7 +222,7 @@ export function isLoadEffect(item, scope) {
     const qualified = [...item.receiver.map(({ name }) => name), item.name].join('.');
     return namedEffect(qualified, item);
   }
-  return memberEffect(chainState(item.receiver, scope, 0), item);
+  return memberEffect(chainState(item.receiver, scope), item);
 }
 
 function entryOwners(file) {
