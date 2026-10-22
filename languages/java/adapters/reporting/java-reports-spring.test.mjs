@@ -73,3 +73,46 @@ describe('readJavaFindings: Spring test profiles', () => {
     ]);
   });
 });
+
+function mixedProject(files) {
+  const root = emptyProject();
+  for (const [file, text] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    writeFileSync(path.join(root, file), text);
+  }
+  writeFileSync(
+    path.join(rootReports(root), 'manifest.json'),
+    JSON.stringify({
+      sourceRoots: ['src/main/java'],
+      kotlinSourceRoots: ['src/main/java', 'src/main/kotlin'],
+      spring: true,
+    }),
+  );
+  return root;
+}
+
+describe('readJavaFindings: Spring sources in Kotlin', () => {
+  const SCHEDULED = 'import org.springframework.scheduling.annotation.Scheduled\n';
+  const missingEnable = (root) =>
+    readJavaFindings(root)
+      .findings.filter(({ rule }) => rule === 'missing-enable')
+      .map(({ path: file, location }) => `${file}:${String(location.line)}`);
+
+  it('reads the Kotlin source roots for an annotation that needs an @Enable', () => {
+    const root = mixedProject({
+      'src/main/kotlin/shop/Jobs.kt': `${SCHEDULED}class Jobs {\n  @Scheduled(fixedDelay = 1000)\n  fun run() {}\n}\n`,
+    });
+
+    expect(missingEnable(root)).toEqual(['src/main/kotlin/shop/Jobs.kt:3']);
+  });
+
+  it('finds the @Enable annotation in a Kotlin class', () => {
+    const root = mixedProject({
+      'src/main/kotlin/shop/App.kt':
+        'import org.springframework.scheduling.annotation.EnableScheduling\n@EnableScheduling\nclass App\n',
+      'src/main/java/shop/Jobs.java': `${SCHEDULED};class Jobs {\n  @Scheduled(fixedDelay = 1000)\n  void run() {}\n}\n`,
+    });
+
+    expect(missingEnable(root)).toEqual([]);
+  });
+});

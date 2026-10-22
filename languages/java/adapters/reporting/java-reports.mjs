@@ -45,7 +45,10 @@ export function readJavaFindings(projectRoot, options = {}) {
   const moduleFindings = modules
     .filter((module) => !isEmptyModule(projectRoot, module))
     .flatMap((module) =>
-      withModuleIdentity(moduleContextFindings(projectRoot, module, { manifest, options }), module),
+      withModuleIdentity(
+        moduleContextFindings(projectRoot, module, { manifest, modules, options }),
+        module,
+      ),
     );
   return {
     findings: applyRuleMessages(
@@ -79,7 +82,7 @@ export function readJavaFindings(projectRoot, options = {}) {
   };
 }
 
-function moduleContextFindings(projectRoot, module, { manifest, options }) {
+function moduleContextFindings(projectRoot, module, { manifest, modules, options }) {
   const preset = options.preset ?? 'java';
   const { fileLimits: thresholds, exceptions, modulePath } = options;
   const testReport = readTestFailures(module.reportRoot);
@@ -94,6 +97,7 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       sourceRoots: module.manifest.sourceRoots ?? [],
       lintedRoots: lintedRoots(module.manifest),
       allSourceRoots: manifest.sourceRoots,
+      modules,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
       formatAdvice: options.formatAdvice,
       conventions: options.conventions,
@@ -173,7 +177,9 @@ function baselineRootOf({ baseline, modulePath }) {
 function springFindings(projectRoot, manifest, options) {
   return manifest.spring === true
     ? readSpringConfigFindings(projectRoot, {
-        sourceRoots: manifest.sourceRoots,
+        sourceRoots: [
+          ...new Set([...(manifest.sourceRoots ?? []), ...(manifest.kotlinSourceRoots ?? [])]),
+        ],
         resourceRoots: manifest.resourceRoots,
         testSourceRoots: manifest.testSourceRoots,
         baselineRoot: baselineRootOf(options),

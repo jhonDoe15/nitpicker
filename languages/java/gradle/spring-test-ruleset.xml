@@ -29,7 +29,7 @@
          'org.springframework.beans.factory.annotation.Value',
          'org.springframework.beans.factory.annotation.Qualifier',
          'jakarta.inject.Inject', 'javax.inject.Inject', 'jakarta.annotation.Resource', 'javax.annotation.Resource',
-         'jakarta.persistence.PersistenceContext',
+         'jakarta.persistence.PersistenceContext', 'javax.persistence.PersistenceContext',
          'org.springframework.boot.test.mock.mockito.MockBean', 'org.springframework.boot.test.mock.mockito.SpyBean',
          'org.springframework.test.context.bean.override.mockito.MockitoBean',
          'org.springframework.test.context.bean.override.mockito.MockitoSpyBean',
