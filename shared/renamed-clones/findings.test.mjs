@@ -2,12 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  renamedClones,
-  renamedFindings,
-  RENAMED_IDENTITY_PREFIX,
-  withoutRenamedCopies,
-} from './findings.mjs';
+import { renamedClones, renamedFindings, withoutRenamedCopies } from './findings.mjs';
 
 const roots = [];
 
@@ -111,7 +106,7 @@ describe('plain clones next to renamed ones', () => {
 });
 
 describe('findings for renamed clones', () => {
-  it('are enforceable duplicate-clone findings with an identity of their own', () => {
+  it('are a duplicate-clone finding and its size metrics, with an identity of their own', () => {
     const findings = renamedFindings([clone()], 'duplicates');
 
     expect(findings).toEqual([
@@ -119,14 +114,29 @@ describe('findings for renamed clones', () => {
         tool: 'duplicates',
         rule: 'duplicate-clone',
         path: 'a.py',
-        identity: expect.stringMatching(
-          new RegExp(
-            `^${RENAMED_IDENTITY_PREFIX}pair:a\\.py\\|b\\.py:fragment:[0-9a-f]{24}:occurrence:1$`,
-            'u',
-          ),
-        ),
+        identity: 'renamed:pair:a.py|b.py:fragment:7bdf085b864988493169ca59:occurrence:1',
         message: 'This code repeats b.py:1 (8 lines). Keep one copy and call it from both places.',
         classification: 'enforceable',
+        location: { line: 1 },
+      },
+      {
+        tool: 'duplicates',
+        rule: 'duplicate-clone-size',
+        path: 'a.py',
+        identity: 'renamed:pair:a.py|b.py:occurrence:1:lines',
+        message: 'Duplicate with b.py',
+        classification: 'descriptive',
+        metric: { name: 'lines', value: 8 },
+        location: { line: 1 },
+      },
+      {
+        tool: 'duplicates',
+        rule: 'duplicate-clone-size',
+        path: 'a.py',
+        identity: 'renamed:pair:a.py|b.py:occurrence:1:tokens',
+        message: 'Duplicate with b.py',
+        classification: 'descriptive',
+        metric: { name: 'tokens', value: 120 },
         location: { line: 1 },
       },
     ]);
@@ -149,7 +159,11 @@ describe('findings for renamed clones', () => {
       clone({ first: { file: 'src/a.ts', line: 1 }, second: { file: 'test/b.test.ts', line: 1 } }),
     ];
 
-    expect(renamedFindings(clones, 'duplicates', advice).map(({ message }) => message)).toEqual([
+    const found = renamedFindings(clones, 'duplicates', advice).filter(
+      ({ classification }) => classification === 'enforceable',
+    );
+
+    expect(found.map(({ message }) => message)).toEqual([
       'This code repeats test/b.test.ts:1 (8 lines). Fold the cases into one table.',
       'This code repeats test/b.test.ts:1 (8 lines). Keep one copy and call it from both places.',
     ]);

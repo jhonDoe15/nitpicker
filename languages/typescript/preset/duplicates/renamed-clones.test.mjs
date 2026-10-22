@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mjs';
 import { withDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
 import { applyLayout, configuredAnalyzers } from '../diff/configured-analyzers.mjs';
@@ -9,7 +9,6 @@ import { resolveHeadPolicy, withHeadPolicyFile } from '../head-policy.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const temporaryRoots = [];
-const EXCEPTION_SENTENCE = 'to "exceptions" in nitpicker.config.json.';
 
 function pricing(names, numbers) {
   return `export function ${names.fn}(${names.list}: Line[], ${names.rate}: number): number {
@@ -238,48 +237,83 @@ afterAll(() => {
   }
 });
 
-describe('clones whose names and literals were renamed', () => {
-  let found;
+let cachedFindings;
 
-  beforeAll(() => {
+function foundClones() {
+  if (cachedFindings === undefined) {
     const run = analyze(FILES);
-    expect(run.toolErrors).toEqual([]);
-    found = enforceable(run);
-  }, 60_000);
+    cachedFindings = { findings: enforceable(run), toolErrors: run.toolErrors };
+  }
+  return cachedFindings;
+}
+
+function expectedClone({ file, other, hash, line, lines, advice = 'Keep one copy' }) {
+  const lifted = `{"rule":"duplicate-clone","paths":["${file}"],"reason":"..."}`;
+  return {
+    tool: 'duplicates',
+    rule: 'duplicate-clone',
+    path: file,
+    identity: `renamed:pair:${file}|${other}:fragment:${hash}:occurrence:1`,
+    message:
+      `This code repeats ${other}:${String(line)} (${String(lines)} lines). ${advice} and call it from both ` +
+      `places. If this is intended, add ${lifted} to "exceptions" in nitpicker.config.json.`,
+    classification: 'enforceable',
+    location: { line },
+  };
+}
+
+describe('clones whose names and literals were renamed', () => {
+  it('runs without a tool error', () => {
+    expect(foundClones().toolErrors).toEqual([]);
+  });
 
   it('reports the copy-pasted function with every local renamed', () => {
-    const clone = found.find((finding) => finding.path === 'src/renamed/first.ts');
+    const clone = foundClones().findings.find(({ path: file }) => file === 'src/renamed/first.ts');
 
-    expect(clone.rule).toBe('duplicate-clone');
-    expect(clone.identity).toMatch(
-      /^renamed:pair:src\/renamed\/first\.ts\|src\/renamed\/second\.ts:/u,
+    expect(clone).toEqual(
+      expectedClone({
+        file: 'src/renamed/first.ts',
+        other: 'src/renamed/second.ts',
+        hash: '2f4bb56275d13c34bd0f291f',
+        line: 1,
+        lines: 12,
+      }),
     );
-    expect(clone.message).toMatch(
-      /^This code repeats src\/renamed\/second\.ts:1 \(\d+ lines\)\. Keep one copy/u,
+  });
+
+  it('reports a component that repeats its logic although the markup differs', () => {
+    const clone = foundClones().findings.find(({ path: file }) => file === 'src/logic/first.tsx');
+
+    expect(clone).toEqual(
+      expectedClone({
+        file: 'src/logic/first.tsx',
+        other: 'src/logic/second.tsx',
+        hash: '20e1e008857a525fbf83d0de',
+        line: 1,
+        lines: 21,
+      }),
     );
-    expect(clone.message).toContain(EXCEPTION_SENTENCE);
-    expect(clone.message).toContain('"rule":"duplicate-clone","paths":["src/renamed/first.ts"]');
   });
 
   it('points a clone between two test files at a helper or a table', () => {
-    const clone = found.find((finding) => finding.path === 'test/helpers/first.test.ts');
-
-    expect(clone.message).toContain('fold the cases into one table-driven test');
-    expect(clone.message).toContain(EXCEPTION_SENTENCE);
-  });
-
-  it('stays quiet for short similar functions, import lists, generated files, test tables and markup', () => {
-    const quiet = found.filter(
-      ({ path: file, message }) =>
-        !/^(?:src\/renamed|src\/logic|test\/helpers)\//u.test(file) ||
-        message.includes('src/generated'),
+    const clone = foundClones().findings.find(
+      ({ path: file }) => file === 'test/helpers/first.test.ts',
     );
 
-    expect(quiet).toEqual([]);
+    expect(clone).toEqual(
+      expectedClone({
+        file: 'test/helpers/first.test.ts',
+        other: 'test/helpers/second.test.ts',
+        hash: 'cb054678e83a967c5cd306ce',
+        line: 3,
+        lines: 18,
+        advice: 'Extract a helper, or fold the cases into one table-driven test. Keep one copy',
+      }),
+    );
   });
 
-  it('reports each clone once', () => {
-    expect(found.map(({ path: file }) => file).sort()).toEqual([
+  it('stays quiet for short functions, imports, generated files, test tables and markup', () => {
+    expect(foundClones().findings.map(({ path: file }) => file)).toEqual([
       'src/logic/first.tsx',
       'src/renamed/first.ts',
       'test/helpers/first.test.ts',

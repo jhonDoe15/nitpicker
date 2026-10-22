@@ -2,7 +2,7 @@ import { evaluateDuplicates } from '../rules/duplicates.mjs';
 import { isBoilerplate } from './boilerplate.mjs';
 import { readProjectFile } from './files.mjs';
 
-export const RENAMED_IDENTITY_PREFIX = 'renamed:';
+const RENAMED_IDENTITY_PREFIX = 'renamed:';
 const WHITESPACE = /\s+/gu;
 const CLONE_MESSAGE = /^This code repeats (\S+?)(?::\d+)? \(\d+ lines\)\./u;
 const KEEP_ONE_COPY = / Keep one copy.*$/u;
@@ -73,7 +73,6 @@ function withTestAdvice(finding, { isTestFile, text }) {
 
 export function renamedFindings(clones, analyzerName, testAdvice) {
   return evaluateDuplicates(clones, analyzerName)
-    .filter((finding) => finding.classification === 'enforceable')
     .map((finding) => (testAdvice === undefined ? finding : withTestAdvice(finding, testAdvice)))
     .map((finding) => ({ ...finding, identity: `${RENAMED_IDENTITY_PREFIX}${finding.identity}` }));
 }

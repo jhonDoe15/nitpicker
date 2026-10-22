@@ -46,7 +46,7 @@ const PLANTED_OUTPUT = [
   'dead-code/files src/main/lint/banned.js files: src/main/lint/banned.js',
   'dead-code/files src/main/lint/mode.ts files: src/main/lint/mode.ts',
   'dead-code/files src/main/orders/place.js files: src/main/orders/place.js',
-  'duplicates/duplicate-clone src/main/dup/a.js:5 This code repeats src/main/dup/b.js:5 (12 lines). Keep one copy and call it from both places.',
+  'duplicates/duplicate-clone src/main/dup/a.js:5 This code repeats src/main/dup/b.js:5 (12 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicate-clone","paths":["src/main/dup/a.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
   'entry-points/public-alternative-bypass src/main/orders/place.js Import src/main/billing/adapters/charge.js through src/main/billing/index.js (runtime)',
   unknownFolder('billing/adapters/charge.js', 5),
   unknownFolder('billing/index.js', 1),
