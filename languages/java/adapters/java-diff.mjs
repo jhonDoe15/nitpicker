@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
@@ -17,7 +17,7 @@ import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs'
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
-import { toolConfigChoices, toolConfigProperties } from './tool-config/tool-config-choices.mjs';
+import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
 import { failingTestsOf } from './gradle-reports/failing-tests.mjs';
@@ -27,13 +27,11 @@ import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
 import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
-import { javaStyleProperties } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
+import { gradleOptions, gradleStages } from './gradle-wrapper/gradle-stages.mjs';
 
-const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
 const CLOCK_SLACK_MS = 2000;
-const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
 
 function assertSucceeded(result, projectRoot, { reportBase, since }) {
   if (result.error === undefined && result.status === 0) {
@@ -48,52 +46,6 @@ function assertSucceeded(result, projectRoot, { reportBase, since }) {
     failingTestsOf(projectRoot, { reportBase, since }) ??
     new Error(`Java preset failed in ${projectRoot}: ${detail || 'no diagnostic output'}`);
   throw withGradleLog(failure, result);
-}
-
-function exportArguments(common, { initScript, directory, policy }) {
-  mkdirSync(directory, { recursive: true });
-  return [
-    ...common,
-    ...javaStyleProperties(policy),
-    `-Pnitpicker.checkstyle.exportConfig=${path.join(directory, CHECKSTYLE_EXPORT)}`,
-    '-I',
-    initScript,
-    'nitpickerCheckstyleConfig',
-  ];
-}
-
-function gradleOptions(target, { projectRoot, budget, spawn }) {
-  return {
-    cwd: projectRoot,
-    encoding: 'utf8',
-    maxBuffer: MAX_OUTPUT_BYTES,
-    shell: target.shell,
-    timeout: budget.commandTimeoutMs,
-    spawn,
-  };
-}
-
-function headFactProperties(policy) {
-  return [
-    ...javaStyleProperties(policy),
-    ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
-  ];
-}
-
-function gradleStages(common, { projectRoot, initScript, policy, directory }) {
-  const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
-  const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
-  return [
-    ...(layersCheckstyle ? [() => exportArguments(common, { initScript, directory, policy })] : []),
-    () => [
-      ...common,
-      ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
-      ...headFactProperties(policy),
-      '-I',
-      initScript,
-      'nitpickerJava',
-    ],
-  ];
 }
 
 function runJavaPreset(
