@@ -21,7 +21,9 @@ import {
 } from '../../languages/typescript/preset/modules/tsconfig-files.mjs';
 import { presetToDeclare } from '../configuration/project-checks/preset-detection.mjs';
 import { readToolConfigs } from './build-files/tool-config-files.mjs';
-import { generatedReaders } from './paths/generated-marking.mjs';
+import { isGeneratedJvm } from '../../languages/java/adapters/generated/generated-sources.mjs';
+import { isGeneratedPython } from '../../languages/python/libraries/generated-files.mjs';
+import { isMarkedGenerated } from '../../languages/typescript/preset/layout/generated-files.mjs';
 
 const GRADLE_EXTENSIONS = ['java', 'kt', 'kts'];
 const PRESET_EXTENSIONS = new Map([
@@ -210,6 +212,21 @@ function buildSourcesOf({ preset }, { projectRoot, files, roots }) {
     );
   }
   return GRADLE_PRESETS.includes(preset) ? readBuildSources(projectRoot, files) : [];
+}
+
+function generatedTestOf(preset) {
+  if (preset === 'python') {
+    return isGeneratedPython;
+  }
+  return GRADLE_PRESETS.includes(preset) ? isGeneratedJvm : isMarkedGenerated;
+}
+
+function generatedReaders(preset, baseProjectRoot, headProjectRoot) {
+  const isGenerated = generatedTestOf(preset);
+  return {
+    base: (file) => isGenerated(baseProjectRoot, file),
+    head: (file) => isGenerated(headProjectRoot, file),
+  };
 }
 
 function blobReader(projectRoot) {

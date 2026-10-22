@@ -7,7 +7,7 @@ import {
   resolveHeadPolicy,
   withHeadCheckoutFacts,
 } from '../../../typescript/preset/head-policy.mjs';
-import { resolveProjectHeadPolicy } from '../../../../core/configuration/project-head-policy.mjs';
+import { resolveProjectHeadPolicy } from '../../../../core/conventions/project-head-policy.mjs';
 import { declaresSpring, javaHeadFacts } from './head-facts.mjs';
 import { analyzeJavaSnapshot, readRunnerPolicy } from '../java-runner.mjs';
 

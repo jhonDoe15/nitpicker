@@ -1,13 +1,9 @@
+import { listed } from '../paths/hidden-code.mjs';
 import { isUnder } from '../policy-scope.mjs';
 
 const LISTED_FILES = 3;
 const NOTHING_NEW = 'covers no checked file it did not cover before';
 const NOTHING_LEFT_OUT = 'leaves out no checked file it did not leave out before';
-
-function listed(files, limit) {
-  const more = files.length > limit ? `, and ${files.length - limit} more` : '';
-  return `${files.slice(0, limit).join(', ')}${more}`;
-}
 
 function within(entry, file) {
   if (entry.roots === undefined) {

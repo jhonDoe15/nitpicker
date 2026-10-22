@@ -39,7 +39,7 @@ function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   return key.prettier === undefined ? undefined : gitBlobId(JSON.stringify(key.prettier));
 }
 
-function fingerprints(tool, projectRoot, files, gitBlobId) {
+function fingerprints(tool, { root: projectRoot, files }, gitBlobId) {
   return new Map(
     files.flatMap((file) => {
       const fingerprint = fingerprintOf(tool, { projectRoot, file }, gitBlobId);
@@ -105,7 +105,7 @@ export function readToolConfigs(base, head, gitBlobId) {
     .filter((tool) => isOptedIn(tool, base.config) && isOptedIn(tool, head.config))
     .map((tool) => ({
       tool,
-      base: fingerprints(tool, base.root, candidates(tool, base), gitBlobId),
-      head: fingerprints(tool, head.root, candidates(tool, head), gitBlobId),
+      base: fingerprints(tool, { root: base.root, files: candidates(tool, base) }, gitBlobId),
+      head: fingerprints(tool, { root: head.root, files: candidates(tool, head) }, gitBlobId),
     }));
 }

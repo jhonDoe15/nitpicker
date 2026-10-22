@@ -6,7 +6,7 @@ import {
   isValidChoice,
 } from '../../shared/conventions/settings.mjs';
 import { isJavascriptPolicy } from '../../languages/javascript/preset/javascript-preset.mjs';
-import { resolveProjectHeadPolicy } from '../configuration/project-head-policy.mjs';
+import { resolveProjectHeadPolicy } from './project-head-policy.mjs';
 import {
   builtInExcludedGlobs,
   prettierPatterns,
