@@ -1,27 +1,38 @@
-import { existsSync, realpathSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { packageHasJavaScriptApi } from '../../typescript-api/api-redirect.mjs';
+import { ts as selectedTypeScript } from '../../typescript-api/typescript-api.mjs';
 import { nativeDiagnostics } from './native-diagnostics.mjs';
 
 const NO_INPUTS_CODE = 18003;
-export function loadTypeScript(projectRoot = PACKAGE_ROOT) {
-  const root = resolveTool('typescript', { projectRoot }).root;
-  const libraryPath = path.join(root, 'lib/typescript.js');
-  if (!existsSync(libraryPath)) {
-    throw new Error(
-      `The type check reads source files with the project's typescript package, which must be 5.7 to 6.x: ` +
-        `${root} has no JavaScript API, which TypeScript 7 does not ship yet.`,
-    );
-  }
-  return createRequire(import.meta.url)(libraryPath);
+
+export function projectTypeScript(projectRoot = PACKAGE_ROOT) {
+  const { root } = resolveTool('typescript', { projectRoot });
+  return packageHasJavaScriptApi(root)
+    ? { ts: createRequire(import.meta.url)(path.join(root, 'lib/typescript.js')) }
+    : { ts: selectedTypeScript, native: root };
 }
 
-export async function preEmitDiagnostics({ ts, engine, configPath, projectRoot }) {
+export function loadTypeScript(projectRoot = PACKAGE_ROOT) {
+  return projectTypeScript(projectRoot).ts;
+}
+
+export async function preEmitDiagnostics({ ts, engine, configPath, projectRoot, projectNative }) {
   if (engine === 'native') {
-    const native = await nativeDiagnostics({ ts, configPath, projectRoot });
+    const native = await nativeDiagnostics({
+      ts,
+      configPath,
+      projectRoot,
+      engineHint: projectNative === undefined,
+    });
     if (native.unsupported !== true) return native.diagnostics;
+  }
+  if (projectNative !== undefined) {
+    const own = await nativeDiagnostics({ ts, configPath, projectRoot, apiRoot: projectNative });
+    return own.diagnostics;
   }
   return projectDiagnostics(ts, configPath, projectRoot);
 }

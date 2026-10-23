@@ -67,6 +67,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/syntax',
   'languages/typescript/preset/modules',
   'languages/typescript/preset/test-environment',
+  'languages/typescript/typescript-api',
   'shared',
 ];
 const temporaryRoots = [];

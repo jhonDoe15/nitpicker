@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { realpathSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { sourceFilesUnder } from '../../../../shared/renamed-clones/files.mjs';
