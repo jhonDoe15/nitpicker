@@ -177,6 +177,14 @@ export const failureMessageCases = [
       'export function fetchOne(id: string): string { return id; }\nexport function readOne(id: string): string { return fetchOne(id); }',
     allowed,
   })),
+  {
+    name: 'forwarding method alias names the direct call',
+    config: typedStrictConfig,
+    filename: path.resolve('src/fixture.ts'),
+    banned:
+      'export class Cart {\n  sum(items: string[]): number { return items.length; }\n  total(items: string[]): number { return this.sum(items); }\n}',
+    allowed: 'call `sum` directly and delete `total`',
+  },
   ...domainFailureMessageCases,
   {
     name: 'domain recursion names flatMap',

@@ -25,6 +25,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-disabled-tls-verification',
   'nitpicker/no-first-test-charged-setup',
   'nitpicker/no-git-repository-per-test',
+  'nitpicker/no-forwarding-method-alias',
   'nitpicker/no-forwarding-wrapper',
   'nitpicker/no-handwritten-boundary-guard',
   'nitpicker/no-magic-numbers',
