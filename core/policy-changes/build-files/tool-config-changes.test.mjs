@@ -112,8 +112,12 @@ describe('project tool configs the project opted into', () => {
       const base = at('{"minTokens": 50}');
 
       expect(between({ base, head: at('{"minTokens": 500}'), config }).policyLoosenings).toEqual([
-        'jscpd project config changed: .jscpd.json',
+        'jscpd .jscpd.json minTokens: 50 -> 500',
       ]);
+      expect(changesOf(between({ base, head: at('{"minTokens": 10}'), config }))).toEqual({
+        policyLoosenings: [],
+        policyChanges: ['jscpd .jscpd.json minTokens: 50 -> 10'],
+      });
       expect(
         between({ base, head: at('{\n  "minTokens": 50\n}\n'), config }).policyLoosenings,
       ).toEqual([]);
@@ -138,11 +142,46 @@ describe('project tool configs the project opted into', () => {
           config: { preset, tools: { jscpd: PROJECT } },
         }).policyLoosenings,
       ).toEqual([
-        'jscpd project config changed: .jscpd.json',
+        'jscpd .jscpd.json minTokens: not set -> 5000',
         'tools.jscpd.precedence: not set -> ["project","nitpicker"]',
       ]);
     },
   );
+});
+
+describe('what an edit of .jscpd.json changes', () => {
+  const config = { preset: 'python', tools: { jscpd: PROJECT } };
+  const at = (jscpd) => ({ '.jscpd.json': JSON.stringify(jscpd), 'README.md': 'x\n' });
+
+  it.each([
+    [{ minLines: 5 }, { minLines: 9 }, 'loosened', 'minLines: 5 -> 9'],
+    [{}, { minLines: 3 }, 'changed', 'minLines: not set -> 3'],
+    [{}, { maxLines: 900 }, 'loosened', 'maxLines: not set -> 900'],
+    [{ maxLines: 900 }, { maxLines: 2000 }, 'changed', 'maxLines: 900 -> 2000'],
+    [{ maxSize: '1mb' }, { maxSize: '100kb' }, 'loosened', 'maxSize: "1mb" -> "100kb"'],
+    [{ maxSize: '100kb' }, {}, 'changed', 'maxSize: "100kb" -> not set'],
+    [{}, { mode: 'strict' }, 'loosened', 'mode: not set -> "strict"'],
+    [{}, { skipComments: true }, 'changed', 'mode: not set -> "weak"'],
+    [{ ignoreCase: true }, {}, 'loosened', 'ignoreCase: true -> not set'],
+    [{ ignore: ['a/**'] }, { ignore: ['b/**'] }, 'loosened', 'ignore: ["a/**"] -> ["b/**"]'],
+    [
+      { ignore: ['a/**', 'b/**'] },
+      { ignore: ['a/**'] },
+      'changed',
+      'ignore: ["a/**","b/**"] -> ["a/**"]',
+    ],
+    [{}, { ignorePattern: ['^import'] }, 'loosened', 'ignorePattern: not set -> ["^import"]'],
+  ])('reads %j -> %j as %s', (base, head, kind, text) => {
+    const { policyLoosenings, policyChanges } = between({ base: at(base), head: at(head), config });
+    expect(policyChanges).toEqual([`jscpd .jscpd.json ${text}`]);
+    expect(policyLoosenings).toEqual(kind === 'loosened' ? policyChanges : []);
+  });
+
+  it('falls back to the file when one side cannot be read', () => {
+    expect(
+      between({ base: at({ minTokens: 50 }), head: at({ minTokens: 0 }), config }).policyLoosenings,
+    ).toEqual(['jscpd project config changed: .jscpd.json']);
+  });
 });
 
 describe('what counts as an edit of a project tool config', () => {

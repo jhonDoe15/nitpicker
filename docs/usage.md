@@ -1135,7 +1135,7 @@ sets the precedence for that tool. It lists `"project"` and `"nitpicker"`, highe
 | `["nitpicker", "project"]` | both merged; nitpicker's value wins where both set the same option   |
 
 A change that adds the opt-in is a policy change, and the project config files it starts reading are
-listed with it, so the person who accepts it sees what the config loosens.
+listed with it (each option for `jscpd`), so the person who accepts it sees what the config loosens.
 
 For Prettier, "the project's config" is what Prettier itself resolves for each file
 (`.prettierrc*`, `prettier.config.*`, the `prettier` key in `package.json`, and `.editorconfig`),
@@ -1162,20 +1162,30 @@ project's config alone (plus those two options) under `["project"]`. A `.editorc
 the project's Prettier config, so it is read only when `precedence` lists `"project"`.
 
 For `jscpd` (the duplicate-code check, every preset), the project's config is `.jscpd.json` at the
-project root, read from the head checkout for both sides of the comparison. Only its detection options
-apply: `minTokens`, `minLines`, `maxLines`, `maxSize`, `mode`, `skipComments`, `ignore`,
-`ignorePattern` and `ignoreCase`, each checked for its type. jscpd 5 reads `skipComments` only from
-its command line, so `"skipComments": true` applies as `"mode": "weak"` (the mode that skips comments)
-when the file sets no `mode` of its own. The project's value wins over nitpicker's (`minTokens: 50`,
-`minLines: 5`, `mode: "mild"`) where both set an option, unless `"nitpicker"` comes first; with only
-`["project"]` an option the file leaves out takes jscpd's own default. Its `ignore` globs are added to
-nitpicker's, never replace them. Everything else stays nitpicker's: which folders and formats are
-scanned, the report, and the threshold, so a project `threshold` cannot fail the run. The check for
-copies with renamed names keeps its own minimums (100 tokens, 5 lines) unless the project's are
-higher. Naming `"project"` without the file, or with a file that is not a JSON object, is a tool
-error. An edit of `.jscpd.json` while the project opts in is a policy change a person reviews; key
-order and the options that don't apply leave it unchanged. When the head drops the opt-in, the base is
-measured with nitpicker's settings too.
+project root, read from the head checkout for both sides of the comparison. Without the opt-in the
+run says the file is ignored and how to opt in. Only its detection options apply:
+
+- `minTokens`, `minLines` and `maxLines` (the longest file scanned) take whole numbers of 1 or more.
+- `maxSize` (the largest file scanned) takes a size string such as `"100kb"`.
+- `mode` takes `strict`, `mild` or `weak`. jscpd 5 reads `skipComments` only from its command line, so
+  `"skipComments": true` applies as `"mode": "weak"` (the mode that skips comments) when the file sets
+  no `mode`; it has no effect when nitpicker's `mild` wins.
+- `ignore` takes file globs such as `"src/legacy/**"`; a bare folder name matches nothing.
+- `ignorePattern` takes regular expressions for code to skip, not paths.
+- `ignoreCase` takes `true` or `false`.
+
+The project's value wins over nitpicker's (`minTokens: 50`, `minLines: 5`, `mode: "mild"`) where both
+set an option, unless `"nitpicker"` comes first; with only `["project"]` an option the file leaves out
+takes jscpd's own default. Its `ignore` globs are added to nitpicker's, never replace them. Everything
+else stays nitpicker's: which folders and formats are scanned, the report, and the threshold, so a
+project `threshold` cannot fail the run. The check for copies with renamed names keeps its own
+minimums (100 tokens, 5 lines) unless the project's are higher. Naming `"project"` without the file,
+with a file that is not a JSON object, or with a value of the wrong type stops the run with an error
+naming the file and the option. An edit of `.jscpd.json` while the project opts in is a policy change,
+listed per option (`jscpd .jscpd.json minTokens: 50 -> 500`): one that finds fewer copies needs a
+person's acceptance, and one that finds more is only listed. Key order and the options that don't
+apply change nothing. When the head drops the opt-in, the base is measured with nitpicker's settings
+too.
 
 With the `java` and `kotlin` presets the tools are `pmd` (the project's `config/pmd/ruleset.xml`) and
 `checkstyle` (the project's `config/checkstyle/checkstyle.xml`). Both files are read from the head

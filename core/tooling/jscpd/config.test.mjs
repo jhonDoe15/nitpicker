@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { validateConfig } from '../../configuration/validate.mjs';
+import { conventionStyle } from '../../conventions/definitions.mjs';
 import {
   resolveHeadPolicy,
   withHeadCheckoutFacts,
@@ -104,18 +105,38 @@ describe('jscpd project config', () => {
   });
 
   it.each([
-    [{ minTokens: -1 }, 'minTokens must be a whole number of 0 or more'],
-    [{ minLines: '5' }, 'minLines must be a whole number of 0 or more'],
-    [{ maxSize: false }, 'maxSize must be a byte count'],
+    [{ minTokens: 0 }, 'minTokens must be a whole number of 1 or more'],
+    [{ minLines: '5' }, 'minLines must be a whole number of 1 or more'],
+    [{ maxLines: 0 }, 'maxLines must be a whole number of 1 or more'],
+    [{ maxSize: 100000 }, 'maxSize must be a size string such as "100kb"'],
+    [{ maxSize: 'lots' }, 'maxSize must be a size string such as "100kb"'],
     [{ mode: 'loose' }, 'mode must be one of strict, mild, weak'],
-    [{ ignore: 'vendor/**' }, 'ignore must be a list of glob strings'],
-    [{ ignorePattern: [1] }, 'ignorePattern must be a list of pattern strings'],
+    [{ ignore: 'vendor/**' }, 'ignore must be a list of file globs'],
+    [{ ignorePattern: [1] }, 'ignorePattern must be a list of regular expressions'],
+    [{ ignorePattern: ['('] }, 'ignorePattern must be a list of regular expressions'],
     [{ ignoreCase: 'yes' }, 'ignoreCase must be true or false'],
   ])('rejects the project value %j', (config, message) => {
     const root = temporaryRoot();
     projectConfig(root, config);
     expect(() => resolveJscpdPolicy({ precedence: ['project'] }, root)).toThrow(message);
   });
+
+  it.each([undefined, 'typescript', 'javascript', 'java', 'kotlin', 'python'])(
+    'tells a %s project without the opt-in that its .jscpd.json is ignored',
+    (preset) => {
+      const root = temporaryRoot();
+      const summary = (tools) =>
+        conventionStyle(preset, { config: { preset, tools }, projectRoot: root })
+          .summary({})
+          .filter((line) => line.includes('jscpd'));
+      expect(summary()).toEqual([]);
+      projectConfig(root, { minTokens: 500 });
+      expect(summary()).toEqual([
+        'Ignoring .jscpd.json; opt in with "tools": { "jscpd": { "precedence": ["project", "nitpicker"] } }',
+      ]);
+      expect(summary({ jscpd: { precedence: ['nitpicker', 'project'] } })).toEqual([]);
+    },
+  );
 
   it('applies skipComments as the weak mode jscpd 5 reads', () => {
     const root = temporaryRoot();

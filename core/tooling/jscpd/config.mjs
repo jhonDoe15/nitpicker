@@ -1,27 +1,46 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { isCount, isPlainObject } from '../../../shared/config.mjs';
-import { missingProjectConfig } from '../../../shared/conventions/tool-precedence.mjs';
+import { isPlainObject } from '../../../shared/config.mjs';
+import {
+  ignoredConfigNotice,
+  missingProjectConfig,
+  precedenceLayers,
+} from '../../../shared/conventions/tool-precedence.mjs';
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
 export const JSCPD_PROJECT_FILE = '.jscpd.json';
-const JSCPD_MODES = ['strict', 'mild', 'weak'];
-function isGlobList(value) {
+export const JSCPD_MODES = ['strict', 'mild', 'weak'];
+export const JSCPD_SIZE = /^(\d+(?:\.\d+)?)\s*(b|kb?|mb?|gb?)?$/iu;
+const AT_LEAST_ONE = 'a whole number of 1 or more';
+function isPositive(value) {
+  return Number.isInteger(value) && value >= 1;
+}
+function isStringList(value) {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 }
+function isRegex(entry) {
+  try {
+    return { valid: new RegExp(entry, 'u').source !== '' };
+  } catch {
+    return { valid: false };
+  }
+}
 const JSCPD_PROJECT_KEYS = {
-  minTokens: [isCount, 'a whole number of 0 or more'],
-  minLines: [isCount, 'a whole number of 0 or more'],
-  maxLines: [isCount, 'a whole number of 0 or more'],
+  minTokens: [isPositive, AT_LEAST_ONE],
+  minLines: [isPositive, AT_LEAST_ONE],
+  maxLines: [isPositive, AT_LEAST_ONE],
   maxSize: [
-    (value) => isCount(value) || (typeof value === 'string' && value !== ''),
-    'a byte count or a size such as "100kb"',
+    (value) => typeof value === 'string' && JSCPD_SIZE.test(value),
+    'a size string such as "100kb" or "1mb"',
   ],
   mode: [(value) => JSCPD_MODES.includes(value), `one of ${JSCPD_MODES.join(', ')}`],
   skipComments: [(value) => typeof value === 'boolean', 'true or false'],
-  ignore: [isGlobList, 'a list of glob strings'],
-  ignorePattern: [isGlobList, 'a list of pattern strings'],
+  ignore: [isStringList, 'a list of file globs such as "src/legacy/**"'],
+  ignorePattern: [
+    (value) => isStringList(value) && value.every((entry) => isRegex(entry).valid),
+    'a list of regular expressions for code to skip',
+  ],
   ignoreCase: [(value) => typeof value === 'boolean', 'true or false'],
 };
 function isProjectKey(key) {
@@ -78,12 +97,19 @@ function parsedProjectConfig(text) {
   );
 }
 
-export function jscpdDetectionText(text) {
+export function appliedJscpdConfig(text) {
   try {
-    return { kind: 'applied', text: JSON.stringify(parsedProjectConfig(text)) };
+    return { kind: 'applied', config: parsedProjectConfig(text) };
   } catch {
     return { kind: 'rejected' };
   }
+}
+
+export function jscpdIgnoredNotices(config, projectRoot) {
+  return existsSync(path.join(projectRoot, JSCPD_PROJECT_FILE)) &&
+    !precedenceLayers(config.tools?.jscpd?.precedence).usesProject
+    ? [ignoredConfigNotice(JSCPD_PROJECT_FILE, 'jscpd')]
+    : [];
 }
 
 export function resolveJscpdPolicy(settings, projectRoot) {
