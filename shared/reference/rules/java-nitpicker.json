@@ -1,0 +1,519 @@
+[
+  {
+    "id": "archunit/<rule>",
+    "tool": "archunit",
+    "rule": "<rule>",
+    "anchor": "archunit-rule",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "pattern": "^(?!(?:spring-layout|spring-feature-boundary|spring-shared-pure|spring-controller-repository|spring-controller-entity|spring-service-web|spring-controller-controller|spring-repository-service|spring-scope-capture|spring-test-placement|spring-no-dirties-context)$)",
+    "summary": "A rule of the project's own ArchUnit tests",
+    "why": "The project writes ArchUnit rules as tests named `*ArchTest` or `*ArchitectureTest`; nitpicker runs them and reports each violated rule by the name of its test field or method.",
+    "allowed": "Fix the code the rule's message names.",
+    "exception": { "key": "exceptions", "rule": "archunit/<rule>" },
+    "docs": [
+      { "label": "Java preset guide", "path": "docs/java-preset.md", "anchor": "slice-4-archunit" }
+    ]
+  },
+  {
+    "id": "archunit/spring-controller-controller",
+    "tool": "archunit",
+    "rule": "spring-controller-controller",
+    "anchor": "archunit-spring-controller-controller",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-architecture-rules"
+      }
+    ],
+    "summary": "A controller holds or creates another controller: a field, constructor or method parameter of that type, also inside a generic, or `new OtherController()`.",
+    "allowed": "Move what both controllers need into a service both call: a controller handles its own requests and does not hold another controller.",
+    "exception": { "key": "exceptions", "rule": "archunit/spring-controller-controller" }
+  },
+  {
+    "id": "archunit/spring-controller-entity",
+    "tool": "archunit",
+    "rule": "spring-controller-entity",
+    "anchor": "archunit-spring-controller-entity",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-architecture-rules"
+      }
+    ],
+    "summary": "A request-mapping method of a controller takes or returns an `@Entity` type, also inside a generic.",
+    "allowed": "Take and return a record (DTO) in the controller and map it in the service.",
+    "exception": { "key": "exceptions", "rule": "archunit/spring-controller-entity" }
+  },
+  {
+    "id": "archunit/spring-controller-repository",
+    "tool": "archunit",
+    "rule": "spring-controller-repository",
+    "anchor": "archunit-spring-controller-repository",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-architecture-rules"
+      }
+    ],
+    "summary": "A controller depends on a repository or on data access directly (`JdbcTemplate`, `EntityManager`, `DataSource` and the like).",
+    "allowed": "Have the controller call a service that uses the repository: controllers call services only.",
+    "exception": { "key": "exceptions", "rule": "archunit/spring-controller-repository" }
+  },
+  {
+    "id": "archunit/spring-feature-boundary",
+    "tool": "archunit",
+    "rule": "spring-feature-boundary",
+    "anchor": "archunit-spring-feature-boundary",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-architecture-rules"
+      }
+    ],
+    "summary": "A class uses a class from a sub-package of another feature; only the classes directly in a feature's package are its public face. When a layering rule reports the same class and dependency, only the layering finding is shown, unless an exception lifts it.",
+    "allowed": "Use only the classes directly in the other feature's package, or move what both need to `<root>.shared`.",
+    "exception": { "key": "exceptions", "rule": "archunit/spring-feature-boundary" }
+  },
+  {
+    "id": "archunit/spring-layout",
+    "tool": "archunit",
+    "rule": "spring-layout",
+    "anchor": "archunit-spring-layout",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-architecture-rules"
+      }
+    ],
+    "summary": "A class sits directly in the root package, or in a root sub-package named for a layer (controller, service, repository, entity, dto, util, common, web, api, domain, adapter and the like).",
+    "allowed": "Package by feature: put the class in `<root>.<feature>` with that feature's controller, service and repository, and pure utilities in `<root>.shared`.",
+    "exception": { "key": "exceptions", "rule": "archunit/spring-layout" }
+  },
+  {
+    "id": "archunit/spring-no-dirties-context",
+    "tool": "archunit",
+    "rule": "spring-no-dirties-context",
+    "anchor": "archunit-spring-no-dirties-context",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-architecture-rules"
+      }
+    ],
+    "summary": "A test class or method has `@DirtiesContext`.",
+    "allowed": "Reset the state in the test itself, or test the class without a Spring context.",
+    "exception": { "key": "exceptions", "rule": "archunit/spring-no-dirties-context" }
+  },
+  {
+    "id": "archunit/spring-repository-service",
+    "tool": "archunit",
+    "rule": "spring-repository-service",
+    "anchor": "archunit-spring-repository-service",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-architecture-rules"
+      }
+    ],
+    "summary": "A repository depends on a `@Service`: a field, parameter, return type or call.",
+    "allowed": "Have the service call the repository and pass it what it needs: a repository only reads and writes data and depends on no service.",
+    "exception": { "key": "exceptions", "rule": "archunit/spring-repository-service" }
+  },
+  {
+    "id": "archunit/spring-scope-capture",
+    "tool": "archunit",
+    "rule": "spring-scope-capture",
+    "anchor": "archunit-spring-scope-capture",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-architecture-rules"
+      }
+    ],
+    "summary": "A singleton bean takes a request-, session-, `websocket`-, Spring Batch `step`- or `job`-scoped bean without a scoped proxy.",
+    "allowed": "Inject `ObjectProvider<T>` and call `getObject()` per use, or give the scoped bean a scoped proxy (`proxyMode = ScopedProxyMode.TARGET_CLASS`).",
+    "exception": { "key": "exceptions", "rule": "archunit/spring-scope-capture" }
+  },
+  {
+    "id": "archunit/spring-service-web",
+    "tool": "archunit",
+    "rule": "spring-service-web",
+    "anchor": "archunit-spring-service-web",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-architecture-rules"
+      }
+    ],
+    "summary": "A `@Service` or repository depends on the web layer: a controller, `ResponseEntity`, or servlet and Spring web types.",
+    "allowed": "Take and return plain values, throw a domain exception for errors, and map them to web types in the controller or a `@ControllerAdvice`.",
+    "exception": { "key": "exceptions", "rule": "archunit/spring-service-web" }
+  },
+  {
+    "id": "archunit/spring-shared-pure",
+    "tool": "archunit",
+    "rule": "spring-shared-pure",
+    "anchor": "archunit-spring-shared-pure",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-architecture-rules"
+      }
+    ],
+    "summary": "A class in `shared` is a Spring bean or an `@Entity`, or depends on a class of another root package.",
+    "allowed": "Keep `shared` to pure utilities; move a bean or an entity to the feature that owns it.",
+    "exception": { "key": "exceptions", "rule": "archunit/spring-shared-pure" }
+  },
+  {
+    "id": "archunit/spring-test-placement",
+    "tool": "archunit",
+    "rule": "spring-test-placement",
+    "anchor": "archunit-spring-test-placement",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-architecture-rules"
+      }
+    ],
+    "summary": "A test that starts a Spring context sits in the unit test source set and is not an integration test by the slow-test rule.",
+    "allowed": "Test the class with `new` and mocks, or run it as an integration test: name it `*IT` or put it in an integration test source set; a package named `integration` or `it` also counts.",
+    "exception": { "key": "exceptions", "rule": "archunit/spring-test-placement" }
+  },
+  {
+    "id": "errorprone/InlineSuppression",
+    "tool": "errorprone",
+    "rule": "InlineSuppression",
+    "anchor": "errorprone-inlinesuppression",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "An inline suppression of the tool",
+    "why": "A suppression annotation hides a finding from the report, so a source scan reports every one.",
+    "allowed": "Do not silence Error Prone inline: fix the finding.",
+    "exception": { "key": "exceptions", "rule": "errorprone/InlineSuppression" }
+  },
+  {
+    "id": "google-java-format/format",
+    "tool": "google-java-format",
+    "rule": "format",
+    "anchor": "google-java-format-format",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "A file is not formatted",
+    "why": "The Java presets keep one layout, the formatter's. google-java-format runs in check mode and reports every file it would change.",
+    "allowed": "Run google-java-format on the file; it fixes the layout.",
+    "exception": { "key": "exceptions", "rule": "google-java-format/format" },
+    "docs": [{ "label": "Java preset guide", "path": "docs/java-preset.md", "anchor": "style" }]
+  },
+  {
+    "id": "palantir-java-format/format",
+    "tool": "palantir-java-format",
+    "rule": "format",
+    "anchor": "palantir-java-format-format",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "A file is not formatted",
+    "why": "The Java presets keep one layout, the formatter's. palantir-java-format runs in check mode and reports every file it would change.",
+    "allowed": "Run palantir-java-format on the file; it fixes the layout.",
+    "exception": { "key": "exceptions", "rule": "palantir-java-format/format" },
+    "docs": [{ "label": "Java preset guide", "path": "docs/java-preset.md", "anchor": "style" }]
+  },
+  {
+    "id": "pmd/InlineSuppression",
+    "tool": "pmd",
+    "rule": "InlineSuppression",
+    "anchor": "pmd-inlinesuppression",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "An inline suppression of the tool",
+    "why": "A suppression annotation hides a finding from the report, so a source scan reports every one.",
+    "allowed": "Do not silence PMD inline: fix the finding.",
+    "exception": { "key": "exceptions", "rule": "pmd/InlineSuppression" }
+  },
+  {
+    "id": "spotbugs/InlineSuppression",
+    "tool": "spotbugs",
+    "rule": "InlineSuppression",
+    "anchor": "spotbugs-inlinesuppression",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "An inline suppression of the tool",
+    "why": "A suppression annotation hides a finding from the report, so a source scan reports every one.",
+    "allowed": "Do not silence SpotBugs inline: fix the bug.",
+    "exception": { "key": "exceptions", "rule": "spotbugs/InlineSuppression" }
+  },
+  {
+    "id": "spring/active-profile",
+    "tool": "spring",
+    "rule": "active-profile",
+    "anchor": "spring-active-profile",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "Nitpicker reads the Spring configuration files of a Spring project (`application.properties`, `application.yml` and their profile variants) for settings that are unsafe outside a test or local profile.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-configuration-files"
+      }
+    ],
+    "summary": "`spring.profiles.active` or `spring.profiles.include` has a literal value in the main (profile-less) document.",
+    "allowed": "Set the active profile from the environment (`SPRING_PROFILES_ACTIVE`), not in the packaged file: it turns those profiles on in every environment.",
+    "exception": { "key": "exceptions", "rule": "spring/active-profile" }
+  },
+  {
+    "id": "spring/actuator-exposure",
+    "tool": "spring",
+    "rule": "actuator-exposure",
+    "anchor": "spring-actuator-exposure",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "Nitpicker reads the Spring configuration files of a Spring project (`application.properties`, `application.yml` and their profile variants) for settings that are unsafe outside a test or local profile.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-configuration-files"
+      }
+    ],
+    "summary": "An actuator endpoint is exposed to the web beyond what is safe: `*`, a sensitive endpoint, unrestricted access, or the shutdown or heapdump endpoint open.",
+    "allowed": "Expose only the endpoints the operation needs (`health`, `info`) and keep the sensitive ones restricted.",
+    "exception": { "key": "exceptions", "rule": "spring/actuator-exposure" }
+  },
+  {
+    "id": "spring/ddl-auto",
+    "tool": "spring",
+    "rule": "ddl-auto",
+    "anchor": "spring-ddl-auto",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "Nitpicker reads the Spring configuration files of a Spring project (`application.properties`, `application.yml` and their profile variants) for settings that are unsafe outside a test or local profile.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-configuration-files"
+      }
+    ],
+    "summary": "`spring.jpa.hibernate.ddl-auto` or `spring.jpa.properties.hibernate.hbm2ddl.auto` is neither `none` nor `validate`, or `spring.jpa.generate-ddl` is true.",
+    "allowed": "Manage the schema with Flyway or Liquibase and set the mode to `none` or `validate`.",
+    "exception": { "key": "exceptions", "rule": "spring/ddl-auto" }
+  },
+  {
+    "id": "spring/error-details",
+    "tool": "spring",
+    "rule": "error-details",
+    "anchor": "spring-error-details",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "Nitpicker reads the Spring configuration files of a Spring project (`application.properties`, `application.yml` and their profile variants) for settings that are unsafe outside a test or local profile.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-configuration-files"
+      }
+    ],
+    "summary": "`server.error.include-stacktrace`, `include-message` or `include-binding-errors` is `always` or `on-param`, or `include-exception` is true.",
+    "allowed": "Set `server.error.include-message=never` and return a fixed `ProblemDetail` from a `@RestControllerAdvice`.",
+    "exception": { "key": "exceptions", "rule": "spring/error-details" }
+  },
+  {
+    "id": "spring/literal-secret",
+    "tool": "spring",
+    "rule": "literal-secret",
+    "anchor": "spring-literal-secret",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "Nitpicker reads the Spring configuration files of a Spring project (`application.properties`, `application.yml` and their profile variants) for settings that are unsafe outside a test or local profile.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-configuration-files"
+      }
+    ],
+    "summary": "A literal value under a key that names a secret (`password`, `secret`, `token`, `api-key` and the like), or a URL that carries a credential.",
+    "allowed": "Supply the secret from the environment (a placeholder without a default) or a secret store.",
+    "exception": { "key": "exceptions", "rule": "spring/literal-secret" }
+  },
+  {
+    "id": "spring/missing-enable",
+    "tool": "spring",
+    "rule": "missing-enable",
+    "anchor": "spring-missing-enable",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "Nitpicker reads the Spring configuration files of a Spring project (`application.properties`, `application.yml` and their profile variants) for settings that are unsafe outside a test or local profile.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-configuration-files"
+      }
+    ],
+    "summary": "`@Scheduled`, `@Async`, a cache annotation, `@PreAuthorize` or `@Retryable` is used while no main class has the matching `@Enable...` annotation.",
+    "allowed": "Add the matching `@Enable...` annotation to a configuration class, or remove the annotation that does nothing without it.",
+    "exception": { "key": "exceptions", "rule": "spring/missing-enable" }
+  },
+  {
+    "id": "spring/open-in-view",
+    "tool": "spring",
+    "rule": "open-in-view",
+    "anchor": "spring-open-in-view",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "Nitpicker reads the Spring configuration files of a Spring project (`application.properties`, `application.yml` and their profile variants) for settings that are unsafe outside a test or local profile.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-configuration-files"
+      }
+    ],
+    "summary": "JPA is used in the main sources and `spring.jpa.open-in-view` is unset or true.",
+    "allowed": "Set `spring.jpa.open-in-view=false`: the default holds a database connection through view rendering and hides N+1 queries.",
+    "exception": { "key": "exceptions", "rule": "spring/open-in-view" }
+  },
+  {
+    "id": "spring/risky-startup-flags",
+    "tool": "spring",
+    "rule": "risky-startup-flags",
+    "anchor": "spring-risky-startup-flags",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "Nitpicker reads the Spring configuration files of a Spring project (`application.properties`, `application.yml` and their profile variants) for settings that are unsafe outside a test or local profile.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-configuration-files"
+      }
+    ],
+    "summary": "`spring.main.allow-circular-references`, `allow-bean-definition-overriding` or `lazy-initialization` is true.",
+    "allowed": "Remove the flag and restructure the beans: it hides wiring problems instead of fixing them.",
+    "exception": { "key": "exceptions", "rule": "spring/risky-startup-flags" }
+  },
+  {
+    "id": "spring/unsafe-diagnostics",
+    "tool": "spring",
+    "rule": "unsafe-diagnostics",
+    "anchor": "spring-unsafe-diagnostics",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "why": "Nitpicker reads the Spring configuration files of a Spring project (`application.properties`, `application.yml` and their profile variants) for settings that are unsafe outside a test or local profile.",
+    "scope": "A project with Spring on the compile classpath.",
+    "docs": [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-configuration-files"
+      }
+    ],
+    "summary": "SQL logging, Hibernate bind logging at TRACE, the H2 console, or an actuator endpoint that shows values or details is on.",
+    "allowed": "Turn the diagnostic off in the packaged configuration; enable it only in a local or test profile.",
+    "exception": { "key": "exceptions", "rule": "spring/unsafe-diagnostics" }
+  },
+  {
+    "id": "test-runtime/test-not-run",
+    "tool": "test-runtime",
+    "rule": "test-not-run",
+    "anchor": "test-runtime-test-not-run",
+    "page": "java-nitpicker",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "A test class that no Test task or Failsafe execution runs.",
+    "why": "A test that never runs cannot fail, so it proves nothing.",
+    "allowed": "Register a Test task for its source set (Gradle), or bind the integration-test and verify goals of maven-failsafe-plugin (Maven), so that it runs.",
+    "exception": { "key": "exceptions", "rule": "test-runtime/test-not-run" }
+  }
+]

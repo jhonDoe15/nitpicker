@@ -1,0 +1,2171 @@
+[
+  {
+    "code": "ARG001",
+    "name": "unused-function-argument",
+    "linter": "flake8-unused-arguments",
+    "summary": "Unused function argument: `{name}`"
+  },
+  {
+    "code": "ARG002",
+    "name": "unused-method-argument",
+    "linter": "flake8-unused-arguments",
+    "summary": "Unused method argument: `{name}`"
+  },
+  {
+    "code": "ARG003",
+    "name": "unused-class-method-argument",
+    "linter": "flake8-unused-arguments",
+    "summary": "Unused class method argument: `{name}`"
+  },
+  {
+    "code": "ARG004",
+    "name": "unused-static-method-argument",
+    "linter": "flake8-unused-arguments",
+    "summary": "Unused static method argument: `{name}`"
+  },
+  {
+    "code": "ARG005",
+    "name": "unused-lambda-argument",
+    "linter": "flake8-unused-arguments",
+    "summary": "Unused lambda argument: `{name}`"
+  },
+  {
+    "code": "B002",
+    "name": "unary-prefix-increment-decrement",
+    "linter": "flake8-bugbear",
+    "summary": "Python does not support the unary prefix increment operator (`++`)"
+  },
+  {
+    "code": "B003",
+    "name": "assignment-to-os-environ",
+    "linter": "flake8-bugbear",
+    "summary": "Assigning to `os.environ` doesn't clear the environment"
+  },
+  {
+    "code": "B004",
+    "name": "unreliable-callable-check",
+    "linter": "flake8-bugbear",
+    "summary": "Using `hasattr(x, \"__call__\")` to test if x is callable is unreliable. Use `callable(x)` for consistent results."
+  },
+  {
+    "code": "B005",
+    "name": "strip-with-multi-characters",
+    "linter": "flake8-bugbear",
+    "summary": "Using `.{strip}()` with multi-character strings is misleading"
+  },
+  {
+    "code": "B006",
+    "name": "mutable-argument-default",
+    "linter": "flake8-bugbear",
+    "summary": "Do not use mutable data structures for argument defaults"
+  },
+  {
+    "code": "B007",
+    "name": "unused-loop-control-variable",
+    "linter": "flake8-bugbear",
+    "summary": "Loop control variable `{name}` not used within loop body"
+  },
+  {
+    "code": "B009",
+    "name": "get-attr-with-constant",
+    "linter": "flake8-bugbear",
+    "summary": "Do not call `getattr` with a constant attribute value. It is not any safer than normal property access."
+  },
+  {
+    "code": "B010",
+    "name": "set-attr-with-constant",
+    "linter": "flake8-bugbear",
+    "summary": "Do not call `setattr` with a constant attribute value. It is not any safer than normal property access."
+  },
+  {
+    "code": "B011",
+    "name": "assert-false",
+    "linter": "flake8-bugbear",
+    "summary": "Do not `assert False` (`python -O` removes these calls), raise `AssertionError()`"
+  },
+  {
+    "code": "B012",
+    "name": "jump-statement-in-finally",
+    "linter": "flake8-bugbear",
+    "summary": "`{name}` inside `finally` blocks cause exceptions to be silenced"
+  },
+  {
+    "code": "B013",
+    "name": "redundant-tuple-in-exception-handler",
+    "linter": "flake8-bugbear",
+    "summary": "A length-one tuple literal is redundant in exception handlers"
+  },
+  {
+    "code": "B014",
+    "name": "duplicate-handler-exception",
+    "linter": "flake8-bugbear",
+    "summary": "Exception handler with duplicate exception: `{name}`"
+  },
+  {
+    "code": "B015",
+    "name": "useless-comparison",
+    "linter": "flake8-bugbear",
+    "summary": "Pointless comparison. Did you mean to assign a value? Otherwise, prepend `assert` or remove it."
+  },
+  {
+    "code": "B016",
+    "name": "raise-literal",
+    "linter": "flake8-bugbear",
+    "summary": "Cannot raise a literal. Did you intend to return it or raise an Exception?"
+  },
+  {
+    "code": "B017",
+    "name": "assert-raises-exception",
+    "linter": "flake8-bugbear",
+    "summary": "Do not assert blind exception: `{exception}`"
+  },
+  {
+    "code": "B018",
+    "name": "useless-expression",
+    "linter": "flake8-bugbear",
+    "summary": "Found useless expression. Either assign it to a variable or remove it."
+  },
+  {
+    "code": "B019",
+    "name": "cached-instance-method",
+    "linter": "flake8-bugbear",
+    "summary": "Use of `functools.lru_cache` or `functools.cache` on methods can lead to memory leaks"
+  },
+  {
+    "code": "B020",
+    "name": "loop-variable-overrides-iterator",
+    "linter": "flake8-bugbear",
+    "summary": "Loop control variable `{name}` overrides iterable it iterates"
+  },
+  {
+    "code": "B021",
+    "name": "f-string-docstring",
+    "linter": "flake8-bugbear",
+    "summary": "f-string used as docstring. Python will interpret this as a joined string, rather than a docstring."
+  },
+  {
+    "code": "B022",
+    "name": "useless-contextlib-suppress",
+    "linter": "flake8-bugbear",
+    "summary": "No arguments passed to `contextlib.suppress`. No exceptions will be suppressed and therefore this context manager is redundant"
+  },
+  {
+    "code": "B023",
+    "name": "function-uses-loop-variable",
+    "linter": "flake8-bugbear",
+    "summary": "Function definition does not bind loop variable `{name}`"
+  },
+  {
+    "code": "B024",
+    "name": "abstract-base-class-without-abstract-method",
+    "linter": "flake8-bugbear",
+    "summary": "`{name}` is an abstract base class, but it has no abstract methods or properties"
+  },
+  {
+    "code": "B025",
+    "name": "duplicate-try-block-exception",
+    "linter": "flake8-bugbear",
+    "summary": "try-except* block with duplicate exception `{name}`"
+  },
+  {
+    "code": "B026",
+    "name": "star-arg-unpacking-after-keyword-arg",
+    "linter": "flake8-bugbear",
+    "summary": "Star-arg unpacking after a keyword argument is strongly discouraged"
+  },
+  {
+    "code": "B027",
+    "name": "empty-method-without-abstract-decorator",
+    "linter": "flake8-bugbear",
+    "summary": "`{name}` is an empty method in an abstract base class, but has no abstract decorator"
+  },
+  {
+    "code": "B028",
+    "name": "no-explicit-stacklevel",
+    "linter": "flake8-bugbear",
+    "summary": "No explicit `stacklevel` keyword argument found"
+  },
+  {
+    "code": "B029",
+    "name": "except-with-empty-tuple",
+    "linter": "flake8-bugbear",
+    "summary": "Using `except* ():` with an empty tuple does not catch anything; add exceptions to handle"
+  },
+  {
+    "code": "B030",
+    "name": "except-with-non-exception-classes",
+    "linter": "flake8-bugbear",
+    "summary": "`except*` handlers should only be exception classes or tuples of exception classes"
+  },
+  {
+    "code": "B031",
+    "name": "reuse-of-groupby-generator",
+    "linter": "flake8-bugbear",
+    "summary": "Using the generator returned from `itertools.groupby()` more than once will do nothing on the second usage"
+  },
+  {
+    "code": "B032",
+    "name": "unintentional-type-annotation",
+    "linter": "flake8-bugbear",
+    "summary": "Possible unintentional type annotation (using `:`). Did you mean to assign (using `=`)?"
+  },
+  {
+    "code": "B033",
+    "name": "duplicate-value",
+    "linter": "flake8-bugbear",
+    "summary": "Sets should not contain duplicate item `{value}`"
+  },
+  {
+    "code": "B034",
+    "name": "re-sub-positional-args",
+    "linter": "flake8-bugbear",
+    "summary": "`{method}` should pass `{param_name}` and `flags` as keyword arguments to avoid confusion due to unintuitive argument positions"
+  },
+  {
+    "code": "B035",
+    "name": "static-key-dict-comprehension",
+    "linter": "flake8-bugbear",
+    "summary": "Dictionary comprehension uses static key: `{key}`"
+  },
+  {
+    "code": "B039",
+    "name": "mutable-contextvar-default",
+    "linter": "flake8-bugbear",
+    "summary": "Do not use mutable data structures for `ContextVar` defaults"
+  },
+  {
+    "code": "B904",
+    "name": "raise-without-from-inside-except",
+    "linter": "flake8-bugbear",
+    "summary": "Within an `except*` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling"
+  },
+  {
+    "code": "B905",
+    "name": "zip-without-explicit-strict",
+    "linter": "flake8-bugbear",
+    "summary": "`zip()` without an explicit `strict=` parameter"
+  },
+  {
+    "code": "B911",
+    "name": "batched-without-explicit-strict",
+    "linter": "flake8-bugbear",
+    "summary": "`itertools.batched()` without an explicit `strict` parameter"
+  },
+  {
+    "code": "B912",
+    "name": "map-without-explicit-strict",
+    "linter": "flake8-bugbear",
+    "summary": "`map()` without an explicit `strict=` parameter"
+  },
+  {
+    "code": "BLE001",
+    "name": "blind-except",
+    "linter": "flake8-blind-except",
+    "summary": "Do not catch blind exception: `{name}`"
+  },
+  {
+    "code": "C400",
+    "name": "unnecessary-generator-list",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary generator (rewrite using `list()`)"
+  },
+  {
+    "code": "C401",
+    "name": "unnecessary-generator-set",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary generator (rewrite using `set()`)"
+  },
+  {
+    "code": "C402",
+    "name": "unnecessary-generator-dict",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary generator (rewrite as a dict comprehension)"
+  },
+  {
+    "code": "C403",
+    "name": "unnecessary-list-comprehension-set",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary list comprehension (rewrite as a set comprehension)"
+  },
+  {
+    "code": "C404",
+    "name": "unnecessary-list-comprehension-dict",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary list comprehension (rewrite as a dict comprehension)"
+  },
+  {
+    "code": "C405",
+    "name": "unnecessary-literal-set",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary {kind} literal (rewrite as a set literal)"
+  },
+  {
+    "code": "C406",
+    "name": "unnecessary-literal-dict",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary {obj_type} literal (rewrite as a dict literal)"
+  },
+  {
+    "code": "C408",
+    "name": "unnecessary-collection-call",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary `{kind}()` call (rewrite as a literal)"
+  },
+  {
+    "code": "C409",
+    "name": "unnecessary-literal-within-tuple-call",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary list literal passed to `tuple()` (rewrite as a tuple literal)"
+  },
+  {
+    "code": "C410",
+    "name": "unnecessary-literal-within-list-call",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary list literal passed to `list()` (remove the outer call to `list()`)"
+  },
+  {
+    "code": "C411",
+    "name": "unnecessary-list-call",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary `list()` call (remove the outer call to `list()`)"
+  },
+  {
+    "code": "C413",
+    "name": "unnecessary-call-around-sorted",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary `{func}()` call around `sorted()`"
+  },
+  {
+    "code": "C414",
+    "name": "unnecessary-double-cast-or-process",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary `{inner}()` call within `{outer}()`"
+  },
+  {
+    "code": "C415",
+    "name": "unnecessary-subscript-reversal",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary subscript reversal of iterable within `{func}()`"
+  },
+  {
+    "code": "C416",
+    "name": "unnecessary-comprehension",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary {kind} comprehension (rewrite using `{kind}()`)"
+  },
+  {
+    "code": "C417",
+    "name": "unnecessary-map",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary `map()` usage (rewrite using a {object_type})"
+  },
+  {
+    "code": "C418",
+    "name": "unnecessary-literal-within-dict-call",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary dict {kind} passed to `dict()` (remove the outer call to `dict()`)"
+  },
+  {
+    "code": "C419",
+    "name": "unnecessary-comprehension-in-call",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary list comprehension"
+  },
+  {
+    "code": "C420",
+    "name": "unnecessary-dict-comprehension-for-iterable",
+    "linter": "flake8-comprehensions",
+    "summary": "Unnecessary dict comprehension for iterable; use `dict.fromkeys` instead"
+  },
+  {
+    "code": "E401",
+    "name": "multiple-imports-on-one-line",
+    "linter": "pycodestyle",
+    "summary": "Multiple imports on one line"
+  },
+  {
+    "code": "E402",
+    "name": "module-import-not-at-top-of-file",
+    "linter": "pycodestyle",
+    "summary": "Module level import not at top of cell"
+  },
+  {
+    "code": "E701",
+    "name": "multiple-statements-on-one-line-colon",
+    "linter": "pycodestyle",
+    "summary": "Multiple statements on one line (colon)"
+  },
+  {
+    "code": "E702",
+    "name": "multiple-statements-on-one-line-semicolon",
+    "linter": "pycodestyle",
+    "summary": "Multiple statements on one line (semicolon)"
+  },
+  {
+    "code": "E703",
+    "name": "useless-semicolon",
+    "linter": "pycodestyle",
+    "summary": "Statement ends with an unnecessary semicolon"
+  },
+  {
+    "code": "E711",
+    "name": "none-comparison",
+    "linter": "pycodestyle",
+    "summary": "Comparison to `None` should be `cond is None`"
+  },
+  {
+    "code": "E712",
+    "name": "true-false-comparison",
+    "linter": "pycodestyle",
+    "summary": "Avoid equality comparisons to `True`; use `{cond}:` for truth checks"
+  },
+  {
+    "code": "E713",
+    "name": "not-in-test",
+    "linter": "pycodestyle",
+    "summary": "Test for membership should be `not in`"
+  },
+  {
+    "code": "E714",
+    "name": "not-is-test",
+    "linter": "pycodestyle",
+    "summary": "Test for object identity should be `is not`"
+  },
+  {
+    "code": "E721",
+    "name": "type-comparison",
+    "linter": "pycodestyle",
+    "summary": "Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks"
+  },
+  {
+    "code": "E722",
+    "name": "bare-except",
+    "linter": "pycodestyle",
+    "summary": "Do not use bare `except`"
+  },
+  {
+    "code": "E731",
+    "name": "lambda-assignment",
+    "linter": "pycodestyle",
+    "summary": "Do not assign a `lambda` expression, use a `def`"
+  },
+  {
+    "code": "E741",
+    "name": "ambiguous-variable-name",
+    "linter": "pycodestyle",
+    "summary": "Ambiguous variable name: `{name}`"
+  },
+  {
+    "code": "E742",
+    "name": "ambiguous-class-name",
+    "linter": "pycodestyle",
+    "summary": "Ambiguous class name: `{name}`"
+  },
+  {
+    "code": "E743",
+    "name": "ambiguous-function-name",
+    "linter": "pycodestyle",
+    "summary": "Ambiguous function name: `{name}`"
+  },
+  { "code": "E902", "name": "io-error", "linter": "pycodestyle", "summary": "{message}" },
+  {
+    "code": "ERA001",
+    "name": "commented-out-code",
+    "linter": "eradicate",
+    "summary": "Found commented-out code"
+  },
+  {
+    "code": "F401",
+    "name": "unused-import",
+    "linter": "Pyflakes",
+    "summary": "`{name}` imported but unused; consider using `importlib.util.find_spec` to test for availability"
+  },
+  {
+    "code": "F402",
+    "name": "import-shadowed-by-loop-var",
+    "linter": "Pyflakes",
+    "summary": "Import `{name}` from {row} shadowed by loop variable"
+  },
+  {
+    "code": "F403",
+    "name": "undefined-local-with-import-star",
+    "linter": "Pyflakes",
+    "summary": "`from {name} import *` used; unable to detect undefined names"
+  },
+  {
+    "code": "F404",
+    "name": "late-future-import",
+    "linter": "Pyflakes",
+    "summary": "`from __future__` imports must occur at the beginning of the file"
+  },
+  {
+    "code": "F406",
+    "name": "undefined-local-with-nested-import-star-usage",
+    "linter": "Pyflakes",
+    "summary": "`from {name} import *` only allowed at module level"
+  },
+  {
+    "code": "F407",
+    "name": "future-feature-not-defined",
+    "linter": "Pyflakes",
+    "summary": "Future feature `{name}` is not defined"
+  },
+  {
+    "code": "F501",
+    "name": "percent-format-invalid-format",
+    "linter": "Pyflakes",
+    "summary": "`%`-format string has invalid format string: {message}"
+  },
+  {
+    "code": "F502",
+    "name": "percent-format-expected-mapping",
+    "linter": "Pyflakes",
+    "summary": "`%`-format string expected mapping but got sequence"
+  },
+  {
+    "code": "F503",
+    "name": "percent-format-expected-sequence",
+    "linter": "Pyflakes",
+    "summary": "`%`-format string expected sequence but got mapping"
+  },
+  {
+    "code": "F504",
+    "name": "percent-format-extra-named-arguments",
+    "linter": "Pyflakes",
+    "summary": "`%`-format string has unused named argument(s): {message}"
+  },
+  {
+    "code": "F505",
+    "name": "percent-format-missing-argument",
+    "linter": "Pyflakes",
+    "summary": "`%`-format string is missing argument(s) for placeholder(s): {message}"
+  },
+  {
+    "code": "F506",
+    "name": "percent-format-mixed-positional-and-named",
+    "linter": "Pyflakes",
+    "summary": "`%`-format string has mixed positional and named placeholders"
+  },
+  {
+    "code": "F507",
+    "name": "percent-format-positional-count-mismatch",
+    "linter": "Pyflakes",
+    "summary": "`%`-format string has {wanted} placeholder(s) but {got} substitution(s)"
+  },
+  {
+    "code": "F508",
+    "name": "percent-format-star-requires-sequence",
+    "linter": "Pyflakes",
+    "summary": "`%`-format string `*` specifier requires sequence"
+  },
+  {
+    "code": "F509",
+    "name": "percent-format-unsupported-format-character",
+    "linter": "Pyflakes",
+    "summary": "`%`-format string has unsupported format character `{char}`"
+  },
+  {
+    "code": "F521",
+    "name": "string-dot-format-invalid-format",
+    "linter": "Pyflakes",
+    "summary": "`.format` call has invalid format string: {message}"
+  },
+  {
+    "code": "F522",
+    "name": "string-dot-format-extra-named-arguments",
+    "linter": "Pyflakes",
+    "summary": "`.format` call has unused named argument(s): {message}"
+  },
+  {
+    "code": "F523",
+    "name": "string-dot-format-extra-positional-arguments",
+    "linter": "Pyflakes",
+    "summary": "`.format` call has unused arguments at position(s): {message}"
+  },
+  {
+    "code": "F524",
+    "name": "string-dot-format-missing-arguments",
+    "linter": "Pyflakes",
+    "summary": "`.format` call is missing argument(s) for placeholder(s): {message}"
+  },
+  {
+    "code": "F525",
+    "name": "string-dot-format-mixing-automatic",
+    "linter": "Pyflakes",
+    "summary": "`.format` string mixes automatic and manual numbering"
+  },
+  {
+    "code": "F541",
+    "name": "f-string-missing-placeholders",
+    "linter": "Pyflakes",
+    "summary": "f-string without any placeholders"
+  },
+  {
+    "code": "F601",
+    "name": "multi-value-repeated-key-literal",
+    "linter": "Pyflakes",
+    "summary": "Dictionary key literal `{name}` repeated"
+  },
+  {
+    "code": "F602",
+    "name": "multi-value-repeated-key-variable",
+    "linter": "Pyflakes",
+    "summary": "Dictionary key `{name}` repeated"
+  },
+  {
+    "code": "F621",
+    "name": "expressions-in-star-assignment",
+    "linter": "Pyflakes",
+    "summary": "Too many expressions in star-unpacking assignment"
+  },
+  {
+    "code": "F622",
+    "name": "multiple-starred-expressions",
+    "linter": "Pyflakes",
+    "summary": "Two starred expressions in assignment"
+  },
+  {
+    "code": "F631",
+    "name": "assert-tuple",
+    "linter": "Pyflakes",
+    "summary": "Assert test is a non-empty tuple, which is always `True`"
+  },
+  {
+    "code": "F632",
+    "name": "is-literal",
+    "linter": "Pyflakes",
+    "summary": "Use `==` to compare constant literals"
+  },
+  {
+    "code": "F633",
+    "name": "invalid-print-syntax",
+    "linter": "Pyflakes",
+    "summary": "Use of `>>` is invalid with `print` function"
+  },
+  {
+    "code": "F634",
+    "name": "if-tuple",
+    "linter": "Pyflakes",
+    "summary": "If test is a tuple, which is always `True`"
+  },
+  {
+    "code": "F701",
+    "name": "break-outside-loop",
+    "linter": "Pyflakes",
+    "summary": "`break` outside loop"
+  },
+  {
+    "code": "F702",
+    "name": "continue-outside-loop",
+    "linter": "Pyflakes",
+    "summary": "`continue` not properly in loop"
+  },
+  {
+    "code": "F704",
+    "name": "yield-outside-function",
+    "linter": "Pyflakes",
+    "summary": "`{keyword}` statement outside of a function"
+  },
+  {
+    "code": "F706",
+    "name": "return-outside-function",
+    "linter": "Pyflakes",
+    "summary": "`return` statement outside of a function/method"
+  },
+  {
+    "code": "F707",
+    "name": "default-except-not-last",
+    "linter": "Pyflakes",
+    "summary": "An `except` block as not the last exception handler"
+  },
+  {
+    "code": "F722",
+    "name": "forward-annotation-syntax-error",
+    "linter": "Pyflakes",
+    "summary": "Syntax error in forward annotation: {parse_error}"
+  },
+  {
+    "code": "F811",
+    "name": "redefined-while-unused",
+    "linter": "Pyflakes",
+    "summary": "Redefinition of unused `{name}` from {row}"
+  },
+  {
+    "code": "F821",
+    "name": "undefined-name",
+    "linter": "Pyflakes",
+    "summary": "Undefined name `{name}`. {tip}"
+  },
+  {
+    "code": "F822",
+    "name": "undefined-export",
+    "linter": "Pyflakes",
+    "summary": "Undefined name `{name}` in `__all__`"
+  },
+  {
+    "code": "F823",
+    "name": "undefined-local",
+    "linter": "Pyflakes",
+    "summary": "Local variable `{name}` referenced before assignment"
+  },
+  {
+    "code": "F841",
+    "name": "unused-variable",
+    "linter": "Pyflakes",
+    "summary": "Local variable `{name}` is assigned to but never used"
+  },
+  {
+    "code": "F842",
+    "name": "unused-annotation",
+    "linter": "Pyflakes",
+    "summary": "Local variable `{name}` is annotated but never used"
+  },
+  {
+    "code": "F901",
+    "name": "raise-not-implemented",
+    "linter": "Pyflakes",
+    "summary": "`raise NotImplemented` should be `raise NotImplementedError`"
+  },
+  {
+    "code": "FBT001",
+    "name": "boolean-type-hint-positional-argument",
+    "linter": "flake8-boolean-trap",
+    "summary": "Boolean-typed positional argument in function definition"
+  },
+  {
+    "code": "FBT002",
+    "name": "boolean-default-value-positional-argument",
+    "linter": "flake8-boolean-trap",
+    "summary": "Boolean default positional argument in function definition"
+  },
+  {
+    "code": "FLY002",
+    "name": "static-join-to-f-string",
+    "linter": "flynt",
+    "summary": "Consider `{expression}` instead of string join"
+  },
+  {
+    "code": "G001",
+    "name": "logging-string-format",
+    "linter": "flake8-logging-format",
+    "summary": "Logging statement uses `str.format`"
+  },
+  {
+    "code": "G002",
+    "name": "logging-percent-format",
+    "linter": "flake8-logging-format",
+    "summary": "Logging statement uses `%`"
+  },
+  {
+    "code": "G003",
+    "name": "logging-string-concat",
+    "linter": "flake8-logging-format",
+    "summary": "Logging statement uses `+`"
+  },
+  {
+    "code": "G004",
+    "name": "logging-f-string",
+    "linter": "flake8-logging-format",
+    "summary": "Logging statement uses f-string"
+  },
+  {
+    "code": "G010",
+    "name": "logging-warn",
+    "linter": "flake8-logging-format",
+    "summary": "Logging statement uses `warn` instead of `warning`"
+  },
+  {
+    "code": "G101",
+    "name": "logging-extra-attr-clash",
+    "linter": "flake8-logging-format",
+    "summary": "Logging statement uses an `extra` field that clashes with a `LogRecord` field: `{key}`"
+  },
+  {
+    "code": "G201",
+    "name": "logging-exc-info",
+    "linter": "flake8-logging-format",
+    "summary": "Logging `.exception(...)` should be used instead of `.error(..., exc_info=True)`"
+  },
+  {
+    "code": "G202",
+    "name": "logging-redundant-exc-info",
+    "linter": "flake8-logging-format",
+    "summary": "Logging statement has redundant `exc_info`"
+  },
+  {
+    "code": "N801",
+    "name": "invalid-class-name",
+    "linter": "pep8-naming",
+    "summary": "Class name `{name}` should use CapWords convention"
+  },
+  {
+    "code": "N802",
+    "name": "invalid-function-name",
+    "linter": "pep8-naming",
+    "summary": "Function name `{name}` should be lowercase"
+  },
+  {
+    "code": "N803",
+    "name": "invalid-argument-name",
+    "linter": "pep8-naming",
+    "summary": "Argument name `{name}` should be lowercase"
+  },
+  {
+    "code": "N804",
+    "name": "invalid-first-argument-name-for-class-method",
+    "linter": "pep8-naming",
+    "summary": "First argument of a class method should be named `cls`"
+  },
+  {
+    "code": "N805",
+    "name": "invalid-first-argument-name-for-method",
+    "linter": "pep8-naming",
+    "summary": "First argument of a method should be named `self`"
+  },
+  {
+    "code": "N806",
+    "name": "non-lowercase-variable-in-function",
+    "linter": "pep8-naming",
+    "summary": "Variable `{name}` in function should be lowercase"
+  },
+  {
+    "code": "N807",
+    "name": "dunder-function-name",
+    "linter": "pep8-naming",
+    "summary": "Function name should not start and end with `__`"
+  },
+  {
+    "code": "N811",
+    "name": "constant-imported-as-non-constant",
+    "linter": "pep8-naming",
+    "summary": "Constant `{name}` imported as non-constant `{asname}`"
+  },
+  {
+    "code": "N812",
+    "name": "lowercase-imported-as-non-lowercase",
+    "linter": "pep8-naming",
+    "summary": "Lowercase `{name}` imported as non-lowercase `{asname}`"
+  },
+  {
+    "code": "N813",
+    "name": "camelcase-imported-as-lowercase",
+    "linter": "pep8-naming",
+    "summary": "Camelcase `{name}` imported as lowercase `{asname}`"
+  },
+  {
+    "code": "N814",
+    "name": "camelcase-imported-as-constant",
+    "linter": "pep8-naming",
+    "summary": "Camelcase `{name}` imported as constant `{asname}`"
+  },
+  {
+    "code": "N815",
+    "name": "mixed-case-variable-in-class-scope",
+    "linter": "pep8-naming",
+    "summary": "Variable `{name}` in class scope should not be mixedCase"
+  },
+  {
+    "code": "N816",
+    "name": "mixed-case-variable-in-global-scope",
+    "linter": "pep8-naming",
+    "summary": "Variable `{name}` in global scope should not be mixedCase"
+  },
+  {
+    "code": "N817",
+    "name": "camelcase-imported-as-acronym",
+    "linter": "pep8-naming",
+    "summary": "CamelCase `{name}` imported as acronym `{asname}`"
+  },
+  {
+    "code": "N818",
+    "name": "error-suffix-on-exception-name",
+    "linter": "pep8-naming",
+    "summary": "Exception name `{name}` should be named with an Error suffix"
+  },
+  {
+    "code": "N999",
+    "name": "invalid-module-name",
+    "linter": "pep8-naming",
+    "summary": "Invalid module name: '{name}'"
+  },
+  {
+    "code": "PERF101",
+    "name": "unnecessary-list-cast",
+    "linter": "Perflint",
+    "summary": "Do not cast an iterable to `list` before iterating over it"
+  },
+  {
+    "code": "PERF102",
+    "name": "incorrect-dict-iterator",
+    "linter": "Perflint",
+    "summary": "When using only the {subset} of a dict use the `{subset}()` method"
+  },
+  {
+    "code": "PERF203",
+    "name": "try-except-in-loop",
+    "linter": "Perflint",
+    "summary": "`try`-`except` within a loop incurs performance overhead"
+  },
+  {
+    "code": "PERF401",
+    "name": "manual-list-comprehension",
+    "linter": "Perflint",
+    "summary": "Use {message_str} to create a transformed list"
+  },
+  {
+    "code": "PERF402",
+    "name": "manual-list-copy",
+    "linter": "Perflint",
+    "summary": "Use `list` or `list.copy` to create a copy of a list"
+  },
+  {
+    "code": "PERF403",
+    "name": "manual-dict-comprehension",
+    "linter": "Perflint",
+    "summary": "Use a dictionary comprehension instead of {modifier} for-loop"
+  },
+  {
+    "code": "PIE790",
+    "name": "unnecessary-placeholder",
+    "linter": "flake8-pie",
+    "summary": "Unnecessary `pass` statement"
+  },
+  {
+    "code": "PIE794",
+    "name": "duplicate-class-field-definition",
+    "linter": "flake8-pie",
+    "summary": "Class field `{name}` is defined multiple times"
+  },
+  {
+    "code": "PIE796",
+    "name": "non-unique-enums",
+    "linter": "flake8-pie",
+    "summary": "Enum contains duplicate value: `{value}`"
+  },
+  {
+    "code": "PIE800",
+    "name": "unnecessary-spread",
+    "linter": "flake8-pie",
+    "summary": "Unnecessary spread `**`"
+  },
+  {
+    "code": "PIE804",
+    "name": "unnecessary-dict-kwargs",
+    "linter": "flake8-pie",
+    "summary": "Unnecessary `dict` kwargs"
+  },
+  {
+    "code": "PIE807",
+    "name": "reimplemented-container-builtin",
+    "linter": "flake8-pie",
+    "summary": "Prefer `{container}` over useless lambda"
+  },
+  {
+    "code": "PIE808",
+    "name": "unnecessary-range-start",
+    "linter": "flake8-pie",
+    "summary": "Unnecessary `start` argument in `range`"
+  },
+  {
+    "code": "PIE810",
+    "name": "multiple-starts-ends-with",
+    "linter": "flake8-pie",
+    "summary": "Call `{attr}` once with a `tuple`"
+  },
+  {
+    "code": "PLR2004",
+    "name": "magic-value-comparison",
+    "linter": "Pylint",
+    "summary": "Magic value used in comparison, consider replacing `{value}` with a constant variable"
+  },
+  {
+    "code": "PLW0602",
+    "name": "global-variable-not-assigned",
+    "linter": "Pylint",
+    "summary": "Using global for `{name}` but no assignment is done"
+  },
+  {
+    "code": "PLW0603",
+    "name": "global-statement",
+    "linter": "Pylint",
+    "summary": "Using the global statement to update `{name}` is discouraged"
+  },
+  {
+    "code": "PT001",
+    "name": "pytest-fixture-incorrect-parentheses-style",
+    "linter": "flake8-pytest-style",
+    "summary": "Use `@pytest.fixture{expected}` over `@pytest.fixture{actual}`"
+  },
+  {
+    "code": "PT002",
+    "name": "pytest-fixture-positional-args",
+    "linter": "flake8-pytest-style",
+    "summary": "Configuration for fixture `{function}` specified via positional args, use kwargs"
+  },
+  {
+    "code": "PT003",
+    "name": "pytest-extraneous-scope-function",
+    "linter": "flake8-pytest-style",
+    "summary": "`scope='function'` is implied in `@pytest.fixture()`"
+  },
+  {
+    "code": "PT006",
+    "name": "pytest-parametrize-names-wrong-type",
+    "linter": "flake8-pytest-style",
+    "summary": "Wrong type passed to first argument of `pytest.mark.parametrize`; expected {expected_string}"
+  },
+  {
+    "code": "PT007",
+    "name": "pytest-parametrize-values-wrong-type",
+    "linter": "flake8-pytest-style",
+    "summary": "Wrong values type in `pytest.mark.parametrize` expected `{values}`"
+  },
+  {
+    "code": "PT008",
+    "name": "pytest-patch-with-lambda",
+    "linter": "flake8-pytest-style",
+    "summary": "Use `return_value=` instead of patching with `lambda`"
+  },
+  {
+    "code": "PT010",
+    "name": "pytest-raises-without-exception",
+    "linter": "flake8-pytest-style",
+    "summary": "Set the expected exception in `pytest.raises()`"
+  },
+  {
+    "code": "PT011",
+    "name": "pytest-raises-too-broad",
+    "linter": "flake8-pytest-style",
+    "summary": "`pytest.raises({exception})` is too broad, set the `match` parameter or use a more specific exception"
+  },
+  {
+    "code": "PT012",
+    "name": "pytest-raises-with-multiple-statements",
+    "linter": "flake8-pytest-style",
+    "summary": "`pytest.raises()` block should contain a single simple statement"
+  },
+  {
+    "code": "PT013",
+    "name": "pytest-incorrect-pytest-import",
+    "linter": "flake8-pytest-style",
+    "summary": "Incorrect import of `pytest`; use `import pytest` instead"
+  },
+  {
+    "code": "PT014",
+    "name": "pytest-duplicate-parametrize-test-cases",
+    "linter": "flake8-pytest-style",
+    "summary": "Duplicate of test case at index {index} in `pytest.mark.parametrize`"
+  },
+  {
+    "code": "PT015",
+    "name": "pytest-assert-always-false",
+    "linter": "flake8-pytest-style",
+    "summary": "Assertion always fails, replace with `pytest.fail()`"
+  },
+  {
+    "code": "PT016",
+    "name": "pytest-fail-without-message",
+    "linter": "flake8-pytest-style",
+    "summary": "No message passed to `pytest.fail()`"
+  },
+  {
+    "code": "PT017",
+    "name": "pytest-assert-in-except",
+    "linter": "flake8-pytest-style",
+    "summary": "Found assertion on exception `{name}` in `except` block, use `pytest.raises()` instead"
+  },
+  {
+    "code": "PT018",
+    "name": "pytest-composite-assertion",
+    "linter": "flake8-pytest-style",
+    "summary": "Assertion should be broken down into multiple parts"
+  },
+  {
+    "code": "PT019",
+    "name": "pytest-fixture-param-without-value",
+    "linter": "flake8-pytest-style",
+    "summary": "Fixture `{name}` without value is injected as parameter, use `@pytest.mark.usefixtures` instead"
+  },
+  {
+    "code": "PT020",
+    "name": "pytest-deprecated-yield-fixture",
+    "linter": "flake8-pytest-style",
+    "summary": "`@pytest.yield_fixture` is deprecated, use `@pytest.fixture`"
+  },
+  {
+    "code": "PT021",
+    "name": "pytest-fixture-finalizer-callback",
+    "linter": "flake8-pytest-style",
+    "summary": "Use `yield` instead of `request.addfinalizer`"
+  },
+  {
+    "code": "PT022",
+    "name": "pytest-useless-yield-fixture",
+    "linter": "flake8-pytest-style",
+    "summary": "No teardown in fixture `{name}`, use `return` instead of `yield`"
+  },
+  {
+    "code": "PT023",
+    "name": "pytest-incorrect-mark-parentheses-style",
+    "linter": "flake8-pytest-style",
+    "summary": "Use `@pytest.mark.{mark_name}{expected_parens}` over `@pytest.mark.{mark_name}{actual_parens}`"
+  },
+  {
+    "code": "PT024",
+    "name": "pytest-unnecessary-asyncio-mark-on-fixture",
+    "linter": "flake8-pytest-style",
+    "summary": "`pytest.mark.asyncio` is unnecessary for fixtures"
+  },
+  {
+    "code": "PT025",
+    "name": "pytest-erroneous-use-fixtures-on-fixture",
+    "linter": "flake8-pytest-style",
+    "summary": "`pytest.mark.usefixtures` has no effect on fixtures"
+  },
+  {
+    "code": "PT026",
+    "name": "pytest-use-fixtures-without-parameters",
+    "linter": "flake8-pytest-style",
+    "summary": "Useless `pytest.mark.usefixtures` without parameters"
+  },
+  {
+    "code": "PT028",
+    "name": "pytest-parameter-with-default-argument",
+    "linter": "flake8-pytest-style",
+    "summary": "Test function parameter `{}` has default argument"
+  },
+  {
+    "code": "PT030",
+    "name": "pytest-warns-too-broad",
+    "linter": "flake8-pytest-style",
+    "summary": "`pytest.warns({warning})` is too broad, set the `match` parameter or use a more specific warning"
+  },
+  {
+    "code": "PT031",
+    "name": "pytest-warns-with-multiple-statements",
+    "linter": "flake8-pytest-style",
+    "summary": "`pytest.warns()` block should contain a single simple statement"
+  },
+  {
+    "code": "PTH100",
+    "name": "os-path-abspath",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.abspath()` should be replaced by `Path.resolve()`"
+  },
+  {
+    "code": "PTH101",
+    "name": "os-chmod",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.chmod()` should be replaced by `Path.chmod()`"
+  },
+  {
+    "code": "PTH102",
+    "name": "os-mkdir",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.mkdir()` should be replaced by `Path.mkdir()`"
+  },
+  {
+    "code": "PTH103",
+    "name": "os-makedirs",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.makedirs()` should be replaced by `Path.mkdir(parents=True)`"
+  },
+  {
+    "code": "PTH104",
+    "name": "os-rename",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.rename()` should be replaced by `Path.rename()`"
+  },
+  {
+    "code": "PTH105",
+    "name": "os-replace",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.replace()` should be replaced by `Path.replace()`"
+  },
+  {
+    "code": "PTH106",
+    "name": "os-rmdir",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.rmdir()` should be replaced by `Path.rmdir()`"
+  },
+  {
+    "code": "PTH107",
+    "name": "os-remove",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.remove()` should be replaced by `Path.unlink()`"
+  },
+  {
+    "code": "PTH108",
+    "name": "os-unlink",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.unlink()` should be replaced by `Path.unlink()`"
+  },
+  {
+    "code": "PTH109",
+    "name": "os-getcwd",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.getcwd()` should be replaced by `Path.cwd()`"
+  },
+  {
+    "code": "PTH110",
+    "name": "os-path-exists",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.exists()` should be replaced by `Path.exists()`"
+  },
+  {
+    "code": "PTH111",
+    "name": "os-path-expanduser",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.expanduser()` should be replaced by `Path.expanduser()`"
+  },
+  {
+    "code": "PTH112",
+    "name": "os-path-isdir",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.isdir()` should be replaced by `Path.is_dir()`"
+  },
+  {
+    "code": "PTH113",
+    "name": "os-path-isfile",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.isfile()` should be replaced by `Path.is_file()`"
+  },
+  {
+    "code": "PTH114",
+    "name": "os-path-islink",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.islink()` should be replaced by `Path.is_symlink()`"
+  },
+  {
+    "code": "PTH115",
+    "name": "os-readlink",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.readlink()` should be replaced by `Path.readlink()`"
+  },
+  {
+    "code": "PTH116",
+    "name": "os-stat",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.stat()` should be replaced by `Path.stat()`, `Path.owner()`, or `Path.group()`"
+  },
+  {
+    "code": "PTH117",
+    "name": "os-path-isabs",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.isabs()` should be replaced by `Path.is_absolute()`"
+  },
+  {
+    "code": "PTH118",
+    "name": "os-path-join",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.{module}.join()` should be replaced by `Path` with `/` operator"
+  },
+  {
+    "code": "PTH119",
+    "name": "os-path-basename",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.basename()` should be replaced by `Path.name`"
+  },
+  {
+    "code": "PTH120",
+    "name": "os-path-dirname",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.dirname()` should be replaced by `Path.parent`"
+  },
+  {
+    "code": "PTH121",
+    "name": "os-path-samefile",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.samefile()` should be replaced by `Path.samefile()`"
+  },
+  {
+    "code": "PTH122",
+    "name": "os-path-splitext",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.splitext()` should be replaced by `Path.suffix`, `Path.stem`, and `Path.parent`"
+  },
+  {
+    "code": "PTH123",
+    "name": "builtin-open",
+    "linter": "flake8-use-pathlib",
+    "summary": "`open()` should be replaced by `Path.open()`"
+  },
+  {
+    "code": "PTH124",
+    "name": "py-path",
+    "linter": "flake8-use-pathlib",
+    "summary": "`py.path` is in maintenance mode, use `pathlib` instead"
+  },
+  {
+    "code": "PTH201",
+    "name": "path-constructor-current-directory",
+    "linter": "flake8-use-pathlib",
+    "summary": "Do not pass the current directory explicitly to `Path`"
+  },
+  {
+    "code": "PTH202",
+    "name": "os-path-getsize",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.getsize` should be replaced by `Path.stat().st_size`"
+  },
+  {
+    "code": "PTH203",
+    "name": "os-path-getatime",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.getatime` should be replaced by `Path.stat().st_atime`"
+  },
+  {
+    "code": "PTH204",
+    "name": "os-path-getmtime",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.getmtime` should be replaced by `Path.stat().st_mtime`"
+  },
+  {
+    "code": "PTH205",
+    "name": "os-path-getctime",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.path.getctime` should be replaced by `Path.stat().st_ctime`"
+  },
+  {
+    "code": "PTH206",
+    "name": "os-sep-split",
+    "linter": "flake8-use-pathlib",
+    "summary": "Replace `.split(os.sep)` with `Path.parts`"
+  },
+  {
+    "code": "PTH207",
+    "name": "glob",
+    "linter": "flake8-use-pathlib",
+    "summary": "Replace `{function}` with `Path.glob` or `Path.rglob`"
+  },
+  {
+    "code": "PTH208",
+    "name": "os-listdir",
+    "linter": "flake8-use-pathlib",
+    "summary": "Use `pathlib.Path.iterdir()` instead."
+  },
+  {
+    "code": "PTH210",
+    "name": "invalid-pathlib-with-suffix",
+    "linter": "flake8-use-pathlib",
+    "summary": "Invalid suffix passed to `.with_suffix()`"
+  },
+  {
+    "code": "PTH211",
+    "name": "os-symlink",
+    "linter": "flake8-use-pathlib",
+    "summary": "`os.symlink` should be replaced by `Path.symlink_to`"
+  },
+  {
+    "code": "RET501",
+    "name": "unnecessary-return-none",
+    "linter": "flake8-return",
+    "summary": "Do not explicitly `return None` in function if it is the only possible return value"
+  },
+  {
+    "code": "RET502",
+    "name": "implicit-return-value",
+    "linter": "flake8-return",
+    "summary": "Do not implicitly `return None` in function able to return non-`None` value"
+  },
+  {
+    "code": "RET503",
+    "name": "implicit-return",
+    "linter": "flake8-return",
+    "summary": "Missing explicit `return` at the end of function able to return non-`None` value"
+  },
+  {
+    "code": "RET504",
+    "name": "unnecessary-assign",
+    "linter": "flake8-return",
+    "summary": "Unnecessary assignment to `{name}` before `return` statement"
+  },
+  {
+    "code": "RET505",
+    "name": "superfluous-else-return",
+    "linter": "flake8-return",
+    "summary": "Unnecessary `{branch}` after `return` statement"
+  },
+  {
+    "code": "RET506",
+    "name": "superfluous-else-raise",
+    "linter": "flake8-return",
+    "summary": "Unnecessary `{branch}` after `raise` statement"
+  },
+  {
+    "code": "RET507",
+    "name": "superfluous-else-continue",
+    "linter": "flake8-return",
+    "summary": "Unnecessary `{branch}` after `continue` statement"
+  },
+  {
+    "code": "RET508",
+    "name": "superfluous-else-break",
+    "linter": "flake8-return",
+    "summary": "Unnecessary `{branch}` after `break` statement"
+  },
+  {
+    "code": "RUF005",
+    "name": "collection-literal-concatenation",
+    "linter": "Ruff-specific rules",
+    "summary": "Consider `{expression}` instead of concatenation"
+  },
+  {
+    "code": "RUF006",
+    "name": "asyncio-dangling-task",
+    "linter": "Ruff-specific rules",
+    "summary": "Store a reference to the return value of `{expr}.{method}`"
+  },
+  {
+    "code": "RUF007",
+    "name": "zip-instead-of-pairwise",
+    "linter": "Ruff-specific rules",
+    "summary": "Prefer `itertools.pairwise()` over `zip()` when iterating over successive pairs"
+  },
+  {
+    "code": "RUF008",
+    "name": "mutable-dataclass-default",
+    "linter": "Ruff-specific rules",
+    "summary": "Do not use mutable default values for dataclass attributes"
+  },
+  {
+    "code": "RUF009",
+    "name": "function-call-in-dataclass-default-argument",
+    "linter": "Ruff-specific rules",
+    "summary": "Do not perform function call `{name}` in dataclass defaults"
+  },
+  {
+    "code": "RUF010",
+    "name": "explicit-f-string-type-conversion",
+    "linter": "Ruff-specific rules",
+    "summary": "Use explicit conversion flag"
+  },
+  {
+    "code": "RUF013",
+    "name": "implicit-optional",
+    "linter": "Ruff-specific rules",
+    "summary": "PEP 484 prohibits implicit `Optional`"
+  },
+  {
+    "code": "RUF015",
+    "name": "unnecessary-iterable-allocation-for-first-element",
+    "linter": "Ruff-specific rules",
+    "summary": "Prefer `next({iterable})` over single element slice"
+  },
+  {
+    "code": "RUF016",
+    "name": "invalid-index-type",
+    "linter": "Ruff-specific rules",
+    "summary": "Slice in indexed access to type `{value_type}` uses type `{index_type}` instead of an integer"
+  },
+  {
+    "code": "RUF017",
+    "name": "quadratic-list-summation",
+    "linter": "Ruff-specific rules",
+    "summary": "Avoid quadratic list summation"
+  },
+  {
+    "code": "RUF018",
+    "name": "assignment-in-assert",
+    "linter": "Ruff-specific rules",
+    "summary": "Avoid assignment expressions in `assert` statements"
+  },
+  {
+    "code": "RUF019",
+    "name": "unnecessary-key-check",
+    "linter": "Ruff-specific rules",
+    "summary": "Unnecessary key check before dictionary access"
+  },
+  {
+    "code": "RUF020",
+    "name": "never-union",
+    "linter": "Ruff-specific rules",
+    "summary": "`{never_like} | T` is equivalent to `T`"
+  },
+  {
+    "code": "RUF021",
+    "name": "parenthesize-chained-operators",
+    "linter": "Ruff-specific rules",
+    "summary": "Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear"
+  },
+  {
+    "code": "RUF022",
+    "name": "unsorted-dunder-all",
+    "linter": "Ruff-specific rules",
+    "summary": "`__all__` is not sorted"
+  },
+  {
+    "code": "RUF023",
+    "name": "unsorted-dunder-slots",
+    "linter": "Ruff-specific rules",
+    "summary": "`{}.__slots__` is not sorted"
+  },
+  {
+    "code": "RUF024",
+    "name": "mutable-fromkeys-value",
+    "linter": "Ruff-specific rules",
+    "summary": "Do not pass mutable objects as values to `dict.fromkeys`"
+  },
+  {
+    "code": "RUF026",
+    "name": "default-factory-kwarg",
+    "linter": "Ruff-specific rules",
+    "summary": "`default_factory` is a positional-only argument to `defaultdict`"
+  },
+  {
+    "code": "RUF028",
+    "name": "invalid-formatter-suppression-comment",
+    "linter": "Ruff-specific rules",
+    "summary": "This suppression comment is invalid because {}"
+  },
+  {
+    "code": "RUF030",
+    "name": "assert-with-print-message",
+    "linter": "Ruff-specific rules",
+    "summary": "`print()` call in `assert` statement is likely unintentional"
+  },
+  {
+    "code": "RUF032",
+    "name": "decimal-from-float-literal",
+    "linter": "Ruff-specific rules",
+    "summary": "`Decimal()` called with float literal argument"
+  },
+  {
+    "code": "RUF033",
+    "name": "post-init-default",
+    "linter": "Ruff-specific rules",
+    "summary": "`__post_init__` method with argument defaults"
+  },
+  {
+    "code": "RUF034",
+    "name": "useless-if-else",
+    "linter": "Ruff-specific rules",
+    "summary": "Useless `if`-`else` condition"
+  },
+  {
+    "code": "RUF036",
+    "name": "none-not-at-end-of-union",
+    "linter": "Ruff-specific rules",
+    "summary": "`None` not at the end of the type union."
+  },
+  {
+    "code": "RUF037",
+    "name": "unnecessary-empty-iterable-within-deque-call",
+    "linter": "Ruff-specific rules",
+    "summary": "Unnecessary empty iterable within a deque call"
+  },
+  {
+    "code": "RUF040",
+    "name": "invalid-assert-message-literal-argument",
+    "linter": "Ruff-specific rules",
+    "summary": "Non-string literal used as assert message"
+  },
+  {
+    "code": "RUF041",
+    "name": "unnecessary-nested-literal",
+    "linter": "Ruff-specific rules",
+    "summary": "Unnecessary nested `Literal`"
+  },
+  {
+    "code": "RUF043",
+    "name": "pytest-raises-ambiguous-pattern",
+    "linter": "Ruff-specific rules",
+    "summary": "Pattern passed to `match=` contains metacharacters but is neither escaped nor raw"
+  },
+  {
+    "code": "RUF046",
+    "name": "unnecessary-cast-to-int",
+    "linter": "Ruff-specific rules",
+    "summary": "Value being cast to `int` is already an integer"
+  },
+  {
+    "code": "RUF048",
+    "name": "map-int-version-parsing",
+    "linter": "Ruff-specific rules",
+    "summary": "`__version__` may contain non-integral-like elements"
+  },
+  {
+    "code": "RUF049",
+    "name": "dataclass-enum",
+    "linter": "Ruff-specific rules",
+    "summary": "An enum class should not be decorated with `@dataclass`"
+  },
+  {
+    "code": "RUF051",
+    "name": "if-key-in-dict-del",
+    "linter": "Ruff-specific rules",
+    "summary": "Use `pop` instead of `key in dict` followed by `del dict[key]`"
+  },
+  {
+    "code": "RUF053",
+    "name": "class-with-mixed-type-vars",
+    "linter": "Ruff-specific rules",
+    "summary": "Class with type parameter list inherits from `Generic`"
+  },
+  {
+    "code": "RUF057",
+    "name": "unnecessary-round",
+    "linter": "Ruff-specific rules",
+    "summary": "Value being rounded is already an integer"
+  },
+  {
+    "code": "RUF058",
+    "name": "starmap-zip",
+    "linter": "Ruff-specific rules",
+    "summary": "`itertools.starmap` called on `zip` iterable"
+  },
+  {
+    "code": "RUF059",
+    "name": "unused-unpacked-variable",
+    "linter": "Ruff-specific rules",
+    "summary": "Unpacked variable `{name}` is never used"
+  },
+  {
+    "code": "RUF060",
+    "name": "in-empty-collection",
+    "linter": "Ruff-specific rules",
+    "summary": "Unnecessary membership test on empty collection"
+  },
+  {
+    "code": "RUF061",
+    "name": "legacy-form-pytest-raises",
+    "linter": "Ruff-specific rules",
+    "summary": "Use context-manager form of `pytest.{}()`"
+  },
+  {
+    "code": "RUF063",
+    "name": "access-annotations-from-class-dict",
+    "linter": "Ruff-specific rules",
+    "summary": "Use `{suggestion}` instead of `__dict__` access"
+  },
+  {
+    "code": "RUF064",
+    "name": "non-octal-permissions",
+    "linter": "Ruff-specific rules",
+    "summary": "Non-octal mode"
+  },
+  {
+    "code": "RUF068",
+    "name": "duplicate-entry-in-dunder-all",
+    "linter": "Ruff-specific rules",
+    "summary": "`__all__` contains duplicate entries"
+  },
+  {
+    "code": "RUF071",
+    "name": "os-path-commonprefix",
+    "linter": "Ruff-specific rules",
+    "summary": "`os.path.commonprefix()` compares strings character-by-character"
+  },
+  {
+    "code": "RUF101",
+    "name": "redirected-noqa",
+    "linter": "Ruff-specific rules",
+    "summary": "`{original}` is a redirect to `{target}`"
+  },
+  {
+    "code": "RUF102",
+    "name": "invalid-rule-code",
+    "linter": "Ruff-specific rules",
+    "summary": "Invalid rule code in {}: {}"
+  },
+  {
+    "code": "RUF103",
+    "name": "invalid-suppression-comment",
+    "linter": "Ruff-specific rules",
+    "summary": "Invalid suppression comment: {msg}"
+  },
+  {
+    "code": "RUF104",
+    "name": "unmatched-suppression-comment",
+    "linter": "Ruff-specific rules",
+    "summary": "Suppression comment without matching `#ruff:enable` comment"
+  },
+  {
+    "code": "RUF200",
+    "name": "invalid-pyproject-toml",
+    "linter": "Ruff-specific rules",
+    "summary": "Failed to parse pyproject.toml: {message}"
+  },
+  {
+    "code": "S102",
+    "name": "exec-builtin",
+    "linter": "flake8-bandit",
+    "summary": "Use of `exec` detected"
+  },
+  {
+    "code": "S108",
+    "name": "hardcoded-temp-file",
+    "linter": "flake8-bandit",
+    "summary": "Probable insecure usage of temporary file or directory: \"{}\""
+  },
+  {
+    "code": "S113",
+    "name": "request-without-timeout",
+    "linter": "flake8-bandit",
+    "summary": "Probable use of `{module}` call without timeout"
+  },
+  {
+    "code": "S201",
+    "name": "flask-debug-true",
+    "linter": "flake8-bandit",
+    "summary": "Use of `debug=True` in Flask app detected"
+  },
+  {
+    "code": "S202",
+    "name": "tarfile-unsafe-members",
+    "linter": "flake8-bandit",
+    "summary": "Uses of `tarfile.extractall()`"
+  },
+  {
+    "code": "S301",
+    "name": "suspicious-pickle-usage",
+    "linter": "flake8-bandit",
+    "summary": "`pickle` and modules that wrap it can be unsafe when used to deserialize untrusted data, possible security issue"
+  },
+  {
+    "code": "S302",
+    "name": "suspicious-marshal-usage",
+    "linter": "flake8-bandit",
+    "summary": "Deserialization with the `marshal` module is possibly dangerous"
+  },
+  {
+    "code": "S303",
+    "name": "suspicious-insecure-hash-usage",
+    "linter": "flake8-bandit",
+    "summary": "Use of insecure MD2, MD4, MD5, or SHA1 hash function"
+  },
+  {
+    "code": "S304",
+    "name": "suspicious-insecure-cipher-usage",
+    "linter": "flake8-bandit",
+    "summary": "Use of insecure cipher, replace with a known secure cipher such as AES"
+  },
+  {
+    "code": "S305",
+    "name": "suspicious-insecure-cipher-mode-usage",
+    "linter": "flake8-bandit",
+    "summary": "Use of insecure block cipher mode, replace with a known secure mode such as CBC or CTR"
+  },
+  {
+    "code": "S306",
+    "name": "suspicious-mktemp-usage",
+    "linter": "flake8-bandit",
+    "summary": "Use of insecure and deprecated function (`mktemp`)"
+  },
+  {
+    "code": "S307",
+    "name": "suspicious-eval-usage",
+    "linter": "flake8-bandit",
+    "summary": "Use of possibly insecure function; consider using `ast.literal_eval`"
+  },
+  {
+    "code": "S308",
+    "name": "suspicious-mark-safe-usage",
+    "linter": "flake8-bandit",
+    "summary": "Use of `mark_safe` may expose cross-site scripting vulnerabilities"
+  },
+  {
+    "code": "S312",
+    "name": "suspicious-telnet-usage",
+    "linter": "flake8-bandit",
+    "summary": "Telnet is considered insecure. Use SSH or some other encrypted protocol."
+  },
+  {
+    "code": "S313",
+    "name": "suspicious-xmlc-element-tree-usage",
+    "linter": "flake8-bandit",
+    "summary": "Using `xml` to parse untrusted data is known to be vulnerable to XML attacks; use `defusedxml` equivalents"
+  },
+  {
+    "code": "S314",
+    "name": "suspicious-xml-element-tree-usage",
+    "linter": "flake8-bandit",
+    "summary": "Using `xml` to parse untrusted data is known to be vulnerable to XML attacks; use `defusedxml` equivalents"
+  },
+  {
+    "code": "S315",
+    "name": "suspicious-xml-expat-reader-usage",
+    "linter": "flake8-bandit",
+    "summary": "Using `xml` to parse untrusted data is known to be vulnerable to XML attacks; use `defusedxml` equivalents"
+  },
+  {
+    "code": "S316",
+    "name": "suspicious-xml-expat-builder-usage",
+    "linter": "flake8-bandit",
+    "summary": "Using `xml` to parse untrusted data is known to be vulnerable to XML attacks; use `defusedxml` equivalents"
+  },
+  {
+    "code": "S317",
+    "name": "suspicious-xml-sax-usage",
+    "linter": "flake8-bandit",
+    "summary": "Using `xml` to parse untrusted data is known to be vulnerable to XML attacks; use `defusedxml` equivalents"
+  },
+  {
+    "code": "S318",
+    "name": "suspicious-xml-mini-dom-usage",
+    "linter": "flake8-bandit",
+    "summary": "Using `xml` to parse untrusted data is known to be vulnerable to XML attacks; use `defusedxml` equivalents"
+  },
+  {
+    "code": "S319",
+    "name": "suspicious-xml-pull-dom-usage",
+    "linter": "flake8-bandit",
+    "summary": "Using `xml` to parse untrusted data is known to be vulnerable to XML attacks; use `defusedxml` equivalents"
+  },
+  {
+    "code": "S321",
+    "name": "suspicious-ftp-lib-usage",
+    "linter": "flake8-bandit",
+    "summary": "FTP-related functions are being called. FTP is considered insecure. Use SSH/SFTP/SCP or some other encrypted protocol."
+  },
+  {
+    "code": "S323",
+    "name": "suspicious-unverified-context-usage",
+    "linter": "flake8-bandit",
+    "summary": "Python allows using an insecure context via the `_create_unverified_context` that reverts to the previous behavior that does not validate certificates or perform hostname checks."
+  },
+  {
+    "code": "S324",
+    "name": "hashlib-insecure-hash-function",
+    "linter": "flake8-bandit",
+    "summary": "Probable use of insecure hash functions in `{library}`: `{string}`"
+  },
+  {
+    "code": "S501",
+    "name": "request-with-no-cert-validation",
+    "linter": "flake8-bandit",
+    "summary": "Probable use of `{string}` call with `verify=False` disabling SSL certificate checks"
+  },
+  {
+    "code": "S502",
+    "name": "ssl-insecure-version",
+    "linter": "flake8-bandit",
+    "summary": "Call made with insecure SSL protocol: `{protocol}`"
+  },
+  {
+    "code": "S503",
+    "name": "ssl-with-bad-defaults",
+    "linter": "flake8-bandit",
+    "summary": "Argument default set to insecure SSL protocol: `{protocol}`"
+  },
+  {
+    "code": "S504",
+    "name": "ssl-with-no-version",
+    "linter": "flake8-bandit",
+    "summary": "`ssl.wrap_socket` called without an `ssl_version``"
+  },
+  {
+    "code": "S505",
+    "name": "weak-cryptographic-key",
+    "linter": "flake8-bandit",
+    "summary": "{cryptographic_key} key sizes below {minimum_key_size} bits are considered breakable"
+  },
+  {
+    "code": "S506",
+    "name": "unsafe-yaml-load",
+    "linter": "flake8-bandit",
+    "summary": "Probable use of unsafe loader `{name}` with `yaml.load`. Allows instantiation of arbitrary objects. Consider `yaml.safe_load`."
+  },
+  {
+    "code": "S507",
+    "name": "ssh-no-host-key-verification",
+    "linter": "flake8-bandit",
+    "summary": "Paramiko call with policy set to automatically trust the unknown host key"
+  },
+  {
+    "code": "S508",
+    "name": "snmp-insecure-version",
+    "linter": "flake8-bandit",
+    "summary": "The use of SNMPv1 and SNMPv2 is insecure. Use SNMPv3 if able."
+  },
+  {
+    "code": "S509",
+    "name": "snmp-weak-cryptography",
+    "linter": "flake8-bandit",
+    "summary": "You should not use SNMPv3 without encryption. `noAuthNoPriv` & `authNoPriv` is insecure."
+  },
+  {
+    "code": "S602",
+    "name": "subprocess-popen-with-shell-equals-true",
+    "linter": "flake8-bandit",
+    "summary": "`subprocess` call with `shell=True` seems safe, but may be changed in the future; consider rewriting without `shell`"
+  },
+  {
+    "code": "S604",
+    "name": "call-with-shell-equals-true",
+    "linter": "flake8-bandit",
+    "summary": "Function call with `shell=True` parameter identified, security issue"
+  },
+  {
+    "code": "S605",
+    "name": "start-process-with-a-shell",
+    "linter": "flake8-bandit",
+    "summary": "Starting a process with a shell: seems safe, but may be changed in the future; consider rewriting without `shell`"
+  },
+  {
+    "code": "S609",
+    "name": "unix-command-wildcard-injection",
+    "linter": "flake8-bandit",
+    "summary": "Possible wildcard injection in call due to `*` usage"
+  },
+  {
+    "code": "S610",
+    "name": "django-extra",
+    "linter": "flake8-bandit",
+    "summary": "Use of Django `extra` can lead to SQL injection vulnerabilities"
+  },
+  {
+    "code": "S611",
+    "name": "django-raw-sql",
+    "linter": "flake8-bandit",
+    "summary": "Use of `RawSQL` can lead to SQL injection vulnerabilities"
+  },
+  {
+    "code": "S612",
+    "name": "logging-config-insecure-listen",
+    "linter": "flake8-bandit",
+    "summary": "Use of insecure `logging.config.listen` detected"
+  },
+  {
+    "code": "S701",
+    "name": "jinja2-autoescape-false",
+    "linter": "flake8-bandit",
+    "summary": "Using jinja2 templates with `autoescape=False` is dangerous and can lead to XSS. Ensure `autoescape=True` or use the `select_autoescape` function."
+  },
+  {
+    "code": "S702",
+    "name": "mako-templates",
+    "linter": "flake8-bandit",
+    "summary": "Mako templates allow HTML and JavaScript rendering by default and are inherently open to XSS attacks"
+  },
+  {
+    "code": "S704",
+    "name": "unsafe-markup-use",
+    "linter": "flake8-bandit",
+    "summary": "Unsafe use of `{name}` detected"
+  },
+  {
+    "code": "SIM101",
+    "name": "duplicate-isinstance-call",
+    "linter": "flake8-simplify",
+    "summary": "Multiple `isinstance` calls for `{name}`, merge into a single call"
+  },
+  {
+    "code": "SIM102",
+    "name": "collapsible-if",
+    "linter": "flake8-simplify",
+    "summary": "Use a single `if` statement instead of nested `if` statements"
+  },
+  {
+    "code": "SIM103",
+    "name": "needless-bool",
+    "linter": "flake8-simplify",
+    "summary": "Return the condition `{condition}` directly"
+  },
+  {
+    "code": "SIM107",
+    "name": "return-in-try-except-finally",
+    "linter": "flake8-simplify",
+    "summary": "Don't use `return` in `try`-`except` and `finally`"
+  },
+  {
+    "code": "SIM108",
+    "name": "if-else-block-instead-of-if-exp",
+    "linter": "flake8-simplify",
+    "summary": "Use ternary operator `{contents}` instead of `if`-`else`-block"
+  },
+  {
+    "code": "SIM109",
+    "name": "compare-with-tuple",
+    "linter": "flake8-simplify",
+    "summary": "Use `{replacement}` instead of multiple equality comparisons"
+  },
+  {
+    "code": "SIM110",
+    "name": "reimplemented-builtin",
+    "linter": "flake8-simplify",
+    "summary": "Use `{replacement}` instead of `for` loop"
+  },
+  {
+    "code": "SIM112",
+    "name": "uncapitalized-environment-variables",
+    "linter": "flake8-simplify",
+    "summary": "Use capitalized environment variable `{expected}` instead of `{actual}`"
+  },
+  {
+    "code": "SIM113",
+    "name": "enumerate-for-loop",
+    "linter": "flake8-simplify",
+    "summary": "Use `enumerate()` for index variable `{index}` in `for` loop"
+  },
+  {
+    "code": "SIM114",
+    "name": "if-with-same-arms",
+    "linter": "flake8-simplify",
+    "summary": "Combine `if` branches using logical `or` operator"
+  },
+  {
+    "code": "SIM115",
+    "name": "open-file-with-context-handler",
+    "linter": "flake8-simplify",
+    "summary": "Use a context manager for opening files"
+  },
+  {
+    "code": "SIM116",
+    "name": "if-else-block-instead-of-dict-lookup",
+    "linter": "flake8-simplify",
+    "summary": "Use a dictionary instead of consecutive `if` statements"
+  },
+  {
+    "code": "SIM117",
+    "name": "multiple-with-statements",
+    "linter": "flake8-simplify",
+    "summary": "Use a single `with` statement with multiple contexts instead of nested `with` statements"
+  },
+  {
+    "code": "SIM118",
+    "name": "in-dict-keys",
+    "linter": "flake8-simplify",
+    "summary": "Use `key {operator} dict` instead of `key {operator} dict.keys()`"
+  },
+  {
+    "code": "SIM201",
+    "name": "negate-equal-op",
+    "linter": "flake8-simplify",
+    "summary": "Use `{left} != {right}` instead of `not {left} == {right}`"
+  },
+  {
+    "code": "SIM202",
+    "name": "negate-not-equal-op",
+    "linter": "flake8-simplify",
+    "summary": "Use `{left} == {right}` instead of `not {left} != {right}`"
+  },
+  {
+    "code": "SIM208",
+    "name": "double-negation",
+    "linter": "flake8-simplify",
+    "summary": "Use `{expr}` instead of `not (not {expr})`"
+  },
+  {
+    "code": "SIM210",
+    "name": "if-expr-with-true-false",
+    "linter": "flake8-simplify",
+    "summary": "Remove unnecessary `True if ... else False`"
+  },
+  {
+    "code": "SIM211",
+    "name": "if-expr-with-false-true",
+    "linter": "flake8-simplify",
+    "summary": "Use `not ...` instead of `False if ... else True`"
+  },
+  {
+    "code": "SIM212",
+    "name": "if-expr-with-twisted-arms",
+    "linter": "flake8-simplify",
+    "summary": "Use `{expr_else} if {expr_else} else {expr_body}` instead of `{expr_body} if not {expr_else} else {expr_else}`"
+  },
+  {
+    "code": "SIM220",
+    "name": "expr-and-not-expr",
+    "linter": "flake8-simplify",
+    "summary": "Use `False` instead of `{name} and not {name}`"
+  },
+  {
+    "code": "SIM221",
+    "name": "expr-or-not-expr",
+    "linter": "flake8-simplify",
+    "summary": "Use `True` instead of `{name} or not {name}`"
+  },
+  {
+    "code": "SIM222",
+    "name": "expr-or-true",
+    "linter": "flake8-simplify",
+    "summary": "Use `{expr}` instead of `{replaced}`"
+  },
+  {
+    "code": "SIM223",
+    "name": "expr-and-false",
+    "linter": "flake8-simplify",
+    "summary": "Use `{expr}` instead of `{replaced}`"
+  },
+  {
+    "code": "SIM300",
+    "name": "yoda-conditions",
+    "linter": "flake8-simplify",
+    "summary": "Yoda condition detected"
+  },
+  {
+    "code": "SIM401",
+    "name": "if-else-block-instead-of-dict-get",
+    "linter": "flake8-simplify",
+    "summary": "Use `{contents}` instead of an `if` block"
+  },
+  {
+    "code": "SIM905",
+    "name": "split-static-string",
+    "linter": "flake8-simplify",
+    "summary": "Consider using a list literal instead of `str.{}`"
+  },
+  {
+    "code": "SIM910",
+    "name": "dict-get-with-none-default",
+    "linter": "flake8-simplify",
+    "summary": "Use `{expected}` instead of `{actual}`"
+  },
+  {
+    "code": "SIM911",
+    "name": "zip-dict-keys-and-values",
+    "linter": "flake8-simplify",
+    "summary": "Use `{expected}` instead of `{actual}`"
+  },
+  { "code": "T201", "name": "print", "linter": "flake8-print", "summary": "`print` found" },
+  { "code": "T203", "name": "p-print", "linter": "flake8-print", "summary": "`pprint` found" },
+  {
+    "code": "TRY002",
+    "name": "raise-vanilla-class",
+    "linter": "tryceratops",
+    "summary": "Create your own exception"
+  },
+  {
+    "code": "TRY004",
+    "name": "type-check-without-type-error",
+    "linter": "tryceratops",
+    "summary": "Prefer `TypeError` exception for invalid type"
+  },
+  {
+    "code": "TRY201",
+    "name": "verbose-raise",
+    "linter": "tryceratops",
+    "summary": "Use `raise` without specifying exception name"
+  },
+  {
+    "code": "TRY203",
+    "name": "useless-try-except",
+    "linter": "tryceratops",
+    "summary": "Remove exception handler; error is immediately re-raised"
+  },
+  {
+    "code": "TRY400",
+    "name": "error-instead-of-exception",
+    "linter": "tryceratops",
+    "summary": "Use `logging.exception` instead of `logging.error`"
+  },
+  {
+    "code": "TRY401",
+    "name": "verbose-log-message",
+    "linter": "tryceratops",
+    "summary": "Redundant exception object included in `logging.exception` call"
+  },
+  {
+    "code": "UP031",
+    "name": "printf-string-formatting",
+    "linter": "pyupgrade",
+    "summary": "Use format specifiers instead of percent format"
+  },
+  {
+    "code": "UP032",
+    "name": "f-string",
+    "linter": "pyupgrade",
+    "summary": "Use f-string instead of `format` call"
+  }
+]

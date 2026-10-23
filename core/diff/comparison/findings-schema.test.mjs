@@ -399,6 +399,28 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [empty] })).not.toEqual([]);
   });
 
+  it('accepts a helpUri that is an http or https URL and rejects anything else', () => {
+    const finding = {
+      tool: 'tool',
+      rule: 'rule',
+      path: 'src/a.ts',
+      identity: 'id',
+      message: 'message',
+      classification: 'enforceable',
+      helpUri: 'https://example.com/rules#rule',
+    };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(parseFinding({ ...finding, helpUri: 'http://example.com/rule' }).helpUri).toBe(
+      'http://example.com/rule',
+    );
+    expect(validate({ findings: [finding] })).toEqual([]);
+    for (const helpUri of ['', 'rules/rule.md', 'javascript:alert(1)', 'https://a b', 7]) {
+      expect(() => parseFinding({ ...finding, helpUri })).toThrow(TypeError);
+      expect(validate({ findings: [{ ...finding, helpUri }] })).not.toEqual([]);
+    }
+  });
+
   it('accepts the number of files of a folder finding and rejects zero', () => {
     const finding = {
       tool: 'tool',

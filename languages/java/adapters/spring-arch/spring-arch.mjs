@@ -51,6 +51,8 @@ const MESSAGES = {
     `Reset state in ${simple} itself, or test the class without a Spring context: @DirtiesContext rebuilds the context and slows the suite.`,
 };
 
+export const SPRING_ARCH_RULES = Object.keys(MESSAGES);
+
 const PLACEMENT = 'spring-test-placement';
 const BOUNDARY = 'spring-feature-boundary';
 const DEPENDENCY_RULES = new Set([

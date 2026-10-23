@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { renderSarifReport } from './sarif.mjs';
 import { expectValidSarif } from './test-support/report-assertions.mjs';
 import { finding, report } from './test-support/report-builders.mjs';
+import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 
 describe('renderSarifReport', () => {
   it('emits a structurally valid SARIF 2.1.0 log with fingerprints', () => {
@@ -51,6 +52,65 @@ describe('renderSarifReport', () => {
     expect(fingerprint(finding({ location: { line: 99 }, message: 'reworded' }))).toBe(original);
     expect(fingerprint(finding({ identity: 'other' }))).not.toBe(original);
     expect(fingerprint(finding({ path: 'src/b.js' }))).not.toBe(original);
+  });
+  it('links each rule to its entry in the rule reference with a helpUri and a short description', () => {
+    const log = JSON.parse(
+      renderSarifReport(
+        report({
+          newFindings: [
+            finding({ tool: 'structure', rule: 'function-lines-limit', identity: 'f' }),
+            finding({ tool: 'pmd', rule: 'UnusedLocalVariable', identity: 'g' }),
+            finding({
+              tool: 'eslint-lint',
+              rule: '@typescript-eslint/no-explicit-any',
+              identity: 'h',
+            }),
+            finding({ tool: 'mypy', rule: 'attr-defined', identity: 'i' }),
+          ],
+        }),
+      ),
+    );
+
+    expectValidSarif(log);
+    expect(log.runs[0].tool.driver.rules).toEqual([
+      {
+        id: 'structure/function-lines-limit',
+        name: 'function-lines-limit',
+        shortDescription: { text: 'A function longer than the limit.' },
+        helpUri: docsUrl('docs/rules/checks.md', 'structure-function-lines-limit'),
+      },
+      {
+        id: 'pmd/UnusedLocalVariable',
+        name: 'UnusedLocalVariable',
+        shortDescription: { text: 'Unused local variable' },
+        helpUri: docsUrl('docs/rules/java-pmd.md', 'pmd-unusedlocalvariable'),
+      },
+      {
+        id: 'eslint-lint/@typescript-eslint/no-explicit-any',
+        name: '@typescript-eslint/no-explicit-any',
+        shortDescription: { text: 'Disallow the `any` type' },
+        helpUri: docsUrl(
+          'docs/rules/typescript-eslint.md',
+          'eslint-typescript-eslint-no-explicit-any',
+        ),
+      },
+      {
+        id: 'mypy/attr-defined',
+        name: 'attr-defined',
+        shortDescription: { text: 'A diagnostic of mypy, named by its <error code>.' },
+        helpUri: docsUrl('docs/rules/python-types.md', 'mypy-error-code'),
+      },
+    ]);
+  });
+  it('lists a rule the reference does not know with an id and a name only', () => {
+    const log = JSON.parse(
+      renderSarifReport(
+        report({ newFindings: [finding({ tool: 'custom', rule: 'text-file', identity: 'c' })] }),
+      ),
+    );
+
+    expectValidSarif(log);
+    expect(log.runs[0].tool.driver.rules).toEqual([{ id: 'custom/text-file', name: 'text-file' }]);
   });
   it('emits an empty result list for a clean report', () => {
     const log = JSON.parse(renderSarifReport(report()));

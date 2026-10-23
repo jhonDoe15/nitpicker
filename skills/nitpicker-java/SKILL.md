@@ -42,6 +42,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
 
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/main/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
+
 ## Write it this way
 
 - Style is google-java-format, 100 columns, unless the project formats with palantir-java-format
