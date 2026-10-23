@@ -142,7 +142,9 @@ function mergeEntries(entries) {
 
 function importsByImporter(imports) {
   return groupBy(
-    imports.filter(({ reexport, role }) => !reexport && role !== 'test'),
+    imports.filter(
+      ({ reexport, role, conditional }) => !reexport && !conditional && role !== 'test',
+    ),
     ({ from }) => from,
   );
 }

@@ -61,12 +61,13 @@ def branches(node, type_only, flags):
     return None
 
 
-def statement_of(node, type_only):
+def statement_of(node, type_only, conditional):
     return {
         "level": getattr(node, "level", 0),
         "module": getattr(node, "module", None),
         "names": [a.name for a in node.names],
         "typeOnly": type_only,
+        "conditional": conditional,
         "line": node.lineno,
         "aliases": [{"name": a.name, "alias": a.asname} for a in node.names],
     }
@@ -74,17 +75,20 @@ def statement_of(node, type_only):
 
 def collect(root, flags):
     found = []
-    stack = [(root, False)]
+    stack = [(root, False, False)]
     while stack:
-        node, type_only = stack.pop()
+        node, type_only, conditional = stack.pop()
         if isinstance(node, (ast.Import, ast.ImportFrom)):
-            found.append(statement_of(node, type_only))
+            found.append(statement_of(node, type_only, conditional))
             continue
         split = branches(node, type_only, flags) if isinstance(node, ast.If) else None
         if split is None:
-            pending = [(child, type_only) for child in ast.iter_child_nodes(node)]
+            nested = conditional or not isinstance(node, ast.Module)
+            pending = [(child, type_only, nested) for child in ast.iter_child_nodes(node)]
         else:
-            pending = [(child, flag) for statements, flag in split for child in statements]
+            pending = [
+                (child, flag, conditional) for statements, flag in split for child in statements
+            ]
         stack.extend(reversed(pending))
     return found
 

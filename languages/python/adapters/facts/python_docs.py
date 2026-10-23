@@ -15,7 +15,10 @@ SECTION_NAMES = (
 SECTION = re.compile(rf"^(?:{SECTION_NAMES})(?:\s+[\w.]+)?:(?:\s+(.*))?$")
 UNDERLINE = re.compile(r"^-{3,}\s*$")
 CODE_FENCE = re.compile(r"^(?:```|~~~)")
-CODE_DIRECTIVE = re.compile(r"^\.\.\s+(?:code-block|code|sourcecode|doctest|testcode|testoutput)::")
+NON_PROSE_DIRECTIVE = re.compile(
+    r"^\.\.\s+(?:code-block|code|sourcecode|doctest|testcode|testoutput"
+    r"|versionadded|versionchanged|versionremoved|deprecated)::"
+)
 DIRECTIVE = re.compile(r"^\.\.\s+[\w:-]+::")
 HAS_TEXT = re.compile(r"\w")
 FIELD_PREFIX = re.compile(r"^:[^:]+:")
@@ -56,7 +59,7 @@ def split_docstring(docstring):
             code.append(line)
         elif starts_section(lines, index):
             return prose, code + lines[index:]
-        elif CODE_DIRECTIVE.match(line):
+        elif NON_PROSE_DIRECTIVE.match(line):
             block = indent
             code.append(line)
         else:

@@ -230,6 +230,26 @@ describe.skipIf(!enabled)('negative-wait-in-test', () => {
       'import pytest, queue\ndef test_a(q):\n    with pytest.raises(queue.Empty):\n        q.get_nowait()\n',
       [],
     ],
+    [
+      'a mocked call that raises a timeout without waiting',
+      'import pytest\nfrom unittest import mock\ndef test_a():\n    client = mock.Mock()\n    client.fetch.side_effect = TimeoutError\n    with pytest.raises(TimeoutError):\n        client.fetch("u", timeout=5)\n',
+      [],
+    ],
+    [
+      'a mocked queue read',
+      'import pytest, queue\ndef test_a(mocker):\n    q = mocker.MagicMock()\n    q.get.side_effect = queue.Empty\n    with pytest.raises(queue.Empty):\n        q.get(timeout=1)\n',
+      [],
+    ],
+    [
+      'an exit code of 0 from a process',
+      'import subprocess\ndef test_a():\n    proc = subprocess.Popen(["true"])\n    assert not proc.wait(timeout=5)\n',
+      [],
+    ],
+    [
+      'a process run that times out',
+      'import pytest, subprocess\ndef test_a():\n    with pytest.raises(subprocess.TimeoutExpired):\n        subprocess.run(["sleep", "5"], timeout=0.1)\n',
+      ['negative-wait-in-test tests/test_mod.py:4 subprocess.run'],
+    ],
   ])('%s', (_name, code, expected) => {
     expect(waits(code)).toEqual(expected);
   });

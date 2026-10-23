@@ -95,6 +95,17 @@ describe('exported-name-collision over facts', () => {
   });
 });
 
+describe('exported-name-collision and conditional imports', () => {
+  it('leaves out an import the producer marks conditional, like a require in a branch', () => {
+    const facts = factFixture('reuse');
+    const imports = facts.imports.map((record) =>
+      record.to === 'app/billing/format.py' ? { ...record, conditional: true } : record,
+    );
+
+    expect(findingsOf({ ...facts, imports }, ['exported-name-collision'])).toEqual([]);
+  });
+});
+
 describe('sibling-copy-edit over facts', () => {
   const baseline = (movesFile) => ({ facts: factFixture('sibling-base'), movesFile });
 

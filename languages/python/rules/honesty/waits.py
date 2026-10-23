@@ -8,6 +8,12 @@ TIMEOUT_ERRORS = {"TimeoutError", "Empty", "TimeoutExpired"}
 RAISES = {"raises", "assertRaises"}
 DELAY_FIRST = {"wait", "timeout", "fail_after"}
 FALSE_RESULTS = {"wait", "acquire"}
+WAIT_CALLS = {"wait", "wait_for", "get", "join", "acquire", "result", "communicate", *DELAY_FIRST}
+PROCESS_RUNS = {"subprocess.run", "subprocess.call", "subprocess.check_call", "subprocess.check_output"}
+MOCKS = {"Mock", "MagicMock", "AsyncMock", "NonCallableMock", "create_autospec", "patch", "object"}
+PROCESSES = {"Popen", "create_subprocess_exec", "create_subprocess_shell"}
+MOCK_ATTRIBUTES = {"side_effect", "return_value"}
+MOCKED = "Mock"
 
 
 def delay_of(call):
@@ -22,12 +28,43 @@ def delay_of(call):
     return None
 
 
-def is_wait(node):
+def root_name(node):
+    while isinstance(node, (ast.Attribute, ast.Subscript, ast.Call)):
+        node = node.func if isinstance(node, ast.Call) else node.value
+    return node.id if isinstance(node, ast.Name) else None
+
+
+def bound_kinds(target, value, kinds):
+    if isinstance(target, ast.Name) and isinstance(value, ast.Call):
+        kinds[target.id] = last_name(value.func)
+    elif isinstance(target, ast.Attribute) and target.attr in MOCK_ATTRIBUTES:
+        kinds[root_name(target)] = MOCKED
+
+
+def scope_kinds(function):
+    kinds = {}
+    for node in ast.walk(function):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                bound_kinds(target, node.value, kinds)
+        elif isinstance(node, ast.withitem) and node.optional_vars is not None:
+            bound_kinds(node.optional_vars, node.context_expr, kinds)
+    return kinds
+
+
+def is_wait(node, scope):
     if not isinstance(node, ast.Call):
         return False
     delay = delay_of(node)
     unbounded = isinstance(delay, ast.Constant) and delay.value is None
-    return delay is not None and not unbounded and not is_zero(delay)
+    if delay is None or unbounded or is_zero(delay):
+        return False
+    kind = scope["kinds"].get(root_name(node.func)) if isinstance(node.func, ast.Attribute) else None
+    if kind in MOCKS:
+        return False
+    return (
+        call_name(node, scope["aliases"]) in PROCESS_RUNS or last_name(node.func) in WAIT_CALLS
+    )
 
 
 def expects_timeout(item):
@@ -41,63 +78,76 @@ def expects_timeout(item):
     return any(last_name(name) in TIMEOUT_ERRORS for name in names)
 
 
-def first_wait(statements):
+def first_wait(statements, scope):
     pending = list(reversed(statements))
     while pending:
         node = pending.pop()
         if isinstance(node, SCOPES):
             continue
-        if is_wait(node):
+        if is_wait(node, scope):
             return node
         pending.extend(reversed(list(ast.iter_child_nodes(node))))
     return None
 
 
-def waits_out(node):
-    return node if is_wait(node) and last_name(node.func) in FALSE_RESULTS else None
+def waits_out(node, scope):
+    if not is_wait(node, scope) or last_name(node.func) not in FALSE_RESULTS:
+        return None
+    kind = scope["kinds"].get(root_name(node.func))
+    return None if kind in PROCESSES else node
 
 
 def is_false(node):
     return isinstance(node, ast.Constant) and node.value is False
 
 
-def false_wait(test):
+def false_wait(test, scope):
     if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
-        return waits_out(test.operand)
+        return waits_out(test.operand, scope)
     if (
         isinstance(test, ast.Compare)
         and len(test.ops) == 1
         and is_false(test.comparators[0])
     ):
         return (
-            waits_out(test.left) if isinstance(test.ops[0], (ast.Is, ast.Eq)) else None
+            waits_out(test.left, scope) if isinstance(test.ops[0], (ast.Is, ast.Eq)) else None
         )
     return None
 
 
-def negative_wait(node):
+def negative_wait(node, scope):
     if isinstance(node, (ast.With, ast.AsyncWith)) and any(
         map(expects_timeout, node.items)
     ):
-        return first_wait(node.body)
+        return first_wait(node.body, scope)
     if isinstance(node, ast.Assert):
-        return false_wait(node.test)
+        return false_wait(node.test, scope)
     if (
         isinstance(node, ast.Call)
         and last_name(node.func) == "assertFalse"
         and node.args
     ):
-        return waits_out(node.args[0])
+        return waits_out(node.args[0], scope)
     return None
+
+
+def scoped_nodes(tree):
+    pending = [(tree, {})]
+    while pending:
+        node, kinds = pending.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            kinds = {**kinds, **scope_kinds(node)}
+        yield node, kinds
+        pending.extend((child, kinds) for child in ast.iter_child_nodes(node))
 
 
 def check(context):
     if not context.tests:
         return []
     found = []
-    for node in ast.walk(context.tree):
-        wait = negative_wait(node)
+    for node, kinds in scoped_nodes(context.tree):
+        wait = negative_wait(node, {"kinds": kinds, "aliases": context.aliases})
         if wait is not None:
             subject = call_name(wait, context.aliases) or last_name(wait.func)
             found.append(finding(context.path, RULE, subject, wait))
-    return found
+    return sorted(found, key=lambda item: item["line"])

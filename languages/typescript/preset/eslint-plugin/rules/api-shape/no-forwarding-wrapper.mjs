@@ -1,3 +1,4 @@
+import ts from 'typescript';
 import { variableNamed } from '../analysis/ancestry.mjs';
 import { isComponentName } from '../../../syntax/component-names.mjs';
 
@@ -124,6 +125,25 @@ function sameParameters(checker, own, target) {
   );
 }
 
+function isAsyncDeclaration(declaration) {
+  const fn = ts.isVariableDeclaration(declaration) ? declaration.initializer : declaration;
+  return (
+    fn !== undefined &&
+    ts.isFunctionLike(fn) &&
+    (fn.modifiers ?? []).some(({ kind }) => kind === ts.SyntaxKind.AsyncKeyword)
+  );
+}
+
+function isAsyncCallee(services, callee) {
+  const checker = services.program.getTypeChecker();
+  const symbol = checker.getSymbolAtLocation(services.esTreeNodeToTSNodeMap.get(callee));
+  const target =
+    symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+      ? checker.getAliasedSymbol(symbol)
+      : symbol;
+  return (target?.declarations ?? []).some(isAsyncDeclaration);
+}
+
 function hasSameSignature(services, wrapper, callee) {
   const checker = services.program.getTypeChecker();
   const wrapperSignatures = services.getTypeAtLocation(wrapper).getCallSignatures();
@@ -178,6 +198,7 @@ export const rule = {
         call.callee.name === name ||
         !forwardsOwnParameters(fn, call) ||
         hasOverloads(sourceCode, fn) ||
+        (fn.async && !isAsyncCallee(services, call.callee)) ||
         !hasSameSignature(services, fn, call.callee)
       ) {
         return;

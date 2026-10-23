@@ -882,9 +882,12 @@ contracts run when the project configures them) and `sourceRoots` (default `src`
 packages). The gate also reports new duplicates (`duplicates/duplicate-clone`), package coupling
 (`coupling/stability-direction`; an import under `if TYPE_CHECKING:` is never the reported dependency, though it still counts toward instability) and broken import-linter contracts (`import-linter/contract-broken`);
 their messages name the file to add to `exclude` when the repetition or dependency is intended (a duplicate names both files of the pair, and an `exclude` or exception that matches either one lifts it, so excluding an old or generated file also hides a clone between it and a new file).
-`layout` and `testConsole` are an error until the Python preset runs the rules that read them; the top-level `exceptions` is accepted only
-for the file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`), the
-[dependency and repository checks](#dependency-and-repository-checks) and the shared rules the preset reports.
+`testConsole` is the allowlist of `test-console-output`, which the Python preset runs on what its tests print
+(see [the Python preset](python-preset.md#new-console-output-from-tests)); `layout` is an error, since the preset
+has no feature layout and does not run `shared-used-by-one-feature`. The top-level `exceptions` is accepted only for
+the file and size limits, the function rules, `unused-option`, the
+[dependency and repository checks](#dependency-and-repository-checks) and the shared fact rules the preset reports
+(see [the Python preset](python-preset.md#exceptions) for the list).
 
 The one-way rules (pathlib, f-strings, no mutable defaults, no bare `except`, no `except` that only passes, continues, returns or assigns a constant, no `contextlib.suppress(Exception)`, no
 `import *`, logging instead of `print` with the logger the project declares, frozen dataclasses,

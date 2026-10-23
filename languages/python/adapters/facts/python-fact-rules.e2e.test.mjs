@@ -74,6 +74,14 @@ describe.skipIf(!pythonE2eEnabled)('doc-comment-content over docstrings', () => 
     );
   });
 
+  it('leaves test docstrings alone, as the TypeScript preset does in test files', () => {
+    expect(
+      findingsOf(DOC_RULE, {
+        'tests/test_orders.py': 'def test_order_total():\n    """Test order total."""\n',
+      }),
+    ).toEqual([]);
+  });
+
   it('reports at the docstring line', () => {
     expect(docFindings('def load_user():\n\n    """Load the user."""\n')).toEqual([
       ['doc-comment:load_user:restating', 3],
@@ -139,6 +147,21 @@ describe.skipIf(!pythonE2eEnabled)('doc-comment-content over docstrings', () => 
       'one-line sections',
       ['One.', 'Two.', 'Returns: x.', 'Raises ValueError: y.', 'Note: z.', 'more z.', 'and z.'],
     ],
+    [
+      'version directives, as JSDoc @since and @deprecated',
+      [
+        'One.',
+        'Two.',
+        'Three.',
+        'Four.',
+        '',
+        '.. versionadded:: 2.0',
+        '.. versionchanged:: 2.1',
+        '    Takes a list.',
+        '.. deprecated:: 3.0',
+        '    Use draw.',
+      ],
+    ],
   ])('does not count %s', (_name, lines) => {
     expect(docFindings(docstring(lines))).toEqual([]);
   });
@@ -194,5 +217,144 @@ describe.skipIf(!pythonE2eEnabled)('sibling-copy-edit over the base facts', () =
     expect(siblingEdits(head, { base, moves: [['src/shop/old.py', 'src/shop/a.py']] })).toEqual([
       ['src/shop/a.py', 'sibling-copy:total'],
     ]);
+  });
+});
+
+function rows(findings) {
+  return findings.map(({ rule, path, identity }) => [rule, path, identity]);
+}
+
+const LOADS = 'def loads(text):\n    return text\n';
+const OTHER_LOADS = 'def loads(text):\n    return text.strip()\n';
+
+describe.skipIf(!pythonE2eEnabled)('exported-name-collision over imports', () => {
+  const collisions = (importer) =>
+    rows(
+      findingsOf('exported-name-collision', {
+        'src/app/__init__.py': '',
+        'src/app/fast.py': LOADS,
+        'src/app/pure.py': OTHER_LOADS,
+        'src/app/use.py': importer,
+      }),
+    );
+
+  it.each([
+    [
+      'a platform gate',
+      'import sys\n\nif sys.platform == "win32":\n    from app.fast import loads\nelse:\n    from app.pure import loads\n',
+    ],
+    [
+      'a try/except ImportError fallback',
+      'try:\n    from app.fast import loads\nexcept ImportError:\n    from app.pure import loads\n',
+    ],
+    [
+      'imports inside two functions',
+      'def a(t):\n    from app.fast import loads\n    return loads(t)\n\n\ndef b(t):\n    from app.pure import loads\n    return loads(t)\n',
+    ],
+  ])('spares alternative implementations: %s', (_name, importer) => {
+    expect(collisions(importer)).toEqual([]);
+  });
+
+  it('reports two module-level imports of the name', () => {
+    expect(
+      collisions('from app.fast import loads\nfrom app.pure import loads as pure_loads\n'),
+    ).toEqual([
+      ['exported-name-collision', 'src/app/fast.py', 'collision:loads'],
+      ['exported-name-collision', 'src/app/pure.py', 'collision:loads'],
+    ]);
+  });
+});
+
+describe.skipIf(!pythonE2eEnabled)('duplicate-definition over overloads', () => {
+  const overloaded = (body) =>
+    `from typing import overload\n\n\n@overload\ndef get(key: str) -> str: ...\n@overload\ndef get(key: str, default: int) -> str | int: ...\ndef get(key, default=None):\n    ${body}\n`;
+
+  it('compares the implementations, with the overload stubs folded in as TypeScript does', () => {
+    const store = (first, second) =>
+      findingsOf('duplicate-definition', {
+        'src/app/__init__.py': '',
+        'src/app/redis.py': overloaded(first),
+        'src/app/memory.py': overloaded(second),
+        'src/app/use.py': 'from app import memory, redis\n',
+      });
+
+    expect(store('return key', 'return default')).toEqual([]);
+    expect(rows(store('return key', 'return key'))).toHaveLength(2);
+  });
+});
+
+const DJANGO_APP = {
+  'manage.py': 'import sys\n\nif __name__ == "__main__":\n    sys.exit(0)\n',
+  'src/shop/__init__.py': '',
+  'src/shop/admin.py': 'class OrderAdmin:\n    pass\n',
+  'src/shop/templatetags/__init__.py': '',
+  'src/shop/templatetags/money.py': 'def cents(value):\n    return value * 100\n',
+  'src/shop/models.py': 'def upload_to(instance, name):\n    return name\n',
+  'src/shop/migrations/__init__.py': '',
+  'src/shop/migrations/0001_initial.py':
+    'import shop.models\n\n\nclass Migration:\n    fields = [shop.models.upload_to]\n',
+  'tests/test_shop.py':
+    'from shop.admin import OrderAdmin\nfrom shop.models import upload_to\nfrom shop.templatetags.money import cents\nfrom app.plugins.csv_export import export\nfrom app.settings_names import WIDGET\n\n\ndef test_all():\n    assert OrderAdmin and upload_to and cents and export and WIDGET\n',
+};
+
+describe.skipIf(!pythonE2eEnabled)('test-only-export and modules a framework loads', () => {
+  it('counts Django convention modules, migration and dotted-path references and importlib', () => {
+    const findings = findingsOf('test-only-export', {
+      ...DJANGO_APP,
+      'src/app/__init__.py': '',
+      'src/app/plugins/__init__.py':
+        'import importlib\n\n\ndef load(name):\n    return importlib.import_module(f"app.plugins.{name}")\n',
+      'src/app/plugins/csv_export.py': 'def export(rows):\n    return rows\n',
+      'src/app/settings_names.py': 'WIDGET = 1\n',
+      'src/app/settings.py': 'INSTALLED = ["app.settings_names.WIDGET"]\n',
+      'src/app/main.py': 'from app.plugins import load\n\nload("csv_export")\n',
+    });
+
+    expect(rows(findings)).toEqual([]);
+  });
+
+  it('still reports a project module only the tests use', () => {
+    expect(
+      rows(
+        findingsOf('test-only-export', {
+          ...DJANGO_APP,
+          'src/shop/helpers.py': 'def helper():\n    return 1\n',
+          'tests/test_helpers.py':
+            'from shop.helpers import helper\n\n\ndef test_h():\n    assert helper()\n',
+        }),
+      ),
+    ).toEqual([['test-only-export', 'src/shop/helpers.py', 'files:src/shop/helpers.py']]);
+  });
+});
+
+describe.skipIf(!pythonE2eEnabled)('sibling-copy-edit scope', () => {
+  const COMMAND = TOTAL.replace('def total', 'class Command:\n    def handle');
+
+  it('compares within one top-level package, and skips names a framework requires', () => {
+    const base = {
+      'src/blog/__init__.py': '',
+      'src/blog/a.py': TOTAL,
+      'src/blog/cmd.py': COMMAND,
+      'src/shop/__init__.py': '',
+      'src/shop/a.py': TOTAL,
+      'src/shop/cmd.py': COMMAND,
+      'src/shop/other_cmd.py': COMMAND,
+    };
+    const head = {
+      ...base,
+      'src/shop/a.py': EDITED_TOTAL,
+      'src/shop/cmd.py': COMMAND.replace('2)', '3)'),
+    };
+
+    expect(findingsOf('sibling-copy-edit', head, { base })).toEqual([]);
+    expect(
+      rows(
+        findingsOf(
+          'sibling-copy-edit',
+          { ...head, 'src/shop/b.py': TOTAL },
+          { base: { ...base, 'src/shop/b.py': TOTAL } },
+        ),
+      ),
+    ).toEqual([['sibling-copy-edit', 'src/shop/a.py', 'sibling-copy:total']]);
   });
 });

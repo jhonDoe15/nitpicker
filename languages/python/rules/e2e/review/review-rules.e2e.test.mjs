@@ -91,6 +91,14 @@ describe.skipIf(!enabled)('singular-and-plural-field', () => {
       ],
     ],
     [
+      'attr.ib fields without an annotation, untyped or typed with type=',
+      'import attr\n\n\n@attr.s\nclass Q:\n    tag = attr.ib(default="")\n    tags = attr.ib(factory=list)\n\n\n@attr.s\nclass R:\n    tag = attr.ib(default="", type=str)\n    tags = attr.ib(factory=list, type=list[str])\n\n\n@attr.s\nclass S:\n    tag = attr.ib()\n    tags = attr.ib(factory=list)\n',
+      [
+        'singular-and-plural-field src/mod.py:5 Q.tags',
+        'singular-and-plural-field src/mod.py:11 R.tags',
+      ],
+    ],
+    [
       'a decorator that only shares a name',
       'from shop.routes import define\n\n\n@define\nclass Q:\n    tag: str = ""\n    tags: list[str] = ()\n',
       [],

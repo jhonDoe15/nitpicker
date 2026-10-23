@@ -8,6 +8,7 @@ import {
 } from '../analysis/python-sources.mjs';
 import { readPackageFacts } from '../../rules/libraries/package-facts.mjs';
 import { ROOT_TEST_DIRECTORIES } from '../execution/python-project.mjs';
+import { isDjangoProject } from '../configuration/pytest/collection-options.mjs';
 import { factsBundle } from './facts-bundle.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
 import { registeredFactRules } from '../../../../shared/project-rules/fact-rules.mjs';
@@ -18,20 +19,28 @@ export const BASE_FACTS_REPORT = 'base-facts.json';
 export const FACTS_TOOL = 'facts';
 const FACTS_FAILED_RULE = 'facts-failed';
 const FACTS_REQUEST = 'facts-request.json';
+const MIGRATIONS_FOLDER = 'migrations';
 const SCAN_SCRIPT = path.join(fileURLToPath(new URL('../', import.meta.url)), 'import-scan.py');
+function isMigration(file) {
+  return `/${file}`.includes(`/${MIGRATIONS_FOLDER}/`);
+}
+
 function factsFiles(projectRoot, sourceRoots, isTest) {
   const modules = listProductionModules(projectRoot, sourceRoots);
   const roots = [...sourceRoots, ...ROOT_TEST_DIRECTORIES, '.'];
-  const tests = pythonSourceFiles(projectRoot, roots).filter(isTest);
+  const scanned = pythonSourceFiles(projectRoot, roots);
+  const tests = scanned.filter(isTest);
+  const referenceFiles = scanned.filter((file) => isMigration(file) && !isTest(file));
   return {
     modules,
-    files: [...new Set([...modules.map(({ file }) => file), ...tests])].sort(),
+    referenceFiles,
+    files: [...new Set([...modules.map(({ file }) => file), ...tests, ...referenceFiles])].sort(),
   };
 }
 
 function scanFacts(context, run, root) {
   const isTest = testFileMatcher(root);
-  const { modules, files } = factsFiles(root, context.project.sourceRoots, isTest);
+  const { modules, files, referenceFiles } = factsFiles(root, context.project.sourceRoots, isTest);
   const request = path.join(context.reportRoot, FACTS_REQUEST);
   writeFileSync(request, JSON.stringify({ root, files, facts: true }));
   const scanned =
@@ -40,7 +49,14 @@ function scanFacts(context, run, root) {
       : JSON.parse(
           run(context, ['python', '-I', SCAN_SCRIPT, request], { rule: FACTS_FAILED_RULE }).stdout,
         );
-  return factsBundle({ modules, scanned, isTest, ...readPackageFacts(root) });
+  return factsBundle({
+    modules,
+    scanned,
+    isTest,
+    referenceFiles,
+    django: isDjangoProject(root),
+    ...readPackageFacts(root),
+  });
 }
 
 export function collectFacts(context, run) {
