@@ -12,6 +12,9 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 
 ## Finish with the gate
 
+While you iterate, run `npx nitpicker --quick`: it skips the tests, coverage, CRAP and mutation
+and lists what it skipped. A quick run is never a pass; finish with the full run below.
+
 1. Run the project's tests (`./gradlew test`). Failing tests stop coverage, CRAP and mutation from
    running.
 2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a

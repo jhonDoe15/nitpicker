@@ -1,6 +1,7 @@
 import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { singleLine } from './format/text.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
+import { quickLines } from '../../quick/summary.mjs';
 import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
@@ -29,6 +30,9 @@ export function renderConsoleSummary(
   );
   appendHeldSummary(lines, report.unchangedFindings, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
+  for (const line of quickLines(report.summary)) {
+    lines.push(style(line, [ANSI.bold, ANSI.yellow], color));
+  }
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
   return `${lines.join('\n')}\n`;
 }

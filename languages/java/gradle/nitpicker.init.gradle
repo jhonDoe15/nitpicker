@@ -25,6 +25,7 @@ def initScriptDir = buildscript.sourceFile.parentFile
 // END SH5 structure metrics
 
 def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
+def quickRun = nitpickerArgument('nitpicker.quick') == 'true'
 def nitpickerStyle = {
     def file = nitpickerArgument('nitpicker.kotlin.styleFile')
     file == null ? [:] : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
@@ -781,10 +782,13 @@ allprojects {
             description = 'Runs PMD, SpotBugs, Error Prone, the formatter check, JaCoCo, Checkstyle, ' +
                 'ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
             dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerErrorProne', 'nitpickerFormat',
-                'nitpickerJacoco', 'nitpickerArchunit', 'nitpickerSpringArch', 'nitpickerStructure', 'nitpickerPit'
-            dependsOn {
-                checkedTestTasks().findAll { it.name != 'test' }
-                    .collect { tasks.named("nitpickerArchunit${capitalized(it.name)}") }
+                'nitpickerSpringArch', 'nitpickerStructure'
+            if (!quickRun) {
+                dependsOn 'nitpickerJacoco', 'nitpickerArchunit', 'nitpickerPit'
+                dependsOn {
+                    checkedTestTasks().findAll { it.name != 'test' }
+                        .collect { tasks.named("nitpickerArchunit${capitalized(it.name)}") }
+                }
             }
             dependsOn {
                 ([sourceSets.main] + testSourceSets())
@@ -818,7 +822,7 @@ allprojects {
                 }
                 def runTestClassDirs = tasks.withType(Test).findAll { it.name != 'nitpickerArchunit' }
                     .collectMany { it.testClassesDirs.files }
-                def unrunTestSourceSets = testSourceSets()
+                def unrunTestSourceSets = quickRun ? [] : testSourceSets()
                     .findAll { set -> !set.output.classesDirs.files.any { runTestClassDirs.contains(it) } }
                     .collect { set -> [name: set.name, roots: sourceDirsOf(set).collect { relativeToRoot(it) }] }
                 def kotlinRoots = []

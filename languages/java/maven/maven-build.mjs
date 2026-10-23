@@ -4,36 +4,26 @@ import path from 'node:path';
 import { javaCommand, runJava, runMaven } from './maven-command.mjs';
 import { runCheckstyle, runFormat, runPmd, runSpotbugs } from './maven-lint.mjs';
 import {
-  lifecycleArgs,
   moduleClasspaths,
   parseDependencyList,
   readReactor,
   usesSpring,
 } from './maven-project.mjs';
-import {
-  archunitMatcher,
-  collectTestResults,
-  junitLauncherVersion,
-  runJacocoReport,
-  runPit,
-} from './maven-tests.mjs';
+import { archunitMatcher, junitLauncherVersion } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
-import { copyTestResults, requireTestngRun } from './results/maven-test-results.mjs';
-import {
-  archunitTool,
-  formatTool,
-  jacocoPlugin,
-  MAVEN_PLUGINS,
-  resolveTools,
-} from './maven-tools.mjs';
-import { runSpringArch } from './spring/maven-spring-arch.mjs';
+import { archunitTool, formatTool, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
+import {
+  analyzeTests,
+  buildGoals,
+  jacocoExecFiles,
+  readTestRuns,
+} from './quick/maven-test-phase.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
-const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
 const GUAVA_JAR = /^guava-\d.*\.jar$/u;
 const AWAITILITY_JAR = /^awaitility-\d.*\.jar$/u;
 const PROJECT_CHECKS_OFF = [
@@ -64,16 +54,14 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
+function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn, quick }) {
   runMaven({
     projectRoot,
     maven,
     spawn,
     args: [
       '--quiet',
-      `${jacocoPlugin(pinned)}:prepare-agent`,
-      `-Djacoco.destFile=\${project.build.directory}/${OWN_JACOCO_EXEC}`,
-      ...lifecycleArgs(modules),
+      ...buildGoals({ quick, pinned, modules }),
       `${MAVEN_PLUGINS.dependency}:list`,
       `-DoutputFile=${path.join(work, 'dependencies', '${project.groupId}', '${project.artifactId}.txt')}`,
       '-DoutputAbsoluteArtifactFilename=true',
@@ -150,13 +138,6 @@ function readClasspaths(work, module) {
   );
 }
 
-function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
-  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
-  requireTestngRun({ module, since, isArchunit, testRuntime });
-  copyTestResults({ module, reportDir, since, isArchunit });
-  return testsRan;
-}
-
 function withDeclaredSpring(manifest, declared) {
   const spring = declared === true || manifest.spring;
   return { ...manifest, spring, springArch: spring };
@@ -173,22 +154,6 @@ function analyzeSources(options) {
   runJdeps(module, reportDir, spawn);
 }
 
-function analyzeTests(options) {
-  const { module, reportDir, classpaths, tools, pinned, since, spring, springRoles } = options;
-  const { isArchunit, testsRan, spawn } = options;
-  runJacocoReport({
-    module,
-    reportDir,
-    tools,
-    execFiles: jacocoExecFiles(module),
-    since,
-    testsRan,
-    spawn,
-  });
-  runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
-  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, springRoles, spawn });
-}
-
 function analyzeModule(options) {
   const { module, classpaths, pinned, since } = options;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
@@ -199,14 +164,17 @@ function analyzeModule(options) {
   );
   const { spring } = manifest;
   const testRuntime = classpaths.testRuntime;
-  const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
+  const testsRan = readTestRuns({
+    module,
+    reportDir,
+    since,
+    isArchunit,
+    testRuntime,
+    quick: options.quick,
+  });
   analyzeSources({ ...options, reportDir, spring });
   analyzeTests({ ...options, reportDir, spring, isArchunit, testsRan });
   writeFileSync(path.join(reportDir, 'manifest.json'), JSON.stringify(manifest));
-}
-
-function jacocoExecFiles(module) {
-  return [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
 }
 
 function staleOutputs(module) {
@@ -253,6 +221,7 @@ function extraTools({ modules, analyzed, policy, pinned }) {
 }
 
 export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn }) {
+  const quick = policy.quick === true;
   if (policy.preset === 'kotlin') {
     throw new Error(
       'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
@@ -263,7 +232,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
   try {
     const modules = readModules({ projectRoot, maven, work, spawn });
     const since = Date.now() - 2000;
-    buildAndTest({ projectRoot, maven, work, pinned, modules, spawn });
+    buildAndTest({ projectRoot, maven, work, pinned, modules, spawn, quick });
     const analyzed = modules.map((module) => ({
       module,
       classpaths: readClasspaths(work, module),
@@ -273,8 +242,9 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
       maven,
       spawn,
       pinned,
-      launcherVersions: missingLauncherVersions(analyzed),
+      launcherVersions: quick ? [] : missingLauncherVersions(analyzed),
       extraTools: extraTools({ modules, analyzed, policy, pinned }),
+      quick,
     });
     for (const { module, classpaths } of analyzed) {
       analyzeModule({
@@ -285,6 +255,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
         configs,
         since,
         spawn,
+        quick,
         style: {
           javaStyle: policy.javaStyle,
           indentation: checkstyleIndentation(policy.conventions),

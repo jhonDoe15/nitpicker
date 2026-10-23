@@ -20,6 +20,8 @@ export function runSnapshotCli({
   options,
   currentProjectRoot,
   analyzers,
+  quick,
+  captureHead = captureWorkingTree,
   headPolicy,
   stdout,
   runTasks,
@@ -34,7 +36,10 @@ export function runSnapshotCli({
     throw new Error('No quality analyzers are configured.');
   }
 
-  const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(currentProjectRoot);
+  const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(
+    currentProjectRoot,
+    captureHead,
+  );
   const report = withTemporaryWorktree(repositoryRoot, capturedSha, (worktreeRoot) =>
     runInSnapshotWorktree({
       snapshotRoot: path.join(worktreeRoot, relativeProjectPath),
@@ -44,6 +49,9 @@ export function runSnapshotCli({
       runTasks,
     }),
   );
+  if (quick !== undefined) {
+    report.summary.quick = quick;
+  }
   report.text = writeSnapshotReports(outputRoot, report);
   stdout.write(report.text);
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
@@ -83,12 +91,12 @@ function runInSnapshotWorktree({
   }
 }
 
-function captureSnapshot(currentProjectRoot) {
+function captureSnapshot(currentProjectRoot, capture) {
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
   const relativeProjectPath = path.relative(repositoryRoot, currentProjectRoot) || '.';
   const headSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).trim();
-  const capturedSha = captureWorkingTree(repositoryRoot, headSha);
+  const capturedSha = capture(repositoryRoot, headSha);
   return { repositoryRoot, relativeProjectPath, capturedSha };
 }

@@ -83,6 +83,7 @@ function createCustomAnalyzer({ name, command, args = [] }) {
   return {
     name,
     version: 'custom',
+    custom: true,
     configurationHash: createHash('sha256')
       .update(JSON.stringify({ name, command, args }))
       .digest('hex'),

@@ -106,6 +106,7 @@ export function parseRunnerArguments(
       policyRoot: realpathOptional(values.get('--policy-root')),
       baselineRoot: realpathOptional(values.get('--baseline-root')),
       snapshot: values.get('--snapshot') ?? 'head',
+      ...parseMode(values.get('--mode')),
       preset: values.get('--preset'),
       kotlinFormatter: values.get('--kotlin-formatter'),
       kotlinDetektConfig: values.get('--kotlin-detekt-config'),
@@ -113,6 +114,13 @@ export function parseRunnerArguments(
       toolPrecedence: toolPrecedence(values, precedenceTools),
     },
   };
+}
+
+function parseMode(mode = 'full') {
+  if (!['quick', 'full'].includes(mode)) {
+    throw new Error('--mode must be one of: quick, full');
+  }
+  return mode === 'quick' ? { quick: true } : {};
 }
 
 function precedenceOption(tool) {
@@ -146,6 +154,7 @@ const RUNNER_OPTIONS = [
   '--test-seconds',
   '--test-console-allow',
   '--duplicate-skipped-folders',
+  '--mode',
 ];
 
 function parseJsonObject(text, option) {

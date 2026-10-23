@@ -9,6 +9,7 @@ import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mjs';
 import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mjs';
 import { readPolicyScope } from '../../policy-changes/policy-scope.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
+import { applyRunProfile } from '../../quick/profile.mjs';
 
 function readBaseConfig(baseProjectRoot, warn) {
   if (!existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
@@ -29,6 +30,7 @@ export function baseSetupResolver(cli, headConfig, headPolicy) {
     headConfig,
     headPolicy,
     injectedAnalyzers: cli.injectedAnalyzers,
+    profile: cli.options,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
 }
@@ -37,6 +39,7 @@ export function createBaseSetupResolver({
   headConfig,
   headPolicy = {},
   injectedAnalyzers,
+  profile = {},
   warn = () => undefined,
 }) {
   return ({ baseProjectRoot, headSnapshotRoot, moves, analyzers }) => {
@@ -58,6 +61,7 @@ export function createBaseSetupResolver({
             headConfig,
             headPolicy,
             injectedAnalyzers,
+            profile,
             analyzers,
           })),
       ...policyChangeFields(compared, headConfig, scope),
@@ -65,13 +69,21 @@ export function createBaseSetupResolver({
   };
 }
 
-function measuredBase({ baseConfig, headConfig, headPolicy, injectedAnalyzers, analyzers }) {
+function measuredBase({
+  baseConfig,
+  headConfig,
+  headPolicy,
+  injectedAnalyzers,
+  profile,
+  analyzers,
+}) {
   const measured = baseConfigCoveringHead(baseConfig, headConfig);
   const baseHeadPolicy = withHeadCheckoutFacts(resolveHeadPolicy(measured), headPolicy);
   const configured = new Map(
-    configureAnalyzers(presetAnalyzers(measured, injectedAnalyzers), measured, baseHeadPolicy).map(
-      (analyzer) => [analyzer.name, analyzer],
-    ),
+    applyRunProfile(
+      configureAnalyzers(presetAnalyzers(measured, injectedAnalyzers), measured, baseHeadPolicy),
+      { ...profile, analyzerNames: [] },
+    ).analyzers.map((analyzer) => [analyzer.name, analyzer]),
   );
   return {
     analyzers: analyzers.map((analyzer) => configured.get(analyzer.name) ?? analyzer),
