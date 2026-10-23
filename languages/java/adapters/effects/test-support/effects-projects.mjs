@@ -7,6 +7,9 @@ export const KOTLIN_EFFECTS_FIXTURE = path.join(FIXTURES, 'effects-kotlin-projec
 
 const JAVA_REMOTE = 'PriceSource.priceOf()>RestClient.get()';
 const KOTLIN_REMOTE = 'OrderLoader.price()>RestClient.get()';
+const JAVA_SEND = 'OrderEvents.placed()>KafkaTemplate.send()';
+const KOTLIN_SEND = 'OrderLoader.placed()>KafkaTemplate.send()';
+const PUBLISH = 'ApplicationEventPublisher.publishEvent()';
 
 export const JAVA_EFFECTS = [
   'IoCallInLoop 26 LoopImports.eachInLoop loop OrderLoader.load()>OrderRepository.findById()',
@@ -27,6 +30,13 @@ export const JAVA_EFFECTS = [
   `RemoteCallUnderLock 37 HeldScopes.refresh synchronized ${JAVA_REMOTE}`,
   `RemoteCallUnderLock 43 HeldScopes.underLock ReentrantLock.lock() ${JAVA_REMOTE}`,
   `RemoteCallUnderLock 51 HeldScopes.inBlock synchronized ${JAVA_REMOTE}`,
+  `RetryWithoutIdempotency 25 Retries.announce @Retryable ${JAVA_SEND}`,
+  'RetryWithoutIdempotency 31 Retries.record retry loop JdbcTemplate.update()',
+  'RetryWithoutIdempotency 42 Retries.charge RetryTemplate.execute() Charge.create()',
+  `DualWriteWithoutOutbox 23 DualWrites.place inline ${JAVA_SEND}`,
+  `DualWriteWithoutOutbox 28 DualWrites.placeWithEvent afterCommit ${PUBLISH}>OrderListeners.onPlaced()>${JAVA_SEND}`,
+  `DualWriteWithoutOutbox 33 DualWrites.ship inline ${PUBLISH}>OrderListeners.onShipped()>${JAVA_SEND}`,
+  `DualWriteWithoutOutbox 41 DualWrites.placeAfterCommit afterCommit ${JAVA_SEND}`,
 ];
 
 export const JAVA_BATCHED_EFFECTS = JAVA_EFFECTS.filter(
@@ -49,6 +59,10 @@ export const KOTLIN_EFFECTS = [
   `RemoteCallInTransaction 29 HeldScopes.inTemplate TransactionTemplate.execute() ${KOTLIN_REMOTE}`,
   `RemoteCallUnderLock 32 HeldScopes.underLock Lock.lock() ${KOTLIN_REMOTE}`,
   `RemoteCallUnderLock 34 HeldScopes.underMutex Mutex.lock() ${KOTLIN_REMOTE}`,
+  `RetryWithoutIdempotency 9 Retries.announce @Retryable ${KOTLIN_SEND}`,
+  `RetryWithoutIdempotency 14 Retries.announceWithLoop retry loop ${KOTLIN_SEND}`,
+  `DualWriteWithoutOutbox 15 DualWrites.place inline ${KOTLIN_SEND}`,
+  `DualWriteWithoutOutbox 20 DualWrites.placeWithEvent afterCommit ${PUBLISH}>OrderListeners.onPlaced()>${KOTLIN_SEND}`,
 ];
 
 function summaryOf(violation) {

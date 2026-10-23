@@ -70,6 +70,8 @@ Before you change code other modules use, or fix a bug, read
   (`@EntityGraph(attributePaths = "customer")` or `JOIN FETCH`) or select a projection.
   Keep HTTP and other remote calls out of `@Transactional` methods and `synchronized` or locked
   sections: call before the transaction or after it commits, or write an outbox row.
+  Under `@Retryable` or a retry loop, give writes an idempotency key, a deduplication id or an
+  upsert. Never save and publish in one method: write an outbox row and let a relay publish it.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.

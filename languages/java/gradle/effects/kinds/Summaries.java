@@ -14,31 +14,44 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
 public final class Summaries {
-  private record Site(String owner, String name, String desc) {}
+  public interface Classifier {
+    Map<String, List<String>> direct(Summaries summaries, Call call);
+  }
 
   private static final int ROUNDS = 40;
   private static final int LONGEST = 6;
   private final Program program;
+  private final Classifier classifier;
   private final Map<String, Map<String, List<String>>> sums = new HashMap<>();
-  private final Map<String, List<Site>> sites = new LinkedHashMap<>();
+  private final Map<String, List<Call>> sites = new LinkedHashMap<>();
 
   public Summaries(Program program) {
+    this(program, Summaries::byKind);
+  }
+
+  public Summaries(Program program, Classifier classifier) {
     this.program = program;
+    this.classifier = classifier;
+  }
+
+  private static Map<String, List<String>> byKind(Summaries summaries, Call call) {
+    String kind = summaries.program.kinds.direct(call.owner(), call.name(), call.desc());
+    return kind == null ? null : Map.of(kind, List.of(label(call.owner(), call.name(), call.desc())));
   }
 
   public void compute() {
     Walker walker = new Walker(program, false);
     for (MethodFlow flow : program.all()) {
-      List<Site> found = new ArrayList<>();
+      List<Call> found = new ArrayList<>();
       walker.walk(flow, Walker.Ctx.NONE, new Walker.Visitor() {
         @Override
         public void visit(MethodFlow at, int index, MethodInsnNode call, Walker.Ctx ctx) {
-          found.add(new Site(call.owner, call.name, call.desc));
+          found.add(new Call(at, index, call.owner, call.name, call.desc));
         }
 
         @Override
         public void reference(MethodFlow at, int index, String owner, String name, String desc, Walker.Ctx ctx) {
-          found.add(new Site(owner, name, desc));
+          found.add(new Call(at, index, owner, name, desc));
         }
       });
       sites.put(Program.key(flow.owner.name, flow.method.name, flow.method.desc), found);
@@ -46,27 +59,29 @@ public final class Summaries {
     boolean changed = true;
     for (int round = 0; changed && round < ROUNDS; round++) {
       changed = false;
-      for (Map.Entry<String, List<Site>> entry : sites.entrySet()) {
-        for (Site site : entry.getValue()) {
-          changed |= propagate(entry.getKey(), site);
+      for (Map.Entry<String, List<Call>> entry : sites.entrySet()) {
+        for (Call site : entry.getValue()) {
+          for (Map.Entry<String, List<String>> kind : at(site).entrySet()) {
+            changed |= put(entry.getKey(), kind.getKey(), kind.getValue());
+          }
         }
       }
     }
   }
 
-  private boolean propagate(String key, Site site) {
-    String direct = program.kinds.direct(site.owner(), site.name(), site.desc());
+  public Map<String, List<String>> at(Call call) {
+    Map<String, List<String>> direct = classifier.direct(this, call);
     if (direct != null) {
-      return put(key, direct, List.of(label(site.owner(), site.name(), site.desc())));
+      return direct;
     }
-    boolean changed = false;
-    for (Map.Entry<String, List<String>> callee : of(site.owner(), site.name(), site.desc()).entrySet()) {
+    Map<String, List<String>> found = new LinkedHashMap<>();
+    for (Map.Entry<String, List<String>> callee : of(call.owner(), call.name(), call.desc()).entrySet()) {
       List<String> path = new ArrayList<>();
-      path.add(label(site.owner(), site.name(), site.desc()));
+      path.add(label(call.owner(), call.name(), call.desc()));
       path.addAll(callee.getValue());
-      changed |= put(key, callee.getKey(), path);
+      found.put(callee.getKey(), path);
     }
-    return changed;
+    return found;
   }
 
   private boolean put(String key, String kind, List<String> path) {

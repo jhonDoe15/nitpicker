@@ -14,5 +14,6 @@ dependencies {
     compileOnly("org.springframework.kafka:spring-kafka:3.3.0")
     compileOnly("jakarta.persistence:jakarta.persistence-api:3.1.0")
     compileOnly("org.hibernate.orm:hibernate-core:6.6.20.Final") { isTransitive = false }
+    compileOnly("org.springframework.retry:spring-retry:2.0.13")
     compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 }

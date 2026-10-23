@@ -7,9 +7,11 @@ import java.util.Map;
 import java.util.Set;
 import nitpicker.effects.classes.Annotations;
 import nitpicker.effects.flow.Lambdas;
+import nitpicker.effects.flow.Loop;
 import nitpicker.effects.flow.MethodFlow;
 import nitpicker.effects.flow.Program;
 import nitpicker.effects.flow.Walker;
+import nitpicker.effects.kinds.Call;
 import nitpicker.effects.kinds.Summaries;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AnnotationNode;
@@ -17,8 +19,6 @@ import org.objectweb.asm.tree.MethodInsnNode;
 
 public final class Scopes {
   public record Scope(String label, MethodFlow flow, int start, int end) {}
-
-  public record Site(MethodFlow flow, int index, String owner, String name, String desc) {}
 
   private static final List<String> TRANSACTIONAL = List.of(
       "Lorg/springframework/transaction/annotation/Transactional;", "Ljakarta/transaction/Transactional;",
@@ -34,6 +34,15 @@ public final class Scopes {
       "org/jetbrains/exposed/v1/jdbc/transactions/TransactionApiKt", Set.of("transaction", "transaction$default"));
   private static final List<String> LOCKS = List.of("java/util/concurrent/locks/Lock", "kotlinx/coroutines/sync/Mutex");
   private static final Set<String> ACQUIRE = Set.of("lock", "lockInterruptibly", "tryLock");
+  private static final List<String> RETRYABLE = List.of("Lorg/springframework/retry/annotation/Retryable;",
+      "Lorg/springframework/resilience/annotation/Retryable;", "Lio/github/resilience4j/retry/annotation/Retry;");
+  private static final Map<String, String> RETRY_CALLS = Map.of(
+      "io/github/resilience4j/retry/Retry", "decorate\\w*|execute\\w*",
+      "io/github/resilience4j/kotlin/retry/RetryKt", "decorate\\w*|execute\\w*",
+      "org/springframework/retry/RetryOperations", "execute",
+      "org/springframework/core/retry/RetryOperations", "execute|invoke",
+      "dev/failsafe/FailsafeExecutor", "get\\w*|run\\w*|compose\\w*",
+      "net/jodah/failsafe/FailsafeExecutor", "get\\w*|run\\w*");
   private static final int DEPTH = 6;
   private final Program program;
   private final Walker walker;
@@ -81,19 +90,42 @@ public final class Scopes {
     return found;
   }
 
-  public List<Site> sites(Scope scope) {
-    List<Site> found = new ArrayList<>();
+  public List<Scope> retries() {
+    List<Scope> found = new ArrayList<>();
+    for (MethodFlow flow : program.all()) {
+      AnnotationNode annotation = annotated(flow, RETRYABLE);
+      if (annotation != null) {
+        String label = "@" + annotation.desc.substring(annotation.desc.lastIndexOf('/') + 1).replace(";", "");
+        found.add(new Scope(label, flow, 0, flow.insns.length - 1));
+      }
+      for (Lambdas.Use use : program.lambdas(flow)) {
+        if (use.consumer() >= 0 && retrying((MethodInsnNode) flow.insns[use.consumer()])) {
+          MethodInsnNode call = (MethodInsnNode) flow.insns[use.consumer()];
+          found.add(new Scope(Summaries.label(call.owner, call.name, call.desc), flow, use.index(), use.index()));
+        }
+      }
+      for (Loop loop : flow.analyzed() ? program.loops(flow) : List.<Loop>of()) {
+        for (int[] attempt : loop.attempts()) {
+          found.add(new Scope("retry loop", flow, attempt[0], attempt[1] - 1));
+        }
+      }
+    }
+    return found;
+  }
+
+  public List<Call> sites(Scope scope) {
+    List<Call> found = new ArrayList<>();
     collect(scope.flow(), scope.start(), scope.end(), found, new HashSet<>(), 0);
     return found;
   }
 
-  private void collect(MethodFlow flow, int start, int end, List<Site> found, Set<MethodFlow> seen, int depth) {
+  private void collect(MethodFlow flow, int start, int end, List<Call> found, Set<MethodFlow> seen, int depth) {
     if (depth > DEPTH || !seen.add(flow)) {
       return;
     }
     for (int index = start; index <= end && index < flow.insns.length; index++) {
       if (flow.insns[index] instanceof MethodInsnNode call) {
-        found.add(new Site(flow, index, call.owner, call.name, call.desc));
+        found.add(new Call(flow, index, call.owner, call.name, call.desc));
       }
     }
     for (Lambdas.Use use : program.lambdas(flow)) {
@@ -102,13 +134,34 @@ public final class Scopes {
         continue;
       }
       if (use.reference() != null) {
-        found.add(new Site(flow, use.index(), use.reference().getOwner(), use.reference().getName(),
+        found.add(new Call(flow, use.index(), use.reference().getOwner(), use.reference().getName(),
             use.reference().getDesc()));
       }
       for (MethodFlow body : use.bodies()) {
         collect(body, 0, body.insns.length - 1, found, seen, depth + 1);
       }
     }
+  }
+
+  private boolean retrying(MethodInsnNode call) {
+    for (Map.Entry<String, String> entry : RETRY_CALLS.entrySet()) {
+      if (call.name.matches(entry.getValue()) && program.index.isSubtype(call.owner, entry.getKey())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static AnnotationNode annotated(MethodFlow flow, List<String> descs) {
+    int generated = Opcodes.ACC_SYNTHETIC | Opcodes.ACC_BRIDGE | Opcodes.ACC_STATIC;
+    if ((flow.method.access & generated) != 0 || flow.method.name.startsWith("<")) {
+      return null;
+    }
+    AnnotationNode own = Annotations.findAny(descs, flow.method.visibleAnnotations, flow.method.invisibleAnnotations);
+    if (own != null || (flow.method.access & Opcodes.ACC_PUBLIC) == 0) {
+      return own;
+    }
+    return Annotations.findAny(descs, flow.owner.visibleAnnotations, flow.owner.invisibleAnnotations);
   }
 
   private boolean callback(MethodInsnNode call) {
@@ -121,18 +174,8 @@ public final class Scopes {
   }
 
   private boolean transactional(MethodFlow flow) {
-    int generated = Opcodes.ACC_SYNTHETIC | Opcodes.ACC_BRIDGE | Opcodes.ACC_STATIC;
-    if ((flow.method.access & generated) != 0 || flow.method.name.startsWith("<")) {
-      return false;
-    }
-    AnnotationNode own = Annotations.findAny(TRANSACTIONAL, flow.method.visibleAnnotations,
-        flow.method.invisibleAnnotations);
-    if (own != null) {
-      return active(own);
-    }
-    AnnotationNode type = Annotations.findAny(TRANSACTIONAL, flow.owner.visibleAnnotations,
-        flow.owner.invisibleAnnotations);
-    return type != null && (flow.method.access & Opcodes.ACC_PUBLIC) != 0 && active(type);
+    AnnotationNode annotation = annotated(flow, TRANSACTIONAL);
+    return annotation != null && active(annotation);
   }
 
   private static boolean active(AnnotationNode annotation) {
