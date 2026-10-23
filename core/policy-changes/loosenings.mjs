@@ -13,7 +13,7 @@ const DEFAULT_PRESET = 'typescript';
 const STRICTER_PRESET = new Map([['javascript', 'typescript']]);
 const DEFAULT_PRECEDENCE = ['nitpicker'];
 const UNION_PRECEDENCE_TOOLS = new Set(['pmd']);
-const ADDITIVE_PRECEDENCE_TOOLS = new Set(['knip']);
+const ADDITIVE_PRECEDENCE_TOOLS = new Set(['knip', 'dependency-cruiser']);
 
 function presetLoosened({ before, after, scope }) {
   const from = before ?? DEFAULT_PRESET;

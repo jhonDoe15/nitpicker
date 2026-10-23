@@ -3,6 +3,7 @@ import path from 'node:path';
 import { isPlainObject } from '../../../../shared/config.mjs';
 
 export const KNIP_TOOL = 'knip';
+export const DEPENDENCY_CRUISER_TOOL = 'dependency-cruiser';
 
 const PACKAGE_JSON = 'package.json';
 
@@ -18,6 +19,18 @@ export const PROJECT_CONFIG_FILES = new Map([
       'knip.js',
       'knip.config.ts',
       'knip.config.js',
+    ],
+  ],
+  [
+    DEPENDENCY_CRUISER_TOOL,
+    [
+      '.dependency-cruiser.json',
+      '.dependency-cruiser.js',
+      '.dependency-cruiser.cjs',
+      '.dependency-cruiser.mjs',
+      '.dependency-cruiser.ts',
+      '.dependency-cruiser.cts',
+      '.dependency-cruiser.mts',
     ],
   ],
 ]);

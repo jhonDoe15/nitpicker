@@ -20,6 +20,13 @@ const LOADERS = new Map([
       },
     },
   ],
+  [
+    'dependency-cruiser',
+    {
+      module: 'src/config-utl/extract-depcruise-config/index.mjs',
+      load: (loader, file) => loader.default(file),
+    },
+  ],
 ]);
 
 async function loadToolConfig(tool, file) {

@@ -142,6 +142,22 @@ describe('project tool configs the project opted into', () => {
       ).toEqual([]);
     },
   );
+
+  it.each([undefined, 'javascript'])(
+    'counts an edit of the dependency-cruiser config a %s project opted into',
+    (preset) => {
+      const tools = { 'dependency-cruiser': PROJECT };
+      const config = { ...(preset === undefined ? {} : { preset }), tools };
+      const at = (rules) => ({
+        'src/a.ts': 'export const a = 1;\n',
+        '.dependency-cruiser.cjs': `// house rules\nmodule.exports = ${rules};\n`,
+      });
+      expect(
+        between({ base: at('{}'), head: at('{ options: {} }'), config }).policyLoosenings,
+      ).toEqual(['dependency-cruiser project config changed: .dependency-cruiser.cjs']);
+      expect(between({ base: at('{}'), head: at('{}'), config }).policyLoosenings).toEqual([]);
+    },
+  );
 });
 
 describe('what counts as an edit of a project tool config', () => {
