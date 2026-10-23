@@ -40,14 +40,21 @@ function insideOtherHost(host, hosts) {
   );
 }
 
+function assertsIn(context, callback, bindings) {
+  return nodesIn(context, callback.body, { intoFunctions: true }).some((node) =>
+    isAssertion(node, bindings),
+  );
+}
+
 function testHosts(context, test, bindings) {
-  const asserts = (callback) =>
-    nodesIn(context, callback.body, { intoFunctions: true }).some((node) =>
-      isAssertion(node, bindings),
-    );
   const nodes = nodesIn(context, test.body, { intoFunctions: true });
   const hosts = nodes
-    .map((node) => hostOf(context, node, { bindings, asserts }))
+    .map((node) =>
+      hostOf(context, node, {
+        bindings,
+        asserts: (callback) => assertsIn(context, callback, bindings),
+      }),
+    )
     .filter((host) => host !== undefined);
   const inHosts = new Set(
     hosts.flatMap((host) =>
@@ -70,13 +77,11 @@ function unownedHosts(context, call, bindings) {
     return [];
   }
   const statements = test.body.type === 'BlockStatement' ? test.body.body : [];
-  const facts = new Map();
-  const factsOf = (statement) => {
-    if (!facts.has(statement)) {
-      facts.set(statement, stepFacts(context, statement));
-    }
+  const facts = new Map(statements.map((statement) => [statement, undefined]));
+  function factsOf(statement) {
+    facts.set(statement, facts.get(statement) ?? stepFacts(context, statement));
     return facts.get(statement);
-  };
+  }
   return hosts.filter((host) => {
     if (isInsideCompletedPromise(context, host, test)) {
       return false;
