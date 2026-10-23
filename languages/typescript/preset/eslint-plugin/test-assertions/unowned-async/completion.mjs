@@ -1,8 +1,9 @@
 import { ancestorsOf } from '../../rules/analysis/ancestry.mjs';
-import { chainHasProperty } from '../../test-quality/test-calls.mjs';
-import { propertyName } from './hosts.mjs';
+import { findVariable, isFunctionNode } from '../../rules/analysis/constant-resolution.mjs';
+import { enclosingFunction } from '../../test-quality/test-calls.mjs';
+import { propertyName } from './nodes.mjs';
 
-const COMPLETIONS = new Set(['AwaitExpression', 'ReturnStatement', 'YieldExpression']);
+const COMPLETIONS = new Set(['AwaitExpression', 'YieldExpression']);
 const CARRIERS = new Set([
   'ArrayExpression',
   'ConditionalExpression',
@@ -16,14 +17,13 @@ const CARRIERS = new Set([
   'MemberExpression',
   'SpreadElement',
 ]);
-const FUNCTION_TYPES = new Set(['ArrowFunctionExpression', 'FunctionExpression']);
-const PLAN_METHODS = new Set(['assertions', 'plan']);
-const VITEST_SOURCE = /^vitest(?:\/|$)/u;
+const COLLECTING_METHODS = new Set(['push', 'unshift']);
+const SCHEDULER_NAME = /scheduler/iu;
 
 function isPromiseExecutor(node) {
   const owner = node.parent;
   return (
-    FUNCTION_TYPES.has(node.type) &&
+    isFunctionNode(node) &&
     owner?.type === 'NewExpression' &&
     owner.callee.type === 'Identifier' &&
     owner.callee.name === 'Promise' &&
@@ -31,21 +31,68 @@ function isPromiseExecutor(node) {
   );
 }
 
+function usesOf(context, identifier) {
+  const variable =
+    identifier?.type === 'Identifier'
+      ? findVariable(context, identifier, identifier.name)
+      : undefined;
+  return (variable?.references ?? []).filter((ref) => !ref.init).map((ref) => ref.identifier);
+}
+
+function isCompletion(parent, node, test) {
+  if (COMPLETIONS.has(parent.type)) {
+    return true;
+  }
+  if (parent.type === 'ReturnStatement') {
+    return enclosingFunction(parent) === test;
+  }
+  return parent === test && parent.body === node;
+}
+
+function boundIdentifier(parent, node) {
+  if (node.type === 'FunctionDeclaration') {
+    return node.id;
+  }
+  if (parent.type === 'VariableDeclarator' && parent.init === node) {
+    return parent.id;
+  }
+  return parent.type === 'AssignmentExpression' && parent.right === node ? parent.left : undefined;
+}
+
+function collectingArray(parent, node) {
+  const isArgument = parent.type === 'CallExpression' && parent.arguments.includes(node);
+  return isArgument && COLLECTING_METHODS.has(propertyName(parent.callee))
+    ? parent.callee.object
+    : undefined;
+}
+
+function enclosingValue(parent, node) {
+  if (parent.type === 'ReturnStatement') {
+    return [enclosingFunction(parent)];
+  }
+  if (parent.type === 'ArrowFunctionExpression' && parent.body === node) {
+    return [parent];
+  }
+  return parent.type === 'Property' && parent.value === node ? [parent.parent] : [];
+}
+
 function carriedTo(context, node, test) {
   const { parent } = node;
-  if (COMPLETIONS.has(parent.type) || (parent === test && parent.body === node)) {
-    return { completed: true };
-  }
-  if (CARRIERS.has(parent.type)) {
-    return { next: [parent] };
-  }
-  const isBinding =
-    parent.type === 'VariableDeclarator' && parent.init === node && parent.id.type === 'Identifier';
-  if (!isBinding) {
+  if (!parent) {
     return { next: [] };
   }
-  const [variable] = context.sourceCode.getDeclaredVariables(parent);
-  return { next: variable.references.filter((ref) => !ref.init).map((ref) => ref.identifier) };
+  if (isCompletion(parent, node, test)) {
+    return { completed: true };
+  }
+  const direct = CARRIERS.has(parent.type) ? [parent] : [];
+  const bound = [boundIdentifier(parent, node), collectingArray(parent, node)];
+  return {
+    next: [
+      ...direct,
+      ...enclosingValue(parent, node),
+      ...bound.flatMap((identifier) => usesOf(context, identifier)),
+    ],
+  };
 }
 
 function isCompleted(context, promise, test) {
@@ -55,7 +102,10 @@ function isCompleted(context, promise, test) {
     if (carried.completed) {
       return true;
     }
-    pending.push(...carried.next.filter((next) => !pending.includes(next)));
+    const fresh = carried.next.filter((next) => !pending.includes(next));
+    for (const next of fresh) {
+      pending.push(next);
+    }
   }
   return false;
 }
@@ -66,58 +116,17 @@ export function isInsideCompletedPromise(context, host, test) {
   return executors.some((executor) => isCompleted(context, executor.parent, test));
 }
 
-function usesVitest(program) {
-  return program.body.some(
-    (statement) =>
-      statement.type === 'ImportDeclaration' && VITEST_SOURCE.test(String(statement.source.value)),
-  );
+function isSchedulerCallback(node) {
+  const call = node.parent;
+  const isArgument =
+    isFunctionNode(node) && call.type === 'CallExpression' && call.arguments.includes(node);
+  const object =
+    isArgument && call.callee.type === 'MemberExpression' ? call.callee.object : undefined;
+  const receiver = object?.type === 'Identifier' ? object.name : propertyName(object);
+  return propertyName(call.callee) === 'run' && SCHEDULER_NAME.test(receiver ?? '');
 }
 
-function importsNodeTest(program) {
-  return program.body.some(
-    (statement) => statement.type === 'ImportDeclaration' && statement.source.value === 'node:test',
-  );
-}
-
-function doneParameter(program, test, call) {
-  const isTable = ['each', 'for'].some((name) => chainHasProperty(call.callee, name));
-  if (test.async || isTable || usesVitest(program)) {
-    return undefined;
-  }
-  const parameter = test.params[importsNodeTest(program) ? 1 : 0];
-  return parameter?.type === 'Identifier' ? parameter : undefined;
-}
-
-export function takesDone(context, test, call) {
-  const parameter = doneParameter(context.sourceCode.ast, test, call);
-  if (parameter === undefined) {
-    return false;
-  }
-  const variable = context.sourceCode
-    .getDeclaredVariables(test)
-    .find((candidate) => candidate.name === parameter.name);
-  return variable !== undefined && variable.references.length > 0;
-}
-
-function planCount(statement, test) {
-  const call = statement.type === 'ExpressionStatement' ? statement.expression : undefined;
-  const callee = call?.type === 'CallExpression' ? call.callee : undefined;
-  const receiver = callee?.type === 'MemberExpression' ? callee.object : undefined;
-  const contextName = test.params[0]?.type === 'Identifier' ? test.params[0].name : undefined;
-  const isPlanner =
-    receiver?.type === 'Identifier' && ['expect', contextName].includes(receiver.name);
-  const method = isPlanner ? propertyName(callee) : undefined;
-  if (method === 'hasAssertions') {
-    return { atLeastOne: true };
-  }
-  const [count] = PLAN_METHODS.has(method) ? call.arguments : [];
-  return Number.isInteger(count?.value) && count.value >= 1 ? { count: count.value } : undefined;
-}
-
-export function isOwnedByPlan(test, syncAssertions) {
-  const statements = test.body.type === 'BlockStatement' ? test.body.body : [];
-  const plans = statements.map((statement) => planCount(statement, test)).filter(Boolean);
-  return plans.some((plan) =>
-    plan.atLeastOne ? syncAssertions === 0 : plan.count > syncAssertions,
-  );
+export function isInsideScheduler(host, test) {
+  const ancestors = ancestorsOf(host.node);
+  return ancestors.slice(0, ancestors.indexOf(test)).some(isSchedulerCallback);
 }

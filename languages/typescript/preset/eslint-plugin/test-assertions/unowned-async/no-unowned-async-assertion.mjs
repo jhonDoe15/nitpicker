@@ -1,8 +1,11 @@
 import { ancestorsOf } from '../../rules/analysis/ancestry.mjs';
+import { isFunctionNode } from '../../rules/analysis/constant-resolution.mjs';
 import { callbackOf, chainHasProperty, isCaseCall } from '../../test-quality/test-calls.mjs';
-import { isInsideCompletedPromise, isOwnedByPlan, takesDone } from './completion.mjs';
-import { fileBindings, hostOf, isAssertion } from './hosts.mjs';
-import { isOwnedByLaterStep, nodesIn, stepFacts } from './later-steps.mjs';
+import { isInsideCompletedPromise, isInsideScheduler } from './completion.mjs';
+import { fileBindings, hostOf } from './hosts.mjs';
+import { isOwnedByLaterStep, ownerRoots, stepFacts } from './later-steps.mjs';
+import { countsAsAssertion, isAssertion, nodesIn } from './nodes.mjs';
+import { isOwnedByPlan, takesDone } from './plans.mjs';
 
 const NOT_TESTS = [
   'step',
@@ -25,12 +28,12 @@ function testCallback(call) {
   return callbackOf(call);
 }
 
-function anchorIndex(host, test) {
-  if (test.body.type !== 'BlockStatement') {
-    return -1;
-  }
-  const anchor = [host.node, ...ancestorsOf(host.node)].find((node) => node.parent === test.body);
-  return test.body.body.indexOf(anchor);
+function isNestedTest(node) {
+  return (
+    isFunctionNode(node) &&
+    node.parent.type === 'CallExpression' &&
+    testCallback(node.parent) === node
+  );
 }
 
 function insideOtherHost(host, hosts) {
@@ -40,56 +43,46 @@ function insideOtherHost(host, hosts) {
   );
 }
 
-function assertsIn(context, callback, bindings) {
-  return nodesIn(context, callback.body, { intoFunctions: true }).some((node) =>
-    isAssertion(node, bindings),
-  );
+function assertsIn(env, callback) {
+  return nodesIn(env.context, callback.body).some((node) => isAssertion(node, env.bindings));
 }
 
-function testHosts(context, test, bindings) {
-  const nodes = nodesIn(context, test.body, { intoFunctions: true });
+function testHosts(env, test) {
+  const { context, bindings } = env;
+  const nodes = nodesIn(context, test.body, (child) => !isNestedTest(child));
   const hosts = nodes
     .map((node) =>
-      hostOf(context, node, {
-        bindings,
-        asserts: (callback) => assertsIn(context, callback, bindings),
-      }),
+      hostOf(context, node, { bindings, asserts: (callback) => assertsIn(env, callback) }),
     )
     .filter((host) => host !== undefined);
   const inHosts = new Set(
-    hosts.flatMap((host) =>
-      host.callbacks.flatMap((callback) => nodesIn(context, callback, { intoFunctions: true })),
-    ),
+    hosts.flatMap((host) => host.callbacks.flatMap((callback) => nodesIn(context, callback))),
   );
   const syncAssertions = nodes.filter(
-    (node) => !inHosts.has(node) && isAssertion(node, bindings),
+    (node) => !inHosts.has(node) && countsAsAssertion(node, bindings),
   ).length;
   return { hosts: hosts.filter((host) => !insideOtherHost(host, hosts)), syncAssertions };
 }
 
-function unownedHosts(context, call, bindings) {
+function isOwned(env, host, test) {
+  if (isInsideCompletedPromise(env.context, host, test) || isInsideScheduler(host, test)) {
+    return true;
+  }
+  const owners = new Set(ancestorsOf(host.node).filter(isFunctionNode));
+  const roots = ownerRoots(env.context, host, test);
+  return isOwnedByLaterStep(host, stepFacts(env, roots, owners));
+}
+
+function unownedHosts(env, call) {
   const test = testCallback(call);
-  if (test === undefined || takesDone(context, test, call)) {
+  if (test === undefined || takesDone(env, test, call)) {
     return [];
   }
-  const { hosts, syncAssertions } = testHosts(context, test, bindings);
+  const { hosts, syncAssertions } = testHosts(env, test);
   if (hosts.length === 0 || isOwnedByPlan(test, syncAssertions)) {
     return [];
   }
-  const statements = test.body.type === 'BlockStatement' ? test.body.body : [];
-  const facts = new Map(statements.map((statement) => [statement, undefined]));
-  function factsOf(statement) {
-    facts.set(statement, facts.get(statement) ?? stepFacts(context, statement));
-    return facts.get(statement);
-  }
-  return hosts.filter((host) => {
-    if (isInsideCompletedPromise(context, host, test)) {
-      return false;
-    }
-    const anchor = anchorIndex(host, test);
-    const later = anchor === -1 ? [] : statements.slice(anchor + 1);
-    return !isOwnedByLaterStep(host, later.map(factsOf));
-  });
+  return hosts.filter((host) => !isOwned(env, host, test));
 }
 
 export const rule = {
@@ -105,10 +98,10 @@ export const rule = {
     },
   },
   create(context) {
-    const bindings = fileBindings(context.sourceCode.ast);
+    const env = { context, bindings: fileBindings(context.sourceCode.ast) };
     return {
       CallExpression(call) {
-        for (const host of unownedHosts(context, call, bindings)) {
+        for (const host of unownedHosts(env, call)) {
           context.report({ node: host.node, messageId: host.kind, data: { host: host.name } });
         }
       },
