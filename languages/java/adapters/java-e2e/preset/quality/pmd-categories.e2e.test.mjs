@@ -8,6 +8,7 @@ import { applyFindingPolicy } from '../../../../../../shared/findings/finding-po
 import { compareFindings } from '../../../../../../core/diff/comparison/compare.mjs';
 import { applyRuleMessages } from '../../../../messages/rule-messages.mjs';
 import { INIT_SCRIPT } from '../../../../builds/java-build.mjs';
+import { writeRulesets } from '../../../tool-config/pmd-wrappers.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -57,9 +58,23 @@ let root;
 let findings;
 let shifted;
 
+function scopedRulesets() {
+  const { mainRuleset, testsRuleset } = writeRulesets({
+    module: {
+      sourceRoots: [path.join(root, 'src/main/java')],
+      testSourceRoots: [path.join(root, 'src/test/java')],
+    },
+    reportDir: root,
+    configs: { pmd: {} },
+    spring: false,
+  });
+  return [ruleset, mainRuleset, testsRuleset].join(',');
+}
+
 function prepare() {
   root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-categories-'));
   const version = /^\s*pmd\s*:\s*'([^']+)'/mu.exec(readFileSync(INIT_SCRIPT, 'utf8'))[1];
+  const sources = path.join(root, 'src');
   writeFileSync(path.join(root, 'settings.gradle'), "rootProject.name = 'pmd-categories'\n");
   writeFileSync(
     path.join(root, 'build.gradle'),
@@ -74,7 +89,8 @@ tasks.register('pmdProbe', JavaExec) {
   classpath = configurations.probe
   mainClass = 'net.sourceforge.pmd.cli.PmdCli'
   args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
-    '--report-file', 'pmd.sarif', '--dir', 'src', '--rulesets', ${JSON.stringify(ruleset)}
+    '--report-file', 'pmd.sarif', '--dir', ${JSON.stringify(sources)},
+    '--rulesets', ${JSON.stringify(scopedRulesets())}
   ignoreExitValue = true
 }
 `,
@@ -121,19 +137,32 @@ describe.skipIf(!enabled)('pinned PMD additional categories', () => {
     if (root !== undefined) rmSync(root, { recursive: true, force: true });
   });
 
-  it.each(['main', 'test'])('runs all three categories on %s sources', (role) => {
-    expect(
-      findings
-        .filter((finding) => finding.path === `src/${role}/java/demo/Banned.java`)
-        .filter((finding) => categories.has(finding.rule))
-        .map(({ rule }) => rule)
-        .sort(),
-    ).toEqual([
+  const reported = (role) =>
+    findings
+      .filter((finding) => finding.path === `src/${role}/java/demo/Banned.java`)
+      .filter((finding) => categories.has(finding.rule))
+      .map(({ rule }) => rule)
+      .sort();
+
+  it('runs all three categories on main sources', () => {
+    expect(reported('main')).toEqual([
+      'AvoidArrayLoops',
       'AvoidFileStream',
       'DontCallThreadRun',
       'HardCodedCryptoKey',
       'InsecureCryptoIv',
       'StringInstantiation',
+      'UseArraysAsList',
+    ]);
+  });
+
+  it('leaves the security category out of test sources, where fixed keys check known output', () => {
+    expect(reported('test')).toEqual([
+      'AvoidArrayLoops',
+      'AvoidFileStream',
+      'DontCallThreadRun',
+      'StringInstantiation',
+      'UseArraysAsList',
     ]);
   });
 

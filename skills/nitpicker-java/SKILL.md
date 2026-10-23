@@ -52,6 +52,15 @@ Before you change code other modules use, or fix a bug, read
   indentation.
 - Text: `"a".equals(x)` or `a.equals(b)`, never `==` on strings or other objects. Pass a charset and
   a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
+- Strings, arrays and files: no field initializer that repeats the default (`= 0`, `= null`,
+  `= false`). Append one character as a char (`append('x')`) and chain appends
+  (`sb.append(a).append(b)`). Write `i + "x"`, not `"" + i + "x"`; `String.valueOf(i)` only when
+  nothing else is concatenated. Build loop output in a local `StringBuilder`. Copy arrays with
+  `System.arraycopy`, and an array into a collection with `Collections.addAll(target, array)`. Open
+  files with `Files.newInputStream` or `Files.newBufferedReader`, not `FileInputStream`.
+- Threads: no `synchronized`, `wait` or `notify`. Lock with a private final `ReentrantLock`
+  (`lock()` right before `try`, `unlock()` in `finally`) and wait on a `Condition` from it
+  (`await()` in a loop, `signalAll()`).
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
   `System.getLogger(Foo.class.getName())`, or the project's logger.
 - Null: a method returning a collection returns an empty one (`List.of()`), never `null`. Any
@@ -93,11 +102,6 @@ Before you change code other modules use, or fix a bug, read
 
 ## Errors
 
-- No `new String(s)`, `s.toString()` on a String or `+=` on a String in a loop (use a local
-  `StringBuilder`). Open files with `Files.newInputStream`/`Files.newBufferedReader`, not
-  `FileInputStream`. Lock with a private final `ReentrantLock` released in `finally` (or an atomic
-  or concurrent collection), not `synchronized`. Start threads with `start()` or an executor, use
-  `java.time.format.DateTimeFormatter`, and load crypto keys and fresh IVs at run time.
 - Never swallow: no empty `catch` (PMD `EmptyCatchBlock` and Checkstyle both fail it). A `catch`
   returns a failure value, logs and recovers, or rethrows with the cause:
   `throw new IllegalStateException("bad quantity " + text, e);` (`PreserveStackTrace`).
