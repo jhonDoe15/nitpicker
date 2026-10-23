@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { lineOf, scanKotlinSource } from '../../kotlin-source.mjs';
 import { credentialLiterals, hardcodedSecrets } from './hardcoded-secrets.mjs';
-import { secretsInLogs } from './secrets-in-logs.mjs';
+import { SECRET_VALUE_CASES } from '../../../../../../../shared/naming/test-support/secret-value-cases.mjs';
 
 const PRIVATE_KEY_HEADER = ['-----BEGIN', 'RSA', 'PRIVATE KEY-----'].join(' ');
 
@@ -35,14 +35,51 @@ describe('hardcodedSecrets', () => {
     ['an if branch', 'val token = if (prod) "a1b2c3d4e5" else read()\n'],
     ['a name with a value suffix', 'val passwordText = "hunter22"\n'],
     ['a key that signs', 'val jwtKey = "s3cr3t-jwt-2024"\n'],
+    ['a value that keeps its digits', 'val token = "Token2024"\n'],
+    ['a value with a mark', 'val password = "Password1!"\n'],
+    ['a value followed by an operand', 'val token = "a1b2c3d4e5" + read()\n'],
+    ['a trimmed raw string', 'val token = \"\"\"a1b2c3d4e5\"\"\".trimIndent()\n'],
+    ['a margin-trimmed string', 'val token = "a1b2c3d4e5".trimMargin()\n'],
+    ['an encoded string', 'val secret = "s3cret-bytes".encodeToByteArray()\n'],
+    ['a lowercased string', 'val token = "a1B2c3D4e5".lowercase()\n'],
+    ['a cast', 'val token = "a1b2c3d4e5" as String\n'],
+    ['a scope function', 'val token = "a1b2c3d4e5".let { it }\n'],
+    ['a side effect', 'val token = "a1b2c3d4e5".also { log(it) }\n'],
+    ['a lazy delegate', 'val token by lazy { "a1b2c3d4e5" }\n'],
+    ['a typed lazy value', 'val apiKey: Lazy<String> = lazy { "k3y-prod-1" }\n'],
+    ['an expression body', 'fun token() = "a1b2c3d4e5"\n'],
+    ['a function that returns it', 'fun token(): String { return "a1b2c3d4e5" }\n'],
+    ['a getter', 'val token: String get() = "a1b2c3d4e5"\n'],
+    ['a when branch', 'val token = when (env) { "prod" -> "a1b2c3d4e5"; else -> read() }\n'],
+    ['a braced if branch', 'val token = if (prod) { "a1b2c3d4e5" } else { read() }\n'],
+    ['a map fallback in a lambda', 'val token = map.getOrElse("T") { "a1b2c3d4e5" }\n'],
+    ['a keyed fallback in a lambda', 'map.getOrPut("token") { "a1b2c3d4e5" }\n'],
+    [
+      'a property placeholder default',
+      '@Value("\\${db.password:hunter22}") lateinit var pw: String\n',
+    ],
+    ['a keyed default', 'val x = System.getProperty("db.password", "hunter22")\n'],
+    ['a bind parameter look-alike with digits', 'val password = ":password1"\n'],
   ])('flags %s', (_name, source) => {
     expect(found(hardcodedSecrets, source)).toEqual([['HardcodedSecret', 1]]);
   });
 
-  it('flags a fallback on the next line at the literal', () => {
-    expect(found(hardcodedSecrets, 'val token = read()\n    ?: "a1b2c3d4e5"\n')).toEqual([
-      ['HardcodedSecret', 2],
-    ]);
+  it('leaves a property placeholder default in a Spring file to SpringValueSecretDefault', () => {
+    const source = [
+      'import org.springframework.beans.factory.annotation.Value',
+      'class C(@Value("\\${db.password:hunter22}") val pw: String)',
+      '',
+    ].join('\n');
+
+    expect(found(hardcodedSecrets, source)).toEqual([]);
+  });
+
+  it.each([
+    ['a fallback on the next line', 'val token = read()\n    ?: "a1b2c3d4e5"\n'],
+    ['a getter on the next line', 'val token: String\n    get() = "a1b2c3d4e5"\n'],
+    ['a when branch on its own line', 'val token = when (env) {\n    "prod" -> "a1b2c3d4e5"\n}\n'],
+  ])('flags %s at the literal', (_name, source) => {
+    expect(found(hardcodedSecrets, source)).toEqual([['HardcodedSecret', 2]]);
   });
 
   it.each([
@@ -57,7 +94,24 @@ describe('hardcodedSecrets', () => {
     ['a value that is the name', 'val password = "password"\n'],
     ['a literal that is not the fallback', 'val token = lookup("a1b2c3d4e5")\n'],
     ['a literal used in a call chain', 'val token = "a1b2c3d4e5".equals(read())\n'],
-    ['a literal with another operand', 'val token = "a1b2c3d4e5" + read()\n'],
+    ['a literal joined after another operand', 'val token = read() + "a1b2c3d4e5"\n'],
+    ['a comparison inside the value', 'val token = if (read() != "abc123def") read() else ""\n'],
+    ['a pattern', 'val password = \"\"\"^(?=.*\\d).{8,}$\"\"\".toRegex()\n'],
+    ['a format string', 'val token = "%s-%d-v1".format(a, b)\n'],
+    ['a when condition', 'val token = when (env) { "prod1x" -> read(); else -> "" }\n'],
+    ['an exception message', 'val token = env["T"] ?: error("token missing 1")\n'],
+    ['a pair in a call that is not a map', 'track("password", "hunter22")\n'],
+    ['a value that names a secret', 'intent.putExtra("token", "extra_token_1")\n'],
+    ['a secret path', 'val dbSecret = "prod/db-creds-v2"\n'],
+    ['a vault path', 'val secret = "secret/data/app1"\n'],
+    ['a credential file', 'val credentials = "/etc/app/creds-v2.json"\n'],
+    ['a message key', 'val TOKEN = "errors.token.expired_v2"\n'],
+    ['a templated placeholder', 'val password = "{{secrets.DB_PASSWORD}}"\n'],
+    [
+      'a property placeholder without a default',
+      '@Value("\\${db.password}") lateinit var pw: String\n',
+    ],
+    ['a credential, which has its own rule', `val token = "ghp_${'a1B2'.repeat(9)}"\n`],
     ['an empty fallback', 'val token = System.getenv("TOKEN") ?: ""\n'],
     ['a lambda parameter', 'val check = { password: String -> password == "hunter22" }\n'],
     ['a template fallback', 'val token = System.getenv("TOKEN") ?: "$prefix-1a2b3c"\n'],
@@ -87,48 +141,33 @@ describe('credentialLiterals', () => {
   });
 });
 
-describe('secretsInLogs', () => {
-  it.each([
-    ['a placeholder argument', 'log.info("token {}", token)'],
-    ['a template', 'logger.warn("password is $password")'],
-    ['a template expression', 'logger.warn("key ${apiKey}")'],
-    ['a concatenation', 'log.debug("secret " + clientSecret)'],
-    ['a print', 'println("token: $token")'],
-    ['a lambda message', 'logger.info { "token $token" }'],
-    [
-      'a lambda message after the exception',
-      'logger.error(e) { "refresh failed for $refreshToken" }',
-    ],
-    ['a bare value in a lambda', 'logger.debug { password }'],
-    ['an Android log call', 'Log.d(TAG, "pw $password")'],
-    ['a logger declared from a factory', 'audit.info("token {}", token)'],
-    ['a member of an object', 'log.info("token {}", session.token)'],
-    ['a getter', 'log.info("token {}", client.getToken())'],
-    ['a member in a template', 'logger.warn("key ${config.apiKey}")'],
-    ['a value converted to text', 'log.info("pw {}", password.toString())'],
-    ['a template followed by a dot', 'logger.warn("using $token.")'],
-    ['a key and value pair', 'log.info("login", kv("password", pw))'],
-    ['a pair in a map', 'log.info("login {}", mapOf("token" to t))'],
-  ])('flags %s', (_name, line) => {
-    const source = `val audit = LoggerFactory.getLogger("audit")\nfun f() {\n    ${line}\n}\n`;
+describe('the shared secret value rules', () => {
+  const RULES = {
+    secret: [['HardcodedSecret', 1]],
+    credential: [['CredentialLiteral', 1]],
+    none: [],
+  };
 
-    expect(found(secretsInLogs, source)).toEqual([['SecretInLog', 3]]);
+  it.each(SECRET_VALUE_CASES)('read val %s = %j as %s', (name, value, expected) => {
+    const literal = JSON.stringify(value).replaceAll('$', String.raw`\$`);
+    const source = `val ${name} = ${literal}\n`;
+
+    expect([...found(hardcodedSecrets, source), ...found(credentialLiterals, source)]).toEqual(
+      RULES[expected],
+    );
   });
 
-  it.each([
-    ['a presence check', 'log.info("token set: {}", token != null)'],
-    ['a length', 'log.info("token length {}", token.length)'],
-    ['a flag', 'log.info("has token {}", hasToken)'],
-    ['a constant name', 'log.info("reading {}", PASSWORD)'],
-    ['a member of the secret', 'log.info("token ${token.length}")'],
-    ['a call on something that is not a logger', 'audit.info("token {}", token)'],
-    ['a presence check in a lambda', 'logger.info { "token set: ${token != null}" }'],
-    ['a dialog, which is not a logger', 'dialog.d(TAG, "pw $password")'],
-    ['a status getter', 'log.info("has {}", session.hasToken())'],
-    ['a call on the secret', 'log.info("token {}", token.hashCode())'],
-    ['a key with a literal value', 'log.info("login", kv("password", "hidden"))'],
-    ['a message that only mentions the word', 'log.info("refresh token expired")'],
-  ])('passes %s', (_name, line) => {
-    expect(found(secretsInLogs, `fun f() {\n    ${line}\n}\n`)).toEqual([]);
+  it('reads a long file in linear time', () => {
+    const lines = Array.from({ length: 5000 }, (_, index) => [
+      `    val token${String(index)} = read("k")`,
+      `    m.put("token", "v${String(index)}")`,
+    ]);
+    const scanned = scanKotlinSource(`fun f() {\n${lines.flat().join('\n')}\n}\n`);
+    const started = performance.now();
+
+    const reported = hardcodedSecrets(scanned);
+
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(reported).toEqual([]);
   });
 });

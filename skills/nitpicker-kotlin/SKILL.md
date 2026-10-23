@@ -61,11 +61,15 @@ Before you change code other modules use, or fix a bug, read
 - detekt's defaults stay on. In main sources: lines of at most 120 characters, named constants
   instead of numbers other than -1, 0, 1 and 2 (`MagicNumber`), at most 2 `return` and 2 `throw`
   per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports unless most of the project's files
-  already use them, never a secret literal in a `password`, `token`, `apiKey` or `secret` name (also as an `?: "..."` fallback of an environment read) and never a secret in a log call or `println` (log that it is set), and no `TODO` or `FIXME` without an issue (`TODO(#123): ...`). Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
+  already use them, and no `TODO` or `FIXME` without an issue (`TODO(#123): ...`). Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
   `Throwable` (also in tests: `TooGenericExceptionCaught`), and pass the caught exception on as the cause (`SwallowedException`). Use
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
   members and parameters.
+- Secrets (nitpicker's own `kotlin-source` checks, not detekt): never put a secret literal in a
+  `password`, `token`, `apiKey` or `secret` name, map entry or fallback (`?: "..."`, `getOrDefault`);
+  read it from the environment or a secrets manager. Never pass a secret to a log call, `println`,
+  `System.out`/`System.err` or an exception message: log that it is set, or a masked tail.
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`

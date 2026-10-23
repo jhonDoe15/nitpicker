@@ -25,7 +25,8 @@ def load_checks():
     from security.timeouts import check as timeouts
     from security.tls import check as tls
     from silent_tests import unasserted
-    from smells import literals, loops, names, secret_logs, secrets
+    from credentials import hardcoded, logs
+    from smells import literals, loops, names
 
     return [
         declarations,
@@ -45,8 +46,8 @@ def load_checks():
         paths,
         literals,
         names,
-        secrets,
-        secret_logs,
+        hardcoded,
+        logs,
         loops,
         skipped,
         assertions,
