@@ -117,14 +117,14 @@ function compileSets({ module, classpaths }, modular) {
   ];
 }
 
-function errorProneJdk(compiler) {
+function errorProneJdk(compiler, spawn) {
   const preview = [compiler, compiler.test ?? compiler].some((settings) =>
     settings.args.includes('--enable-preview'),
   );
-  return toolJava({ ...ERROR_PRONE, preview });
+  return toolJava({ ...ERROR_PRONE, preview, spawn });
 }
 
-function analyze({ module, reportDir, tools, classpaths }, modular) {
+function analyze({ module, reportDir, tools, classpaths, spawn }, modular) {
   const report = path.join(reportDir, 'errorprone.json');
   const work = path.join(reportDir, 'errorprone');
   const skipped = path.join(reportDir, ERROR_PRONE_SKIPPED);
@@ -138,7 +138,7 @@ function analyze({ module, reportDir, tools, classpaths }, modular) {
       processors: [...tools.errorprone, ...processorPath(set.classpath, compiler, tools)],
     }),
   );
-  const { java, problem } = argumentFiles.length === 0 ? {} : errorProneJdk(compiler);
+  const { java, problem } = argumentFiles.length === 0 ? {} : errorProneJdk(compiler, spawn);
   if (argumentFiles.length === 0 || problem !== undefined) {
     writeFileSync(report, '[]\n');
     if (problem !== undefined) {
@@ -148,6 +148,7 @@ function analyze({ module, reportDir, tools, classpaths }, modular) {
   }
   runJava({
     java,
+    spawn,
     tool: 'Error Prone',
     jvmArgs: JVM_FLAGS,
     args: [

@@ -142,7 +142,7 @@ export function cacheDirectory(name) {
   return path.join(root, name);
 }
 
-export function resolveTools({ projectRoot, maven, pinned, launcherVersions, extraTools }) {
+export function resolveTools({ projectRoot, maven, pinned, launcherVersions, extraTools, spawn }) {
   const tools = toolDependencies(pinned, launcherVersions, extraTools);
   const key = createHash('sha256').update(JSON.stringify(tools)).digest('hex').slice(0, 16);
   const directory = cacheDirectory(`maven-tools-${key}`);
@@ -154,6 +154,7 @@ export function resolveTools({ projectRoot, maven, pinned, launcherVersions, ext
   runMaven({
     projectRoot,
     maven,
+    spawn,
     args: [
       '--quiet',
       '--file',

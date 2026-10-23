@@ -14,10 +14,10 @@ import {
 const LAYOUT_SUPPRESSIONS = 'checkstyle-suppressions.xml';
 const UNFORMATTED_SUPPRESSIONS = 'checkstyle-suppressions-unformatted.xml';
 
-function bundledGoogleChecks(checkstyleJar) {
+function bundledGoogleChecks(checkstyleJar, spawn = spawnSync) {
   const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkstyle-'));
   try {
-    const result = spawnSync(javaCommand('jar'), ['xf', checkstyleJar, 'google_checks.xml'], {
+    const result = spawn(javaCommand('jar'), ['xf', checkstyleJar, 'google_checks.xml'], {
       cwd: directory,
       encoding: 'utf8',
     });
@@ -35,11 +35,11 @@ function propertiesLine(name, value) {
   return `${name}=${value.replaceAll('\\', '\\\\')}`;
 }
 
-export function checkstyleSetup({ reportDir, tools, configs, pinned, style, test = false }) {
+export function checkstyleSetup({ reportDir, tools, configs, pinned, style, spawn, test = false }) {
   const jar = tools.checkstyle.find(
     (entry) => path.basename(entry) === `checkstyle-${pinned.checkstyle}.jar`,
   );
-  const bundled = nitpickerCheckstyleConfig(bundledGoogleChecks(jar));
+  const bundled = nitpickerCheckstyleConfig(bundledGoogleChecks(jar, spawn));
   const unformatted = style?.javaStyle === 'none';
   return writeCheckstyleSetup({
     directory: path.join(reportDir, test ? 'checkstyle-test-config' : 'checkstyle-config'),

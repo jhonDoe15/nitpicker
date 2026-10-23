@@ -5,7 +5,14 @@ def unnamedFailures = Collections.synchronizedList([])
 def skipped = Collections.synchronizedList([])
 project.ext.nitpickerFailedTestClasses = { -> new ArrayList(failedClasses) }
 project.ext.nitpickerUnnamedTestFailures = { -> new ArrayList(unnamedFailures) }
-project.ext.nitpickerSkipAfterFailingTests = { String tool, String reason -> skipped << [tool: tool, reason: reason] }
+project.ext.nitpickerSkipAfterFailingTests = { String tool, String reason ->
+    def entry = [tool: tool, reason: reason]
+    synchronized (skipped) {
+        if (!skipped.contains(entry)) {
+            skipped << entry
+        }
+    }
+}
 
 gradle.projectsEvaluated {
     tasks.withType(Test).matching { it.name != 'nitpickerArchunit' }.configureEach { testTask ->

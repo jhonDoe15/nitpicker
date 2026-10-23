@@ -3,6 +3,7 @@
   "languages/java/adapters/errorprone/error-prone.e2e.test.mjs": 16,
   "languages/java/adapters/errorprone/lombok.e2e.test.mjs": 69,
   "languages/java/adapters/java-e2e/code-smells.e2e.test.mjs": 60,
+  "languages/java/adapters/java-e2e/integration-tests.e2e.test.mjs": 290,
   "languages/java/adapters/java-e2e/jdk-levels.e2e.test.mjs": 150,
   "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs": 47,
   "languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs": 9,

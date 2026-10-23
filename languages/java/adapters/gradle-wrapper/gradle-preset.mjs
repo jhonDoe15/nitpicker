@@ -9,6 +9,7 @@ import { failingTestsOf } from '../gradle-reports/failing-tests.mjs';
 import { toolConfigChoices, toolConfigProperties } from '../tool-config/tool-config-choices.mjs';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { javaStyleProperties } from '../style/java-style.mjs';
+import { writeSpringRoles } from '../spring-arch/spring-roles.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
@@ -69,14 +70,17 @@ function gradleOptions(target, { projectRoot, budget, spawn }) {
   };
 }
 
-function headFactProperties(policy) {
+function headFactProperties(policy, directory) {
+  mkdirSync(directory, { recursive: true });
+  const roles = writeSpringRoles(policy.springRoles, directory);
   return [
     ...javaStyleProperties(policy),
     ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
+    ...(roles === undefined ? [] : [`-Pnitpicker.spring.roles=${roles}`]),
   ];
 }
 
-function gradleStages(common, { projectRoot, initScript, policy, directory }) {
+export function gradleStages(common, { projectRoot, initScript, policy, directory }) {
   const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
   const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
   return [
@@ -84,7 +88,7 @@ function gradleStages(common, { projectRoot, initScript, policy, directory }) {
     () => [
       ...common,
       ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
-      ...headFactProperties(policy),
+      ...headFactProperties(policy, directory),
       '-I',
       initScript,
       'nitpickerJava',

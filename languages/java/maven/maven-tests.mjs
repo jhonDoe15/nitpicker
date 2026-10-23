@@ -90,7 +90,7 @@ export function freshExecFiles(execFiles, since) {
   );
 }
 
-export function runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan }) {
+export function runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, spawn }) {
   const report = path.join(reportDir, 'jacoco.xml');
   if (classFiles(module.outputDirectory).length === 0) {
     writeFileSync(report, `<?xml version="1.0"?><report name="${module.coordinates}"></report>`);
@@ -120,6 +120,7 @@ export function runJacocoReport({ module, reportDir, tools, execFiles, since, te
     ],
     cwd: module.basedir,
     accept: (result) => result.status === 0,
+    spawn,
   });
 }
 
@@ -213,6 +214,7 @@ export function runPit({
   classpaths,
   isArchunit,
   excludedTestClasses = [],
+  spawn,
 }) {
   const pitDir = path.join(reportDir, 'pit');
   rmSync(pitDir, { recursive: true, force: true });
@@ -235,6 +237,7 @@ export function runPit({
     args: pitArguments({ module, pitDir, tests, classpaths, excludedTestClasses }),
     cwd: module.basedir,
     accept: (result) => result.status === 0,
+    spawn,
   });
   if (!existsSync(report)) {
     writeFileSync(report, '<mutations/>');

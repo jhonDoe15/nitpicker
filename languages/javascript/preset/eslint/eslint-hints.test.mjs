@@ -36,9 +36,9 @@ function nodeTestMessage() {
 }
 
 describe('node:test hint', () => {
-  it('says Vitest is the only runner, names issue #162 and when an exception fits', () => {
+  it('says node:test files run but are linted with the Vitest rules, and when an exception fits', () => {
     expect(nodeTestMessage()).toBe(
-      'Import from vitest instead of node:test nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). An exception fits only a file that must stay on node:test.',
+      'Import from vitest instead of node:test nitpicker runs node:test files, but lints every test file with the Vitest rules. An exception fits only a file that must stay on node:test.',
     );
   });
 });

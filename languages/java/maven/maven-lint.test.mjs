@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 import { javaFiles, runFormat, runPmd } from './maven-lint.mjs';
-import { writeCheckstyleSetup } from './configuration/checkstyle-setup.mjs';
+import { checkstyleSetup, writeCheckstyleSetup } from './configuration/checkstyle-setup.mjs';
 import { toolDependencies } from './maven-tools.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 
@@ -20,6 +20,70 @@ afterEach(() => {
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+describe('an inline Checkstyle suppression', () => {
+  const INLINE_FILTERS = [
+    'SuppressWarningsFilter',
+    'SuppressWarningsHolder',
+    'SuppressionCommentFilter',
+    'SuppressWithNearbyCommentFilter',
+    'SuppressWithNearbyTextFilter',
+    'SuppressWithPlainTextCommentFilter',
+    'SuppressionXpathFilter',
+  ];
+  const moduleNames = (text) => [...text.matchAll(/<module name="(\w+)"/g)].map(([, name]) => name);
+  const guardChecks = readFileSync(
+    path.join(GRADLE_DIRECTORY, 'rules/checkstyle-main.xml'),
+    'utf8',
+  );
+
+  it('such as @SuppressWarnings("checkstyle:magicnumber") has no effect on the Gradle run', () => {
+    const script = readFileSync(path.join(GRADLE_DIRECTORY, 'nitpicker.init.gradle'), 'utf8');
+    const listed = /def inlineCheckstyleFilters = \[([^\]]*)\]/u.exec(script)?.[1] ?? '';
+    const removed = [...listed.matchAll(/'(\w+)'/gu)].map(([, name]) => name);
+
+    expect({
+      kept: INLINE_FILTERS.filter((name) => !removed.includes(name)),
+      magicNumber: moduleNames(guardChecks).includes('MagicNumber'),
+    }).toEqual({ kept: [], magicNumber: true });
+  });
+
+  it('such as @SuppressWarnings("checkstyle:magicnumber") has no effect on the Maven run', () => {
+    const reportDir = mkdtempSync(path.join(tmpdir(), 'nitpicker-inline-checkstyle-'));
+    roots.push(reportDir);
+    const bundled = [
+      '<module name="Checker">',
+      ...INLINE_FILTERS.filter((name) => name !== 'SuppressWarningsHolder').map(
+        (name) => `<module name="${name}"/>`,
+      ),
+      '<module name="TreeWalker"><module name="SuppressWarningsHolder"/>',
+      '<module name="MethodName"><property name="format" value="x"/></module>',
+      '<module name="GoogleNonConstantFieldName"/>',
+      '<module name="TodoComment"><property name="id" value="TodoFormat"/></module>',
+      '</module>',
+      '</module>',
+    ].join('\n');
+    const spawn = (_command, _args, { cwd }) => {
+      writeFileSync(path.join(cwd, 'google_checks.xml'), bundled);
+      return { status: 0, stderr: '' };
+    };
+
+    const { config } = checkstyleSetup({
+      reportDir,
+      tools: { checkstyle: ['/tools/checkstyle-13.5.0.jar'] },
+      configs: { checkstyle: {} },
+      pinned: { checkstyle: '13.5.0' },
+      style: { javaStyle: 'google' },
+      spawn,
+    });
+    const names = moduleNames(readFileSync(config, 'utf8'));
+
+    expect({
+      kept: names.filter((name) => INLINE_FILTERS.includes(name)),
+      magicNumber: names.includes('MagicNumber'),
+    }).toEqual({ kept: [], magicNumber: true });
+  });
 });
 
 describe('writeCheckstyleSetup', () => {

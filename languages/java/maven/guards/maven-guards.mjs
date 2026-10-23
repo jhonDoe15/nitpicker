@@ -11,7 +11,7 @@ import { runCpd } from './maven-pmd.mjs';
 import { guardCompiler } from '../pom/compiler-settings.mjs';
 import { toolCommand } from '../../builds/tools/tool-commands.mjs';
 
-function runForbiddenApis({ module, reportDir, tools, classpaths }) {
+function runForbiddenApis({ module, reportDir, tools, classpaths, spawn }) {
   if (classFiles(module.outputDirectory).length === 0) {
     return;
   }
@@ -28,11 +28,12 @@ function runForbiddenApis({ module, reportDir, tools, classpaths }) {
     args: command.args,
     cwd: module.basedir,
     accept: ({ status }) => command.accepts(status),
+    spawn,
   });
   writeFileSync(path.join(reportDir, 'forbidden-apis.txt'), `${result.stdout}${result.stderr}`);
 }
 
-function lintPlan({ module, classpaths }, projectRoot) {
+function lintPlan({ module, classpaths, spawn }, projectRoot) {
   const lintDirectory = path.join(module.buildDirectory, 'nitpicker-lint');
   return {
     root: projectRoot,
@@ -47,6 +48,17 @@ function lintPlan({ module, classpaths }, projectRoot) {
     compiler: guardCompiler(module.compiler),
     workDirectory: path.join(lintDirectory, 'work'),
     cacheDirectory: lintDirectory,
+    spawn,
+    test: {
+      sources: javaFiles(module.testSourceRoots),
+      generatedSources: [
+        path.join(module.buildDirectory, 'generated-test-sources/test-annotations'),
+      ],
+      classDirectory: module.testOutputDirectory,
+      classpath: [module.outputDirectory, ...classpaths.testCompile],
+      processorPath: classpaths.testCompile,
+      compiler: guardCompiler({ ...module.compiler, ...module.compiler.test }),
+    },
   };
 }
 

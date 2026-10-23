@@ -9,11 +9,22 @@
         message="This string literal is repeated three times or more in the file. Name it once as a constant (private static final String NAME) and use the constant.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//StringLiteral[not(ancestor::Annotation or ancestor::SwitchLabel)][string-length(@ConstValue) >= 5][matches(@ConstValue, '[A-Za-z0-9]')]
-  [not(empty(preceding-sibling::*) and parent::ArgumentList/parent::MethodCall/@MethodName = ('getMessage', 'getString'))]
-  [let $value := @ConstValue
-   return count(preceding::StringLiteral[@ConstValue = $value][not(ancestor::Annotation or ancestor::SwitchLabel)]
-     [not(empty(preceding-sibling::*) and parent::ArgumentList/parent::MethodCall/@MethodName = ('getMessage', 'getString'))]) >= 2]
+let $minimum := 5,
+    $maximum := 2,
+    $idioms := ('utf-8', 'utf8', 'ascii', 'latin-1', 'utf-16', 'store_true', 'store_false', 'store_const', 'append', 'append_const', 'count', 'version', 'extend', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'),
+    $mime := '^[a-z]+/[a-z0-9.+*-]+$',
+    $time := '^(?:%[A-Za-z]|[-:/ T.,_])+$',
+    $translations := ('_', '__', '_t', 't', '$t', 'translate', 'formatMessage', 'getMessage', 'getString', 'getTranslations', 'getFixedT', 'useTranslation', 'useTranslations', 'gettext', 'ngettext', 'pgettext', 'lazy_gettext', 'gettext_lazy', 'gettext_noop'),
+    $discriminants := ('type', 'kind', 'tag', 'variant'),
+    $literals := //StringLiteral
+  [not(ancestor::Annotation or ancestor::SwitchLabel)][string-length(@ConstValue) >= $minimum][matches(@ConstValue, '[A-Za-z0-9]')]
+  [not(@ConstValue = $idioms or matches(@ConstValue, $mime) or (contains(@ConstValue, '%') and matches(@ConstValue, $time)))]
+  [not(empty(preceding-sibling::*) and parent::ArgumentList/parent::MethodCall/@MethodName = $translations)]
+  [not(parent::ArgumentList/parent::MethodCall
+      [@MethodName = ('put', 'putIfAbsent') or (@MethodName = ('of', 'entry') and (TypeExpression/ClassType/@SimpleName, AmbiguousName/@Name) = 'Map')]
+    and (count(preceding-sibling::*) mod 2 = 0
+      or preceding-sibling::*[1][self::StringLiteral]/@ConstValue = $discriminants))]
+return $literals[let $value := @ConstValue, $literal := . return count($literals[@ConstValue = $value][. << $literal]) >= $maximum]
 ]]></value></property></properties>
   </rule>
 
@@ -30,11 +41,20 @@
         message="Name this type for what it does (PriceRounder, OrderTotals), not Utils, Helper, Manager, Common or Misc. Pure logic shared between features goes in the shared package under such a name.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration or self::RecordDeclaration]
-  [matches(@SimpleName, '(^|[A-Za-z0-9])(Util|Utils|Utility|Utilities|Helper|Helpers|Manager|Managers|Common|Commons|Misc|Miscellaneous)$')]
-  [let $suffix := replace(@SimpleName, '^.*?(Util|Utils|Utility|Utilities|Helper|Helpers|Manager|Managers|Common|Commons|Misc|Miscellaneous)$', '$1')
-   return not((ExtendsList | ImplementsList)/ClassType[ends-with(@SimpleName, $suffix)])]
-  [not(matches(@SimpleName, '(Authentication|Transaction|Cache|Entity|Session|Connection|Lock|Resource)Manager$'))]
+let $generic := ('util', 'utils', 'utility', 'utilities', 'helper', 'helpers', 'manager', 'managers', 'common', 'commons', 'misc', 'miscellaneous'),
+    $containers := ('functions', 'funcs', 'methods', 'module', 'modules', 'mixin', 'mixins', 'base', 'classes'),
+    $roles := ('authentication', 'transaction', 'cache', 'entity', 'session', 'connection', 'lock', 'resource'),
+    $judged := function($name) {
+      let $words := (tokenize(lower-case(replace(replace($name, '([a-z0-9])([A-Z])', '$1 $2'), '([A-Z]+)([A-Z][a-z])', '$1 $2')), '[^a-z0-9]+')
+            ! replace(., '[0-9]+$', ''))[not(matches(., '^v?$'))]
+      return if (count($words) > 1 and $words[last()] = $containers) then subsequence($words, 1, count($words) - 1) else $words },
+    $isGeneric := function($name) {
+      let $words := $judged($name), $last := $words[last()]
+      return $last = $generic and not($last = ('manager', 'managers') and $words[last() - 1] = $roles) }
+return //*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration or self::RecordDeclaration]
+  [$isGeneric(@SimpleName)]
+  [let $last := $judged(@SimpleName)[last()]
+   return not((ExtendsList | ImplementsList)/ClassType[$judged(@SimpleName)[last()] = $last])]
 ]]></value></property></properties>
   </rule>
 
@@ -42,7 +62,17 @@
         message="Name this package for what it holds, not utils, helpers, common or misc. Pure logic shared between features goes in the shared package under a name that says what it does.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//PackageDeclaration[matches(@Name, '(^|\.)(util|utils|utility|utilities|helper|helpers|manager|managers|common|commons|misc|miscellaneous)(\.|$)')]
+let $generic := ('util', 'utils', 'utility', 'utilities', 'helper', 'helpers', 'manager', 'managers', 'common', 'commons', 'misc', 'miscellaneous'),
+    $containers := ('functions', 'funcs', 'methods', 'module', 'modules', 'mixin', 'mixins', 'base', 'classes'),
+    $roles := ('authentication', 'transaction', 'cache', 'entity', 'session', 'connection', 'lock', 'resource'),
+    $judged := function($name) {
+      let $words := (tokenize(lower-case(replace(replace($name, '([a-z0-9])([A-Z])', '$1 $2'), '([A-Z]+)([A-Z][a-z])', '$1 $2')), '[^a-z0-9]+')
+            ! replace(., '[0-9]+$', ''))[not(matches(., '^v?$'))]
+      return if (count($words) > 1 and $words[last()] = $containers) then subsequence($words, 1, count($words) - 1) else $words },
+    $isGeneric := function($name) {
+      let $words := $judged($name), $last := $words[last()]
+      return $last = $generic and not($last = ('manager', 'managers') and $words[last() - 1] = $roles) }
+return //PackageDeclaration[some $segment in tokenize(@Name, '\.') satisfies $isGeneric($segment)]
 ]]></value></property></properties>
   </rule>
 
@@ -146,8 +176,11 @@ return (
   [ancestor::*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration or self::RecordDeclaration][last()][@Visibility = 'public']]
   /FormalParameters/FormalParameter[not(ModifierList/Annotation)][PrimitiveType[@Kind = 'boolean'] or ClassType[@SimpleName = 'Boolean']]
   [let $flag := VariableId/@Name
-   return exists(../../Block//(IfStatement | ConditionalExpression)/*[1]/descendant-or-self::VariableAccess[@Name = $flag]
-     [ancestor::*[not(self::UnaryExpression or self::InfixExpression[@Operator = ('&&', '||')])][1][self::IfStatement or self::ConditionalExpression]])]
+   return exists(../../Block//((IfStatement | ConditionalExpression | WhileStatement)/*[1] | DoStatement/*[last()])
+     /descendant-or-self::VariableAccess[@Name = $flag]
+     [ancestor::*[not(self::UnaryExpression or self::InfixExpression[@Operator = ('&&', '||')]
+         or self::InfixExpression[@Operator = ('==', '!=')][BooleanLiteral])][1]
+       [self::IfStatement or self::ConditionalExpression or self::WhileStatement or self::DoStatement]])]
 ]]></value></property></properties>
   </rule>
 

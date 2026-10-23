@@ -12,8 +12,11 @@ import {
 import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mjs';
 import { posix, stageSources } from './lint-staging.mjs';
 
-const LINT_REPORT = 'javac-lint.txt';
-const LINT_FAILURE = 'javac-lint-failed.txt';
+const MAIN_REPORT = 'javac-lint.txt';
+const MAIN_FAILURE = 'javac-lint-failed.txt';
+const TEST_REPORT = 'javac-lint-test.txt';
+const TEST_FAILURE = 'javac-lint-test-failed.txt';
+const TEST_LINT = 'test';
 const UNREAD_WARNINGS = 'error: javac printed warnings in a form nitpicker cannot read';
 const ENGLISH_OUTPUT = ['-J-Duser.language=en', '-J-Duser.country=US'];
 const MODULE_INFO = 'module-info.java';
@@ -42,7 +45,8 @@ function compileForLint({ plan, work, args, files }) {
     argumentFile,
     [...args, ...files].map((token) => argumentFileToken(token)).join('\n'),
   );
-  const result = spawnSync(plan.javac, [...ENGLISH_OUTPUT, `@${argumentFile}`], {
+  const spawn = plan.spawn ?? spawnSync;
+  const result = spawn(plan.javac, [...ENGLISH_OUTPUT, `@${argumentFile}`], {
     cwd: plan.basedir,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
@@ -102,14 +106,14 @@ function writeReports({ plan, output, fingerprint }, text) {
   writeFileSync(path.join(plan.cacheDirectory, LINT_FINGERPRINT), fingerprint);
 }
 
-function clearReports(plan, reportDir) {
-  const files = [
-    path.join(reportDir, LINT_REPORT),
-    path.join(reportDir, LINT_FAILURE),
+function clearReports(plan, files) {
+  const stale = [
+    files.report,
+    files.failure,
     path.join(plan.cacheDirectory, LINT_CACHE),
     path.join(plan.cacheDirectory, LINT_FINGERPRINT),
   ];
-  for (const file of files) {
+  for (const file of stale) {
     rmSync(file, { force: true });
   }
 }
@@ -132,8 +136,8 @@ function reusedWarnings(plan, { baselineRoot, all, fingerprint }) {
   return reusableWarnings(plan, { baselineRoot, sources: all, fingerprint, reportPath });
 }
 
-export function runJavacLint(plan, { reportDir, baselineRoot }) {
-  clearReports(plan, reportDir);
+function lintSourceSet(plan, { baselineRoot, files }) {
+  clearReports(plan, files);
   const { moduleInfo, all } = lintedSources(plan);
   const fingerprint = lintFingerprint(plan);
   const { unchanged, kept } =
@@ -144,7 +148,7 @@ export function runJavacLint(plan, { reportDir, baselineRoot }) {
     ...all.filter((file) => !unchanged.has(file)),
     ...(moduleInfo === undefined ? [] : [moduleInfo]),
   ];
-  const reports = { plan, output: path.join(reportDir, LINT_REPORT), fingerprint };
+  const reports = { plan, output: files.report, fingerprint };
   if (sources.length === 0) {
     writeReports(reports, kept);
     return;
@@ -153,6 +157,33 @@ export function runJavacLint(plan, { reportDir, baselineRoot }) {
   if (result.code === 0) {
     writeReports(reports, kept + result.log);
   } else {
-    writeFileSync(path.join(reportDir, LINT_FAILURE), result.log);
+    writeFileSync(files.failure, result.log);
   }
+}
+
+function testPlan({ test, ...plan }) {
+  return {
+    ...plan,
+    ...test,
+    workDirectory: `${plan.workDirectory}-${TEST_LINT}`,
+    cacheDirectory: path.join(plan.cacheDirectory, TEST_LINT),
+  };
+}
+
+export function runJavacLint(plan, { reportDir, baselineRoot }) {
+  const main = {
+    report: path.join(reportDir, MAIN_REPORT),
+    failure: path.join(reportDir, MAIN_FAILURE),
+  };
+  const test = {
+    report: path.join(reportDir, TEST_REPORT),
+    failure: path.join(reportDir, TEST_FAILURE),
+  };
+  lintSourceSet(plan, { baselineRoot, files: main });
+  const tests = testPlan(plan);
+  if (plan.test === undefined) {
+    clearReports(tests, test);
+    return;
+  }
+  lintSourceSet(tests, { baselineRoot, files: test });
 }

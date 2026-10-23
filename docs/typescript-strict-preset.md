@@ -326,9 +326,13 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   type-position literals, object and class keys, `case` labels, discriminant values
   (`type: 'order-placed'`, `kind: ...`), JSX attribute values, enum members, directives and
   translation keys (`t('orders.title')`, `i18n.t`, `intl.formatMessage({ id })`, `useTranslation('ns')`)
-  are not counted. Nor is a value whose type is a union of string literals (`status: 'on-hold'` where
-  `status` is typed `'paid' | 'on-hold'`, or `order.status === 'on-hold'`): the compiler already
-  rejects a misspelling there.
+  are not counted, and neither is idiomatic text: an encoding (`utf-8`), an HTTP method (`DELETE`),
+  a MIME type (`application/json`) or a `strftime`-style format (`%Y-%m-%d`). Nor is a value whose
+  type is a union of string literals (`status: 'on-hold'` where `status` is typed
+  `'paid' | 'on-hold'`, or `order.status === 'on-hold'`): the compiler already rejects a misspelling
+  there. A constant's own initializer counts as a use. The length, the number of allowed uses, the
+  idiomatic texts, the translation calls and the discriminant keys come from
+  `shared/literals/repeated-literal-exemptions.mjs`, which every preset reads.
 - `nitpicker/no-hardcoded-secret` (all production code): a secret-looking string (six characters
   or more with letters and digits, or three character classes) assigned to a secret-named
   variable, property, parameter default or fallback (`password`, `token`, `secret`,
@@ -344,20 +348,38 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   (`X-XSRF-TOKEN`, `auth_token`) and translation keys are not secrets. Like the other guards
   below, it fails a change only when the change adds a finding.
 - `nitpicker/no-generic-names` (all production code): a file or folder whose name ends in
-  `util`, `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `common`, `commons` or
-  `misc` (also `string-utils.ts`, `OrderManager.ts`), and an exported class, type, interface, enum
-  or `const` named that way (`OrderHelper`), is reported. A class that extends or implements a type
-  with the same ending (`class SessionManager implements CacheManager`) is not. Name it for its
-  job (`price-rounding.ts`); pure logic shared between features lives in `shared/` under such a
-  name. The Java preset uses the same word list.
+  `util`, `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `managers`, `common`,
+  `commons`, `misc` or `miscellaneous` (`GENERIC_NAME_WORDS` in `shared/naming/smell-words.mjs`;
+  also `string-utils.ts`, `OrderManager.ts`; trailing digits and version words are ignored, so
+  `utils_v2.ts` counts, and a name that ends in a container word of `CONTAINER_NAME_WORDS`
+  (`functions`, `module`, `mixin`, `base`, ...) after other words is judged by the word before it:
+  `util_functions.ts`, `OrderHelperMixin`, `HelperBase` and `UtilsModule` are reported,
+  `LoggingMixin`, `ModelBase` and a lone `Base` are not) is reported, and so is every class, type, interface
+  or enum named that way, exported or not (`OrderHelper`, `class Util {}`), and an exported `const`
+  (ESM `export` or CommonJS `module.exports`/`exports.name`). An exported function is reported
+  when its whole name is generic (`helpers()`, `commonUtils()`), not when it names what it returns
+  (`getManager()`). A generic folder is reported once, on its first source file in path order (test
+  files left out), with the identity `folder:<path>/`, which the comparison keys on the folder, so a
+  new file that sorts first and takes the report does not make it new; a workspace package root
+  such as `packages/common/` is a folder like any other, as in the Python and Kotlin presets. A
+  class that extends or implements a type with the same ending (`class SessionManager implements
+CacheManager`) is not reported, nor are the framework manager roles of `ACCEPTED_MANAGER_ROLES`
+  (`SessionManager`, `TransactionManager`, ...), as in the Java preset. Name it for its job
+  (`price-rounding.ts`); pure logic shared between features lives in `shared/` under such a name.
+  The Java, Kotlin and Python presets use the same word list.
 - `nitpicker/no-boolean-flag-parameter` (all production code): a `boolean` parameter
-  (`flag: boolean`, `flag?: boolean`, `flag = false`) of an exported function, exported arrow or
-  function `const`, or public method of an exported class is reported when it switches the
-  function between two behaviors (it is the condition of an `if` or `?:`). Split it into two
-  functions named for each behavior, or take an options object (`{ force }`) or a string union.
-  Hooks (`useToggle(initial)`), setters (`setOpen(open)`), `with*` builders, `of`/`from`
-  factories, constructors, type predicates, destructured options and a boolean that is only passed
-  on or stored are not reported.
+  (`flag: boolean`, `flag?: boolean`, `flag = false`, or in plain JavaScript a parameter whose
+  JSDoc says `@param {boolean} flag`) of an exported function, exported arrow or function
+  `const`, or public method of an exported class is reported when it switches the function
+  between two behaviors: it is the condition of an `if`, `?:`, `while` or `do`/`while`, also
+  through `!`, `&&`, `||` or a comparison with `true` or `false`, and also inside a nested arrow
+  or function. Split it into two functions named for each behavior, or take an options object
+  (`{ force }`) or a string union. Setter and `with*` builder methods (`setOpen(open)` on a
+  class), `of`/`from`/`valueOf`/`builder` factories, constructors, type predicates, destructured
+  options and a boolean that is only passed on or stored are not reported; a `setX` or `withX`
+  function outside a class is. React hooks (`useToggle(initial)`) are skipped too: a hook takes
+  options positionally and is called unconditionally, so a boolean argument cannot be split into
+  two hooks.
 - `nitpicker/no-io-in-loop` (all production code): a database, HTTP or repository call once
   per item of a loop or an iteration callback (`map`, `forEach`, `flatMap`, `filter`, `reduce`,
   `some`, `every`, `find`) is reported: `fetch`, anything imported from `node:http`,
@@ -938,7 +960,9 @@ hop, and type-only imports do not count.
   usually a bug, and warnings in a suite hide the next real one. The allowed forms are fixing the
   cause (cancel the timer or subscription in the cleanup), a `testConsole.allow` entry for a known
   third-party message, or an `exceptions` entry for the test file. Messages are compared by their
-  normalized text, per test file, so an old warning that only moved is not new. See
+  normalized text, per test file, so an old warning that only moved is not new. It runs on
+  Vitest, Jest, `node:test` and Mocha projects alike (Jest names the file but not the test), and
+  the JavaScript preset gets the same check. See
   [Console output from tests](usage.md#console-output-from-tests).
 
 Left out, from the same write-up: recomputing one expensive result in every test, and running the

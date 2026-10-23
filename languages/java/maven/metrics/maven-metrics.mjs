@@ -6,13 +6,13 @@ import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { STRUCTURE_SKIPPED } from '../../adapters/reporting/outcomes/skipped-tools.mjs';
 import { writeJdepsReports } from '../../builds/classes/jdeps-reports.mjs';
 
-export function runStructure(module, reportDir) {
+export function runStructure(module, reportDir, spawn) {
   const roots = module.sourceRoots
     .filter((root) => existsSync(root))
     .map((root) => path.relative(module.basedir, root).replaceAll('\\', '/'));
   const skipped = path.join(reportDir, STRUCTURE_SKIPPED);
   rmSync(skipped, { force: true });
-  const { java, problem } = toolJava(STRUCTURE_METRICS);
+  const { java, problem } = toolJava({ ...STRUCTURE_METRICS, spawn });
   if (problem !== undefined) {
     writeFileSync(path.join(reportDir, 'structure.json'), '[]\n');
     writeFileSync(path.join(reportDir, 'classes.json'), '{"files":{},"classes":[]}\n');
@@ -31,15 +31,17 @@ export function runStructure(module, reportDir) {
     ],
     cwd: module.basedir,
     accept: (result) => result.status === 0,
+    spawn,
   });
 }
 
-export function runJdepsMetrics(module, reportDir) {
+export function runJdepsMetrics(module, reportDir, spawn) {
   writeJdepsReports({
     command: javaCommand('jdeps'),
     cwd: module.basedir,
     mainDirectory: module.outputDirectory,
     testDirectory: module.testOutputDirectory,
     reportDir,
+    spawn,
   });
 }

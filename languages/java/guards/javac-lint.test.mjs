@@ -179,6 +179,46 @@ describe('readLintFindings', () => {
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
   });
 
+  it('reads the test lint report and a failed test lint compile beside the main report', () => {
+    const root = project(['src/test/java/demo/RawTest.java']);
+    const reports = path.join(root, 'build/nitpicker');
+    writeFileSync(path.join(reports, 'javac-lint.txt'), '');
+    writeFileSync(
+      path.join(reports, 'javac-lint-test.txt'),
+      'src/test/java/demo/RawTest.java:4: warning: [unchecked] unchecked cast\n',
+    );
+    const tested = readLintFindings(reports, { projectRoot: root, testRoots: ['src/test/java'] });
+    rmSync(path.join(reports, 'javac-lint-test.txt'));
+    writeFileSync(
+      path.join(reports, 'javac-lint-test-failed.txt'),
+      'src/test/java/demo/RawTest.java:2: error: cannot find symbol\n',
+    );
+    const failed = readLintFindings(reports, { projectRoot: root, testRoots: ['src/test/java'] });
+
+    expect(tested).toEqual([
+      {
+        ...lintFinding('unchecked', ['RawTest.java', 4, 'unchecked cast']),
+        path: 'src/test/java/demo/RawTest.java',
+      },
+    ]);
+    expect(failed).toEqual([
+      {
+        tool: 'javac',
+        rule: 'lint-not-run',
+        path: '.',
+        identity: 'test-lint-not-run',
+        classification: 'descriptive',
+        toolNotRun: true,
+        notRunScope: ['src/test/java'],
+        message:
+          'No javac lint report from the lint compile (src/test/java/demo/RawTest.java:2: error: cannot find symbol), ' +
+          'so raw types, unchecked operations, deprecated calls and redundant casts were not checked. ' +
+          'Fix what that compile reports (the test sources, the test compile class path and Lombok). ' +
+          exceptionHint('javac/lint-not-run', '**'),
+      },
+    ]);
+  });
+
   it('scopes the notice of a module without source roots to the module folder', () => {
     const root = project([]);
     const reports = path.join(root, 'nothing');

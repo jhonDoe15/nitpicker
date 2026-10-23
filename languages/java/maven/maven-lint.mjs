@@ -40,7 +40,7 @@ function writeAuxClasspath({ module, reportDir, classpaths }) {
   return file;
 }
 
-export function runPmd({ module, reportDir, tools, classpaths, configs, spring }) {
+export function runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn }) {
   const report = path.join(reportDir, 'pmd.sarif');
   const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
@@ -74,10 +74,11 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring }
     ],
     cwd: module.basedir,
     accept: () => existsSync(report),
+    spawn,
   });
 }
 
-export function runSpotbugs({ module, reportDir, tools }) {
+export function runSpotbugs({ module, reportDir, tools, spawn }) {
   const report = path.join(reportDir, 'spotbugs.sarif');
   const hasClasses =
     existsSync(module.outputDirectory) && readdirSync(module.outputDirectory).length > 0;
@@ -101,6 +102,7 @@ export function runSpotbugs({ module, reportDir, tools }) {
     ],
     cwd: module.basedir,
     accept: () => existsSync(report),
+    spawn,
   });
 }
 
@@ -121,7 +123,7 @@ const FORMATTERS = {
   },
 };
 
-export function runFormat({ module, reportDir, tools, javaStyle = 'google' }) {
+export function runFormat({ module, reportDir, tools, javaStyle = 'google', spawn }) {
   const report = path.join(reportDir, 'format.txt');
   const skipped = path.join(reportDir, FORMAT_SKIPPED);
   rmSync(skipped, { force: true });
@@ -131,7 +133,7 @@ export function runFormat({ module, reportDir, tools, javaStyle = 'google' }) {
     writeFileSync(report, '');
     return;
   }
-  const { java, problem } = toolJava(GOOGLE_JAVA_FORMAT);
+  const { java, problem } = toolJava({ ...GOOGLE_JAVA_FORMAT, spawn });
   if (problem !== undefined) {
     writeFileSync(report, '');
     writeFileSync(skipped, `${problem}\n`);
@@ -145,6 +147,7 @@ export function runFormat({ module, reportDir, tools, javaStyle = 'google' }) {
     mainClass: formatter.mainClass,
     args: [...formatter.flags, '--dry-run', ...files],
     cwd: module.basedir,
+    spawn,
   });
   writeFileSync(report, result.stdout);
 }
@@ -153,7 +156,7 @@ function emptyCheckstyleReport(report, pinned) {
   writeFileSync(report, `<checkstyle version="${pinned.checkstyle}"></checkstyle>`);
 }
 
-function checkstyleReport({ module, setup, tools, pinned, roots, report, always }) {
+function checkstyleReport({ module, setup, tools, pinned, roots, report, always, spawn }) {
   const files = javaFiles(roots);
   if (files.length === 0 || setup.java === undefined) {
     if (always) {
@@ -169,28 +172,29 @@ function checkstyleReport({ module, setup, tools, pinned, roots, report, always 
     args: ['-c', setup.config, '-p', setup.properties, '-f', 'xml', '-o', report, ...files],
     cwd: module.basedir,
     accept: () => existsSync(report),
+    spawn,
   });
 }
 
-function checkstyleJava(reportDir, module) {
+function checkstyleJava(reportDir, module, spawn) {
   const skipped = path.join(reportDir, CHECKSTYLE_SKIPPED);
   rmSync(skipped, { force: true });
   if (javaFiles([...module.sourceRoots, ...module.testSourceRoots]).length === 0) {
     return undefined;
   }
-  const { java, problem } = toolJava(CHECKSTYLE);
+  const { java, problem } = toolJava({ ...CHECKSTYLE, spawn });
   if (problem !== undefined) {
     writeFileSync(skipped, `${problem}\n`);
   }
   return java;
 }
 
-export function runCheckstyle({ module, reportDir, tools, configs, pinned, style }) {
-  const java = checkstyleJava(reportDir, module);
+export function runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn }) {
+  const java = checkstyleJava(reportDir, module, spawn);
   function setup(test) {
-    return { ...checkstyleSetup({ reportDir, tools, configs, pinned, style, test }), java };
+    return { ...checkstyleSetup({ reportDir, tools, configs, pinned, style, spawn, test }), java };
   }
-  const context = { module, tools, pinned, setup: setup(false) };
+  const context = { module, tools, pinned, spawn, setup: setup(false) };
   checkstyleReport({
     ...context,
     roots: module.sourceRoots,

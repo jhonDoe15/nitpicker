@@ -11,6 +11,7 @@ const INLINE_CHECKSTYLE_FILTERS = [
   'SuppressionCommentFilter',
   'SuppressWithNearbyCommentFilter',
   'SuppressWithNearbyTextFilter',
+  'SuppressWithPlainTextCommentFilter',
   'SuppressionXpathFilter',
 ];
 const FORMATTER_CONFLICTS = ['TextBlockGoogleStyleFormatting'];

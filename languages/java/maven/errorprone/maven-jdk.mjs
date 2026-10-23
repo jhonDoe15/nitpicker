@@ -75,20 +75,20 @@ export function chooseToolJdk({ tool, minimum, project, preview = false, install
     : { java: found.java };
 }
 
-function describe(java) {
-  const result = spawnSync(java, ['-version'], { encoding: 'utf8' });
+function describe(java, spawn) {
+  const result = spawn(java, ['-version'], { encoding: 'utf8' });
   if (result.error?.code === 'ENOENT') {
     return { java, missing: true };
   }
   return { java, feature: featureVersion(`${result.stderr}${result.stdout}`) };
 }
 
-export function installedJdks() {
-  return jdkHomes().map((home) => ({ home, ...describe(path.join(home, 'bin', 'java')) }));
+export function installedJdks(spawn = spawnSync) {
+  return jdkHomes().map((home) => ({ home, ...describe(path.join(home, 'bin', 'java'), spawn) }));
 }
 
-export function toolJava({ tool, minimum, preview = false }) {
-  const project = describe(javaCommand('java'));
+export function toolJava({ tool, minimum, preview = false, spawn = spawnSync }) {
+  const project = describe(javaCommand('java'), spawn);
   if (project.missing) {
     throw new Error(
       `java not found (${project.java}): set JAVA_HOME to a JDK, or put its bin directory on the PATH`,
@@ -97,5 +97,5 @@ export function toolJava({ tool, minimum, preview = false }) {
   if (project.feature === undefined) {
     throw new Error(`nitpicker could not read the version of ${project.java} (java -version)`);
   }
-  return chooseToolJdk({ tool, minimum, project, preview, installed: installedJdks() });
+  return chooseToolJdk({ tool, minimum, project, preview, installed: installedJdks(spawn) });
 }

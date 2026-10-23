@@ -4,12 +4,6 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker code smell rules for test sources.</description>
-  <rule ref="category/java/errorprone.xml/AvoidDuplicateLiterals"
-        message="The string literal {0} is repeated in this file.">
-    <properties>
-      <property name="skipAnnotations" value="true"/>
-    </properties>
-  </rule>
   <rule ref="category/java/bestpractices.xml/UnusedFormalParameter"
         message="This parameter is never used."/>
 </ruleset>
