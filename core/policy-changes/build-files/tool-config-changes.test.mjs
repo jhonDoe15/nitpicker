@@ -104,6 +104,45 @@ describe('project tool configs the project opted into', () => {
       }).policyLoosenings,
     ).toEqual(['prettier project config changed: package.json']);
   });
+  it.each(['typescript', 'python', 'java', 'kotlin'])(
+    'counts an edit of the opted-in .jscpd.json with the %s preset, not a reformat',
+    (preset) => {
+      const at = (jscpd) => ({ '.jscpd.json': jscpd, 'README.md': 'x\n' });
+      const config = { preset, tools: { jscpd: PROJECT } };
+      const base = at('{"minTokens": 50}');
+
+      expect(between({ base, head: at('{"minTokens": 500}'), config }).policyLoosenings).toEqual([
+        'jscpd project config changed: .jscpd.json',
+      ]);
+      expect(
+        between({ base, head: at('{\n  "minTokens": 50\n}\n'), config }).policyLoosenings,
+      ).toEqual([]);
+      expect(
+        between({ base, head: at('{"minTokens": 500}'), config: { preset } }).policyLoosenings,
+      ).toEqual([]);
+      expect(
+        between({ base, head: at('{"reporters": ["html"], "minTokens": 50}'), config })
+          .policyLoosenings,
+      ).toEqual([]);
+    },
+  );
+  it.each(['typescript', 'python', 'java', 'kotlin'])(
+    'shows the .jscpd.json a %s change opts into in the same change',
+    (preset) => {
+      const files = { '.jscpd.json': '{"minTokens": 5000}', 'README.md': 'x\n' };
+      expect(
+        between({
+          base: files,
+          head: files,
+          baseConfig: { preset },
+          config: { preset, tools: { jscpd: PROJECT } },
+        }).policyLoosenings,
+      ).toEqual([
+        'jscpd project config changed: .jscpd.json',
+        'tools.jscpd.precedence: not set -> ["project","nitpicker"]',
+      ]);
+    },
+  );
 });
 
 describe('what counts as an edit of a project tool config', () => {
