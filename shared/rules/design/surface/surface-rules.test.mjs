@@ -101,8 +101,28 @@ describe('disjoint-consumer-groups', () => {
       'a shared helper',
       [{ calls: [{ target: 'src/orders/orders.ts#exportPdf', line: 4 }] }, {}, {}, {}],
     ],
+    ['a helper used as a value', [{ references: ['src/orders/orders.ts#exportPdf'] }, {}, {}, {}]],
   ])('passes groups linked by %s', (_, extra) => {
     expect(designRun(consumers(extra), 'disjoint-consumer-groups')).toEqual([]);
+  });
+
+  it.each([
+    ['a callable that passes them as values', 'callables'],
+    ['module-level code of another module', 'types'],
+  ])('passes groups that %s uses together', (_, list) => {
+    const facts = consumers();
+    const user =
+      list === 'types' ? owner('src/tables/shapes.ts') : fn(owner('src/tables/shapes.ts'), 'run');
+    const both = { ...user, references: [create.id, exportCsv.id] };
+    const types = [
+      ...facts.types,
+      ...(list === 'types' ? [both] : [owner('src/tables/shapes.ts')]),
+    ];
+    const callables = [...facts.callables, ...(list === 'types' ? [] : [both])];
+    const modules = [...facts.modules, { file: 'src/tables/shapes.ts', role: 'production' }];
+    expect(designRun({ ...facts, modules, types, callables }, 'disjoint-consumer-groups')).toEqual(
+      [],
+    );
   });
 
   it('passes an owner on the public surface of a published package', () => {

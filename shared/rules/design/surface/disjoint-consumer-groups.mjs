@@ -8,13 +8,17 @@ const MIN_GROUP_MEMBERS = 2;
 const MAX_LISTED_FILES = 3;
 const OWNER_KINDS = new Set(['class', 'module']);
 
+function usedTargets(item) {
+  return [...(item.calls ?? []).map(({ target }) => target), ...(item.references ?? [])];
+}
+
 function consumersByMember(owner, members, index) {
   const ids = new Set(members.map(({ id }) => id));
   const consumers = new Map();
-  for (const { target, file } of index.callables
-    .filter((caller) => caller.file !== owner.file)
-    .flatMap((caller) => (caller.calls ?? []).map(({ target }) => ({ target, file: caller.file })))
-    .filter((call) => ids.has(call.target))) {
+  for (const { target, file } of [...index.callables, ...index.types]
+    .filter((user) => user.file !== owner.file)
+    .flatMap((user) => usedTargets(user).map((target) => ({ target, file: user.file })))
+    .filter((use) => ids.has(use.target))) {
     consumers.set(target, new Set([...(consumers.get(target) ?? []), file]));
   }
   return consumers;
@@ -50,8 +54,8 @@ function linkedGroups(ids) {
 }
 
 function ownHelpers(current, member, { index, seen }) {
-  const helpers = (current.calls ?? [])
-    .map(({ target }) => index.callable(target))
+  const helpers = usedTargets(current)
+    .map((target) => index.callable(target))
     .filter((helper) => helper?.owner === member.owner && !seen.has(helper.id));
   const fresh = [...new Map(helpers.map((helper) => [helper.id, helper])).values()];
   for (const helper of fresh) {

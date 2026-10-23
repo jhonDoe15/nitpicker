@@ -17,6 +17,27 @@ function isSubject(typeIds, subject) {
   return dot > 0 && typeIds.has(subject.slice(0, dot));
 }
 
+function listedReferences(item) {
+  return (item.references ?? []).map((target, index) => [
+    `references[${String(index)}]`,
+    target,
+    'callables',
+  ]);
+}
+
+function danglingTypeReference(types, ids) {
+  const index = types.findIndex((type) =>
+    listedReferences(type).some(([, value]) => !ids.callables.has(value)),
+  );
+  if (index === -1) {
+    return undefined;
+  }
+  const [field, value] = listedReferences(types[index]).find(
+    ([, target]) => !ids.callables.has(target),
+  );
+  return `facts.types[${String(index)}].${field} is ${JSON.stringify(value)}, which is not an id in facts.callables: only list references the producer resolved`;
+}
+
 function callableReferences(callable) {
   return [
     ['owner', callable.owner, 'types'],
@@ -33,6 +54,7 @@ function callableReferences(callable) {
         'callables',
       ]),
     ),
+    ...listedReferences(callable),
     ...(callable.reads ?? []).map((read, index) => [
       `reads[${String(index)}].type`,
       read.type,
@@ -82,6 +104,7 @@ export function designReferenceProblem(facts) {
     duplicateId('callables', callables) ??
     unknownFile('types', types, modules) ??
     unknownFile('callables', callables, modules) ??
+    danglingTypeReference(types, ids) ??
     danglingCallableReference(callables, ids)
   );
 }

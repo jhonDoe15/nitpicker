@@ -229,6 +229,9 @@ resolved: an unresolved call is not listed in `calls`, it makes the uses it touc
     (the public surface `test-only-export` uses, under `published` in `packages`); for a published
     Gradle or Maven module or Python distribution, every exported type of it. A member of a
     published type counts as published too.
+  - `references` (`module` types only, default `[]`): the resolved project callables that
+    module-level code calls or uses as values (a shape table, a registration at load time), so a
+    module whose only uses of another module sit outside any function still counts as its consumer.
 
 - **`callables`**: functions, methods and constructors with a body, in production modules and
   (optionally) test modules. `kind` is `function`, `method`, `constructor` or `accessor` (a getter
@@ -243,6 +246,10 @@ resolved: an unresolved call is not listed in `calls`, it makes the uses it touc
     forwarding hops, data clumps or context owners.
   - `published` (default false): as for `types`, for a top-level function on the public surface
     of a published package.
+  - `references` (default `[]`): the resolved project callables this callable uses as values
+    without calling them: passed as a callback, stored, returned, or held in a module-level
+    constant (a dispatch table) that the callable reads, one level deep. `disjoint-consumer-groups`
+    counts them as uses, like `calls`.
   - `params` (default `[]`): `{ name, type? }` in declaration order. `type` is the id of a `types`
     entry when the declared (or, for TypeScript, checked) type resolves to one, otherwise the
     type's normalized text with whitespace removed and without generic arguments of project types
