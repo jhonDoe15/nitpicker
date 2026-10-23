@@ -228,7 +228,7 @@ function graphChecksFor(exclusions) {
       kind: 'structure',
       version: typeScriptVersion,
       exclusions: exclusions.production,
-      timeoutMs: MINUTE_MS,
+      timeoutMs: 2 * MINUTE_MS,
       shardWeight: 4,
       configurationFiles: STRUCTURE_CHECK_FILES,
     },

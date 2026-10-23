@@ -1474,6 +1474,20 @@ from a real caller) and the `exceptions` entry that lifts it.
 - Exceptions use the rule ids `unused-prop`, `unused-option` and `test-only-export` with the file
   that declares the symbol.
 
+## Design signals
+
+The `structure` check also builds the design facts (`modules`, `types`, `callables`, `packages`) of the
+production sources from a second type-checked program (test files left out) and runs the deep-module
+design rules over them (`mutable-state-escape`, `context-threading`, `caller-protocol`,
+`forwarding-chain`, `disjoint-consumer-groups`, `data-clump`, `repeated-policy-decision`,
+`foreign-state-decision`). They are report-only review signals, except `mutable-state-escape` and the
+violations of a `protocols` contract in `nitpicker.config.json`, which are enforceable. The JavaScript
+preset runs them too: JSDoc types count, and a callable without a declared type leaves that part of the
+fact out, so fewer signals fire than in TypeScript. A call is a fact only when TypeScript resolves it to
+one declaration of the project (a union or interface receiver is left out), and a failure of the
+analysis is a tool error of `structure` with the rule `design-signals`. Exceptions use the rule ids of
+the design rules.
+
 ## How it is enforced
 
 - `languages/typescript/preset/defaults/eslint.config.mjs` (the `eslint-lint` analyzer) adds `strictPresetConfig()` from
