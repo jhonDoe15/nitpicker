@@ -1,13 +1,19 @@
 import ast
 
 from checks.common import finding
+from dual_write.relays import is_relay_mark
 from effects.concurrency import is_concurrent, map_is_concurrent
 from effects.tables import DATABASE, REMOTE
-from smells.io_index import IoScope, chain_names, io_index
+from kinds.index import io_scope
+from kinds.names import chain_names
+from retries.scopes import attempt_loops
+from smells.chunks import is_chunked
 
 COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
 FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 PAGING_PASSES = 3
+RULE = "io-in-loop"
+EXITS = (ast.Raise, ast.Return, ast.Break)
 
 
 def ancestors(node, parents):
@@ -118,6 +124,10 @@ def exits_loop(statements):
     )
 
 
+def handler_retries(handler):
+    return not any(isinstance(statement, EXITS) for statement in handler.body)
+
+
 def is_retry_attempt(call, loop, parents):
     if not isinstance(loop, (ast.For, ast.AsyncFor, ast.While)):
         return False
@@ -125,16 +135,10 @@ def is_retry_attempt(call, loop, parents):
     while node is not None and node is not loop:
         parent = parents.get(id(node))
         if isinstance(parent, ast.Try) and node in parent.body and parent in loop.body:
-            handlers_continue = all(
-                not any(
-                    isinstance(n, (ast.Raise, ast.Return, ast.Break))
-                    for s in h.body
-                    for n in ast.walk(s)
-                )
-                for h in parent.handlers
-            )
             return (
-                bool(parent.handlers) and handlers_continue and exits_loop(parent.body)
+                bool(parent.handlers)
+                and all(handler_retries(h) for h in parent.handlers)
+                and exits_loop(parent.body + parent.orelse)
             )
         node = parent
     return False
@@ -164,42 +168,41 @@ def inner_call_ids(tree):
 def check(context):
     if context.tests:
         return []
-    scope = IoScope(context, io_index(context.project))
+    scope = io_scope(context)
     found = []
     inner_calls = inner_call_ids(context.tree)
     for node in ast.walk(context.tree):
         if not isinstance(node, ast.Call) or id(node) in inner_calls:
             continue
-        mapped = scope.map_effects(node)
+        mapped, executor = scope.map_effects(node)
         if mapped:
-            concurrent = map_is_concurrent(node, context)
+            concurrent = executor or map_is_concurrent(node, context)
             kind = reported_kind(mapped, concurrent)
             if kind is not None:
-                found.append(
-                    finding(
-                        context.path,
-                        "io-in-loop",
-                        subject_of(mapped, kind, concurrent),
-                        node,
-                    )
-                )
+                subject = subject_of(mapped, kind, concurrent)
+                found.append(finding(context.path, RULE, subject, node))
             continue
-        effects = scope.effects(node)
+        submitted = scope.submitted_effects(node)
+        effects = submitted or scope.effects(node)
         loop = enclosing_loop(node, context.parents) if effects else None
         if loop is None:
             continue
-        concurrent = is_concurrent(node, loop, context)
+        concurrent = bool(submitted) or is_concurrent(node, loop, context)
         kind = reported_kind(effects, concurrent)
-        if kind is None or skipped_loop(node, loop, scope, context.parents):
+        if kind is None or skipped_loop(node, loop, scope, context):
+            continue
+        if is_relay_mark(node, effects, loop, scope):
             continue
         subject = subject_of(effects, kind, concurrent)
-        found.append(finding(context.path, "io-in-loop", subject, node))
+        found.append(finding(context.path, RULE, subject, node))
     return found
 
 
-def skipped_loop(call, loop, scope, parents):
+def skipped_loop(call, loop, scope, context):
     return (
         is_paging_loop(loop, scope)
-        or is_retry_attempt(call, loop, parents)
+        or is_retry_attempt(call, loop, context.parents)
         or runs_each_item(call, loop)
+        or bool(attempt_loops(loop, context.aliases))
+        or is_chunked(call, loop, loop_variables(loop), context)
     )

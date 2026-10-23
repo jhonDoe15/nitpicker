@@ -1,10 +1,10 @@
 import ast
 
 from checks.common import finding, walk_statements
-from effects.sites import outer_calls
 from effects.tables import UNSAFE_KINDS
+from kinds.index import io_scope
+from kinds.sites import outer_calls
 from retries.scopes import retry_scopes
-from smells.io_index import IoScope, chain_names, io_index
 from smells.loops import enclosing_loop, is_retry_attempt
 
 RULE = "retry-without-idempotency"
@@ -28,9 +28,7 @@ def scoped_findings(context, scope, seen):
     found = []
     for retry in retry_scopes(context):
         if retry.callable is not None:
-            names = chain_names(retry.callable)
-            text = ".".join(names) + "()"
-            effects = scope.callable_effects(retry.callable, names, text)
+            effects = scope.reference_effects(retry.callable, retry.call)
             written = unsafe_write(effects)
             if written and id(retry.callable) not in seen:
                 seen.add(id(retry.callable))
@@ -58,7 +56,7 @@ def loop_findings(context, scope, seen):
 def check(context):
     if context.tests:
         return []
-    scope = IoScope(context, io_index(context.project))
+    scope = io_scope(context)
     seen = set()
     found = scoped_findings(context, scope, seen)
     return found + loop_findings(context, scope, seen)

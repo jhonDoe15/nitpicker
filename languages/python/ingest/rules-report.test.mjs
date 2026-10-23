@@ -119,12 +119,12 @@ describe('rules script report', () => {
     [
       'dual-write-without-outbox',
       'place|repo.save()|producer.send()',
-      '`place` writes to the database (`repo.save()`) and publishes a message (`producer.send()`) in two separate steps: the message can be sent for a change that is rolled back, or the change can commit and the message never be sent',
+      '`place` writes to the database with `repo.save()` and publishes a message with `producer.send()` in two separate steps: the message can be sent for a change that is rolled back, or the change can commit and the message never be sent',
     ],
     [
       'dual-write-without-outbox',
       'place|order.save()|notify.delay()|on-commit',
-      '`place` writes to the database (`order.save()`) and publishes a message (`notify.delay()`) in two separate steps: publishing after the commit avoids a message for a rolled-back change, but a crash right after the commit loses the message',
+      '`place` writes to the database with `order.save()` and publishes a message with `notify.delay()` in two separate steps: publishing after the commit avoids a message for a rolled-back change, but a crash right after the commit loses the message',
     ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
@@ -276,6 +276,32 @@ describe('io-in-loop identity', () => {
     expect(ingestRulesReport(JSON.stringify(report)).map(({ identity }) => identity)).toEqual([
       'load()',
       'repo.get()',
+    ]);
+  });
+
+  it('drops the call boundaries of the message text from the identity', () => {
+    const report = [
+      { rule: 'io-in-loop', path: 'a.py', subject: 'requests.get(...).json()|remote', line: 3 },
+      { rule: 'io-in-loop', path: 'a.py', subject: 'clients[...].get()|remote', line: 5 },
+      { rule: 'io-in-loop', path: 'a.py', subject: 'Client().fetch_all()|remote', line: 7 },
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ identity }) => identity)).toEqual([
+      'requests.get.json()',
+      'clients.get()',
+      'Client.fetch_all()',
+    ]);
+  });
+
+  it('keeps a subject that is not a call as it is', () => {
+    const report = [
+      { rule: 'accumulator-copy', path: 'a.py', subject: 'acc|acc + [...]|loop', line: 3 },
+      { rule: 'lazy-relation-in-loop', path: 'a.py', subject: 'Order.items|django|x', line: 5 },
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ identity }) => identity)).toEqual([
+      'acc',
+      'Order.items',
     ]);
   });
 });

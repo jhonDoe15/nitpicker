@@ -167,7 +167,7 @@ describe.skipIf(!enabled)('io-in-loop', () => {
         [],
       ],
       [
-        'remote calls in a sequential loop under a semaphore',
+        'remote calls awaited one after another in a loop',
         code(
           'import asyncio',
           'import httpx',

@@ -13,9 +13,11 @@ from effects.tables import (
     REMOTE,
     TASK_DECORATORS,
 )
+from security.sql.sinks import DOTTED_SINKS
 
 Spec = namedtuple("Spec", "default methods named")
-DERIVING = {"cursor", "Table", "channel", "acquire", "pipeline"}
+DERIVING = {"cursor", "Table", "channel", "acquire"}
+VALUE_MODULES = {"exceptions", "auth", "fields", "extras", "types", "models"}
 DERIVE_PASSES = 2
 BOTO_ROOTS = ("boto3", "aioboto3")
 HTTP_CLIENTS = (
@@ -86,6 +88,23 @@ FACTORIES = {
     "celery.Celery": producer("send_task"),
 }
 CLIENT_OBJECTS = {"celery.current_app": producer("send_task")}
+BUFFERS = {
+    "pipeline": Spec(None, {"execute": DATABASE}, False),
+    "batch_writer": Spec(None, {}, False),
+}
+NO_KIND_METHODS = DERIVING | set(BUFFERS)
+ENTRY_POINTS = set(DOTTED_SINKS)
+
+
+def holds_entry(path):
+    return any(entry.startswith(f"{path}.") for entry in ENTRY_POINTS)
+
+
+def is_value_path(path):
+    if path in ENTRY_POINTS:
+        return False
+    parts = path.split(".")
+    return parts[-1][:1].isupper() or any(part in VALUE_MODULES for part in parts[1:])
 
 
 def bound_value(node):
@@ -137,6 +156,8 @@ def spec_of_value(value, aliases, imports_boto, known):
     if name in FACTORIES:
         return FACTORIES[name]
     function = value.func
+    if isinstance(function, ast.Attribute) and function.attr in BUFFERS:
+        return BUFFERS[function.attr]
     if isinstance(function, ast.Attribute) and function.attr in DERIVING:
         return known.get(client_key(function.value))
     return None
@@ -224,9 +245,9 @@ def add_module_kind(kinds, alias):
 def add_from_kind(kinds, node):
     module_key = matching_key(node.module, MODULE_KINDS)
     for alias in node.names:
-        full_key = matching_key(f"{node.module}.{alias.name}", MODULE_KINDS)
-        key = module_key or full_key
-        if key is not None:
+        path = f"{node.module}.{alias.name}"
+        key = module_key or matching_key(path, MODULE_KINDS)
+        if key is not None and (not is_value_path(path) or holds_entry(path)):
             kinds[alias.asname or alias.name] = (MODULE_KINDS[key], ())
 
 
