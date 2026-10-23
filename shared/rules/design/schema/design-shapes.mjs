@@ -71,7 +71,7 @@ export const DESIGN_SHAPES = {
     exported: isBoolean,
     fields: isList,
     cases: optional(isStrings),
-    package: optional((value) => value === '' || isProjectPath(value)),
+    published: optional(isBoolean),
   },
   callables: {
     id: isNonEmpty,
@@ -82,6 +82,7 @@ export const DESIGN_SHAPES = {
     exported: isBoolean,
     owner: optional(isNonEmpty),
     entry: optional(isBoolean),
+    published: optional(isBoolean),
     params: isList,
     returns: optional(isNonEmpty),
     forward: optional(isRecord),

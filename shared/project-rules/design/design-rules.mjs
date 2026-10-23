@@ -11,7 +11,7 @@ export const DESIGN_RULE_IDS = {
 
 export const DESIGN_RULES = Object.values(DESIGN_RULE_IDS);
 
-const DESIGN_LISTS = ['modules', 'packages', 'types', 'callables'];
+const DESIGN_LISTS = ['modules', 'types', 'callables'];
 
 export const DESIGN_RULE_LISTS = Object.fromEntries(
   DESIGN_RULES.map((rule) => [rule, DESIGN_LISTS]),

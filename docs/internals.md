@@ -224,7 +224,11 @@ resolved: an unresolved call is not listed in `calls`, it makes the uses it touc
     Python a leading `_`). A `data` type lists every property; a `class` its instance fields; a
     `module` its top-level variables.
   - `cases` (enums only): the member names, in declaration order (string literals without quotes).
-  - `package` (default: from `packages`): as for definitions.
+  - `published` (default false): the type is on the public surface of a published package, so
+    projects outside this one may call it. For npm, a declaration the package's entry points export
+    (the public surface `test-only-export` uses, under `published` in `packages`); for a published
+    Gradle or Maven module or Python distribution, every exported type of it. A member of a
+    published type counts as published too.
 
 - **`callables`**: functions, methods and constructors with a body, in production modules and
   (optionally) test modules. `kind` is `function`, `method`, `constructor` or `accessor` (a getter
@@ -237,6 +241,8 @@ resolved: an unresolved call is not listed in `calls`, it makes the uses it touc
     `@Transactional`, `@app.route`, `@Bean`, `@Override` aside from `toString`/`equals`), a `main`,
     a callback the producer sees passed to a framework registration. Entries are never judged as
     forwarding hops, data clumps or context owners.
+  - `published` (default false): as for `types`, for a top-level function on the public surface
+    of a published package.
   - `params` (default `[]`): `{ name, type? }` in declaration order. `type` is the id of a `types`
     entry when the declared (or, for TypeScript, checked) type resolves to one, otherwise the
     type's normalized text with whitespace removed and without generic arguments of project types
@@ -291,22 +297,25 @@ resolved: an unresolved call is not listed in `calls`, it makes the uses it touc
 
 ### Design rules
 
-All rules skip test modules, entries, and owners in a published package (`packages`), whose
-callers outside the project are unknown. Each finding names the caller, the owner and the public
+All rules skip test modules and entries. The rules that judge the shape of an API
+(`context-threading`, the discovery part of `caller-protocol`, the head of a `forwarding-chain`,
+`disjoint-consumer-groups` and `data-clump`) also skip what is `published`, whose callers outside
+the project are unknown; the other rules judge code whose callers the project holds, so a published
+package does not change them. Each finding names the caller, the owner and the public
 surface it is about, and says which smaller contract would remove it. Findings are report-only
 (`descriptive`) unless the table says otherwise: these are review signals, not proofs of a design
 defect, and their thresholds are explicit here.
 
-| Rule                       | Lists it reads                              | Fires when                                                                                                                                                                                                            |
-| -------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mutable-state-escape`     | `modules`, `types`, `callables`             | enforceable: a caller in another module mutates the value an exported member returned, and that value is a private mutable field of the member's owner                                                                |
-| `context-threading`        | `modules`, `types`, `callables`             | a parameter of a type with 5 or more fields is passed whole through at least two callables, one in another module, and all of them together read at most a third of its fields (at least 2)                           |
-| `caller-protocol`          | `modules`, `types`, `callables`             | the same ordered steps (3 or more members) on one value of a project class are repeated by 3 or more callables in 2 or more modules outside the class's module; or a call breaks a `protocols` contract (enforceable) |
-| `forwarding-chain`         | `modules`, `types`, `callables`             | two or more forwarding hops in a row, each into another module, pass the same parameters in order with the same parameter and return types                                                                            |
-| `disjoint-consumer-groups` | `modules`, `packages`, `types`, `callables` | the exported members of one owner used from other modules split into 2 or more groups of 2 or more members that no caller module uses together and that share no field or helper inside the owner                     |
-| `data-clump`               | `modules`, `types`, `callables`             | 3 or more typed parameters (same names and types) appear together in 3 or more exported callables in 2 or more modules                                                                                                |
-| `repeated-policy-decision` | `modules`, `types`, `callables`             | two decisions in different modules over the same subject group its constants the same way, with at least one arm covering 2 or more constants                                                                         |
-| `foreign-state-decision`   | `modules`, `types`, `callables`             | 2 or more callables outside a `class` (one with behaviour) branch on the same 2 or more of its fields                                                                                                                 |
+| Rule                       | Lists it reads                  | Fires when                                                                                                                                                                                                            |
+| -------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mutable-state-escape`     | `modules`, `types`, `callables` | enforceable: a caller in another module mutates the value an exported member returned, and that value is a private mutable field of the member's owner                                                                |
+| `context-threading`        | `modules`, `types`, `callables` | a parameter of a type with 5 or more fields is passed whole through at least two callables, one in another module, and all of them together read at most a third of its fields (at least 2)                           |
+| `caller-protocol`          | `modules`, `types`, `callables` | the same ordered steps (3 or more members) on one value of a project class are repeated by 3 or more callables in 2 or more modules outside the class's module; or a call breaks a `protocols` contract (enforceable) |
+| `forwarding-chain`         | `modules`, `types`, `callables` | two or more forwarding hops in a row, each into another module, pass the same parameters in order with the same parameter and return types                                                                            |
+| `disjoint-consumer-groups` | `modules`, `types`, `callables` | the exported members of one owner used from other modules split into 2 or more groups of 2 or more members that no caller module uses together and that share no field or helper inside the owner                     |
+| `data-clump`               | `modules`, `types`, `callables` | 3 or more typed parameters (same names and types) appear together in 3 or more exported callables in 2 or more modules                                                                                                |
+| `repeated-policy-decision` | `modules`, `types`, `callables` | two decisions in different modules over the same subject group its constants the same way, with at least one arm covering 2 or more constants                                                                         |
+| `foreign-state-decision`   | `modules`, `types`, `callables` | 2 or more callables outside a `class` (one with behaviour) branch on the same 2 or more of its fields                                                                                                                 |
 
 **Protocol contracts.** `protocols` in `nitpicker.config.json` lists the lifecycles a project wants enforced: `[{ "type": "Session", "open": ["begin"], "close": ["commit", "rollback"], "steps": ["write"] }]`. `type` is a `types[].name` (or id); `open` and `close` are required member names, `steps` optional. A callable that calls an `open` member on a receiver must call a `close` member on the same receiver with `cleanup: true` (in `finally`, `with`, `use`, try-with-resources or a `using` disposal), and must not call a `steps` member on that receiver before its first `open`. Violations are enforceable `caller-protocol` findings at the `open` (or the early step); the discovered repeated sequences stay report-only. A contract is a reviewed decision, so the rule never infers a mandatory lifecycle from names.
 
