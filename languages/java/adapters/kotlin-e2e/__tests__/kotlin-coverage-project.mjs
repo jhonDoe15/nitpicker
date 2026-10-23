@@ -5,6 +5,8 @@ import {
   GENERATED_TEST,
   LABEL,
   LABEL_ONE_SIDED_TEST,
+  LIBRARY_CALLS,
+  LIBRARY_CALLS_TEST,
   OFFSET,
   SPREAD,
   SPREAD_TEST,
@@ -75,6 +77,10 @@ export function useKotlinCoverageProject() {
       [`${kotlinSources}/Spread.kt`]: SPREAD,
       'src/test/kotlin/demo/SpreadTest.kt': SPREAD_TEST,
       'src/main/kotlin/Offset.kt': OFFSET,
+    });
+    commitBranch(project, 'library-branches', {
+      [`${kotlinSources}/Library.kt`]: LIBRARY_CALLS,
+      'src/test/kotlin/demo/LibraryTest.kt': LIBRARY_CALLS_TEST,
     });
     commitBranch(project, 'generated-branches', {
       [`${kotlinSources}/Generated.kt`]: GENERATED,

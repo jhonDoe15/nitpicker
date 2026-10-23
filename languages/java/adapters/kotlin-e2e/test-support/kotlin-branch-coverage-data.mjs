@@ -122,3 +122,36 @@ class GeneratedTest {
 `;
 
 export const BROKEN = 'package demo\n\nclass Broken {\n    fun incomplete(: Int\n}\n';
+
+export const LIBRARY_CALLS = `package demo
+
+class Library {
+    fun label(text: String?): String = text.orEmpty().trim()
+
+    fun items(list: List<Int>?): List<Int> = list.orEmpty().sorted()
+
+    fun blank(text: String?): Boolean = text.isNullOrBlank()
+
+    fun widest(first: Long, second: Long): Long = maxOf(first, second)
+
+    fun fallback(text: String?): String = text ?: "none"
+}
+`;
+
+export const LIBRARY_CALLS_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class LibraryTest {
+    @Test
+    fun takesTheNonNullPaths() {
+        val library = Library()
+        assertEquals("a", library.label(" a "))
+        assertEquals(listOf(1, 2), library.items(listOf(2, 1)))
+        assertEquals(false, library.blank("a"))
+        assertEquals(2L, library.widest(1L, 2L))
+        assertEquals("a", library.fallback("a"))
+    }
+}
+`;
