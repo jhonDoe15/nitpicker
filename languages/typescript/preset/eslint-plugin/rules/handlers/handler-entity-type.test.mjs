@@ -1,7 +1,8 @@
 import { rule } from './handler-entity-type.mjs';
-import { typedProject } from '../contracts/test-support/typed-project.mjs';
+import { typedProject, writeCustomPrismaClient } from '../contracts/test-support/typed-project.mjs';
 
 const { write, tester, folder } = typedProject('nitpicker-handler-entity-');
+const CUSTOM_PRISMA = writeCustomPrismaClient(write);
 
 write(
   'src/main/features/users/user.entity.ts',
@@ -23,12 +24,16 @@ write(
     "import type { HydratedDocument } from 'mongoose';",
     'export class Invoice extends Model {}',
     'export type ProfileDocument = HydratedDocument<{ name: string }>;',
+    'export interface Cat { name: string }',
+    'export type CatDocument = HydratedDocument<Cat>;',
     '',
   ].join('\n'),
 );
 
 const ENTITIES =
-  "import { UserEntity, AdminEntity, Audit, UserView } from '../users/user.entity';\nimport { Invoice, type ProfileDocument } from '../users/models';\n";
+  "import { UserEntity, AdminEntity, Audit, UserView } from '../users/user.entity';\nimport { Invoice, type CatDocument, type ProfileDocument } from '../users/models';\n";
+const PRISMA =
+  "import { PrismaClient, type Post, type Prisma } from '@prisma/client';\nconst db = new PrismaClient();\n";
 const NEST = "import { Body, Controller, Get, Post } from '@nestjs/common';\n";
 const EXPRESS = "import type { Request, Response } from 'express';\n";
 
@@ -90,6 +95,36 @@ tester.run('handler-entity-type', rule, {
     source(
       `${ENTITIES}import type { User } from '@prisma/client';\nexport const POST = async (): Promise<Response> => Response.json([] as User[]);`,
       { file: 'route.ts', errors: [entity('Response.json(...)', 'User', 'Prisma')] },
+    ),
+    source(
+      `${PRISMA}${NEST}@Controller('posts')\nexport class PostsController {\n  @Get() list(): Promise<Post[]> { return db.post.findMany(); }\n  @Get('one') one(): Promise<Post | null> { return db.post.findFirst(); }\n  @Get('inferred') inferred() { return db.post.findMany(); }\n  @Get('payload') payload(): Promise<Prisma.PostGetPayload<{}>[]> { return db.post.findMany(); }\n}`,
+      {
+        errors: [
+          entity('PostsController.list', 'Post', 'Prisma'),
+          entity('PostsController.one', 'Post', 'Prisma'),
+          entity('PostsController.inferred', 'Post', 'Prisma'),
+          entity('PostsController.payload', 'Post', 'Prisma'),
+        ],
+      },
+    ),
+    source(
+      `${PRISMA}import { NextResponse } from 'next/server';\nexport async function GET(): Promise<NextResponse<Post[]>> { return NextResponse.json(await db.post.findMany()); }\nexport const POST = async (): Promise<Response> => Response.json(await db.post.findFirst());`,
+      {
+        file: 'route.ts',
+        errors: [
+          entity('GET', 'Post', 'Prisma'),
+          entity('NextResponse.json(...)', 'Post', 'Prisma'),
+          entity('Response.json(...)', 'Post', 'Prisma'),
+        ],
+      },
+    ),
+    source(
+      `${ENTITIES}import type { Context } from 'koa';\nexport function show(ctx: Context, cat: CatDocument): void { ctx.body = cat; }`,
+      { errors: [entity('ctx.body =', 'Cat', 'Mongoose')] },
+    ),
+    source(
+      `${NEST}import type { Account } from '${CUSTOM_PRISMA}';\n@Controller('accounts')\nexport class AccountsController { @Get() list(): Promise<Account[]> { return Promise.resolve([]); } }`,
+      { errors: [entity('AccountsController.list', 'Account', 'Prisma')] },
     ),
   ],
 });

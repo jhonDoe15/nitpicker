@@ -61,12 +61,55 @@ function isPrismaModel(symbol) {
   );
 }
 
+const PRISMA_PAYLOAD = /^\$(\w+)Payload$/u;
+
+function enclosingAlias(node) {
+  let current = node;
+  while (current !== undefined && !ts.isTypeAliasDeclaration(current)) {
+    current = current.parent;
+  }
+  return current;
+}
+
+function prismaPayloadModel(type) {
+  const [first] = (type.flags & ts.TypeFlags.Object) === 0 ? [] : type.getProperties();
+  const alias = enclosingAlias(first?.declarations?.[0]);
+  const model = alias === undefined ? undefined : PRISMA_PAYLOAD.exec(alias.name.text)?.[1];
+  return model !== undefined && packageOf(alias.getSourceFile().fileName) === PRISMA
+    ? model
+    : undefined;
+}
+
+const MONGOOSE_DOCUMENT = 'Document';
+const MONGOOSE_DOC_TYPE = 2;
+
+function entityName(checker, type, orm) {
+  const symbol = type.getSymbol();
+  if (
+    orm !== 'Mongoose' ||
+    symbol.name !== MONGOOSE_DOCUMENT ||
+    packageOfSymbol(symbol) !== 'mongoose'
+  ) {
+    return symbol.name;
+  }
+  const model = typeArgumentsOf(checker, type)[MONGOOSE_DOC_TYPE]?.getSymbol();
+  return model === undefined || model.name.startsWith('__') ? symbol.name : model.name;
+}
+
+function typeArgumentsOf(checker, type) {
+  return (type.objectFlags & ts.ObjectFlags.Reference) === 0 ? [] : checker.getTypeArguments(type);
+}
+
 function entityOf(checker, type) {
   if (isPrismaModel(type.aliasSymbol)) {
     return { name: type.aliasSymbol.name, orm: 'Prisma' };
   }
+  const model = prismaPayloadModel(type);
+  if (model !== undefined) {
+    return { name: model, orm: 'Prisma' };
+  }
   const orm = (type.flags & ts.TypeFlags.Object) === 0 ? undefined : classOrm(checker, type);
-  return orm === undefined ? undefined : { name: type.getSymbol().name, orm };
+  return orm === undefined ? undefined : { name: entityName(checker, type, orm), orm };
 }
 
 export function entitiesIn(checker, type) {

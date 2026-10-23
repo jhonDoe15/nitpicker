@@ -1,3 +1,5 @@
+import { isGeneratedPrismaClient } from './prisma-client.mjs';
+
 const PERSISTENCE = [
   ['@prisma/client', /^(?:PrismaClient|TransactionClient|\w+Delegate)$/u],
   ['knex', /^(?:Knex|Transaction|QueryBuilder)$/u],
@@ -34,16 +36,17 @@ const REQUEST_NAMES =
   /^(?:Request|FastifyRequest|Context|ParameterizedContext|ExtendableContext|NextRequest|IncomingMessage)$/u;
 
 const NODE_MODULES = '/node_modules/';
+const PRISMA_CLIENT = '@prisma/client';
 
 export function packageOf(fileName) {
   const normalized = fileName.replaceAll('\\', '/');
   const index = normalized.lastIndexOf(NODE_MODULES);
   if (index === -1) {
-    return undefined;
+    return isGeneratedPrismaClient(fileName) ? PRISMA_CLIENT : undefined;
   }
   const [first, second] = normalized.slice(index + NODE_MODULES.length).split('/');
   if (first === '.prisma') {
-    return '@prisma/client';
+    return PRISMA_CLIENT;
   }
   const name = first.startsWith('@') ? `${first}/${second}` : first;
   return name.startsWith('@types/') ? typesPackage(name.slice('@types/'.length)) : name;

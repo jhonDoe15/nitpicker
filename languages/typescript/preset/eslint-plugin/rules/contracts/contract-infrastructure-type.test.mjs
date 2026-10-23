@@ -1,11 +1,12 @@
 import { rule } from './contract-infrastructure-type.mjs';
-import { typedProject } from './test-support/typed-project.mjs';
+import { typedProject, writeCustomPrismaClient } from './test-support/typed-project.mjs';
 
 const { write, tester, folder } = typedProject('nitpicker-contract-types-');
+const CUSTOM_PRISMA = writeCustomPrismaClient(write);
 
 const PRISMA = "import type { Prisma, PrismaClient } from '@prisma/client';\n";
 const KNEX = "import type { Knex } from 'knex';\n";
-const EXPRESS = "import type { Request, Response } from 'express';\n";
+const EXPRESS = "import type { NextFunction, Request, Response } from 'express';\n";
 
 function feature(index, { siblings = {}, leaks, indexName = 'index.ts' } = {}) {
   const name = folder('f');
@@ -51,6 +52,20 @@ tester.run('contract-infrastructure-type', rule, {
     feature(
       "import { Controller, Get, Req } from '@nestjs/common';\nimport type { Request } from 'express';\n@Controller('orders')\nexport class OrdersController { @Get() list(@Req() request: Request): string[] { return [String(request.body)]; } }",
     ),
+    feature("import { Router } from 'express';\nexport const router: Router = Router();"),
+    feature("import express from 'express';\nexport const app = express();"),
+    feature(
+      `${EXPRESS}export function errorHandler(err: Error, req: Request, res: Response, next: NextFunction): void { res.json(String(err)); next(); }`,
+    ),
+    feature(
+      `${PRISMA}export function authConfig(db: PrismaClient): { url: string } { return { url: String(db) }; }`,
+    ),
+    feature(
+      `${PRISMA}import { router } from '@trpc/server';\nexport const appRouter = router({ db: {} as PrismaClient });\nexport type AppRouter = typeof appRouter;`,
+    ),
+    feature(
+      `${PRISMA}export class Orders { static create(db: PrismaClient): Orders { return new Orders(String(db)); } constructor(private readonly name: string) {} list(): string[] { return [this.name]; } }`,
+    ),
   ],
   invalid: [
     feature(
@@ -89,5 +104,16 @@ tester.run('contract-infrastructure-type', rule, {
     feature(`${KNEX}export interface OrderStore { session(): Knex.Transaction; count(): number }`, {
       leaks: [['persistence', 'OrderStore.session', 'Transaction', 'knex']],
     }),
+    feature(`${PRISMA}declare const client: PrismaClient;\nexport const db = client;`, {
+      leaks: [['persistence', 'db', 'PrismaClient', '@prisma/client']],
+    }),
+    feature(
+      `${PRISMA}export class Users { static find(db: PrismaClient): Promise<string[]> { return Promise.resolve([String(db)]); } }`,
+      { leaks: [['persistence', 'Users.find', 'PrismaClient', '@prisma/client']] },
+    ),
+    feature(
+      `import type { PrismaClient } from '${CUSTOM_PRISMA}';\nexport function findUsers(db: PrismaClient): Promise<string[]> { return Promise.resolve([String(db)]); }`,
+      { leaks: [['persistence', 'findUsers', 'PrismaClient', '@prisma/client']] },
+    ),
   ],
 });
