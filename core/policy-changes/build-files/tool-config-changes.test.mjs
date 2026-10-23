@@ -137,7 +137,10 @@ describe('project tool configs the project opted into', () => {
           baseConfig: { preset },
           config: { preset, tools: { jscpd: PROJECT } },
         }).policyLoosenings,
-      ).toContain('jscpd project config changed: .jscpd.json');
+      ).toEqual([
+        'jscpd project config changed: .jscpd.json',
+        'tools.jscpd.precedence: not set -> ["project","nitpicker"]',
+      ]);
     },
   );
 });

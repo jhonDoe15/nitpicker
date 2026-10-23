@@ -7,9 +7,12 @@ import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
 export const JSCPD_PROJECT_FILE = '.jscpd.json';
 const JSCPD_MODES = ['strict', 'mild', 'weak'];
-const isCount = (value) => Number.isInteger(value) && value >= 0;
-const isGlobList = (value) =>
-  Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+function isCount(value) {
+  return Number.isInteger(value) && value >= 0;
+}
+function isGlobList(value) {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
 const JSCPD_PROJECT_KEYS = {
   minTokens: [isCount, 'a whole number of 0 or more'],
   minLines: [isCount, 'a whole number of 0 or more'],
@@ -24,7 +27,9 @@ const JSCPD_PROJECT_KEYS = {
   ignorePattern: [isGlobList, 'a list of pattern strings'],
   ignoreCase: [(value) => typeof value === 'boolean', 'true or false'],
 };
-const isProjectKey = (key) => Object.hasOwn(JSCPD_PROJECT_KEYS, key);
+function isProjectKey(key) {
+  return Object.hasOwn(JSCPD_PROJECT_KEYS, key);
+}
 
 function projectFile(projectRoot) {
   const file = path.join(projectRoot, JSCPD_PROJECT_FILE);
@@ -78,9 +83,9 @@ function parsedProjectConfig(text) {
 
 export function jscpdDetectionText(text) {
   try {
-    return JSON.stringify(parsedProjectConfig(text));
+    return { kind: 'applied', text: JSON.stringify(parsedProjectConfig(text)) };
   } catch {
-    return text;
+    return { kind: 'rejected' };
   }
 }
 
