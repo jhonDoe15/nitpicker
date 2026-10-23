@@ -2,11 +2,12 @@ import { runGit } from '../../../../core/diff/git/repository/command.mjs';
 import { readInside } from '../../../../shared/conventions/read-inside.mjs';
 import { kotlinFormatterOf } from '../kotlin/kotlin-tools.mjs';
 import { featureFaceMatcher } from '../spring-arch/contract-types.mjs';
+import { springRolesFact } from '../spring-arch/spring-roles.mjs';
 
 const BUILD_FILE =
   /(?:^|\/)(?:pom\.xml|[^/]+\.gradle(?:\.kts)?|libs\.versions\.toml|[^/]+\.versions\.toml)$/u;
 const SPRING = /org\.springframework\b/u;
-const JVM_SOURCE = /\.(?:java|kt)$/u;
+const MAIN_SOURCE = /(?:^|\/)src\/main\/(?:java|kotlin)\/.+\.(?:java|kt)$/u;
 const COMMENTS = /\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|(?:^|[ \t])(?:\/\/|#)[^\n]*/gmu;
 
 function projectFiles(projectRoot) {
@@ -31,7 +32,7 @@ export function declaresSpring(projectRoot, files = projectFiles(projectRoot).fi
 
 export function hasFeatureFolders(files, layout) {
   const isFeatureFace = featureFaceMatcher({ layout, modulePath: '' });
-  return files.some((file) => JVM_SOURCE.test(file) && isFeatureFace(file));
+  return files.some((file) => MAIN_SOURCE.test(file) && isFeatureFace(file));
 }
 
 export function javaHeadFacts(projectRoot, config) {
@@ -39,6 +40,7 @@ export function javaHeadFacts(projectRoot, config) {
   return {
     ...(declaresSpring(projectRoot, files) ? { spring: true } : {}),
     ...(hasFeatureFolders(files, config.layout) ? { featureFolders: true } : {}),
+    ...springRolesFact(config),
     ...(config.preset === 'kotlin'
       ? { kotlin: { formatter: kotlinFormatterOf(projectRoot, config.kotlin?.formatter) } }
       : {}),

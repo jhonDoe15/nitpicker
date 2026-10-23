@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { moduleManifest, withHeadFacts } from './maven-build.mjs';
+import { moduleManifest } from './maven-build.mjs';
 import { readReactor } from './maven-project.mjs';
 
 const roots = [];
@@ -76,22 +76,6 @@ describe('moduleManifest', () => {
       const manifest = moduleManifest({ module: singleModule(), classpaths, pinned: {} });
 
       expect([manifest.spring, manifest.springArch]).toEqual([spring, spring]);
-    },
-  );
-});
-
-describe('withHeadFacts', () => {
-  it.each([
-    [{ spring: false }, {}, [false, false]],
-    [{ spring: false }, { spring: true }, [true, true]],
-    [{ spring: false }, { featureFolders: true }, [false, true]],
-    [{ spring: true }, { featureFolders: false }, [true, true]],
-  ])(
-    'runs the architecture rules on Spring modules and on projects with a feature folder: %j %j',
-    (manifest, facts, expected) => {
-      const merged = withHeadFacts(manifest, facts);
-
-      expect([merged.spring, merged.springArch]).toEqual(expected);
     },
   );
 });

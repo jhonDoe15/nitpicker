@@ -16,7 +16,7 @@ const FACES = {
 
 const KINDS = {
   persistence: ({ owner, type, face }) =>
-    `Return a record (DTO) or a domain type from ${owner} and take plain values: ${type} is a persistence handle, so every caller of this ${face} depends on the database session. Keep ${type} inside the repository or adapter that owns the transaction.`,
+    `Take a repository or a port interface and return a record (DTO) or a domain type from ${owner}: ${type} is a persistence handle, so every caller of this ${face} depends on the database session. Keep ${type} inside the repository or adapter that owns the transaction.`,
   transport: ({ owner, type, face }) =>
     `Take plain values and return a record (DTO) or a domain type in ${owner}: ${type} is a web request or response object, so every caller of this ${face} needs a live HTTP exchange. Read it in the controller or adapter and pass the values in.`,
 };

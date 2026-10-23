@@ -627,27 +627,62 @@ Details that are decisions rather than the table:
   `aiosqlite`, `pymysql` and `MySQLdb`; `pymongo` and `motor` clients, databases and collections;
   peewee, Tortoise and `databases` handles) or a web request or response object (Django, Django REST
   framework, Starlette, FastAPI, Flask, Werkzeug, Quart, aiohttp, Litestar and Sanic requests,
-  responses, websockets and uploads). A name an `__init__.py` imports from an internal module of the
-  feature counts, reported on the import. Annotations are resolved through the imports, string
+  responses, websockets and uploads). Every name an `__init__.py` imports from a project module
+  counts, reported on the import: from an internal module, a public one, or one named for
+  infrastructure (`from .repository import open_session` is reported, as `index.ts` re-exports are
+  in TypeScript), and `from ._queries import *` brings in the names of `__all__`, or every public
+  definition when there is no `__all__`. Annotations are resolved through the imports, string
   annotations and module-level type aliases, also across modules; a name that does not resolve to
-  one of those libraries is never reported. Left out: a function with a route decorator
-  (`@router.get`, `@app.route`, a framework's own decorator), a class that subclasses a framework
-  type (a Django `View`, a `Manager`), a class named `*Repository` or `*Repo`, modules named
-  `adapters`, `infrastructure`, `infra`, `persistence`, `repository`, `repositories`, `db`,
-  `database`, `dependencies` or `deps`, and tests. A function whose first parameter is a request
-  (a Django view) and the modules `views`, `routes`, `routers`, `api`, `endpoints`, `urls` and
-  `middleware` may use the web types, but not the persistence ones. Class and dataclass fields are
-  not read, only signatures.
-- `handler-entity-type` reads route handlers: functions with a FastAPI, Starlette, Flask, Quart,
-  django-ninja or Sanic route decorator (`@router.get(...)`, `@app.route(...)`, `@api.post(...)` in
-  a module that imports one of them, or a decorator from the framework itself, such as Litestar's
-  `@get`). A parameter, the return annotation, `response_model=` or django-ninja's `response=` that
-  names an ORM entity is reported once per handler and entity. Entities are SQLAlchemy mapped classes
-  (a `__tablename__` or `__table__` under a `DeclarativeBase` or `declarative_base()` base, and
-  their subclasses), SQLModel classes with `table=True`, and Django, Tortoise and peewee models that
-  are not `abstract`, found across the project's modules. Imperative mappings
-  (`registry.map_imperatively`, `@registry.mapped`) and entities a handler returns without an
-  annotation (`return jsonify(order)`) are not seen.
+  one of those libraries is never reported. The identity is the member and the type's simple name
+  (`get_order|persistence|Session`). Left out: a function with a route decorator (`@router.get`,
+  `@app.route` in a module that imports a web framework, or a decorator of the web framework itself,
+  such as `@api_view` or `@login_required`; `@transaction.atomic` is not one), a class that
+  subclasses a web framework type (a Django `View`, a DRF `APIView`) or a data access type (a
+  Django `Manager` or `QuerySet`, which own their handles as a repository does), a class named
+  `*Repository` or `*Repo`, a parameter FastAPI injects (`= Depends(...)`, `Security(...)`,
+  `Annotated[Session, Depends(get_db)]`, or a module-level alias of one such as
+  `SessionDep = Annotated[Session, Depends(get_db)]`), modules named `adapter`, `adapters`,
+  `infrastructure`, `infra`, `persistence`, `repository`, `repositories`, `db`, `database`,
+  `dependencies`, `deps`, `config`, `configuration` or `security` (the Java and Kotlin presets skip
+  packages with the same names), and tests. A function whose first parameter is a request (annotated
+  as one, or named `request` without an annotation, as a Django view is, in any module) and the
+  modules `views`, `routes`, `router`, `routers`, `api`, `endpoints`, `urls` and `middleware` may use
+  the web types, but not the persistence ones. Class and dataclass fields are not read, only
+  signatures.
+- The allowed shapes for the two common layouts. FastAPI: a route handler in `router.py` takes
+  `session: SessionDep` and `Depends(...)` values, which are never reported; it passes the session to
+  a repository built in `deps.py` or `repository.py` (`OrderRepository(session)`), and the feature's
+  `service.py` takes that repository, or a `Protocol` the feature declares for it, and returns
+  frozen dataclasses or Pydantic schemas. A `service.py` or `crud.py` function that takes
+  `db: Session` is reported: callers in other features would need a session. Django: a view in
+  `views.py` may take the request and return a response; queries live in a `Manager` or `QuerySet`
+  subclass, a module named for infrastructure or a `_queries.py` module, and the feature's
+  `selectors.py` or `services.py` returns lists of frozen dataclasses or model instances, not a
+  `QuerySet`, which would let callers run more queries. A unit of work is the same: a function that
+  takes an optional `Session` or a transaction to join one is reported; pass a unit-of-work object
+  (a class the feature defines, with `commit()` and the repositories it needs) and keep the session
+  inside it.
+- `handler-entity-type` reads route handlers: functions with a route decorator (`@router.get(...)`,
+  `@app.route(...)`, `@api.post(...)` in a module that imports a web framework, or a decorator of the
+  framework itself, such as Litestar's `@get` or DRF's `@api_view`), Django function views (a
+  module-level function whose first parameter is the request, in a module that imports
+  `django.http`, `django.shortcuts` or `django.views`) and the request methods (`get`, `post`, `put`,
+  `patch`, `delete`, `head`, `options`, and a ViewSet's `list`, `retrieve`, `create`, `update`,
+  `partial_update`, `destroy`) of a class that subclasses a Django, DRF, Flask or other web framework
+  view. A parameter, the return annotation, `response_model=` or django-ninja's `response=` that
+  names an ORM entity is reported once per handler and entity; parameters FastAPI injects with
+  `Depends` or `Security` are left out, and a `response_model=` or `response=` that is not `None`
+  replaces the return annotation, which is then not read. A handler without either also has its
+  `return` values read, and every handler the first argument of a response it builds
+  (`Response(order)`, `JsonResponse(...)`, `jsonify(...)`): an entity class, a chain on it
+  (`Order.objects.get(pk=pk)`, but not `.values()`, `.values_list()`, `.count()`, `.exists()` or
+  `.aggregate()`), a parameter annotated with one, or a local variable assigned one of those. A
+  serializer around the entity (`OrderSerializer(order).data`) is the allowed form. Entities are
+  SQLAlchemy mapped classes (a `__tablename__` or `__table__` under a `DeclarativeBase` or
+  `declarative_base()` base, and their subclasses), SQLModel classes with `table=True`, and Django,
+  Tortoise and peewee models that are not `abstract`, found across the project's modules.
+  Imperative mappings (`registry.map_imperatively`, `@registry.mapped`) and entities that come from
+  a call the rule cannot type (`return db.get(Order, order_id)`) are not seen.
 - `PLR2004` allows the same numbers as the TypeScript `no-magic-numbers` (`-1`, `0`, `1`, `2`, `10`,
   `100`, `1000`): findings for them are dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`),
   because ruff has no setting for it. Ruff already allows strings and bytes.
@@ -1523,8 +1558,9 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
   production modules keep their checks.
 - **Import structure.** From the import scan (`imports/python-import-rules.mjs`):
   `coupling/package-cycle` with Java's message, on each package of a cycle (a package `__init__`
-  importing its own submodules is a re-export, not a dependency, and an import that a
-  [`feature-cycle`](#feature-folders) finding already reports is left out); `coupling/no-production-cycles`
+  importing its own submodules is a re-export, not a dependency, and a cycle whose packages all
+  belong to the features of a reported [`feature-cycle`](#feature-folders), and that no import
+  outside that feature cycle closes, is left out); `coupling/no-production-cycles`
   for module cycles inside one package; `coupling/no-import-outside-roots` when production code
   imports a project module outside `python.sourceRoots` (scripts, a top-level `tests/` package).
   Type-only imports do not count.
@@ -1572,17 +1608,27 @@ folder globs from the project root (`["src/app/features"]`); they default to `**
 `**/shared`, and `"featureRoots": []` turns the rules off. Each folder directly under a feature
 root is one feature, named after the folder, so a package added there is a feature at once: nothing
 needs mapping and nothing escapes unmapped. A module directly in a feature root (`features/util.py`)
-belongs to no feature. A shared folder that is itself the folder under a feature root
-(`features/shared/`) is shared; one inside a feature (`features/billing/shared/`) is part of that
-feature. A project without a feature folder gets no finding from these rules. Packages live where
-`python.sourceRoots` says; the globs only decide the roles of the files found there.
+belongs to no feature. When feature roots nest (`["src/app/features", "src/app/features/billing/plugins"]`),
+a file belongs to the innermost one: `billing/plugins/pdf/` is a feature of its own, and the rest
+of `billing/` another. A shared folder that is itself the folder under a feature root
+(`features/shared/`) is shared; with the default `**/shared`, one inside a feature
+(`features/billing/shared/`) is part of that feature, while a folder a `sharedRoots` glob you
+configure matches stays shared wherever it is. A project without a feature folder gets no finding
+from these rules, and a configured `featureRoots` or `sharedRoots` glob that matches no folder is
+named in a notice on each run. Packages live where `python.sourceRoots` says; the globs only decide
+the roles of the files found there. A feature cannot be named `tests` or `test` (its files are
+tests) or `migrations` (skipped like every migrations folder); `build` and `dist` are skipped only
+at the project root and next to a `pyproject.toml` or another build manifest, so
+`features/build/` is a feature.
 
 **The public face** of a feature is its `__init__.py` and the modules directly in the feature
 folder whose names do not start with `_`. Its sub-packages and its `_private.py` modules are
 internal: the feature itself may import them, other code may not. A name the feature's
 `__init__.py` imports from an internal module is public, so `from app.features.billing import rate`
 passes while `from app.features.billing import _rates` and
-`import app.features.billing.internal.tax as tax` fail.
+`import app.features.billing.internal.tax as tax` fail. A sub-package the `__init__.py` imports
+whole (`from . import models`) or lists in `__all__` is public too, so
+`from app.features.billing import models` passes; its own modules stay internal.
 
 ```python
 # src/app/features/billing/__init__.py: the public face
@@ -1597,8 +1643,11 @@ from app.features.billing.internal import tax    # feature-internal-import
 ```
 
 - **Who is checked.** Production modules only: tests (and every module the test layout names, such
-  as `conftest.py`) may import any internal module, and generated modules are left out as
-  importers. A composition root such as `main.py` or a Django `settings.py` is outside every
+  as `conftest.py`, and a behave or pytest-bdd tree: a folder holding `.feature` files with a
+  `steps/` or `step_defs/` folder or an `environment.py` next to them) may import any internal
+  module. Generated modules still resolve imports, but no finding is about one: an import from or
+  of a generated module is left out, and neither a generated module nor a package `__init__.py` is
+  reported by `shared-used-by-one-feature`. A composition root such as `main.py` or a Django `settings.py` is outside every
   feature, so it imports features through their public face too.
 - **Resolution.** The import scan of slice 5: absolute and relative imports (`from ..billing import
 rate`), `import a.b as c`, and `from a import b`, which is an import of the submodule `a.b` when
@@ -1614,10 +1663,10 @@ rate`), `import a.b as c`, and `from a import b`, which is an import of the subm
   `shared-imports-feature` to fail first, and a loop through other modules (a composition root, an
   `app/core.py`) is a module cycle, which `package-cycle` reports. Each importing file is one
   finding per feature it imports inside a cycle; the message names the cycle's features (the first
-  five) and the ways out: move what both need to a shared root, invert the dependency behind an
-  interface the importing feature owns and the composition root wires, or merge the features. A
-  `package-cycle` between packages of two features that the feature cycle already explains is not
-  reported a second time.
+  five) and the ways out: move what both need to a shared root, or invert the dependency behind an
+  interface. A `package-cycle` whose packages all belong to the features of a reported feature cycle,
+  and that no other import closes, is not reported a second time; a package cycle through a package
+  outside the features, or one whose feature cycle an exception lifts, is still reported.
 - **Identities.** No line numbers: `feature-internal:<imported file>`, `<feature folder>|shared-imports-feature`
   and `<imported feature folder>|feature-cycle`, with the importing file as the path. Moving a file
   inside a feature, renaming a module, or moving a feature folder keeps a finding that existed

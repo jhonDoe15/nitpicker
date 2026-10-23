@@ -158,7 +158,7 @@ describe('javaHeadFacts', () => {
 
     expect([policy.featureFolders, policy.layout]).toEqual([
       true,
-      { sharedRoots: ['**/shared'], featureRoots: ['**/modules'] },
+      { sharedRoots: ['**/shared'], featureRoots: ['**/modules'], sharedInsideFeatures: false },
     ]);
     expect(readRunnerPolicy(['--project-root', '/p'], {}).policy.layout).toBeUndefined();
   });
