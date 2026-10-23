@@ -6,14 +6,18 @@ import java.util.Set;
 
 final class Library {
   private static final Set<String> MAP_MUTATORS =
-      Set.of("put", "putAll", "putIfAbsent", "compute", "computeIfAbsent", "computeIfPresent", "merge", "replace");
+      Set.of("put", "putAll", "putIfAbsent", "compute", "computeIfAbsent", "computeIfPresent", "merge", "replace",
+          "replaceAll", "setProperty", "add", "addAll", "addIfAbsent", "set", "setAll");
+  private static final Set<String> TEXT_MUTATORS =
+      Set.of("append", "insert", "replace", "setCharAt", "appendCodePoint");
   private static final Set<String> COLLECTION_MUTATORS =
-      Set.of("add", "addAll", "addFirst", "addLast", "offer", "offerFirst", "offerLast", "push", "set", "put");
+      Set.of("add", "addAll", "addFirst", "addLast", "offer", "offerFirst", "offerLast", "push", "set", "put",
+          "replaceAll", "addElement", "insertElementAt", "setElementAt", "transfer", "tryTransfer");
   private static final Set<String> REFERENCE_MUTATORS =
       Set.of("set", "lazySet", "setPlain", "setOpaque", "setRelease", "getAndSet", "compareAndSet",
           "compareAndExchange", "compareAndExchangeAcquire", "compareAndExchangeRelease", "weakCompareAndSet",
           "weakCompareAndSetPlain", "weakCompareAndSetVolatile", "weakCompareAndSetAcquire",
-          "weakCompareAndSetRelease");
+          "weakCompareAndSetRelease", "updateAndGet", "getAndUpdate", "accumulateAndGet", "getAndAccumulate");
   private static final Set<String> MAP_ACCESSORS =
       Set.of("get", "getOrDefault", "computeIfAbsent", "computeIfPresent", "compute", "merge", "values",
           "keySet", "entrySet", "firstEntry", "lastEntry", "floorEntry", "ceilingEntry", "headMap", "tailMap",
@@ -22,6 +26,12 @@ final class Library {
       Set.of("get", "iterator", "listIterator", "getFirst", "getLast", "peek", "peekFirst", "peekLast",
           "element", "first", "last", "subList", "floor", "ceiling", "headSet", "tailSet", "subSet");
   private static final Set<String> REFERENCE_ACCESSORS = Set.of("get", "getPlain", "getAcquire", "getOpaque");
+  private static final Map<String, Integer> STATIC_TARGETS =
+      Map.of("java/util/Collections.addAll", 0, "java/lang/System.arraycopy", 2, "java/util/Arrays.fill", 0,
+          "java/util/Arrays.setAll", 0);
+  private static final Set<String> IDENTITIES =
+      Set.of("java/util/Objects.requireNonNull", "java/util/Objects.requireNonNullElse",
+          "java/util/Objects.requireNonNullElseGet");
   private static final Map<String, Set<String>> SOURCES =
       Map.of(
           "org/springframework/web/context/request/RequestContextHolder",
@@ -44,7 +54,17 @@ final class Library {
     return (is(owner, Map.class) && MAP_MUTATORS.contains(name))
         || (is(owner, java.util.Collection.class) && COLLECTION_MUTATORS.contains(name))
         || (isReference(owner) && REFERENCE_MUTATORS.contains(name))
-        || (is(owner, Map.Entry.class) && name.equals("setValue"));
+        || (is(owner, Map.Entry.class) && name.equals("setValue"))
+        || (is(owner, java.util.ListIterator.class) && (name.equals("set") || name.equals("add")))
+        || ((is(owner, StringBuilder.class) || is(owner, StringBuffer.class)) && TEXT_MUTATORS.contains(name));
+  }
+
+  Optional<Integer> staticTarget(String owner, String name) {
+    return Optional.ofNullable(STATIC_TARGETS.get(owner + "." + name));
+  }
+
+  boolean isIdentity(String owner, String name) {
+    return IDENTITIES.contains(owner + "." + name);
   }
 
   boolean isAccessor(String owner, String name) {

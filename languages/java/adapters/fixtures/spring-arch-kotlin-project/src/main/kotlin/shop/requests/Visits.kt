@@ -56,6 +56,11 @@ class VisitController(private val log: VisitLog, private val bag: VisitBag) {
         return page
     }
 
+    @GetMapping("/visits/registry")
+    fun register(@RequestParam page: String) {
+        Registry.seen.add(page)
+    }
+
     @GetMapping("/visits/count")
     fun counted(): Long = count.incrementAndGet()
 
@@ -70,6 +75,10 @@ class VisitController(private val log: VisitLog, private val bag: VisitBag) {
     companion object {
         val SEEN = mutableListOf<String>()
     }
+}
+
+object Registry {
+    val seen = mutableListOf<String>()
 }
 
 @Service

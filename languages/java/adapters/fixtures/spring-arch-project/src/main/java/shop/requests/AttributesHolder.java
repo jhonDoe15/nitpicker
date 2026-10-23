@@ -10,6 +10,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 @Component
 public class AttributesHolder {
   private RequestAttributes attributes;
+  private RequestAttributes last;
   private String region;
   private HttpServletRequest request;
 
@@ -25,6 +26,14 @@ public class AttributesHolder {
 
   public void capture() {
     attributes = RequestContextHolder.currentRequestAttributes();
+  }
+
+  public void snapshot() {
+    last = current();
+  }
+
+  private RequestAttributes current() {
+    return RequestContextHolder.getRequestAttributes();
   }
 
   public String region() {

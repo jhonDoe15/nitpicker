@@ -1,27 +1,29 @@
 import com.tngtech.archunit.core.domain.JavaClass;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 final class Summaries {
-  private static final int ROUNDS = 64;
+  private static final int VISITS = 64;
 
   private final Map<String, MethodFlow> flows;
   private final Map<String, JavaClass> classes;
+  private final Predicate<String> stateful;
   private final Map<String, Map<Integer, Reach>> summaries = new HashMap<>();
   private final Map<String, List<MethodFlow>> targets = new HashMap<>();
 
-  Summaries(Map<String, MethodFlow> flows, Map<String, JavaClass> classes) {
+  Summaries(Map<String, MethodFlow> flows, Map<String, JavaClass> classes, Predicate<String> stateful) {
     this.flows = flows;
     this.classes = classes;
-    for (int round = 0; round < ROUNDS && settle(); round++) {
-      continue;
-    }
+    this.stateful = stateful;
+    settle();
   }
 
   Reach reach(MethodFlow method, Set<String> initial) {
@@ -52,16 +54,39 @@ final class Summaries {
     return reach;
   }
 
-  private boolean settle() {
-    boolean changed = false;
+  private void settle() {
+    Map<String, Set<MethodFlow>> callers = new HashMap<>();
     for (MethodFlow method : flows.values()) {
-      Map<Integer, Reach> summary = summaries.computeIfAbsent(method.key(), ignored -> new HashMap<>());
-      for (int index = 0; index < method.arguments; index++) {
-        Reach reach = reach(method, Set.of(Flow.ARG + index));
-        if (!reach.equals(summary.get(index))) {
-          summary.put(index, reach);
-          changed = true;
+      for (MethodFlow.Call call : calls(method)) {
+        for (MethodFlow target : targetsOf(call)) {
+          callers.computeIfAbsent(target.key(), ignored -> new HashSet<>()).add(method);
         }
+      }
+    }
+    Deque<MethodFlow> pending = new ArrayDeque<>(flows.values());
+    Set<String> queued = new HashSet<>(flows.keySet());
+    Map<String, Integer> visits = new HashMap<>();
+    while (!pending.isEmpty()) {
+      MethodFlow method = pending.poll();
+      queued.remove(method.key());
+      if (visits.merge(method.key(), 1, Integer::sum) <= VISITS && summarize(method)) {
+        for (MethodFlow caller : callers.getOrDefault(method.key(), Set.of())) {
+          if (queued.add(caller.key())) {
+            pending.add(caller);
+          }
+        }
+      }
+    }
+  }
+
+  private boolean summarize(MethodFlow method) {
+    boolean changed = false;
+    Map<Integer, Reach> summary = summaries.computeIfAbsent(method.key(), ignored -> new HashMap<>());
+    for (int index = 0; index < method.arguments; index++) {
+      Reach reach = reach(method, Set.of(Flow.ARG + index));
+      if (!reach.equals(summary.get(index))) {
+        summary.put(index, reach);
+        changed = true;
       }
     }
     return changed;
@@ -115,7 +140,14 @@ final class Summaries {
     }
   }
 
-  private static void classify(MethodFlow method, String target, String op, Reach reach) {
+  private void classify(MethodFlow method, String target, String op, Reach reach) {
+    if (target.startsWith(Flow.HELD) && !method.setsUp) {
+      String[] held = target.substring(Flow.HELD.length()).split("#", 2);
+      if (stateful.test(held[0])) {
+        reach.sinks.add(new Reach.Sink(held[0], held[1], op, false));
+      }
+      return;
+    }
     if (target.startsWith(Flow.ARG)) {
       reach.retains.add(Integer.parseInt(target.substring(Flow.ARG.length())));
     } else if (target.startsWith(Flow.FIELD) && method.holdsState && !method.setsUp) {
@@ -142,7 +174,12 @@ final class Summaries {
   }
 
   private static boolean hits(Set<String> values, Set<String> live) {
-    return !Collections.disjoint(values, live);
+    for (String value : values) {
+      if (live.contains(value)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static List<MethodFlow.Call> calls(MethodFlow method) {

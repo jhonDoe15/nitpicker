@@ -25,6 +25,15 @@ final class Lifetimes {
   private static final String BEAN = "org.springframework.context.annotation.Bean";
   private static final String COMPONENT_SCAN = "org.springframework.context.annotation.ComponentScan";
   private static final String COMPONENT_SCANS = "org.springframework.context.annotation.ComponentScans";
+  private static final String IMPORT = "org.springframework.context.annotation.Import";
+  private static final List<String> SERVLET_COMPONENTS =
+      List.of(
+          "jakarta.servlet.annotation.WebFilter",
+          "jakarta.servlet.annotation.WebServlet",
+          "jakarta.servlet.annotation.WebListener",
+          "javax.servlet.annotation.WebFilter",
+          "javax.servlet.annotation.WebServlet",
+          "javax.servlet.annotation.WebListener");
   private static final String LAZY = "org.springframework.context.annotation.Lazy";
   static final List<String> INJECTION_MARKERS =
       List.of(
@@ -102,10 +111,27 @@ final class Lifetimes {
       if (isComponent(type) && BeanScope.of(type.getAnnotations(), scanProxy).isSingleton()) {
         singletons.add(type);
       }
+      if (SERVLET_COMPONENTS.stream().anyMatch(type::isAnnotatedWith)) {
+        singletons.add(type);
+      }
+      type.getAnnotations().stream()
+          .filter(annotation -> annotation.getRawType().getName().equals(IMPORT))
+          .flatMap(annotation -> annotation.get("value").stream())
+          .filter(Object[].class::isInstance)
+          .flatMap(imported -> Arrays.stream((Object[]) imported))
+          .filter(JavaClass.class::isInstance)
+          .map(JavaClass.class::cast)
+          .filter(bean -> main.contain(bean.getName()) && !isComponent(bean))
+          .filter(bean -> BeanScope.of(bean.getAnnotations(), "NO").isSingleton())
+          .forEach(singletons::add);
       for (JavaMethod method : type.getMethods()) {
         if (method.isMetaAnnotatedWith(BEAN) && BeanScope.of(method.getAnnotations(), "NO").isSingleton()) {
           JavaClass made = method.getRawReturnType();
           singletons.add(made);
+          method.getConstructorCallsFromSelf().stream()
+              .map(call -> call.getTargetOwner())
+              .filter(built -> main.contain(built.getName()) && !isComponent(built))
+              .forEach(singletons::add);
           if (main.contain(made.getName())) {
             made.getAllSubclasses().stream().filter(subclass -> !isComponent(subclass)).forEach(singletons::add);
           }

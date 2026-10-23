@@ -8,32 +8,34 @@ final class Reach {
     final String field;
     final String op;
     final boolean onReceiver;
+    private final String key;
 
     Sink(String owner, String field, String op, boolean onReceiver) {
       this.owner = owner;
       this.field = field;
       this.op = op;
       this.onReceiver = onReceiver;
+      this.key = owner + "|" + field + "|" + op + "|" + onReceiver;
     }
 
     @Override
     public int compareTo(Sink other) {
-      return toString().compareTo(other.toString());
+      return key.compareTo(other.key);
     }
 
     @Override
     public boolean equals(Object other) {
-      return other instanceof Sink && toString().equals(other.toString());
+      return other instanceof Sink && key.equals(((Sink) other).key);
     }
 
     @Override
     public int hashCode() {
-      return toString().hashCode();
+      return key.hashCode();
     }
 
     @Override
     public String toString() {
-      return owner + "|" + field + "|" + op + "|" + onReceiver;
+      return key;
     }
   }
 
