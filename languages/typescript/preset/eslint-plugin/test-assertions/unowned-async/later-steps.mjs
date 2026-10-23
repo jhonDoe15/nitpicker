@@ -1,5 +1,8 @@
-import { resolveFunction } from '../../rules/analysis/constant-resolution.mjs';
-import { propertyName, rootName } from './hosts.mjs';
+import { ancestorsOf } from '../../rules/analysis/ancestry.mjs';
+import { findVariable, isFunctionNode } from '../../rules/analysis/constant-resolution.mjs';
+import { enclosingFunction } from '../../test-quality/test-calls.mjs';
+import { hostShape, resolvedFunction } from './hosts.mjs';
+import { children, nodesIn, propertyName, rootName } from './nodes.mjs';
 
 const CLOCK_ADVANCES = new Set([
   'advanceTimersByTime',
@@ -40,81 +43,117 @@ const QUIET_ROOTS = new Set([
   'assert',
 ]);
 const LOG_METHODS = new Set(['log', 'info', 'debug', 'warn', 'error', 'trace']);
-const FUNCTION_TYPES = new Set([
-  'ArrowFunctionExpression',
-  'FunctionExpression',
-  'FunctionDeclaration',
-]);
-
-function children(context, node) {
-  return (context.sourceCode.visitorKeys[node.type] ?? [])
-    .flatMap((key) => (Array.isArray(node[key]) ? node[key] : [node[key]]))
-    .filter((child) => child !== null && typeof child?.type === 'string');
-}
-
-export function nodesIn(context, root, { intoFunctions }) {
-  const pending = [root];
-  for (const node of pending) {
-    const inner = children(context, node).filter(
-      (child) => intoFunctions || !FUNCTION_TYPES.has(child.type),
-    );
-    for (const child of inner) {
-      pending.push(child);
-    }
-  }
-  return pending;
-}
+const WAIT_TYPES = new Set(['AwaitExpression', 'YieldExpression']);
+const CALL_TYPES = new Set(['CallExpression', 'NewExpression']);
+const WRITE_TYPES = new Set(['AssignmentExpression', 'UpdateExpression']);
 
 function isClockReceiver(object) {
   const root = rootName(object);
-  const names = [root, propertyName(object)].filter(Boolean);
+  const names = [root, propertyName(object), propertyName(object.callee)].filter(Boolean);
   return CLOCK_RUNNERS.has(root) || names.some((name) => CLOCK_NAME.test(name));
 }
 
-function callFacts(node) {
-  const method = propertyName(node.callee);
-  const object = node.callee.type === 'MemberExpression' ? node.callee.object : undefined;
-  const root = rootName(node.callee);
+function destructuredMethod(context, callee) {
+  const definition = findVariable(context, callee, callee.name)?.defs.at(0);
+  const declarator = definition?.type === 'Variable' ? definition.node : undefined;
+  const isRunner =
+    declarator?.id.type === 'ObjectPattern' && CLOCK_RUNNERS.has(declarator.init?.name);
+  const property = isRunner
+    ? declarator.id.properties.find((candidate) => candidate.value?.name === callee.name)
+    : undefined;
+  return property?.key.name;
+}
+
+function clockMethod(context, callee) {
+  if (callee.type === 'Identifier') {
+    return destructuredMethod(context, callee);
+  }
+  const object = callee.type === 'MemberExpression' ? callee.object : undefined;
+  return object !== undefined && isClockReceiver(object) ? propertyName(callee) : undefined;
+}
+
+function isCypressTick(callee) {
+  return (
+    callee.type === 'MemberExpression' &&
+    callee.object.type === 'Identifier' &&
+    callee.object.name === 'cy' &&
+    propertyName(callee) === 'tick'
+  );
+}
+
+function callFacts(context, node) {
+  const method = clockMethod(context, node.callee);
   return {
-    advances: CLOCK_ADVANCES.has(method) && object !== undefined && isClockReceiver(object),
+    advances: CLOCK_ADVANCES.has(method) || isCypressTick(node.callee),
     flushesMicrotasks: MICROTASK_FLUSHES.has(method),
-    triggers: !QUIET_ROOTS.has(root) && !LOG_METHODS.has(method),
+    triggers:
+      !QUIET_ROOTS.has(rootName(node.callee)) && !LOG_METHODS.has(propertyName(node.callee)),
   };
 }
 
 function isMemberWrite(node) {
+  if (!WRITE_TYPES.has(node.type)) {
+    return false;
+  }
   const target = node.type === 'UpdateExpression' ? node.argument : node.left;
-  return target?.type === 'MemberExpression';
+  return target.type === 'MemberExpression';
 }
 
-function nodeFacts(node) {
-  if (node.type === 'AwaitExpression' || node.type === 'YieldExpression') {
-    return { waits: true };
+function isWait(node, owners) {
+  if (WAIT_TYPES.has(node.type)) {
+    return true;
   }
-  if (node.type === 'ForOfStatement' && node.await) {
-    return { waits: true };
+  if (node.type === 'ForOfStatement') {
+    return node.await;
   }
-  if (node.type === 'CallExpression' || node.type === 'NewExpression') {
-    return callFacts(node);
+  if (node.type === 'VariableDeclaration') {
+    return node.kind === 'await using';
   }
-  const writes = node.type === 'AssignmentExpression' || node.type === 'UpdateExpression';
-  return writes && isMemberWrite(node) ? { writes: true } : {};
+  return (
+    node.type === 'ReturnStatement' && node.argument !== null && owners.has(enclosingFunction(node))
+  );
 }
 
-function stepNodes(context, statement) {
-  const own = nodesIn(context, statement, { intoFunctions: false });
-  const helpers = own
-    .filter((node) => node.type === 'CallExpression')
-    .map((node) => resolveFunction(context, node.callee))
-    .filter((helper) => helper !== undefined);
-  return [
-    ...own,
-    ...helpers.flatMap((helper) => nodesIn(context, helper.body, { intoFunctions: false })),
-  ];
+function nodeFacts(context, node, owners) {
+  const calls = CALL_TYPES.has(node.type) ? callFacts(context, node) : {};
+  return { ...calls, waits: isWait(node, owners), writes: isMemberWrite(node) };
 }
 
-export function stepFacts(context, statement) {
-  const facts = stepNodes(context, statement).map(nodeFacts);
+function runsInline({ context, bindings }, node) {
+  if (!isFunctionNode(node)) {
+    return true;
+  }
+  const call = node.parent;
+  const isPassed =
+    CALL_TYPES.has(call.type) && (call.arguments.includes(node) || call.callee === node);
+  return isPassed && hostShape(context, call, bindings) === undefined;
+}
+
+function unfollowedHelper(env, node, followed) {
+  const helper =
+    node.type === 'CallExpression' ? resolvedFunction(env.context, node.callee) : undefined;
+  if (helper === undefined || followed.has(helper)) {
+    return undefined;
+  }
+  followed.add(helper);
+  return helper.body;
+}
+
+function reachableNodes(env, roots) {
+  const pending = [...new Set(roots)];
+  const followed = new Set();
+  const found = [];
+  for (const root of pending) {
+    const own = nodesIn(env.context, root, (child) => runsInline(env, child));
+    const bodies = own.map((node) => unfollowedHelper(env, node, followed));
+    found.push(own);
+    pending.push(...bodies.filter((body) => body !== undefined));
+  }
+  return found.flat();
+}
+
+export function stepFacts(env, roots, owners) {
+  const facts = reachableNodes(env, roots).map((node) => nodeFacts(env.context, node, owners));
   return {
     waits: facts.some((fact) => fact.waits),
     advances: facts.some((fact) => fact.advances),
@@ -124,15 +163,69 @@ export function stepFacts(context, statement) {
   };
 }
 
-export function isOwnedByLaterStep(host, steps) {
+function laterSiblings(context, node) {
+  return children(context, node.parent).filter((sibling) => sibling.range[0] >= node.range[1]);
+}
+
+function climb(start, test) {
+  const chain = [start, ...ancestorsOf(start)];
+  const stop = chain.indexOf(test);
+  return stop === -1 ? chain : chain.slice(0, stop);
+}
+
+function namedBinding(fn) {
+  if (fn.type === 'FunctionDeclaration') {
+    return fn;
+  }
+  return fn.parent.type === 'VariableDeclarator' && fn.parent.init === fn ? fn.parent : undefined;
+}
+
+function localUses(context, node) {
+  const binding = isFunctionNode(node) ? namedBinding(node) : undefined;
+  const variable =
+    binding === undefined
+      ? undefined
+      : context.sourceCode
+          .getDeclaredVariables(binding)
+          .find((candidate) =>
+            candidate.defs.some((def) => def.node === binding && def.type !== 'Parameter'),
+          );
+  return (variable?.references ?? []).filter((ref) => !ref.init).map((ref) => ref.identifier);
+}
+
+function rootsFrom(context, start, test) {
+  const roots = [];
+  for (const node of climb(start, test)) {
+    for (const sibling of laterSiblings(context, node)) {
+      roots.push(sibling);
+    }
+    const uses = localUses(context, node);
+    if (uses.length > 0) {
+      return { roots, uses };
+    }
+  }
+  return { roots, uses: [] };
+}
+
+export function ownerRoots(context, host, test) {
+  const starts = [host.node];
+  const roots = [];
+  for (const start of starts) {
+    const found = rootsFrom(context, start, test);
+    for (const root of found.roots) {
+      roots.push(root);
+    }
+    starts.push(...found.uses.filter((use) => !starts.includes(use)));
+  }
+  return roots;
+}
+
+export function isOwnedByLaterStep(host, facts) {
   if (host.kind === 'timer') {
-    return steps.some((step) => step.waits || step.advances);
+    return facts.waits || facts.advances;
   }
   if (host.kind === 'microtask') {
-    return steps.some((step) => step.waits || step.flushesMicrotasks);
+    return facts.waits || facts.flushesMicrotasks;
   }
-  if (host.kind === 'listener') {
-    return steps.some((step) => step.waits || step.writes || step.triggers);
-  }
-  return false;
+  return host.kind === 'listener' && (facts.waits || facts.writes || facts.triggers);
 }
