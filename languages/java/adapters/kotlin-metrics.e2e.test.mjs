@@ -24,8 +24,10 @@ import {
   MULTIFILE_A,
   MULTIFILE_B,
   NESTING,
+  PLAIN_SERVICE,
   PREDICATE_SYMBOLS,
   ROOT_PACKAGE,
+  SPRING_SERVICE,
   UNITS,
 } from './test-support/kotlin-metrics-sources.mjs';
 
@@ -163,6 +165,7 @@ function compilePsiProgram() {
 function measure(project, roots = ['src']) {
   const metricsOutput = path.join(project, 'metrics.json');
   const factsOutput = path.join(project, 'facts.json');
+  const syntaxOutput = path.join(project, 'syntax.json');
   const result = spawnSync(
     path.join(java, 'bin/java'),
     [
@@ -172,6 +175,7 @@ function measure(project, roots = ['src']) {
       'nitpicker.kotlinpsi.KotlinPsi',
       metricsOutput,
       factsOutput,
+      syntaxOutput,
       project,
       ...roots,
     ],
@@ -182,6 +186,7 @@ function measure(project, roots = ['src']) {
     log: result.stdout + result.stderr,
     metrics: result.status === 0 ? JSON.parse(readFileSync(metricsOutput, 'utf8')) : undefined,
     facts: result.status === 0 ? JSON.parse(readFileSync(factsOutput, 'utf8')) : undefined,
+    syntax: result.status === 0 ? JSON.parse(readFileSync(syntaxOutput, 'utf8')) : undefined,
   };
 }
 
@@ -353,6 +358,27 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
     expect([status, log.includes('StackOverflow')]).toEqual([0, false]);
     expect(metrics.functions[0].name).toBe('nested');
     expect(facts.files.map(({ file }) => file)).toEqual(['src/Deep.kt']);
+  });
+
+  it('writes the syntax tree of a production file that uses Spring, however deeply it nests', () => {
+    const { status, log, syntax } = measure(
+      writeSources('syntax', {
+        'src/Total.kt': SPRING_SERVICE,
+        'src/Plain.kt': PLAIN_SERVICE,
+        'test/TotalTest.kt': SPRING_SERVICE.replace('Total', 'TotalTest'),
+      }),
+      ['src', 'test:test'],
+    );
+
+    expect([status, log.includes('StackOverflow')]).toEqual([0, false]);
+    expect(
+      syntax.files.map(({ file, tree }) => [
+        file,
+        tree.t,
+        tree.s,
+        tree.e === SPRING_SERVICE.length,
+      ]),
+    ).toEqual([['src/Total.kt', 'kotlin.FILE', 0, true]]);
   });
 
   it('names a predicate in a property initializer after the property and keeps backticked constants', () => {

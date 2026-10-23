@@ -1,9 +1,19 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
+import {
+  readJavaFindings,
+  readProjectDuplicateFindings,
+} from '../adapters/reporting/java-reports.mjs';
 import { retargetSentence } from '../../../shared/messages/exception-sentence.mjs';
 import { inModule } from './module-path.mjs';
 import { projectWideFindings } from './project-wide.mjs';
+
+const MODULE_ROOT_LISTS = [
+  'sourceRoots',
+  'testSourceRoots',
+  'kotlinSourceRoots',
+  'kotlinTestSourceRoots',
+];
 
 function prefixOf(projectRoot, moduleDir) {
   return path.relative(projectRoot, moduleDir).replaceAll('\\', '/');
@@ -35,7 +45,7 @@ function readManifest(moduleDir, reportDirectory) {
   return JSON.parse(readFileSync(path.join(moduleDir, reportDirectory, 'manifest.json'), 'utf8'));
 }
 
-export function moduleReport(moduleDir, reportDirectory) {
+function moduleReport(moduleDir, reportDirectory) {
   const reportRoot = path.join(moduleDir, reportDirectory);
   const manifest = readManifest(moduleDir, reportDirectory);
   return {
@@ -47,19 +57,19 @@ export function moduleReport(moduleDir, reportDirectory) {
 function readModule(moduleDir, options) {
   return readJavaFindings(moduleDir, {
     ...options,
+    requireKotlin: false,
     ...moduleReport(moduleDir, options.reportDirectory),
   }).findings;
 }
 
-function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
-  const roots = { sourceRoots: [], testSourceRoots: [] };
+export function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
+  const roots = Object.fromEntries(MODULE_ROOT_LISTS.map((list) => [list, []]));
   for (const moduleDir of moduleDirs) {
     const prefix = prefixOf(projectRoot, moduleDir);
     const manifest = readManifest(moduleDir, reportDirectory);
-    roots.sourceRoots.push(...(manifest.sourceRoots ?? []).map((root) => inModule(prefix, root)));
-    roots.testSourceRoots.push(
-      ...(manifest.testSourceRoots ?? []).map((root) => inModule(prefix, root)),
-    );
+    for (const list of MODULE_ROOT_LISTS) {
+      roots[list].push(...(manifest[list] ?? []).map((root) => inModule(prefix, root)));
+    }
   }
   return roots;
 }
@@ -73,6 +83,7 @@ function moduleProject(projectRoot, moduleDir, { reportDirectory }) {
   return {
     reportRoot: path.join(moduleDir, reportDirectory),
     qualifier: prefix,
+    filePrefix: prefix,
     sourceRoots: roots('sourceRoots'),
     kotlinSourceRoots: roots('kotlinSourceRoots'),
     resourceRoots: roots('resourceRoots'),
@@ -92,11 +103,15 @@ export function readModuleFindings(projectRoot, moduleDirs, options) {
   const roots = mergedRoots(projectRoot, moduleDirs, options.reportDirectory);
   return [
     ...moduleFindings,
+    ...readProjectDuplicateFindings(path.join(projectRoot, options.reportDirectory), {
+      preset: options.preset,
+      projectRoot,
+    }),
     ...projectWideFindings(projectRoot, {
       projects: moduleDirs.map((moduleDir) => moduleProject(projectRoot, moduleDir, options)),
       mergedRoot: path.join(projectRoot, options.reportDirectory),
       manifest: roots,
-      kotlin: false,
+      kotlin: options.preset === 'kotlin',
       policy: options,
     }),
   ];

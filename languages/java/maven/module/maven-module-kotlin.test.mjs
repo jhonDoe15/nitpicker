@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { moduleManifest } from '../maven-build.mjs';
+import { moduleManifest } from './maven-module.mjs';
 import { readReactor } from '../maven-project.mjs';
 
 const roots = [];
@@ -27,9 +27,16 @@ function moduleWith(build, directories) {
   return readReactor(root, pom)[0];
 }
 
-const kotlinPlugin = (configuration = '') =>
+const kotlinPlugin = (sourceDirs = []) =>
   '<plugins><plugin><groupId>org.jetbrains.kotlin</groupId>' +
-  `<artifactId>kotlin-maven-plugin</artifactId>${configuration}</plugin></plugins>`;
+  '<artifactId>kotlin-maven-plugin</artifactId><executions><execution>' +
+  '<goals><goal>compile</goal></goals>' +
+  (sourceDirs.length === 0
+    ? ''
+    : `<configuration><sourceDirs>${sourceDirs
+        .map((directory) => `<sourceDir>${directory}</sourceDir>`)
+        .join('')}</sourceDirs></configuration>`) +
+  '</execution></executions></plugin></plugins>';
 
 function relativeKotlinRoots(module) {
   return moduleManifest({
@@ -40,26 +47,28 @@ function relativeKotlinRoots(module) {
 }
 
 describe('Kotlin source roots of a Maven module', () => {
-  it('adds src/main/kotlin when kotlin-maven-plugin builds the module', () => {
+  it('compiles the Maven source roots when the plugin configures no sourceDirs', () => {
     const module = moduleWith(kotlinPlugin(), ['src/main/java', 'src/main/kotlin']);
 
-    expect(relativeKotlinRoots(module)).toEqual(['src/main/kotlin']);
+    expect([module.kotlin.sourceRoots, relativeKotlinRoots(module)]).toEqual([
+      [path.join(module.basedir, 'src/main/java')],
+      [],
+    ]);
   });
 
   it('reads the sourceDirs of the compile execution, without the Java roots', () => {
-    const sourceDirs =
-      '<executions><execution><goals><goal>compile</goal></goals><configuration><sourceDirs>' +
-      '<sourceDir>src/main/kt</sourceDir><sourceDir>src/main/java</sourceDir>' +
-      '</sourceDirs></configuration></execution></executions>';
-    const module = moduleWith(kotlinPlugin(sourceDirs), ['src/main/java', 'src/main/kt']);
+    const module = moduleWith(kotlinPlugin(['src/main/kt', 'src/main/java']), [
+      'src/main/java',
+      'src/main/kt',
+    ]);
 
     expect(relativeKotlinRoots(module)).toEqual(['src/main/kt']);
   });
 
   it('adds none without the Kotlin plugin, or for a directory that does not exist', () => {
     const plain = moduleWith('', ['src/main/kotlin']);
-    const empty = moduleWith(kotlinPlugin(), ['src/main/java']);
+    const missing = moduleWith(kotlinPlugin(['src/main/kotlin']), ['src/main/java']);
 
-    expect([relativeKotlinRoots(plain), relativeKotlinRoots(empty)]).toEqual([[], []]);
+    expect([relativeKotlinRoots(plain), relativeKotlinRoots(missing)]).toEqual([[], []]);
   });
 });

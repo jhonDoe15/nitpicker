@@ -9,7 +9,7 @@ import {
 } from '../../../typescript/preset/head-policy.mjs';
 import { resolveProjectHeadPolicy } from '../../../../core/conventions/project-head-policy.mjs';
 import { declaresSpring, javaHeadFacts } from './head-facts.mjs';
-import { analyzeJavaSnapshot, readRunnerPolicy } from '../java-runner.mjs';
+import { analyzeJavaSnapshot, readRunnerPolicy, withHeadPolicy } from '../java-runner.mjs';
 
 const { createGitRepository } = useGitFixtures();
 const roots = [];
@@ -92,6 +92,78 @@ describe('javaHeadFacts', () => {
       javaHeadFacts(createGitRepository(kotlinBuild('')).root, { preset: 'kotlin' }).kotlin
         ?.formatter,
     ).toBe('none');
+  });
+
+  describe('for a Maven build', () => {
+    const fakeMaven = path.resolve(import.meta.dirname, '../fixtures/fake-maven.mjs');
+    const spotless = (steps) =>
+      `<project><build><plugins><plugin><groupId>com.diffplug.spotless</groupId><artifactId>spotless-maven-plugin</artifactId><configuration><kotlin>${steps}</kotlin></configuration></plugin></plugins></build></project>`;
+    const mavenProject = (effective) =>
+      createGitRepository({
+        'pom.xml': '<project><modules><module>app</module></modules></project>\n',
+        'effective-pom.xml': effective,
+      }).root;
+
+    it('reads the formatter and the ktfmt style from the effective POM, not from the root pom.xml', () => {
+      const root = mavenProject(spotless('<ktfmt><style>GOOGLE</style></ktfmt>'));
+
+      expect(javaHeadFacts(root, { preset: 'kotlin' }, { maven: fakeMaven }).kotlin).toEqual({
+        formatter: 'ktfmt',
+        build: 'maven',
+        ktfmtStyle: 'google',
+      });
+    });
+
+    it('reads the formatter of a child module from the effective POM of the reactor', () => {
+      const root = mavenProject(
+        `<projects><project><artifactId>parent</artifactId></project>${spotless('<ktfmt><style>META</style></ktfmt>')}</projects>`,
+      );
+
+      expect(javaHeadFacts(root, { preset: 'kotlin' }, { maven: fakeMaven }).kotlin).toEqual({
+        formatter: 'ktfmt',
+        build: 'maven',
+        ktfmtStyle: 'meta',
+      });
+    });
+
+    it('lets the config pin the formatter and keeps the declared style', () => {
+      const root = mavenProject(spotless('<ktfmt><style>META</style></ktfmt>'));
+      const config = { preset: 'kotlin', kotlin: { formatter: 'none' } };
+
+      expect(javaHeadFacts(root, config, { maven: fakeMaven }).kotlin).toEqual({
+        formatter: 'none',
+        build: 'maven',
+        ktfmtStyle: 'meta',
+      });
+    });
+
+    it('reports no formatter for a build that declares none', () => {
+      const root = mavenProject('<project/>');
+
+      expect(javaHeadFacts(root, { preset: 'kotlin' }, { maven: fakeMaven }).kotlin).toEqual({
+        formatter: 'none',
+        build: 'maven',
+      });
+    });
+
+    it('goes through the head policy into the policy both snapshots run with', () => {
+      const root = mavenProject(spotless('<ktlint/>'));
+      const head = resolveProjectHeadPolicy({ preset: 'kotlin' }, root, { maven: fakeMaven });
+      const policy = withHeadPolicy({ preset: 'kotlin' }, head);
+
+      expect([policy.kotlinFormatter, policy.kotlinFacts]).toEqual([
+        'ktlint',
+        { formatter: 'ktlint', build: 'maven' },
+      ]);
+    });
+
+    it('falls back to the build files when Maven cannot print an effective POM', () => {
+      const root = createGitRepository({ 'pom.xml': '<project/>\n' }).root;
+
+      expect(
+        javaHeadFacts(root, { preset: 'kotlin' }, { maven: '/nonexistent/mvn' }).kotlin,
+      ).toEqual({ formatter: 'none' });
+    });
   });
 
   it('reports no Kotlin facts for Java, and Spring only when declared', () => {

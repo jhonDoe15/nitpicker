@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { moduleManifest } from './maven-build.mjs';
-import { readReactor } from './maven-project.mjs';
+import { moduleManifest } from './maven-module.mjs';
+import { readReactor } from '../maven-project.mjs';
 
 const roots = [];
 
@@ -78,4 +78,20 @@ describe('moduleManifest', () => {
       expect([manifest.spring, manifest.springArch]).toEqual([spring, spring]);
     },
   );
+
+  it.each([
+    [true, true],
+    [false, false],
+    [undefined, false],
+  ])('takes Spring declared by the build files as %j: %j', (declared, spring) => {
+    const classpaths = { mainCompile: [], testCompile: [] };
+    const manifest = moduleManifest({
+      module: singleModule(),
+      classpaths,
+      pinned: {},
+      spring: declared,
+    });
+
+    expect(manifest.spring).toBe(spring);
+  });
 });

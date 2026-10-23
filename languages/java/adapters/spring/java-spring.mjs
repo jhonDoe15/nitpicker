@@ -51,6 +51,10 @@ const ENTRY_RULES = [
   },
 ];
 
+export const SPRING_CONFIG_RULE_IDS = ['open-in-view', ...ENTRY_RULES.map(({ rule }) => rule)].map(
+  (rule) => `${SPRING_TOOL}/${rule}`,
+);
+
 function secretProblem(entry) {
   return entry.value.trim().startsWith('${')
     ? `Drop the default from the placeholder of ${entry.key}, so a missing secret fails at startup; it falls back to a literal secret.`

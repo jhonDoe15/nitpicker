@@ -111,7 +111,9 @@ function runConfigured(cli) {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(currentProjectRoot);
-  const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
+  const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot, {
+    maven: cli.environment.NITPICKER_MAVEN,
+  });
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
   const analyzers = configureAnalyzers(presetSet, config, headPolicy);
   for (const note of describeDisableCascade(presetSet, config)) {

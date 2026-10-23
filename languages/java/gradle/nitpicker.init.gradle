@@ -410,7 +410,33 @@ allprojects {
         def archunitIncludes = (findProperty('nitpicker.archunit.includes') ?: '**/*ArchTest.class,**/*ArchitectureTest.class')
             .toString().split(',')*.trim().findAll { it }
 
-        tasks.withType(Test).configureEach { reports.junitXml.outputPerTestCase = true }
+        tasks.withType(Test).configureEach { testTask ->
+            testTask.reports.junitXml.outputPerTestCase = true
+            // The XML names a test after its own display name only. A Kotest test nested in contexts is named
+            // by its whole path on Maven, so the containers between the spec class and the test go to a side file.
+            def nested = []
+            testTask.afterTest { descriptor, result ->
+                def containers = []
+                def parent = descriptor.parent
+                while (parent != null && parent.className == descriptor.className && parent.name != descriptor.className) {
+                    containers.add(0, parent.name)
+                    parent = parent.parent
+                }
+                if (!containers.isEmpty()) {
+                    nested << [className: descriptor.className, name: descriptor.name, containers: containers]
+                }
+            }
+            testTask.doLast {
+                def directory = testTask.reports.junitXml.outputLocation.get().asFile
+                def containersFile = new File(directory, 'nitpicker-containers.json')
+                if (nested.isEmpty()) {
+                    containersFile.delete()
+                } else {
+                    directory.mkdirs()
+                    containersFile.text = groovy.json.JsonOutput.toJson(nested)
+                }
+            }
+        }
 
         def verifyArchunitRan = { String taskName, Collection<File> classesDirs ->
             def archunitClasses = classesDirs.findAll { it.exists() }.collectMany { dir ->
@@ -797,7 +823,7 @@ allprojects {
                 }
                 ranTestTasks().findAll { gradle.taskGraph.hasTask(it) }.each { testTask ->
                     copy {
-                        from(testTask.reports.junitXml.outputLocation) { include 'TEST-*.xml' }
+                        from(testTask.reports.junitXml.outputLocation) { include 'TEST-*.xml', 'nitpicker-containers.json' }
                         into reportDir.get().dir("test-results/${testTask.name}")
                     }
                 }
