@@ -1,11 +1,12 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { finding, findingLine, policy } from '../../diff/execution/test-support/analyzer-findings.mjs';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
 import { expectValidSarif } from '../../diff/reporting/test-support/report-assertions.mjs';
+import { REPORT_FILE_NAMES } from '../../diff/reporting/reporters.mjs';
+import { SNAPSHOT_REPORT_FILE_NAMES } from '../../snapshot/reporters.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mjs';
 
@@ -18,71 +19,64 @@ function subfolderRepository() {
   });
 }
 
-function readSarif(outputRoot) {
-  return JSON.parse(readFileSync(path.join(outputRoot, 'report.sarif'), 'utf8'));
+function readSarif(outputRoot, name) {
+  return JSON.parse(readFileSync(path.join(outputRoot, name), 'utf8'));
 }
 
-function expectSourceRoot(log, repositoryRoot) {
-  expect(log.runs[0].originalUriBaseIds).toEqual({
-    '%SRCROOT%': { uri: `${pathToFileURL(repositoryRoot).href}/packages/my%20app/` },
+function locations(log) {
+  return log.runs[0].results.map((result) => [
+    result.baselineState,
+    result.locations[0].physicalLocation.artifactLocation,
+  ]);
+}
+
+function runInProject(repository, arguments_) {
+  const outputRoot = makeOutputRoot();
+  const output = captureOutput();
+  const analyzers = [fakeAnalyzer()];
+  const exitCode = runCli({
+    arguments_: [...arguments_, '--output', outputRoot],
+    environment: {},
+    currentProjectRoot: path.join(repository.root, 'packages/my app'),
+    analyzers,
+    snapshotAnalyzers: analyzers,
+    stdout: output.stdout,
+    stderr: output.stderr,
   });
+  return { exitCode, outputRoot };
 }
 
 describe('SARIF reports of a project in a repository subfolder', () => {
-  it('marks the new finding of a comparison and roots the paths at the project folder', () => {
+  it('writes repository-relative paths and only the new finding of a comparison', () => {
     const repository = subfolderRepository();
-    const projectRoot = path.join(repository.root, 'packages/my app');
-    writeFiles(projectRoot, {
+    writeFiles(path.join(repository.root, 'packages/my app'), {
       'src/new.ts': findingLine(finding({ identity: 'new-finding' })),
     });
-    const outputRoot = makeOutputRoot();
-    const output = captureOutput();
 
-    const exitCode = runCli({
-      arguments_: ['--base', repository.baseRef, '--output', outputRoot],
-      environment: {},
-      currentProjectRoot: projectRoot,
-      analyzers: [fakeAnalyzer()],
-      stdout: output.stdout,
-      stderr: output.stderr,
-    });
+    const { exitCode, outputRoot } = runInProject(repository, ['--base', repository.baseRef]);
 
     expect(exitCode).toBe(1);
-    const log = readSarif(outputRoot);
-    expectValidSarif(log);
-    expectSourceRoot(log, repository.root);
-    expect(
-      log.runs[0].results.map((result) => [
-        result.baselineState,
-        result.locations[0].physicalLocation.artifactLocation,
-      ]),
-    ).toEqual([['new', { uri: 'src/new.ts', uriBaseId: '%SRCROOT%' }]]);
+    expect(readdirSync(outputRoot).toSorted()).toEqual(REPORT_FILE_NAMES.toSorted());
+    for (const name of ['report.sarif', 'report-baseline.sarif']) {
+      const log = readSarif(outputRoot, name);
+      expectValidSarif(log);
+      expect(log.runs[0].originalUriBaseIds).toBeUndefined();
+      expect(locations(log)).toEqual([
+        ['new', { uri: 'packages/my%20app/src/new.ts', uriBaseId: '%SRCROOT%' }],
+      ]);
+    }
   });
   it('writes every finding of the full run without a baseline state', () => {
     const repository = subfolderRepository();
-    const projectRoot = path.join(repository.root, 'packages/my app');
-    const outputRoot = makeOutputRoot();
-    const output = captureOutput();
 
-    const exitCode = runCli({
-      arguments_: ['--all', '--output', outputRoot],
-      environment: {},
-      currentProjectRoot: projectRoot,
-      snapshotAnalyzers: [fakeAnalyzer()],
-      stdout: output.stdout,
-      stderr: output.stderr,
-    });
+    const { exitCode, outputRoot } = runInProject(repository, ['--all']);
 
     expect(exitCode).toBe(1);
-    const log = readSarif(outputRoot);
+    expect(readdirSync(outputRoot).toSorted()).toEqual(SNAPSHOT_REPORT_FILE_NAMES.toSorted());
+    const log = readSarif(outputRoot, 'report.sarif');
     expectValidSarif(log);
-    expectSourceRoot(log, repository.root);
-    expect(
-      log.runs[0].results.map((result) => [
-        result.ruleId,
-        result.baselineState,
-        result.locations[0].physicalLocation.artifactLocation.uri,
-      ]),
-    ).toEqual([['fake-quality-analyzer/fixture-rule', undefined, 'src/old.ts']]);
+    expect(locations(log)).toEqual([
+      [undefined, { uri: 'packages/my%20app/src/old.ts', uriBaseId: '%SRCROOT%' }],
+    ]);
   });
 });

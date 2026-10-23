@@ -2,56 +2,55 @@ import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { renderTextReport } from './text.mjs';
 import { renderJunitReport } from './junit.mjs';
-import { renderSarifReport } from './sarif.mjs';
+import { renderBaselineSarifReport, renderSarifReport } from './sarif.mjs';
 import { heldFindingsOf } from './report-model.mjs';
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
 
-const JUNIT_REPORT_FILE_NAME = 'report.junit.xml';
+function json(value) {
+  return `${JSON.stringify(value, null, 2)}\n`;
+}
 
-const SARIF_REPORT_FILE_NAME = 'report.sarif';
-
-export const REPORT_FILE_NAMES = [
-  'summary.json',
-  'new-findings.json',
-  'resolved-findings.json',
-  'changed-metrics.json',
-  'held-findings.json',
-  'tool-errors.json',
-  TEXT_REPORT_FILE_NAME,
-  JUNIT_REPORT_FILE_NAME,
-  SARIF_REPORT_FILE_NAME,
+const DIFF_REPORTS = [
+  { name: 'summary.json', render: (report) => json(report.summary) },
+  { name: 'new-findings.json', render: (report) => json(report.newFindings) },
+  { name: 'resolved-findings.json', render: (report) => json(report.resolvedFindings) },
+  { name: 'changed-metrics.json', render: (report) => json(report.changedMetrics) },
+  { name: 'held-findings.json', render: (report) => json(heldFindingsOf(report)) },
+  { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
+  { name: TEXT_REPORT_FILE_NAME, render: renderTextReport },
+  { name: 'report.junit.xml', render: renderJunitReport },
+  { name: 'report.sarif', render: renderSarifReport },
+  { name: 'report-baseline.sarif', render: renderBaselineSarifReport },
 ];
 
-export function clearDiffReports(outputRoot) {
-  for (const reportFileName of REPORT_FILE_NAMES) {
+export const REPORT_FILE_NAMES = DIFF_REPORTS.map(({ name }) => name);
+
+export function clearReports(outputRoot, names) {
+  for (const reportFileName of names) {
     rmSync(path.join(outputRoot, reportFileName), { force: true });
   }
 }
 
-export function writeDiffReports(outputRoot, report, { projectRoot } = {}) {
+export function writeReports(outputRoot, reports, { report, options }) {
   mkdirSync(outputRoot, { recursive: true });
-  writeJson(path.join(outputRoot, 'summary.json'), report.summary);
-  writeJson(path.join(outputRoot, 'new-findings.json'), report.newFindings);
-  writeJson(path.join(outputRoot, 'resolved-findings.json'), report.resolvedFindings);
-  writeJson(path.join(outputRoot, 'changed-metrics.json'), report.changedMetrics);
-  writeJson(path.join(outputRoot, 'held-findings.json'), heldFindingsOf(report));
-  writeJson(path.join(outputRoot, 'tool-errors.json'), report.toolErrors);
+  const written = new Map(reports.map(({ name, render }) => [name, render(report, options)]));
+  for (const [name, contents] of written) {
+    writeFileSync(path.join(outputRoot, name), contents);
+  }
+  return written;
+}
 
-  const text = renderTextReport(report);
-  writeFileSync(path.join(outputRoot, TEXT_REPORT_FILE_NAME), text);
-  writeFileSync(path.join(outputRoot, JUNIT_REPORT_FILE_NAME), renderJunitReport(report));
-  writeFileSync(
-    path.join(outputRoot, SARIF_REPORT_FILE_NAME),
-    renderSarifReport(report, { projectRoot }),
+export function clearDiffReports(outputRoot) {
+  clearReports(outputRoot, REPORT_FILE_NAMES);
+}
+
+export function writeDiffReports(outputRoot, report, { projectPath } = {}) {
+  return writeReports(outputRoot, DIFF_REPORTS, { report, options: { projectPath } }).get(
+    TEXT_REPORT_FILE_NAME,
   );
-  return text;
 }
 
 export function absoluteTextReportPath(outputRoot) {
   return path.resolve(outputRoot, TEXT_REPORT_FILE_NAME);
-}
-
-function writeJson(filePath, value) {
-  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }

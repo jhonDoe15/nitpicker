@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { importClosure } from '../import-closure.mjs';
 import {
@@ -15,6 +15,20 @@ const IGNORED_FOLDERS = new Set(['fixtures', 'test-support', '__tests__', 'e2e',
 const SOURCE_FILE = /\.(?:[cm]?js|py|java|kt|kts|gradle)$/u;
 const TEST_FILE = /\.test\.[cm]?js$/u;
 const KOTLIN_FILE = /kotlin/iu;
+const PYTHON_FILE = /\.py$/u;
+const BLOCK_COMMENT = /\/\*[\s\S]*?\*\//gu;
+const LINE_COMMENT = /(^|[^:])\/\/[^\n]*/gmu;
+const HASH_COMMENT = /#[^\n]*/gu;
+const CATALOG_FILES = [
+  'shared/policy.mjs',
+  'shared/project-rules/fact-rules.mjs',
+  'shared/project-rules/hygiene-rules.mjs',
+  'shared/project-rules/reuse-rules.mjs',
+  'shared/project-rules/size-rules.mjs',
+  'shared/project-rules/source-rules.mjs',
+  'shared/project-rules/test-runtime-rules.mjs',
+  'shared/unused-api/unused-api-policy.mjs',
+];
 const NON_EMITTING_FILES = [
   /^shared\/policy\.mjs$/u,
   /^shared\/checks-catalog\.mjs$/u,
@@ -84,10 +98,34 @@ function emittingFiles(language) {
   return importClosure(entries, repositoryRoot);
 }
 
+function withoutComments(file, text) {
+  return PYTHON_FILE.test(file)
+    ? text.replace(HASH_COMMENT, '')
+    : text.replace(BLOCK_COMMENT, '').replace(LINE_COMMENT, '$1');
+}
+
+export function mentionsRule(file, text, ruleId) {
+  return NEEDLES.get(ruleId).test(withoutComments(file, text));
+}
+
+export function isKotlinPath(file) {
+  return KOTLIN_FILE.test(file);
+}
+
+export function catalogFileOf(ruleId) {
+  const needle = NEEDLES.get(ruleId);
+  return (
+    CATALOG_FILES.find((file) =>
+      needle.test(readFileSync(path.join(repositoryRoot, file), 'utf8')),
+    ) ?? 'shared/policy.mjs'
+  );
+}
+
 function scanLanguage(language) {
   const files = [...emittingFiles(language)]
     .filter(([file]) => !NON_EMITTING_FILES.some((pattern) => pattern.test(file)))
-    .filter(([file]) => language !== 'java' || !KOTLIN_FILE.test(file));
+    .filter(([file]) => language !== 'java' || !KOTLIN_FILE.test(file))
+    .map(([file, text]) => [file, withoutComments(file, text)]);
   return new Map(
     RULES.map(({ id }) => [
       id,

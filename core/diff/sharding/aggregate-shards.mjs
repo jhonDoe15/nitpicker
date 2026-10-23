@@ -11,6 +11,7 @@ import {
   absoluteTextReportPath,
 } from '../reporting/reporters.mjs';
 import { parseArguments } from './arguments.mjs';
+import { runGit } from '../git/repository/command.mjs';
 import { resolveProjectRoot } from '../../tooling/tool-resolution.mjs';
 import { pathToFileURL } from 'node:url';
 import { loadConfig, describeConfigOverrides } from '../../configuration/config.mjs';
@@ -66,8 +67,21 @@ export function aggregateShardReports({
     changedMetrics: sortByToolAndPath(changedMetrics),
     toolErrors: sortByToolAndPath(toolErrors),
   };
-  report.text = writeDiffReports(outputRoot, report, { projectRoot: liveProjectRoot });
+  report.text = writeDiffReports(outputRoot, report, {
+    projectPath: projectPathOf(liveProjectRoot),
+  });
   return report;
+}
+
+function projectPathOf(liveProjectRoot) {
+  if (liveProjectRoot === undefined) {
+    return undefined;
+  }
+  try {
+    return runGit(liveProjectRoot, ['rev-parse', '--show-prefix']).trim();
+  } catch {
+    return undefined;
+  }
 }
 
 function mergeShardEntries(shardReports, analyzerResolutionErrors) {

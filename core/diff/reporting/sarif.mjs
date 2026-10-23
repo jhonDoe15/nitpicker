@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { pathToFileURL } from 'node:url';
 import { comparisonKey } from '../comparison/fingerprint.mjs';
 import { heldFindingsOf } from './report-model.mjs';
+import { joinRepositoryPath, repositoryPath } from '../git/paths.mjs';
 
 const SARIF_SCHEMA_URL = 'https://json.schemastore.org/sarif-2.1.0.json';
 
@@ -9,19 +9,20 @@ const SARIF_FINGERPRINT_KEY = 'nitpickerIdentity/v1';
 
 const SOURCE_ROOT_ID = '%SRCROOT%';
 
-function sourceRootUri(projectRoot) {
-  return `${pathToFileURL(projectRoot).href.replace(/\/$/u, '')}/`;
-}
+const COLUMN_KIND = 'utf16CodeUnits';
 
 function encodePath(findingPath) {
   return findingPath.split('/').map(encodeURIComponent).join('/');
 }
 
-function toSarifResult({ finding, baselineState }, projectRoot) {
-  const artifactLocation = {
-    uri: encodePath(finding.path),
-    ...(projectRoot === undefined ? {} : { uriBaseId: SOURCE_ROOT_ID }),
-  };
+function toSarifResult({ finding, baselineState }, projectPath) {
+  const artifactLocation =
+    projectPath === undefined
+      ? { uri: encodePath(finding.path) }
+      : {
+          uri: encodePath(joinRepositoryPath(repositoryPath(projectPath), finding.path)),
+          uriBaseId: SOURCE_ROOT_ID,
+        };
   const physicalLocation = { artifactLocation };
   if (finding.location !== undefined) {
     physicalLocation.region = {
@@ -52,7 +53,7 @@ function collectSarifRules(findings) {
   return [...rules.values()];
 }
 
-function renderSarifLog({ entries, toolErrors, projectRoot }) {
+function renderSarifLog({ entries, toolErrors, projectPath }) {
   const log = {
     $schema: SARIF_SCHEMA_URL,
     version: '2.1.0',
@@ -65,9 +66,7 @@ function renderSarifLog({ entries, toolErrors, projectRoot }) {
             rules: collectSarifRules(entries.map(({ finding }) => finding)),
           },
         },
-        ...(projectRoot === undefined
-          ? {}
-          : { originalUriBaseIds: { [SOURCE_ROOT_ID]: { uri: sourceRootUri(projectRoot) } } }),
+        columnKind: COLUMN_KIND,
         invocations: [
           {
             executionSuccessful: toolErrors.length === 0,
@@ -77,28 +76,40 @@ function renderSarifLog({ entries, toolErrors, projectRoot }) {
             })),
           },
         ],
-        results: entries.map((entry) => toSarifResult(entry, projectRoot)),
+        results: entries.map((entry) => toSarifResult(entry, projectPath)),
       },
     ],
   };
   return `${JSON.stringify(log, null, 2)}\n`;
 }
 
-export function renderSarifReport(report, { projectRoot } = {}) {
+function newEntries(report) {
+  return report.newFindings.map((finding) => ({ finding, baselineState: 'new' }));
+}
+
+export function renderSarifReport(report, { projectPath } = {}) {
   return renderSarifLog({
-    entries: [
-      ...report.newFindings.map((finding) => ({ finding, baselineState: 'new' })),
-      ...heldFindingsOf(report).map((finding) => ({ finding, baselineState: 'unchanged' })),
-    ],
+    entries: newEntries(report),
     toolErrors: report.toolErrors,
-    projectRoot,
+    projectPath,
   });
 }
 
-export function renderSnapshotSarifReport(report, { projectRoot } = {}) {
+export function renderBaselineSarifReport(report, { projectPath } = {}) {
+  return renderSarifLog({
+    entries: [
+      ...newEntries(report),
+      ...heldFindingsOf(report).map((finding) => ({ finding, baselineState: 'unchanged' })),
+    ],
+    toolErrors: report.toolErrors,
+    projectPath,
+  });
+}
+
+export function renderSnapshotSarifReport(report, { projectPath } = {}) {
   return renderSarifLog({
     entries: report.findings.map((finding) => ({ finding })),
     toolErrors: report.toolErrors,
-    projectRoot,
+    projectPath,
   });
 }

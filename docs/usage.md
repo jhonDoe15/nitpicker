@@ -140,52 +140,52 @@ A comparison run writes these files to `reports/quality/diff/`:
   example a file over a size limit that did not grow); they are allowed, and any increase fails.
 - `tool-errors.json`: the tool errors, whatever the exit code.
 - `report.junit.xml`: JUnit XML for CI test reports.
-- `report.sarif`: SARIF 2.1.0 for code-scanning tools, described below.
+- `report.sarif`: SARIF 2.1.0 with the new findings only, the file to upload to code scanning.
+- `report-baseline.sarif`: SARIF 2.1.0 with the new and the held findings, each marked with its
+  `baselineState`, for tools that read it.
 
 `--all` has no baseline, so it writes `reports/quality/snapshot/` with `report.txt`, `summary.json`,
 `findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml` and
 `report.sarif`.
 
-The summary records every config override, a
-policy hash, the `policyChanges` the head config makes against the base and any `notices`. A notice
-is information that never fails the run. Today there is one kind: changed code files that lie
-outside the roots the preset checks. For TypeScript those are `layout.sourceRoots` and
-`layout.testRoots` (move the files under a root or add their folder to `layout.sourceRoots`); for
-Python, `python.sourceRoots`; for Java and Kotlin, the build's source sets (`src/<set>/java` or
-`src/<set>/kotlin` of a module, or a directory the build file declares). To leave files unchecked,
-list them in `exclude`. Choose another directory
-with `--output <dir>`. Set `NO_COLOR` to disable colored console output.
+The summary records every config override, a policy hash, the `policyChanges` the head config makes
+against the base and any `notices`. A notice is information that never fails the run. Today there is
+one kind: changed code files that lie outside the roots the preset checks. For TypeScript those are
+`layout.sourceRoots` and `layout.testRoots` (move the files under a root or add their folder to
+`layout.sourceRoots`); for Python, `python.sourceRoots`; for Java and Kotlin, the build's source
+sets (`src/<set>/java` or `src/<set>/kotlin` of a module, or a directory the build file declares).
+To leave files unchecked, list them in `exclude`. Choose another directory with `--output <dir>`.
+Set `NO_COLOR` to disable colored console output.
 
 #### SARIF
 
-`report.sarif` has one run with one result per finding. `ruleId` is `<tool>/<rule>`, `level` is
+The SARIF files have one run with one result per finding. `ruleId` is `<tool>/<rule>`, `level` is
 `error` for an enforceable finding and `note` for a descriptive one, and
 `partialFingerprints["nitpickerIdentity/v1"]` is the hash of the finding's comparison key, so a
-consumer matches a finding across runs when its line moves. A tool error makes the run's
-invocation unsuccessful and adds a notification.
+consumer matches a finding across runs when its line moves. A tool error makes the run's invocation
+unsuccessful and adds a notification. Columns are counted in UTF-16 code units
+(`columnKind: "utf16CodeUnits"`).
 
-| Run        | Results                  | `baselineState`                                |
-| ---------- | ------------------------ | ---------------------------------------------- |
-| comparison | `new-findings.json`      | `new`                                          |
-| comparison | `held-findings.json`     | `unchanged`                                    |
-| comparison | `resolved-findings.json` | not written (no `absent` results)              |
-| `--all`    | `findings.json`          | not set (there is no baseline to compare with) |
+| File                    | Run        | Results                                      | `baselineState`    |
+| ----------------------- | ---------- | -------------------------------------------- | ------------------ |
+| `report.sarif`          | comparison | `new-findings.json`                          | `new`              |
+| `report-baseline.sarif` | comparison | `new-findings.json` and `held-findings.json` | `new`, `unchanged` |
+| `report.sarif`          | `--all`    | `findings.json`                              | not set            |
 
-Fixed findings stay out of `results` because most consumers, code scanning among them, read every
-result as a problem in the current code. Other findings that were in both snapshots are in no
-report file, so they are not in the SARIF either. To upload only the new ones, filter by
-`baselineState`:
-`jq '.runs[].results |= map(select(.baselineState == "new"))' report.sarif > new.sarif`.
+GitHub code scanning does not read `baselineState`: every result it receives becomes an open alert.
+So `report.sarif` of a comparison holds only the new findings, and the held ones, which the change
+is allowed to keep, are only in `report-baseline.sarif`. Fixed findings (`resolved-findings.json`)
+are in neither file, since a result is read as a problem in the current code; findings that were in
+both snapshots and are not held are in no report file.
 
-Every location has `uriBaseId: "%SRCROOT%"` and a `uri` relative to the project folder, and the
-run's `originalUriBaseIds` maps `%SRCROOT%` to that folder as a `file://` URI ending in `/`. The
-project folder is the one you ran nitpicker in, so a project in a subfolder of the repository
-(`packages/app`) resolves to `packages/app/src/a.ts`, not `src/a.ts`. Paths are percent-encoded.
+A `uri` is relative to the root of the git repository: the folder of the project inside the
+repository, then the finding's path, percent-encoded, with `uriBaseId: "%SRCROOT%"` naming the
+repository root. A project in `packages/app` reports `packages/app/src/a.ts`, which is how code
+scanning matches a result to a file. The files hold no absolute path, so `originalUriBaseIds` is not
+written. When nitpicker cannot find the repository root (the `aggregate` command outside a git
+checkout), paths stay relative to the project and have no `uriBaseId`.
 
-To upload with `github/codeql-action/upload-sarif`, run nitpicker in the same checkout and keep the
-default `checkout_path` (`${{ github.workspace }}`), which the action uses to relativize absolute
-paths in the file, so the absolute source root becomes a repository-relative one. A job that runs nitpicker in a container that mounts the
-repository elsewhere sets `checkout_path` to that mount point.
+Upload the comparison file in pull requests with `github/codeql-action/upload-sarif`:
 
 ```yaml
 - run: npx nitpicker
@@ -194,7 +194,13 @@ repository elsewhere sets `checkout_path` to that mount point.
   if: always()
   with:
     sarif_file: packages/app/reports/quality/diff/report.sarif
+    category: nitpicker-diff
 ```
+
+Code scanning closes an open alert when a later upload in the same `category` no longer has it, so
+give each kind of run its own category: a `--all` upload on the default branch
+(`reports/quality/snapshot/report.sarif`) goes in another category, such as `nitpicker-all`, or the
+next comparison upload would close the alerts it opened.
 
 ## Exit codes
 
