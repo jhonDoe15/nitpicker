@@ -57,8 +57,17 @@ describe('renderConsoleSummary', () => {
       { color: false },
     );
 
-    expect(summary).toContain(`#${TROUBLESHOOTING_ANCHORS.analyzerTimeout}`);
-    expect(summary).not.toContain('Help with tool errors');
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        'No new enforceable violations, but the run is incomplete:',
+        '✖ 1 tool error',
+        `  coverage (head): coverage timed out. See ${troubleshootingUrl(TROUBLESHOOTING_ANCHORS.analyzerTimeout)}`,
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
+    );
   });
   it('keeps the green line when there are no violations and no tool errors', () => {
     const summary = renderConsoleSummary({ newFindings: [], toolErrors: [] }, { color: false });

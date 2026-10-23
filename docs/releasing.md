@@ -80,7 +80,7 @@ Work from a clean checkout of `main` with full history.
    ```sh
    rm -rf release-assets && mkdir release-assets && npm pack --pack-destination release-assets
    (cd release-assets && shasum -a 256 nitpicker-*.tgz > SHA256SUMS)
-   npm run --silent changelog:section -- <new-version> > release-assets/notes.md
+   node core/cli.mjs changelog <new-version> > release-assets/notes.md
    gh release create v<new-version> release-assets/nitpicker-*.tgz release-assets/SHA256SUMS \
      --verify-tag --notes-file release-assets/notes.md
    ```
@@ -94,7 +94,7 @@ Work from a clean checkout of `main` with full history.
    release commit on `main`. It creates the tag `v<version>` from that commit's `package.json`,
    attaches the tarball and `SHA256SUMS`, and takes its notes from
    `.github/release-notes/v<version>.md`, which must be on `main` first, followed by the version's
-   `CHANGELOG.md` entry under a "Changes" heading (`npm run changelog:section -- <version>` prints
+   `CHANGELOG.md` entry under a "Changes" heading (`node core/cli.mjs changelog <version>` prints
    it; the run fails when the entry is missing). Write the notes without personal names: generated
    notes credit PR authors.
 

@@ -177,6 +177,7 @@ nitpicker aggregate --input-root <dir> --shard-count <n>
           [--output <dir>] [--policy-root <dir>]
 nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>]
+nitpicker changelog [<version>]
 ```
 
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
@@ -201,6 +202,9 @@ nitpicker cache publish [--analyzer <name>]...
 - `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
   cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
   everything was uploaded and 2 otherwise.
+- `nitpicker changelog [<version>]`: print what changed in a version, from the `CHANGELOG.md` that
+  ships in the package. Without a version it prints the installed one; `Unreleased` prints the
+  changes not released yet. Exits 2 when the changelog has no entry for that version.
 
 ### Findings cache
 

@@ -32,6 +32,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Install the dependencies that nitpicker changelog loads
+        run: npm ci --ignore-scripts
       - name: Check the commit and read the version
         id: version
         env:
@@ -51,7 +53,7 @@ jobs:
           git show "origin/main:.github/release-notes/$TAG.md" > notes.md 2>/dev/null || cp ".github/release-notes/$TAG.md" notes.md
           {
             printf '\n## Changes\n\n'
-            node scripts/changelog-section.mjs "${TAG#v}"
+            node core/cli.mjs changelog "${TAG#v}"
           } >> notes.md
       - name: Create the release
         env:
