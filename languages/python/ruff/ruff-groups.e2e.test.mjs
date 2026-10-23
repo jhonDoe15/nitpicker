@@ -6,7 +6,7 @@ import { RUFF_CONFIG, isStableRule } from '../adapters/configuration/python-ruff
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const ruff = process.env.NITPICKER_RUFF ?? 'ruff';
-const LISTED_GROUPS = /^(?:G|N|ERA|ARG|PT|S|TRY|FBT)\d+$/u;
+const LISTED_GROUPS = /^(?:G|N|ERA|ARG|PT|S|TRY|FBT|DTZ)\d+$/u;
 const DECLINED = new Set([
   'FBT003',
   'PT009',
