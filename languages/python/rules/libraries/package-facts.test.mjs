@@ -23,7 +23,12 @@ describe('whether the project is a published package', () => {
       `[tool.poetry]\nname = "shop"\n${BACKEND}`,
       true,
     ],
-    ['no build backend', '[project]\nname = "shop"\n', false],
+    ['no [build-system]', '[project]\nname = "shop"\n', false],
+    [
+      'a [build-system] without a backend, which builds with setuptools',
+      '[project]\nname = "shop"\n[build-system]\nrequires = ["setuptools"]\n',
+      true,
+    ],
     ['no name', `[project]\nversion = "1"\n${BACKEND}`, false],
     [
       'the classifier that blocks uploads',

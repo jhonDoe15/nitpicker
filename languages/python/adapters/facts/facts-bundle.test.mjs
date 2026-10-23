@@ -190,6 +190,7 @@ describe('the Python facts bundle', () => {
       text: 'function|body',
       key: expect.any(String),
       entry: false,
+      package: 'src/shop',
     });
   });
 

@@ -1,43 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { test } from '../test-runs/test-step.mjs';
-import { createToolContext } from '../python-tools.mjs';
 import { pythonE2eEnabled } from '../e2e/test-support/python-e2e-support.mjs';
-import { readConsoleReport } from './console-output.mjs';
+import { createConsoleProjects } from './test-support/console-project.mjs';
 
-const roots = [];
+const { consoleReport, cleanup } = createConsoleProjects();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function directoryWith(prefix, files) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
-  roots.push(root);
-  for (const [file, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), content);
-  }
-  return root;
-}
-
-function consoleReport(files) {
-  const root = directoryWith('nitpicker-pytest-report-', { 'pyproject.toml': '', ...files });
-  const reportRoot = directoryWith('nitpicker-pytest-out-', {});
-  const context = createToolContext({
-    projectRoot: root,
-    liveRoot: root,
-    settings: { environment: 'path', testRunner: 'pytest', sourceRoots: ['src'] },
-    reportRoot,
-  });
-  test(context, {});
-  return { root, report: readConsoleReport(reportRoot).report };
-}
+afterEach(cleanup);
 
 const SHOP_TEST = `import logging
 import sys

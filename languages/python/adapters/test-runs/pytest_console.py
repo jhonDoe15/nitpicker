@@ -2,16 +2,13 @@ import inspect
 import json
 import logging
 import os
-import re
 import sys
 import warnings
 
 import pytest
+from pytest_console_text import HAS_TEXT, stderr_messages
 
 REPORT_VARIABLE = "NITPICKER_CONSOLE_REPORT"
-FRAME = re.compile(r'^\s+File ".*", line \d+')
-TRACEBACK_HEADER = "Traceback (most recent call last):"
-HAS_TEXT = re.compile(r"[A-Za-z0-9]")
 STDERR_FD = 2
 SHARED_SCOPES = {"session", "package", "module", "class"}
 STATE = {
@@ -20,6 +17,7 @@ STATE = {
     "quiet_logs": False,
     "output": {},
     "claimed": {},
+    "emitted": {},
     "streams": [],
     "fixtures": [],
     "capture": None,
@@ -65,15 +63,41 @@ def reaches_root(logger):
     return True
 
 
-def record_log(logger, record):
-    key = STATE["current"]
-    if key is None or STATE["quiet_logs"] or printed_to_stderr(logger, record):
-        return
+def note_emitted(key, text, reported):
+    line = next((line.strip() for line in str(text).splitlines() if HAS_TEXT.search(line)), "")
+    if line:
+        STATE["emitted"].setdefault(key, []).append([line, reported])
+
+
+def copied(key, message):
+    matches = [entry for entry in STATE["emitted"].get(key, []) if entry[0] in message]
+    fresh = next((entry for entry in matches if not entry[1]), None)
+    if fresh is not None:
+        fresh[1] = True
+    return fresh is None and bool(matches)
+
+
+def log_message(logger, record):
+    if printed_to_stderr(logger, record):
+        return record.getMessage(), None
     message = f"{record.levelname} {record.name}: {record.getMessage()}"
     if record.exc_info and record.exc_info[1] is not None:
         error = record.exc_info[1]
         message = f"{message} {type(error).__name__}: {error}"
-    add_message(key, message)
+    return record.getMessage(), message
+
+
+def record_log(logger, record):
+    key = STATE["current"]
+    if key is None or STATE["quiet_logs"]:
+        return
+    try:
+        text, message = log_message(logger, record)
+    except Exception:
+        return
+    note_emitted(key, text, message is not None)
+    if message is not None:
+        add_message(key, message)
 
 
 def recording_call_handlers(self, record):
@@ -98,40 +122,6 @@ def add_message(nodeid, message):
     STATE["output"].setdefault(nodeid, []).append(message)
 
 
-def is_unindented(line):
-    return line != "" and not line[0].isspace() and line[0] not in ")]}"
-
-
-def call_blocks(text):
-    blocks, current = [], []
-    for line in text.splitlines():
-        if is_unindented(line) and current:
-            blocks.append(current)
-            current = []
-        current.append(line)
-    return blocks + ([current] if current else [])
-
-
-def block_message(lines):
-    kept, skip_source = [], False
-    for line in lines:
-        if FRAME.match(line):
-            skip_source = True
-            continue
-        if skip_source and line[:1].isspace():
-            skip_source = False
-            continue
-        skip_source = False
-        if HAS_TEXT.search(line) and line.strip() != TRACEBACK_HEADER:
-            kept.append(line.strip())
-    return " ".join(kept)
-
-
-def stderr_messages(text):
-    messages = [block_message(block) for block in call_blocks(text)]
-    return [message for message in messages if message]
-
-
 def unclaimed(nodeid, message):
     claimed = STATE["claimed"].get(nodeid, [])
     if message in claimed:
@@ -144,7 +134,7 @@ def add_stderr(report, title):
     for name, content in report.sections:
         if name == title:
             for message in stderr_messages(content):
-                if unclaimed(report.nodeid, message):
+                if unclaimed(report.nodeid, message) and not copied(report.nodeid, message):
                     add_message(report.nodeid, message)
 
 
@@ -169,44 +159,41 @@ def fixture_key(fixturedef):
     if ".py" in fixturedef.baseid:
         return fixturedef.baseid
     try:
-        source = inspect.getsourcefile(fixturedef.func)
-    except TypeError:
+        source = inspect.getsourcefile(inspect.unwrap(fixturedef.func))
+    except (TypeError, ValueError):
         source = None
     return relative_to_root(source) if source else ""
 
 
+def warning_log():
+    log = getattr(getattr(warnings, "_showwarnmsg_impl", None), "__self__", None)
+    return log if isinstance(log, list) else None
+
+
 def enter_fixture(key):
-    caught = warnings.catch_warnings(record=True)
-    STATE["fixtures"].append(
-        (STATE["current"], STATE["quiet_logs"], captured_stderr(), caught, caught.__enter__())
-    )
+    log = warning_log()
+    start = 0 if log is None else len(log)
+    STATE["fixtures"].append((STATE["current"], STATE["quiet_logs"], captured_stderr(), log, start))
     STATE["current"], STATE["quiet_logs"] = key, False
 
 
-def claim(owner, key, messages):
+def claim(owner, key, messages, printed):
     for message in messages:
-        add_message(key, message)
+        if not (printed and copied(key, message)):
+            add_message(key, message)
         if owner is not None:
             STATE["claimed"].setdefault(owner, []).append(message)
 
 
 def leave_fixture():
     key = STATE["current"]
-    owner, quiet, before, caught, recorded = STATE["fixtures"].pop()
-    caught.__exit__(None, None, None)
+    owner, quiet, before, log, start = STATE["fixtures"].pop()
     after = captured_stderr()
     if before is not None and after is not None and after.startswith(before):
-        claim(owner, key, stderr_messages(after[len(before) :]))
-    claim(owner, key, [warning_text(warning.category, warning.message) for warning in recorded])
+        claim(owner, key, stderr_messages(after[len(before) :]), True)
+    recorded = log[start:] if log is not None and warning_log() is log else []
+    claim(owner, key, [warning_text(warning.category, warning.message) for warning in recorded], False)
     STATE["current"], STATE["quiet_logs"] = owner, quiet
-    for warning in recorded:
-        warnings.warn_explicit(
-            warning.message,
-            warning.category,
-            warning.filename,
-            warning.lineno,
-            source=warning.source,
-        )
 
 
 @pytest.hookimpl(hookwrapper=True, tryfirst=True)
@@ -245,6 +232,18 @@ def pytest_fixture_setup(fixturedef, request):
     finally:
         leave_fixture()
         fixturedef.addfinalizer(lambda: enter_fixture(key))
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    caplog = (getattr(item, "funcargs", None) or {}).get("caplog")
+    try:
+        records = [] if caplog is None else caplog.get_records(call.when)
+        for record in records:
+            note_emitted(item.nodeid, record.getMessage(), True)
+    except Exception:
+        pass
+    yield
 
 
 def pytest_runtest_logfinish(nodeid, location):

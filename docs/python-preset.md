@@ -880,7 +880,11 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `assertFalse(x.wait(...))`, and the first call with a delay (`timeout=`, `asyncio.wait_for(x,
   t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or `assertRaises`
   of `TimeoutError`, `queue.Empty` or `TimeoutExpired`. Such a test passes only after the full
-  delay. A delay of `0` or `None` is not reported. `real-clock-in-test` and `random-in-test` skip a
+  delay. A delay of `0` or `None` is not reported. Only a real wait counts: a `wait`, `wait_for`,
+  `get`, `join`, `acquire`, `result` or `communicate` call, a `timeout` or `fail_after` scope, or a
+  `subprocess.run`-style call with a `timeout`. A call on a name the test binds to a mock (`Mock()`,
+  `MagicMock()`, `patch(...)`, or a name whose `side_effect` or `return_value` it sets) waits for
+  nothing, and `assert not proc.wait(timeout=5)` on a `Popen` checks an exit code of 0. `real-clock-in-test` and `random-in-test` skip a
   file that uses `freezegun`, `time_machine`, a patched clock, a seed or a `random.Random(...)`, and
   look at the fake per test function, not per file. `network-in-test` skips files that use
   `responses`, `respx`, `requests_mock` and similar or patch the client, and tests under
@@ -917,7 +921,9 @@ members is not reported.
   top-level `exceptions` as `doc-comment-content`. Findings have the tool `facts` and the identity
   `doc-comment:<qualified name>:restating` or `:long`, so a growing docstring keeps its identity.
   The Python preset does not ban comments or docstrings; only these two contents are checked, on
-  the docstring of every function, method and class (not modules). A docstring restates the name
+  the docstring of every function, method and class (not modules) of production code; test files
+  are left alone, as TypeScript test files are, where a docstring that names what the test checks
+  is expected. A docstring restates the name
   when every word of its description, apart from the filler words of the shared rule (`the`,
   `returns`, `function`, `method`, `class`, ...), is a word of the name or a plural, `-ed` or `-ing`
   form of one (`load_users`: "Returns the loaded user."), and nothing else in the docstring says
@@ -934,12 +940,30 @@ members is not reported.
   as `.. note::` count; only code examples do not: a reST literal block after a line ending in `::`,
   the body of a code directive (`.. code-block::`, `.. code::`, `.. sourcecode::`, `.. doctest::`,
   `.. testcode::`, `.. testoutput::`), fenced code, and a doctest block (`>>>` lines up to the next
-  blank line).
+  blank line). The version directives (`.. versionadded::`, `.. versionchanged::`,
+  `.. versionremoved::`, `.. deprecated::`) and their bodies do not count either, like JSDoc's
+  `@since` and `@deprecated`, and keep a restating summary when they have text.
 - `sibling-copy-edit`, the shared rule over the facts of both checkouts: on the head run of a
   change the facts step also scans the base checkout, and a module-level function or class of at
   least 20 tokens that the change edits so that it drifts from a same-named copy in another module,
   while that copy is left as it was, is reported. A file the change moves is matched to its base
-  path through the moves file the head run receives.
+  path through the moves file the head run receives. Copies are compared within one top-level
+  package (`src/shop`, or each Django app), as TypeScript compares within one workspace package, and
+  a name a framework requires (`Command`, `Migration`, `Meta`, `Config`), every definition of a
+  Django convention module (`admin.py`, `apps.py`, `urls.py`, `signals.py`, `settings`,
+  `wsgi.py`, `asgi.py`, `templatetags/`, `management/commands/`) and an entry point are never
+  compared.
+- `test-only-export`, `duplicate-definition` and `exported-name-collision` read the same scan. A
+  module Django loads by convention (the list above, in a project with `manage.py` or a Django
+  dependency) and its names are production code; so is what a migration, a settings string
+  (`INSTALLED_APPS`, `MIDDLEWARE`, any dotted path such as `"shop.models.upload_to"`) or
+  `importlib.import_module("app.plugins.csv")` names, and every module of a package an f-string
+  such as `f"app.plugins.{name}"` loads. Migrations are scanned for those references only, never
+  compared as copies. `@overload` stubs are folded into the implementation, as TypeScript folds
+  overload signatures, so two stores with the same overloads and different bodies are no copies.
+  An import inside an `if`, `try` or function (a platform gate, an `ImportError` fallback, a local
+  import) is an alternative implementation, not a collision, as a `require` in a branch is in
+  TypeScript; it still counts as a use.
 - `singular-and-plural-field` (TypeScript: `nitpicker/no-singular-and-plural-prop`): an optional
   `tag: T` beside an optional `tags` whose element type is `T` (`list`, `Sequence`, `set`,
   `frozenset`, `Iterable`, `tuple[T, ...]` and the `typing` names; `Optional`, `| None`,
@@ -951,7 +975,9 @@ members is not reported.
   class whose base is a project class of one of those kinds counts too (followed through imports,
   up to 10 bases deep). A value that only builds the field is not a default: `Field(...)` or
   `Field(description=...)` without a default, `field(metadata=...)` and `attr.ib()` without
-  `default`, `default_factory` or `factory` leave the field required. Unannotated parameters are not compared. Common irregular plurals of the last word
+  `default`, `default_factory` or `factory` leave the field required. An unannotated
+  `x = attr.ib(default=...)` of an attrs class is a field too, typed by its `type=` argument; two
+  untyped ones are compared by name alone. Unannotated parameters are not compared. Common irregular plurals of the last word
   count (`child`/`children`, `index`/`indices`, `person`/`people`, `sub_index`/`sub_indices`), and
   a string annotation (`tags: "list[str]"`) is read as the annotation it spells.
 - `exhaustive-enum-predicate` (TypeScript: `nitpicker/exhaustive-union-predicate`): an `or` chain of
@@ -999,8 +1025,8 @@ members is not reported.
   `[options.entry_points]` of `setup.cfg`, and the `name = module:function` strings of `setup.py`
   (all read once by `rules/libraries/package-facts.mjs`, which never runs `setup.py`; entry points
   built at run time are not seen). Tests do not count as callers, unless the project is a
-  published package (a `[project]` or poetry `name` with a `[build-system] build-backend` and no
-  `package-mode = false`, a `setup.cfg` `[metadata] name`, or a `setup.py` whose `setup()` gets a
+  published package (a `[project]` or poetry `name` with a `[build-system]` table, whose missing
+  `build-backend` means setuptools as PEP 517 says, and no `package-mode = false`, a `setup.cfg` `[metadata] name`, or a `setup.py` whose `setup()` gets a
   `name`, in each case without a `Private :: Do Not Upload` classifier): then its own tests count,
   as in the TypeScript preset. `setup.cfg` is read leniently, as for the pytest settings, so a
   duplicated key in another tool's section is no error; a project file that exists but cannot be
@@ -1032,15 +1058,24 @@ is defined.
   logged at `WARNING` or above (through any logger; the exception's type and message are added for
   `logger.exception`), or raised as a warning (`DeprecationWarning: ...`). Standard output
   (`print`) never counts, and neither does a log record of a test that takes the `caplog` fixture,
-  because that test asserts on its logs. A logger with its own handler on standard error is reported
-  once, from standard error, also in a test that takes `capsys`. Standard error printed while pytest
+  because that test asserts on its logs, nor the standard error copy of a record `caplog` captured
+  (a project handler from `dictConfig`, or loguru's default sink), as a mocked console is silent in
+  TypeScript. One record is one message: a logger with its own handler on standard error is reported
+  once, from standard error, also in a test that takes `capsys`, and so is a record that reaches
+  standard error a second way (a `QueueListener`, a stream opened on `/dev/stderr`, a handler that
+  writes with `click.echo(err=True)`, loguru records passed on to `logging`). A log call whose
+  message cannot be formatted is left to the project's handlers and `logging.raiseExceptions`; the
+  plugin never makes it fail a test. Standard error printed while pytest
   imports and collects a file is given to that file with no test name; a warning raised then is
   given to the file the warning points at (its `location`, which can be the production module that
   warns), or to the project root when that file is outside the project. What a fixture with a
   wider scope than a function (`session`, `package`, `module`, `class`) logs, prints to standard
   error or warns while it sets up or tears down is given to the file that defines it (a
-  `conftest.py`, or the test module, with the class name for a fixture defined in a class), not to
-  the test that happened to run first, so a new test that uses it adds no message. The TypeScript
+  `conftest.py`, or the test module, with the class name for a fixture defined in a class; a fixture
+  a plugin wraps, such as a `pytest-asyncio` one, by the function under `__wrapped__`), not to
+  the test that happened to run first, so a new test that uses it adds no message. Its warnings
+  stay where pytest recorded them and are only charged to that file: the plugin does not raise
+  them again, so `filterwarnings` entries that name a module keep matching. The TypeScript
   preset does the same with Vitest, which gives the output of a `beforeAll` hook to its file or
   suite; Java findings name the module, not the test class, so they do not move either.
 - **Logging.** The plugin does not add a handler: it reads each record as a logger hands it to its

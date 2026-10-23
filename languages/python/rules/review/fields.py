@@ -26,6 +26,7 @@ RECORD_DECORATORS = {
 RECORD_BASES = {"BaseModel", "BaseSettings", "NamedTuple"}
 TYPED_DICT = "TypedDict"
 FIELD_FACTORIES = {"field", "Field", "ib", "attrib"}
+ATTRS_FIELDS = {"ib", "attrib"}
 FACTORY_KEYWORDS = {"default_factory", "factory"}
 MAX_BASE_DEPTH = 10
 COLLECTIONS = {
@@ -87,12 +88,18 @@ def plurals_of(name):
     return list(dict.fromkeys(plurals))
 
 
+def same_element(annotation, plural):
+    if annotation is None or plural is None:
+        return annotation is None and plural is None
+    element = element_of(plural)
+    return element is not None and same_node(element, unwrapped(annotation))
+
+
 def singular_and_plural(inputs):
     pairs = []
     for singular, annotation in inputs.items():
         for plural in plurals_of(singular):
-            element = element_of(inputs[plural]) if plural in inputs else None
-            if element is not None and same_node(element, unwrapped(annotation)):
+            if plural in inputs and same_element(annotation, inputs[plural]):
                 pairs.append((singular, plural))
     return pairs
 
@@ -166,11 +173,30 @@ def has_default(value):
     )
 
 
+def attrs_field(statement):
+    value = statement.value
+    if not (
+        len(statement.targets) == 1
+        and isinstance(statement.targets[0], ast.Name)
+        and isinstance(value, ast.Call)
+        and last_segment(value.func) in ATTRS_FIELDS
+    ):
+        return None
+    if not has_default(value):
+        return None
+    typed = next((keyword.value for keyword in value.keywords if keyword.arg == "type"), None)
+    return statement.targets[0].id, typed
+
+
 def optional_fields(node, kind):
     typed_dict = kind == TYPED_DICT
     total_false = is_total_false(node)
     fields = {}
     for statement in node.body:
+        untyped = attrs_field(statement) if isinstance(statement, ast.Assign) else None
+        if untyped is not None:
+            fields[untyped[0]] = untyped[1]
+            continue
         if not isinstance(statement, ast.AnnAssign) or not isinstance(
             statement.target, ast.Name
         ):

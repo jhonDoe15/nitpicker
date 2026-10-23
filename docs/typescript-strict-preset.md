@@ -511,7 +511,9 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
 - `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
   whose body is one `return` (or an expression body) of a call that passes exactly its own
   parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`; an
-  `async` one may `await` the call) is flagged when its parameter types and return type are identical to the callee's, so a wrapper that
+  `async` one may `await` the call, and is flagged only when the callee is itself declared `async`,
+  since an `async` wrapper turns a synchronous throw of any other callee into a rejection, as the
+  Python preset decides) is flagged when its parameter types and return type are identical to the callee's, so a wrapper that
   brands, narrows or widens a type passes. The callee must be a module-level binding or an import
   that the file could re-export or the caller could import directly. Not flagged: member callees
   (`repo.find(id)`, `Math.abs(x)`, `api.get(url)`), callees that are parameters or closure variables

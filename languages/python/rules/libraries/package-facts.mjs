@@ -64,7 +64,7 @@ function pyprojectPublished(pyproject) {
   const classifiers = Array.isArray(table?.classifiers) ? table.classifiers : [];
   return (
     table !== undefined &&
-    typeof pyproject['build-system']?.['build-backend'] === 'string' &&
+    typeof pyproject['build-system'] === 'object' &&
     !classifiers.includes(PRIVATE_CLASSIFIER)
   );
 }
