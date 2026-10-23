@@ -14,12 +14,12 @@ forms below from the start; the gate is a backstop.
 
 1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests or compile
    errors make the gate exit 2.
-2. Format with the formatter the run names under "Following this project's conventions": the
-   project's own formatter task, or google-java-format 1.25.2 with `--replace` (plus `--aosp` for
-   the aosp style), or palantir-java-format with `--palantir --replace`. When the run says no
-   Java formatter runs, there is nothing to run; keep the layout by hand. `npx nitpicker --fix`
-   does not touch Java.
-3. Run `npx nitpicker` as a background command you wait on, without a pipe: you need its exit
+2. Format with `npx nitpicker --fix` (step 3 runs it): it rewrites the changed Java files with the
+   formatter the run names under "Following this project's conventions" (google-java-format
+   1.25.2, `--aosp` for the aosp style, or palantir-java-format) and lists them under "Fixed
+   files:". When the run says no Java formatter runs, it leaves the files alone; keep the layout by
+   hand. Re-read a file it lists before you edit it again.
+3. Run `npx nitpicker --fix` as a background command you wait on, without a pipe: you need its exit
    code. It runs the build on the merge base and on head and takes minutes. It uses the project's
    `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the PATH
    (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both).

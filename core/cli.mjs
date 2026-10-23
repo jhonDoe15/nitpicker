@@ -209,10 +209,15 @@ function fixIfRequested(cli, repositoryRoot, base) {
     baseRef: base.baseRef,
     executeFixCommand: cli.executeFixCommand,
     headPolicy: cli.headPolicy,
+    config: cli.config,
+    environment: cli.environment,
   });
   cli.stdout.write(
     `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,
   );
+  if (fixResult.notes?.length > 0) {
+    cli.stdout.write(`Fix notes:\n${fixResult.notes.map((note) => `  ${note}\n`).join('')}`);
+  }
   return fixResult;
 }
 
