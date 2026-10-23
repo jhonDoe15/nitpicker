@@ -67,12 +67,16 @@ function isTranslationKey(node) {
   );
 }
 
-function isCountable(node, value) {
-  const { parent } = node;
-  if (value === undefined || value.length < MINIMUM_LENGTH || !ALPHANUMERIC.test(value)) {
+function isCandidateText(value) {
+  if (value === undefined || value.length < MINIMUM_LENGTH) {
     return false;
   }
-  if (isIdiomaticText(value)) {
+  return ALPHANUMERIC.test(value) && !isIdiomaticText(value);
+}
+
+function isCountable(node, value) {
+  const { parent } = node;
+  if (!isCandidateText(value)) {
     return false;
   }
   if (MODULE_SOURCE_PARENTS.has(parent.type) || SKIPPED_PARENTS.has(parent.type)) {
