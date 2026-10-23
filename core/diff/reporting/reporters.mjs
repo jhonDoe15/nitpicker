@@ -7,7 +7,7 @@ import { heldFindingsOf } from './report-model.mjs';
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
 
-function json(value) {
+export function json(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
@@ -26,9 +26,18 @@ const DIFF_REPORTS = [
 
 export const REPORT_FILE_NAMES = DIFF_REPORTS.map(({ name }) => name);
 
+function reportPath(outputRoot, name) {
+  const root = path.resolve(outputRoot);
+  const full = path.resolve(root, name);
+  if (!full.startsWith(`${root}${path.sep}`)) {
+    throw new Error(`Report file ${name} is outside ${root}`);
+  }
+  return full;
+}
+
 export function clearReports(outputRoot, names) {
   for (const reportFileName of names) {
-    rmSync(path.join(outputRoot, reportFileName), { force: true });
+    rmSync(reportPath(outputRoot, reportFileName), { force: true });
   }
 }
 
@@ -36,7 +45,7 @@ export function writeReports(outputRoot, reports, { report, options }) {
   mkdirSync(outputRoot, { recursive: true });
   const written = new Map(reports.map(({ name, render }) => [name, render(report, options)]));
   for (const [name, contents] of written) {
-    writeFileSync(path.join(outputRoot, name), contents);
+    writeFileSync(reportPath(outputRoot, name), contents);
   }
   return written;
 }
