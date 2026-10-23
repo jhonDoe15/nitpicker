@@ -15,7 +15,7 @@ import {
   GENERIC_NAME_WORDS,
   LOG_LEVEL_METHODS,
 } from '../../../../shared/naming/smell-words.mjs';
-import { DISCRIMINANT_KEYS } from '../../../typescript/preset/eslint-plugin/rules/code-smells/duplicate-string-literals.mjs';
+import * as literalExemptions from '../../../../shared/literals/repeated-literal-exemptions.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const fixture = path.join(import.meta.dirname, '..', 'fixtures', 'code-smells-project', 'src');
@@ -103,11 +103,32 @@ describe('the Java code smell ruleset', () => {
     },
   );
 
-  it('skips the discriminant values the TypeScript rule skips, after a map key', () => {
+  it('reads the repeated-literal exemptions every preset shares', () => {
     const xpath = xpathOf('RepeatedStringLiteral');
-    const listed = /\[self::StringLiteral\]\/@ConstValue = \(([^)]*)\)/.exec(xpath)[1];
+    const value = (variable) => new RegExp(`\\$${variable} := ([^,]+),`).exec(xpath)?.[1];
+    const listed = (variable) =>
+      new RegExp(`\\$${variable} := \\(([^)]*)\\)`)
+        .exec(xpath)?.[1]
+        .split(', ')
+        .map((word) => word.slice(1, -1));
 
-    expect(listed.split(', ').map((word) => word.slice(1, -1))).toEqual([...DISCRIMINANT_KEYS]);
+    expect({
+      minimum: Number(value('minimum')),
+      maximum: Number(value('maximum')),
+      idioms: listed('idioms'),
+      mime: value('mime')?.slice(1, -1),
+      time: /\$time := '([^']*)'/.exec(xpath)?.[1],
+      translations: listed('translations'),
+      discriminants: listed('discriminants'),
+    }).toEqual({
+      minimum: literalExemptions.MINIMUM_LENGTH,
+      maximum: literalExemptions.MAXIMUM_USES,
+      idioms: literalExemptions.IDIOMATIC_TEXTS,
+      mime: literalExemptions.MIME_TYPE_PATTERN,
+      time: literalExemptions.TIME_FORMAT_PATTERN,
+      translations: literalExemptions.TRANSLATION_CALLS,
+      discriminants: literalExemptions.DISCRIMINANT_KEYS,
+    });
   });
 
   it('leaves to the Spring rules exactly the writes and flushes they report', () => {

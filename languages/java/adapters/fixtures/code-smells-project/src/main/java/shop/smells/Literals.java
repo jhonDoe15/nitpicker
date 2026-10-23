@@ -2,6 +2,7 @@ package shop.smells;
 
 public final class Literals {
   private static final String SHIPPED = "shipped";
+  private static final String REFUNDED = "refunded";
 
   public String label(String status) {
     String first = "pending order";
@@ -43,5 +44,27 @@ public final class Literals {
         java.util.Map.of("type", "order-placed", "customer", "second"),
         java.util.Map.of("type", "order-placed", "customer", "third"),
         last);
+  }
+
+  public String formats(java.util.Map<String, String> headers) {
+    headers.put("Accept", "application/json");
+    headers.put("Content-Type", "application/json");
+    headers.put("X-Format", "application/json");
+    String date = "%Y-%m-%d" + "%Y-%m-%d" + "%Y-%m-%d";
+    String method = "DELETE" + "DELETE" + "DELETE";
+    String day = "2024-01-01" + "2024-01-01";
+    return date + method + day + "2024-01-01"; // violation: RepeatedStringLiteral
+  }
+
+  public String translated() {
+    return t("orders.heading") + t("orders.heading") + t("orders.heading");
+  }
+
+  public String refunds() {
+    return "refunded".trim() + "refunded".strip(); // violation: RepeatedStringLiteral
+  }
+
+  private static String t(String key) {
+    return key + REFUNDED;
   }
 }

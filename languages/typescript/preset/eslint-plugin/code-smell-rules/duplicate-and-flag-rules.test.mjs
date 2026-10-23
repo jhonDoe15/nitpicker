@@ -38,6 +38,11 @@ ruleTester.run('no-duplicate-string-literals', duplicates, {
       "translate('orders.title'); __('orders.title'); _t('orders.title');",
       "intl.formatMessage({ id: 'orders.title' }); intl.formatMessage({ id: 'orders.title' }); formatMessage({ id: 'orders.title' });",
       "useTranslation('checkout'); useTranslation('checkout'); getFixedT(null, 'checkout');",
+      "gettext('orders.title'); ngettext('orders.title'); bundle.getString('orders.title');",
+      repeated('utf-8', 3),
+      repeated('application/json', 3),
+      repeated('%Y-%m-%d %H:%M', 3),
+      repeated('DELETE', 3),
     ]),
     {
       code: 'const a = <input type="text" />; const b = <input type="text" />; const c = <input type="text" />;',
@@ -82,6 +87,14 @@ ruleTester.run('no-duplicate-string-literals', duplicates, {
     {
       code: "intl.formatMessage({ id: 'orders.title' }, { name: 'shipped' }); use({ name: 'shipped' }); use('shipped');",
       errors: [{ messageId: 'repeated', data: { text: 'shipped' } }],
+    },
+    {
+      code: "const PENDING = 'pending'; use('pending'); use('pending');",
+      errors: [{ messageId: 'repeated', data: { text: 'pending' }, line: 1 }],
+    },
+    {
+      code: repeated('2024-01-01', 3),
+      errors: [{ messageId: 'repeated', data: { text: '2024-01-01' } }],
     },
     {
       code: 'use(`pending`); use(`pending`); use(`pending`);',

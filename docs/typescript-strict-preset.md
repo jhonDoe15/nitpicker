@@ -326,9 +326,13 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   type-position literals, object and class keys, `case` labels, discriminant values
   (`type: 'order-placed'`, `kind: ...`), JSX attribute values, enum members, directives and
   translation keys (`t('orders.title')`, `i18n.t`, `intl.formatMessage({ id })`, `useTranslation('ns')`)
-  are not counted. Nor is a value whose type is a union of string literals (`status: 'on-hold'` where
-  `status` is typed `'paid' | 'on-hold'`, or `order.status === 'on-hold'`): the compiler already
-  rejects a misspelling there.
+  are not counted, and neither is idiomatic text: an encoding (`utf-8`), an HTTP method (`DELETE`),
+  a MIME type (`application/json`) or a `strftime`-style format (`%Y-%m-%d`). Nor is a value whose
+  type is a union of string literals (`status: 'on-hold'` where `status` is typed
+  `'paid' | 'on-hold'`, or `order.status === 'on-hold'`): the compiler already rejects a misspelling
+  there. A constant's own initializer counts as a use. The length, the number of allowed uses, the
+  idiomatic texts, the translation calls and the discriminant keys come from
+  `shared/literals/repeated-literal-exemptions.mjs`, which every preset reads.
 - `nitpicker/no-hardcoded-secret` (all production code): a secret-looking string (six characters
   or more with letters and digits, or three character classes) assigned to a secret-named
   variable, property, parameter default or fallback (`password`, `token`, `secret`,
