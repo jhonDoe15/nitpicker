@@ -14,12 +14,12 @@ export function moduleExceptionPaths(modules) {
 
 function lessChanged(pair) {
   return pair.secondCommits < pair.firstCommits
-    ? { module: pair.second, other: pair.first, commits: pair.secondCommits }
-    : { module: pair.first, other: pair.second, commits: pair.firstCommits };
+    ? { module: pair.second, commits: pair.secondCommits }
+    : { module: pair.first, commits: pair.firstCommits };
 }
 
 function coChangeMessage({ pair, used }) {
-  const { module, other, commits } = lessChanged(pair);
+  const { module, commits } = lessChanged(pair);
   const percent = Math.round(pair.confidence * PERCENT);
   const route = exceptionSentence(
     exceptionEntryText({
@@ -27,15 +27,11 @@ function coChangeMessage({ pair, used }) {
       glob: `${escapeGlob(pair.first)}/**`,
     }),
   );
+  const examples = pair.examples.map((sha) => sha.slice(0, SHORT_SHA_LENGTH)).join(', ');
   return [
-    `${pair.first} and ${pair.second} changed together in ${String(pair.support)} commits:`,
-    `${String(percent)}% of the ${String(commits)} commits that changed ${module}`,
-    `(${String(used)} commits sampled; for example ${pair.examples.map((sha) => sha.slice(0, SHORT_SHA_LENGTH)).join(', ')}).`,
-    'Nitpicker does not read imports for this check, so it does not know whether either imports the other.',
-    'Co-change is correlation: feature work, migrations and coordinated releases change modules together on purpose.',
-    `If ${module} reaches into the internals of ${other}, put what it needs behind one smaller interface that ${other} owns.`,
-    `If neither imports the other, they share knowledge (a format, a constant, a schema) that needs one owner.`,
-    `If they only ever change as one unit, merge them into one module.`,
+    `${pair.first} and ${pair.second} changed together in ${String(pair.support)} of ${String(used)} sampled commits`,
+    `(${String(percent)}% of the ${String(commits)} that changed ${module}; for example ${examples}).`,
+    'This is correlation, not proof of coupling: if they share knowledge (a format, a constant, a schema) give it one owner, and if they only ever change as one unit, merge them.',
     route,
   ].join(' ');
 }

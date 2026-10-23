@@ -1,17 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { historyAvailabilityNotes, noticeDescriber } from './notices.mjs';
 import { outsideRootsNotices } from '../../../languages/typescript/preset/notices/outside-roots-notice.mjs';
 import {
-  amplifiedHistory,
-  commitSteps,
   SOURCE_FILES,
+  useHistoryRepositories,
 } from '../../diff/git/test-support/history-repository.mjs';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
+import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
 
 const { createGitRepository } = useGitFixtures();
+const { historyRepository } = useHistoryRepositories();
 const changed = ['scripts/slop.ts', 'src/a.ts'];
 const PARTNER_NOTICE =
-  'Files you changed in src/billing usually change together with src/invoicing (8 of 12 commits), ' +
+  'Files you changed in src/billing usually change together with src/invoicing (8 of 12 commits, 67%), ' +
   'which this change leaves alone. Check that they need no matching edit; ' +
   'if they usually do, see the co-change finding for the knowledge both share.';
 
@@ -65,10 +65,15 @@ describe('noticeDescriber', () => {
   });
 
   describe('co-change', () => {
+    const amplified = {};
+
+    beforeAll(() => {
+      amplified.root = historyRepository();
+      amplified.head = fixtureGit(amplified.root, ['rev-parse', 'HEAD']).trim();
+    });
+
     function amplifiedRoot() {
-      const { root } = createGitRepository(SOURCE_FILES);
-      commitSteps(root, amplifiedHistory());
-      return root;
+      return amplified.root;
     }
 
     it('adds the partners a change leaves alone to the language notices', () => {
@@ -87,6 +92,24 @@ describe('noticeDescriber', () => {
           root,
         )?.(['src/billing/invoice.ts']),
       ).toEqual([PARTNER_NOTICE]);
+    });
+
+    it('reads the compared base and every path the change touches, deleted ones included', () => {
+      const config = { history: { coChange: true } };
+      const describeChange = noticeDescriber(
+        { preset: 'javascript', ...config },
+        config,
+        amplifiedRoot(),
+      );
+      const context = (touchedPaths) => ({ mergeBaseSha: amplified.head, touchedPaths });
+
+      expect({
+        alone: describeChange(['src/billing/invoice.ts'], context(['src/billing/invoice.ts'])),
+        deleting: describeChange(
+          ['src/billing/invoice.ts'],
+          context(['src/billing/invoice.ts', 'src/invoicing/ledger.ts']),
+        ),
+      }).toEqual({ alone: [PARTNER_NOTICE], deleting: [] });
     });
 
     it('is off without the opt-in or when the analyzer is disabled', () => {

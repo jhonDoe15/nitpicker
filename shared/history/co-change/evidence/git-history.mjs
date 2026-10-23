@@ -1,19 +1,9 @@
-import { execFileSync } from 'node:child_process';
 import { CO_CHANGE_LIMITS } from '../../../project-rules/hygiene-rules.mjs';
+import { git } from '../../../hygiene/tracked-files.mjs';
 
-const MAX_LOG_BYTES = 512 * 1024 * 1024;
 const HEADER_MARK = '\u0001';
 const PAIRED_STATUS = /^[RC]/u;
-const FIRST_LINE = /^[^\n]*/u;
-
-function runGit(root, gitArguments) {
-  return execFileSync('git', gitArguments, {
-    cwd: root,
-    encoding: 'utf8',
-    maxBuffer: MAX_LOG_BYTES,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-}
+const NOT_A_REPOSITORY = /not a git repository/iu;
 
 function entryOf({ status, paths }) {
   const kind = status.slice(0, 1);
@@ -51,38 +41,64 @@ export function parseLog(output) {
   return state.commits;
 }
 
-function failure(error) {
-  const text = error instanceof Error ? error.message : String(error);
-  return FIRST_LINE.exec(text.trim())?.[0] ?? text;
+function failureText(error) {
+  const stderr = typeof error?.stderr === 'string' ? error.stderr.trim() : '';
+  const text = stderr === '' ? String(error?.message ?? error) : stderr;
+  return text.split('\n')[0];
 }
 
-export function readHistory({ projectRoot, commits }) {
-  try {
-    if (runGit(projectRoot, ['rev-parse', '--is-shallow-repository']).trim() === 'true') {
-      return { available: false, reason: 'shallow' };
-    }
-  } catch {
+function unavailable(error) {
+  if (error?.code === 'ENOENT') {
+    return { available: false, reason: 'git-missing' };
+  }
+  const detail = failureText(error);
+  if (NOT_A_REPOSITORY.test(detail)) {
     return { available: false, reason: 'not-a-repository' };
   }
+  return { available: false, reason: 'unreadable', detail };
+}
+
+export function cloneDepth(projectRoot) {
   try {
-    const log = runGit(projectRoot, [
-      'log',
-      '-n',
-      String(commits),
-      '--no-merges',
-      '-M',
-      '--name-status',
-      '-z',
-      '--relative',
-      '--format=%x01%H',
-      '--',
-      '.',
-    ]);
-    const walked = parseLog(log);
+    return git(projectRoot, ['rev-parse', '--is-shallow-repository']).trim() === 'true'
+      ? 'shallow'
+      : 'full';
+  } catch (error) {
+    return unavailable(error).reason;
+  }
+}
+
+function logArguments({ commits, ref }) {
+  return [
+    'log',
+    '-n',
+    String(commits),
+    '--no-merges',
+    '-M',
+    '--name-status',
+    '-z',
+    '--relative',
+    '--format=%x01%H',
+    '--end-of-options',
+    ref,
+    '--',
+    '.',
+  ];
+}
+
+export function readHistory({ projectRoot, commits, ref = 'HEAD' }) {
+  try {
+    if (git(projectRoot, ['rev-parse', '--is-shallow-repository']).trim() === 'true') {
+      return { available: false, reason: 'shallow' };
+    }
+    if (git(projectRoot, ['rev-list', '-n', '1', '--all']).trim() === '') {
+      return { available: false, reason: 'too-few', count: 0 };
+    }
+    const walked = parseLog(git(projectRoot, logArguments({ commits, ref })));
     return walked.length < CO_CHANGE_LIMITS.minHistory
       ? { available: false, reason: 'too-few', count: walked.length }
       : { available: true, commits: walked };
   } catch (error) {
-    return { available: false, reason: 'unreadable', detail: failure(error) };
+    return unavailable(error);
   }
 }

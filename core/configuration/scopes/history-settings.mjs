@@ -7,7 +7,7 @@ const HISTORY_KEYS = ['coChange', ...THRESHOLD_KEYS];
 const WHOLE_NUMBER_BOUNDS = {
   commits: { min: CO_CHANGE_LIMITS.minHistory, max: CO_CHANGE_LIMITS.maxCommits },
   minSupport: { min: CO_CHANGE_LIMITS.minSupport, max: Number.MAX_SAFE_INTEGER },
-  maxCommitFiles: { min: CO_CHANGE_LIMITS.minCommitFiles, max: Number.MAX_SAFE_INTEGER },
+  maxCommitFiles: { min: CO_CHANGE_LIMITS.minCommitFiles, max: CO_CHANGE_LIMITS.maxCommitFiles },
 };
 
 function validateWholeNumber(history, key) {
@@ -49,7 +49,7 @@ export function validateHistory(history) {
   }
   validateShape(history);
   const settings = THRESHOLD_KEYS.filter((key) => history[key] !== undefined);
-  if (settings.length > 0 && history.coChange !== true) {
+  if (settings.length > 0 && history.coChange === undefined) {
     throw configError(`"history.${settings[0]}" has no effect until "history.coChange" is true`);
   }
   for (const key of settings) {
