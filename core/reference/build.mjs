@@ -15,7 +15,6 @@ function duplicates(values) {
   return [...counts].filter(([, same]) => same.length > 1).map(([value]) => value);
 }
 
-/** The GitHub fragment of each heading of a Markdown text. */
 function headingAnchors(text) {
   return text
     .split('\n')

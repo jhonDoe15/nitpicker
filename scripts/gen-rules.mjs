@@ -20,7 +20,7 @@ const repositoryRoot = path.resolve(import.meta.dirname, '..');
 async function refreshRuff(ruff) {
   const rules = installedRuffRules(ruff);
   if (rules === undefined) {
-    throw new Error(`ruff could not be run as ${ruff}: set NITPICKER_RUFF to its path`);
+    throw new Error(`ruff could not be run as ${ruff}: pass its path as --refresh-ruff=<path>`);
   }
   const snapshot = path.relative(repositoryRoot, fileURLToPath(RUFF_RULES_FILE));
   writeFileSync(
@@ -29,8 +29,8 @@ async function refreshRuff(ruff) {
   );
 }
 
-async function refreshEslint(environment) {
-  const inventory = await liveEslintInventory(environment);
+async function refreshEslint() {
+  const inventory = await liveEslintInventory();
   writeEslintInventory(
     await formattedText(
       repositoryRoot,
@@ -43,22 +43,38 @@ async function refreshEslint(environment) {
 function writeGenerated(generated) {
   for (const [file, text] of generated) {
     const target = path.resolve(repositoryRoot, file);
+    if (!target.startsWith(repositoryRoot + path.sep)) {
+      throw new Error(`The generated file ${file} is outside the repository`);
+    }
     mkdirSync(path.dirname(target), { recursive: true });
     writeFileSync(target, text);
   }
 }
 
+const RUFF_OPTION = /^--refresh-ruff(?:=(.+))?$/u;
+const USAGE =
+  'Usage: node scripts/gen-rules.mjs [--check] [--refresh-eslint] [--refresh-ruff[=<path>]]\n';
+
 /**
- * Regenerates the rule reference, or with `--check` lists what is stale. `--refresh-ruff` first
- * rewrites the ruff snapshot from the ruff at `NITPICKER_RUFF`, and `--refresh-eslint` the ESLint
- * inventory from the preset configs.
+ * Regenerates the rule reference, or with `--check` lists what is stale. `--refresh-ruff[=<path>]`
+ * first rewrites the ruff snapshot from that ruff (`ruff` on the PATH by default), and
+ * `--refresh-eslint` the ESLint inventory from the preset configs.
  */
-export async function main(options, { environment, stderr }) {
-  if (options.includes('--refresh-ruff')) {
-    await refreshRuff(environment.NITPICKER_RUFF ?? 'ruff');
+export async function main(options, { stderr }) {
+  if (
+    !options.every(
+      (option) => ['--check', '--refresh-eslint'].includes(option) || RUFF_OPTION.test(option),
+    )
+  ) {
+    stderr.write(USAGE);
+    return 2;
+  }
+  const ruffOption = options.map((option) => RUFF_OPTION.exec(option)).find(Boolean);
+  if (ruffOption !== undefined) {
+    await refreshRuff(ruffOption[1] ?? 'ruff');
   }
   if (options.includes('--refresh-eslint')) {
-    await refreshEslint(environment);
+    await refreshEslint();
   }
   if (!options.includes('--check')) {
     writeGenerated(await formattedReferenceFiles(repositoryRoot));
@@ -72,8 +88,5 @@ export async function main(options, { environment, stderr }) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
-  process.exitCode = await main(process.argv.slice(2), {
-    environment: process.env,
-    stderr: process.stderr,
-  });
+  process.exitCode = await main(process.argv.slice(2), { stderr: process.stderr });
 }

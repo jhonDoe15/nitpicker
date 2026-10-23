@@ -140,7 +140,7 @@ function entryOf(id, byVariant, sets) {
   });
 }
 
-/** The entries of every ESLint rule the TypeScript and JavaScript presets turn on, from the inventory of their configs. */
+/** The entries of every ESLint rule the TypeScript and JavaScript presets turn on, from their config inventory. */
 export function eslintEntries() {
   const inventory = readEslintInventory();
   const sets = ruleSets();

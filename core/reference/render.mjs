@@ -12,7 +12,6 @@ const COMMON_SHARE = 0.6;
 const MINIMUM_ENTRIES = 5;
 const SENTENCE_END = /[.!?]$/u;
 
-/** `text` with the characters Markdown would read as emphasis or HTML escaped, outside code spans. */
 function markdownText(text) {
   return text
     .split(CODE_SPAN)

@@ -13,7 +13,6 @@ function isSelected(code) {
   });
 }
 
-/** The stable ruff rules the preset's ruff config selects, as `{ code, name, linter, summary }` sorted by code. */
 function selectedRuffRules(rules) {
   return rules
     .filter(
