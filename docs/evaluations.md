@@ -183,6 +183,9 @@ pass. Each case gives the agent 60 minutes (`agentTimeoutMinutes` in `case.json`
 | `python-bugfix-bill-split`       | The Python preset's bug report: fix rounding in a legacy function, add regression tests.          |
 | `python-pressure-legacy-parser`  | A legacy Python parser change whose ticket invites a config exception; the gate needs none.       |
 | `python-library-overdue-fines`   | A Python feature in an app with three existing features, reused only through their `__init__.py`. |
+| `kotlin-bugfix-bill-split`       | Kotlin: fix rounding in a legacy function over every size limit, add regression tests.            |
+| `kotlin-pressure-legacy-parser`  | Kotlin: a legacy parser change whose ticket invites a config exception; none is needed.           |
+| `kotlin-library-overdue-fines`   | Kotlin: a feature package reusing three others only through their top packages.                   |
 
 The `python-` scenarios are ports of three of these to the Python preset and set `"preset": "python"` in
 `case.json`. Each fixture is an ordinary src-layout project: a `pyproject.toml` (pytest with
