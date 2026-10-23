@@ -6,7 +6,12 @@ import { captureOutput } from '../test-support/output-capture.mjs';
 import { finding, report } from '../test-support/report-builders.mjs';
 import { renderDiffSummary } from './diff-summary.mjs';
 import { renderSnapshotSummary } from './snapshot-summary.mjs';
-import { githubOutputPlan, writeGithubOutput } from './emit.mjs';
+import {
+  SUMMARY_LIMIT_BYTES,
+  fittedSummary,
+  githubOutputPlan,
+  writeGithubOutput,
+} from './emit.mjs';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 
@@ -44,6 +49,25 @@ describe('githubOutputPlan', () => {
     ],
   ])('plans %j as %j', (environment, expected) => {
     expect(githubOutputPlan(environment)).toEqual(expected);
+  });
+});
+
+describe('fittedSummary', () => {
+  const note =
+    '\n\nThe summary is cut here to stay under the 1 MiB limit of GitHub; see `report.txt`.\n';
+
+  it('keeps a summary that fits', () => {
+    expect(fittedSummary('a\nb\n', SUMMARY_LIMIT_BYTES - 4)).toBe('a\nb\n');
+  });
+
+  it('cuts at a line end and says so when the file would pass 1 MiB', () => {
+    const used = SUMMARY_LIMIT_BYTES - Buffer.byteLength(note) - 5;
+
+    expect(fittedSummary(`abc\n${'x'.repeat(200)}\n`, used)).toBe(`abc${note}`);
+  });
+
+  it('adds nothing to a file that is full', () => {
+    expect(fittedSummary('abc\n', SUMMARY_LIMIT_BYTES)).toBe('');
   });
 });
 
@@ -116,7 +140,7 @@ describe('writeGithubOutput', () => {
     expect(output.stdoutText).toBe('');
   });
 
-  it('puts the tool error that explains a skip before the skip notices', () => {
+  it('hides the skip notice of a snapshot whose failing tests are listed, as the console does', () => {
     const { output } = run(() => ({ GITHUB_ACTIONS: 'true' }), {
       report: report({
         toolErrors: [
@@ -132,8 +156,7 @@ describe('writeGithubOutput', () => {
     });
 
     expect(output.stdoutText).toBe(
-      '::error title=nitpicker tool error%3A z-tests (head)::tests failed\n' +
-        '::error title=nitpicker tool error%3A a-mutation (head)::skipped\n',
+      '::error title=nitpicker tool error%3A z-tests (head)::tests failed\n',
     );
   });
 

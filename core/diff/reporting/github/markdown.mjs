@@ -1,25 +1,28 @@
 import { singleLine } from '../format/text.mjs';
+import { pluralize as pluralNoun } from '../summary.mjs';
+import { ROUTE_SENTENCE } from '../../../../shared/messages/exception-sentence.mjs';
 
 export const LISTED_FINDINGS = 25;
 
-const LISTED_TOOL_ERRORS = 10;
+export const LISTED_TOOL_ERRORS = 10;
+
+export const LISTED_NOTES = 20;
 
 const LISTED_RULES = 40;
 
 const TEXT_LIMIT = 400;
 
-const EXCEPTION_ROUTE =
-  /\s*If this is intended, add (\{.*\}) to "exceptions" in nitpicker\.config\.json\.\s*$/su;
-
 function withoutExceptionRoute(message) {
-  return String(message).replace(EXCEPTION_ROUTE, '');
+  const text = String(message).trimEnd();
+  const route = ROUTE_SENTENCE.exec(text);
+  return route === null ? text : text.slice(0, route.index).trimEnd();
 }
 
 export function exceptionExample(findings) {
   for (const finding of findings) {
-    const [, entry] = EXCEPTION_ROUTE.exec(String(finding.message)) ?? [];
-    if (entry !== undefined) {
-      return entry;
+    const route = ROUTE_SENTENCE.exec(String(finding.message).trimEnd());
+    if (route !== null) {
+      return route.groups.entry;
     }
   }
   return undefined;
@@ -33,13 +36,17 @@ export function code(value) {
   return `\`${String(value).replaceAll('`', "'")}\``;
 }
 
+function cellCode(value) {
+  return code(value).replaceAll('|', String.raw`\|`);
+}
+
 export function inlineText(value, limit = TEXT_LIMIT) {
   const text = singleLine(value);
   return escapeMarkdown(text.length > limit ? `${text.slice(0, limit)}...` : text);
 }
 
 export function pluralize(count, noun) {
-  return `${String(count)} ${count === 1 ? noun : `${noun}s`}`;
+  return `${String(count)} ${pluralNoun(noun, count)}`;
 }
 
 function encodedPath(filePath) {
@@ -95,7 +102,7 @@ export function ruleTable(findings) {
     .slice(0, LISTED_RULES)
     .map(
       (entry) =>
-        `| ${code(entry.tool)} | ${code(entry.rule)} | ${String(entry.enforceable)} | ${String(entry.descriptive)} |`,
+        `| ${cellCode(entry.tool)} | ${cellCode(entry.rule)} | ${String(entry.enforceable)} | ${String(entry.descriptive)} |`,
     );
   const omitted = counts.length - rows.length;
   return [
@@ -107,56 +114,53 @@ export function ruleTable(findings) {
   ];
 }
 
+export function cappedList(items, renderItem, limit) {
+  const lines = items.slice(0, limit).map((item) => `- ${renderItem(item)}`);
+  if (items.length > limit) {
+    lines.push('', `${String(items.length - limit)} more in \`report.txt\`.`);
+  }
+  return [...lines, ''];
+}
+
 export function findingList(findings, context, heading) {
   if (findings.length === 0) {
     return [];
   }
-  const shown = findings.slice(0, LISTED_FINDINGS);
-  const lines = [
-    `### ${heading}`,
-    '',
-    ...shown.map((finding) => {
-      const rule = code(`${finding.tool}/${finding.rule}`);
-      const message = inlineText(withoutExceptionRoute(finding.message));
-      return `- ${findingLocation(finding, context)} ${rule}: ${message}`;
-    }),
-  ];
-  if (findings.length > shown.length) {
-    lines.push(
-      '',
-      `${String(findings.length - shown.length)} more in the report files (\`report.txt\`).`,
-    );
-  }
-  return [...lines, ''];
+  const renderFinding = (finding) => {
+    const rule = code(`${finding.tool}/${finding.rule}`);
+    const message = inlineText(withoutExceptionRoute(finding.message));
+    return `${findingLocation(finding, context)} ${rule}: ${message}`;
+  };
+  return [`### ${heading}`, '', ...cappedList(findings, renderFinding, LISTED_FINDINGS)];
 }
 
 export function toolErrorList(toolErrors) {
   if (toolErrors.length === 0) {
     return [];
   }
-  const shown = toolErrors.slice(0, LISTED_TOOL_ERRORS);
-  const lines = [
+  const renderError = (error) => {
+    const label = error.snapshot === undefined ? error.tool : `${error.tool} (${error.snapshot})`;
+    return `${code(label)}: ${inlineText(error.message)}`;
+  };
+  return [
     `### ${pluralize(toolErrors.length, 'tool error')}`,
     '',
     'A tool error is never a pass: the run is incomplete.',
     '',
-    ...shown.map((error) => {
-      const label = error.snapshot === undefined ? error.tool : `${error.tool} (${error.snapshot})`;
-      return `- ${code(label)}: ${inlineText(error.message)}`;
-    }),
+    ...cappedList(toolErrors, renderError, LISTED_TOOL_ERRORS),
   ];
-  if (toolErrors.length > shown.length) {
-    lines.push('', `${String(toolErrors.length - shown.length)} more in \`report.txt\`.`);
-  }
-  return [...lines, ''];
 }
 
 export function exceptionRoute({ hasFindings, loosening, example }) {
   const lines = [];
   if (hasFindings) {
+    const entry =
+      example === undefined
+        ? 'add an entry to `exceptions` in `nitpicker.config.json`'
+        : 'add an entry like the example below to `exceptions` in `nitpicker.config.json`';
     lines.push(
-      '- A finding that flags code that is right: the end of its message gives the entry to add to ' +
-        '`exceptions` in `nitpicker.config.json` (the rule, the paths and a reason). ' +
+      `- A finding that flags code that is right: ${entry}, with the rule, the paths and a reason. ` +
+        'The message of each finding in `report.txt` ends with its own entry. ' +
         'Reviewers see the entry and every report lists it.',
     );
   }
@@ -170,9 +174,6 @@ export function exceptionRoute({ hasFindings, loosening, example }) {
   if (lines.length === 0) {
     return [];
   }
-  const sample =
-    hasFindings && example !== undefined
-      ? ['', 'An entry looks like this:', '', '```json', example, '```']
-      : [];
+  const sample = hasFindings && example !== undefined ? ['', '```json', example, '```'] : [];
   return ['### Disagree with a finding?', '', ...lines, ...sample, ''];
 }
