@@ -3,6 +3,7 @@ import ast
 from boundary.pydantic_models import model_findings
 from boundary.type_aliases import has_any, is_functional_type
 from checks.common import finding
+from syntax.walk import IterativeVisitor
 
 
 def annotations_of(function):
@@ -14,8 +15,9 @@ def annotations_of(function):
     )
 
 
-class AnyInDomain(ast.NodeVisitor):
+class AnyInDomain(IterativeVisitor):
     def __init__(self, context):
+        super().__init__()
         self.context = context
         self.scope = []
         self.findings = []
@@ -31,16 +33,16 @@ class AnyInDomain(ast.NodeVisitor):
         self.scope.append(node.name)
         for annotation in annotations_of(node):
             self.report(annotation)
+        self.on_exit(self.scope.pop)
         self.generic_visit(node)
-        self.scope.pop()
 
     visit_FunctionDef = visit_function
     visit_AsyncFunctionDef = visit_function
 
     def visit_ClassDef(self, node):
         self.scope.append(node.name)
+        self.on_exit(self.scope.pop)
         self.generic_visit(node)
-        self.scope.pop()
 
     def visit_AnnAssign(self, node):
         self.report(node.annotation)

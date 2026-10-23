@@ -29,6 +29,12 @@ tester.run('no-switched-off-tests', noSwitchedOffTests, {
     'const pending = tasks.todo;',
     "it.fails('known bug', () => { expect(run()).toBe(2); });",
     "test.fails.each([1])('known bug', () => {});",
+    "it.skipIf(process.env.CI === '1')('x', () => {});",
+    "it.skipIf(typeof window === 'undefined')('x', () => {});",
+    "it.runIf(flag && true)('x', () => {});",
+    "it.skipIf(a === 1)('x', () => {});",
+    "it.skipIf(`${flag}`)('x', () => {});",
+    "it.skipIf(...flags)('x', () => {});",
   ],
   invalid: [
     { code: "it.todo('later');", errors: [{ messageId: 'todo' }] },
@@ -42,6 +48,34 @@ tester.run('no-switched-off-tests', noSwitchedOffTests, {
       code: "test.skipIf(true).each([1])('x', () => {});",
       errors: [{ messageId: 'literalCondition' }],
     },
+    ...[
+      '1 === 1',
+      '!false',
+      '!0',
+      '1',
+      '0',
+      "''",
+      'null',
+      'undefined',
+      'true && true',
+      'false || true',
+      'true ? true : false',
+      "'a' === 'a'",
+      '1 + 1 > 1',
+      'typeof 1 === "number"',
+      'void 0',
+      '`on`',
+      'NaN',
+    ].flatMap((condition) => [
+      {
+        code: `it.skipIf(${condition})('x', () => {});`,
+        errors: [{ messageId: 'literalCondition' }],
+      },
+      {
+        code: `it.runIf(${condition})('x', () => {});`,
+        errors: [{ messageId: 'literalCondition' }],
+      },
+    ]),
   ],
 });
 

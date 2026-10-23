@@ -19,7 +19,8 @@ def load_checks():
     from discovery import helpers, uncollected
     from environment import environment, purity
     from errors import errors
-    from honesty import assertions, isolation, skipped, switched_off
+    from honesty import assertions, isolation, skipped
+    from honesty.switches import check as switched_off
     from security import hashes, loading
     from security.sql import check as sql
     from security.timeouts import check as timeouts
@@ -83,7 +84,7 @@ def parse_file(path):
         with tokenize.open(path) as handle:
             text = handle.read()
         return text, ast.parse(text)
-    except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
+    except (OSError, SyntaxError, UnicodeDecodeError, ValueError, RecursionError):
         return None
 
 
@@ -95,7 +96,7 @@ def check_failure(module, context, error):
     return {
         "rule": CHECK_FAILED_RULE,
         "path": context.path,
-        "subject": module.RULE,
+        "subject": getattr(module, "RULE", module.__name__),
         "line": 1,
         "error": f"{type(error).__name__}: {error}",
     }
@@ -105,11 +106,13 @@ def run_check(module, context, step="check"):
     run = getattr(module, step, None)
     if run is None:
         return [], []
-    if not is_guarded(module):
-        return run(context), []
     try:
         return run(context), []
+    except RecursionError as error:
+        return [], [check_failure(module, context, error)]
     except Exception as error:
+        if not is_guarded(module):
+            raise
         return [], [check_failure(module, context, error)]
 
 

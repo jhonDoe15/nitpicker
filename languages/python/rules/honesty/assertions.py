@@ -2,6 +2,7 @@ import ast
 import operator
 
 from checks.common import finding
+from syntax.walk import same_tree
 
 COMPARISONS = {
     ast.Eq: operator.eq,
@@ -24,7 +25,7 @@ def same_reference(left, right):
     pure = not any(
         isinstance(n, (ast.Call, ast.Await, ast.NamedExpr)) for n in ast.walk(left)
     )
-    return pure and ast.dump(left) == ast.dump(right)
+    return pure and same_tree(left, right)
 
 
 def is_len(node):

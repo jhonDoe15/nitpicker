@@ -163,13 +163,25 @@ describe('the rest of the collection settings', () => {
     ['pytest.ini', '[pytest]\nxfail_strict = 1\n'],
     ['pyproject.toml', '[tool.pytest.ini_options]\nxfail_strict = true\n'],
     ['setup.cfg', '[tool:pytest]\nxfail_strict = True\n'],
+    ['pytest.ini', '[pytest]\nxfail_strict = true ; always\n'],
+    ['pytest.ini', '[pytest]\nxfail_strict = true # always\n'],
+    ['pytest.ini', '[pytest]\naddopts = -o xfail_strict=true\n'],
+    ['pytest.ini', '[pytest]\naddopts = -q -o xfail_strict=True\n'],
+    ['pytest.ini', '[pytest]\naddopts = -oxfail_strict=1\n'],
+    ['pytest.ini', '[pytest]\naddopts = --override-ini xfail_strict=true\n'],
+    ['pytest.ini', '[pytest]\naddopts = --override-ini=xfail_strict=true\n'],
+    ['pytest.ini', '[pytest]\nxfail_strict = false\naddopts = -o xfail_strict=true\n'],
+    ['pyproject.toml', '[tool.pytest.ini_options]\naddopts = "-o xfail_strict=true"\n'],
   ])('read xfail_strict from %s', (file, text) => {
     expect(readPytestConfig(project({ [file]: text })).xfailStrict).toBe(true);
   });
 
   it.each([
     ['pytest.ini', '[pytest]\nxfail_strict = false\n'],
+    ['pytest.ini', '[pytest]\nxfail_strict = false ; not yet\n'],
     ['pytest.ini', '[pytest]\naddopts = -q\n'],
+    ['pytest.ini', '[pytest]\nxfail_strict = true\naddopts = -o xfail_strict=false\n'],
+    ['pytest.ini', '[pytest]\naddopts = -o other=true\n'],
   ])('leave xfail_strict off for %s', (file, text) => {
     expect(readPytestConfig(project({ [file]: text })).xfailStrict).toBe(false);
   });

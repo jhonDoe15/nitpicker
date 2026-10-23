@@ -63,10 +63,12 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
 - Honest tests: one case per test with `@pytest.mark.parametrize`, and assert unconditionally (no
   `assert` inside `if`, `for`, `while`, `match`, `except`, a comprehension or a `subTest` loop:
-  `conditional-assertion-in-test`). Skip only on a real condition with a reason
-  (`@pytest.mark.skipif(sys.platform == "win32", reason="...")`, `pytest.importorskip`); a permanent
-  `skip`, a literal `skipif(True)` or a non-strict `xfail` is `switched-off-test`: delete the test,
-  fix it, or use `xfail(strict=True)`.
+  `conditional-assertion-in-test`); a branch that only calls `pytest.fail` or skips is fine.
+  Call the nested helpers a test defines, or they assert nothing. Skip only on a real condition
+  with a reason, in a test, fixture or hook alike
+  (`@pytest.mark.skipif(sys.platform == "win32", reason="...")`, `pytest.importorskip`); a
+  permanent `skip`, a literal `skipif(True)` (or `1 == 1`, `"1"`, a constant) or a non-strict
+  `xfail` is `switched-off-test`: delete the test, fix it, or use `xfail(strict=True)`.
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.
