@@ -15,8 +15,10 @@ import nitpicker.effects.flow.Program;
 import nitpicker.effects.kinds.Summaries;
 import nitpicker.effects.jpa.Entities;
 import nitpicker.effects.rules.AccumulatorCopy;
+import nitpicker.effects.rules.HeldScope;
 import nitpicker.effects.rules.LazyRelation;
 import nitpicker.effects.rules.LoopIo;
+import nitpicker.effects.scopes.Scopes;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodInsnNode;
@@ -66,6 +68,7 @@ public final class Effects {
     new LoopIo(program, summaries, report).run();
     new AccumulatorCopy(program, report).run();
     new LazyRelation(program, new Entities(program.index, batchFetchSize(options) > 1), report).run();
+    new HeldScope(program, summaries, new Scopes(program), report).run();
   }
 
   private static int batchFetchSize(Map<String, String> options) {

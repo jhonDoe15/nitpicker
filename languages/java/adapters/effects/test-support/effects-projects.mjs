@@ -5,6 +5,9 @@ const FIXTURES = path.resolve(import.meta.dirname, '../../fixtures');
 export const JAVA_EFFECTS_FIXTURE = path.join(FIXTURES, 'effects-project');
 export const KOTLIN_EFFECTS_FIXTURE = path.join(FIXTURES, 'effects-kotlin-project');
 
+const JAVA_REMOTE = 'PriceSource.priceOf()>RestClient.get()';
+const KOTLIN_REMOTE = 'OrderLoader.price()>RestClient.get()';
+
 export const JAVA_EFFECTS = [
   'IoCallInLoop 26 LoopImports.eachInLoop loop OrderLoader.load()>OrderRepository.findById()',
   'IoCallInLoop 32 LoopImports.eachInCallback loop OrderLoader.load()>OrderRepository.findById()',
@@ -19,6 +22,11 @@ export const JAVA_EFFECTS = [
   'LazyRelationInLoop 35 LazyLoads.linesFromQuery TypedQuery.getResultList() Invoice.lines',
   'LazyRelationInLoop 44 LazyLoads.namesNextToFetchedLines InvoiceRepository.findWithLines() Invoice.customer',
   'LazyRelationInLoop 27 LazyLoads.lineCounts InvoiceRepository.findFrom() Invoice.lines',
+  `RemoteCallInTransaction 26 HeldScopes.confirm @Transactional ${JAVA_REMOTE}`,
+  `RemoteCallInTransaction 32 HeldScopes.inTemplate TransactionTemplate.executeWithoutResult() ${JAVA_REMOTE}`,
+  `RemoteCallUnderLock 37 HeldScopes.refresh synchronized ${JAVA_REMOTE}`,
+  `RemoteCallUnderLock 43 HeldScopes.underLock ReentrantLock.lock() ${JAVA_REMOTE}`,
+  `RemoteCallUnderLock 51 HeldScopes.inBlock synchronized ${JAVA_REMOTE}`,
 ];
 
 export const JAVA_BATCHED_EFFECTS = JAVA_EFFECTS.filter(
@@ -37,9 +45,28 @@ export const KOTLIN_EFFECTS = [
   'LazyRelationInLoop 4 LazyLoads.customerNames InvoiceRepository.findAll() Invoice.customer',
   'LazyRelationInLoop 9 LazyLoads.lineCount InvoiceRepository.findFrom() Invoice.lines',
   'LazyRelationInLoop 14 LazyLoads.lazySequence InvoiceRepository.findAll() Invoice.lines',
+  `RemoteCallInTransaction 24 HeldScopes.confirm @Transactional ${KOTLIN_REMOTE}`,
+  `RemoteCallInTransaction 29 HeldScopes.inTemplate TransactionTemplate.execute() ${KOTLIN_REMOTE}`,
+  `RemoteCallUnderLock 32 HeldScopes.underLock Lock.lock() ${KOTLIN_REMOTE}`,
+  `RemoteCallUnderLock 34 HeldScopes.underMutex Mutex.lock() ${KOTLIN_REMOTE}`,
 ];
 
-function summaryOf({ rule, line, method, form, path: calls, variable, origin, entity, relation }) {
+function summaryOf(violation) {
+  const {
+    rule,
+    line,
+    method,
+    form,
+    path: calls,
+    variable,
+    origin,
+    entity,
+    relation,
+    scope,
+  } = violation;
+  if (scope !== undefined) {
+    return [rule, line, method, scope, calls.join('>')].join(' ');
+  }
   if (origin !== undefined) {
     return [rule, line, method, origin, `${entity}.${relation}`].join(' ');
   }

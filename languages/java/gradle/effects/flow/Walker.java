@@ -101,6 +101,10 @@ public final class Walker {
     return matches(ITERATING, call);
   }
 
+  public boolean async(MethodInsnNode call) {
+    return matches(ASYNC, call);
+  }
+
   private boolean matches(Map<String, Set<String>> table, MethodInsnNode call) {
     for (Map.Entry<String, Set<String>> entry : table.entrySet()) {
       if (entry.getValue().contains(call.name) && program.index.isSubtype(call.owner, entry.getKey())) {

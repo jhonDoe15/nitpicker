@@ -71,10 +71,36 @@ function lazyRelation({ method, entity, relation, origin }, language) {
   ].join(' ');
 }
 
+function heldScope(scope, holder) {
+  return scope === '@Transactional' || scope === 'synchronized'
+    ? `the ${code(scope)} method ${code(`${holder}()`)}`
+    : `${code(scope)} in ${code(`${holder}()`)}`;
+}
+
+function remoteInTransaction({ method, scope, holder, path }) {
+  return [
+    'Make the remote call before the transaction starts or after it commits; when its side effect must',
+    'match the transaction, write an outbox row in the transaction and send it from a worker:',
+    `${code(`${method}()`)} ${callPath(path)} inside ${heldScope(scope, holder)}, which also uses the`,
+    "database, so a pooled connection stays held for the remote call's latency and the pool runs dry under load.",
+  ].join(' ');
+}
+
+function remoteUnderLock({ method, scope, holder, path }) {
+  return [
+    'Move the remote call out of the lock: read what it needs under the lock, release it, make the call,',
+    'and take the lock again to apply the result:',
+    `${code(`${method}()`)} ${callPath(path)} while holding ${heldScope(scope, holder)},`,
+    "so every thread waiting for the lock also waits for the remote call's latency.",
+  ].join(' ');
+}
+
 export const EFFECTS_MESSAGES = {
   IoCallInLoop: loopIo,
   AccumulatorCopyInLoop: accumulatorCopy,
   LazyRelationInLoop: lazyRelation,
+  RemoteCallInTransaction: remoteInTransaction,
+  RemoteCallUnderLock: remoteUnderLock,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);
