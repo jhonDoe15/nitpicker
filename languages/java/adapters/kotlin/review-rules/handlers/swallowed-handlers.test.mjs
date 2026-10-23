@@ -20,9 +20,9 @@ const caught = (type, overrides = {}) => ({
   ...overrides,
 });
 const imp = (importPath, alias = null, all = false) => ({ path: importPath, alias, all });
-const findingsFor = (catches, overrides = {}, others = []) =>
-  run(swallowedHandlerFindings, [file({ catches, ...overrides })], {
-    declaredIn: [file({ catches, ...overrides }), ...others],
+const findingsFor = (handlers, overrides = {}, others = []) =>
+  run(swallowedHandlerFindings, [file({ handlers, ...overrides })], {
+    declaredIn: [file({ handlers, ...overrides }), ...others],
   });
 
 describe('swallowed cancellation and interrupt in Kotlin', () => {
@@ -71,7 +71,12 @@ describe('swallowed cancellation and interrupt in Kotlin', () => {
     ];
 
     expect(
-      summary(run(swallowedHandlerFindings, [file({ catches }), testFile({ catches })])),
+      summary(
+        run(swallowedHandlerFindings, [
+          file({ handlers: catches }),
+          testFile({ handlers: catches }),
+        ]),
+      ),
     ).toEqual([
       `${SWALLOWED_INTERRUPT_RULE} Loader.load 4`,
       `${SWALLOWED_INTERRUPT_RULE} Loader.load 9`,

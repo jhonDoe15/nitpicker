@@ -15,7 +15,7 @@ final class State {
   final List<Object> properties = new ArrayList<>();
   final List<Object> waits = new ArrayList<>();
   final List<Object> predicates = new ArrayList<>();
-  final List<Object> catches = new ArrayList<>();
+  final List<Object> handlers = new ArrayList<>();
   final Set<String> calls = new LinkedHashSet<>();
   final Set<String> references = new LinkedHashSet<>();
   final List<Object> typeAliases = new ArrayList<>();
@@ -41,6 +41,17 @@ final class State {
     }
   }
 
+  Set<String> namesOf(String qualified) {
+    Set<String> names = new HashSet<>(Set.of(qualified.substring(qualified.lastIndexOf('.') + 1)));
+    for (KtImportDirective directive : file.getImportDirectives()) {
+      var path = directive.getImportPath();
+      if (path != null && path.getAlias() != null && qualified.equals(path.getFqName().asString())) {
+        names.add(path.getAlias().asString());
+      }
+    }
+    return names;
+  }
+
   String importedPath(String name) {
     return waitImports.get(name);
   }
@@ -53,7 +64,7 @@ final class State {
     return m(
         "file", relative, "test", test, "package", file.getPackageFqName().asString(),
         "imports", imports(), "classes", classes, "functions", functions, "properties", properties,
-        "waits", waits, "predicates", predicates, "catches", catches, "typeAliases", typeAliases,
+        "waits", waits, "predicates", predicates, "handlers", handlers, "typeAliases", typeAliases,
         "calls", new ArrayList<Object>(calls.stream().map(Json.Raw::new).toList()),
         "references", new ArrayList<Object>(references));
   }

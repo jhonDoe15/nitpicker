@@ -8,6 +8,7 @@ import {
 } from '../../../preset/test-runner/runners.mjs';
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
+import { startTestConsole } from '../test-console-run.mjs';
 import {
   readRun,
   removeTemporary,
@@ -125,15 +126,17 @@ function testArguments(options, command, reportPath) {
 
 export async function runNodeTest(options, command) {
   const reportPath = temporaryProjectPath(options, 'node-test-report.json');
+  const testConsole = startTestConsole(options, { collectsLines: true });
   const coverage =
     options.rerun === undefined ? startV8Coverage(options, command) : uncoveredRun(command);
   try {
     const result = spawnNodeTool({
       options,
       nodeArguments: [...coverage.nodeArguments, ...testArguments(options, command, reportPath)],
-      environment: coverage.environment,
+      environment: { ...coverage.environment, ...testConsole.environment },
       arguments_: [],
     });
+    testConsole.finish();
     const run = readRun({ reportPath, result, runnerName: RUNNER_NAMES.node });
     if (!run.failed) {
       await coverage.write();
@@ -141,6 +144,7 @@ export async function runNodeTest(options, command) {
     return run;
   } finally {
     removeTemporary(reportPath);
+    testConsole.remove();
     coverage.remove();
   }
 }
