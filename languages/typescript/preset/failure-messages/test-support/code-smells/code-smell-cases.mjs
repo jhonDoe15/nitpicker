@@ -13,7 +13,7 @@ const codeSmellConfig = [
 ];
 const FIXTURE = 'src/fixture.ts';
 const GENERIC_FILE = 'src/utils.ts';
-const EXCEPTION = 'exception for nitpicker/';
+const EXCEPTION = '"exceptions" in nitpicker.config.json';
 
 function codeSmellCase([name, banned, allowed, filename = FIXTURE]) {
   return { name: `code smells: ${name}`, config: codeSmellConfig, filename, banned, allowed };
