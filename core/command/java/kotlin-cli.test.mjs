@@ -161,8 +161,8 @@ describe('nitpicker with "preset": "kotlin"', () => {
           'no test fails when this code changes. Add an assertion that would.',
           'If no input can tell the two apart (a compareTo boundary, a discarded lambda return),',
           'simplify the code so this mutant disappears.',
-          'If this is intended, add {"rule":"mutant-survived","paths":["src/main/kotlin/demo/K.kt"],',
-          '"function":"KKt.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'If this is intended, add {"rule":"mutant-survived","paths":["src/main/kotlin/demo/K.kt"],' +
+            '"function":"KKt.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
         ].join(' '),
         classification: 'enforceable',
         symbol: 'KKt#fee(I)I',
