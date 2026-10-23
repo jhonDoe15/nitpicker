@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { depthFirst } from '../../../../../../../shared/traversal.mjs';
+import { chainOf, depthFirst } from '../../../../../../../shared/traversal.mjs';
 import { syntaxChildren } from '../../../../syntax/children.mjs';
 import {
   isRegistrationName,
@@ -52,14 +52,14 @@ function passesThrough(holder, child) {
   return unwrapExpression(holder) !== holder;
 }
 
-function climbsToRegistration(checker, child) {
+function passingParent(child) {
   const holder = child.parent;
-  if (holder === undefined) {
-    return false;
-  }
-  return (
-    isRegistrationPoint(checker, holder, child) ||
-    (passesThrough(holder, child) && climbsToRegistration(checker, holder))
+  return holder !== undefined && passesThrough(holder, child) ? holder : undefined;
+}
+
+function climbsToRegistration(checker, start) {
+  return chainOf(start, passingParent).some(
+    (child) => child.parent !== undefined && isRegistrationPoint(checker, child.parent, child),
   );
 }
 
@@ -80,7 +80,7 @@ function registeredExpressions(checker, node) {
   return ts.isCallExpression(node) && isRegistrationCall(checker, node) ? [...node.arguments] : [];
 }
 
-function referencedFunctions(checker, expression) {
+function functionsReferencedBy(checker, expression) {
   if (ts.isShorthandPropertyAssignment(expression)) {
     return functionsOfSymbol(
       checker,
@@ -89,12 +89,20 @@ function referencedFunctions(checker, expression) {
     );
   }
   const inner = unwrapExpression(expression);
-  if (ts.isIdentifier(inner) || ts.isPropertyAccessExpression(inner)) {
-    return functionsOf(checker, inner, 'reference');
-  }
-  return ts.isCallExpression(inner)
-    ? inner.arguments.flatMap((argument) => referencedFunctions(checker, argument))
+  return ts.isIdentifier(inner) || ts.isPropertyAccessExpression(inner)
+    ? functionsOf(checker, inner, 'reference')
     : [];
+}
+
+function referencedFunctions(checker, expression) {
+  const found = [];
+  const pending = [expression];
+  for (const current of pending) {
+    found.push(...functionsReferencedBy(checker, current));
+    const inner = ts.isShorthandPropertyAssignment(current) ? current : unwrapExpression(current);
+    pending.push(...(ts.isCallExpression(inner) ? inner.arguments : []));
+  }
+  return found;
 }
 
 function collectRegistered(context) {

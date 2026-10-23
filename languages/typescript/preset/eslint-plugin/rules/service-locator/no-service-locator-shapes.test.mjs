@@ -3,16 +3,14 @@ import { rule } from './no-service-locator.mjs';
 import { rootFileMatcher } from './root-files.mjs';
 import {
   MAIL,
+  createLocatorProject,
   lookup,
   lookups,
-  removeProject,
-  tester,
-  typed,
   wrapper,
-  write,
 } from './test-support/locator-project.mjs';
 
-afterAll(removeProject);
+const { write, tester, typed, remove } = createLocatorProject();
+afterAll(remove);
 
 const CHAIN_DEPTH = 2000;
 const HEADER = "import { container } from 'tsyringe';\nimport { Mailer } from '../mailer';";

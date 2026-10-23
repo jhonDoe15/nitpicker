@@ -1,4 +1,4 @@
-import { DEFINITION_HOSTS, functionApi, receiverApi, staticApi } from './lookup-apis.mjs';
+import { functionApi, isDefinitionHost, receiverApi, staticApi } from './lookup-apis.mjs';
 import {
   fqnsOf,
   importedFunctions,
@@ -20,8 +20,8 @@ function messageFor(label) {
   return `Take the dependency as a constructor parameter (a Provider or a factory parameter when it is optional or created per use) instead of looking it up with ${label} where it is used: the lookup hides what the class needs. The file with fun main, an Application or Ktor module, startKoin and Koin definitions, Guice modules and @Produces or @Provides functions may look dependencies up.`;
 }
 
-function labelFor(file, lookup, typed, scopes) {
-  const { name, qualifier } = lookup;
+function labelFor(file, lookup) {
+  const { name, qualifier, scopes = [] } = lookup;
   if (qualifier === undefined) {
     const imported = importedFunctions(file, name).find((entry) =>
       functionApi(entry.name, entry.owner),
@@ -37,7 +37,7 @@ function labelFor(file, lookup, typed, scopes) {
   if (owner !== undefined) {
     return `${simpleName(owner)}.${name}()`;
   }
-  const types = receiverTypes(file, qualifier, typed);
+  const types = receiverTypes(file, qualifier, file.typed ?? []);
   const api = receiverApi(name, types);
   return api === undefined
     ? undefined
@@ -47,7 +47,7 @@ function labelFor(file, lookup, typed, scopes) {
 function allowedHere(file, lookup, modules) {
   const scopes = lookup.scopes ?? [];
   return (
-    scopes.some(({ k, host }) => k === 'lambda' && DEFINITION_HOSTS.has(host)) ||
+    scopes.some(({ k, host }) => k === 'lambda' && isDefinitionHost(host)) ||
     producesDependencies(file, lookup.annotations ?? []) ||
     inGuiceModule(file, scopes, modules)
   );
@@ -67,10 +67,9 @@ function lookupsIn(file, modules) {
   if (file.test || isRootFile(file)) {
     return [];
   }
-  const typed = file.typed ?? [];
   return (file.lookups ?? [])
     .filter((lookup) => !lookup.lambda && !allowedHere(file, lookup, modules))
-    .map((lookup) => ({ lookup, label: labelFor(file, lookup, typed, lookup.scopes ?? []) }))
+    .map((lookup) => ({ lookup, label: labelFor(file, lookup) }))
     .filter(({ label }) => label !== undefined);
 }
 

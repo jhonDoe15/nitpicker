@@ -37,7 +37,7 @@ export const PRODUCING_ANNOTATIONS = [
 export const ROOT_ANNOTATIONS = ['org.springframework.boot.autoconfigure.SpringBootApplication'];
 export const ROOT_SUPERTYPES = ['android.app.Application', 'androidx.multidex.MultiDexApplication'];
 export const KTOR_APPLICATION = 'io.ktor.server.application.Application';
-export const DEFINITION_HOSTS = new Set([
+const DEFINITION_HOSTS = new Set([
   'module',
   'single',
   'factory',
@@ -74,11 +74,19 @@ const RECEIVER_APIS = [
   { receivers: KOIN_RECEIVERS, names: [...KOIN_LOOKUPS, 'getAll'] },
 ];
 
-export const PRODUCERS = new Map([
+const PRODUCERS = new Map([
   ['com.google.inject.Guice.createInjector', GUICE_INJECTOR],
   ...CDI_TYPES.map((type) => [`${type}.current`, type]),
   ...JNDI_CONTEXTS.map((type) => [type, type]),
 ]);
+
+export function isDefinitionHost(name) {
+  return DEFINITION_HOSTS.has(name);
+}
+
+export function producedType(producer) {
+  return PRODUCERS.get(producer);
+}
 
 export function functionApi(name, owner) {
   return FUNCTION_APIS.find((api) => api.name === name && api.owners.includes(owner));

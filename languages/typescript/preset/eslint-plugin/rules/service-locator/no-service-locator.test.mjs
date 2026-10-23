@@ -2,15 +2,14 @@ import { afterAll } from 'vitest';
 import { rule } from './no-service-locator.mjs';
 import {
   MAIL,
+  createLocatorProject,
   lookup,
   lookups,
-  removeProject,
-  tester,
-  typed,
   wrapper,
 } from './test-support/locator-project.mjs';
 
-afterAll(removeProject);
+const { tester, typed, remove } = createLocatorProject();
+afterAll(remove);
 
 tester.run('no-service-locator', rule, {
   valid: [
