@@ -1,3 +1,8 @@
+import {
+  availabilityNotices,
+  coChangeNotices,
+} from '../../../shared/history/co-change/notices.mjs';
+import { CHANGE_HISTORY_TOOL } from '../../../shared/project-rules/hygiene-rules.mjs';
 import { jvmOutsideRootsNotices } from '../../../languages/java/adapters/notices/outside-roots-notice.mjs';
 import { readBuildSources } from '../../../languages/java/builds/narrowing/build-sources.mjs';
 import { listedFiles } from '../../policy-changes/policy-scope.mjs';
@@ -27,7 +32,7 @@ function jvmDescriber(config, headPolicy, projectRoot) {
     });
 }
 
-function presetNotices(config, headPolicy, projectRoot) {
+function languageDescriber(config, headPolicy, projectRoot) {
   if (TYPESCRIPT_PRESETS.has(config.preset)) {
     return (changedFiles) => outsideRootsNotices(changedFiles, headPolicy);
   }
@@ -45,20 +50,42 @@ function presetNotices(config, headPolicy, projectRoot) {
     : undefined;
 }
 
-function withLayoutNotices(describe, layout, projectRoot) {
-  if (!LAYOUT_ROOT_KEYS.some((key) => layout?.[key] !== undefined)) {
-    return describe;
-  }
-  return (changedFiles) => [
-    ...(describe?.(changedFiles) ?? []),
-    ...unmatchedLayoutRootNotices(layout, listedFiles(projectRoot)),
-  ];
+function layoutDescriber(layout, projectRoot) {
+  return LAYOUT_ROOT_KEYS.some((key) => layout?.[key] !== undefined)
+    ? () => unmatchedLayoutRootNotices(layout, listedFiles(projectRoot))
+    : undefined;
+}
+
+function runsCoChange(config) {
+  return config.history?.coChange === true && !(config.disable ?? []).includes(CHANGE_HISTORY_TOOL);
+}
+
+function coChangeDescriber(config, headPolicy, projectRoot) {
+  return runsCoChange(config)
+    ? (changedFiles, { mergeBaseSha, touchedPaths } = {}) =>
+        coChangeNotices({
+          projectRoot,
+          policy: headPolicy,
+          ref: mergeBaseSha,
+          changedPaths: touchedPaths ?? changedFiles,
+        })
+    : undefined;
 }
 
 export function noticeDescriber(config, headPolicy, projectRoot) {
-  return withLayoutNotices(
-    presetNotices(config, headPolicy, projectRoot),
-    headPolicy.layout,
-    projectRoot,
-  );
+  const describers = [
+    languageDescriber(config, headPolicy, projectRoot),
+    coChangeDescriber(config, headPolicy, projectRoot),
+    layoutDescriber(headPolicy.layout, projectRoot),
+  ].filter((describer) => describer !== undefined);
+  return describers.length === 0
+    ? undefined
+    : (changedFiles, context) => describers.flatMap((describe) => describe(changedFiles, context));
+}
+
+export function historyAvailabilityNotes(config, headPolicy, projectRoot) {
+  if (!runsCoChange(config)) {
+    return [];
+  }
+  return availabilityNotices({ projectRoot, policy: headPolicy });
 }
