@@ -1,5 +1,6 @@
 package shop.requests
 
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import org.springframework.web.bind.annotation.GetMapping
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.context.annotation.RequestScope
 import org.springframework.web.context.request.RequestAttributes
 import org.springframework.web.context.request.RequestContextHolder
+import org.springframework.web.context.request.WebRequest
 import java.util.concurrent.atomic.AtomicLong
 
 data class VisitDto(val id: String, val page: String)
@@ -47,6 +49,13 @@ class VisitController(private val log: VisitLog, private val bag: VisitBag) {
         log.remember(visit)
     }
 
+    @GetMapping("/visits/latest")
+    suspend fun latest(): String {
+        val page = log.load()
+        log.remember(page)
+        return page
+    }
+
     @GetMapping("/visits/count")
     fun counted(): Long = count.incrementAndGet()
 
@@ -70,6 +79,8 @@ class VisitLog {
     fun remember(visit: Any) {
         recent += visit
     }
+
+    suspend fun load(): String = "home"
 }
 
 @Component
@@ -84,6 +95,9 @@ class VisitBag {
 
 @Component
 class AttributesHolder {
+    @Autowired
+    lateinit var request: WebRequest
+
     private var attributes: RequestAttributes? = null
 
     fun capture() {

@@ -1,5 +1,6 @@
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaField;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -23,11 +24,17 @@ final class RequestState {
           "org.springframework.kafka.annotation.KafkaListener",
           "org.springframework.amqp.rabbit.annotation.RabbitListener",
           "org.springframework.jms.annotation.JmsListener");
+  private static final String CONTINUATION = "kotlin.coroutines.Continuation";
   private static final List<String> SET_UP =
       List.of(
           "jakarta.annotation.PostConstruct",
           "javax.annotation.PostConstruct",
-          "org.springframework.context.annotation.Bean");
+          "org.springframework.context.annotation.Bean",
+          "org.springframework.beans.factory.annotation.Autowired",
+          "jakarta.inject.Inject",
+          "javax.inject.Inject",
+          "jakarta.annotation.Resource",
+          "javax.annotation.Resource");
 
   private RequestState() {}
 
@@ -52,7 +59,7 @@ final class RequestState {
     for (MethodFlow flow : flows.values()) {
       for (Map.Entry<String, String> source : sources(flow, declared.get(flow.key()), library).entrySet()) {
         for (Reach.Sink found : summaries.reach(flow, Set.of(source.getKey())).sinks) {
-          reported.merge(new Reach.Sink(found.owner, found.field, ""), found.op + ":" + source.getValue(),
+          reported.merge(new Reach.Sink(found.owner, found.field, "", false), found.op + ":" + source.getValue(),
               (first, second) -> first.compareTo(second) <= 0 ? first : second);
         }
       }
@@ -60,17 +67,21 @@ final class RequestState {
     Set<JavaClass> perUse = Lifetimes.perUseBeans(main);
     reported.forEach((found, use) -> {
       JavaClass owner = classes.get(found.owner);
-      if (!holdsPerUseBean(owner, found.field, perUse, shared)) {
+      Optional<JavaField> field = owner.getAllFields().stream()
+          .filter(candidate -> candidate.getName().equals(found.field))
+          .findFirst();
+      boolean injected = field.map(held -> Lifetimes.INJECTION_MARKERS.stream().anyMatch(held::isMetaAnnotatedWith))
+          .orElse(false);
+      if (!injected && !field.map(held -> holdsPerUseBean(held, perUse, shared)).orElse(false)) {
         Found.add(sink, REQUEST_STATE, owner, found.field + ":" + use);
       }
     });
   }
 
-  private static boolean holdsPerUseBean(JavaClass owner, String field, Set<JavaClass> perUse, Set<JavaClass> shared) {
-    Optional<String> type = owner.tryGetField(field).map(declared -> declared.getRawType().getName());
-    return type.isPresent()
-        && perUse.stream().anyMatch(bean -> bean.isAssignableTo(type.get()))
-        && shared.stream().noneMatch(bean -> bean.isAssignableTo(type.get()));
+  private static boolean holdsPerUseBean(JavaField field, Set<JavaClass> perUse, Set<JavaClass> shared) {
+    String type = field.getRawType().getName();
+    return perUse.stream().anyMatch(bean -> bean.isAssignableTo(type))
+        && shared.stream().noneMatch(bean -> bean.isAssignableTo(type));
   }
 
   private static Map<String, String> sources(MethodFlow flow, JavaMethod method, Library library) {
@@ -80,7 +91,8 @@ final class RequestState {
     int first = flow.instance ? 1 : 0;
     for (int index = 0; index < types.length; index++) {
       boolean request = types[index].getSort() == Type.OBJECT && library.isRequest(types[index].getClassName());
-      if (handler || request) {
+      boolean continuation = types[index].getClassName().equals(CONTINUATION);
+      if ((handler || request) && !continuation) {
         String simple = flow.owner.substring(flow.owner.lastIndexOf('/') + 1).replaceAll(".*\\$", "");
         sources.put(Flow.ARG + (index + first),
             simple + "." + flow.name + "(" + flow.argumentNames.get(index + first) + ")");

@@ -82,7 +82,9 @@ function storing(op, where) {
   if (op === '=') {
     return `assigning it to ${where}`;
   }
-  return op === '[]' ? `writing it into an element of ${where}` : `passing it to ${where} with ${op}()`;
+  return op === '[]'
+    ? `writing it into an element of ${where}`
+    : `passing it to ${where} with ${op}()`;
 }
 
 function shortDetail(rule, detail) {

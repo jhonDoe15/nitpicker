@@ -2061,12 +2061,20 @@ getters, calls into the project's own methods (across classes, through interface
 implementation, and through lambdas and method references the code runs or passes on) and helper
 objects a singleton holds, and reports the field where it ends up, once per field, with the first
 handler parameter or source that reaches it: `last:put:VisitController.create(visit)`, identity
-`VisitController|last`. Constructors, static initializers, `@PostConstruct`, `afterPropertiesSet`
-and `@Bean` methods are set-up and never report; a local collection, a counter that only counts
-(`AtomicLong.incrementAndGet()`), a cache call (`Cache.put`, `@Cacheable`), a field whose type only a
-per-use bean (`@RequestScope`, prototype) can fill and a field of a request-scoped bean are fine.
-Singletons are the classes `spring-scope-capture` treats as singletons, plus the types a singleton
-`@Bean` method returns (not `Object`) and their subclasses that are not components themselves.
+`VisitController|last`. Constructors, static initializers, `@PostConstruct`, `afterPropertiesSet`,
+`@Bean` methods and injection methods (`@Autowired`, `@Inject`, `@Resource`) are set-up and never
+report, and neither does an injected field (a Kotlin `@Autowired lateinit var` set through its
+setter). Also fine: a local collection, a counter that only counts (`AtomicLong.incrementAndGet()`),
+a cache call (`Cache.put`, `@Cacheable`), a field of a primitive, boxed or enum type (a flag or a
+running total), a field whose type only a per-use bean (`@RequestScope`, prototype, also declared
+with `@Bean`) can fill, inherited fields included, a field of a request-scoped bean, and a new
+instance of a bean class that a handler builds and uses locally. A Kotlin `suspend` handler's
+`Continuation` parameter is not request data, and locals the coroutine state machine saves keep their
+own data. Singletons are the classes `spring-scope-capture` treats as singletons, plus the types a
+singleton `@Bean` method returns and, for a project type, its subclasses that are not components
+themselves. A registry keyed by request data (in-flight keys, per-key locks, pending replies, an
+unbounded memo map) is reported: bound it with a cache that has a size and an expiry, or add an
+exception that names why its entries are removed.
 
 **Aggregates (jMolecules).** A project that declares its domain model with
 [jMolecules](https://github.com/xmolecules/jmolecules) (`org.jmolecules:jmolecules-ddd`, Apache-2.0,

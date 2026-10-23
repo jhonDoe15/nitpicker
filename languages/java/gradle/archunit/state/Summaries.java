@@ -77,8 +77,12 @@ final class Summaries {
     for (MethodFlow.Call call : calls(method)) {
       for (int index = 0; index < call.taint.size(); index++) {
         if (hits(call.taint.get(index), live)) {
-          for (int retainer : summaryOf(call, index).retains) {
+          Reach callee = summaryOf(call, index);
+          for (int retainer : callee.retains) {
             changed |= retainer < call.alias.size() && addCreated(call.alias.get(retainer), live);
+          }
+          if (localReceiver(call) && callee.sinks.stream().anyMatch(found -> found.onReceiver)) {
+            changed |= addCreated(call.alias.get(0), live);
           }
         }
       }
@@ -95,7 +99,15 @@ final class Summaries {
 
   private void apply(MethodFlow method, MethodFlow.Call call, int index, Reach reach) {
     Reach callee = summaryOf(call, index);
-    reach.sinks.addAll(callee.sinks);
+    boolean local = localReceiver(call);
+    boolean onSelf = !call.alias.isEmpty() && call.alias.get(0).contains(Flow.SELF);
+    for (Reach.Sink found : callee.sinks) {
+      if (!found.onReceiver) {
+        reach.sinks.add(found);
+      } else if (!local) {
+        reach.sinks.add(new Reach.Sink(found.owner, found.field, found.op, onSelf));
+      }
+    }
     for (int retainer : callee.retains) {
       if (retainer < call.alias.size()) {
         call.alias.get(retainer).forEach(target -> classify(method, target, call.name, reach));
@@ -107,12 +119,18 @@ final class Summaries {
     if (target.startsWith(Flow.ARG)) {
       reach.retains.add(Integer.parseInt(target.substring(Flow.ARG.length())));
     } else if (target.startsWith(Flow.FIELD) && method.holdsState && !method.setsUp) {
-      reach.sinks.add(new Reach.Sink(method.owner, target.substring(Flow.FIELD.length()), op));
+      reach.sinks.add(new Reach.Sink(method.owner, target.substring(Flow.FIELD.length()), op, method.instance));
     } else if (target.startsWith(Flow.FIELD) && !method.holdsState && method.instance) {
       reach.retains.add(0);
     } else if (target.startsWith(Flow.STATIC) && !method.name.equals("<clinit>")) {
-      reach.sinks.add(new Reach.Sink(method.owner, target.substring(Flow.STATIC.length()), op));
+      reach.sinks.add(new Reach.Sink(method.owner, target.substring(Flow.STATIC.length()), op, false));
     }
+  }
+
+  private static boolean localReceiver(MethodFlow.Call call) {
+    return !call.alias.isEmpty()
+        && !call.alias.get(0).isEmpty()
+        && call.alias.get(0).stream().allMatch(id -> id.startsWith(Flow.NEW));
   }
 
   private static boolean addCreated(Set<String> targets, Set<String> live) {

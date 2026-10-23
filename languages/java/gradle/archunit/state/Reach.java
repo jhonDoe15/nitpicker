@@ -7,11 +7,13 @@ final class Reach {
     final String owner;
     final String field;
     final String op;
+    final boolean onReceiver;
 
-    Sink(String owner, String field, String op) {
+    Sink(String owner, String field, String op, boolean onReceiver) {
       this.owner = owner;
       this.field = field;
       this.op = op;
+      this.onReceiver = onReceiver;
     }
 
     @Override
@@ -31,7 +33,7 @@ final class Reach {
 
     @Override
     public String toString() {
-      return owner + "|" + field + "|" + op;
+      return owner + "|" + field + "|" + op + "|" + onReceiver;
     }
   }
 

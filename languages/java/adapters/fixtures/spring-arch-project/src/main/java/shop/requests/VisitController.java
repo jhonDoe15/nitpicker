@@ -31,7 +31,9 @@ public class VisitController {
   private final Visits visits;
   private final VisitBag bag;
   private final Cache cache;
+  private final List<String> recentPages = new ArrayList<>();
   private String current;
+  private boolean paused;
 
   VisitController(VisitLog log, Visits visits, VisitBag bag, CacheManager caches) {
     this.log = log;
@@ -111,6 +113,21 @@ public class VisitController {
   @PostMapping("/visits/trail")
   public void follow(@RequestBody VisitDto visit) {
     trail().add(visit.page());
+  }
+
+  @PostMapping("/visits/pause")
+  public void pause(@RequestParam boolean on) {
+    paused = on;
+  }
+
+  @PostMapping("/visits/local")
+  public void local(@RequestBody VisitDto visit) {
+    new MemoryVisits().save(visit);
+  }
+
+  @GetMapping("/visits/pages")
+  public void pagesLike(@RequestParam String prefix) {
+    pages.keySet().stream().filter(page -> page.startsWith(prefix)).forEach(recentPages::add);
   }
 
   @PostMapping("/visits/later")

@@ -22,6 +22,8 @@ import org.objectweb.asm.tree.analysis.Analyzer;
 import org.objectweb.asm.tree.analysis.AnalyzerException;
 
 final class Flows {
+  private static final int PASSES = 4;
+  private static final String CONTINUATION = "kotlin.coroutines.jvm.internal.ContinuationImpl";
   static final class Declared {
     final JavaClass type;
     final MethodNode method;
@@ -91,10 +93,17 @@ final class Flows {
       return Optional.empty();
     }
     boolean instance = (method.access & Opcodes.ACC_STATIC) == 0;
-    MethodFlow flow = new MethodFlow(Summaries.internal(type), method.name, method.desc, instance, names(method));
+    Map<String, Set<String>> spilled = new HashMap<>();
     try {
-      new Analyzer<>(new FlowInterpreter(method, flow, library, this)).analyze(flow.owner, method);
-      return Optional.of(flow);
+      for (int pass = 0; pass < PASSES; pass++) {
+        MethodFlow flow = new MethodFlow(Summaries.internal(type), method.name, method.desc, instance, names(method));
+        FlowInterpreter interpreter = new FlowInterpreter(method, flow, library, this, spilled);
+        new Analyzer<>(interpreter).analyze(flow.owner, method);
+        if (!interpreter.spilledGrew() || pass == PASSES - 1) {
+          return Optional.of(flow);
+        }
+      }
+      return Optional.empty();
     } catch (AnalyzerException | RuntimeException unreadable) {
       return Optional.empty();
     }
@@ -102,6 +111,16 @@ final class Flows {
 
   boolean isProjectClass(String internalName) {
     return classes.containsKey(internalName);
+  }
+
+  boolean isEnum(String internalName) {
+    JavaClass type = classes.get(internalName);
+    return type != null && type.isEnum();
+  }
+
+  boolean isContinuation(String internalName) {
+    JavaClass type = classes.get(internalName);
+    return type != null && type.isAssignableTo(CONTINUATION);
   }
 
   private static List<String> names(MethodNode method) {
