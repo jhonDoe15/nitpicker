@@ -1,25 +1,29 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.scan;
 
 import com.sun.source.tree.*;
 import com.sun.source.util.TreePath;
 import java.util.*;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.model.*;
+import nitpicker.designfacts.resolve.*;
+import nitpicker.designfacts.scope.*;
 
-final class Usage {
+public final class Usage {
   private record Value(String key, Ty ty, int param) {}
 
   private final Body body;
   private final Typer typer;
   private final Ctx ctx;
-  int closureDepth;
-  int conditionDepth;
+  public int closureDepth;
+  public int conditionDepth;
 
-  Usage(Body body, Typer typer, Ctx ctx) {
+  public Usage(Body body, Typer typer, Ctx ctx) {
     this.body = body;
     this.typer = typer;
     this.ctx = ctx;
   }
 
-  void identifier(IdentifierTree tree, TreePath path) {
+  public void identifier(IdentifierTree tree, TreePath path) {
     String name = tree.getName().toString();
     if (name.equals("this") || name.equals("super")) {
       return;
@@ -80,7 +84,7 @@ final class Usage {
     }
   }
 
-  void member(MemberSelectTree select, TreePath path) {
+  public void member(MemberSelectTree select, TreePath path) {
     Tree base = Names.unparen(select.getExpression());
     String member = select.getIdentifier().toString();
     if (base instanceof IdentifierTree identifier && identifier.getName().contentEquals("this")) {
@@ -155,7 +159,7 @@ final class Usage {
     }
   }
 
-  void captured(Set<String> names) {
+  public void captured(Set<String> names) {
     for (String name : names) {
       Local local = ctx.lookup(name);
       Body.Use use = local == null ? null : body.uses.get(local.param);

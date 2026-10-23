@@ -1,11 +1,14 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.facts;
 
 import com.sun.source.tree.*;
 import com.sun.source.util.TreeScanner;
 import java.util.*;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.model.*;
+import nitpicker.designfacts.resolve.*;
 
-final class Mutability {
-  static final Set<String> CREATED =
+public final class Mutability {
+  public static final Set<String> CREATED =
       Set.of(
           "ArrayList", "LinkedList", "HashMap", "LinkedHashMap", "TreeMap", "HashSet",
           "LinkedHashSet", "TreeSet", "ArrayDeque", "PriorityQueue", "Stack", "Vector",
@@ -14,7 +17,7 @@ final class Mutability {
           "CopyOnWriteArraySet", "ConcurrentSkipListMap", "ConcurrentSkipListSet",
           "LinkedBlockingQueue", "ArrayBlockingQueue", "LinkedBlockingDeque", "StringBuilder",
           "StringBuffer", "BitSet", "Properties");
-  static final Set<String> RECEIVERS = new HashSet<>(CREATED);
+  public static final Set<String> RECEIVERS = new HashSet<>(CREATED);
 
   static {
     RECEIVERS.addAll(
@@ -25,11 +28,11 @@ final class Mutability {
 
   private final Typer typer;
 
-  Mutability(Typer typer) {
+  public Mutability(Typer typer) {
     this.typer = typer;
   }
 
-  boolean isMutable(TypeInfo type, FieldInfo field) {
+  public boolean isMutable(TypeInfo type, FieldInfo field) {
     boolean settable =
         type.lombokReplaceable
             || Names.hasAnnotation(field.tree.getModifiers(), "Setter")
@@ -66,7 +69,7 @@ final class Mutability {
     private final String name;
     private final List<Tree> assigned;
 
-    Assignments(String name, List<Tree> assigned) {
+    public Assignments(String name, List<Tree> assigned) {
       this.name = name;
       this.assigned = assigned;
     }

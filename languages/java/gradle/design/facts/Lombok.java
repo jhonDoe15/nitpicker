@@ -1,17 +1,19 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.facts;
 
 import com.sun.source.tree.*;
 import java.nio.file.*;
 import java.util.*;
 import javax.lang.model.element.Modifier;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.model.*;
 
-final class Lombok {
+public final class Lombok {
   private static final List<String> REPLACING =
       List.of("Setter", "AllArgsConstructor", "Builder", "With", "Data");
 
   private Lombok() {}
 
-  static boolean disabledBy(Path directory, Path root) {
+  public static boolean disabledBy(Path directory, Path root) {
     Path current = directory;
     while (current != null && current.startsWith(root)) {
       Path config = current.resolve("lombok.config");
@@ -30,7 +32,7 @@ final class Lombok {
     return false;
   }
 
-  static void apply(TypeInfo type, boolean allowed) {
+  public static void apply(TypeInfo type, boolean allowed) {
     if (!type.unit.lombok) {
       return;
     }
@@ -82,7 +84,7 @@ final class Lombok {
     return false;
   }
 
-  static String getterName(FieldInfo field) {
+  public static String getterName(FieldInfo field) {
     String name = field.name;
     boolean primitive = field.tree.getType() != null && field.tree.getType().toString().equals("boolean");
     if (!primitive) {

@@ -1,34 +1,31 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.scan;
 
 import com.sun.source.tree.*;
 import com.sun.source.util.TreePath;
-import com.sun.source.util.TreePathScanner;
-import com.sun.source.util.TreeScanner;
 import java.util.*;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.model.*;
+import nitpicker.designfacts.resolve.*;
+import nitpicker.designfacts.scope.*;
 
-final class BodyScanner extends TreePathScanner<Void, Void> {
+public final class BodyScanner extends ScopeScanner {
   private final Body body;
-  private final Typer typer;
-  private final Ctx ctx;
   private final MethodInfo method;
-  private final Usage usage;
   private final Decisions decisions;
   private final Mutations mutations;
   private final Set<Tree> chainTails = Collections.newSetFromMap(new IdentityHashMap<>());
   private final Set<Tree> consumed = Collections.newSetFromMap(new IdentityHashMap<>());
   private int finallyDepth;
 
-  BodyScanner(Body body, Typer typer, Ctx ctx, MethodInfo method) {
+  public BodyScanner(Body body, Typer typer, Ctx ctx, MethodInfo method) {
+    super(typer, ctx, new Usage(body, typer, ctx));
     this.body = body;
-    this.typer = typer;
-    this.ctx = ctx;
     this.method = method;
-    this.usage = new Usage(body, typer, ctx);
     this.decisions = new Decisions(typer, ctx);
     this.mutations = new Mutations(typer, ctx, method.tree.getBody());
   }
 
-  void run() {
+  public void run() {
     TreePath path = new TreePath(ctx.unit.tree);
     Deque<TypeInfo> owners = new ArrayDeque<>();
     for (TypeInfo type = method.owner; type != null; type = type.outer) {
@@ -41,42 +38,6 @@ final class BodyScanner extends TreePathScanner<Void, Void> {
     body.calls.sort(Comparator.comparingLong(fact -> fact.position));
   }
 
-  private void conditioned(Tree condition) {
-    if (condition != null) {
-      usage.conditionDepth++;
-      scan(condition, null);
-      usage.conditionDepth--;
-    }
-  }
-
-  @Override
-  public Void visitBlock(BlockTree tree, Void unused) {
-    ctx.push();
-    super.visitBlock(tree, unused);
-    ctx.pop();
-    return null;
-  }
-
-  @Override
-  public Void visitClass(ClassTree tree, Void unused) {
-    Set<String> names = new HashSet<>();
-    new TreeScanner<Void, Void>() {
-      @Override
-      public Void visitIdentifier(IdentifierTree identifier, Void unused) {
-        names.add(identifier.getName().toString());
-        return null;
-      }
-
-      @Override
-      public Void visitMemberSelect(MemberSelectTree select, Void unused) {
-        names.add(select.getIdentifier().toString());
-        return super.visitMemberSelect(select, unused);
-      }
-    }.scan(tree, null);
-    usage.captured(names);
-    return null;
-  }
-
   @Override
   public Void visitVariable(VariableTree tree, Void unused) {
     Tree initializer = tree.getInitializer();
@@ -87,79 +48,6 @@ final class BodyScanner extends TreePathScanner<Void, Void> {
     String name = tree.getName().toString();
     ctx.declare(name, inferred ? typer.typeOf(initializer, ctx) : typer.tyOf(type, ctx), -1);
     mutations.declared(name, initializer);
-    return null;
-  }
-
-  @Override
-  public Void visitBindingPattern(BindingPatternTree tree, Void unused) {
-    VariableTree variable = tree.getVariable();
-    ctx.declare(variable.getName().toString(), typer.tyOf(variable.getType(), ctx), -1);
-    return null;
-  }
-
-  @Override
-  public Void visitForLoop(ForLoopTree tree, Void unused) {
-    ctx.push();
-    scan(tree.getInitializer(), null);
-    conditioned(tree.getCondition());
-    scan(tree.getUpdate(), null);
-    scan(tree.getStatement(), null);
-    ctx.pop();
-    return null;
-  }
-
-  @Override
-  public Void visitEnhancedForLoop(EnhancedForLoopTree tree, Void unused) {
-    scan(tree.getExpression(), null);
-    ctx.push();
-    VariableTree variable = tree.getVariable();
-    ctx.declare(variable.getName().toString(), typer.tyOf(variable.getType(), ctx), -1);
-    scan(tree.getStatement(), null);
-    ctx.pop();
-    return null;
-  }
-
-  @Override
-  public Void visitCatch(CatchTree tree, Void unused) {
-    ctx.push();
-    ctx.declare(tree.getParameter().getName().toString(), Ty.UNKNOWN, -1);
-    scan(tree.getBlock(), null);
-    ctx.pop();
-    return null;
-  }
-
-  @Override
-  public Void visitLambdaExpression(LambdaExpressionTree tree, Void unused) {
-    usage.closureDepth++;
-    ctx.push();
-    for (VariableTree parameter : tree.getParameters()) {
-      ctx.declare(parameter.getName().toString(), typer.tyOf(parameter.getType(), ctx), -1);
-    }
-    scan(tree.getBody(), null);
-    ctx.pop();
-    usage.closureDepth--;
-    return null;
-  }
-
-  @Override
-  public Void visitWhileLoop(WhileLoopTree tree, Void unused) {
-    conditioned(tree.getCondition());
-    scan(tree.getStatement(), null);
-    return null;
-  }
-
-  @Override
-  public Void visitDoWhileLoop(DoWhileLoopTree tree, Void unused) {
-    scan(tree.getStatement(), null);
-    conditioned(tree.getCondition());
-    return null;
-  }
-
-  @Override
-  public Void visitConditionalExpression(ConditionalExpressionTree tree, Void unused) {
-    conditioned(tree.getCondition());
-    scan(tree.getTrueExpression(), null);
-    scan(tree.getFalseExpression(), null);
     return null;
   }
 

@@ -1,13 +1,16 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.facts;
 
 import com.sun.source.tree.*;
 import java.nio.file.Path;
 import java.util.*;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.model.*;
+import nitpicker.designfacts.resolve.*;
 
-final class Prepare {
+public final class Prepare {
   private Prepare() {}
 
-  static void run(Project project, Path root) {
+  public static void run(Project project, Path root) {
     Map<Path, Boolean> disabled = new HashMap<>();
     for (TypeInfo type : project.types) {
       Path directory = root.resolve(type.unit.file).getParent();

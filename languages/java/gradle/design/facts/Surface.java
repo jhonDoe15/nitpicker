@@ -1,10 +1,13 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.facts;
 
 import com.sun.source.tree.*;
 import java.util.*;
 import javax.lang.model.element.Modifier;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.model.*;
+import nitpicker.designfacts.resolve.*;
 
-final class Surface {
+public final class Surface {
   private static final Set<String> QUIET =
       Set.of(
           "Override", "SuppressWarnings", "Deprecated", "SafeVarargs", "FunctionalInterface",
@@ -27,12 +30,12 @@ final class Surface {
   private final Project project;
   private final Lookup lookup;
 
-  Surface(Project project, Lookup lookup) {
+  public Surface(Project project, Lookup lookup) {
     this.project = project;
     this.lookup = lookup;
   }
 
-  boolean exported(MethodInfo method) {
+  public boolean exported(MethodInfo method) {
     if (!method.owner.exported()) {
       return false;
     }
@@ -41,7 +44,7 @@ final class Surface {
     return visible || (method.owner.isInterface() && !method.flags.contains(Modifier.PRIVATE));
   }
 
-  boolean entry(MethodInfo method) {
+  public boolean entry(MethodInfo method) {
     if (method.tree == null) {
       return false;
     }
@@ -69,7 +72,7 @@ final class Surface {
         || (method.name.equals("equals") && method.params.size() == 1);
   }
 
-  static boolean isMain(MethodInfo method) {
+  public static boolean isMain(MethodInfo method) {
     return method.name.equals("main") && method.isStatic && method.flags.contains(Modifier.PUBLIC)
         && method.params.size() == 1 && Names.typeText(method.returnType).equals("void");
   }

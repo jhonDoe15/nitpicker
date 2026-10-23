@@ -27,7 +27,8 @@ function versionText(command) {
 }
 
 function designSources(directory = SOURCE_DIRECTORY) {
-  return readdirSync(directory)
+  return readdirSync(directory, { recursive: true })
+    .map((name) => String(name).replaceAll('\\', '/'))
     .filter((name) => name.endsWith('.java'))
     .sort()
     .map((name) => inside(directory, name));
@@ -44,6 +45,7 @@ function inside(root, name) {
 function cacheKey(sources) {
   const digest = createHash('sha256');
   for (const source of sources) {
+    digest.update(`${path.relative(SOURCE_DIRECTORY, source).replaceAll('\\', '/')}\n`);
     digest.update(readFileSync(source));
   }
   digest.update(`${versionText('javac')}|${versionText('java')}`);

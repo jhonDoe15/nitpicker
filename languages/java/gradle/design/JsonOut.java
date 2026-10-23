@@ -3,10 +3,10 @@ package nitpicker.designfacts;
 import java.util.Collection;
 import java.util.Map;
 
-final class JsonOut {
+public final class JsonOut {
   private JsonOut() {}
 
-  static String of(Object value) {
+  public static String of(Object value) {
     StringBuilder out = new StringBuilder();
     write(out, value);
     return out.toString();

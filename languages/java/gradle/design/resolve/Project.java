@@ -1,16 +1,18 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.resolve;
 
 import com.sun.source.tree.*;
 import java.util.*;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.model.*;
 
-final class Project {
+public final class Project {
   private static final Set<String> MARKER_SUPERS =
       Set.of("Object", "Serializable", "Cloneable", "Record", "Enum");
 
-  final List<TypeInfo> types = new ArrayList<>();
+  public final List<TypeInfo> types = new ArrayList<>();
   private final Map<String, List<TypeInfo>> byFqn = new HashMap<>();
 
-  Project(List<Unit> units) {
+  public Project(List<Unit> units) {
     for (Unit unit : units) {
       for (Tree declaration : unit.tree.getTypeDecls()) {
         if (declaration instanceof ClassTree tree) {
@@ -34,16 +36,16 @@ final class Project {
     }
   }
 
-  TypeInfo find(String fqn) {
+  public TypeInfo find(String fqn) {
     List<TypeInfo> found = byFqn.get(fqn);
     return found != null && found.size() == 1 ? found.get(0) : null;
   }
 
-  boolean known(String fqn) {
+  public boolean known(String fqn) {
     return byFqn.containsKey(fqn);
   }
 
-  void link(TypeInfo type) {
+  public void link(TypeInfo type) {
     if (type.linked) {
       return;
     }
@@ -72,7 +74,7 @@ final class Project {
     }
   }
 
-  TypeInfo memberType(TypeInfo type, String name) {
+  public TypeInfo memberType(TypeInfo type, String name) {
     Deque<TypeInfo> queue = new ArrayDeque<>(List.of(type));
     Set<TypeInfo> seen = new HashSet<>();
     while (!queue.isEmpty()) {
@@ -90,7 +92,7 @@ final class Project {
     return null;
   }
 
-  TypeInfo resolveSimple(String name, TypeInfo owner, Unit unit, Set<String> variables) {
+  public TypeInfo resolveSimple(String name, TypeInfo owner, Unit unit, Set<String> variables) {
     if (variables.contains(name)) {
       return null;
     }
@@ -128,7 +130,7 @@ final class Project {
     return candidates.size() == 1 ? candidates.iterator().next() : null;
   }
 
-  TypeInfo resolveQualified(List<String> parts, TypeInfo owner, Unit unit, Set<String> variables) {
+  public TypeInfo resolveQualified(List<String> parts, TypeInfo owner, Unit unit, Set<String> variables) {
     if (parts.isEmpty()) {
       return null;
     }
@@ -154,7 +156,7 @@ final class Project {
     return current;
   }
 
-  TypeInfo resolveTree(Tree tree, TypeInfo owner, Unit unit, Set<String> variables) {
+  public TypeInfo resolveTree(Tree tree, TypeInfo owner, Unit unit, Set<String> variables) {
     return switch (tree) {
       case null -> null;
       case IdentifierTree identifier ->
