@@ -3,20 +3,23 @@ import {
   isPlainObject,
   configError,
   isNonEmptyString,
-  liftsOnlyRules,
   validateStringArray,
   validateThresholds,
   validateDuplicates,
-  validateExceptions,
   TYPESCRIPT_ONLY_KEYS,
   validateProjectRelativePath,
+  validateFactRuleSettings,
 } from '../../shared/config.mjs';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
+import { validateSpringOptions } from '../../languages/java/adapters/spring-arch/spring-roles.mjs';
 import {
   PYTHON_TOP_LEVEL_EXCEPTION_RULES,
   validatePythonConfig,
 } from '../../languages/python/adapters/configuration/python-config.mjs';
+import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
+import { liftsOnlyRules, validateExceptions } from '../../shared/exceptions/validation.mjs';
+import { RULES } from '../../shared/policy.mjs';
 import { validateTools } from './tool-settings.mjs';
 import { rejectHeadBase } from './project-checks/project-config.mjs';
 import { conventionDefinitions } from '../conventions/definitions.mjs';
@@ -24,7 +27,8 @@ import { validateConventions } from '../../shared/conventions/settings.mjs';
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
-import path from 'node:path';
+import { validateHistory } from './scopes/history-settings.mjs';
+import { TYPESCRIPT_PRESETS, validateLayout } from './scopes/layout-settings.mjs';
 
 const OPTIONAL_VALIDATORS = [
   [
@@ -34,8 +38,7 @@ const OPTIONAL_VALIDATORS = [
     },
   ],
   ['exclude', validateStringArray],
-  ['layout', validateLayout],
-  ['exceptions', validateExceptions],
+  ['exceptions', validateProjectExceptions],
   ['legacyInventory', validateProjectRelativePath],
   ['duplicates', validateDuplicates],
   ['analyzers', validateCustomAnalyzers],
@@ -59,12 +62,10 @@ export const KEYS = [
   'tools',
   'testConsole',
   'kotlin',
+  'spring',
   'conventions',
+  'history',
 ];
-
-const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs', 'entryPoints'];
-
-const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 
 const REACT_KEYS = ['enabled', 'styling'];
 
@@ -72,16 +73,22 @@ const I18N_KEYS = ['enabled', 'functionNames', 'componentNames'];
 
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
+const NITPICKER_RULE_IDS = new Set(RULES.map(({ id }) => id));
+
+const TYPESCRIPT_RULE_NAMES = new Map([['doc-comment-content', 'nitpicker/no-comments']]);
+
 export function validateConfig(config) {
   if (!isPlainObject(config)) {
     throw configError('must be a JSON object');
   }
   validateKeys(config);
+  validateFactRuleSettings(config);
   validateScalars(config);
   validateDisable(config.disable);
   validateReact(config.react);
   validateI18n(config.i18n);
-  validateTestConsole(config.testConsole, config.preset);
+  validateTestConsole(config.testConsole);
+  validateHistory(config.history);
   validateOptional(config);
   validateProjectConventions(config);
   return config;
@@ -108,6 +115,7 @@ function validateScalars(config) {
   }
   validateJavascriptConfig(config);
   validateKotlinOptions(config);
+  validateSpringOptions(config);
   validatePythonConfig(
     config,
     liftsOnlyRules(config.exceptions, PYTHON_TOP_LEVEL_EXCEPTION_RULES)
@@ -160,8 +168,11 @@ function validateOptional(config) {
       validate(config[key], key, config.preset);
     }
   }
+  if (config.layout !== undefined) {
+    validateLayout(config.layout, config.preset, config.history);
+  }
   if (config.exceptions !== undefined) {
-    validateI18nExceptions(config.exceptions, config.preset);
+    validateTypescriptExceptionRules(config.exceptions, config.preset);
   }
   if (config.tools !== undefined) {
     validateTools(config.tools, config.preset);
@@ -184,55 +195,35 @@ function validateI18n(i18n) {
   }
 }
 
-function validateI18nExceptions(exceptions, preset) {
-  if (!['typescript', 'javascript', undefined].includes(preset)) {
+function exceptionRuleProblem(rule, preset) {
+  if (rule.startsWith('formatjs/') && !i18nRuleIds.includes(rule)) {
+    return `which nitpicker does not run. The i18n rules it runs: ${i18nRuleIds.join(', ')}`;
+  }
+  const native = TYPESCRIPT_RULE_NAMES.get(rule);
+  return native === undefined
+    ? undefined
+    : `which the ${preset ?? 'typescript'} preset reports as ${native}: name "${native}" instead`;
+}
+
+function validateProjectExceptions(exceptions, key, preset) {
+  validateExceptions(exceptions, key, {
+    preset: preset ?? 'typescript',
+    matchesOwnGlobs: TYPESCRIPT_PRESETS.includes(preset)
+      ? (rule) => NITPICKER_RULE_IDS.has(canonicalRule(rule))
+      : undefined,
+  });
+}
+
+function validateTypescriptExceptionRules(exceptions, preset) {
+  if (!TYPESCRIPT_PRESETS.includes(preset)) {
     return;
   }
   for (const [index, { rule }] of exceptions.entries()) {
-    if (rule.startsWith('formatjs/') && !i18nRuleIds.includes(rule)) {
-      throw configError(
-        `"exceptions[${String(index)}].rule" names ${rule}, which nitpicker does not run. The i18n rules it runs: ${i18nRuleIds.join(', ')}`,
-      );
+    const problem = exceptionRuleProblem(rule, preset);
+    if (problem !== undefined) {
+      throw configError(`"exceptions[${String(index)}].rule" names ${rule}, ${problem}`);
     }
   }
-}
-
-function validateLayout(layout) {
-  if (!isPlainObject(layout)) {
-    throw configError('"layout" must be an object');
-  }
-  for (const [key, value] of Object.entries(layout)) validateLayoutEntry(key, value);
-}
-
-function validateLayoutEntry(key, value) {
-  if (!LAYOUT_KEYS.includes(key)) {
-    throw configError(
-      `unknown layout key "${key}". Allowed layout keys: ${LAYOUT_KEYS.join(', ')}`,
-    );
-  }
-  validateStringArray(value, `layout.${key}`);
-  if (GLOB_LAYOUT_KEYS.includes(key)) {
-    return;
-  }
-  if (value.length === 0) {
-    throw configError(`"layout.${key}" must not be empty`);
-  }
-  for (const root of value) {
-    if (!isProjectRelativeDirectory(root)) {
-      throw configError(`"layout.${key}" entries must be directories inside the project: ${root}`);
-    }
-  }
-}
-
-function isProjectRelativeDirectory(root) {
-  const normalized = root.replaceAll('\\', '/');
-  return (
-    !path.isAbsolute(normalized) &&
-    !/^[A-Za-z]:/.test(normalized) &&
-    !/[*?{}[\]]/.test(normalized) &&
-    !normalized.split('/').includes('..') &&
-    normalized.replace(/^\.\/?|\/$/g, '').length > 0
-  );
 }
 
 function validateCustomAnalyzers(analyzers) {

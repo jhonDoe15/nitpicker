@@ -23,14 +23,16 @@ function projectFiles(projectRoot) {
   return listed.status === 0 ? listed.stdout.split('\0').filter(Boolean) : [];
 }
 
+export function isMarkedGenerated(projectRoot, file) {
+  const absolute = pathInside(projectRoot, file);
+  if (!CODE_FILE.test(file) || absolute === undefined || !existsSync(absolute)) {
+    return false;
+  }
+  return mayBeGenerated(file)
+    ? hasGeneratorMarker(readFileSync(absolute, 'utf8')) || fileHasGeneratorHeader(absolute)
+    : fileHasGeneratorHeader(absolute);
+}
+
 export function markedGeneratedFiles(projectRoot) {
-  return projectFiles(projectRoot).filter((file) => {
-    const absolute = pathInside(projectRoot, file);
-    if (!CODE_FILE.test(file) || absolute === undefined || !existsSync(absolute)) {
-      return false;
-    }
-    return mayBeGenerated(file)
-      ? hasGeneratorMarker(readFileSync(absolute, 'utf8')) || fileHasGeneratorHeader(absolute)
-      : fileHasGeneratorHeader(absolute);
-  });
+  return projectFiles(projectRoot).filter((file) => isMarkedGenerated(projectRoot, file));
 }

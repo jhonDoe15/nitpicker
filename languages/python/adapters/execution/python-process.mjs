@@ -13,13 +13,27 @@ export function execute(
 ) {
   const [tool, ...args] = command;
   const launch = context.launcher.launch(tool, args);
-  return spawnSync(launch.command, launch.args, {
+  return (context.spawn ?? spawnSync)(launch.command, launch.args, {
     cwd: cwd ?? context.projectRoot,
     env: { ...defaultEnv, ...process.env, ...launch.env, ...context.env, ...env },
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
     timeout,
   });
+}
+
+export function probe(context, command) {
+  const [tool, ...args] = command;
+  const key = JSON.stringify([
+    context.launcher.launch(tool, args),
+    context.projectRoot,
+    context.env,
+  ]);
+  context.probes ??= new Map();
+  if (!context.probes.has(key)) {
+    context.probes.set(key, execute(context, command));
+  }
+  return context.probes.get(key);
 }
 
 function isAccepted(accepted, result) {
@@ -65,7 +79,7 @@ function describeFailure({ context, command, result, timeoutMs = TOOL_TIMEOUT_MS
 }
 
 export function probeVersion(context, command) {
-  const result = execute(context, command);
+  const result = probe(context, command);
   if (result.error !== undefined || result.status !== 0) {
     return 'missing';
   }

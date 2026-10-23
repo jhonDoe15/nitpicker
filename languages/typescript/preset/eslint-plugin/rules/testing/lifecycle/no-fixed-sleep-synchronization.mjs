@@ -18,8 +18,7 @@ const FIND_QUERY = /^find(?:All)?By[A-Z]/u;
 const RENDER_CALL = /^(?:render|within$)/u;
 const TESTING_LIBRARY_MODULE = /^@testing-library\//u;
 const VITEST_OBJECTS = new Set(['vi', 'vitest']);
-const EXCEPTION_HINT =
-  'If a real wait is unavoidable, add an exception for nitpicker/no-fixed-sleep-synchronization in nitpicker.config.json.';
+const EXCEPTION_HINT = 'An exception fits only when a real wait is unavoidable.';
 
 function isSetTimeout(callee) {
   if (callee.type === 'Identifier') return callee.name === 'setTimeout';

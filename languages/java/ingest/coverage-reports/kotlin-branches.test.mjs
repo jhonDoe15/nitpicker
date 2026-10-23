@@ -166,7 +166,7 @@ describe('changed-branch-coverage on Kotlin statements that span lines', () => {
 
   it('says which outcome a line that branches and suspends misses', () => {
     expect(findings.find((finding) => finding.location?.line === 39).message).toBe(
-      "Branch coverage is 75.00%; minimum is 95%. Not taken: emit suspending (move the call to its own line if no branch of yours is untested). Test it, or remove it if it can't happen.",
+      'Branch coverage is 75.00%; minimum is 95%. Not taken: emit suspending (move the call to its own line if no branch of yours is untested). Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
     );
   });
 

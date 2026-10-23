@@ -67,7 +67,7 @@ export function loggerNames(code) {
   return new Set([...code.matchAll(DECLARATION)].map((match) => match[1]));
 }
 
-function isLoggerName(name, declared) {
+export function isLoggerName(name, declared = new Set()) {
   return declared.has(name) || LOGGER_NAMES.some((pattern) => pattern.test(name));
 }
 
@@ -101,11 +101,19 @@ function callAt(code, match) {
   }
   const lambdaLength =
     code[open] === '(' ? /^\s*\{/.exec(code.slice(close + 1))?.[0].length : undefined;
-  const lambdaEnd = lambdaLength === undefined ? close : closingIndex(code, close + lambdaLength);
+  const lambdaOpen = code[open] === '{' ? open : close + (lambdaLength ?? 0);
+  const lambdaEnd = lambdaLength === undefined ? close : closingIndex(code, lambdaOpen);
+  const lambda =
+    code[lambdaOpen] === '{' && lambdaEnd !== -1
+      ? { open: lambdaOpen, close: lambdaEnd }
+      : undefined;
   return {
     index: match.index,
     receiver: match[1],
     level: match[2],
+    open,
+    close,
+    lambda,
     args: code[open] === '(' ? topLevelArguments(code.slice(open + 1, close)) : [],
     text: code.slice(match.index, chainEnd(code, lambdaEnd === -1 ? close : lambdaEnd) + 1),
   };

@@ -1,3 +1,6 @@
+import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
+import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { ASYNC_HINTS } from './hints/ast-async.mjs';
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
@@ -35,6 +38,7 @@ export const RULE_HINTS = [
   ...SECURITY_HINTS,
   ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
+  ...ASYNC_HINTS,
   ...SMELL_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({
@@ -68,9 +72,7 @@ export function hintFor(finding) {
   return RULE_HINTS.find((hint) => matches(hint, finding));
 }
 
-export function exceptionSentence(rule) {
-  return `To allow it for some paths, add a "python.exceptions" entry for ${rule} in nitpicker.config.json.`;
-}
+const PYTHON_EXCEPTIONS_KEY = 'python.exceptions';
 
 export function describeRuleFinding(rule, subject, libraries = DEFAULT_LIBRARIES) {
   return RULE_HINTS.find((hint) => hint.tool === RULES_TOOL && hint.rules.includes(rule)).describe(
@@ -93,6 +95,7 @@ function canBeLifted(finding) {
     finding.classification === 'enforceable' &&
     typeof finding.rule === 'string' &&
     finding.rule !== '' &&
+    !FUNCTION_EXCEPTION_RULES.includes(finding.rule) &&
     finding.path !== '.'
   );
 }
@@ -107,7 +110,9 @@ export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
   const sentences = [
     `${rest.message.replace(/\.$/, '')}.`,
     ...(hint === undefined ? [] : [allowedText(hint, subject, libraries)]),
-    ...(routed ? [] : [exceptionSentence(rest.rule)]),
+    ...(routed
+      ? []
+      : [exceptionRoute({ rule: rest.rule, path: rest.path, key: PYTHON_EXCEPTIONS_KEY })]),
   ];
   return { ...rest, message: sentences.join(' ') };
 }

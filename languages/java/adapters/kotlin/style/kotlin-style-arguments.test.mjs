@@ -1,16 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import { collectJavaFindings } from '../../java-diff.mjs';
 import { kotlinGradleArguments, kotlinStyleFile, resolveKotlinTools } from '../kotlin-tools.mjs';
+import { fakeGradleRun } from '../../test-support/in-process-gradle.mjs';
 import { kotlinProjects } from '../test-support/kotlin-project.mjs';
 
-const fakeGradle = path.join(
-  fileURLToPath(new URL('../../', import.meta.url)),
-  'fixtures/fake-gradle.mjs',
-);
 const FOLLOWED = {
   'kotlin.indentation': '4',
   'kotlin.trailingCommas': 'never',
@@ -246,7 +242,7 @@ describe('what runs with the project listed', () => {
 
   it("passes the merged forbidden-call list when the project's detekt config lists calls of its own", () => {
     const root = project({
-      'detekt.yml': "style:\n  ForbiddenMethodCall:\n    methods: ['kotlin.io.println']\n",
+      'detekt.yml': "style:\n  ForbiddenMethodCall:\n    methods: ['java.lang.System.exit']\n",
     });
 
     expect(
@@ -261,7 +257,7 @@ describe('what runs with the project listed', () => {
 
 describe('the Gradle hand-off', () => {
   const argumentsOf = (root, policy) => {
-    collectJavaFindings(root, { gradle: fakeGradle, policy });
+    collectJavaFindings(root, { ...fakeGradleRun, policy });
     return JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8')).filter(
       (argument) => !argument.startsWith('-Pnitpicker.reportDir='),
     );

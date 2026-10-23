@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
-import { javaFiles, runFormat, writeCheckstyleSetup } from './maven-lint.mjs';
+import { javaFiles, runFormat, runPmd, writeCheckstyleSetup } from './maven-lint.mjs';
 import { toolDependencies } from './maven-tools.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 
@@ -249,5 +249,80 @@ describe('runFormat', () => {
       '"--dry-run"',
     ]);
     expect(run('none')).toEqual([]);
+  });
+});
+
+describe.skipIf(process.platform === 'win32')('runPmd', () => {
+  function pmdRun(spring) {
+    const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-pmd-'));
+    roots.push(basedir);
+    const java = path.join(basedir, 'jdk/bin/java');
+    mkdirSync(path.dirname(java), { recursive: true });
+    writeFileSync(
+      java,
+      [
+        `#!${process.execPath}`,
+        "const fs = require('node:fs');",
+        "const lines = fs.readFileSync(process.argv[2].slice(1), 'utf8').split('\\n');",
+        'const args = lines.map((line) => JSON.parse(line));',
+        `fs.writeFileSync(${JSON.stringify(path.join(basedir, 'arguments.json'))}, JSON.stringify(args));`,
+        "fs.writeFileSync(args[args.indexOf('--report-file') + 1], '{}');",
+      ].join('\n'),
+    );
+    chmodSync(java, 0o755);
+    vi.stubEnv('JAVA_HOME', path.join(basedir, 'jdk'));
+    const [mainRoot, testRoot, reportDir] = ['src/main/java', 'src/test/java', 'report'].map(
+      (name) => path.join(basedir, name),
+    );
+    for (const directory of [mainRoot, testRoot, reportDir]) {
+      mkdirSync(directory, { recursive: true });
+    }
+    const module = { basedir, sourceRoots: [mainRoot], testSourceRoots: [testRoot] };
+    const classpaths = { mainCompile: [], testCompile: [] };
+    runPmd({
+      module,
+      reportDir,
+      tools: { pmd: ['pmd.jar'] },
+      classpaths,
+      configs: { pmd: {} },
+      spring,
+    });
+    const args = JSON.parse(readFileSync(path.join(basedir, 'arguments.json'), 'utf8'));
+    const refs = (name) =>
+      [...readFileSync(path.join(reportDir, name), 'utf8').matchAll(/<rule ref="([^"]+)"/g)].map(
+        ([, ref]) => ref,
+      );
+    return {
+      rulesets: args[args.indexOf('--rulesets') + 1].split(','),
+      mainRules: refs('pmd-main.xml'),
+      testRules: refs('pmd-tests.xml'),
+      reportDir,
+    };
+  }
+
+  const shipped = (name) => path.join(GRADLE_DIRECTORY, name);
+
+  it('adds the Spring rule sets to the main-only and test-only wrappers of a Spring module', () => {
+    const run = pmdRun(true);
+
+    expect(run.rulesets).toEqual([
+      shipped('pmd-ruleset.xml'),
+      path.join(run.reportDir, 'pmd-tests.xml'),
+      path.join(run.reportDir, 'pmd-main.xml'),
+    ]);
+    expect(run.mainRules).toEqual([shipped('pmd-main-ruleset.xml'), shipped('spring-ruleset.xml')]);
+    expect(run.testRules).toEqual([
+      shipped('pmd-test-ruleset.xml'),
+      shipped('spring-test-ruleset.xml'),
+    ]);
+  });
+
+  it('leaves the Spring rule sets out of a module without Spring', () => {
+    const run = pmdRun(false);
+
+    expect({ main: run.mainRules, tests: run.testRules }).toEqual({
+      main: [shipped('pmd-main-ruleset.xml')],
+      tests: [shipped('pmd-test-ruleset.xml')],
+    });
   });
 });

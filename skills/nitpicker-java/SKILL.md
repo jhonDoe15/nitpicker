@@ -75,6 +75,9 @@ Before you change code other modules use, or fix a bug, read
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
 - A main class only tests use belongs in the test sources (`coupling/test-only-export`).
+- With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations), an aggregate holds
+  another aggregate only by its identifier or an `Association<T, ID>`, an entity sits in one
+  aggregate, and a value object holds identifiers, not entities (`archunit/ddd-...`).
 - Resources: try-with-resources for anything `Closeable`. No `finally` that returns or throws.
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
@@ -110,8 +113,8 @@ Before you change code other modules use, or fix a bug, read
 - Keep classes small: split by responsibility and prefer holding a collaborator to extending one.
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
-- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
-  a method.
+- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails, also
+  when the copy has other names and literals: extract a method.
 
 ## Tests
 
@@ -139,7 +142,7 @@ Before you change code other modules use, or fix a bug, read
   (500 lines) and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection
   read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply
   to main sources only, as do the enum predicate, forwarding wrapper and singular-and-plural rules.
-  If a PMD rule or an Error Prone check flags test code that is right, add an
+  If a PMD rule or an Error Prone check flags test code that is right, ask a human for a reviewed
   exception for `pmd/<rule>` or `errorprone/<Check>`.
 
 ## Editing existing code
@@ -174,10 +177,13 @@ Before you change code other modules use, or fix a bug, read
 - Code that is right despite a rule gets a reviewed `exceptions` entry in `nitpicker.config.json`
   that names the finding as printed, for example `pmd/UnusedPrivateField`,
   `checkstyle/AbbreviationAsWordInName` or `errorprone/FieldCanBeFinal`, with its paths and a
-  reason. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
+  reason. A structure, CRAP, changed-branch coverage, duplicate or coupling finding ends with its
+  own entry. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
   weaker test, to get past the gate yourself: stop and ask.
 - A violated ArchUnit rule is a finding (`archunit/<rule>`) on the offending class. Run the
-  `*ArchTest` class with the build's test task to read the full violation, and fix the code.
+  `*ArchTest` class with the build's test task to read the full violation, and fix the code. In a Spring
+  project nitpicker's own `archunit/spring-...` rules apply too; their message says what to change
+  (see [spring.md](spring.md)).
 
 ## Kotlin projects
 

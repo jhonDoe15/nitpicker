@@ -1,5 +1,3 @@
-// Language-neutral: no imports from `core/`, `languages/` or tool packages.
-
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -21,6 +19,7 @@ export function resolveHeadPolicy(config = {}) {
     ...(config.tools === undefined ? {} : { tools: config.tools }),
     ...(config.duplicates === undefined ? {} : { duplicates: config.duplicates }),
     ...(config.testConsole === undefined ? {} : { testConsole: config.testConsole }),
+    ...(config.history === undefined ? {} : { history: config.history }),
   };
 }
 
