@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { classesOf, functionsOf } from './declarations.mjs';
+import { classesOf } from './declarations.mjs';
+import { functionsOf } from './functions.mjs';
 import { discoverSuites, scanTestFile, testBodies } from './test-units.mjs';
 
 const names = (items) => items.map(({ name }) => name);
@@ -172,7 +173,7 @@ class PlainClass {
     expect(symbols(suites[7].nodes)).toEqual(['ExpectExample > c', 'ExpectExample > c > e']);
   });
 
-  it('reads the leaf bodies and leaves out factories and registrations built at run time', () => {
+  it('reads the leaf bodies, leaves out test factories and keeps tests registered in a loop', () => {
     const scanned = scanTestFile(`class MixedTest {
     @TestFactory fun dynamic() = listOf(1).map { dynamicTest("x") { } }
     @Test fun leaf() { }
@@ -188,7 +189,62 @@ class DynamicSpec : FunSpec({
 
     const bodies = testBodies(scanned, discoverSuites(scanned)).map(({ symbol }) => symbol);
 
-    expect(bodies).toEqual(['MixedTest.leaf', 'DynamicSpec > static']);
+    expect(bodies).toEqual([
+      'MixedTest.leaf',
+      'DynamicSpec > generated > case $it',
+      'DynamicSpec > static',
+    ]);
+  });
+
+  it('looks through inline wrappers, extension helpers and in-file factories', () => {
+    const scanned = scanTestFile(`import io.kotest.core.spec.style.scopes.xtest as pending
+
+class WrappedSpec : FunSpec({
+    run { test("in run") { } }
+    with(this) { test("in with") { } }
+    apply { if (true) { test("in if") { } } }
+    register()
+    include(shared)
+    include(sharedTests())
+    beforeTest { test("not a test") { } }
+    pending("aliased") { }
+})
+
+fun FunSpec.register() {
+    xtest("from helper") { }
+}
+
+val shared = funSpec { test("from factory") { } }
+
+fun sharedTests() = funSpec { test("from function") { } }
+`);
+
+    const nodes = discoverSuites(scanned).flatMap((suite) => suite.nodes);
+
+    expect(nodes.map(({ symbol, prefix }) => `${symbol}${prefix === 'x' ? ' (x)' : ''}`)).toEqual([
+      'WrappedSpec > in run',
+      'WrappedSpec > in with',
+      'WrappedSpec > in if',
+      'WrappedSpec > aliased (x)',
+      'WrappedSpec > from helper (x)',
+      'WrappedSpec > from factory',
+      'WrappedSpec > from function',
+    ]);
+  });
+
+  it('reads test functions whose backticked names hold brackets and equals signs', () => {
+    const scanned = scanTestFile(`class NamesTest {
+    @Test fun \`returns empty (when none)\`() { }
+    @Test fun \`maps {a=1} to [a]\`() = Unit
+    @Test fun after() { }
+}
+`);
+
+    expect(symbols(discoverSuites(scanned)[0].nodes)).toEqual([
+      'NamesTest.returns empty (when none)',
+      'NamesTest.maps {a=1} to [a]',
+      'NamesTest.after',
+    ]);
   });
 
   it('reads an init block and an anonymous object spec', () => {

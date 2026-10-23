@@ -1,17 +1,13 @@
 import { lineOf } from '../../scan/kotlin-source.mjs';
-import { fileReports, projectFlags } from '../tests/test-honesty.mjs';
 import { scanTestFile } from '../tests/discovery/test-units.mjs';
+import { projectFlags } from '../tests/project-flags.mjs';
+import { fileReports } from '../tests/test-honesty.mjs';
 
-export function project(overrides = {}) {
-  return {
-    mainReplaced: false,
-    coroutineTestScope: false,
-    functionNames: new Set(),
-    ...overrides,
-  };
+export function flagsFor(texts) {
+  return projectFlags(texts.map((text) => ({ scanned: scanTestFile(text) })));
 }
 
-function reportsFor(text, flags = project()) {
+function reportsFor(text, flags = flagsFor([text])) {
   const scanned = scanTestFile(text);
   return fileReports(scanned, flags).map((report) => ({
     ...report,
@@ -27,10 +23,6 @@ export function rulesOf(text, rule, flags) {
   return reportsFor(text, flags)
     .filter((report) => report.rule === rule)
     .map(({ symbol, line }) => `${symbol}@${String(line)}`);
-}
-
-export function flagsFor(texts) {
-  return projectFlags(texts.map((text) => ({ scanned: scanTestFile(text) })));
 }
 
 export const JUNIT_HEAD = `package demo
