@@ -75,6 +75,8 @@ const SHAPES = {
     role: oneOf(ROLES),
     entry: optional(isBoolean),
     persistence: optional(oneOf(PERSISTENCE_KINDS)),
+    generated: optional(isBoolean),
+    initializer: optional(isBoolean),
   },
   packages: { root: isRootOrPath, published: isBoolean },
   definitions: {

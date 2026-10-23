@@ -11,12 +11,13 @@ function edge(from, to, names = ['*'], extra = {}) {
   return { from, to, names: names.map((name) => ({ name })), ...extra };
 }
 
-function factsOf(imports, { persistence = {}, tests = [] } = {}) {
+function factsOf(imports, { persistence = {}, tests = [], generated = [] } = {}) {
   const files = [...new Set(imports.flatMap(({ from, to }) => [from, to]))];
   return {
     modules: files.map((file) => ({
       file,
       role: tests.includes(file) ? 'test' : 'production',
+      generated: generated.includes(file),
       ...(persistence[file] === undefined ? {} : { persistence: persistence[file] }),
     })),
     imports,
@@ -33,6 +34,21 @@ const PERSISTENCE = {
 };
 
 describe('foreign-feature-persistence', () => {
+  it('reports no use from or of a generated module', () => {
+    const facts = factsOf(
+      [
+        edge(`${ORDERS}/generated_client.py`, `${BILLING}/repository.py`, ['InvoiceRepository']),
+        edge(`${ORDERS}/cart.py`, `${BILLING}/models.py`, ['Invoice']),
+      ],
+      {
+        persistence: PERSISTENCE,
+        generated: [`${ORDERS}/generated_client.py`, `${BILLING}/models.py`],
+      },
+    );
+
+    expect(findings(facts)).toEqual([]);
+  });
+
   it("reports a feature module using another feature's entity or data access module", () => {
     const facts = factsOf(
       [

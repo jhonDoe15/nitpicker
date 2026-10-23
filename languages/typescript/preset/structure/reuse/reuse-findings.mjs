@@ -12,7 +12,7 @@ import { uniqueFindings } from '../../../../../shared/rules/reuse/reuse-finding.
 import { neutralReuseFacts } from './definition-facts.mjs';
 import { baselineFileReader, productionFacts, svgFiles } from './project-files.mjs';
 import { projectPathOf } from './reuse-paths.mjs';
-import { featureLayoutOf } from '../../architecture/strict-layout.mjs';
+import { typescriptFeatureLayout } from '../../coupling/feature-layout.mjs';
 import { iconAssetFindings } from './rules/icon-assets.mjs';
 import { redefinedLibraryComponentFindings } from './rules/library-components.mjs';
 
@@ -90,7 +90,7 @@ export function reuseFindings(
       language: 'typescript',
       analyzerName,
       rules: FEATURE_RULES,
-      policy: { exceptions, layout: featureLayoutOf(layout.sourceRoots, configured) },
+      policy: { exceptions, layout: typescriptFeatureLayout(configured, layout.sourceRoots) },
     }),
     ...(inReactScope ? reactFindings({ facts, context, projectRoot, layout, react }) : []),
   ]);

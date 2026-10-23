@@ -1489,8 +1489,9 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
   production modules keep their checks.
 - **Import structure.** From the import scan (`imports/python-import-rules.mjs`):
   `coupling/package-cycle` with Java's message, on each package of a cycle (a package `__init__`
-  importing its own submodules is a re-export, not a dependency, and an import that a
-  [`feature-cycle`](#feature-folders) finding already reports is left out); `coupling/no-production-cycles`
+  importing its own submodules is a re-export, not a dependency, and a cycle whose packages all
+  belong to the features of a reported [`feature-cycle`](#feature-folders), and that no import
+  outside that feature cycle closes, is left out); `coupling/no-production-cycles`
   for module cycles inside one package; `coupling/no-import-outside-roots` when production code
   imports a project module outside `python.sourceRoots` (scripts, a top-level `tests/` package).
   Type-only imports do not count.
@@ -1539,17 +1540,27 @@ folder globs from the project root (`["src/app/features"]`); they default to `**
 `**/shared`, and `"featureRoots": []` turns the rules off. Each folder directly under a feature
 root is one feature, named after the folder, so a package added there is a feature at once: nothing
 needs mapping and nothing escapes unmapped. A module directly in a feature root (`features/util.py`)
-belongs to no feature. A shared folder that is itself the folder under a feature root
-(`features/shared/`) is shared; one inside a feature (`features/billing/shared/`) is part of that
-feature. A project without a feature folder gets no finding from these rules. Packages live where
-`python.sourceRoots` says; the globs only decide the roles of the files found there.
+belongs to no feature. When feature roots nest (`["src/app/features", "src/app/features/billing/plugins"]`),
+a file belongs to the innermost one: `billing/plugins/pdf/` is a feature of its own, and the rest
+of `billing/` another. A shared folder that is itself the folder under a feature root
+(`features/shared/`) is shared; with the default `**/shared`, one inside a feature
+(`features/billing/shared/`) is part of that feature, while a folder a `sharedRoots` glob you
+configure matches stays shared wherever it is. A project without a feature folder gets no finding
+from these rules, and a configured `featureRoots` or `sharedRoots` glob that matches no folder is
+named in a notice on each run. Packages live where `python.sourceRoots` says; the globs only decide
+the roles of the files found there. A feature cannot be named `tests` or `test` (its files are
+tests) or `migrations` (skipped like every migrations folder); `build` and `dist` are skipped only
+at the project root and next to a `pyproject.toml` or another build manifest, so
+`features/build/` is a feature.
 
 **The public face** of a feature is its `__init__.py` and the modules directly in the feature
 folder whose names do not start with `_`. Its sub-packages and its `_private.py` modules are
 internal: the feature itself may import them, other code may not. A name the feature's
 `__init__.py` imports from an internal module is public, so `from app.features.billing import rate`
 passes while `from app.features.billing import _rates` and
-`import app.features.billing.internal.tax as tax` fail.
+`import app.features.billing.internal.tax as tax` fail. A sub-package the `__init__.py` imports
+whole (`from . import models`) or lists in `__all__` is public too, so
+`from app.features.billing import models` passes; its own modules stay internal.
 
 ```python
 # src/app/features/billing/__init__.py: the public face
@@ -1564,8 +1575,11 @@ from app.features.billing.internal import tax    # feature-internal-import
 ```
 
 - **Who is checked.** Production modules only: tests (and every module the test layout names, such
-  as `conftest.py`) may import any internal module, and generated modules are left out as
-  importers. A composition root such as `main.py` or a Django `settings.py` is outside every
+  as `conftest.py`, and a behave or pytest-bdd tree: a folder holding `.feature` files with a
+  `steps/` or `step_defs/` folder or an `environment.py` next to them) may import any internal
+  module. Generated modules still resolve imports, but no finding is about one: an import from or
+  of a generated module is left out, and neither a generated module nor a package `__init__.py` is
+  reported by `shared-used-by-one-feature`. A composition root such as `main.py` or a Django `settings.py` is outside every
   feature, so it imports features through their public face too.
 - **Resolution.** The import scan of slice 5: absolute and relative imports (`from ..billing import
 rate`), `import a.b as c`, and `from a import b`, which is an import of the submodule `a.b` when
@@ -1581,10 +1595,10 @@ rate`), `import a.b as c`, and `from a import b`, which is an import of the subm
   `shared-imports-feature` to fail first, and a loop through other modules (a composition root, an
   `app/core.py`) is a module cycle, which `package-cycle` reports. Each importing file is one
   finding per feature it imports inside a cycle; the message names the cycle's features (the first
-  five) and the ways out: move what both need to a shared root, invert the dependency behind an
-  interface the importing feature owns and the composition root wires, or merge the features. A
-  `package-cycle` between packages of two features that the feature cycle already explains is not
-  reported a second time.
+  five) and the ways out: move what both need to a shared root, or invert the dependency behind an
+  interface. A `package-cycle` whose packages all belong to the features of a reported feature cycle,
+  and that no other import closes, is not reported a second time; a package cycle through a package
+  outside the features, or one whose feature cycle an exception lifts, is still reported.
 - **Identities.** No line numbers: `feature-internal:<imported file>`, `<feature folder>|shared-imports-feature`
   and `<imported feature folder>|feature-cycle`, with the importing file as the path. Moving a file
   inside a feature, renaming a module, or moving a feature folder keeps a finding that existed

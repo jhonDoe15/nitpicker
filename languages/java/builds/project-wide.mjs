@@ -13,6 +13,7 @@ import { featureGraphFindings } from '../adapters/features/feature-findings.mjs'
 import { readSpringReports } from '../adapters/features/feature-layout.mjs';
 import { persistenceOf } from '../adapters/features/persistence-classes.mjs';
 import { domainFindings } from '../adapters/domain/domain-findings.mjs';
+import { isGeneratedJvm } from '../adapters/generated/generated-sources.mjs';
 
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
@@ -140,6 +141,7 @@ export function classGraphFindings(projectRoot, { projects, kotlin, policy }) {
       policy,
       reports: readSpringReports(projects),
       persistence: persistenceOf(graph, projectRoot),
+      isGenerated: (file) => isGeneratedJvm(projectRoot, file),
     }),
     ...domainFindings(graph, { projectRoot }),
   ];

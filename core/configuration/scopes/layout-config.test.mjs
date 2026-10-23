@@ -65,7 +65,7 @@ describe('feature layout keys', () => {
     }
     try {
       expect(() => validateConfig({ preset: 'java', layout })).toThrow(
-        `nitpicker.config.json: "layout.sharedRoots" is not supported with "preset": "java": it configures ${RULE}, which the java preset does not run yet. Remove it`,
+        `nitpicker.config.json: "layout.sharedRoots" is not supported with "preset": "java": it configures ${RULE}, feature-internal-import, shared-imports-feature, feature-cycle, foreign-feature-persistence, which the java preset does not run yet. Remove it`,
       );
     } finally {
       for (const [index, rule] of rules.entries()) {

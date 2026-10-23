@@ -41,13 +41,13 @@ describe('feature boundaries on the class graph', () => {
         rule: 'feature-internal-import',
         path: importer,
         identity: `feature-internal:${target}`,
-        message: `Import feature shipping only through its public face, a class directly in the feature package ${FOLDER}/shipping/: ${importer} imports its internal module ${target}. Expose what ${importer} needs there, or move the code both use to a shared root (layout.sharedRoots). ${exceptionHint('feature-internal-import', importer)}`,
+        message: `Import feature shipping only through a class directly in ${FOLDER}/shipping/: ${importer} imports its internal module ${target}. Expose what it needs there, or move the code both use to a shared root. ${exceptionHint('feature-internal-import', importer)}`,
         classification: 'enforceable',
       },
     ]);
   });
 
-  it('reports shared code that depends on a feature, and shared code only one feature uses', () => {
+  it('reports shared code that depends on a feature, shared code only one feature uses, and their package cycle', () => {
     const found = findings([
       {
         classes: [
@@ -73,6 +73,8 @@ describe('feature boundaries on the class graph', () => {
         'src/main/java/com/acme/shared/Money.java',
         `${FOLDER}/billing|shared-imports-feature`,
       ],
+      ['package-cycle', `${FOLDER}/billing/Invoice.java`, `cycle:${FEATURES}.billing`],
+      ['package-cycle', 'src/main/java/com/acme/shared/Money.java', 'cycle:com.acme.shared'],
     ]);
   });
 
@@ -94,8 +96,28 @@ describe('feature boundaries on the class graph', () => {
       ['feature-cycle', `${FOLDER}/c/C.java`, `${FOLDER}/a|feature-cycle`],
     ]);
     expect(found[0].message).toBe(
-      `Keep dependencies between features one-way: ${FOLDER}/a/A.java in feature a imports feature b (${FOLDER}/b/B.java), and b depends back on a, a cycle between features a, b, c. Move what both need to a shared root, invert this dependency behind an interface a owns that the composition root wires, or merge the features. ${exceptionHint('feature-cycle', `${FOLDER}/a/A.java`)}`,
+      `Keep feature dependencies one-way: ${FOLDER}/a/A.java in a imports b (${FOLDER}/b/B.java), which depends back on a (cycle: a, b, c). Move what both need to a shared root, or invert this import behind an interface. ${exceptionHint('feature-cycle', `${FOLDER}/a/A.java`)}`,
     );
+  });
+
+  it('reports no boundary for a class a known generator wrote', () => {
+    const mapper = `${FEATURES}.shipping.internal.ShipmentMapperImpl`;
+    const found = findings(
+      [
+        {
+          classes: [`${FEATURES}.billing.Invoice`, mapper],
+          edges: [[`${FEATURES}.billing.Invoice`, mapper]],
+        },
+      ],
+      {
+        files: {
+          ...javaSources([`${FEATURES}.billing.Invoice`]),
+          [`${FOLDER}/shipping/internal/ShipmentMapperImpl.java`]: `package ${FEATURES}.shipping.internal;\n\n@Generated("org.mapstruct.ap.MappingProcessor")\npublic class ShipmentMapperImpl {}\n`,
+        },
+      },
+    );
+
+    expect(found).toEqual([]);
   });
 
   it('reports a Java class that calls an internal top-level Kotlin function of another feature', () => {

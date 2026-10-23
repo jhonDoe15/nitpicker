@@ -1,13 +1,8 @@
-import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
-import { featureCycleEdges } from '../../../../shared/rules/features/feature-cycles.mjs';
-import {
-  featureRoleContract,
-  PUBLIC_FACES,
-} from '../../../../shared/rules/features/feature-roles.mjs';
-import { statementTargets } from '../analysis/python-coupling.mjs';
+import { featureFactAnalysis } from '../../../../shared/rules/facts/evaluate.mjs';
+import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mjs';
+import { statementTargets, WHOLE_MODULE } from '../analysis/python-coupling.mjs';
 
 const COUPLING_TOOL = 'coupling';
-const WHOLE_MODULE = '*';
 
 function isPublicName(name) {
   return name === WHOLE_MODULE || !name.startsWith('_');
@@ -23,14 +18,21 @@ function namesByTarget(importer, statement, known) {
   return byTarget;
 }
 
+function isReexport(importer, statement, names) {
+  return (
+    importer.isPackage &&
+    (statement.exported === true ||
+      (statement.typeOnly !== true && names.some(({ name }) => isPublicName(name))))
+  );
+}
+
 function statementEdges(importer, statement, { known, fileOf }) {
-  const typeOnly = statement.typeOnly === true;
   return [...namesByTarget(importer, statement, known)].map(([target, names]) => ({
     from: importer.file,
     to: fileOf.get(target),
     names,
-    reexport: importer.isPackage && !typeOnly && names.some(({ name }) => isPublicName(name)),
-    typeOnly,
+    reexport: isReexport(importer, statement, names),
+    typeOnly: statement.typeOnly === true,
   }));
 }
 
@@ -47,28 +49,24 @@ export function pythonImportFacts(
   const known = new Set(modules.map(({ module }) => module));
   const fileOf = new Map(modules.map(({ module, file }) => [module, file]));
   return {
-    modules: modules.map(({ file }) => moduleFact(file, persistence)),
-    imports: modules
-      .filter(({ file }) => !isGenerated(file))
-      .flatMap((importer) =>
-        (imports[importer.file] ?? []).flatMap((statement) =>
-          statementEdges(importer, statement, { known, fileOf }),
-        ),
+    modules: modules.map(({ file, isPackage }) => ({
+      ...moduleFact(file, persistence),
+      generated: isGenerated(file),
+      initializer: isPackage === true,
+    })),
+    imports: modules.flatMap((importer) =>
+      (imports[importer.file] ?? []).flatMap((statement) =>
+        statementEdges(importer, statement, { known, fileOf }),
       ),
+    ),
   };
 }
 
 export function pythonFeatureAnalysis(report, { policy = {}, isGenerated, persistence } = {}) {
-  const facts = pythonImportFacts(report, { isGenerated, persistence });
-  const featurePolicy = { exceptions: policy.exceptions ?? [], layout: policy.layout ?? {} };
-  const roleOf = featureRoleContract(featurePolicy.layout, PUBLIC_FACES.python);
-  return {
-    findings: sharedFactFindings(facts, {
-      language: 'python',
-      analyzerName: COUPLING_TOOL,
-      policy: featurePolicy,
-      publicFace: PUBLIC_FACES.python,
-    }),
-    cycleEdges: new Set(featureCycleEdges(facts, roleOf).map(({ from, to }) => `${from}\0${to}`)),
-  };
+  return featureFactAnalysis(pythonImportFacts(report, { isGenerated, persistence }), {
+    language: 'python',
+    analyzerName: COUPLING_TOOL,
+    policy: { exceptions: policy.exceptions ?? [], layout: policy.layout ?? {} },
+    publicFace: PUBLIC_FACES.python,
+  });
 }

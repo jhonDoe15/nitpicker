@@ -33,10 +33,20 @@ describe('the import facts of the Python scan', () => {
   it('lists every production module and resolves each statement to file edges', () => {
     const facts = pythonImportFacts({ modules: MODULES, imports: {} });
 
-    expect(facts.modules[0]).toEqual({
-      file: `${FEATURES}/billing/__init__.py`,
-      role: 'production',
-    });
+    expect(facts.modules.slice(0, 2)).toEqual([
+      {
+        file: `${FEATURES}/billing/__init__.py`,
+        role: 'production',
+        generated: false,
+        initializer: true,
+      },
+      {
+        file: `${FEATURES}/billing/_rates.py`,
+        role: 'production',
+        generated: false,
+        initializer: false,
+      },
+    ]);
     expect(facts.imports).toEqual([]);
   });
 
@@ -87,7 +97,7 @@ describe('the import facts of the Python scan', () => {
     ).toEqual([]);
   });
 
-  it('leaves out the imports of generated modules', () => {
+  it('marks generated modules and keeps their imports for the shared rules to skip', () => {
     const facts = pythonImportFacts(
       {
         modules: MODULES,
@@ -96,7 +106,82 @@ describe('the import facts of the Python scan', () => {
       { isGenerated: (file) => file.endsWith('cart.py') },
     );
 
-    expect(facts.imports).toEqual([]);
+    expect(facts.modules.filter(({ generated }) => generated).map(({ file }) => file)).toEqual([
+      `${FEATURES}/orders/cart.py`,
+    ]);
+    expect(facts.imports.map(({ from, to }) => [from, to])).toEqual([
+      [`${FEATURES}/orders/cart.py`, `${FEATURES}/billing/_rates.py`],
+    ]);
+  });
+
+  it('turns the __all__ list of a package into whole-module re-exports of its sub-packages', () => {
+    const [exported] = edgesOf(`${FEATURES}/billing/__init__.py`, {
+      level: 1,
+      module: null,
+      names: ['internal', 'Invoice'],
+      typeOnly: true,
+      exported: true,
+    });
+
+    expect(exported).toEqual({
+      from: `${FEATURES}/billing/__init__.py`,
+      to: `${FEATURES}/billing/internal/__init__.py`,
+      names: [{ name: '*' }],
+      reexport: true,
+      typeOnly: true,
+    });
+  });
+});
+
+const CYCLE_MODULES = [
+  module('app.features.billing', true),
+  module('app.features.billing.a'),
+  module('app.features.shipping', true),
+  module('app.features.shipping.b'),
+  module('app.features.shipping.b2'),
+  module('app.util', true),
+  module('app.util.u'),
+];
+
+function cycleReport(throughUtil) {
+  const billing = [absolute('app.features.shipping', 'b')];
+  return {
+    modules: CYCLE_MODULES,
+    imports: {
+      [`${FEATURES}/billing/a.py`]: throughUtil ? [...billing, absolute('app.util', 'u')] : billing,
+      [`${FEATURES}/shipping/b.py`]: [absolute('app.features.billing', 'a')],
+      'src/app/util/u.py': [absolute('app.features.shipping', 'b2')],
+      [`${FEATURES}/shipping/b2.py`]: [absolute('app.features.billing', 'a')],
+    },
+  };
+}
+
+function packageCycles(report, policy) {
+  return cycleFindings(report, pythonFeatureAnalysis(report, { policy })).map(
+    ({ identity }) => identity,
+  );
+}
+
+describe('package cycles next to feature cycles', () => {
+  it('drops a package cycle between feature packages the feature cycle reports', () => {
+    expect(packageCycles(cycleReport(false))).toEqual([]);
+  });
+
+  it('keeps a package cycle that runs through a package outside the features', () => {
+    expect(packageCycles(cycleReport(true))).toEqual([
+      'cycle:app.features.billing',
+      'cycle:app.features.shipping',
+      'cycle:app.util',
+    ]);
+  });
+
+  it('keeps the package cycle when an exception drops the feature cycle', () => {
+    const policy = { exceptions: [{ rule: 'feature-cycle', paths: ['src/**'], reason: 'test' }] };
+
+    expect(packageCycles(cycleReport(false), policy)).toEqual([
+      'cycle:app.features.billing',
+      'cycle:app.features.shipping',
+    ]);
   });
 });
 
@@ -183,13 +268,11 @@ describe.skipIf(!pythonUsable())('the feature rules on a scanned project', () =>
   });
 
   it('drops the package cycle the feature cycle already reports', () => {
-    const { cycleEdges } = pythonFeatureAnalysis(report);
-
     expect(cycleFindings(report).map(({ identity }) => identity)).toEqual([
       'cycle:app.features.billing',
       'cycle:app.features.shipping',
     ]);
-    expect(cycleFindings(report, cycleEdges)).toEqual([]);
+    expect(cycleFindings(report, pythonFeatureAnalysis(report))).toEqual([]);
   });
 
   it('follows the layout and the exceptions of the head policy', () => {

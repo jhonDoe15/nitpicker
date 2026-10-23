@@ -134,7 +134,7 @@ function projectShapeFindings({ projectRoot, reportRoot, policy, imports, manife
     }),
     ...pythonClassLimitFindings(classes, imports.modules, limits),
     ...features.findings,
-    ...cycleFindings(imports, features.cycleEdges),
+    ...cycleFindings(imports, features),
     ...outsideRootsFindings(imports),
     ...readDependencyFindings({ reportRoot, projectRoot, snapshot: policy.snapshot }),
   ];
