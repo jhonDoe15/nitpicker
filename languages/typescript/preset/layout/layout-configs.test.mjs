@@ -2,6 +2,10 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { resolveHeadPolicy } from '../head-policy.mjs';
 import { globMatcher, resolveLayout } from '../layout.mjs';
 import {
@@ -18,6 +22,8 @@ import {
   removeTemporaryRoots,
   trackTemporaryRoot,
 } from './test-support/layout-config-helpers.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 afterAll(removeTemporaryRoots);
 
@@ -97,6 +103,19 @@ describe('resolveLayout', () => {
       writeFileSync(filePath, 'export {};\n');
     }
     expect(customLayout.projectCodeFiles(root).sort()).toEqual(['lib/a.ts', 'spec/a.test.ts']);
+  });
+  it('lists the code files of a Git checkout without ignored folders and nested checkouts', () => {
+    const code = 'export {};\n';
+    const root = gitCheckout(
+      {
+        'src/a.ts': code,
+        'src/generated/b.ts': code,
+        ...nestedCheckout('src/agent', { 'c.ts': code }),
+      },
+      ['src/generated/'],
+    );
+
+    expect(resolveLayout().projectCodeFiles(root)).toEqual(['src/a.ts']);
   });
   it('keeps the default layout identical to the previous fixed roots', () => {
     const layout = resolveLayout();

@@ -1,7 +1,7 @@
 import { existsSync, lstatSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import { codeExtensionNames } from '../layout.mjs';
 import { workspacePaths } from './workspace/entries.mjs';
 
@@ -42,7 +42,7 @@ function rootConfigsAndScripts(projectRoot, layout) {
     .map((entry) => path.join(projectRoot, entry.name));
   const scripts = SCRIPT_DIRECTORIES.map((name) => path.join(projectRoot, name))
     .filter((directory) => existsSync(directory))
-    .flatMap((directory) => [...filesUnder(directory)]);
+    .flatMap((directory) => [...projectFilesUnder(directory)]);
   return [...configs, ...scripts].filter(
     (file) => isCodeFile(file) && !layout.isExcluded(path.relative(projectRoot, file)),
   );
@@ -60,7 +60,7 @@ export function codeFilesUnder(directories, layout, projectRoot) {
   const walked = { layout, projectRoot };
   return directories
     .flatMap((dir) => [
-      ...filesUnder(dir, {
+      ...projectFilesUnder(dir, {
         skipDirectory: (absolute, entry) => isSkippedDirectory(absolute, entry, walked),
       }),
     ])

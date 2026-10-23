@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../shared/filesystem.mjs';
 import { globMatcher } from '../../shared/paths/glob.mjs';
-import { runGit } from '../diff/git/repository/command.mjs';
+import { gitProjectFiles } from '../../shared/project-files/project-files.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
 import { readBuildSources } from '../../languages/java/builds/narrowing/build-sources.mjs';
 import { jvmProductionReach } from '../../languages/java/builds/reach/source-reach.mjs';
@@ -160,11 +160,14 @@ export function createPolicyScope({
 }
 
 export function listedFiles(projectRoot) {
-  return existsSync(projectRoot)
-    ? runGit(projectRoot, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])
-        .split('\0')
-        .filter(Boolean)
-    : [];
+  if (!existsSync(projectRoot)) {
+    return [];
+  }
+  const listed = gitProjectFiles(projectRoot);
+  if (listed === undefined) {
+    throw new Error(`${projectRoot} is not a Git checkout, so its files cannot be listed`);
+  }
+  return listed;
 }
 
 function typescriptReach(headProjectRoot, headConfig, files) {
