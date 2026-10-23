@@ -30,7 +30,6 @@ function linkLine(link) {
   return `${link.label}: ${linkUrl(link)}`;
 }
 
-/** What `nitpicker explain` prints for one entry. */
 function explainText(entry) {
   return [
     entry.id,

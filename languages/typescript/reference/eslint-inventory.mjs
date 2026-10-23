@@ -8,7 +8,9 @@ import { promisify } from 'node:util';
 const run = promisify(execFile);
 const INVENTORY_FILE = new URL('./eslint-inventory.json', import.meta.url);
 const INVENTORY_OUTPUT = 'inventory.json';
+const ENVIRONMENT_FILE = 'eslint.env';
 const POLICY_FILE = 'policy.json';
+const CORE_PLUGIN = '@';
 const POLICIES = new URL('../preset/eslint-config/policies/', import.meta.url);
 
 export const ESLINT_CONFIGS = [
@@ -112,10 +114,10 @@ function unionForms(forms) {
   return [...seen.values()];
 }
 
-function ruleOf(plugins, builtinRules, id) {
+function ruleOf(plugins, id) {
   const slash = id.lastIndexOf('/');
   return slash === -1
-    ? builtinRules.get(id)
+    ? plugins.get(CORE_PLUGIN)?.rules?.[id]
     : plugins.get(id.slice(0, slash))?.rules?.[id.slice(slash + 1)];
 }
 
@@ -150,7 +152,6 @@ async function activeRules({ ESLint, cwd, files }, [tool, config]) {
  */
 export async function inventoryOfConfigs({ configs, cwd, files }) {
   const { ESLint } = await import('eslint');
-  const { builtinRules } = await import('eslint/use-at-your-own-risk');
   const active = (
     await Promise.all(configs.map((config) => activeRules({ ESLint, cwd, files }, config)))
   ).flat();
@@ -164,7 +165,7 @@ export async function inventoryOfConfigs({ configs, cwd, files }) {
         {
           tools: [...new Set(own.map(({ tool }) => tool))],
           forms: unionForms(own.flatMap(({ forms }) => forms)),
-          ...metaOf(ruleOf(plugins, builtinRules, id)),
+          ...metaOf(ruleOf(plugins, id)),
         },
       ];
     }),
@@ -192,23 +193,32 @@ export function variantEnvironment(root) {
   };
 }
 
-async function liveInventoryOf(variant, environment) {
+function environmentFileText(root) {
+  return Object.entries(variantEnvironment(root))
+    .map(([name, value]) => `${name}=${JSON.stringify(value)}\n`)
+    .join('');
+}
+
+async function liveInventoryOf(variant) {
   const root = variantProject(variant);
   try {
-    await run(process.execPath, [fileURLToPath(import.meta.url), variant, root], {
-      cwd: root,
-      env: { ...environment, ...variantEnvironment(root) },
-    });
+    const environmentFile = path.join(root, ENVIRONMENT_FILE);
+    writeFileSync(environmentFile, environmentFileText(root));
+    await run(
+      process.execPath,
+      [`--env-file=${environmentFile}`, fileURLToPath(import.meta.url), variant, root],
+      { cwd: root },
+    );
     return JSON.parse(readFileSync(path.join(root, INVENTORY_OUTPUT), 'utf8'));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 }
 
-/** The ESLint rules the presets enable, read from the real configs, one process per variant: `{ [variant]: inventory }`. */
-export async function liveEslintInventory(environment) {
+/** The ESLint rules the presets enable, read from the configs one process per variant: `{ [variant]: inventory }`. */
+export async function liveEslintInventory() {
   const names = Object.keys(ESLINT_VARIANTS);
-  const inventories = await Promise.all(names.map((name) => liveInventoryOf(name, environment)));
+  const inventories = await Promise.all(names.map(liveInventoryOf));
   return Object.fromEntries(names.map((name, index) => [name, inventories[index]]));
 }
 
