@@ -602,6 +602,10 @@ are listed at the end.
 | Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
 | Datetimes                | a datetime with a zone: `datetime.now(tz=timezone.utc)`, `datetime.fromtimestamp(ts, tz=timezone.utc)`, `%z` when parsing                        | ruff `DTZ001`-`DTZ007`, `DTZ011`, `DTZ012`, `DTZ901`                                                                                                 |
 | Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
+| Tri-state booleans       | an enum that names the three states, or a plain `bool` with a default                                                                            | `tri-state-boolean` (script)                                                                                                                         |
+| Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                  | `falsy-default` (script)                                                                                                                             |
+| Changing an argument     | build and return a new value, or copy the argument first                                                                                         | `parameter-mutation` (script)                                                                                                                        |
+| Compatibility shims      | change every caller in the same change and delete the old name                                                                                   | `compatibility-shim` (script)                                                                                                                        |
 | Input or output per item | one batch call, or `asyncio.gather`                                                                                                              | `io-in-loop` (script)                                                                                                                                |
 | Task markers             | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
 | Commented-out code       | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
@@ -783,6 +787,50 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
   `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and
   Java presets do not.
+- `tri-state-boolean` reports `bool | None`, `None | bool`, `Optional[bool]` and `Union[bool, None]` (also
+  as a string, inside `Annotated`, `Final` or `ClassVar`) on a parameter, a return value, a class or
+  module field and a `self.x: bool | None` attribute. A union with another type (`bool | str | None`)
+  is not a tri-state boolean. Local variables, type aliases, overloads, `@override` methods,
+  `__exit__`, `__aexit__` (`bool | None` is the protocol's return type), `pytest_*` hooks and test
+  files are skipped. A pydantic or dataclass field that maps a nullable column or an external schema
+  takes an exception for its path. The allowed form is an enum that names the third state
+  (`Consent.UNKNOWN`), or a plain `bool` with a default when `None` only meant false; it sits beside
+  the advice for boolean flags (keyword-only, or two functions).
+- `falsy-default` reports a parameter whose annotation can be falsy (`int`, `float`, `str`, `bytes`,
+  `bool`, a list, dict, set or tuple type, a `Sequence`, `Mapping`, `Decimal`, `timedelta`) and is
+  `None` by default or by its type, when the body writes `param or default` or
+  `param if param else default` in a value position: an assignment, a return, an argument. A default
+  that is itself empty (`or []`, `or {}`, `or ""`, `or 0`, `or ()`, `or set()`) is not reported,
+  since the falsy value is already what it becomes. A parameter the function compares with `None`
+  anywhere, a condition (`if a or b`, `while`, `assert`, `bool(...)`, `not`, an `and` chain, a
+  comprehension filter), an unannotated parameter and a parameter of a class that is never falsy
+  (`Path`, a project class) are not reported. The allowed form tests `None` only:
+  `limit if limit is not None else DEFAULT_LIMIT`.
+- `parameter-mutation` reports a parameter annotated as a `list`, `dict`, `set`, `deque`,
+  `bytearray`, `defaultdict`, `OrderedDict`, `Counter`, `MutableSequence`, `MutableMapping` or
+  `MutableSet` (also `Optional` and `|` members, `typing` aliases and strings) that the function
+  changes in place: `.append`, `.extend`, `.insert`, `.remove`, `.pop`, `.clear`, `.sort`, `.reverse`,
+  `.update`, `.setdefault`, `.popitem`, `.add`, `.discard` and the other mutating methods of its type,
+  an item or slice assignment (`p[k] = v`, `p[:] = x`, `p[k][j] = v`), `del p[k]`, an in-place operator
+  that the type implements as mutation (`p += [x]` on a list, `p |= other` on a set or dict) and
+  `random.shuffle`, `heapq.heappush`, `heapq.heappop`, `heapq.heapify`, `heapq.heapreplace`,
+  `heapq.heappushpop` and `bisect.insort*` on it. A parameter the function rebinds first (`p =
+list(p)`, `p = {**p}`, any assignment to the name) is a copy and is skipped, so are `self` and
+  `cls`, unannotated and read-only (`Sequence`, `Mapping`) parameters, `pytest_*` hooks and test
+  files. A constructor that changes its argument is reported like any other function. The allowed
+  form returns a new value (`[*items, item]`, `{**table, key: value}`) or copies the argument first.
+- `compatibility-shim` reports four ways to keep an old name alive: a module-level `def
+__getattr__`, a `warnings.warn` (or `warn_explicit`) call whose category is `DeprecationWarning`,
+  `PendingDeprecationWarning` or a class named `...DeprecationWarning`, a `@deprecated` decorator
+  (`typing_extensions`, `warnings`, `deprecated`, `deprecation`, or a project one) on a function
+  or class, and a top-level `OldName = NewName` statement where `NewName` is a function or class
+  defined in the module or a name imported with `from ... import`. Underscore-prefixed names
+  (`_Alias`, `__version__`), aliases inside `if`, `try`, functions and classes (the
+  `try: import fast / except ImportError: fast = slow` fallback and `__radd__ = add`) and test
+  files are skipped. A finding on a line the change touches is new (see Touched code), so only a
+  shim the change adds or edits fails. mypy's `deprecated` and pyright's `reportDeprecated` (the Deprecated APIs row)
+  report a call to a deprecated name; this rule reports the definition that keeps one alive. A
+  published library that has to keep a deprecation takes an exception for its public modules.
 - `ERA001` finds commented-out code by a heuristic: a comment that parses as a statement. Prose
   that happens to parse is reported too; reword it.
 - The `S` group is selected by code, without the rules left off below; `S324`, `S501`,
