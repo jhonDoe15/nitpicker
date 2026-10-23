@@ -5,12 +5,14 @@ import {
   fn,
   importOf,
   klass,
-  routeOf,
   run,
+  sourceRouted,
   summary,
 } from '../test-support/facts.mjs';
 import { SUSPEND_CLEANUP_RULE, suspendCleanupFindings } from './suspend-cleanup.mjs';
 
+const BOUNDED =
+  'run the release as `withContext(NonCancellable) { withTimeout(5.seconds) { ... } }` so it finishes after cancellation but cannot wait forever, and shield only the release itself, in the scope that opened the resource.';
 const COROUTINES = importOf('kotlinx.coroutines', { all: true });
 const SYNC = importOf('kotlinx.coroutines.sync', { all: true });
 const CHANNELS = importOf('kotlinx.coroutines.channels', { all: true });
@@ -25,10 +27,11 @@ describe('suspending cleanup in finally', () => {
 
     expect(summary(findings)).toEqual([`${SUSPEND_CLEANUP_RULE} Store.close:delay 12`]);
     expect(findings[0].tool).toBe('kotlin-source');
-    expect(findings[0].message).toContain('withContext(NonCancellable) { withTimeout(5.seconds)');
-    expect(findings[0].message).toContain('`delay()`');
-    expect(routeOf(findings[0].message)).toContain(
-      '"rule":"kotlin-source/SuspendFunInFinallySection"',
+    expect(findings[0].message).toBe(
+      sourceRouted(
+        `This \`finally\` block calls the suspending \`delay()\`, which throws as soon as the coroutine is cancelled, so the rest of the cleanup is skipped and the resource stays open. Make the release non-suspending (a blocking \`close()\`), or ${BOUNDED}`,
+        SUSPEND_CLEANUP_RULE,
+      ),
     );
   });
 
@@ -129,7 +132,12 @@ describe('suspending cleanup in finally', () => {
   it('words a CancellationException handler on its own and keeps the identity apart', () => {
     const findings = findingsFor([cleanupCall('delay', { section: 'catch' })]);
 
-    expect(findings[0].message).toContain('`catch (CancellationException)`');
+    expect(findings[0].message).toBe(
+      sourceRouted(
+        `This \`catch (CancellationException)\` block calls the suspending \`delay()\`, but the coroutine is already cancelled, so the call throws at once and the rest of the handler is skipped. Rethrow after non-suspending cleanup, or ${BOUNDED}`,
+        SUSPEND_CLEANUP_RULE,
+      ),
+    );
     expect(findings[0].identity).toBe('SuspendFunInFinallySection:Store.close:catch:delay');
   });
 });

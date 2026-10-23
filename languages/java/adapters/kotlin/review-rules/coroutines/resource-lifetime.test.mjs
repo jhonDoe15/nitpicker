@@ -4,14 +4,16 @@ import {
   fn,
   importOf,
   klass,
-  routeOf,
   run,
+  sourceRouted,
   summary,
   useLaunch,
 } from '../test-support/facts.mjs';
 import { CHILD_OUTLIVES_RESOURCE_RULE, childLifetimeFindings } from './resource-lifetime.mjs';
 
 const COROUTINES = importOf('kotlinx.coroutines', { all: true });
+const childMessage = (resource, reopened) =>
+  `\`launch\` starts a child coroutine in \`scope\`, which keeps running after this \`use\` block, and the child reads \`${resource}\`; \`use\` closes \`${resource}\` when the block ends, so the child can run on a closed resource. Start the child inside \`coroutineScope { ... }\` or \`supervisorScope { ... }\` in the block, join it before the block ends (\`.join()\` or \`.await()\`), or open and close the resource inside the child (\`scope.launch { ${reopened}.use { ... } }\`).`;
 const findingsFor = (launches, overrides = {}) =>
   run(childLifetimeFindings, [
     file({ imports: [COROUTINES], useLaunches: launches, ...overrides }),
@@ -25,11 +27,8 @@ describe('child coroutine started in a use block', () => {
       `${CHILD_OUTLIVES_RESOURCE_RULE} Store.copy:reader:launch 14`,
     ]);
     expect(findings[0].tool).toBe('kotlin-source');
-    expect(findings[0].message).toContain('coroutineScope { ... }');
-    expect(findings[0].message).toContain('join it before the block ends');
-    expect(findings[0].message).toContain('`scope`');
-    expect(routeOf(findings[0].message)).toContain(
-      '"rule":"kotlin-source/ChildCoroutineOutlivesResource"',
+    expect(findings[0].message).toBe(
+      sourceRouted(childMessage('reader', 'reader'), CHILD_OUTLIVES_RESOURCE_RULE),
     );
   });
 
@@ -65,8 +64,9 @@ describe('child coroutine started in a use block', () => {
   it('reads the resource name `it` for an implicit lambda parameter', () => {
     const findings = findingsFor([useLaunch({ resource: 'it' })]);
 
-    expect(findings[0].message).toContain('`it`');
-    expect(findings[0].message).toContain('resource.use');
+    expect(findings[0].message).toBe(
+      sourceRouted(childMessage('it', 'resource'), CHILD_OUTLIVES_RESOURCE_RULE),
+    );
   });
 
   it('numbers the findings of one function by order', () => {
