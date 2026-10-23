@@ -3,6 +3,7 @@ import { chainOf } from '../../../../../../shared/traversal.mjs';
 import { wrappedFunction } from '../../syntax/function-values.mjs';
 import { unwrap } from '../../syntax/nodes.mjs';
 import { followAlias } from '../../types/type-lookup.mjs';
+import { symbolOf } from '../scope.mjs';
 
 function declaredFunction(declaration) {
   if (ts.isVariableDeclaration(declaration) || ts.isPropertyDeclaration(declaration)) {
@@ -116,4 +117,13 @@ export function targetSite(scope, node) {
     return undefined;
   }
   return sitesOfSymbol(scope, symbolAt(scope, callee));
+}
+
+export function valueSite(scope, node) {
+  if (ts.isIdentifier(node)) {
+    return mayBeProject(scope, node) ? sitesOfSymbol(scope, symbolOf(scope, node)) : undefined;
+  }
+  return scope.registry.siteNames.has(node.name.text)
+    ? sitesOfSymbol(scope, scope.checker.getSymbolAtLocation(node.name))
+    : undefined;
 }
