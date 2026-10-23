@@ -23,7 +23,18 @@ import org.objectweb.asm.tree.analysis.AnalyzerException;
 
 final class Flows {
   private static final int PASSES = 4;
+  private static final int DEPTH = 128;
   private static final String CONTINUATION = "kotlin.coroutines.jvm.internal.ContinuationImpl";
+  static final class Target {
+    final String owner;
+    final MethodFlow flow;
+
+    Target(String owner, MethodFlow flow) {
+      this.owner = owner;
+      this.flow = flow;
+    }
+  }
+
   static final class Declared {
     final JavaClass type;
     final MethodNode method;
@@ -38,9 +49,12 @@ final class Flows {
   private final Map<String, Declared> declared = new LinkedHashMap<>();
   private final Map<String, Optional<MethodFlow>> analyzed = new HashMap<>();
   private final Set<String> running = new HashSet<>();
+  private final Map<String, Map<String, String>> resolved = new HashMap<>();
   private final Library library = new Library();
+  private final Set<String> stateful;
 
-  Flows(JavaClasses main) {
+  Flows(JavaClasses main, Set<String> stateful) {
+    this.stateful = stateful;
     main.forEach(type -> classes.put(Summaries.internal(type), type));
     for (JavaClass type : main) {
       for (MethodNode method : methodsOf(type)) {
@@ -67,7 +81,7 @@ final class Flows {
       return done;
     }
     Declared found = declared.get(key);
-    if (found == null || !running.add(key)) {
+    if (found == null || running.size() >= DEPTH || !running.add(key)) {
       return Optional.empty();
     }
     Optional<MethodFlow> flow = analyze(found.type, found.method);
@@ -76,16 +90,41 @@ final class Flows {
     return flow;
   }
 
-  Set<String> returnsOf(String owner, String name, String desc) {
-    Optional<JavaClass> current = Optional.ofNullable(classes.get(owner));
-    while (current.isPresent()) {
-      String key = Summaries.internal(current.get()) + "." + name + desc;
-      if (declared.containsKey(key)) {
-        return of(key).map(flow -> flow.returns).orElse(Set.of());
-      }
-      current = current.get().getRawSuperclass().filter(type -> classes.containsKey(Summaries.internal(type)));
+  List<Target> targets(String owner, String name, String desc, boolean dispatch) {
+    List<Target> found = new ArrayList<>();
+    for (Map.Entry<String, String> declaring : declarations(owner, name, desc, dispatch).entrySet()) {
+      of(declaring.getKey()).ifPresent(flow -> found.add(new Target(declaring.getValue(), flow)));
     }
-    return Set.of();
+    return found;
+  }
+
+  private Map<String, String> declarations(String owner, String name, String desc, boolean dispatch) {
+    return resolved.computeIfAbsent(owner + "." + name + desc + dispatch, ignored -> {
+      Map<String, String> found = new LinkedHashMap<>();
+      Optional<JavaClass> start = Optional.ofNullable(classes.get(owner));
+      Optional<JavaClass> current = start;
+      while (current.isPresent()) {
+        String type = Summaries.internal(current.get());
+        if (declared.containsKey(type + "." + name + desc)) {
+          found.put(type + "." + name + desc, type);
+          break;
+        }
+        current = current.get().getRawSuperclass().filter(parent -> classes.containsKey(Summaries.internal(parent)));
+      }
+      if (dispatch && start.isPresent()) {
+        for (JavaClass subclass : start.get().getAllSubclasses()) {
+          String type = Summaries.internal(subclass);
+          if (declared.containsKey(type + "." + name + desc)) {
+            found.put(type + "." + name + desc, type);
+          }
+        }
+      }
+      return found;
+    });
+  }
+
+  boolean isStateful(String internalName) {
+    return stateful.contains(internalName);
   }
 
   private Optional<MethodFlow> analyze(JavaClass type, MethodNode method) {

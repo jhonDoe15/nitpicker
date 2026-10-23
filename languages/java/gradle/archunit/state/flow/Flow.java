@@ -12,6 +12,8 @@ final class Flow implements Value {
   static final String NEW = "new:";
   static final String LAMBDA = "lambda:";
   static final String SOURCE = "source:";
+  static final String OUTER = "outer:";
+  static final String HELD = "held:";
   static final Flow SINGLE = new Flow(1, Set.of(), Set.of());
   static final Flow DOUBLE = new Flow(2, Set.of(), Set.of());
 

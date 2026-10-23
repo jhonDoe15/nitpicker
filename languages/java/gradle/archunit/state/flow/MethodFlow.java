@@ -54,12 +54,13 @@ final class MethodFlow {
   final boolean instance;
   final int arguments;
   final List<String> argumentNames;
-  final Map<Integer, Store> stores = new TreeMap<>();
+  final Map<String, Store> stores = new TreeMap<>();
   final Map<Integer, Call> calls = new TreeMap<>();
   final Map<String, Call> lambdas = new TreeMap<>();
   final Map<Integer, Feed> feeds = new TreeMap<>();
   final Set<String> sources = new TreeSet<>();
   final Set<String> returns = new TreeSet<>();
+  final Set<String> returnSources = new TreeSet<>();
   boolean holdsState;
   boolean setsUp;
 
@@ -77,7 +78,11 @@ final class MethodFlow {
   }
 
   void store(int index, String op, Set<String> targets, Set<String> values) {
-    Store store = stores.computeIfAbsent(index, ignored -> new Store(op));
+    store(String.valueOf(index), op, targets, values);
+  }
+
+  void store(String key, String op, Set<String> targets, Set<String> values) {
+    Store store = stores.computeIfAbsent(key, ignored -> new Store(op));
     store.targets.addAll(targets);
     store.values.addAll(values);
   }

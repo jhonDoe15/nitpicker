@@ -31,6 +31,7 @@ const EXPECTED = [
   'spring-repository-service shop.carts.CartRepository shop.carts.CartService CartController.kt',
   'spring-repository-service shop.wiring.AuditStore shop.wiring.WiringService Wiring.kt',
   'spring-request-state shop.requests.AttributesHolder attributes:=:RequestContextHolder.currentRequestAttributes() Visits.kt',
+  'spring-request-state shop.requests.VisitController Registry.seen:add:VisitController.register(page) Visits.kt',
   'spring-request-state shop.requests.VisitController VisitController.SEEN:add:VisitController.audit(trace) Visits.kt',
   'spring-request-state shop.requests.VisitController byId:put:VisitController.importAll(all) Visits.kt',
   'spring-request-state shop.requests.VisitController current:=:VisitController.show(id) Visits.kt',

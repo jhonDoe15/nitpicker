@@ -2,6 +2,8 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaField;
 import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.domain.JavaModifier;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,7 +25,30 @@ final class RequestState {
           "org.springframework.graphql.data.method.annotation.BatchMapping",
           "org.springframework.kafka.annotation.KafkaListener",
           "org.springframework.amqp.rabbit.annotation.RabbitListener",
-          "org.springframework.jms.annotation.JmsListener");
+          "org.springframework.jms.annotation.JmsListener",
+          "org.springframework.kafka.annotation.KafkaHandler",
+          "org.springframework.amqp.rabbit.annotation.RabbitHandler",
+          "org.springframework.messaging.simp.annotation.SubscribeMapping",
+          "org.springframework.web.bind.annotation.ModelAttribute",
+          "org.springframework.web.bind.annotation.InitBinder",
+          "org.springframework.web.bind.annotation.ExceptionHandler");
+  private static final List<String> PARAMETERS =
+      List.of(
+          "org.springframework.web.bind.annotation.RequestParam",
+          "org.springframework.web.bind.annotation.PathVariable",
+          "org.springframework.web.bind.annotation.RequestBody",
+          "org.springframework.web.bind.annotation.RequestHeader",
+          "org.springframework.web.bind.annotation.CookieValue",
+          "org.springframework.web.bind.annotation.RequestPart",
+          "org.springframework.web.bind.annotation.MatrixVariable",
+          "org.springframework.web.bind.annotation.RequestAttribute",
+          "org.springframework.web.bind.annotation.SessionAttribute",
+          "org.springframework.web.bind.annotation.ModelAttribute",
+          "org.springframework.messaging.handler.annotation.Payload",
+          "org.springframework.messaging.handler.annotation.Header",
+          "org.springframework.messaging.handler.annotation.Headers",
+          "org.springframework.messaging.handler.annotation.DestinationVariable",
+          "org.springframework.graphql.data.method.annotation.Argument");
   private static final String CONTINUATION = "kotlin.coroutines.Continuation";
   private static final List<String> SET_UP =
       List.of(
@@ -40,21 +65,25 @@ final class RequestState {
 
   static void check(JavaClasses main, Set<Found> sink) {
     Set<JavaClass> shared = Lifetimes.singletons(main);
-    Set<String> singletons = shared.stream().map(JavaClass::getName).collect(Collectors.toSet());
-    Flows analyzed = new Flows(main);
+    Set<String> stateful = main.stream()
+        .filter(type -> type.isEnum() || isObject(type)
+            || shared.stream().anyMatch(bean -> bean.isAssignableTo(type.getName())))
+        .map(Summaries::internal)
+        .collect(Collectors.toSet());
+    Flows analyzed = new Flows(main, stateful);
     Map<String, JavaClass> classes = analyzed.classes();
     Library library = analyzed.library();
     Map<String, MethodFlow> flows = new LinkedHashMap<>();
     Map<String, JavaMethod> declared = new LinkedHashMap<>();
     analyzed.declared().forEach((key, found) -> analyzed.of(key).ifPresent(flow -> {
       Optional<JavaMethod> javaMethod = javaMethod(found.type, found.method);
-      flow.holdsState = singletons.contains(found.type.getName());
+      flow.holdsState = stateful.contains(flow.owner);
       flow.setsUp = flow.name.startsWith("<") || flow.name.equals("afterPropertiesSet")
           || javaMethod.map(method -> SET_UP.stream().anyMatch(method::isMetaAnnotatedWith)).orElse(false);
       flows.put(key, flow);
       javaMethod.ifPresent(method -> declared.put(key, method));
     }));
-    Summaries summaries = new Summaries(flows, classes);
+    Summaries summaries = new Summaries(flows, classes, stateful::contains);
     Map<Reach.Sink, String> reported = new TreeMap<>();
     for (MethodFlow flow : flows.values()) {
       for (Map.Entry<String, String> source : sources(flow, declared.get(flow.key()), library).entrySet()) {
@@ -78,6 +107,12 @@ final class RequestState {
     });
   }
 
+  private static boolean isObject(JavaClass type) {
+    return type.tryGetField("INSTANCE")
+        .filter(field -> field.getModifiers().contains(JavaModifier.STATIC) && field.getRawType().equals(type))
+        .isPresent();
+  }
+
   private static boolean holdsPerUseBean(JavaField field, Set<JavaClass> perUse, Set<JavaClass> shared) {
     String type = field.getRawType().getName();
     return perUse.stream().anyMatch(bean -> bean.isAssignableTo(type))
@@ -86,13 +121,14 @@ final class RequestState {
 
   private static Map<String, String> sources(MethodFlow flow, JavaMethod method, Library library) {
     Map<String, String> sources = new TreeMap<>();
-    boolean handler = method != null && HANDLERS.stream().anyMatch(method::isMetaAnnotatedWith);
+    List<JavaMethod> declarations = method == null ? List.of() : declarations(method);
+    boolean handler = declarations.stream().anyMatch(found -> HANDLERS.stream().anyMatch(found::isMetaAnnotatedWith));
     Type[] types = Type.getArgumentTypes(flow.desc);
     int first = flow.instance ? 1 : 0;
     for (int index = 0; index < types.length; index++) {
       boolean request = types[index].getSort() == Type.OBJECT && library.isRequest(types[index].getClassName());
       boolean continuation = types[index].getClassName().equals(CONTINUATION);
-      if ((handler || request) && !continuation) {
+      if ((handler || request || annotated(declarations, index)) && !continuation) {
         String simple = flow.owner.substring(flow.owner.lastIndexOf('/') + 1).replaceAll(".*\\$", "");
         sources.put(Flow.ARG + (index + first),
             simple + "." + flow.name + "(" + flow.argumentNames.get(index + first) + ")");
@@ -100,6 +136,31 @@ final class RequestState {
     }
     flow.sources.forEach(source -> sources.put(source, source.substring(Flow.SOURCE.length())));
     return sources;
+  }
+
+  private static boolean annotated(List<JavaMethod> declarations, int index) {
+    return declarations.stream()
+        .filter(found -> index < found.getParameters().size())
+        .anyMatch(found -> PARAMETERS.stream().anyMatch(found.getParameters().get(index)::isMetaAnnotatedWith));
+  }
+
+  private static List<JavaMethod> declarations(JavaMethod method) {
+    List<JavaMethod> declarations = new ArrayList<>();
+    declarations.add(method);
+    List<String> parameters = names(method.getRawParameterTypes());
+    List<JavaClass> supertypes = new ArrayList<>(method.getOwner().getAllRawSuperclasses());
+    supertypes.addAll(method.getOwner().getAllRawInterfaces());
+    for (JavaClass supertype : supertypes) {
+      supertype.getMethods().stream()
+          .filter(candidate -> candidate.getName().equals(method.getName()))
+          .filter(candidate -> names(candidate.getRawParameterTypes()).equals(parameters))
+          .forEach(declarations::add);
+    }
+    return declarations;
+  }
+
+  private static List<String> names(List<JavaClass> types) {
+    return types.stream().map(JavaClass::getName).collect(Collectors.toList());
   }
 
   private static Optional<JavaMethod> javaMethod(JavaClass type, MethodNode method) {
