@@ -420,7 +420,7 @@ describe('tool precedence', () => {
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
-        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}`,
+        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle, spotbugs${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}`,
       );
     },
   );
