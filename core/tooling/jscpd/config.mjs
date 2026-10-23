@@ -3,13 +3,11 @@ import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { isPlainObject } from '../../../shared/config.mjs';
 import {
-  ignoredConfigNotice,
+  JSCPD_PROJECT_FILE,
   missingProjectConfig,
-  precedenceLayers,
 } from '../../../shared/conventions/tool-precedence.mjs';
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
-export const JSCPD_PROJECT_FILE = '.jscpd.json';
 export const JSCPD_MODES = ['strict', 'mild', 'weak'];
 export const JSCPD_SIZE = /^(\d+(?:\.\d+)?)\s*(b|kb?|mb?|gb?)?$/iu;
 const AT_LEAST_ONE = 'a whole number of 1 or more';
@@ -103,13 +101,6 @@ export function appliedJscpdConfig(text) {
   } catch {
     return { kind: 'rejected' };
   }
-}
-
-export function jscpdIgnoredNotices(config, projectRoot) {
-  return existsSync(path.join(projectRoot, JSCPD_PROJECT_FILE)) &&
-    !precedenceLayers(config.tools?.jscpd?.precedence).usesProject
-    ? [ignoredConfigNotice(JSCPD_PROJECT_FILE, 'jscpd')]
-    : [];
 }
 
 export function resolveJscpdPolicy(settings, projectRoot) {

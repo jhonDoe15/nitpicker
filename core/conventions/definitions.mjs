@@ -1,4 +1,4 @@
-import { jscpdIgnoredNotices } from '../tooling/jscpd/config.mjs';
+import { jscpdIgnoredNotices } from '../../shared/conventions/tool-precedence.mjs';
 import { JAVA_CONVENTIONS } from '../../languages/java/conventions/java-conventions.mjs';
 import { KOTLIN_CONVENTIONS } from '../../languages/java/conventions/kotlin-conventions.mjs';
 import { javaProjectStyle } from '../../languages/java/conventions/java-project-style.mjs';

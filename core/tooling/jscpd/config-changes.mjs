@@ -1,4 +1,5 @@
-import { JSCPD_MODES, JSCPD_PROJECT_FILE, JSCPD_SIZE } from './config.mjs';
+import { JSCPD_PROJECT_FILE } from '../../../shared/conventions/tool-precedence.mjs';
+import { JSCPD_MODES, JSCPD_SIZE } from './config.mjs';
 
 const UNITS = { b: 1, k: 1024, m: 1024 ** 2, g: 1024 ** 3 };
 const NITPICKER_MINIMUMS = { minTokens: 50, minLines: 5 };
