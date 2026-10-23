@@ -44,15 +44,22 @@ function objectMembers(initializer) {
   if (!isConstAssertion(initializer) || !ts.isObjectLiteralExpression(initializer.expression)) {
     return undefined;
   }
-  const inner = initializer.expression;
-  const members = {};
-  for (const property of inner.properties.filter(ts.isPropertyAssignment)) {
-    const value = literalValue(property.initializer);
-    if (value !== undefined && ts.isIdentifier(property.name)) {
-      members[property.name.text] = value.value;
-    }
+  const { properties } = initializer.expression;
+  const plain = properties.every(
+    (property) => ts.isPropertyAssignment(property) && ts.isIdentifier(property.name),
+  );
+  if (!plain) {
+    return undefined;
   }
-  return members;
+  const members = new Map();
+  for (const property of properties) {
+    members.set(property.name.text, literalValue(property.initializer));
+  }
+  return Object.fromEntries(
+    [...members]
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => [key, value.value]),
+  );
 }
 
 function isFunctionValue(initializer) {
@@ -119,7 +126,8 @@ export function moduleBinding(declaration, node, cx) {
 
 export function findFunction(sourceFile, name) {
   for (const statement of sourceFile.statements) {
-    if (ts.isFunctionDeclaration(statement) && statement.name?.text === name) {
+    const named = ts.isFunctionDeclaration(statement) && statement.name?.text === name;
+    if (named && statement.body !== undefined) {
       return statement;
     }
     const declarations = ts.isVariableStatement(statement)

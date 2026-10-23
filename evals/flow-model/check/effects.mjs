@@ -1,5 +1,5 @@
 import { UNDEFINED, addPartial, alternatives, nextCall, stepOf, widen } from './state.mjs';
-import { getField, identityOf, labelOf, possibleValues, resolve } from './values.mjs';
+import { OBJECT_LIKE, getField, identityOf, labelOf, possibleValues, resolve } from './values.mjs';
 
 function argumentValue(state, args, spec) {
   const value = args[spec.arg] ?? UNDEFINED;
@@ -42,13 +42,15 @@ function checkPrerequisites(state, call) {
       rule.effect === call.callee && (rule.event === undefined || rule.event === call.event),
   );
   for (const rule of rules) {
-    const satisfied = state.events.some(
-      (event) =>
-        event.callee === rule.requires.effect &&
-        event.entity === call.entity &&
-        event.result === 'success' &&
-        (rule.requires.to === undefined || event.to === rule.requires.to),
-    );
+    const satisfied =
+      call.entity !== '?' &&
+      state.events.some(
+        (event) =>
+          event.callee === rule.requires.effect &&
+          event.entity === call.entity &&
+          event.result === 'success' &&
+          (rule.requires.to === undefined || event.to === rule.requires.to),
+      );
     if (!satisfied) {
       const requires = [rule.requires.effect, rule.requires.to]
         .filter((part) => part !== undefined)
@@ -125,6 +127,35 @@ function sitePath(state, site) {
   return [...(state.frame.sites ?? []), site].join(' > ');
 }
 
+function opaqueRules(contracts) {
+  return [
+    ...contracts.prerequisites.map((rule) => [rule.id, rule.effect, '?']),
+    ...contracts.transitions.map((rule) => [rule.id, rule.effect, '?', '?', '?']),
+  ];
+}
+
+export function opaqueEffects(state, { loc, detail }) {
+  const site = sitePath(state, `${state.frame.fn}:unmodelled ${detail}`);
+  const witness = { guards: [...state.guards], events: [...state.events] };
+  for (const [contract, callee, ...rest] of opaqueRules(state.run.contracts)) {
+    const observation = [contract, callee, ...rest].join('|');
+    state.violations.push({
+      signature: `${observation}@${site}`,
+      observation,
+      site,
+      contract,
+      kind: 'unmodelled',
+      detail,
+      callee,
+      entity: '?',
+      line: loc?.line ?? 0,
+      column: loc?.column ?? 0,
+      certainty: 'possible',
+      witness,
+    });
+  }
+}
+
 export function effectCall(state, { name, contract, args, expr }) {
   const { loc } = expr;
   const transition = state.run.contracts.transitions.find((item) => item.effect === name);
@@ -148,9 +179,12 @@ export function effectCall(state, { name, contract, args, expr }) {
   );
 }
 
-export function unknownCall(state, { reason, loc, detail }) {
+export function unknownCall(state, { reason, loc, detail, args }) {
   addPartial(state, { reason, loc, detail });
   widen(state);
+  if (args === undefined || args.some((arg) => OBJECT_LIKE.has(resolve(state, arg).t))) {
+    state.mutated = true;
+  }
   state.events.push({
     callee: detail,
     entity: '?',

@@ -4,6 +4,7 @@ import { FIXTURES, ORDER_CONTRACTS, ORDER_INPUTS, fixtureNamed } from '../fixtur
 import { compareWithOracle } from './compare.mjs';
 import { runOracle } from './oracle.mjs';
 
+const PAID_A = 'paid-before-publish|bus.publish|A';
 const EXACT_FIELDS = [
   'mode',
   'agree',
@@ -40,7 +41,8 @@ function comparisonOf(fixture) {
   return compareWithOracle(staticResult(fixture), runOracle(optionsOf(fixture, partial)));
 }
 
-const SYNC_FIXTURES = FIXTURES.filter((fixture) => fixture.name !== 'async-entry');
+const ASYNC_FIXTURES = new Set(['async-entry', 'async-helper']);
+const SYNC_FIXTURES = FIXTURES.filter((fixture) => !ASYNC_FIXTURES.has(fixture.name));
 
 describe('concrete oracle', () => {
   it.each(
@@ -80,14 +82,25 @@ describe('concrete oracle', () => {
       .map((fixture) => [fixture.name, comparisonOf(fixture).observedViolations])
       .filter(([, violations]) => violations.length > 0);
 
+    const unguarded = [
+      'order-status|db.commit|A|cancelled|paid',
+      'order-status|db.commit|A|paid|paid',
+    ];
+
     expect(observed).toEqual([
+      ['catch-destructuring', [PAID_A]],
+      ['inherited-property', unguarded],
+      ['rest-destructuring', [PAID_A]],
+      ['deleted-field', ['order-status|db.commit|A|undefined|paid']],
+      ['closure-effect', unguarded],
+      ['comma-effect', unguarded],
       ['recursion', ['order-status|db.commit|A|paid|paid']],
-      ['unknown-recovery', ['paid-before-publish|bus.publish|A']],
+      ['unknown-recovery', [PAID_A]],
     ]);
   });
 
-  it('declines async entries instead of running them', () => {
-    const fixture = fixtureNamed('async-entry');
+  it.each([...ASYNC_FIXTURES])('declines %s instead of running async code', (name) => {
+    const fixture = fixtureNamed(name);
     const oracle = runOracle(optionsOf(fixture, true));
 
     expect([oracle, compareWithOracle(staticResult(fixture), oracle)]).toEqual([
@@ -134,7 +147,7 @@ describe('concrete oracle', () => {
       runOracle(optionsOf(fixtureNamed('correct-ordering'))),
     );
     const subset = compareWithOracle(
-      staticResult(fixtureNamed('finally-cleanup')),
+      staticResult(fixtureNamed('amount-guard-undeclared')),
       runOracle(optionsOf(fixtureNamed('recursion'), true)),
     );
 

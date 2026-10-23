@@ -212,8 +212,10 @@ describe('findings and views', () => {
         ['flow-model/incomplete', { line: 3, column: 3 }],
         ['flow-model/incomplete', { line: 4, column: 3 }],
         ['flow-model/incomplete', { line: 5, column: 7 }],
+        ['flow-model/incomplete', { line: 5, column: 25 }],
+        ['flow-model/incomplete', { line: 6, column: 5 }],
       ],
-      5,
+      7,
     ]);
   });
 

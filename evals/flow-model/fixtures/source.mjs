@@ -48,6 +48,13 @@ export const ORDER_INPUTS = Object.freeze({
 });
 
 export const PAID_A = 'paid-before-publish|bus.publish|A';
+export const PAID_ANY = 'paid-before-publish|bus.publish|?';
+export const ANY_EFFECT = [PAID_ANY, 'order-status|db.commit|?|?|?'];
+export const UNKNOWN_CALL = {
+  status: 'partial',
+  reasons: ['unknown-call', 'unknown-entity', 'unknown-state'],
+  violations: ['order-status|db.commit|?|?|paid', PAID_ANY],
+};
 
 export function transition(entity, from, to) {
   return `order-status|db.commit|${entity}|${from}|${to}`;

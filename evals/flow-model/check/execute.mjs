@@ -1,6 +1,7 @@
-import { unknownCall } from './effects.mjs';
+import { opaqueEffects, unknownCall } from './effects.mjs';
 import { chain, evalExpr, testValue } from './evaluate.mjs';
-import { UNDEFINED, addPartial, mutate, stepOf } from './state.mjs';
+import { UNDEFINED, addPartial, mutate, nextCall, stepOf } from './state.mjs';
+import { getField, resolve } from './values.mjs';
 
 const UNSUPPORTED_REASONS = new Map([['loop', 'loop']]);
 
@@ -62,6 +63,9 @@ function execTry(stmt, state, ctx) {
     if (stmt.catchId !== undefined) {
       result.state.env.set(stmt.catchId, result.value);
     }
+    for (const [id, field] of stmt.catchFields ?? []) {
+      result.state.env.set(id, getField(result.state, result.value, field));
+    }
     const { line, column } = stmt.loc;
     result.state.guards.push({
       text: 'catch',
@@ -76,7 +80,10 @@ function execTry(stmt, state, ctx) {
 
 function execUnsupported(stmt, state) {
   const reason = UNSUPPORTED_REASONS.get(stmt.syntax) ?? 'unsupported-syntax';
-  mutate(state, { reason, clobbers: stmt.clobbers ?? [], loc: stmt.loc, syntax: stmt.syntax });
+  mutate(state, { reason, region: stmt, loc: stmt.loc, syntax: stmt.syntax });
+  if (stmt.hasCall) {
+    opaqueEffects(state, { loc: stmt.loc, detail: stmt.syntax });
+  }
   return [{ state, completion: 'normal', value: UNDEFINED }];
 }
 
@@ -91,7 +98,7 @@ const EXECUTORS = {
   unsupported: execUnsupported,
 };
 
-export function execBlock(stmts, state, ctx) {
+function execBlock(stmts, state, ctx) {
   let open = [{ state, completion: 'normal', value: UNDEFINED }];
   const done = [];
   for (const stmt of stmts) {
@@ -130,11 +137,62 @@ export function callHelper(state, { name, args, expr }) {
   const { loc } = expr;
   if (state.stack.length >= ctx.bounds.maxDepth || fn.async || fn.generator) {
     const reason = fn.async || fn.generator ? 'async' : 'call-depth';
-    return unknownCall(state, { reason, loc, detail: name });
+    opaqueEffects(state, { loc, detail: `${reason} ${name}` });
+    return unknownCall(state, { reason, loc, detail: name, args });
   }
   enterChecks(state, { fn, loc });
   const frame = { saved: state.frame, stack: [...state.stack] };
   state.frame = { fn: name, args, sites: [...(frame.saved.sites ?? []), expr.site] };
   state.stack = [...state.stack, name];
-  return execBlock(fn.body, state, ctx).map((result) => leaveFrame(result, frame));
+  return runBody(state, fn).map((result) => leaveFrame(result, frame));
+}
+
+function setArgument(state, index, value) {
+  const args = [...state.frame.args];
+  args[index] = value;
+  state.frame = { ...state.frame, args };
+}
+
+function freshParameter(state, param) {
+  const key = `parameter:${state.frame.fn}:${param.name}#${String(nextCall(state))}`;
+  setArgument(state, param.index, { t: 'atom', key });
+}
+
+function maybeUndefined(value) {
+  if (value.t !== 'atom') {
+    return value.t === 'undef';
+  }
+  return !Array.isArray(value.domain) || value.domain.includes(undefined);
+}
+
+function bindParameter(state, { param, fn }) {
+  const value = resolve(state, state.frame.args[param.index] ?? UNDEFINED);
+  if (param.supported === false) {
+    freshParameter(state, param);
+    return [{ state, value }];
+  }
+  if (param.default === undefined || !maybeUndefined(value)) {
+    return [{ state, value }];
+  }
+  if (value.t === 'atom') {
+    addPartial(state, { reason: 'unknown-guard', loc: fn.loc, detail: `default of ${param.name}` });
+    freshParameter(state, param);
+    return [{ state, value }];
+  }
+  return chain(evalExpr(param.default, state, state.run), (next, initial) => {
+    setArgument(next, param.index, initial);
+    return [{ state: next, value: initial }];
+  });
+}
+
+export function runBody(state, fn) {
+  let results = [{ state, value: UNDEFINED }];
+  for (const param of fn.params) {
+    results = chain(results, (current) => bindParameter(current, { param, fn }));
+  }
+  return results.flatMap((result) =>
+    'thrown' in result
+      ? [{ state: result.state, completion: 'throw', value: result.thrown }]
+      : execBlock(fn.body, result.state, state.run),
+  );
 }

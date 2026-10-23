@@ -1,4 +1,4 @@
-import { callHelper, execBlock } from './check/execute.mjs';
+import { callHelper, runBody } from './check/execute.mjs';
 import { addPartial, createState } from './check/state.mjs';
 import { inputOf, labelOf } from './check/values.mjs';
 import { extractModel } from './extract/extract.mjs';
@@ -108,7 +108,7 @@ function analyzeModel(model, { contracts, inputs, bounds }) {
   const seed = createState({ fn: model.entry, args: [] }, ctx);
   seed.frame.args = entry.params.map((param) => inputOf(seed, param.name));
   entryChecks(seed, entry, model);
-  return summarize(execBlock(entry.body, seed, ctx), ctx);
+  return summarize(runBody(seed, entry), ctx);
 }
 
 export function analyzeSource({ file, text, entry, contracts, inputs = {}, bounds = {} }) {

@@ -18,14 +18,17 @@ function atomKey(path, state) {
 
 function inputValue(spec, path, state) {
   if (spec === 'effects' || spec === 'object') {
+    return { t: 'input', path, ...(spec === 'effects' ? { effects: true } : {}) };
+  }
+  if (isRecord(spec) && !Array.isArray(spec.oneOf)) {
     return { t: 'input', path };
   }
-  if (isRecord(spec)) {
-    return Array.isArray(spec.oneOf)
-      ? { t: 'atom', key: atomKey(path, state), domain: spec.oneOf }
-      : { t: 'input', path };
+  if (spec === undefined || state.mutated) {
+    return { t: 'atom', key: atomKey(path, state) };
   }
-  return spec === undefined ? { t: 'atom', key: atomKey(path, state) } : { t: 'lit', v: spec };
+  return isRecord(spec)
+    ? { t: 'atom', key: atomKey(path, state), domain: spec.oneOf }
+    : { t: 'lit', v: spec };
 }
 
 export function inputOf(state, name) {
@@ -41,6 +44,9 @@ function objectField(state, object, field) {
     return { t: 'atom', key: atomKey(path, state) };
   }
   const entry = object.fields.find(([key]) => key === field);
+  if (entry === undefined && Object.hasOwn(Object.prototype, field)) {
+    return { t: 'atom', key: `${atomKey(path, state)}#inherited` };
+  }
   return entry === undefined ? UNDEFINED : entry[1];
 }
 

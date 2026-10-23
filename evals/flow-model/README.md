@@ -23,33 +23,49 @@ runs at any point.
 
 ## Supported subset
 
-One entry function plus the same-file helpers it calls, transitively (function declarations and
-top-level `const` arrow or function expressions). Bindings are resolved with the TypeScript checker
-over a one-file program (`allowJs`, `noLib`, `noResolve`), so `.mjs` sources resolve the same way
-as `.ts` sources.
+One entry function plus the same-file helpers it calls, transitively (function declarations with a
+body and top-level `const` arrow or function expressions; overload signatures and `declare`d
+functions are skipped, so a call to a function without a body is unknown). Bindings are resolved
+with the TypeScript checker over a one-file program (`allowJs`, `noLib`, `noResolve`), so `.mjs`
+sources resolve the same way as `.ts` sources. A source with a syntax error or a redeclared binding
+is rejected with an error.
 
 - Statements: `const`/`let` declarations (including simple object destructuring), `=` assignment to
-  a property, expression statements, `if`/`else`, `return`, `throw`, `try`/`catch`, blocks.
+  a property, expression statements, `if`/`else`, `return`, `throw`, `try`/`catch` (including a
+  simple destructured catch binding), blocks.
+- Parameters: plain names, simple destructuring, and default values, which apply when the argument
+  is `undefined` (and make the result partial when the argument may or may not be `undefined`).
 - Expressions: string, number and boolean literals, `undefined`, parameters (including simple
   destructured parameters), locals, property and string-keyed element access, calls, `new`, the
   comparisons `===`, `!==`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`, `!`, conditional
-  expressions, object literals with plain or shorthand properties, template literals. Parentheses,
-  `as`, `satisfies` and non-null `!` are transparent.
+  expressions, object literals with plain or shorthand properties (not `__proto__`), template
+  literals. Parentheses, `as`, `satisfies` and non-null `!` are transparent. Reading a name that an
+  object literal inherits (`toString`, `constructor`, ...) gives an unknown value.
 - Literal guards: enum members, top-level `const` literals and members of a top-level object
   declared `as const` are inlined as literal values, keeping the source spelling
-  (`OrderStatus.Pending ("pending")`) for display and in the diff.
+  (`OrderStatus.Pending ("pending")`) for display and in the diff. An object with a spread, an
+  accessor, a method or a computed key is not inlined.
 - Calls are classified as same-file helper, import (module specifier plus original exported name),
-  global, member call on a value, or dynamic. Each call carries a site: the enclosing function, the
+  global, member call on a value, or dynamic. Only an import or a method of an input declared as an
+  effect receiver can match an effect contract; a global or an undeclared parameter with the same
+  name is an unknown call. Each call carries a site: the enclosing function, the
   callee text and its position among the calls of that callee (`payOrder:bus.publish#2`).
 
 Everything else becomes an explicit `unsupported` node and makes the result partial: loops,
 `finally`, `switch`, `await`, `async` and generator functions, optional chains and calls, `null`,
 `typeof`, `instanceof`, `??`, arithmetic, spread, computed member calls, nested binding patterns,
-closures over outer function bindings, module-level `let` or `var`, and every mutating form other
-than a property `=` (local reassignment, `+=`, `||=`, `&&=`, `??=`, `++`, `--`, `delete`, and an
-assignment used as an expression). A mutating node also widens all facts and replaces the locals and
-parameters it writes with fresh unknown values. An unsupported expression that contains a call is
-treated as an unknown call; one without a call becomes a fresh unknown value.
+rest elements, closures, comma and `void` expressions, labeled statements, module-level `let` or
+`var`, and every mutating form other than a property `=` (local reassignment, `+=`, `||=`, `&&=`,
+`??=`, `++`, `--`, `delete`, and an assignment used as an expression). The locals and parameters an
+unsupported node writes or declares become fresh unknown values. When it writes a property or
+contains a call, all facts are widened and input fields lose their declared domains and fixed
+values. An unsupported expression that contains a call is treated as an unknown call; one without a
+call becomes a fresh unknown value.
+
+Effects inside unmodelled code (an unsupported node that contains a call, a dynamic call, an
+`async` or generator helper, a helper beyond the call-depth bound) are not traced. For each such
+region the result adds one `possible` violation per contract rule, with every entity and state
+written `?`, so a violation that happens in there is still covered by the result.
 
 ## The model
 
@@ -96,9 +112,12 @@ object.
 - An unknown call, an unknown dispatch, unsupported syntax, an unknown guard, an entity or a current
   state that cannot be identified, recursion (inlined up to the call-depth bound), the call-depth
   bound, an `async` function or the state budget marks the result `partial` with the reason and
-  location. Unknown calls also widen the facts they may touch (input fields, object literals and
-  recorded entity states) and may return or throw. Violations found after any of these are reported
-  as `possible`; a transition from an unknown state is reported as a `possible` violation from `?`.
+  location. Unknown calls widen the facts they may touch (input fields, object literals and
+  recorded entity states) and may return or throw; when they receive an object, input fields also
+  lose their declared domains and fixed values. Unknown callees are assumed not to invoke the
+  contracted effects. Violations found after any of these are reported as `possible`; a transition
+  from an unknown state is a `possible` violation from `?`, and an effect on an unknown entity `?`
+  never satisfies a prerequisite.
 - A `partial` result is never a clean result, even when it reports no violation.
 
 Each violation carries a witness: the ordered guards, catches and effect outcomes on its path,
@@ -120,9 +139,10 @@ completions with their locations, plus changed violations and path outcomes.
 `report/findings.mjs` emits only descriptive findings with existing fields (`tool`, `rule`, `path`,
 `identity`, `symbol`, `message`, `classification`, `location`, `metric`). `run.mjs` passes every
 finding through `parseAnalyzerReport` from `core/diff/comparison/finding-schema.mjs`. The model,
-paths and witnesses stay in separate artifacts. A violation's identity includes its call site, so two
-calls that break the same rule are two findings, and the identity survives whitespace changes. Synthetic and seeded findings point to the
-generated sources under `reports/flow-model/`, not to production files.
+paths and witnesses stay in separate artifacts. A violation's identity includes its call site, so
+two calls that break the same rule are two findings, and the identity survives whitespace changes.
+Synthetic and seeded findings point to the generated sources under `reports/flow-model/`, not to
+production files.
 
 ## Concrete oracle
 
@@ -145,7 +165,12 @@ describes the real dependency, or code that a contract replaces.
   without a contract may return `undefined` or throw. This only explores what the oracle can run: an
   unknown call never mutates its arguments, and a call to an undefined global always throws, so
   the subset check is weaker than the exact one.
-- `async` and generator entries are not run and are reported as `unsupported`.
+- A source that contains any `async` or generator function is not run and is reported as
+  `unsupported`, so a floating promise cannot escape the run. Entries declared as top-level
+  function declarations or `const` arrow or function expressions are run.
+- What the subset check proves, therefore: for each partial fixture, no violation that the oracle
+  observes under these stand-ins is missing from the static result. It says nothing about callees
+  that would mutate their arguments or invoke effects.
 
 ## Real operation: `lookUpCachedReport`
 
@@ -175,27 +200,29 @@ source and entry function.
 
 | Measure                             | Synthetic fixtures | `lookUpCachedReport` variants |
 | ----------------------------------- | -----------------: | ----------------------------: |
-| Targets                             |                 41 |                            10 |
-| Complete / partial                  |            27 / 14 |                         7 / 3 |
+| Targets                             |                 55 |                            10 |
+| Complete / partial                  |            30 / 25 |                         7 / 3 |
 | Label mismatches                    |                  0 |                             0 |
-| Violations by call site, definite   |     14 in 12 cases |  5 in 5 seeded (5 of 5 found) |
-| Violations by call site, possible   |     15 in 12 cases |                             0 |
-| Exact oracle: targets / executions  |           27 / 251 |                        7 / 58 |
-| Subset oracle: targets / executions |           13 / 104 |                        3 / 28 |
+| Violations by call site, definite   |     16 in 14 cases |  5 in 5 seeded (5 of 5 found) |
+| Violations by call site, possible   |     44 in 23 cases |                  2 in 2 cases |
+| Exact oracle: targets / executions  |           30 / 266 |                        7 / 58 |
+| Subset oracle: targets / executions |           23 / 195 |                        3 / 28 |
 | Oracle disagreements                |                  0 |                             0 |
-| Not run by the oracle (`async`)     |                  1 |                             0 |
-| Entry and helper source bytes       |              9,201 |                         3,090 |
-| Canonical model bytes               |             67,959 |                        18,633 |
-| Decision and path view bytes        |             55,766 |                        13,489 |
-| Full result bytes                   |            116,915 |                        21,632 |
-| Modeled / unsupported statements    |            230 / 6 |                        50 / 1 |
+| Not run by the oracle (`async`)     |                  2 |                             0 |
+| Entry and helper source bytes       |             11,589 |                         3,090 |
+| Canonical model bytes               |             86,554 |                        18,654 |
+| Decision and path view bytes        |             75,088 |                        13,853 |
+| Full result bytes                   |            168,185 |                        23,086 |
+| Modeled / unsupported statements    |           285 / 11 |                        50 / 1 |
+
+Most `possible` violations are the per-rule `?` entries of unmodelled regions.
 
 The unchanged `lookUpCachedReport` is complete with three paths (unresolved, miss, hit) and no
-finding within the supplied contract. Reviewed outcome of the findings: every definite violation is
-a true positive confirmed by the oracle; on these fixtures there are no false positives among
-complete results; every `possible` violation is uncertain by construction. The complete cases use
-declared finite domains for every value a guard forks on. These are synthetic or seeded cases, not
-precision or recall on real code.
+finding within the supplied contract. Reviewed outcome of the findings, for the supported subset as
+exercised by the fixtures and the oracle: every definite violation is a true positive confirmed by
+the oracle, and no complete result reports a violation the oracle does not observe. Every `possible`
+violation is uncertain by construction. The complete cases use declared finite domains for every
+value a guard forks on. These are synthetic or seeded cases, not precision or recall on real code.
 
 The model and the views are larger than the source they describe. This measures what the summary
 retains; it is not a token or cost benchmark, and no token or cost savings are claimed.
@@ -207,10 +234,12 @@ retains; it is not a token or cost benchmark, and no token or cost savings are c
 - Everything listed as unsupported is partial, so most real code will be partial. The engine does
   not type-check and does not model getters, proxies or aliasing between different input objects,
   which are assumed distinct.
-- Violations inside an unmodeled region (a loop body, a `finally` block, an unknown or async callee)
-  are not reported; the result is partial, so no clean result is claimed for them.
-- Unknown calls widen every mutable fact rather than only the reachable ones, and comparisons of two
-  domain values are partial even when both domains are declared.
+- Effects inside an unmodelled region (a loop body, a `finally` block, a closure, an async callee)
+  are not traced; they are only covered by the per-rule `?` violations, which say nothing about
+  which entity or state is involved.
+- Unknown callees are assumed not to invoke contracted effects. Unknown calls widen every mutable
+  fact rather than only the reachable ones, and comparisons of two domain values are partial even
+  when both domains are declared.
 - The prerequisite requires a matching effect inside the analyzed invocation; it does not establish
   the absence of earlier state.
 - One real operation with one supplied contract. `writeStoredFile` in
@@ -234,9 +263,10 @@ generated fixture and variant sources the findings point to.
 Go for continuing as a report-only experiment; no-go for an enabled rule or a production analyzer.
 Within the supported subset the extraction is repeatable, every result carries source anchors,
 traversal is bounded and deterministic, and the static results agree with concrete execution on
-every complete case. That agreement covers only guards over declared finite domains; any other fork,
-mutation, `async` code or unknown call makes the result partial, where the oracle can only check that
-no observed violation is missing. The oracle shares the checker's reading of the contracts, so it
+every complete case of the fixtures. That agreement covers only guards over declared finite domains;
+any other fork, mutation, unmodelled region, `async` code or unknown call makes the result partial,
+where the oracle can only check that no observed violation is missing, under stand-ins that never
+mutate or invoke effects. The oracle shares the checker's reading of the contracts, so it
 does not validate the contracts. The evidence is one real operation with one supplied contract and
 synthetic cases; it does not show precision on real code, and the model is larger than its source.
 The next step is a second real operation with an independently established contract, recording

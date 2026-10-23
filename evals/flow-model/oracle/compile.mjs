@@ -1,20 +1,50 @@
 import vm from 'node:vm';
 import ts from 'typescript';
+import { depthFirst } from '../../../shared/traversal.mjs';
+
+function isFunctionValue(node) {
+  return node !== undefined && (ts.isArrowFunction(node) || ts.isFunctionExpression(node));
+}
+
+function topLevelFunction(sourceFile, entry) {
+  for (const statement of sourceFile.statements) {
+    const named = ts.isFunctionDeclaration(statement) && statement.name?.text === entry;
+    if (named && statement.body !== undefined) {
+      return statement;
+    }
+    const declarations = ts.isVariableStatement(statement)
+      ? statement.declarationList.declarations
+      : [];
+    const match = declarations.find(
+      (item) => ts.isIdentifier(item.name) && item.name.text === entry,
+    );
+    if (match !== undefined && isFunctionValue(match.initializer)) {
+      return match.initializer;
+    }
+  }
+  return undefined;
+}
+
+function isAsyncLike(node) {
+  const asynchronous = (ts.canHaveModifiers(node) ? (ts.getModifiers(node) ?? []) : []).some(
+    (item) => item.kind === ts.SyntaxKind.AsyncKeyword,
+  );
+  return ts.isFunctionLike(node) && (asynchronous || node.asteriskToken !== undefined);
+}
+
+function childrenOf(node) {
+  return node.getChildren();
+}
 
 export function entryShape({ file, text, entry }) {
   const sourceFile = ts.createSourceFile(file, text, ts.ScriptTarget.ES2022, true);
-  const declaration = sourceFile.statements.find(
-    (statement) => ts.isFunctionDeclaration(statement) && statement.name?.text === entry,
-  );
+  const declaration = topLevelFunction(sourceFile, entry);
   if (declaration === undefined) {
-    throw new Error(`oracle: entry ${entry} is not a top-level function declaration in ${file}`);
+    throw new Error(`oracle: entry ${entry} is not a top-level function in ${file}`);
   }
-  const modifiers = declaration.modifiers ?? [];
   return {
     params: declaration.parameters.map((parameter) => parameter.name.getText(sourceFile)),
-    async:
-      modifiers.some((item) => item.kind === ts.SyntaxKind.AsyncKeyword) ||
-      declaration.asteriskToken !== undefined,
+    async: [...depthFirst(sourceFile, childrenOf)].some(isAsyncLike),
   };
 }
 
