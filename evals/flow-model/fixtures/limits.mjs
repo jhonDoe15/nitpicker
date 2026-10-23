@@ -1,5 +1,4 @@
-import { PAID_A, transition } from './contracts.mjs';
-import { code, fixture } from './source.mjs';
+import { PAID_A, code, fixture, transition } from './source.mjs';
 
 export const LIMIT_FIXTURES = [
   fixture('unknown-helper', {
@@ -22,7 +21,6 @@ export const LIMIT_FIXTURES = [
       reasons: ['unknown-call'],
       violations: [transition('A', 'paid', 'paid'), transition('A', 'cancelled', 'paid')],
     },
-    oracle: false,
   }),
   fixture('unknown-dispatch', {
     title: 'The effect is called through a computed member',
@@ -37,7 +35,6 @@ export const LIMIT_FIXTURES = [
       }
     `,
     expect: { status: 'partial', reasons: ['unknown-dispatch'], violations: [PAID_A] },
-    oracle: false,
   }),
   fixture('recursion', {
     title: 'A same-file helper retries by calling itself',
@@ -63,8 +60,11 @@ export const LIMIT_FIXTURES = [
         return 'paid';
       }
     `,
-    expect: { status: 'partial', reasons: ['recursion'], violations: [PAID_A] },
-    oracle: false,
+    expect: {
+      status: 'partial',
+      reasons: ['recursion'],
+      violations: [transition('A', 'paid', 'paid')],
+    },
   }),
   fixture('loop', {
     title: 'Commits inside a loop are outside the supported subset',
@@ -78,7 +78,6 @@ export const LIMIT_FIXTURES = [
     `,
     entry: 'payAll',
     expect: { status: 'partial', reasons: ['loop'] },
-    oracle: false,
   }),
   fixture('finally-cleanup', {
     title: 'A finally block is outside the supported subset',
@@ -97,7 +96,6 @@ export const LIMIT_FIXTURES = [
       }
     `,
     expect: { status: 'partial', reasons: ['unsupported-syntax'], violations: [PAID_A] },
-    oracle: false,
   }),
   fixture('unknown-recovery', {
     title: 'A failed commit is handed to an unknown recovery call',
@@ -118,7 +116,6 @@ export const LIMIT_FIXTURES = [
       }
     `,
     expect: { status: 'partial', reasons: ['unknown-call'], violations: [PAID_A] },
-    oracle: false,
   }),
   fixture('exhausted-budget', {
     title: 'More effect outcomes than the declared state budget allows',
@@ -136,6 +133,5 @@ export const LIMIT_FIXTURES = [
     `,
     bounds: { maxStates: 6 },
     expect: { status: 'partial', reasons: ['state-budget'] },
-    oracle: false,
   }),
 ];

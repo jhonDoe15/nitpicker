@@ -1,8 +1,8 @@
 import { unknownCall } from './effects.mjs';
 import { chain, evalExpr, testValue } from './evaluate.mjs';
-import { UNDEFINED, addPartial, stepOf, widen } from './state.mjs';
+import { UNDEFINED, addPartial, mutate, stepOf } from './state.mjs';
 
-const UNSUPPORTED_REASONS = { loop: 'loop', finally: 'unsupported-syntax' };
+const UNSUPPORTED_REASONS = new Map([['loop', 'loop']]);
 
 function normal(results) {
   return results.map((result) =>
@@ -25,10 +25,11 @@ function execSet(stmt, state, ctx) {
   return normal(
     chain(evalExpr(stmt.object, state, ctx), (current, object) =>
       chain(evalExpr(stmt.value, current, ctx), (next, value) => {
-        if (object.t === 'input') {
-          next.fields.set(`${object.path}.${stmt.field}`, value);
-        } else {
+        const base = { input: object.path, obj: object.id }[object.t];
+        if (base === undefined) {
           addPartial(next, { reason: 'unsupported-syntax', loc: stmt.loc, detail: 'mutation' });
+        } else {
+          next.fields.set(`${base}.${stmt.field}`, value);
         }
         return [{ state: next, value }];
       }),
@@ -58,7 +59,7 @@ function execTry(stmt, state, ctx) {
     if (result.completion !== 'throw') {
       return [result];
     }
-    if (stmt.catchId !== null) {
+    if (stmt.catchId !== undefined) {
       result.state.env.set(stmt.catchId, result.value);
     }
     const { line, column } = stmt.loc;
@@ -74,9 +75,8 @@ function execTry(stmt, state, ctx) {
 }
 
 function execUnsupported(stmt, state) {
-  const reason = UNSUPPORTED_REASONS[stmt.syntax] ?? 'unsupported-syntax';
-  addPartial(state, { reason, loc: stmt.loc, detail: stmt.syntax });
-  widen(state);
+  const reason = UNSUPPORTED_REASONS.get(stmt.syntax) ?? 'unsupported-syntax';
+  mutate(state, { reason, clobbers: stmt.clobbers ?? [], loc: stmt.loc, syntax: stmt.syntax });
   return [{ state, completion: 'normal', value: UNDEFINED }];
 }
 
@@ -111,14 +111,10 @@ function leaveFrame(result, frame) {
   return { state: result.state, value: result.completion === 'return' ? result.value : UNDEFINED };
 }
 
-export function callHelper(state, { name, args, loc }) {
-  const ctx = state.run;
-  if (state.stack.includes(name) || state.stack.length >= ctx.bounds.maxDepth) {
-    const reason = state.stack.includes(name) ? 'recursion' : 'call-depth';
-    return unknownCall(state, { reason, loc, detail: name });
+function enterChecks(state, { fn, loc }) {
+  if (state.stack.includes(fn.name)) {
+    addPartial(state, { reason: 'recursion', loc, detail: fn.name });
   }
-  const fn = ctx.model.functions[name];
-  const frame = { saved: state.frame, stack: [...state.stack] };
   for (const param of fn.params.filter((item) => item.supported === false)) {
     addPartial(state, {
       reason: 'unsupported-syntax',
@@ -126,7 +122,19 @@ export function callHelper(state, { name, args, loc }) {
       detail: `parameter ${param.name}`,
     });
   }
-  state.frame = { fn: name, args };
+}
+
+export function callHelper(state, { name, args, expr }) {
+  const ctx = state.run;
+  const fn = ctx.model.functions[name];
+  const { loc } = expr;
+  if (state.stack.length >= ctx.bounds.maxDepth || fn.async || fn.generator) {
+    const reason = fn.async || fn.generator ? 'async' : 'call-depth';
+    return unknownCall(state, { reason, loc, detail: name });
+  }
+  enterChecks(state, { fn, loc });
+  const frame = { saved: state.frame, stack: [...state.stack] };
+  state.frame = { fn: name, args, sites: [...(frame.saved.sites ?? []), expr.site] };
   state.stack = [...state.stack, name];
   return execBlock(fn.body, state, ctx).map((result) => leaveFrame(result, frame));
 }

@@ -1,12 +1,13 @@
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
-import { applyEdits } from '../fixtures/source.mjs';
+import { applyEdits, normalizedLines } from '../fixtures/source.mjs';
 import { sha256 } from '../report/canonical.mjs';
 
 export const LOOKUP_FILE = 'core/diff/cache/findings-cache.mjs';
 export const LOOKUP_ENTRY = 'lookUpCachedReport';
-const RESOLVER = 'resolveAnalyzerMetadata';
-export const VARIANT_DIRECTORY = 'reports/flow-model/real/variants';
+const RESOLVER_NAME = 'resolveAnalyzerMetadata';
+const RESOLVER = `../execution/run-analyzers.mjs#${RESOLVER_NAME}`;
+const VARIANT_DIRECTORY = 'reports/flow-model/real/variants';
 
 export const LOOKUP_CONTRACTS = Object.freeze({
   effects: {
@@ -36,7 +37,7 @@ export const LOOKUP_INPUTS = Object.freeze({
   resolveContext: { strict: { oneOf: [true, false] } },
 });
 
-const RESOLVE = `    ${RESOLVER}(analyzer, resolveContext);\n`;
+const RESOLVE = `    ${RESOLVER_NAME}(analyzer, resolveContext);\n`;
 const TRY_BLOCK = `  try {\n${RESOLVE}  } catch (error) {\n    return { kind: 'unresolved', error };\n  }\n`;
 const READ = '  const report = cache.read(analyzer);\n';
 const CATCH_RETURN = "    return { kind: 'unresolved', error };\n";
@@ -45,7 +46,7 @@ const READ_BEFORE = 'resolve-before-read|cache.read|analyzer';
 const SEEDED = [
   ['seed-omit-resolution', [[TRY_BLOCK, '']]],
   ['seed-read-before-resolution', [[TRY_BLOCK + READ, READ + TRY_BLOCK]]],
-  ['seed-wrong-object', [[RESOLVE, `    ${RESOLVER}(resolveContext, analyzer);\n`]]],
+  ['seed-wrong-object', [[RESOLVE, `    ${RESOLVER_NAME}(resolveContext, analyzer);\n`]]],
   ['seed-continue-after-failure', [[CATCH_RETURN, '    analyzer.unresolved = error;\n']]],
   [
     'seed-conditional-resolution',
@@ -57,12 +58,12 @@ const UNSUPPORTED = [
   [
     'unsupported-unknown-recovery',
     [[CATCH_RETURN, `    recoverMetadata(analyzer, error);\n${CATCH_RETURN}`]],
-    'unknown-call',
+    ['unknown-call'],
   ],
   [
     'unsupported-alias-dispatch',
     [[READ, '  const read = cache.read;\n  const report = read(analyzer);\n']],
-    'unknown-dispatch',
+    ['unknown-dispatch', 'unknown-guard'],
   ],
   [
     'unsupported-repeated-read',
@@ -72,15 +73,18 @@ const UNSUPPORTED = [
         '  let report;\n  for (const attempt of [1, 2]) {\n    report = cache.read(analyzer);\n  }\n',
       ],
     ],
-    'loop',
+    ['loop', 'unknown-guard'],
   ],
 ];
 
 const INVERTED_GUARD = [['report === undefined ?', 'report !== undefined ?']];
 
+const EDIT_HINT = `${LOOKUP_FILE} changed, so update the seeded edits in evals/flow-model/real/lookup.mjs`;
+
 function variant(text, { name, kind, edits, expect }) {
   const file = kind === 'unchanged' ? LOOKUP_FILE : `${VARIANT_DIRECTORY}/${name}.mjs`;
-  return { name, kind, file, entry: LOOKUP_ENTRY, text: applyEdits(text, edits), expect };
+  const edited = applyEdits(text, edits, EDIT_HINT);
+  return { name, kind, file, entry: LOOKUP_ENTRY, text: edited, expect };
 }
 
 export function lookupVariants(text) {
@@ -101,18 +105,18 @@ export function lookupVariants(text) {
       edits: INVERTED_GUARD,
       expect: clean,
     }),
-    ...UNSUPPORTED.map(([name, edits, reason]) =>
+    ...UNSUPPORTED.map(([name, edits, reasons]) =>
       variant(text, {
         name,
         kind: 'unsupported',
         edits,
-        expect: { status: 'partial', violations: [], reasons: [reason] },
+        expect: { status: 'partial', violations: [], reasons },
       }),
     ),
   ];
 }
 
-export function functionText(text, name) {
+function functionText(text, name) {
   const sourceFile = ts.createSourceFile(LOOKUP_FILE, text, ts.ScriptTarget.ES2022, true);
   const declaration = sourceFile.statements.find(
     (statement) => ts.isFunctionDeclaration(statement) && statement.name?.text === name,
@@ -121,7 +125,7 @@ export function functionText(text, name) {
 }
 
 export function readLookupSource(root) {
-  const text = readFileSync(new URL(LOOKUP_FILE, root), 'utf8');
+  const text = normalizedLines(readFileSync(new URL(LOOKUP_FILE, root), 'utf8'));
   const entryText = functionText(text, LOOKUP_ENTRY);
   if (entryText === undefined) {
     throw new Error(`flow-model: ${LOOKUP_ENTRY} no longer exists in ${LOOKUP_FILE}`);

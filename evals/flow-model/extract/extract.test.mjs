@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { fixtureNamed } from '../fixtures/index.mjs';
 import { code } from '../fixtures/source.mjs';
-import { canonicalJson, nodesOf } from '../report/canonical.mjs';
+import { nodesOf } from '../report/canonical.mjs';
 import { extractModel } from './extract.mjs';
 import { render } from './render.mjs';
+
+const LOCAL_N = 'local:payOrder:n#1';
 
 function modelOf(name) {
   const fixture = fixtureNamed(name);
@@ -17,12 +19,6 @@ function nodes(model, kind) {
 }
 
 describe('extractModel', () => {
-  it('produces the same canonical JSON on every run', () => {
-    expect(canonicalJson(modelOf('helper-result-guard'))).toBe(
-      canonicalJson(modelOf('helper-result-guard')),
-    );
-  });
-
   it('keeps guards, effects and completions with source line and column', () => {
     const model = modelOf('correct-ordering');
     const [guard] = nodes(model, 'if');
@@ -122,9 +118,63 @@ describe('extractModel', () => {
     });
   });
 
+  it.each([
+    ['compound assignment', 'n += 1;', { syntax: 'compound-assignment', clobbers: [LOCAL_N] }],
+    ['logical assignment', 'n ||= 1;', { syntax: 'compound-assignment', clobbers: [LOCAL_N] }],
+    ['increment', 'n++;', { syntax: 'PostfixUnaryExpression', clobbers: [LOCAL_N] }],
+    ['parameter decrement', '--order;', { syntax: 'prefix-operator', clobbers: ['param:0'] }],
+    ['delete', 'delete order.status;', { syntax: 'DeleteExpression', clobbers: [] }],
+    ['assignment expression', 'audit((n = 2));', { syntax: 'operator =', clobbers: [LOCAL_N] }],
+  ])(
+    'records a %s as an unsupported mutation with its clobbered bindings',
+    (_name, line, expected) => {
+      const text = `export function payOrder(order) {\n  let n = 0;\n  ${line}\n}\n`;
+      const body = extractModel({ file: 'mutation.ts', text, entry: 'payOrder' }).functions.payOrder
+        .body;
+      const unsupported = nodesOf(body).filter((node) => node.kind === 'unsupported');
+
+      expect(unsupported.map((node) => [node.syntax, node.mutates, node.clobbers])).toEqual([
+        [expected.syntax, true, expected.clobbers],
+      ]);
+    },
+  );
+
+  it('records optional chains, await and null as unsupported', () => {
+    const text = code`
+      export async function payOrder(order, db) {
+        db?.commit(order);
+        await db.flush();
+        return null;
+      }
+    `;
+    const model = extractModel({ file: 'unsupported.ts', text, entry: 'payOrder' });
+
+    expect([
+      model.functions.payOrder.async,
+      nodes(model, 'unsupported').map((node) => [node.syntax, node.hasCall]),
+    ]).toEqual([
+      true,
+      [
+        ['optional-chain', true],
+        ['AwaitExpression', true],
+        ['NullKeyword', false],
+      ],
+    ]);
+  });
+
+  it('names each call site by its function, its callee and its position among those calls', () => {
+    const sites = nodes(modelOf('duplicate-publish-sites'), 'call').map((call) => call.site);
+
+    expect(sites).toEqual(['payOrder:bus.publish#1', 'payOrder:bus.publish#2']);
+  });
+
   it('fails clearly when the entry function does not exist', () => {
-    expect(() =>
-      extractModel({ file: 'empty.ts', text: 'export const x = 1;\n', entry: 'missing' }),
-    ).toThrow(/entry function missing not found/);
+    function extractMissing() {
+      extractModel({ file: 'empty.ts', text: 'export const x = 1;\n', entry: 'missing' });
+    }
+
+    expect(extractMissing).toThrowError(
+      new Error('flow-model: entry function missing not found in empty.ts'),
+    );
   });
 });

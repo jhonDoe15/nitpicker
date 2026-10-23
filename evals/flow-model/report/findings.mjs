@@ -2,13 +2,18 @@ import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schem
 import { sha256 } from './canonical.mjs';
 
 const TOOL = 'flow-model';
+const IDENTITY_HEX_LENGTH = 16;
+
+function identityOf(...parts) {
+  return sha256(parts.join('|')).slice(0, IDENTITY_HEX_LENGTH);
+}
 
 function location(item) {
   return item.line > 0 ? { location: { line: item.line, column: item.column } } : {};
 }
 
 function violationMessage(violation) {
-  const where = `path ${violation.path}, ${violation.certainty}`;
+  const where = `call site ${violation.site}, path ${violation.path}, ${violation.certainty}`;
   const effect = `${violation.contract}: ${violation.callee} for ${violation.entity}`;
   if (violation.kind === 'transition') {
     const move = `from ${violation.from} to ${violation.to}`;
@@ -23,7 +28,7 @@ function violationFinding({ file, entry }, violation) {
     tool: TOOL,
     rule: `${TOOL}/${violation.kind}`,
     path: file,
-    identity: sha256(`${file}|${entry}|${violation.signature}`).slice(0, 16),
+    identity: identityOf(file, entry, violation.signature),
     symbol: entry,
     message: violationMessage(violation),
     classification: 'descriptive',
@@ -31,12 +36,12 @@ function violationFinding({ file, entry }, violation) {
   };
 }
 
-function incompleteFinding({ file, entry }, reason) {
+function incompleteFinding({ file, entry }, reason, occurrence) {
   return {
     tool: TOOL,
     rule: `${TOOL}/incomplete`,
     path: file,
-    identity: sha256(`${file}|${entry}|${reason.reason}|${reason.detail}`).slice(0, 16),
+    identity: identityOf(file, entry, reason.reason, reason.detail, String(occurrence)),
     symbol: entry,
     message: `Analysis of ${entry} is incomplete (${reason.reason}: ${reason.detail}); no clean result is claimed.`,
     classification: 'descriptive',
@@ -49,7 +54,7 @@ function summaryFinding({ file, entry }, result) {
     tool: TOOL,
     rule: `${TOOL}/paths`,
     path: file,
-    identity: sha256(`${file}|${entry}|paths`).slice(0, 16),
+    identity: identityOf(file, entry, 'paths'),
     symbol: entry,
     message: [
       `${entry}: ${result.status} flow model`,
@@ -61,11 +66,22 @@ function summaryFinding({ file, entry }, result) {
   };
 }
 
+function occurrenceOf(reasons, index) {
+  const { reason, detail } = reasons[index];
+  return countBefore(reasons, index, (item) => item.reason === reason && item.detail === detail);
+}
+
+function countBefore(items, index, test) {
+  return items.slice(0, index).filter(test).length;
+}
+
 export function findingsFor(target, result) {
   return [
     summaryFinding(target, result),
     ...result.violations.map((violation) => violationFinding(target, violation)),
-    ...result.reasons.map((reason) => incompleteFinding(target, reason)),
+    ...result.reasons.map((reason, index) =>
+      incompleteFinding(target, reason, occurrenceOf(result.reasons, index)),
+    ),
   ];
 }
 

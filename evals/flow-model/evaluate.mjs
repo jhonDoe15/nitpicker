@@ -27,12 +27,12 @@ function sortedUnique(items) {
   return [...new Set(items)].sort();
 }
 
-export function labelMatches(result, expect) {
-  const violations = sortedUnique(result.violations.map((violation) => violation.signature));
+function labelMatches(result, expect) {
+  const violations = result.violations.map((violation) => violation.observation).sort();
   const reasons = sortedUnique(result.reasons.map((reason) => reason.reason));
   return (
     result.status === expect.status &&
-    canonicalJson(violations) === canonicalJson(sortedUnique(expect.violations)) &&
+    canonicalJson(violations) === canonicalJson([...expect.violations].sort()) &&
     canonicalJson(reasons) === canonicalJson(sortedUnique(expect.reasons))
   );
 }
@@ -49,7 +49,7 @@ function measure(target, analysis) {
   };
 }
 
-export function evaluateTarget(target, { contracts, inputs, oracle }) {
+function evaluateTarget(target, { contracts, inputs }) {
   const options = {
     file: target.file,
     text: target.text,
@@ -59,8 +59,9 @@ export function evaluateTarget(target, { contracts, inputs, oracle }) {
     bounds: target.bounds,
   };
   const analysis = analyzeSource(options);
-  const eligible = oracle && analysis.result.status === 'complete';
-  const comparison = eligible ? compareWithOracle(analysis.result, runOracle(options)) : undefined;
+  const exploreUnknown = analysis.result.status === 'partial';
+  const oracle = runOracle({ ...options, exploreUnknown });
+  const comparison = compareWithOracle(analysis.result, oracle);
   return {
     ...target,
     ...analysis,
@@ -76,7 +77,7 @@ export function evaluateFixtures() {
   return FIXTURES.map((fixture) =>
     evaluateTarget(
       { ...fixture, text: fixture.source },
-      { contracts: ORDER_CONTRACTS, inputs: ORDER_INPUTS, oracle: fixture.oracle },
+      { contracts: ORDER_CONTRACTS, inputs: ORDER_INPUTS },
     ),
   );
 }
@@ -84,11 +85,7 @@ export function evaluateFixtures() {
 export function evaluateLookup(root = REPOSITORY_ROOT) {
   const source = readLookupSource(root);
   const variants = lookupVariants(source.text).map((variant) =>
-    evaluateTarget(variant, {
-      contracts: LOOKUP_CONTRACTS,
-      inputs: LOOKUP_INPUTS,
-      oracle: variant.kind !== 'unsupported',
-    }),
+    evaluateTarget(variant, { contracts: LOOKUP_CONTRACTS, inputs: LOOKUP_INPUTS }),
   );
   return { fileSha256: source.fileSha256, entrySha256: source.entrySha256, variants };
 }
@@ -108,7 +105,7 @@ function diffOf(base, head, { contracts, inputs }) {
   };
 }
 
-export function demonstrationDiffs(lookup) {
+export function demonstrationDiffs(variants) {
   const base = fixtureNamed('correct-ordering');
   const baseTarget = { file: base.file, entry: base.entry, text: base.source };
   const headTarget = {
@@ -116,65 +113,87 @@ export function demonstrationDiffs(lookup) {
     file: 'reports/flow-model/fixtures/correct-ordering.head.ts',
     text: applyEdits(base.source, HEAD_EDITS),
   };
-  const unchanged = lookup.variants.find((variant) => variant.kind === 'unchanged');
-  const inverted = lookup.variants.find((variant) => variant.kind === 'diff');
+  const unchanged = variants.find((variant) => variant.kind === 'unchanged');
+  const inverted = variants.find((variant) => variant.kind === 'diff');
   return {
     fixture: diffOf(baseTarget, headTarget, { contracts: ORDER_CONTRACTS, inputs: ORDER_INPUTS }),
     lookup: diffOf(unchanged, inverted, { contracts: LOOKUP_CONTRACTS, inputs: LOOKUP_INPUTS }),
   };
 }
 
+const SIZE_FIELDS = [
+  ['fileBytes', 'fileBytes'],
+  ['sourceBytes', 'sourceBytes'],
+  ['modelBytes', 'modelBytes'],
+  ['viewBytes', 'viewBytes'],
+  ['resultBytes', 'resultBytes'],
+  ['modeledStatements', 'modeled'],
+  ['unsupportedStatements', 'unsupported'],
+];
+
+function sumOf(items, pick) {
+  return items.reduce((total, item) => total + pick(item), 0);
+}
+
+function countOf(items, test) {
+  return items.filter(test).length;
+}
+
 function totals(targets) {
-  const sum = (pick) => targets.reduce((total, target) => total + pick(target), 0);
-  return {
-    fileBytes: sum((target) => target.sizes.fileBytes),
-    sourceBytes: sum((target) => target.sizes.sourceBytes),
-    modelBytes: sum((target) => target.sizes.modelBytes),
-    viewBytes: sum((target) => target.sizes.viewBytes),
-    resultBytes: sum((target) => target.sizes.resultBytes),
-    modeledStatements: sum((target) => target.sizes.modeled),
-    unsupportedStatements: sum((target) => target.sizes.unsupported),
-  };
+  return Object.fromEntries(
+    SIZE_FIELDS.map(([name, field]) => [name, sumOf(targets, (target) => target.sizes[field])]),
+  );
 }
 
 function oracleTotals(targets) {
-  const compared = targets.filter((target) => target.comparison !== undefined);
+  const modes = {
+    unsupported: countOf(targets, (target) => target.comparison.mode === 'unsupported'),
+  };
+  for (const mode of ['exact', 'subset']) {
+    const compared = targets.filter((target) => target.comparison.mode === mode);
+    modes[mode] = {
+      targets: compared.length,
+      executions: sumOf(compared, (target) => target.comparison.executions),
+      disagreements: countOf(compared, (target) => !target.comparison.agree),
+    };
+  }
+  return modes;
+}
+
+function fixtureSummary(fixtures) {
   return {
-    targets: compared.length,
-    executions: compared.reduce((total, target) => total + target.comparison.executions, 0),
-    mismatches: compared.filter((target) => !target.comparison.agree).length,
+    total: fixtures.length,
+    complete: countOf(fixtures, (item) => item.result.status === 'complete'),
+    partial: countOf(fixtures, (item) => item.result.status === 'partial'),
+    labelMismatches: countOf(fixtures, (item) => !item.labelMatch),
+    withViolations: countOf(fixtures, (item) => item.result.violations.length > 0),
+    violations: sumOf(fixtures, (item) => item.result.violations.length),
+    oracle: oracleTotals(fixtures),
+    sizes: totals(fixtures),
+  };
+}
+
+function lookupSummary(lookup) {
+  const { variants } = lookup;
+  return {
+    fileSha256: lookup.fileSha256,
+    entrySha256: lookup.entrySha256,
+    variants: variants.length,
+    labelMismatches: countOf(variants, (item) => !item.labelMatch),
+    seededDetected: countOf(
+      variants,
+      (item) => item.kind === 'seeded' && item.result.violations.length > 0,
+    ),
+    seeded: countOf(variants, (item) => item.kind === 'seeded'),
+    unsupportedPartial: countOf(
+      variants,
+      (item) => item.kind === 'unsupported' && item.result.status === 'partial',
+    ),
+    oracle: oracleTotals(variants),
+    sizes: totals(variants),
   };
 }
 
 export function summarize(fixtures, lookup) {
-  const count = (items, test) => items.filter(test).length;
-  return {
-    fixtures: {
-      total: fixtures.length,
-      complete: count(fixtures, (item) => item.result.status === 'complete'),
-      partial: count(fixtures, (item) => item.result.status === 'partial'),
-      labelMismatches: count(fixtures, (item) => !item.labelMatch),
-      withViolations: count(fixtures, (item) => item.result.violations.length > 0),
-      violations: fixtures.reduce((total, item) => total + item.result.violations.length, 0),
-      oracle: oracleTotals(fixtures),
-      sizes: totals(fixtures),
-    },
-    lookup: {
-      fileSha256: lookup.fileSha256,
-      entrySha256: lookup.entrySha256,
-      variants: lookup.variants.length,
-      labelMismatches: count(lookup.variants, (item) => !item.labelMatch),
-      seededDetected: count(
-        lookup.variants,
-        (item) => item.kind === 'seeded' && item.result.violations.length > 0,
-      ),
-      seeded: count(lookup.variants, (item) => item.kind === 'seeded'),
-      unsupportedPartial: count(
-        lookup.variants,
-        (item) => item.kind === 'unsupported' && item.result.status === 'partial',
-      ),
-      oracle: oracleTotals(lookup.variants),
-      sizes: totals(lookup.variants),
-    },
-  };
+  return { fixtures: fixtureSummary(fixtures), lookup: lookupSummary(lookup) };
 }

@@ -1,9 +1,15 @@
-import { ORDER_CONTRACTS, ORDER_INPUTS } from './contracts.mjs';
+import { ORDER_CONTRACTS, ORDER_INPUTS } from './source.mjs';
 import { LIMIT_FIXTURES } from './limits.mjs';
 import { ORDERING_FIXTURES } from './ordering.mjs';
 import { PATH_FIXTURES } from './paths.mjs';
+import { SOUNDNESS_FIXTURES } from './soundness.mjs';
 
-export const FIXTURES = [...ORDERING_FIXTURES, ...PATH_FIXTURES, ...LIMIT_FIXTURES];
+export const FIXTURES = [
+  ...ORDERING_FIXTURES,
+  ...PATH_FIXTURES,
+  ...SOUNDNESS_FIXTURES,
+  ...LIMIT_FIXTURES,
+];
 
 export { ORDER_CONTRACTS, ORDER_INPUTS };
 

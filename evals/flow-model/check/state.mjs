@@ -18,7 +18,7 @@ export function createState(frame, run) {
   };
 }
 
-export function cloneState(state) {
+function cloneState(state) {
   return {
     ...state,
     stack: [...state.stack],
@@ -64,4 +64,25 @@ export function stepOf(state) {
 export function nextCall(state) {
   state.calls += 1;
   return state.calls;
+}
+
+function clobberOne(state, target) {
+  const value = { t: 'atom', key: `clobbered:${target}#${String(nextCall(state))}` };
+  const separator = target.indexOf(':');
+  const name = target.slice(separator + 1);
+  if (target.startsWith('local:')) {
+    state.env.set(name, value);
+    return;
+  }
+  const args = [...state.frame.args];
+  args[Number(name)] = value;
+  state.frame = { ...state.frame, args };
+}
+
+export function mutate(state, { reason = 'unsupported-syntax', clobbers, loc, syntax }) {
+  addPartial(state, { reason, loc, detail: syntax });
+  widen(state);
+  for (const target of clobbers) {
+    clobberOne(state, target);
+  }
 }

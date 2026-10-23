@@ -1,9 +1,10 @@
 import ts from 'typescript';
+import { depthFirst } from '../../../shared/traversal.mjs';
 import { findFunction } from './module-bindings.mjs';
 import { loadProgram, locationOf } from './program.mjs';
 import { bodyOf } from './statements.mjs';
 
-export const ANALYZER_VERSION = 'flow-model-1';
+export const ANALYZER_VERSION = 'flow-model-2';
 
 function isSimpleElement(element) {
   return (
@@ -13,38 +14,42 @@ function isSimpleElement(element) {
   );
 }
 
-function register(locals, node, name) {
+function register(locals, { node, name, fnName }) {
   const ordinal = locals.size + 1;
-  locals.set(node, { kind: 'local', id: `${locals.fnName}:${name}#${String(ordinal)}`, name });
+  locals.set(node, { kind: 'local', id: `${fnName}:${name}#${String(ordinal)}`, name });
 }
 
-function registerDeclaration(locals, declaration) {
+function registerDeclaration(locals, declaration, fnName) {
   if (ts.isIdentifier(declaration.name)) {
-    register(locals, declaration, declaration.name.text);
+    register(locals, { node: declaration, name: declaration.name.text, fnName });
     return;
   }
   if (!ts.isObjectBindingPattern(declaration.name)) {
     return;
   }
-  register(locals, declaration, '$pattern');
+  register(locals, { node: declaration, name: '$pattern', fnName });
   for (const element of declaration.name.elements.filter(isSimpleElement)) {
-    register(locals, element, element.name.text);
+    register(locals, { node: element, name: element.name.text, fnName });
   }
+}
+
+function bodyChildren(node) {
+  return ts.isFunctionLike(node) ? [] : node.getChildren();
 }
 
 function collectLocals(fn, fnName) {
   const locals = new Map();
-  locals.fnName = fnName;
-  const visit = (node) => {
-    if (ts.isVariableDeclaration(node)) {
-      registerDeclaration(locals, node);
-    }
-    if (!ts.isFunctionLike(node)) {
-      ts.forEachChild(node, visit);
-    }
-  };
-  ts.forEachChild(fn.body, visit);
+  const roots = fn.body.getChildren();
+  const nodes = roots.flatMap((root) => [...depthFirst(root, bodyChildren)]);
+  for (const declaration of nodes.filter((node) => ts.isVariableDeclaration(node))) {
+    registerDeclaration(locals, declaration, fnName);
+  }
   return locals;
+}
+
+function modifiersOf(fn) {
+  const isAsync = (fn.modifiers ?? []).some((item) => item.kind === ts.SyntaxKind.AsyncKeyword);
+  return { ...(isAsync ? { async: true } : {}), ...(fn.asteriskToken ? { generator: true } : {}) };
 }
 
 function parameterModel(parameter, index, params) {
@@ -72,9 +77,11 @@ function extractFunction(fn, name, context) {
   const parameters = fn.parameters.map((parameter, index) =>
     parameterModel(parameter, index, params),
   );
-  const cx = { ...context, params, locals: collectLocals(fn, name), helpers: new Set() };
+  const locals = collectLocals(fn, name);
+  const cx = { ...context, fnName: name, params, locals, helpers: new Set(), sites: new Map() };
   const body = bodyOf(fn, cx);
-  const model = { name, params: parameters, body, loc: locationOf(context.sourceFile, fn) };
+  const loc = locationOf(context.sourceFile, fn);
+  const model = { name, params: parameters, ...modifiersOf(fn), body, loc };
   return { model, helpers: [...cx.helpers].sort() };
 }
 
@@ -93,7 +100,7 @@ export function extractModel({ file, text, entry }) {
   const queue = [entry];
   for (const name of queue) {
     const fn = findFunction(sourceFile, name);
-    if (fn === undefined || functions[name] !== undefined) {
+    if (fn === undefined || Object.hasOwn(functions, name)) {
       missing.push(...(fn === undefined ? [name] : []));
       continue;
     }
@@ -101,7 +108,7 @@ export function extractModel({ file, text, entry }) {
     functions[name] = extracted.model;
     queue.push(...extracted.helpers);
   }
-  if (functions[entry] === undefined) {
+  if (!Object.hasOwn(functions, entry)) {
     throw new Error(`flow-model: entry function ${entry} not found in ${file}`);
   }
   return {

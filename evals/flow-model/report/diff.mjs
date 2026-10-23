@@ -1,4 +1,5 @@
-import { DEFAULT_BOUNDS, traceOf } from '../check/analyze.mjs';
+import ts from 'typescript';
+import { DEFAULT_BOUNDS, traceOf } from '../analyze.mjs';
 import { ANALYZER_VERSION } from '../extract/extract.mjs';
 import { canonicalJson, sha256, withoutLocations } from './canonical.mjs';
 import { semanticItems } from './items.mjs';
@@ -19,7 +20,10 @@ export function cacheKey({
     .map((name) => [name, semanticHash(model.functions[name])]);
   const material = {
     version,
+    typescript: ts.version,
+    file: model.file,
     entry: model.entry,
+    anchors: sha256(canonicalJson(model.functions)),
     functions,
     missingHelpers: model.missingHelpers,
     contracts,
@@ -60,22 +64,27 @@ function setDifference(left, right) {
   return [...new Set(left)].filter((item) => !other.has(item)).sort();
 }
 
+function itemKey(item) {
+  return `${item.fn}|${item.kind}|${item.text}`;
+}
+
+function hashOf(model, name) {
+  return Object.hasOwn(model.functions, name) ? semanticHash(model.functions[name]) : 'absent';
+}
+
 export function flowDiff(base, head) {
-  const keyOf = (item) => `${item.fn}|${item.kind}|${item.text}`;
   const baseItems = semanticItems(base.model);
   const headItems = semanticItems(head.model);
   const names = [
     ...new Set([...Object.keys(base.model.functions), ...Object.keys(head.model.functions)]),
   ].sort();
-  const hashOf = (side, name) =>
-    side.functions[name] === undefined ? null : semanticHash(side.functions[name]);
   const baseViolations = base.result.violations.map((violation) => violation.signature);
   const headViolations = head.result.violations.map((violation) => violation.signature);
   return {
     status: { base: base.result.status, head: head.result.status },
     changedFunctions: names.filter((name) => hashOf(base.model, name) !== hashOf(head.model, name)),
-    removed: multisetDifference(baseItems, headItems, keyOf).map(located),
-    added: multisetDifference(headItems, baseItems, keyOf).map(located),
+    removed: multisetDifference(baseItems, headItems, itemKey).map(located),
+    added: multisetDifference(headItems, baseItems, itemKey).map(located),
     violations: {
       removed: setDifference(baseViolations, headViolations),
       added: setDifference(headViolations, baseViolations),

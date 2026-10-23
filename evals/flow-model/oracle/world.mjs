@@ -1,6 +1,4 @@
-function isRecord(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+import { isRecord } from '../report/canonical.mjs';
 
 function concreteLabel(world, value) {
   if (isRecord(value) || typeof value === 'function') {
@@ -25,7 +23,7 @@ function expandOutcomes(outcomes) {
   );
 }
 
-function checkCall(world, call, args) {
+function checkPrerequisites(world, call) {
   for (const rule of world.contracts.prerequisites ?? []) {
     const applies =
       rule.effect === call.callee && (rule.event === undefined || rule.event === call.event);
@@ -40,38 +38,45 @@ function checkCall(world, call, args) {
       world.violations.add([rule.id, call.callee, call.entity].join('|'));
     }
   }
-  if (call.transition === undefined) {
-    return;
-  }
+}
+
+function checkTransition(world, call, args) {
   const persisted = world.persisted.get(call.entity);
-  const from = persisted === undefined ? String(specValue(args, call.transition.from)) : persisted;
+  const from = persisted ?? String(specValue(args, call.transition.from));
   const allowed = call.transition.allowed.some(
     ([source, target]) => source === from && target === call.to,
   );
   if (!allowed) {
     world.violations.add([call.transition.id, call.callee, call.entity, from, call.to].join('|'));
   }
-  call.from = from;
 }
 
 function returned(outcome) {
   return outcome.returns === 'opaque' ? {} : outcome.returns;
 }
 
+function callOf(world, { name, contract, transition, args }) {
+  function label(spec) {
+    return spec === undefined ? undefined : concreteLabel(world, specValue(args, spec));
+  }
+  return {
+    callee: name,
+    entity: label(contract.entity),
+    event: label(contract.event),
+    to: transition === undefined ? undefined : label(transition.to),
+    transition,
+  };
+}
+
 function effect(world, name) {
   const contract = world.contracts.effects[name];
   const transition = (world.contracts.transitions ?? []).find((item) => item.effect === name);
-  return (...args) => {
-    const label = (spec) =>
-      spec === undefined ? undefined : concreteLabel(world, specValue(args, spec));
-    const call = {
-      callee: name,
-      entity: label(contract.entity),
-      event: label(contract.event),
-      transition,
-    };
-    call.to = transition === undefined ? undefined : label(transition.to);
-    checkCall(world, call, args);
+  return function recordEffect(...args) {
+    const call = callOf(world, { name, contract, transition, args });
+    checkPrerequisites(world, call);
+    if (transition !== undefined) {
+      checkTransition(world, call, args);
+    }
     const options = expandOutcomes(contract.outcomes);
     const outcome = options[world.choose(options.length)];
     if (transition !== undefined && outcome.applied) {
@@ -86,58 +91,87 @@ function effect(world, name) {
   };
 }
 
+function unknownFunction(world, name) {
+  return function unknown() {
+    if (!world.exploreUnknown) {
+      world.uninjected.push(name);
+      throw new Error(`oracle: ${name} is not injected`);
+    }
+    world.trace.push(`${name}:unknown`);
+    if (world.choose(2) === 1) {
+      throw new Error(`${name} failed`);
+    }
+    return undefined;
+  };
+}
+
 function receiver(world, name) {
   const methods = {};
-  for (const effectName of Object.keys(world.contracts.effects).filter((key) =>
-    key.startsWith(`${name}.`),
-  )) {
-    methods[effectName.slice(name.length + 1)] = effect(world, effectName);
+  const prefix = `${name}.`;
+  for (const effectName of Object.keys(world.contracts.effects)) {
+    if (effectName.startsWith(prefix)) {
+      methods[effectName.slice(prefix.length)] = effect(world, effectName);
+    }
   }
   world.labels.set(methods, name);
   return methods;
 }
 
-export function buildInput(world, spec, path) {
+function leafInput(world, spec, path) {
   if (spec === 'effects') {
-    return receiver(world, path);
+    return { value: receiver(world, path) };
   }
   if (isRecord(spec) && Array.isArray(spec.oneOf)) {
-    return world.assignment.get(path);
+    return { value: world.assignment.get(path) };
   }
-  if (spec !== 'object' && !isRecord(spec)) {
-    return spec;
+  return spec !== 'object' && !isRecord(spec) ? { value: spec } : undefined;
+}
+
+export function buildInput(world, spec, path) {
+  const leaf = leafInput(world, spec, path);
+  if (leaf !== undefined) {
+    return leaf.value;
   }
-  const object = {};
-  for (const [key, value] of Object.entries(spec === 'object' ? {} : spec)) {
-    object[key] = buildInput(world, value, `${path}.${key}`);
+  const root = {};
+  const pending = [{ spec, path, object: root }];
+  for (const item of pending) {
+    world.labels.set(item.object, item.path);
+    for (const [key, child] of Object.entries(item.spec === 'object' ? {} : item.spec)) {
+      const childPath = `${item.path}.${key}`;
+      const childLeaf = leafInput(world, child, childPath);
+      item.object[key] = childLeaf === undefined ? {} : childLeaf.value;
+      pending.push(
+        ...(childLeaf === undefined
+          ? [{ spec: child, path: childPath, object: item.object[key] }]
+          : []),
+      );
+    }
   }
-  world.labels.set(object, path);
-  return object;
+  return root;
 }
 
 export function requireFor(world) {
-  return () =>
-    new Proxy(
+  return function requireModule(specifier) {
+    return new Proxy(
       {},
       {
         get(_target, name) {
-          if (typeof name === 'string' && world.contracts.effects[name] !== undefined) {
-            return effect(world, name);
-          }
-          return () => {
-            world.uninjected.push(String(name));
-            throw new Error(`oracle: ${String(name)} is not injected`);
-          };
+          const key = `${specifier}#${String(name)}`;
+          return Object.hasOwn(world.contracts.effects, key)
+            ? effect(world, key)
+            : unknownFunction(world, key);
         },
       },
     );
+  };
 }
 
-export function createWorld({ contracts, assignment, choose }) {
+export function createWorld({ contracts, assignment, choose, exploreUnknown }) {
   return {
     contracts,
     assignment,
     choose,
+    exploreUnknown,
     labels: new WeakMap(),
     persisted: new Map(),
     events: [],

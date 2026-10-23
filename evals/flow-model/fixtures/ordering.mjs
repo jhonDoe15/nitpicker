@@ -1,5 +1,4 @@
-import { PAID_A, transition } from './contracts.mjs';
-import { code, fixture } from './source.mjs';
+import { PAID_A, code, fixture, transition } from './source.mjs';
 
 export const ORDERING_FIXTURES = [
   fixture('correct-ordering', {
