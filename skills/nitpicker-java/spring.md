@@ -9,7 +9,8 @@ Layout (enforced by `archunit/spring-...`; each message says what to change):
 - Package by feature under the `@SpringBootApplication` package: `<root>.<feature>` holds its
   controller, service, repository and entity; other features use only the classes directly in it;
   pure utilities go to `<root>.shared`. Controllers call services and exchange records, never
-  entities; services know nothing of the web layer.
+  entities; a controller never holds another controller, and a repository never calls a service;
+  services know nothing of the web layer.
 - A test that starts a Spring context is an integration test: name it `*IT` in its own package
   (package-private classes stay visible) or put it in an integration test source set; a unit test
   of a service is `new OrderService(mock(...))`.
@@ -18,6 +19,8 @@ Beans and configuration:
 
 - One constructor, `private final` fields, no `@Autowired`. No `@Inject`, `@Resource` or `@Value`
   on fields or setters. Bean fields are all `final`; keep per-call state in locals.
+- A request- or session-scoped bean reaches a singleton only as `ObjectProvider<T>` (call
+  `getObject()` per use) or through a scoped proxy (`@RequestScope`, `@SessionScope`).
 - No `ApplicationContext`/`BeanFactory` lookups and no `@Lazy` on injection points. Break a cycle
   with a new component or an event.
 - `@Configuration(proxyBeanMethods = false)`; `@Bean` methods take their dependencies as
