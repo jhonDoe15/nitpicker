@@ -541,7 +541,14 @@ Details that are decisions rather than the table:
 - `no-type-check`, `not-type-checking` and `stub-beside-source` close the other ways to hide code
   from the checkers: `@no_type_check` on a function or class, an `if not TYPE_CHECKING:` branch,
   and a `.pyi` beside a `.py` of the same stem in the sources (mypy then ignores the `.py` body).
-  `typing.cast` is allowed.
+- `no-typing-cast` rejects uses of `typing.cast` (also `typing_extensions.cast`), including
+  imported aliases and copying the callable into another variable. Narrow trusted values with a type check or parse untrusted input at the boundary;
+  a cast performs no validation. `no-explicit-any` rejects explicit uses of `typing.Any` and
+  `typing_extensions.Any`, including aliases, nested and quoted annotations, and type aliases.
+  Use concrete types, `Protocol`, or `TypeVar`; narrow trusted unions and parse untrusted input. Both rules cover source and
+  tests. Ordinary strings and unrelated names are allowed. Existing `any-in-domain` and
+  `pydantic-any-field` findings retain their identities and take precedence on the same line.
+  Required library interop uses a reviewed `python.exceptions` entry with the rule, paths and reason.
 - `swallowed-exception` flags an `except` handler whose body does nothing with the error (a handler
   of an asyncio, Trio or AnyIO cancellation inside `async def` is judged by
   `cancellation-not-propagated` instead, see [Cancellation propagation](#cancellation-propagation)): every
