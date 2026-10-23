@@ -73,17 +73,16 @@ function isUnusedEslintDirective(diagnostic) {
   return diagnostic.code === undefined && diagnostic.message.startsWith('Unused eslint-');
 }
 
-function eslintMessage(diagnostic, { ruleNames, messageIdOf, ruleMessages = {} }, locate) {
+function reportedPosition(diagnostic, locate) {
   const span = diagnostic.labels?.[0]?.span ?? { offset: 0, length: 0 };
   const start = locate(span.offset);
   const end = locate(span.offset + span.length);
+  return { line: start.line, column: start.column, endLine: end.line, endColumn: end.column };
+}
+
+function eslintMessage(diagnostic, naming, locate) {
+  const position = reportedPosition(diagnostic, locate);
   const key = reportedRuleKey(diagnostic.code);
-  const position = {
-    line: start.line,
-    column: start.column,
-    endLine: end.line,
-    endColumn: end.column,
-  };
   if (isUnusedEslintDirective(diagnostic)) {
     return {
       message: { ruleId: undefined, message: diagnostic.message, severity: 1, ...position },
@@ -92,12 +91,17 @@ function eslintMessage(diagnostic, { ruleNames, messageIdOf, ruleMessages = {} }
   if (key === undefined) {
     return { message: { fatal: true, message: diagnostic.message, severity: 2, ...position } };
   }
-  const ruleId = ruleNames.get(key);
+  const ruleId = naming.ruleNames.get(key);
   if (ruleId === undefined) {
     throw new Error(
       `oxlint reported ${diagnostic.code}: ${diagnostic.message} ${diagnostic.help ?? ''}`.trim(),
     );
   }
+  return ruleMessage({ diagnostic, ruleId, naming, position });
+}
+
+function ruleMessage({ diagnostic, ruleId, naming, position }) {
+  const { messageIdOf, ruleMessages = {} } = naming;
   const owned = ownedNativeMessage({ ruleId, diagnostic, ruleMessages });
   if (owned !== undefined) {
     const { messageId, message, needsDirectReducer } = owned;

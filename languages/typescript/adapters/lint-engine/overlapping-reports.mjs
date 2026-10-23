@@ -10,8 +10,8 @@ const ENCLOSING_SUPERSEDING = [
   },
 ];
 
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+function isMessage(value) {
+  return typeof value === 'object' && value !== null && 'line' in value;
 }
 
 function startOf(ruleId, message) {
@@ -45,9 +45,9 @@ function isSuperseded(message, records, starts) {
 }
 
 export function withoutSupersededMessages(messages) {
-  const records = messages.filter(isRecord);
+  const records = messages.filter(isMessage);
   const starts = new Set(records.map((message) => startOf(message.ruleId, message)));
   return messages.filter(
-    (message) => !isRecord(message) || !isSuperseded(message, records, starts),
+    (message) => !isMessage(message) || !isSuperseded(message, records, starts),
   );
 }
