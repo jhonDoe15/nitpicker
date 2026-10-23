@@ -201,23 +201,6 @@ val sum = ${Array.from({ length: 3000 }, () => '1').join(' + ')}
 fun nested() = ${'run { '.repeat(800)}1${' }'.repeat(800)}
 `;
 
-export const SPRING_SERVICE = `package demo.spring
-
-import org.springframework.stereotype.Service
-
-@Service
-class Total {
-    val sum = ${Array.from({ length: 12000 }, () => '1').join(' + ')}
-}
-`;
-
-export const PLAIN_SERVICE = `package demo.spring
-
-class Plain {
-    val name = "plain"
-}
-`;
-
 export const PREDICATE_SYMBOLS = `package demo.symbols
 
 enum class Phase { NEW, \`in\`, DONE }

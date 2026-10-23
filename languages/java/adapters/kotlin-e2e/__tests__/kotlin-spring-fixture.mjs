@@ -14,6 +14,12 @@ const SOURCE_BASE_FILES = new Set([
 const SPRING = new Set(SPRING_RULES);
 
 export const BAD_FILES = 'src/main/kotlin/shop/bad/*';
+export const PINNED_SPRING_LINES = JSON.parse(
+  readFileSync(path.join(FIXTURES, 'kotlin-spring-findings.json'), 'utf8'),
+);
+export const WITHOUT_SELF_CALLS = PINNED_SPRING_LINES.filter(
+  (line) => !line.includes(' SpringProxySelfCall '),
+);
 
 function sourceFiles() {
   return Object.fromEntries(
@@ -27,8 +33,7 @@ function sourceFiles() {
   );
 }
 
-// The base commit holds the build and the application class; the branch `spring` adds the rest.
-export function commitSpringProject(project, build) {
+export function commitBaseThenSpringBranch(project, build) {
   const files = { ...sourceFiles(), ...build };
   const isBase = (file) => SOURCE_BASE_FILES.has(file) || Object.hasOwn(build, file);
   writeAll(project, {

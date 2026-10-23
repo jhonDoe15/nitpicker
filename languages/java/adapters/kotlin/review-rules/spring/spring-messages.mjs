@@ -26,7 +26,7 @@ const ALLOWED = {
   SpringProfileOnConfiguration:
     'Put @Profile only on a @Configuration class or a @Bean function, so profiles choose beans and never branch business code.',
   SpringProxyMethodVisibility:
-    'Make this proxied function public, and let Spring subclass it: apply the kotlin("plugin.spring") compiler plugin (or write open class and open fun), and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public.',
+    'Make this proxied function public, and let Spring subclass it: apply the Kotlin spring compiler plugin (kotlin("plugin.spring") on Gradle, <compilerPlugins><plugin>spring</plugin> with the kotlin-maven-allopen dependency on Maven) or write open class and open fun, and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public.',
   SpringProxySelfCall:
     "Move the annotated function to another bean and call it there. This call stays inside the class, so it skips the proxy and the called function's annotation does nothing.",
   SpringTransactionalAnnotation:

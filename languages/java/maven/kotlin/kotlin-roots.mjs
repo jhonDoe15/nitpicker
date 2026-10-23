@@ -31,12 +31,10 @@ function configuredDirectories(plugin, goals, { pluginLevel }) {
 }
 
 function configurationsOf(plugin, goals) {
-  const own = executionsOf(plugin)
+  return executionsOf(plugin)
     .filter((execution) => runs(execution, goals))
     .map((execution) => childAt(execution, 'configuration'))
     .filter((configuration) => configuration !== undefined);
-  const pluginLevel = childAt(plugin, 'configuration');
-  return own.length > 0 || pluginLevel === undefined ? own : [pluginLevel];
 }
 
 function textsOf(configurations, ...path) {
