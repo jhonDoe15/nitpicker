@@ -139,3 +139,28 @@ func TestReportsFilesThatDoNotParse(t *testing.T) {
 		t.Fatal("expected a parse error")
 	}
 }
+
+const packageLiterals = `package demo
+
+var handler = func(a, b, c, d int) {
+	if a > 0 {
+		if b > 0 {
+			println(c, d)
+		}
+	}
+}
+
+var routes, _ = map[string]func(){"x": func() { println(1) }}, 0
+`
+
+func TestMeasuresFunctionLiteralsInPackageVariables(t *testing.T) {
+	report := inspected(t, map[string]string{"go.mod": "module demo\n", "vars.go": packageLiterals})
+	handler := functionNamed(t, report, "handler")
+	if handler.Parameters != 4 || handler.MaxControlNesting != 2 || handler.Start != 3 {
+		t.Fatalf("handler: %+v", handler)
+	}
+	route := functionNamed(t, report, "routes.func1")
+	if route.Statements != 1 || len(report.Functions) != 2 {
+		t.Fatalf("functions: %+v", report.Functions)
+	}
+}

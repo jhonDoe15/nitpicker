@@ -37,6 +37,16 @@ function precedenceLoosened({ before = DEFAULT_PRECEDENCE, after = DEFAULT_PRECE
     : projectWeight(after) > projectWeight(before);
 }
 
+function entriesRemoved({ before = [], after = [] }) {
+  return before.some((entry) => !after.includes(entry));
+}
+
+function formattersDropped({ before = [], after = [] }) {
+  return before.some((formatter) =>
+    formatter === 'gofmt' ? after.length === 0 : !after.includes(formatter),
+  );
+}
+
 function turnedOff(offValue) {
   return ({ before, after }) => after === offValue && before !== offValue;
 }
@@ -48,6 +58,8 @@ const LOOSENING_SETTINGS = [
   [/^python\.importLinter$/u, turnedOff(false)],
   [/^kotlin\.formatter$/u, turnedOff('none')],
   [/^kotlin\.detektConfig$/u, () => true],
+  [/^go\.formatters$/u, formattersDropped],
+  [/^go\.buildTags$/u, entriesRemoved],
   [/^tools\.[^.]+\.precedence$/u, precedenceLoosened],
 ];
 

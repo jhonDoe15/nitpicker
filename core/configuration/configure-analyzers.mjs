@@ -19,7 +19,7 @@ import {
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { applyDisable } from './config.mjs';
 import { GO_ANALYZER_NAME } from '../../languages/go/adapters/go-analyzer.mjs';
-import { golangciConfigFiles } from '../../languages/go/adapters/formatting/go-formatters.mjs';
+import { formatterChoiceFiles } from '../../languages/go/adapters/formatting/go-formatters.mjs';
 
 export function configureAnalyzers(analyzers, config, headPolicy) {
   return applyLegacyInventory(
@@ -46,7 +46,7 @@ function styleFilesOf(config, analyzerName) {
     return (policyRoot) => kotlinStyleFiles(config, policyRoot);
   }
   if (config.preset === 'go') {
-    return (policyRoot) => golangciConfigFiles(policyRoot, config.tools);
+    return formatterChoiceFiles;
   }
   if (config.preset !== 'python') {
     return undefined;

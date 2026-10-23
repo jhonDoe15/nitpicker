@@ -64,15 +64,13 @@ export function createGoAnalyzer(settings = {}) {
       'structure',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
-    createInvocation: ({ projectRoot, liveProjectRoot, toolRoot }) => ({
+    createInvocation: ({ projectRoot, toolRoot }) => ({
       command: process.execPath,
       args: [
         cliPath,
         'go-analyzer',
         '--project-root',
         projectRoot,
-        '--live-root',
-        liveProjectRoot,
         ...(Object.keys(settings).length === 0 ? [] : ['--go-settings', JSON.stringify(settings)]),
       ],
       cwd: toolRoot,

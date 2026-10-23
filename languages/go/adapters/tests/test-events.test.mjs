@@ -64,6 +64,33 @@ describe('parseTestEvents', () => {
     expect(parsed.buildFailures).toEqual(['example.com/shop/broken']);
   });
 
+  it('quotes the unfinished tests of a package that timed out, next to a failing subpackage', () => {
+    const timedOut = parseTestEvents(
+      [
+        event({ Action: 'run', Package: 'example.com/shop/slow', Test: 'TestHang' }),
+        event({
+          Action: 'output',
+          Package: 'example.com/shop/slow',
+          Test: 'TestHang',
+          Output: 'panic: test timed out after 3s\n',
+        }),
+        event({ Action: 'output', Package: 'example.com/shop/slow', Output: 'FAIL\n' }),
+        event({ Action: 'fail', Package: 'example.com/shop/slow', Elapsed: 3 }),
+        event({ Action: 'run', Package: 'example.com/shop/slow/sub', Test: 'TestSub' }),
+        event({ Action: 'fail', Package: 'example.com/shop/slow/sub', Test: 'TestSub' }),
+        event({ Action: 'fail', Package: 'example.com/shop/slow/sub', Elapsed: 0 }),
+      ].join('\n'),
+    );
+    expect(timedOut.failures).toEqual([
+      {
+        id: 'example.com/shop/slow',
+        package: 'example.com/shop/slow',
+        output: 'panic: test timed out after 3s\nFAIL\n',
+      },
+      { id: 'example.com/shop/slow/sub.TestSub', package: 'example.com/shop/slow/sub', output: '' },
+    ]);
+  });
+
   it('turns failures into one tool error that quotes what each test printed', () => {
     expect(testRunFindings(parsed, 'base')).toEqual([
       {

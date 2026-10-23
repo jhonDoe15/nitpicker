@@ -42,6 +42,43 @@ function hasFailedTest(tests, packageName) {
   return tests.some((test) => test.package === packageName && test.outcome === 'failed');
 }
 
+function unfinishedOutput(events, outputs, packageName) {
+  const finished = new Set(
+    events
+      .filter((event) => Object.hasOwn(OUTCOMES, event.Action) && packageOf(event) === packageName)
+      .map(({ Test }) => Test),
+  );
+  return events
+    .filter(
+      (event) =>
+        event.Action === 'run' && packageOf(event) === packageName && !finished.has(event.Test),
+    )
+    .map(({ Test }) => outputs.get(`${packageName}\0${Test}`) ?? '')
+    .join('');
+}
+
+function failureOf(event, { events, outputs }) {
+  const packageName = packageOf(event);
+  const own = outputs.get(`${packageName}\0${event.Test ?? ''}`) ?? '';
+  return {
+    id: event.Test === undefined ? packageName : `${packageName}.${event.Test}`,
+    package: packageName,
+    test: event.Test,
+    output:
+      event.Test === undefined ? `${unfinishedOutput(events, outputs, packageName)}${own}` : own,
+  };
+}
+
+function hasFailingSubtest(failure, failures) {
+  return (
+    failure.test !== undefined &&
+    failures.some(
+      (other) =>
+        other.package === failure.package && other.test?.startsWith(`${failure.test}/`) === true,
+    )
+  );
+}
+
 export function parseTestEvents(text) {
   const events = parseLines(text);
   const builds = failedBuilds(events);
@@ -59,15 +96,13 @@ export function parseTestEvents(text) {
     .filter(({ Action }) => Action === 'fail')
     .filter((event) => !builds.has(packageOf(event)))
     .filter((event) => event.Test !== undefined || !hasFailedTest(tests, packageOf(event)))
-    .map((event) => ({
-      id: event.Test === undefined ? packageOf(event) : `${packageOf(event)}.${event.Test}`,
-      package: packageOf(event),
-      output: outputs.get(`${packageOf(event)}\0${event.Test ?? ''}`) ?? '',
-    }));
+    .map((event) => failureOf(event, { events, outputs }));
   return {
     events: events.length,
     tests,
-    failures: failures.filter(({ id }) => !failures.some((other) => other.id.startsWith(`${id}/`))),
+    failures: failures
+      .filter((failure) => !hasFailingSubtest(failure, failures))
+      .map(({ id, package: packageName, output }) => ({ id, package: packageName, output })),
     buildFailures: [...builds].sort(),
     testsRan: events.some(({ Action }) => Action === 'run'),
   };

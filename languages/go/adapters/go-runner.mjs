@@ -14,7 +14,7 @@ import { goRouteRule, readGoFindings } from './go-findings.mjs';
 import { createGoContext, runGoSteps } from './go-steps.mjs';
 
 export const GO_ANALYZER_COMMAND = 'go-analyzer';
-const GO_OPTIONS = ['--live-root', '--go-settings'];
+const GO_OPTIONS = ['--go-settings'];
 
 function toolError({ rule, message }) {
   return {
@@ -37,20 +37,12 @@ function withReportRoot(step) {
   }
 }
 
-export function analyzeGoSnapshot({
-  projectRoot,
-  liveRoot,
-  settings = {},
-  policy = {},
-  spawn,
-  environment,
-}) {
+export function analyzeGoSnapshot({ projectRoot, settings = {}, policy = {}, spawn, environment }) {
   try {
     return {
       findings: withReportRoot((reportRoot) => {
         const context = createGoContext({
           projectRoot,
-          liveRoot,
           settings,
           policy,
           reportRoot,
@@ -97,18 +89,16 @@ export function parseGoArguments(runnerArguments) {
   });
   return {
     projectRoot,
-    liveRoot: own.get('--live-root') ?? projectRoot,
     settings: JSON.parse(own.get('--go-settings') ?? '{}'),
     policy,
   };
 }
 
 export function runGo(runnerArguments, { spawn, environment } = {}) {
-  const { projectRoot, liveRoot, settings, policy } = parseGoArguments(runnerArguments);
+  const { projectRoot, settings, policy } = parseGoArguments(runnerArguments);
   const conventions = readHeadPolicyFile(environment).conventions;
   return analyzeGoSnapshot({
     projectRoot: realpathSync(projectRoot),
-    liveRoot: realpathSync(liveRoot),
     settings,
     policy: { ...policy, conventions },
     spawn,

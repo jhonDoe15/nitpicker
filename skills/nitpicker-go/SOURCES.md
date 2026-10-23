@@ -68,5 +68,20 @@ than the others, and this skill teaches its rules before an agent writes Go.
 
 ## Review findings
 
-The first version of the preset was reviewed before merging; findings that changed the rules or
-this skill are listed in the pull request that added it.
+Two adversarial reviews of the first version changed these rules:
+
+- **The formatter comes from the head checkout for both snapshots.** Read per snapshot, a change
+  that adopted gofumpt failed every untouched file the merge base had formatted with gofmt. The
+  Python preset had the same gap and reads its formatter the same way now.
+- **Dropping a formatter or a build tag is a loosening**, and an opted-in golangci-lint file is
+  policy, so neither can quietly check less.
+- **Function literals in package variables are measured.** A handler assigned to a `var` escaped
+  every function limit.
+- **A test that times out next to a failing subtest is still reported**, and a timed-out package
+  quotes the output of the test that was running.
+- **Marking a kept file generated is a policy change**, as in the other presets, because the
+  gate skips generated files. The header follows Go's `ast.IsGenerated` rule: it must come before
+  the package clause.
+- **`layout` and `duplicates` are config errors with their reason**, not silently ignored.
+- **The project's `GOFLAGS` is read with `go env`**, so `go env -w` settings apply, and the tools
+  build from a neutral environment so the project's `GOOS` or `GOFLAGS` cannot break them.

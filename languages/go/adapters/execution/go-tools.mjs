@@ -18,7 +18,7 @@ export const GO_TOOLS = {
   goimports: { module: 'golang.org/x/tools/cmd/goimports', version: 'v0.52.0' },
 };
 const INSPECT_SOURCE = path.resolve(import.meta.dirname, '../../inspect');
-const NEUTRAL_ENV = { GOWORK: 'off', GOFLAGS: '' };
+const NEUTRAL_ENV = { GOWORK: 'off', GOFLAGS: '', GOOS: '', GOARCH: '', CGO_ENABLED: '0' };
 const HASH_LENGTH = 16;
 
 function cacheRoot(environment) {

@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { detectFormatters, formatterOptions, golangciConfigFiles } from './go-formatters.mjs';
+import { detectFormatters, formatterChoiceFiles, formatterOptions } from './go-formatters.mjs';
 
 const roots = [];
 
@@ -72,7 +72,7 @@ describe('formatterOptions', () => {
     '      extra-rules: true',
   ].join('\n');
 
-  it('reads the golangci-lint formatter settings only when the project opts in', () => {
+  it('reads the golangci-lint formatter settings only when the project opts in, and hashes every file the choice reads', () => {
     const root = project({ '.golangci.yaml': config });
     expect(formatterOptions(root, 'goimports')).toEqual([]);
     expect(formatterOptions(root, 'goimports', ['project', 'nitpicker'])).toEqual([
@@ -80,9 +80,10 @@ describe('formatterOptions', () => {
       'example.com/shop',
     ]);
     expect(formatterOptions(root, 'gofumpt', ['project'])).toEqual(['-extra']);
-    expect(golangciConfigFiles(root, {})).toEqual([]);
-    expect(golangciConfigFiles(root, { gofumpt: { precedence: ['project'] } })).toContain(
-      path.join(root, '.golangci.yaml'),
+    expect(formatterChoiceFiles(root)).toEqual(
+      ['.golangci.yml', '.golangci.yaml', '.golangci.toml', '.golangci.json', 'go.mod'].map(
+        (file) => path.join(root, file),
+      ),
     );
   });
 

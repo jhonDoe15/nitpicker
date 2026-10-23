@@ -87,6 +87,21 @@ describe('goStructureFindings', () => {
     ]);
   });
 
+  it('keeps the identity of a repeated init function when an earlier one is removed', () => {
+    const init = (start, maxControlNesting) => ({
+      ...report.functions[0],
+      name: 'init',
+      start,
+      end: start + 1,
+      maxControlNesting,
+    });
+    const identities = (functions) =>
+      goStructureFindings({ ...report, types: [], functions }, root)
+        .filter(({ rule }) => rule === 'function-control-nesting-limit')
+        .map(({ identity }) => identity);
+    expect(identities([init(3, 3)])).toEqual(identities([init(1, 0), init(3, 3)]));
+  });
+
   it('takes the thresholds and exceptions from the policy', () => {
     const findings = goStructureFindings(report, root, {
       fileLimits: { classMethods: 25, folderDepth: 5, fileLines: 400 },
