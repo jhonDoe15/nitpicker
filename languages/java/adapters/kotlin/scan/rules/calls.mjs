@@ -2,6 +2,7 @@ import { literalAt, literalsIn } from '../kotlin-source.mjs';
 import { logCalls } from '../log-calls.mjs';
 import { isConstantExpression, templatePieces } from '../security/sql-values.mjs';
 import { isPagingLoop, loopBodies, retryAttempts } from '../loops.mjs';
+import { fanOutCallOffsets } from '../fan-out/fan-out.mjs';
 
 const SHELLS = new Set([
   'sh',
@@ -178,10 +179,12 @@ function ioCalls(code, loop, isRetryAttempt) {
 
 export function ioInLoops(scanned) {
   const isRetryAttempt = retryAttempts(scanned.code);
+  const fannedOut = fanOutCallOffsets(scanned);
   const offsets = new Set(
     loopBodies(scanned.code).flatMap((loop) => ioCalls(scanned.code, loop, isRetryAttempt)),
   );
   return [...offsets]
+    .filter((offset) => !fannedOut.has(offset))
     .toSorted((left, right) => left - right)
     .map((offset) => ({
       rule: 'IoCallInLoop',

@@ -42,6 +42,13 @@ number about a function (`nitpicker/cognitive-complexity`, `complexity`, `max-li
 | `eslint-logging`        | production source (tests excluded) | `languages/typescript/preset/eslint-config/policies/logging.config.mjs`        | enforceable |
 | `eslint-module-effects` | production source (tests excluded) | `languages/typescript/preset/eslint-config/policies/module-effects.config.mjs` | enforceable |
 
+Bounded fan-out: `nitpicker/unbounded-fan-out` (production source, in `eslint-lint`) reports
+`Promise.all`, `allSettled`, `any` and `race` over a runtime collection whose element work reaches a
+remote or message call with no limiter created outside the worker and no fixed-size chunk. The same
+rule runs as `unbounded-fan-out` in the Python preset, `pmd/UnboundedFanOut` in the Java preset and
+`kotlin-source/UnboundedFanOut` in the Kotlin preset; each preset's document lists what it recognizes.
+Database calls per element are left to the per-item I/O rules.
+
 ## Entry points
 
 | Check          | Rule                        | Threshold                                         | Status      |
