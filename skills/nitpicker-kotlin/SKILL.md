@@ -53,6 +53,10 @@ Before you change code other modules use, or fix a bug, read
   by feature; controllers call services, never repositories or another controller; a repository calls
   no service; a request- or session-scoped bean reaches a singleton only as `ObjectProvider<T>` or
   through a scoped proxy (`@RequestScope`).
+- With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations; also without Spring),
+  the `archunit/ddd-...` rules hold aggregate boundaries: refer to another aggregate's root by its
+  identifier or an `Association`, keep each entity in one aggregate, and keep entities and roots out of
+  value objects.
 - Test sources are linted like main ones (detekt, and ktlint or ktfmt): the rules above, including `!!`, apply
   in tests. detekt keeps its default exclusions for tests, so magic numbers, `lateinit`, many functions,
   duplicated string literals, spread operators and function names in backticks are not findings in a
@@ -122,7 +126,32 @@ Before you change code other modules use, or fix a bug, read
   assert the result. A sleep in a mock answer, a thread or `launch` body, or a test fake that
   implements or extends a main class is fine. To show that something does not happen, give the
   code a clock the test moves forward, not `after(ms).never()`, `during(...)` or kotest
-  `continually` (`pmd/NegativeWaitInTest`).
+  `continually` (`pmd/NegativeWaitInTest`). Inside `runTest`, `delay` must run on the test scheduler:
+  a `delay` in `withContext(Dispatchers.IO)`, `Dispatchers.Default` or a thread-pool dispatcher, in a
+  `launch` or `async` on one that the test joins or awaits, in `runTest(Dispatchers.IO)`, on
+  `Dispatchers.Main` without a `setMain` applied to the test class, and in a Kotest body outside `runTest`
+  without `coroutineTestScope = true` waits for real, also in a test helper or a counted loop
+  (`pmd/FixedSleepInTest`); pass the test dispatcher to the code instead.
+- Do not skip or focus tests (`pmd/DisabledTest`, `pmd/FocusedTest`): no `@Disabled`, `@Ignore` or
+  `@Ignored` (nor an alias or an annotation that carries one), Kotest `xtest`, `xcontext`, `xdescribe`,
+  `xit`, `xshould`, `xgiven` or a `!` name prefix, no `.config(enabled = false)`, `invocations = 0` or other
+  config that never runs, no constant false `@EnabledIf` and no `assumeTrue(false)`; no `f:` name prefix,
+  `ftest`, `fcontext`, `fit`. Fix the test or delete it; limit it to an environment with `@EnabledOnOs` or
+  an assumption on a real condition when it cannot run elsewhere.
+- Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
+  a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
+  swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every
+  branch asserts or fails is fine, and so are Kotest `checkAll` and `forAll`. Split the cases into separate
+  tests or a parameterized test (`@ParameterizedTest` with `@MethodSource` or `@CsvSource`, Kotest
+  `withData`), assert a whole collection at once, and narrow with `assertNotNull`, `assertIs` or
+  `?: fail(...)` instead of an `if`.
+- A test owns the coroutines it starts (`pmd/CoroutineEscapesTest`): do not `launch`, `async`, `launchIn`,
+  `stateIn` or `shareIn` on `CoroutineScope(...)`, a scope field, a scope a helper returns,
+  `viewModelScope`, or a `TestScope` outside `runTest` and leave it running; `with`, `run`, `apply` or
+  `also` on such a scope does not help. Run the body in `runTest`, launch from there
+  (`backgroundScope.launch` for work that ends with the test), keep the job and `join()` it or `await()` the
+  deferred (a collection of them too), or build the scope on the test dispatcher and drive it with
+  `advanceUntilIdle`; a scope the test class cancels in `@AfterEach` or Kotest `afterSpec` is owned too.
 - A `@SpringBootTest` class uses its context: it injects a bean or a `MockMvc`, `WebTestClient` or
   `TestRestTemplate`, or it starts a web server port. Otherwise create the class with its
   constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).
