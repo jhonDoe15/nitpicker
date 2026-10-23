@@ -1,50 +1,56 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../../java-diff.mjs';
 import {
-  configAndArchitectureOf,
-  EXPECTED_CONFIG_AND_ARCHITECTURE,
-  EXPECTED_SPRING_ARCHITECTURE,
-  springArchitectureOf,
-  MAVEN_FILES,
-  markedViolations,
-  writeKotlinSpringProject,
-} from '../../../kotlin/spring/test-support/kotlin-spring-projects.mjs';
-import { kotlinE2eEnabled, kotlinPolicy } from '../test-support/kotlin-maven-project.mjs';
+  BAD_FILES,
+  commitSpringProject,
+  recordedFindings,
+  springLines,
+} from '../../__tests__/kotlin-spring-fixture.mjs';
+import {
+  kotlinE2eEnabled,
+  kotlinPolicy,
+  mavenDiffRunner,
+  removeProject,
+} from '../test-support/kotlin-maven-project.mjs';
 
-const maven = process.env.NITPICKER_MAVEN;
-
-const SPRING_RULE = /^(?:Spring|Jpa)/;
+const mavenDiffOf = mavenDiffRunner(process.env.NITPICKER_MAVEN);
+const POM = path.resolve(
+  import.meta.dirname,
+  '../../../../maven/fixtures/kotlin-spring-project/pom.xml',
+);
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin Spring rules on a Maven project end to end', () => {
-  let root;
-  let findings;
+  let project;
 
   beforeAll(() => {
-    root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-spring-maven-'));
-    writeKotlinSpringProject(root, MAVEN_FILES);
-    findings = collectJavaFindings(root, { maven, policy: kotlinPolicy });
+    project = { root: mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-spring-maven-')) };
+    commitSpringProject(project, { 'pom.xml': readFileSync(POM, 'utf8') });
   });
   afterAll(() => {
-    rmSync(root, { recursive: true, force: true });
+    if (project !== undefined) {
+      removeProject(project);
+    }
   });
 
-  it('reports exactly the violations marked in the Kotlin sources', () => {
-    expect(
-      findings
-        .filter(({ tool, rule }) => tool === 'pmd' && SPRING_RULE.test(rule))
-        .map(
-          ({ path: file, location, rule }) =>
-            `${path.basename(file)}:${String(location.line)} ${rule}`,
-        )
-        .toSorted(),
-    ).toEqual(markedViolations().toSorted());
+  it('reports what the Gradle build of the same sources reports, with the all-open plugin read from the POM', () => {
+    const result = mavenDiffOf(project, 'spring');
+
+    expect(result.failed).toBe(true);
+    expect(springLines(result.newEnforceable)).toEqual(springLines(recordedFindings()));
   });
 
-  it('checks the Spring configuration files and resolves the ArchUnit and Spring architecture violations to the Kotlin source', () => {
-    expect(configAndArchitectureOf(findings)).toEqual(EXPECTED_CONFIG_AND_ARCHITECTURE);
-    expect(springArchitectureOf(findings)).toEqual(EXPECTED_SPRING_ARCHITECTURE);
+  it('lifts a rule for some paths with the exception its message names', () => {
+    const result = mavenDiffOf(project, 'spring', {
+      policy: {
+        ...kotlinPolicy,
+        exceptions: [{ rule: 'pmd/SpringProxySelfCall', glob: BAD_FILES }],
+      },
+    });
+
+    expect(springLines(result.newEnforceable)).toEqual(
+      springLines(recordedFindings().filter(({ rule }) => rule !== 'SpringProxySelfCall')),
+    );
   });
 });

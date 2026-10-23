@@ -173,7 +173,6 @@ describe('formatter and metrics arguments', () => {
       psiArguments({
         metrics: '/r/kotlin-metrics.json',
         facts: '/r/kotlin-facts.json',
-        syntax: '/r/kotlin-syntax.json',
         module: {
           ...module,
           kotlin: {
@@ -185,7 +184,6 @@ describe('formatter and metrics arguments', () => {
     ).toEqual([
       '/r/kotlin-metrics.json',
       '/r/kotlin-facts.json',
-      '/r/kotlin-syntax.json',
       '/work/app',
       'src/main/java',
       'src/main/kotlin',

@@ -58,12 +58,13 @@ export function analyzeJavaSnapshot(
 }
 
 export function withHeadPolicy(policy, headPolicy) {
-  const { conventions, spring, kotlin } = headPolicy;
+  const { conventions, spring, springRoles, kotlin } = headPolicy;
   return {
     ...policy,
     conventions,
     javaStyle: javaStyle(conventions),
     ...(spring === true ? { spring } : {}),
+    ...(springRoles === undefined ? {} : { springRoles }),
     kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
     ...(kotlin === undefined ? {} : { kotlinFacts: kotlin }),
   };

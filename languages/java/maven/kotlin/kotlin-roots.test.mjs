@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { readReactor } from '../maven-project.mjs';
 
 const roots = [];
+const NONE_OPENED = { annotations: [], presets: [] };
 
 function project(directories) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-roots-'));
@@ -95,6 +96,7 @@ describe('Kotlin source roots of a Maven module', () => {
     expect(kotlinOf(root, effective(root, { plugins }))).toEqual({
       sourceRoots: under(root, ['extra', 'src/main/kotlin']),
       testSourceRoots: under(root, ['src/test/kotlin']),
+      allOpen: NONE_OPENED,
     });
   });
 
@@ -107,6 +109,7 @@ describe('Kotlin source roots of a Maven module', () => {
     expect(kotlinOf(root, effective(root, { plugins }))).toEqual({
       sourceRoots: under(root, ['app']),
       testSourceRoots: under(root, ['src/test/java']),
+      allOpen: NONE_OPENED,
     });
   });
 
@@ -117,6 +120,7 @@ describe('Kotlin source roots of a Maven module', () => {
     expect(kotlinOf(root, effective(root, { plugins }))).toEqual({
       sourceRoots: under(root, ['src/main/java']),
       testSourceRoots: under(root, ['src/test/java']),
+      allOpen: NONE_OPENED,
     });
   });
 
@@ -165,5 +169,46 @@ describe('Kotlin source roots of a Maven module', () => {
     expect(kotlinOf(root, effective(root, { plugins })).sourceRoots).toEqual(
       under(root, ['kaptSources']),
     );
+  });
+});
+
+describe('The all-open options of a Kotlin Maven module', () => {
+  const opened = (root, executions, configuration) =>
+    kotlinOf(root, effective(root, { plugins: plugin(executions, { configuration }) })).allOpen;
+  const compile = (inside) =>
+    `<execution><id>compile</id><goals><goal>compile</goal></goals><configuration>${inside}</configuration></execution>`;
+
+  it('reads the annotations and the preset of the all-open plugin from the compile execution', () => {
+    const root = project(['src/main/kotlin']);
+    const inside =
+      '<compilerPlugins><plugin>all-open</plugin></compilerPlugins><pluginOptions>' +
+      '<option>all-open:annotation=demo.Open</option><option>all-open:annotation=demo.Wide</option>' +
+      '<option>all-open:preset=spring</option><option>no-arg:annotation=demo.Ignored</option></pluginOptions>';
+
+    expect(opened(root, compile(inside))).toEqual({
+      annotations: ['demo.Open', 'demo.Wide'],
+      presets: ['spring'],
+    });
+  });
+
+  it('counts the spring compiler plugin as the all-open plugin with the spring preset', () => {
+    const root = project(['src/main/kotlin']);
+    const inside = '<compilerPlugins><plugin>spring</plugin><plugin>jpa</plugin></compilerPlugins>';
+
+    expect(opened(root, compile(inside))).toEqual({ annotations: [], presets: ['spring'] });
+  });
+
+  it('falls back to the plugin-level configuration, and ignores the test-compile execution', () => {
+    const root = project(['src/main/kotlin']);
+    const level =
+      '<configuration><compilerPlugins><plugin>spring</plugin></compilerPlugins></configuration>';
+    const testOnly =
+      '<execution><id>t</id><goals><goal>test-compile</goal></goals><configuration><pluginOptions><option>all-open:annotation=demo.T</option></pluginOptions></configuration></execution>';
+
+    expect(opened(root, execution('compile', []), level)).toEqual({
+      annotations: [],
+      presets: ['spring'],
+    });
+    expect(opened(root, execution('compile', []) + testOnly)).toEqual(NONE_OPENED);
   });
 });

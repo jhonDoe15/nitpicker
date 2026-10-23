@@ -19,6 +19,7 @@ import {
   MAVEN_PLUGINS,
   resolveTools,
 } from './maven-tools.mjs';
+import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
@@ -106,7 +107,8 @@ function missingLauncherVersions(analyzed) {
   return [...new Set(versions.filter((version) => version !== undefined))];
 }
 
-function analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin, spawn }) {
+function analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin, spawn, work }) {
+  const springRoles = writeSpringRoles(policy.springRoles, work);
   for (const { module, classpaths } of analyzed) {
     analyzeModule({
       module,
@@ -122,6 +124,7 @@ function analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin, s
       },
       kotlinOptions: kotlin.options,
       spring: policy.spring,
+      springRoles,
     });
   }
 }
@@ -167,7 +170,7 @@ export function runMavenPreset(
         ),
       ],
     });
-    analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin, spawn });
+    analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin, spawn, work });
     return {
       moduleDirs: modules.map((module) => module.basedir),
       formatAdvice: kotlin.options?.advice,

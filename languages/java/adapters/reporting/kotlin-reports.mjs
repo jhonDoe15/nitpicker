@@ -18,11 +18,11 @@ import {
   readCatchLogFindings,
   readTestAssertionFindings,
 } from '../kotlin/rules/kotlin-source-rules.mjs';
-import { readKotlinSpringFindings } from '../kotlin/spring/kotlin-spring.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
 import { withFrameworkAllowances } from '../kotlin/scan/framework-allowances.mjs';
 import { readKotlinSourceFindings } from '../kotlin/scan/kotlin-scan.mjs';
 import { readKotlinReviewFindings } from '../kotlin/review-rules/review-findings.mjs';
+import { withoutCoveredSourceFindings } from '../kotlin/review-rules/spring/spring-findings.mjs';
 import { readKotlinNotes } from './kotlin-notes.mjs';
 
 const DETEKT_TOOL = 'detekt';
@@ -113,29 +113,31 @@ export function readKotlinFindings(context, crapLimit) {
     ...readKotlinSourceFindings(projectRoot, manifest),
     ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),
   ]);
-  return [
-    ...ruleFindings,
-    ...readKotlinNotes(reportRoot),
-    ...readSuppressionFindings(projectRoot, {
-      sourceRoots: manifest.kotlinSourceRoots ?? [],
-      testRoots,
-    }),
-    ...readCatchLogFindings(projectRoot, {
-      sourceRoots: manifest.kotlinSourceRoots ?? [],
-      testRoots,
-    }),
-    ...readTestAssertionFindings(projectRoot, testRoots, helpers),
-    ...(manifest.spring === true ? readKotlinSpringFindings({ projectRoot, reportRoot }) : []),
-    ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
-    ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
-    ...readKotlinStructureFindings(metrics, projectRoot),
-    ...readKotlinClassLimitFindings(metrics, context.classLimits),
-    ...readKotlinCrapFindings(metrics, {
-      projectRoot,
-      jacoco,
-      crapLimit,
-    }),
-  ];
+  return withoutCoveredSourceFindings(
+    [
+      ...ruleFindings,
+      ...readKotlinNotes(reportRoot),
+      ...readSuppressionFindings(projectRoot, {
+        sourceRoots: manifest.kotlinSourceRoots ?? [],
+        testRoots,
+      }),
+      ...readCatchLogFindings(projectRoot, {
+        sourceRoots: manifest.kotlinSourceRoots ?? [],
+        testRoots,
+      }),
+      ...readTestAssertionFindings(projectRoot, testRoots, helpers),
+      ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
+      ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
+      ...readKotlinStructureFindings(metrics, projectRoot),
+      ...readKotlinClassLimitFindings(metrics, context.classLimits),
+      ...readKotlinCrapFindings(metrics, {
+        projectRoot,
+        jacoco,
+        crapLimit,
+      }),
+    ],
+    context.classLimits,
+  );
 }
 
 function subjectOf(text) {

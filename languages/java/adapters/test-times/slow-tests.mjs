@@ -50,8 +50,6 @@ export function testCasesOf(xml, task) {
   );
 }
 
-// Gradle names a test after its own display name; the containers it sits in (the contexts of a Kotest
-// spec) are in a side file next to the XML, as `{ className, name, containers }` entries.
 function readContainers(directory) {
   const file = path.join(directory, CONTAINERS_FILE);
   const entries = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
@@ -77,8 +75,6 @@ function readTestCases(reportRoot) {
   });
 }
 
-// Maven names a Kotest test by its whole path (twice/doubles the value), so a Gradle result takes the
-// same name, and one slow test has one identity on both builds.
 function withContainerPath(testCase, locate, projectRoot) {
   const { containers, ...plain } = testCase;
   if (containers === undefined) {

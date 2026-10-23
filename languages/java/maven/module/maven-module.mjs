@@ -86,12 +86,13 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
 }
 
 function runCoverage(options) {
-  const { module, reportDir, tools, classpaths, pinned, since, testsRan, spring, spawn } = options;
+  const { module, reportDir, tools, classpaths, pinned, since, testsRan, spring } = options;
+  const { springRoles, spawn } = options;
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const execFiles = jacocoExecFiles(module);
   runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, spawn });
   runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
-  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, spawn });
+  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, springRoles, spawn });
 }
 
 function runSourceTools(options) {
