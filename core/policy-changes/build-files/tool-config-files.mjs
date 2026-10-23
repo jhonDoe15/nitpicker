@@ -7,7 +7,7 @@ import { readInside } from '../../../shared/conventions/read-inside.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
-import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
+import { IMPORT_LINTER, PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
@@ -97,7 +97,8 @@ function candidates(tool, side) {
 function isOptedIn(tool, config) {
   return (
     usesProjectConfig(config, tool) ||
-    (tool === 'detekt' && config.kotlin?.detektConfig !== undefined)
+    (tool === 'detekt' && config.kotlin?.detektConfig !== undefined) ||
+    (tool === IMPORT_LINTER && config.python?.importLinter !== false)
   );
 }
 

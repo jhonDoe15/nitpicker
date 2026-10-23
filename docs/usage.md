@@ -1297,6 +1297,11 @@ file the tool reads, and of it only the `[mypy]` and `[mypy-*]` sections (`mypy.
 coverage sections of the file coverage.py reads (all of `.coveragerc`). An edit of `[flake8]` in
 `setup.cfg` or of `[tool.poetry]` is not one, and comments, layout and key order never count.
 
+import-linter has no `tools` entry: its contracts are the project's own, and nitpicker has none to
+merge them with. They run as written in each snapshot, and an edit of them (the `[importlinter]`
+sections, or `[tool.importlinter]`) is a policy change a person reviews, with or without an opt-in,
+unless `python.importLinter` is `false`.
+
 ### Lint engine
 
 The lint analyzers apply nitpicker's ESLint policy, but by default they run it on

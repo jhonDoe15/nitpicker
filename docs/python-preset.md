@@ -1235,7 +1235,14 @@ the source root detection already does.
   on a file end with the `python.exceptions` sentence for `contract-broken`. A run that checked no
   contract (missing config file, `lint-imports` not installed in the environment, which the
   message answers with `"python": { "importLinter": false }`) is an `import-linter-failed` tool
-  error, as `duplicates-failed` and `coupling-failed` are for the other two steps.
+  error, as `duplicates-failed` and `coupling-failed` are for the other two steps. There is no
+  `tools.import-linter`: the contracts are the project's own and nitpicker has none to layer them
+  on, so they run as written. Each snapshot runs its own contracts (the base cannot run contracts
+  for modules only the head has), so an edit of the contracts is a policy change a person reviews:
+  the `[importlinter]` and `[importlinter:*]` sections of `.importlinter`, `setup.cfg` or
+  `tox.ini`, or `[tool.importlinter]` in `pyproject.toml`; comments, layout and the other sections
+  do not count. A change cannot drop or loosen a contract it breaks unnoticed. With
+  `"python": { "importLinter": false }` the contracts neither run nor count.
 - **Policy.** `duplicate-clone` and `stability-direction` are enforced for Python in
   `shared/policy.mjs` (`spec/checks.md`). `contract-broken` is a Python-only tool rule and has no
   shared policy entry.
