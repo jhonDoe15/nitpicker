@@ -3,6 +3,7 @@ import path from 'node:path';
 import { renderTextReport } from './text.mjs';
 import { renderJunitReport } from './junit.mjs';
 import { renderSarifReport } from './sarif.mjs';
+import { CODE_QUALITY_REPORT_FILE_NAME, renderCodeQualityReport } from './format/codequality.mjs';
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
 
@@ -20,6 +21,7 @@ export const REPORT_FILE_NAMES = [
   TEXT_REPORT_FILE_NAME,
   JUNIT_REPORT_FILE_NAME,
   SARIF_REPORT_FILE_NAME,
+  CODE_QUALITY_REPORT_FILE_NAME,
 ];
 
 export function clearDiffReports(outputRoot) {
@@ -28,7 +30,7 @@ export function clearDiffReports(outputRoot) {
   }
 }
 
-export function writeDiffReports(outputRoot, report) {
+export function writeDiffReports(outputRoot, report, { projectPath } = {}) {
   mkdirSync(outputRoot, { recursive: true });
   writeJson(path.join(outputRoot, 'summary.json'), report.summary);
   writeJson(path.join(outputRoot, 'new-findings.json'), report.newFindings);
@@ -44,6 +46,10 @@ export function writeDiffReports(outputRoot, report) {
   writeFileSync(path.join(outputRoot, TEXT_REPORT_FILE_NAME), text);
   writeFileSync(path.join(outputRoot, JUNIT_REPORT_FILE_NAME), renderJunitReport(report));
   writeFileSync(path.join(outputRoot, SARIF_REPORT_FILE_NAME), renderSarifReport(report));
+  writeFileSync(
+    path.join(outputRoot, CODE_QUALITY_REPORT_FILE_NAME),
+    renderCodeQualityReport(report.newFindings, { projectPath }),
+  );
   return text;
 }
 
