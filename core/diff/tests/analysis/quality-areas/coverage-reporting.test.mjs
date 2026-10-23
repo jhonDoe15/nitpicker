@@ -310,6 +310,26 @@ describe('coverage reporting in the quality-area analyzers', () => {
       ),
     ).toEqual(['the false arm of the if (or its else) at 4:3']);
   });
+  it('tells an untaken default case from another switch case and names the way out', () => {
+    const source = [
+      'switch (color) {',
+      "  case 'red':",
+      '    return 1;',
+      '  default: {',
+      '    const never: never = color;',
+      '    return never;',
+      '  }',
+      '}',
+    ].join('\n');
+    const at = (line, column) => ({ start: { line, column } });
+
+    expect(
+      describeUncoveredArms({ type: 'switch', locations: [at(2, 2), at(4, 2)] }, [0, 0], source),
+    ).toEqual([
+      'a switch case at 2:3',
+      'the default case at 4:3 (a switch that lists every member of a union needs no default: switch-exhaustiveness-check proves it complete)',
+    ]);
+  });
   it('accepts exactly 95% branch coverage', () => {
     const findings = normalizeCoverage(
       {

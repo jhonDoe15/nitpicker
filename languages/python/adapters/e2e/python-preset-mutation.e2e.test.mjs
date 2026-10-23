@@ -9,6 +9,7 @@ import {
   PRICING_TEST,
   PRICING_WITH_UNUSED,
 } from './test-support/python-preset-data.mjs';
+import { COLORS_EXHAUSTIVE, COLORS_TEST } from './test-support/python-coverage-idioms-data.mjs';
 import {
   commitBranch,
   fixture,
@@ -69,6 +70,10 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
     commitBranch(project, 'killed', {
       'src/demo/pricing.py': PRICING,
       'tests/test_pricing.py': PRICING_FULL_TEST,
+    });
+    commitBranch(project, 'exhaustive', {
+      'src/demo/colors.py': COLORS_EXHAUSTIVE,
+      'tests/test_colors.py': COLORS_TEST,
     });
   });
   afterAll(removeRepositories);
@@ -138,6 +143,11 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
         .json('new-findings.json')
         .filter(({ tool, rule }) => tool === 'mutmut' && rule !== 'mutation-summary'),
     ).toEqual([]);
+  });
+  it('makes no mutant of the assert_never that closes an exhaustive match', () => {
+    const result = gate(project, 'exhaustive');
+
+    expect(mutantFindings(result), result.text).toEqual([]);
   });
   it('reuses the base mutants for a source-only change and still fails a new survivor', () => {
     const result = gate(project, 'weaker-source');

@@ -37,6 +37,7 @@ const TOKEN = new RegExp(TOKEN_PARTS.join('|'), 'gu');
 const NUMBER = /^\d[\w.]*$/u;
 const STRING = /^[a-z]{0,2}["']/iu;
 const OPERATOR = /^[^\w\s"']+$/u;
+const ASSERT_NEVER = /^(?:\w+\.)?assert_never\(/u;
 
 export function ingestMutmut(data, options = {}) {
   if (!Array.isArray(data?.files)) {
@@ -106,7 +107,8 @@ function describedMutants(file, mutants) {
       symbol: mutant.symbol,
       status: mutant.status,
       ...describeChange({ mutant, blocks, originalLines }),
-    }));
+    }))
+    .filter((mutant) => !mutant.provenUnreachable);
 }
 
 function parseKey(key) {
@@ -173,6 +175,7 @@ function describeChange({ mutant, blocks, originalLines }) {
   }
   const start = locate(originalLines, original);
   return {
+    ...(changesOnlyAssertNever(original, change) ? { provenUnreachable: true } : {}),
     original: change.original,
     replacement: change.replacement,
     label: labelOf(change),
@@ -185,10 +188,8 @@ function changedRegion(original, mutated) {
   const after = mutated.match(TOKEN);
   const head = commonLength(before, after);
   const tail = commonLength(before.slice(head).reverse(), after.slice(head).reverse());
-  const removed = before
-    .slice(head, before.length - tail)
-    .join('')
-    .trim();
+  const removedText = before.slice(head, before.length - tail).join('');
+  const removed = removedText.trim();
   const added = after
     .slice(head, after.length - tail)
     .join('')
@@ -196,11 +197,22 @@ function changedRegion(original, mutated) {
   if (removed === '' && added === '') {
     return undefined;
   }
+  const leading = removed === '' ? '' : removedText.slice(0, removedText.indexOf(removed));
   return {
     original: removed,
     replacement: added,
-    lineOffset: before.slice(0, head).join('').split('\n').length - 1,
+    lineOffset: `${before.slice(0, head).join('')}${leading}`.split('\n').length - 1,
   };
+}
+
+function changesOnlyAssertNever(original, change) {
+  const lines = original
+    .slice(change.lineOffset, change.lineOffset + change.original.split('\n').length)
+    .map((line) => line.trim());
+  return (
+    lines.some((line) => ASSERT_NEVER.test(line)) &&
+    lines.every((line) => line === 'case _:' || ASSERT_NEVER.test(line))
+  );
 }
 
 function commonLength(left, right) {
