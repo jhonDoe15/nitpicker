@@ -232,7 +232,7 @@ describe('nitpicker config file', () => {
   it('skips disabled analyzers, reports the override, and changes the policy hash', () => {
     const acceptedPolicyHeading =
       'Policy changed in this change (nitpicker.config.json, head against base; ' +
-      'loosening accepted with --accept-policy-change):';
+      'loosening accepted by exact digest):';
     const analyzers = [fakeAnalyzer(), fakeAnalyzer('second-analyzer')];
     const plain = runWithConfig(undefined, { analyzers });
     const disabled = runWithConfig(

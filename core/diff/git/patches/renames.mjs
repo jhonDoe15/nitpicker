@@ -95,6 +95,13 @@ export function scopeMoves({ changes, baseProjectPath, headProjectPath }) {
   };
 }
 
+export function scopeTouched(touched, { baseProjectPath, headProjectPath }) {
+  const scoped = [...touched].map(
+    (file) => relativeTo(file, headProjectPath) ?? relativeTo(file, baseProjectPath),
+  );
+  return new Set(scoped.filter((file) => file !== undefined && file !== ''));
+}
+
 function scopePairs(pairs, { baseProjectPath, headProjectPath }) {
   return [...pairs]
     .map(([from, to]) => [relativeTo(from, baseProjectPath), relativeTo(to, headProjectPath)])
