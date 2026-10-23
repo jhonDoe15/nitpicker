@@ -7,8 +7,11 @@ import {
   trackTemporaryPath,
   untrackTemporaryPath,
 } from '../../core/tooling/temporary-files.mjs';
+import { nestedCheckout, useGitCheckouts } from '../../core/diff/git/test-support/git-checkout.mjs';
 import { sourceFilesUnder } from './files.mjs';
 import { withNormalizedTree } from './tree.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const roots = [];
 const temporaryPaths = { track: trackTemporaryPath, untrack: untrackTemporaryPath };
@@ -140,5 +143,18 @@ describe('listing the sources of a project', () => {
       'src/a.kt',
       'src/b.kt',
     ]);
+  });
+
+  it('lists the files of a Git checkout without ignored folders and nested checkouts', () => {
+    const root = gitCheckout(
+      {
+        'src/a.kt': '',
+        'src/generated/b.kt': '',
+        ...nestedCheckout('src/agent', { 'c.kt': '' }),
+      },
+      ['src/generated/'],
+    );
+
+    expect(sourceFilesUnder(root, ['src'], ['.kt'])).toEqual(['src/a.kt']);
   });
 });

@@ -1,6 +1,11 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { blankComments, blankLiterals, pathInside, sourceFilesUnder } from './java-sources.mjs';
+import {
+  blankComments,
+  blankLiterals,
+  pathInside,
+  projectSourceFilesUnder,
+} from './java-sources.mjs';
 
 const CODE_EXTENSIONS = new Set(['.java', '.kt']);
 const BINARY_EXTENSIONS = new Set([
@@ -100,7 +105,7 @@ export function readProjectTexts(projectRoot, projects) {
     ...[...sourceRoots, ...resourceRoots].flatMap((root) => filesUnder(inProject(root))),
     ...directories.flatMap((directory) => filesUnder(inProject(path.join(directory, WEBAPP_ROOT)))),
     ...directories.flatMap((directory) => filesIn(inProject(directory || '.'))),
-    ...sourceFilesUnder(path.resolve(projectRoot), CONTAINER_FILES),
+    ...projectSourceFilesUnder(path.resolve(projectRoot), CONTAINER_FILES),
   ];
   return [...new Set(files)]
     .filter(isText)

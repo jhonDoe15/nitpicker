@@ -1,8 +1,9 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { configError } from '../../../shared/config.mjs';
-import { filesUnder, pathInside } from '../../../shared/filesystem.mjs';
+import { pathInside } from '../../../shared/filesystem.mjs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
+import { projectFilesUnder } from '../../../shared/project-files/project-files.mjs';
 import {
   sourceRoots as defaultSourceRoots,
   testRoots as defaultTestRoots,
@@ -25,7 +26,7 @@ function existingJsxFiles(projectRoot, root) {
     return [];
   }
   return [
-    ...filesUnder(directory, {
+    ...projectFilesUnder(directory, {
       skipDirectory: (_absolute, entry) => entry.name === 'node_modules',
     }),
   ]

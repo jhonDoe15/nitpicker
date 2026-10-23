@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 
 const SKIPPED_DIRECTORIES = new Set(['.git', '.gradle', 'build', 'node_modules', 'out', 'target']);
 const LITERALS = new RegExp(
@@ -69,8 +70,19 @@ export function sourceFilesUnder(root, extensions) {
   return files.sort();
 }
 
+export function projectSourceFilesUnder(root, extensions) {
+  if (!existsSync(root)) {
+    return [];
+  }
+  return projectFilesUnder(root, {
+    skipDirectory: (_, entry) => SKIPPED_DIRECTORIES.has(entry.name),
+  })
+    .filter((file) => extensions.some((extension) => file.endsWith(extension)))
+    .sort();
+}
+
 export function javaFilesUnder(root) {
-  return sourceFilesUnder(root, ['.java']);
+  return projectSourceFilesUnder(root, ['.java']);
 }
 
 export function readJavaSource(file) {

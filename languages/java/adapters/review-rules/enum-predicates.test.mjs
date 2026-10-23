@@ -2,7 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ENUM_PREDICATE_RULE, withProjectEnumPredicates } from './enum-predicates.mjs';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
+import { ENUM_PREDICATE_RULE, readEnums, withProjectEnumPredicates } from './enum-predicates.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const roots = [];
 const MESSAGE = 'These comparisons list only some constants of an enum of the project.';
@@ -167,5 +173,20 @@ describe('withProjectEnumPredicates', () => {
     };
 
     expect(withProjectEnumPredicates([kotlin], project({}))).toEqual([kotlin]);
+  });
+});
+
+describe('readEnums', () => {
+  it('reads the enums of a Git checkout, not those of ignored folders or nested checkouts', () => {
+    const root = gitCheckout(
+      {
+        'src/main/java/shop/Status.java': STATUS,
+        'scratch/Hidden.java': 'enum Hidden { A, B }\n',
+        ...nestedCheckout('agent', { 'src/main/java/shop/Other.java': 'enum Other { A, B }\n' }),
+      },
+      ['scratch/'],
+    );
+
+    expect([...readEnums(root).keys()]).toEqual(['Status']);
   });
 });

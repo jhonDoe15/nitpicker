@@ -2,7 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const root = mkdtempSync(path.join(tmpdir(), 'spawned-entries-'));
 
@@ -41,5 +47,21 @@ describe('spawnedEntryFiles', () => {
       "new URL('./worker.mjs', import.meta.url)",
     );
     expect(spawnedEntryFiles(project)).toEqual(['src/reports/worker.mjs']);
+  });
+
+  it('reads only the files of a Git checkout, not ignored folders or nested checkouts', () => {
+    const spawn = "new URL('./worker.mjs', import.meta.url)";
+    const project = gitCheckout(
+      {
+        'src/worker.mjs': '',
+        'src/main.mjs': spawn,
+        'scratch/worker.mjs': '',
+        'scratch/main.mjs': spawn,
+        ...nestedCheckout('agent', { 'worker.mjs': '', 'main.mjs': spawn }),
+      },
+      ['scratch/'],
+    );
+
+    expect(spawnedEntryFiles(project)).toEqual(['src/worker.mjs']);
   });
 });

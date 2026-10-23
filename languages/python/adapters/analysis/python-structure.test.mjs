@@ -2,6 +2,10 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { createScratch } from '../test-support/scratch.mjs';
 import {
   pythonFileLimitFindings,
@@ -9,6 +13,8 @@ import {
   structure,
   STRUCTURE_REPORT,
 } from './python-structure.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const scratch = createScratch();
 
@@ -249,5 +255,20 @@ describe('Python file limits', () => {
         exceptions: [{ rule: 'folder-files-limit', paths: ['src/icons/*'] }],
       }),
     ).toEqual([]);
+  });
+
+  it('does not count the modules of git-ignored folders or nested checkouts', () => {
+    const modules = ['a.py', 'b.py', 'c.py'];
+    const root = gitCheckout(
+      {
+        'src/app/a.py': '',
+        'src/app/b.py': '',
+        ...Object.fromEntries(modules.map((name) => [`scratch/${name}`, ''])),
+        ...nestedCheckout('agent', Object.fromEntries(modules.map((name) => [name, '']))),
+      },
+      ['scratch/'],
+    );
+
+    expect(pythonFileLimitFindings(root, { fileLimits: limits })).toEqual([]);
   });
 });
