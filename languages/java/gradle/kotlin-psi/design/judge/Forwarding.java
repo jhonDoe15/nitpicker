@@ -37,7 +37,7 @@ public final class Forwarding {
         return null;
       }
     }
-    return forward(ctx, function, Ps.parens(expression), returned);
+    return forward(ctx, function, new Body(Ps.parens(expression), returned));
   }
 
   private static boolean returnsUnit(KtNamedFunction declaration) {
@@ -45,7 +45,10 @@ public final class Forwarding {
     return declared == null || declared.equals("Unit");
   }
 
-  private static Map<String, Object> forward(Ctx ctx, Fun function, KtExpression expression, boolean returned) {
+  private record Body(KtExpression expression, boolean returned) {}
+
+  private static Map<String, Object> forward(Ctx ctx, Fun function, Body body) {
+    KtExpression expression = body.expression();
     KtCallExpression call;
     if (expression instanceof KtDotQualifiedExpression
         && ((KtDotQualifiedExpression) expression).getSelectorExpression() instanceof KtCallExpression
@@ -73,7 +76,7 @@ public final class Forwarding {
     if (!arguments.isEmpty() && !passes) {
       return null;
     }
-    return m("target", target.id, "arguments", arguments, "returned", returned);
+    return m("target", target.id, "arguments", arguments, "returned", body.returned());
   }
 
   private static int parameter(Ctx ctx, Fun function, KtExpression expression) {

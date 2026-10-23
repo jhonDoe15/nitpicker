@@ -28,10 +28,10 @@ public final class Fun {
   public String returnsField;
   public String id;
 
-  public Fun(String name, Owner owner, String kind, KtDeclaration psi, Shape shape) {
-    this.name = name;
+  public Fun(Owner owner, KtDeclaration psi, Shape shape) {
+    this.name = shape.name;
     this.owner = owner;
-    this.kind = kind;
+    this.kind = shape.kind;
     this.psi = psi;
     this.params = shape.params;
     this.receiver = shape.receiver;
@@ -46,11 +46,19 @@ public final class Fun {
   }
 
   public static final class Shape {
+    public String name;
+    public String kind;
     public List<KtParameter> params = List.of();
     public KtTypeReference receiver;
     public KtTypeReference returns;
     public boolean isPrivate;
     public boolean isOverride;
     public boolean hasBody;
+
+    public Shape named(String name, String kind) {
+      this.name = name;
+      this.kind = kind;
+      return this;
+    }
   }
 }

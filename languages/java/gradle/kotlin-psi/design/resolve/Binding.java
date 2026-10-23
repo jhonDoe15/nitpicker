@@ -5,7 +5,7 @@ import nitpicker.kotlinpsi.design.model.Prop;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 
 public final class Binding {
-  public static final Binding UNKNOWN = new Binding(Kind.UNKNOWN, null, null, null, false, false);
+  public static final Binding UNKNOWN = new Binding(Kind.UNKNOWN, new Parts(null, null, null, false, false));
 
   public enum Kind {
     LOCAL,
@@ -21,28 +21,30 @@ public final class Binding {
   public final boolean thisField;
   public final boolean receiver;
 
-  private Binding(Kind kind, PsiElement declaration, Prop prop, Owner owner, boolean thisField, boolean receiver) {
+  private record Parts(PsiElement declaration, Prop prop, Owner owner, boolean thisField, boolean receiver) {}
+
+  private Binding(Kind kind, Parts parts) {
     this.kind = kind;
-    this.declaration = declaration;
-    this.prop = prop;
-    this.owner = owner;
-    this.thisField = thisField;
-    this.receiver = receiver;
+    this.declaration = parts.declaration();
+    this.prop = parts.prop();
+    this.owner = parts.owner();
+    this.thisField = parts.thisField();
+    this.receiver = parts.receiver();
   }
 
   public static Binding local(PsiElement declaration) {
-    return new Binding(Kind.LOCAL, declaration, null, null, false, false);
+    return new Binding(Kind.LOCAL, new Parts(declaration, null, null, false, false));
   }
 
   public static Binding field(Prop prop, boolean thisField) {
-    return new Binding(Kind.FIELD, null, prop, null, thisField, false);
+    return new Binding(Kind.FIELD, new Parts(null, prop, null, thisField, false));
   }
 
   public static Binding receiverField(Prop prop) {
-    return new Binding(Kind.FIELD, null, prop, null, false, true);
+    return new Binding(Kind.FIELD, new Parts(null, prop, null, false, true));
   }
 
   public static Binding type(Owner owner) {
-    return new Binding(Kind.TYPE, null, null, owner, false, false);
+    return new Binding(Kind.TYPE, new Parts(null, null, owner, false, false));
   }
 }

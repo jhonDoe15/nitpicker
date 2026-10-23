@@ -25,6 +25,7 @@ public final class Ctx {
   public final Typer typer;
   public final CallResolver calls;
   public final References references;
+  public boolean library;
   private final Map<KtFile, Source> files = new IdentityHashMap<>();
 
   public Ctx(Index index) {

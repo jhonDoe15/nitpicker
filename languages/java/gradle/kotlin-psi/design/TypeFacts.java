@@ -17,11 +17,11 @@ import org.jetbrains.kotlin.psi.*;
 public final class TypeFacts {
   private TypeFacts() {}
 
-  public static List<Object> build(Ctx ctx, boolean published) {
+  public static List<Object> build(Ctx ctx) {
     List<Object> types = new ArrayList<>();
     for (Owner owner : ctx.index.owners) {
       if (owner.listed && (!owner.module() || hasMembers(owner))) {
-        types.add(describe(ctx, owner, published));
+        types.add(describe(ctx, owner));
       }
     }
     return types;
@@ -31,11 +31,11 @@ public final class TypeFacts {
     return !module.funs.isEmpty() || !module.props.isEmpty();
   }
 
-  private static Map<String, Object> describe(Ctx ctx, Owner owner, boolean published) {
+  private static Map<String, Object> describe(Ctx ctx, Owner owner) {
     String kind = Kinds.of(owner);
     return m(
         "id", owner.id, "file", owner.source.path, "name", owner.name, "line", line(owner), "kind", kind,
-        "exported", owner.exported, "published", published && owner.exported ? Boolean.TRUE : null,
+        "exported", owner.exported, "published", ctx.library && owner.exported ? Boolean.TRUE : null,
         "fields", fields(owner, kind),
         "cases", kind.equals("enum") ? new ArrayList<Object>(owner.cases) : null,
         "references", references(ctx, owner));

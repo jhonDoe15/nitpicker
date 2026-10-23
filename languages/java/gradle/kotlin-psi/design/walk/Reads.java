@@ -24,22 +24,24 @@ public final class Reads {
     }
   }
 
+  public record Access(String field, boolean decided, int line) {}
+
   private final Map<Object, Read> byValue = new IdentityHashMap<>();
   private final List<Read> order = new ArrayList<>();
 
-  public void record(Object value, Owner type, String field, boolean decided, int line) {
+  public void record(Object value, Owner type, Access access) {
     if (type == null || !type.listed || !Kinds.valueLike(type)) {
       return;
     }
     Read read = byValue.get(value);
     if (read == null) {
-      read = new Read(type, line);
+      read = new Read(type, access.line());
       byValue.put(value, read);
       order.add(read);
     }
-    read.fields.add(field);
-    if (decided) {
-      read.decided.add(field);
+    read.fields.add(access.field());
+    if (access.decided()) {
+      read.decided.add(access.field());
     }
   }
 

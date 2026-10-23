@@ -75,7 +75,7 @@ public final class Bindings {
     }
     if (p instanceof KtNamedFunction || p instanceof KtPropertyAccessor || p instanceof KtSecondaryConstructor) {
       scan.inFunction = true;
-      return p instanceof KtNamedFunction ? extension((KtNamedFunction) p, scan.name, scan.source, scan.blurred) : null;
+      return p instanceof KtNamedFunction ? extension((KtNamedFunction) p, scan) : null;
     }
     return p instanceof KtClassOrObject ? classLevel(scan, p) : null;
   }
@@ -86,26 +86,12 @@ public final class Bindings {
       scan.blurred = true;
       return null;
     }
-    Binding found = member(owner, scan.name, scan.instance, scan.first && scan.instance, scan.blurred);
+    Binding found = member(owner, scan, scan.first && scan.instance);
     scan.leave(p);
     return found;
   }
 
-  public static final class Level {
-    public final Owner owner;
-    public final KtNamedFunction extension;
-    public final boolean instance;
-    public final boolean thisLevel;
-    public final boolean blurred;
-
-    public Level(Owner owner, KtNamedFunction extension, boolean instance, boolean thisLevel, boolean blurred) {
-      this.owner = owner;
-      this.extension = extension;
-      this.instance = instance;
-      this.thisLevel = thisLevel;
-      this.blurred = blurred;
-    }
-  }
+  public record Level(Owner owner, KtNamedFunction extension, boolean instance, boolean thisLevel, boolean blurred) {}
 
   public List<Level> levels(PsiElement at) {
     List<Level> levels = new ArrayList<>();
@@ -143,34 +129,34 @@ public final class Bindings {
     return prop == null || blurred ? Binding.UNKNOWN : Binding.field(prop, true);
   }
 
-  private Binding extension(KtNamedFunction function, String name, Source source, boolean blurred) {
+  private Binding extension(KtNamedFunction function, Scan scan) {
     if (function.getReceiverTypeReference() == null) {
       return null;
     }
-    Ty receiver = ctx.names.resolve(function.getReceiverTypeReference(), source);
+    Ty receiver = ctx.names.resolve(function.getReceiverTypeReference(), scan.source);
     if (!receiver.project()) {
       return Binding.UNKNOWN;
     }
-    Prop prop = ctx.members.prop(receiver.owner, name);
+    Prop prop = ctx.members.prop(receiver.owner, scan.name);
     if (prop != null) {
-      return blurred ? Binding.UNKNOWN : Binding.receiverField(prop);
+      return scan.blurred ? Binding.UNKNOWN : Binding.receiverField(prop);
     }
     return ctx.hierarchy.external(receiver.owner) ? Binding.UNKNOWN : null;
   }
 
-  private Binding member(Owner owner, String name, boolean instance, boolean thisLevel, boolean blurred) {
-    Prop prop = instance || owner.psi instanceof KtObjectDeclaration ? ctx.members.prop(owner, name) : null;
+  private Binding member(Owner owner, Scan scan, boolean thisLevel) {
+    Prop prop = scan.instance || owner.psi instanceof KtObjectDeclaration ? ctx.members.prop(owner, scan.name) : null;
     if (prop != null) {
-      return blurred ? Binding.UNKNOWN : Binding.field(prop, thisLevel);
+      return scan.blurred ? Binding.UNKNOWN : Binding.field(prop, thisLevel);
     }
     if (owner.companion != null) {
-      Prop companion = ctx.members.prop(owner.companion, name);
+      Prop companion = ctx.members.prop(owner.companion, scan.name);
       if (companion != null) {
-        return blurred ? Binding.UNKNOWN : Binding.field(companion, false);
+        return scan.blurred ? Binding.UNKNOWN : Binding.field(companion, false);
       }
     }
     boolean enumClass = owner.psi instanceof KtClass && ((KtClass) owner.psi).isEnum();
-    if (instance && (ctx.hierarchy.external(owner) || enumClass && ENUM_MEMBERS.contains(name))) {
+    if (scan.instance && (ctx.hierarchy.external(owner) || enumClass && ENUM_MEMBERS.contains(scan.name))) {
       return Binding.UNKNOWN;
     }
     return null;
