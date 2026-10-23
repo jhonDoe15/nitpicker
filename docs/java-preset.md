@@ -11,6 +11,9 @@ findings. The comparison is the language-neutral core (`compareFindings`, rename
 which the conformance suite in [`spec/conformance`](../spec/conformance/README.md) covers. The Java
 side contributes only two things: producing reports, and converting them into findings.
 
+The JDK, Gradle or Maven a CI job needs, and recipes for GitHub Actions, GitLab CI and Jenkins, are in
+[nitpicker in CI](ci.md#toolchains-by-preset).
+
 ## How it works
 
 ```

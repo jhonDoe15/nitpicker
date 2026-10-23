@@ -85,14 +85,16 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
 The base ref is the first match of:
 
 1. `--base <ref>`
-2. the pull request target branch from CI (`CHANGE_TARGET`, `GITHUB_BASE_REF` or
-   `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`)
+2. the pull request target branch from CI (`CHANGE_TARGET`, `GITHUB_BASE_REF`,
+   `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`, `SYSTEM_PULLREQUEST_TARGETBRANCH`,
+   `BITBUCKET_PR_DESTINATION_BRANCH` or `BUILDKITE_PULL_REQUEST_BASE_BRANCH`)
 3. `base` in `nitpicker.config.json` (not `HEAD`, the branch you are on, or its commit)
 4. the remote's default branch (`refs/remotes/<remote>/HEAD`, using `upstream` if it exists and
    `origin` otherwise)
 5. `origin/main`, then `origin/master`
 
-In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`).
+In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`). Recipes for
+GitHub Actions (with a composite action), GitLab CI and Jenkins are in [nitpicker in CI](ci.md).
 
 **Dependencies of the base.** The base is checked out in a temporary worktree. The package
 manager's folder is the nearest folder from the project up to the repository root that holds a
@@ -139,7 +141,9 @@ outside the roots the preset checks. For TypeScript those are `layout.sourceRoot
 Python, `python.sourceRoots`; for Java and Kotlin, the build's source sets (`src/<set>/java` or
 `src/<set>/kotlin` of a module, or a directory the build file declares). To leave files unchecked,
 list them in `exclude`. Choose another directory
-with `--output <dir>`. Set `NO_COLOR` to disable colored console output.
+with `--output <dir>`. Set `NO_COLOR` to disable colored console output. On GitHub Actions the run also
+writes a job summary and `::error` annotations for the new enforceable findings (see
+[Job summary and annotations](ci.md#job-summary-and-annotations)).
 
 ## Exit codes
 
@@ -888,7 +892,7 @@ entry with the same shape as TypeScript's, for example
 
 Set `"preset": "javascript"` to gate a project of plain `.js`, `.mjs` and `.cjs` files with the same
 checks, rules and exit codes as the TypeScript preset; the keys `layout`, `exceptions` and `tools` work the same.
-It is never auto-detected. Types are written as JSDoc and checked by TypeScript with `allowJs` and
+It is never auto-detected. CI needs what the TypeScript preset needs ([nitpicker in CI](ci.md#toolchains-by-preset)). Types are written as JSDoc and checked by TypeScript with `allowJs` and
 `checkJs`: nitpicker generates the tsconfig, layered over your `tsconfig.json` or `jsconfig.json` when you
 have one. `typescript` and `vitest` are peers as for TypeScript.
 
