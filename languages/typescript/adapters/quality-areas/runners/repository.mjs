@@ -23,6 +23,7 @@ import { rootsPattern } from '../../../../../core/tooling/jscpd/skipped-folders.
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
 import { renamedDuplicatesReport } from '../../../preset/duplicates/renamed.mjs';
+import { runDesignSignals } from './program/design-signals.mjs';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mjs';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mjs';
 import { baselinePathsOf } from '../../../../../shared/rules/facts/baseline.mjs';
@@ -135,6 +136,7 @@ export async function runStructure(options) {
     ...functionFindings,
     ...typescriptStructureProjectFindings({ ...options, baselinePaths: baselinePathsOf(options) }),
     ...(await runUnusedApi(options)),
+    ...(await runDesignSignals(options)),
   ];
 }
 

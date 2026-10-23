@@ -116,12 +116,25 @@ function compilerOptions({ parsed, packages, projectRoot, layout }) {
   };
 }
 
+function keepsFile({ projectRoot, layout, withoutTests }, file) {
+  const relative = path.relative(projectRoot, file).split(path.sep).join('/');
+  return !withoutTests || !(layout.isTestFile(relative) || layout.isTestFixture(`/${relative}`));
+}
+
 /**
  * One program over the project's files (from the layered policy tsconfig, so `paths`, `extends` and
  * references resolve as the type check does), its root configs and scripts, and the code of the
  * other workspace packages. Ambient `types` are left out: imported modules still bring theirs.
+ * `withoutTests` leaves the layout's test files and fixtures out of the program, for a pass that
+ * only reads production code.
  */
-export function createProjectProgram({ projectRoot, configPath, packagesInfo, layout }) {
+export function createProjectProgram({
+  projectRoot,
+  configPath,
+  packagesInfo,
+  layout,
+  withoutTests = false,
+}) {
   const parsed = parseConfig(configPath, projectRoot);
   const siblings = packagesInfo.packages.filter(
     ({ dir }) => dir !== projectRoot && !projectRoot.startsWith(`${dir}${path.sep}`),
@@ -136,7 +149,9 @@ export function createProjectProgram({ projectRoot, configPath, packagesInfo, la
     ),
   ]);
   return ts.createProgram({
-    rootNames: [...rootNames],
+    rootNames: [...rootNames].filter((file) =>
+      keepsFile({ projectRoot, layout, withoutTests }, file),
+    ),
     options: compilerOptions({ parsed, packages: packagesInfo.packages, projectRoot, layout }),
   });
 }
