@@ -47,6 +47,21 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
   error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the
   error or return a failure that carries it.
+- Async: inside `async def`, `await asyncio.sleep(...)`, an async client (`httpx.AsyncClient`),
+  `asyncio.create_subprocess_exec`, and `await asyncio.to_thread(...)` for other blocking calls. No
+  `timeout` parameter: the caller wraps the call in `async with asyncio.timeout(...)`, and the scope
+  holds an `await`. Wait on an `asyncio.Event`, not a sleep loop.
+- Time: aware datetimes only: `datetime(2026, 1, 1, tzinfo=timezone.utc)`,
+  `datetime.now(tz=timezone.utc)`, `datetime.fromtimestamp(value, tz=timezone.utc)`. Parse with
+  `%z`, `.replace(tzinfo=...)` for a known zone, or `date.fromisoformat(text)` for a date-only
+  string. A date is `datetime.now(tz=zone).date()` in the zone it is meant in, not `date.today()`.
+  Domain code takes the clock as a parameter; tests pass a fixed aware datetime or freeze the time.
+- Loggers: `logging.getLogger(__name__)`, never `logging.Logger(...)` or the root `logging.info(...)`;
+  `logger.exception(...)` only inside an `except`, `logging.WARNING` rather than `WARN`.
+- Debugging and processes: remove debugger imports and breakpoints before committing. Pass
+  `check=True` to `subprocess.run`, or `check=False` and handle `returncode`.
+- Loops and calls: bind a new name rather than reassigning the loop variable; pass a function
+  itself (`key=str`), not `lambda x: str(x)`; one `max(a, b, c)`, not nested calls.
 - Records: `@dataclass(frozen=True)`, and `dataclasses.replace` for a changed copy. The project's
   validation library (pydantic by default) only in an `adapters/` package, where untrusted input is
   parsed once; pass frozen dataclasses on from there.

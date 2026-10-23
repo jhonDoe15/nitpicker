@@ -342,7 +342,7 @@ describe.skipIf(!enabled)('real clock, randomness and network in unit tests', ()
       [
         'a fixed datetime',
         inTests(
-          'from datetime import datetime\n\n\ndef test_a():\n    assert datetime(2026, 1, 1).year\n',
+          'from datetime import datetime, timezone\n\n\ndef test_a():\n    assert datetime(2026, 1, 1, tzinfo=timezone.utc).year\n',
         ),
         [],
       ],
