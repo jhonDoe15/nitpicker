@@ -232,4 +232,47 @@ describe.skipIf(!enabled)('retry-without-idempotency forms', () => {
     ]);
     expect(actual).toEqual(expected);
   });
+
+  it('reads a Celery task that retries itself as a retry scope', () => {
+    const [actual, expected] = outcomes([
+      [
+        'autoretry_for, retry_backoff and self.retry',
+        code(
+          'from celery import shared_task',
+          'from kafka import KafkaProducer',
+          '',
+          'producer = KafkaProducer()',
+          '',
+          '',
+          '@shared_task(autoretry_for=(OSError,), max_retries=3)',
+          'def a(event):',
+          '    producer.send("a", event)',
+          '',
+          '',
+          '@shared_task(retry_backoff=True)',
+          'def b(event):',
+          '    producer.send("b", event)',
+          '',
+          '',
+          '@shared_task(bind=True)',
+          'def c(self, event):',
+          '    try:',
+          '        producer.send("c", event)',
+          '    except OSError as error:',
+          '        raise self.retry(exc=error)',
+          '',
+          '',
+          '@shared_task(bind=True)',
+          'def d(self, event):',
+          '    producer.send("d", event)',
+        ),
+        [
+          'retry-without-idempotency:9 producer.send()|message|@shared_task(autoretry_for)',
+          'retry-without-idempotency:14 producer.send()|message|@shared_task(retry_backoff)',
+          'retry-without-idempotency:20 producer.send()|message|@shared_task with self.retry',
+        ],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
+  });
 });
