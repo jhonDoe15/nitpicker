@@ -2,14 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
 import { validateConfig } from '../validate.mjs';
 import { looseningKindOfSetting } from '../../policy-changes/loosenings.mjs';
+import { DESIGN_RULE_LANGUAGES } from '../../../shared/project-rules/design/design-rules.mjs';
+import { registeredFactRules } from '../../../shared/project-rules/fact-rules.mjs';
 
 const session = { type: 'Session', open: ['begin'], close: ['commit', 'rollback'] };
+const PRESETS = Object.keys(DESIGN_RULE_LANGUAGES);
+const runsProtocols = (preset) => registeredFactRules(preset).includes('protocol-contract');
 
 describe('protocols config', () => {
   it.each([
     [{ protocols: [] }],
     [{ protocols: [session, { ...session, type: 'Lock', steps: ['write'], reason: 'one owner' }] }],
-    [{ preset: 'python', protocols: [session] }],
   ])('accepts %j', (config) => {
     expect(validateConfig(config)).toEqual(config);
   });
@@ -28,13 +31,25 @@ describe('protocols config', () => {
     [{ protocols: [{ ...session, reason: '' }] }, /"protocols\[0\].reason" must be a non-empty/],
     [{ protocols: [{ ...session, reason: 3 }] }, /"protocols\[0\].reason" must be a non-empty/],
     [{ protocols: [session, { ...session, close: ['end'] }] }, /"protocols\[1\].type" repeats/],
-    [
-      { preset: 'java', protocols: [session] },
-      /"protocols" is not supported with "preset": "java"/,
-    ],
   ])('rejects %j', (config, message) => {
     expect(() => validateConfig(config)).toThrow(message);
   });
+
+  it.each(PRESETS.filter(runsProtocols))('accepts protocols with the %s preset', (preset) => {
+    expect(validateConfig({ preset, protocols: [session] })).toEqual({
+      preset,
+      protocols: [session],
+    });
+  });
+
+  it.each(PRESETS.filter((preset) => !runsProtocols(preset)))(
+    'rejects protocols with the %s preset, which does not run protocol-contract yet',
+    (preset) => {
+      expect(() => validateConfig({ preset, protocols: [session] })).toThrow(
+        `"protocols" is not supported with "preset": "${preset}"`,
+      );
+    },
+  );
 
   it('hands the contracts to the analyzers in the head policy', () => {
     expect(resolveHeadPolicy({ protocols: [session] }).protocols).toEqual([session]);
