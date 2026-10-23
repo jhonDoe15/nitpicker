@@ -182,6 +182,7 @@ function runAndCombine(context) {
     configOverrides: settings.configOverrides,
     policyChanges: context.baseSetup.policyChanges,
     policyLoosenings: context.baseSetup.policyLoosenings,
+    policyKinds: context.baseSetup.policyKinds,
     policyDigest: context.baseSetup.policyDigest,
     acceptPolicyChange: settings.acceptPolicyChange,
     policyAcceptanceSource: settings.policyAcceptanceSource,
