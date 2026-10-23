@@ -3,6 +3,7 @@ import os
 from design.classes import classify, enum_cases
 from design.fields import class_fields, module_fields
 from design.published import is_published
+from design.references import module_references
 
 
 def is_exported(module, name):
@@ -19,7 +20,7 @@ def klass_exported(klass):
 
 def module_type(index, module):
     stem = os.path.splitext(os.path.basename(module.path))[0]
-    return {
+    fact = {
         "id": module.id,
         "file": module.path,
         "name": stem,
@@ -28,6 +29,10 @@ def module_type(index, module):
         "exported": True,
         "fields": module_fields(index, module),
     }
+    references = module_references(index, module)
+    if references:
+        fact["references"] = references
+    return fact
 
 
 def class_type(index, klass):
