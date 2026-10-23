@@ -53,8 +53,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
 - Names and comments: name files, packages and classes for their job (`price_rounding.py`), never
-  `utils`, `helpers`, `common`, `misc`, `miscellaneous` or `*Manager` (a role such as `SessionManager`
-  is fine); pure logic shared between features goes in
+  `utils`, `helpers`, `common`, `misc`, `miscellaneous` or `*Manager`, also not before `mixin`, `module`
+  or `base` (`HelperMixin`, `util_functions`); a role such as `SessionManager` is fine; pure logic shared between features goes in
   `shared/` under such a name. No commented-out code, and a `TODO` or `FIXME` carries an issue
   (`# TODO(#123): ...`, `# TODO PROJ-123: ...` or a link).
 - Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   ACCEPTED_MANAGER_ROLES,
+  CONTAINER_NAME_WORDS,
   GENERIC_NAME_WORDS,
 } from '../../../../shared/naming/smell-words.mjs';
 
@@ -21,5 +22,9 @@ describe('the word lists of the Python name rule', () => {
     expect(pythonWords('ACCEPTED_MANAGER_WORDS').toSorted()).toEqual(
       ACCEPTED_MANAGER_ROLES.toSorted(),
     );
+  });
+
+  it('are the container words every preset looks past', () => {
+    expect(pythonWords('CONTAINER_WORDS').toSorted()).toEqual(CONTAINER_NAME_WORDS.toSorted());
   });
 });

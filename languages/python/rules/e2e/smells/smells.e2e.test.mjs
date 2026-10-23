@@ -99,12 +99,35 @@ describe.skipIf(!enabled)('generic-name', () => {
       ['a word inside a name', inFile('commonality.py', 'X = 1\n'), []],
       ['a version suffix', inFile('helpers_v2.py', 'X = 1\n'), ['generic-name:1 helpers_v2']],
       ['a digit suffix', inFile('order_utils2/a.py', 'X = 1\n'), ['generic-name:1 order_utils2/']],
-      ['a generic word before a noun', inFile('util_functions.py', 'X = 1\n'), []],
       [
-        'a mixin judged by its last word',
+        'a generic word before a noun',
+        inFile('util_functions.py', 'X = 1\n'),
+        ['generic-name:1 util_functions'],
+      ],
+      [
+        'a mixin',
         inFile('orders.py', 'class OrderHelperMixin:\n    pass\n'),
+        ['generic-name:1 OrderHelperMixin'],
+      ],
+      [
+        'a mixin of another mixin',
+        inFile('views.py', 'class OrderHelperMixin(LoginRequiredMixin):\n    pass\n'),
+        ['generic-name:1 OrderHelperMixin'],
+      ],
+      [
+        'a generic base class',
+        inFile('bases.py', 'class HelperBase:\n    pass\n'),
+        ['generic-name:1 HelperBase'],
+      ],
+      [
+        'mixins and bases named for their job',
+        inFile(
+          'models.py',
+          'class LoggingMixin:\n    pass\n\n\nclass TimestampMixin:\n    pass\n\n\nclass ModelBase:\n    pass\n',
+        ),
         [],
       ],
+      ['a container word alone', inFile('module.py', 'X = 1\n'), []],
       [
         'a nested class',
         inFile('orders.py', 'class Order:\n    class InnerManager:\n        pass\n'),
@@ -141,7 +164,11 @@ describe.skipIf(!enabled)('generic-name', () => {
         inFile('orders.py', 'def get_common_ancestor():\n    pass\n'),
         [],
       ],
-      ['a generic word before a container noun', inFile('helper_module.py', 'X = 1\n'), []],
+      [
+        'a generic word before a container noun',
+        inFile('helper_module.py', 'X = 1\n'),
+        ['generic-name:1 helper_module'],
+      ],
       ['a lock manager', inFile('locks.py', 'class ModuleLockManager:\n    pass\n'), []],
       [
         'a plural framework role',

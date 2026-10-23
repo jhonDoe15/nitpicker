@@ -78,6 +78,22 @@ describe('genericNames', () => {
     ['a backticked name', 'package demo.orders\n\nclass `FooUtils`\n', 'FooUtils'],
     ['a typealias', 'package demo.orders\n\ntypealias FooUtils = Bar\n', 'FooUtils'],
     ['a name with trailing digits', 'package demo.orders\n\nobject Utils2\n', 'Utils2'],
+    [
+      'a generic word before Mixin',
+      'package demo.orders\n\ninterface OrderHelperMixin\n',
+      'OrderHelperMixin',
+    ],
+    [
+      'a generic word before Base',
+      'package demo.orders\n\nabstract class HelperBase\n',
+      'HelperBase',
+    ],
+    ['a generic word before Module', 'package demo.orders\n\nobject UtilsModule\n', 'UtilsModule'],
+    [
+      'a generic mixin of another mixin',
+      'package demo.orders\n\ninterface OrderHelperMixin : LoginRequiredMixin\n',
+      'OrderHelperMixin',
+    ],
   ])('flags %s', (_name, source, subject) => {
     expect(found(genericNames, source)).toEqual([['GenericTypeName', 3, subject]]);
   });
@@ -92,6 +108,14 @@ describe('genericNames', () => {
     ['a word that only ends in the letters', 'package demo.orders\n\nclass Fulfillment\n'],
     ['a plural framework role', 'package demo.orders\n\nclass TransactionManagers\n'],
     ['a framework role typealias', 'package demo.orders\n\ntypealias LockManager = Foo\n'],
+    ['a mixin named for its job', 'package demo.orders\n\ninterface LoggingMixin\n'],
+    ['a timestamp mixin', 'package demo.orders\n\ninterface TimestampMixin\n'],
+    ['a base named for its job', 'package demo.orders\n\nabstract class ModelBase\n'],
+    [
+      'a framework role before a container word',
+      'package demo.orders\n\nclass SessionManagerModule\n',
+    ],
+    ['a container word alone', 'package demo.orders\n\nabstract class Base\n'],
   ])('passes %s', (_name, source) => {
     expect(found(genericNames, source)).toEqual([]);
   });
@@ -131,6 +155,13 @@ describe('genericNames', () => {
     ['trailing digits', 'Utils2.kt', 'fun copy() = 1\n', 'Utils2'],
     ['a version word', 'Utils_v2.kt', 'fun copy() = 1\n', 'Utils_v2'],
     ['an acronym before the word', 'IOUtils.kt', 'fun copy() = 1\n', 'IOUtils'],
+    ['a container word after it', 'UtilsMixin.kt', 'fun copy() = 1\n', 'UtilsMixin'],
+    [
+      'a lowercase container word after it',
+      'helper_functions.kt',
+      'fun copy() = 1\n',
+      'helper_functions',
+    ],
     [
       'a plural framework role of another word',
       'OrderManagers.kt',
@@ -145,6 +176,8 @@ describe('genericNames', () => {
     ['a source-set suffix', 'Platform.common.kt', 'expect fun platform(): String\n'],
     ['a framework role of functions', 'SessionManager.kt', 'fun open() = 1\n'],
     ['a plural framework role', 'LockManagers.kt', 'fun open() = 1\n'],
+    ['a container word after a job name', 'LoggingMixin.kt', 'fun log() = 1\n'],
+    ['a container word alone', 'Base.kt', 'fun log() = 1\n'],
     ['a framework role typealias', 'TransactionManager.kt', 'typealias TransactionManager = Foo\n'],
   ])('does not flag a file name with %s', (_name, file, source) => {
     expect(foundIn(file, `package demo\n\n${source}`)).toEqual([]);
