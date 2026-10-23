@@ -73,7 +73,7 @@ function ruleOf(caught, resolved) {
 
 export function swallowedHandlerFindings(files, { finding, declaredIn = files }) {
   return files.flatMap((file) =>
-    (file.catches ?? []).flatMap((caught) => {
+    (file.handlers ?? []).flatMap((caught) => {
       const resolved = resolve(file, caught.type, declaredIn);
       const reported = resolved === undefined ? undefined : ruleOf(caught, resolved);
       if (reported === undefined) {
