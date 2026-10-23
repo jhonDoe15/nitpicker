@@ -14,6 +14,8 @@ import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readSpringArchFindings } from '../spring-arch/spring-arch.mjs';
+import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
+import { inModule } from '../../builds/module-path.mjs';
 import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { methodText } from '../../../../shared/ingest/structure-report.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
@@ -217,8 +219,11 @@ function springArchFindings(context) {
     return [];
   }
   const locate = classLocator(context);
+  const { exceptions = [], modulePath } = context.classLimits;
+  const matches = exceptionMatcher(exceptions);
   return readSpringArchFindings(context.reportRoot, {
     resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
+    isExcepted: (rule, file) => file !== undefined && matches(rule, inModule(modulePath, file)),
   });
 }
 
