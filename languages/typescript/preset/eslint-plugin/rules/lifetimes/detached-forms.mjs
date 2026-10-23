@@ -68,29 +68,39 @@ function ownerFunction(node) {
   return null;
 }
 
+const AWAITED = { messageId: undefined };
+
+function formAt(sourceCode, node, step) {
+  if (node.type === 'AwaitExpression' && step.direct) {
+    return AWAITED;
+  }
+  if (node.type === 'UnaryExpression' && node.operator === 'void') {
+    return { messageId: 'detached', node };
+  }
+  if (node.type !== 'CallExpression') {
+    return undefined;
+  }
+  const messageId = callForm(sourceCode, node, step);
+  return messageId === undefined ? undefined : { messageId, node };
+}
+
 export function detachedForm(sourceCode, identifier, region) {
   const regionFunction = ownerFunction(region);
   let child = identifier;
   for (let node = identifier.parent; node !== null && node !== region; node = node.parent) {
-    const direct = ownerFunction(node) === regionFunction;
-    if (node.type === 'AwaitExpression' && direct) {
-      return undefined;
-    }
-    if (node.type === 'UnaryExpression' && node.operator === 'void') {
-      return { messageId: 'detached', node };
-    }
-    if (node.type === 'CallExpression') {
-      const messageId = callForm(sourceCode, node, child, direct);
-      if (messageId !== undefined) {
-        return { messageId, node };
-      }
+    const form = formAt(sourceCode, node, {
+      child,
+      direct: ownerFunction(node) === regionFunction,
+    });
+    if (form !== undefined) {
+      return form === AWAITED ? undefined : form;
     }
     child = node;
   }
   return undefined;
 }
 
-function callForm(sourceCode, call, child, direct) {
+function callForm(sourceCode, call, { child, direct }) {
   if (isTimer(call.callee) && isDeferredArgument(call, child)) {
     return 'deferred';
   }
