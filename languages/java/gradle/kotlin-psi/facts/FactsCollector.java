@@ -20,6 +20,7 @@ public final class FactsCollector {
   private final Declarations declarations;
   private final Calls calls;
   private final Predicates predicates;
+  private final Updates updates;
   private final Bodies bodies;
 
   public FactsCollector(KtFile file, String text, String relative, boolean test, Set<String> nothing) {
@@ -28,6 +29,7 @@ public final class FactsCollector {
     this.declarations = new Declarations(state);
     this.calls = new Calls(state);
     this.predicates = new Predicates(state);
+    this.updates = new Updates(state);
     this.bodies = new Bodies(text, test, nothing, state.namesOf(HANDLER));
   }
 
@@ -105,6 +107,7 @@ public final class FactsCollector {
     } else if (element instanceof KtConstructorDelegationCall) {
       calls.constructorDelegation((KtConstructorDelegationCall) element, frame);
     } else if (element instanceof KtBinaryExpression) {
+      updates.assignment((KtBinaryExpression) element, frame);
       predicates.binary((KtBinaryExpression) element, frame);
     } else if (element instanceof KtDotQualifiedExpression) {
       predicates.containsForm((KtDotQualifiedExpression) element, frame);

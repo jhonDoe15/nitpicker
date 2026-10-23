@@ -244,7 +244,8 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`,
 `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
-`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `unused-option`), a class limit, a file
+`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/NonAtomicUpdateAcrossSuspension`,
+`unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
 `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown` or `changed-branch-coverage`
@@ -444,6 +445,7 @@ skipped with a note on stderr.
 | `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`            | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                           |
 | `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                   |
 | `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                      |
+| `NonAtomicUpdateAcrossSuspension`        | `review-rules/main/suspended-updates.mjs`   | a `var` property updated from a value read before a suspend call (`total += balances.fetch()`), so a concurrent coroutine's update is overwritten                                                                                                                 |
 | `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                      |
 | `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                              |
 | `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                          |
@@ -482,6 +484,32 @@ Limits, all chosen to flag less rather than guess:
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Only the primary-constructor properties of a `data class` and the
   properties of a `@ConfigurationProperties` class are inspected.
+- Update across a suspension (`pmd/NonAtomicUpdateAcrossSuspension`, the Kotlin form of the TypeScript
+  `require-atomic-updates` and the Python `atomic-update-across-await`; Kotlin has no `await`
+  expression, so the suspension is a suspend call in the value of an assignment). The target is a bare
+  name or `this.name` that is a `var` of the enclosing class (a body property or a `var` constructor
+  parameter, not delegated) or a top-level `var` of the same file, and not shadowed by a parameter or
+  local of the function. `+=`, `-=`, `*=`, `/=` and `%=` read the property before the call, so any
+  recognized suspend call in the value is a finding; with `=` the value must read the same property
+  before the call (`total = total + load()`) and contain no `if`, `when`, `try`, `?:`, `&&` or `||`.
+  A suspend call is recognized only from the syntax tree, with no type resolution: an unqualified or
+  `this.` call to a function that the class declares `suspend` (every overload is `suspend`), or to a
+  top-level `suspend` function of the same package from a class without supertypes; `withContext`,
+  `withTimeout`, `withTimeoutOrNull`, `coroutineScope`, `supervisorScope` and `awaitAll` with an import
+  from `kotlinx.coroutines` and no function of the project with that name; `async { ... }.await()`;
+  and a call on a bare name whose type is declared in the code (a constructor property, a property
+  with a written type or a parameter of the function): a class of the project that declares the
+  function `suspend`, or the kotlinx types `Deferred`/`CompletableDeferred` (`await`),
+  `Channel`/`ReceiveChannel` (`receive`) and `Flow`/`StateFlow`/`SharedFlow` (`first`, `single`,
+  `last`, `count`, `fold`, `reduce`). Everything else is left alone: a call on a receiver whose type
+  is inferred (`val repository = Repository()`), on a longer chain or on a type from outside the
+  project, a function with a non-`suspend` overload, a local `var` shared by `launch` blocks, and an
+  update of a property of another object (`ledger.total += load()`). An update inside a `withLock` or
+  `withPermit` block passes; a confined dispatcher (`limitedParallelism(1)`) or an actor is not
+  seen, so state that only one coroutine touches at a time takes a reviewed `exceptions` entry. Test
+  files are checked like main files. Java has no suspension inside an expression, so the Java preset
+  has no equivalent. detekt 1.23.8 (default config, including its `coroutines` rule set and its type
+  resolution) has no rule for this hazard, and the Kotlin preset runs on Gradle only.
 - Spring context: any injected or mock bean, `MockMvc`, `WebTestClient`, `TestRestTemplate`,
   `CapturedOutput`, `ApplicationEvents`, `ApplicationContext` or a `webEnvironment` with a random or defined
   port counts as use.
