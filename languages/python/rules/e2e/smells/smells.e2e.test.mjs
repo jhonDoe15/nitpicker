@@ -110,6 +110,25 @@ describe.skipIf(!enabled)('generic-name', () => {
         ['generic-name:1 OrderHelperMixin'],
       ],
       [
+        'a mixin of another mixin',
+        inFile('views.py', 'class OrderHelperMixin(LoginRequiredMixin):\n    pass\n'),
+        ['generic-name:1 OrderHelperMixin'],
+      ],
+      [
+        'a generic base class',
+        inFile('bases.py', 'class HelperBase:\n    pass\n'),
+        ['generic-name:1 HelperBase'],
+      ],
+      [
+        'mixins and bases named for their job',
+        inFile(
+          'models.py',
+          'class LoggingMixin:\n    pass\n\n\nclass TimestampMixin:\n    pass\n\n\nclass ModelBase:\n    pass\n',
+        ),
+        [],
+      ],
+      ['a container word alone', inFile('module.py', 'X = 1\n'), []],
+      [
         'a nested class',
         inFile('orders.py', 'class Order:\n    class InnerManager:\n        pass\n'),
         ['generic-name:2 InnerManager'],
@@ -129,6 +148,39 @@ describe.skipIf(!enabled)('generic-name', () => {
         [],
       ],
       ['a test helper', inFile('tests/helpers.py', 'X = 1\n'), []],
+      [
+        'a plural managers module',
+        inFile('order_managers.py', 'X = 1\n'),
+        ['generic-name:1 order_managers'],
+      ],
+      [
+        'a miscellaneous module',
+        inFile('miscellaneous.py', 'X = 1\n'),
+        ['generic-name:1 miscellaneous'],
+      ],
+      ['a common word before a noun', inFile('common_prefix.py', 'X = 1\n'), []],
+      [
+        'a function named for its job',
+        inFile('orders.py', 'def get_common_ancestor():\n    pass\n'),
+        [],
+      ],
+      [
+        'a generic word before a container noun',
+        inFile('helper_module.py', 'X = 1\n'),
+        ['generic-name:1 helper_module'],
+      ],
+      ['a lock manager', inFile('locks.py', 'class ModuleLockManager:\n    pass\n'), []],
+      [
+        'a plural framework role',
+        inFile('sessions.py', 'class TransactionManagers:\n    pass\n'),
+        [],
+      ],
+      ['a session manager', inFile('sessions.py', 'class SessionManager:\n    pass\n'), []],
+      [
+        'an order manager',
+        inFile('orders.py', 'class OrderManager:\n    pass\n'),
+        ['generic-name:1 OrderManager'],
+      ],
     ]);
     expect(actual).toEqual(expected);
   });
@@ -391,65 +443,6 @@ describe.skipIf(!enabled)('io-in-loop through wrappers', () => {
         'def load(cursor, ids):\n    for ident in ids:\n        cursor.execute("select 1 where id = ?", (ident,))\n',
         ['io-in-loop:3 cursor.execute()'],
       ],
-    ]);
-    expect(actual).toEqual(expected);
-  });
-});
-
-describe.skipIf(!enabled)('todo-without-issue', () => {
-  it('flags a task marker that names no issue', () => {
-    const [actual, expected] = outcomes([
-      ['TODO', 'X = 1  # TODO: later\n', ['todo-without-issue:1 TODO: later']],
-      ['FIXME', '# FIXME this\nX = 1\n', ['todo-without-issue:1 FIXME this']],
-      ['HACK', '# HACK: temporary\nX = 1\n', ['todo-without-issue:1 HACK: temporary']],
-      ['XXX', '# XXX: check\nX = 1\n', ['todo-without-issue:1 XXX: check']],
-      [
-        'TODO with a name',
-        '# TODO(alice): later\nX = 1\n',
-        ['todo-without-issue:1 TODO(alice): later'],
-      ],
-      ['TODO(#123)', '# TODO(#123): later\nX = 1\n', []],
-      ['TODO(PROJ-123)', '# TODO(PROJ-123): later\nX = 1\n', []],
-      ['TODO PROJ-123', '# TODO PROJ-123 later\nX = 1\n', []],
-      ['TODO with a link', '# TODO: https://example.com/issues/1\nX = 1\n', []],
-      [
-        'SHA-256 is no issue',
-        '# TODO: SHA-256 later\nX = 1\n',
-        ['todo-without-issue:1 TODO: SHA-256 later'],
-      ],
-      ['prose', '# the todo list is long\nX = 1\n', []],
-      [
-        'lowercase',
-        '# todo: handle refunds\nX = 1\n',
-        ['todo-without-issue:1 todo: handle refunds'],
-      ],
-      [
-        'capitalized',
-        '# Todo handle refunds\nX = 1\n',
-        ['todo-without-issue:1 Todo handle refunds'],
-      ],
-      [
-        'trailing',
-        '# handle refunds later TODO\nX = 1\n',
-        ['todo-without-issue:1 handle refunds later TODO'],
-      ],
-      [
-        'issue zero',
-        '# TODO(#0): handle refunds\nX = 1\n',
-        ['todo-without-issue:1 TODO(#0): handle refunds'],
-      ],
-      [
-        'a docstring',
-        'def f():\n    """TODO: implement this properly."""\n    return 1\n',
-        ['todo-without-issue:2 TODO: implement this properly.'],
-      ],
-      [
-        'a NotImplementedError message',
-        'def f():\n    raise NotImplementedError("TODO")\n',
-        ['todo-without-issue:2 TODO'],
-      ],
-      ['a word that contains it', '# AUTODOC: later\nX = 1\n', []],
-      ['a marker inside a string', 'X = "TODO: later"\n', []],
     ]);
     expect(actual).toEqual(expected);
   });

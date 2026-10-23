@@ -138,6 +138,17 @@ export const kotlinGuardCases = [
     allowed: '// TODO(#12): fix the rounding\nfun round(value: Double): Long = Math.round(value)\n',
   },
   {
+    id: 'todoSecondMarker',
+    rule: 'detekt.style.ForbiddenComment',
+    message:
+      'A TODO or FIXME needs an issue reference: write `TODO(#123): ...` or `TODO PROJ-123: ...`, or do the work now.',
+    allowedForm: 'TODO(#123)',
+    banned:
+      '// TODO(#12) split this, FIXME: unreferenced second marker\nfun round(value: Double): Long = Math.round(value)\n',
+    allowed:
+      '// TODO(#12) split this, FIXME(#13) second marker\nfun round(value: Double): Long = Math.round(value)\n',
+  },
+  {
     id: 'repeatedLiteral',
     rule: 'detekt.complexity.StringLiteralDuplication',
     message:
