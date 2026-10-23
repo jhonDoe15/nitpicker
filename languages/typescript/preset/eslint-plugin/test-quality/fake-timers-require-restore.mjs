@@ -9,6 +9,7 @@ import { fakeTimerChange } from '../rules/runner-apis/runner-doubles.mjs';
 
 const RESTORING_HOOKS = new Set(['afterEach', 'afterAll', 'after', 'onTestFinished']);
 const USER_EVENT_PACKAGE = '@testing-library/user-event';
+const NODE_TEST_MODULE = 'node:test';
 const STUB_RESTORES = new Map([
   ['stubGlobal', 'unstubAllGlobals'],
   ['stubEnv', 'unstubAllEnvs'],
@@ -46,10 +47,20 @@ function isRestoringHook(node) {
   );
 }
 
+function isRootHookMethod(node) {
+  return (
+    node.type === 'Property' &&
+    node.key.type === 'Identifier' &&
+    RESTORING_HOOKS.has(node.key.name) &&
+    node.parent.type === 'ObjectExpression'
+  );
+}
+
 function isRestoredByHookOrFinally(call) {
   return ancestorsOf(call).some(
     (ancestor) =>
       isRestoringHook(ancestor) ||
+      isRootHookMethod(ancestor) ||
       (ancestor.type === 'TryStatement' && ancestor.finalizer?.range[0] <= call.range[0]),
   );
 }
@@ -61,9 +72,13 @@ function vitestMember(apis, node) {
   return kindOfObject(apis, node.object) === 'vitest' ? propertyName(node) : undefined;
 }
 
-function isTestContextClock(call) {
+function isTestContextClock(call, testModules) {
   const timers = call.callee.object;
-  return timers?.type === 'MemberExpression' && timers.object.type === 'MemberExpression';
+  const mock = timers?.type === 'MemberExpression' ? timers.object : undefined;
+  return (
+    mock?.type === 'MemberExpression' &&
+    !(mock.object.type === 'Identifier' && testModules.has(mock.object.name))
+  );
 }
 
 function restoresIn(apis, node) {
@@ -77,9 +92,9 @@ function restoresIn(apis, node) {
   });
 }
 
-function trackedCall(apis, node, checkedStubs) {
+function trackedCall(apis, node, { checkedStubs, testModules }) {
   const change = fakeTimerChange(apis, node);
-  if (change?.fake === true && !isTestContextClock(node)) {
+  if (change?.fake === true && !isTestContextClock(node, testModules)) {
     return { node, kind: change.kind, restoredBy: `clock:${change.kind}` };
   }
   const stub = vitestMember(apis, node.callee);
@@ -128,14 +143,20 @@ export const rule = {
     const calls = [];
     const restored = new Set();
     const state = { usesUserEvent: false };
+    const testModules = new Set();
     return {
       ...visitors,
       ImportDeclaration(node) {
         visitors.ImportDeclaration(node);
         state.usesUserEvent ||= node.source.value === USER_EVENT_PACKAGE;
+        if (node.source.value === NODE_TEST_MODULE) {
+          for (const specifier of node.specifiers) {
+            testModules.add(specifier.local.name);
+          }
+        }
       },
       CallExpression(node) {
-        const tracked = trackedCall(apis, node, checkedStubs);
+        const tracked = trackedCall(apis, node, { checkedStubs, testModules });
         if (tracked !== undefined) {
           calls.push(tracked);
         }

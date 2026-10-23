@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-const ENVIRONMENT_DIRECTIVE = /@(?:vitest|jest)-environment\s+([\w-]+)\b/u;
+const ENVIRONMENT_DIRECTIVE = /@(?:vitest|jest)-environment\s+(\S+)/u;
 const DOM_ENVIRONMENT_NAME = /jsdom|happy-dom/u;
 
 export function projectText(projectRoot, file) {

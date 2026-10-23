@@ -15,7 +15,29 @@ function isBooleanLiteral(node) {
 }
 
 function isFixedSwitchOff(value) {
-  return value?.type === 'Literal' ? Boolean(value.value) : value?.type === 'TemplateLiteral';
+  if (value?.type === 'TemplateLiteral') {
+    return value.expressions.length === 0;
+  }
+  return value?.type === 'Literal' && Boolean(value.value);
+}
+
+function isReason(argument) {
+  return (
+    argument === undefined ||
+    (argument.type === 'Literal' && typeof argument.value === 'string') ||
+    argument.type === 'TemplateLiteral'
+  );
+}
+
+function isSubtestCall(node) {
+  const { callee } = node;
+  return (
+    callee.type === 'MemberExpression' &&
+    !callee.computed &&
+    callee.object.type === 'Identifier' &&
+    callee.property.name === 'test' &&
+    callbackOf(node) !== undefined
+  );
 }
 
 function switchedOffOption(call) {
@@ -45,12 +67,16 @@ function contextNames(callback) {
 
 function isSwitchOffCall(statement, names) {
   const expression = statement.type === 'ExpressionStatement' ? statement.expression : undefined;
-  const callee = expression?.type === 'CallExpression' ? expression.callee : undefined;
-  if (callee?.type === 'Identifier') {
+  const call = expression?.type === 'CallExpression' ? expression : undefined;
+  if (call === undefined || !isReason(call.arguments[0])) {
+    return false;
+  }
+  const { callee } = call;
+  if (callee.type === 'Identifier') {
     return names.destructured.has(callee.name);
   }
   return (
-    callee?.type === 'MemberExpression' &&
+    callee.type === 'MemberExpression' &&
     !callee.computed &&
     SWITCH_OFF_CALLS.has(callee.property.name) &&
     (callee.object.type === 'ThisExpression' ||
@@ -104,7 +130,7 @@ export const rule = {
         ) {
           context.report({ node: callee.property, messageId: 'literalCondition' });
         }
-        if (!isCaseCall(node) && !isSuiteCall(node)) {
+        if (!isCaseCall(node) && !isSuiteCall(node) && !isSubtestCall(node)) {
           return;
         }
         const option = switchedOffOption(node);

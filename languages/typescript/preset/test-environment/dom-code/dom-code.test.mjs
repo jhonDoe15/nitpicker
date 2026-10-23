@@ -139,4 +139,13 @@ describe('DOM environment directives in test files', () => {
 
     expect(hasDomDirectiveTests(layout, projectWith({ 'tests/a.test.js': nodeFirst }))).toBe(false);
   });
+
+  it.each(['@happy-dom/jest-environment', '<rootDir>/env/jsdom.js', './jsdom-env.js'])(
+    'finds a DOM environment named by the package or path %s',
+    (environment) => {
+      const root = projectWith({ 'tests/a.test.js': directive('jest', environment) });
+
+      expect(hasDomDirectiveTests(layout, root)).toBe(true);
+    },
+  );
 });

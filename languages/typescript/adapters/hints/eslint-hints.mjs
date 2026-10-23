@@ -68,7 +68,7 @@ const ASSERT_THROWS_HINT =
   ' In a test, assert a failure with `assert.throws(() => run(), Specific)` or `await assert.rejects(promise, Specific)` (Chai: `expect(() => run()).to.throw(Specific)`) instead of asserting inside a `catch`.';
 
 const NODE_TEST_HINT =
-  ' nitpicker runs this project\'s tests with Vitest, which does not collect node:test files. Import from `vitest`, or, if the project runs its tests with node:test, set "tools.tests.runner" to "node" in nitpicker.config.json.';
+  ' nitpicker runs this project\'s tests with Vitest, which does not collect node:test files. Import from `vitest`, or, if the project runs its tests with node:test, set "tools.tests.runner" to "node" in nitpicker.config.json. An exception fits only a file that must stay on node:test while the rest of the project runs on Vitest.';
 
 const FLOATING_PROMISE_TEXT = /^Promises must be awaited/u;
 
