@@ -66,6 +66,10 @@ Before you change code other modules use, or fix a bug, read
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
   members and parameters.
+- Secrets (nitpicker's own `kotlin-source` checks, not detekt): never put a secret literal in a
+  `password`, `token`, `apiKey` or `secret` name, map entry or fallback (`?: "..."`, `getOrDefault`);
+  read it from the environment or a secrets manager. Never pass a secret to a log call, `println`,
+  `System.out`/`System.err` or an exception message: log that it is set, or a masked tail.
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`

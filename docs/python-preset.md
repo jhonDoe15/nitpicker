@@ -768,13 +768,43 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - `generic-name` reports a file, a folder or a top-level class whose last word is `util`, `utils`,
   `helper`, `helpers`, `manager`, `common`, `misc` and the like; a class that extends a type with the
   same ending (`class SessionManager(CacheManager)`) is not reported.
-- `hardcoded-secret` reports a secret-looking string (six characters or more with letters and
-  digits, or three character classes) assigned to a name ending in `password`, `token`, `secret`,
-  `api_key`, `credentials` and similar, also as a parameter default, keyword argument, dictionary
-  entry or `os.getenv` fallback; `credential-shape` reports strings shaped like an AWS key, a GitHub
-  or Slack token, a private key header, a URL with `user:password@` or a `Bearer` value anywhere;
-  `secret-in-log` reports such a name passed to a logger call. Placeholders, environment variable
-  names, header names and URLs are not secrets.
+- `hardcoded-secret` reports a secret string assigned to a name ending in `password`, `passwd`, `pwd`,
+  `passphrase`, `secret`, `token`, `credentials`, `api_key`, `private_key`, `access_key`, `secret_key`,
+  `auth_key`, `signing_key`, `encryption_key`, `hmac_key` or `jwt_key` (a trailing `value`, `raw`,
+  `str`, `string`, `text` or `plain` is ignored; tokenizer marker tokens such as `eos_token` and
+  `pad_token` are not secrets). The value rules are shared with the other presets
+  (`shared/naming/secret-words.mjs`, mirrored in `rules/credentials/spec.py`): six characters or more
+  with letters and digits, or three character classes; for a `password`, `passwd` or `passphrase`
+  name also eight characters or more with a lowercase letter followed by an uppercase one
+  (`CorrectHorseBatteryStaple`, not a single word such as `Elephantine` or an all-lowercase
+  `hunterhunter`). Not secrets: placeholders (`changeme`, `<...>`, `${...}`, `$NAME`, `{{...}}`,
+  `{name}`, `%s`, `%(name)s`, `:name`, `****1234`), environment variable names, header names, lowercase
+  paths and message keys (`prod/db-creds-v2`, `errors.token.expired_v2`, `/etc/app/creds.json`),
+  regular expressions (`^...$`), URLs, a value equal to the name and an identifier that contains a
+  secret word (`extra_token_1`, `newPassword`); a credential-shaped value is left to
+  `credential-shape`. Where: a variable (also through `:=` and tuple unpacking), attribute,
+  parameter default, keyword argument, dictionary entry, `setattr(obj, "password", ...)`, a subscript
+  (`os.environ["DB_PASSWORD"] = ...`, `config["api_key"] = ...`), a `field(default=...)`, a
+  `SecretStr(...)` or `SecretBytes(...)`, the `return` of a secret-named function or property without
+  parameters, a literal built from parts, `bytes`, `.encode()` or `str()`, the literal that opens the
+  value (`"...".strip()`, `"..." + suffix`, not `"...".format(...)`, `.join`, `.split` and other calls
+  that make another value), or a fallback: `x or "..."`, either branch of a conditional, and the
+  default of a settings read with a secret key or assigned to a secret name: `os.getenv`,
+  `os.environ.get`/`setdefault`/`pop`, `get`/`getenv`/`setdefault`/`pop`/`str` on a receiver named
+  `env`, `environ`, `environment`, `secrets` or `settings`, `config(k, default=...)` (python-decouple),
+  `env(k, ...)` (environs) and `add_argument("--password", default=...)`. Members of an `Enum` class
+  are skipped. `credential-shape` reports, anywhere, strings shaped like an AWS key, a GitHub or Slack
+  token, a `sk_live_`/`sk-proj-` key, a private key header, a `django-insecure-` key, a URL with
+  `user:password@`, a `password=` parameter or a `Bearer`/`Basic`/`Token` value. `secret-in-log`
+  reports such a name (not `has_*`/`is_*`; a constant name only when it is a key that is read, as in
+  `os.environ["API_TOKEN"]` or `os.getenv("API_TOKEN")`) passed to a logger call, `print`,
+  `pprint.pprint`, `sys.stdout.write`, `sys.stderr.write`, `click.echo`, `click.secho`,
+  `warnings.warn` or the exception of a `raise`: as an argument, attribute (not a member of a
+  `tokenizer`), subscript, `.get("token")`, keyword argument or `extra` entry whose value is not a
+  status, in an f-string, `%` or `.format` text, through `:=`, or wrapped in `str()`;
+  `token is not None` and `len(token)` are fine. Test files are skipped, as in the other presets. A
+  module name used as a key of a documentation table (`'pwd': 'pwd#module-pwd'`) is a false
+  positive; add an exception for the file.
 - `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
   comprehension; `asyncio.gather` over a comprehension, a paging loop (the condition reads a
   variable the body assigns) and a retry (a `try` in the loop that returns on success) are not.
