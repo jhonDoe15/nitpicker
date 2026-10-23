@@ -10,7 +10,9 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { checked, command, createConsumer, write } from '../lib/consumer.mjs';
+import { readAgentResult } from '../lib/agent-result.mjs';
+import { command, write } from '../lib/consumer.mjs';
+import { buildToolOf, defaultAcceptance, presetOf } from '../lib/presets.mjs';
 import { loadTree } from '../detectors/tree.mjs';
 import { defaultDetectors } from './detectors.mjs';
 
@@ -24,26 +26,38 @@ const DEFAULT_GATE = ['npx', '--no-install', 'nitpicker', '--base', 'main'];
 const DEFAULT_AGENT_TIMEOUT_MS = 30 * 60_000;
 const GATE_TIMEOUT_MS = 30 * 60_000;
 
+const filesUnder = (directory) => (existsSync(directory) ? [...loadTree(directory).keys()] : []);
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'));
 const tail = (text) => (text.length > OUTPUT_LIMIT ? text.slice(-OUTPUT_LIMIT) : text);
 
 /**
- * A case is a directory: `case.json` (id, title, prompt, optional acceptance.command,
- * agentTimeoutMinutes and categories), `fixture.json` (presetVersion, optional policyHash), `fixture/` (a project that
- * passes the gate) and `acceptance/` (hidden test files, copied in only after the agent finishes).
+ * A case is a directory: `case.json` (id, title, prompt, optional preset, acceptance.command,
+ * agentTimeoutMinutes and categories), `fixture.json` (presetVersion, optional policyHash),
+ * `fixture/` (a project that passes the gate) and `acceptance/` (hidden test files, copied in only
+ * after the agent finishes).
  */
 export function loadCase(caseDirectory) {
   const definition = readJson(path.join(caseDirectory, 'case.json'));
   const pin = existsSync(path.join(caseDirectory, 'fixture.json'))
     ? readJson(path.join(caseDirectory, 'fixture.json'))
     : {};
+  const fixtureDirectory = path.join(caseDirectory, 'fixture');
+  const acceptanceDirectory = path.join(caseDirectory, 'acceptance');
+  const preset = presetOf(definition);
   return {
     ...definition,
+    preset,
     directory: caseDirectory,
-    fixtureDirectory: path.join(caseDirectory, 'fixture'),
-    acceptanceDirectory: path.join(caseDirectory, 'acceptance'),
+    fixtureDirectory,
+    acceptanceDirectory,
     referenceDirectory: path.join(caseDirectory, 'reference'),
-    acceptanceCommand: definition.acceptance?.command ?? ['npx', '--no-install', 'vitest', 'run'],
+    acceptanceCommand:
+      definition.acceptance?.command ??
+      defaultAcceptance({
+        preset,
+        files: filesUnder(acceptanceDirectory),
+        buildTool: buildToolOf(filesUnder(fixtureDirectory)),
+      }),
     pin,
   };
 }
@@ -65,49 +79,6 @@ export function listCases(casesDirectory) {
 /** E1: a preset release re-runs only the cases whose pinned preset version is behind it. */
 export function isStale(caseDefinition, presetVersion) {
   return caseDefinition.pin.presetVersion !== presetVersion;
-}
-
-/** Default workdir setup: the fixture installed as a consumer of the packed tarball. */
-export function installedWorkdir({ tarball, manifest }) {
-  return ({ caseDefinition, workdir }) => {
-    createConsumer({
-      root: workdir,
-      tarball,
-      manifest,
-      files: Object.fromEntries(loadTree(caseDefinition.fixtureDirectory)),
-      packageJson: { dependencies: caseDefinition.dependencies },
-    });
-    checked(workdir, 'git', ['switch', '-c', 'feature']);
-  };
-}
-
-/** Workdir setup without an install, for tests of the runner itself. */
-export function copiedWorkdir() {
-  return ({ caseDefinition, workdir }) => {
-    checked(workdir, 'git', ['init', '-b', 'main']);
-    for (const [relative, contents] of loadTree(caseDefinition.fixtureDirectory)) {
-      write(workdir, relative, contents);
-    }
-    checked(workdir, 'git', ['add', '.']);
-    commitFixture(workdir);
-    checked(workdir, 'git', ['switch', '-c', 'feature']);
-  };
-}
-
-// A fixed date makes the fixture commit identical for every run of a case, so the gate's findings
-// cache (keyed by the merge-base commit) reuses the base-side analysis instead of redoing it.
-const FIXTURE_COMMIT_DATE = '2026-01-01T00:00:00Z';
-
-function commitFixture(workdir) {
-  const result = command(
-    workdir,
-    'git',
-    ['-c', 'user.name=Eval', '-c', 'user.email=eval@example.invalid', 'commit', '-m', 'fixture'],
-    { env: { GIT_AUTHOR_DATE: FIXTURE_COMMIT_DATE, GIT_COMMITTER_DATE: FIXTURE_COMMIT_DATE } },
-  );
-  if (result.status !== 0) {
-    throw new Error(`git commit exited ${result.status}\n${result.output}`);
-  }
 }
 
 function readGateLog(logFile) {
@@ -142,16 +113,6 @@ function runAgent({ agentCommand, workdir, environment, prompt, timeoutMs }) {
   };
 }
 
-function readAgentResult(file) {
-  if (!existsSync(file)) return {};
-  try {
-    const { costUsd, inputTokens, outputTokens, turns } = readJson(file);
-    return { costUsd, inputTokens, outputTokens, turns };
-  } catch {
-    return {};
-  }
-}
-
 function outcomeOf({ agent, finalGate, acceptancePassed, shortcuts }) {
   if (agent.timedOut) return 'agent-timeout';
   if (finalGate.exit === 2 || finalGate.exit === null) return 'gate-error';
@@ -167,8 +128,9 @@ function outcomeOf({ agent, finalGate, acceptancePassed, shortcuts }) {
  * The agent is any command: it runs in the workdir with the task prompt on stdin and in
  * NITPICKER_EVAL_PROMPT_FILE, learns its tier and model from NITPICKER_EVAL_TIER and
  * NITPICKER_EVAL_MODEL, runs the gate through `nitpicker-gate` (on PATH), and may write
- * `{ costUsd, inputTokens, outputTokens, turns }` to NITPICKER_EVAL_RESULT_FILE. The runner then
- * runs the gate itself, copies the hidden acceptance tests in, runs them, and runs the detectors.
+ * `{ costUsd, inputTokens, outputTokens, totalTokens, turns, durationMs }` to
+ * NITPICKER_EVAL_RESULT_FILE. The runner then runs the gate itself, copies the hidden acceptance
+ * tests in, runs them, and runs the detectors.
  */
 export function runCase({
   caseDefinition,

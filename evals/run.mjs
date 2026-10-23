@@ -1,15 +1,19 @@
 #!/usr/bin/env node
 // Eval runner CLI.
-//   node evals/run.mjs run --agent "<command>" --tier <name> [--model <id>] [--runs 5] [--case <id>]
-//        [--only-stale] [--results <dir>] [--cases <dir>]
+//   node evals/run.mjs run --agent "<command>" --tier <name> [--model <id>] [--runs 5] [--run 1]
+//        [--case <id>]... [--only-stale] [--results <dir>] [--cases <dir>]
 //   node evals/run.mjs report [--results <dir>] [--format markdown|json]
 // Runs are never part of the normal test job: they cost money and take minutes.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+// `--run <n>` numbers the first run, so several processes can run side by side without writing the
+// same run of a case: `--run 1 --runs 2` in one and `--run 3 --runs 2` in another.
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { packNitpicker } from './lib/consumer.mjs';
+import { appendRecord, readRecords } from './lib/results.mjs';
 import { aggregate, renderMarkdown } from './runner/report.mjs';
-import { installedWorkdir, isStale, listCases, runCase } from './runner/run-case.mjs';
+import { installedWorkdir } from './lib/workdirs.mjs';
+import { isStale, listCases, runCase } from './runner/run-case.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '..');
 const defaultResults = path.join(import.meta.dirname, 'results');
@@ -21,6 +25,7 @@ const { positionals, values } = parseArgs({
     tier: { type: 'string' },
     model: { type: 'string' },
     runs: { type: 'string', default: '5' },
+    run: { type: 'string', default: '1' },
     case: { type: 'string', multiple: true },
     cases: { type: 'string', default: path.join(import.meta.dirname, 'cases') },
     'only-stale': { type: 'boolean', default: false },
@@ -29,13 +34,13 @@ const { positionals, values } = parseArgs({
   },
 });
 
-function readRecords(resultsDirectory) {
-  const file = path.join(resultsDirectory, 'runs.jsonl');
-  if (!existsSync(file)) return [];
-  return readFileSync(file, 'utf8')
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => JSON.parse(line));
+function runNumbers() {
+  const first = Number(values.run);
+  const count = Number(values.runs);
+  if (!Number.isInteger(first) || first < 1 || !Number.isInteger(count) || count < 1) {
+    throw new Error('--run and --runs take whole numbers of 1 or more');
+  }
+  return Array.from({ length: count }, (_, index) => first + index);
 }
 
 function report() {
@@ -59,7 +64,7 @@ function run() {
   const { tarball, cleanup } = packNitpicker(packageRoot);
   try {
     for (const caseDefinition of selected) {
-      for (let run = 1; run <= Number(values.runs); run += 1) {
+      for (const run of runNumbers()) {
         const record = runCase({
           caseDefinition,
           agentCommand: values.agent,
@@ -69,7 +74,7 @@ function run() {
           run,
           nitpickerVersion: manifest.version,
         });
-        appendFileSync(path.join(values.results, 'runs.jsonl'), `${JSON.stringify(record)}\n`);
+        appendRecord(values.results, record);
         console.log(`${record.caseId} run ${run} (${values.tier}): ${record.outcome}`);
       }
     }
