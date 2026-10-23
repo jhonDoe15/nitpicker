@@ -27,6 +27,7 @@ def load_checks():
     from silent_tests import unasserted
     from smells import literals, loops, names, secret_logs, secrets
     from waits import timeouts as abandoned_waits
+    from tasks import cleanup, lifetimes
 
     return [
         declarations,
@@ -56,6 +57,8 @@ def load_checks():
         isolation,
         uncollected,
         helpers,
+        lifetimes,
+        cleanup,
     ]
 
 

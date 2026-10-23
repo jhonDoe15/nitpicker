@@ -52,6 +52,17 @@ final class State {
     return Timeouts.BLOCKS.contains(name) ? name : null;
   }
 
+  Set<String> namesOf(String qualified) {
+    Set<String> names = new HashSet<>(Set.of(qualified.substring(qualified.lastIndexOf('.') + 1)));
+    for (KtImportDirective directive : file.getImportDirectives()) {
+      var path = directive.getImportPath();
+      if (path != null && path.getAlias() != null && qualified.equals(path.getFqName().asString())) {
+        names.add(path.getAlias().asString());
+      }
+    }
+    return names;
+  }
+
   String importedPath(String name) {
     return waitImports.get(name);
   }
