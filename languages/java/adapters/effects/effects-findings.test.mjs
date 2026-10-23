@@ -170,6 +170,40 @@ describe('readEffectsFindings', () => {
     ]);
   });
 
+  it('names the held scope, the remote call path and the way out for transactions and locks', () => {
+    const held = {
+      className: 'shop.Import',
+      fileName: 'Import.java',
+      line: 40,
+      method: 'Import.confirm',
+      holder: 'Import.confirm',
+      path: ['PriceSource.priceOf()', 'RestClient.get()'],
+    };
+    const calls =
+      '`Import.confirm()` calls `PriceSource.priceOf()`, which calls `RestClient.get()`';
+    const messages = read([
+      { ...held, rule: 'RemoteCallInTransaction', scope: '@Transactional', detail: 'a' },
+      { ...held, rule: 'RemoteCallUnderLock', scope: 'ReentrantLock.lock()', detail: 'b' },
+    ]).map((finding) => finding.message);
+
+    expect(messages).toEqual([
+      sentence(
+        'Make the remote call before the transaction starts or after it commits; when its side effect must',
+        'match the transaction, write an outbox row in the transaction and send it from a worker:',
+        `${calls} inside the \`@Transactional\` method \`Import.confirm()\`, which also uses the database,`,
+        "so a pooled connection stays held for the remote call's latency and the pool runs dry under load.",
+        exception('RemoteCallInTransaction', JAVA_FILE),
+      ),
+      sentence(
+        'Move the remote call out of the lock: read what it needs under the lock, release it, make the call,',
+        'and take the lock again to apply the result:',
+        `${calls} while holding \`ReentrantLock.lock()\` in \`Import.confirm()\`,`,
+        "so every thread waiting for the lock also waits for the remote call's latency.",
+        exception('RemoteCallUnderLock', JAVA_FILE),
+      ),
+    ]);
+  });
+
   it('numbers repeated identities per file and leaves Kotlin files to the kotlin preset', () => {
     const findings = read([loop, { ...loop, line: 14 }, { ...loop, fileName: 'Other.kt' }]);
 
