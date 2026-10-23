@@ -193,7 +193,6 @@ const CALLABLES_2 = [
     line: 24,
     kind: 'accessor',
     exported: false,
-    entry: true,
     returns: 'int',
     ownFields: ['x'],
     returnsField: 'x',

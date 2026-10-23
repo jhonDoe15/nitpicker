@@ -323,14 +323,25 @@ final class BodyScanner extends TreePathScanner<Void, Void> {
   }
 
   @Override
+  public Void visitMemberReference(MemberReferenceTree tree, Void unused) {
+    MethodInfo target = typer.references.resolve(tree, ctx);
+    if (target != null) {
+      body.references.add(target);
+    }
+    return super.visitMemberReference(tree, unused);
+  }
+
+  @Override
   public Void visitIdentifier(IdentifierTree tree, Void unused) {
     usage.identifier(tree, getCurrentPath());
+    body.references.addAll(typer.references.table(typer.fieldRef(tree, ctx)));
     return null;
   }
 
   @Override
   public Void visitMemberSelect(MemberSelectTree tree, Void unused) {
     usage.member(tree, getCurrentPath());
+    body.references.addAll(typer.references.table(typer.fieldRef(tree, ctx)));
     return super.visitMemberSelect(tree, unused);
   }
 }

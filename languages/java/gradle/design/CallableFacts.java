@@ -37,7 +37,16 @@ final class CallableFacts {
     map.put("returnsField", method.tree == null ? method.lombokField : body.returnsField);
     map.put("decisions", body.decisions);
     map.put("reads", reads(body));
+    map.put("references", references(body));
     return map;
+  }
+
+  private static List<String> references(Body body) {
+    Set<String> ids = new TreeSet<>();
+    for (MethodInfo target : body.references) {
+      ids.add(target.id);
+    }
+    return ids.isEmpty() ? null : List.copyOf(ids);
   }
 
   private static String kind(MethodInfo method) {

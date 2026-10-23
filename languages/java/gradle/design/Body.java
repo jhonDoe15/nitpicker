@@ -50,5 +50,6 @@ final class Body {
   final Set<String> ownFields = new LinkedHashSet<>();
   final List<Map<String, Object>> decisions = new ArrayList<>();
   final Map<String, Read> reads = new LinkedHashMap<>();
+  final Set<MethodInfo> references = new LinkedHashSet<>();
   String returnsField;
 }
