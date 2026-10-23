@@ -3,6 +3,8 @@ import { commit, fixtureGit, useGitFixtures } from '../test-support/git-reposito
 import { writeFiles } from '../test-support/fixture-files.mjs';
 import { resolveBase } from './base-ref.mjs';
 import { resolveComparison } from './git.mjs';
+import { runCli } from '../../../cli.mjs';
+import { captureOutput } from '../../reporting/test-support/output-capture.mjs';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 
@@ -129,5 +131,58 @@ describe('a checkout whose history stops before the merge base', () => {
 
     expect(base.baseRef).toBe('origin/main');
     expect(resolve().mergeBaseSha).toBe(forkPoint);
+  });
+});
+
+describe('nitpicker base', () => {
+  function base(checkout, arguments_, environment) {
+    const output = captureOutput();
+    const exitCode = runCli({
+      arguments_: ['base', ...arguments_],
+      currentProjectRoot: checkout,
+      environment,
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+    return { exitCode, stdout: output.stdoutText, stderr: output.stderrText };
+  }
+
+  function fullClone() {
+    const { remote } = createRemote('develop');
+    const checkout = temporaryRoot('nitpicker-ci-base-');
+    fixtureGit(checkout, ['clone', '-q', `file://${remote}`, '.']);
+    return checkout;
+  }
+
+  it('prints the base a comparison would use, from the CI target branch', () => {
+    expect(base(fullClone(), [], { CI_MERGE_REQUEST_TARGET_BRANCH_NAME: 'develop' })).toEqual({
+      exitCode: 0,
+      stdout: 'origin/develop\n',
+      stderr: '',
+    });
+  });
+
+  it('takes the base of nitpicker.config.json when CI names no target', () => {
+    const checkout = fullClone();
+    writeFiles(checkout, { 'nitpicker.config.json': '{ "base": "origin/develop" }\n' });
+
+    expect(base(checkout, [], {})).toEqual({ exitCode: 0, stdout: 'origin/develop\n', stderr: '' });
+  });
+
+  it('prefers --base and falls back to the remote default branch', () => {
+    const checkout = fullClone();
+
+    expect(base(checkout, ['--base', 'origin/main'], { GITHUB_BASE_REF: 'develop' }).stdout).toBe(
+      'origin/main\n',
+    );
+    expect(base(checkout, [], {}).stdout).toBe('origin/feature\n');
+  });
+
+  it('rejects an unknown argument', () => {
+    expect(base(fullClone(), ['--all'], {})).toEqual({
+      exitCode: 2,
+      stdout: '',
+      stderr: 'nitpicker failed: Unknown argument: --all. Usage: nitpicker base [--base <ref>]\n',
+    });
   });
 });

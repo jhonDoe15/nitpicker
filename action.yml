@@ -9,10 +9,10 @@ inputs:
     description: The project folder, relative to the repository root. Set it when the project is in a subfolder.
     default: '.'
   base-ref:
-    description: The ref to compare against, for example origin/main. Empty uses the pull request target branch, then the repository default branch.
+    description: The ref to compare against, for example origin/main. Empty uses what nitpicker itself would use (the pull request or merge group target branch, then base in nitpicker.config.json), then the repository default branch.
     default: ''
   arguments:
-    description: Extra nitpicker arguments, split on spaces (no quoting), for example "--analyzer eslint-lint --rule no-console".
+    description: Extra nitpicker arguments, split on spaces and new lines (no quoting), for example "--analyzer eslint-lint". --output and --base are refused; use report-directory and base-ref.
     default: ''
   package:
     description: A package to run with npx instead of the nitpicker installed in the project, for example nitpicker@<version>. Needed for a project without a package.json (Java, Kotlin or Python). Empty runs the project's own devDependency, so the version matches its lockfile.
@@ -140,7 +140,9 @@ runs:
       env:
         BASE_REF: ${{ inputs.base-ref }}
         PACKAGE: ${{ inputs.package }}
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
         DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        MERGE_GROUP_BASE_REF: ${{ github.event.merge_group.base_ref }}
       run: |
         set -euo pipefail
         skip=false
@@ -148,47 +150,64 @@ runs:
           skip=true
         fi
         echo "skip-gate=$skip" >> "$GITHUB_OUTPUT"
-
+        echo "cache-scope=$(printf '%s' "$WORKING_DIRECTORY" | tr '/,' '--')" >> "$GITHUB_OUTPUT"
         if [ -d node_modules ]; then
-          cache_dir="$PWD/node_modules/.cache/nitpicker"
+          echo "cache-dir=$PWD/node_modules/.cache/nitpicker" >> "$GITHUB_OUTPUT"
         else
-          cache_dir="$(git rev-parse --absolute-git-dir)/nitpicker-cache"
+          echo "cache-dir=$(git rev-parse --absolute-git-dir)/nitpicker-cache" >> "$GITHUB_OUTPUT"
         fi
-        echo "cache-dir=$cache_dir" >> "$GITHUB_OUTPUT"
-
         if [ "$skip" = true ]; then
           echo "base-sha=none" >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
-        if [ -z "$PACKAGE" ] && ! npx --no-install nitpicker --help > /dev/null 2>&1; then
+        nitpicker() {
+          if [ -n "$PACKAGE" ]; then
+            npx --yes "$PACKAGE" "$@"
+          else
+            npx --no-install nitpicker "$@"
+          fi
+        }
+        if [ -z "$PACKAGE" ] && ! nitpicker --help > /dev/null 2>&1; then
           echo "::error title=nitpicker is not installed::nitpicker was not found in '${PWD}'. Add it as a devDependency (npm install --save-dev nitpicker) so the version matches your lockfile, or set the 'package' input (for example nitpicker@<version>) for a project without a package.json."
           exit 1
         fi
 
-        target="${BASE_REF:-${GITHUB_BASE_REF:-$DEFAULT_BRANCH}}"
-        target="${target#origin/}"
-        target="${target#refs/heads/}"
-        candidate=''
-        if [ -n "$BASE_REF" ] && git rev-parse --verify --quiet "$BASE_REF^{commit}" > /dev/null; then
-          candidate="$BASE_REF"
-        elif git rev-parse --verify --quiet "origin/$target^{commit}" > /dev/null; then
-          candidate="origin/$target"
-        fi
-        shallow="$(git rev-parse --is-shallow-repository)"
-        if [ "$shallow" = true ] || [ -z "$candidate" ]; then
-          refspec="+refs/heads/$target:refs/remotes/origin/$target"
-          if [ "$shallow" = true ]; then
+        fetch_branch() {
+          refspec="+refs/heads/$1:refs/remotes/origin/$1"
+          if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
             git fetch --no-tags --unshallow origin "$refspec" || git fetch --no-tags --unshallow origin || true
-          else
+          elif ! git rev-parse --verify --quiet "refs/remotes/origin/$1^{commit}" > /dev/null; then
             git fetch --no-tags origin "$refspec" || true
           fi
-          candidate="${candidate:-origin/$target}"
+        }
+        if [ -z "$BASE_REF" ] && [ -n "$MERGE_GROUP_BASE_REF" ]; then
+          BASE_REF="origin/${MERGE_GROUP_BASE_REF#refs/heads/}"
         fi
-        if ! base_sha="$(git merge-base HEAD "$candidate" 2> /dev/null)"; then
-          echo "::error title=nitpicker needs the merge base::There is no merge base between HEAD and ${candidate}. Check out the full history with 'fetch-depth: 0' in actions/checkout (a shallow checkout cannot find where the branch started), and make sure the base branch '${target}' exists on origin."
+        if [ -n "$DEFAULT_BRANCH" ] && ! git symbolic-ref --quiet refs/remotes/origin/HEAD > /dev/null; then
+          fetch_branch "$DEFAULT_BRANCH"
+          if git rev-parse --verify --quiet "refs/remotes/origin/$DEFAULT_BRANCH^{commit}" > /dev/null; then
+            git symbolic-ref refs/remotes/origin/HEAD "refs/remotes/origin/$DEFAULT_BRANCH"
+          fi
+        fi
+        if [ -n "$BASE_REF" ]; then
+          base="$(nitpicker base --base "$BASE_REF")"
+        else
+          base="$(nitpicker base)"
+        fi
+        case "$base" in
+          origin/*) fetch_branch "${base#origin/}" ;;
+          *)
+            if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+              git fetch --no-tags --unshallow origin || true
+            fi
+            ;;
+        esac
+        if ! base_sha="$(git merge-base HEAD "$base" 2> /dev/null)"; then
+          echo "::error title=nitpicker needs the merge base::There is no merge base between HEAD and ${base}. Check out the full history with 'fetch-depth: 0' in actions/checkout (a shallow checkout cannot find where the branch started), and make sure ${base} exists."
           exit 1
         fi
+        echo "base=$base" >> "$GITHUB_OUTPUT"
         echo "base-sha=$base_sha" >> "$GITHUB_OUTPUT"
 
     - uses: actions/cache/restore@v6.1.0
@@ -196,9 +215,9 @@ runs:
       if: ${{ inputs.cache == 'true' && steps.prepare.outputs.skip-gate != 'true' }}
       with:
         path: ${{ steps.prepare.outputs.cache-dir }}
-        key: nitpicker-${{ runner.os }}-${{ inputs.working-directory }}-${{ steps.prepare.outputs.base-sha }}-${{ hashFiles(format('{0}/nitpicker.config.json', inputs.working-directory)) }}
+        key: nitpicker-${{ runner.os }}-${{ steps.prepare.outputs.cache-scope }}-${{ steps.prepare.outputs.base-sha }}-${{ hashFiles(format('{0}/nitpicker.config.json', inputs.working-directory)) }}
         restore-keys: |
-          nitpicker-${{ runner.os }}-${{ inputs.working-directory }}-${{ steps.prepare.outputs.base-sha }}-
+          nitpicker-${{ runner.os }}-${{ steps.prepare.outputs.cache-scope }}-${{ steps.prepare.outputs.base-sha }}-
 
     - name: Run the gate
       id: gate
@@ -206,7 +225,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
-        BASE_REF: ${{ inputs.base-ref }}
+        BASE: ${{ steps.prepare.outputs.base }}
         EXTRA_ARGUMENTS: ${{ inputs.arguments }}
         PACKAGE: ${{ inputs.package }}
         REPORT_DIRECTORY: ${{ inputs.report-directory }}
@@ -216,13 +235,20 @@ runs:
         NITPICKER_CACHE_AUTH_HEADER: ${{ inputs.cache-auth-header }}
         NITPICKER_ACCEPT_POLICY_CHANGE: ${{ inputs.accept-policy-change }}
       run: |
-        set -o pipefail
-        args=(--output "$REPORT_DIRECTORY")
-        if [ -n "$BASE_REF" ]; then
-          args+=(--base "$BASE_REF")
-        fi
-        read -r -a extra <<< "$EXTRA_ARGUMENTS"
-        args+=("${extra[@]}")
+        set -eo pipefail
+        args=(--base "$BASE" --output "$REPORT_DIRECTORY")
+        set -f
+        extra=($EXTRA_ARGUMENTS)
+        set +f
+        for argument in ${extra[@]+"${extra[@]}"}; do
+          case "$argument" in
+            --output | --output=* | --base | --base=*)
+              echo "::error title=nitpicker arguments::Pass ${argument%%=*} through the report-directory or base-ref input, not through arguments."
+              exit 1
+              ;;
+          esac
+          args+=("$argument")
+        done
         if [ "$CACHE_ENABLED" != true ]; then
           args+=(--no-cache)
         fi
@@ -231,17 +257,15 @@ runs:
         else
           runner=(npx --no-install nitpicker)
         fi
-        "${runner[@]}" "${args[@]}"
-        code=$?
+        "${runner[@]}" "${args[@]}" && code=0 || code=$?
         echo "exit-code=$code" >> "$GITHUB_OUTPUT"
-        echo "report-directory=$(realpath -m "$REPORT_DIRECTORY")" >> "$GITHUB_OUTPUT"
-        exit 0
+        echo "report-directory=$(cd "$REPORT_DIRECTORY" 2> /dev/null && pwd || echo "$PWD/$REPORT_DIRECTORY")" >> "$GITHUB_OUTPUT"
 
     - uses: actions/cache/save@v6.1.0
       if: ${{ !cancelled() && inputs.cache == 'true' && steps.gate.outputs.exit-code != '' && steps.cache.outputs.cache-hit != 'true' }}
       with:
         path: ${{ steps.prepare.outputs.cache-dir }}
-        key: nitpicker-${{ runner.os }}-${{ inputs.working-directory }}-${{ steps.prepare.outputs.base-sha }}-${{ hashFiles(format('{0}/nitpicker.config.json', inputs.working-directory)) }}
+        key: nitpicker-${{ runner.os }}-${{ steps.prepare.outputs.cache-scope }}-${{ steps.prepare.outputs.base-sha }}-${{ hashFiles(format('{0}/nitpicker.config.json', inputs.working-directory)) }}
 
     - name: Publish the findings of the default branch
       if: ${{ steps.prepare.outputs.skip-gate == 'true' && inputs.cache-publish == 'true' }}

@@ -179,6 +179,7 @@ nitpicker aggregate --input-root <dir> --shard-count <n>
           [--output <dir>] [--policy-root <dir>]
 nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>]
+nitpicker base [--base <ref>]
 ```
 
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
@@ -203,6 +204,8 @@ nitpicker cache publish [--analyzer <name>]...
 - `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
   cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
   everything was uploaded and 2 otherwise.
+- `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
+  [What it compares](#what-it-compares), so a CI script can fetch it before the run.
 
 ### Findings cache
 
