@@ -61,7 +61,7 @@ const ORDERED_PRECEDENCE_TOOLS = ['prettier'];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
 function toolSettingKeysOf(preset) {
-  if (GRADLE_PRESETS.includes(preset) || preset === 'python') {
+  if (GRADLE_PRESETS.includes(preset) || preset === 'python' || preset === 'go') {
     const names = [
       ...(GRADLE_PRESETS.includes(preset) ? PROJECT_TOOL_CONFIGS.keys() : []),
       ...styleToolsOf(preset),

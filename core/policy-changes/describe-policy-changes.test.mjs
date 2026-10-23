@@ -419,6 +419,29 @@ describe('describePolicyChanges', () => {
     ).toEqual([]);
   });
 
+  it('counts a go formatter or build tag the change drops, not one it adds', () => {
+    expect(
+      changes(
+        { preset: 'go', go: { formatters: ['gofumpt', 'goimports'], buildTags: ['integration'] } },
+        { preset: 'go', go: { formatters: ['goimports'] } },
+        [],
+      ),
+    ).toEqual({
+      loosened: [
+        'go.formatters: ["gofumpt","goimports"] -> ["goimports"]',
+        'go.buildTags: ["integration"] -> not set',
+      ],
+      changed: [],
+    });
+    expect(
+      loosened(
+        { preset: 'go', go: { formatters: ['gofmt'] } },
+        { preset: 'go', go: { formatters: ['gofumpt'], buildTags: ['e2e'] } },
+        [],
+      ),
+    ).toEqual([]);
+  });
+
   it('counts a Spring role mapping that drops a type as loosened and one that adds a type as changed', () => {
     const roles = (service) => ({ preset: 'java', spring: { roles: { service } } });
 

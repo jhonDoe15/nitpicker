@@ -27,6 +27,7 @@ describe('enabled end-to-end timing profiles', () => {
     [{ NITPICKER_KOTLIN_E2E: '1' }, 'kotlin-e2e.json'],
     [{ NITPICKER_PYTHON_E2E: '1' }, 'python-e2e.json'],
     [{ NITPICKER_PYTHON_E2E: '0' }, 'durations.json'],
+    [{ NITPICKER_GO_E2E: '1' }, 'go-e2e.json'],
   ])('selects the timing file for %j', (environment, expected) => {
     expect(path.basename(durationFile(environment))).toBe(expected);
   });
@@ -35,6 +36,7 @@ describe('enabled end-to-end timing profiles', () => {
     ['JAVA', 'KOTLIN'],
     ['JAVA', 'PYTHON'],
     ['KOTLIN', 'PYTHON'],
+    ['PYTHON', 'GO'],
   ])(
     'rejects simultaneous %s and %s profiles instead of using the wrong weights',
     (first, second) => {
@@ -44,12 +46,13 @@ describe('enabled end-to-end timing profiles', () => {
     },
   );
 
-  it.each(['JAVA', 'KOTLIN', 'PYTHON'])(
+  it.each(['JAVA', 'KOTLIN', 'PYTHON', 'GO'])(
     'loads %s weights without changing the ordinary profile',
     (language) => {
       vi.stubEnv('NITPICKER_JAVA_E2E', undefined);
       vi.stubEnv('NITPICKER_KOTLIN_E2E', undefined);
       vi.stubEnv('NITPICKER_PYTHON_E2E', undefined);
+      vi.stubEnv('NITPICKER_GO_E2E', undefined);
       const ordinary = readDurations();
       vi.stubEnv(`NITPICKER_${language}_E2E`, '1');
       const enabled = readDurations();
