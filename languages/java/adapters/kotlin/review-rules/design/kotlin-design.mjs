@@ -1,5 +1,5 @@
 import { readHeadPolicyFile } from '../../../../../../shared/head-policy.mjs';
-import { DESIGN_RULES } from '../../../../../../shared/project-rules/design-rules.mjs';
+import { DESIGN_RULES } from '../../../../../../shared/project-rules/design/design-rules.mjs';
 import { sharedFactFindings } from '../../../../../../shared/rules/facts/evaluate.mjs';
 import { readKotlinDesign } from '../kotlin-facts.mjs';
 

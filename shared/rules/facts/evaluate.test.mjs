@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LANGUAGES, RULES } from '../../policy.mjs';
-import { DESIGN_RULES } from '../../project-rules/design-rules.mjs';
+import { DESIGN_RULES } from '../../project-rules/design/design-rules.mjs';
 import { exceptionHint } from '../exceptions.mjs';
 import { sharedFactFindings } from './evaluate.mjs';
 import {

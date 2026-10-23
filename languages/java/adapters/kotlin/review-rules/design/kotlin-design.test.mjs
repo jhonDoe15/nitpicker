@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DESIGN_RULE_IDS,
   DESIGN_RULES,
-} from '../../../../../../shared/project-rules/design-rules.mjs';
+} from '../../../../../../shared/project-rules/design/design-rules.mjs';
 import { validateFacts } from '../../../../../../shared/rules/facts/schema.mjs';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../../kotlin-options.mjs';
 import {
