@@ -164,7 +164,8 @@ export function gradlePath({ value, directory }) {
 }
 
 function ancestors(directory) {
-  return directory === '.' ? ['.'] : [directory, ...ancestors(path.posix.dirname(directory))];
+  const parts = directory === '.' ? [] : directory.split('/');
+  return [...parts.map((_, index) => parts.slice(0, parts.length - index).join('/')), '.'];
 }
 
 function propertyOf(poms, directory, name) {
