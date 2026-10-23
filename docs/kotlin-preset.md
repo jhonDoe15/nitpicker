@@ -1074,7 +1074,7 @@ resolved to the Kotlin source file of the violating class as to a Java one. Both
 `exceptions` with the same `spring/<rule>` and `archunit/<rule>` names as in the Java preset.
 
 **The PMD Spring rules.** PMD cannot read Kotlin, so nitpicker runs its own implementation of the
-Beans, Configuration, Proxies and Web rules on the main Kotlin sources, with the same ids and the same
+Spring rules on the main Kotlin sources, with the same ids and the same
 exception route; see [Spring rules](#spring-rules) for what it covers and how it differs from Java.
 The JPA and Spring Data rules do not run on Kotlin yet. The rules read the Kotlin facts the
 `kotlin-psi` program writes, on Gradle and on Maven alike, and the all-open options of the build for
@@ -1273,7 +1273,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
   property name, and a formatter run through `exec-maven-plugin`, still run, and a failure of one
   fails the build. The formatter that nitpicker follows is the one the effective POM names through
   the ktlint Maven plugin or the Spotless `kotlin` step.
-- On Maven the Kotlin metrics and syntax programs run on the JDK that runs Maven (`JAVA_HOME`), as on
+- On Maven the Kotlin metrics and `kotlin-psi` programs run on the JDK that runs Maven (`JAVA_HOME`), as on
   Gradle they run on the JVM of Gradle; only detekt's `--jdk-home` follows the build's toolchain.
 - ArchUnit rule tests written in Kotlin run with the other tests, but the resolution of their
   findings to source files is only verified for Java.

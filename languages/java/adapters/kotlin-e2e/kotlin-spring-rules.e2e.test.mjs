@@ -4,9 +4,10 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   BAD_FILES,
-  commitSpringProject,
+  PINNED_SPRING_LINES,
+  WITHOUT_SELF_CALLS,
+  commitBaseThenSpringBranch,
   fixtureBuild,
-  recordedFindings,
   springLines,
 } from './__tests__/kotlin-spring-fixture.mjs';
 import {
@@ -21,7 +22,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin Spring rules end to end', () => {
 
   beforeAll(() => {
     project = { root: mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-spring-')) };
-    commitSpringProject(project, fixtureBuild('build.gradle.kts', 'settings.gradle.kts'));
+    commitBaseThenSpringBranch(project, fixtureBuild('build.gradle.kts', 'settings.gradle.kts'));
   });
   afterAll(() => {
     if (project !== undefined) {
@@ -33,7 +34,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin Spring rules end to end', () => {
     const result = diffOf(project, 'spring');
 
     expect(result.failed).toBe(true);
-    expect(springLines(result.newEnforceable)).toEqual(springLines(recordedFindings()));
+    expect(springLines(result.newEnforceable)).toEqual(PINNED_SPRING_LINES);
   });
 
   it('lifts a rule for some paths with the exception its message names', () => {
@@ -44,8 +45,6 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin Spring rules end to end', () => {
       },
     });
 
-    expect(springLines(result.newEnforceable)).toEqual(
-      springLines(recordedFindings().filter(({ rule }) => rule !== 'SpringProxySelfCall')),
-    );
+    expect(springLines(result.newEnforceable)).toEqual(WITHOUT_SELF_CALLS);
   });
 });

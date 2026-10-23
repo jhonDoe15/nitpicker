@@ -4,8 +4,9 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   BAD_FILES,
-  commitSpringProject,
-  recordedFindings,
+  PINNED_SPRING_LINES,
+  WITHOUT_SELF_CALLS,
+  commitBaseThenSpringBranch,
   springLines,
 } from '../../__tests__/kotlin-spring-fixture.mjs';
 import {
@@ -26,7 +27,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin Spring rules on a Maven project end t
 
   beforeAll(() => {
     project = { root: mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-spring-maven-')) };
-    commitSpringProject(project, { 'pom.xml': readFileSync(POM, 'utf8') });
+    commitBaseThenSpringBranch(project, { 'pom.xml': readFileSync(POM, 'utf8') });
   });
   afterAll(() => {
     if (project !== undefined) {
@@ -38,7 +39,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin Spring rules on a Maven project end t
     const result = mavenDiffOf(project, 'spring');
 
     expect(result.failed).toBe(true);
-    expect(springLines(result.newEnforceable)).toEqual(springLines(recordedFindings()));
+    expect(springLines(result.newEnforceable)).toEqual(PINNED_SPRING_LINES);
   });
 
   it('lifts a rule for some paths with the exception its message names', () => {
@@ -49,8 +50,6 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin Spring rules on a Maven project end t
       },
     });
 
-    expect(springLines(result.newEnforceable)).toEqual(
-      springLines(recordedFindings().filter(({ rule }) => rule !== 'SpringProxySelfCall')),
-    );
+    expect(springLines(result.newEnforceable)).toEqual(WITHOUT_SELF_CALLS);
   });
 });

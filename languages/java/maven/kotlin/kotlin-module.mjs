@@ -18,7 +18,7 @@ function usesSerialization(classpaths) {
   return classpaths.mainRuntime.some((jar) => SERIALIZATION_JAR.test(path.basename(jar)));
 }
 
-function kotlinManifest(module, options, classpaths) {
+export function kotlinManifest(module, options, classpaths) {
   return {
     kotlin: true,
     kotlinSerialization: usesSerialization(classpaths),
