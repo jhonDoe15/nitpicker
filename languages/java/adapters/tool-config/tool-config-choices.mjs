@@ -52,12 +52,11 @@ function checkstyleProperties({ checkstyle, directory, checkstyleBase }) {
   ];
 }
 
-function settingsProperty(tool, choice, directory) {
+function settingsProperty(tool, choice, file) {
   if (choice === undefined) {
     return [];
   }
-  mkdirSync(directory, { recursive: true });
-  const file = path.join(directory, `${tool}-settings.json`);
+  mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify(choice.arguments));
   return [`-Pnitpicker.${tool}.settings=${file}`];
 }
@@ -70,6 +69,10 @@ export function toolConfigProperties(projectRoot, policy = {}, { directory, chec
     ...(pmd.project === undefined ? [] : [`-Pnitpicker.pmd.projectConfig=${pmd.project}`]),
     ...(pmd.tests === undefined ? [] : [`-Pnitpicker.pmd.testRules=${pmd.tests}`]),
     ...checkstyleProperties({ checkstyle: choices.checkstyle, directory, checkstyleBase }),
-    ...settingsProperty('spotbugs', choices.spotbugs, directory),
+    ...settingsProperty(
+      'spotbugs',
+      choices.spotbugs,
+      path.join(directory, 'spotbugs-settings.json'),
+    ),
   ];
 }

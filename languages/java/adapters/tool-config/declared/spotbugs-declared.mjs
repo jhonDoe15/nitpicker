@@ -182,6 +182,7 @@ function spotbugsFilter(filter, root) {
   } catch (error) {
     throw new Error(
       `The SpotBugs exclude filter ${filter.path} is not valid XML: ${error.message}`,
+      { cause: error },
     );
   }
   if (element.name !== 'FindBugsFilter') {

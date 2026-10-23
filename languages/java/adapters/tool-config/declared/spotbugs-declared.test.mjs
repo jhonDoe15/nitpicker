@@ -112,7 +112,12 @@ describe('the SpotBugs settings a build declares', () => {
       'build.gradle': 'spotbugs { excludeFilter = file(sharedFilter) }\n',
     });
 
-    expect(found).toMatchObject({ setting: 'excludeFilter', path: undefined });
+    expect(found).toEqual({
+      setting: 'excludeFilter',
+      value: undefined,
+      path: undefined,
+      file: 'build.gradle',
+    });
   });
 });
 
