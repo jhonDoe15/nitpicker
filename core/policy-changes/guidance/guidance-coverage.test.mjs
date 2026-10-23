@@ -7,6 +7,7 @@ import { policyFindings } from '../../diff/reporting/review/policy-findings.mjs'
 import { between } from '../build-files/test-support/policy-fixtures.mjs';
 import { policyChangeFields } from '../describe-policy-changes.mjs';
 import { createPolicyScope, rootSets } from '../policy-scope.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const CLASS = 'package a;\nclass A {}\n';
 const GRADLE = { 'build.gradle': "plugins { id 'java' }\n", 'src/main/java/a/A.java': CLASS };
@@ -245,6 +246,7 @@ describe('policy guidance kinds', () => {
         'If the policy change is intended, stop and ask a person reviewing this change:',
         'only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6',
         'at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI.',
+        linkSentence('policyLoosened'),
       ].join(' '),
     );
   });

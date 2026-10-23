@@ -4,6 +4,7 @@ import {
   TIMEOUT_LIMIT_KEYS,
   validateTestTimeouts,
 } from '../../shared/test-timeouts/resolve.mjs';
+import { withoutTroubleshooting } from '../../shared/messages/troubleshooting.mjs';
 
 const TIMEOUT_KIND = 'test-timeout';
 
@@ -169,7 +170,7 @@ export function timeoutChanges(baseConfig, headConfig) {
     return {
       loosened: [
         {
-          text: `test timeout policy cannot be compared safely: ${error.message}`,
+          text: `test timeout policy cannot be compared safely: ${withoutTroubleshooting(error.message)}`,
           kind: 'test-timeout-invalid',
         },
       ],
