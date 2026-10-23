@@ -27,6 +27,8 @@
       "languages/typescript/adapters/eslint-runner.mjs",
       "languages/typescript/adapters/quality-areas-runner.mjs",
       "languages/typescript/adapters/static-checks-runner.mjs",
+      "languages/typescript/adapters/quality-areas/knip/manifest-guard.mjs",
+      "languages/typescript/preset/project-tools/load-config-script.mjs",
       "languages/typescript/preset/test-environment/read-environment.mjs",
       "languages/typescript/preset/architecture/public-contract-usage.mjs",
       "languages/typescript/preset/architecture/runtime-dependency-boundaries.mjs",

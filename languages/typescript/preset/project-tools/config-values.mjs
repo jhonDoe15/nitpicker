@@ -1,4 +1,4 @@
-export const REGEXP_KEY = '$nitpickerRegExp';
+const REGEXP_KEY = '$nitpickerRegExp';
 
 function encodedEntries(value, at) {
   return Object.fromEntries(

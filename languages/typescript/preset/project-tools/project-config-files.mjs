@@ -38,17 +38,21 @@ export function projectConfigCandidates(tool) {
   ];
 }
 
+function parsedManifest(file) {
+  try {
+    return { kind: 'json', value: JSON.parse(readFileSync(file, 'utf8')) };
+  } catch {
+    return { kind: 'malformed-json' };
+  }
+}
+
 function packageJsonSection(projectRoot, key) {
   const file = path.join(projectRoot, PACKAGE_JSON);
   if (key === undefined || !existsSync(file)) {
     return undefined;
   }
-  try {
-    const manifest = JSON.parse(readFileSync(file, 'utf8'));
-    return isPlainObject(manifest) && manifest[key] !== undefined ? manifest[key] : undefined;
-  } catch {
-    return undefined;
-  }
+  const parsed = parsedManifest(file);
+  return parsed.kind === 'json' && isPlainObject(parsed.value) ? parsed.value[key] : undefined;
 }
 
 export function projectConfigSources(tool, projectRoot) {
