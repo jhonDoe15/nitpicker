@@ -76,6 +76,7 @@ describe('the shared design rules over the Java facts', () => {
     ['resolution', SINGLE, []],
     ['entries', SINGLE, []],
     ['syntax', SINGLE, []],
+    ['references', SINGLE, []],
   ])('reports exactly these findings for the %s fixture', (name, modules, expected) => {
     const findings = designFindings({ projectRoot: fixtureRoot(name), modules, policy: {} });
 

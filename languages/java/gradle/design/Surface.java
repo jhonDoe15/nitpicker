@@ -65,6 +65,7 @@ final class Surface {
 
   private static boolean objectMethod(MethodInfo method) {
     return (method.name.equals("toString") && method.params.isEmpty())
+        || (method.name.equals("hashCode") && method.params.isEmpty())
         || (method.name.equals("equals") && method.params.size() == 1);
   }
 

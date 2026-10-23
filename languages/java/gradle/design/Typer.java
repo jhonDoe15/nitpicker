@@ -7,11 +7,13 @@ final class Typer {
   final Project project;
   final Lookup lookup;
   final Calls calls;
+  final References references;
 
   Typer(Project project, Lookup lookup) {
     this.project = project;
     this.lookup = lookup;
     this.calls = new Calls(this);
+    this.references = new References(this);
   }
 
   Ty tyOf(Tree type, Ctx c) {

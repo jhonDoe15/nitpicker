@@ -84,6 +84,26 @@ final class Lookup {
     return select(candidates, argc);
   }
 
+  MethodInfo onlyMethod(TypeInfo type, String name) {
+    if (incomplete(type)) {
+      return null;
+    }
+    Map<String, MethodInfo> bySignature = new LinkedHashMap<>();
+    for (TypeInfo member : chain(type)) {
+      for (MethodInfo method : member.methods) {
+        if (!method.ctor && method.name.equals(name)) {
+          bySignature.putIfAbsent(signature(method), method);
+        }
+      }
+    }
+    return bySignature.size() == 1 ? bySignature.values().iterator().next() : null;
+  }
+
+  MethodInfo onlyConstructor(TypeInfo type) {
+    List<MethodInfo> found = type.methods.stream().filter(method -> method.ctor).toList();
+    return found.size() == 1 ? found.get(0) : null;
+  }
+
   private Found select(List<MethodInfo> candidates, int argc) {
     if (candidates.isEmpty()) {
       return Found.NONE;
