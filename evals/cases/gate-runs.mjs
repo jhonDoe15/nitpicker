@@ -43,6 +43,7 @@ function cheatRun(caseId, { overlay, withoutAnalyzers, flaggedBy, outcome, expec
         overlay,
         withoutAnalyzers,
         analyzers: flaggedBy?.analyzers,
+        rule: flaggedBy?.finding,
       });
       if (endToEnd) {
         expect(record.gate.iterations).toBe(1);
