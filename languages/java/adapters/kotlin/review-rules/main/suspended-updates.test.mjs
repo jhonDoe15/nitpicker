@@ -1,14 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  file,
-  fn,
-  klass,
-  parameter,
-  property,
-  routeOf,
-  run,
-  summary,
-} from '../test-support/facts.mjs';
+import { file, fn, klass, parameter, property, run, summary } from '../test-support/facts.mjs';
 import { SUSPENDED_UPDATE_RULE, suspendedUpdateFindings } from './suspended-updates.mjs';
 
 const suspendFun = (name, owner = 'Ledger', overrides = {}) =>
@@ -54,13 +45,12 @@ describe('updates across a suspension in Kotlin', () => {
 
     expect(summary(findings)).toEqual([`${SUSPENDED_UPDATE_RULE} Ledger.total in add 9`]);
     expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toContain(
-      '`total` is updated from a value read before `load()` suspends',
-    );
-    expect(findings[0].message).toContain('`val delta = load()`');
-    expect(findings[0].message).toContain('`mutex.withLock { ... }`');
-    expect(routeOf(findings[0].message)).toBe(
-      'If this is intended, add {"rule":"pmd/NonAtomicUpdateAcrossSuspension","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    expect(findings[0].message).toBe(
+      '`total` is updated from a value read before `load()` suspends: another coroutine can change it ' +
+        'meanwhile, and this write then overwrites that change. Call `load()` into a local first ' +
+        '(`val delta = load()`, then update `total`), or hold one Mutex around the whole read-modify-write ' +
+        '(`mutex.withLock { ... }`). If this is intended, add {"rule":"pmd/NonAtomicUpdateAcrossSuspension",' +
+        '"paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
