@@ -8,6 +8,7 @@ import { unusedOptionFindings } from './main/unused-options.mjs';
 import { readKotlinFacts } from './kotlin-facts.mjs';
 import { productionTypeResolver } from './production-types.mjs';
 import { findingFactory } from './review-finding.mjs';
+import { springFindings } from './spring/spring-findings.mjs';
 import { springContextFindings } from './tests/spring-context.mjs';
 import { testWaitFindings } from './tests/test-waits.mjs';
 
@@ -66,6 +67,7 @@ export function readKotlinReviewFindings(context) {
       isProduction: productionTypeResolver({ files: projectFiles, projectRoot, javaRoots }),
     }),
     ...springContextFindings(own, { finding }),
+    ...springFindings(own, { finding, manifest, projectFiles, projectRoot, javaRoots }),
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
     ...singularPluralFindings(own, { finding }),
