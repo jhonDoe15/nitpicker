@@ -2,7 +2,7 @@ import path from 'node:path';
 import { joinRepositoryPath, repositoryPath } from '../paths.mjs';
 import { runGit, GitCommandError } from '../repository/command.mjs';
 import { readRepositoryChanges } from './changes.mjs';
-import { scopeMoves } from './renames.mjs';
+import { scopeMoves, scopeTouched } from './renames.mjs';
 
 const PROJECT_MARKERS = ['nitpicker.config.json', 'package.json'];
 
@@ -64,6 +64,20 @@ export function readProjectMoves({
 }) {
   return scopeMoves({
     changes,
+    baseProjectPath: repositoryPath(baseProjectRelativePath),
+    headProjectPath: repositoryPath(projectRelativePath),
+  });
+}
+
+export function readTouchedPaths({
+  repositoryRoot,
+  mergeBaseSha,
+  headSha,
+  projectRelativePath,
+  baseProjectRelativePath = projectRelativePath,
+  changes = readRepositoryChanges({ repositoryRoot, mergeBaseSha, headSha }),
+}) {
+  return scopeTouched(changes.touched, {
     baseProjectPath: repositoryPath(baseProjectRelativePath),
     headProjectPath: repositoryPath(projectRelativePath),
   });
