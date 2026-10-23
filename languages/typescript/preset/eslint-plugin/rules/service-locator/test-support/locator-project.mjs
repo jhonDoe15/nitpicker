@@ -4,41 +4,21 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
 
-const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-service-locator-')));
-
-export function write(relative, text) {
-  const file = path.join(root, relative);
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, text);
-  return file;
-}
-
-function library(name, declarations) {
-  write(
-    `node_modules/${name}/package.json`,
-    JSON.stringify({ name, version: '1.0.0', types: 'index.d.ts' }),
-  );
-  write(`node_modules/${name}/index.d.ts`, `${declarations}\n`);
-}
-
-write(
-  'tsconfig.json',
-  JSON.stringify({
-    compilerOptions: {
-      strict: true,
-      module: 'esnext',
-      moduleResolution: 'bundler',
-      noEmit: true,
-      experimentalDecorators: true,
-      lib: ['ES2022'],
-      types: [],
-    },
-    include: ['src'],
-  }),
-);
-library(
-  'inversify',
-  [
+const CASE_NAME_LENGTH = 12;
+const TSCONFIG = {
+  compilerOptions: {
+    strict: true,
+    module: 'esnext',
+    moduleResolution: 'bundler',
+    noEmit: true,
+    experimentalDecorators: true,
+    lib: ['ES2022'],
+    types: [],
+  },
+  include: ['src'],
+};
+const LIBRARIES = {
+  inversify: [
     'export declare class Container {',
     '  bind<T>(id: unknown): { toDynamicValue(factory: (context: { container: Container }) => T): void };',
     '  get<T>(id: unknown): T;',
@@ -49,11 +29,8 @@ library(
     '  resolve<T>(target: new (...args: never[]) => T): T;',
     '  load(...modules: unknown[]): void;',
     '}',
-  ].join('\n'),
-);
-library(
-  'tsyringe',
-  [
+  ],
+  tsyringe: [
     'export interface DependencyContainer {',
     '  register<T>(token: unknown, provider: { useFactory: (container: DependencyContainer) => T }): DependencyContainer;',
     '  resolve<T>(token: unknown): T;',
@@ -63,11 +40,8 @@ library(
     'export declare const container: DependencyContainer;',
     'export declare function instanceCachingFactory<T>(factory: (c: DependencyContainer) => T): (c: DependencyContainer) => T;',
     'export declare function predicateAwareClassFactory<T>(predicate: (c: DependencyContainer) => boolean, a: new () => T, b: new () => T): (c: DependencyContainer) => T;',
-  ].join('\n'),
-);
-library(
-  'typedi',
-  [
+  ],
+  typedi: [
     'export declare class ContainerInstance {',
     '  get<T>(id: unknown): T;',
     '  getMany<T>(id: unknown): T[];',
@@ -77,22 +51,16 @@ library(
     '  static getMany<T>(id: unknown): T[];',
     '  static of(id?: string): ContainerInstance;',
     '}',
-  ].join('\n'),
-);
-library(
-  'awilix',
-  [
+  ],
+  awilix: [
     'export interface AwilixContainer<Cradle extends object = {}> {',
     '  readonly cradle: Cradle;',
     '  resolve<T>(name: string): T;',
     '  createScope(): AwilixContainer<Cradle>;',
     '}',
     'export declare function createContainer(): AwilixContainer<any>;',
-  ].join('\n'),
-);
-library(
-  '@nestjs/common',
-  [
+  ],
+  '@nestjs/common': [
     'export interface INestApplicationContext {',
     '  get<T>(token: unknown): T;',
     '  resolve<T>(token: unknown): Promise<T>;',
@@ -100,11 +68,8 @@ library(
     'export interface INestApplication extends INestApplicationContext {',
     '  listen(port: number): Promise<void>;',
     '}',
-  ].join('\n'),
-);
-library(
-  '@nestjs/core',
-  [
+  ],
+  '@nestjs/core': [
     "import type { INestApplication } from '@nestjs/common';",
     'export declare abstract class ModuleRef {',
     '  abstract get<T>(token: unknown): T;',
@@ -114,87 +79,99 @@ library(
     'export declare class NestFactory {',
     '  static create(module: unknown): Promise<INestApplication>;',
     '}',
-  ].join('\n'),
-);
-library(
-  'plain-container',
-  [
+  ],
+  'plain-container': [
     'export declare class Container { get(id: string): string; }',
     'export declare function bind(id: string): { toDynamicValue(factory: () => unknown): void };',
-  ].join('\n'),
-);
-
-write('src/mailer.ts', 'export class Mailer { send(): void {} }\n');
-write(
-  'src/shared/mail.ts',
-  [
+  ],
+};
+const SOURCES = {
+  'src/shared/mail.ts': [
     "import { container } from 'tsyringe';",
     "import { Mailer } from '../mailer';",
     'export const resolveMailer = (): Mailer => container.resolve(Mailer);',
     'export function noLookup(): number { return 1; }',
     '',
   ].join('\n'),
-);
-write(
-  'src/shared/two-levels.ts',
-  [
+  'src/shared/two-levels.ts': [
     "import { resolveMailer } from './mail';",
     'export function mailerOfTheDay() { return resolveMailer(); }',
     'export const mailerAgain = () => mailerOfTheDay();',
     '',
   ].join('\n'),
-);
-write('src/shared/reexport.ts', "export { resolveMailer as lookupMailer } from './mail';\n");
-write('src/shared/index.ts', "export * from './mail';\nexport * from './two-levels';\n");
-write(
-  'src/shared/cycle.ts',
-  [
+  'src/shared/cycle.ts': [
     'export function ping(): number { return pong(); }',
     'export function pong(): number { return ping(); }',
     '',
   ].join('\n'),
-);
-write(
-  'src/shared/registry.ts',
-  [
+  'src/shared/registry.ts': [
     "import { container } from 'tsyringe';",
     "export const registerMailer = () => container.register('a', { useFactory: (c) => c.resolve('b') });",
     '',
   ].join('\n'),
-);
-write(
-  'src/di.ts',
-  [
+  'src/di.ts': [
     "export { container as di } from 'tsyringe';",
     "import { Container } from 'inversify';",
     'export const local = new Container();',
     '',
   ].join('\n'),
-);
-write(
-  'src/main.ts',
-  [
+  'src/main.ts': [
     "import { container } from 'tsyringe';",
     "import { Mailer } from './mailer';",
     'export const rootMailer = () => container.resolve(Mailer);',
     '',
   ].join('\n'),
-);
+  'src/mailer.ts': 'export class Mailer { send(): void {} }\n',
+  'src/shared/reexport.ts': "export { resolveMailer as lookupMailer } from './mail';\n",
+  'src/shared/index.ts': "export * from './mail';\nexport * from './two-levels';\n",
+};
 
-export function removeProject() {
-  rmSync(root, { recursive: true, force: true });
+function writerFor(root) {
+  return (relative, text) => {
+    const file = path.resolve(root, relative);
+    if (!file.startsWith(root + path.sep)) {
+      throw new Error(`${relative} is outside ${root}`);
+    }
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, text);
+    return file;
+  };
 }
 
-export const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
+function writeProject(write) {
+  write('tsconfig.json', JSON.stringify(TSCONFIG));
+  for (const [name, lines] of Object.entries(LIBRARIES)) {
+    write(
+      `node_modules/${name}/package.json`,
+      JSON.stringify({ name, version: '1.0.0', types: 'index.d.ts' }),
+    );
+    write(`node_modules/${name}/index.d.ts`, `${lines.join('\n')}\n`);
+  }
+  for (const [file, text] of Object.entries(SOURCES)) {
+    write(file, text);
+  }
+}
 
-export function typed(code, errors, { file, options } = {}) {
-  const name = createHash('sha256').update(code).digest('hex').slice(0, 12);
-  const filename = write(file ?? `src/features/case-${name}.ts`, code);
+export function createLocatorProject() {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-service-locator-')));
+  const write = writerFor(root);
+  writeProject(write);
   return {
-    filename,
-    code,
-    ...(options === undefined ? {} : { options }),
-    ...(errors === undefined ? {} : { errors }),
+    write,
+    tester: typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root }),
+    typed: (code, errors, { file, options } = {}) => {
+      const name = createHash('sha256').update(code).digest('hex').slice(0, CASE_NAME_LENGTH);
+      const filename = write(file ?? `src/features/case-${name}.ts`, code);
+      return {
+        filename,
+        code,
+        ...(options === undefined ? {} : { options }),
+        ...(errors === undefined ? {} : { errors }),
+      };
+    },
+    remove: () => {
+      rmSync(root, { recursive: true, force: true });
+    },
   };
 }
 

@@ -2,7 +2,7 @@ import {
   GUICE_MODULES,
   KOIN_COMPONENTS,
   KTOR_APPLICATION,
-  PRODUCERS,
+  producedType,
   PRODUCING_ANNOTATIONS,
   ROOT_ANNOTATIONS,
   ROOT_SUPERTYPES,
@@ -36,7 +36,7 @@ export function fqnsOf(file, name) {
   ].map((candidate) => (candidate === bare ? candidate : `${candidate}${suffix}`));
 }
 
-export function resolvesTo(file, name, targets) {
+function resolvesTo(file, name, targets) {
   return fqnsOf(file, name).some((candidate) => targets.includes(candidate));
 }
 
@@ -60,7 +60,7 @@ export function receiverTypes(file, qualifier, typed) {
   return names
     .filter((type) => type !== undefined)
     .flatMap((type) => fqnsOf(file, type))
-    .flatMap((candidate) => [candidate, PRODUCERS.get(candidate)])
+    .flatMap((candidate) => [candidate, producedType(candidate)])
     .filter((type) => type !== undefined);
 }
 
@@ -95,35 +95,38 @@ export function inKoinComponent(file, scopes) {
   );
 }
 
+function extendsModule(file, klass, modules) {
+  return klass.supers.some((entry) =>
+    fqnsOf(file, entry).some(
+      (candidate) => GUICE_MODULES.includes(candidate) || modules.has(candidate),
+    ),
+  );
+}
+
+function newModules(files, modules) {
+  return files.flatMap((file) =>
+    file.classes
+      .filter((klass) => klass.supers.length > 0 && extendsModule(file, klass, modules))
+      .map((klass) => `${file.package}.${klass.qualified}`)
+      .filter((qualified) => !modules.has(qualified)),
+  );
+}
+
 export function moduleClassesOf(files) {
   const modules = new Set();
-  let grew = true;
-  while (grew) {
-    grew = false;
-    for (const file of files) {
-      for (const klass of file.classes.filter(({ supers }) => supers.length > 0)) {
-        const qualified = `${file.package}.${klass.qualified}`;
-        const isModule = klass.supers.some((entry) =>
-          fqnsOf(file, entry).some(
-            (candidate) => GUICE_MODULES.includes(candidate) || modules.has(candidate),
-          ),
-        );
-        if (isModule && !modules.has(qualified)) {
-          modules.add(qualified);
-          grew = true;
-        }
-      }
+  const rounds = [newModules(files, modules)];
+  for (const found of rounds) {
+    for (const qualified of found) {
+      modules.add(qualified);
+    }
+    const next = newModules(files, modules);
+    if (next.length > 0) {
+      rounds.push(next);
     }
   }
   return modules;
 }
 
 export function inGuiceModule(file, scopes, modules) {
-  return typeFrames(scopes).some(({ supers = [] }) =>
-    supers.some((entry) =>
-      fqnsOf(file, entry).some(
-        (candidate) => GUICE_MODULES.includes(candidate) || modules.has(candidate),
-      ),
-    ),
-  );
+  return typeFrames(scopes).some(({ supers = [] }) => extendsModule(file, { supers }, modules));
 }

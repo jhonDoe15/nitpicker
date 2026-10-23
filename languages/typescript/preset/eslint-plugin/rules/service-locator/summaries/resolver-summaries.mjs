@@ -60,7 +60,7 @@ function summaryOf(context, fn) {
     : scanBody(context, fn);
 }
 
-function enqueue(context, { queue, parents }, fn, callees) {
+function enqueue(context, { queue, parents }, { fn, callees }) {
   for (const callee of callees) {
     if (!parents.has(callee) && !isKnownClean(context, callee)) {
       parents.set(callee, fn);
@@ -71,13 +71,14 @@ function enqueue(context, { queue, parents }, fn, callees) {
 
 function searchFrom(context, start) {
   const queue = [start];
-  const parents = new Map([[start, undefined]]);
+  const parents = new Map();
+  parents.set(start, undefined);
   for (const fn of queue) {
     const { evidence, callees } = summaryOf(context, fn);
     if (evidence !== undefined) {
       return { evidence, path: chainOf(fn, (current) => parents.get(current)) };
     }
-    enqueue(context, { queue, parents }, fn, callees);
+    enqueue(context, { queue, parents }, { fn, callees });
   }
   return { searched: queue };
 }

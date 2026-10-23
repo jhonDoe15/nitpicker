@@ -4,7 +4,7 @@ import {
   file,
   fn,
   klass,
-  routeOf,
+  routed,
   run,
   summary,
   testFile,
@@ -47,10 +47,12 @@ describe('service lookups in Kotlin', () => {
 
     expect(summary(findings)).toEqual([rule('Orders.load: Koin inject()')]);
     expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toMatch(/^Take the dependency as a constructor parameter/u);
-    expect(findings[0].message).toContain('with Koin inject() where it is used');
-    expect(findings[0].message).not.toMatch(/line \d/u);
-    expect(routeOf(findings[0].message)).toContain('"rule":"pmd/ServiceLocatorLookup"');
+    expect(findings[0].message).toBe(
+      routed(
+        'Take the dependency as a constructor parameter (a Provider or a factory parameter when it is optional or created per use) instead of looking it up with Koin inject() where it is used: the lookup hides what the class needs. The file with fun main, an Application or Ktor module, startKoin and Koin definitions, Guice modules and @Produces or @Provides functions may look dependencies up.',
+        'ServiceLocatorLookup',
+      ),
+    );
   });
 
   it.each([

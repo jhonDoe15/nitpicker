@@ -1,9 +1,10 @@
 import ts from 'typescript';
+import { chainOf } from '../../analysis/ancestry.mjs';
 
 const ALIAS_DEPTH = 5;
 const FUNCTION_METHODS = new Set(['call', 'apply', 'bind']);
 
-export function unwrapExpression(expression) {
+function innerOf(expression) {
   if (
     ts.isParenthesizedExpression(expression) ||
     ts.isAsExpression(expression) ||
@@ -11,26 +12,35 @@ export function unwrapExpression(expression) {
     ts.isNonNullExpression(expression) ||
     ts.isTypeAssertionExpression(expression)
   ) {
-    return unwrapExpression(expression.expression);
+    return expression.expression;
   }
   return ts.isBinaryExpression(expression) &&
     expression.operatorToken.kind === ts.SyntaxKind.CommaToken
-    ? unwrapExpression(expression.right)
-    : expression;
+    ? expression.right
+    : undefined;
+}
+
+export function unwrapExpression(expression) {
+  return chainOf(expression, innerOf).at(-1);
+}
+
+function isFunctionLiteral(node) {
+  return ts.isArrowFunction(node) || ts.isFunctionExpression(node) || ts.isClassExpression(node);
 }
 
 function functionLiteralOf(expression) {
-  const inner = unwrapExpression(expression);
-  if (ts.isArrowFunction(inner) || ts.isFunctionExpression(inner) || ts.isClassExpression(inner)) {
-    return inner;
-  }
-  if (ts.isCallExpression(inner)) {
-    return inner.arguments.map(functionLiteralOf).find((found) => found !== undefined);
+  const pending = [expression];
+  for (const candidate of pending) {
+    const inner = unwrapExpression(candidate);
+    if (isFunctionLiteral(inner)) {
+      return inner;
+    }
+    pending.push(...(ts.isCallExpression(inner) ? inner.arguments : []));
   }
   return undefined;
 }
 
-export function functionOf(declaration) {
+function functionOf(declaration) {
   if (
     ts.isFunctionDeclaration(declaration) ||
     ts.isMethodDeclaration(declaration) ||
@@ -61,7 +71,7 @@ function nameOf(node) {
   return ts.isIdentifier(node) ? node : node.name;
 }
 
-export function isCallbackPosition(node) {
+function isCallbackPosition(node) {
   const { parent } = node;
   if (ts.isCallExpression(parent) || ts.isNewExpression(parent)) {
     return parent.arguments?.includes(node) === true;
@@ -96,25 +106,34 @@ export function referenceName(target) {
   return nameOf(target).text;
 }
 
-function aliasedDeclarations(checker, symbol, depth) {
+function declarationsOf(checker, symbol) {
   const resolved =
     symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
       ? checker.getAliasedSymbol(symbol)
       : symbol;
-  const declarations = resolved?.declarations ?? [];
-  if (depth === 0) {
-    return declarations;
+  return resolved?.declarations ?? [];
+}
+
+function aliasedSymbolOf(checker, declaration) {
+  const initializer = ts.isVariableDeclaration(declaration)
+    ? declaration.initializer && unwrapExpression(declaration.initializer)
+    : undefined;
+  return initializer !== undefined && isReferenceExpression(initializer)
+    ? checker.getSymbolAtLocation(nameOf(initializer))
+    : undefined;
+}
+
+function aliasedDeclarations(checker, symbol) {
+  const found = [];
+  const pending = [{ symbol, depth: ALIAS_DEPTH }];
+  for (const { symbol: current, depth } of pending) {
+    const declarations = declarationsOf(checker, current);
+    found.push(...declarations);
+    const next =
+      depth === 0 ? [] : declarations.map((declaration) => aliasedSymbolOf(checker, declaration));
+    pending.push(...next.filter(Boolean).map((alias) => ({ symbol: alias, depth: depth - 1 })));
   }
-  return declarations.flatMap((declaration) => {
-    const initializer = ts.isVariableDeclaration(declaration)
-      ? declaration.initializer && unwrapExpression(declaration.initializer)
-      : undefined;
-    if (initializer === undefined || !isReferenceExpression(initializer)) {
-      return [declaration];
-    }
-    const next = checker.getSymbolAtLocation(nameOf(initializer));
-    return [declaration, ...aliasedDeclarations(checker, next, depth - 1)];
-  });
+  return found;
 }
 
 export function functionsOf(checker, target, mode) {
@@ -122,7 +141,7 @@ export function functionsOf(checker, target, mode) {
 }
 
 export function functionsOfSymbol(checker, symbol, mode) {
-  return aliasedDeclarations(checker, symbol, ALIAS_DEPTH)
+  return aliasedDeclarations(checker, symbol)
     .filter((declaration) => mode !== 'access' || ts.isGetAccessorDeclaration(declaration))
     .map(functionOf)
     .filter((fn) => fn !== undefined);
