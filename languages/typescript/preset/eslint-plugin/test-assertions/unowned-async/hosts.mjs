@@ -2,7 +2,9 @@ import { chainOf } from '../../rules/analysis/ancestry.mjs';
 import { resolveFunction } from '../../rules/analysis/constant-resolution.mjs';
 import { importedCalleeName, moduleBindings } from '../../rules/analysis/subprocess-calls.mjs';
 
-const withNodePrefix = (names) => new Set(names.flatMap((name) => [name, `node:${name}`]));
+function withNodePrefix(names) {
+  return new Set(names.flatMap((name) => [name, `node:${name}`]));
+}
 const TIMER_MODULES = withNodePrefix(['timers']);
 const CALLBACK_MODULES = withNodePrefix([
   'fs',
@@ -114,7 +116,8 @@ export function isAssertion(node, bindings) {
     return false;
   }
   if (isAssertRoot(root.name, bindings)) {
-    return !NOT_ASSERTIONS.has(propertyName(links.at(-2)));
+    const [firstMember] = links.toReversed().slice(1);
+    return !NOT_ASSERTIONS.has(propertyName(firstMember));
   }
   return links.some((link) => ['assert', 'should'].includes(propertyName(link)));
 }
