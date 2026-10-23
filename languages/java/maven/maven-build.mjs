@@ -8,12 +8,11 @@ import {
   moduleClasspaths,
   parseDependencyList,
   readReactor,
-  usesSpring,
 } from './maven-project.mjs';
 import {
   archunitMatcher,
   collectTestResults,
-  junitLauncherVersion,
+  missingLauncherVersions,
   runJacocoReport,
   runPit,
 } from './maven-tests.mjs';
@@ -27,13 +26,9 @@ import {
   resolveTools,
 } from './maven-tools.mjs';
 import { ownSourceRoots } from '../adapters/red-base/tests-failed.mjs';
-import {
-  moduleManifest,
-  relativeTo,
-  withDeclaredSpring,
-  writeManifest,
-} from './manifest/maven-manifest.mjs';
+import { moduleManifest, relativeTo, writeManifest } from './manifest/maven-manifest.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
+import { buildRunsArchRules, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
@@ -146,7 +141,7 @@ function readTestRuns(context) {
 
 function analyzeSources(options) {
   const { module, reportDir, classpaths, tools, pinned, configs, style, spring } = options;
-  const { springRoles, spawn } = options;
+  const { springArch, springRoles, spawn } = options;
   runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn });
   runSpotbugs({ module, reportDir, tools, spawn });
   runErrorProne({ module, reportDir, tools, classpaths, spawn });
@@ -154,7 +149,16 @@ function analyzeSources(options) {
   runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn });
   runStructure(module, reportDir, spawn);
   runJdeps(module, reportDir, spawn);
-  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, springRoles, spawn });
+  runSpringArch({
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    pinned,
+    archRules: springArch,
+    springRoles,
+    spawn,
+  });
 }
 
 function runCoverageTools(options) {
@@ -172,14 +176,14 @@ function analyzeModule(options) {
     moduleManifest({ module, classpaths, pinned }),
     options.spring,
   );
-  const { spring } = manifest;
+  const { spring, springArch } = manifest;
   const { testsRan, failure } = readTestRuns({
     ...options,
     reportDir,
     isArchunit,
     testRuntime: classpaths.testRuntime,
   });
-  analyzeSources({ ...options, reportDir, spring });
+  analyzeSources({ ...options, reportDir, spring, springArch });
   if (failure === undefined) {
     runCoverageTools({ ...options, reportDir, testsRan, isArchunit });
   }
@@ -224,19 +228,11 @@ function readModules(run) {
   return modules;
 }
 
-function missingLauncherVersions(analyzed) {
-  const versions = analyzed.map(({ classpaths }) => junitLauncherVersion(classpaths.testRuntime));
-  return [...new Set(versions.filter((version) => version !== undefined))];
-}
-
 function extraTools({ modules, analyzed, policy, pinned }) {
   return [
     ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     ...formatTool(policy.javaStyle, pinned),
-    ...archunitTool(
-      analyzed.some(({ classpaths }) => usesSpring(classpaths)),
-      pinned,
-    ),
+    ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
   ];
 }
 

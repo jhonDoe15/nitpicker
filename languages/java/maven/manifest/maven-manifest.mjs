@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { usesSpring } from '../maven-project.mjs';
+import { springFacts } from '../spring/arch-rules-gate.mjs';
 
 const GUAVA_JAR = /^guava-\d.*\.jar$/u;
 const AWAITILITY_JAR = /^awaitility-\d.*\.jar$/u;
@@ -18,7 +18,6 @@ function hasJar(classpath, jar) {
 }
 
 export function moduleManifest({ module, classpaths, pinned }) {
-  const spring = usesSpring(classpaths);
   return {
     versions: pinned,
     build: 'maven',
@@ -26,19 +25,13 @@ export function moduleManifest({ module, classpaths, pinned }) {
     kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
     resourceRoots: relativeRoots(module, module.resourceRoots),
-    spring,
-    springArch: spring,
+    ...springFacts(classpaths),
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
     testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
     testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
     published: module.published,
     runsFailsafe: module.runsFailsafe,
   };
-}
-
-export function withDeclaredSpring(manifest, declared) {
-  const spring = declared === true || manifest.spring;
-  return { ...manifest, spring, springArch: spring };
 }
 
 export function writeManifest({ reportDir, manifest, testsFailed }) {
