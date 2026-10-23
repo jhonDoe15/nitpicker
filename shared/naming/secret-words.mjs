@@ -117,7 +117,7 @@ function joinedLetters(words) {
 
 export function isSecretName(name) {
   const words = nameWords(name);
-  const marker = words.at(-1) === 'token' && MARKER_TOKENS.has(words.at(-2));
+  const marker = words.at(-1) === 'token' && MARKER_TOKENS.has(words[words.length - 2]);
   return !marker && SECRET_NAME.test(joinedLetters(words));
 }
 

@@ -1,5 +1,3 @@
-import { literalIndex } from './literal-index.mjs';
-
 const TOKEN = /\?:|\?\.|->|[=!]=|[<>]=?|&&|\|\||!in\b|[A-Za-z_]\w*|[()[\]{},;\n+.="]/g;
 const CONTINUED_LINE = /[ \t\r\n]*(?:\?:|\?\.|\.|\+|&&|\|\||else\b|->)/y;
 const ONLY_ARGUMENT_CALLS = new Set(['orElse', 'valueOf', 'copyValueOf', 'String']);
@@ -175,7 +173,7 @@ function textOf(literal) {
 export function valueLiterals(scanned, from) {
   const state = {
     code: scanned.code,
-    byStart: literalIndex(scanned).byStart,
+    byStart: scanned.index.byStart,
     frames: [{ kind: 'root', valued: true }],
     prev: 'start',
     found: [],

@@ -3,7 +3,7 @@ import {
   isHardcodedSecret,
   isSecretName,
 } from '../../../../../../../shared/naming/secret-words.mjs';
-import { literalIndex } from './literal-index.mjs';
+import { withLiteralIndex } from './literal-index.mjs';
 import { valueLiterals } from './secret-values.mjs';
 
 const TYPE = String.raw`(?:\s*:\s*[\w.]+(?:<[^=\n;{}()]*>)?\??)?`;
@@ -18,6 +18,7 @@ const RETURN = /\s*return\b/y;
 const KEYED = /"\s*(?:,|\bto\b|\)\s*\{)\s*/g;
 const INDEXED = /"\s*\]\s*=(?![=>])\s*/g;
 const CALL_NAME = /([A-Za-z_]\w*)\s*$/;
+const CALL_NAME_WINDOW = 64;
 const KEYED_CALLS = new Set([
   'put',
   'putIfAbsent',
@@ -60,9 +61,11 @@ function namedFindings(scanned, pattern) {
 }
 
 function callBefore(scanned, key) {
-  const open = literalIndex(scanned).opens.get(key.start) ?? -1;
+  const open = scanned.index.opens.get(key.start) ?? -1;
   const name =
-    open === -1 ? undefined : CALL_NAME.exec(scanned.code.slice(Math.max(0, open - 64), open));
+    open === -1
+      ? undefined
+      : CALL_NAME.exec(scanned.code.slice(Math.max(0, open - CALL_NAME_WINDOW), open));
   return { bracket: scanned.code[open], name: name?.[1] };
 }
 
@@ -76,7 +79,7 @@ function isKeyedCall(scanned, key, separator) {
 }
 
 function keyedFindings(scanned, pattern) {
-  const { byEnd } = literalIndex(scanned);
+  const { byEnd } = scanned.index;
   return [...scanned.code.matchAll(pattern)].flatMap(({ index, 0: text }) => {
     const key = byEnd.get(index + 1);
     const keyed = key !== undefined && isSecretName(key.text);
@@ -98,7 +101,8 @@ function propertyDefaults(scanned) {
   );
 }
 
-export function hardcodedSecrets(scanned) {
+export function hardcodedSecrets(source) {
+  const scanned = withLiteralIndex(source);
   const all = [
     ...namedFindings(scanned, ASSIGNED),
     ...namedFindings(scanned, DELEGATED),

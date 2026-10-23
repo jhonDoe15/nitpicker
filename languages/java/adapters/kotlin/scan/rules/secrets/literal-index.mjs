@@ -1,4 +1,3 @@
-const INDEXES = new WeakMap();
 const NESTING = /[()[\]{}"]/g;
 const OPENERS = '([{';
 
@@ -40,25 +39,19 @@ function enclosingOpens(scanned, byStart) {
   return opens;
 }
 
-function buildIndex(scanned) {
+export function withLiteralIndex(scanned) {
   const byStart = new Map(scanned.literals.map((literal) => [literal.start, literal]));
-  return {
+  const index = {
     byStart,
     byEnd: new Map(scanned.literals.map((literal) => [literal.end, literal])),
     first: firstStartsFrom(scanned),
     opens: enclosingOpens(scanned, byStart),
   };
-}
-
-export function literalIndex(scanned) {
-  if (!INDEXES.has(scanned)) {
-    INDEXES.set(scanned, buildIndex(scanned));
-  }
-  return INDEXES.get(scanned);
+  return { ...scanned, index };
 }
 
 export function literalsWithin(scanned, { start, end }) {
-  const { first } = literalIndex(scanned);
+  const { first } = scanned.index;
   const from = first[Math.min(start, first.length - 1)];
   const to = first[Math.min(end, first.length - 1)];
   return scanned.literals.slice(from, to).filter((literal) => literal.end <= end);
