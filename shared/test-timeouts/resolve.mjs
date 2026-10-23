@@ -15,6 +15,8 @@ export const TIMEOUT_LIMIT_KEYS = [
   'testDeclarationCeilingMs',
   'hookDeclarationCeilingMs',
 ];
+export const TIMEOUT_PROJECT_KEYS = ['language', 'include'];
+export const TIMEOUT_SECTION_KEYS = ['defaults', 'languages', 'projects'];
 const MILLISECONDS_PER_SECOND = 1000;
 
 function objectWithKeys(value, label, allowed) {
@@ -44,7 +46,7 @@ function validateLanguage(language, label) {
 }
 
 function validateProject(project, label) {
-  validateLimits(project, label, ['language', 'include']);
+  validateLimits(project, label, TIMEOUT_PROJECT_KEYS);
   validateLanguage(project.language, `${label}.language`);
   validateStringArray(project.include, `${label}.include`);
   if (project.include.length === 0) {
@@ -84,7 +86,7 @@ function validateProjects(projects, label) {
 
 export function validateTestTimeouts(settings) {
   const label = 'tools.tests.timeouts';
-  objectWithKeys(settings, label, ['defaults', 'languages', 'projects']);
+  objectWithKeys(settings, label, TIMEOUT_SECTION_KEYS);
   if (settings.defaults !== undefined) {
     validateLimits(settings.defaults, `${label}.defaults`);
   }

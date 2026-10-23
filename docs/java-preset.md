@@ -385,6 +385,12 @@ classpath and its `test` task, and adds no test library to the project.
   (`config/pmd/`, `config/checkstyle/`) and hidden code that production imports; see
   [Using nitpicker](usage.md#configuration). Changed `.java` and `.kt` files outside the build's
   source sets are named in a notice.
+- **Editor support.** A Java project has no `node_modules`, so a `$schema` line in
+  `nitpicker.config.json` points at the published schema:
+  `"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`. The editor then completes the keys this preset takes (`tools.pmd`,
+  `tools.checkstyle`, the `java.*` conventions, the printed `<tool>/<rule>` ids) and flags the ones it
+  refuses (`react`, `i18n`, `python`, `thresholds.lineLength`). nitpicker ignores the line; see
+  [Editor support](usage.md#editor-support).
 - **One analyzer, several tools.** The preset is a single analyzer, `java` (one Gradle run per
   snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `errorprone` (Error Prone and NullAway, below), `google-java-format`, `jacoco`,
   `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5), `duplicates` (slice 6), `pit` (slice 7) and `spring` (configuration files, below). The analyzer declares them as

@@ -18,6 +18,11 @@ reused; those conventions aren't published as code.
 The preset fixes the layout below, so the boundary rules can be generic. A `layout` override in the
 config file is an exception like any other.
 
+With `"$schema": "./node_modules/nitpicker/spec/config.schema.json"` as the first line of
+`nitpicker.config.json`, the editor completes the `layout`, `exceptions`, `react`, `i18n`, `tools` and
+`conventions` keys and flags a mistake before the run does; see
+[Editor support](usage.md#editor-support).
+
 ## Layout and boundaries
 
 - Each feature lives in `src/main/features/<name>/` and exposes a public `index.ts`. Other code

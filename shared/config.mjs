@@ -3,6 +3,8 @@ import { FACT_RULE_SETTINGS, factRuleSettings } from './project-rules/fact-rules
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
+export const SCHEMA_KEY = '$schema';
+
 /** Thresholds a project can set; the file limits take whole numbers. */
 export const THRESHOLD_KEYS = [
   'crapLimit',
@@ -17,13 +19,13 @@ export const THRESHOLD_KEYS = [
   'unitTestSeconds',
   'integrationTestSeconds',
 ];
-const THRESHOLD_PRESETS = {
+export const THRESHOLD_PRESETS = {
   folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python'],
   classMethods: ['java', 'kotlin', 'python'],
   classFields: ['java', 'kotlin', 'python'],
   inheritanceDepth: ['java', 'kotlin', 'python'],
 };
-const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
+export const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'fileLines',
   'testFileLines',
   'lineLength',
@@ -80,7 +82,9 @@ export function validateThresholds(thresholds, preset = 'typescript') {
   }
 }
 
-const DUPLICATES_KEYS = ['skippedFolders'];
+export const DUPLICATES_KEYS = ['skippedFolders'];
+
+export const SKIPPED_FOLDER_NAME = /^[^/\\*?{}[\],]+$/u;
 
 export function validateDuplicates(duplicates) {
   if (!isPlainObject(duplicates)) {
@@ -101,7 +105,7 @@ export function validateDuplicates(duplicates) {
 function validateSkippedFolders(folders) {
   validateStringArray(folders, 'duplicates.skippedFolders');
   const invalid = folders.find(
-    (name) => !/^[^/\\*?{}[\],]+$/.test(name) || name.startsWith('!') || ['.', '..'].includes(name),
+    (name) => !SKIPPED_FOLDER_NAME.test(name) || name.startsWith('!') || ['.', '..'].includes(name),
   );
   if (invalid !== undefined) {
     throw configError(
@@ -144,19 +148,29 @@ function hasUnclosedBrace(glob) {
   return depth > 0;
 }
 
-const GLOB_PROBLEMS = [
-  [(glob) => glob.startsWith('./'), 'drop the leading "./": globs match from the project root'],
-  [(glob) => glob.endsWith('/'), 'drop the trailing "/": write {fix}'],
-  [
-    (glob) => glob.includes('(?'),
-    'regular expression flags such as (?i) are not supported: globs match case-sensitively, so list each spelling in braces, such as {README,readme}.md',
-  ],
-  [hasUnclosedBrace, 'a "{" is never closed'],
+export const GLOB_PROBLEMS = [
+  {
+    pattern: /^\.\//u,
+    problem: 'drop the leading "./": globs match from the project root',
+  },
+  { pattern: /\/$/u, problem: 'drop the trailing "/": write {fix}' },
+  {
+    pattern: /\(\?/u,
+    problem:
+      'regular expression flags such as (?i) are not supported: globs match case-sensitively, so list each spelling in braces, such as {README,readme}.md',
+  },
+  { matches: hasUnclosedBrace, problem: 'a "{" is never closed' },
 ];
+
+function globProblem(glob) {
+  return GLOB_PROBLEMS.find(({ pattern, matches }) =>
+    pattern === undefined ? matches(glob) : pattern.test(glob),
+  )?.problem;
+}
 
 export function validateGlobs(globs, label, fix) {
   for (const glob of globs) {
-    const [, problem] = GLOB_PROBLEMS.find(([matches]) => matches(glob)) ?? [];
+    const problem = globProblem(glob);
     if (problem !== undefined) {
       throw configError(
         `"${label}" glob ${JSON.stringify(glob)} can never match: ${problem.replace('{fix}', fix(glob))}`,

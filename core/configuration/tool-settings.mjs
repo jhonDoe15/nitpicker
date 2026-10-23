@@ -14,7 +14,7 @@ const TOOL_SETTING_KEYS = new Map([
   ['typescript', ['engine', 'project']],
   ['tests', ['runner', 'timeouts']],
 ]);
-const ENGINES = new Map([
+export const ENGINES = new Map([
   [
     'eslint',
     {
@@ -43,7 +43,7 @@ const ENGINES = new Map([
   ],
 ]);
 const PRECEDENCE_KEYS = ['precedence'];
-const NITPICKER_FIRST_REJECTED = new Map([
+export const NITPICKER_FIRST_REJECTED = new Map([
   [
     'ktlint',
     "ktlint reads the project's .editorconfig natively, which always wins over nitpicker's measured conventions",
@@ -57,10 +57,10 @@ const NITPICKER_FIRST_REJECTED = new Map([
     "black has no flag that switches string normalization back on, so nitpicker's quote style cannot win over the project's skip-string-normalization",
   ],
 ]);
-const ORDERED_PRECEDENCE_TOOLS = ['prettier'];
-const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
+export const ORDERED_PRECEDENCE_TOOLS = ['prettier'];
+export const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
-function toolSettingKeysOf(preset) {
+export function toolSettingKeysOf(preset) {
   if (GRADLE_PRESETS.includes(preset) || preset === 'python') {
     const names = [
       ...(GRADLE_PRESETS.includes(preset) ? PROJECT_TOOL_CONFIGS.keys() : []),
