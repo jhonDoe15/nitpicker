@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { EMPTY_MUTATION_FACTS } from '../../test-support/kotlin-empty-reports.mjs';
 import { readJavaFindings as readFindings } from '../java-reports.mjs';
 import {
   readingFrom,
@@ -158,7 +159,7 @@ export function projectWithKotlinReports({
     [`${reports}/jacoco.xml`]: JACOCO,
     [`${reports}/pit/mutations.xml`]: PIT,
     [`${reports}/structure.json`]: '[]',
-    [`${reports}/kotlin-mutation-facts.json`]: '{"files":[]}',
+    [`${reports}/kotlin-mutation-facts.json`]: EMPTY_MUTATION_FACTS,
     [`${reports}/classes.json`]: JSON.stringify({ files: {}, classes: [] }),
     [`${path.relative(root, reportBaseOf(root))}/duplicates.json`]: JSON.stringify({ runs: [] }),
     [`${reports}/detekt.sarif`]: readFileSync(DETEKT_SARIF, 'utf8'),

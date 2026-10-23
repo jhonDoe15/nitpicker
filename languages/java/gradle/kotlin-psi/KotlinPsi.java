@@ -132,8 +132,9 @@ public final class KotlinPsi {
     for (Source source : sources) {
       try {
         entries.add(mutation.describe(source.parsed(), source.text(), source.relative()));
-      } catch (StackOverflowError tooDeep) {
-        System.err.println(source.relative() + ": too deeply nested to collect mutation facts; the file is skipped");
+      } catch (StackOverflowError | RuntimeException failed) {
+        System.err.println(
+            source.relative() + ": mutation facts could not be collected (" + failed + "); the file is skipped");
       }
     }
     return entries;

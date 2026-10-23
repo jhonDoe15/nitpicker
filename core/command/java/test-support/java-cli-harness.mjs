@@ -8,6 +8,7 @@ import {
 } from '../../../../languages/java/adapters/test-support/in-process-gradle.mjs';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
+import { EMPTY_MUTATION_FACTS } from '../../../../languages/java/adapters/test-support/kotlin-empty-reports.mjs';
 import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { fakeMavenRun, spawnFakeMaven } from './in-process-maven.mjs';
@@ -59,6 +60,7 @@ export function useGradleFixtures(runNitpickerCli) {
       fixtures.repository({
         'nitpicker.config.json': kotlinConfig(),
         'detekt.txt': 'Legacy magic number\n',
+        'kotlin-mutation-facts.json': EMPTY_MUTATION_FACTS,
         ...files,
       }),
     run: fixtures.run,

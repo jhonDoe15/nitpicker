@@ -3,6 +3,7 @@ import path from 'node:path';
 import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
 import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
 import { createGeneratedFilter } from '../../ingest/kotlin-mutants/generated-filter.mjs';
+import { KOTLIN_REPORTS } from '../kotlin/reports/kotlin-report-names.mjs';
 import { readKotlinClassLimitFindings } from '../kotlin/kotlin-class-limits.mjs';
 import { readSarifReport } from './sarif/sarif-reports.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
@@ -29,7 +30,6 @@ const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
 const KTLINT_REPORT = 'ktlint.sarif';
 const KTFMT_REPORT = 'ktfmt.txt';
-const MUTATION_FACTS_REPORT = 'kotlin-mutation-facts.json';
 const KTLINT_PREFIX = 'ktlint.';
 const DEFAULT_ADVICE = kotlinFormatAdvice({ ktfmtStyle: 'meta' }, {});
 const NOT_YOUR_FORMATTER = 'Not your formatter: set kotlin.formatter';
@@ -93,13 +93,24 @@ function declaredPackage(file) {
 }
 
 export function kotlinGeneratedFilter({ reportRoot }) {
-  const report = path.join(reportRoot, MUTATION_FACTS_REPORT);
+  const name = KOTLIN_REPORTS.mutationFacts;
+  const report = path.join(reportRoot, name);
   if (!existsSync(report)) {
     throw new Error(
-      `The Kotlin mutation filter needs ${MUTATION_FACTS_REPORT} beside kotlin-facts.json in ${reportRoot}; the kotlin-psi program writes it.`,
+      [
+        `The Kotlin mutation filter needs ${name} in ${reportRoot}.`,
+        'The kotlin-psi program writes it beside the facts report;',
+        'a build tool that skips the program (no Kotlin files) must write {"files":[]} there.',
+      ].join(' '),
     );
   }
-  return createGeneratedFilter(JSON.parse(readFileSync(report, 'utf8')));
+  try {
+    return createGeneratedFilter(JSON.parse(readFileSync(report, 'utf8')));
+  } catch (error) {
+    throw new Error(
+      `${name} in ${reportRoot} is unusable (${error.message}); run the kotlin-psi program again`,
+    );
+  }
 }
 
 export function readKotlinFindings(context, crapLimit) {

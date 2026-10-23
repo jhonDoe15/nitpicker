@@ -1,6 +1,13 @@
 import { outerClass } from '../class-names.mjs';
 import { generatedAccessor, generatedMember, valueClassMember } from './member-rules.mjs';
-import { isConditional, isReturn, isSuspendContext, unmangled } from './mutant-kinds.mjs';
+import {
+  isConditional,
+  isReturn,
+  isSuspendContext,
+  jvmNameOf,
+  unmangled,
+  within,
+} from './mutant-kinds.mjs';
 
 const INTRINSICS_CALL = /^removed call to kotlin\/jvm\/internal\/Intrinsics::(\w+)$/;
 const INLINE_MARKER_CALL = /^removed call to kotlin\/jvm\/internal\/InlineMarker::/;
@@ -35,8 +42,8 @@ function inlineBody({ mutant, file }) {
       (entry) =>
         entry.inline &&
         entry.class === mutant.className &&
-        entry.name === base &&
-        (mutant.line > file.lines || (mutant.line >= entry.start && mutant.line <= entry.end)),
+        jvmNameOf(entry) === base &&
+        (mutant.line > file.lines || within(entry, mutant.line)),
     )
   );
 }
@@ -97,7 +104,7 @@ function suspendLambdaResult({ mutant, file }) {
     !lambda.valueLines.includes(mutant.line) ||
     lambda.discarded ||
     lambda.unitCallee ||
-    UNIT_BUILDERS.has(lambda.callee)
+    (!lambda.projectCallee && UNIT_BUILDERS.has(lambda.callee))
   );
 }
 
@@ -110,7 +117,8 @@ function suspendUnitResult({ mutant, file }) {
         entry.suspend &&
         entry.returnsUnit &&
         entry.class === mutant.className &&
-        entry.name === unmangled(mutant.method),
+        jvmNameOf(entry) === unmangled(mutant.method) &&
+        within(entry, mutant.line),
     )
   );
 }
@@ -119,7 +127,10 @@ function jvmStaticBridge({ mutant, file }) {
   return (
     file !== undefined &&
     file.functions.some(
-      (entry) => entry.staticIn === mutant.className && entry.name === unmangled(mutant.method),
+      (entry) =>
+        entry.staticIn === mutant.className &&
+        jvmNameOf(entry) === unmangled(mutant.method) &&
+        within(entry, mutant.line),
     )
   );
 }
@@ -137,13 +148,15 @@ function nullCheckIntrinsic({ mutant, file }) {
   if (call === null) {
     return false;
   }
-  return !(call[1] === 'checkNotNull' && file?.bang.has(mutant.line));
+  return !(call[1] === 'checkNotNull' && file?.casts.has(mutant.line));
 }
 
 export const SOURCE_FREE_RULES = [
   [
     'coroutine-throw-on-failure',
-    ({ mutant }) => mutant.description === 'removed call to kotlin/ResultKt::throwOnFailure',
+    ({ mutant }) =>
+      mutant.description === 'removed call to kotlin/ResultKt::throwOnFailure' &&
+      isSuspendContext(mutant),
   ],
   ['null-check-intrinsic', nullCheckIntrinsic],
   ['inline-marker', ({ mutant }) => INLINE_MARKER_CALL.test(mutant.description)],

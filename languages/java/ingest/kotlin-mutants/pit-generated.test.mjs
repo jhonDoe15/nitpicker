@@ -13,7 +13,7 @@ const facts = {
       functions: [],
       lambdas: [],
       branching: [7],
-      bang: [],
+      casts: [],
     },
   ],
 };
@@ -26,7 +26,15 @@ function mutation({
   mutator,
   description,
 }) {
-  return `<mutation detected='${String(status === 'KILLED')}' status='${status}' numberOfTestsRun='1'><sourceFile>Demo.kt</sourceFile><mutatedClass>${className}</mutatedClass><mutatedMethod>${method}</mutatedMethod><methodDescription>()V</methodDescription><lineNumber>${String(line)}</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.${mutator}</mutator><indexes><index>1</index></indexes><blocks><block>1</block></blocks><killingTest/><description>${description}</description></mutation>`;
+  return [
+    `<mutation detected='${String(status === 'KILLED')}' status='${status}' numberOfTestsRun='1'>`,
+    `<sourceFile>Demo.kt</sourceFile><mutatedClass>${className}</mutatedClass>`,
+    `<mutatedMethod>${method}</mutatedMethod><methodDescription>()V</methodDescription>`,
+    `<lineNumber>${String(line)}</lineNumber>`,
+    `<mutator>org.pitest.mutationtest.engine.gregor.mutators.${mutator}</mutator>`,
+    `<indexes><index>1</index></indexes><blocks><block>1</block></blocks><killingTest/>`,
+    `<description>${description}</description></mutation>`,
+  ].join('');
 }
 
 const REPORT = `<?xml version="1.0" encoding="UTF-8"?>
@@ -34,6 +42,7 @@ const REPORT = `<?xml version="1.0" encoding="UTF-8"?>
 ${[
   {
     status: 'SURVIVED',
+    method: 'invokeSuspend',
     line: 5,
     mutator: 'VoidMethodCallMutator',
     description: 'removed call to kotlin/ResultKt::throwOnFailure',

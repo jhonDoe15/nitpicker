@@ -14,26 +14,6 @@ import org.jetbrains.kotlin.psi.KtFile;
 import org.jetbrains.kotlin.psi.KtLambdaExpression;
 import org.jetbrains.kotlin.psi.KtNamedFunction;
 
-/**
- * Facts about the main sources that tell the Nitpicker side which mutants of PIT's report hit code the Kotlin
- * compiler wrote (coroutine state machines, null-check intrinsics, copies of inline bodies, accessors and members
- * of data and value classes, bridges). One entry per file, lines 1-based:
- *
- * <pre>
- * file, package, lines   path from the project directory, package, number of lines
- * classes                every named class, object and interface (nested ones with $ in the JVM name) and the
- *                        class of the top-level declarations: name, kind, start and headerEnd (the lines of the
- *                        declaration up to its body), init, serializable, functions (names written in its
- *                        body), properties (name, start, end, constructor, getter and setter written with a
- *                        body, delegated)
- * functions              every named function with a body: name, class, start, end, suspend, inline,
- *                        returnsUnit, inlineCalls (names of the project's inline functions it calls), staticIn
- *                        (the class that gets the static bridge of a @JvmStatic function of a companion)
- * lambdas                every lambda: start, end, valueLines, returnLines, callee, discarded, unitCallee
- * branching              lines that hold syntax the compiler turns into a conditional
- * bang                   first and last line of each expression that holds !!
- * </pre>
- */
 public final class MutationFacts {
   private final Set<String> inline = new HashSet<>();
   private final Map<String, Boolean> unitCallees = new HashMap<>();
@@ -72,7 +52,7 @@ public final class MutationFacts {
         "functions", functions.entries,
         "lambdas", lambdas.entries,
         "branching", branching.branchingLines(),
-        "bang", branching.bangLines());
+        "casts", branching.castLines());
   }
 
   private void scan(PsiElement element, Branching branching, Lambdas lambdas) {
