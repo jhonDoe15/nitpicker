@@ -115,11 +115,7 @@ describe.each([
           ]
         }
       },
-      "originalUriBaseIds": {
-        "%SRCROOT%": {
-          "uri": "${/file:\/\/\/[^"]+\//}"
-        }
-      },
+      "columnKind": "utf16CodeUnits",
       "invocations": [
         {
           "executionSuccessful": true,

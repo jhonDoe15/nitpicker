@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { renderSarifReport, renderSnapshotSarifReport } from './sarif.mjs';
+import {
+  renderBaselineSarifReport,
+  renderSarifReport,
+  renderSnapshotSarifReport,
+} from './sarif.mjs';
 import { expectValidSarif } from './test-support/report-assertions.mjs';
 import { sarifSchemaErrors } from './test-support/sarif-schema.mjs';
 import { finding, report } from './test-support/report-builders.mjs';
 
-const projectRoot = path.join(path.sep, 'work', 'repo', 'packages', 'my app');
+const projectPath = 'packages/my app';
 
 function held(overrides = {}) {
   return finding({
@@ -16,6 +18,20 @@ function held(overrides = {}) {
     heldAtBase: 7,
     ...overrides,
   });
+}
+
+function comparison() {
+  return {
+    ...report({
+      newFindings: [finding()],
+      unchangedFindings: [held(), finding({ rule: 'untouched', identity: 'u' })],
+    }),
+    resolvedFindings: [finding({ rule: 'fixed', identity: 'f' })],
+  };
+}
+
+function states(log) {
+  return log.runs[0].results.map((result) => [result.ruleId, result.baselineState]);
 }
 
 describe('renderSarifReport', () => {
@@ -36,12 +52,14 @@ describe('renderSarifReport', () => {
           ],
           toolErrors: [{ tool: 'depcruise', snapshot: 'head', message: 'boom' }],
         }),
-        { projectRoot },
+        { projectPath: '' },
       ),
     );
 
     expectValidSarif(log);
     const [run] = log.runs;
+    expect(run.columnKind).toBe('utf16CodeUnits');
+    expect(run.originalUriBaseIds).toBeUndefined();
     expect(run.results.map((result) => [result.ruleId, result.level])).toEqual([
       ['eslint/no-console', 'error'],
       ['eslint/no-var', 'error'],
@@ -59,7 +77,7 @@ describe('renderSarifReport', () => {
   });
   it('keeps fingerprints stable across line moves and distinct across findings', () => {
     const fingerprint = (value) =>
-      JSON.parse(renderSarifReport(report({ newFindings: [value] }), { projectRoot })).runs[0]
+      JSON.parse(renderSarifReport(report({ newFindings: [value] }), { projectPath })).runs[0]
         .results[0].partialFingerprints['nitpickerIdentity/v1'];
 
     const original = fingerprint(finding());
@@ -69,25 +87,46 @@ describe('renderSarifReport', () => {
     expect(fingerprint(finding({ path: 'src/b.js' }))).not.toBe(original);
   });
   it('emits an empty result list for a clean report', () => {
-    const log = JSON.parse(renderSarifReport(report(), { projectRoot }));
+    const log = JSON.parse(renderSarifReport(report(), { projectPath }));
     expectValidSarif(log);
     expect(log.runs[0].results).toEqual([]);
     expect(log.runs[0].invocations[0].executionSuccessful).toBe(true);
   });
-  it('marks new findings new and held findings unchanged, and leaves out fixed ones', () => {
-    const unheld = finding({ rule: 'untouched', identity: 'u' });
+  it('writes only the new findings, so an upload never turns held findings into alerts', () => {
+    const log = JSON.parse(renderSarifReport(comparison(), { projectPath }));
+
+    expectValidSarif(log);
+    expect(states(log)).toEqual([['eslint/no-console', 'new']]);
+  });
+  it('prefixes paths with the project folder so they are relative to the repository root', () => {
     const log = JSON.parse(
-      renderSarifReport(
-        {
-          ...report({ newFindings: [finding()], unchangedFindings: [held(), unheld] }),
-          resolvedFindings: [finding({ rule: 'fixed', identity: 'f' })],
-        },
-        { projectRoot },
-      ),
+      renderSarifReport(report({ newFindings: [finding({ path: 'src/[id]/my page#1.ts' })] }), {
+        projectPath: 'packages/my app/',
+      }),
     );
 
     expectValidSarif(log);
-    expect(log.runs[0].results.map((result) => [result.ruleId, result.baselineState])).toEqual([
+    expect(log.runs[0].results[0].locations[0].physicalLocation.artifactLocation).toEqual({
+      uri: 'packages/my%20app/src/%5Bid%5D/my%20page%231.ts',
+      uriBaseId: '%SRCROOT%',
+    });
+  });
+  it('keeps project-relative paths without a base id when the repository folder is unknown', () => {
+    const log = JSON.parse(renderSarifReport(report({ newFindings: [finding()] })));
+
+    expectValidSarif(log);
+    expect(log.runs[0].results[0].locations[0].physicalLocation.artifactLocation).toEqual({
+      uri: 'src/a.js',
+    });
+  });
+});
+
+describe('renderBaselineSarifReport', () => {
+  it('marks new findings new and held findings unchanged, and leaves out fixed ones', () => {
+    const log = JSON.parse(renderBaselineSarifReport(comparison(), { projectPath }));
+
+    expectValidSarif(log);
+    expect(states(log)).toEqual([
       ['eslint/no-console', 'new'],
       ['eslint/file-size', 'unchanged'],
     ]);
@@ -95,40 +134,9 @@ describe('renderSarifReport', () => {
       'eslint/no-console',
       'eslint/file-size',
     ]);
-  });
-  it('resolves paths against the project folder so a subfolder project maps to its files', () => {
-    const log = JSON.parse(
-      renderSarifReport(report({ newFindings: [finding({ path: 'src/[id]/my page#1.ts' })] }), {
-        projectRoot,
-      }),
+    expect(log.runs[0].results[1].locations[0].physicalLocation.artifactLocation.uri).toBe(
+      'packages/my%20app/src/a.js',
     );
-
-    expectValidSarif(log);
-    const [run] = log.runs;
-    expect(run.originalUriBaseIds).toEqual({
-      '%SRCROOT%': { uri: `${pathToFileURL(projectRoot).href}/` },
-    });
-    expect(run.originalUriBaseIds['%SRCROOT%'].uri).toBe('file:///work/repo/packages/my%20app/');
-    expect(run.results[0].locations[0].physicalLocation.artifactLocation).toEqual({
-      uri: 'src/%5Bid%5D/my%20page%231.ts',
-      uriBaseId: '%SRCROOT%',
-    });
-  });
-  it('ends the source root with a single slash for a project at the filesystem root', () => {
-    const log = JSON.parse(
-      renderSarifReport(report(), { projectRoot: path.parse(projectRoot).root }),
-    );
-
-    expect(log.runs[0].originalUriBaseIds['%SRCROOT%'].uri).toBe('file:///');
-  });
-  it('keeps plain relative paths when no project root is known', () => {
-    const log = JSON.parse(renderSarifReport(report({ newFindings: [finding()] })));
-
-    expectValidSarif(log);
-    expect(log.runs[0].originalUriBaseIds).toBeUndefined();
-    expect(log.runs[0].results[0].locations[0].physicalLocation.artifactLocation).toEqual({
-      uri: 'src/a.js',
-    });
   });
 });
 
@@ -148,21 +156,26 @@ describe('renderSnapshotSarifReport', () => {
   };
 
   it('writes every finding of the full run with no baseline state', () => {
-    const log = JSON.parse(renderSnapshotSarifReport(snapshot, { projectRoot }));
+    const log = JSON.parse(renderSnapshotSarifReport(snapshot, { projectPath }));
 
     expectValidSarif(log);
     const [run] = log.runs;
-    expect(run.results.map((result) => [result.ruleId, result.level])).toEqual([
-      ['eslint/no-console', 'error'],
-      ['complexity/cyclomatic', 'note'],
+    expect(
+      run.results.map((result) => [result.ruleId, result.level, result.baselineState]),
+    ).toEqual([
+      ['eslint/no-console', 'error', undefined],
+      ['complexity/cyclomatic', 'note', undefined],
     ]);
-    expect(run.results.every((result) => result.baselineState === undefined)).toBe(true);
-    expect(run.originalUriBaseIds['%SRCROOT%'].uri).toBe('file:///work/repo/packages/my%20app/');
+    expect(run.results[0].locations[0].physicalLocation.artifactLocation.uri).toBe(
+      'packages/my%20app/src/a.js',
+    );
     expect(run.invocations[0].executionSuccessful).toBe(false);
   });
   it('gives a finding the same fingerprint as in the differential run', () => {
     const fingerprint = (log) => log.runs[0].results[0].partialFingerprints;
-    const full = JSON.parse(renderSnapshotSarifReport({ findings: [finding()], toolErrors: [] }));
+    const full = JSON.parse(
+      renderSnapshotSarifReport({ findings: [finding()], toolErrors: [] }, { projectPath }),
+    );
     const diff = JSON.parse(renderSarifReport(report({ newFindings: [finding()] })));
 
     expect(fingerprint(full)).toEqual(fingerprint(diff));
@@ -172,7 +185,7 @@ describe('renderSnapshotSarifReport', () => {
 describe('SARIF schema check', () => {
   it('rejects a log the 2.1.0 schema does not allow', () => {
     const log = JSON.parse(
-      renderSarifReport(report({ newFindings: [finding()] }), { projectRoot }),
+      renderSarifReport(report({ newFindings: [finding()] }), { projectPath }),
     );
     const text = JSON.stringify(log);
     const errorPaths = (from, to) =>
@@ -185,8 +198,8 @@ describe('SARIF schema check', () => {
     expect(errorPaths('"startLine":12', '"startLine":0')).toEqual([
       '/runs/0/results/0/locations/0/physicalLocation/region/startLine',
     ]);
-    expect(errorPaths(/"uri":"file:[^"]*"/u, '"uri":"not an absolute uri"')).toEqual([
-      '/runs/0/originalUriBaseIds/%SRCROOT%/uri',
+    expect(errorPaths('"columnKind":"utf16CodeUnits"', '"columnKind":"bytes"')).toEqual([
+      '/runs/0/columnKind',
     ]);
   });
 });
