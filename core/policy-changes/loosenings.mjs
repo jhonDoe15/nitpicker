@@ -37,6 +37,10 @@ function precedenceLoosened({ before = DEFAULT_PRECEDENCE, after = DEFAULT_PRECE
     : projectWeight(after) > projectWeight(before);
 }
 
+function listShrank({ before = [], after = [] }) {
+  return before.some((entry) => !after.includes(entry));
+}
+
 function turnedOff(offValue) {
   return ({ before, after }) => after === offValue && before !== offValue;
 }
@@ -49,6 +53,7 @@ const LOOSENING_SETTINGS = [
   [/^kotlin\.formatter$/u, 'kotlin-formatter-off', turnedOff('none')],
   [/^kotlin\.detektConfig$/u, 'kotlin-detekt-config', () => true],
   [/^tools\.[^.]+\.precedence$/u, 'tool-precedence', precedenceLoosened],
+  [/^spring\.roles\.[^.]+$/u, 'spring-roles-shrank', listShrank],
 ];
 
 export function looseningKindOfSetting(change, scope) {

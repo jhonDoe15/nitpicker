@@ -153,6 +153,11 @@ const FIXTURES = {
   'kotlin-detekt-config': () =>
     synthetic({ preset: 'kotlin' }, { preset: 'kotlin', kotlin: { detektConfig: 'detekt.yml' } }),
   'tool-precedence': () => synthetic({}, { tools: { prettier: PROJECT } }),
+  'spring-roles-shrank': () =>
+    synthetic(
+      { preset: 'java', spring: { roles: { service: ['com.example.UseCase'] } } },
+      { preset: 'java' },
+    ),
 };
 
 const VARIANTS = [

@@ -129,6 +129,10 @@ export const POLICY_GUIDANCE = {
     'so the project can relax the checks.',
     'Restore the base precedence.',
   ].join(' '),
+  'spring-roles-shrank': [
+    'Drops a Spring role mapping, so the classes it marked lose that role and its layering checks.',
+    'Restore the mapping.',
+  ].join(' '),
 };
 
 export function policyKindGuidance(kind) {
