@@ -41,4 +41,8 @@ export const RULES_CASES = [
   ...rulesCases('network-test', [['network-in-test', 'fake']]),
   ...rulesCases('uncollected-tests', [['uncollected-tests', 'python_files']]),
   ...rulesCases('test-helper-in-source', [['test-helper-in-source', 'tests folder']]),
+  ...rulesCases('tri-state-boolean', [['tri-state-boolean', 'enum']]),
+  ...rulesCases('falsy-default', [['falsy-default', 'is not None']]),
+  ...rulesCases('parameter-mutation', [['parameter-mutation', 'new value']]),
+  ...rulesCases('compatibility-shim', [['compatibility-shim', 'delete the old name']]),
 ];

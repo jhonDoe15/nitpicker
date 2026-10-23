@@ -24,6 +24,7 @@ def load_checks():
     from security.sql import check as sql
     from security.timeouts import check as timeouts
     from security.tls import check as tls
+    from signatures import defaults, mutation, shims, tri_state
     from silent_tests import unasserted
     from smells import literals, loops, names, secret_logs, secrets
 
@@ -54,6 +55,10 @@ def load_checks():
         isolation,
         uncollected,
         helpers,
+        tri_state,
+        defaults,
+        mutation,
+        shims,
     ]
 
 
