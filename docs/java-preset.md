@@ -117,9 +117,9 @@ by field. Per snapshot:
    tasks (PMD's auxiliary classpath is the main and test compile classpaths plus both class
    directories). The versions are read from the init script's `pinned` map, so both builds always
    run the same tools.
-   A module that uses Spring (`spring-context` or `spring-boot` on its main compile classpath) also
-   runs the Spring architecture rules: ArchUnit is resolved with the other tools, but only when some
-   module uses Spring, and the rule classes are compiled once into
+   A module that uses Spring (`spring-context` or `spring-boot` on its main compile classpath) or
+   jMolecules (`jmolecules-ddd`) also runs the Spring architecture rules: ArchUnit is resolved with
+   the other tools, but only when some module runs them, and the rule classes are compiled once into
    `$XDG_CACHE_HOME/nitpicker/spring-arch/<hash>` (else `~/.cache/nitpicker/spring-arch/<hash>`, private
    to the user; the hash is computed like Gradle's, but the cache is separate from Gradle's) and run in
    one extra JVM per module (`languages/java/maven/spring/maven-spring-arch.mjs`).
@@ -415,8 +415,9 @@ classpath and its `test` task, and adds no test library to the project.
   timer within its supported range. The analyzer deadline allows two commands (the optional
   Checkstyle configuration export and the analysis), plus one minute for reports. This does
   not change Maven's command budget or configure individual PIT phases.
-- **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude` and
-  `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
+- **Config keys.** `base`, `disable` and `analyzers` work as before. `history` turns on the
+  opt-in [change history](usage.md#change-history) check, which reads git and not the Java runner.
+  `thresholds`, `exclude` and `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
   part of the analyzer's configuration hash:
   - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
@@ -458,8 +459,9 @@ classpath and its `test` task, and adds no test library to the project.
     configuration hash. Every message of a rule nitpicker adds ends with the entry that accepts it, and so does every PMD,
     Checkstyle, SpotBugs and ArchUnit message (`pmd/<rule>`).
   - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
-    keys are TypeScript only, and `layout.sharedRoots` and `layout.featureRoots` are accepted once the
-    Java preset registers the rule that reads them (`shared-used-by-one-feature`) in
+    keys are TypeScript only, `layout.featureRoots` is accepted once `history.coChange` is on (it
+    names the feature folders `co-change` reads), and `layout.sharedRoots` is accepted once the
+    Java preset registers the rule that reads it (`shared-used-by-one-feature`) in
     `shared/project-rules/fact-rules.mjs`. `testConsole` is accepted because the registry lists Java and
     Kotlin for `test-console-output`. `tools` takes `pmd` and `checkstyle`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
@@ -1698,21 +1700,22 @@ classpath detection.
 Each rule allows one form and its message names it. A finding prints as `pmd/<rule>`, which is also
 the `rule` of a config exception.
 
-| Area          | Rules                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Beans         | `SpringConstructorInjection`, `SpringImmutableBeans` (also static non-final fields), `SpringBeanCollectionState` (a `final` `HashMap`/`ArrayList`/`HashSet`/... field of a singleton bean written to after startup), `SpringNoServiceLocator`, `SpringNoLazyInjection`, `SpringLiteConfiguration`, `SpringNoComponentScan`, `SpringHttpClientPerCall` (a `RestTemplate`, `RestTemplateBuilder`, `RestClient`, `WebClient` or `HttpClient` built inside a method that is not a `@Bean`, a `static` factory or a private helper only they call), `SpringHttpClientTimeouts` (a client, request factory, `new RestTemplateBuilder()` or Reactor Netty `HttpClient` built without timeouts in a field, constructor, `@Bean`, `static` factory or such a helper), `SpringNoPostConstructIo` (repository, JDBC, `EntityManager` or HTTP calls in `@PostConstruct`) |
-| Configuration | `SpringTypedConfiguration` (no `@Value` outside `@Configuration`, no `System.getenv`/`getProperty` of application keys in any class except `@Configuration`, `@SpringBootApplication`, `EnvironmentPostProcessor`, `ApplicationContextInitializer` and `main`, no `Environment.getProperty` in beans), `SpringValueSecretDefault` (a non-empty default for a secret-named key in `@Value("${...secret:default}")`, `@DefaultValue` or `getProperty(key, default)`), `SpringProfileOnConfiguration`                                                                                                                                                                                                                                                                                                                                                           |
-| Proxies       | `SpringProxyMethodVisibility`, `SpringProxySelfCall` (both for `@Transactional`, `@Async`, the cache annotations, `@Retryable`, `@PreAuthorize`, `@PostAuthorize`, `@Secured`), `SpringTransactionalAnnotation`, `SpringNoTransactionalController`, `SpringNoRequiresNew`, `SpringNoSwallowedTransactionException` (also private helpers of a `@Transactional` class), `SpringTransactionalCheckedRollback` (a checked `throws` without `rollbackFor`), `SpringTransactionalReadOnlyWrite` (a repository or `EntityManager` write under `readOnly = true`), `SpringAsyncExecutor`, `SpringScheduledFixedDelay`                                                                                                                                                                                                                                               |
-| Web           | `SpringComposedMapping`, `SpringRestController`, `SpringValidRequestBody`, `SpringTypedResponse` (a handler returns `Object`, `JsonNode`, `Map<String, Object>`, `ResponseEntity<?>`, raw `ResponseEntity`, a list or `Optional` of those, or `null`), `SpringTypedRequestBody` (a `@RequestBody` that is an `Object`, `JsonNode`, `Map<String, Object>` or a list or `Optional` of those), `SpringNoErrorLeak` (the stack trace, or the message of a generic, JDK or persistence exception, reaching the response of an `@ExceptionHandler`), `SpringNoCrossOrigin`, `SpringCorsWildcard`, `SpringPasswordEncoder` (also the MD4, message-digest, LDAP SHA and SHA-256 encoders and `User.withDefaultPasswordEncoder()`), `SpringPermitAllAnyRequest`, `SpringCsrfDisabled`, `SpringHardcodedUser`                                                          |
-| JPA           | `JpaLazyFetching`, `JpaEntityClass`, `JpaManyToManyCascade`, `JpaManyToManySet`, `JpaVersion`, `JpaSequenceIds`, `JpaEnumString` (an enum field or `@ElementCollection` of enums without `@Enumerated(EnumType.STRING)`, or enum map keys without `@MapKeyEnumerated(EnumType.STRING)`), `JpaIdentityHashCode` (`hashCode` reading the `@GeneratedValue` id, or Lombok `@Data`/`@EqualsAndHashCode` without arguments on an entity)                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Spring Data   | `SpringDataDerivedQuery` (every declared repository method has `@Query`; inherited methods such as `findById` and `save` stay legal), `SpringDataNativeQuery` (also `EntityManager.createNativeQuery`), `SpringDataModifyingQuery`, `SpringDataNoSaveInLoop`, `SpringDataBatchOfOne`, `SpringDataRowWriteInLoop`, `SpringDataSaveInLoopHelper`, `SpringDataFilterInQuery`, `SpringQueryConcatenation`, `SpringDataNoFlush`, `SpringDataNamedParameters`, `SpringDataQueryTextBlock`                                                                                                                                                                                                                                                                                                                                                                          |
-| Tests         | `SpringUnusedContext` (test sources only, from `spring-test-ruleset.xml`; see [Review rules](#review-rules))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Area          | Rules                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Beans         | `SpringConstructorInjection`, `SpringImmutableBeans` (also static non-final fields), `SpringBeanCollectionState` (a `final` `HashMap`/`ArrayList`/`HashSet`/... field of a singleton bean written to after startup), `SpringNoServiceLocator` (not in an `ApplicationContextInitializer` or `EnvironmentPostProcessor`), `SpringNoLazyInjection`, `SpringLiteConfiguration`, `SpringNoComponentScan`, `SpringHttpClientPerCall` (a `RestTemplate`, `RestTemplateBuilder`, `RestClient`, `WebClient` or `HttpClient` built inside a method that is not a `@Bean`, a `static` factory or a private helper only they call), `SpringHttpClientTimeouts` (a client, request factory, `new RestTemplateBuilder()` or Reactor Netty `HttpClient` built without timeouts in a field, constructor, `@Bean`, `static` factory or such a helper), `SpringNoPostConstructIo` (repository, JDBC, `EntityManager` or HTTP calls in `@PostConstruct`, `InitializingBean.afterPropertiesSet()`, a `@Bean(initMethod = ...)` method, or a private helper only they call) |
+| Configuration | `SpringTypedConfiguration` (no `@Value` outside `@Configuration`, no `System.getenv`/`getProperty` of application keys in any class except `@Configuration`, `@SpringBootApplication`, `EnvironmentPostProcessor`, `ApplicationContextInitializer` and `main`, no `Environment.getProperty` in beans), `SpringValueSecretDefault` (a non-empty default for a secret-named key in `@Value("${...secret:default}")`, `@DefaultValue`, a `@ConfigurationProperties` field initializer or `getProperty(key, default)`), `SpringProfileOnConfiguration`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Proxies       | `SpringProxyMethodVisibility`, `SpringProxySelfCall` (both for `@Transactional`, `@Async`, the cache annotations, `@Retryable`, `@PreAuthorize`, `@PostAuthorize`, `@Secured`), `SpringTransactionalAnnotation`, `SpringNoTransactionalController`, `SpringNoRequiresNew`, `SpringNoSwallowedTransactionException` (also private helpers of a `@Transactional` class), `SpringTransactionalCheckedRollback` (a checked `throws` without `rollbackFor`), `SpringTransactionalReadOnlyWrite` (a repository or `EntityManager` write under `readOnly = true`), `SpringAsyncExecutor`, `SpringScheduledFixedDelay`                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Web           | `SpringComposedMapping`, `SpringRestController`, `SpringValidRequestBody`, `SpringTypedResponse` (a handler returns `Object`, `JsonNode`, `Map<String, Object>`, `ResponseEntity<?>`, raw `ResponseEntity`, a list or `Optional` of those, or `null`), `SpringTypedRequestBody` (a `@RequestBody` that is an `Object`, `JsonNode`, `Map<String, Object>` or a list or `Optional` of those), `SpringNoErrorLeak` (the stack trace, or the message of a generic, JDK or persistence exception, reaching the response of an `@ExceptionHandler`), `SpringNoCrossOrigin`, `SpringCorsWildcard`, `SpringPasswordEncoder` (also the MD4, message-digest, LDAP SHA and SHA-256 encoders and `User.withDefaultPasswordEncoder()`), `SpringPermitAllAnyRequest`, `SpringCsrfDisabled`, `SpringHardcodedUser`                                                                                                                                                                                                                                                     |
+| JPA           | `JpaLazyFetching`, `JpaEntityClass`, `JpaManyToManyCascade`, `JpaManyToManySet`, `JpaVersion`, `JpaSequenceIds`, `JpaEnumString` (an enum field or `@ElementCollection` of enums without `@Enumerated(EnumType.STRING)`, or enum map keys without `@MapKeyEnumerated(EnumType.STRING)`), `JpaIdentityHashCode` (`hashCode` reading the `@GeneratedValue` id, or Lombok `@Data`/`@EqualsAndHashCode` without arguments on an entity)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Spring Data   | `SpringDataDerivedQuery` (every declared repository method has `@Query`; inherited methods such as `findById` and `save` stay legal), `SpringDataNativeQuery` (also `EntityManager.createNativeQuery`), `SpringDataModifyingQuery`, `SpringDataNoSaveInLoop`, `SpringDataBatchOfOne`, `SpringDataRowWriteInLoop`, `SpringDataSaveInLoopHelper`, `SpringDataFilterInQuery`, `SpringQueryConcatenation`, `SpringDataNoFlush`, `SpringDataNamedParameters`, `SpringDataQueryTextBlock`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Tests         | `SpringUnusedContext` (test sources only, from `spring-test-ruleset.xml`; see [Review rules](#review-rules))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 **Kotlin.** PMD reads Java sources only, so every rule in this table checks the Java files of a
-project, on Gradle and Maven alike. Kotlin classes, in a kotlin-preset project or in a mixed
-module, get none of these rules for now: not the beans, HTTP-client, CSRF and security rules, not
-the JPA entity rules (`JpaEnumString`, `JpaIdentityHashCode`, `JpaLazyFetching`, ...) and not the
-Spring Data loop and query rules. The Spring configuration file checks
+project, on Gradle and Maven alike. In a kotlin-preset project the Beans, Configuration, Proxies and
+Web rules also run on the main Kotlin sources, under the same ids and exception route, from the
+Kotlin syntax facts (see [Kotlin preset: Spring rules](kotlin-preset.md#spring-rules)); the JPA and
+Spring Data rules do not run on Kotlin yet. Kotlin classes of a Java-preset project (a mixed module)
+get none of these rules. The Spring configuration file checks
 ([below](#spring-configuration-files)) do not depend on the language and apply to Kotlin projects
 too, and `missing-enable` scans the Kotlin sources.
 
@@ -1862,7 +1865,8 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   in the same file names, or a private helper (two levels deep, also through
   `this::register`) that only those call are startup and accepted; so are writes inside
   `synchronized` blocks or methods and in methods that take a `Lock`, and beans with
-  `@RequestScope`, `@SessionScope` or a `@Scope` other than `singleton`. The allowed form is a
+  `@RequestScope`, `@SessionScope` or a `@Scope` other than `singleton`. A write through a local
+  variable or parameter that shadows the field's name is not a write to the field. The allowed form is a
   collection filled in the constructor and kept as `Map.copyOf`/`List.copyOf`, a
   `ConcurrentHashMap`, or a cache. `SpringHttpClientPerCall` accepts a client built in a field
   initializer, a constructor, a `@Bean` method, a private helper (two levels deep) that only those
@@ -1908,8 +1912,15 @@ true)` class in the same file converts. `JpaIdentityHashCode` reports the first 
   default fires except a nested placeholder or SpEL (`${a:${B}}`, `#{...}`), so
   `${app.token:changeme}` fires and `${auth.token-ttl:3600}` does not. It also covers a non-empty
   `@DefaultValue` on a secret-named `@ConfigurationProperties` component and
-  `environment.getProperty("app.client-secret", "changeme")`. `SpringNoPostConstructIo` reports the
-  call in the `@PostConstruct` method itself.
+  `environment.getProperty("app.client-secret", "changeme")`, and a literal initializer of a
+  non-static field of a `@ConfigurationProperties` class whose prefix plus field name is
+  secret-named (`@ConfigurationProperties("auth")` with `String secret = "dev-secret"`).
+  `SpringNoPostConstructIo` reports the call in a `@PostConstruct` method, in
+  `InitializingBean.afterPropertiesSet()`, in a method that a `@Bean(initMethod = ...)` in the same
+  file names, and in a private helper (two levels deep) that only those call.
+  `SmartInitializingSingleton.afterSingletonsInstantiated()` runs once every singleton is ready, so
+  I/O there is accepted. `SpringNoServiceLocator` skips an `ApplicationContextInitializer` or
+  `EnvironmentPostProcessor`, which runs before the context exists and has no injection.
 
 **Limits.** `JpaVersion` checks each `@Entity` or `@MappedSuperclass` that declares the `@Id`,
 and each entity without a superclass, so the `@Version` field belongs next to the `@Id`. A finding
@@ -1922,7 +1933,8 @@ code gets them too. `SpringDataDerivedQuery` leaves redeclared CRUD methods alon
 name, and accepts the `@Query` of the JDBC, R2DBC, MongoDB, Neo4j, Cassandra, Couchbase and
 Elasticsearch modules; the other Spring Data rules know only the JPA annotations. Proxy annotations
 on interface methods are accepted, because Spring reads them for both proxy kinds.
-`SpringProxySelfCall` matches by name and argument count, and skips a call from one `@Transactional`
+`SpringProxySelfCall` matches by name and argument count (a varargs method takes its fixed
+arguments or more), and skips a call from one `@Transactional`
 method to another with a plain `@Transactional` (same transaction) and matches a `this::name` reference by name. `SpringDataNoSaveInLoop` covers
 `for`, `while` and `do` loops and `forEach`, `map` and `peek` callbacks on a stream, an `Iterable`
 or a `Map`, lambdas and method references (`forEach(repository::save)`) alike; `Optional.map` and
@@ -1932,7 +1944,7 @@ calls `EntityManager.clear()`, the JPA batch idiom.
 `Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
 exceptions such as `NumberFormatException`. `SpringQueryConcatenation` does not follow SQL that
 comes from a helper method, a parameter or a field. `SpringDataSaveInLoopHelper` follows one helper
-level, and `SpringNoPostConstructIo` does not follow a repository call through a helper.
+level, and `SpringNoPostConstructIo` follows private helpers two levels deep.
 `JpaEnumString` sees an `autoApply` converter only in the same file; an enum converted by a
 converter in another file needs an exception. `SpringPermitAllAnyRequest` does not resolve a
 pattern held in a variable (`var all = "/**"`) or an `access(...)` that allows everyone.
@@ -1953,7 +1965,8 @@ Error Prone checks fire on the deliberate violations the Spring rule examples ho
 ## Spring architecture rules
 
 Spring projects (same detection as the Spring ruleset: `spring-context` or `spring-boot` on the
-compile classpath, `spring: true` in the manifest) also get nitpicker's own ArchUnit rules. They are
+compile classpath, `spring: true` in the manifest) also get nitpicker's own ArchUnit rules, and so
+does a module with `jmolecules-ddd` on its main compile classpath (for the aggregate rules below). They are
 separate from the project's own `*ArchTest` classes of slice 4 and need nothing from the project:
 the init script's `nitpickerSpringArch` task resolves ArchUnit 1.5.1 (Apache-2.0, pinned in the
 `pinned` map) into its own configuration, compiles the rule classes in
@@ -1999,6 +2012,69 @@ TypeScript `shared/` folder.
 | `spring-controller-repository` | a `@Controller` or `@RestController` depends on a repository (`@Repository`, or a type extending Spring Data's `Repository`) or on data access directly (`JdbcTemplate`, `NamedParameterJdbcTemplate`, `JdbcClient`, `SimpleJdbcInsert`, R2DBC `DatabaseClient`, `JdbcAggregateTemplate`, `R2dbcEntityTemplate`, `MongoTemplate`, `EntityManager`, `EntityManagerFactory`, Hibernate `Session`, `DataSource`, or their interfaces), in a field, parameter, return type or call                                                                                                                                                                                                          |
 | `spring-controller-entity`     | a request-mapping or `@ModelAttribute` method of a controller takes or returns an `@Entity` type, also inside a generic such as `List<Customer>`; methods declared on implemented interfaces (the OpenAPI-generator layout) and inherited from base controllers count                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `spring-service-web`           | a `@Service` or repository depends on the web layer: a controller or `@ControllerAdvice`, `ResponseEntity` in its own field, method or constructor signatures (not a `RestTemplate` or `RestClient` result it unwraps), or the `jakarta.servlet`, `javax.servlet`, `org.springframework.web.bind`, `org.springframework.web.servlet`, `org.springframework.web.multipart`, `org.springframework.web.context.request` (`RequestContextHolder`, `WebRequest`), `org.springframework.web.server` (`ServerWebExchange`, `ResponseStatusException`), `org.springframework.web.reactive` or `org.springframework.http.server` packages, so servlet and WebFlux apps are held to the same rule |
+| `spring-controller-controller` | a controller holds or creates another controller: a field, constructor or method parameter of that type, also inside a generic, or `new OtherController()`. Naming another controller's class in a link (`methodOn(OrderController.class)`, a `Class<OrderController>`) is fine                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `spring-repository-service`    | a repository depends on a `@Service`: a field, parameter, return type or call. A repository depending on a controller or the web layer is `spring-service-web`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+
+Roles come from Spring's stereotypes, read through composed annotations (`@RestController`, a
+project's own annotation carrying `@Service`). A project whose classes carry other role markers maps
+them with the `spring.roles` config key: `{ "spring": { "roles": { "service": ["com.example.UseCase"] } } }`
+gives every class annotated with `@UseCase` (directly or through a composed annotation), or extending
+or implementing `com.example.UseCase`, the service role on top of its stereotypes. Keys are
+`controller`, `service` and `repository`; names are binary class names, so a nested type is
+`com.example.Roles$UseCase`. A repository is also any `@RepositoryDefinition` interface. A mapping
+only adds roles, so it never lifts a finding; a small application that keeps a controller calling a
+repository on purpose uses an exception. When a layering rule and `spring-feature-boundary` both
+report the same class and dependency (a controller using `orders.internal.OrderRepository` from
+`billing`), only the layering finding is shown, unless an exception lifts it, in which case the
+boundary finding is still reported.
+
+**Bean lifetimes.**
+
+| Rule                   | Fails when                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `spring-scope-capture` | a singleton bean (a `@Component` class or a `@Bean` method without `@Scope`, or with `singleton` or `application` scope) takes a request-, session-, `websocket`-, Spring Batch `step`- or `job`-scoped bean without a scoped proxy: in a constructor or `@Bean` method parameter, an `@Autowired`, `@Inject` or `@Resource` field or method, also as `Optional<T>`, an array or a collection or map of them |
+
+The scope is read from `@Scope` on the class or `@Bean` method, directly or through a composed
+annotation such as `@RequestScope` (whose own `ScopedProxyMode` attribute, `TARGET_CLASS` by
+default, wins over the `@Scope` it carries). A scoped proxy (`proxyMode` `TARGET_CLASS` or
+`INTERFACES`, or that default set with `@ComponentScan` or `@ComponentScans`), an
+`ObjectProvider<T>`, `ObjectFactory<T>` or `Provider<T>`, and a `@Lazy` injection point are fine:
+each resolves the bean per use. `@Lazy(false)` is not lazy, and `@Lazy` on a method covers its
+parameters only on a constructor or a `void` method, as in Spring (on a `@Bean` method it only
+delays the bean). A component is injected through the constructor Spring picks: its only
+constructor, or the one marked `@Autowired` or `@Inject`. A finding on a `@Bean` method names the
+method: `pricing:request:Basket` in the identity. The injected type is matched against every bean the module
+declares; the rule claims only when all of them have such a scope. So a prototype bean (one
+instance per injection point, often meant), a custom scope it cannot model (`@Scope("tenant")`,
+`thread`), a type with no bean in the module (one from a library or registered in code) or a
+`@ComponentScan(scopedProxy = ...)` default it cannot resolve to one mode is never a finding.
+
+**Aggregates (jMolecules).** A project that declares its domain model with
+[jMolecules](https://github.com/xmolecules/jmolecules) (`org.jmolecules:jmolecules-ddd`, Apache-2.0,
+read from the project's own classes; nitpicker adds no dependency) gets its aggregate boundaries
+checked. A module with `jmolecules-ddd` on its main compile classpath runs these rules even without
+Spring; without `spring-context` on the classpath they are the only rules of this section that run. Membership comes only from
+what the code declares, never from class names: an aggregate root implements `AggregateRoot<T, ID>`
+or carries `@AggregateRoot`; an entity implementing `Entity<A, ID>` belongs to `A` (also through a
+generic base class such as `BaseEntity<Order, LineId>`); an entity carrying `@Entity` (jMolecules')
+belongs to every root that reaches it through its fields; a value object implements `ValueObject`
+or carries `@ValueObject`. Fields are read with their generic arguments (`List<LineItem>`,
+`Map<String, Set<Cart>>`, `? super` bounds, generic arrays, and a type variable as the subclass binds
+it), inherited ones included (a field declared in a superclass that is itself a root, entity or value
+object is reported there, once), and an `Association<T, ID>` or a field annotated `@Association` is a
+reference by identifier, so its type arguments do not count; nor do those of `Class<T>` and the
+`java.util.function` types. Abstract classes and interfaces count: an entity typed
+`Entity<Shape, ...>` with an interface root `Shape` belongs to every root implementing it.
+
+| Rule                         | Fails when                                                                                                                                                                                                                    |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ddd-aggregate-reference`    | a root or entity of one aggregate holds the root of another (`Customer customer` in `Order`); hold its identifier (`CustomerId`) or an `Association<Customer, CustomerId>`                                                    |
+| `ddd-foreign-entity`         | a root or entity holds an entity that belongs to another aggregate (`List<CartLine>` in `Order` when `CartLine implements Entity<Cart, ...>`), or an `@Entity` that two roots reach (each root is reported, naming the other) |
+| `ddd-value-object-reference` | a value object holds an aggregate root or an entity; hold its identifier                                                                                                                                                      |
+
+A class referring to its own type (a root's `parent` of the same root type), a subclass or
+supertype of it, or an entity holding its own root is not reported. The detail of `ddd-foreign-entity` is `<aggregate>:<entity>`, so its
+identity is `Order|Cart:CartLine`.
 
 **Tests that start a Spring context.** A concrete test class counts when it, an enclosing class or
 one of its superclasses (`class X extends AbstractIntegrationTest`) is annotated, directly or
@@ -2019,7 +2095,7 @@ Java, not here.
 
 **Limits.** The rules read bytecode, so generated classes without a source file are skipped (no
 finding can be placed), and a use of another package's compile-time constant (`static final` of a
-primitive or `String`) is invisible, because `javac` inlines its value. Each Gradle project and Maven module that uses Spring is checked on its own,
+primitive or `String`) is invisible, because `javac` inlines its value. Each Gradle project and Maven module that uses Spring or jMolecules is checked on its own,
 over its main and test classes. Kotlin modules run the same rules on their compiled classes, and the
 findings point at the `.kt` files; the file facade of top-level functions (`ShopApplicationKt`, with
 `fun main`) next to the application or a `@Configuration` class in the root package is not a
