@@ -16,6 +16,8 @@ export const ORDERINGS = [
   ['project', 'nitpicker'],
   ['nitpicker', 'project'],
 ];
+const PROCESS_TIMEOUT_MS = 150_000;
+const OUTPUT_BYTES = 64 * 1024 * 1024;
 const roots = [];
 
 export function useDeclaredProjects() {
@@ -49,7 +51,7 @@ export function compiled(root, sources) {
   const result = spawnSync(
     javaCommand('javac'),
     ['-d', classes, ...sources.map((source) => path.join(root, source))],
-    { encoding: 'utf8' },
+    { encoding: 'utf8', timeout: PROCESS_TIMEOUT_MS },
   );
   if (result.status !== 0) {
     throw new Error(`javac failed: ${result.stderr}`);
@@ -61,7 +63,7 @@ export function runJar({ classpath, mainClass, args, cwd }) {
   const result = spawnSync(
     javaCommand('java'),
     ['-cp', classpath.join(path.delimiter), mainClass, ...args],
-    { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+    { cwd, encoding: 'utf8', maxBuffer: OUTPUT_BYTES, timeout: PROCESS_TIMEOUT_MS },
   );
   if (result.error !== undefined) {
     throw result.error;
