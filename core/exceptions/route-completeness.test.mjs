@@ -7,7 +7,8 @@ import {
   withRuleMessage,
 } from '../../languages/java/messages/rule-messages.mjs';
 import { RULE_HINTS, withHint } from '../../languages/python/rules/rule-hints.mjs';
-import { hasRoute, routeProblems } from './test-support/route-check.mjs';
+import { hasExceptionRoute as hasRoute } from '../../shared/messages/exception-sentence.mjs';
+import { routeProblems } from './test-support/route-check.mjs';
 
 const GRADLE_ROOT = path.join(import.meta.dirname, '../../languages/java/gradle');
 const JAVA_FILE = 'src/main/java/shop/Cart.java';
@@ -69,6 +70,18 @@ describe('every liftable Java and Kotlin finding ends with a route its preset ac
     expect(problems).toEqual([]);
   });
 
+  it('tells the fix of each catalog rule as its allowed form, and no other text', () => {
+    const problems = cases.flatMap(({ tool, rule, preset }) => {
+      const fix = readCatalog(tool)[rule].fix;
+      const told = withRuleMessage(finding(tool, rule, JAVA_FILE), { preset });
+      const stated = told.allowedForm === undefined || told.message.includes(told.allowedForm);
+      const kept = typeof fix !== 'string' || told.allowedForm !== undefined;
+      return stated && kept ? [] : [`${preset} ${tool}/${rule}`];
+    });
+
+    expect(problems).toEqual([]);
+  });
+
   it('has no problem in any rule of the bundled rulesets', () => {
     const rules = rulesetRules();
     const problems = PRESETS.flatMap((preset) =>
@@ -103,6 +116,17 @@ describe('every Python rule with a hint ends with a route the Python preset acce
       [rules].flat().map((rule) => ({ tool, rule, routed: exception !== false })),
     )
     .filter(({ rule }) => rule !== 'no-import-outside-roots');
+
+  it('names the allowed form of a hinted rule as a field the message contains', () => {
+    const problems = cases.flatMap(({ tool, rule }) => {
+      const told = withHint(finding(tool, rule, PYTHON_FILE));
+      return typeof told.allowedForm === 'string' && told.message.includes(told.allowedForm)
+        ? []
+        : [`${tool}/${rule}`];
+    });
+
+    expect(problems).toEqual([]);
+  });
 
   it('has no problem in any hinted rule', () => {
     const problems = cases.flatMap(({ tool, rule, routed }) => {

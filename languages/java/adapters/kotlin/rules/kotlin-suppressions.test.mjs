@@ -113,6 +113,8 @@ describe('readSuppressionFindings', () => {
         identity: 'suppress:UnsafeCallOnNullableType',
         message:
           'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. If this is intended, add {"rule":"inline-suppression","paths":["src/main/kotlin/demo/A.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
       },
       {
@@ -122,6 +124,8 @@ describe('readSuppressionFindings', () => {
         identity: 'suppress:all',
         message:
           'Suppressing "all" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. If this is intended, add {"rule":"inline-suppression","paths":["src/main/kotlin/demo/A.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mjs';
 import { readSpringArchFindings, SPRING_ARCH_REPORT } from './spring-arch.mjs';
 
 const ROOT = 'com.shop';
@@ -110,6 +111,7 @@ describe('readSpringArchFindings messages', () => {
     const [finding] = read([input]);
 
     expect(finding.message).toBe(`${message} ${exceptionRoute(input.rule, finding.path)}`);
+    expect(finding.allowedForm).toBe(message);
     expect(finding.rule).toBe(input.rule);
   });
 });
@@ -166,7 +168,9 @@ describe('readSpringArchFindings findings', () => {
         classification: 'enforceable',
       },
     ]);
-    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+    expect(withoutRouteFields(parseAnalyzerReport({ findings }, 'java').findings)).toEqual(
+      findings,
+    );
   });
 
   it('keeps the identity when the class and its dependency move to other packages', () => {

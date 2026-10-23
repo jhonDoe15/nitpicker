@@ -39,6 +39,7 @@ const SUPPORTED_KEYWORDS = new Set([
   'enum',
   'const',
   'minLength',
+  'minItems',
   'minimum',
   'pattern',
   'allOf',
@@ -105,6 +106,9 @@ function validate(value, node = schema, errors = [], at = '$') {
   checkCombinators(value, node, errors, at);
   if (isRecord(value)) {
     checkObject(value, node, errors, at);
+  }
+  if (Array.isArray(value) && node.minItems !== undefined && value.length < node.minItems) {
+    errors.push(`${at} has fewer than ${String(node.minItems)} items`);
   }
   if (Array.isArray(value) && node.items !== undefined) {
     validateItems(value, node.items, errors, at);

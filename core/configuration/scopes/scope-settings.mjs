@@ -7,9 +7,9 @@ import {
 } from '../../../shared/config.mjs';
 import { hasSpecificText } from '../../../shared/rules/console/console-messages.mjs';
 
-const TEST_CONSOLE_KEYS = ['allow'];
+export const TEST_CONSOLE_KEYS = ['allow'];
 
-const ALLOW_KEYS = ['contains', 'paths', 'reason'];
+export const ALLOW_KEYS = ['contains', 'paths', 'reason'];
 
 export function validateScope(name, scope, keys) {
   if (scope === undefined) {

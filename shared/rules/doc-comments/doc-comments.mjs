@@ -1,4 +1,4 @@
-import { MESSAGES, RULE_IDS, renderMessage } from '../../policy.mjs';
+import { MESSAGES, RULE_IDS, messageFields } from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
 
 const STOPWORDS = new Set(
@@ -124,7 +124,7 @@ function findingOf(comment, problem, analyzerName) {
     rule,
     path: comment.file,
     identity: `doc-comment:${comment.qualifier ?? comment.name}:${problem.kind}`,
-    message: renderMessage(restating ? MESSAGES.restatingDocComment : MESSAGES.longDocComment, {
+    ...messageFields(restating ? MESSAGES.restatingDocComment : MESSAGES.longDocComment, {
       ...problem,
       exception: exceptionText(rule, comment.file),
     }),

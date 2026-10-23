@@ -131,6 +131,7 @@ export function readSpringArchFindings(reportRoot, { resolvePath, isExcepted = (
           rule.length + 1,
         ),
         message: `${message} ${exceptionHint(`${TOOL}/${rule}`, filePath)}`,
+        allowedForm: message,
         classification: 'enforceable',
         symbol: simple,
       },

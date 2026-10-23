@@ -34,29 +34,29 @@ export const PYTHON_SIZE_RULES = Object.values(SIZE_RULE_IDS);
 
 export const JAVA_LINE_LENGTH = 100;
 
-export function sizeMessages(hint) {
+export function sizeMessages(hint, allowed) {
   return {
-    fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${hint}`,
-    lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${hint}`,
-    folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${hint}`,
-    folderDepth: `{subject} is {value} levels below {below} (limit {limit}). {advice} ${hint}`,
-    classMethods: `{name} has {value} methods (limit {limit}). Split it into classes by responsibility. ${hint}`,
-    classFields: `{name} has {value} fields (limit {limit}). Group related fields into a record or a class of their own. ${hint}`,
-    recordComponents: `{name} has {value} components (limit {limit}). Group related components into nested records or data classes, or split it by responsibility. ${hint}`,
-    inheritanceDepth: `{name} extends {value} classes deep (limit {limit}). Hold the shared part as a field and delegate to it instead of extending. ${hint}`,
+    fileLines: `File has {value} lines (limit {limit}). ${allowed('Split it into files by responsibility.')} ${hint}`,
+    lineLength: `Line is {value} characters (limit {limit}). ${allowed('Break it up or extract a named value.')} ${hint}`,
+    folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). ${allowed('Group related files into subfolders (packages in Java).')} ${hint}`,
+    folderDepth: `{subject} is {value} levels below {below} (limit {limit}). ${allowed('{advice}')} ${hint}`,
+    classMethods: `{name} has {value} methods (limit {limit}). ${allowed('Split it into classes by responsibility.')} ${hint}`,
+    classFields: `{name} has {value} fields (limit {limit}). ${allowed('Group related fields into a record or a class of their own.')} ${hint}`,
+    recordComponents: `{name} has {value} components (limit {limit}). ${allowed('Group related components into nested records or data classes, or split it by responsibility.')} ${hint}`,
+    inheritanceDepth: `{name} extends {value} classes deep (limit {limit}). ${allowed('Hold the shared part as a field and delegate to it instead of extending.')} ${hint}`,
   };
 }
 
-export function sizeGrewMessages(hint) {
+export function sizeGrewMessages(hint, allowed) {
   return {
-    fileLines: `File grew from {base} to {value} lines (limit {limit}). Put new code in a new file. ${hint}`,
-    lineLength: `Line grew from {base} to {value} characters (limit {limit}). Break it up or extract a named value. ${hint}`,
-    folderFiles: `Folder grew from {base} to {value} {kind} files (limit {limit}). Put the new file in a subfolder. ${hint}`,
-    folderDepth: `{subject} grew from {base} to {value} levels below {below} (limit {limit}). {advice} ${hint}`,
-    classMethods: `{name} grew from {base} to {value} methods (limit {limit}). Put the new method in a new class. ${hint}`,
-    classFields: `{name} grew from {base} to {value} fields (limit {limit}). Put the new field in a new class, or group it with related fields in a record. ${hint}`,
-    recordComponents: `{name} grew from {base} to {value} components (limit {limit}). Put the new component in a nested record or data class, or split it by responsibility. ${hint}`,
-    inheritanceDepth: `{name} now extends {value} classes deep, up from {base} (limit {limit}). Hold the shared part as a field and delegate to it instead of extending. ${hint}`,
+    fileLines: `File grew from {base} to {value} lines (limit {limit}). ${allowed('Put new code in a new file.')} ${hint}`,
+    lineLength: `Line grew from {base} to {value} characters (limit {limit}). ${allowed('Break it up or extract a named value.')} ${hint}`,
+    folderFiles: `Folder grew from {base} to {value} {kind} files (limit {limit}). ${allowed('Put the new file in a subfolder.')} ${hint}`,
+    folderDepth: `{subject} grew from {base} to {value} levels below {below} (limit {limit}). ${allowed('{advice}')} ${hint}`,
+    classMethods: `{name} grew from {base} to {value} methods (limit {limit}). ${allowed('Put the new method in a new class.')} ${hint}`,
+    classFields: `{name} grew from {base} to {value} fields (limit {limit}). ${allowed('Put the new field in a new class, or group it with related fields in a record.')} ${hint}`,
+    recordComponents: `{name} grew from {base} to {value} components (limit {limit}). ${allowed('Put the new component in a nested record or data class, or split it by responsibility.')} ${hint}`,
+    inheritanceDepth: `{name} now extends {value} classes deep, up from {base} (limit {limit}). ${allowed('Hold the shared part as a field and delegate to it instead of extending.')} ${hint}`,
   };
 }
 

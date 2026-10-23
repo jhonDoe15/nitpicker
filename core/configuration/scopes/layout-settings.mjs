@@ -10,7 +10,7 @@ import { factRuleSettings } from '../../../shared/project-rules/fact-rules.mjs';
 
 export const TYPESCRIPT_PRESETS = [undefined, 'typescript', 'javascript'];
 
-const LAYOUT_KEYS = [
+export const LAYOUT_KEYS = [
   'sourceRoots',
   'testRoots',
   'excludedGlobs',
@@ -20,14 +20,18 @@ const LAYOUT_KEYS = [
 
 const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 
+export function layoutKeysFor(preset) {
+  const settings = factRuleSettings(preset ?? 'typescript');
+  return TYPESCRIPT_PRESETS.includes(preset)
+    ? LAYOUT_KEYS
+    : FEATURE_LAYOUT_KEYS.filter((key) => settings.includes(`layout.${key}`));
+}
+
 export function validateLayout(layout, preset) {
   if (!isPlainObject(layout)) {
     throw configError('"layout" must be an object');
   }
-  const settings = factRuleSettings(preset ?? 'typescript');
-  const allowed = TYPESCRIPT_PRESETS.includes(preset)
-    ? LAYOUT_KEYS
-    : FEATURE_LAYOUT_KEYS.filter((key) => settings.includes(`layout.${key}`));
+  const allowed = layoutKeysFor(preset);
   for (const [key, value] of Object.entries(layout)) {
     if (LAYOUT_KEYS.includes(key) && !allowed.includes(key)) {
       throw configError(

@@ -110,6 +110,7 @@ describe('mutants the changed tests let escape', () => {
         message:
           'This change weakened the tests of src/classify.ts: the base tests caught this ConditionalExpression mutant (`n < 5` replaced with `true`), but it survives now. Restore the assertion that caught it, or add one. If this is intended, add {"rule":"mutant-survived","paths":["src/classify.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         identity: expect.any(String),
+        allowedForm: 'Restore the assertion that caught it, or add one.',
         classification: 'enforceable',
         location: { line: 1, column: 7 },
       },
@@ -120,6 +121,7 @@ describe('mutants the changed tests let escape', () => {
         message:
           'This change weakened the tests of src/classify.ts: the base tests caught this StringLiteral mutant (`\'low\'` replaced with `""`), but no test runs it now. Restore the assertion that caught it, or add one. If this is intended, add {"rule":"mutant-nocoverage","paths":["src/classify.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         identity: expect.any(String),
+        allowedForm: 'Restore the assertion that caught it, or add one.',
         classification: 'enforceable',
         location: { line: 3, column: 7 },
       },

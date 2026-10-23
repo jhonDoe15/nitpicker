@@ -10,6 +10,9 @@ const ORDER_TEST = `${TEST_ROOT}/shop/OrderTest.java`;
 const WAITS = 'Remove Thread.sleep and other waits, start a smaller Spring context or a test slice';
 const EXCEPTIONS = 'to "exceptions" in nitpicker.config.json.';
 const FAILSAFE_ADVICE = 'or if it is an integration test, name it *IT so that Failsafe runs it';
+const UNIT_FORM = `${WAITS}, ${FAILSAFE_ADVICE}.`;
+const INTEGRATION_FORM = `${WAITS}.`;
+const MOVE_FORM = `${WAITS}, or if it is an integration test, name it *IT or move it to an integration test source set.`;
 const temporaryRoots = [];
 const GROOVY_ROOT = 'src/test/groovy';
 
@@ -96,6 +99,7 @@ describe('readSlowTestFindings', () => {
         path: ORDER_TEST,
         identity: 'test:shop.OrderTest#totals()',
         location: { line: 5 },
+        allowedForm: MOVE_FORM,
         message:
           'OrderTest totals() took 5.4 s; a unit test may take 5 s. Remove Thread.sleep and other ' +
           'waits, start a smaller Spring context or a test slice, or if it is an integration test, ' +
@@ -338,6 +342,7 @@ describe('readSlowTestFindings', () => {
         path: spec,
         identity: 'test:shop.OrderSpec#ships an order',
         location: { line: 4 },
+        allowedForm: MOVE_FORM,
         message: `OrderSpec ships an order took 6.0 s; a unit test may take 5 s. ${WAITS}, or if it is an integration test, name it *IT or move it to an integration test source set. If this is intended, add {"rule":"slow-test","paths":["${spec}"],"reason":"..."} ${EXCEPTIONS}`,
         classification: 'enforceable',
       },
@@ -421,6 +426,7 @@ describe('readSlowTestFindings', () => {
         rule: 'slow-test',
         path: '.',
         identity: 'test:shop.Slow#crawls()',
+        allowedForm: INTEGRATION_FORM,
         message:
           `Slow crawls() took 31.0 s; an integration test may take 30 s. ${WAITS}. If this is intended, ` +
           `add {"rule":"slow-test","paths":["."],"reason":"..."} ${EXCEPTIONS}`,
@@ -432,6 +438,7 @@ describe('readSlowTestFindings', () => {
         path: ORDER_TEST,
         identity: 'test:shop.OrderTest#totals()',
         location: { line: 5 },
+        allowedForm: UNIT_FORM,
         message:
           `OrderTest totals() took 6.0 s; a unit test may take 5 s. ${WAITS}, ${FAILSAFE_ADVICE}. ` +
           `If this is intended, add {"rule":"slow-test","paths":["${ORDER_TEST}"],"reason":"..."} ${EXCEPTIONS}`,
@@ -461,6 +468,7 @@ describe('readSlowTestFindings', () => {
         path: ORDER_TEST,
         identity: 'test:shop.OrderTest#totals()',
         location: { line: 5 },
+        allowedForm: UNIT_FORM,
         message:
           `OrderTest totals() took 9.0 s; a unit test may take 5 s. ${WAITS}, ${FAILSAFE_ADVICE}. ` +
           `If this is intended, add ` +

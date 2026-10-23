@@ -57,10 +57,10 @@ const NITPICKER_FIRST_REJECTED = new Map([
     "black has no flag that switches string normalization back on, so nitpicker's quote style cannot win over the project's skip-string-normalization",
   ],
 ]);
-const ORDERED_PRECEDENCE_TOOLS = ['prettier'];
-const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
+export const ORDERED_PRECEDENCE_TOOLS = ['prettier'];
+export const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
-function toolSettingKeysOf(preset) {
+export function toolSettingKeysOf(preset) {
   if (GRADLE_PRESETS.includes(preset) || preset === 'python') {
     const names = [
       ...(GRADLE_PRESETS.includes(preset) ? PROJECT_TOOL_CONFIGS.keys() : []),
@@ -103,6 +103,16 @@ function validateToolSettings(name, settings, toolSettingKeys) {
   }
   validatePrecedence(settings.precedence, name);
   validatePrecedenceOrder(settings.precedence, name);
+}
+
+/** The engine setting of `tool`, as { key, values, meaning }; undefined for a tool without one. */
+export function engineOf(tool) {
+  return ENGINES.get(tool);
+}
+
+/** Why `tool` must list "project" before "nitpicker"; undefined when either order works. */
+export function nitpickerFirstReason(tool) {
+  return NITPICKER_FIRST_REJECTED.get(tool);
 }
 
 function validateEngineSettings(name, settings) {

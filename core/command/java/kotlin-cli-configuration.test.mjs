@@ -39,6 +39,8 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
           identity: `fp:nitpicker/subject=${forbidden}`,
           location: { line: 4 },
           message: `${forbidden} ${exceptionHint(callRule, 'src/main/kotlin/demo/K.kt')}`,
+          exception: { rule: callRule, paths: ['src/main/kotlin/demo/K.kt'], reason: '...' },
+          exceptionList: 'exceptions',
           classification: 'enforceable',
         },
       ]);
