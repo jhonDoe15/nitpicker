@@ -430,6 +430,22 @@ describe('describePolicyChanges', () => {
     ).toEqual([]);
   });
 
+  it('counts a Spring role mapping that drops a type as loosened and one that adds a type as changed', () => {
+    const roles = (service) => ({ preset: 'java', spring: { roles: { service } } });
+
+    expect(
+      changes(roles(['com.acme.UseCase']), roles(['com.acme.UseCase', 'com.acme.Job']), []),
+    ).toEqual({
+      loosened: [],
+      changed: [
+        'spring.roles.service: ["com.acme.UseCase"] -> ["com.acme.UseCase","com.acme.Job"]',
+      ],
+    });
+    expect(loosened(roles(['com.acme.UseCase']), { preset: 'java' }, [])).toEqual([
+      'spring.roles.service: ["com.acme.UseCase"] -> not set',
+    ]);
+  });
+
   it('lists the tightenings: removed globs and exceptions, enabled analyzers, lowered thresholds', () => {
     expect(
       changes(
@@ -461,6 +477,7 @@ describe('describePolicyChanges', () => {
     expect(policyChangeFields(base, head, scopeOf(base, head))).toEqual({
       policyChanges: ['exclude added: src/vendor/**', 'base: "a" -> "b"'],
       policyLoosenings: ['exclude added: src/vendor/**'],
+      policyKinds: { 'exclude added: src/vendor/**': 'exclusion' },
       policyDigest: expect.stringMatching(/^[0-9a-f]{12}$/u),
     });
   });

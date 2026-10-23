@@ -67,7 +67,7 @@ export function loggerNames(code) {
   return new Set([...code.matchAll(DECLARATION)].map((match) => match[1]));
 }
 
-function isLoggerName(name, declared) {
+export function isLoggerName(name, declared = new Set()) {
   return declared.has(name) || LOGGER_NAMES.some((pattern) => pattern.test(name));
 }
 
