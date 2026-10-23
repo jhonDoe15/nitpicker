@@ -4,7 +4,10 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../java-diff.mjs';
 import {
+  configAndArchitectureOf,
   EXPECTED_CONFIG_AND_ARCHITECTURE,
+  EXPECTED_SPRING_ARCHITECTURE,
+  springArchitectureOf,
   GRADLE_FILES,
   markedViolations,
   writeKotlinSpringProject,
@@ -39,14 +42,8 @@ describe.skipIf(!enabled)('Kotlin Spring rules on a Gradle project end to end', 
     ).toEqual(markedViolations().toSorted());
   });
 
-  it('checks the Spring configuration files and resolves ArchUnit violations to the Kotlin source', () => {
-    expect(
-      findings
-        .filter(
-          ({ tool, rule }) => tool === 'archunit' || (tool === 'spring' && !SPRING_RULE.test(rule)),
-        )
-        .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`)
-        .toSorted(),
-    ).toEqual(EXPECTED_CONFIG_AND_ARCHITECTURE);
+  it('checks the Spring configuration files and resolves the ArchUnit and Spring architecture violations to the Kotlin source', () => {
+    expect(configAndArchitectureOf(findings)).toEqual(EXPECTED_CONFIG_AND_ARCHITECTURE);
+    expect(springArchitectureOf(findings)).toEqual(EXPECTED_SPRING_ARCHITECTURE);
   });
 });

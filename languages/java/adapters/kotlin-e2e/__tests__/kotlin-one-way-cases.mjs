@@ -21,6 +21,16 @@ const RUN_BLOCKING =
 const RUN =
   'The method `kotlin.run` has been forbidden: Use `let` to name a value for a block (`value?.let { ... }` for null), or call the code directly.';
 
+function recordedFinding(testCase, file) {
+  return withKotlinRuleMessage({
+    tool: 'detekt',
+    rule: testCase.rule,
+    path: file,
+    message: expectedMessage(testCase, 'banned'),
+    classification: 'enforceable',
+  });
+}
+
 export function defineBannedCases(fixture, runWithPolicy) {
   it.each(kotlinRuleCases.map((testCase) => [testCase.id, testCase]))(
     'fails the banned form %s with a message that names the allowed form',
@@ -29,11 +39,16 @@ export function defineBannedCases(fixture, runWithPolicy) {
       const found = detektFindingsOf(result.newEnforceable, testCase).filter(
         ({ rule }) => rule === testCase.rule,
       );
+      const file = fixturePath(testCase, 'banned');
 
-      expect(found.length, summarize(result.newEnforceable).join('\n')).toBeGreaterThan(0);
-      for (const finding of found) {
-        expect(finding.message.toLowerCase()).toContain(testCase.allowedForm.toLowerCase());
-      }
+      const message =
+        testCase.message === undefined ? undefined : recordedFinding(testCase, file).message;
+
+      expect(
+        found.map((finding) => [finding.path, message === undefined ? undefined : finding.message]),
+        summarize(result.newEnforceable).join('\n'),
+      ).toEqual([[file, message]]);
+      expect(found[0].message.toLowerCase()).toContain(testCase.allowedForm.toLowerCase());
     },
   );
   it('reports the detekt message each case records and the hint that the gate adds', () => {
@@ -43,15 +58,8 @@ export function defineBannedCases(fixture, runWithPolicy) {
       const [finding] = detektFindingsOf(result.newEnforceable, testCase).filter(
         ({ rule }) => rule === testCase.rule,
       );
-      const recorded = withKotlinRuleMessage({
-        tool: 'detekt',
-        rule: testCase.rule,
-        path: finding.path,
-        message: expectedMessage(testCase, 'banned'),
-        classification: 'enforceable',
-      });
 
-      expect(finding.message).toBe(recorded.message);
+      expect(finding.message).toBe(recordedFinding(testCase, finding.path).message);
     }
   });
   it('does not report the suppressed finding twice: the suppression is the finding', () => {
@@ -78,7 +86,9 @@ export function defineBannedCases(fixture, runWithPolicy) {
     });
 
     expect(detektFindingsOf(result.newEnforceable, scopeRun)).toEqual([]);
-    expect(detektFindingsOf(result.newEnforceable, scopeWith)).toHaveLength(1);
+    expect(
+      detektFindingsOf(result.newEnforceable, scopeWith).map(({ path: file }) => file),
+    ).toEqual([fixturePath(scopeWith, 'banned')]);
   });
 }
 
@@ -123,7 +133,26 @@ export function defineHostileConfigCases(fixture, failureRule) {
       'Sleeper.kt',
       'Wildcard.kt',
     ]);
-    expect(extras.some(({ rule }) => rule === 'detekt.style.UseDataClass')).toBe(false);
+    expect(extras.map(({ rule, path: file }) => `${rule} ${path.basename(file)}`).sort()).toEqual([
+      'changed-branch-coverage Qualified.kt',
+      'changed-branch-coverage Wildcard.kt',
+      'detekt.style.ForbiddenMethodCall Annotated.kt',
+      'detekt.style.ForbiddenMethodCall Exiter.kt',
+      'detekt.style.ForbiddenMethodCall Printer.kt',
+      'detekt.style.ForbiddenMethodCall Qualified.kt',
+      'detekt.style.ForbiddenMethodCall Sleeper.kt',
+      'detekt.style.ForbiddenMethodCall Wildcard.kt',
+      'detekt.style.MayBeConst Hidden.kt',
+      'detekt.style.MayBeConst Hidden.kt',
+      'detekt.style.WildcardImport Wildcard.kt',
+      'inline-suppression Compiler.kt',
+      'inline-suppression Hidden.kt',
+      'inline-suppression Hidden.kt',
+      'ktlint.standard:class-signature Holder.kt',
+      'ktlint.standard:class-signature Holder.kt',
+      'ktlint.standard:kdoc Hidden.kt',
+      'ktlint.standard:no-wildcard-imports Wildcard.kt',
+    ]);
   });
   it('adds the forbidden calls a project lists to the preset ones, and keeps the preset reason of a call both list', () => {
     const forbidden = fixture.hostileConfigResult.newEnforceable.filter(
@@ -161,8 +190,10 @@ export function defineHostileConfigCases(fixture, failureRule) {
   it('does not analyze a Kotlin script among the sources', () => {
     const result = fixture.hostileConfigResult;
 
-    expect(result.newFindings.some(({ path: file }) => file.endsWith('.kts'))).toBe(false);
-    expect(result.newFindings.some(({ rule }) => rule === failureRule)).toBe(false);
+    expect(
+      [...new Set(result.newFindings.map(({ path: file }) => path.extname(file)))].sort(),
+    ).toEqual(['', '.java', '.kt']);
+    expect(result.newFindings.filter(({ rule }) => rule === failureRule)).toEqual([]);
   });
   it('reports the suppressions that hide a detekt or ktlint rule or a compiler warning, however they are written, and leaves other compiler diagnostics alone', () => {
     const result = fixture.hostileConfigResult;

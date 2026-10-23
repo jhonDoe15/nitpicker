@@ -41,11 +41,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
     ]);
     expect(fromTool(result.newEnforceable, 'pit')).toEqual([]);
     expect(
-      result.newFindings.filter(
-        ({ tool, rule, path: file }) =>
-          tool === 'pit' && rule === 'mutant-survived' && file.endsWith('Label.kt'),
-      ),
-    ).not.toEqual([]);
+      result.newFindings
+        .filter(({ tool, rule }) => tool === 'pit' && rule === 'mutant-survived')
+        .map(({ path: file, identity }) => `${file} ${identity}`)
+        .sort(),
+    ).toEqual([
+      'src/main/kotlin/demo/Label.kt Label|larger(II)LString;|ConditionalsBoundaryMutator|changed conditional boundary#1',
+    ]);
   });
   it('fails the untested branches of a statement that spans lines and of a file outside its package directory', () => {
     const result = mavenDiffOf(fixture.project, 'multiline-branch');
@@ -70,7 +72,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
       ([, line]) => Number(line),
     );
 
-    expect(missedLines.length).toBeGreaterThan(0);
+    expect(missedLines).toEqual([33, 34, 35]);
     expect(findings.filter(({ rule }) => rule === 'changed-branch-coverage')).toEqual([]);
   });
   it('applies the structure, CRAP, clone and stability rules to one change', () => {

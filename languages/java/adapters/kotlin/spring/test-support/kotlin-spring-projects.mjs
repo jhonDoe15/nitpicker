@@ -187,6 +187,52 @@ export const GRADLE_FILES = {
 
 export const MAVEN_FILES = { 'pom.xml': MAVEN_POM };
 
+const SPRING_RULE = /^(?:Spring|Jpa)/;
+const SPRING_ARCHITECTURE_RULE = /^spring-/;
+
+// The project's own ArchUnit rules and the Spring configuration checks. The Spring architecture rules
+// (spring-layout and the others) run on every Spring project and have their own list below.
+export function configAndArchitectureOf(findings) {
+  return findings
+    .filter(
+      ({ tool, rule }) =>
+        (tool === 'archunit' && !SPRING_ARCHITECTURE_RULE.test(rule)) ||
+        (tool === 'spring' && !SPRING_RULE.test(rule)),
+    )
+    .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`)
+    .toSorted();
+}
+
+export function springArchitectureOf(findings) {
+  return findings
+    .filter(({ tool, rule }) => tool === 'archunit' && SPRING_ARCHITECTURE_RULE.test(rule))
+    .map(({ rule, path: file }) => `${rule} ${file}`)
+    .toSorted();
+}
+
+// Every class of the fixture sits in its root package, one finding for each.
+const LAYOUT_COUNTS = {
+  Beans: 10,
+  Clients: 1,
+  Clock: 1,
+  Data: 4,
+  Handlers: 3,
+  Jpa: 7,
+  Mappings: 5,
+  Proxies: 6,
+  Security: 1,
+  Startup: 2,
+  Web: 4,
+  Writes: 4,
+};
+
+export const EXPECTED_SPRING_ARCHITECTURE = [
+  ...Object.entries(LAYOUT_COUNTS).flatMap(([name, count]) =>
+    Array.from({ length: count }, () => `spring-layout src/main/kotlin/demo/${name}.kt`),
+  ),
+  'spring-service-web src/main/kotlin/demo/Clients.kt',
+].toSorted();
+
 export const EXPECTED_CONFIG_AND_ARCHITECTURE = [
   'archunit noDates src/main/kotlin/demo/Clock.kt',
   'spring ddl-auto src/main/resources/application.properties',

@@ -110,8 +110,19 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: detekt, ktlint and k
   it('does not lint generated sources registered from the build directory', () => {
     const result = mavenDiffOf(fixture.project, 'clean');
 
-    expect(result.unchangedFindings.some(({ path: file }) => file.endsWith('Api.kt'))).toBe(false);
-    expect(result.newFindings.some(({ path: file }) => file.endsWith('Api.kt'))).toBe(false);
+    expect(
+      [...result.unchangedFindings, ...result.newFindings]
+        .map(({ path: file }) => file)
+        .filter((file, index, files) => files.indexOf(file) === index)
+        .sort(),
+    ).toEqual([
+      '.',
+      'src/main/java/demo/Api.java',
+      'src/main/java/demo/Bridge.java',
+      'src/main/kotlin/demo/Farewell.kt',
+      'src/main/kotlin/demo/Greeter.kt',
+      'src/main/kotlin/demo/Legacy.kt',
+    ]);
   });
   it('still gates Java sources of a Kotlin module with the Java tools', () => {
     const result = mavenDiffOf(fixture.project, 'java-in-kotlin-module');
