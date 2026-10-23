@@ -47,6 +47,7 @@ describe('config schema and validator agree', () => {
         tools: { prettier: { precedence: ['project'] } },
         testConsole: { allow: [{ contains: 'deprecated api', reason: 'Printed by a library' }] },
         kotlin: { formatter: 'ktlint' },
+        spring: { roles: { service: ['com.example.UseCase'] } },
         conventions: { 'prettier.quotes': 'single' },
         $schema: './node_modules/nitpicker/spec/config.schema.json',
       };
@@ -193,6 +194,28 @@ describe('config schema and validator agree', () => {
       { $schema: 3 },
       { unknownKey: true },
       [],
+    ];
+    for (const config of configs) {
+      everyPreset(config).forEach(expectAgreement);
+    }
+  });
+
+  it('on spring roles', () => {
+    const configs = [
+      { spring: {} },
+      { spring: [] },
+      { spring: { other: 1 } },
+      { spring: { roles: {} } },
+      { spring: { roles: [] } },
+      { spring: { roles: { controller: ['com.example.Api'], repository: [] } } },
+      { spring: { roles: { service: ['com.example.Roles$UseCase', 'é.Ünïcode'] } } },
+      { spring: { roles: { service: ['UseCase'] } } },
+      { spring: { roles: { service: ['com.example.'] } } },
+      { spring: { roles: { service: ['com..example.UseCase'] } } },
+      { spring: { roles: { service: ['1com.example'] } } },
+      { spring: { roles: { service: 'com.example.UseCase' } } },
+      { spring: { roles: { service: [1] } } },
+      { spring: { roles: { component: ['com.example.Thing'] } } },
     ];
     for (const config of configs) {
       everyPreset(config).forEach(expectAgreement);

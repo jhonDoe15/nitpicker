@@ -911,6 +911,44 @@
         }
       }
     },
+    "spring": {
+      "description": "Spring settings (java and kotlin presets).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "roles": {
+          "description": "Annotation or type names, by role, whose classes count in that role for the Spring architecture rules, on top of Spring stereotypes. Removing a name loosens the policy.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "controller": {
+              "description": "Binary names of annotations or types whose classes are a controller, such as \"com.example.UseCase\".",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[\\p{L}_$][\\p{L}\\p{N}_$]*(?:\\.[\\p{L}_$][\\p{L}\\p{N}_$]*)+$"
+              }
+            },
+            "service": {
+              "description": "Binary names of annotations or types whose classes are a service, such as \"com.example.UseCase\".",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[\\p{L}_$][\\p{L}\\p{N}_$]*(?:\\.[\\p{L}_$][\\p{L}\\p{N}_$]*)+$"
+              }
+            },
+            "repository": {
+              "description": "Binary names of annotations or types whose classes are a repository, such as \"com.example.UseCase\".",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[\\p{L}_$][\\p{L}\\p{N}_$]*(?:\\.[\\p{L}_$][\\p{L}\\p{N}_$]*)+$"
+              }
+            }
+          }
+        }
+      }
+    },
     "conventions": {
       "description": "Pins a style that nitpicker otherwise measures from the project.",
       "type": "object"
@@ -923,6 +961,7 @@
         "properties": {
           "python": false,
           "kotlin": false,
+          "spring": false,
           "thresholds": {
             "properties": { "classMethods": false, "classFields": false, "inheritanceDepth": false }
           },
@@ -1123,6 +1162,7 @@
           "i18n": false,
           "python": false,
           "kotlin": false,
+          "spring": false,
           "thresholds": {
             "properties": { "classMethods": false, "classFields": false, "inheritanceDepth": false }
           },
@@ -1657,6 +1697,42 @@
                             "pmd/ExhaustiveEnumPredicate",
                             "pmd/StaticForwardingWrapper",
                             "pmd/SingularAndPluralMember",
+                            "pmd/SpringConstructorInjection",
+                            "pmd/SpringImmutableBeans",
+                            "pmd/SpringNoServiceLocator",
+                            "pmd/SpringNoLazyInjection",
+                            "pmd/SpringLiteConfiguration",
+                            "pmd/SpringNoComponentScan",
+                            "pmd/SpringBeanCollectionState",
+                            "pmd/SpringHttpClientPerCall",
+                            "pmd/SpringHttpClientTimeouts",
+                            "pmd/SpringNoPostConstructIo",
+                            "pmd/SpringTypedConfiguration",
+                            "pmd/SpringValueSecretDefault",
+                            "pmd/SpringProfileOnConfiguration",
+                            "pmd/SpringProxyMethodVisibility",
+                            "pmd/SpringProxySelfCall",
+                            "pmd/SpringTransactionalAnnotation",
+                            "pmd/SpringNoTransactionalController",
+                            "pmd/SpringNoRequiresNew",
+                            "pmd/SpringNoSwallowedTransactionException",
+                            "pmd/SpringTransactionalCheckedRollback",
+                            "pmd/SpringTransactionalReadOnlyWrite",
+                            "pmd/SpringAsyncExecutor",
+                            "pmd/SpringScheduledFixedDelay",
+                            "pmd/SpringComposedMapping",
+                            "pmd/SpringRestController",
+                            "pmd/SpringValidRequestBody",
+                            "pmd/SpringTypedResponse",
+                            "pmd/SpringTypedRequestBody",
+                            "pmd/SpringNoErrorLeak",
+                            "pmd/SpringNoCrossOrigin",
+                            "pmd/SpringCorsWildcard",
+                            "pmd/SpringPasswordEncoder",
+                            "pmd/SpringPermitAllAnyRequest",
+                            "pmd/SpringCsrfDisabled",
+                            "pmd/SpringHardcodedUser",
+                            "pmd/SpringQueryConcatenation",
                             "unused-option",
                             "structure/unused-option"
                           ]
@@ -1695,6 +1771,7 @@
           "react": false,
           "i18n": false,
           "kotlin": false,
+          "spring": false,
           "testConsole": false,
           "layout": {
             "properties": {
