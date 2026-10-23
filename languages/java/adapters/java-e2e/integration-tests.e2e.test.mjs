@@ -12,6 +12,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { collectJavaFindings } from '../java-diff.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -173,7 +174,8 @@ describe.skipIf(!enabled)('integration tests on Gradle and Maven', () => {
   it('fail the build naming the failing cases of a checked integration task', () => {
     expect(runs.failure).toEqual(
       'Tests fail in <project>; nitpicker needs a passing test suite for coverage and mutation testing:\n' +
-        '  demo.GreeterIT.saysGoodbye(): org.opentest4j.AssertionFailedError: expected: <Nope> but was: <Goodbye, Ada>',
+        '  demo.GreeterIT.saysGoodbye(): org.opentest4j.AssertionFailedError: expected: <Nope> but was: <Goodbye, Ada>\n' +
+        linkSentence('testsFail'),
     );
   });
 });
