@@ -1,3 +1,5 @@
+import { jscpdConfigChanges } from '../../tooling/jscpd/config-changes.mjs';
+
 function fileChange(tool, file, { base, head }) {
   if (base.get(file) === head.get(file)) {
     return undefined;
@@ -8,6 +10,9 @@ function fileChange(tool, file, { base, head }) {
 }
 
 function fileChanges(entry) {
+  if (entry.applied !== undefined) {
+    return jscpdConfigChanges(entry.applied);
+  }
   const files = [...new Set([...entry.base.keys(), ...entry.head.keys()])].toSorted();
   return files.map((file) => fileChange(entry.tool, file, entry));
 }

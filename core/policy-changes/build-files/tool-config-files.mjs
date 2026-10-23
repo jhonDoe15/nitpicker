@@ -4,7 +4,7 @@ import {
   PROJECT_TOOL_CONFIGS,
 } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
-import { JSCPD_PROJECT_FILE, jscpdDetectionText } from '../../tooling/jscpd/config.mjs';
+import { JSCPD_PROJECT_FILE, appliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
@@ -30,9 +30,9 @@ function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   if (content === undefined) {
     return undefined;
   }
-  const detection = tool === 'jscpd' ? jscpdDetectionText(content.toString('utf8')) : {};
-  if (detection.kind === 'applied') {
-    return gitBlobId(detection.text);
+  const applied = tool === 'jscpd' ? appliedJscpdConfig(content.toString('utf8')) : {};
+  if (applied.kind === 'applied') {
+    return gitBlobId(JSON.stringify(applied.config));
   }
   if (file !== PACKAGE_JSON) {
     return gitBlobId(toolConfigText(tool, file, content.toString('utf8')));
@@ -108,6 +108,23 @@ function isOptedIn(tool, config) {
   );
 }
 
+function appliedSide(side, optedIn) {
+  if (!optedIn) {
+    return { kind: 'applied', config: {} };
+  }
+  const content = readInside(side.root, JSCPD_PROJECT_FILE);
+  return content === undefined
+    ? { kind: 'applied', config: {} }
+    : appliedJscpdConfig(content.toString('utf8'));
+}
+
+function appliedConfigs(base, head) {
+  const sides = [appliedSide(base, isOptedIn('jscpd', base.config)), appliedSide(head, true)];
+  return sides.every(({ kind }) => kind === 'applied')
+    ? { applied: { base: sides[0].config, head: sides[1].config } }
+    : {};
+}
+
 export function readToolConfigs(base, head, gitBlobId) {
   return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', 'jscpd']
     .filter((tool) => isOptedIn(tool, head.config))
@@ -119,5 +136,6 @@ export function readToolConfigs(base, head, gitBlobId) {
         gitBlobId,
       ),
       head: fingerprints(tool, { root: head.root, files: candidates(tool, head) }, gitBlobId),
+      ...(tool === 'jscpd' ? appliedConfigs(base, head) : {}),
     }));
 }
