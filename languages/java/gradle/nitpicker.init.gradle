@@ -47,6 +47,8 @@ def runProcess = { String name, List<String> command, File directory ->
 }
 
 def kotlinPsiKeys = [] as Set
+def kotlinCallerGapList = []
+def kotlinCallerGapsRead = false
 def gradleJavac = {
     def bin = new File(System.getProperty('java.home'), 'bin')
     def javac = ['javac', 'javac.exe'].collect { new File(bin, it) }.find { it.isFile() }
@@ -83,6 +85,36 @@ def kotlinPsiClasses = { project, String compiler ->
         kotlinPsiKeys << classes.name
     }
     classes
+}
+
+def kotlinCallerGaps = { Project root ->
+    synchronized (kotlinPsiKeys) {
+        if (!kotlinCallerGapsRead) {
+            def kotlinLike = ['org.jetbrains.kotlin.android', 'org.jetbrains.kotlin.multiplatform',
+                'com.android.application', 'com.android.library']
+            root.allprojects.each { other ->
+                if (kotlinLike.any { other.plugins.hasPlugin(it) }) {
+                    kotlinCallerGapList << "the Android or Multiplatform project ${other.path}".toString()
+                } else if (other.plugins.hasPlugin('org.jetbrains.kotlin.jvm')) {
+                    if (!other.projectDir.toPath().startsWith(analysisRoot.toPath())) {
+                        kotlinCallerGapList << "the project ${other.path} outside the analysis root".toString()
+                    }
+                    other.kotlin.sourceSets.findAll { !(it.name in ['main', 'test']) }.each { set ->
+                        def sources = set.kotlin.srcDirs.findAll { it.exists() }.collectMany { dir ->
+                            other.fileTree(dir) { include '**/*.kt', '**/*.java' }.files
+                        }
+                        if (!sources.isEmpty()) {
+                            kotlinCallerGapList << "the source set ${set.name} of ${other.path}".toString()
+                        }
+                    }
+                }
+            }
+            root.gradle.includedBuilds.each { kotlinCallerGapList << "the included build ${it.name}".toString() }
+            kotlinCallerGapList.sort()
+            kotlinCallerGapsRead = true
+        }
+        kotlinCallerGapList
+    }
 }
 
 gradle.projectsEvaluated {
@@ -1214,6 +1246,7 @@ allprojects {
                         manifest.kotlinSourceRoots = kotlinSourceDirs().collect { relative(it) }
                         manifest.kotlinTestSourceRoots = kotlinSourceDirsOf('test').collect { relative(it) }
                         manifest.kotlinFormatter = kotlinFormatter()
+                        manifest.kotlinCallerGaps = kotlinCallerGaps(project.rootProject)
                         def mainClasspath = sourceSets.main.compileClasspath.files +
                             sourceSets.main.runtimeClasspath.files
                         manifest.kotlinSerialization = mainClasspath.any {

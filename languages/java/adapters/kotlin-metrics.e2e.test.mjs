@@ -378,21 +378,6 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
     ]);
   });
 
-  it('lists the annotations of a primary constructor and the class of a class literal', () => {
-    const source =
-      'package demo\n\nclass Retry @JvmOverloads constructor(val times: Int = 1)\n\n' +
-      'class Plain(val times: Int)\n\nval kind = demo.Retry::class.java\n';
-    const [retry] = measure(writeSources('constructors', { 'src/Retry.kt': source })).facts.files;
-
-    expect(
-      retry.classes.map(({ name, constructorAnnotations }) => [name, constructorAnnotations]),
-    ).toEqual([
-      ['Retry', ['JvmOverloads']],
-      ['Plain', []],
-    ]);
-    expect(retry.references).toEqual(['Retry']);
-  });
-
   it('collects facts of test roots without measuring them, and words a test syntax error for tests', () => {
     const project = writeSources('roots', {
       'src/main/Main.kt': FLAT,

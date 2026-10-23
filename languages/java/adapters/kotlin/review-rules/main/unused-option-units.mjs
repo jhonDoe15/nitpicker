@@ -1,4 +1,4 @@
-import { insideClass } from '../kotlin-facts.mjs';
+import { ancestorsOf, hasSpringStereotype } from '../kotlin-facts.mjs';
 
 const LIMITED = new Set(['private', 'internal']);
 const SKIPPED_MODIFIERS = new Set([
@@ -17,103 +17,114 @@ function hasOptions(parameters) {
   return parameters.some(({ default: hasDefault, vararg }) => hasDefault && !vararg);
 }
 
-function inAnnotatedClass(owner, classes) {
-  return [...classes.values()].some(
-    (klass) => klass.annotations.length > 0 && insideClass(owner, klass.qualified),
-  );
-}
-
-function judgedFunction(fn, classes) {
+function plainFunction(fn) {
   return (
     fn.name !== CONSTRUCTOR &&
     fn.name !== 'main' &&
     fn.annotations.length === 0 &&
     !fn.modifiers.some((modifier) => SKIPPED_MODIFIERS.has(modifier)) &&
     fn.owner !== '<anonymous>' &&
-    classes.get(fn.owner)?.kind !== 'interface' &&
-    hasOptions(fn.parameters) &&
-    (LIMITED.has(fn.visibility) || !inAnnotatedClass(fn.owner, classes))
+    hasOptions(fn.parameters)
   );
 }
 
-function functionUnits(file, classes) {
+function unitOf(file, fn, limited) {
+  return {
+    file: file.file,
+    callee: fn.name,
+    label: [fn.owner, fn.name].filter(Boolean).join('.'),
+    limited,
+    parameters: fn.parameters,
+    line: fn.line,
+  };
+}
+
+function limitedFunctionUnits(file, classes) {
   return file.functions
-    .filter((fn) => judgedFunction(fn, classes))
-    .map((fn) => ({
-      file: file.file,
-      callee: fn.name,
-      label: [fn.owner, fn.name].filter(Boolean).join('.'),
-      limited: LIMITED.has(fn.visibility),
-      parameters: fn.parameters,
-      line: fn.line,
-    }));
+    .filter(
+      (fn) =>
+        LIMITED.has(fn.visibility) &&
+        plainFunction(fn) &&
+        classes.get(fn.owner)?.kind !== 'interface',
+    )
+    .map((fn) => unitOf(file, fn, true));
 }
 
-function serializedShape(klass, serialization) {
+function isModuleLevel(owner, classes) {
+  if (owner === '') {
+    return true;
+  }
+  const kind = classes.get(owner)?.kind;
+  const depth = owner.split('.').length;
   return (
-    serialization &&
-    (klass.data || klass.primaryParameters.every(({ property }) => typeof property === 'string'))
+    ((kind === 'object' && depth === 1) || (kind === 'companion' && depth === 2)) &&
+    !ancestorsOf(owner).some((qualified) =>
+      hasSpringStereotype(classes.get(qualified)?.annotations ?? []),
+    )
   );
 }
 
-function eligibleClass(klass) {
+export function publicFunctionUnits(file) {
+  const classes = new Map(file.classes.map((klass) => [klass.qualified, klass]));
+  return file.functions
+    .filter(
+      (fn) =>
+        fn.visibility === 'public' &&
+        !fn.local &&
+        plainFunction(fn) &&
+        isModuleLevel(fn.owner, classes),
+    )
+    .map((fn) => unitOf(file, fn, false));
+}
+
+function eligibleClass(klass, serialization) {
   return (
     CALLABLE_KINDS.has(klass.kind) &&
     !klass.local &&
     !klass.open &&
     klass.annotations.length === 0 &&
-    (klass.constructorAnnotations ?? []).length === 0
+    !(serialization && klass.data)
   );
 }
 
-function primaryUnit(file, klass, serialization) {
-  const limited = LIMITED.has(klass.visibility) || LIMITED.has(klass.constructorVisibility);
-  const skipped = limited ? serialization && klass.data : serializedShape(klass, serialization);
-  if (!eligibleClass(klass) || skipped || !hasOptions(klass.primaryParameters)) {
-    return [];
-  }
-  return [
-    {
+function constructorUnits(file, classes, serialization) {
+  const primary = file.classes
+    .filter(
+      (klass) =>
+        eligibleClass(klass, serialization) &&
+        (LIMITED.has(klass.visibility) || LIMITED.has(klass.constructorVisibility)) &&
+        hasOptions(klass.primaryParameters),
+    )
+    .map((klass) => ({
       file: file.file,
       callee: klass.name,
       label: klass.qualified,
-      limited,
+      limited: true,
       data: klass.data,
       parameters: klass.primaryParameters,
       line: klass.line,
-    },
-  ];
-}
-
-function secondaryUnits(file, classes, serialization) {
-  return file.functions
+    }));
+  const secondary = file.functions
     .filter(
-      (fn) =>
-        fn.name === CONSTRUCTOR &&
-        fn.annotations.length === 0 &&
-        hasOptions(fn.parameters) &&
-        classes.has(fn.owner),
+      (fn) => fn.name === CONSTRUCTOR && LIMITED.has(fn.visibility) && hasOptions(fn.parameters),
     )
-    .filter((fn) => {
-      const klass = classes.get(fn.owner);
-      return eligibleClass(klass) && !(serialization && klass.data);
-    })
+    .filter((fn) => classes.has(fn.owner) && eligibleClass(classes.get(fn.owner), serialization))
     .map((fn) => ({
       file: file.file,
       callee: classes.get(fn.owner).name,
       label: fn.owner,
-      limited: LIMITED.has(fn.visibility),
+      limited: true,
       data: false,
       parameters: fn.parameters,
       line: fn.line,
     }));
+  return [...primary, ...secondary];
 }
 
-export function optionUnits(file, serialization) {
+export function limitedUnits(file, serialization) {
   const classes = new Map(file.classes.map((klass) => [klass.qualified, klass]));
   return [
-    ...functionUnits(file, classes),
-    ...file.classes.flatMap((klass) => primaryUnit(file, klass, serialization)),
-    ...secondaryUnits(file, classes, serialization),
+    ...limitedFunctionUnits(file, classes),
+    ...constructorUnits(file, classes, serialization),
   ];
 }

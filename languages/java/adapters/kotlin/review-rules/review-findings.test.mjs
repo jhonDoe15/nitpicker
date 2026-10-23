@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../kotlin-options.mjs';
+import { buildViews } from './build-view.mjs';
 import { readKotlinFacts } from './kotlin-facts.mjs';
 import { readKotlinReviewFindings } from './review-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mjs';
@@ -43,7 +44,7 @@ describe('readKotlinReviewFindings', () => {
     const missing = projectWith();
     const empty = projectWith({ files: [] });
 
-    expect(readKotlinFacts(missing.reportRoot)).toEqual({ files: [] });
+    expect(readKotlinFacts(missing.reportRoot)).toEqual({ files: [], skipped: [] });
     expect(
       readKotlinReviewFindings({ ...missing, projectRoot: missing.root, manifest: {} }),
     ).toEqual([]);
@@ -140,8 +141,27 @@ describe('readKotlinReviewFindings across the project', () => {
     expect(options({ published: true })).toEqual([]);
     mkdirSync(javaRoot, { recursive: true });
     writeFileSync(path.join(javaRoot, 'Bill.java'), 'class Bill { int a = Kt.format(1, 2); }\n');
-    modules[1].manifest.sourceRoots = ['billing/src/main/java'];
-    expect(options({})).toEqual([]);
+    const withManifest = (manifest) =>
+      modules.map((module, index) => (index === 1 ? { ...module, manifest } : module));
+    const sibling = (manifest) =>
+      readKotlinReviewFindings({ ...context, modules: withManifest(manifest), manifest: {} });
+    expect(sibling({ sourceRoots: ['billing/src/main/java'] })).toEqual([]);
+    expect(
+      sibling({ kotlinCallerGaps: ['the included build tools'] }).map(
+        ({ symbol, classification }) => `${symbol} ${classification}`,
+      ),
+    ).toEqual(['callers-not-analyzed descriptive']);
+  });
+
+  it('reads the facts of the build once for every module of a report', () => {
+    const { first, modules } = twoModules({ files: [file()] }, { files: [testFile()] });
+    const views = buildViews();
+    const view = views({ reportRoot: first.reportRoot, projectRoot: first.root, modules });
+
+    expect(views({ reportRoot: modules[1].reportRoot, projectRoot: first.root, modules })).toBe(
+      view,
+    );
+    expect(view.files.map(({ test }) => test)).toEqual([false, true]);
   });
 
   it('does not stop at a Kotlin name that is not a valid pattern when it scans Java sources', () => {
@@ -173,7 +193,7 @@ describe('readKotlinReviewFindings across the project', () => {
   it('leaves a file whose collection was skipped out of the facts', () => {
     const { reportRoot } = projectWith({ files: [{ file: 'a.kt', test: false, skipped: true }] });
 
-    expect(readKotlinFacts(reportRoot)).toEqual({ files: [] });
+    expect(readKotlinFacts(reportRoot)).toEqual({ files: [], skipped: ['a.kt'] });
   });
 });
 
