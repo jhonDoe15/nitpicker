@@ -97,6 +97,11 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
+- Signatures: a value with three states is a union of string literals, not `boolean | undefined`
+  or `flag?: boolean`; default only `undefined` with `??`, never `||` on a nullable value; return a
+  new array, `Set`, `Map` or object instead of changing a parameter (`[...items, item]`,
+  `items.toSorted()`). When code moves, change every caller and delete the old name: no
+  `@deprecated` declaration and no `export const Old = New` alias.
 
 ## Production rules
 

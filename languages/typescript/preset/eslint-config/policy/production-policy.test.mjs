@@ -210,7 +210,7 @@ describe('identifier casing', () => {
   });
 
   it('allows PascalCase functions and variables only in a React project', () => {
-    const code = 'export function Button() { return 1; } export const Panel = Button;';
+    const code = 'export function Button() { return 1; } export const Panel = 1;';
 
     expect(ruleIds(adapter, code, { react: true })).toEqual([]);
     expect(ruleIds(adapter, code)).toEqual([

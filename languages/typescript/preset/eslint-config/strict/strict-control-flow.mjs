@@ -61,3 +61,10 @@ export const promiseChainRule = {
 export const controlFlowRules = { eqeqeq: ['error', 'always'], ...promiseChainRule };
 
 export const controlFlowTypedRules = { '@typescript-eslint/no-floating-promises': 'error' };
+
+export const nullishDefaultRules = {
+  '@typescript-eslint/prefer-nullish-coalescing': [
+    'error',
+    { ignorePrimitives: { boolean: true } },
+  ],
+};
