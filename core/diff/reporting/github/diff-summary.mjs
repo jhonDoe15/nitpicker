@@ -1,4 +1,6 @@
 import {
+  LISTED_NOTES,
+  cappedList,
   code,
   exceptionExample,
   exceptionRoute,
@@ -48,8 +50,7 @@ function policySection(summary) {
   return [
     `### Policy changed in this change${accepted ? ' (loosening accepted)' : ''}`,
     '',
-    ...changes.map((change) => `- ${inlineText(change)}`),
-    '',
+    ...cappedList(changes, inlineText, LISTED_NOTES),
   ];
 }
 
@@ -58,12 +59,7 @@ function noticeSection(summary) {
   if (notices.length === 0) {
     return [];
   }
-  return [
-    '### Notices (not failing)',
-    '',
-    ...notices.map((notice) => `- ${inlineText(notice)}`),
-    '',
-  ];
+  return ['### Notices (not failing)', '', ...cappedList(notices, inlineText, LISTED_NOTES)];
 }
 
 function heldLine(report) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { finding, report } from '../test-support/report-builders.mjs';
 import { renderDiffSummary } from './diff-summary.mjs';
-import { LISTED_FINDINGS } from './markdown.mjs';
+import { LISTED_FINDINGS, LISTED_NOTES } from './markdown.mjs';
 import { renderSnapshotSummary } from './snapshot-summary.mjs';
 
 const context = {
@@ -14,10 +14,19 @@ const HEADER = [
   '0 new findings, 0 resolved, 0 changed metrics.',
 ];
 
-const ROUTE =
-  '- A finding that flags code that is right: the end of its message gives the entry to add to ' +
-  '`exceptions` in `nitpicker.config.json` (the rule, the paths and a reason). ' +
-  'Reviewers see the entry and every report lists it.';
+function route(entry) {
+  return (
+    `- A finding that flags code that is right: ${entry}, with the rule, the paths and a reason. ` +
+    'The message of each finding in `report.txt` ends with its own entry. ' +
+    'Reviewers see the entry and every report lists it.'
+  );
+}
+
+const ROUTE = route('add an entry to `exceptions` in `nitpicker.config.json`');
+
+const ROUTE_WITH_EXAMPLE = route(
+  'add an entry like the example below to `exceptions` in `nitpicker.config.json`',
+);
 
 const TABLE_HEAD = ['| Tool | Rule | Enforceable | Descriptive |', '| --- | --- | ---: | ---: |'];
 
@@ -82,38 +91,39 @@ describe('renderDiffSummary', () => {
     ]);
   });
 
-  it('keeps the exception route out of the list and shows one entry once', () => {
-    const entry = '{"rule":"no-console","paths":["src/a.js"],"reason":"..."}';
-    const route = `If this is intended, add ${entry} to "exceptions" in nitpicker.config.json.`;
-    const markdown = renderDiffSummary(
-      report({
-        newFindings: [
-          finding({
-            message: `Unexpected console statement. ${route}`,
-          }),
-        ],
-      }),
-      context,
-    );
+  it.each(['exceptions', 'python.exceptions'])(
+    'keeps the %s route out of the list and shows one entry once',
+    (key) => {
+      const entry = '{"rule":"no-console","paths":["src/a.js"],"reason":"..."}';
+      const sentence = `If this is intended, add ${entry} to "${key}" in nitpicker.config.json.`;
+      const markdown = renderDiffSummary(
+        report({
+          newFindings: [
+            finding({
+              message: `Unexpected console statement. ${sentence}`,
+            }),
+          ],
+        }),
+        context,
+      );
 
-    expect(lines(markdown).slice(-14)).toEqual([
-      '### New enforceable findings',
-      '',
-      '- [`src/a.js:12`](https://github.com/acme/shop/blob/0123abc/src/a.js#L12) ' +
-        '`eslint/no-console`: Unexpected console statement.',
-      '',
-      '### Disagree with a finding?',
-      '',
-      ROUTE,
-      '',
-      'An entry looks like this:',
-      '',
-      '```json',
-      entry,
-      '```',
-      '',
-    ]);
-  });
+      expect(lines(markdown).slice(-12)).toEqual([
+        '### New enforceable findings',
+        '',
+        '- [`src/a.js:12`](https://github.com/acme/shop/blob/0123abc/src/a.js#L12) ' +
+          '`eslint/no-console`: Unexpected console statement.',
+        '',
+        '### Disagree with a finding?',
+        '',
+        ROUTE_WITH_EXAMPLE,
+        '',
+        '```json',
+        entry,
+        '```',
+        '',
+      ]);
+    },
+  );
 
   it('names the project folder and prefixes links with it', () => {
     const markdown = renderDiffSummary(report({ newFindings: [finding()] }), {
@@ -162,8 +172,8 @@ describe('renderDiffSummary', () => {
     const listed = lines(renderDiffSummary(report({ newFindings: many }), context));
 
     expect(listed.filter((line) => line.startsWith('- ['))).toHaveLength(LISTED_FINDINGS);
-    expect(listed.filter((line) => line.endsWith('(`report.txt`).'))).toEqual([
-      '5 more in the report files (`report.txt`).',
+    expect(listed.filter((line) => line.endsWith('`report.txt`.'))).toEqual([
+      '5 more in `report.txt`.',
     ]);
   });
 
@@ -241,6 +251,34 @@ describe('renderDiffSummary', () => {
         'set the repository variable `NITPICKER_ACCEPT_POLICY_CHANGE` to `abc123def456`, ' +
         'then re-run the job. The digest covers exactly the loosenings listed above.',
       '',
+    ]);
+  });
+
+  it('lists the first policy changes and notices only', () => {
+    const base = report();
+    const many = (label) =>
+      Array.from({ length: LISTED_NOTES + 2 }, (_, index) => `${label} ${String(index)}`);
+    base.summary.policyChanges = many('change');
+    base.summary.notices = many('notice');
+    const listed = lines(renderDiffSummary(base, context));
+
+    expect([
+      listed.filter((line) => line.startsWith('- change ')).length,
+      listed.filter((line) => line.startsWith('- notice ')).length,
+      listed.filter((line) => line === '2 more in `report.txt`.').length,
+    ]).toEqual([LISTED_NOTES, LISTED_NOTES, 2]);
+  });
+
+  it('escapes a pipe in a rule name so that the table keeps its columns', () => {
+    const markdown = renderDiffSummary(
+      report({
+        newFindings: [finding({ tool: 'semgrep', rule: 'a|b', classification: 'descriptive' })],
+      }),
+      context,
+    );
+
+    expect(lines(markdown).filter((line) => line.startsWith('| `'))).toEqual([
+      '| `semgrep` | `a\\|b` | 0 | 1 |',
     ]);
   });
 

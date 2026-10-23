@@ -1,9 +1,9 @@
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, existsSync, statSync } from 'node:fs';
 import { GitCommandError, runGit } from '../../git/repository/command.mjs';
 import { renderDiffSummary } from './diff-summary.mjs';
 import { renderSnapshotSummary } from './snapshot-summary.mjs';
 import { annotationLines } from './workflow-commands.mjs';
-import { TESTS_FAILED_SKIPPED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
+import { withoutSkipNotices } from '../summary.mjs';
 
 function setting(environment, name) {
   const value = environment[name];
@@ -41,15 +41,29 @@ function projectPrefixOf(projectRoot) {
   }
 }
 
-function isSkipNotice({ rule }) {
-  return rule === TESTS_FAILED_SKIPPED_RULE;
+export const SUMMARY_LIMIT_BYTES = 1024 * 1024;
+
+const CUT_NOTE =
+  '\n\nThe summary is cut here to stay under the 1 MiB limit of GitHub; see `report.txt`.\n';
+
+export function fittedSummary(text, usedBytes) {
+  const budget = SUMMARY_LIMIT_BYTES - usedBytes - Buffer.byteLength(CUT_NOTE);
+  if (Buffer.byteLength(text) + usedBytes <= SUMMARY_LIMIT_BYTES) {
+    return text;
+  }
+  if (budget <= 0) {
+    return '';
+  }
+  const kept = Buffer.from(text).subarray(0, budget).toString('utf8');
+  return `${kept.slice(0, Math.max(kept.lastIndexOf('\n'), 0))}${CUT_NOTE}`;
 }
 
-function skipNoticesLast(toolErrors) {
-  return [
-    ...toolErrors.filter((error) => !isSkipNotice(error)),
-    ...toolErrors.filter(isSkipNotice),
-  ];
+function appendSummary(summaryPath, text) {
+  const used = existsSync(summaryPath) ? statSync(summaryPath).size : 0;
+  const fitted = fittedSummary(text, used);
+  if (fitted !== '') {
+    appendFileSync(summaryPath, fitted);
+  }
 }
 
 const RENDERERS = { diff: renderDiffSummary, snapshot: renderSnapshotSummary };
@@ -70,11 +84,11 @@ export function writeGithubOutput({
   if (summaryPath === undefined && !annotate) {
     return;
   }
-  const report = { ...original, toolErrors: skipNoticesLast(original.toolErrors) };
+  const report = { ...original, toolErrors: withoutSkipNotices(original.toolErrors) };
   const context = { linkBase: linkBase(environment), projectPrefix: projectPrefixOf(projectRoot) };
   if (summaryPath !== undefined) {
     try {
-      appendFileSync(summaryPath, `${RENDERERS[kind](report, context)}\n`);
+      appendSummary(summaryPath, `${RENDERERS[kind](report, context)}\n`);
     } catch (error) {
       stderr.write(
         `nitpicker: could not write the job summary: ${error instanceof Error ? error.message : String(error)}\n`,
