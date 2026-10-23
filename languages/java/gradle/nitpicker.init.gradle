@@ -452,8 +452,14 @@ allprojects {
             group = 'nitpicker'
             dependsOn { lintedClassesTasks() }
             onlyIf { usesSpring() }
-            def ruleSources = new File(initScriptDir, 'archunit').listFiles()
-                .findAll { it.name.endsWith('.java') }.sort()
+            def ruleSources = []
+            new File(initScriptDir, 'archunit').eachFileRecurse(groovy.io.FileType.FILES) {
+                if (it.name.endsWith('.java')) {
+                    ruleSources << it
+                }
+            }
+            ruleSources = ruleSources.sort { it.path }
+            def springRoles = findProperty('nitpicker.spring.roles')
             doLast {
                 def directory = reportDir.get().dir('spring-arch').asFile
                 directory.deleteDir()
@@ -504,7 +510,8 @@ allprojects {
                 }
                 def output = reportDir.get().file('spring-arch.json').asFile
                 output.delete()
-                run([bin('java'), argumentFile('run.args', [classes] + libraries + projectPath), 'ArchRules',
+                def roles = springRoles == null ? [] : ["-Dnitpicker.spring.roles=${springRoles}".toString()]
+                run([bin('java'), argumentFile('run.args', [classes] + libraries + projectPath)] + roles + ['ArchRules',
                      output.absolutePath, mainClasses*.absolutePath.join(File.pathSeparator),
                      unitTestClasses*.absolutePath.join(File.pathSeparator),
                      otherTestClasses*.absolutePath.join(File.pathSeparator)])
@@ -1211,6 +1218,23 @@ allprojects {
                             sourceSets.main.runtimeClasspath.files
                         manifest.kotlinSerialization = mainClasspath.any {
                             it.name ==~ /(jackson-module-kotlin|kotlinx-serialization-(core|json)|moshi-kotlin).*\.jar/
+                        }
+                        def compileKotlinTask = tasks.findByName('compileKotlin')
+                        try {
+                            def allOpen = [annotations: [], presets: []]
+                            compileKotlinTask?.pluginOptions?.get()?.each { config ->
+                                config.allOptions().findAll { it.key == 'org.jetbrains.kotlin.allopen' }
+                                    .each { pluginId, pluginOptions ->
+                                        pluginOptions.each { option ->
+                                            if (option.key == 'annotation') { allOpen.annotations << option.value }
+                                            if (option.key == 'preset') { allOpen.presets << option.value }
+                                        }
+                                    }
+                            }
+                            if (compileKotlinTask != null) {
+                                manifest.kotlinAllOpen = allOpen
+                            }
+                        } catch (Exception ignored) {
                         }
                         manifestFile.text = groovy.json.JsonOutput.toJson(manifest)
                     }

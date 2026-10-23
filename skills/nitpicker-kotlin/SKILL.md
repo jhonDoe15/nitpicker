@@ -50,6 +50,10 @@ Before you change code other modules use, or fix a bug, read
 - Design for a fixed clock and a seeded random: take a `java.time.Clock` and a `kotlin.random.Random`
   as constructor parameters, and read environment variables once where `fun main` (or the
   `@SpringBootApplication` class, or the Ktor module) builds the objects, into a config class passed in.
+- With Spring, the architecture rules (`archunit/spring-...`) read the compiled Kotlin classes: package
+  by feature; controllers call services, never repositories or another controller; a repository calls
+  no service; a request- or session-scoped bean reaches a singleton only as `ObjectProvider<T>` or
+  through a scoped proxy (`@RequestScope`).
 - Test sources are linted like main ones (detekt, and ktlint or ktfmt): the rules above, including `!!`, apply
   in tests. detekt keeps its default exclusions for tests, so magic numbers, `lateinit`, many functions,
   duplicated string literals, spread operators and function names in backticks are not findings in a
@@ -85,6 +89,10 @@ Before you change code other modules use, or fix a bug, read
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
 - A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join
   the preset's. Do not call anything the project lists there.
+- With Spring, the Spring rules of the Java preset run on Kotlin under the same `pmd/Spring...` ids,
+  and each finding names the Kotlin form. JPA entities and Spring Data repositories are not checked
+  in Kotlin yet: follow the JPA and Spring Data part of the `spring.md` page of the `nitpicker-java`
+  skill there.
 
 ## Repository files
 

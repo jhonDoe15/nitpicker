@@ -3,6 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { testTimeoutMs } from '../test-run.mjs';
+import { consoleProducerPath } from '../test-console-run.mjs';
 import { createRunnerProjects } from '../test-support/runner-project.mjs';
 import { coverageArguments } from './jest-coverage.mjs';
 import { jestArguments, runJest } from './jest.mjs';
@@ -142,6 +143,8 @@ describe('a Jest run that a Create React App script starts', () => {
           `--testTimeout=${String(testTimeoutMs())}`,
           '--restoreMocks',
         ],
+        ...['--silent=false', '--verbose=false', '--reporters=default'],
+        `--reporters=${consoleProducerPath(options, 'jest')}`,
         '--watchAll=false',
       ],
     ]);
