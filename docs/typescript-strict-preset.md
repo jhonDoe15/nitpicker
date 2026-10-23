@@ -100,16 +100,27 @@ config file is an exception like any other.
   context (`app.get`, `app.resolve`). The receiver is resolved by the type checker, so it counts
   however it is reached (`import { container as c }`, a re-export, a `new Container()` from the
   library, a parameter, `this.moduleRef`, `container.createChildContainer()`), and a method that is
-  only named `get` or `resolve` on another type is not evidence. A call to a project function
-  whose body looks a service up counts as a lookup at its call sites, through helpers of helpers,
-  imports, namespace imports and re-exports. The message names the library and the call, and for a
-  helper also the helper and the file that does the lookup.
+  only named `get` or `resolve` on another type is not evidence. A lookup method read as a value
+  counts too (`items.map(container.resolve)`, `container.resolve.bind(container)`,
+  `const { resolve } = container`, `const { cradle } = c`, `c['cradle']`). A call to a project
+  function whose body looks a service up counts as a lookup at its call sites, through helpers of
+  helpers, imports, namespace imports, re-exports and aliases (`const p = plain`); the helper may be
+  a function, an arrow (also `export default`, `as` or `satisfies`, or wrapped in a call such as
+  `once(() => ...)`), a method, a class property arrow (also `static`), a getter, a constructor
+  (`new Svc()`, with its field initializers) or a default parameter value, and it counts when passed
+  as a callback (`items.map(plain)`, `plain.call(...)`). A call through an interface method is not
+  followed, since an interface has no body. The message names the library and the call, and for a
+  helper also the helper and the project-relative file that does the lookup.
   Allowed: lookups in the composition root (the files above, the `compositionRootPattern` option
   and `layout.entryPoints`, which is where a Nest `main.ts` calls `app.get`), and inside a
-  registration factory (`useFactory` of a provider, `toDynamicValue`, `toFactory`, `toProvider`,
-  `onActivation`). A helper declared in such a root file is not a lookup elsewhere. Tests are not
-  checked. It needs the container library installed, since the types come from it, and models the
-  libraries above only: a project container of its own is not found.
+  registration factory: `useFactory` of a provider and inversify's `toDynamicValue`, `toFactory`,
+  `toProvider` and `onActivation` (resolved to inversify's binding types, so a same-named method of
+  another library is not one), also when the factory is wrapped in a call
+  (`instanceCachingFactory((c) => ...)`) or passed by name (`toDynamicValue(build)`). A helper
+  declared in a root file counts when it is called from outside the roots; the lookup inside the
+  root stays allowed. Tests are not checked. It needs the container library installed, since the
+  types come from it, and models the libraries above only: a project container of its own is not
+  found. An invalid `compositionRootPattern` fails with an error that names the option.
 - `nitpicker/no-process-access-outside-composition-root`: environment variables (`process.env`,
   `import.meta.env`, `Deno.env`) are read only in the composition root, parsed once with a zod
   schema, and the typed config is passed down. `process.exit` is called only in the composition

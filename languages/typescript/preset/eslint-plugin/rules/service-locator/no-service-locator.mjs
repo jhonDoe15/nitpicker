@@ -1,8 +1,8 @@
-import { createResolverSummaries } from './resolver-summaries.mjs';
+import { createResolverSummaries } from './summaries/resolver-summaries.mjs';
 import { rootFileMatcher, rootFileOptionsSchema } from './root-files.mjs';
 
 const ALLOWED_FORM =
-  'Take the dependency as a parameter typed with the narrow interface the code needs, and look it up only where the app is composed (the composition root: main, server or a configured entry point) or inside a registration factory (`useFactory`, `toDynamicValue`).';
+  'Take the dependency as a constructor parameter typed with the narrow interface the code needs, or build it in a factory provider (`useFactory`, `toDynamicValue`), and look it up only where the app is composed (the composition root: main, server, or a file listed in "layout.entryPoints").';
 const FAILURE =
   'A lookup hides what this code needs from its signature and fails only when it runs, if the registration is missing.';
 
@@ -15,10 +15,22 @@ function remembered(cache, key, build) {
   return cache.get(key);
 }
 
-function summariesFor(program, options) {
-  const perOptions = remembered(summariesByProgram, program, () => new Map());
-  return remembered(perOptions, JSON.stringify(options ?? {}), () =>
-    createResolverSummaries({ program, isRoot: rootFileMatcher(options) }),
+function summariesFor(program) {
+  return remembered(summariesByProgram, program, () => createResolverSummaries({ program }));
+}
+
+const FUNCTION_METHODS = new Set(['call', 'apply', 'bind']);
+
+function isReferencePosition(node) {
+  const { parent } = node;
+  if (parent.type === 'CallExpression' || parent.type === 'NewExpression') {
+    return parent.arguments.includes(node);
+  }
+  return (
+    parent.type === 'MemberExpression' &&
+    parent.object === node &&
+    !parent.computed &&
+    FUNCTION_METHODS.has(parent.property.name)
   );
 }
 
@@ -46,7 +58,7 @@ export const rule = {
     ) {
       return {};
     }
-    const summaries = summariesFor(services.program, options);
+    const summaries = summariesFor(services.program);
 
     function check(node) {
       const found = summaries.lookupAt(services.esTreeNodeToTSNodeMap.get(node));
@@ -63,8 +75,11 @@ export const rule = {
 
     return {
       CallExpression: check,
-      MemberExpression(node) {
-        if (!node.computed && node.property.name === 'cradle') {
+      NewExpression: check,
+      MemberExpression: check,
+      'ObjectPattern > Property': check,
+      Identifier(node) {
+        if (isReferencePosition(node)) {
           check(node);
         }
       },

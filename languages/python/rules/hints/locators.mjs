@@ -10,7 +10,7 @@ function describeLookup(subject) {
     return `\`${subject}\` looks a service up in a dependency-injection container, which ${FAILURE}`;
   }
   const [, helper, lookup, file] = wrapped;
-  return `\`${helper}()\` (${file}) looks a service up in a dependency-injection container behind a helper (\`${lookup}\`), which ${FAILURE}`;
+  return `\`${helper}()\` looks a service up in a dependency-injection container behind a helper: it calls \`${lookup}\` in ${file}, which ${FAILURE}`;
 }
 
 export const LOCATOR_HINTS = [
