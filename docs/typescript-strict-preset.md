@@ -137,7 +137,7 @@ config file is an exception like any other.
 - Transforms use `map`, `filter`, `flatMap`, `reduce` with an initial value (`xs.reduce((sum, x) =>
 sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, `reduce` without
   an initial value, or `reduceRight`.
-- No classes and no `this`. No reassigning a parameter (`no-param-reassign`).
+- No classes and no `this`. No reassigning a parameter (`no-param-reassign`) and no changing one in place (`nitpicker/no-parameter-mutation`).
 - No clock, randomness or I/O, however it is written: `Date.now`, `Math.random` and
   `performance.now` are reported as properties, so `const now = Date.now`, `const { random } =
 Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setInterval`,
@@ -526,6 +526,36 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `export default`, or an export list) the message gives the re-export under the exported name,
   `export { fetchUser as loadUser }` or `export { fetchUser as default }`; for a local one it says to
   call the callee directly and delete the wrapper.
+- `nitpicker/no-tri-state-boolean`: a `boolean` that can also be `undefined` or `null` has three
+  states that the type does not name. Reported as the whole type of a parameter, return type
+  (also inside `Promise<...>`), type member or class field (`force: boolean | undefined`,
+  `true | false | undefined`), and for an optional boolean parameter (`force?: boolean`,
+  including in function types and `declare` signatures). Not reported: an optional property
+  (`{ force?: boolean }`), a union with another type (`boolean | string`), a local variable, and a
+  method with `override`. The message names a required `boolean` or a union of string literals.
+  In the JavaScript preset the rule reads JSDoc types (`@param {boolean|undefined}`,
+  `{boolean=}`, `@param {boolean} [force]`, `Promise<boolean|undefined>` in `@returns`).
+- `nitpicker/no-parameter-mutation` (type-aware): a mutating method (`push`, `pop`, `splice`,
+  `sort`, `reverse`, `add`, `set`, `delete`, `clear` and the other array, `Set`, `Map` mutators of
+  `no-mutating-method-in-domain`) called on a parameter, or an assignment, `++` or `delete` on an
+  index or `length` of a parameter whose type has a writable index signature (arrays, typed
+  arrays, records), is flagged, also through `grid[0]!.push`. Not flagged: a copy
+  (`const copy = [...items]`), the accumulator (first parameter) of a `reduce` or `reduceRight`
+  callback, an immer draft (a parameter inside `produce`, `produceWithPatches`, `createSlice`,
+  `createReducer`, `useImmer` or `useImmerReducer`), a `readonly` type (the compiler rejects the
+  write), and plain property assignment (`user.name = name`). `domain/` files keep the stricter
+  `no-mutating-method-in-domain` and do not get this rule. The shared method tables are in
+  `eslint-plugin/rules/analysis/mutating-methods.mjs`.
+- `@typescript-eslint/prefer-nullish-coalescing` (type-aware, `ignorePrimitives: { boolean: true }`):
+  `name || 'none'` on a value that can be `undefined` turns `''` and `0` into the default; write
+  `name ?? 'none'`. Conditions (`if (a || b)`) and boolean operands are not reported.
+- `nitpicker/no-compatibility-shim`: a doc comment with a `@deprecated` tag, and an exported
+  `const Old = New` or `type Old = New` whose target `New` is also exported from the same module
+  (two public names for one thing). Generic aliases, aliases of imports and of non-exported
+  declarations, and `export { a as b }` lists (which `no-forwarding-wrapper` recommends) are not
+  reported. Callers of a deprecated API are reported by `@typescript-eslint/no-deprecated`. In the
+  JavaScript preset the `@deprecated` tag is already rejected as an unsupported JSDoc tag, so only
+  the alias form is added.
 - No `as`, `any`, or non-null assertions.
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
 - No comments, except doc comments (`/** ... */`) on exported declarations and the members of

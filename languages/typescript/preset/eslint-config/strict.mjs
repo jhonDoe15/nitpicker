@@ -20,6 +20,7 @@ import {
   controlFlowRules,
   controlFlowSelectors,
   controlFlowTypedRules,
+  nullishDefaultRules,
   forEachSelectors,
   loopSelectors,
 } from './strict/strict-control-flow.mjs';
@@ -113,6 +114,8 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         'no-restricted-syntax': ['error', ...restrictedSyntax.source],
         ...sourceSyntaxBans(options),
         'nitpicker/no-self-recursion': 'error',
+        'nitpicker/no-tri-state-boolean': 'error',
+        'nitpicker/no-compatibility-shim': 'error',
       },
     },
     {
@@ -158,7 +161,15 @@ function strictTypedConfigFor(layout, parserOptions) {
         ...controlFlowTypedRules,
         'nitpicker/exhaustive-union-predicate': 'error',
         'nitpicker/no-forwarding-wrapper': 'error',
+        ...nullishDefaultRules,
       },
+    },
+    {
+      files: layout.sourceGlobs,
+      ignores: [...productionScope(layout).ignores, ...domainGlobsFor(layout.sourceRoots)],
+      languageOptions: { parser: tseslint.parser, parserOptions },
+      plugins: { nitpicker: nitpickerRules },
+      rules: { 'nitpicker/no-parameter-mutation': 'error' },
     },
     {
       files: domainGlobsFor(layout.sourceRoots),

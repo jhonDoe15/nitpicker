@@ -212,6 +212,23 @@ export function typePredicateTags(tags) {
   );
 }
 
+const TRI_STATE_TYPE =
+  /^(?:Promise<\s*)?(?:boolean\s*\|\s*(?:undefined|null)|(?:undefined|null)\s*\|\s*boolean|boolean=)\s*>?$/;
+
+function isTriStateTag(tag) {
+  if (tag.type === undefined) {
+    return false;
+  }
+  const optionalName = MEMBER_TAGS.has(tag.tag) && tag.name?.startsWith('[') === true;
+  return TRI_STATE_TYPE.test(tag.type) || (optionalName && tag.type === 'boolean');
+}
+
+export function triStateBooleanTags(tags) {
+  return tags.filter(
+    (tag) => (MEMBER_TAGS.has(tag.tag) || OTHER_TYPE_TAGS.has(tag.tag)) && isTriStateTag(tag),
+  );
+}
+
 export const jsdocOptionSchema = [
   { type: 'object', properties: { jsdoc: { type: 'boolean' } }, additionalProperties: false },
 ];
