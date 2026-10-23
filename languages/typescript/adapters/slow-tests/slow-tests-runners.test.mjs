@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -66,6 +66,42 @@ const RUNNERS = [
   },
 ];
 
+const LOAD = "appendFileSync(new URL('../loads.log', import.meta.url), 'loaded\\n');";
+const LOAD_CJS =
+  "require('node:fs').appendFileSync(require('node:path').join(__dirname, '..', 'loads.log'), 'loaded\\n');";
+
+const NAMED_RERUNS = [
+  {
+    runner: 'vitest',
+    manifest: { type: 'module', scripts: { test: 'vitest run test/once.test.js' } },
+    test: `import { appendFileSync } from 'node:fs';\nimport { it } from 'vitest';\n${LOAD}\n`,
+  },
+  {
+    runner: 'jest',
+    manifest: { scripts: { test: 'jest test/once.test.js' } },
+    test: `${LOAD_CJS}\n`,
+  },
+  {
+    runner: 'node:test',
+    manifest: { type: 'module', scripts: { test: 'node --test test/once.test.js' } },
+    test: `import { appendFileSync } from 'node:fs';\nimport { it } from 'node:test';\n${LOAD}\n`,
+  },
+  {
+    runner: 'mocha',
+    manifest: { scripts: { test: 'mocha --parallel --jobs 2' } },
+    files: { '.mocharc.json': { spec: ['test/**/*.test.js'] } },
+    test: `${LOAD_CJS}\n`,
+  },
+];
+
+function coverageOptions(root) {
+  return parseArguments([
+    ...['--analyzer-name', 'coverage', '--kind', 'coverage'],
+    ...['--project-root', root, '--policy-root', PACKAGE_ROOT],
+    ...['--tool-root', PACKAGE_ROOT, '--snapshot', 'head'],
+  ]);
+}
+
 beforeEach(() => {
   policyDirectory = mkdtempSync(path.join(tmpdir(), 'nitpicker-slow-policy-'));
   writeFileSync(
@@ -111,11 +147,7 @@ describe('slow tests on each test runner', () => {
     'times the test again without coverage on $runner',
     async ({ files, identity }) => {
       const root = projects.project({ 'src/main/pick.ts': PICK_SOURCE, ...files });
-      const options = parseArguments([
-        ...['--analyzer-name', 'coverage', '--kind', 'coverage'],
-        ...['--project-root', root, '--policy-root', PACKAGE_ROOT],
-        ...['--tool-root', PACKAGE_ROOT, '--snapshot', 'head'],
-      ]);
+      const options = coverageOptions(root);
       const name = identity.replace('test:', '');
 
       const timings = await retimeWithoutCoverage(options, [
@@ -124,6 +156,26 @@ describe('slow tests on each test runner', () => {
 
       expect([...timings.keys()]).toEqual([`test/slow.test.ts\0${name}`]);
       expect([...timings.values()].map((seconds) => seconds >= 1.4)).toEqual([true]);
+    },
+  );
+
+  it.each(NAMED_RERUNS)(
+    'loads a test file the project already names once when timing it again on $runner',
+    async ({ manifest, files = {}, test }) => {
+      const root = projects.project({
+        'package.json': { name: 'p', private: true, ...manifest },
+        ...files,
+        'test/once.test.js': `${test}it('once', () => {});\n`,
+      });
+
+      const timings = await retimeWithoutCoverage(coverageOptions(root), [
+        { file: 'test/once.test.js', name: 'once', seconds: 3 },
+      ]);
+
+      expect([[...timings.keys()], readFileSync(path.join(root, 'loads.log'), 'utf8')]).toEqual([
+        ['test/once.test.js\0once'],
+        'loaded\n',
+      ]);
     },
   );
 });

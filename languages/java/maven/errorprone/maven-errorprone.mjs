@@ -116,7 +116,7 @@ function compileSets({ module, classpaths }, modular) {
   ];
 }
 
-function analyze({ module, reportDir, tools, classpaths }, modular) {
+function analyze({ module, reportDir, tools, classpaths, spawn }, modular) {
   const report = path.join(reportDir, 'errorprone.json');
   const work = path.join(reportDir, 'errorprone');
   rmSync(work, { recursive: true, force: true });
@@ -136,7 +136,8 @@ function analyze({ module, reportDir, tools, classpaths }, modular) {
     settings.compilerArgs.includes('--enable-preview'),
   );
   runJava({
-    java: errorProneJava({ preview }),
+    java: errorProneJava({ preview, spawn }),
+    spawn,
     tool: 'Error Prone',
     jvmArgs: JVM_FLAGS,
     args: [
