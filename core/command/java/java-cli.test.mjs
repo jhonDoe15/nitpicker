@@ -199,6 +199,9 @@ Quality gate summary
 ✖ 1 new enforceable violation
   duplicates/duplicate-clone src/main/java/demo/First.java:3
     ${CLONE_MESSAGE}
+Design notes for review (not failing): 2 new
+  duplicates/duplicate-clone-size src/main/java/demo/First.java:3 Duplicate with src/main/java/demo/Second.java
+  duplicates/duplicate-clone-size src/main/java/demo/First.java:3 Duplicate with src/main/java/demo/Second.java
 Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
@@ -333,10 +336,10 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         'Enforceable findings:',
         `pmd/UnusedPrivateField src/main/java/demo/A.java:3 ${unusedFieldMessage('legacy')}`,
         '',
-        'Descriptive findings:',
-        'coupling/coupling . dependencies summary',
-        'coupling/coupling . modules summary',
-        'coupling/coupling . packages summary',
+        'Design notes for review (not failing): 3 new',
+        '  coupling/coupling . dependencies summary',
+        '  coupling/coupling . modules summary',
+        '  coupling/coupling . packages summary',
         '',
       ].join('\n'),
     );
