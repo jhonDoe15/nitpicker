@@ -23,5 +23,8 @@ const ESCAPE_SEQUENCES = new RegExp(
 );
 
 export function printable(value) {
-  return singleLine(String(value).replaceAll(ESCAPE_SEQUENCES, '')).replaceAll(/\p{Cc}/gu, '');
+  return singleLine(String(value).replaceAll(ESCAPE_SEQUENCES, '')).replaceAll(
+    /[\p{Cc}\p{Cf}]/gu,
+    '',
+  );
 }

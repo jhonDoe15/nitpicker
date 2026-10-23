@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { hasSpecificGuidance } from '../diff/reporting/review/policy-guidance.mjs';
 import { timeoutChanges } from './timeout-changes.mjs';
 import { policyChangeFields } from './describe-policy-changes.mjs';
 import { createPolicyScope, rootSets } from './policy-scope.mjs';
@@ -13,7 +14,11 @@ const project = (limits = {}, include = ['test/jvm/**']) => ({
 const ceilings = (value) => ({ testDeclarationCeilingMs: value, hookDeclarationCeilingMs: value });
 
 function loosenedTexts(base, head) {
-  return timeoutChanges(base, head).loosened.map(({ text }) => text);
+  const { loosened } = timeoutChanges(base, head);
+  for (const { text, kind } of loosened) {
+    expect(hasSpecificGuidance(kind), text).toBe(true);
+  }
+  return loosened.map(({ text }) => text);
 }
 
 function policyFields(base, head) {

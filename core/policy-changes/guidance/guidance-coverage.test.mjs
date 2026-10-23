@@ -11,6 +11,11 @@ import { createPolicyScope, rootSets } from '../policy-scope.mjs';
 const CLASS = 'package a;\nclass A {}\n';
 const GRADLE = { 'build.gradle': "plugins { id 'java' }\n", 'src/main/java/a/A.java': CLASS };
 const PROJECT = { precedence: ['project', 'nitpicker'] };
+const PYTEST_OPTIONS = '[tool.pytest.ini_options]\n';
+const PYTEST = {
+  'tests/test_core.py': 'def test_x():\n    pass\n',
+  'src/app/test_inner.py': 'def test_y():\n    pass\n',
+};
 const PYTHON_ROOTS = { preset: 'python', python: { sourceRoots: ['src', 'lib'] } };
 
 function synthetic(base, head, options = {}) {
@@ -120,6 +125,11 @@ const FIXTURES = {
       'build.gradle':
         "plugins { id 'java' }\nsourceSets { main { java { srcDirs = ['src/other/java'] } } }\n",
     },
+  }),
+  'test-paths': gitBacked({
+    base: { ...PYTEST, 'pyproject.toml': `${PYTEST_OPTIONS}addopts = "-q"\n` },
+    head: { ...PYTEST, 'pyproject.toml': `${PYTEST_OPTIONS}testpaths = ["tests"]\n` },
+    config: { preset: 'python' },
   }),
   'build-filter': gitBacked({
     base: GRADLE,

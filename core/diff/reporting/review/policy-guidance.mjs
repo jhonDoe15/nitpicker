@@ -72,6 +72,10 @@ export const POLICY_GUIDANCE = {
     'The build file no longer includes this checked code, so the build and the checks that need it skip the code.',
     'Restore the directory in the build file.',
   ].join(' '),
+  'test-paths': [
+    'pytest no longer collects these tests, so they stop running and counting toward coverage and mutation.',
+    'Restore the path in testpaths.',
+  ].join(' '),
   'build-filter': [
     'A build or test filter now leaves out this checked code, so it is no longer built, run or measured.',
     'Remove the filter, or have a person confirm it.',
