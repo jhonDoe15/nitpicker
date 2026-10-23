@@ -7,9 +7,11 @@ import { readInside } from '../../../shared/conventions/read-inside.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
+import { GOLANGCI_FILES } from '../../../languages/go/adapters/formatting/go-formatters.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
+const GO_TOOLS = ['gofumpt', 'goimports'];
 const PRETTIER_PRESETS = new Set([undefined, 'typescript', 'javascript']);
 
 function usesProjectConfig(config, tool) {
@@ -84,6 +86,9 @@ function candidates(tool, side) {
   if (KOTLIN_TOOLS.includes(tool)) {
     return config.preset === 'kotlin' ? kotlinFiles(tool, side) : [];
   }
+  if (GO_TOOLS.includes(tool)) {
+    return config.preset === 'go' ? GOLANGCI_FILES : [];
+  }
   if (tool === 'prettier') {
     return PRETTIER_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
   }
@@ -101,7 +106,7 @@ function isOptedIn(tool, config) {
 }
 
 export function readToolConfigs(base, head, gitBlobId) {
-  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier']
+  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, ...GO_TOOLS, 'prettier']
     .filter((tool) => isOptedIn(tool, base.config) && isOptedIn(tool, head.config))
     .map((tool) => ({
       tool,

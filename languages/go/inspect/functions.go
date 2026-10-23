@@ -52,24 +52,64 @@ func isLowerStart(text string) bool {
 func addFunctions(report *Report, fileSet *token.FileSet, files []parsedFile) {
 	for _, file := range files {
 		for _, declaration := range file.syntax.Decls {
-			function, ok := declaration.(*ast.FuncDecl)
-			if !ok || function.Body == nil {
-				continue
-			}
-			name := function.Name.Name
-			if receiver := receiverName(function); receiver != "" {
-				name = receiver + "." + name
-			}
-			entries := measureUnit(fileSet, file.path, name, function.Type, function.Body, function.Pos())
-			if file.test {
-				if isTestFunction(function) {
-					report.Tests = append(report.Tests, entries[0])
+			switch typed := declaration.(type) {
+			case *ast.FuncDecl:
+				addDeclaration(report, fileSet, file, typed)
+			case *ast.GenDecl:
+				if !file.test && typed.Tok == token.VAR {
+					report.Functions = append(report.Functions, variableLiterals(fileSet, file.path, typed)...)
 				}
-				continue
 			}
-			report.Functions = append(report.Functions, entries...)
 		}
 	}
+}
+
+func addDeclaration(report *Report, fileSet *token.FileSet, file parsedFile, function *ast.FuncDecl) {
+	if function.Body == nil {
+		return
+	}
+	name := function.Name.Name
+	if receiver := receiverName(function); receiver != "" {
+		name = receiver + "." + name
+	}
+	entries := measureUnit(fileSet, file.path, name, function.Type, function.Body, function.Pos())
+	if !file.test {
+		report.Functions = append(report.Functions, entries...)
+	} else if isTestFunction(function) {
+		report.Tests = append(report.Tests, entries[0])
+	}
+}
+
+func variableLiterals(fileSet *token.FileSet, path string, declaration *ast.GenDecl) []Function {
+	var entries []Function
+	for _, spec := range declaration.Specs {
+		values, ok := spec.(*ast.ValueSpec)
+		if !ok {
+			continue
+		}
+		for index, value := range values.Values {
+			name := "_"
+			if index < len(values.Names) {
+				name = values.Names[index].Name
+			}
+			entries = append(entries, valueLiterals(fileSet, path, name, value)...)
+		}
+	}
+	return entries
+}
+
+func valueLiterals(fileSet *token.FileSet, path, name string, value ast.Expr) []Function {
+	walker := newBodyWalker()
+	walker.expressions(value)
+	var entries []Function
+	for index, literal := range walker.literals {
+		literalName := name
+		if ast.Expr(literal) != value {
+			literalName = fmt.Sprintf("%s.func%d", name, index+1)
+		}
+		entries = append(entries, measureUnit(fileSet, path, literalName, literal.Type, literal.Body, literal.Pos())...)
+	}
+	return entries
 }
 
 func measureUnit(fileSet *token.FileSet, path, name string, signature *ast.FuncType, body *ast.BlockStmt, start token.Pos) []Function {

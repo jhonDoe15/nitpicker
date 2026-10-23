@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../../shared/filesystem.mjs';
 
-const GO_MOD = 'go.mod';
+export const GO_MOD = 'go.mod';
 const COMMENT = /\/\/.*$/u;
 const BLOCK_START = /^(\w+)\s*\($/u;
 const DIRECTIVE = /^(\w+)\s+(\S.*)$/u;

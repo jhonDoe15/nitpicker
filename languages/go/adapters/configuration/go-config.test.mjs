@@ -34,6 +34,11 @@ describe('the go preset config', () => {
     [{ go: { buildTags: ['a b'] } }, '"go.buildTags" entries must be build tag names'],
     [{ thresholds: { inheritanceDepth: 2 } }, 'Go has no inheritance'],
     [{ react: { enabled: true } }, '"react" is not supported with "preset": "go"'],
+    [
+      { layout: {} },
+      '"layout" is not supported with "preset": "go": Go packages follow the module',
+    ],
+    [{ duplicates: { skippedFolders: [] } }, '"duplicates" is not supported with "preset": "go"'],
     [{ tools: { prettier: { precedence: ['project'] } } }, 'unknown tool "prettier"'],
     [
       { exceptions: [{ rule: 'staticcheck/SA1019', paths: ['a.go'], reason: 'not run yet' }] },

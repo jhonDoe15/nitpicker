@@ -41,7 +41,10 @@ export function goStructureFindings(report, projectRoot, policy = {}) {
     countsInFolder: path.posix.basename(file.path) !== PACKAGE_MARKER,
   }));
   return [
-    ...structureFindings(report.functions, projectRoot, { hints: STRUCTURE_HINTS }),
+    ...structureFindings(report.functions, projectRoot, {
+      hints: STRUCTURE_HINTS,
+      numberedAmongSameSource: true,
+    }),
     ...classLimitFindings(
       report.types.filter(({ kind }) => kind !== 'interface'),
       { analyzerName: STRUCTURE_TOOL, messageKeys: TYPE_MESSAGES, ...limits },

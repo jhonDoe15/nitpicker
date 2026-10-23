@@ -11,7 +11,6 @@ const FORMAT_REPORT = 'format.json';
 
 export function createGoContext({
   projectRoot,
-  liveRoot,
   settings = {},
   policy = {},
   reportRoot,
@@ -20,7 +19,6 @@ export function createGoContext({
 }) {
   return {
     projectRoot,
-    liveRoot: liveRoot ?? projectRoot,
     reportRoot,
     settings,
     spawn,
@@ -29,7 +27,8 @@ export function createGoContext({
     baselineRoot: policy.baselineRoot,
     testSeconds: policy.testSeconds,
     toolPrecedence: policy.toolPrecedence,
-    formatting: detectFormatters(projectRoot, settings.formatters),
+    policyRoot: policy.policyRoot ?? projectRoot,
+    formatting: detectFormatters(policy.policyRoot ?? projectRoot, settings.formatters),
   };
 }
 
@@ -52,6 +51,11 @@ export function readFormatReport(reportRoot) {
 
 function toolchain(context) {
   run(context, ['go', 'version'], { rule: 'go-missing' });
+  const flags = run(context, ['go', 'env', 'GOFLAGS'], {
+    rule: 'go-env-failed',
+    env: { GOFLAGS: context.environment.GOFLAGS },
+  });
+  context.projectGoFlags = flags.stdout.trim();
 }
 
 const STEPS = [toolchain, inspect, format, vet, goTest];

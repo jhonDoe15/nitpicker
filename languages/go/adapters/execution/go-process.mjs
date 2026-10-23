@@ -9,15 +9,17 @@ const BUILD_FLAGS = '-buildvcs=false';
 const GO_NOT_FOUND =
   'go was not found on the PATH: install Go (https://go.dev/dl/) or put its bin folder on the PATH';
 
-function goFlags(environment) {
-  return [environment.GOFLAGS, BUILD_FLAGS].filter(Boolean).join(' ');
+function goFlags(context) {
+  return [context.projectGoFlags ?? context.environment.GOFLAGS, BUILD_FLAGS]
+    .filter(Boolean)
+    .join(' ');
 }
 
 export function execute(context, command, { timeout = TOOL_TIMEOUT_MS, env = {}, cwd } = {}) {
   const [program, ...args] = command;
   return (context.spawn ?? spawnSync)(program, args, {
     cwd: cwd ?? context.projectRoot,
-    env: { ...context.environment, GOFLAGS: goFlags(context.environment), ...env },
+    env: { ...context.environment, GOFLAGS: goFlags(context), ...env },
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
     timeout,

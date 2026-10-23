@@ -7,6 +7,7 @@ on:
       - 'core/**'
       - 'shared/**'
       - 'languages/go/**'
+      - 'languages/java/adapters/**'
       - 'package.json'
       - 'package-lock.json'
       - 'vitest.config.mts'
@@ -41,7 +42,7 @@ jobs:
       # metrics program into ~/.cache/nitpicker on first use.
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.26'
           cache: false
       - run: npm ci
       - run: npm run test:go -- --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/go-e2e/shard-${{ matrix.shard }}.json

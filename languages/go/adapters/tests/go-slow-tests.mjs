@@ -7,11 +7,12 @@ import { moduleFileText, readGoModule } from '../execution/go-module.mjs';
 import { execute } from '../execution/go-process.mjs';
 import { buildFlags } from '../build/go-vet.mjs';
 import { inspectBaseline } from '../structure/go-inspect.mjs';
+import { parseTestEvents } from './test-events.mjs';
 
 const SLOW_TEST_TOOL = 'test-runtime';
 const INTEGRATION_FOLDERS = new Set(['integration', 'integration_tests', 'e2e', 'end_to_end']);
 const INTEGRATION_FILE = /_(?:integration|e2e)_test\.go$/u;
-const INTEGRATION_TAG = /^\/\/go:build\s.*\b(?:integration|e2e)\b/mu;
+const INTEGRATION_TAG = /^\/\/go:build\s.*(?<![!\w])(?:integration|e2e)\b/mu;
 const SHORT_SKIP = /\btesting\.Short\(\)/u;
 const RETIME_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -74,12 +75,10 @@ function retimed(context, run) {
     ],
     { timeout: RETIME_TIMEOUT_MS },
   );
-  const event = (result.stdout ?? '')
-    .split(/\r?\n/u)
-    .filter((line) => line.startsWith('{'))
-    .map((line) => JSON.parse(line))
-    .find(({ Action, Test }) => Action === 'pass' && Test === run.name);
-  return event === undefined ? run.seconds : Math.min(run.seconds, event.Elapsed ?? run.seconds);
+  const again = parseTestEvents(result.stdout ?? '').tests.find(
+    ({ name, outcome }) => name === run.name && outcome === 'passed',
+  );
+  return again === undefined ? run.seconds : Math.min(run.seconds, again.seconds);
 }
 
 function candidates(context, testRun, report) {

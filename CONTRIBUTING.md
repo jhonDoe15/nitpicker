@@ -124,8 +124,9 @@ Python end-to-end CI uses four isolated shards with two test workers each and re
 end-to-end suite at a time so the sequencer and recorder can choose the correct timing profile.
 
 Go end-to-end CI uses two shards and the final `go-e2e` check. The suite (`npm run test:go`) needs Go
-1.22 or newer on the `PATH` and network access to the Go module proxy the first time it builds
-gofumpt and goimports; timings are in `scripts/test-shards/go-e2e.json`.
+on the `PATH` (1.26 or newer, or an older one with the default `GOTOOLCHAIN=auto`, which downloads
+1.26 to build the pinned gofumpt and goimports) and network access to the Go module proxy the
+first time it builds them; timings are in `scripts/test-shards/go-e2e.json`.
 
 `npm test` runs `languages/python/metrics/structure_metrics.py` on a real `python3`, so it needs
 `python3` 3.10 or newer on the `PATH` (that test file is skipped, with its reason in the name,

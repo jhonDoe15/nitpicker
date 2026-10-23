@@ -3,10 +3,15 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { firstFileIn } from '../../../../shared/filesystem.mjs';
 import { GO_TOOLS } from '../execution/go-tools.mjs';
-import { readGoModule } from '../execution/go-module.mjs';
+import { GO_MOD, readGoModule } from '../execution/go-module.mjs';
 
 export const FORMATTERS = ['gofmt', 'gofumpt', 'goimports'];
-const GOLANGCI_FILES = ['.golangci.yml', '.golangci.yaml', '.golangci.toml', '.golangci.json'];
+export const GOLANGCI_FILES = [
+  '.golangci.yml',
+  '.golangci.yaml',
+  '.golangci.toml',
+  '.golangci.json',
+];
 const load = createRequire(import.meta.url);
 const PARSERS = {
   '.toml': (text) => load('smol-toml').parse(text),
@@ -74,11 +79,8 @@ export function formatterOptions(projectRoot, formatter, precedence = []) {
     : OPTION_READERS[formatter](formatterSettings(golangci.config, formatter));
 }
 
-export function golangciConfigFiles(projectRoot, tools = {}) {
-  const opted = ['gofumpt', 'goimports'].some((tool) =>
-    tools[tool]?.precedence?.includes('project'),
-  );
-  return opted ? GOLANGCI_FILES.map((file) => path.join(projectRoot, file)) : [];
+export function formatterChoiceFiles(policyRoot) {
+  return [...GOLANGCI_FILES, GO_MOD].map((file) => path.join(policyRoot, file));
 }
 
 function golangciFormatters(projectRoot) {

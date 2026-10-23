@@ -40,7 +40,10 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
   let project;
   beforeAll(() => {
     workspace = createWorkspace();
-    project = goRepository(workspace, BASE_FILES);
+    project = goRepository(workspace, {
+      ...BASE_FILES,
+      'shop/padded.go': GOFUMPT_ONLY.replace('Rounded', 'Padded'),
+    });
     commitBranch(project, 'slow', { 'shop/slow_test.go': SLOW_TEST });
     commitBranch(project, 'slow-integration', {
       'shop/slow_integration_test.go': SLOW_INTEGRATION_TEST,
@@ -49,6 +52,9 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
     commitBranch(project, 'gofumpt', {
       '.golangci.yml': 'version: "2"\nformatters:\n  enable: [gofumpt]\n',
       'shop/rounded.go': GOFUMPT_ONLY,
+    });
+    commitBranch(project, 'adopt-gofumpt', {
+      '.golangci.yml': 'version: "2"\nformatters:\n  enable: [gofumpt]\n',
     });
     commitBranch(project, 'no-go', { 'shop/discount.go': DISCOUNT });
   });
@@ -79,6 +85,10 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
     expect(newMessages(result)).toEqual([
       "File is not formatted with gofumpt (the project's formatter, from .golangci.yml). Run `gofumpt -w` on it.",
     ]);
+  });
+
+  it('checks the merge base with the formatter the change adopts, so untouched files stay quiet', () => {
+    expect(newFindings(gate(project, 'adopt-gofumpt'))).toEqual([]);
   });
 
   it('reports a missing Go toolchain as a tool error', () => {

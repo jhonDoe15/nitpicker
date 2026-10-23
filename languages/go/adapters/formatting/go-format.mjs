@@ -25,7 +25,7 @@ function chunks(files) {
 export function unformattedFiles(context, formatter, files) {
   const command = [
     ...commandOf(context, formatter),
-    ...formatterOptions(context.projectRoot, formatter, context.toolPrecedence?.[formatter]),
+    ...formatterOptions(context.policyRoot, formatter, context.toolPrecedence?.[formatter]),
   ];
   const listed = chunks(files).flatMap((chunk) => {
     const result = run(context, [...command, '-l', ...chunk], {

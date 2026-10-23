@@ -20,14 +20,19 @@ silently: a project without a `preset` whose source roots hold no TypeScript or 
 that has a `go.mod` stops with a config error naming the preset to set.
 
 The project provides Go on the `PATH` (`go version` must work). Its `GOTOOLCHAIN`, `GOFLAGS`,
-`GOPROXY` and other Go settings apply. nitpicker adds only `-buildvcs=false` to `GOFLAGS`, because
-a snapshot is not always a git checkout. A missing toolchain is a `go/go-missing` tool error
-(exit 2), not a crash.
+`GOPROXY` and other Go settings apply. `GOFLAGS` is read with `go env GOFLAGS`, so a value set with
+`go env -w` counts too, and nitpicker adds only `-buildvcs=false` to it, because a snapshot is not
+always a git checkout. A missing toolchain is a `go/go-missing` tool error (exit 2), not a crash.
+
+The pinned gofumpt and goimports need Go 1.26 or later to build. An older `go` with the default
+`GOTOOLCHAIN=auto` downloads that toolchain for the build; with `GOTOOLCHAIN=local` the build fails
+as a `go/go-tool-install-failed` tool error. A project that pins the formatter with a `tool`
+directive runs its own version instead.
 
 ## How it works
 
 ```
-node core/cli.mjs go-analyzer --project-root <snapshot> --live-root <checkout>   (per snapshot)
+node core/cli.mjs go-analyzer --project-root <snapshot>   (per snapshot)
   -> go version                                   toolchain check
   -> inspect <module root> inspect.json           structure metrics (languages/go/inspect)
   -> <formatter> -l <files>                        format check, one per formatter
@@ -46,7 +51,7 @@ into the nitpicker cache folder (`$XDG_CACHE_HOME/nitpicker`, else `~/.cache/nit
 `go install <module>@<version>`, from a neutral working folder with `GOWORK=off`, so a vendored or
 workspace project does not change how they build. A `tool` directive in the project's `go.mod` for
 the same module runs `go tool <module>` instead, so the project's pin wins. gofmt comes with the
-toolchain (`$(go env GOROOT)/bin/gofmt`).
+toolchain (`$(go env GOROOT)/bin/gofmt`) and runs without `-s`, as `go fmt` does.
 
 **Metrics program.** `languages/go/inspect` is a small Go program on the standard library only
 (`go/parser`, `go/ast`), built the same way into the cache under a hash of its sources. It lists the
@@ -85,6 +90,11 @@ project uses and never flags the choice. The first signal found decides:
 gofmt is dropped when a stricter formatter is chosen, since gofumpt and goimports both apply
 gofmt's layout. Each file a formatter would change is one `<formatter>/format` finding whose
 message names the formatter, where the choice came from, and the command that fixes it.
+The choice is read from the head checkout for both snapshots, so a change that adopts gofumpt is
+checked against a merge base formatted with gofumpt too, and only the files the change touches
+can fail. `go.mod` and the golangci-lint files are inputs of the format check, so editing them
+re-runs it. Dropping a formatter from `go.formatters` (other than gofmt, which every other
+formatter covers) or a tag from `go.buildTags` is a policy loosening a person accepts.
 Generated files (`// Code generated ... DO NOT EDIT.`) are not checked.
 
 Formatter options are read from the golangci-lint file only when the project opts in with
@@ -110,8 +120,8 @@ behind those tags are built and checked.
 
 `go test` runs with `-json` over every package. `-vet=off` keeps it from failing a build on a vet
 finding (vet already ran), and `-coverpkg=./...` makes each package's coverage include what other
-packages' tests exercise; the coverage profile is what slice GO4 gates on. The Go test cache is
-kept: a cached result replays its recorded time.
+packages' tests exercise; the coverage profile is what slice GO4 gates on. Go does not cache a
+run that writes a coverage profile, so every test runs and its time is measured.
 
 - A failing test makes the snapshot a `tests/tests-failed` tool error (exit 2) that lists up to 20
   failing tests with the first lines each printed, as in the Python preset. Only the deepest
@@ -164,9 +174,10 @@ Packages more than 4 levels below the module root fail `folder-depth-limit`, lik
 
 The top-level `exceptions` take a finding as it is printed, `<tool>/<rule>` (`vet/printf`), as in
 the Java preset, plus the shared rules (the function, type, file and folder limits, `slow-test`, and
-the repository checks). Every enforceable message ends with its exception entry, for example
-`{"rule":"vet/printf","paths":["shop/label.go"],"reason":"..."}`. Format findings have no
-exception route: run the formatter.
+the repository checks). Every vet, limit and slow-test message ends with its exception entry, for
+example `{"rule":"vet/printf","paths":["shop/label.go"],"reason":"..."}`. Format findings,
+compile errors and `no-tests-ran` have no exception route: run the formatter, fix the build, or
+add a test.
 
 ## Config keys
 
@@ -177,8 +188,9 @@ exception route: run the formatter.
 | `tools.gofumpt.precedence`, `tools.goimports.precedence` | read the formatter's options from the golangci-lint config   |
 | `thresholds`, `exclude`, `exceptions`, `legacyInventory` | shared with every preset                                     |
 
-The TypeScript layout keys (`layout`, `react`, `i18n`, `duplicates`) are config errors with
-`"preset": "go"`.
+`react` and `i18n` (TypeScript only), `layout` (Go packages follow the module, so there are no
+source roots to set) and `duplicates` (no duplicate-code scan runs yet, see GO5) are config errors
+with `"preset": "go"`, each naming its reason.
 
 ## Tests of the preset
 
@@ -188,7 +200,7 @@ The TypeScript layout keys (`layout`, `react`, `i18n`, `duplicates`) are config 
   `PATH` and skip without `NITPICKER_GO_E2E=1`). They build throwaway git repositories and run
   the real CLI on them: a clean change, gofmt, vet, a compile error, a nested function next to an
   untouched legacy one, exceptions, failing and slow tests, build tags, gofumpt from a golangci-lint
-  file and a missing toolchain. CI runs them in the `go-e2e` workflow.
+  file, a change that adopts gofumpt, and a missing toolchain. CI runs them in the `go-e2e` workflow.
 
 ## Remaining slices
 

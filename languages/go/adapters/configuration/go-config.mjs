@@ -13,15 +13,22 @@ export const GO_LINT_TOOLS = ['vet'];
 const GO_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...GO_SIZE_RULES];
 const SETTING_KEYS = ['formatters', 'buildTags'];
 const BUILD_TAG = /^!?[\w.]+$/u;
-const UNSUPPORTED_KEYS = TYPESCRIPT_ONLY_KEYS.filter(
-  (key) => !['exceptions', 'tools'].includes(key),
-);
+const TYPESCRIPT_REASON =
+  'it describes the TypeScript source layout and React rules, which the Go preset does not have';
+const UNSUPPORTED_KEYS = new Map([
+  ...TYPESCRIPT_ONLY_KEYS.filter((key) => !['exceptions', 'tools'].includes(key)).map((key) => [
+    key,
+    TYPESCRIPT_REASON,
+  ]),
+  ['layout', 'Go packages follow the module, so there are no source roots to set'],
+  ['duplicates', 'the Go preset runs no duplicate-code scan'],
+]);
 
 function validateUnsupported(config) {
-  const unsupported = UNSUPPORTED_KEYS.filter((key) => config[key] !== undefined);
-  if (unsupported.length > 0) {
+  const unsupported = [...UNSUPPORTED_KEYS.keys()].find((key) => config[key] !== undefined);
+  if (unsupported !== undefined) {
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "go": it describes the TypeScript source layout and React rules, which the Go preset does not have. Not supported with go: ${UNSUPPORTED_KEYS.join(', ')}. Shared by all presets: thresholds, exclude, exceptions, legacyInventory`,
+      `"${unsupported}" is not supported with "preset": "go": ${UNSUPPORTED_KEYS.get(unsupported)}. Not supported with go: ${[...UNSUPPORTED_KEYS.keys()].join(', ')}. Shared by all presets: thresholds, exclude, exceptions, legacyInventory`,
     );
   }
   if (config.thresholds?.inheritanceDepth !== undefined) {
