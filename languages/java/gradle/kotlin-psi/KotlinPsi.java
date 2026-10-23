@@ -46,7 +46,9 @@ import org.jetbrains.kotlin.psi.KtFile;
  * A root prefixed {@code test:} holds test sources. The metrics report (functions, class names and types, see
  * {@link MetricsCollector} and {@link Types}) covers the other roots only; the facts report
  * ({@link FactsCollector}) covers all. The facts report also carries a {@code design} key: the design facts
- * of the production roots ({@link DesignFacts}), resolved by name without a type checker.
+ * of the production roots ({@link DesignFacts}), resolved by name without a type checker; with
+ * {@code -Dnitpicker.published=true} (a published library) their exported types and top-level functions are
+ * marked published.
  * A syntax error ends the run: the sources compiled, so the pinned compiler does not read them.
  */
 public final class KotlinPsi {
@@ -146,7 +148,7 @@ public final class KotlinPsi {
 
   private static Object designOf(List<Source> production) {
     try {
-      return DesignFacts.build(production);
+      return DesignFacts.build(production, Boolean.getBoolean("nitpicker.published"));
     } catch (RuntimeException | StackOverflowError failed) {
       System.err.println("design facts failed: " + failed);
       return Map.of("error", String.valueOf(failed));

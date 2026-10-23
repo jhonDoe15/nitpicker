@@ -17,6 +17,7 @@ const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const FIXTURES = path.resolve(import.meta.dirname, '../../fixtures');
 const DESIGN_FIXTURE = path.join(FIXTURES, 'kotlin-design');
+const PUBLISHED_FIXTURE = path.join(FIXTURES, 'kotlin-design-published');
 
 let workspace;
 let compiler;
@@ -59,6 +60,47 @@ describe.skipIf(!enabled)('Kotlin design facts from the PSI program', () => {
     expect(status, log).toBe(0);
     expect(facts.design).toEqual(recorded);
     expect(() => validateFacts(kotlinDesignBundle(facts.design))).not.toThrow();
+  });
+
+  it('marks the exported types and top-level functions of a published module', () => {
+    const project = path.join(workspace, 'design-published');
+    cpSync(path.join(PUBLISHED_FIXTURE, 'src'), path.join(project, 'src'), { recursive: true });
+
+    const { status, log, facts } = runPsiProgram({ ...compiler, published: true }, project, [
+      'src',
+    ]);
+    const recorded = JSON.parse(
+      readFileSync(path.join(PUBLISHED_FIXTURE, 'design-facts.json'), 'utf8'),
+    );
+
+    expect(status, log).toBe(0);
+    expect(facts.design).toEqual(recorded);
+    expect(() => validateFacts(kotlinDesignBundle(facts.design))).not.toThrow();
+  });
+
+  it('leaves published out for the same sources when the module is not published', () => {
+    const project = path.join(workspace, 'design-unpublished');
+    cpSync(path.join(PUBLISHED_FIXTURE, 'src'), path.join(project, 'src'), { recursive: true });
+
+    const { facts } = runPsiProgram(compiler, project, ['src']);
+    const published = [...facts.design.types, ...facts.design.callables].filter(
+      (item) => 'published' in item,
+    );
+
+    expect(published).toEqual([]);
+  });
+
+  it('leaves published out for a published module that is an application', () => {
+    const project = projectWith('published-application', {
+      'src/Main.kt': 'package demo\n\nclass Tool { fun go() = 1 }\n\nfun main() { Tool().go() }\n',
+    });
+
+    const { facts } = runPsiProgram({ ...compiler, published: true }, project, ['src']);
+    const published = [...facts.design.types, ...facts.design.callables].filter(
+      (item) => 'published' in item,
+    );
+
+    expect(published).toEqual([]);
   });
 
   it('writes empty design facts when the project has only test sources', () => {

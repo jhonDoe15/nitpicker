@@ -584,6 +584,7 @@ instead of guessed. Each Gradle module or Maven module is judged alone (a module
 types of a sibling), smart casts and generic arguments are not followed, and a facts failure is
 a tool error (`structure/design-facts`) while the other Kotlin checks still report. An exception
 is an `exceptions` entry with the rule id and a path glob, as in the TypeScript preset.
+In a Gradle module with a `publishing` publication, its exported types and top-level functions count as published, so the rules that judge an API's shape (`context-threading`, `caller-protocol`, `forwarding-chain`, `disjoint-consumer-groups` and `data-clump`) skip them; a module with a `main` is an application and keeps all findings.
 
 ## Format check: ktlint, ktfmt or none
 
