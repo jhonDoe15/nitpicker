@@ -53,6 +53,22 @@ describe('withRuleMessage', () => {
     });
   });
 
+  it('tells a Spring rule its message as the allowed form, since the message leads with it', () => {
+    const message = 'Inject through the constructor.';
+
+    expect(withRuleMessage(finding('pmd', 'SpringConstructorInjection', message))).toEqual({
+      ...finding(
+        'pmd',
+        'SpringConstructorInjection',
+        `${message} ${hint('pmd/SpringConstructorInjection')}`,
+      ),
+      allowedForm: message,
+    });
+    expect(withRuleMessage(finding('pmd', 'HouseRule', 'Avoid it'))).not.toHaveProperty(
+      'allowedForm',
+    );
+  });
+
   it('adds only the fix to a rule whose finding is always a defect', () => {
     const message = 'Possible null pointer dereference of value';
 

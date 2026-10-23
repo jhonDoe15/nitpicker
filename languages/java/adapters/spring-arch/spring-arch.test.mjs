@@ -111,6 +111,7 @@ describe('readSpringArchFindings messages', () => {
     const [finding] = read([input]);
 
     expect(finding.message).toBe(`${message} ${exceptionRoute(input.rule, finding.path)}`);
+    expect(finding.allowedForm).toBe(message);
     expect(finding.rule).toBe(input.rule);
   });
 });

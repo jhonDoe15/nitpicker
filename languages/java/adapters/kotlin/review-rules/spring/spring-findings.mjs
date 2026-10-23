@@ -43,7 +43,15 @@ export function springFindings(
       .flatMap((rule) => rule(view, options))
       .toSorted((left, right) => left.line - right.line)
       .map(({ rule, line, symbol, key }) =>
-        finding({ rule, file: view.file.file, line, symbol, key, message: message(rule) }),
+        finding({
+          rule,
+          file: view.file.file,
+          line,
+          symbol,
+          key,
+          message: message(rule),
+          allowedForm: message(rule),
+        }),
       ),
   );
 }

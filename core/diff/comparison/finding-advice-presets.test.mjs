@@ -73,6 +73,15 @@ const java = (path) =>
     classification: 'enforceable',
   });
 
+const javaSpring = (path) =>
+  withRuleMessage({
+    tool: 'pmd',
+    rule: 'SpringConstructorInjection',
+    path,
+    message: 'Inject through the constructor into final fields.',
+    classification: 'enforceable',
+  });
+
 const javaErrorProne = (path) => {
   const diagnostic = {
     file: path,
@@ -106,6 +115,7 @@ const SAMPLES = [
   ['python', 'src/a.py', fileLines, 'exceptions'],
   ['java', 'src/main/java/A.java', java, 'exceptions'],
   ['java', 'src/main/java/A.java', javaErrorProne, 'exceptions'],
+  ['java', 'src/main/java/A.java', javaSpring, 'exceptions'],
   ['kotlin', 'src/main/kotlin/A.kt', kotlin, 'exceptions'],
   ['kotlin', 'src/main/kotlin/A.kt', fileLines, 'exceptions'],
 ];
