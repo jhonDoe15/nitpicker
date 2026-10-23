@@ -1,7 +1,10 @@
 import path from 'node:path';
 import {
   configError,
+  DRIVE_LETTER,
   FEATURE_LAYOUT_KEYS,
+  GLOB_CHARACTER,
+  PARENT_SEGMENT,
   isPlainObject,
   validateFolderGlobs,
   validateStringArray,
@@ -20,18 +23,21 @@ export const LAYOUT_KEYS = [
 
 const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 
-export function layoutKeysFor(preset) {
-  const settings = factRuleSettings(preset ?? 'typescript');
+export function layoutKeysFor(preset, history) {
+  const settings = [
+    ...factRuleSettings(preset ?? 'typescript'),
+    ...(history?.coChange === true ? ['layout.featureRoots'] : []),
+  ];
   return TYPESCRIPT_PRESETS.includes(preset)
     ? LAYOUT_KEYS
     : FEATURE_LAYOUT_KEYS.filter((key) => settings.includes(`layout.${key}`));
 }
 
-export function validateLayout(layout, preset) {
+export function validateLayout(layout, preset, history) {
   if (!isPlainObject(layout)) {
     throw configError('"layout" must be an object');
   }
-  const allowed = layoutKeysFor(preset);
+  const allowed = layoutKeysFor(preset, history);
   for (const [key, value] of Object.entries(layout)) {
     if (LAYOUT_KEYS.includes(key) && !allowed.includes(key)) {
       throw configError(
@@ -72,9 +78,9 @@ function isProjectRelativeDirectory(root) {
   const normalized = root.replaceAll('\\', '/');
   return (
     !path.isAbsolute(normalized) &&
-    !/^[A-Za-z]:/.test(normalized) &&
-    !/[*?{}[\]]/.test(normalized) &&
-    !normalized.split('/').includes('..') &&
+    !DRIVE_LETTER.test(normalized) &&
+    !GLOB_CHARACTER.test(normalized) &&
+    !PARENT_SEGMENT.test(normalized) &&
     normalized.replace(/^\.\/?|\/$/g, '').length > 0
   );
 }
