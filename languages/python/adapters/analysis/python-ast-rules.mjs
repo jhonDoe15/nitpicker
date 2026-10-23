@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
+import { detectTargetVersion } from '../execution/python-project.mjs';
 import { ruffConfigFor } from '../configuration/python-ruff-config.mjs';
 import { fileURLToPath } from 'node:url';
 import { collectionOptions } from '../configuration/pytest/collection-options.mjs';
@@ -19,6 +20,11 @@ const RULES_SCRIPT = path.resolve(
   fileURLToPath(new URL('../', import.meta.url)),
   '../rules/nitpicker_rules.py',
 );
+
+function minimumPython(projectRoot) {
+  const [, major, minor] = /^py(\d)(\d+)$/u.exec(detectTargetVersion(projectRoot)) ?? [];
+  return major === undefined ? undefined : [Number(major), Number(minor)];
+}
 
 export function readTestFiles(reportRoot) {
   const file = path.join(reportRoot, OPTIONS_FILE);
@@ -59,6 +65,7 @@ export function checkRules(context) {
       testRunner,
       ...collection,
       xfailStrict: pytestConfig.xfailStrict,
+      minimumPython: minimumPython(context.projectRoot),
       testFiles: sources.filter(testFileMatcher(context.projectRoot)),
       entryFiles: entryFilesOf(sources, context.project.entryPoints),
       entryModules: readEntryModules(context.projectRoot),

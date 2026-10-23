@@ -1,40 +1,55 @@
 import { RULES_TOOL } from './tool.mjs';
 
 const CONSTRUCTS = {
-  if: ['an `if` branch or conditional expression', 'Give each outcome its own test'],
-  for: ['a `for` loop', 'Give each case its own test'],
-  subTest: ['a `subTest` loop', 'Give each case its own test'],
-  while: ['a `while` loop', 'Give each case its own test'],
-  match: ['a `match` statement', 'Give each outcome its own test'],
-  comprehension: ['a comprehension', 'Give each case its own test'],
-  boolean: ['an `and` or `or` expression', 'Give each outcome its own test'],
-  except: ['an `except` handler', undefined],
+  if: 'an `if` branch or conditional expression',
+  for: 'a `for` loop',
+  subTest: 'a `subTest` loop',
+  while: 'a `while` loop',
+  match: 'a `match` statement',
+  comprehension: 'a comprehension',
+  boolean: 'an `and` or `or` expression',
+  except: 'an `except` handler',
+  suppress: 'a block that swallows assertion errors',
 };
-const ONE_CASE_PER_TEST =
+const OUTCOMES = new Set(['if', 'match']);
+const PYTEST_CASES =
   'with `@pytest.mark.parametrize` and assert unconditionally; a loop may build the data, then one `assert` checks it.';
+const UNITTEST_CASES =
+  'as a separate test method and assert unconditionally; a loop may build the data, then one `assert` checks it.';
 const EXCEPT_ALLOWED =
   'Let an unexpected error fail the test, or assert the failure with `with pytest.raises(SpecificError) as info:` and check `info.value` after the block.';
-const SUBTEST_ALLOWED =
-  ' A `unittest` suite without `pytest` accepts `subTest` through the exception.';
-const SUBJECT = /^(.*): (\w+)$/u;
+const SUPPRESS_ALLOWED =
+  'Keep the assertion outside the block so a failed assertion fails the test: suppress only the error you expect (`contextlib.suppress(KeyError)`) and assert after the block.';
+const BOOLEAN_ALLOWED =
+  'Give each outcome its own test and assert unconditionally: write `assert f()` in the test where `g()` holds, not `assert not g() or f()` or `g() and self.assertTrue(f())`.';
+const SUBTEST_ALLOWED = ' A suite that keeps `subTest` takes the exception.';
+const SUBJECT = /^(.*): (\w+)( \(unittest\))?$/u;
 
 function parts(subject = '') {
   const match = SUBJECT.exec(subject);
-  return match === null ? [subject, 'if'] : [match[1], match[2]];
+  return match === null ? [subject, 'if', false] : [match[1], match[2], match[3] !== undefined];
 }
 
 function conditionalDescription(subject) {
   const [name, kind] = parts(subject);
-  return `Test \`${name}\` asserts inside ${CONSTRUCTS[kind]?.[0] ?? 'a branch'}`;
+  return `Test \`${name}\` asserts inside ${CONSTRUCTS[kind] ?? 'a branch'}`;
 }
 
 function conditionalAllowed(subject) {
-  const [, kind] = parts(subject);
-  const [, lead] = CONSTRUCTS[kind] ?? CONSTRUCTS.if;
-  if (lead === undefined) {
+  const [, kind, unittest] = parts(subject);
+  if (kind === 'except') {
     return EXCEPT_ALLOWED;
   }
-  return `${lead} ${ONE_CASE_PER_TEST}${kind === 'subTest' ? SUBTEST_ALLOWED : ''}`;
+  if (kind === 'suppress') {
+    return SUPPRESS_ALLOWED;
+  }
+  if (kind === 'boolean') {
+    return BOOLEAN_ALLOWED;
+  }
+  const unit = OUTCOMES.has(kind) ? 'outcome' : 'case';
+  const form = unittest ? UNITTEST_CASES : PYTEST_CASES;
+  const lead = unittest ? `Write each ${unit}` : `Give each ${unit} its own test`;
+  return `${lead} ${form}${kind === 'subTest' ? SUBTEST_ALLOWED : ''}`;
 }
 
 const REAL_CONDITION =

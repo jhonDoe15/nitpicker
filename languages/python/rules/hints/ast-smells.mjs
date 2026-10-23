@@ -13,7 +13,7 @@ function skipDescription(subject = '') {
 
 function skipAllowed(subject = '') {
   if (subject.startsWith('return in ')) {
-    return 'Skip visibly: `@pytest.mark.skipif(sys.platform == "win32", reason="posix only")` or `pytest.skip("...")` (`self.skipTest("...")` in unittest).';
+    return 'Skip on a real condition: `@pytest.mark.skipif(sys.platform == "win32", reason="posix only")`, or `if not has_gpu(): pytest.skip("needs a GPU")` (`self.skipTest("...")` in unittest); or fix or delete the test.';
   }
   if (EXPECTED_FAILURES.test(subject)) {
     return 'Give the reason and the expected error: `@pytest.mark.xfail(reason="bug 123", raises=ZeroDivisionError, strict=True)`; or fix or delete the test.';
@@ -43,15 +43,15 @@ const UNCOLLECTED_ADVICE = [
   ],
   [
     '(--deselect)',
-    'Remove the `--deselect` option, or mark the test `@pytest.mark.skip(reason="...")` so the skip is visible; delete a test you no longer want.',
+    'Remove the `--deselect` option so the test runs, or skip it on a real condition with `@pytest.mark.skipif(sys.platform == "win32", reason="...")`; delete a test you no longer want.',
   ],
   [
     '(-k)',
-    'Remove the `-k` expression in `addopts` that hides the test, or mark it `@pytest.mark.skip(reason="...")` so the skip is visible.',
+    'Remove the `-k` expression in `addopts` that hides the test, or skip it on a real condition with `@pytest.mark.skipif(sys.platform == "win32", reason="...")`.',
   ],
   [
     '(-m)',
-    'Remove the `-m` marker expression in `addopts` that hides the test, or mark it `@pytest.mark.skip(reason="...")` so the skip is visible.',
+    'Remove the `-m` marker expression in `addopts` that hides the test, or skip it on a real condition with `@pytest.mark.skipif(sys.platform == "win32", reason="...")`.',
   ],
   [
     '(python_classes)',

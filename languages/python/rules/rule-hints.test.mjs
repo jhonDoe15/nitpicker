@@ -265,7 +265,7 @@ describe('hints follow the libraries of the project', () => {
     ],
     [
       'return in test_a',
-      'Skip visibly: `@pytest.mark.skipif(sys.platform == "win32", reason="posix only")` or `pytest.skip("...")` (`self.skipTest("...")` in unittest).',
+      'Skip on a real condition: `@pytest.mark.skipif(sys.platform == "win32", reason="posix only")`, or `if not has_gpu(): pytest.skip("needs a GPU")` (`self.skipTest("...")` in unittest); or fix or delete the test.',
     ],
   ])('word a skipped test by the form %s', (subject, allowed) => {
     expect(advice('skipped-test-without-reason', {}, 'python-rules', subject)).toBe(
@@ -322,8 +322,29 @@ describe('hints follow the libraries of the project', () => {
     ],
     ['test_total: match', 'a `match` statement', 'Give each outcome its own test'],
     ['test_total: comprehension', 'a comprehension', 'Give each case its own test'],
-    ['test_total: subTest', 'a `subTest` loop', 'accepts `subTest` through the exception'],
+    ['test_total: subTest', 'a `subTest` loop', 'Give each case its own test'],
     ['test_total: except', 'an `except` handler', 'with pytest.raises(SpecificError) as info:'],
+    [
+      'test_total: suppress',
+      'a block that swallows assertion errors',
+      'suppress only the error you expect',
+    ],
+    ['test_total: boolean', 'an `and` or `or` expression', 'not `assert not g() or f()`'],
+    [
+      'TestA.test_a: for (unittest)',
+      'a `for` loop',
+      'Write each case as a separate test method and assert unconditionally',
+    ],
+    [
+      'TestA.test_a: subTest (unittest)',
+      'a `subTest` loop',
+      'A suite that keeps `subTest` takes the exception.',
+    ],
+    [
+      'TestA.test_a: if (unittest)',
+      'an `if` branch or conditional expression',
+      'Write each outcome as a separate test method',
+    ],
   ])('word a conditional assertion by the form %s', (subject, construct, allowed) => {
     const name = subject.split(': ')[0];
 
@@ -331,6 +352,16 @@ describe('hints follow the libraries of the project', () => {
       `Test \`${name}\` asserts inside ${construct}`,
     );
     expect(advice('conditional-assertion-in-test', {}, 'python-rules', subject)).toContain(allowed);
+  });
+
+  it.each([
+    'TestA.test_a: for (unittest)',
+    'TestA.test_a: if (unittest)',
+    'TestA.test_a: subTest (unittest)',
+  ])('never suggest parametrize to a unittest case: %s', (subject) => {
+    expect(advice('conditional-assertion-in-test', {}, 'python-rules', subject)).not.toContain(
+      'parametrize',
+    );
   });
 
   it('name the default validation library when none is declared', () => {

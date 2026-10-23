@@ -3,6 +3,7 @@ import ast
 from checks.common import dotted_name, finding, type_text
 from errors.handling import is_handled
 from errors.logged_errors import logged_findings
+from syntax.walk import IterativeVisitor
 
 OPTIONAL_IMPORT_ERRORS = {"ImportError", "ModuleNotFoundError"}
 BLIND_ERRORS = {
@@ -34,8 +35,9 @@ def module_tuples(tree):
     return found
 
 
-class Errors(ast.NodeVisitor):
+class Errors(IterativeVisitor):
     def __init__(self, context):
+        super().__init__()
         self.context = context
         self.scopes = [context.tree]
         self.tuples = module_tuples(context.tree)
@@ -44,8 +46,8 @@ class Errors(ast.NodeVisitor):
 
     def visit_scope(self, node):
         self.scopes.append(node)
+        self.on_exit(self.scopes.pop)
         self.generic_visit(node)
-        self.scopes.pop()
 
     visit_FunctionDef = visit_scope
     visit_AsyncFunctionDef = visit_scope

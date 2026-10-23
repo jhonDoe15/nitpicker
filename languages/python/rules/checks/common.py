@@ -110,12 +110,14 @@ def logger_names(tree, names, modules):
 
 def dotted_name(node, aliases):
     names, modules = aliases[:2]
-    if isinstance(node, ast.Name):
-        return names.get(node.id) or modules.get(node.id) or node.id
-    if isinstance(node, ast.Attribute):
-        base = dotted_name(node.value, aliases)
-        return f"{base}.{node.attr}" if base else None
-    return None
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if not isinstance(node, ast.Name):
+        return None
+    base = names.get(node.id) or modules.get(node.id) or node.id
+    return ".".join([base, *reversed(parts)])
 
 
 def call_name(node, aliases):

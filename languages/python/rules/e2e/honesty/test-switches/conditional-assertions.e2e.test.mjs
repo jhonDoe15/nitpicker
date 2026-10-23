@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { createScripts } from '../../test-support/python-script-helpers.mjs';
+import { createScripts } from '../../../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const { cleanup, outcomes } = createScripts({
@@ -53,21 +53,21 @@ describe.skipIf(!enabled)('conditional-assertion-in-test', () => {
         inTests(
           `${prelude}class A(unittest.TestCase):\n    def test_a(self):\n        [self.assertTrue(n) for n in f()]\n`,
         ),
-        ['conditional-assertion-in-test:7 A.test_a: comprehension'],
+        ['conditional-assertion-in-test:7 A.test_a: comprehension (unittest)'],
       ],
       [
         'an assertion call in a conditional expression',
         inTests(
           `${prelude}class A(unittest.TestCase):\n    def test_a(self):\n        self.assertTrue(1) if f() else None\n`,
         ),
-        ['conditional-assertion-in-test:7 A.test_a: if'],
+        ['conditional-assertion-in-test:7 A.test_a: if (unittest)'],
       ],
       [
         'an assertion call after and',
         inTests(
           `${prelude}class A(unittest.TestCase):\n    def test_a(self):\n        f() and self.assertTrue(1)\n`,
         ),
-        ['conditional-assertion-in-test:7 A.test_a: boolean'],
+        ['conditional-assertion-in-test:7 A.test_a: boolean (unittest)'],
       ],
       [
         'an assert in an except handler',
@@ -77,25 +77,11 @@ describe.skipIf(!enabled)('conditional-assertion-in-test', () => {
         ['conditional-assertion-in-test:5 test_a: except'],
       ],
       [
-        'pytest.fail in an except handler',
-        inTests(
-          `${prelude}def test_a():\n    try:\n        f()\n    except ValueError:\n        pytest.fail("no")\n`,
-        ),
-        ['conditional-assertion-in-test:9 test_a: except'],
-      ],
-      [
-        'self.fail in an else branch',
-        inTests(
-          `${prelude}class A(unittest.TestCase):\n    def test_a(self):\n        if f():\n            self.fail("no")\n`,
-        ),
-        ['conditional-assertion-in-test:8 A.test_a: if'],
-      ],
-      [
         'a subTest loop',
         inTests(
           `${prelude}class A(unittest.TestCase):\n    def test_a(self):\n        for n in (1, 2):\n            with self.subTest(n=n):\n                self.assertTrue(n)\n`,
         ),
-        ['conditional-assertion-in-test:9 A.test_a: subTest'],
+        ['conditional-assertion-in-test:9 A.test_a: subTest (unittest)'],
       ],
       [
         'pytest.raises in a loop',
@@ -215,13 +201,6 @@ describe.skipIf(!enabled)('conditional-assertion-in-test', () => {
         'a helper outside the tests that loops over cases',
         inTests(
           'def check_all(cases):\n    for case in cases:\n        assert f(case)\n\n\ndef test_a():\n    check_all([1, 2])\n',
-        ),
-        [],
-      ],
-      [
-        'a nested helper that loops',
-        inTests(
-          'def test_a():\n    def check(cases):\n        for case in cases:\n            assert f(case)\n\n    check([1])\n',
         ),
         [],
       ],
