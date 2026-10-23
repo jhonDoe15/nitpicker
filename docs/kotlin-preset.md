@@ -78,6 +78,9 @@ intrinsics, synthetic accessors, lambdas, `when` tables). It is therefore restri
 Gradle compiled from Java sources (`compileJava`'s output); detekt is the Kotlin source-level
 counterpart. The same restriction keeps PIT's Kotlin mutants out of this tool: PIT mutates the Java and the
 Kotlin classes (see [Mutation](#mutation-report-only-for-kotlin)), and jdeps reads every main class directory (see [Coupling](#coupling)).
+`tools.spotbugs` works as in the Java preset: with `"project"` listed, the exclude filters and the higher effort
+or lower threshold the build declares for SpotBugs apply to this Java-only run (see
+[Settings the build declares](usage.md#settings-the-build-declares-java-and-kotlin-presets)).
 
 ## detekt
 

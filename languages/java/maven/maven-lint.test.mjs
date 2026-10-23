@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
-import { javaFiles, runFormat, runPmd, writeCheckstyleSetup } from './maven-lint.mjs';
+import { javaFiles, runFormat, runPmd, runSpotbugs, writeCheckstyleSetup } from './maven-lint.mjs';
 import { toolDependencies } from './maven-tools.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 
@@ -324,5 +324,43 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       main: [shipped('pmd-main-ruleset.xml')],
       tests: [shipped('pmd-test-ruleset.xml')],
     });
+  });
+});
+
+describe.skipIf(process.platform === 'win32')('runSpotbugs', () => {
+  function spotbugsArguments(configs) {
+    const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-spotbugs-'));
+    roots.push(basedir);
+    const java = path.join(basedir, 'jdk/bin/java');
+    mkdirSync(path.dirname(java), { recursive: true });
+    writeFileSync(
+      java,
+      [
+        `#!${process.execPath}`,
+        "const fs = require('node:fs');",
+        "const lines = fs.readFileSync(process.argv[2].slice(1), 'utf8').split('\\n');",
+        'const args = lines.map((line) => JSON.parse(line));',
+        `fs.writeFileSync(${JSON.stringify(path.join(basedir, 'arguments.json'))}, JSON.stringify(args));`,
+        "fs.writeFileSync(args[args.indexOf('-output') + 1], '{}');",
+      ].join('\n'),
+    );
+    chmodSync(java, 0o755);
+    vi.stubEnv('JAVA_HOME', path.join(basedir, 'jdk'));
+    const classes = path.join(basedir, 'target/classes');
+    mkdirSync(classes, { recursive: true });
+    writeFileSync(path.join(classes, 'A.class'), '');
+    const reportDir = path.join(basedir, 'report');
+    mkdirSync(reportDir);
+    const module = { basedir, sourceRoots: [], outputDirectory: classes };
+    runSpotbugs({ module, reportDir, tools: { spotbugs: ['spotbugs.jar'] }, configs });
+    const args = JSON.parse(readFileSync(path.join(basedir, 'arguments.json'), 'utf8'));
+    return args.slice(args.indexOf('edu.umd.cs.findbugs.FindBugs2') + 1, args.indexOf('-sarif'));
+  }
+
+  it("runs nitpicker's effort and threshold, or the layered settings the project opted into", () => {
+    expect(spotbugsArguments({})).toEqual(['-effort:default', '-medium']);
+    expect(
+      spotbugsArguments({ spotbugs: { arguments: ['-effort:max', '-low', '-exclude', '/x.xml'] } }),
+    ).toEqual(['-effort:max', '-low', '-exclude', '/x.xml']);
   });
 });

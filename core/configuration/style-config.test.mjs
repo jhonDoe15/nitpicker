@@ -210,7 +210,7 @@ describe('tool precedence of the formatters and detekt', () => {
     expect(() =>
       validateConfig({ preset: 'java', tools: { ktlint: { precedence: ['project'] } } }),
     ).toThrow(
-      '"tools" names unknown tool "ktlint". Supported tools with this preset: pmd, checkstyle',
+      '"tools" names unknown tool "ktlint". Supported tools with this preset: pmd, checkstyle, spotbugs',
     );
     expect(() => validateConfig({ preset: 'python', tools: { ruff: { precedence: [] } } })).toThrow(
       '"tools.ruff.precedence" must list "project", "nitpicker" or both, each once',

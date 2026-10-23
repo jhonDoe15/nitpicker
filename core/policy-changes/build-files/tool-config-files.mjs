@@ -1,8 +1,10 @@
 import path from 'node:path';
 import {
+  BUILD_DECLARED_TOOLS,
   GRADLE_PRESETS,
   PROJECT_TOOL_CONFIGS,
 } from '../../../languages/java/adapters/gradle-presets.mjs';
+import { declaredConfigFiles } from '../../../languages/java/adapters/tool-config/declared/declared-choices.mjs';
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
@@ -100,12 +102,29 @@ function isOptedIn(tool, config) {
   );
 }
 
+function declaredFingerprints(tool, side, gitBlobId) {
+  if (!GRADLE_PRESETS.includes(side.config.preset)) {
+    return new Map();
+  }
+  const { declarations, files } = declaredConfigFiles(tool, side);
+  return new Map([
+    ...[...declarations].map(([file, text]) => [file, gitBlobId(text)]),
+    ...fingerprints(tool, { root: side.root, files }, gitBlobId),
+  ]);
+}
+
+function sideFingerprints(tool, side, gitBlobId) {
+  return BUILD_DECLARED_TOOLS.includes(tool)
+    ? declaredFingerprints(tool, side, gitBlobId)
+    : fingerprints(tool, { root: side.root, files: candidates(tool, side) }, gitBlobId);
+}
+
 export function readToolConfigs(base, head, gitBlobId) {
-  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier']
+  return ['pmd', 'checkstyle', ...BUILD_DECLARED_TOOLS, ...KOTLIN_TOOLS, 'prettier']
     .filter((tool) => isOptedIn(tool, base.config) && isOptedIn(tool, head.config))
     .map((tool) => ({
       tool,
-      base: fingerprints(tool, { root: base.root, files: candidates(tool, base) }, gitBlobId),
-      head: fingerprints(tool, { root: head.root, files: candidates(tool, head) }, gitBlobId),
+      base: sideFingerprints(tool, base, gitBlobId),
+      head: sideFingerprints(tool, head, gitBlobId),
     }));
 }

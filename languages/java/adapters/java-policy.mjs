@@ -5,6 +5,7 @@ import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs
 import { withLegacyInventory } from '../../../shared/legacy-inventory.mjs';
 import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
 import {
+  BUILD_DECLARED_TOOLS,
   GRADLE_PRESETS,
   JAVA_TOOLS,
   PROJECT_TOOL_CONFIGS,
@@ -20,6 +21,7 @@ import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { sharedRouteRule } from '../../../shared/exceptions/routes.mjs';
 import { INLINE_SUPPRESSION_RULE } from './suppressions/java-suppressions.mjs';
 import { canonicalRule } from '../../../shared/exceptions/rule-names.mjs';
+import { declaredToolDigest } from './tool-config/declared/declared-choices.mjs';
 
 const FILE_LIMIT_THRESHOLDS = [
   'fileLines',
@@ -127,16 +129,19 @@ export function configureJavaAnalyzer(analyzer, options) {
   const projectConfigDirectories = [...PROJECT_TOOL_CONFIGS]
     .filter(([tool]) => tools[tool]?.precedence.includes('project'))
     .map(([, file]) => path.dirname(file));
+  const declared = declaredPrecedence(tools);
   const configured = {
     ...analyzer,
     configurationHash,
-    ...(projectConfigDirectories.length === 0 && styleFiles === undefined
+    ...(projectConfigDirectories.length === 0 && styleFiles === undefined && declared === undefined
       ? {}
       : {
           resolveConfigurationHash: (policyRoot) =>
             hashWithProjectConfigs(configurationHash, policyRoot, {
               directories: projectConfigDirectories,
               files: styleFiles?.(policyRoot) ?? [],
+              declared:
+                declared === undefined ? undefined : declaredToolDigest(declared, policyRoot),
             }),
         }),
     createInvocation: (context) => {
@@ -169,8 +174,18 @@ function exceptionArgument({ rule, paths, function: functionName }) {
   });
 }
 
-function hashWithProjectConfigs(configurationHash, policyRoot, { directories, files }) {
+function declaredPrecedence(tools) {
+  const listed = BUILD_DECLARED_TOOLS.filter((tool) => tools[tool]?.precedence.includes('project'));
+  return listed.length === 0
+    ? undefined
+    : Object.fromEntries(listed.map((tool) => [tool, tools[tool].precedence]));
+}
+
+function hashWithProjectConfigs(configurationHash, policyRoot, { directories, files, declared }) {
   const hash = createHash('sha256').update(configurationHash);
+  if (declared !== undefined) {
+    hash.update(`declared\0${declared}\0`);
+  }
   const named = [
     ...directories.flatMap((directory) => filesUnder(policyRoot, directory)),
     ...files.map((file) => path.relative(policyRoot, file)),

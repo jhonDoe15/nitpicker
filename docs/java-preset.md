@@ -537,6 +537,22 @@ where both set one. A rule nitpicker runs through its test-only ruleset (`TestCl
 `pmd-test-only.xml`) is never added to the project's file, so a project category reference does not run
 it a second time; a project rule that names it is overlaid on that ruleset (`pmd-test-rules.xml`) instead.
 
+**The project's SpotBugs settings.** SpotBugs has no config file of its own: a project sets it up in
+its build, with the `com.github.spotbugs` Gradle plugin (`spotbugs { excludeFilter = file(...);
+effort = ...; reportLevel = ... }`) or `spotbugs-maven-plugin` (`<excludeFilterFile>`, `<effort>`,
+`<threshold>`). With `tools.spotbugs.precedence` listing `"project"`, nitpicker reads those
+declarations from the head checkout's build files (`adapters/tool-config/declared/`, see
+[Settings the build declares](usage.md#settings-the-build-declares-java-and-kotlin-presets)) and
+runs its own pinned SpotBugs with them, on Gradle and Maven alike and on the Kotlin preset's Java
+classes: every exclude filter is passed as `-exclude`, and a higher effort or a lower threshold
+replaces `-effort:default` and `-medium` unless `"nitpicker"` comes first. The exclude filter is
+the project's list of reviewed suppressions, so it applies as the project's Checkstyle
+`SuppressionFilter` files do, and an edit of it is a policy change. Settings that would drop findings
+of the detectors nitpicker runs are never applied: a lower effort, a higher threshold, an include
+filter, `onlyAnalyze`, `visitors`, `omitVisitors` and a baseline file; the run names the ones it left
+out. Everything SpotBugs reports stays enforceable, the lower-confidence findings a `low` threshold
+adds included.
+
 **PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
 default, and their messages name it:
 
@@ -1747,7 +1763,10 @@ neighbors. The init script reads its `nitpicker.*` Gradle properties from the co
 so a `gradle.properties` entry cannot opt in on the project's behalf (`nitpicker.archunit.includes`
 is the exception: it only picks which test classes run). It sets the Checkstyle config on the
 Checkstyle tasks after the build script runs, so a `checkstyle { configFile = ... }` block in the
-project's build does not replace it either.
+project's build does not replace it either. The same holds for the SpotBugs settings a build
+declares (an exclude filter, effort, threshold): nitpicker runs its own SpotBugs task and SpotBugs
+jar, so a `spotbugs { }` block or `spotbugs-maven-plugin` configuration changes nothing until
+`tools.spotbugs` opts in, and the run says it ignored them.
 
 **Test sources are linted too.** PMD, Checkstyle (`checkstyleTest`, reported in
 `checkstyle-test.xml`), Error Prone, google-java-format and the inline suppression scan cover
