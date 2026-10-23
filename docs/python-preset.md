@@ -580,41 +580,41 @@ under `languages/python/rules/`: `checks`, `boundary`, `smells`, `honesty`); the
 rules. Rules that are not enforced because they flag idiomatic code with no clean alternative
 are listed at the end.
 
-| Concern                                         | Allowed form                                                                                                                                     | Rule                                                                                                                                                 |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Logging                                         | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                           | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                               |
-| Environment                                     | read once in a composition root, pass values in                                                                                                  | `process-env-access` (script)                                                                                                                        |
-| Shell                                           | a list: `subprocess.run(["git", "status"], check=True)`                                                                                          | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                        |
-| SQL                                             | parameters: `cursor.execute("select * from t where id = %s", (id,))`; placeholder lists, fixed lookups, `Literal`/`Enum` names, `sql.Identifier` | `sql-string-formatting` (script), ruff `S610`, `S611`                                                                                                |
-| Path traversal                                  | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                                                           | `unsafe-path-join` (script)                                                                                                                          |
-| Magic numbers                                   | a named constant                                                                                                                                 | ruff `PLR2004`                                                                                                                                       |
-| Naming                                          | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                  | ruff `N`                                                                                                                                             |
-| Boundary                                        | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                      | `handwritten-boundary-guard` (script)                                                                                                                |
-| Types in the domain                             | real types, `Protocol`, frozen dataclasses                                                                                                       | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
-| Pure domain                                     | clock, ids and random values passed in; ports implemented in `adapters/`                                                                         | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
-| Module state                                    | state in an object made in the composition root                                                                                                  | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
-| Risky APIs                                      | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
-| Deserialization                                 | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                     | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
-| Deprecated APIs                                 | the replacement the deprecation notice names                                                                                                     | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
-| Repeated strings                                | a constant or enum member                                                                                                                        | `repeated-string-literal` (script)                                                                                                                   |
-| Unused arguments                                | remove the argument, or prefix it with `_` when the signature is fixed                                                                           | ruff `ARG001`-`ARG005`                                                                                                                               |
-| Generic names                                   | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                      | `generic-name` (script)                                                                                                                              |
-| Secrets                                         | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
-| Boolean flags                                   | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
-| Input or output per item                        | one batch call; no batch endpoint: a bounded fan-out (`asyncio.Semaphore`, `CapacityLimiter`, fixed-size chunks)                                 | `io-in-loop` (script)                                                                                                                                |
-| Accumulator copies                              | `append` in the loop, a comprehension, `itertools.chain.from_iterable`, `dict(pairs)`, `collections.defaultdict`                                 | `accumulator-copy` (script), ruff `RUF017` for `sum(lists, [])`                                                                                      |
-| Lazy relations per item                         | `select_related`, `prefetch_related`, `selectinload` or `joinedload` in the query that loads the rows                                            | `lazy-relation-in-loop` (script)                                                                                                                     |
-| Remote calls while holding a connection or lock | make the call before the transaction or after the commit, or record an outbox row and send it from a worker                                      | `remote-call-in-transaction`, `remote-call-under-lock` (script)                                                                                      |
-| Retried writes                                  | a stable idempotency key, a deduplication id, an upsert, or retry only the read                                                                  | `retry-without-idempotency` (script)                                                                                                                 |
-| Database and message writes                     | an outbox row in the same transaction, sent by a relay                                                                                           | `dual-write-without-outbox` (script)                                                                                                                 |
-| Task markers                                    | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
-| Commented-out code                              | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
-| Security sinks                                  | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                         | ruff `S` (see below)                                                                                                                                 |
-| TLS                                             | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                    | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                 |
-| Signatures                                      | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                    | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                            |
-| Timeouts                                        | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                 | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
-| Test honesty                                    | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
-| Test layout                                     | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
+| Concern                                         | Allowed form                                                                                                                                            | Rule                                                                                                                                                 |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Logging                                         | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                                  | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                               |
+| Environment                                     | read once in a composition root, pass values in                                                                                                         | `process-env-access` (script)                                                                                                                        |
+| Shell                                           | a list: `subprocess.run(["git", "status"], check=True)`                                                                                                 | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                        |
+| SQL                                             | parameters: `cursor.execute("select * from t where id = %s", (id,))`; placeholder lists, fixed lookups, `Literal`/`Enum` names, `sql.Identifier`        | `sql-string-formatting` (script), ruff `S610`, `S611`                                                                                                |
+| Path traversal                                  | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                                                                  | `unsafe-path-join` (script)                                                                                                                          |
+| Magic numbers                                   | a named constant                                                                                                                                        | ruff `PLR2004`                                                                                                                                       |
+| Naming                                          | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                         | ruff `N`                                                                                                                                             |
+| Boundary                                        | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                             | `handwritten-boundary-guard` (script)                                                                                                                |
+| Types in the domain                             | real types, `Protocol`, frozen dataclasses                                                                                                              | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
+| Pure domain                                     | clock, ids and random values passed in; ports implemented in `adapters/`                                                                                | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
+| Module state                                    | state in an object made in the composition root                                                                                                         | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
+| Risky APIs                                      | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                                 | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
+| Deserialization                                 | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                            | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
+| Deprecated APIs                                 | the replacement the deprecation notice names                                                                                                            | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
+| Repeated strings                                | a constant or enum member                                                                                                                               | `repeated-string-literal` (script)                                                                                                                   |
+| Unused arguments                                | remove the argument, or prefix it with `_` when the signature is fixed                                                                                  | ruff `ARG001`-`ARG005`                                                                                                                               |
+| Generic names                                   | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                             | `generic-name` (script)                                                                                                                              |
+| Secrets                                         | read from the environment; log only that a secret is set                                                                                                | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
+| Boolean flags                                   | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                                    | ruff `FBT001`, `FBT002`                                                                                                                              |
+| Input or output per item                        | one batch call or fixed-size chunks; no batch endpoint: a bounded fan-out (`asyncio.Semaphore`, `CapacityLimiter`, `ThreadPoolExecutor(max_workers=n)`) | `io-in-loop` (script)                                                                                                                                |
+| Accumulator copies                              | `append` in the loop, a comprehension, `itertools.chain.from_iterable`, `dict(pairs)`, `collections.defaultdict`                                        | `accumulator-copy` (script), ruff `RUF017` for `sum(lists, [])`                                                                                      |
+| Lazy relations per item                         | `select_related`, `prefetch_related`, `selectinload` or `joinedload` in the query that loads the rows                                                   | `lazy-relation-in-loop` (script)                                                                                                                     |
+| Remote calls while holding a connection or lock | make the call before the transaction or after the commit, or record an outbox row and send it from a worker                                             | `remote-call-in-transaction`, `remote-call-under-lock` (script)                                                                                      |
+| Retried writes                                  | a stable idempotency key, a deduplication or message id (Celery `task_id`), an upsert, or retry only the read                                           | `retry-without-idempotency` (script)                                                                                                                 |
+| Database and message writes                     | an outbox row in the same transaction, sent by a relay                                                                                                  | `dual-write-without-outbox` (script)                                                                                                                 |
+| Task markers                                    | `# TODO(#123): ...` with an issue                                                                                                                       | `todo-without-issue` (script)                                                                                                                        |
+| Commented-out code                              | delete it                                                                                                                                               | ruff `ERA001`                                                                                                                                        |
+| Security sinks                                  | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                                | ruff `S` (see below)                                                                                                                                 |
+| TLS                                             | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                           | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                 |
+| Signatures                                      | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                           | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                            |
+| Timeouts                                        | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                        | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
+| Test honesty                                    | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                                    | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
+| Test layout                                     | tests in files pytest collects; helpers in the tests folder                                                                                             | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
 
 Details that are decisions rather than the table:
 
@@ -781,22 +781,43 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `secret-in-log` reports such a name passed to a logger call. Placeholders, environment variable
   names, header names and URLs are not secrets.
 - `io-in-loop` reports a call with the kind `database` or `remote` once per item of a `for`, `while` or
-  comprehension, or in a `map(...)`. The kind comes from the imports and client factories of the file
+  comprehension, or in the callable of `map(...)`, `filter(...)`, a `sorted`, `min` or `max` key and an
+  executor's `map` or `submit`. The kind comes from the imports and client factories of the file
   (`requests`, `httpx`, `aiohttp`, `sqlite3`, `psycopg`, `asyncpg`, `pymongo`, `redis`, `boto3` clients by
-  service, `Session` of SQLAlchemy), from the project's helper functions (a function has the kinds of the
+  service, `Session` of SQLAlchemy), from the project's own functions (a function has the kinds of the
   calls in its body and of the project functions it calls, so the finding names the path: `fetch_order()`,
-  which calls `requests.get()`), and, where no import tells, from the receiver name (`repo`, `db`,
-  `session`, `cursor`, `conn`, `client`, `api`) with a method that reads or writes (`find_*`, `get_by_*`,
-  `save`, `execute`). A `database` call is reported also inside `asyncio.gather`, a task group or tasks
-  that are gathered later: running one query per item concurrently is still one query per item, so fetch
-  them in one query (`WHERE id IN (...)`, `in_bulk`, `bulk_create`, `executemany`). A `remote` call in
-  those concurrent forms is the fan-out rule's business and not reported here; in a sequential loop it is
-  reported, and the message names a batch endpoint or, without one, bounded concurrency
-  (`asyncio.Semaphore` or `CapacityLimiter` inside the task, or fixed-size chunks of the items). A
-  `message` call (Kafka `send` and `produce`, pika `basic_publish`, aio-pika, SQS `send_message`, SNS
-  `publish`, Pub/Sub, NATS, Celery `delay`, `apply_async` and `send_task`) is not reported: one publish
-  per item is the protocol. A paging loop (the condition reads a variable the body assigns) and a
-  retry (a `try` in the loop that returns on success) are not reported either.
+  which calls `requests.get()`; a call is followed into a nested function, a method of `self`, of a local
+  or annotated instance (`client = PriceClient()`, `PriceClient().price()`, `self.client: PriceClient`)
+  and a static or class method called through the class), and, where no import tells, from the receiver
+  name (`repo`, `db`, `session`, `cursor`, `conn`, `client`, `api`) with a method that reads or writes
+  (`find_*`, `get_by_*`, `save`, `execute`, the async Django ORM methods `aget`, `acreate`, `acount` and
+  the rest); a Django model's `save()`, `delete()` and `refresh_from_db()` (and `asave()`,
+  `adelete()`, `arefresh_from_db()`) are database calls. Value types and exceptions of those libraries
+  (CapWords names, anything from their `exceptions`, `auth`, `fields`, `extras`, `types` and `models`
+  modules: `HTTPError`, `HTTPBasicAuth`, `Json`, `httpx.URL`, `httpx.Timeout`) are no call; a receiver
+  bound to a literal or a builtin container (`{}`, `[]`, `dict()`, `defaultdict`, `Counter`, `deque`) is
+  no input or output whatever its name; a resolved client keeps its own kind (an `aiohttp` session's
+  `delete` is a remote call, not a database write); the commands of a Redis `pipeline()` and a DynamoDB
+  `batch_writer()` are buffered, and only the pipeline's `execute()` is the database call. A
+  `database` call is reported also inside `asyncio.gather`, a task group, tasks that are gathered later
+  or an executor: running one query per item concurrently is still one query per item, so fetch them
+  in one query (`WHERE id IN (...)`, `in_bulk`, `bulk_create`, `executemany`). A `remote` call in those
+  concurrent forms is not reported: a bound on a concurrent fan-out is not checked by this rule
+  ([#313](https://github.com/jhonDoe15/nitpicker/issues/313) tracks it). In a sequential loop it is
+  reported, and the message names a batch endpoint, fixed-size chunks of the items or, without a batch
+  endpoint, bounded concurrency (`asyncio.Semaphore` or `CapacityLimiter` inside the task, or a
+  `ThreadPoolExecutor(max_workers=n)`). A `message` call (Kafka `send` and `produce`, pika
+  `basic_publish`, aio-pika, SQS `send_message`, SNS `publish`, Pub/Sub, NATS, Celery `delay`,
+  `apply_async` and `send_task`) is not reported: one publish per item is the protocol. Not reported
+  either: a paging loop (the condition reads a variable the body assigns); a retry (a `try` in the loop
+  that leaves on success, in its body or its `else`, while its handlers do not raise at their top
+  level, and tenacity `Retrying` and `AsyncRetrying` attempts); a loop over chunks (`itertools.batched`,
+  `more_itertools.chunked`, `ichunked`, `batched`, a loop variable named or built as a chunk, a
+  `range(0, len(items), n)` with a slice of `items`) whose call takes the whole chunk; and the mark an
+  outbox relay writes for each row it published. A callback handed to a registration (a signal's
+  `connect`, `threading.Timer`, `loop.call_later`, a scheduler's `add_job`) runs later and is judged
+  as its own function, not as part of the caller; decorators are not part of the function they
+  decorate.
 - `accumulator-copy` reports a name that is rebuilt from a copy of itself on every step, so the work
   grows with the square of the list: a `functools.reduce` callback (a lambda, or a function of the same
   file) that returns `acc + [x]`, `[x] + acc`, `[*acc, x]`, `(*acc, x)`, `{**acc, k: v}` or `acc | {k: v}`,
@@ -804,7 +825,9 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   before the loop. `acc + other` counts when the name starts as a list, tuple, dict or set (`[]`, `()`,
   `{}`, `list()`, a `reduce` initial value); an accumulator of unknown type, a number or a string is not
   reported. `acc += [x]` and `acc |= {k: v}` change the object in place and are fine. `sum(lists, [])` is
-  ruff's `RUF017`, which the preset already selects, so the script does not report it twice.
+  ruff's `RUF017`, which the preset already selects, so the script does not report it twice. Ruff's
+  `RUF005` suggests `[*acc, x]` for `acc + [x]`, which is still a copy, so it is dropped on the lines
+  where `accumulator-copy` reports.
 - `lazy-relation-in-loop` reports a relationship read for each row of a query the same function runs,
   when the query does not fetch it, so each row runs one more query. Django: the models of the project
   give the forward `ForeignKey`, `OneToOneField` and `ManyToManyField` accessors and the reverse ones
@@ -813,19 +836,23 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   one-to-one accessor counts when it is read, a manager (`order.lines`, `order.tags`) when `all()`,
   `filter()`, `count()` or another query method is called on it; `select_related(...)`,
   `prefetch_related(...)` or `Prefetch(...)` naming it (also `a__b`) or a bare `select_related()` (all
-  forward keys) clears it, and `order.customer_id` never loads. SQLAlchemy: a `relationship()` (also
+  forward keys) clears it, and `order.customer_id` never loads; the loop may also run over
+  `enumerate(...)` of the rows or a refinement of a queryset variable (`orders.order_by("id")`). SQLAlchemy: a `relationship()` (also
   SQLModel `Relationship` and `db.relationship`) with the default or `lazy="select"` strategy, read on the
-  rows of `session.scalars(select(M)...)`, `session.execute(select(M)...).scalars()` or
-  `session.query(M)...`; `.options(selectinload(...))`, `joinedload`, `subqueryload` or `immediateload`
-  naming it, or another `lazy=` strategy on the relationship, clears it. Rows of unknown origin (a
+  rows of `session.scalars(select(M)...)`, `session.execute(select(M)...).scalars()`, SQLModel
+  `session.exec(select(M))` or `session.query(M)...`; `.options(selectinload(...))`, `joinedload`,
+  `subqueryload` or `immediateload` naming it, at any step of a chained option
+  (`selectinload(User.posts).selectinload(Post.comments)` loads both), or another `lazy=` strategy on the
+  relationship, clears it; `defaultload`, `lazyload`, `noload` and `raiseload` load nothing. Rows of unknown origin (a
   parameter), `values()` queries, a custom `objects` manager and selects of columns are not reported.
 - `remote-call-in-transaction` reports a `remote` call (`requests`, `httpx`, `aiohttp`, `boto3` clients,
   or a project helper that makes one, the path named in the message) inside a transaction scope:
   `with transaction.atomic():` or `@transaction.atomic` (also the imported `atomic`), SQLAlchemy
   `session.begin()`, `session.begin_nested()` and `engine.begin()`, psycopg `conn.transaction()`, peewee
   `db.atomic()`. The scope must also do database work (a database call, `save()` or `delete()` in a file
-  that imports `django.db`, `session.add()`, an `INSERT`, `UPDATE` or `DELETE` statement), which proves
-  that a connection is held; a bare decorator is not enough. A callback given to
+  that imports `django.db`, `session.add()`, an `INSERT`, `UPDATE` or `DELETE` statement, peewee
+  `Model.create()`, `get()`, `save()` or `insert(...).execute()` in a file that imports `peewee`), which
+  proves that a connection is held; a bare decorator is not enough. A callback given to
   `transaction.on_commit` and a function defined inside the block run outside it and are not reported.
   The message says the connection stays checked out for the remote latency and names the allowed
   forms: call before the transaction or after the commit, and, when the remote effect must match the
@@ -834,6 +861,10 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   lock is a `threading`, `asyncio`, `anyio`, `trio` or `multiprocessing` lock or condition assigned in
   the project (also `self._lock`) or a name ending in `lock` or `mutex`, a `filelock.FileLock(...)` or
   a Redis `client.lock(...)`. Every other caller waits for the remote latency while the lock is held.
+  A fill-once block is allowed: a remote call under an `if` inside the lock whose test reads state that
+  the block then sets (a token refresh `if self._token is None: ... self._token = ...`, a cached
+  download `if not os.path.exists(path): ... open(path, "wb")`) makes the other callers wait for one
+  request instead of each sending their own, so it is not reported.
 - `retry-without-idempotency` reports a write that a retry can run twice. Retry scopes: a function
   decorated with tenacity `@retry`, `retrying.retry`, `backoff.on_exception` or `on_predicate`, or
   `stamina.retry`; a `for attempt in Retrying(...)` loop (tenacity, `AsyncRetrying`, `stamina.retry_context`)
@@ -841,10 +872,15 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   leaves on success while its `except` goes on). The writes recognized, direct or through project
   helpers (the path is in the message), are the documented API set and nothing else: a Stripe
   `stripe.<Resource>.create(...)` without `idempotency_key=` (also `client.payment_intents.create` of
-  `StripeClient`); a message publish (Kafka `send` and `produce`, pika `basic_publish`, aio-pika,
-  Pub/Sub, NATS, Celery `delay`, `apply_async` and `send_task`, SQS `send_message`, SNS `publish`)
-  unless the call carries a `MessageDeduplicationId`; and SQL text starting with `INSERT` sent through a
-  database call (`execute`, `executemany`, `exec_driver_sql`) or a SQLAlchemy `insert(...)` construct, unless it
+  `StripeClient`, by the whole resource name: `client.v1.setup_intents.create`, `payment_links`); a library
+  callable given to a retrying object is checked with the arguments of that call
+  (`Retrying(...)(stripe.Charge.create, amount=1)`); a message publish (Kafka `send` and `produce`, pika
+  `basic_publish`, aio-pika, Pub/Sub, NATS, Celery `delay`, `apply_async` and `send_task`, SQS
+  `send_message`, SNS `publish`) unless the call, or a value it passes by name, carries a
+  `MessageDeduplicationId`, a `message_id` (an AMQP property, a Kafka header) or a Celery `task_id`; and
+  SQL text starting with `INSERT` (read like `sql-string-formatting` reads it: through `text(...)`, a
+  variable, a concatenation or a project wrapper of a query call) sent through a database call
+  (`execute`, `executemany`, `exec_driver_sql`) or a SQLAlchemy `insert(...)` construct, unless it
   has `ON CONFLICT`, `ON DUPLICATE KEY`, `INSERT IGNORE`, `INSERT OR IGNORE`, `REPLACE INTO` or `MERGE` (or
   `on_conflict_do_*` on the construct). An HTTP `POST` alone, an ORM `save()` and any write whose
   contract is unknown are not reported.
@@ -853,10 +889,13 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `delete()` in a file that imports `django.db`, an `INSERT`, `UPDATE` or `DELETE` statement) and a
   different message publish (the message calls above), each direct or through helpers. Only the lowest
   function is reported: a function that calls one helper doing both is not. Publishing from a
-  `transaction.on_commit` callback is reported with its own message: it avoids a message for a
-  change that rolls back, but a crash right after the commit loses the message. An outbox row (a
-  database write only, published by a relay), change data capture and a database-backed queue are the
-  allowed forms and stay quiet.
+  `transaction.on_commit` callback, or after the `with transaction.atomic():` block that holds the
+  write, is reported with its own message: it avoids a message for a change that rolls back, but a
+  crash right after the commit loses the message. An outbox row (a database write only, published by
+  a relay), change data capture and a database-backed queue are the allowed forms and stay quiet; the
+  relay itself (a loop over rows read from the database that publishes each row and then writes a mark
+  keyed on it, `row.sent = True; row.save()`) is not reported. A callback registered to run later (a
+  signal handler, a timer, a scheduled job) is judged as its own function.
 - `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
   comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
   `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and
