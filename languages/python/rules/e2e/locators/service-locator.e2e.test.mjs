@@ -388,7 +388,7 @@ describe.skipIf(!enabled)('service-locator-lookup behind project helpers', () =>
     expect(run(files)).toEqual(
       [
         wrapped('mailing.py', 5, 'resolve_mailer'),
-        wrapped('orders.py', 5, 'mailer_of_the_day', 'mailing.py'),
+        wrapped('orders.py', 5, 'mailer_of_the_day'),
         LOOKUP_IN_SHARED,
       ].sort(),
     );

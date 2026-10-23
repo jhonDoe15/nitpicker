@@ -1,7 +1,7 @@
 import ts from 'typescript';
-import { containerApiOf, isRegistrationMethod, isRegistrationProperty } from './container-apis.mjs';
+import { containerApiOf, isLookupMemberName } from './container-apis.mjs';
 
-function memberNameNode(expression) {
+export function memberNameNode(expression) {
   if (ts.isPropertyAccessExpression(expression)) {
     return expression.name;
   }
@@ -14,39 +14,23 @@ function memberNameNode(expression) {
   return undefined;
 }
 
-function propertyKey(name) {
-  return ts.isIdentifier(name) || ts.isStringLiteralLike(name) ? name.text : undefined;
-}
-
-function isRegistrationCallback(fn) {
-  const holder = fn.parent;
-  if (ts.isPropertyAssignment(holder)) {
-    return isRegistrationProperty(propertyKey(holder.name));
+function destructuredLookup(element, checker) {
+  if (!ts.isBindingElement(element) || !ts.isObjectBindingPattern(element.parent)) {
+    return undefined;
   }
-  if (ts.isMethodDeclaration(fn) && ts.isObjectLiteralExpression(holder)) {
-    return isRegistrationProperty(propertyKey(fn.name));
+  const name = element.propertyName ?? element.name;
+  if (!(ts.isIdentifier(name) || ts.isStringLiteralLike(name)) || !isLookupMemberName(name.text)) {
+    return undefined;
   }
-  if (ts.isCallExpression(holder) && holder.arguments.includes(fn)) {
-    return isRegistrationMethod(memberNameNode(holder.expression)?.text);
-  }
-  return false;
-}
-
-export function isInRegistrationCallback(node) {
-  return (
-    ts.findAncestor(node.parent, (ancestor) => {
-      return ts.isFunctionLike(ancestor) && isRegistrationCallback(ancestor);
-    }) !== undefined
-  );
+  return containerApiOf(checker.getTypeAtLocation(element.parent).getProperty(name.text));
 }
 
 export function directLookup(node, checker) {
-  if (ts.isCallExpression(node)) {
-    const name = memberNameNode(node.expression);
-    return name === undefined ? undefined : containerApiOf(checker.getSymbolAtLocation(name));
+  const name = memberNameNode(node);
+  if (name !== undefined) {
+    return isLookupMemberName(name.text)
+      ? containerApiOf(checker.getSymbolAtLocation(name))
+      : undefined;
   }
-  if (ts.isPropertyAccessExpression(node) && node.name.text === 'cradle') {
-    return containerApiOf(checker.getSymbolAtLocation(node.name));
-  }
-  return undefined;
+  return destructuredLookup(node, checker);
 }

@@ -11,12 +11,15 @@ export const compositionRootOptionsSchema = [
   },
 ];
 
-export function isCompositionRootFile(context) {
-  const filename = context.filename.replaceAll('\\', '/');
-  const userPattern = context.options[0]?.compositionRootPattern;
+export function compositionRootRegExp(userPattern) {
   return new RegExp(
     userPattern === undefined
       ? DEFAULT_COMPOSITION_ROOT_PATTERN
       : `(?:${DEFAULT_COMPOSITION_ROOT_PATTERN})|(?:${userPattern})`,
-  ).test(filename);
+  );
+}
+
+export function isCompositionRootFile(context) {
+  const filename = context.filename.replaceAll('\\', '/');
+  return compositionRootRegExp(context.options[0]?.compositionRootPattern).test(filename);
 }

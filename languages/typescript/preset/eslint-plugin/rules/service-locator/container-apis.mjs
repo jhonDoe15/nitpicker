@@ -63,15 +63,21 @@ const REGISTRATION_CALLBACK_METHODS = new Set([
   'toProvider',
   'onActivation',
 ]);
+const REGISTRATION_PACKAGES = /^(?:inversify|@inversifyjs\/)/u;
+const LOOKUP_MEMBER_NAMES = new Set(CONTAINER_APIS.flatMap((api) => [...api.members]));
 
 const REGISTRATION_CALLBACK_PROPERTIES = new Set(['useFactory']);
 
-export function isRegistrationMethod(name) {
+export function isRegistrationProperty(name) {
+  return REGISTRATION_CALLBACK_PROPERTIES.has(name);
+}
+
+export function isRegistrationName(name) {
   return REGISTRATION_CALLBACK_METHODS.has(name);
 }
 
-export function isRegistrationProperty(name) {
-  return REGISTRATION_CALLBACK_PROPERTIES.has(name);
+export function isLookupMemberName(name) {
+  return LOOKUP_MEMBER_NAMES.has(name);
 }
 
 const NODE_MODULES = '/node_modules/';
@@ -98,4 +104,13 @@ export function containerApiOf(symbol) {
     }
   }
   return undefined;
+}
+
+export function isRegistrationSymbol(symbol) {
+  return (
+    REGISTRATION_CALLBACK_METHODS.has(symbol?.name) &&
+    (symbol.declarations ?? []).some((declaration) =>
+      REGISTRATION_PACKAGES.test(packageOf(declaration.getSourceFile().fileName) ?? ''),
+    )
+  );
 }

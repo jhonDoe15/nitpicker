@@ -653,7 +653,7 @@ factory=make_mailer)`, `injector.binder.bind(...)`). A call to a project functio
   method, static method or constructor (also through a helper of a helper, a re-export, `import *`
   or an import alias) whose own body looks a service up counts as a lookup at its call sites; a
   closure the function only defines does not. The subject names the helper, the underlying call and
-  the helper's file (`resolve_mailer via punq.Container.resolve in src/shop/shared.py`). Not in tests, in a composition
+  the file of that call (`resolve_mailer via punq.Container.resolve in src/shop/shared.py`). Not in tests, in a composition
   root (see `process-env-access` for what counts as one, including `python.entryPoints`), nor in a
   class that extends `injector.Module` or `injector.Provider`. A helper declared in a composition
   root is a lookup when it is called from outside the roots; the lookup inside the root stays allowed.

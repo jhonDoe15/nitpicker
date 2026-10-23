@@ -88,7 +88,7 @@ def wrapper_labels(project):
         for key, (context, function) in functions.items():
             label = own_label(function, context)
             if label:
-                labels[key] = label
+                labels[key] = (label, context.path)
             else:
                 callees[key] = own_callees(function, context, functions)
         changed = True
@@ -110,6 +110,4 @@ def wrapper_label(node, context):
     functions = helper_functions(context.project)
     key = callee_key(node, context, functions)
     label = wrapper_labels(context.project).get(key)
-    if not label or is_allowed_here(node, context):
-        return None
-    return label, functions[key][0].path
+    return None if not label or is_allowed_here(node, context) else label
