@@ -9,6 +9,7 @@
   "languages/java/adapters/kotlin-e2e/kotest.e2e.test.mjs": 70,
   "languages/java/adapters/kotlin-e2e/kotlin-preset-toolchain.e2e.test.mjs": 72,
   "languages/java/adapters/kotlin-e2e/kotlin-spring-arch.e2e.test.mjs": 72,
+  "languages/java/adapters/kotlin-e2e/kotlin-spring-rules.e2e.test.mjs": 100,
   "languages/java/adapters/kotlin-e2e/lint/java-and-formatters/kotlin-preset-lint-formatters-ktfmt.e2e.test.mjs": 62,
   "languages/java/adapters/kotlin-e2e/lint/java-and-formatters/kotlin-preset-lint-formatters-none.e2e.test.mjs": 62,
   "languages/java/adapters/kotlin-e2e/lint/java-and-formatters/kotlin-preset-lint-java-module.e2e.test.mjs": 79,
