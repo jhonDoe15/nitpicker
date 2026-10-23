@@ -6,17 +6,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import nitpicker.kotlinpsi.design.judge.Decisions;
+import nitpicker.kotlinpsi.design.judge.Forwarding;
+import nitpicker.kotlinpsi.design.judge.ReturnsField;
+import nitpicker.kotlinpsi.design.model.Fun;
+import nitpicker.kotlinpsi.design.model.Source;
+import nitpicker.kotlinpsi.design.syntax.Ps;
+import nitpicker.kotlinpsi.design.walk.Walk;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
-final class CallableFacts {
+public final class CallableFacts {
   private static final Map<String, String> ARRAYS =
       Map.of("Int", "IntArray", "Long", "LongArray", "Double", "DoubleArray", "Float", "FloatArray", "Boolean",
           "BooleanArray", "Char", "CharArray", "Byte", "ByteArray", "Short", "ShortArray");
 
   private CallableFacts() {}
 
-  static Map<String, Object> build(Ctx ctx, Fun function, boolean library) {
+  public static Map<String, Object> build(Ctx ctx, Fun function, boolean library) {
     Walk walk = new Walk(ctx, function);
     walk.run();
     Source source = function.owner.source;
@@ -37,7 +44,7 @@ final class CallableFacts {
   }
 
   @SuppressWarnings("unchecked")
-  static void dropTargets(Map<String, Object> callable, Set<String> missing) {
+  public static void dropTargets(Map<String, Object> callable, Set<String> missing) {
     Object forward = callable.get("forward");
     if (forward instanceof Map && missing.contains(((Map<?, ?>) forward).get("target"))) {
       callable.remove("forward");
