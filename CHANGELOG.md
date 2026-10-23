@@ -52,6 +52,8 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
   (#396).
 - The base of a TypeScript or JavaScript comparison is installed with the project's own package
   manager: pnpm, Yarn or Bun, not only npm (#282).
+- `nitpicker changelog [<version>]` prints what changed in a version, from this changelog, which now
+  ships in the package.
 - `repository-hygiene` fails a change that commits `.env` files, private keys, archives, binaries,
   files over 1 MB or build output folders (#289).
 

@@ -12,6 +12,7 @@ import { linkSentence } from '../../shared/messages/test-support/link-sentence.m
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
+const CRASH = `crashing-analyzer crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}`;
 
 describe('nitpicker CLI', () => {
   it('fails comparison for a finding in an untracked file and identifies an argument base', () => {
@@ -256,7 +257,7 @@ describe('nitpicker CLI', () => {
             'fake-quality-analyzer/fixture-rule src/main/new.ts:1 Fixture finding',
             '',
             'Tool errors:',
-            `crashing-analyzer (head): crashing-analyzer crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}`,
+            `crashing-analyzer (head): ${CRASH}`,
             '',
           ].join('\n')
         : expect.stringMatching(exactText`Base: comparison-base (argument)
@@ -266,8 +267,8 @@ describe('nitpicker CLI', () => {
   \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m src/main/new.ts:1
     Fixture finding
 \u001b[1m\u001b[31m✖ 2 tool errors\u001b[0m
-  \u001b[33mcrashing-analyzer (base)\u001b[0m: crashing-analyzer crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}
-  \u001b[33mcrashing-analyzer (head)\u001b[0m: crashing-analyzer crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}
+  \u001b[33mcrashing-analyzer (base)\u001b[0m: ${CRASH}
+  \u001b[33mcrashing-analyzer (head)\u001b[0m: ${CRASH}
 \u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
 `);
     it('exits 1 for findings plus a tool error and still lists the error', () => {

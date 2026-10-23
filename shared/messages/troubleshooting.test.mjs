@@ -96,13 +96,14 @@ describe('the troubleshooting page', () => {
     const text = read(TROUBLESHOOTING_FILE);
     const entries = text.split(/^### /mu).slice(1);
 
+    const missing = entries.flatMap((entry) =>
+      ['Symptom', 'Cause', 'Fix']
+        .filter((label) => !entry.includes(`**${label}.**`))
+        .map((label) => `${entry.split('\n')[0]}: ${label}`),
+    );
+
     expect(entries).toHaveLength(entrySlugs.length);
-    for (const entry of entries) {
-      const title = entry.split('\n')[0];
-      expect(entry, title).toMatch(/\*\*Symptom\.\*\*/u);
-      expect(entry, title).toMatch(/\*\*Cause\.\*\*/u);
-      expect(entry, title).toMatch(/\*\*Fix\.\*\*/u);
-    }
+    expect(missing).toEqual([]);
   });
 
   it('registers unique, well-formed anchors', () => {
@@ -117,8 +118,12 @@ describe('the anchors that the code links to', () => {
   const sources = productionSources();
   const text = sources.map(read).join('\n');
 
-  it.each(registered)('uses the anchor %s in a message', (key) => {
-    expect(text).toContain(`TROUBLESHOOTING_ANCHORS.${key}`);
+  it('uses every anchor in a message', () => {
+    const unused = registered
+      .map(([key]) => key)
+      .filter((key) => !text.includes(`TROUBLESHOOTING_ANCHORS.${key}`));
+
+    expect(unused).toEqual([]);
   });
 
   it('names the page in one module only, so every link goes through the helpers', () => {
@@ -143,31 +148,39 @@ describe('the links to the page from the documentation', () => {
     expect(linked.filter(({ anchor }) => !entrySlugs.includes(anchor))).toEqual([]);
   });
 
-  it.each(['README.md', 'docs/usage.md', 'docs/agents-snippet.md', 'CHANGELOG.md'])(
-    '%s links the page',
-    (file) => {
-      expect(read(file)).toMatch(/troubleshooting\.md/u);
-    },
-  );
+  it('is linked from the README, the usage guide, the agent snippet and the changelog', () => {
+    const unlinked = [
+      'README.md',
+      'docs/usage.md',
+      'docs/agents-snippet.md',
+      'CHANGELOG.md',
+    ].filter((file) => !read(file).includes('troubleshooting.md'));
 
-  it.each([
-    'docs/typescript-strict-preset.md',
-    'docs/python-preset.md',
-    'docs/java-preset.md',
-    'docs/kotlin-preset.md',
-  ])('%s has a troubleshooting section that links the page', (file) => {
-    const section = read(file).split(/^## Troubleshooting$/mu)[1];
-
-    expect(section, `${file} has no Troubleshooting section`).toBeDefined();
-    expect(section).toMatch(/\]\(troubleshooting\.md#/u);
+    expect(unlinked).toEqual([]);
   });
 
-  it.each(readdirSync(path.join(root, 'skills')))(
-    'the %s skill links the page by its full URL',
-    (skill) => {
-      expect(read(`skills/${skill}/SKILL.md`)).toContain(`(${DOC_URL})`);
-    },
-  );
+  it('is linked from a troubleshooting section of every preset guide', () => {
+    const guides = [
+      'docs/typescript-strict-preset.md',
+      'docs/python-preset.md',
+      'docs/java-preset.md',
+      'docs/kotlin-preset.md',
+    ];
+    const unlinked = guides.filter((file) => {
+      const section = read(file).split(/^## Troubleshooting$/mu)[1] ?? '';
+      return !section.includes('](troubleshooting.md#');
+    });
+
+    expect(unlinked).toEqual([]);
+  });
+
+  it('is linked by its full URL from every skill', () => {
+    const unlinked = readdirSync(path.join(root, 'skills')).filter(
+      (skill) => !read(`skills/${skill}/SKILL.md`).includes(`(${DOC_URL})`),
+    );
+
+    expect(unlinked).toEqual([]);
+  });
 });
 
 describe('the message helpers', () => {
@@ -222,7 +235,9 @@ describe('the message helpers', () => {
     expect(usageError('Unknown argument: --x').message).toBe(
       `Unknown argument: --x. See ${DOC_URL}#invalid-arguments`,
     );
-    expect(withUsageLink('--x requires a value')).toContain('#invalid-arguments');
+    expect(withUsageLink('--x requires a value')).toBe(
+      `--x requires a value. See ${DOC_URL}#invalid-arguments`,
+    );
   });
 
   it('tells a failure of the base from a failure of the head', () => {

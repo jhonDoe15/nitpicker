@@ -127,12 +127,14 @@ export function runAggregateCli({
     if (outputRoot !== undefined) {
       clearDiffReports(outputRoot);
     }
-    const message = error instanceof Error ? error.message : String(error);
-    stderr.write(
-      `Quality shard aggregation failed: ${withTroubleshooting(message, TROUBLESHOOTING_ANCHORS.shardAggregationFails)}\n`,
-    );
+    stderr.write(`Quality shard aggregation failed: ${aggregationFailure(error)}\n`);
     return 2;
   }
+}
+
+function aggregationFailure(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return withTroubleshooting(message, TROUBLESHOOTING_ANCHORS.shardAggregationFails);
 }
 
 function analyzerExclusions(analyzers) {

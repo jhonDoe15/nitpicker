@@ -139,13 +139,14 @@ function resolveRemoteStore(environment, warnings) {
   const timeout = Number(environment.NITPICKER_CACHE_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS);
   const header = environment.NITPICKER_CACHE_AUTH_HEADER;
   const validHeader = typeof header === 'string' && header.includes(':');
-  if (header && !validHeader)
+  if (header && !validHeader) {
     warnings.push(
       withTroubleshooting(
         'NITPICKER_CACHE_AUTH_HEADER ignored: expected "Name: value".',
         TROUBLESHOOTING_ANCHORS.staleCache,
       ),
     );
+  }
   return createHttpStore({
     baseUrl: url,
     authHeader: validHeader ? header : undefined,
