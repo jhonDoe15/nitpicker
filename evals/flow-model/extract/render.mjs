@@ -1,5 +1,8 @@
 const RENDERERS = {
-  lit: (expr) => (expr.via === undefined ? JSON.stringify(expr.value) : expr.via),
+  lit: (expr) =>
+    expr.via === undefined
+      ? JSON.stringify(expr.value)
+      : `${expr.via} (${JSON.stringify(expr.value)})`,
   undefined: () => 'undefined',
   param: (expr) => expr.name,
   local: (expr) => expr.name,

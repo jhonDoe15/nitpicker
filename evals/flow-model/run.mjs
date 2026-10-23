@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -34,10 +34,11 @@ function targetRow(target) {
       (reason) => `${reason.reason} ${String(reason.line)}:${String(reason.column)}`,
     ),
     paths: target.result.paths.length,
-    oracle:
-      target.comparison === undefined
-        ? null
-        : { agree: target.comparison.agree, executions: target.comparison.executions },
+    oracle: {
+      mode: target.comparison.mode,
+      agree: target.comparison.agree,
+      executions: target.comparison.executions,
+    },
     sizes: target.sizes,
     key: target.key,
   };
@@ -76,14 +77,21 @@ export function generate(root = fileURLToPath(REPOSITORY_ROOT)) {
     lookup.variants.filter((variant) => variant.kind !== 'unchanged'),
   );
   write(root, `${OUTPUT}/real/unchanged-view.md`, flowView(lookup.variants[0]));
-  write(root, `${OUTPUT}/diff.json`, `${canonicalJson(demonstrationDiffs(lookup), 2)}\n`);
+  write(root, `${OUTPUT}/diff.json`, `${canonicalJson(demonstrationDiffs(lookup.variants), 2)}\n`);
   write(root, `${OUTPUT}/findings.json`, `${canonicalJson({ findings }, 2)}\n`);
   const rows = [...fixtures, ...lookup.variants].map(targetRow);
   write(root, `${OUTPUT}/summary.json`, `${canonicalJson({ summary, targets: rows }, 2)}\n`);
   return { summary, findings: findings.length, targets: targets.length };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+function launchedDirectly() {
+  return (
+    process.argv[1] !== undefined &&
+    realpathSync(process.argv[1]) === realpathSync(import.meta.filename)
+  );
+}
+
+if (launchedDirectly()) {
   const { summary, findings } = generate();
-  process.stdout.write(`${JSON.stringify({ ...summary, findings }, null, 2)}\n`);
+  process.stdout.write(`${canonicalJson({ ...summary, findings }, 2)}\n`);
 }

@@ -1,12 +1,23 @@
 import ts from 'typescript';
+import { chainOf, depthFirst } from '../../../shared/traversal.mjs';
 import { declarationOf, locationOf } from './program.mjs';
 import { moduleBinding } from './module-bindings.mjs';
+import { calleeText } from './render.mjs';
 
-const BINARY = new Map([
-  [ts.SyntaxKind.EqualsEqualsEqualsToken, { kind: 'cmp', op: '===' }],
-  [ts.SyntaxKind.ExclamationEqualsEqualsToken, { kind: 'cmp', op: '!==' }],
-  [ts.SyntaxKind.AmpersandAmpersandToken, { kind: 'and' }],
-  [ts.SyntaxKind.BarBarToken, { kind: 'or' }],
+const COMPARISONS = new Map([
+  [ts.SyntaxKind.EqualsEqualsEqualsToken, '==='],
+  [ts.SyntaxKind.ExclamationEqualsEqualsToken, '!=='],
+  [ts.SyntaxKind.EqualsEqualsToken, '=='],
+  [ts.SyntaxKind.ExclamationEqualsToken, '!='],
+  [ts.SyntaxKind.LessThanToken, '<'],
+  [ts.SyntaxKind.LessThanEqualsToken, '<='],
+  [ts.SyntaxKind.GreaterThanToken, '>'],
+  [ts.SyntaxKind.GreaterThanEqualsToken, '>='],
+]);
+
+const LOGICAL = new Map([
+  [ts.SyntaxKind.AmpersandAmpersandToken, 'and'],
+  [ts.SyntaxKind.BarBarToken, 'or'],
 ]);
 
 const TRANSPARENT = [
@@ -14,30 +25,73 @@ const TRANSPARENT = [
   ts.isAsExpression,
   ts.isSatisfiesExpression,
   ts.isNonNullExpression,
-  ts.isAwaitExpression,
 ];
 
-export function unwrap(node) {
-  const transparent = TRANSPARENT.some((test) => test(node));
-  return transparent ? unwrap(node.expression) : node;
+const STEPS = new Set([ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken]);
+
+function transparentInner(node) {
+  return TRANSPARENT.some((test) => test(node)) ? node.expression : undefined;
 }
 
-export function containsCall(node) {
-  if (
-    ts.isCallExpression(node) ||
-    ts.isNewExpression(node) ||
-    ts.isTaggedTemplateExpression(node)
-  ) {
-    return true;
+export function unwrap(node) {
+  return chainOf(node, transparentInner).at(-1);
+}
+
+function childrenOf(node) {
+  return node.getChildren();
+}
+
+function isCall(node) {
+  return (
+    ts.isCallExpression(node) || ts.isNewExpression(node) || ts.isTaggedTemplateExpression(node)
+  );
+}
+
+function isAssignment(node) {
+  return ts.isBinaryExpression(node) && ts.isAssignmentOperator(node.operatorToken.kind);
+}
+
+function isMutation(node) {
+  const steps =
+    (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
+    STEPS.has(node.operator);
+  return isAssignment(node) || steps || ts.isDeleteExpression(node);
+}
+
+function targetsOf(node) {
+  if (isAssignment(node)) {
+    return [...depthFirst(node.left, childrenOf)].filter((item) => ts.isIdentifier(item));
   }
-  return node.getChildren().some((child) => containsCall(child));
+  const operand = ts.isDeleteExpression(node) ? node.expression : node.operand;
+  return ts.isIdentifier(operand) ? [operand] : [];
+}
+
+function clobberOf(identifier, cx) {
+  const declaration = declarationOf(cx.checker, identifier);
+  const param = cx.params.get(declaration);
+  if (param?.kind === 'param') {
+    return `param:${String(param.index)}`;
+  }
+  const local = cx.locals.get(declaration);
+  return local === undefined ? undefined : `local:${local.id}`;
+}
+
+export function effectsOf(node, cx) {
+  const nodes = [...depthFirst(node, childrenOf)];
+  const mutations = nodes.filter(isMutation);
+  const clobbers = mutations.flatMap(targetsOf).map((identifier) => clobberOf(identifier, cx));
+  return {
+    hasCall: nodes.some(isCall),
+    mutates: mutations.length > 0,
+    clobbers: [...new Set(clobbers.filter((item) => item !== undefined))].sort(),
+  };
 }
 
 export function unsupported(node, cx, syntax = ts.SyntaxKind[node.kind]) {
   return {
     kind: 'unsupported',
     syntax,
-    hasCall: containsCall(node),
+    ...effectsOf(node, cx),
     loc: locationOf(cx.sourceFile, node),
   };
 }
@@ -52,12 +106,11 @@ function literalExpr(node) {
   const keywords = new Map([
     [ts.SyntaxKind.TrueKeyword, true],
     [ts.SyntaxKind.FalseKeyword, false],
-    [ts.SyntaxKind.NullKeyword, null],
   ]);
   return keywords.has(node.kind) ? { kind: 'lit', value: keywords.get(node.kind) } : undefined;
 }
 
-export function identifierExpr(node, cx) {
+function identifierExpr(node, cx) {
   const declaration = declarationOf(cx.checker, node);
   if (declaration === undefined) {
     return node.text === 'undefined' ? { kind: 'undefined' } : { kind: 'global', name: node.text };
@@ -70,10 +123,14 @@ export function identifierExpr(node, cx) {
 function propertyExpr(node, cx) {
   const object = toExpr(node.expression, cx);
   const field = node.name.text;
-  if (object.kind === 'module' && object.members?.[field] !== undefined) {
+  if (
+    object.kind === 'module' &&
+    object.members !== undefined &&
+    Object.hasOwn(object.members, field)
+  ) {
     return { kind: 'lit', value: object.members[field], via: `${object.name}.${field}` };
   }
-  return { kind: 'get', object, field };
+  return { kind: 'get', object, field, loc: locationOf(cx.sourceFile, node) };
 }
 
 function elementExpr(node, cx) {
@@ -81,10 +138,11 @@ function elementExpr(node, cx) {
   if (!ts.isStringLiteral(argument)) {
     return unsupported(node, cx, 'computed-access');
   }
-  return { kind: 'get', object: toExpr(node.expression, cx), field: argument.text };
+  const object = toExpr(node.expression, cx);
+  return { kind: 'get', object, field: argument.text, loc: locationOf(cx.sourceFile, node) };
 }
 
-export function calleeOf(node, cx) {
+function calleeOf(node, cx) {
   const target = unwrap(node);
   if (ts.isIdentifier(target)) {
     const resolved = identifierExpr(target, cx);
@@ -110,11 +168,20 @@ function argumentsOf(node, cx) {
   );
 }
 
+function nextSite(cx, callee) {
+  const text = calleeText(callee);
+  const count = (cx.sites.get(text) ?? 0) + 1;
+  cx.sites.set(text, count);
+  return `${cx.fnName}:${text}#${String(count)}`;
+}
+
 function callExpr(node, cx) {
   const callee = calleeOf(node.expression, cx);
+  const site = nextSite(cx, callee);
   return {
     kind: 'call',
     callee,
+    site,
     args: argumentsOf(node, cx),
     loc: locationOf(cx.sourceFile, node),
   };
@@ -127,8 +194,11 @@ function newExpr(node, cx) {
 }
 
 function binaryExpr(node, cx) {
-  const shape = BINARY.get(node.operatorToken.kind);
-  if (shape === undefined) {
+  const operator = node.operatorToken.kind;
+  const shape = COMPARISONS.has(operator)
+    ? { kind: 'cmp', op: COMPARISONS.get(operator) }
+    : { kind: LOGICAL.get(operator) };
+  if (shape.kind === undefined) {
     return unsupported(node, cx, `operator ${node.operatorToken.getText()}`);
   }
   const left = toExpr(node.left, cx);
@@ -182,6 +252,7 @@ function templateExpr(node, cx) {
 }
 
 const BUILDERS = [
+  [ts.isOptionalChain, (node, cx) => unsupported(node, cx, 'optional-chain')],
   [ts.isIdentifier, identifierExpr],
   [ts.isPropertyAccessExpression, propertyExpr],
   [ts.isElementAccessExpression, elementExpr],

@@ -36,11 +36,15 @@ function enumMembers(declaration) {
   return members;
 }
 
+function isConstAssertion(node) {
+  return ts.isAsExpression(node) && ts.isConstTypeReference(node.type);
+}
+
 function objectMembers(initializer) {
-  const inner = ts.isAsExpression(initializer) ? initializer.expression : initializer;
-  if (!ts.isObjectLiteralExpression(inner)) {
+  if (!isConstAssertion(initializer) || !ts.isObjectLiteralExpression(initializer.expression)) {
     return undefined;
   }
+  const inner = initializer.expression;
   const members = {};
   for (const property of inner.properties.filter(ts.isPropertyAssignment)) {
     const value = literalValue(property.initializer);
@@ -58,18 +62,39 @@ function isFunctionValue(initializer) {
   );
 }
 
-function variableBinding(declaration) {
+function isObjectValue(initializer) {
+  const inner = isConstAssertion(initializer) ? initializer.expression : initializer;
+  return ts.isObjectLiteralExpression(inner) || ts.isArrayLiteralExpression(inner);
+}
+
+function variableBinding(declaration, node, cx) {
   const name = declaration.name.text;
-  const initializer = declaration.initializer;
+  const { initializer } = declaration;
+  if (
+    (ts.getCombinedNodeFlags(declaration) & ts.NodeFlags.Const) === 0 ||
+    initializer === undefined
+  ) {
+    return outerUnsupported(node, cx, 'mutable-module-binding');
+  }
   if (isFunctionValue(initializer)) {
     return { kind: 'helper', name };
   }
-  const literal = initializer === undefined ? undefined : literalValue(initializer);
+  const literal = literalValue(initializer);
   if (literal !== undefined) {
     return { kind: 'lit', value: literal.value, via: name };
   }
-  const members = initializer === undefined ? undefined : objectMembers(initializer);
-  return { kind: 'module', name, ...(members === undefined ? {} : { members }) };
+  const members = objectMembers(initializer);
+  return {
+    kind: 'module',
+    name,
+    object: isObjectValue(initializer),
+    ...(members === undefined ? {} : { members }),
+  };
+}
+
+function outerUnsupported(node, cx, syntax) {
+  const loc = locationOf(cx.sourceFile, node);
+  return { kind: 'unsupported', syntax, hasCall: false, mutates: false, clobbers: [], loc };
 }
 
 export function moduleBinding(declaration, node, cx) {
@@ -77,21 +102,19 @@ export function moduleBinding(declaration, node, cx) {
     return importExpr(declaration);
   }
   if (!isTopLevel(declaration)) {
-    return {
-      kind: 'unsupported',
-      syntax: 'outer-binding',
-      hasCall: false,
-      loc: locationOf(cx.sourceFile, node),
-    };
+    return outerUnsupported(node, cx, 'outer-binding');
   }
   if (ts.isFunctionDeclaration(declaration)) {
     return { kind: 'helper', name: declaration.name.text };
   }
   if (ts.isEnumDeclaration(declaration)) {
-    return { kind: 'module', name: declaration.name.text, members: enumMembers(declaration) };
+    const name = declaration.name.text;
+    return { kind: 'module', name, object: true, members: enumMembers(declaration) };
   }
   const plain = ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name);
-  return plain ? variableBinding(declaration) : { kind: 'module', name: node.text };
+  return plain
+    ? variableBinding(declaration, node, cx)
+    : { kind: 'module', name: node.text, object: ts.isClassDeclaration(declaration) };
 }
 
 export function findFunction(sourceFile, name) {

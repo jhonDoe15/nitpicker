@@ -1,7 +1,7 @@
 import vm from 'node:vm';
 import ts from 'typescript';
 
-export function parameterNames({ file, text, entry }) {
+export function entryShape({ file, text, entry }) {
   const sourceFile = ts.createSourceFile(file, text, ts.ScriptTarget.ES2022, true);
   const declaration = sourceFile.statements.find(
     (statement) => ts.isFunctionDeclaration(statement) && statement.name?.text === entry,
@@ -9,7 +9,13 @@ export function parameterNames({ file, text, entry }) {
   if (declaration === undefined) {
     throw new Error(`oracle: entry ${entry} is not a top-level function declaration in ${file}`);
   }
-  return declaration.parameters.map((parameter) => parameter.name.getText(sourceFile));
+  const modifiers = declaration.modifiers ?? [];
+  return {
+    params: declaration.parameters.map((parameter) => parameter.name.getText(sourceFile)),
+    async:
+      modifiers.some((item) => item.kind === ts.SyntaxKind.AsyncKeyword) ||
+      declaration.asteriskToken !== undefined,
+  };
 }
 
 export function compileEntry({ file, text, entry }) {

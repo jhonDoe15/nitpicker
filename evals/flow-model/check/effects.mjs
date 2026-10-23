@@ -1,23 +1,32 @@
 import { UNDEFINED, addPartial, alternatives, nextCall, stepOf, widen } from './state.mjs';
-import { getField, labelOf, possibleValues, resolve } from './values.mjs';
+import { getField, identityOf, labelOf, possibleValues, resolve } from './values.mjs';
 
 function argumentValue(state, args, spec) {
   const value = args[spec.arg] ?? UNDEFINED;
   return spec.field === undefined ? value : getField(state, value, spec.field);
 }
 
-function argumentLabel(state, args, spec) {
-  return spec === undefined ? undefined : labelOf(state, argumentValue(state, args, spec));
+function argumentLabel(state, { args, spec, loc }) {
+  if (spec === undefined) {
+    return undefined;
+  }
+  const identity = identityOf(state, argumentValue(state, args, spec));
+  if (identity === undefined) {
+    addPartial(state, { reason: 'unknown-entity', loc, detail: `argument ${String(spec.arg)}` });
+  }
+  return identity ?? '?';
 }
 
 function recordViolation(state, call, details) {
-  const signature = [details.contract, call.callee, call.entity, details.from, details.to]
+  const observation = [details.contract, call.callee, call.entity, details.from, details.to]
     .filter((part) => part !== undefined)
     .join('|');
   const certainty = state.partial.length === 0 ? 'definite' : 'possible';
   const witness = { guards: [...state.guards], events: [...state.events] };
   state.violations.push({
-    signature,
+    signature: `${observation}@${call.site}`,
+    observation,
+    site: call.site,
     ...details,
     callee: call.callee,
     entity: call.entity,
@@ -65,6 +74,8 @@ function checkTransition(state, call) {
   const froms = currentStates(state, call);
   if (froms === undefined) {
     addPartial(state, { reason: 'unknown-state', loc: call.loc, detail: call.entity });
+    const details = { contract: call.transition.id, kind: 'transition', from: '?', to: call.to };
+    recordViolation(state, call, details);
     return undefined;
   }
   const allowed = new Set(call.transition.allowed.map(([from, to]) => `${from}->${to}`));
@@ -110,16 +121,25 @@ function applyOutcome(state, call, outcome) {
   return { state, thrown: { t: 'opaque', label: `error:${label}` } };
 }
 
-export function effectCall(state, { name, contract, args, loc }) {
+function sitePath(state, site) {
+  return [...(state.frame.sites ?? []), site].join(' > ');
+}
+
+export function effectCall(state, { name, contract, args, expr }) {
+  const { loc } = expr;
   const transition = state.run.contracts.transitions.find((item) => item.effect === name);
+  function label(spec) {
+    return argumentLabel(state, { args, spec, loc });
+  }
   const call = {
     callee: name,
     loc,
+    site: sitePath(state, expr.site),
     args,
     transition,
-    entity: argumentLabel(state, args, contract.entity),
-    event: argumentLabel(state, args, contract.event),
-    to: transition === undefined ? undefined : argumentLabel(state, args, transition.to),
+    entity: label(contract.entity),
+    event: label(contract.event),
+    to: transition === undefined ? undefined : label(transition.to),
   };
   checkPrerequisites(state, call);
   call.froms = transition === undefined ? undefined : checkTransition(state, call);
@@ -143,7 +163,7 @@ export function unknownCall(state, { reason, loc, detail }) {
   return alternatives(state, ['return', 'throw']).map(([next, completion]) =>
     completion === 'return'
       ? { state: next, value: { t: 'atom', key: label } }
-      : { state: next, thrown: { t: 'opaque', label: `error:${label}` } },
+      : { state: next, thrown: { t: 'atom', key: `error:${label}` } },
   );
 }
 

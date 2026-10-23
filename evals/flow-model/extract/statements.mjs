@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { toExpr, unwrap } from './expressions.mjs';
+import { effectsOf, toExpr, unwrap } from './expressions.mjs';
 import { locationOf } from './program.mjs';
 
 const LOOPS = [
@@ -11,7 +11,12 @@ const LOOPS = [
 ];
 
 function unsupportedStatement(node, cx, syntax) {
-  return { kind: 'unsupported', syntax, loc: locationOf(cx.sourceFile, node) };
+  return {
+    kind: 'unsupported',
+    syntax,
+    ...effectsOf(node, cx),
+    loc: locationOf(cx.sourceFile, node),
+  };
 }
 
 function elementStatement(element, source, cx) {
@@ -59,7 +64,7 @@ function variableStatements(node, cx) {
 
 function assignmentStatement(node, expression, cx) {
   const target = unwrap(expression.left);
-  if (!ts.isPropertyAccessExpression(target)) {
+  if (!ts.isPropertyAccessExpression(target) || ts.isOptionalChain(target)) {
     return unsupportedStatement(node, cx, 'reassignment');
   }
   const object = toExpr(target.expression, cx);
@@ -75,11 +80,13 @@ function assignmentStatement(node, expression, cx) {
 
 function expressionStatement(node, cx) {
   const expression = unwrap(node.expression);
-  const assigns =
-    ts.isBinaryExpression(expression) &&
-    expression.operatorToken.kind === ts.SyntaxKind.EqualsToken;
-  if (assigns) {
+  const assignment =
+    ts.isBinaryExpression(expression) && ts.isAssignmentOperator(expression.operatorToken.kind);
+  if (assignment && expression.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
     return [assignmentStatement(node, expression, cx)];
+  }
+  if (assignment) {
+    return [unsupportedStatement(node, cx, 'compound-assignment')];
   }
   return [{ kind: 'eval', value: toExpr(expression, cx), loc: locationOf(cx.sourceFile, node) }];
 }
@@ -112,7 +119,7 @@ function tryStatement(node, cx) {
     {
       kind: 'try',
       body,
-      catchId: local?.id ?? null,
+      ...(local === undefined ? {} : { catchId: local.id }),
       handler,
       loc: locationOf(cx.sourceFile, node),
     },
@@ -140,7 +147,7 @@ function statementOf(node, cx) {
     : handler[1](node, cx);
 }
 
-export function statementsOf(nodes, cx) {
+function statementsOf(nodes, cx) {
   return nodes.flatMap((node) => statementOf(node, cx));
 }
 
