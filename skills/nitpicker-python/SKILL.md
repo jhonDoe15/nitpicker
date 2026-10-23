@@ -33,7 +33,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Types: annotate every function, method and parameter; strict mypy, pyright or basedpyright (the project's own
   choice) checks the source roots. Fix the type. `# type: ignore`, `# noqa` and `# pyright: ignore`
   are findings themselves, so never write them, nor `# fmt: off`, `@no_type_check`, `if not TYPE_CHECKING:`
-  around code, or a `.pyi` beside its `.py`.
+  around code, or a `.pyi` beside its `.py`. Do not use `typing.cast` or explicit `Any` (including
+  aliases and quoted annotations). Use concrete types, `Protocol` or `TypeVar`; narrow trusted
+  unions with a check and parse untrusted input at the boundary.
 - Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.

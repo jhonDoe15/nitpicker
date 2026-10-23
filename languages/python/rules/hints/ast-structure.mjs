@@ -38,6 +38,20 @@ export const STRUCTURE_HINTS = [
     allowed:
       "After cleanup, use a bare `raise` or re-raise the unchanged caught cancellation. Keep intentional cancellation boundaries in the backend's timeout or cancellation scope; returning a failure result or chaining another error does not propagate cancellation.",
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['no-typing-cast'],
+    describe: (subject) => `\`${subject}\` bypasses type checking with \`typing.cast\``,
+    allowed:
+      'Narrow a trusted value with a type check, or parse untrusted input once at the boundary with a schema validator; a cast does not validate the value.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['no-explicit-any'],
+    describe: (subject) => `\`${subject}\` explicitly opts out of type checking with \`Any\``,
+    allowed:
+      'Use a concrete type, a `Protocol` or a `TypeVar`; narrow a trusted union with a check, or parse untrusted input at the boundary.',
+  },
   { tool: 'ruff', rules: ['E722', 'BLE001'], allowed: HANDLE_EXCEPTION },
   {
     tool: RULES_TOOL,
