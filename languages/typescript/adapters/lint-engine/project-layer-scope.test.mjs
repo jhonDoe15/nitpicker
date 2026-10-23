@@ -22,9 +22,9 @@ exports.createJiti = () => ({
 const NITPICKER_RULES = [
   'src/console.ts nitpicker/no-foo',
   'src/console.ts no-console',
-  'src/loose.ts null',
+  'src/loose.ts directive',
+  'src/strict/locked.ts directive',
   'src/strict/locked.ts no-console',
-  'src/strict/locked.ts null',
 ];
 
 function rulesOf(findings) {
@@ -76,7 +76,9 @@ describe.each(['eslint', 'oxlint'])('the ESLint project config on %s', (engine) 
       policy: headPolicyFor({ engine, precedence: ['project'], liveProjectRoot: root }),
     });
 
-    expect(findings).toContainEqual({ file: 'src/equal.ts', ruleId: 'eqeqeq', line: 1 });
+    expect(findings.filter(({ ruleId }) => ruleId === 'eqeqeq')).toEqual([
+      { file: 'src/equal.ts', ruleId: 'eqeqeq', line: 1 },
+    ]);
   });
 
   it.each([
@@ -101,7 +103,11 @@ describe('a missing ESLint project config', () => {
       const root = projects.create(SOURCES);
       const policy = headPolicyFor({ engine: 'oxlint', precedence, liveProjectRoot: root });
 
-      expect(policy.tools.eslint.projectConfigFile).toBeNull();
+      expect(policy.tools.eslint).toEqual({
+        engine: 'oxlint',
+        precedence,
+        projectConfigMissing: true,
+      });
       expect(() => lintLayered({ projectRoot: root, policy })).toThrow(
         '"tools.eslint.precedence" lists "project" but an ESLint flat config at the project root (eslint.config.js, eslint.config.mjs, eslint.config.cjs, eslint.config.ts, eslint.config.mts, eslint.config.cts) is missing: create it, or remove "project" from tools.eslint.precedence',
       );
