@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 import nitpicker.kotlinpsi.bodies.Throwing;
 import nitpicker.kotlinpsi.common.Json;
 import nitpicker.kotlinpsi.design.DesignFacts;
-import nitpicker.kotlinpsi.design.Source;
+import nitpicker.kotlinpsi.design.model.Source;
 import nitpicker.kotlinpsi.facts.FactsCollector;
 import nitpicker.kotlinpsi.metrics.FileClasses;
 import nitpicker.kotlinpsi.metrics.MetricsCollector;

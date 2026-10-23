@@ -1,14 +1,16 @@
 package nitpicker.kotlinpsi.design;
 
 import java.util.Set;
+import nitpicker.kotlinpsi.design.model.Fun;
+import nitpicker.kotlinpsi.design.model.Owner;
 import org.jetbrains.kotlin.psi.*;
 
-final class Entries {
+public final class Entries {
   private static final Set<String> VALUE_METHODS = Set.of("toString", "equals", "hashCode");
 
   private Entries() {}
 
-  static boolean of(Ctx ctx, Fun function) {
+  public static boolean of(Ctx ctx, Fun function) {
     Owner owner = function.owner;
     if (function.constructor()) {
       return owner.psi != null && !owner.psi.getAnnotationEntries().isEmpty();

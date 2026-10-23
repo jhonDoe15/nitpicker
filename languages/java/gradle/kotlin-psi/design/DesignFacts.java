@@ -7,6 +7,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import nitpicker.kotlinpsi.design.index.Index;
+import nitpicker.kotlinpsi.design.model.Fun;
+import nitpicker.kotlinpsi.design.model.Owner;
+import nitpicker.kotlinpsi.design.model.Source;
 
 /**
  * The design facts of a module: its production files, the types they declare and the callables of those types,
@@ -27,18 +31,8 @@ public final class DesignFacts {
     List<Map<String, Object>> callables = new ArrayList<>();
     Set<String> failed = new HashSet<>();
     for (Owner owner : ctx.index.owners) {
-      if (!owner.listed) {
-        continue;
-      }
-      List<Fun> funs = new ArrayList<>(owner.constructors);
-      funs.addAll(owner.funs);
-      for (Fun function : funs) {
-        try {
-          callables.add(CallableFacts.build(ctx, function, library));
-        } catch (StackOverflowError tooDeep) {
-          failed.add(function.id);
-          System.err.println(source(owner) + ": " + function.name + " is too deeply nested for design facts");
-        }
+      if (owner.listed) {
+        callables.addAll(callablesOf(ctx, owner, library, failed));
       }
     }
     if (!failed.isEmpty()) {
@@ -51,6 +45,21 @@ public final class DesignFacts {
     return m("modules", modules, "types", types, "callables", new ArrayList<Object>(callables));
   }
 
+  private static List<Map<String, Object>> callablesOf(Ctx ctx, Owner owner, boolean library, Set<String> failed) {
+    List<Map<String, Object>> callables = new ArrayList<>();
+    List<Fun> funs = new ArrayList<>(owner.constructors);
+    funs.addAll(owner.funs);
+    for (Fun function : funs) {
+      try {
+        callables.add(CallableFacts.build(ctx, function, library));
+      } catch (StackOverflowError tooDeep) {
+        failed.add(function.id);
+        System.err.println(owner.source.path + ": " + function.name + " is too deeply nested for design facts");
+      }
+    }
+    return callables;
+  }
+
   @SuppressWarnings("unchecked")
   private static void dropFromTypes(List<Object> types, Set<String> failed) {
     if (!failed.isEmpty()) {
@@ -58,9 +67,5 @@ public final class DesignFacts {
         TypeFacts.dropTargets((Map<String, Object>) type, failed);
       }
     }
-  }
-
-  private static String source(Owner owner) {
-    return owner.source.path;
   }
 }

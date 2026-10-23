@@ -6,13 +6,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import nitpicker.kotlinpsi.design.model.Fun;
+import nitpicker.kotlinpsi.design.model.Kinds;
+import nitpicker.kotlinpsi.design.model.Owner;
+import nitpicker.kotlinpsi.design.model.Prop;
+import nitpicker.kotlinpsi.design.syntax.Mutables;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
-final class TypeFacts {
+public final class TypeFacts {
   private TypeFacts() {}
 
-  static List<Object> build(Ctx ctx, boolean published) {
+  public static List<Object> build(Ctx ctx, boolean published) {
     List<Object> types = new ArrayList<>();
     for (Owner owner : ctx.index.owners) {
       if (owner.listed && (!owner.module() || hasMembers(owner))) {
@@ -48,7 +53,7 @@ final class TypeFacts {
   }
 
   @SuppressWarnings("unchecked")
-  static void dropTargets(Map<String, Object> type, Set<String> missing) {
+  public static void dropTargets(Map<String, Object> type, Set<String> missing) {
     Object references = type.get("references");
     if (references instanceof List) {
       ((List<Object>) references).removeIf(missing::contains);

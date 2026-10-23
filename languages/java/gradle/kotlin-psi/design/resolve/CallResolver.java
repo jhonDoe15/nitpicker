@@ -1,0 +1,252 @@
+package nitpicker.kotlinpsi.design.resolve;
+
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import nitpicker.kotlinpsi.design.Ctx;
+import nitpicker.kotlinpsi.design.model.Fun;
+import nitpicker.kotlinpsi.design.model.Owner;
+import nitpicker.kotlinpsi.design.model.Source;
+import nitpicker.kotlinpsi.design.model.Ty;
+import nitpicker.kotlinpsi.design.syntax.Ps;
+import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
+import org.jetbrains.kotlin.psi.*;
+
+public final class CallResolver {
+  public static final class Resolved {
+    public final Fun target;
+    public final Owner constructed;
+    public final boolean viaThis;
+
+    public Resolved(Fun target, Owner constructed, boolean viaThis) {
+      this.target = target;
+      this.constructed = constructed;
+      this.viaThis = viaThis;
+    }
+  }
+
+  private static final Resolved NONE = new Resolved(null, null, false);
+
+  private final Ctx ctx;
+  private final Overloads overloads;
+  private final Map<KtCallExpression, Resolved> memo = new IdentityHashMap<>();
+
+  public CallResolver(Ctx ctx) {
+    this.ctx = ctx;
+    this.overloads = new Overloads(ctx);
+  }
+
+  public Fun target(KtCallExpression call) {
+    return resolve(call).target;
+  }
+
+  public Resolved resolve(KtCallExpression call) {
+    Resolved known = memo.get(call);
+    if (known != null) {
+      return known;
+    }
+    memo.put(call, NONE);
+    Resolved result = compute(call);
+    memo.put(call, result);
+    return result;
+  }
+
+  private Resolved compute(KtCallExpression call) {
+    String name = Ps.name(call);
+    if (name == null) {
+      return NONE;
+    }
+    List<Arity.Arg> args = Arity.args(call);
+    KtExpression receiver = Ps.receiverOf(call);
+    Source source = ctx.sourceOf(call);
+    return receiver == null ? bare(call, name, args, source) : qualified(name, receiver, args, source);
+  }
+
+  private Resolved qualified(String name, KtExpression receiver, List<Arity.Arg> args, Source source) {
+    Owner staticOwner = ctx.typer.staticOwner(receiver);
+    if (staticOwner != null) {
+      Owner holder = ctx.typer.objectOwner(staticOwner);
+      Fun found = holder == null ? null : overloads.pick(ctx.members.funs(holder, name), args);
+      if (found != null) {
+        return new Resolved(found, null, false);
+      }
+      Owner nested = staticOwner.nested.get(name);
+      boolean shadowed = holder != null && !ctx.members.funs(holder, name).isEmpty();
+      return nested == null || shadowed ? NONE : constructor(nested, args);
+    }
+    Ty type = ctx.typer.typeOf(receiver);
+    if (type.project()) {
+      Fun member = overloads.pick(ctx.members.funs(type.owner, name), args);
+      if (member != null) {
+        return new Resolved(member, null, false);
+      }
+      if (ctx.members.prop(type.owner, name) != null) {
+        return NONE;
+      }
+      boolean bindable = overloads.anyBindable(ctx.members.funs(type.owner, name), args);
+      return bindable ? NONE : extension(name, type, args, source);
+    }
+    return type.known() ? extension(name, type, args, source) : NONE;
+  }
+
+  private Resolved bare(KtCallExpression call, String name, List<Arity.Arg> args, Source source) {
+    if (localFunction(call, name)) {
+      return NONE;
+    }
+    for (Bindings.Level level : ctx.bindings.levels(call)) {
+      Resolved found = atLevel(level, name, args, source);
+      if (found != null) {
+        return found;
+      }
+    }
+    return levelsBlurred(call) ? NONE : topLevel(call, name, args, source);
+  }
+
+  private Resolved atLevel(Bindings.Level level, String name, List<Arity.Arg> args, Source source) {
+    if (level.extension != null) {
+      return receiverCall(level, name, args, source);
+    }
+    Owner owner = level.owner;
+    if (!level.instance && !(owner.psi instanceof KtObjectDeclaration)) {
+      return companionCall(owner, name, args, level.blurred);
+    }
+    List<Fun> members = ctx.members.funs(owner, name);
+    Fun found = overloads.pick(members, args);
+    if (found != null) {
+      return level.blurred ? NONE : new Resolved(found, null, level.thisLevel);
+    }
+    if (!members.isEmpty() || ctx.members.prop(owner, name) != null || ctx.hierarchy.external(owner)) {
+      return NONE;
+    }
+    return companionCall(owner, name, args, level.blurred);
+  }
+
+  private boolean levelsBlurred(KtCallExpression call) {
+    for (PsiElement p = call.getParent(); p != null; p = p.getParent()) {
+      if (p instanceof KtLambdaExpression && ctx.lambdas.receiver((KtLambdaExpression) p)
+          || p instanceof KtObjectLiteralExpression) {
+        return true;
+      }
+      if (p instanceof KtClassOrObject && ctx.index.byPsi.get(p) == null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private Resolved companionCall(Owner owner, String name, List<Arity.Arg> args, boolean blurred) {
+    if (owner.companion == null) {
+      return null;
+    }
+    Fun found = overloads.pick(ctx.members.funs(owner.companion, name), args);
+    return found == null ? null : blurred ? NONE : new Resolved(found, null, false);
+  }
+
+  private Resolved receiverCall(Bindings.Level level, String name, List<Arity.Arg> args, Source source) {
+    Ty receiver = ctx.names.resolve(level.extension.getReceiverTypeReference(), source);
+    if (!receiver.project()) {
+      return NONE;
+    }
+    List<Fun> members = ctx.members.funs(receiver.owner, name);
+    Fun found = overloads.pick(members, args);
+    if (found != null) {
+      return level.blurred ? NONE : new Resolved(found, null, true);
+    }
+    return !members.isEmpty() || ctx.hierarchy.external(receiver.owner) ? NONE : null;
+  }
+
+  public List<Fun> plainTopLevel(String name, Source source) {
+    for (List<Fun> tier : tiers(name, source)) {
+      List<Fun> plain = plainIn(tier, source);
+      if (!plain.isEmpty()) {
+        return plain;
+      }
+    }
+    return new ArrayList<>();
+  }
+
+  private List<Fun> plainIn(List<Fun> tier, Source source) {
+    List<Fun> plain = new ArrayList<>();
+    for (Fun function : tier) {
+      if (function.receiver == null && visible(function, source)) {
+        plain.add(function);
+      }
+    }
+    return plain;
+  }
+
+  private Resolved topLevel(KtCallExpression call, String name, List<Arity.Arg> args, Source source) {
+    List<Fun> plain = plainTopLevel(name, source);
+    Owner type = ctx.names.lookup(name, call, source);
+    boolean isType = type != null && !type.module() && ctx.typer.constructible(type);
+    if (isType && !plain.isEmpty()) {
+      return NONE;
+    }
+    if (isType) {
+      return constructor(type, args);
+    }
+    Fun found = overloads.pick(plain, args);
+    return found == null ? NONE : new Resolved(found, null, false);
+  }
+
+  private List<List<Fun>> tiers(String name, Source source) {
+    List<List<Fun>> tiers = new ArrayList<>();
+    String imported = source.imports.get(name);
+    if (imported != null) {
+      int dot = imported.lastIndexOf('.');
+      tiers.add(ctx.index.topFuns(dot < 0 ? "" : imported.substring(0, dot), imported.substring(dot + 1)));
+    }
+    tiers.add(ctx.index.topFuns(source.pkg, name));
+    List<Fun> stars = new ArrayList<>();
+    for (String prefix : source.stars) {
+      stars.addAll(ctx.index.topFuns(prefix, name));
+    }
+    tiers.add(stars);
+    return tiers;
+  }
+
+  private boolean visible(Fun function, Source source) {
+    return !function.isPrivate || function.owner.source == source;
+  }
+
+  private Resolved extension(String name, Ty receiver, List<Arity.Arg> args, Source source) {
+    List<Fun> found = new ArrayList<>();
+    for (List<Fun> tier : tiers(name, source)) {
+      for (Fun function : tier) {
+        if (function.receiver != null && visible(function, source) && receives(function, receiver)
+            && Arity.bind(function.params, args) != null) {
+          found.add(function);
+        }
+      }
+      if (!found.isEmpty()) {
+        break;
+      }
+    }
+    return found.size() == 1 ? new Resolved(found.get(0), null, false) : NONE;
+  }
+
+  private boolean receives(Fun function, Ty receiver) {
+    Ty declared = ctx.names.resolve(function.receiver, function.owner.source);
+    if (declared.project() && receiver.project()) {
+      return ctx.hierarchy.subtype(receiver.owner, declared.owner);
+    }
+    if (!declared.project() && !receiver.project() && declared.known() && receiver.known()) {
+      return Overloads.strip(declared.text).equals(Overloads.strip(receiver.text));
+    }
+    return false;
+  }
+
+  public Resolved constructor(Owner type, List<Arity.Arg> args) {
+    return new Resolved(overloads.pick(type.constructors, args), type, false);
+  }
+
+  private boolean localFunction(KtCallExpression call, String name) {
+    for (PsiElement p = call.getParent(); p != null; p = p.getParent()) {
+      if (p instanceof KtBlockExpression && Ps.declaresFunction((KtBlockExpression) p, name)) {
+        return true;
+      }
+    }
+    return false;
+  }
+}
