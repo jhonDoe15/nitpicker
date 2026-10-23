@@ -349,3 +349,17 @@ describe.skipIf(!enabled)('todo-without-issue', () => {
     expect(actual).toEqual(expected);
   });
 });
+
+describe.skipIf(!enabled)('deeply nested expressions', () => {
+  it('checks a string built from a thousand concatenated parts without running out of stack', () => {
+    const parts = Array.from({ length: 1000 }, (_, index) => `"p${String(index)}"`).join(' + ');
+    const [actual, expected] = outcomes([
+      [
+        'a long concatenation',
+        `class Query:\n    def text(self) -> str:\n        return ${parts}\n`,
+        [],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
+  });
+});

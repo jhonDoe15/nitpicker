@@ -2,7 +2,7 @@ import ast
 import os
 import re
 
-from checks.common import dotted_name, finding, is_boundary_path
+from checks.common import ScopedVisitor, dotted_name, finding, is_boundary_path
 
 DEFAULT_BOUNDARY_ROOTS = ["pydantic", "pydantic_settings"]
 MIN_CLASS_CONSTANTS = 2
@@ -71,11 +71,10 @@ def is_plain_class(node):
     return not bases and not node.keywords and not node.decorator_list
 
 
-class Declarations(ast.NodeVisitor):
+class Declarations(ScopedVisitor):
     def __init__(self, context):
         self.path = context.path
         self.aliases = context.aliases
-        self.scope = []
         self.findings = []
         self.tests = context.tests
         self.boundary = is_boundary_path(context.path)
@@ -87,10 +86,7 @@ class Declarations(ast.NodeVisitor):
         self.findings.append(finding(self.path, rule, subject, node))
 
     def visit_scope(self, node):
-        self.scope.append(node.name)
         self.check_no_type_check(node)
-        self.generic_visit(node)
-        self.scope.pop()
 
     def check_no_type_check(self, node):
         if any(
@@ -112,19 +108,15 @@ class Declarations(ast.NodeVisitor):
             for part in ast.walk(node.test)
         ):
             self.add("not-type-checking", "if not TYPE_CHECKING", node)
-        self.generic_visit(node)
 
     visit_FunctionDef = visit_scope
     visit_AsyncFunctionDef = visit_scope
 
     def visit_ClassDef(self, node):
-        self.scope.append(node.name)
         subject = ".".join(self.scope)
         self.check_no_type_check(node)
         self.check_dataclass(node, subject)
         self.check_class_constants(node, subject)
-        self.generic_visit(node)
-        self.scope.pop()
 
     def check_class_constants(self, node, subject):
         constants = string_constants(node.body)

@@ -1,8 +1,6 @@
-import ast
-
 from boundary.pydantic_models import model_findings
 from boundary.type_aliases import has_any, is_functional_type
-from checks.common import finding
+from checks.common import ScopedVisitor, finding
 
 
 def annotations_of(function):
@@ -14,10 +12,9 @@ def annotations_of(function):
     )
 
 
-class AnyInDomain(ast.NodeVisitor):
+class AnyInDomain(ScopedVisitor):
     def __init__(self, context):
         self.context = context
-        self.scope = []
         self.findings = []
 
     def report(self, annotation):
@@ -28,23 +25,14 @@ class AnyInDomain(ast.NodeVisitor):
             )
 
     def visit_function(self, node):
-        self.scope.append(node.name)
         for annotation in annotations_of(node):
             self.report(annotation)
-        self.generic_visit(node)
-        self.scope.pop()
 
     visit_FunctionDef = visit_function
     visit_AsyncFunctionDef = visit_function
 
-    def visit_ClassDef(self, node):
-        self.scope.append(node.name)
-        self.generic_visit(node)
-        self.scope.pop()
-
     def visit_AnnAssign(self, node):
         self.report(node.annotation)
-        self.generic_visit(node)
 
     def visit_Assign(self, node):
         if is_functional_type(node.value, self.context):
@@ -53,7 +41,6 @@ class AnyInDomain(ast.NodeVisitor):
             self.findings.append(
                 finding(self.context.path, "any-in-domain", subject, node)
             )
-        self.generic_visit(node)
 
 
 def check(context):
