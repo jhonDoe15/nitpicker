@@ -43,6 +43,9 @@ Before you change code other modules use, or fix a bug, read
   `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
 - Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
   (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
+- Do not wrap suspending work in `runCatching`: it captures cancellation. Call directly or catch
+  only an expected specific failure; a Result helper must immediately rethrow `CancellationException`.
+  Non-suspending `runCatching` is allowed.
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
   A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
   annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.

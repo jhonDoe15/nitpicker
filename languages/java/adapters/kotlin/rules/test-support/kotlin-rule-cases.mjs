@@ -44,6 +44,38 @@ export const kotlinRuleCases = [
       'import kotlinx.coroutines.coroutineScope\nimport kotlinx.coroutines.launch\n\nsuspend fun start() = coroutineScope {\n    launch { }\n}\n',
   },
   {
+    id: 'suspendRunCatching',
+    rule: 'detekt.coroutines.SuspendFunSwallowedCancellation',
+    message:
+      'The `runCatching` has suspend call inside. You should either use specific `try-catch` only catching exception that you are expecting or rethrow the `CancellationException` if already caught.',
+    allowedForm: 'direct suspend call',
+    banned:
+      'suspend fun load(): Result<Unit> = runCatching { fetch() }\nsuspend fun fetch() { kotlinx.coroutines.delay(1) }\n',
+    allowed:
+      'suspend fun load() { fetch() }\nsuspend fun fetch() { kotlinx.coroutines.delay(1) }\n',
+  },
+  {
+    id: 'aliasedSuspendRunCatching',
+    rule: 'detekt.coroutines.SuspendFunSwallowedCancellation',
+    message:
+      'The `runCatching` has suspend call inside. You should either use specific `try-catch` only catching exception that you are expecting or rethrow the `CancellationException` if already caught.',
+    allowedForm: 'direct suspend call',
+    banned:
+      'import kotlin.runCatching as attempt\n\nsuspend fun load(): Unit = attempt { fetch() }.getOrThrow()\nsuspend fun fetch() { kotlinx.coroutines.delay(1) }\n',
+    allowed: 'fun load(): Result<Int> = runCatching { "1".toInt() }\n',
+  },
+  {
+    id: 'qualifiedSuspendRunCatching',
+    rule: 'detekt.coroutines.SuspendFunSwallowedCancellation',
+    message:
+      'The `runCatching` has suspend call inside. You should either use specific `try-catch` only catching exception that you are expecting or rethrow the `CancellationException` if already caught.',
+    allowedForm: 'direct suspend call',
+    banned:
+      'suspend fun load(): Unit = kotlin.runCatching { fetch() }.getOrThrow()\nsuspend fun fetch() { kotlinx.coroutines.delay(1) }\n',
+    allowed:
+      'import java.util.concurrent.CancellationException\n\nsuspend fun load(): Result<Unit> = try {\n    Result.success(fetch())\n} catch (error: CancellationException) {\n    throw error\n} catch (error: java.io.IOException) {\n    Result.failure(error)\n}\n\nsuspend fun fetch() { kotlinx.coroutines.delay(1) }\n',
+  },
+  {
     id: 'runBlocking',
     rule: 'detekt.style.ForbiddenMethodCall',
     message:

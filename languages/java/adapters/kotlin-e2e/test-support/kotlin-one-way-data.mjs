@@ -37,6 +37,12 @@ style:
       - 'java.lang.System.exit'
 coroutines:
   active: false
+  SuspendFunSwallowedCancellation:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    includes: ['missing/**']
+    ignoreAnnotated: ['Marker']
 potential-bugs:
   active: false
   ignoreAnnotated: ['Marker']
