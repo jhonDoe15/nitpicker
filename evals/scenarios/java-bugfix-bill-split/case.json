@@ -1,0 +1,18 @@
+{
+  "id": "java-bugfix-bill-split",
+  "title": "Fix lost cents and the empty-party crash in a legacy Java bill splitter",
+  "preset": "java",
+  "categories": [
+    "bugfix"
+  ],
+  "agentTimeoutMinutes": 60,
+  "prompt": "Bug report for the billing feature (package com.example.billing): splitting a bill loses or invents cents, and an empty party crashes the printer. Its public API is BillSplitter.splitBill(long totalCents, List<String> people) in com.example.billing.domain, BillPrinter.formatShares(Split split, Output output) in com.example.billing.adapters (Output is the one-method interface with write(String text) in that package), and Cli.printSplit(long totalCents, List<String> people, Output output) in com.example.billing.adapters, which splits the bill and writes it to the output. Cli.main(String... args) reads the total and the names from its arguments and calls printSplit with an output that writes to standard output. Keep their names, parameters and the output format of a successful split. Money is whole cents.\n\nSteps to reproduce.\n1. BillSplitter.splitBill(1000, List.of(\"Ann\", \"Ben\", \"Cy\")) returns three shares of 333 cents and totalCents 999. Expected: 334, 333 and 333, and totalCents 1000.\n2. BillSplitter.splitBill(2000, List.of(\"Ann\", \"Ben\", \"Cy\")) returns three shares of 667 cents and totalCents 2001, more than the bill. Expected: 667, 667 and 666, and totalCents 2000.\n3. Cli.printSplit(1000, List.of(), output) throws NoSuchElementException (\"No value present\"). Expected: it writes to the output the single line \"Nobody to split between\" (followed by a newline) and nothing else.\n\nThe rule for the cents. Each person's share is the total divided by the number of people, rounded down to a whole cent. The cents left over (the total modulo the number of people) go one cent each to the first people, in the order the people were given: with 10 cents among four people the shares are 3, 3, 2, 2. A total smaller than the number of people therefore gives 1 cent to the first people and 0 to the rest. The shares always add up to the total, and the totalCents of the result is the total that was passed in. This holds for any total and any number of people the function accepts.\n\nThe failure result for an empty people list. Add a public sealed interface SplitResult to com.example.billing.domain. It declares long totalCents() and permits exactly two records: Split (the existing record, with the same components, a successful split) and a new NoPeople(long totalCents). BillSplitter.splitBill now returns SplitResult. For a valid total and an empty list it returns new NoPeople(totalCents), with the total that was passed in, and does not throw (today it returns a Split with totalCents 0, so the bill silently disappears). A successful split is always a Split. BillPrinter.formatShares now takes a SplitResult; given a NoPeople it writes only the text \"Nobody to split between\\n\", and given a Split it writes what it writes today. The other checks keep throwing the same IllegalArgumentException with the same messages and in the same order as today, so an empty list with an invalid total still throws the total error.\n\nEverything else is not a bug and must behave exactly as before. Do not change the existing tests (BillSplitterTest, BillPrinterTest and CliTest under src/test/java/com/example/billing). Add regression tests for the cases above, and the edge cases around them, in src/test/java/com/example/billing/BillingRegressionTest.java. Run nitpicker-gate until it exits 0.",
+  "acceptance": {
+    "command": [
+      "gradle",
+      "test",
+      "--tests",
+      "*AcceptanceTest"
+    ]
+  }
+}
