@@ -38,18 +38,36 @@ describe('packageCycleFindings', () => {
     });
   });
 
-  it('names the default package (root) and leaves out the edges another rule already reports', () => {
+  it('names the default package (root) and leaves out a cycle a feature cycle fully explains', () => {
     const edges = [
       { source: MAIN, target: INVOICE },
       { source: INVOICE, target: MAIN },
     ];
+    const features = new Map([
+      [MAIN.file, 'src/main/java'],
+      [INVOICE.file, 'src/main/java/com/acme/billing'],
+    ]);
+    function explained(cycleEdges) {
+      return {
+        featureOf: (file) => features.get(file),
+        explainedCycles: [{ features: [...features.values()], edges: cycleEdges }],
+      };
+    }
 
     expect(
       packageCycleFindings({ classes: CLASSES, edges }).map(({ identity }) => identity),
     ).toEqual(['cycle:(root)', 'cycle:com.acme.billing']);
     expect(
-      packageCycleFindings({ classes: CLASSES, edges }, new Set([`${INVOICE.file}\0${MAIN.file}`])),
+      packageCycleFindings(
+        { classes: CLASSES, edges },
+        explained([{ from: INVOICE.file, to: MAIN.file }]),
+      ),
     ).toEqual([]);
+    expect(
+      packageCycleFindings({ classes: CLASSES, edges }, explained([])).map(
+        ({ identity }) => identity,
+      ),
+    ).toEqual(['cycle:(root)', 'cycle:com.acme.billing']);
   });
 
   it('reports nothing for classes of one package that use each other', () => {

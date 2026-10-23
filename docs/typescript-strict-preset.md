@@ -861,7 +861,9 @@ hop, and type-only imports do not count.
   usually a bug, and warnings in a suite hide the next real one. The allowed forms are fixing the
   cause (cancel the timer or subscription in the cleanup), a `testConsole.allow` entry for a known
   third-party message, or an `exceptions` entry for the test file. Messages are compared by their
-  normalized text, per test file, so an old warning that only moved is not new. See
+  normalized text, per test file, so an old warning that only moved is not new. It runs on
+  Vitest, Jest, `node:test` and Mocha projects alike (Jest names the file but not the test), and
+  the JavaScript preset gets the same check. See
   [Console output from tests](usage.md#console-output-from-tests).
 
 Left out, from the same write-up: recomputing one expensive result in every test, and running the
@@ -1555,6 +1557,11 @@ from a real caller) and the `exceptions` entry that lifts it.
 - `layout.sharedRoots` and `layout.featureRoots` (folder globs, default `<sourceRoot>/main/shared` and
   `<sourceRoot>/main/features`) change which folders `shared-used-by-one-feature` treats as shared and
   as features; `[]` in `featureRoots` turns it off. The ESLint boundary rules keep the default layout.
+  When feature roots nest, a file belongs to the innermost one. A folder a configured `sharedRoots`
+  glob matches is shared even inside a feature folder; while `sharedRoots` is not set, a folder the
+  default shared root matches inside a feature folder is part of that feature, so
+  `shared-used-by-one-feature` does not report its modules. A configured glob that matches no
+  folder is named in a notice.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders only, so
   `src/crypto/e2e/` stays production code; a missing one is ignored). Type checking, duplicate

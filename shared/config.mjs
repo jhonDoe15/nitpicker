@@ -204,10 +204,10 @@ export function validateFactRuleSettings(config) {
   if (unsupported === undefined) {
     return;
   }
-  const [rule] = Object.entries(FACT_RULE_SETTINGS).find(([, settings]) =>
-    settings.includes(unsupported),
-  );
+  const rules = Object.entries(FACT_RULE_SETTINGS)
+    .filter(([, settings]) => settings.includes(unsupported))
+    .map(([rule]) => rule);
   throw configError(
-    `"${unsupported}" is not supported with "preset": "${language}": it configures ${rule}, which the ${language} preset does not run yet. Remove it`,
+    `"${unsupported}" is not supported with "preset": "${language}": it configures ${rules.join(', ')}, which the ${language} preset does not run yet. Remove it`,
   );
 }

@@ -59,7 +59,7 @@ function relativeBase(importer, { level, module }) {
     .join('.');
 }
 
-const WHOLE_MODULE = '*';
+export const WHOLE_MODULE = '*';
 
 export function statementTargets(importer, statement, known) {
   if (statement.level === 0 && statement.module === null) {
@@ -83,16 +83,18 @@ export function statementTargets(importer, statement, known) {
 export function importEdges(modules, imports) {
   const known = new Set(modules.map(({ module }) => module));
   return modules.flatMap((importer) =>
-    (imports[importer.file] ?? []).flatMap((statement) =>
-      statementTargets(importer, statement, known)
-        .map(({ target }) => target)
-        .filter((target) => target !== undefined)
-        .map((target) => ({
-          source: importer.module,
-          target,
-          kind: statement.typeOnly === true ? TYPE_ONLY : 'runtime',
-        })),
-    ),
+    (imports[importer.file] ?? [])
+      .filter(({ exported }) => exported !== true)
+      .flatMap((statement) =>
+        statementTargets(importer, statement, known)
+          .map(({ target }) => target)
+          .filter((target) => target !== undefined)
+          .map((target) => ({
+            source: importer.module,
+            target,
+            kind: statement.typeOnly === true ? TYPE_ONLY : 'runtime',
+          })),
+      ),
   );
 }
 

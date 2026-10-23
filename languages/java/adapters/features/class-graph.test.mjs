@@ -145,8 +145,16 @@ describe('readClassGraph', () => {
 
     expect(featureFacts(readClassGraph(root, projects))).toEqual({
       modules: [
-        { file: 'src/main/java/com/acme/features/billing/Invoice.java', role: 'production' },
-        { file: 'src/main/java/com/acme/features/shipping/Api.java', role: 'production' },
+        {
+          file: 'src/main/java/com/acme/features/billing/Invoice.java',
+          role: 'production',
+          generated: false,
+        },
+        {
+          file: 'src/main/java/com/acme/features/shipping/Api.java',
+          role: 'production',
+          generated: false,
+        },
       ],
       imports: [
         {

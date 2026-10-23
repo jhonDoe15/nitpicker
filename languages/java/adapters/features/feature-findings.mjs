@@ -1,11 +1,7 @@
 import { RULE_IDS } from '../../../../shared/policy.mjs';
-import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
-import { featureCycleEdges } from '../../../../shared/rules/features/feature-cycles.mjs';
-import {
-  featureLayout,
-  featureRoles,
-  PUBLIC_FACES,
-} from '../../../../shared/rules/features/feature-roles.mjs';
+import { featureFactAnalysis } from '../../../../shared/rules/facts/evaluate.mjs';
+import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mjs';
+import { isGeneratedJvm } from '../generated/generated-sources.mjs';
 import { readClassGraph } from './class-graph.mjs';
 import { featurePlan, readSpringReports } from './feature-layout.mjs';
 import { packageCycleFindings } from './package-cycles.mjs';
@@ -18,7 +14,7 @@ function simpleName(className) {
   return className.slice(className.lastIndexOf('.') + 1);
 }
 
-export function featureFacts({ classes, edges }) {
+export function featureFacts({ classes, edges }, isGenerated = () => false) {
   const imports = new Map();
   for (const { source, target } of edges.filter((edge) => edge.source.file !== edge.target.file)) {
     const key = `${source.file}\0${target.file}`;
@@ -29,7 +25,7 @@ export function featureFacts({ classes, edges }) {
   return {
     modules: [...new Set(classes.map(({ file }) => file))]
       .sort()
-      .map((file) => ({ file, role: 'production' })),
+      .map((file) => ({ file, role: 'production', generated: isGenerated(file) })),
     imports: [...imports.values()].map((entry) => ({
       ...entry,
       names: [...entry.names].sort().map((name) => ({ name })),
@@ -44,20 +40,8 @@ function withoutEdges(facts, covered) {
   };
 }
 
-function reportedEdges(facts, layout) {
-  const roleOf = featureRoles(featureLayout(layout));
-  const sharedToFeature = facts.imports.filter(
-    ({ from, to }) => roleOf(from).kind === 'shared' && roleOf(to).kind === 'feature',
-  );
-  return new Set(
-    [...featureCycleEdges(facts, roleOf), ...sharedToFeature].map(
-      ({ from, to }) => `${from}\0${to}`,
-    ),
-  );
-}
-
-function featureGraphFindings(graph, { language, policy, reports }) {
-  const facts = featureFacts(graph);
+function featureGraphFindings(graph, { language, policy, reports, isGenerated }) {
+  const facts = featureFacts(graph, isGenerated);
   const plan = featurePlan(policy.layout ?? {}, reports, graph);
   const options = {
     language,
@@ -65,13 +49,11 @@ function featureGraphFindings(graph, { language, policy, reports }) {
     policy: { exceptions: policy.exceptions ?? [], layout: plan.layout },
     publicFace: PUBLIC_FACES.jvm,
   };
-  return [
-    ...sharedFactFindings(facts, { ...options, rules: GRAPH_RULES }),
-    ...(plan.boundaries
-      ? sharedFactFindings(withoutEdges(facts, plan.covered), { ...options, rules: BOUNDARY_RULES })
-      : []),
-    ...packageCycleFindings(graph, reportedEdges(facts, plan.layout)),
-  ];
+  const analysis = featureFactAnalysis(facts, { ...options, rules: GRAPH_RULES });
+  const boundaries = plan.boundaries
+    ? featureFactAnalysis(withoutEdges(facts, plan.covered), { ...options, rules: BOUNDARY_RULES })
+    : { findings: [] };
+  return [...analysis.findings, ...boundaries.findings, ...packageCycleFindings(graph, analysis)];
 }
 
 export function readFeatureGraphFindings(projectRoot, { projects, kotlin, policy = {} }) {
@@ -82,5 +64,6 @@ export function readFeatureGraphFindings(projectRoot, { projects, kotlin, policy
         language: kotlin ? 'kotlin' : 'java',
         policy,
         reports: readSpringReports(projects),
+        isGenerated: (file) => isGeneratedJvm(projectRoot, file),
       });
 }
