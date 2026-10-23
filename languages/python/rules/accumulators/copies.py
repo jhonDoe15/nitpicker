@@ -17,6 +17,16 @@ CONSTRUCTORS = {
 }
 CANDIDATES = (ast.BinOp, ast.Dict, ast.List, ast.Tuple, ast.Set, ast.IfExp)
 RUFF_CONCATENATION = "RUF005"
+ANNOTATED = {
+    "list": "sequence",
+    "List": "sequence",
+    "tuple": "sequence",
+    "Tuple": "sequence",
+    "dict": "union",
+    "Dict": "union",
+    "set": "union",
+    "Set": "union",
+}
 OPENERS = {ast.List: "[*{0}, ...]", ast.Tuple: "(*{0}, ...)", ast.Set: "{{*{0}, ...}}"}
 
 
@@ -37,21 +47,15 @@ def container_of(value):
 def joined_form(value, name, container):
     if not isinstance(value, ast.BinOp):
         return None
-    sequence = container == "sequence"
-    union = container == "union"
-    if isinstance(value.op, ast.Add):
-        if is_name(value.left, name) and (
-            sequence or isinstance(value.right, SEQUENCES)
-        ):
+    if isinstance(value.op, ast.Add) and container == "sequence":
+        if is_name(value.left, name):
             return f"{name} + [...]"
-        if is_name(value.right, name) and (
-            sequence or isinstance(value.left, SEQUENCES)
-        ):
+        if is_name(value.right, name):
             return f"[...] + {name}"
-    if isinstance(value.op, ast.BitOr):
-        if is_name(value.left, name) and (union or isinstance(value.right, UNIONS)):
+    if isinstance(value.op, ast.BitOr) and container == "union":
+        if is_name(value.left, name):
             return f"{name} | {{...}}"
-        if is_name(value.right, name) and (union or isinstance(value.left, UNIONS)):
+        if is_name(value.right, name):
             return f"{{...}} | {name}"
     return None
 
@@ -182,8 +186,38 @@ def outside_values(name, loop, scope, context):
     values = []
     for node in stored_outside(name, loop, scope, context):
         parent = context.parents.get(id(node))
-        values.append(parent.value if isinstance(parent, ast.Assign) else None)
+        assigned = isinstance(parent, (ast.Assign, ast.AnnAssign))
+        values.append(parent.value if assigned else None)
     return values
+
+
+def annotation_container(annotation):
+    if isinstance(annotation, ast.Subscript):
+        annotation = annotation.value
+    name = (dotted_name(annotation, ({}, {})) or "").rsplit(".", 1)[-1]
+    return ANNOTATED.get(name)
+
+
+def declared_containers(name, loop, scope, context):
+    found = []
+    for node in stored_outside(name, loop, scope, context):
+        parent = context.parents.get(id(node))
+        if isinstance(parent, ast.AnnAssign):
+            found.append(annotation_container(parent.annotation))
+    if isinstance(scope, FUNCTIONS):
+        arguments = scope.args
+        every = arguments.posonlyargs + arguments.args + arguments.kwonlyargs
+        found += [annotation_container(a.annotation) for a in every if a.arg == name]
+    return [container for container in found if container]
+
+
+def outside_container(name, loop, scope, context):
+    declared = set(declared_containers(name, loop, scope, context))
+    if len(declared) == 1:
+        return declared.pop()
+    values = outside_values(name, loop, scope, context)
+    containers = {container_of(value) for value in values}
+    return containers.pop() if len(containers) == 1 else None
 
 
 def is_tuple_value(value):
@@ -196,9 +230,7 @@ def assignment_form(node, loop, scope, context):
     if isinstance(node, ast.Assign) and len(node.targets) == 1:
         target = node.targets[0]
         if isinstance(target, ast.Name):
-            values = outside_values(target.id, loop, scope, context)
-            containers = {container_of(value) for value in values}
-            container = containers.pop() if len(containers) == 1 else None
+            container = outside_container(target.id, loop, scope, context)
             form = copy_form(node.value, target.id, container)
             return (
                 (target.id, form)
