@@ -206,7 +206,11 @@ nitpicker cache publish [--analyzer <name>]...
 The base side of a comparison is cached per analyzer; the head side always runs. The key covers the
 merge-base commit, project path, analyzer name and version, the analyzer's configuration hash, the
 config-file overrides and the head policy (`exclude`, `layout`, `exceptions`, `thresholds`, `react`, `i18n`, `testConsole`, `history`) with the
-legacy inventory path, so changing any of them is a miss. Only clean reports are stored.
+legacy inventory path, so changing any of them is a miss. A content fingerprint of nitpicker's
+package manifest and shipped code and tool configs is computed once per process and included in
+the key, so changing rules without a version bump also invalidates old findings. Only clean
+reports are stored. When the base is reused, the progress line names the local cache directory
+(or the remote cache when there is no local directory); use `--no-cache` to rerun the analysis.
 
 - `NITPICKER_CACHE_DIR`: local cache directory (relative to the project root). Default:
   `node_modules/.cache/nitpicker`.
