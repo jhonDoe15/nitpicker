@@ -31,6 +31,7 @@ import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { gradleOptions, gradleStages } from './gradle-wrapper/gradle-stages.mjs';
+import { effectsOptions, effectsProperties } from './effects/effects-options.mjs';
 
 const MAX_FAILURE_LENGTH = 3500;
 const CLOCK_SLACK_MS = 2000;
@@ -55,11 +56,12 @@ function assertSucceeded(result, projectRoot, { reportBase, since }) {
   throw withGradleLog(failure, result);
 }
 
-function commonArguments({ reportBase, policy, kotlinArguments }) {
+function commonArguments({ projectRoot, reportBase, policy, kotlinArguments }) {
   return [
     ...GRADLE_FLAGS,
     `-Pnitpicker.reportDir=${reportBase}`,
     ...lintBaselineProperties(policy),
+    ...effectsProperties(projectRoot),
     ...kotlinArguments,
   ];
 }
@@ -80,7 +82,7 @@ function runJavaPreset(
   const directory = path.join(reportBase, 'tool-config');
   const since = Date.now() - CLOCK_SLACK_MS;
   withKotlin((kotlinArguments) => {
-    const common = commonArguments({ reportBase, policy, kotlinArguments });
+    const common = commonArguments({ projectRoot, reportBase, policy, kotlinArguments });
     const stages = gradleStages(common, { projectRoot, initScript, policy, directory });
     for (const stage of stages) {
       const target = gradleTarget({ projectRoot, configured: gradle, args: stage() });
@@ -141,6 +143,7 @@ function mavenFindings(projectRoot, options) {
     maven: options.maven,
     policy: options.policy,
     configs: toolConfigChoices(projectRoot, options.policy),
+    effectsOptions: effectsOptions(projectRoot),
   });
   for (const moduleDir of moduleDirs) {
     const { reportBase, report } = moduleReport(moduleDir, MAVEN_REPORT_DIRECTORY);

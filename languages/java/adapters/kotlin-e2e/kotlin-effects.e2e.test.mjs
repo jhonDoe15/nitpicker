@@ -63,6 +63,7 @@ describe.skipIf(!enabled)('the effects engine on a Kotlin project', () => {
       new Set([
         'src/main/kotlin/shop/reports/LoopImports.kt',
         'src/main/kotlin/shop/reports/Accumulators.kt',
+        'src/main/kotlin/shop/billing/LazyLoads.kt',
       ]),
     );
   });

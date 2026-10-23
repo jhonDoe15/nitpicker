@@ -219,7 +219,7 @@ function extraTools({ modules, analyzed, policy, pinned }) {
   ];
 }
 
-export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
+export function runMavenPreset(projectRoot, { maven, policy = {}, configs, effectsOptions = [] }) {
   if (policy.preset === 'kotlin') {
     throw new Error(
       'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
@@ -252,6 +252,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
         configs,
         since,
         project,
+        effectsOptions,
         style: {
           javaStyle: policy.javaStyle,
           indentation: checkstyleIndentation(policy.conventions),
