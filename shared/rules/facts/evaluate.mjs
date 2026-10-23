@@ -1,13 +1,15 @@
 import { isPlainObject } from '../../config.mjs';
+import { RULE_IDS } from '../../policy.mjs';
 import { testConsoleFindings } from '../console/console-findings.mjs';
 import { docCommentFindings } from '../doc-comments/doc-comments.mjs';
 import { exceptionMatcher } from '../exceptions.mjs';
 import {
-  DEFAULT_FEATURE_LAYOUT,
-  featureRoles,
-  sharedUsageFindings,
-  sharedUsedByOneFeature,
-} from '../features/shared-usage.mjs';
+  featureInternalImportFindings,
+  sharedImportsFeatureFindings,
+} from '../features/feature-boundaries.mjs';
+import { featureCycleAnalysis, featureCycleFindings } from '../features/feature-cycles.mjs';
+import { featureLayout, featureRoleContract, featureRoles } from '../features/feature-roles.mjs';
+import { sharedUsageFindings, sharedUsedByOneFeature } from '../features/shared-usage.mjs';
 import { duplicateDefinitionFindings } from '../reuse/duplicate-definitions.mjs';
 import { exportedNameCollisionFindings } from '../reuse/name-collisions.mjs';
 import { uniqueFindings } from '../reuse/reuse-finding.mjs';
@@ -20,15 +22,30 @@ import { validateFacts } from './schema.mjs';
 
 const REGISTRY = 'FACT_RULE_LANGUAGES (shared/project-rules/fact-rules.mjs)';
 
-function featureLayout(layout = {}) {
+function sharedUsageSubjects(modules) {
+  return modules
+    .filter(({ role, generated, initializer }) => role !== 'test' && !generated && !initializer)
+    .map(({ file }) => file);
+}
+
+function withoutGenerated(facts) {
+  const generated = new Set(
+    facts.modules.filter((module) => module.generated).map(({ file }) => file),
+  );
   return {
-    sharedRoots: layout.sharedRoots ?? DEFAULT_FEATURE_LAYOUT.sharedRoots,
-    featureRoots: layout.featureRoots ?? DEFAULT_FEATURE_LAYOUT.featureRoots,
+    ...facts,
+    imports: facts.imports.filter(({ from, to }) => !generated.has(from) && !generated.has(to)),
   };
 }
 
-function productionFiles(modules) {
-  return modules.filter(({ role }) => role !== 'test').map(({ file }) => file);
+function featureContext(context, options) {
+  const roleOf = featureRoleContract(options.policy.layout, options.publicFace);
+  return { ...context, roleOf };
+}
+
+function featureBoundaryRule(findings) {
+  return ({ facts, context, options }) =>
+    findings(withoutGenerated(facts), featureContext(context, options));
 }
 
 const EVALUATORS = {
@@ -44,11 +61,14 @@ const EVALUATORS = {
   'shared-used-by-one-feature': ({ facts, context, options }) =>
     sharedUsageFindings(
       sharedUsedByOneFeature(
-        { modules: productionFiles(facts.modules), imports: facts.imports },
+        { modules: sharedUsageSubjects(facts.modules), imports: withoutGenerated(facts).imports },
         { roleOf: featureRoles(featureLayout(options.policy.layout)) },
       ),
       context,
     ),
+  'feature-internal-import': featureBoundaryRule(featureInternalImportFindings),
+  'shared-imports-feature': featureBoundaryRule(sharedImportsFeatureFindings),
+  'feature-cycle': featureBoundaryRule(featureCycleFindings),
   'test-only-export': ({ facts, context }) => testOnlyFactFindings(facts, context),
   'doc-comment-content': ({ facts, context }) => docCommentFindings(facts.docComments, context),
   'test-console-output': ({ facts, context, options }) =>
@@ -184,7 +204,7 @@ function validatePolicy(policy) {
   }
 }
 
-export function sharedFactFindings(
+function preparedFacts(
   facts,
   { language, analyzerName, rules: only, policy = {}, baseline, ...rest },
 ) {
@@ -196,11 +216,39 @@ export function sharedFactFindings(
   if (problem !== undefined) {
     throw new Error(problem);
   }
-  const roled = withImportRoles(facts);
-  const context = { analyzerName, isExcepted: exceptionMatcher(policy.exceptions ?? []) };
-  const options = { ...rest, policy, baselineFile: baselineReader(baseline) };
-  const modules = reuseModules(roled);
-  return uniqueFindings(
-    rules.flatMap((rule) => EVALUATORS[rule]({ facts: roled, modules, context, options })),
-  );
+  return {
+    rules,
+    facts: withImportRoles(facts),
+    context: { analyzerName, isExcepted: exceptionMatcher(policy.exceptions ?? []) },
+    options: { ...rest, policy, baselineFile: baselineReader(baseline) },
+  };
+}
+
+function evaluated({ rules, facts, context, options }) {
+  const modules = reuseModules(facts);
+  return rules.flatMap((rule) => EVALUATORS[rule]({ facts, modules, context, options }));
+}
+
+export function sharedFactFindings(facts, options) {
+  return uniqueFindings(evaluated(preparedFacts(facts, options)));
+}
+
+export function featureFactAnalysis(facts, options) {
+  const prepared = preparedFacts(facts, options);
+  const cycles = prepared.rules.includes(RULE_IDS.featureCycle)
+    ? featureCycleAnalysis(
+        withoutGenerated(prepared.facts),
+        featureContext(prepared.context, prepared.options),
+      )
+    : { findings: [], cycles: [] };
+  const others = {
+    ...prepared,
+    rules: prepared.rules.filter((rule) => rule !== RULE_IDS.featureCycle),
+  };
+  const roleOf = featureRoles(featureLayout(prepared.options.policy.layout));
+  return {
+    findings: uniqueFindings([...evaluated(others), ...cycles.findings]),
+    explainedCycles: cycles.cycles,
+    featureOf: (file) => roleOf(file).directory,
+  };
 }

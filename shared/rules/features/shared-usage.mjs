@@ -1,34 +1,5 @@
-import { globMatcher } from '../../paths/glob.mjs';
 import { MESSAGES, RULE_IDS, renderMessage } from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
-
-export const DEFAULT_FEATURE_LAYOUT = { sharedRoots: ['**/shared'], featureRoots: ['**/features'] };
-
-function folderPrefixes(file) {
-  const parts = file.split('/');
-  return parts.slice(1).map((_, index) => ({
-    folder: parts.slice(0, index + 1).join('/'),
-    child: parts[index + 1],
-    isLast: index + 2 === parts.length,
-  }));
-}
-
-export function featureRoles({ sharedRoots, featureRoots }) {
-  const shared = sharedRoots.map((glob) => globMatcher(glob));
-  const features = featureRoots.map((glob) => globMatcher(glob));
-  return (file) => {
-    const prefixes = folderPrefixes(file);
-    if (prefixes.some(({ folder }) => shared.some((pattern) => pattern.test(folder)))) {
-      return { kind: 'shared' };
-    }
-    const feature = prefixes.find(
-      ({ folder, isLast }) => !isLast && features.some((pattern) => pattern.test(folder)),
-    );
-    return feature === undefined
-      ? { kind: 'other' }
-      : { kind: 'feature', directory: `${feature.folder}/${feature.child}` };
-  };
-}
 
 function importersByTarget(imports) {
   const importers = new Map();
@@ -60,8 +31,8 @@ function consumerRoles(start, importers, roleOf) {
 
 function soleFeature(consumers) {
   const directories = new Set(consumers.map(({ directory }) => directory));
-  const [directory] = directories;
-  return directories.size === 1 && directory !== undefined ? directory : undefined;
+  const [first] = consumers;
+  return directories.size === 1 && first.kind === 'feature' ? first : undefined;
 }
 
 export function sharedUsedByOneFeature({ modules, imports }, { roleOf }) {
@@ -70,10 +41,10 @@ export function sharedUsedByOneFeature({ modules, imports }, { roleOf }) {
     .filter((source) => roleOf(source).kind === 'shared')
     .toSorted()
     .flatMap((source) => {
-      const directory = soleFeature(consumerRoles(source, importers, roleOf));
-      return directory === undefined
+      const feature = soleFeature(consumerRoles(source, importers, roleOf));
+      return feature === undefined
         ? []
-        : [{ source, feature: directory.split('/').at(-1), directory: `${directory}/` }];
+        : [{ source, feature: feature.name, directory: `${feature.directory}/` }];
     });
 }
 
