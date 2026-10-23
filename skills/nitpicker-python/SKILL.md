@@ -43,10 +43,19 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   value read before the `await` (`self.total += await fetch()`). Await into a local first
   (`delta = await fetch()`, then `self.total += delta`), or hold one `asyncio.Lock` around the whole
   read-modify-write (`atomic-update-across-await`).
+- Cancellation: after cleanup in an explicit asyncio, Trio or AnyIO cancellation handler, use
+  a bare `raise` or re-raise the unchanged caught exception. Returning a failure result or raising
+  a different error consumes cancellation (`cancellation-not-propagated`). Keep intentional
+  cancellation boundaries in the backend's timeout or cancellation scope. Awaiting a task you
+  cancelled yourself (`task.cancel()` then `await task`) is the one handler that may stay quiet.
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
 - Imports: name what you use. No `from module import *`.
+- Trio, AnyIO and `asyncio.TaskGroup`: open a resource around the whole task group or inside the
+  child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
+  (`task-outlives-resource`). In Trio and AnyIO, an `await` in `finally:` or a cancellation handler
+  needs `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True):` around it (`unshielded-cleanup-await`).
 - Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`. A
   log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
   error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the

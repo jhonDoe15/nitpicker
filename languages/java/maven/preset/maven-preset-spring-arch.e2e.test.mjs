@@ -19,6 +19,7 @@ import {
   copyOf,
 } from '../__tests__/maven-preset-project.mjs';
 
+const DDD_ONLY_FIXTURE = path.join(SPRING_ARCH_FIXTURE, '..', 'ddd-only-project');
 const SPRING_LAYOUT_FINDINGS = [
   'src/main/java/shop/Helper.java Helper',
   'src/main/java/shop/adapter/in/web/PaymentController.java PaymentController|adapter',
@@ -113,6 +114,25 @@ describe.skipIf(!enabled)('Spring architecture rules on Maven builds', () => {
     expect(rulePaths(findings, 'spring-feature-boundary')).toEqual([
       'src/main/java/shop/billing/BillingService.java',
       'src/main/java/shop/billing/Invoices.java',
+    ]);
+  }, 180_000);
+
+  it('runs the aggregate rules on a jMolecules module without Spring, and no Spring rule', () => {
+    const mavenProject = copyOf(DDD_ONLY_FIXTURE, path.join(fixtures, 'ddd-only'));
+    for (const name of ['build.gradle', 'settings.gradle']) {
+      rmSync(path.join(mavenProject, name));
+    }
+    const findings = collectJavaFindings(mavenProject, { maven, policy: {} });
+    const manifest = readReport(mavenProject, 'target', 'manifest.json');
+
+    expect([manifest.spring, manifest.springArch]).toEqual([false, true]);
+    expect(
+      findings
+        .filter((finding) => finding.tool === 'archunit')
+        .map((finding) => `${finding.rule} ${finding.path} ${finding.identity}`),
+    ).toEqual([
+      'ddd-aggregate-reference src/main/java/sales/Order.java Order|Customer',
+      'ddd-aggregate-reference src/main/java/sales/Wishlist.java Wishlist|Product',
     ]);
   }, 180_000);
 });

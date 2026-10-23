@@ -105,19 +105,22 @@ function stricterLists(baseConfig, headConfig) {
   return covering;
 }
 
-function withHeadDuplicates(baseConfig, headConfig) {
-  const { duplicates } = headConfig;
-  const entries = Object.entries(baseConfig).flatMap(([key, value]) => {
-    if (key !== 'duplicates') {
-      return [[key, value]];
-    }
-    return duplicates === undefined ? [] : [[key, duplicates]];
-  });
-  return Object.fromEntries(
-    'duplicates' in baseConfig || duplicates === undefined
-      ? entries
-      : [...entries, ['duplicates', duplicates]],
-  );
+const HEAD_ANALYSIS_KEYS = ['duplicates', 'history'];
+
+function withHeadAnalysisSettings(baseConfig, headConfig) {
+  return {
+    ...Object.fromEntries(
+      Object.entries(baseConfig).filter(
+        ([key]) => !HEAD_ANALYSIS_KEYS.includes(key) || headConfig[key] !== undefined,
+      ),
+    ),
+    ...Object.fromEntries(
+      HEAD_ANALYSIS_KEYS.filter((key) => headConfig[key] !== undefined).map((key) => [
+        key,
+        headConfig[key],
+      ]),
+    ),
+  };
 }
 
 export function baseConfigCoveringHead(baseConfig, headConfig) {
@@ -126,5 +129,5 @@ export function baseConfigCoveringHead(baseConfig, headConfig) {
   if (Object.keys(layout).length > 0) {
     covering.layout = layout;
   }
-  return withHeadDuplicates(covering, headConfig);
+  return withHeadAnalysisSettings(covering, headConfig);
 }
