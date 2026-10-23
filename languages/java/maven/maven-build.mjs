@@ -28,6 +28,7 @@ import {
   resolveTools,
 } from './maven-tools.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
+import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { runJdepsMetrics, runStructure } from './metrics/maven-metrics.mjs';
@@ -145,7 +146,7 @@ function analyzeSources(context, project) {
 
 function analyzeTests(context, testsRan) {
   const { module, reportDir, tools, classpaths, pinned, since, spring, isArchunit } = context;
-  const { spawn } = context;
+  const { springRoles, spawn } = context;
   runJacocoReport({
     module,
     reportDir,
@@ -156,7 +157,7 @@ function analyzeTests(context, testsRan) {
     spawn,
   });
   runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
-  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, spawn });
+  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, springRoles, spawn });
 }
 
 function analyzeModule({ project, ...options }) {
@@ -260,6 +261,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
           indentation: checkstyleIndentation(policy.conventions),
         },
         spring: policy.spring,
+        springRoles: writeSpringRoles(policy.springRoles, work),
       });
     }
     return modules.map((module) => module.basedir);

@@ -27,7 +27,8 @@ public final class ArchRules {
     if (root != null) {
       Layout.check(main, root, found);
     }
-    Layers.check(main, found);
+    Layers.check(main, Roles.load(), found);
+    Lifetimes.check(main, found);
     TestRules.check(unitTests, otherTests, found);
     String json =
         "{\"root\":" + (root == null ? "null" : "\"" + root + "\"") + ",\"violations\":["
