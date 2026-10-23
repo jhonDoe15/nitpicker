@@ -58,6 +58,10 @@ describe('forwarding-chain', () => {
     expect(designRun(chain(extra), 'forwarding-chain')).toEqual([]);
   });
 
+  it.each([['a published head', { get: { published: true } }]])('passes %s', (_, extra) => {
+    expect(designRun(chain(extra), 'forwarding-chain')).toEqual([]);
+  });
+
   it('passes a hop into a member that other modules cannot call', () => {
     const facts = chain();
     const load = { ...facts.callables[2], exported: false };

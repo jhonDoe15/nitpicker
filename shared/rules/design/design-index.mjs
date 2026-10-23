@@ -1,4 +1,4 @@
-import { packageLookup, roleLookup } from '../facts/reuse-modules.mjs';
+import { roleLookup } from '../facts/reuse-modules.mjs';
 
 function byId(items) {
   return new Map(items.map((item) => [item.id, item]));
@@ -14,14 +14,8 @@ function membersByOwner(callables) {
   return members;
 }
 
-function publishedLookup(packages) {
-  const packageOf = packageLookup(packages);
-  return (item) => {
-    const root = item.package;
-    const owner =
-      root === undefined ? packageOf(item.file) : packages.find((entry) => entry.root === root);
-    return owner?.published === true;
-  };
+function publishedLookup(typeById) {
+  return (item) => item.published === true || typeById.get(item.owner)?.published === true;
 }
 
 export function designIndex(facts) {
@@ -41,7 +35,7 @@ export function designIndex(facts) {
     callable: (id) => callableById.get(id),
     members: (ownerId) => members.get(ownerId) ?? [],
     isProduction,
-    isPublished: publishedLookup(facts.packages ?? []),
+    isPublished: publishedLookup(typeById),
   };
 }
 

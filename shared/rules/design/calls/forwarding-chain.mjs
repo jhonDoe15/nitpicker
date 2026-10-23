@@ -82,7 +82,7 @@ export function forwardingChainFindings(index, finding) {
     }),
   );
   return index.callables
-    .filter((callable) => !hopTargets.has(callable.id))
+    .filter((callable) => !hopTargets.has(callable.id) && !index.isPublished(callable))
     .map((callable) => chainFrom(callable, index))
     .filter((chain) => chain.length > MIN_HOPS)
     .flatMap((chain) => chainFinding(chain, { index, finding }));

@@ -105,8 +105,11 @@ describe('disjoint-consumer-groups', () => {
     expect(designRun(consumers(extra), 'disjoint-consumer-groups')).toEqual([]);
   });
 
-  it('passes an owner in a published package', () => {
-    const facts = { ...consumers(), packages: [{ root: 'src/orders', published: true }] };
-    expect(designRun(facts, 'disjoint-consumer-groups')).toEqual([]);
+  it('passes an owner on the public surface of a published package', () => {
+    const facts = consumers();
+    const published = facts.types.map((type) =>
+      type.id === orders.id ? { ...type, published: true } : type,
+    );
+    expect(designRun({ ...facts, types: published }, 'disjoint-consumer-groups')).toEqual([]);
   });
 });
