@@ -62,6 +62,16 @@ describe('readKotlinReviewFindings', () => {
             }),
           ],
           calls: [call('Mailer')],
+          catches: [
+            {
+              line: 5,
+              symbol: 'Mailer.send',
+              type: 'InterruptedException',
+              name: 'e',
+              cancellation: false,
+              interrupt: true,
+            },
+          ],
         }),
         testFile({
           classes: [klass('SampleTest')],
@@ -76,6 +86,7 @@ describe('readKotlinReviewFindings', () => {
 
     expect(findings.map(({ tool, rule }) => `${tool}/${rule}`).sort()).toEqual([
       'pmd/FixedSleepInTest',
+      'pmd/SwallowedInterrupt',
       'structure/unused-option',
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
@@ -160,6 +171,8 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/ExhaustiveEnumPredicate',
       'pmd/StaticForwardingWrapper',
       'pmd/SingularAndPluralMember',
+      'pmd/SwallowedInterrupt',
+      'pmd/SwallowedCancellation',
       'unused-option',
     ]);
     for (const rule of KOTLIN_REVIEW_EXCEPTION_RULES) {

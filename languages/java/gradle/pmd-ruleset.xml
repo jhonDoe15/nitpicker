@@ -109,5 +109,24 @@
       </property>
     </properties>
   </rule>
+  <rule name="SwallowedInterrupt" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This catch of InterruptedException neither rethrows it nor restores the interrupt, so the interrupt status of the thread is lost and work that was asked to stop keeps running.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//CatchClause
+  [CatchParameter//ClassType[pmd-java:typeIs('java.lang.InterruptedException')]]
+  [let $caught := CatchParameter/VariableId/@Name
+   return not(Block//ThrowStatement
+              or Block//MethodCall[@MethodName = 'interrupt']
+              or Block//(MethodCall[not(@MethodName = ('trace', 'debug', 'info', 'warn', 'warning', 'error', 'severe',
+                                                       'fine', 'finer', 'finest', 'config', 'log', 'print', 'println',
+                                                       'printf', 'format'))]
+                         | ConstructorCall)/ArgumentList//VariableAccess[@Name = $caught])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
 </ruleset>

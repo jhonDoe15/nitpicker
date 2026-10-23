@@ -3,8 +3,10 @@ package nitpicker.kotlinpsi.facts;
 import static nitpicker.kotlinpsi.common.Psi.m;
 import static nitpicker.kotlinpsi.common.Psi.nameOf;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import nitpicker.kotlinpsi.catches.Catches;
 import nitpicker.kotlinpsi.common.Frame;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
@@ -72,6 +74,19 @@ public final class FactsCollector {
     return frame;
   }
 
+  private String symbolAt(Frame frame) {
+    Frame function = frame == null ? null : frame.nearest("fun");
+    Frame owner = frame == null ? null : frame.nearest("class");
+    List<String> parts = new ArrayList<>();
+    if (owner != null) {
+      parts.add((String) owner.data.get("qualified"));
+    }
+    if (function != null) {
+      parts.add((String) function.data.get("name"));
+    }
+    return String.join(".", parts);
+  }
+
   private String accessorName(KtPropertyAccessor accessor) {
     String property = accessor.getProperty().getName();
     if (accessor.isGetter()) {
@@ -96,6 +111,8 @@ public final class FactsCollector {
       predicates.binary((KtBinaryExpression) element, frame);
     } else if (element instanceof KtDotQualifiedExpression) {
       predicates.containsForm((KtDotQualifiedExpression) element, frame);
+    } else if (element instanceof KtTryExpression) {
+      state.catches.addAll(Catches.completing((KtTryExpression) element, state::lineOf, symbolAt(frame)));
     } else if (element instanceof KtCallableReferenceExpression) {
       state.references.add(((KtCallableReferenceExpression) element).getCallableReference().getReferencedName());
     }
