@@ -21,11 +21,17 @@ export function runInitCommand(cli) {
   const repository = requireRepository(projectRoot);
   const project = detectProject(projectRoot);
   const peers = planPeers(projectRoot, project);
-  const config = placeConfig(projectRoot, project.preset);
+  const files = placeFiles(projectRoot, options, { project, peers, repository });
+  cli.stdout.write(renderReport({ project, peers, ...files }));
+  return [files.config, files.workflow].some((result) => result?.status === 'differs') ? 1 : 0;
+}
+
+function placeFiles(projectRoot, options, { project, peers, repository }) {
   const context = { project, peers, version: packageVersion(), repository };
-  const workflow = options.ci.length === 0 ? undefined : placeWorkflow(projectRoot, context);
-  const agents = options.agentsMd ? appendSnippet(projectRoot) : undefined;
-  const workflowFile = workflowPath(projectRoot, repository);
-  cli.stdout.write(renderReport({ project, peers, config, workflow, workflowFile, agents }));
-  return [config, workflow].some((result) => result?.status === 'differs') ? 1 : 0;
+  return {
+    config: placeConfig(projectRoot, project.preset),
+    workflow: options.ci.length === 0 ? undefined : placeWorkflow(projectRoot, context),
+    workflowFile: workflowPath(projectRoot, repository),
+    agents: options.agentsMd ? appendSnippet(projectRoot) : undefined,
+  };
 }

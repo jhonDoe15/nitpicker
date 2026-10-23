@@ -10,17 +10,23 @@ describe('the Node.js version init runs on', () => {
   });
 
   it.each(['22.14.0', 'v22.14.0', '22.20.1', '24.0.0'])('accepts %s', (version) => {
-    expect(() => assertSupportedNode(version, '>=22.14')).not.toThrow();
+    expect(() => {
+      assertSupportedNode(version, '>=22.14');
+    }).not.toThrow();
   });
 
   it.each(['22.13.1', '20.19.0', 'v18.0.0'])('refuses %s and says what it needs', (version) => {
-    expect(() => assertSupportedNode(version, '>=22.14')).toThrow(
+    expect(() => {
+      assertSupportedNode(version, '>=22.14');
+    }).toThrow(
       `nitpicker needs Node.js 22.14 or newer (engines ">=22.14" in its package.json), and this is Node.js ${version}. Install a newer Node.js and run nitpicker init again.`,
     );
   });
 
   it('does not judge a range it cannot read', () => {
-    expect(() => assertSupportedNode('18.0.0', '^22.14 || >=24')).not.toThrow();
+    expect(() => {
+      assertSupportedNode('18.0.0', '^22.14 || >=24');
+    }).not.toThrow();
   });
 });
 

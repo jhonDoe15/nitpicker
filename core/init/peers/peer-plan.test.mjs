@@ -32,7 +32,7 @@ describe('peer plan for Node projects', () => {
     const root = project({ 'package.json': '{}' });
 
     expect(planPeers(root, nodeProject('npm install --save-dev', 'jest')).command).toBe(
-      'npm install --save-dev nitpicker typescript @types/node jest',
+      "npm install --save-dev nitpicker 'typescript@^6' @types/node jest",
     );
   });
 
