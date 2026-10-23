@@ -154,9 +154,19 @@ describe.skipIf(!enabled)('accumulator-copy', () => {
         ['accumulator-copy:4 acc|acc + [...]|loop'],
       ],
       [
-        'a parameter',
+        'a parameter of unknown type',
         code(
           'def f(items, acc):',
+          '    for x in items:',
+          '        acc = acc + [x]',
+          '    return acc',
+        ),
+        [],
+      ],
+      [
+        'a parameter annotated as a list',
+        code(
+          'def f(items, acc: list[int]):',
           '    for x in items:',
           '        acc = acc + [x]',
           '    return acc',
@@ -263,5 +273,44 @@ describe.skipIf(!enabled)('accumulator-copy and ruff', () => {
       .map(({ path: file, location }) => `${file}:${String(location?.line)}`);
     expect(rows).toEqual(['acc.py:9']);
     expect(rules.filter(({ rule }) => rule === 'accumulator-copy')).toHaveLength(1);
+  });
+});
+
+describe.skipIf(!enabled)('accumulator-copy on values not proven to be containers', () => {
+  it('stays quiet for + and | on an array, a frame, an unknown call or a parameter', () => {
+    const [actual, expected] = outcomes([
+      [
+        'numpy, pandas, a call and a parameter',
+        code(
+          'import numpy as np',
+          'import pandas as pd',
+          '',
+          '',
+          'def f(items, start, load):',
+          '    grid = np.zeros(3)',
+          '    frame = pd.DataFrame()',
+          '    loaded = load()',
+          '    for i in items:',
+          '        grid = grid + [i]',
+          '        frame = frame + [i]',
+          '        loaded = loaded + [i]',
+          '        start = start | {i}',
+          '    return grid, frame, loaded, start',
+        ),
+        [],
+      ],
+      [
+        'a list literal before the loop',
+        code(
+          'def f(items):',
+          '    acc = []',
+          '    for i in items:',
+          '        acc = acc + [i]',
+          '    return acc',
+        ),
+        ['accumulator-copy:4 acc|acc + [...]|loop'],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
   });
 });
