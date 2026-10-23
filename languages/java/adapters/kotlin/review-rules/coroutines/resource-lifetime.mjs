@@ -10,8 +10,9 @@ import {
 export const CHILD_OUTLIVES_RESOURCE_RULE = 'ChildCoroutineOutlivesResource';
 
 const LAUNCH_NAMES = new Set(['launch', 'async']);
-const MESSAGE = ({ launch, resource, scope }) =>
-  `\`${launch}\` starts a child coroutine in ${scope}, which keeps running after this \`use\` block, and the child reads \`${resource}\`; \`use\` closes \`${resource}\` when the block ends, so the child can run on a closed resource. Start the child inside \`coroutineScope { ... }\` or \`supervisorScope { ... }\` in the block, join it before the block ends (\`.join()\` or \`.await()\`), or open and close the resource inside the child (\`scope.launch { ${resource === 'it' ? 'resource' : resource}.use { ... } }\`).`;
+function message({ launch, resource, scope }) {
+  return `\`${launch}\` starts a child coroutine in ${scope}, which keeps running after this \`use\` block, and the child reads \`${resource}\`; \`use\` closes \`${resource}\` when the block ends, so the child can run on a closed resource. Start the child inside \`coroutineScope { ... }\` or \`supervisorScope { ... }\` in the block, join it before the block ends (\`.join()\` or \`.await()\`), or open and close the resource inside the child (\`scope.launch { ${resource === 'it' ? 'resource' : resource}.use { ... } }\`).`;
+}
 
 function scopeDescription({ scope, implicit }) {
   return scope === undefined
@@ -58,7 +59,7 @@ export function childLifetimeFindings(files, { finding }) {
             file: file.file,
             line: launch.line,
             symbol: `${launch.owner === undefined ? '' : `${launch.owner}.`}${launch.function}:${launch.resource}:${launch.launch}`,
-            message: MESSAGE({ ...launch, scope: scopeDescription(launch) }),
+            message: message({ ...launch, scope: scopeDescription(launch) }),
           }),
         );
     });

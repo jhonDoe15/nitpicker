@@ -72,13 +72,13 @@ export function importResolver(file) {
   ]);
   const explicit = file.imports.filter(({ all }) => !all);
   const stars = new Set(file.imports.filter(({ all }) => all).map(({ path }) => path));
-  const resolves = (local, qualified) => {
+  function resolves(local, qualified) {
     const named = explicit.find(({ alias, path }) => (alias ?? lastSegment(path)) === local);
     if (named !== undefined) {
       return named.path === qualified;
     }
     return !declared.has(local) && stars.has(packageOf(qualified));
-  };
+  }
   resolves.realName = (local) => {
     const named = explicit.find(({ alias }) => alias === local);
     return named === undefined ? local : lastSegment(named.path);
