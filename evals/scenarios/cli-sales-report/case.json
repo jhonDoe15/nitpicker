@@ -15,7 +15,7 @@
       "test/report.acceptance.test.ts"
     ]
   },
-  "devDependencies": {
+  "dependencies": {
     "zod": "4.6.5"
   }
 }

@@ -1,7 +1,13 @@
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { isUnder, matcherOf } from '../policy-scope.mjs';
-import { exceptionPathsByRule, keyedExclusions, testRootReclassifier } from './hiding.mjs';
+import {
+  globsCovering,
+  globsOfSubject,
+  subjectLabel,
+  subjectsOf,
+} from './exceptions/exception-scopes.mjs';
+import { keyedExclusions, testRootReclassifier } from './hiding.mjs';
 import { duplicateFolderExclusions } from './duplicate-folders.mjs';
 
 const NOTHING_NEW = 'covers no checked file it did not cover before';
@@ -12,13 +18,13 @@ function newlyCovered(baseGlobs, headGlob, { paths, basePathOf = (file) => file 
   return paths.filter((file) => after(file) && !before(basePathOf(file)));
 }
 
-function addedGlob(text, covered, scope) {
+function addedGlob({ text, kind }, covered, scope) {
   const code = new Set(scope.code);
   return covered.length === 0
     ? { loosened: [], changed: [`${text} (${NOTHING_NEW})`] }
     : {
         loosened: [
-          { text, files: [CONFIG_FILE_NAME, ...covered.filter((file) => code.has(file))] },
+          { text, kind, files: [CONFIG_FILE_NAME, ...covered.filter((file) => code.has(file))] },
         ],
         changed: [],
       };
@@ -34,6 +40,10 @@ function exclusionChanges(baseConfig, headConfig, scope) {
   );
 }
 
+function exclusionKind(key) {
+  return key === 'duplicates.skippedFolders' ? 'duplicates-scope' : 'exclusion';
+}
+
 function exclusionChangesOf(base, head, scope) {
   const baseGlobs = base.map(({ glob }) => glob);
   const keyOf = new Map(base.map(({ glob, key }) => [glob, key]));
@@ -42,7 +52,7 @@ function exclusionChangesOf(base, head, scope) {
     ...head.map(({ glob, key }) => {
       if (!keyOf.has(glob)) {
         return addedGlob(
-          `${key} added: ${glob}`,
+          { text: `${key} added: ${glob}`, kind: exclusionKind(key) },
           newlyCovered(baseGlobs, glob, { paths: scope.keptPaths }),
           scope,
         );
@@ -61,10 +71,10 @@ function exclusionChangesOf(base, head, scope) {
 }
 
 function exceptionChanges(baseExceptions = [], headExceptions = [], scope) {
-  const basePaths = exceptionPathsByRule(baseExceptions);
-  const headPaths = exceptionPathsByRule(headExceptions);
-  const added = headExceptions.map(({ rule, paths, reason }) => {
-    const before = basePaths.get(rule) ?? [];
+  const added = headExceptions.map((entry) => {
+    const { paths, reason } = entry;
+    const rule = subjectLabel(entry);
+    const before = globsCovering(baseExceptions, entry);
     const coverage = paths
       .filter((glob) => !before.includes(glob))
       .map((glob) => ({ glob, covered: newlyCovered(before, glob, { paths: scope.keptPaths }) }));
@@ -76,6 +86,7 @@ function exceptionChanges(baseExceptions = [], headExceptions = [], scope) {
           ? []
           : [
               {
+                kind: 'exception',
                 text: `exception added: ${rule} for ${covering.map(({ glob }) => glob).join(', ')} (${reason})`,
                 files: [
                   CONFIG_FILE_NAME,
@@ -93,9 +104,12 @@ function exceptionChanges(baseExceptions = [], headExceptions = [], scope) {
           : [`exception added: ${rule} for ${idle.join(', ')} (${NOTHING_NEW})`],
     };
   });
-  const removed = [...basePaths].flatMap(([rule, paths]) => {
-    const dropped = paths.filter((glob) => !(headPaths.get(rule) ?? []).includes(glob));
-    return dropped.length === 0 ? [] : [`exception removed: ${rule} for ${dropped.join(', ')}`];
+  const removed = subjectsOf(baseExceptions).flatMap((subject) => {
+    const kept = globsOfSubject(headExceptions, subject);
+    const dropped = subject.paths.filter((glob) => !kept.includes(glob));
+    return dropped.length === 0
+      ? []
+      : [`exception removed: ${subjectLabel(subject)} for ${dropped.join(', ')}`];
   });
   return [...added, { loosened: [], changed: removed }];
 }
@@ -115,13 +129,18 @@ function entryPointChanges(baseConfig, headConfig, scope) {
   ];
 }
 
+const ENTRY_POINT_KINDS = {
+  'layout.entryPoints': 'entry-point',
+  'python.entryPoints': 'python-entry-point',
+};
+
 function entryPointChangesOf(key, { before, after, scope }) {
   return [
     ...after
       .filter((glob) => !before.includes(glob))
       .map((glob) =>
         addedGlob(
-          `${key} added: ${glob}`,
+          { text: `${key} added: ${glob}`, kind: ENTRY_POINT_KINDS[key] },
           newlyCovered(before, glob, {
             paths: scope.codePaths,
             basePathOf: scope.basePathOf,
@@ -136,6 +155,10 @@ function entryPointChangesOf(key, { before, after, scope }) {
         .map((glob) => `${key} removed: ${glob}`),
     },
   ];
+}
+
+function rootRemovalKind(key) {
+  return key === 'layout.testRoots' ? 'test-root-removed' : 'source-root-removed';
 }
 
 function rootRemovals(scope) {
@@ -155,7 +178,12 @@ function rootRemovals(scope) {
     const text = `${entry.key} removed: ${entry.root}`;
     return files.length === 0
       ? { loosened: [], changed: [`${text} (no checked file was under it)`] }
-      : { loosened: [{ text, files: [CONFIG_FILE_NAME, ...files] }], changed: [] };
+      : {
+          loosened: [
+            { text, kind: rootRemovalKind(entry.key), files: [CONFIG_FILE_NAME, ...files] },
+          ],
+          changed: [],
+        };
   });
 }
 
@@ -174,6 +202,7 @@ function testRootAdditions(baseConfig, headConfig, scope) {
     .map(([root, files]) => ({
       loosened: [
         {
+          kind: 'test-root-added',
           text: `layout.testRoots added: ${root} (production code under it becomes test code)`,
           files: [CONFIG_FILE_NAME, ...files],
         },

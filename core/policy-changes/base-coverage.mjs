@@ -5,7 +5,7 @@ import {
   testRoots,
 } from '../../languages/typescript/preset/layout.mjs';
 import { THRESHOLD_DEFAULTS } from './loosenings.mjs';
-import { exceptionPathsByRule } from './paths/hiding.mjs';
+import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
 
 const UNSET_ROOTS = { sourceRoots, testRoots: defaultResolvedLayout.executedTestRoots };
 const DEFAULT_LAYOUT = {
@@ -48,12 +48,21 @@ function coveringLayout(baseLayout, headLayout) {
   );
 }
 
+function sameScope(left, right) {
+  return (
+    canonicalRule(left.rule) === canonicalRule(right.rule) &&
+    left.function === right.function &&
+    left.name === right.name
+  );
+}
+
 function commonExceptions(base, head = []) {
-  const headPaths = exceptionPathsByRule(head);
   return base
     .map((entry) => ({
       ...entry,
-      paths: entry.paths.filter((glob) => (headPaths.get(entry.rule) ?? []).includes(glob)),
+      paths: entry.paths.filter((glob) =>
+        head.some((other) => sameScope(entry, other) && other.paths.includes(glob)),
+      ),
     }))
     .filter(({ paths }) => paths.length > 0);
 }
@@ -96,19 +105,22 @@ function stricterLists(baseConfig, headConfig) {
   return covering;
 }
 
-function withHeadDuplicates(baseConfig, headConfig) {
-  const { duplicates } = headConfig;
-  const entries = Object.entries(baseConfig).flatMap(([key, value]) => {
-    if (key !== 'duplicates') {
-      return [[key, value]];
-    }
-    return duplicates === undefined ? [] : [[key, duplicates]];
-  });
-  return Object.fromEntries(
-    'duplicates' in baseConfig || duplicates === undefined
-      ? entries
-      : [...entries, ['duplicates', duplicates]],
-  );
+const HEAD_ANALYSIS_KEYS = ['duplicates', 'history'];
+
+function withHeadAnalysisSettings(baseConfig, headConfig) {
+  return {
+    ...Object.fromEntries(
+      Object.entries(baseConfig).filter(
+        ([key]) => !HEAD_ANALYSIS_KEYS.includes(key) || headConfig[key] !== undefined,
+      ),
+    ),
+    ...Object.fromEntries(
+      HEAD_ANALYSIS_KEYS.filter((key) => headConfig[key] !== undefined).map((key) => [
+        key,
+        headConfig[key],
+      ]),
+    ),
+  };
 }
 
 export function baseConfigCoveringHead(baseConfig, headConfig) {
@@ -117,5 +129,5 @@ export function baseConfigCoveringHead(baseConfig, headConfig) {
   if (Object.keys(layout).length > 0) {
     covering.layout = layout;
   }
-  return withHeadDuplicates(covering, headConfig);
+  return withHeadAnalysisSettings(covering, headConfig);
 }

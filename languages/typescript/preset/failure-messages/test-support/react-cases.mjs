@@ -61,46 +61,25 @@ const reactSyntaxCases = [
     'theme or design-system palette',
   ],
   [
-    'hard-coded color names the config exception',
-    "export const Dot = () => <svg fill='#336699' />;",
-    'nitpicker/react-no-hardcoded-colors in nitpicker.config.json',
-  ],
-  [
-    'conditional hook names the config exception',
-    panel('if (a) { useState(1); }'),
-    'nitpicker.config.json',
-  ],
-  [
-    'class component names the config exception',
-    "import React from 'react'; export class Panel extends React.Component { render() { return <div />; } }",
-    'nitpicker.config.json',
-  ],
-  [
-    'missing effect dependency names the config exception',
+    'missing effect dependency names when an exception fits',
     panel('useEffect(() => { log(a); }, []);'),
-    'nitpicker.config.json',
+    'deliberately left out',
   ],
   [
     'singular and plural props name the one-element array',
     'export type PanelProps = { tag?: string; tags?: string[] };',
     'one-element array',
   ],
-  [
-    'singular and plural props name the config exception',
-    'export type PanelProps = { tag?: string; tags?: string[] };',
-    'nitpicker.config.json',
-  ],
   ['exclusive props check names the discriminated union', exclusivePair, 'discriminated union'],
-  ['exclusive props check names the config exception', exclusivePair, 'nitpicker.config.json'],
   [
     'index key names a stable id',
     'export const List = ({ items }) => <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>;',
     'stable id',
   ],
   [
-    'index key names the config exception',
+    'index key names when an exception fits',
     'export const List = ({ items }) => <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>;',
-    'nitpicker.config.json',
+    'static list that never changes order',
   ],
   [
     'derived state names computing during render',
@@ -108,9 +87,9 @@ const reactSyntaxCases = [
     'during render',
   ],
   [
-    'derived state names the config exception',
+    'derived state names when an exception fits',
     panel('const [x, setX] = useState(0); useEffect(() => { setX(a * 2); }, [a]);'),
-    'nitpicker.config.json',
+    'external system',
   ],
   [
     'data fetching in an effect names a query library',
@@ -118,9 +97,9 @@ const reactSyntaxCases = [
     'useQuery',
   ],
   [
-    'data fetching in an effect names the config exception',
+    'data fetching in an effect names when an exception fits',
     panel('useEffect(() => { fetch(`/items/${a}`); }, [a]);'),
-    'nitpicker.config.json',
+    'analytics beacon',
   ],
   [
     'inline style names className',
@@ -131,11 +110,6 @@ const reactSyntaxCases = [
     'inline style names the runtime-value form',
     "export const Box = () => <div style={{ color: 'red' }} />;",
     'values computed at runtime',
-  ],
-  [
-    'inline style names the config exception',
-    "export const Box = () => <div style={{ color: 'red' }} />;",
-    'nitpicker.config.json',
   ],
   [
     'another styling approach names the styling setting',
@@ -174,11 +148,6 @@ const reactSyntaxCases = [
     'click handler on a div names the keyboard listener',
     'export const Box = ({ open }) => <div onClick={open} />;',
     'keyboard listener',
-  ],
-  [
-    'accessibility findings name the config exception',
-    "export const Logo = () => <img src='logo.png' />;",
-    'nitpicker.config.json',
   ],
 ].map(reactCase);
 

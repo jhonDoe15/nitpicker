@@ -2,12 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { unusedFieldMessage, useGradleFixtures } from './test-support/java-cli-harness.mjs';
+import {
+  unusedFieldMessage,
+  useGradleFixtures,
+  useMavenFixtures,
+} from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
-const { gradleRepository, run } = useGradleFixtures(nitpickerCli);
-
-describe('nitpicker with "preset": "java" and a legacy inventory', () => {
+describe.each([
+  ['a Gradle build', useGradleFixtures],
+  ['a Maven build', useMavenFixtures],
+])('nitpicker with "preset": "java" and a legacy inventory on %s', (_name, useFixtures) => {
+  const { repository, run } = useFixtures(nitpickerCli);
   const site = (name, count) => ({
     file: 'src/main/java/demo/A.java',
     rule: 'UnusedPrivateField',
@@ -15,14 +21,19 @@ describe('nitpicker with "preset": "java" and a legacy inventory', () => {
     count,
   });
   const inventory = (...sites) => `${JSON.stringify({ sites })}\n`;
-  it('baselines a site the inventory allows and still fails an unlisted one', () => {
-    const root = gradleRepository({ 'nitpicker.legacy.json': inventory(site('added', 1)) });
+  it('baselines a site the inventory allows', () => {
+    const root = repository({ 'nitpicker.legacy.json': inventory(site('added', 1)) });
     writeFiles(root, {
       'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
     });
     commit(root, 'add a baselined violation');
     expect(run(root).exitCode).toBe(0);
-
+  });
+  it('still fails a site the inventory does not list', () => {
+    const root = repository({
+      'nitpicker.legacy.json': inventory(site('added', 1)),
+      'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
+    });
     writeFiles(root, {
       'violations.txt':
         'Avoid unused field: legacy\nAvoid unused field: added\nAvoid unused field: other\n',
@@ -53,7 +64,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
     ]);
   });
   it('fails with baseline-expansion when head raises an allowance over base', () => {
-    const root = gradleRepository({ 'nitpicker.legacy.json': inventory(site('legacy', 1)) });
+    const root = repository({ 'nitpicker.legacy.json': inventory(site('legacy', 1)) });
     writeFiles(root, { 'nitpicker.legacy.json': inventory(site('legacy', 2)) });
     commit(root, 'raise the allowance');
 
@@ -82,7 +93,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
     ]);
   });
   it('honours a custom inventory path from "legacyInventory"', () => {
-    const root = gradleRepository({
+    const root = repository({
       'nitpicker.config.json': '{ "preset": "java", "legacyInventory": "config/legacy.json" }\n',
       'config/legacy.json': inventory(site('added', 1)),
     });
@@ -94,7 +105,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
     expect(run(root).exitCode).toBe(0);
   });
   it('treats a new inventory entry on head as an expansion', () => {
-    const root = gradleRepository();
+    const root = repository();
     writeFiles(root, {
       'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
       'nitpicker.legacy.json': inventory(site('added', 1)),

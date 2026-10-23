@@ -18,10 +18,11 @@ const HERMETIC_GIT_ENVIRONMENT = {
   GIT_COMMITTER_DATE: '2026-01-01T00:00:00Z',
 };
 
-export function fixtureGit(repositoryRoot, arguments_) {
+export function fixtureGit(repositoryRoot, arguments_, { input } = {}) {
   return execFileSync('git', arguments_, {
     cwd: repositoryRoot,
     encoding: 'utf8',
+    input,
     env: { ...process.env, ...HERMETIC_GIT_ENVIRONMENT },
     maxBuffer: 10 * 1024 * 1024,
     timeout: GIT_TIMEOUT_MS,

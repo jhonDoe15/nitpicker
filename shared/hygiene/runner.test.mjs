@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../core/diff/git/test-support/git-repository.mjs';
 import { HEAD_POLICY_ENV } from '../head-policy.mjs';
 import { configurationFiles, createHygieneAnalyzers } from './analyzers.mjs';
-import { parseHygieneArguments, runHygieneCheck, runHygieneCli } from './runner.mjs';
+import { parseCheckArguments } from './cli.mjs';
+import { runHygieneCheck, runHygieneCli } from './runner.mjs';
 
 const temporaryDirectories = [];
 const { createGitRepository } = useGitFixtures();
@@ -57,10 +58,10 @@ describe('runHygieneCheck', () => {
         path: 'svc/package.json',
         identity: 'svc/build|build-output',
         message:
-          'svc/build/ looks like build output tracked in git. If it holds sources or build scripts, add ' +
-          '{"rule":"committed-build-output","paths":["svc/build/**"],"reason":"..."} to "exceptions" in ' +
-          'nitpicker.config.json, or rename it. Otherwise untrack it with `git rm -r --cached svc/build`, ' +
-          'add `svc/build/` to .gitignore, and let CI produce it.',
+          'svc/build/ looks like build output tracked in git. Untrack it with `git rm -r --cached svc/build`, ' +
+          'add `svc/build/` to .gitignore, and let CI produce it; if it holds sources or build scripts, rename it. ' +
+          'If this is intended, add {"rule":"committed-build-output","paths":["svc/build/**"],"reason":"..."} to ' +
+          '"exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);
@@ -76,16 +77,19 @@ describe('runHygieneCheck', () => {
   });
 });
 
-describe('parseHygieneArguments', () => {
-  it('reads the named options and rejects anything else', () => {
-    expect(parseHygieneArguments(['--check', 'a', '--project-root', '/p'])).toEqual({
-      check: 'a',
-      projectRoot: '/p',
-    });
-    expect(() => parseHygieneArguments(['--nope', 'x'])).toThrow(
-      'Invalid hygiene argument: --nope',
-    );
-    expect(() => parseHygieneArguments(['--check'])).toThrow('Invalid hygiene argument: --check');
+describe('parseCheckArguments', () => {
+  it('reads the named options', () => {
+    expect(
+      parseCheckArguments(['--check', 'a', '--project-root', '/p', '--history-ref', 'abc']),
+    ).toEqual({ check: 'a', projectRoot: '/p', historyRef: 'abc' });
+  });
+
+  it.each([
+    [['--nope', 'x'], 'hygiene', 'Invalid hygiene argument: --nope'],
+    [['--check'], 'hygiene', 'Invalid hygiene argument: --check'],
+    [['--nope', 'x'], 'history', 'Invalid history argument: --nope'],
+  ])('rejects %j for the %s command', (commandArguments, command, message) => {
+    expect(() => parseCheckArguments(commandArguments, command)).toThrow(new Error(message));
   });
 });
 
@@ -152,8 +156,8 @@ describe('the hygiene configuration hash', () => {
   it('covers every module the runner loads', () => {
     expect(configurationFiles()).toEqual([
       'filesystem.mjs',
-      'glob.mjs',
       'head-policy.mjs',
+      'hygiene/cli.mjs',
       'hygiene/files/build-output.mjs',
       'hygiene/files/env-files.mjs',
       'hygiene/files/known-files.mjs',
@@ -162,6 +166,8 @@ describe('the hygiene configuration hash', () => {
       'hygiene/rules.mjs',
       'hygiene/runner.mjs',
       'hygiene/tracked-files.mjs',
+      'messages/exception-sentence.mjs',
+      'paths/glob.mjs',
       'project-rules/hygiene-rules.mjs',
       'traversal.mjs',
     ]);

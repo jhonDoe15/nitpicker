@@ -28,7 +28,7 @@ describe('risky-startup-flags', () => {
       rule: 'risky-startup-flags',
       file: resource(file),
       identity: flag.replaceAll('-', ''),
-      message: `${flag}=true hides wiring problems instead of fixing them. Remove it, or restructure the beans.`,
+      message: `Remove ${flag}=true and restructure the beans; the flag hides wiring problems instead of fixing them.`,
       line,
     });
 
@@ -107,7 +107,7 @@ describe('actuator-exposure', () => {
       file,
       identity,
       message:
-        'management.endpoints.web.exposure.include=* exposes every actuator endpoint. List the endpoints you need, for example health,info.',
+        'List only the actuator endpoints you need in management.endpoints.web.exposure.include, for example health,info; * exposes every endpoint.',
       line,
     });
 
@@ -160,12 +160,76 @@ describe('actuator-exposure', () => {
   });
 });
 
+describe('actuator-exposure: sensitive endpoints and access', () => {
+  const exposure = 'management.endpoints.web.exposure.include';
+  const sensitive = (names) =>
+    `List only health, info and metrics endpoints such as prometheus in management.endpoints.web.exposure.include; ${names} serve configuration, heap or thread contents, or control of the running application.`;
+  const actuator = (line, identity, message) =>
+    finding({ rule: 'actuator-exposure', file: MAIN_PROPERTIES, identity, message, line });
+  const relaxed = (key) => key.replaceAll('-', '');
+
+  it('names the sensitive endpoints a production file exposes', () => {
+    const text = `${exposure}=health,info,env,heapdump,shutdown`;
+
+    expect(read({ [resource('application.properties')]: text }, { jpa: false })).toEqual([
+      actuator(1, exposure, sensitive('env, heapdump, shutdown')),
+    ]);
+  });
+
+  it.each([
+    [
+      'management.endpoints.access.default=unrestricted',
+      'Leave management.endpoints.access.default unset, or set it to read-only, and open single endpoints with management.endpoint.<id>.access; unrestricted also opens the shutdown and heapdump endpoints.',
+    ],
+    [
+      'management.endpoint.shutdown.access=unrestricted',
+      'Set management.endpoint.shutdown.access to none, or remove it; unrestricted lets callers stop the application or download its memory.',
+    ],
+    [
+      'management.endpoint.heapdump.access=read-only',
+      'Set management.endpoint.heapdump.access to none, or remove it; read-only lets callers stop the application or download its memory.',
+    ],
+    [
+      'management.endpoint.shutdown.enabled=true',
+      'Remove management.endpoint.shutdown.enabled=true; it turns the shutdown endpoint on.',
+    ],
+    [
+      'management.endpoints.enabled-by-default=true',
+      'Remove management.endpoints.enabled-by-default=true; it turns the shutdown endpoint on.',
+    ],
+  ])('flags %s', (line, message) => {
+    const key = line.split('=')[0];
+
+    expect(read({ [resource('application.properties')]: line }, { jpa: false })).toEqual([
+      actuator(1, relaxed(key), message),
+    ]);
+  });
+
+  it('accepts health, info and metrics, closed access, and local profiles', () => {
+    expect(
+      read(
+        {
+          [resource('application.properties')]: [
+            `${exposure}=health,info,prometheus,metrics`,
+            'management.endpoint.shutdown.access=none',
+            'management.endpoints.access.default=read-only',
+            'management.endpoint.loggers.access=unrestricted',
+          ].join('\n'),
+          [resource('application-local.properties')]: `${exposure}=env,heapdump`,
+        },
+        { jpa: false },
+      ),
+    ).toEqual([]);
+  });
+});
+
 describe('error-details', () => {
   const stacktraceFinding = finding({
     rule: 'error-details',
     file: MAIN_PROPERTIES,
     identity: 'server.error.includestacktrace',
-    message: 'server.error.include-stacktrace sends stack traces to clients. Use never.',
+    message:
+      'Set server.error.include-stacktrace=never; other values send stack traces to clients.',
     line: 1,
   });
 

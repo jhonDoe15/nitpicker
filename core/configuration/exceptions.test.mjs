@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { exceptionEntryText } from '../../shared/messages/exception-sentence.mjs';
+import { exceptionMatcher } from '../../shared/rules/exceptions.mjs';
 import { validateConfig } from './validate.mjs';
 
 describe('hygiene exceptions', () => {
@@ -61,5 +63,64 @@ describe('package exceptions', () => {
     ).toThrow(
       'nitpicker.config.json: "exceptions[0].packages" must be an array of non-empty strings',
     );
+  });
+});
+
+function liftOf(rule, paths = ['src/legacy/**']) {
+  return { exceptions: [{ rule, paths, reason: 'legacy code' }] };
+}
+
+describe('config exceptions', () => {
+  it.each([['typescript'], ['javascript']])(
+    'sends doc-comment-content to nitpicker/no-comments with the %s preset',
+    (preset) => {
+      expect(() => validateConfig({ preset, ...liftOf('doc-comment-content') })).toThrow(
+        `nitpicker.config.json: "exceptions[0].rule" names doc-comment-content, which the ${preset} preset reports as nitpicker/no-comments: name "nitpicker/no-comments" instead`,
+      );
+      expect(() => validateConfig({ preset, ...liftOf('nitpicker/no-comments') })).not.toThrow();
+    },
+  );
+
+  it('rejects a path glob of a nitpicker rule that can never match', () => {
+    expect(() => validateConfig(liftOf('test-only-export', ['./src/legacy/**']))).toThrow(
+      'nitpicker.config.json: "exceptions[0].paths" glob "./src/legacy/**" can never match: drop the leading "./": globs match from the project root',
+    );
+    expect(() => validateConfig(liftOf('file-lines-limit', ['src/legacy/']))).toThrow(
+      'nitpicker.config.json: "exceptions[0].paths" glob "src/legacy/" can never match: drop the trailing "/": write "src/legacy/**"',
+    );
+  });
+
+  it('takes a bracketed route folder, whose brackets match themselves', () => {
+    const config = liftOf('test-only-export', ['src/app/[id]/**']);
+    const isExcepted = exceptionMatcher(validateConfig(config).exceptions);
+
+    expect(isExcepted('test-only-export', 'src/app/[id]/page.tsx')).toBe(true);
+    expect(isExcepted('test-only-export', 'src/app/i/page.tsx')).toBe(false);
+  });
+
+  it('lifts with a rule written as the finding prints it, in the matcher every rule calls', () => {
+    const isExcepted = exceptionMatcher([
+      { rule: 'structure/folder-files-limit', paths: ['src/big'], reason: 'Legacy' },
+      { rule: 'test-runtime/slow-test', paths: ['tests/**'], reason: 'Legacy' },
+    ]);
+
+    expect(isExcepted('folder-files-limit', 'src/big')).toBe(true);
+    expect(isExcepted('slow-test', 'tests/db.test.ts')).toBe(true);
+    expect(isExcepted('file-lines-limit', 'src/big')).toBe(false);
+  });
+
+  it('lifts the file whose escaped path a message prints', () => {
+    const printed = exceptionEntryText({ rule: 'large-file', path: 'cfg/{a,b}/[id]/s*r.bin' });
+    const isExcepted = exceptionMatcher([JSON.parse(printed)]);
+
+    expect(isExcepted('large-file', 'cfg/{a,b}/[id]/s*r.bin')).toBe(true);
+    expect(isExcepted('large-file', 'cfg/a/i/ser.bin')).toBe(false);
+    expect(isExcepted('large-file', 'cfg/{a,b}/[id]/sxr.bin')).toBe(false);
+  });
+
+  it('leaves the path globs of an ESLint rule to ESLint, which reads character classes', () => {
+    const config = { preset: 'typescript', ...liftOf('no-console', ['src/[ab]/**']) };
+
+    expect(validateConfig(config)).toEqual(config);
   });
 });

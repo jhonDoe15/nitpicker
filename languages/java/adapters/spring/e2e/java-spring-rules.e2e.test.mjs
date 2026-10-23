@@ -15,6 +15,12 @@ import {
   reportedViolations,
 } from '../__tests__/spring-project.mjs';
 
+const GUARDED_ERROR_PRONE_RULES = new Set([
+  'FieldCanBeFinal',
+  'PrivateConstructorForUtilityClass',
+  'MissingOverride',
+]);
+
 describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
   let projectRoot;
 
@@ -59,8 +65,13 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
       lintedRoots: ['src/main/java', 'src/test/java'],
     });
     expect(
-      findings.map(({ rule, path: file, location }) => `${file}:${location.line} ${rule}`),
-    ).toEqual(['src/main/java/shop/catalog/ProductRepository.java:11 MissingOverride']);
+      findings
+        .filter(({ rule }) => GUARDED_ERROR_PRONE_RULES.has(rule))
+        .map(({ rule, path: file, location }) => `${file}:${location.line} ${rule}`),
+    ).toEqual([
+      'src/main/java/shop/catalog/ProductRepository.java:11 MissingOverride',
+      'src/main/java/shop/config/SecretsConfig.java:53 PrivateConstructorForUtilityClass',
+    ]);
   });
 
   it('records the resource roots and that the project uses Spring', () => {

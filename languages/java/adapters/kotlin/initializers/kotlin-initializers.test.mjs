@@ -100,7 +100,7 @@ describe('CRAP of init blocks and property initializers', () => {
     ];
 
     expect(crap([INIT, TABLE], jacoco(missed))).toEqual([
-      'crap-score-limit Boot.<init>: Boot.<init> has CRAP 6.00; score must be below 3. Test its uncovered branches, or split a branchy part into its own function.',
+      'crap-score-limit Boot.<init>: Boot.<init> has CRAP 6.00; score must be below 3. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/kotlin/demo/Boot.kt"],"function":"Boot.<init>","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
@@ -108,13 +108,13 @@ describe('CRAP of init blocks and property initializers', () => {
     const untaken = [...COVERED.slice(0, 4), sourceLine(11, 2, 0, [2, 0])];
 
     expect(crap([INIT, TABLE], jacoco(untaken))).toEqual([
-      'crap-score-limit Boot.table: Boot.table has CRAP 6.00; score must be below 3. Test its uncovered branches, or split a branchy part into its own function.',
+      'crap-score-limit Boot.table: Boot.table has CRAP 6.00; score must be below 3. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/kotlin/demo/Boot.kt"],"function":"Boot.table","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
   it('reports unknown coverage for an initializer whose lines JaCoCo does not list', () => {
     expect(crap([INIT, TABLE], jacoco([sourceLine(10, 1, 0), sourceLine(11, 2, 0)]))).toEqual([
-      'crap-coverage-unknown Boot.<init>: Boot.<init> has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
+      'crap-coverage-unknown Boot.<init>: Boot.<init> has unknown coverage and no CRAP score: no test runs it. Add a test that calls it. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/kotlin/demo/Boot.kt"],"function":"Boot.<init>","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
@@ -132,7 +132,7 @@ describe('CRAP of init blocks and property initializers', () => {
       '<method name="run" desc="()V" line="5"><counter type="LINE" missed="3" covered="0"/></method>';
 
     expect(crap([INIT, inner, TABLE], jacoco(lines, method))).toEqual([
-      'crap-score-limit Boot.Inner.run: Boot.Inner.run has CRAP 6.00; score must be below 3. Test its uncovered branches, or split a branchy part into its own function.',
+      'crap-score-limit Boot.Inner.run: Boot.Inner.run has CRAP 6.00; score must be below 3. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/kotlin/demo/Boot.kt"],"function":"Boot.Inner.run","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
@@ -159,13 +159,14 @@ describe('structure limits of init blocks and property initializers', () => {
       {
         rule: 'function-lines-limit',
         symbol: 'Boot.<init>',
-        message: 'Boot.<init> has 87 lines; limit is 50',
+        message:
+          'Boot.<init> has 87 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/main/kotlin/demo/Boot.kt"],"function":"Boot.<init>","reason":"..."} to "exceptions" in nitpicker.config.json.',
       },
       {
         rule: 'function-statements-limit',
         symbol: 'Boot.<init>',
         message:
-          'Boot.<init> has 25 statements; limit is 15. Split by responsibility and name each part for what it checks or does.',
+          'Boot.<init> has 25 statements; limit is 15. Split by responsibility and name each part for what it checks or does. If this is intended, add {"rule":"function-statements-limit","paths":["src/main/kotlin/demo/Boot.kt"],"function":"Boot.<init>","reason":"..."} to "exceptions" in nitpicker.config.json.',
       },
     ]);
   });
@@ -222,15 +223,15 @@ describe('identity of init blocks', () => {
     ).toEqual([
       [
         'Boot.<init>',
-        'Boot.<init> nests control flow 3 deep (limit 2). Move the nested part into its own function.',
+        'Boot.<init> nests control flow 3 deep (limit 2). Move the nested part into its own function. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/kotlin/demo/Boot.kt"],"function":"Boot.<init>","reason":"..."} to "exceptions" in nitpicker.config.json.',
       ],
       [
         'Boot.table',
-        'Boot.table nests control flow 3 deep (limit 2). Move the nested part into its own function.',
+        'Boot.table nests control flow 3 deep (limit 2). Move the nested part into its own function. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/kotlin/demo/Boot.kt"],"function":"Boot.table","reason":"..."} to "exceptions" in nitpicker.config.json.',
       ],
       [
         'Boot.flag',
-        'Boot.flag nests control flow 3 deep (limit 2). Return early instead of nesting.',
+        'Boot.flag nests control flow 3 deep (limit 2). Return early instead of nesting. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/kotlin/demo/Boot.kt"],"function":"Boot.flag","reason":"..."} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
   });

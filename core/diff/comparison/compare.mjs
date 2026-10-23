@@ -2,6 +2,7 @@ import { comparisonKey } from './fingerprint.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { folderMoves, mainDestination } from '../git/patches/renames.mjs';
+import { insertBeforeRoute } from '../../../shared/messages/exception-sentence.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -156,7 +157,10 @@ function withGrowthAdvice({ findings, baseFindings, renames, directories }) {
       ? finding
       : {
           ...finding,
-          message: `${finding.message} ${advice.replaceAll('{base}', String(baseValue))}`,
+          message: insertBeforeRoute(
+            finding.message,
+            advice.replaceAll('{base}', String(baseValue)),
+          ),
         };
   });
 }

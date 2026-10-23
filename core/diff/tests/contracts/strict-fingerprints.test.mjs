@@ -3,11 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../../../languages/typescript/adapters/eslint/normalize.mjs';
-import { failureMessageCases } from '../../../../languages/typescript/preset/failure-messages/test-support/cases.mjs';
+import { failureMessageCases as baseCases } from '../../../../languages/typescript/preset/failure-messages/test-support/cases.mjs';
 import { lintFixture } from '../../../../languages/typescript/preset/failure-messages/test-support/harness.mjs';
 import { compareFindings } from '../../comparison/compare.mjs';
+import { testHonestyFailureMessageCases } from '../../../../languages/typescript/preset/failure-messages/test-support/honesty/test-honesty-cases.mjs';
 
 const temporaryRoots = [];
+const failureMessageCases = [...baseCases, ...testHonestyFailureMessageCases];
 
 afterAll(() => {
   for (const root of temporaryRoots) {
@@ -132,7 +134,7 @@ describe('ESLint messages carry the allowed form without changing the finding id
     );
 
     expect(finding.message).toBe(
-      'Variable `value` is mutable (array); domain/ values must be deeply readonly. Type it `readonly T[]`.',
+      'Variable `value` is mutable (array); domain/ values must be deeply readonly. Type it `readonly T[]`. If this is intended, add {"rule":"functional/prefer-immutable-types","paths":["src/main/features/a/domain/x.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(finding.identity.split('|').slice(0, 2)).toEqual([
       'message:variable',

@@ -83,6 +83,139 @@ style:
         reason: 'Use `apply` to configure an object, or write a plain statement after it.'
       - value: 'kotlinx.coroutines.runBlocking'
         reason: 'Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. In a test, use `runTest`.'
+      - value: 'kotlin.io.print'
+        reason: 'Log through the application logger (`logger.info(...)`) instead of printing to the console.'
+      - value: 'kotlin.io.println'
+        reason: 'Log through the application logger (`logger.info(...)`) instead of printing to the console.'
+      - value: 'java.lang.System.getenv'
+        reason: 'Read environment variables only in the composition root (the file with `fun main`, the `@SpringBootApplication` class or a Ktor `Application` module): read them once into a config class there and pass it in.'
+      - value: 'java.time.Instant.now()'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.LocalDate.now()'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.LocalDate.now(java.time.ZoneId)'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.LocalDateTime.now()'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.LocalDateTime.now(java.time.ZoneId)'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.LocalTime.now()'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.LocalTime.now(java.time.ZoneId)'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.ZonedDateTime.now()'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.ZonedDateTime.now(java.time.ZoneId)'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.OffsetDateTime.now()'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.OffsetDateTime.now(java.time.ZoneId)'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.OffsetTime.now()'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.OffsetTime.now(java.time.ZoneId)'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.Year.now()'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.Year.now(java.time.ZoneId)'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.YearMonth.now()'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.YearMonth.now(java.time.ZoneId)'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.MonthDay.now()'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.time.MonthDay.now(java.time.ZoneId)'
+        reason: 'Inject a `java.time.Clock` and call `now(clock)` (`Instant.now(clock)`), so the code can be tested with a fixed time.'
+      - value: 'java.lang.System.currentTimeMillis'
+        reason: 'Inject a `java.time.Clock` and call `clock.millis()`, so the code can be tested with a fixed time.'
+      - value: 'kotlinx.datetime.Clock.System.now'
+        reason: 'Inject a `kotlinx.datetime.Clock` and call `clock.now()`, so the code can be tested with a fixed time.'
+      - value: 'kotlin.random.Random.Default.nextBits'
+        reason: 'Inject a `kotlin.random.Random` and call it (`random.nextInt(6)`), so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.random.Random.Default.nextBoolean'
+        reason: 'Inject a `kotlin.random.Random` and call it (`random.nextInt(6)`), so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.random.Random.Default.nextBytes'
+        reason: 'Inject a `kotlin.random.Random` and call it (`random.nextInt(6)`), so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.random.Random.Default.nextDouble'
+        reason: 'Inject a `kotlin.random.Random` and call it (`random.nextInt(6)`), so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.random.Random.Default.nextFloat'
+        reason: 'Inject a `kotlin.random.Random` and call it (`random.nextInt(6)`), so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.random.Random.Default.nextInt'
+        reason: 'Inject a `kotlin.random.Random` and call it (`random.nextInt(6)`), so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.random.Random.Default.nextLong'
+        reason: 'Inject a `kotlin.random.Random` and call it (`random.nextInt(6)`), so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.collections.random(kotlin.collections.Collection)'
+        reason: 'Pass an injected `kotlin.random.Random`: `items.random(random)`, so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.collections.random(kotlin.Array)'
+        reason: 'Pass an injected `kotlin.random.Random`: `items.random(random)`, so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.ranges.random(kotlin.ranges.IntRange)'
+        reason: 'Pass an injected `kotlin.random.Random`: `range.random(random)`, so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.ranges.random(kotlin.ranges.LongRange)'
+        reason: 'Pass an injected `kotlin.random.Random`: `range.random(random)`, so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.ranges.random(kotlin.ranges.CharRange)'
+        reason: 'Pass an injected `kotlin.random.Random`: `range.random(random)`, so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.collections.shuffled(kotlin.collections.Iterable)'
+        reason: 'Pass an injected `kotlin.random.Random`: `items.shuffled(random)`, so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.collections.shuffle(kotlin.collections.MutableList)'
+        reason: 'Pass an injected `kotlin.random.Random`: `items.shuffle(random)`, so the code can be tested with `Random(seed)`.'
+      - value: 'kotlin.collections.shuffle(kotlin.Array)'
+        reason: 'Pass an injected `kotlin.random.Random`: `items.shuffle(random)`, so the code can be tested with `Random(seed)`.'
+      - value: 'java.lang.Math.random'
+        reason: 'Inject a `kotlin.random.Random` and call it (`random.nextInt(6)`), so the code can be tested with `Random(seed)`.'
+      - value: 'java.util.concurrent.ThreadLocalRandom.current'
+        reason: 'Inject a `kotlin.random.Random` and call it (`random.nextInt(6)`), so the code can be tested with `Random(seed)`.'
+      - value: 'java.lang.Thread.sleep'
+        reason: 'Do not sleep in production code. Schedule the work (`ScheduledExecutorService`) or wait on the condition.'
+      - value: 'java.util.concurrent.TimeUnit.sleep'
+        reason: 'Do not sleep in production code. Schedule the work (`ScheduledExecutorService`) or wait on the condition.'
+      - value: 'java.lang.Runtime.exec'
+        reason: 'Run commands with `ProcessBuilder` and an argument list (`ProcessBuilder("git", "log", ref)`), never a command string.'
+      - value: 'java.io.ObjectInputStream.<init>'
+        reason: 'Do not read Java-serialized objects. Use JSON or another data format (kotlinx.serialization).'
+      - value: 'java.lang.Thread.start'
+        reason: 'Do not start threads by hand. Launch a coroutine in a scope its owner cancels, or submit the work to an injected `ExecutorService`.'
+      - value: 'kotlin.concurrent.thread'
+        reason: 'Do not start threads by hand. Launch a coroutine in a scope its owner cancels, or submit the work to an injected `ExecutorService`.'
+      - value: 'java.util.Date.<init>'
+        reason: 'Use java.time (`Instant`, `LocalDate`, `ZonedDateTime`, `ZoneId` and `DateTimeFormatter`) instead of the legacy date classes. Convert a `Date` another API returns with `toInstant()` in the same expression.'
+      - value: 'java.util.GregorianCalendar.<init>'
+        reason: 'Use java.time (`Instant`, `LocalDate`, `ZonedDateTime`, `ZoneId` and `DateTimeFormatter`) instead of the legacy date classes. Convert a `Date` another API returns with `toInstant()` in the same expression.'
+      - value: 'java.util.Calendar.getInstance'
+        reason: 'Use java.time (`Instant`, `LocalDate`, `ZonedDateTime`, `ZoneId` and `DateTimeFormatter`) instead of the legacy date classes. Convert a `Date` another API returns with `toInstant()` in the same expression.'
+      - value: 'java.text.SimpleDateFormat.<init>'
+        reason: 'Use java.time (`Instant`, `LocalDate`, `ZonedDateTime`, `ZoneId` and `DateTimeFormatter`) instead of the legacy date classes. Convert a `Date` another API returns with `toInstant()` in the same expression.'
+      - value: 'java.util.Random.<init>'
+        reason: 'Use an injected `kotlin.random.Random` (`Random(seed)` in tests); `random.asJavaRandom()` where an API needs a `java.util.Random`.'
+  ForbiddenImport:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+    imports:
+      - value: 'java.util.Date'
+        reason: 'Use java.time (`Instant`, `LocalDate`, `ZonedDateTime`, `ZoneId` and `DateTimeFormatter`) instead of the legacy date classes. Convert a `Date` another API returns with `toInstant()` in the same expression.'
+      - value: 'java.util.Calendar'
+        reason: 'Use java.time (`Instant`, `LocalDate`, `ZonedDateTime`, `ZoneId` and `DateTimeFormatter`) instead of the legacy date classes. Convert a `Date` another API returns with `toInstant()` in the same expression.'
+      - value: 'java.util.GregorianCalendar'
+        reason: 'Use java.time (`Instant`, `LocalDate`, `ZonedDateTime`, `ZoneId` and `DateTimeFormatter`) instead of the legacy date classes. Convert a `Date` another API returns with `toInstant()` in the same expression.'
+      - value: 'java.util.TimeZone'
+        reason: 'Use java.time (`Instant`, `LocalDate`, `ZonedDateTime`, `ZoneId` and `DateTimeFormatter`) instead of the legacy date classes. Convert a `Date` another API returns with `toInstant()` in the same expression.'
+      - value: 'java.text.SimpleDateFormat'
+        reason: 'Use java.time (`Instant`, `LocalDate`, `ZonedDateTime`, `ZoneId` and `DateTimeFormatter`) instead of the legacy date classes. Convert a `Date` another API returns with `toInstant()` in the same expression.'
+      - value: 'java.util.Random'
+        reason: 'Use an injected `kotlin.random.Random` (`Random(seed)` in tests); `random.asJavaRandom()` where an API needs a `java.util.Random`.'
+  ForbiddenComment:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+    comments:
+      - value: '(?m)(?-i)(?:^[\s*]*(?:TODO|FIXME|XXX|HACK|STOPSHIP)(?![\w-])(?![./]\w)|(?<![\w./-])(?:TODO|FIXME|XXX|HACK|STOPSHIP)(?=[:(]))'
+        reason: 'A TODO or FIXME needs an issue reference: write `TODO(#123): ...` or `TODO PROJ-123: ...`, or do the work now.'
+    allowedPatterns: '(?-i)(?<![\w./-])(?:TODO|FIXME|XXX|HACK|STOPSHIP)(?:\(\s*(?:#\d+|(?!(?:SHA|UTF|ISO|RFC|MD|AES|RSA|TLS|SSL|HTTP|ES|ECMA|IEEE|CVE)-)[A-Z][A-Z0-9]+-\d+|https?://\S+)\s*\)|:?\s+(?:#\d+|(?!(?:SHA|UTF|ISO|RFC|MD|AES|RSA|TLS|SSL|HTTP|ES|ECMA|IEEE|CVE)-)[A-Z][A-Z0-9]+-\d+|https?://\S+))'
   UnnecessaryLet:
     active: true
     severity: warning
@@ -108,9 +241,32 @@ style:
     ignoreAnnotated: []
     includes: []
     allowVars: true
+    excludeAnnotatedClasses:
+      - 'Entity'
+      - 'Embeddable'
+      - 'MappedSuperclass'
+      - 'Document'
+      - 'Table'
+      - 'Node'
   DataClassShouldBeImmutable:
     active: true
     severity: warning
     excludes: []
     ignoreAnnotated: []
     includes: []
+
+complexity:
+  active: true
+  excludes: []
+  ignoreAnnotated: []
+  includes: []
+  StringLiteralDuplication:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+    threshold: 3
+    ignoreAnnotation: true
+    excludeStringsWithLessThan5Characters: true
+    ignoreStringsRegex: '^[^A-Za-z0-9]*$'

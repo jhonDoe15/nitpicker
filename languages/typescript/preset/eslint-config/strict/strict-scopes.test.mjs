@@ -20,7 +20,7 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
       'domain/ code has no loops: transform with map, filter, flatMap, reduce with an initial value, Object.fromEntries or Object.groupBy.',
     ]);
     expect(messages(defaultExport, file)).toEqual([
-      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files, `declare module` blocks and the framework files that need one (Next.js routes, Storybook stories, Expo Router screens). If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
+      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files, `declare module` blocks and the framework files that need one (Next.js routes, Storybook stories, Expo Router screens). An exception fits only when a framework or library requires it.',
     ]);
   });
 
@@ -29,10 +29,10 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
 
     expect([...new Set(messages(`${asserted}\n${thenChain}\n`, file))].sort()).toEqual([
       'Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.',
-      'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
+      'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. An exception fits only when a framework or library requires it.',
     ]);
     expect(messages(defaultExport, file)).toEqual([
-      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files, `declare module` blocks and the framework files that need one (Next.js routes, Storybook stories, Expo Router screens). If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
+      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files, `declare module` blocks and the framework files that need one (Next.js routes, Storybook stories, Expo Router screens). An exception fits only when a framework or library requires it.',
     ]);
   });
 
@@ -42,7 +42,7 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
         'for...of is the only loop; iterate the items with for...of.',
       ]);
       expect(messages(thenChain, file)).toEqual([
-        'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
+        'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. An exception fits only when a framework or library requires it.',
       ]);
       expect(messages('export const same = a == b;', file)).toEqual([
         "Expected '===' and instead saw '=='.",
@@ -58,7 +58,7 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
     const recursive = 'export function retry(n) { return n > 0 ? retry(n - 1) : 0; }';
 
     expect(messages(recursive, 'src/main/features/x/domain/run.ts')).toEqual([
-      "'retry' calls itself. domain/ has no loops and no recursion, so a walk over data of unknown depth (a tree) belongs in adapters/: for...of over a worklist, pushing each node's children onto it. Pass domain/ the flat result; flat data uses map, filter, flatMap or Object.fromEntries. If the recursion is bounded and deliberate, add an exception for this rule in nitpicker.config.json.",
+      "'retry' calls itself. domain/ has no loops and no recursion, so a walk over data of unknown depth (a tree) belongs in adapters/: for...of over a worklist, pushing each node's children onto it. Pass domain/ the flat result; flat data uses map, filter, flatMap or Object.fromEntries. An exception fits only when the recursion is bounded and deliberate.",
     ]);
     for (const file of [
       'src/main/features/x/adapters/run.ts',
@@ -66,7 +66,7 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
       'src/main/shared/run.ts',
     ]) {
       expect(messages(recursive, file)).toEqual([
-        "'retry' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. A component that renders itself in JSX is not reported. If the recursion is bounded and deliberate, add an exception for this rule in nitpicker.config.json.",
+        "'retry' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. A component that renders itself in JSX is not reported. An exception fits only when the recursion is bounded and deliberate.",
       ]);
     }
     expect(messages(recursive, 'src/run.test.ts')).toEqual([

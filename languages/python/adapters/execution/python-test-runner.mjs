@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { environmentError } from './python-environment.mjs';
-import { execute, probeVersion, VERSION_PATTERN } from './python-process.mjs';
+import { probe, probeVersion, VERSION_PATTERN } from './python-process.mjs';
 import { readOptional, readProjectHints } from './python-project.mjs';
 import { DJANGO_SCRIPT, readDjangoScript } from './python-django.mjs';
 import { TEST_DIRECTORIES, TEST_FILE_NAME } from './python-test-files.mjs';
@@ -10,14 +10,13 @@ import { JUNIT_REPORT } from '../test-runs/junit-results.mjs';
 import { pinnedEnvironmentAddopts, pinnedPytestArguments } from '../test-runs/pytest-pins.mjs';
 
 export const NO_TESTS_EXIT = 5;
-const PYTEST_PROBE = [
+export const PYTEST_PROBE = [
   'python',
   '-c',
   'import importlib.util as u, pytest; print(pytest.__version__, *(int(u.find_spec(m) is not None) for m in ("pytest_cov", "xdist", "pytest_rerunfailures", "pytest_django")))',
 ];
 const UNITTEST_FILES = 'python_files=test*.py';
 const RUNNER_DISTRIBUTIONS = { django: 'Django', nose2: 'nose2' };
-const probes = new WeakMap();
 export const UNITTEST_SCRIPT = fileURLToPath(
   new URL('../test-runs/unittest_timings.py', import.meta.url),
 );
@@ -105,24 +104,18 @@ export function detectTestRunner(projectRoot, setting) {
 }
 
 export function probePytest(context) {
-  if (!probes.has(context)) {
-    const result = execute(context, PYTEST_PROBE);
-    const [version, coverage, xdist, rerunfailures, django] =
-      result.error === undefined && result.status === 0 ? result.stdout.trim().split(' ') : [];
-    probes.set(
-      context,
-      VERSION_PATTERN.test(version ?? '')
-        ? {
-            version,
-            coverage: coverage === '1',
-            xdist: xdist === '1',
-            rerunfailures: rerunfailures === '1',
-            django: django === '1',
-          }
-        : undefined,
-    );
-  }
-  return probes.get(context);
+  const result = probe(context, PYTEST_PROBE);
+  const [version, coverage, xdist, rerunfailures, django] =
+    result.error === undefined && result.status === 0 ? result.stdout.trim().split(' ') : [];
+  return VERSION_PATTERN.test(version ?? '')
+    ? {
+        version,
+        coverage: coverage === '1',
+        xdist: xdist === '1',
+        rerunfailures: rerunfailures === '1',
+        django: django === '1',
+      }
+    : undefined;
 }
 
 export function pytestLabel(context) {

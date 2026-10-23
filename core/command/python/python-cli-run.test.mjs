@@ -88,6 +88,33 @@ describe('nitpicker with "preset": "python" running the project', () => {
       expect(testRun.cwd).not.toBe(root);
     }
   });
+  it.each([
+    ['in the test process', false],
+    ['as a child process', true],
+  ])(
+    'passes the followed conventions to the formatter when the runner runs %s',
+    (_where, subprocess) => {
+      const calls = callsLog();
+      const wide = [110, 115].map((width) => `x = ${'a'.repeat(width - 4)}\n`).join('');
+      const root = pythonRepository({
+        'pyproject.toml': '[project]\nname = "demo"\nversion = "0.1.0"\n\n[tool.black]\n',
+        'src/demo/wide.py': wide,
+      });
+      writeFiles(root, { 'src/demo/b.py': 'x = 1\n' });
+      commit(root, 'change');
+
+      const result = run(root, [], { subprocess });
+
+      expect(result.exitCode, result.text).toBe(0);
+      const checks = calls()
+        .filter(({ tool, args }) => tool === 'black' && args[0] === '--check')
+        .map(({ args }) => [...args.slice(0, 1), ...args.slice(3)]);
+      expect(checks).toEqual([
+        ['--check', '--line-length', '120', '--target-version', 'py38', '.'],
+        ['--check', '--line-length', '120', '--target-version', 'py38', '.'],
+      ]);
+    },
+  );
   it('rejects the TypeScript-only config keys', () => {
     const root = pythonRepository({
       'nitpicker.config.json': '{ "preset": "python", "layout": { "sourceRoots": ["src"] } }\n',
@@ -97,7 +124,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
 
     expect(result.exitCode).toBe(2);
     expect(result.output.err).toMatch(
-      /^nitpicker failed: nitpicker.config.json: "layout" is not supported with "preset": "python"/,
+      /^nitpicker failed: nitpicker.config.json: "layout.sourceRoots" is not supported with "preset": "python"/,
     );
   });
   it('gates a snapshot with --all', () => {
@@ -133,7 +160,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
         'repository-hygiene: total=0 enforceable=0 descriptive=0',
         '',
         'Enforceable findings:',
-        'ruff/F401 src/demo/a.py:1 `os` imported but unused. To allow it for some paths, add a "python.exceptions" entry for F401 in nitpicker.config.json.',
+        'ruff/F401 src/demo/a.py:1 `os` imported but unused. If this is intended, add {"rule":"F401","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
         '',
         'Descriptive findings:',
         'coupling/coupling . dependencies summary',

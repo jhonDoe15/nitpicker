@@ -1,9 +1,12 @@
 import { CONFIG_FILE_NAME, isPlainObject } from '../../shared/config.mjs';
 import { policyDigest } from '../diff/reporting/review/policy-findings.mjs';
+import { buildNarrowingChanges } from './build-files/build-narrowing.mjs';
+import { toolConfigChanges } from './build-files/tool-config-changes.mjs';
 import { coveredPathChanges } from './paths/covered-paths.mjs';
+import { generatedMarkingChanges } from './paths/generated-marking.mjs';
 import { hiddenCodeChanges } from './paths/hidden-code.mjs';
 import { tsconfigChanges } from './paths/tsconfig-changes.mjs';
-import { listedChanges, loosensSetting } from './loosenings.mjs';
+import { listedChanges, looseningKindOfSetting } from './loosenings.mjs';
 import { timeoutChanges } from './timeout-changes.mjs';
 
 const LISTED_KEYS = new Set([
@@ -72,28 +75,34 @@ function changedSettings(baseConfig, headConfig) {
 }
 
 function loosening(entry) {
-  return typeof entry === 'string'
-    ? { text: entry, key: entry, files: [CONFIG_FILE_NAME] }
-    : { key: entry.text, ...entry };
+  return { key: entry.text, files: [CONFIG_FILE_NAME], ...entry };
 }
 
 function describedEntries(baseConfig, headConfig, scope) {
-  const settings = changedSettings(baseConfig, headConfig);
+  const settings = changedSettings(baseConfig, headConfig).map((entry) => ({
+    ...entry,
+    kind: looseningKindOfSetting(entry, scope),
+  }));
   const parts = [
     ...coveredPathChanges(baseConfig, headConfig, scope),
     ...listedChanges(baseConfig, headConfig),
     timeoutChanges(baseConfig, headConfig),
     hiddenCodeChanges(baseConfig, headConfig, scope),
+    generatedMarkingChanges(scope),
     tsconfigChanges(scope),
+    ...buildNarrowingChanges(scope),
+    toolConfigChanges(scope),
   ];
   return {
     loosened: [
       ...parts.flatMap((part) => part.loosened),
-      ...settings.filter((entry) => loosensSetting(entry, scope)).map(({ text }) => text),
+      ...settings
+        .filter(({ kind }) => kind !== undefined)
+        .map(({ text, kind }) => ({ text, kind })),
     ].map(loosening),
     changed: [
       ...parts.flatMap((part) => part.changed),
-      ...settings.filter((entry) => !loosensSetting(entry, scope)).map(({ text }) => text),
+      ...settings.filter(({ kind }) => kind === undefined).map(({ text }) => text),
     ],
   };
 }
@@ -117,6 +126,7 @@ export function policyChangeFields(baseConfig, headConfig, scope) {
   return {
     policyChanges: [...texts, ...changed],
     policyLoosenings: texts,
+    policyKinds: Object.fromEntries(loosened.map(({ text, kind }) => [text, kind])),
     ...(loosened.length === 0 ? {} : { policyDigest: evidenceDigest(loosened, scope) }),
   };
 }

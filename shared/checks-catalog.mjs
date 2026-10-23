@@ -2,9 +2,17 @@ import { DUPLICATES_MODE, LANGUAGES, RULES } from './policy.mjs';
 
 const LANGUAGE_TITLES = {
   typescript: 'TypeScript',
+  javascript: 'JavaScript',
   java: 'Java',
   python: 'Python',
   kotlin: 'Kotlin',
+};
+
+const ENFORCEMENT_TEXT = {
+  true: 'enforced',
+  false: 'not enforced',
+  partial: 'partial',
+  reported: 'report-only',
 };
 
 export const GENERATED_BLOCK_START = '<!-- generated:custom-rules begin (npm run gen:checks) -->';
@@ -22,7 +30,7 @@ export function renderCustomRulesTable() {
     `\`${rule.id}\``,
     `\`${rule.check}\``,
     rule.limit,
-    ...LANGUAGES.map((language) => (rule.enforcedBy[language] ? 'enforced' : 'not enforced')),
+    ...LANGUAGES.map((language) => ENFORCEMENT_TEXT[String(rule.enforcedBy[language])]),
   ]);
   const widths = header.map((title, column) =>
     Math.max(title.length, ...body.map((row) => row[column].length)),

@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { escapeRegExp } from '../../../../shared/glob.mjs';
+import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { escapeXml } from './xml-write.mjs';
 import { pmdLayerFiles, TEST_RULESET } from './layer-files.mjs';

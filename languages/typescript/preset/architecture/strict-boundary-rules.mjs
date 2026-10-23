@@ -1,4 +1,5 @@
-import { globToRegExpSource } from '../../../../shared/glob.mjs';
+import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
+import { globToRegExpSource } from '../../../../shared/paths/glob.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { layoutFeatures } from './strict-layout.mjs';
 import { isTypeOnlyDependency } from '../dependency-graph/cruise.mjs';
@@ -24,7 +25,7 @@ const { featureRoot, feature, shared, compositionRoot } = layoutFeatures;
 const codeFile = '\\.[cm]?[jt]sx?$';
 
 const EXCEPTION_ROUTE =
-  ' If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).';
+  ' An exception fits only when it is deliberate; its paths are the importing files.';
 
 const pureNodeModules = [
   'path',
@@ -178,7 +179,7 @@ function withExceptionRoute(rule) {
 
 function withExceptions(rule, exceptions) {
   const lifted = exceptions
-    .filter((exception) => exception.rule === rule.name)
+    .filter((exception) => canonicalRule(exception.rule) === rule.name)
     .flatMap(({ paths }) => paths.map(globToRegExpSource));
   if (lifted.length === 0) {
     return rule;
