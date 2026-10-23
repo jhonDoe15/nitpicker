@@ -17,8 +17,8 @@ public final class Prop {
   public final boolean constructorParameter;
   public Fun getter;
 
-  public Prop(String name, Owner owner, KtNamedDeclaration psi, Shape shape) {
-    this.name = name;
+  public Prop(Owner owner, KtNamedDeclaration psi, Shape shape) {
+    this.name = psi.getName();
     this.owner = owner;
     this.psi = psi;
     this.type = shape.type;

@@ -45,7 +45,7 @@ public final class Index {
 
   public Owner module(Source source) {
     return modules.computeIfAbsent(source, key -> {
-      Owner module = new Owner(key.path, key.stem, key.stem, key, null, null);
+      Owner module = new Owner(new Owner.Place(key, null), key.stem, null);
       register(module);
       return module;
     });

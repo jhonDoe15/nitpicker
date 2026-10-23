@@ -175,7 +175,7 @@ public final class Walk {
       Owner holder = ctx.typer.objectOwner(staticOwner);
       Prop prop = holder == null ? null : ctx.members.prop(holder, name);
       if (prop != null && prop.getter != null && holder != function.owner) {
-        accessor(prop.getter, null, q, selector);
+        accessor(prop.getter, null, q);
       }
       if (prop != null) {
         table(prop);
@@ -196,20 +196,20 @@ public final class Walk {
       return;
     }
     if (value != null && value.type.project()) {
-      reads.record(value.id, value.type.owner, name, Conditions.decided(q), source.line(selector));
+      reads.record(value.id, value.type.owner, new Reads.Access(name, Conditions.decided(q), source.line(selector)));
     }
     if (scope.thisField(receiver) != null && prop.owner == function.owner) {
       own.add(name);
     } else if (prop.getter != null) {
-      accessor(prop.getter, receiver, q, selector);
+      accessor(prop.getter, receiver, q);
     }
   }
 
-  private void accessor(Fun getter, KtExpression receiver, KtExpression value, KtNameReferenceExpression node) {
+  private void accessor(Fun getter, KtExpression receiver, KtQualifiedExpression value) {
     String key = receiver == null ? null : keys.of(receiver);
     calls.add(
         m(
-            "target", getter.id, "line", source.line(node), "receiver", key,
+            "target", getter.id, "line", source.line(value.getSelectorExpression()), "receiver", key,
             "cleanup", finallyDepth > 0 ? Boolean.TRUE : null, "mutation", mutations.of(value)));
   }
 
@@ -226,7 +226,8 @@ public final class Walk {
       }
       if (binding.receiver && function.receiver != null) {
         Ty receiver = ctx.names.resolve(function.receiver, source);
-        reads.record(function, receiver.owner, binding.prop.name, Conditions.decided(ref), source.line(ref));
+        reads.record(
+            function, receiver.owner, new Reads.Access(binding.prop.name, Conditions.decided(ref), source.line(ref)));
       } else if (binding.prop.owner == function.owner) {
         own.add(binding.prop.name);
       }

@@ -63,8 +63,7 @@ public final class Declarer {
     }
     boolean companion = klass instanceof KtObjectDeclaration && ((KtObjectDeclaration) klass).isCompanion();
     String name = klass.getName() != null ? klass.getName() : "Companion";
-    String qname = outer == null ? name : outer.qname + "." + name;
-    Owner owner = new Owner(source.path + "#" + qname, name, qname, source, klass, outer);
+    Owner owner = new Owner(new Owner.Place(source, outer), name, klass);
     owner.exported = !Ps.isPrivate(klass) && (outer == null || outer.exported);
     index.register(owner);
     if (outer != null) {
@@ -110,7 +109,7 @@ public final class Declarer {
     shape.isPrivate = Ps.isPrivate(declaration);
     shape.isOverride = declaration.hasModifier(KtTokens.OVERRIDE_KEYWORD);
     shape.hasBody = declaration.hasBody();
-    Fun function = new Fun(declaration.getName(), owner, kind, declaration, shape);
+    Fun function = new Fun(owner, declaration, shape.named(declaration.getName(), kind));
     if (declaration.getBodyExpression() != null) {
       function.roots.add(declaration.getBodyExpression());
     }
@@ -122,7 +121,7 @@ public final class Declarer {
     shape.params = declaration.getValueParameters();
     shape.isPrivate = Ps.isPrivate(declaration);
     shape.hasBody = true;
-    Fun function = new Fun(owner.name, owner, Fun.CONSTRUCTOR, declaration, shape);
+    Fun function = new Fun(owner, declaration, shape.named(owner.name, Fun.CONSTRUCTOR));
     if (!declaration.hasImplicitDelegationCall()) {
       function.roots.add(declaration.getDelegationCall());
     }
@@ -162,7 +161,7 @@ public final class Declarer {
     shape.params = klass.getPrimaryConstructorParameters();
     shape.isPrivate = klass.getPrimaryConstructor() != null && Ps.isPrivate(klass.getPrimaryConstructor());
     shape.hasBody = true;
-    Fun constructor = new Fun(owner.name, owner, Fun.CONSTRUCTOR, klass, shape);
+    Fun constructor = new Fun(owner, klass, shape.named(owner.name, Fun.CONSTRUCTOR));
     constructor.roots.addAll(roots);
     owner.constructors.add(constructor);
   }
@@ -180,7 +179,7 @@ public final class Declarer {
     shape.isPrivate = Ps.isPrivate(parameter);
     shape.field = true;
     shape.constructorParameter = true;
-    owner.props.put(parameter.getName(), new Prop(parameter.getName(), owner, parameter, shape));
+    owner.props.put(parameter.getName(), new Prop(owner, parameter, shape));
   }
 
   private Prop property(Owner owner, KtProperty declaration) {
@@ -199,7 +198,7 @@ public final class Declarer {
         && !declaration.hasModifier(KtTokens.CONST_KEYWORD)
         && (declaration.hasInitializer() || declaration.hasDelegate()
             || declaration.hasModifier(KtTokens.LATEINIT_KEYWORD) || !computed);
-    Prop prop = new Prop(declaration.getName(), owner, declaration, shape);
+    Prop prop = new Prop(owner, declaration, shape);
     owner.props.put(prop.name, prop);
     accessor(owner, prop, declaration);
     return prop;
@@ -213,12 +212,12 @@ public final class Declarer {
     shape.hasBody = true;
     if (getter != null && getter.hasBody()) {
       shape.isPrivate = prop.isPrivate || Ps.isPrivate(getter);
-      Fun function = new Fun(prop.name, owner, Fun.ACCESSOR, getter, shape);
+      Fun function = new Fun(owner, getter, shape.named(prop.name, Fun.ACCESSOR));
       function.roots.add(getter.getBodyExpression());
       link(owner, prop, function);
     } else if (!prop.isPrivate && !prop.isVar && prop.field && !prop.constructorParameter
         && Mutables.created(prop.init) && !Mutables.readOnlyType(prop.type)) {
-      Fun function = new Fun(prop.name, owner, Fun.ACCESSOR, declaration, shape);
+      Fun function = new Fun(owner, declaration, shape.named(prop.name, Fun.ACCESSOR));
       function.returnsField = prop.name;
       link(owner, prop, function);
     }
@@ -242,7 +241,7 @@ public final class Declarer {
         Fun.Shape shape = new Fun.Shape();
         shape.returns = prop.type;
         shape.hasBody = true;
-        Fun function = new Fun(prop.name, owner, Fun.ACCESSOR, (KtProperty) prop.psi, shape);
+        Fun function = new Fun(owner, (KtProperty) prop.psi, shape.named(prop.name, Fun.ACCESSOR));
         function.returnsField = backing.name;
         link(owner, prop, function);
       }

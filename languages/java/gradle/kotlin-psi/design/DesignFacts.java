@@ -23,7 +23,7 @@ public final class DesignFacts {
 
   public static Map<String, Object> build(List<Source> sources, boolean published) {
     Ctx ctx = new Ctx(new Index(sources));
-    boolean library = published && Published.library(ctx);
+    ctx.library = published && Published.library(ctx);
     List<Object> modules = new ArrayList<>();
     for (Source source : sources) {
       modules.add(m("file", source.path, "role", "production"));
@@ -32,7 +32,7 @@ public final class DesignFacts {
     Set<String> failed = new HashSet<>();
     for (Owner owner : ctx.index.owners) {
       if (owner.listed) {
-        callables.addAll(callablesOf(ctx, owner, library, failed));
+        callables.addAll(callablesOf(ctx, owner, failed));
       }
     }
     if (!failed.isEmpty()) {
@@ -40,18 +40,18 @@ public final class DesignFacts {
         CallableFacts.dropTargets(callable, failed);
       }
     }
-    List<Object> types = TypeFacts.build(ctx, library);
+    List<Object> types = TypeFacts.build(ctx);
     dropFromTypes(types, failed);
     return m("modules", modules, "types", types, "callables", new ArrayList<Object>(callables));
   }
 
-  private static List<Map<String, Object>> callablesOf(Ctx ctx, Owner owner, boolean library, Set<String> failed) {
+  private static List<Map<String, Object>> callablesOf(Ctx ctx, Owner owner, Set<String> failed) {
     List<Map<String, Object>> callables = new ArrayList<>();
     List<Fun> funs = new ArrayList<>(owner.constructors);
     funs.addAll(owner.funs);
     for (Fun function : funs) {
       try {
-        callables.add(CallableFacts.build(ctx, function, library));
+        callables.add(CallableFacts.build(ctx, function));
       } catch (StackOverflowError tooDeep) {
         failed.add(function.id);
         System.err.println(owner.source.path + ": " + function.name + " is too deeply nested for design facts");

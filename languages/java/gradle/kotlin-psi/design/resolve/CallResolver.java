@@ -26,6 +26,8 @@ public final class CallResolver {
     }
   }
 
+  private record Site(String name, List<Arity.Arg> args, Source source) {}
+
   private static final Resolved NONE = new Resolved(null, null, false);
 
   private final Ctx ctx;
@@ -57,69 +59,68 @@ public final class CallResolver {
     if (name == null) {
       return NONE;
     }
-    List<Arity.Arg> args = Arity.args(call);
+    Site site = new Site(name, Arity.args(call), ctx.sourceOf(call));
     KtExpression receiver = Ps.receiverOf(call);
-    Source source = ctx.sourceOf(call);
-    return receiver == null ? bare(call, name, args, source) : qualified(name, receiver, args, source);
+    return receiver == null ? bare(call, site) : qualified(site, receiver);
   }
 
-  private Resolved qualified(String name, KtExpression receiver, List<Arity.Arg> args, Source source) {
+  private Resolved qualified(Site site, KtExpression receiver) {
     Owner staticOwner = ctx.typer.staticOwner(receiver);
     if (staticOwner != null) {
       Owner holder = ctx.typer.objectOwner(staticOwner);
-      Fun found = holder == null ? null : overloads.pick(ctx.members.funs(holder, name), args);
+      Fun found = holder == null ? null : overloads.pick(ctx.members.funs(holder, site.name()), site.args());
       if (found != null) {
         return new Resolved(found, null, false);
       }
-      Owner nested = staticOwner.nested.get(name);
-      boolean shadowed = holder != null && !ctx.members.funs(holder, name).isEmpty();
-      return nested == null || shadowed ? NONE : constructor(nested, args);
+      Owner nested = staticOwner.nested.get(site.name());
+      boolean shadowed = holder != null && !ctx.members.funs(holder, site.name()).isEmpty();
+      return nested == null || shadowed ? NONE : constructor(nested, site.args());
     }
     Ty type = ctx.typer.typeOf(receiver);
     if (type.project()) {
-      Fun member = overloads.pick(ctx.members.funs(type.owner, name), args);
+      Fun member = overloads.pick(ctx.members.funs(type.owner, site.name()), site.args());
       if (member != null) {
         return new Resolved(member, null, false);
       }
-      if (ctx.members.prop(type.owner, name) != null) {
+      if (ctx.members.prop(type.owner, site.name()) != null) {
         return NONE;
       }
-      boolean bindable = overloads.anyBindable(ctx.members.funs(type.owner, name), args);
-      return bindable ? NONE : extension(name, type, args, source);
+      boolean bindable = overloads.anyBindable(ctx.members.funs(type.owner, site.name()), site.args());
+      return bindable ? NONE : extension(type, site);
     }
-    return type.known() ? extension(name, type, args, source) : NONE;
+    return type.known() ? extension(type, site) : NONE;
   }
 
-  private Resolved bare(KtCallExpression call, String name, List<Arity.Arg> args, Source source) {
-    if (localFunction(call, name)) {
+  private Resolved bare(KtCallExpression call, Site site) {
+    if (localFunction(call, site.name())) {
       return NONE;
     }
     for (Bindings.Level level : ctx.bindings.levels(call)) {
-      Resolved found = atLevel(level, name, args, source);
+      Resolved found = atLevel(level, site);
       if (found != null) {
         return found;
       }
     }
-    return levelsBlurred(call) ? NONE : topLevel(call, name, args, source);
+    return levelsBlurred(call) ? NONE : topLevel(call, site);
   }
 
-  private Resolved atLevel(Bindings.Level level, String name, List<Arity.Arg> args, Source source) {
-    if (level.extension != null) {
-      return receiverCall(level, name, args, source);
+  private Resolved atLevel(Bindings.Level level, Site site) {
+    if (level.extension() != null) {
+      return receiverCall(level, site);
     }
-    Owner owner = level.owner;
-    if (!level.instance && !(owner.psi instanceof KtObjectDeclaration)) {
-      return companionCall(owner, name, args, level.blurred);
+    Owner owner = level.owner();
+    if (!level.instance() && !(owner.psi instanceof KtObjectDeclaration)) {
+      return companionCall(owner, site, level.blurred());
     }
-    List<Fun> members = ctx.members.funs(owner, name);
-    Fun found = overloads.pick(members, args);
+    List<Fun> members = ctx.members.funs(owner, site.name());
+    Fun found = overloads.pick(members, site.args());
     if (found != null) {
-      return level.blurred ? NONE : new Resolved(found, null, level.thisLevel);
+      return level.blurred() ? NONE : new Resolved(found, null, level.thisLevel());
     }
-    if (!members.isEmpty() || ctx.members.prop(owner, name) != null || ctx.hierarchy.external(owner)) {
+    if (!members.isEmpty() || ctx.members.prop(owner, site.name()) != null || ctx.hierarchy.external(owner)) {
       return NONE;
     }
-    return companionCall(owner, name, args, level.blurred);
+    return companionCall(owner, site, level.blurred());
   }
 
   private boolean levelsBlurred(KtCallExpression call) {
@@ -135,23 +136,23 @@ public final class CallResolver {
     return false;
   }
 
-  private Resolved companionCall(Owner owner, String name, List<Arity.Arg> args, boolean blurred) {
+  private Resolved companionCall(Owner owner, Site site, boolean blurred) {
     if (owner.companion == null) {
       return null;
     }
-    Fun found = overloads.pick(ctx.members.funs(owner.companion, name), args);
+    Fun found = overloads.pick(ctx.members.funs(owner.companion, site.name()), site.args());
     return found == null ? null : blurred ? NONE : new Resolved(found, null, false);
   }
 
-  private Resolved receiverCall(Bindings.Level level, String name, List<Arity.Arg> args, Source source) {
-    Ty receiver = ctx.names.resolve(level.extension.getReceiverTypeReference(), source);
+  private Resolved receiverCall(Bindings.Level level, Site site) {
+    Ty receiver = ctx.names.resolve(level.extension().getReceiverTypeReference(), site.source());
     if (!receiver.project()) {
       return NONE;
     }
-    List<Fun> members = ctx.members.funs(receiver.owner, name);
-    Fun found = overloads.pick(members, args);
+    List<Fun> members = ctx.members.funs(receiver.owner, site.name());
+    Fun found = overloads.pick(members, site.args());
     if (found != null) {
-      return level.blurred ? NONE : new Resolved(found, null, true);
+      return level.blurred() ? NONE : new Resolved(found, null, true);
     }
     return !members.isEmpty() || ctx.hierarchy.external(receiver.owner) ? NONE : null;
   }
@@ -176,17 +177,17 @@ public final class CallResolver {
     return plain;
   }
 
-  private Resolved topLevel(KtCallExpression call, String name, List<Arity.Arg> args, Source source) {
-    List<Fun> plain = plainTopLevel(name, source);
-    Owner type = ctx.names.lookup(name, call, source);
+  private Resolved topLevel(KtCallExpression call, Site site) {
+    List<Fun> plain = plainTopLevel(site.name(), site.source());
+    Owner type = ctx.names.lookup(site.name(), call, site.source());
     boolean isType = type != null && !type.module() && ctx.typer.constructible(type);
     if (isType && !plain.isEmpty()) {
       return NONE;
     }
     if (isType) {
-      return constructor(type, args);
+      return constructor(type, site.args());
     }
-    Fun found = overloads.pick(plain, args);
+    Fun found = overloads.pick(plain, site.args());
     return found == null ? NONE : new Resolved(found, null, false);
   }
 
@@ -210,12 +211,12 @@ public final class CallResolver {
     return !function.isPrivate || function.owner.source == source;
   }
 
-  private Resolved extension(String name, Ty receiver, List<Arity.Arg> args, Source source) {
+  private Resolved extension(Ty receiver, Site site) {
     List<Fun> found = new ArrayList<>();
-    for (List<Fun> tier : tiers(name, source)) {
+    for (List<Fun> tier : tiers(site.name(), site.source())) {
       for (Fun function : tier) {
-        if (function.receiver != null && visible(function, source) && receives(function, receiver)
-            && Arity.bind(function.params, args) != null) {
+        if (function.receiver != null && visible(function, site.source()) && receives(function, receiver)
+            && Arity.bind(function.params, site.args()) != null) {
           found.add(function);
         }
       }

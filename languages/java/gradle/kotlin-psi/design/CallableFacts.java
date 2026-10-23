@@ -23,7 +23,7 @@ public final class CallableFacts {
 
   private CallableFacts() {}
 
-  public static Map<String, Object> build(Ctx ctx, Fun function, boolean library) {
+  public static Map<String, Object> build(Ctx ctx, Fun function) {
     Walk walk = new Walk(ctx, function);
     walk.run();
     Source source = function.owner.source;
@@ -34,7 +34,7 @@ public final class CallableFacts {
         "kind", function.kind, "owner", function.owner.id,
         "exported", exported,
         "entry", Entries.of(ctx, function) ? Boolean.TRUE : null,
-        "published", library && exported && function.owner.module() ? Boolean.TRUE : null,
+        "published", ctx.library && exported && function.owner.module() ? Boolean.TRUE : null,
         "references", nonEmpty(new ArrayList<Object>(walk.references)),
         "params", params(ctx, function),
         "returns", returns(ctx, function), "forward", forward, "calls", nonEmpty(walk.calls),

@@ -87,7 +87,7 @@ public final class Typer {
   private Ty thisType(KtThisExpression e) {
     String label = e.getLabelName();
     for (Bindings.Level level : ctx.bindings.levels(e)) {
-      if (level.blurred) {
+      if (level.blurred()) {
         return Ty.UNKNOWN;
       }
       Ty found = thisAt(level, label, e);
@@ -99,14 +99,14 @@ public final class Typer {
   }
 
   private Ty thisAt(Bindings.Level level, String label, KtThisExpression e) {
-    if (level.extension != null) {
-      boolean named = label == null || label.equals(level.extension.getName());
-      return named ? ctx.names.resolve(level.extension.getReceiverTypeReference(), ctx.sourceOf(e)) : null;
+    if (level.extension() != null) {
+      boolean named = label == null || label.equals(level.extension().getName());
+      return named ? ctx.names.resolve(level.extension().getReceiverTypeReference(), ctx.sourceOf(e)) : null;
     }
-    if (label != null && !label.equals(level.owner.name)) {
+    if (label != null && !label.equals(level.owner().name)) {
       return null;
     }
-    return level.instance || label != null ? Ty.of(level.owner) : Ty.UNKNOWN;
+    return level.instance() || label != null ? Ty.of(level.owner()) : Ty.UNKNOWN;
   }
 
   private Ty nameType(KtNameReferenceExpression ref) {

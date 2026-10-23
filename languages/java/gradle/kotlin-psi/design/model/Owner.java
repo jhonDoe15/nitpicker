@@ -23,13 +23,15 @@ public final class Owner {
   public boolean listed = true;
   public boolean exported = true;
 
-  public Owner(String id, String name, String qname, Source source, KtClassOrObject psi, Owner outer) {
-    this.id = id;
+  public record Place(Source source, Owner outer) {}
+
+  public Owner(Place place, String name, KtClassOrObject psi) {
+    this.source = place.source();
+    this.outer = place.outer();
     this.name = name;
-    this.qname = qname;
-    this.source = source;
     this.psi = psi;
-    this.outer = outer;
+    this.qname = outer == null ? name : outer.qname + "." + name;
+    this.id = psi == null ? source.path : source.path + "#" + qname;
   }
 
   public boolean module() {
