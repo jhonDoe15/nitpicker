@@ -1,6 +1,6 @@
 import { isSecretName } from '../../../../../../../shared/naming/secret-words.mjs';
 import { splitArguments } from '../../kotlin-source.mjs';
-import { literalsWithin } from './literal-index.mjs';
+import { literalsWithin, withLiteralIndex } from './literal-index.mjs';
 import { secretSinks } from './secret-sinks.mjs';
 
 const TEMPLATE_REFERENCE = /\$(?:\{([^{}]*)\}|([A-Za-z_]\w*))/g;
@@ -15,6 +15,8 @@ const CALL_BEFORE = /([A-Za-z_]\w*)\s*\(\s*$/;
 const KEY_READ = /(?:\b(?:getenv|getProperty|get)\s*\(|\[)\s*$/;
 const KEY_CLOSE = /^\s*[)\]]/;
 const FORMAT_CALL = /\bformat\s*\(/g;
+const KEY_READ_WINDOW = 32;
+const KEY_CLOSE_WINDOW = 16;
 const PAIRED_VALUE = /^\s*(to\b|,)\s*([A-Za-z_][\w.?!]*(?:\(\))?)/;
 
 function nameOf(expression) {
@@ -26,7 +28,9 @@ function nameOf(expression) {
   const segments = bare.replace(/\(\)$/, '').split(/[?!]*\./);
   const name = segments.at(-1);
   const called = bare.endsWith('()');
-  return (called && !GETTER.test(name)) || RECEIVER.test(segments.at(-2) ?? '') ? undefined : name;
+  return (called && !GETTER.test(name)) || RECEIVER.test(segments[segments.length - 2] ?? '')
+    ? undefined
+    : name;
 }
 
 function isLogged({ name, key }) {
@@ -57,8 +61,10 @@ function templateNames(literals) {
 
 function readKeys(scanned, literals) {
   return literals
-    .filter(({ start, end }) => KEY_READ.test(scanned.source.slice(Math.max(0, start - 32), start)))
-    .filter(({ end }) => KEY_CLOSE.test(scanned.source.slice(end, end + 16)))
+    .filter(({ start }) =>
+      KEY_READ.test(scanned.source.slice(Math.max(0, start - KEY_READ_WINDOW), start)),
+    )
+    .filter(({ end }) => KEY_CLOSE.test(scanned.source.slice(end, end + KEY_CLOSE_WINDOW)))
     .map(({ text }) => ({ name: text, key: true }));
 }
 
@@ -91,7 +97,8 @@ function argumentNames(scanned, argument) {
   ];
 }
 
-export function secretsInLogs(scanned) {
+export function secretsInLogs(source) {
+  const scanned = withLiteralIndex(source);
   return secretSinks(scanned.code).flatMap((sink) => {
     const names = [
       ...sink.arguments.flatMap((argument) => argumentNames(scanned, argument)),
