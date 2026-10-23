@@ -12,6 +12,7 @@ import {
   usageError,
   withTroubleshooting,
   withUsageLink,
+  withoutTroubleshooting,
 } from './troubleshooting.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
@@ -197,6 +198,16 @@ describe('the message helpers', () => {
     expect(withTroubleshooting(linked, 'no-merge-base')).toBe(linked);
     expect(troubleshootingLinkOf(linked)).toBe(`See ${DOC_URL}#tests-fail`);
     expect(troubleshootingLinkOf('Tests fail')).toBeUndefined();
+  });
+
+  it('takes the link off a message that is quoted inside another', () => {
+    expect(withoutTroubleshooting(withTroubleshooting('Tests fail', 'tests-fail'))).toBe(
+      'Tests fail',
+    );
+    expect(withoutTroubleshooting(withTroubleshooting('Tests fail:\n  a', 'tests-fail'))).toBe(
+      'Tests fail:\n  a',
+    );
+    expect(withoutTroubleshooting('Tests fail.')).toBe('Tests fail.');
   });
 
   it('wraps a message in an error that keeps its cause', () => {

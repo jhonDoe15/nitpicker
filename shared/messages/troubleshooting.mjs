@@ -63,6 +63,11 @@ export function troubleshootingLinkOf(message) {
   return LINK_SENTENCE.exec(message)?.[0];
 }
 
+export function withoutTroubleshooting(message) {
+  const link = troubleshootingLinkOf(message);
+  return link === undefined ? message : message.replace(link, '').replace(/[.\s]+$/u, '');
+}
+
 export function troubleshootingSentence(anchor) {
   return `See ${troubleshootingUrl(anchor)}`;
 }
