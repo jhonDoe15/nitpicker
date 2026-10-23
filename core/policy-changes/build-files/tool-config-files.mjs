@@ -30,8 +30,9 @@ function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   if (content === undefined) {
     return undefined;
   }
-  if (tool === 'jscpd') {
-    return gitBlobId(jscpdDetectionText(content.toString('utf8')));
+  const detection = tool === 'jscpd' ? jscpdDetectionText(content.toString('utf8')) : {};
+  if (detection.kind === 'applied') {
+    return gitBlobId(detection.text);
   }
   if (file !== PACKAGE_JSON) {
     return gitBlobId(toolConfigText(tool, file, content.toString('utf8')));
