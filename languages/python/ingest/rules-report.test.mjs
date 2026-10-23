@@ -87,6 +87,16 @@ describe('rules script report', () => {
       'asyncio.gather|items|client.get()||remote',
       '`asyncio.gather` starts `client.get()` for every element of `items` at once, with no bound on how many run together',
     ],
+    [
+      'task-outlives-resource',
+      'stream passed to nursery.start_soon',
+      '`stream passed to nursery.start_soon`: the resource closes when its `with` block ends, while the child task can still use it',
+    ],
+    [
+      'unshielded-cleanup-await',
+      'await stream.aclose() in finally',
+      '`await stream.aclose() in finally` can be cancelled before the cleanup finishes, so the resource may stay open',
+    ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
       'skipped-test-without-reason',
