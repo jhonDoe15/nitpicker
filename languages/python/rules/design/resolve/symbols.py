@@ -1,7 +1,7 @@
 import ast
 
-from design.astutil import FUNCTIONS, constant_text
-from design.decorators import (
+from design.support.astutil import FUNCTIONS, constant_text
+from design.support.decorators import (
     ABSTRACT,
     OVERLOADS,
     PROPERTY_NAMES,

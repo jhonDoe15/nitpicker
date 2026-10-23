@@ -1,9 +1,9 @@
 import ast
 
-from design.astutil import SCOPES, call_line
-from design.calls import access_resolution, receiver_key, resolve_call
-from design.cleanup import enter_facts, exit_facts, paired_exit_facts
-from design.mutations import mutation_of
+from design.calls.calls import access_resolution, receiver_key, resolve_call
+from design.calls.cleanup import enter_facts, exit_facts, paired_exit_facts
+from design.calls.mutations import mutation_of
+from design.support.astutil import SCOPES, call_line
 
 TRY_TYPES = tuple(t for t in (ast.Try, getattr(ast, "TryStar", None)) if t is not None)
 WITH_TYPES = (ast.With, ast.AsyncWith)

@@ -1,12 +1,12 @@
 import ast
 
 from checks.common import dotted_name
-from design.astutil import body_without_docstring
-from design.calls import receiver_key, resolve_call
-from design.evaluate import enter_returns_self as returns_self
-from design.evaluate import type_of
-from design.lookup import find_member
-from design.symbols import Klass
+from design.calls.calls import receiver_key, resolve_call
+from design.resolve.evaluate import enter_returns_self as returns_self
+from design.resolve.evaluate import type_of
+from design.resolve.lookup import find_member
+from design.resolve.symbols import Klass
+from design.support.astutil import body_without_docstring
 
 CLOSING = {"contextlib.closing"}
 ENTER_EXIT = {"__enter__": "__exit__", "__aenter__": "__aexit__"}

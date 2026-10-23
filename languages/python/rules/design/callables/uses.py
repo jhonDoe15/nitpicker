@@ -1,10 +1,15 @@
 import ast
 
-from design.annotations import project_type
-from design.astutil import SCOPES, STORE_CONTEXTS, all_nodes, body_without_docstring
-from design.calls import resolve_call
-from design.classes import classify
-from design.symbols import LiteralAlias
+from design.calls.calls import resolve_call
+from design.resolve.annotations import project_type
+from design.resolve.symbols import LiteralAlias
+from design.support.astutil import (
+    SCOPES,
+    STORE_CONTEXTS,
+    all_nodes,
+    body_without_docstring,
+)
+from design.types.classes import classify
 
 USE_KINDS = {"class", "data", "interface"}
 
@@ -149,7 +154,7 @@ def returns_nothing(scope, function):
     node = function.node.returns
     if node is not None:
         return isinstance(node, ast.Constant) and node.value is None
-    from design.scope import is_generator
+    from design.support.scope import is_generator
 
     returns = [n for n in all_nodes(function.node) if isinstance(n, ast.Return)]
     valued = [

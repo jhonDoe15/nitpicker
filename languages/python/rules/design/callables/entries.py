@@ -1,14 +1,14 @@
 import ast
 import builtins
 
-from design.astutil import own_nodes
-from design.attributes import is_dunder
-from design.calls import resolve_call
-from design.decorators import is_neutral
-from design.evaluate import evaluate
-from design.frameworks import framework_match
-from design.lookup import external_bases, linear
-from design.symbols import Function, Klass, is_main_guard
+from design.callables.frameworks import framework_match
+from design.calls.calls import resolve_call
+from design.resolve.evaluate import evaluate
+from design.resolve.lookup import external_bases, linear
+from design.resolve.symbols import Function, Klass, is_main_guard
+from design.support.astutil import own_nodes
+from design.support.attributes import is_dunder
+from design.support.decorators import is_neutral
 
 BUILTIN_NAMES = set(dir(builtins))
 

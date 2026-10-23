@@ -1,6 +1,6 @@
 import ast
 
-from design.astutil import FUNCTIONS, own_nodes
+from design.support.astutil import FUNCTIONS, own_nodes
 
 PATTERN_TYPES = tuple(
     t

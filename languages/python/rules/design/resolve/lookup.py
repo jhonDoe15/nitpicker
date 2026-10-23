@@ -1,8 +1,8 @@
 import ast
 
 from checks.common import dotted_name
-from design.imports import module_in, resolve_binding
-from design.symbols import Klass, ModuleRef, PrefixRef
+from design.resolve.imports import module_in, resolve_binding
+from design.resolve.symbols import Klass, ModuleRef, PrefixRef
 
 TRANSPARENT_BASES = {
     "object",

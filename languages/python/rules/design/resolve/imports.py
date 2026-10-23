@@ -1,6 +1,6 @@
 import ast
 
-from design.symbols import ModuleRef, PrefixRef
+from design.resolve.symbols import ModuleRef, PrefixRef
 
 TRY_TYPES = tuple(t for t in (ast.Try, getattr(ast, "TryStar", None)) if t is not None)
 
@@ -125,7 +125,7 @@ def submodule(index, binding, name):
 
 
 def resolve_binding(index, binding, seen):
-    from design.lookup import lookup
+    from design.resolve.lookup import lookup
 
     if binding.kind == "module":
         if binding.path is None:
