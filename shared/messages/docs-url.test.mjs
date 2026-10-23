@@ -11,7 +11,7 @@ describe('docsUrl', () => {
 
     expect(docsUrl('docs/usage.md')).toBe(`${base}/blob/main/docs/usage.md`);
     expect(docsUrl('docs/usage.md')).toMatch(
-      /^https:\/\/github\.com\/[^/]+\/nitpicker\/blob\/main\//u,
+      /^https:\/\/github\.com\/[^/]+\/nitpicker\/blob\/main\/docs\/usage\.md$/u,
     );
   });
 

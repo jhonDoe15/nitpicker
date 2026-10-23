@@ -18,7 +18,7 @@ const ARCHUNIT_NOTES = new Map([
   [
     'spring-feature-boundary',
     [
-      "A class uses a class from a sub-package of another feature; only the classes directly in a feature's package are its public face.",
+      "A class uses a class from a sub-package of another feature; only the classes directly in a feature's package are its public face. When a layering rule reports the same class and dependency, only the layering finding is shown, unless an exception lifts it.",
       "Use only the classes directly in the other feature's package, or move what both need to `<root>.shared`.",
     ],
   ],
@@ -48,6 +48,27 @@ const ARCHUNIT_NOTES = new Map([
     [
       'A `@Service` or repository depends on the web layer: a controller, `ResponseEntity`, or servlet and Spring web types.',
       'Take and return plain values, throw a domain exception for errors, and map them to web types in the controller or a `@ControllerAdvice`.',
+    ],
+  ],
+  [
+    'spring-controller-controller',
+    [
+      'A controller holds or creates another controller: a field, constructor or method parameter of that type, also inside a generic, or `new OtherController()`.',
+      'Move what both controllers need into a service both call: a controller handles its own requests and does not hold another controller.',
+    ],
+  ],
+  [
+    'spring-repository-service',
+    [
+      'A repository depends on a `@Service`: a field, parameter, return type or call.',
+      'Have the service call the repository and pass it what it needs: a repository only reads and writes data and depends on no service.',
+    ],
+  ],
+  [
+    'spring-scope-capture',
+    [
+      'A singleton bean takes a request-, session-, `websocket`-, Spring Batch `step`- or `job`-scoped bean without a scoped proxy.',
+      'Inject `ObjectProvider<T>` and call `getObject()` per use, or give the scoped bean a scoped proxy (`proxyMode = ScopedProxyMode.TARGET_CLASS`).',
     ],
   ],
   [
@@ -157,9 +178,7 @@ function suppressionEntries() {
   );
 }
 
-/** The entries of the rules nitpicker itself adds to the Java and Kotlin presets. */
-export function jvmNitpickerEntries() {
-  const formatters = [JAVA_FORMATTER_TOOLS.google, JAVA_FORMATTER_TOOLS.palantir];
+function archunitEntries() {
   return [
     ...entriesFrom(
       {
@@ -190,6 +209,11 @@ export function jvmNitpickerEntries() {
         { label: 'Java preset guide', path: 'docs/java-preset.md', anchor: 'slice-4-archunit' },
       ],
     }),
+  ];
+}
+
+function springConfigEntries() {
+  return [
     ...entriesFrom(
       {
         ...JVM,
@@ -206,6 +230,15 @@ export function jvmNitpickerEntries() {
       },
       SPRING_CONFIG_ROWS,
     ),
+  ];
+}
+
+/** The entries of the rules nitpicker itself adds to the Java and Kotlin presets. */
+export function jvmNitpickerEntries() {
+  const formatters = [JAVA_FORMATTER_TOOLS.google, JAVA_FORMATTER_TOOLS.palantir];
+  return [
+    ...archunitEntries(),
+    ...springConfigEntries(),
     ruleEntry({
       ...JVM,
       tool: 'test-runtime',

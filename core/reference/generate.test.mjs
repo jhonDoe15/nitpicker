@@ -3,12 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { entryProblems } from './build.mjs';
-import { generatedReferenceFiles, REFERENCE_DATA_PATH, staleReferenceFiles } from './generate.mjs';
+import { formattedText, referenceFiles, staleReferenceFiles } from './generate.mjs';
 import { PAGES } from '../../shared/reference/pages.mjs';
 import { ruleEntry } from '../../shared/reference/entry.mjs';
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../..');
-const GENERATION_TIMEOUT = 240_000;
 const roots = [];
 
 afterEach(() => {
@@ -32,29 +31,43 @@ function entry(rule, fields = {}) {
 }
 
 describe('the generated rule reference', () => {
-  it(
-    'is up to date: the committed data file and pages equal what the catalogs generate',
-    async () => {
-      const generated = await generatedReferenceFiles(REPOSITORY_ROOT);
+  it('is up to date: the committed data files and pages equal what the catalogs generate', () => {
+    const generated = referenceFiles(REPOSITORY_ROOT);
 
-      expect(generated.has(REFERENCE_DATA_PATH)).toBe(true);
-      expect(generated.size).toBe(PAGES.length + 2);
-      expect(await staleReferenceFiles(REPOSITORY_ROOT, generated)).toEqual([]);
+    expect([...generated.keys()].toSorted()).toEqual(
+      [
+        ...PAGES.map(({ id }) => `shared/reference/rules/${id}.json`),
+        ...PAGES.map(({ id }) => `docs/rules/${id}.md`),
+        'docs/rules/README.md',
+      ].toSorted(),
+    );
+    expect(staleReferenceFiles(REPOSITORY_ROOT, generated)).toEqual([]);
+  });
+});
+
+describe('the generated pages', () => {
+  it.each(['docs/rules/README.md', 'docs/rules/python-nitpicker.md'])(
+    'are already in the form Prettier gives %s',
+    async (file) => {
+      const text = referenceFiles(REPOSITORY_ROOT).get(file);
+
+      expect(await formattedText(REPOSITORY_ROOT, file, text)).toBe(text);
     },
-    GENERATION_TIMEOUT,
   );
 });
 
 describe('staleReferenceFiles', () => {
-  it('lists the files that differ from the generated text or are missing', async () => {
-    const root = project({ 'a.md': 'same\n', 'b.md': 'old\n' });
+  it('lists the files that differ from the generated text or are missing', () => {
+    const root = project({ 'a.md': 'same\n', 'b.md': 'old\n', 'd.json': '[\n  { "a": 1 }\n]\n' });
     const generated = new Map([
       ['a.md', 'same\n'],
       ['b.md', 'new\n'],
       ['c.md', 'new\n'],
+      ['d.json', '[{"a":1}]'],
+      ['e.json', '[]'],
     ]);
 
-    expect(await staleReferenceFiles(root, generated)).toEqual(['b.md', 'c.md']);
+    expect(staleReferenceFiles(root, generated)).toEqual(['b.md', 'c.md', 'e.json']);
   });
 });
 

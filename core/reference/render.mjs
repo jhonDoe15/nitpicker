@@ -2,13 +2,23 @@ import path from 'node:path';
 import { entryFacts, entryLinks } from '../../shared/reference/facts.mjs';
 import { PAGES } from '../../shared/reference/pages.mjs';
 
-export const REFERENCE_DIRECTORY = 'docs/rules';
-export const INDEX_FILE = 'README.md';
+const REFERENCE_DIRECTORY = 'docs/rules';
+const INDEX_FILE = 'README.md';
+const CODE_SPAN = /(`[^`]*`)/u;
+const SPECIAL = /[*<]|(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/gu;
 
 const COMMON_LABELS = ['Presets', 'Analyzers', 'Builds', 'Scope', 'Why it is on'];
 const COMMON_SHARE = 0.6;
 const MINIMUM_ENTRIES = 5;
 const SENTENCE_END = /[.!?]$/u;
+
+/** `text` with the characters Markdown would read as emphasis or HTML escaped, outside code spans. */
+function markdownText(text) {
+  return text
+    .split(CODE_SPAN)
+    .map((part, index) => (index % 2 === 1 ? part : part.replaceAll(SPECIAL, '\\$&')))
+    .join('');
+}
 
 function sentence(text) {
   const capitalized = `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
@@ -45,8 +55,8 @@ function commonFacts(factsList) {
 
 function factLines({ label, text, items }) {
   return items === undefined
-    ? [`- **${label}:** ${text}`]
-    : [`- **${label}:**`, ...items.map((item) => `  - ${item}`)];
+    ? [`- **${label}:** ${markdownText(text)}`]
+    : [`- **${label}:**`, ...items.map((item) => `  - ${markdownText(item)}`)];
 }
 
 function entryMarkdown(entry, { common, guide }) {
@@ -59,7 +69,7 @@ function entryMarkdown(entry, { common, guide }) {
     '',
     `### \`${entry.id}\``,
     '',
-    sentence(entry.summary),
+    markdownText(sentence(entry.summary)),
     '',
     ...facts.flatMap(factLines),
     ...(links.length === 0 ? [] : [`- **See also:** ${links.map(relativeLink).join(', ')}`]),
@@ -83,27 +93,47 @@ function pageMarkdown(page, entries) {
   ].join('\n');
 }
 
+function tableRow(cells, widths) {
+  return `| ${cells.map((cell, column) => cell.padEnd(widths[column])).join(' | ')} |`;
+}
+
+function tableLines([header, ...rows]) {
+  const widths = header.map((_, column) =>
+    Math.max(...[header, ...rows].map((cells) => cells[column].length)),
+  );
+  return [
+    tableRow(header, widths),
+    tableRow(
+      widths.map((width) => '-'.repeat(width)),
+      widths,
+    ),
+    ...rows.map((cells) => tableRow(cells, widths)),
+  ];
+}
+
 function indexMarkdown(byPage) {
   return [
     '# Rule reference',
     '',
     'Every rule that nitpicker can report, one entry each, with the preset that reports it, why it is on, the allowed form and the `nitpicker.config.json` entry that accepts it. The pages are generated from the rule catalogs (`npm run gen:rules`) and a test fails when they are stale.',
     '',
-    'From a terminal, `nitpicker explain <tool/rule>` prints one entry, and `nitpicker rules` lists the rules of the preset of the project. Every finding in the SARIF report carries a `helpUri` to its entry here.',
+    'From a terminal, `nitpicker explain <tool/rule>` prints one entry, and `nitpicker rules` lists the rules of the preset of the project. In the SARIF report and in `new-findings.json`, each finding whose rule has an entry here links to it with a `helpUri`.',
     '',
     'The reference covers the rules that fail the gate. Report-only measurements (metrics and coverage figures) and tool errors (a tool that could not run) are not rules and have no entry.',
     '',
-    '| Page | Rules | What it covers |',
-    '| ---- | ----- | -------------- |',
-    ...PAGES.map(
-      (page) =>
-        `| [${page.title}](${page.id}.md) | ${String(byPage.get(page.id).length)} | ${page.summary} |`,
-    ),
+    ...tableLines([
+      ['Page', 'Rules', 'What it covers'],
+      ...PAGES.map((page) => [
+        `[${page.title}](${page.id}.md)`,
+        String(byPage.get(page.id).length),
+        page.summary,
+      ]),
+    ]),
     '',
   ].join('\n');
 }
 
-/** The Markdown files of the reference, by path relative to the repository root, before formatting. */
+/** The Markdown files of the reference, by path relative to the repository root, as Prettier formats them. */
 export function renderReference(entries) {
   const byPage = Map.groupBy(entries, ({ page }) => page);
   for (const page of PAGES) {

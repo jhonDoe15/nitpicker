@@ -1,16 +1,21 @@
 import { readFileSync } from 'node:fs';
 import { docsUrl } from '../messages/docs-url.mjs';
+import { PAGE_IDS } from './pages.mjs';
 
-export const REFERENCE_DATA_FILE = new URL('./rules.json', import.meta.url);
+/** Where the entries are kept, one JSON file per page, relative to the repository root. */
+export const REFERENCE_DATA_DIRECTORY = 'shared/reference/rules';
+const REFERENCE_DATA = new URL('./rules/', import.meta.url);
 
 const FIRST_RESULTS = 5;
 const MINIMUM_DISTANCE = 3;
 const DISTANCE_DIVISOR = 3;
 const MINIMUM_KEY = 6;
 
-/** The committed entries, parsed from `rules.json`. */
-export function readReferenceEntries(file = REFERENCE_DATA_FILE) {
-  return JSON.parse(readFileSync(file, 'utf8'));
+/** The committed entries, read from the data file of each page, sorted by id. */
+export function readReferenceEntries() {
+  return PAGE_IDS.flatMap((page) =>
+    JSON.parse(readFileSync(new URL(`${page}.json`, REFERENCE_DATA), 'utf8')),
+  ).toSorted((a, b) => a.id.localeCompare(b.id));
 }
 
 function keysOf(entry) {
@@ -121,8 +126,8 @@ export function referenceUrl(entry) {
 }
 
 /** The index over the committed entries. */
-export function readReferenceIndex(file = REFERENCE_DATA_FILE) {
-  return indexEntries(readReferenceEntries(file));
+export function readReferenceIndex() {
+  return indexEntries(readReferenceEntries());
 }
 
 /** The link to the reference entry of the rule a finding prints, or undefined when there is none. */

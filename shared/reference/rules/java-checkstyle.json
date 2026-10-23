@@ -1,0 +1,1202 @@
+[
+  {
+    "id": "checkstyle/AbbreviationAsWordInName",
+    "tool": "checkstyle",
+    "rule": "AbbreviationAsWordInName",
+    "anchor": "checkstyle-abbreviationaswordinname",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Abbreviation as word in name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Treat abbreviations as words: no run of capitals, so parseUrl, HttpClient, userId, never parseURL, HTTPClient or userID.",
+    "exception": { "key": "exceptions", "rule": "checkstyle/AbbreviationAsWordInName" }
+  },
+  {
+    "id": "checkstyle/AnnotationLocationMostCases",
+    "tool": "checkstyle",
+    "rule": "AnnotationLocationMostCases",
+    "anchor": "checkstyle-annotationlocationmostcases",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Annotation location most cases",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/AnnotationLocationMostCases",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/AnnotationLocationVariables",
+    "tool": "checkstyle",
+    "rule": "AnnotationLocationVariables",
+    "anchor": "checkstyle-annotationlocationvariables",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Annotation location variables",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/AnnotationLocationVariables",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/ArrayTypeStyle",
+    "tool": "checkstyle",
+    "rule": "ArrayTypeStyle",
+    "anchor": "checkstyle-arraytypestyle",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Array type style",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Put the brackets on the type, as in int[] values and String[] names, never int values[].",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/ArrayTypeStyle",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/AtclauseOrder",
+    "tool": "checkstyle",
+    "rule": "AtclauseOrder",
+    "anchor": "checkstyle-atclauseorder",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Atclause order",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Order Javadoc block tags as @param, @return, @throws, @deprecated.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/AtclauseOrder",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/AvoidEscapedUnicodeCharacters",
+    "tool": "checkstyle",
+    "rule": "AvoidEscapedUnicodeCharacters",
+    "anchor": "checkstyle-avoidescapedunicodecharacters",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Avoid escaped unicode characters",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Write the real character, such as é, in the UTF-8 source instead of a \\u escape; keep escapes only for control and invisible characters.",
+    "exception": { "key": "exceptions", "rule": "checkstyle/AvoidEscapedUnicodeCharacters" }
+  },
+  {
+    "id": "checkstyle/AvoidStarImport",
+    "tool": "checkstyle",
+    "rule": "AvoidStarImport",
+    "anchor": "checkstyle-avoidstarimport",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Avoid star import",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Import each class by name (import java.util.List;), never a wildcard like java.util.*.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/AvoidStarImport",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/CatchParameterName",
+    "tool": "checkstyle",
+    "rule": "CatchParameterName",
+    "anchor": "checkstyle-catchparametername",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Catch parameter name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name the catch parameter lowerCamelCase, one letter or two or more characters with a lowercase or digit second, such as e or ioException.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/CatchParameterName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/ClassTypeParameterName",
+    "tool": "checkstyle",
+    "rule": "ClassTypeParameterName",
+    "anchor": "checkstyle-classtypeparametername",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Class type parameter name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name class type parameters with one capital letter and an optional digit (T, K2), or a capitalized name ending in T (RequestT).",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/ClassTypeParameterName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/CommentsIndentation",
+    "tool": "checkstyle",
+    "rule": "CommentsIndentation",
+    "anchor": "checkstyle-commentsindentation",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Comments indentation",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/CommentsIndentation",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/ConstructorsDeclarationGrouping",
+    "tool": "checkstyle",
+    "rule": "ConstructorsDeclarationGrouping",
+    "anchor": "checkstyle-constructorsdeclarationgrouping",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Constructors declaration grouping",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Declare all constructors of a class next to each other, with no methods or fields between them.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/ConstructorsDeclarationGrouping",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/CustomImportOrder",
+    "tool": "checkstyle",
+    "rule": "CustomImportOrder",
+    "anchor": "checkstyle-customimportorder",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Custom import order",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/CustomImportOrder",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/EmptyCatchBlock",
+    "tool": "checkstyle",
+    "rule": "EmptyCatchBlock",
+    "anchor": "checkstyle-emptycatchblock",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Empty catch block",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Handle the exception: return a failure value, log and recover, or rethrow with the cause; in tests use assertThrows.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/EmptyCatchBlock",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/EmptyLineSeparator",
+    "tool": "checkstyle",
+    "rule": "EmptyLineSeparator",
+    "anchor": "checkstyle-emptylineseparator",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Empty line separator",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/EmptyLineSeparator",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/FallThrough",
+    "tool": "checkstyle",
+    "rule": "FallThrough",
+    "anchor": "checkstyle-fallthrough",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Fall through",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Rewrite the switch in arrow form, case A, B -> ..., which cannot fall through; in a colon-form switch end every case with break, return or throw.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/FallThrough",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/FileTabCharacter",
+    "tool": "checkstyle",
+    "rule": "FileTabCharacter",
+    "anchor": "checkstyle-filetabcharacter",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "File tab character",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run google-java-format for indentation tabs; inside a string, char literal or text block write the escape \\t instead of a real tab.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/FileTabCharacter",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/GenericWhitespace",
+    "tool": "checkstyle",
+    "rule": "GenericWhitespace",
+    "anchor": "checkstyle-genericwhitespace",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Generic whitespace",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/GenericWhitespace",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/IllegalTokenText",
+    "tool": "checkstyle",
+    "rule": "IllegalTokenText",
+    "anchor": "checkstyle-illegaltokentext",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Illegal token text",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Use the escape sequences \\n, \\t, \\r, \\f, \\\", \\' and \\\\ instead of a unicode or octal escape for those characters.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/IllegalTokenText",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/Indentation",
+    "tool": "checkstyle",
+    "rule": "Indentation",
+    "anchor": "checkstyle-indentation",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Indentation",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/Indentation",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/InterfaceTypeParameterName",
+    "tool": "checkstyle",
+    "rule": "InterfaceTypeParameterName",
+    "anchor": "checkstyle-interfacetypeparametername",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Interface type parameter name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name interface type parameters with one capital letter and an optional digit (T, K2), or a capitalized name ending in T (ResultT).",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/InterfaceTypeParameterName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/InvalidJavadocPosition",
+    "tool": "checkstyle",
+    "rule": "InvalidJavadocPosition",
+    "anchor": "checkstyle-invalidjavadocposition",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Invalid javadoc position",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Put a Javadoc comment directly before the class, method or field it documents; use // or /* */ for any other comment.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/InvalidJavadocPosition",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/JavadocMethod",
+    "tool": "checkstyle",
+    "rule": "JavadocMethod",
+    "anchor": "checkstyle-javadocmethod",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Javadoc method",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Make the Javadoc match the signature: @param only for real parameter names, and no @return on a void method or constructor.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/JavadocMethod",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/JavadocParagraph",
+    "tool": "checkstyle",
+    "rule": "JavadocParagraph",
+    "anchor": "checkstyle-javadocparagraph",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Javadoc paragraph",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Separate paragraphs with an empty Javadoc line and start each following one with <p> glued to its first word, as in <p>Text.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/JavadocParagraph",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/JavadocTagContinuationIndentation",
+    "tool": "checkstyle",
+    "rule": "JavadocTagContinuationIndentation",
+    "anchor": "checkstyle-javadoctagcontinuationindentation",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Javadoc tag continuation indentation",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/JavadocTagContinuationIndentation",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/LambdaParameterName",
+    "tool": "checkstyle",
+    "rule": "LambdaParameterName",
+    "anchor": "checkstyle-lambdaparametername",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Lambda parameter name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name the lambda parameter lowerCamelCase, one letter or two or more characters with a lowercase or digit second, such as o or order.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/LambdaParameterName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/LeftCurlyEol",
+    "tool": "checkstyle",
+    "rule": "LeftCurlyEol",
+    "anchor": "checkstyle-leftcurlyeol",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Left curly eol",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/LeftCurlyEol",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/LeftCurlyNl",
+    "tool": "checkstyle",
+    "rule": "LeftCurlyNl",
+    "anchor": "checkstyle-leftcurlynl",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Left curly nl",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/LeftCurlyNl",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/LineLength",
+    "tool": "checkstyle",
+    "rule": "LineLength",
+    "anchor": "checkstyle-linelength",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Line length",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run google-java-format first; it wraps code, strings and comments. Then shorten what remains, such as a long name or a text-block line.",
+    "exception": { "key": "exceptions", "rule": "checkstyle/LineLength" }
+  },
+  {
+    "id": "checkstyle/LocalVariableName",
+    "tool": "checkstyle",
+    "rule": "LocalVariableName",
+    "anchor": "checkstyle-localvariablename",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Local variable name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name local variables lowerCamelCase, one letter or two or more characters with a lowercase or digit second: totalCents, not tC or total_cents.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/LocalVariableName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/MemberName",
+    "tool": "checkstyle",
+    "rule": "MemberName",
+    "anchor": "checkstyle-membername",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Member name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name fields lowerCamelCase with at least two characters and a lowercase or digit second: userId, not uId, x or user_id.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/MemberName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/MethodName",
+    "tool": "checkstyle",
+    "rule": "MethodName",
+    "anchor": "checkstyle-methodname",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Method name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name methods lowerCamelCase with a lowercase or digit second character (xCoord fails, total passes); @Test methods may join such parts with underscores.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/MethodName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/MethodParamPad",
+    "tool": "checkstyle",
+    "rule": "MethodParamPad",
+    "anchor": "checkstyle-methodparampad",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Method param pad",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/MethodParamPad",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/MethodTypeParameterName",
+    "tool": "checkstyle",
+    "rule": "MethodTypeParameterName",
+    "anchor": "checkstyle-methodtypeparametername",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Method type parameter name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name method type parameters with one capital letter and an optional digit (T, K2), or a capitalized name ending in T (ResultT).",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/MethodTypeParameterName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/MissingJavadocMethod",
+    "tool": "checkstyle",
+    "rule": "MissingJavadocMethod",
+    "anchor": "checkstyle-missingjavadocmethod",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Missing javadoc method",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Add a Javadoc comment whose first sentence says what the method does.",
+    "exception": { "key": "exceptions", "rule": "checkstyle/MissingJavadocMethod" }
+  },
+  {
+    "id": "checkstyle/MissingJavadocType",
+    "tool": "checkstyle",
+    "rule": "MissingJavadocType",
+    "anchor": "checkstyle-missingjavadoctype",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Missing javadoc type",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Add a Javadoc comment on the type whose first sentence says what it represents.",
+    "exception": { "key": "exceptions", "rule": "checkstyle/MissingJavadocType" }
+  },
+  {
+    "id": "checkstyle/MissingSwitchDefault",
+    "tool": "checkstyle",
+    "rule": "MissingSwitchDefault",
+    "anchor": "checkstyle-missingswitchdefault",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Missing switch default",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Add a default branch that throws IllegalStateException, or make the switch an exhaustive switch expression over a sealed interface or enum.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/MissingSwitchDefault",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/ModifierOrder",
+    "tool": "checkstyle",
+    "rule": "ModifierOrder",
+    "anchor": "checkstyle-modifierorder",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Modifier order",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Put every annotation before the modifier keywords, @Deprecated public void x(), not public @Deprecated; google-java-format then sorts the keywords.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/ModifierOrder",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/MultipleVariableDeclarations",
+    "tool": "checkstyle",
+    "rule": "MultipleVariableDeclarations",
+    "anchor": "checkstyle-multiplevariabledeclarations",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Multiple variable declarations",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Declare one variable per statement: int a; then int b;, never int a, b;.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/MultipleVariableDeclarations",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/NeedBraces",
+    "tool": "checkstyle",
+    "rule": "NeedBraces",
+    "anchor": "checkstyle-needbraces",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Need braces",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Put braces around the body of every if, else, for, while and do, even a single statement.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/NeedBraces",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/NoFinalizer",
+    "tool": "checkstyle",
+    "rule": "NoFinalizer",
+    "anchor": "checkstyle-nofinalizer",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "No finalizer",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Delete finalize(); release resources with try-with-resources on an AutoCloseable, or register a java.lang.ref.Cleaner.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/NoFinalizer",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/NoLineWrap",
+    "tool": "checkstyle",
+    "rule": "NoLineWrap",
+    "anchor": "checkstyle-nolinewrap",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "No line wrap",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/NoLineWrap",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/NonEmptyAtclauseDescription",
+    "tool": "checkstyle",
+    "rule": "NonEmptyAtclauseDescription",
+    "anchor": "checkstyle-nonemptyatclausedescription",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Non empty atclause description",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Write a description after every Javadoc block tag, such as @param name the customer id, or remove the tag.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/NonEmptyAtclauseDescription",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/NoWhitespaceBefore",
+    "tool": "checkstyle",
+    "rule": "NoWhitespaceBefore",
+    "anchor": "checkstyle-nowhitespacebefore",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "No whitespace before",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/NoWhitespaceBefore",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/NoWhitespaceBeforeCaseDefaultColon",
+    "tool": "checkstyle",
+    "rule": "NoWhitespaceBeforeCaseDefaultColon",
+    "anchor": "checkstyle-nowhitespacebeforecasedefaultcolon",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "No whitespace before case default colon",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/NoWhitespaceBeforeCaseDefaultColon",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/OneStatementPerLine",
+    "tool": "checkstyle",
+    "rule": "OneStatementPerLine",
+    "anchor": "checkstyle-onestatementperline",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "One statement per line",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/OneStatementPerLine",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/OneTopLevelClass",
+    "tool": "checkstyle",
+    "rule": "OneTopLevelClass",
+    "anchor": "checkstyle-onetoplevelclass",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "One top level class",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Keep one top-level type per file; move the extra types to files of their own, or nest them inside the main type.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/OneTopLevelClass",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/OperatorWrap",
+    "tool": "checkstyle",
+    "rule": "OperatorWrap",
+    "anchor": "checkstyle-operatorwrap",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Operator wrap",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/OperatorWrap",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/OuterTypeFilename",
+    "tool": "checkstyle",
+    "rule": "OuterTypeFilename",
+    "anchor": "checkstyle-outertypefilename",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Outer type filename",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name the file after its top-level type, so class OrderService lives in OrderService.java.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/OuterTypeFilename",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/OverloadMethodsDeclarationOrder",
+    "tool": "checkstyle",
+    "rule": "OverloadMethodsDeclarationOrder",
+    "anchor": "checkstyle-overloadmethodsdeclarationorder",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Overload methods declaration order",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Declare all overloads of a method name next to each other, with no other method between them.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/OverloadMethodsDeclarationOrder",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/PackageName",
+    "tool": "checkstyle",
+    "rule": "PackageName",
+    "anchor": "checkstyle-packagename",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Package name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name packages in lowercase letters only, no underscores or uppercase; digits are allowed after the first letter of a later segment: com.example.orders2.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/PackageName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/ParameterName",
+    "tool": "checkstyle",
+    "rule": "ParameterName",
+    "anchor": "checkstyle-parametername",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Parameter name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name parameters lowerCamelCase, one letter or two or more characters with a lowercase or digit second: unitPrice, not uP or unit_price.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/ParameterName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/ParenPad",
+    "tool": "checkstyle",
+    "rule": "ParenPad",
+    "anchor": "checkstyle-parenpad",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Paren pad",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/ParenPad",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/PatternVariableName",
+    "tool": "checkstyle",
+    "rule": "PatternVariableName",
+    "anchor": "checkstyle-patternvariablename",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Pattern variable name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name pattern variables lowerCamelCase, one letter or two or more characters with a lowercase or digit second, as in if (o instanceof Order order).",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/PatternVariableName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/RecordComponentName",
+    "tool": "checkstyle",
+    "rule": "RecordComponentName",
+    "anchor": "checkstyle-recordcomponentname",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Record component name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name record components lowerCamelCase, one letter or two or more characters with a lowercase or digit second: record Order(String customerId).",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/RecordComponentName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/RecordTypeParameterName",
+    "tool": "checkstyle",
+    "rule": "RecordTypeParameterName",
+    "anchor": "checkstyle-recordtypeparametername",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Record type parameter name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name record type parameters with one capital letter and an optional digit (T, K2), or a capitalized name ending in T (ValueT).",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/RecordTypeParameterName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/RegexpSinglelineJava",
+    "tool": "checkstyle",
+    "rule": "RegexpSinglelineJava",
+    "anchor": "checkstyle-regexpsinglelinejava",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Regexp singleline java",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Write an empty block as {} with no space inside; if the match is inside a string or comment, remove the spaces between the braces there.",
+    "exception": { "key": "exceptions", "rule": "checkstyle/RegexpSinglelineJava" }
+  },
+  {
+    "id": "checkstyle/RequireEmptyLineBeforeBlockTagGroup",
+    "tool": "checkstyle",
+    "rule": "RequireEmptyLineBeforeBlockTagGroup",
+    "anchor": "checkstyle-requireemptylinebeforeblocktaggroup",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Require empty line before block tag group",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/RequireEmptyLineBeforeBlockTagGroup",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/RightCurlyAlone",
+    "tool": "checkstyle",
+    "rule": "RightCurlyAlone",
+    "anchor": "checkstyle-rightcurlyalone",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Right curly alone",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/RightCurlyAlone",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/RightCurlySame",
+    "tool": "checkstyle",
+    "rule": "RightCurlySame",
+    "anchor": "checkstyle-rightcurlysame",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Right curly same",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/RightCurlySame",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/SeparatorWrapArrayDeclarator",
+    "tool": "checkstyle",
+    "rule": "SeparatorWrapArrayDeclarator",
+    "anchor": "checkstyle-separatorwraparraydeclarator",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Separator wrap array declarator",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/SeparatorWrapArrayDeclarator",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/SeparatorWrapComma",
+    "tool": "checkstyle",
+    "rule": "SeparatorWrapComma",
+    "anchor": "checkstyle-separatorwrapcomma",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Separator wrap comma",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/SeparatorWrapComma",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/SeparatorWrapDot",
+    "tool": "checkstyle",
+    "rule": "SeparatorWrapDot",
+    "anchor": "checkstyle-separatorwrapdot",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Separator wrap dot",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/SeparatorWrapDot",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/SeparatorWrapEllipsis",
+    "tool": "checkstyle",
+    "rule": "SeparatorWrapEllipsis",
+    "anchor": "checkstyle-separatorwrapellipsis",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Separator wrap ellipsis",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/SeparatorWrapEllipsis",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/SeparatorWrapMethodRef",
+    "tool": "checkstyle",
+    "rule": "SeparatorWrapMethodRef",
+    "anchor": "checkstyle-separatorwrapmethodref",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Separator wrap method ref",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/SeparatorWrapMethodRef",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/SingleLineJavadoc",
+    "tool": "checkstyle",
+    "rule": "SingleLineJavadoc",
+    "anchor": "checkstyle-singlelinejavadoc",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Single line javadoc",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/SingleLineJavadoc",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/SummaryJavadoc",
+    "tool": "checkstyle",
+    "rule": "SummaryJavadoc",
+    "anchor": "checkstyle-summaryjavadoc",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Summary javadoc",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Start the Javadoc with a one-sentence summary ending in a period, and do not open with @return, This method returns or A {@code X} is a.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/SummaryJavadoc",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/TypeName",
+    "tool": "checkstyle",
+    "rule": "TypeName",
+    "anchor": "checkstyle-typename",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Type name",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Name classes, interfaces, enums, records and annotations UpperCamelCase with no underscores: OrderService, HttpClient.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/TypeName",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/UnusedImports",
+    "tool": "checkstyle",
+    "rule": "UnusedImports",
+    "anchor": "checkstyle-unusedimports",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Unused imports",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Remove the import, or use the class it names.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/UnusedImports",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/UpperEll",
+    "tool": "checkstyle",
+    "rule": "UpperEll",
+    "anchor": "checkstyle-upperell",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Upper ell",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Write long literals with an uppercase L, as in 100L, never 100l.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/UpperEll",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/VariableDeclarationUsageDistance",
+    "tool": "checkstyle",
+    "rule": "VariableDeclarationUsageDistance",
+    "anchor": "checkstyle-variabledeclarationusagedistance",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Variable declaration usage distance",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Declare the local right before its first use, at most three statements earlier, or move the statements in between above it.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/VariableDeclarationUsageDistance",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/WhitespaceAfter",
+    "tool": "checkstyle",
+    "rule": "WhitespaceAfter",
+    "anchor": "checkstyle-whitespaceafter",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Whitespace after",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/WhitespaceAfter",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  },
+  {
+    "id": "checkstyle/WhitespaceAround",
+    "tool": "checkstyle",
+    "rule": "WhitespaceAround",
+    "anchor": "checkstyle-whitespacearound",
+    "page": "java-checkstyle",
+    "analyzers": { "java": ["java"], "kotlin": ["kotlin"] },
+    "builds": ["gradle", "maven"],
+    "summary": "Whitespace around",
+    "why": "Checkstyle's Google style checks the layout and naming the formatter does not fix. A layout finding means the file is not formatted, and the formatter is the allowed form.",
+    "allowed": "Run the formatter of the project (`google-java-format`, `google-java-format --aosp`, `palantir-java-format`) on the file; with no formatter, fix the layout by hand. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    "exception": {
+      "key": "exceptions",
+      "rule": "checkstyle/WhitespaceAround",
+      "note": "The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees."
+    }
+  }
+]

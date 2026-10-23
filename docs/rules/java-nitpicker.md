@@ -1,6 +1,6 @@
 # Java and Kotlin: nitpicker rules
 
-The rules nitpicker adds on top of the JVM tools: ArchUnit architecture rules, Spring configuration findings, the formatter check and the suppression scan, in Java and Kotlin projects. This page lists 24 rules. [All pages](README.md).
+The rules nitpicker adds on top of the JVM tools: ArchUnit architecture rules, Spring configuration findings, the formatter check and the suppression scan, in Java and Kotlin projects. This page lists 27 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -22,6 +22,17 @@ A rule of the project's own ArchUnit tests.
 - **Allowed form:** Fix the code the rule's message names.
 - **Exception:** If this is intended, add `{"rule":"archunit/<rule>","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Java preset guide](../java-preset.md#slice-4-archunit)
+
+<a id="archunit-spring-controller-controller"></a>
+
+### `archunit/spring-controller-controller`
+
+A controller holds or creates another controller: a field, constructor or method parameter of that type, also inside a generic, or `new OtherController()`.
+
+- **Why it is on:** One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.
+- **Allowed form:** Move what both controllers need into a service both call: a controller handles its own requests and does not hold another controller.
+- **Exception:** If this is intended, add `{"rule":"archunit/spring-controller-controller","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [Java preset guide](../java-preset.md#spring-architecture-rules)
 
 <a id="archunit-spring-controller-entity"></a>
 
@@ -49,7 +60,7 @@ A controller depends on a repository or on data access directly (`JdbcTemplate`,
 
 ### `archunit/spring-feature-boundary`
 
-A class uses a class from a sub-package of another feature; only the classes directly in a feature's package are its public face.
+A class uses a class from a sub-package of another feature; only the classes directly in a feature's package are its public face. When a layering rule reports the same class and dependency, only the layering finding is shown, unless an exception lifts it.
 
 - **Why it is on:** One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.
 - **Allowed form:** Use only the classes directly in the other feature's package, or move what both need to `<root>.shared`.
@@ -76,6 +87,28 @@ A test class or method has `@DirtiesContext`.
 - **Why it is on:** One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.
 - **Allowed form:** Reset the state in the test itself, or test the class without a Spring context.
 - **Exception:** If this is intended, add `{"rule":"archunit/spring-no-dirties-context","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [Java preset guide](../java-preset.md#spring-architecture-rules)
+
+<a id="archunit-spring-repository-service"></a>
+
+### `archunit/spring-repository-service`
+
+A repository depends on a `@Service`: a field, parameter, return type or call.
+
+- **Why it is on:** One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.
+- **Allowed form:** Have the service call the repository and pass it what it needs: a repository only reads and writes data and depends on no service.
+- **Exception:** If this is intended, add `{"rule":"archunit/spring-repository-service","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [Java preset guide](../java-preset.md#spring-architecture-rules)
+
+<a id="archunit-spring-scope-capture"></a>
+
+### `archunit/spring-scope-capture`
+
+A singleton bean takes a request-, session-, `websocket`-, Spring Batch `step`- or `job`-scoped bean without a scoped proxy.
+
+- **Why it is on:** One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes of a Spring project: it keeps the package-by-feature layout and the layering of the TypeScript preset.
+- **Allowed form:** Inject `ObjectProvider<T>` and call `getObject()` per use, or give the scoped bean a scoped proxy (`proxyMode = ScopedProxyMode.TARGET_CLASS`).
+- **Exception:** If this is intended, add `{"rule":"archunit/spring-scope-capture","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Java preset guide](../java-preset.md#spring-architecture-rules)
 
 <a id="archunit-spring-service-web"></a>

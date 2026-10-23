@@ -36,7 +36,7 @@ Domain does not import id libraries.
 
 Domain does not import module state.
 
-- **Allowed form:** domain/ may not import module state (state/, *-state, *-store files). Receive the state as a parameter and return the new value. An exception fits only when it is deliberate; its paths are the importing files.
+- **Allowed form:** domain/ may not import module state (state/, \*-state, \*-store files). Receive the state as a parameter and return the new value. An exception fits only when it is deliberate; its paths are the importing files.
 - **Exception:** If this is intended, add `{"rule":"domain-does-not-import-module-state","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
 
@@ -86,7 +86,7 @@ Domain does not reach io through shared.
 
 Feature internals only through index.
 
-- **Allowed form:** Import a feature only through its public index.ts (src/main/features/<name>/index.ts), not its internal files.
+- **Allowed form:** Import a feature only through its public index.ts (src/main/features/\<name>/index.ts), not its internal files.
 - **Exception:** If this is intended, add `{"rule":"feature-internals-only-through-index","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
 
@@ -106,7 +106,7 @@ Features do not import composition root.
 
 Features do not import other feature internals.
 
-- **Allowed form:** Import another feature only through its public index.ts (src/main/features/<name>/index.ts), not its internal files.
+- **Allowed form:** Import another feature only through its public index.ts (src/main/features/\<name>/index.ts), not its internal files.
 - **Exception:** If this is intended, add `{"rule":"features-do-not-import-other-feature-internals","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#layout-and-boundaries)
 

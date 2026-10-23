@@ -289,7 +289,7 @@ Function definition does not bind loop variable `{name}`.
 
 ### `ruff/B025`
 
-Try-except* block with duplicate exception `{name}`.
+Try-except\* block with duplicate exception `{name}`.
 
 - **Why it is on:** Selected in the ruff config of the Python preset, with the flake8-bugbear rules (`duplicate-try-block-exception`).
 - **Exception:** If this is intended, add `{"rule":"B025","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.

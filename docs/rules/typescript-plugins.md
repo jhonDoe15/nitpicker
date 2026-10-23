@@ -644,7 +644,7 @@ Disallows 'javascript:' URLs as attribute values.
 
 ### `eslint/react-dom/no-unsafe-target-blank`
 
-Disallows 'target="_blank"' without 'rel="noreferrer noopener"'.
+Disallows 'target="\_blank"' without 'rel="noreferrer noopener"'.
 
 - **Printed as:** `eslint-lint/react-dom/no-unsafe-target-blank`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
@@ -765,7 +765,7 @@ Disallows class components except for error boundaries.
 
 ### `eslint/react-x/no-context-provider`
 
-Replaces usage of '<Context.Provider>' with '<Context>'.
+Replaces usage of '\<Context.Provider>' with '\<Context>'.
 
 - **Printed as:** `eslint-lint/react-x/no-context-provider`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
@@ -1160,7 +1160,7 @@ Disallow string interpolation in snapshots.
 
 ### `eslint/vitest/no-mocks-import`
 
-Disallow importing from **mocks** directory.
+Disallow importing from \_\_mocks\_\_ directory.
 
 - **Printed as:** `eslint-lint/vitest/no-mocks-import`
 - **Presets:** TypeScript and JavaScript

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { renderSarifReport } from './sarif.mjs';
 import { expectValidSarif } from './test-support/report-assertions.mjs';
 import { finding, report } from './test-support/report-builders.mjs';
+import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 
 describe('renderSarifReport', () => {
   it('emits a structurally valid SARIF 2.1.0 log with fingerprints', () => {
@@ -76,29 +77,28 @@ describe('renderSarifReport', () => {
         id: 'structure/function-lines-limit',
         name: 'function-lines-limit',
         shortDescription: { text: 'A function longer than the limit.' },
-        helpUri: expect.stringMatching(
-          /^https:\/\/github\.com\/[^/]+\/nitpicker\/blob\/main\/docs\/rules\/checks\.md#structure-function-lines-limit$/u,
-        ),
+        helpUri: docsUrl('docs/rules/checks.md', 'structure-function-lines-limit'),
       },
       {
         id: 'pmd/UnusedLocalVariable',
         name: 'UnusedLocalVariable',
-        shortDescription: { text: expect.any(String) },
-        helpUri: expect.stringMatching(/\/docs\/rules\/java-pmd\.md#pmd-unusedlocalvariable$/u),
+        shortDescription: { text: 'Unused local variable' },
+        helpUri: docsUrl('docs/rules/java-pmd.md', 'pmd-unusedlocalvariable'),
       },
       {
         id: 'eslint-lint/@typescript-eslint/no-explicit-any',
         name: '@typescript-eslint/no-explicit-any',
         shortDescription: { text: 'Disallow the `any` type' },
-        helpUri: expect.stringMatching(
-          /\/docs\/rules\/typescript-eslint\.md#eslint-typescript-eslint-no-explicit-any$/u,
+        helpUri: docsUrl(
+          'docs/rules/typescript-eslint.md',
+          'eslint-typescript-eslint-no-explicit-any',
         ),
       },
       {
         id: 'mypy/attr-defined',
         name: 'attr-defined',
-        shortDescription: { text: expect.any(String) },
-        helpUri: expect.stringMatching(/\/docs\/rules\/python-types\.md#mypy-error-code$/u),
+        shortDescription: { text: 'A diagnostic of mypy, named by its <error code>.' },
+        helpUri: docsUrl('docs/rules/python-types.md', 'mypy-error-code'),
       },
     ]);
   });

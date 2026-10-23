@@ -48,7 +48,7 @@
   "files": [
     "core/**/*.mjs",
     "shared/**/*.mjs",
-    "shared/reference/rules.json",
+    "shared/reference/rules/*.json",
     "languages/**",
     "!**/*.test.mjs",
     "!**/fixtures/**",

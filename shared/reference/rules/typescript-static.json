@@ -1,0 +1,343 @@
+[
+  {
+    "id": "dependency-architecture/domain-does-not-import-adapters",
+    "tool": "dependency-architecture",
+    "rule": "domain-does-not-import-adapters",
+    "anchor": "dependency-architecture-domain-does-not-import-adapters",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "Domain does not import adapters",
+    "why": "dependency-cruiser checks the import graph of the production code against the architecture rules of the strict preset.",
+    "allowed": "domain/ stays pure and may not import adapters/. Define the dependency as a type in domain/ and let adapters/ implement it. An exception fits only when it is deliberate; its paths are the importing files.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "domain-does-not-import-adapters" }
+  },
+  {
+    "id": "dependency-architecture/domain-does-not-import-id-libraries",
+    "tool": "dependency-architecture",
+    "rule": "domain-does-not-import-id-libraries",
+    "anchor": "dependency-architecture-domain-does-not-import-id-libraries",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "Domain does not import id libraries",
+    "why": "dependency-cruiser checks the import graph of the production code against the architecture rules of the strict preset.",
+    "allowed": "domain/ may not import ID or random-data libraries (uuid, nanoid, cuid, ulid, faker). Take the ID as a parameter from adapters/. An exception fits only when it is deliberate; its paths are the importing files.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "domain-does-not-import-id-libraries" }
+  },
+  {
+    "id": "dependency-architecture/domain-does-not-import-module-state",
+    "tool": "dependency-architecture",
+    "rule": "domain-does-not-import-module-state",
+    "anchor": "dependency-architecture-domain-does-not-import-module-state",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "Domain does not import module state",
+    "why": "dependency-cruiser checks the import graph of the production code against the architecture rules of the strict preset.",
+    "allowed": "domain/ may not import module state (state/, *-state, *-store files). Receive the state as a parameter and return the new value. An exception fits only when it is deliberate; its paths are the importing files.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "domain-does-not-import-module-state" }
+  },
+  {
+    "id": "dependency-architecture/domain-does-not-import-network-or-database-clients",
+    "tool": "dependency-architecture",
+    "rule": "domain-does-not-import-network-or-database-clients",
+    "anchor": "dependency-architecture-domain-does-not-import-network-or-database-clients",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "Domain does not import network or database clients",
+    "why": "dependency-cruiser checks the import graph of the production code against the architecture rules of the strict preset.",
+    "allowed": "domain/ may not import network or database clients. Call the client from adapters/ and pass the data into domain/ as a parameter. An exception fits only when it is deliberate; its paths are the importing files.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": {
+      "key": "exceptions",
+      "rule": "domain-does-not-import-network-or-database-clients"
+    }
+  },
+  {
+    "id": "dependency-architecture/domain-does-not-import-node-io",
+    "tool": "dependency-architecture",
+    "rule": "domain-does-not-import-node-io",
+    "anchor": "dependency-architecture-domain-does-not-import-node-io",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "Domain does not import node io",
+    "why": "dependency-cruiser checks the import graph of the production code against the architecture rules of the strict preset.",
+    "allowed": "domain/ may import only pure Node modules (path, url, util, assert, buffer, events, string_decoder, punycode, querystring, and their subpaths such as path/posix). Do the I/O in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate; its paths are the importing files.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "domain-does-not-import-node-io" }
+  },
+  {
+    "id": "dependency-architecture/domain-does-not-import-the-logger",
+    "tool": "dependency-architecture",
+    "rule": "domain-does-not-import-the-logger",
+    "anchor": "dependency-architecture-domain-does-not-import-the-logger",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "Domain does not import the logger",
+    "why": "dependency-cruiser checks the import graph of the production code against the architecture rules of the strict preset.",
+    "allowed": "domain/ may not import the logger. Return a result describing what happened and let adapters/ log it. An exception fits only when it is deliberate; its paths are the importing files.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "domain-does-not-import-the-logger" }
+  },
+  {
+    "id": "dependency-architecture/domain-does-not-reach-io-through-shared",
+    "tool": "dependency-architecture",
+    "rule": "domain-does-not-reach-io-through-shared",
+    "anchor": "dependency-architecture-domain-does-not-reach-io-through-shared",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "Domain does not reach io through shared",
+    "why": "dependency-cruiser checks the import graph of the production code against the architecture rules of the strict preset.",
+    "allowed": "domain/ reaches Node I/O or a client through a shared/ module it imports. Move that dependency out of the shared module, or do the work in adapters/ and pass the result into domain/ as a parameter. An exception fits only when it is deliberate; its paths are the importing files.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "domain-does-not-reach-io-through-shared" }
+  },
+  {
+    "id": "dependency-architecture/feature-internals-only-through-index",
+    "tool": "dependency-architecture",
+    "rule": "feature-internals-only-through-index",
+    "anchor": "dependency-architecture-feature-internals-only-through-index",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "Feature internals only through index",
+    "why": "dependency-cruiser checks the import graph of the production code against the architecture rules of the strict preset.",
+    "allowed": "Import a feature only through its public index.ts (src/main/features/<name>/index.ts), not its internal files.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "feature-internals-only-through-index" }
+  },
+  {
+    "id": "dependency-architecture/features-do-not-import-composition-root",
+    "tool": "dependency-architecture",
+    "rule": "features-do-not-import-composition-root",
+    "anchor": "dependency-architecture-features-do-not-import-composition-root",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "Features do not import composition root",
+    "why": "dependency-cruiser checks the import graph of the production code against the architecture rules of the strict preset.",
+    "allowed": "Features do not import the composition root. Accept the dependency as a parameter; only the composition root wires features together.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "features-do-not-import-composition-root" }
+  },
+  {
+    "id": "dependency-architecture/features-do-not-import-other-feature-internals",
+    "tool": "dependency-architecture",
+    "rule": "features-do-not-import-other-feature-internals",
+    "anchor": "dependency-architecture-features-do-not-import-other-feature-internals",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "Features do not import other feature internals",
+    "why": "dependency-cruiser checks the import graph of the production code against the architecture rules of the strict preset.",
+    "allowed": "Import another feature only through its public index.ts (src/main/features/<name>/index.ts), not its internal files.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "features-do-not-import-other-feature-internals" }
+  },
+  {
+    "id": "dependency-architecture/no-import-outside-roots",
+    "tool": "dependency-architecture",
+    "rule": "no-import-outside-roots",
+    "anchor": "dependency-architecture-no-import-outside-roots",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "No import outside roots",
+    "why": "dependency-cruiser checks the import graph of the production code against the architecture rules of the strict preset.",
+    "allowed": "Production code imports only from layout.sourceRoots: move the imported code under a source root, or add its folder to layout.sourceRoots so the gate checks it. Excluding the imported file instead is a policy loosening that fails until a person accepts it.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": {
+      "note": "It has no exception: move the code under a source root, or add its folder to `layout.sourceRoots`."
+    }
+  },
+  {
+    "id": "dependency-architecture/no-production-cycles",
+    "tool": "dependency-architecture",
+    "rule": "no-production-cycles",
+    "anchor": "dependency-architecture-no-production-cycles",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "Production modules import each other in a cycle.",
+    "why": "A cycle makes modules impossible to load, test or replace one at a time.",
+    "allowed": "Break the cycle: move the shared part to a module both import, or pass the dependency in as a parameter.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "no-production-cycles" }
+  },
+  {
+    "id": "dependency-architecture/no-production-to-test",
+    "tool": "dependency-architecture",
+    "rule": "no-production-to-test",
+    "anchor": "dependency-architecture-no-production-to-test",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "Production code imports a test file or a file under a test root.",
+    "why": "Code that ships must not depend on code that only tests use.",
+    "allowed": "Move what both need to a production module, or keep the import in a test.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "no-production-to-test" }
+  },
+  {
+    "id": "dependency-architecture/shared-does-not-import-features",
+    "tool": "dependency-architecture",
+    "rule": "shared-does-not-import-features",
+    "anchor": "dependency-architecture-shared-does-not-import-features",
+    "page": "typescript-static",
+    "analyzers": {
+      "typescript": ["dependency-architecture"],
+      "javascript": ["dependency-architecture"]
+    },
+    "summary": "Shared does not import features",
+    "why": "dependency-cruiser checks the import graph of the production code against the architecture rules of the strict preset.",
+    "allowed": "Shared code does not import features. Move the dependency into the feature, or pass it in as a parameter from the composition root.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "layout-and-boundaries"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "shared-does-not-import-features" }
+  },
+  {
+    "id": "prettier-format/prettier/prettier",
+    "tool": "prettier-format",
+    "rule": "prettier/prettier",
+    "anchor": "prettier-format-prettier-prettier",
+    "page": "typescript-static",
+    "analyzers": { "typescript": ["prettier-format"], "javascript": ["prettier-format"] },
+    "summary": "Lines that Prettier would format differently.",
+    "why": "One layout for every file, so that reviews are about the code and not its formatting.",
+    "allowed": "Run Prettier on the file; `nitpicker fix` does it for the files a change touched.",
+    "exception": { "key": "exceptions", "rule": "prettier/prettier" }
+  },
+  {
+    "id": "typescript-typecheck/TS<code>",
+    "tool": "typescript-typecheck",
+    "rule": "TS<code>",
+    "anchor": "typescript-typecheck-ts-code",
+    "page": "typescript-static",
+    "analyzers": { "typescript": ["typescript-typecheck"], "javascript": ["typescript-typecheck"] },
+    "pattern": "^TS\\d+$",
+    "barePattern": true,
+    "summary": "A TypeScript compiler error, with the compiler code (`TS2322`).",
+    "why": "The project type-checks under the strictest compiler options of the preset.",
+    "allowed": "Fix the type error.",
+    "exception": {
+      "note": "A compiler error has no exception: fix the type error. A config entry for one is rejected."
+    }
+  }
+]

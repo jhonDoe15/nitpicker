@@ -1,9 +1,10 @@
-import { RULE_IDS, RULES } from '../../policy.mjs';
 import {
   COMMON_EXCEPTION_RULES,
   FUNCTION_EXCEPTION_RULES,
   FUNCTION_REQUIRED_RULES,
   NAME_EXCEPTION_RULES,
+  RULE_IDS,
+  RULES,
 } from '../../policy.mjs';
 import { toolsOf } from '../../exceptions/rule-tools.mjs';
 import { PACKAGE_EXCEPTION_RULES } from '../../project-rules/hygiene-rules.mjs';

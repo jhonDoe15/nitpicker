@@ -59,17 +59,21 @@ function parseOptionalFields(value, classification, context) {
     }
     fields.metric = parseMetric(value.metric, `${context}.metric`);
   }
-  if (value.ratchet !== undefined) {
-    fields.ratchet = parseRatchet(value.ratchet, `${context}.ratchet`);
-  }
-  if (value.tokens !== undefined) {
-    fields.tokens = parseTokens(value.tokens, `${context}.tokens`);
-  }
-  if (value.helpUri !== undefined) {
-    fields.helpUri = parseHelpUri(value.helpUri, `${context}.helpUri`);
-  }
+  return { ...fields, ...parseLaterFields(value, context) };
+}
 
-  return fields;
+function parseLaterFields(value, context) {
+  return {
+    ...(value.ratchet === undefined
+      ? {}
+      : { ratchet: parseRatchet(value.ratchet, `${context}.ratchet`) }),
+    ...(value.tokens === undefined
+      ? {}
+      : { tokens: parseTokens(value.tokens, `${context}.tokens`) }),
+    ...(value.helpUri === undefined
+      ? {}
+      : { helpUri: parseHelpUri(value.helpUri, `${context}.helpUri`) }),
+  };
 }
 
 function parseLocation(value, context) {

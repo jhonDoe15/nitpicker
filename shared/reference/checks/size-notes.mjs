@@ -1,4 +1,5 @@
-const SPLIT_FIRST = 'A function, file or class already over its limit may be edited as long as the change does not make it worse.';
+const SPLIT_FIRST =
+  'A function, file or class already over its limit may be edited as long as the change does not make it worse.';
 
 export const SIZE_NOTES = {
   'function-lines-limit': [

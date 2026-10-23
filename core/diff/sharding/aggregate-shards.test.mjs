@@ -5,6 +5,7 @@ import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { readJson } from '../git/test-support/fixture-files.mjs';
 import { useGitFixtures } from '../git/test-support/git-repository.mjs';
 import { exactText } from '../reporting/test-support/output-expectations.mjs';
+import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 import { aggregateShardReports } from './aggregate-shards.mjs';
 import { analyzer, useShardFixtures, writeShard } from './test-support/shard-fixtures.mjs';
 
@@ -79,6 +80,8 @@ small: base=0 head=0 new=1 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[
 
 New findings:
 small/example src/main/example.ts example finding
+
+Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)
 `),
     );
   });

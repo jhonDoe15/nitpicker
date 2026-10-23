@@ -1,0 +1,2893 @@
+[
+  {
+    "id": "eslint/@typescript-eslint/await-thenable",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/await-thenable",
+    "anchor": "eslint-typescript-eslint-await-thenable",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow awaiting a value that is not a Thenable",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/await-thenable" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/await-thenable" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/ban-ts-comment",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/ban-ts-comment",
+    "anchor": "eslint-typescript-eslint-ban-ts-comment",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow `@ts-<directive>` comments or require descriptions after directives",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/ban-ts-comment" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/ban-ts-comment" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/consistent-type-imports",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/consistent-type-imports",
+    "anchor": "eslint-typescript-eslint-consistent-type-imports",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce consistent usage of type imports",
+    "why": "Turned on by the preset on top of the ESLint and typescript-eslint rule sets.",
+    "scope": "The TypeScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/consistent-type-imports"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/consistent-type-imports" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/explicit-module-boundary-types",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/explicit-module-boundary-types",
+    "anchor": "eslint-typescript-eslint-explicit-module-boundary-types",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Require explicit return and argument types on exported functions' and classes' public class methods",
+    "why": "Turned on by the preset on top of the ESLint and typescript-eslint rule sets.",
+    "scope": "The TypeScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/explicit-module-boundary-types"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": {
+      "key": "exceptions",
+      "rule": "@typescript-eslint/explicit-module-boundary-types"
+    }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-array-constructor",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-array-constructor",
+    "anchor": "eslint-typescript-eslint-no-array-constructor",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow generic `Array` constructors",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-array-constructor"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-array-constructor" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-array-delete",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-array-delete",
+    "anchor": "eslint-typescript-eslint-no-array-delete",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow using the `delete` operator on array values",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/no-array-delete" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-array-delete" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-base-to-string",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-base-to-string",
+    "anchor": "eslint-typescript-eslint-no-base-to-string",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require `.toString()` and `.toLocaleString()` to only be called on objects which provide useful information when stringified",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-base-to-string"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-base-to-string" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-confusing-void-expression",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-confusing-void-expression",
+    "anchor": "eslint-typescript-eslint-no-confusing-void-expression",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require expressions of type void to appear in statement position",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-confusing-void-expression"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-confusing-void-expression" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-deprecated",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-deprecated",
+    "anchor": "eslint-typescript-eslint-no-deprecated",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow using code marked as `@deprecated`",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/no-deprecated" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-deprecated" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-duplicate-enum-values",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-duplicate-enum-values",
+    "anchor": "eslint-typescript-eslint-no-duplicate-enum-values",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow duplicate enum member values",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-duplicate-enum-values"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-duplicate-enum-values" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-duplicate-type-constituents",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-duplicate-type-constituents",
+    "anchor": "eslint-typescript-eslint-no-duplicate-type-constituents",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow duplicate constituents of union or intersection types",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-duplicate-type-constituents"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": {
+      "key": "exceptions",
+      "rule": "@typescript-eslint/no-duplicate-type-constituents"
+    }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-dynamic-delete",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-dynamic-delete",
+    "anchor": "eslint-typescript-eslint-no-dynamic-delete",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow using the `delete` operator on computed key expressions",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-dynamic-delete"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-dynamic-delete" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-empty-object-type",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-empty-object-type",
+    "anchor": "eslint-typescript-eslint-no-empty-object-type",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow accidentally using the \"empty object\" type",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-empty-object-type"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-empty-object-type" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-explicit-any",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-explicit-any",
+    "anchor": "eslint-typescript-eslint-no-explicit-any",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow the `any` type",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/no-explicit-any" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-explicit-any" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-extra-non-null-assertion",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-extra-non-null-assertion",
+    "anchor": "eslint-typescript-eslint-no-extra-non-null-assertion",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow extra non-null assertions",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-extra-non-null-assertion"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-extra-non-null-assertion" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-extraneous-class",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-extraneous-class",
+    "anchor": "eslint-typescript-eslint-no-extraneous-class",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow classes used as namespaces",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-extraneous-class"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-extraneous-class" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-floating-promises",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "anchor": "eslint-typescript-eslint-no-floating-promises",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require Promise-like statements to be handled appropriately",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-floating-promises"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-floating-promises" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-for-in-array",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-for-in-array",
+    "anchor": "eslint-typescript-eslint-no-for-in-array",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow iterating over an array with a for-in loop",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/no-for-in-array" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-for-in-array" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-implied-eval",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-implied-eval",
+    "anchor": "eslint-typescript-eslint-no-implied-eval",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow the use of `eval()`-like functions",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/no-implied-eval" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-implied-eval" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-invalid-void-type",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-invalid-void-type",
+    "anchor": "eslint-typescript-eslint-no-invalid-void-type",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow `void` type outside of generic or return types",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-invalid-void-type"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-invalid-void-type" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-meaningless-void-operator",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-meaningless-void-operator",
+    "anchor": "eslint-typescript-eslint-no-meaningless-void-operator",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow the `void` operator except when used to discard a value",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-meaningless-void-operator"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-meaningless-void-operator" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-misused-new",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-misused-new",
+    "anchor": "eslint-typescript-eslint-no-misused-new",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Enforce valid definition of `new` and `constructor`",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/no-misused-new" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-misused-new" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-misused-promises",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-misused-promises",
+    "anchor": "eslint-typescript-eslint-no-misused-promises",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow Promises in places not designed to handle them",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-misused-promises"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-misused-promises" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-misused-spread",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-misused-spread",
+    "anchor": "eslint-typescript-eslint-no-misused-spread",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow using the spread operator when it might cause unexpected behavior",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-misused-spread"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-misused-spread" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-mixed-enums",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-mixed-enums",
+    "anchor": "eslint-typescript-eslint-no-mixed-enums",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow enums from having both number and string members",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/no-mixed-enums" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-mixed-enums" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-namespace",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-namespace",
+    "anchor": "eslint-typescript-eslint-no-namespace",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow TypeScript namespaces",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/no-namespace" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-namespace" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-non-null-asserted-nullish-coalescing",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-non-null-asserted-nullish-coalescing",
+    "anchor": "eslint-typescript-eslint-no-non-null-asserted-nullish-coalescing",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow non-null assertions in the left operand of a nullish coalescing operator",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-non-null-asserted-nullish-coalescing"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": {
+      "key": "exceptions",
+      "rule": "@typescript-eslint/no-non-null-asserted-nullish-coalescing"
+    }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-non-null-asserted-optional-chain",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-non-null-asserted-optional-chain",
+    "anchor": "eslint-typescript-eslint-no-non-null-asserted-optional-chain",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow non-null assertions after an optional chain expression",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-non-null-asserted-optional-chain"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": {
+      "key": "exceptions",
+      "rule": "@typescript-eslint/no-non-null-asserted-optional-chain"
+    }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-non-null-assertion",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-non-null-assertion",
+    "anchor": "eslint-typescript-eslint-no-non-null-assertion",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow non-null assertions using the `!` postfix operator",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-non-null-assertion"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-non-null-assertion" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-redundant-type-constituents",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-redundant-type-constituents",
+    "anchor": "eslint-typescript-eslint-no-redundant-type-constituents",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow members of unions and intersections that do nothing or override type information",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-redundant-type-constituents"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": {
+      "key": "exceptions",
+      "rule": "@typescript-eslint/no-redundant-type-constituents"
+    }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-require-imports",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-require-imports",
+    "anchor": "eslint-typescript-eslint-no-require-imports",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallow invocation of `require()`",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "scope": "The TypeScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-require-imports"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-require-imports" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-this-alias",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-this-alias",
+    "anchor": "eslint-typescript-eslint-no-this-alias",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow aliasing `this`",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/no-this-alias" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-this-alias" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unnecessary-boolean-literal-compare",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unnecessary-boolean-literal-compare",
+    "anchor": "eslint-typescript-eslint-no-unnecessary-boolean-literal-compare",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow unnecessary equality comparisons against boolean literals",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unnecessary-boolean-literal-compare"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": {
+      "key": "exceptions",
+      "rule": "@typescript-eslint/no-unnecessary-boolean-literal-compare"
+    }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unnecessary-condition",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unnecessary-condition",
+    "anchor": "eslint-typescript-eslint-no-unnecessary-condition",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow conditionals where the type is always truthy or always falsy",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unnecessary-condition"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unnecessary-condition" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unnecessary-template-expression",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unnecessary-template-expression",
+    "anchor": "eslint-typescript-eslint-no-unnecessary-template-expression",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow unnecessary template expressions",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unnecessary-template-expression"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": {
+      "key": "exceptions",
+      "rule": "@typescript-eslint/no-unnecessary-template-expression"
+    }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unnecessary-type-arguments",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unnecessary-type-arguments",
+    "anchor": "eslint-typescript-eslint-no-unnecessary-type-arguments",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow type arguments that are equal to the default",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unnecessary-type-arguments"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unnecessary-type-arguments" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unnecessary-type-assertion",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "anchor": "eslint-typescript-eslint-no-unnecessary-type-assertion",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow type assertions that do not change the type of an expression",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unnecessary-type-assertion"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unnecessary-type-assertion" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unnecessary-type-constraint",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unnecessary-type-constraint",
+    "anchor": "eslint-typescript-eslint-no-unnecessary-type-constraint",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow unnecessary constraints on generic types",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unnecessary-type-constraint"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": {
+      "key": "exceptions",
+      "rule": "@typescript-eslint/no-unnecessary-type-constraint"
+    }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unnecessary-type-conversion",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unnecessary-type-conversion",
+    "anchor": "eslint-typescript-eslint-no-unnecessary-type-conversion",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow conversion idioms when they do not change the type or value of the expression",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unnecessary-type-conversion"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": {
+      "key": "exceptions",
+      "rule": "@typescript-eslint/no-unnecessary-type-conversion"
+    }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unnecessary-type-parameters",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unnecessary-type-parameters",
+    "anchor": "eslint-typescript-eslint-no-unnecessary-type-parameters",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow type parameters that aren't used multiple times",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unnecessary-type-parameters"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": {
+      "key": "exceptions",
+      "rule": "@typescript-eslint/no-unnecessary-type-parameters"
+    }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unsafe-argument",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "anchor": "eslint-typescript-eslint-no-unsafe-argument",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow calling a function with a value with type `any`",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unsafe-argument"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unsafe-argument" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unsafe-assignment",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "anchor": "eslint-typescript-eslint-no-unsafe-assignment",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow assigning a value with type `any` to variables and properties",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unsafe-assignment"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unsafe-assignment" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unsafe-call",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "anchor": "eslint-typescript-eslint-no-unsafe-call",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow calling a value with type `any`",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/no-unsafe-call" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unsafe-call" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unsafe-declaration-merging",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unsafe-declaration-merging",
+    "anchor": "eslint-typescript-eslint-no-unsafe-declaration-merging",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow unsafe declaration merging",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unsafe-declaration-merging"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unsafe-declaration-merging" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unsafe-enum-comparison",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unsafe-enum-comparison",
+    "anchor": "eslint-typescript-eslint-no-unsafe-enum-comparison",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow comparing an enum value with a non-enum value",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unsafe-enum-comparison"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unsafe-enum-comparison" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unsafe-function-type",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unsafe-function-type",
+    "anchor": "eslint-typescript-eslint-no-unsafe-function-type",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow using the unsafe built-in Function type",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unsafe-function-type"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unsafe-function-type" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unsafe-member-access",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "anchor": "eslint-typescript-eslint-no-unsafe-member-access",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow member access on a value with type `any`",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unsafe-member-access"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unsafe-member-access" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unsafe-return",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "anchor": "eslint-typescript-eslint-no-unsafe-return",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow returning a value with type `any` from a function",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unsafe-return"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unsafe-return" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unsafe-unary-minus",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unsafe-unary-minus",
+    "anchor": "eslint-typescript-eslint-no-unsafe-unary-minus",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require unary negation to take a number",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unsafe-unary-minus"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unsafe-unary-minus" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unused-expressions",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unused-expressions",
+    "anchor": "eslint-typescript-eslint-no-unused-expressions",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow unused expressions",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-unused-expressions"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unused-expressions" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-unused-vars",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-unused-vars",
+    "anchor": "eslint-typescript-eslint-no-unused-vars",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow unused variables",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/no-unused-vars" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-unused-vars" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-useless-constructor",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-useless-constructor",
+    "anchor": "eslint-typescript-eslint-no-useless-constructor",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow unnecessary constructors",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-useless-constructor"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-useless-constructor" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-useless-default-assignment",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-useless-default-assignment",
+    "anchor": "eslint-typescript-eslint-no-useless-default-assignment",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow default values that will never be used",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-useless-default-assignment"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-useless-default-assignment" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/no-wrapper-object-types",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/no-wrapper-object-types",
+    "anchor": "eslint-typescript-eslint-no-wrapper-object-types",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow using confusing built-in primitive class wrappers",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/no-wrapper-object-types"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/no-wrapper-object-types" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/only-throw-error",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/only-throw-error",
+    "anchor": "eslint-typescript-eslint-only-throw-error",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow throwing non-`Error` values as exceptions",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/only-throw-error"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/only-throw-error" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/prefer-as-const",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/prefer-as-const",
+    "anchor": "eslint-typescript-eslint-prefer-as-const",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Enforce the use of `as const` over literal type",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/prefer-as-const" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/prefer-as-const" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/prefer-literal-enum-member",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/prefer-literal-enum-member",
+    "anchor": "eslint-typescript-eslint-prefer-literal-enum-member",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require all enum members to be literal values",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/prefer-literal-enum-member"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/prefer-literal-enum-member" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/prefer-namespace-keyword",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/prefer-namespace-keyword",
+    "anchor": "eslint-typescript-eslint-prefer-namespace-keyword",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require using `namespace` keyword over `module` keyword to declare custom TypeScript modules",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/prefer-namespace-keyword"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/prefer-namespace-keyword" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/prefer-promise-reject-errors",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/prefer-promise-reject-errors",
+    "anchor": "eslint-typescript-eslint-prefer-promise-reject-errors",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require using Error objects as Promise rejection reasons",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/prefer-promise-reject-errors"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/prefer-promise-reject-errors" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/prefer-reduce-type-parameter",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/prefer-reduce-type-parameter",
+    "anchor": "eslint-typescript-eslint-prefer-reduce-type-parameter",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Enforce using type parameter when calling `Array#reduce` instead of using a type assertion",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/prefer-reduce-type-parameter"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/prefer-reduce-type-parameter" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/prefer-return-this-type",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/prefer-return-this-type",
+    "anchor": "eslint-typescript-eslint-prefer-return-this-type",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Enforce that `this` is used when only `this` type is returned",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/prefer-return-this-type"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/prefer-return-this-type" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/related-getter-setter-pairs",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/related-getter-setter-pairs",
+    "anchor": "eslint-typescript-eslint-related-getter-setter-pairs",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Enforce that `get()` types should be assignable to their equivalent `set()` type",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/related-getter-setter-pairs"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/related-getter-setter-pairs" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/require-await",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/require-await",
+    "anchor": "eslint-typescript-eslint-require-await",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow async functions which do not return promises and have no `await` expression",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/require-await" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/require-await" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/restrict-plus-operands",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/restrict-plus-operands",
+    "anchor": "eslint-typescript-eslint-restrict-plus-operands",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require both operands of addition to be the same type and be `bigint`, `number`, or `string`",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/restrict-plus-operands"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/restrict-plus-operands" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/restrict-template-expressions",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/restrict-template-expressions",
+    "anchor": "eslint-typescript-eslint-restrict-template-expressions",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Enforce template literal expressions to be of `string` type",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/restrict-template-expressions"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/restrict-template-expressions" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/return-await",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/return-await",
+    "anchor": "eslint-typescript-eslint-return-await",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Enforce consistent awaiting of returned promises",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/return-await" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/return-await" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/switch-exhaustiveness-check",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/switch-exhaustiveness-check",
+    "anchor": "eslint-typescript-eslint-switch-exhaustiveness-check",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require switch-case statements to be exhaustive",
+    "why": "Turned on by the preset on top of the ESLint and typescript-eslint rule sets.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/switch-exhaustiveness-check"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/switch-exhaustiveness-check" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/triple-slash-reference",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/triple-slash-reference",
+    "anchor": "eslint-typescript-eslint-triple-slash-reference",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow certain triple slash directives in favor of ES6-style import declarations",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/triple-slash-reference"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/triple-slash-reference" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/unbound-method",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/unbound-method",
+    "anchor": "eslint-typescript-eslint-unbound-method",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Enforce unbound methods are called with their expected scope",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://typescript-eslint.io/rules/unbound-method" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/unbound-method" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/unified-signatures",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/unified-signatures",
+    "anchor": "eslint-typescript-eslint-unified-signatures",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow two overloads that could be unified into one with a union or an optional/rest parameter",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/unified-signatures"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "@typescript-eslint/unified-signatures" }
+  },
+  {
+    "id": "eslint/@typescript-eslint/use-unknown-in-catch-callback-variable",
+    "tool": "eslint",
+    "rule": "@typescript-eslint/use-unknown-in-catch-callback-variable",
+    "anchor": "eslint-typescript-eslint-use-unknown-in-catch-callback-variable",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Enforce typing arguments in Promise rejection callbacks as `unknown`",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://typescript-eslint.io/rules/use-unknown-in-catch-callback-variable"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": {
+      "key": "exceptions",
+      "rule": "@typescript-eslint/use-unknown-in-catch-callback-variable"
+    }
+  },
+  {
+    "id": "eslint/constructor-super",
+    "tool": "eslint",
+    "rule": "constructor-super",
+    "anchor": "eslint-constructor-super",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Require `super()` calls in constructors",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/constructor-super"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "constructor-super" }
+  },
+  {
+    "id": "eslint/curly",
+    "tool": "eslint",
+    "rule": "curly",
+    "anchor": "eslint-curly",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Enforce consistent brace style for all control statements",
+    "why": "Turned on by the preset on top of the ESLint and typescript-eslint rule sets.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/curly" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "curly" }
+  },
+  {
+    "id": "eslint/eqeqeq",
+    "tool": "eslint",
+    "rule": "eqeqeq",
+    "anchor": "eslint-eqeqeq",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require the use of `===` and `!==`",
+    "why": "Turned on by the preset on top of the ESLint and typescript-eslint rule sets.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/eqeqeq" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "eqeqeq" }
+  },
+  {
+    "id": "eslint/for-direction",
+    "tool": "eslint",
+    "rule": "for-direction",
+    "anchor": "eslint-for-direction",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Enforce `for` loop update clause moving the counter in the right direction",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/for-direction" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "for-direction" }
+  },
+  {
+    "id": "eslint/getter-return",
+    "tool": "eslint",
+    "rule": "getter-return",
+    "anchor": "eslint-getter-return",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Enforce `return` statements in getters",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/getter-return" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "getter-return" }
+  },
+  {
+    "id": "eslint/no-async-promise-executor",
+    "tool": "eslint",
+    "rule": "no-async-promise-executor",
+    "anchor": "eslint-no-async-promise-executor",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow using an async function as a Promise executor",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-async-promise-executor"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-async-promise-executor" }
+  },
+  {
+    "id": "eslint/no-case-declarations",
+    "tool": "eslint",
+    "rule": "no-case-declarations",
+    "anchor": "eslint-no-case-declarations",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow lexical declarations in case clauses",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-case-declarations"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-case-declarations" }
+  },
+  {
+    "id": "eslint/no-class-assign",
+    "tool": "eslint",
+    "rule": "no-class-assign",
+    "anchor": "eslint-no-class-assign",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow reassigning class members",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-class-assign"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-class-assign" }
+  },
+  {
+    "id": "eslint/no-compare-neg-zero",
+    "tool": "eslint",
+    "rule": "no-compare-neg-zero",
+    "anchor": "eslint-no-compare-neg-zero",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow comparing against `-0`",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-compare-neg-zero"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-compare-neg-zero" }
+  },
+  {
+    "id": "eslint/no-cond-assign",
+    "tool": "eslint",
+    "rule": "no-cond-assign",
+    "anchor": "eslint-no-cond-assign",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow assignment operators in conditional expressions",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-cond-assign"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-cond-assign" }
+  },
+  {
+    "id": "eslint/no-const-assign",
+    "tool": "eslint",
+    "rule": "no-const-assign",
+    "anchor": "eslint-no-const-assign",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow reassigning `const`, `using`, and `await using` variables",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-const-assign"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-const-assign" }
+  },
+  {
+    "id": "eslint/no-constant-binary-expression",
+    "tool": "eslint",
+    "rule": "no-constant-binary-expression",
+    "anchor": "eslint-no-constant-binary-expression",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow expressions where the operation doesn't affect the value",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-constant-binary-expression"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-constant-binary-expression" }
+  },
+  {
+    "id": "eslint/no-constant-condition",
+    "tool": "eslint",
+    "rule": "no-constant-condition",
+    "anchor": "eslint-no-constant-condition",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow constant expressions in conditions",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-constant-condition"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-constant-condition" }
+  },
+  {
+    "id": "eslint/no-control-regex",
+    "tool": "eslint",
+    "rule": "no-control-regex",
+    "anchor": "eslint-no-control-regex",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow control characters in regular expressions",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-control-regex"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-control-regex" }
+  },
+  {
+    "id": "eslint/no-debugger",
+    "tool": "eslint",
+    "rule": "no-debugger",
+    "anchor": "eslint-no-debugger",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow the use of `debugger`",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/no-debugger" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-debugger" }
+  },
+  {
+    "id": "eslint/no-delete-var",
+    "tool": "eslint",
+    "rule": "no-delete-var",
+    "anchor": "eslint-no-delete-var",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow deleting variables",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/no-delete-var" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-delete-var" }
+  },
+  {
+    "id": "eslint/no-dupe-args",
+    "tool": "eslint",
+    "rule": "no-dupe-args",
+    "anchor": "eslint-no-dupe-args",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow duplicate arguments in `function` definitions",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/no-dupe-args" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-dupe-args" }
+  },
+  {
+    "id": "eslint/no-dupe-class-members",
+    "tool": "eslint",
+    "rule": "no-dupe-class-members",
+    "anchor": "eslint-no-dupe-class-members",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow duplicate class members",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-dupe-class-members"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-dupe-class-members" }
+  },
+  {
+    "id": "eslint/no-dupe-else-if",
+    "tool": "eslint",
+    "rule": "no-dupe-else-if",
+    "anchor": "eslint-no-dupe-else-if",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow duplicate conditions in if-else-if chains",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-dupe-else-if"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-dupe-else-if" }
+  },
+  {
+    "id": "eslint/no-dupe-keys",
+    "tool": "eslint",
+    "rule": "no-dupe-keys",
+    "anchor": "eslint-no-dupe-keys",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow duplicate keys in object literals",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/no-dupe-keys" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-dupe-keys" }
+  },
+  {
+    "id": "eslint/no-duplicate-case",
+    "tool": "eslint",
+    "rule": "no-duplicate-case",
+    "anchor": "eslint-no-duplicate-case",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow duplicate case labels",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-duplicate-case"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-duplicate-case" }
+  },
+  {
+    "id": "eslint/no-duplicate-imports",
+    "tool": "eslint",
+    "rule": "no-duplicate-imports",
+    "anchor": "eslint-no-duplicate-imports",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow duplicate module imports",
+    "why": "Turned on by the preset on top of the ESLint and typescript-eslint rule sets.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-duplicate-imports"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-duplicate-imports" }
+  },
+  {
+    "id": "eslint/no-empty",
+    "tool": "eslint",
+    "rule": "no-empty",
+    "anchor": "eslint-no-empty",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow empty block statements",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/no-empty" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-empty" }
+  },
+  {
+    "id": "eslint/no-empty-character-class",
+    "tool": "eslint",
+    "rule": "no-empty-character-class",
+    "anchor": "eslint-no-empty-character-class",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow empty character classes in regular expressions",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-empty-character-class"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-empty-character-class" }
+  },
+  {
+    "id": "eslint/no-empty-pattern",
+    "tool": "eslint",
+    "rule": "no-empty-pattern",
+    "anchor": "eslint-no-empty-pattern",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow empty destructuring patterns",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-empty-pattern"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-empty-pattern" }
+  },
+  {
+    "id": "eslint/no-empty-static-block",
+    "tool": "eslint",
+    "rule": "no-empty-static-block",
+    "anchor": "eslint-no-empty-static-block",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow empty static blocks",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-empty-static-block"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-empty-static-block" }
+  },
+  {
+    "id": "eslint/no-eval",
+    "tool": "eslint",
+    "rule": "no-eval",
+    "anchor": "eslint-no-eval",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow the use of `eval()`",
+    "why": "Turned on by the preset on top of the ESLint and typescript-eslint rule sets.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/no-eval" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-eval" }
+  },
+  {
+    "id": "eslint/no-ex-assign",
+    "tool": "eslint",
+    "rule": "no-ex-assign",
+    "anchor": "eslint-no-ex-assign",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow reassigning exceptions in `catch` clauses",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/no-ex-assign" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-ex-assign" }
+  },
+  {
+    "id": "eslint/no-extra-boolean-cast",
+    "tool": "eslint",
+    "rule": "no-extra-boolean-cast",
+    "anchor": "eslint-no-extra-boolean-cast",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow unnecessary boolean casts",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-extra-boolean-cast"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-extra-boolean-cast" }
+  },
+  {
+    "id": "eslint/no-fallthrough",
+    "tool": "eslint",
+    "rule": "no-fallthrough",
+    "anchor": "eslint-no-fallthrough",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow fallthrough of `case` statements",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-fallthrough"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-fallthrough" }
+  },
+  {
+    "id": "eslint/no-func-assign",
+    "tool": "eslint",
+    "rule": "no-func-assign",
+    "anchor": "eslint-no-func-assign",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow reassigning `function` declarations",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-func-assign"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-func-assign" }
+  },
+  {
+    "id": "eslint/no-global-assign",
+    "tool": "eslint",
+    "rule": "no-global-assign",
+    "anchor": "eslint-no-global-assign",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow assignments to native objects or read-only global variables",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-global-assign"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-global-assign" }
+  },
+  {
+    "id": "eslint/no-import-assign",
+    "tool": "eslint",
+    "rule": "no-import-assign",
+    "anchor": "eslint-no-import-assign",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow assigning to imported bindings",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-import-assign"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-import-assign" }
+  },
+  {
+    "id": "eslint/no-invalid-regexp",
+    "tool": "eslint",
+    "rule": "no-invalid-regexp",
+    "anchor": "eslint-no-invalid-regexp",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow invalid regular expression strings in `RegExp` constructors",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-invalid-regexp"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-invalid-regexp" }
+  },
+  {
+    "id": "eslint/no-irregular-whitespace",
+    "tool": "eslint",
+    "rule": "no-irregular-whitespace",
+    "anchor": "eslint-no-irregular-whitespace",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow irregular whitespace",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-irregular-whitespace"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-irregular-whitespace" }
+  },
+  {
+    "id": "eslint/no-loss-of-precision",
+    "tool": "eslint",
+    "rule": "no-loss-of-precision",
+    "anchor": "eslint-no-loss-of-precision",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow literal numbers that lose precision",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-loss-of-precision"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-loss-of-precision" }
+  },
+  {
+    "id": "eslint/no-misleading-character-class",
+    "tool": "eslint",
+    "rule": "no-misleading-character-class",
+    "anchor": "eslint-no-misleading-character-class",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow characters which are made with multiple code points in character class syntax",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-misleading-character-class"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-misleading-character-class" }
+  },
+  {
+    "id": "eslint/no-new-native-nonconstructor",
+    "tool": "eslint",
+    "rule": "no-new-native-nonconstructor",
+    "anchor": "eslint-no-new-native-nonconstructor",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow `new` operators with global non-constructor functions",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-new-native-nonconstructor"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-new-native-nonconstructor" }
+  },
+  {
+    "id": "eslint/no-nonoctal-decimal-escape",
+    "tool": "eslint",
+    "rule": "no-nonoctal-decimal-escape",
+    "anchor": "eslint-no-nonoctal-decimal-escape",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow `\\8` and `\\9` escape sequences in string literals",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-nonoctal-decimal-escape"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-nonoctal-decimal-escape" }
+  },
+  {
+    "id": "eslint/no-obj-calls",
+    "tool": "eslint",
+    "rule": "no-obj-calls",
+    "anchor": "eslint-no-obj-calls",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow calling global object properties as functions",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/no-obj-calls" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-obj-calls" }
+  },
+  {
+    "id": "eslint/no-octal",
+    "tool": "eslint",
+    "rule": "no-octal",
+    "anchor": "eslint-no-octal",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow octal literals",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/no-octal" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-octal" }
+  },
+  {
+    "id": "eslint/no-param-reassign",
+    "tool": "eslint",
+    "rule": "no-param-reassign",
+    "anchor": "eslint-no-param-reassign",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow reassigning function parameters",
+    "why": "Turned on by the preset on top of the ESLint and typescript-eslint rule sets.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-param-reassign"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-param-reassign" }
+  },
+  {
+    "id": "eslint/no-prototype-builtins",
+    "tool": "eslint",
+    "rule": "no-prototype-builtins",
+    "anchor": "eslint-no-prototype-builtins",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow calling some `Object.prototype` methods directly on objects",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-prototype-builtins"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-prototype-builtins" }
+  },
+  {
+    "id": "eslint/no-redeclare",
+    "tool": "eslint",
+    "rule": "no-redeclare",
+    "anchor": "eslint-no-redeclare",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow variable redeclaration",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/no-redeclare" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-redeclare" }
+  },
+  {
+    "id": "eslint/no-regex-spaces",
+    "tool": "eslint",
+    "rule": "no-regex-spaces",
+    "anchor": "eslint-no-regex-spaces",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow multiple spaces in regular expressions",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-regex-spaces"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-regex-spaces" }
+  },
+  {
+    "id": "eslint/no-restricted-globals",
+    "tool": "eslint",
+    "rule": "no-restricted-globals",
+    "anchor": "eslint-no-restricted-globals",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow specified global variables",
+    "why": "The presets list the forms they ban in the options of this rule. Each form has a message that names the allowed form.",
+    "forms": [
+      {
+        "message": "domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate.",
+        "label": "process"
+      },
+      {
+        "message": "domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate.",
+        "label": "fetch"
+      },
+      {
+        "message": "domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate.",
+        "label": "setTimeout"
+      },
+      {
+        "message": "domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate.",
+        "label": "setInterval"
+      },
+      {
+        "message": "domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate.",
+        "label": "setImmediate"
+      },
+      {
+        "message": "domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate.",
+        "label": "queueMicrotask"
+      },
+      {
+        "message": "domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate.",
+        "label": "performance"
+      },
+      {
+        "message": "domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate.",
+        "label": "XMLHttpRequest"
+      },
+      {
+        "message": "domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate.",
+        "label": "WebSocket"
+      },
+      {
+        "message": "domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate.",
+        "label": "localStorage"
+      },
+      {
+        "message": "domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate.",
+        "label": "sessionStorage"
+      }
+    ],
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-restricted-globals"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-restricted-globals" }
+  },
+  {
+    "id": "eslint/no-restricted-properties",
+    "tool": "eslint",
+    "rule": "no-restricted-properties",
+    "anchor": "eslint-no-restricted-properties",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow certain properties on certain objects",
+    "why": "The presets list the forms they ban in the options of this rule. Each form has a message that names the allowed form.",
+    "forms": [
+      {
+        "message": "Math.random() is predictable, so it must not make ids or tokens: use crypto.randomUUID() or crypto.randomInt(), or take the random value as a parameter. An exception fits only for a simulation or UI jitter.",
+        "label": "Math.random"
+      },
+      {
+        "message": "domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. An exception fits only when it is deliberate.",
+        "label": "Date.now"
+      },
+      {
+        "message": "domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. An exception fits only when it is deliberate.",
+        "label": "Math.random"
+      },
+      {
+        "message": "domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. An exception fits only when it is deliberate.",
+        "label": "performance.now"
+      }
+    ],
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-restricted-properties"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-restricted-properties" }
+  },
+  {
+    "id": "eslint/no-restricted-syntax",
+    "tool": "eslint",
+    "rule": "no-restricted-syntax",
+    "anchor": "eslint-no-restricted-syntax",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow specified syntax",
+    "why": "The presets list the forms they ban in the options of this rule. Each form has a message that names the allowed form.",
+    "forms": [
+      {
+        "message": "Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed."
+      },
+      {
+        "message": "Do not assert with `<Type>value`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source."
+      },
+      {
+        "message": "Use `unknown` and parse it into a specific type at the boundary with zod, or write the specific type."
+      },
+      {
+        "message": "Do not use the non-null assertion `!`. Check for `undefined` and return early, or make the type non-optional at its source."
+      },
+      {
+        "message": "Do not declare an `enum`. Use a union of string literals: `type Mode = 'read' | 'write'`."
+      },
+      {
+        "message": "Do not declare a `namespace`. Put the declarations in their own module and use named exports."
+      },
+      {
+        "message": "Classes are only for `Error` subclasses (`class NameError extends Error`). Use a `type` for data and `function` declarations for behavior; construct dependencies in the composition root."
+      },
+      {
+        "message": "Declare named functions with the `function` keyword (`function name() {}`). Arrow functions are only for inline callbacks."
+      },
+      {
+        "message": "Declare named functions with the `function` keyword (`function name() {}`), not a function expression assigned to a variable."
+      },
+      {
+        "message": "Return early instead of using `else` after `return`: remove the `else` and put the remaining code after the `if` block."
+      },
+      {
+        "message": "Return early instead of using `else` after `return`: remove the `else` and put the remaining code after the `if` statement."
+      },
+      {
+        "message": "Do not nest ternaries. Use early returns, a lookup object keyed by the value, or one `const` per branch."
+      },
+      {
+        "message": "Use a `type` instead of an `interface`: `type Shape = { size: number }`. Only a `declare module` or `declare global` augmentation, or a global declaration file without imports or exports, may declare an `interface`."
+      },
+      {
+        "message": "List the public names: `export { name } from './module.js'`. `export *` makes every internal export public. An exception fits only when it is deliberate."
+      },
+      { "message": "for...of is the only loop; iterate the items with for...of." },
+      { "message": "Use a for...of loop instead of forEach." },
+      {
+        "message": "Promise.allSettled with its result dropped hides every rejection. Read the results and handle the rejected ones, or use Promise.all to fail on the first rejection."
+      },
+      {
+        "message": "Do not wrap a value in `new Promise`. Return it from an async function, or use `Promise.resolve(value)`; `new Promise` is for callback APIs."
+      },
+      {
+        "message": "domain/ code has no loops: transform with map, filter, flatMap, reduce with an initial value, Object.fromEntries or Object.groupBy."
+      },
+      {
+        "message": "domain/ code does not use forEach: transform with map, filter, flatMap, reduce with an initial value, Object.fromEntries or Object.groupBy."
+      },
+      {
+        "message": "domain/ code does not use reduce without an initial value: pass one, e.g. xs.reduce((sum, x) => sum + x, 0)."
+      },
+      {
+        "message": "domain/ code does not use reduceRight: fold with xs.reduce((sum, x) => sum + x, 0) (pass an initial value) or transform with map, filter, flatMap, reduce with an initial value, Object.fromEntries or Object.groupBy."
+      },
+      {
+        "message": "domain/ code does not mutate arrays: build a new array with map, filter, flatMap or spread (toSorted, toReversed and toSpliced instead of sort, reverse and splice)."
+      },
+      {
+        "message": "domain/ code does not assign to properties: return a new object with spread, e.g. { ...value, field }."
+      },
+      {
+        "message": "domain/ code does not mutate properties: return a new object with spread, e.g. { ...value, count: value.count + 1 }."
+      },
+      {
+        "message": "domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. An exception fits only when it is deliberate."
+      },
+      {
+        "message": "domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate."
+      },
+      {
+        "message": "domain/ code imports dayjs and moment under their own names (`import dayjs from 'dayjs'`), so a clock read such as `dayjs()` stays visible. domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. An exception fits only when it is deliberate."
+      },
+      {
+        "message": "domain/ code does not mutate objects: return a new object with spread, e.g. { ...value, field } (Object.assign is fine only onto a fresh object literal)."
+      },
+      {
+        "message": "domain/ code does not change values through Reflect or Atomics: return a new value with spread, e.g. { ...value, field }."
+      },
+      {
+        "message": "domain/ code does not use delete: build a new object without the key using Object.fromEntries and filter."
+      },
+      {
+        "message": "domain/ types are readonly: write readonly T[] (or a readonly tuple) instead of a mutable array type."
+      },
+      {
+        "message": "domain/ types are readonly: write ReadonlyArray<T>, ReadonlyMap<K, V> or ReadonlySet<T> instead of Array, Map or Set."
+      },
+      { "message": "domain/ data types are readonly: mark the property readonly." },
+      {
+        "message": "Throw an Error subclass that preserves cause (new DomainError(message, { cause })), not a bare Error or a non-error value."
+      },
+      {
+        "message": "for...of is the only loop; iterate the items with for...of, or give each case its own test with it.each."
+      },
+      {
+        "message": "A literal passed to `expect` can never fail. Pass the value the code under test returns."
+      },
+      {
+        "message": "A literal passed to `expect.soft` can never fail. Pass the value the code under test returns."
+      },
+      {
+        "message": "A test must not look at the mutation harness (`__stryker__`, `STRYKER_*`, `activeMutant`): a test that behaves differently under mutation hides every mutant. Test the behaviour only."
+      },
+      {
+        "message": "Read a global by its name (`globalThis.name`) so the test shows which global it depends on."
+      }
+    ],
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-restricted-syntax"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-restricted-syntax" }
+  },
+  {
+    "id": "eslint/no-self-assign",
+    "tool": "eslint",
+    "rule": "no-self-assign",
+    "anchor": "eslint-no-self-assign",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow assignments where both sides are exactly the same",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-self-assign"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-self-assign" }
+  },
+  {
+    "id": "eslint/no-setter-return",
+    "tool": "eslint",
+    "rule": "no-setter-return",
+    "anchor": "eslint-no-setter-return",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow returning values from setters",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-setter-return"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-setter-return" }
+  },
+  {
+    "id": "eslint/no-shadow-restricted-names",
+    "tool": "eslint",
+    "rule": "no-shadow-restricted-names",
+    "anchor": "eslint-no-shadow-restricted-names",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow identifiers from shadowing restricted names",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-shadow-restricted-names"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-shadow-restricted-names" }
+  },
+  {
+    "id": "eslint/no-sparse-arrays",
+    "tool": "eslint",
+    "rule": "no-sparse-arrays",
+    "anchor": "eslint-no-sparse-arrays",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow sparse arrays",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-sparse-arrays"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-sparse-arrays" }
+  },
+  {
+    "id": "eslint/no-this-before-super",
+    "tool": "eslint",
+    "rule": "no-this-before-super",
+    "anchor": "eslint-no-this-before-super",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow `this`/`super` before calling `super()` in constructors",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-this-before-super"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-this-before-super" }
+  },
+  {
+    "id": "eslint/no-unassigned-vars",
+    "tool": "eslint",
+    "rule": "no-unassigned-vars",
+    "anchor": "eslint-no-unassigned-vars",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow `let` or `var` variables that are read but never assigned",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-unassigned-vars"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-unassigned-vars" }
+  },
+  {
+    "id": "eslint/no-undef",
+    "tool": "eslint",
+    "rule": "no-undef",
+    "anchor": "eslint-no-undef",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow the use of undeclared variables unless mentioned in `/*global */` comments",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/no-undef" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-undef" }
+  },
+  {
+    "id": "eslint/no-unexpected-multiline",
+    "tool": "eslint",
+    "rule": "no-unexpected-multiline",
+    "anchor": "eslint-no-unexpected-multiline",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow confusing multiline expressions",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-unexpected-multiline"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-unexpected-multiline" }
+  },
+  {
+    "id": "eslint/no-unreachable",
+    "tool": "eslint",
+    "rule": "no-unreachable",
+    "anchor": "eslint-no-unreachable",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow unreachable code after `return`, `throw`, `continue`, and `break` statements",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-unreachable"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-unreachable" }
+  },
+  {
+    "id": "eslint/no-unsafe-finally",
+    "tool": "eslint",
+    "rule": "no-unsafe-finally",
+    "anchor": "eslint-no-unsafe-finally",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow control flow statements in `finally` blocks",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-unsafe-finally"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-unsafe-finally" }
+  },
+  {
+    "id": "eslint/no-unsafe-negation",
+    "tool": "eslint",
+    "rule": "no-unsafe-negation",
+    "anchor": "eslint-no-unsafe-negation",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow negating the left operand of relational operators",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-unsafe-negation"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-unsafe-negation" }
+  },
+  {
+    "id": "eslint/no-unsafe-optional-chaining",
+    "tool": "eslint",
+    "rule": "no-unsafe-optional-chaining",
+    "anchor": "eslint-no-unsafe-optional-chaining",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow use of optional chaining in contexts where the `undefined` value is not allowed",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-unsafe-optional-chaining"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-unsafe-optional-chaining" }
+  },
+  {
+    "id": "eslint/no-unused-labels",
+    "tool": "eslint",
+    "rule": "no-unused-labels",
+    "anchor": "eslint-no-unused-labels",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow unused labels",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-unused-labels"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-unused-labels" }
+  },
+  {
+    "id": "eslint/no-unused-private-class-members",
+    "tool": "eslint",
+    "rule": "no-unused-private-class-members",
+    "anchor": "eslint-no-unused-private-class-members",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow unused private class members",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-unused-private-class-members"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-unused-private-class-members" }
+  },
+  {
+    "id": "eslint/no-useless-assignment",
+    "tool": "eslint",
+    "rule": "no-useless-assignment",
+    "anchor": "eslint-no-useless-assignment",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow variable assignments when the value is not used",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-useless-assignment"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-useless-assignment" }
+  },
+  {
+    "id": "eslint/no-useless-backreference",
+    "tool": "eslint",
+    "rule": "no-useless-backreference",
+    "anchor": "eslint-no-useless-backreference",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow useless backreferences in regular expressions",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-useless-backreference"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-useless-backreference" }
+  },
+  {
+    "id": "eslint/no-useless-catch",
+    "tool": "eslint",
+    "rule": "no-useless-catch",
+    "anchor": "eslint-no-useless-catch",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow unnecessary `catch` clauses",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-useless-catch"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-useless-catch" }
+  },
+  {
+    "id": "eslint/no-useless-escape",
+    "tool": "eslint",
+    "rule": "no-useless-escape",
+    "anchor": "eslint-no-useless-escape",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow unnecessary escape characters",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/no-useless-escape"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-useless-escape" }
+  },
+  {
+    "id": "eslint/no-var",
+    "tool": "eslint",
+    "rule": "no-var",
+    "anchor": "eslint-no-var",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require `let` or `const` instead of `var`",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/no-var" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-var" }
+  },
+  {
+    "id": "eslint/no-with",
+    "tool": "eslint",
+    "rule": "no-with",
+    "anchor": "eslint-no-with",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "javascript": ["eslint-lint"] },
+    "summary": "Disallow `with` statements",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "scope": "The JavaScript preset only.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/no-with" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "no-with" }
+  },
+  {
+    "id": "eslint/prefer-const",
+    "tool": "eslint",
+    "rule": "prefer-const",
+    "anchor": "eslint-prefer-const",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require `const` declarations for variables that are never reassigned after declared",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/prefer-const" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "prefer-const" }
+  },
+  {
+    "id": "eslint/prefer-rest-params",
+    "tool": "eslint",
+    "rule": "prefer-rest-params",
+    "anchor": "eslint-prefer-rest-params",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require rest parameters instead of `arguments`",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/prefer-rest-params"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "prefer-rest-params" }
+  },
+  {
+    "id": "eslint/prefer-spread",
+    "tool": "eslint",
+    "rule": "prefer-spread",
+    "anchor": "eslint-prefer-spread",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require spread operators instead of `.apply()`",
+    "why": "Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/prefer-spread" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "prefer-spread" }
+  },
+  {
+    "id": "eslint/preserve-caught-error",
+    "tool": "eslint",
+    "rule": "preserve-caught-error",
+    "anchor": "eslint-preserve-caught-error",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow losing originally caught error when re-throwing custom errors",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint.org/docs/latest/rules/preserve-caught-error"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "preserve-caught-error" }
+  },
+  {
+    "id": "eslint/require-yield",
+    "tool": "eslint",
+    "rule": "require-yield",
+    "anchor": "eslint-require-yield",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require generator functions to contain `yield`",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/require-yield" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "require-yield" }
+  },
+  {
+    "id": "eslint/use-isnan",
+    "tool": "eslint",
+    "rule": "use-isnan",
+    "anchor": "eslint-use-isnan",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require calls to `isNaN()` when checking for `NaN`",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/use-isnan" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "use-isnan" }
+  },
+  {
+    "id": "eslint/valid-typeof",
+    "tool": "eslint",
+    "rule": "valid-typeof",
+    "anchor": "eslint-valid-typeof",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-eslint",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Enforce comparing `typeof` expressions against valid strings",
+    "why": "Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint.org/docs/latest/rules/valid-typeof" }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "valid-typeof" }
+  }
+]

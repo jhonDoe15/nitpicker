@@ -14,7 +14,7 @@ describe('the detekt default rules', () => {
   it('are those of the detekt version the init script pins', () => {
     const pinned = /detekt\s*:\s*'([^']+)'/u.exec(INIT_SCRIPT)?.[1];
 
-    expect(pinned).toBeDefined();
+    expect(DEFAULTS.version).toMatch(/^\d+\.\d+\.\d+$/u);
     expect(DEFAULTS.version).toBe(pinned);
   });
 });
@@ -38,7 +38,11 @@ describe('detektEntries', () => {
     const [pinned] = nitpickerDetektRules();
     const byRule = new Map(detektEntries().map((entry) => [entry.rule, entry]));
 
-    expect(byRule.get(`detekt.${pinned.ruleset}.${pinned.rule}`).why).toMatch(/one-way rule/u);
-    expect(byRule.get('detekt.style.MagicNumber').why).toMatch(/default rules/u);
+    expect(byRule.get(`detekt.${pinned.ruleset}.${pinned.rule}`).why).toMatch(
+      /^A one-way rule: .*$/u,
+    );
+    expect(byRule.get('detekt.style.MagicNumber').why).toMatch(
+      /^One of detekt's default rules\. .*$/u,
+    );
   });
 });
