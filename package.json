@@ -36,6 +36,7 @@
     "test": "vitest run --config vitest.config.mts",
     "check": "node scripts/check.mjs",
     "gen:checks": "node scripts/gen-checks.mjs",
+    "changelog:section": "node scripts/changelog-section.mjs",
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
     "test:record-eslint": "node scripts/record-eslint-reports.mjs",
     "test:conformance": "vitest run --config vitest.config.mts core/diff/comparison/conformance.test.mjs",
@@ -55,7 +56,8 @@
     "!**/README.md",
     "!**/__pycache__/**",
     "!**/*.pyc",
-    "skills/**"
+    "skills/**",
+    "CHANGELOG.md"
   ],
   "exports": {
     "./package.json": "./package.json"
