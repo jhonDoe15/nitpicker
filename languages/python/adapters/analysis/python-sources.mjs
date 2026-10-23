@@ -1,10 +1,11 @@
-import { existsSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   PYTHON_SKIPPED_FOLDERS,
   skippedFolderGlobs,
 } from '../../../../core/tooling/jscpd/skipped-folders.mjs';
 import { sourceLines } from '../../../../shared/ingest/structure-report.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import {
   DOCUMENTATION_DIRECTORIES,
   importRoots,
@@ -24,17 +25,18 @@ const SOURCE_LISTING = 'python-files.txt';
 const WHOLE_PROJECT = '.';
 const INSTALLED = new Set(INSTALLED_DIRECTORIES);
 
-function isPythonFile(entry, { wholeProject }) {
-  return (
-    entry.isFile() &&
-    entry.name.endsWith('.py') &&
-    !(wholeProject && NON_SOURCE_FILES.has(entry.name))
-  );
+function isPythonFile(file, { wholeProject }) {
+  const name = path.basename(file);
+  return name.endsWith('.py') && !(wholeProject && NON_SOURCE_FILES.has(name));
 }
 
-function isSearched(entry, { wholeProject }) {
+function isSkippedDirectory(entry, { wholeProject }) {
   const skipped = wholeProject ? NON_SOURCE_DIRECTORIES : INSTALLED;
-  return entry.isDirectory() && !entry.name.startsWith('.') && !skipped.has(entry.name);
+  return entry.name.startsWith('.') || skipped.has(entry.name);
+}
+
+function relativePosix(projectRoot, absolute) {
+  return path.relative(projectRoot, absolute).split(path.sep).join('/');
 }
 
 function isDirectory(absolute) {
@@ -42,26 +44,17 @@ function isDirectory(absolute) {
 }
 
 export function pythonSourceFiles(projectRoot, sourceRoots) {
-  const found = new Set();
-  const pending = sourceRoots.map((directory) => ({
-    directory,
-    wholeProject: directory === WHOLE_PROJECT,
-  }));
-  for (const { directory, wholeProject } of pending) {
-    if (!isDirectory(path.join(projectRoot, directory))) {
-      continue;
-    }
-    const entries = readdirSync(path.join(projectRoot, directory), { withFileTypes: true });
-    for (const entry of entries.filter((candidate) => isPythonFile(candidate, { wholeProject }))) {
-      found.add(path.posix.join(directory, entry.name));
-    }
-    pending.push(
-      ...entries
-        .filter((candidate) => isSearched(candidate, { wholeProject }))
-        .map((entry) => ({ directory: path.posix.join(directory, entry.name), wholeProject })),
-    );
-  }
-  return [...found].sort();
+  const found = sourceRoots
+    .filter((directory) => isDirectory(path.join(projectRoot, directory)))
+    .flatMap((directory) => {
+      const walked = { wholeProject: directory === WHOLE_PROJECT };
+      return projectFilesUnder(path.join(projectRoot, directory), {
+        skipDirectory: (_, entry) => isSkippedDirectory(entry, walked),
+      })
+        .filter((file) => isPythonFile(file, walked))
+        .map((file) => relativePosix(projectRoot, file));
+    });
+  return [...new Set(found)].sort();
 }
 
 export function writeSourceListing({ projectRoot, reportRoot, project }) {
@@ -142,37 +135,17 @@ export function testFileMatcher(projectRoot) {
   return (file) => isTestFile(file, options);
 }
 
-function listDirectory(directory, { skipped, isTest }) {
-  const entries = readdirSync(directory, { withFileTypes: true });
-  function named(entry) {
-    return path.join(directory, entry.name);
-  }
-  return {
-    directories: entries
-      .filter(
-        (entry) =>
-          entry.isDirectory() &&
-          !entry.name.startsWith(HIDDEN_PREFIX) &&
-          !EXCLUDED_DIRECTORIES.includes(entry.name) &&
-          !skipped.includes(entry.name),
-      )
-      .map(named),
-    files: entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.py') && !isTest(named(entry)))
-      .map(named),
-  };
-}
-
 function productionFiles(top, { skippedAtTop, isTest }) {
-  const pending = [top];
-  const files = [];
-  for (const directory of pending) {
-    const skipped = directory === top ? skippedAtTop : [];
-    const listed = listDirectory(directory, { skipped, isTest });
-    pending.push(...listed.directories);
-    files.push(...listed.files);
+  function isSkipped(absolute, entry) {
+    return (
+      entry.name.startsWith(HIDDEN_PREFIX) ||
+      EXCLUDED_DIRECTORIES.includes(entry.name) ||
+      (path.dirname(absolute) === top && skippedAtTop.includes(entry.name))
+    );
   }
-  return files.sort();
+  return projectFilesUnder(top, { skipDirectory: isSkipped })
+    .filter((file) => file.endsWith('.py') && !isTest(file))
+    .sort();
 }
 
 export function listProductionModules(projectRoot, sourceRoots) {
@@ -204,30 +177,15 @@ export function isUnder(file, root) {
   return root === '.' || file === root || file.startsWith(`${root}/`);
 }
 
-function isWalked(entry) {
-  return (
-    entry.isDirectory() && !entry.name.startsWith(HIDDEN_PREFIX) && !OUTSIDE_SKIPPED.has(entry.name)
-  );
+function isOutsideSkipped(entry) {
+  return entry.name.startsWith(HIDDEN_PREFIX) || OUTSIDE_SKIPPED.has(entry.name);
 }
 
 function projectFiles(projectRoot) {
-  const files = [];
-  const pending = [''];
-  for (const directory of pending) {
-    const entries = readdirSync(path.join(projectRoot, directory), { withFileTypes: true }).map(
-      (entry) => ({
-        entry,
-        relative: directory === '' ? entry.name : `${directory}/${entry.name}`,
-      }),
-    );
-    pending.push(...entries.filter(({ entry }) => isWalked(entry)).map(({ relative }) => relative));
-    files.push(
-      ...entries
-        .filter(({ entry }) => entry.isFile() && entry.name.endsWith('.py'))
-        .map(({ relative }) => relative),
-    );
-  }
-  return files.sort();
+  return projectFilesUnder(projectRoot, { skipDirectory: (_, entry) => isOutsideSkipped(entry) })
+    .filter((file) => file.endsWith('.py'))
+    .map((file) => relativePosix(projectRoot, file))
+    .sort();
 }
 
 function dottedName(file) {

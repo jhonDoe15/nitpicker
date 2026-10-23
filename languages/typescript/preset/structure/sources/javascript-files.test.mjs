@@ -2,8 +2,14 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
 import { resolveLayout } from '../../layout.mjs';
 import { javascriptFileFindings } from './javascript-files.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const temporaryRoots = [];
 const TSCONFIG = { 'tsconfig.json': '{ "compilerOptions": { "strict": true } }\n' };
@@ -31,6 +37,8 @@ function project(files) {
   }
   return root;
 }
+
+const AGENT_TSCONFIG = { 'tsconfig.json': '{}' };
 
 function findingsOf(root, policy = {}, liveProjectRoot = root) {
   return javascriptFileFindings({
@@ -107,5 +115,32 @@ describe('javascript-in-typescript-project', () => {
     const head = project({ ...TSCONFIG, ...SCRIPTS });
 
     expect(findingsOf(base, {}, head)).toHaveLength(4);
+  });
+
+  it('ignores a tsconfig in a git-ignored folder and in a nested checkout of a Git project', () => {
+    const root = gitCheckout(
+      {
+        ...SCRIPTS,
+        ...nestedCheckout('agent', AGENT_TSCONFIG),
+        '.scratch/fixture/tsconfig.json': '{}',
+        '.scratch/tsconfig.json': '{}',
+        'build/tsconfig.json': '{}',
+      },
+      ['.scratch/', 'build/'],
+    );
+
+    expect(findingsOf(root)).toEqual([]);
+    writeFileSync(path.join(root, 'tsconfig.json'), '{}');
+    expect(findingsOf(root)).toHaveLength(4);
+  });
+
+  it('still skips a nested checkout when the project is not a Git checkout', () => {
+    const repository = { ...SCRIPTS, 'agent/tsconfig.json': '{}', 'agent/.git/HEAD': 'ref\n' };
+    const worktree = { ...SCRIPTS, ...nestedCheckout('agent', AGENT_TSCONFIG) };
+
+    expect(findingsOf(project(repository))).toEqual([]);
+    expect(findingsOf(project(worktree))).toEqual([]);
+    expect(findingsOf(project({ ...SCRIPTS, 'agent/tsconfig.json': '{}' }))).toHaveLength(4);
+    expect(findingsOf(gitCheckout({ ...SCRIPTS, 'agent/tsconfig.json': '{}' }))).toHaveLength(4);
   });
 });

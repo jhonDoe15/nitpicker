@@ -1,4 +1,4 @@
-import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import { depthFirst } from '../../../../shared/traversal.mjs';
 import { syntaxChildren } from '../syntax/children.mjs';
 import { existsSync, readFileSync } from 'node:fs';
@@ -114,7 +114,7 @@ function productionFiles(root, displayRoot, layout) {
   function skipDirectory(absolute, entry) {
     return isExcludedPath(projectRelative(absolute)) || entry.name === '__tests__';
   }
-  return [...filesUnder(root, { skipDirectory })]
+  return [...projectFilesUnder(root, { skipDirectory })]
     .filter((absolute) => {
       const relative = normalizePath(path.relative(root, absolute));
       return (

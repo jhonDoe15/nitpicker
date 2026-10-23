@@ -2,7 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { nestedCheckout, useGitCheckouts } from '../../diff/git/test-support/git-checkout.mjs';
 import { loadConfig } from '../config.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const roots = [];
 
@@ -102,5 +105,21 @@ describe('a project without "preset"', () => {
     };
 
     expect(message(files)).toBeUndefined();
+  });
+
+  it('does not count git-ignored files or nested checkouts as TypeScript or JavaScript sources', () => {
+    const files = {
+      'pyproject.toml': '',
+      'src/demo/app.py': '',
+      'src/generated/api.ts': '',
+      ...nestedCheckout('src/agent', { 'index.ts': '' }),
+    };
+
+    expect(() => loadConfig(gitCheckout(files, ['src/generated/']))).toThrow(
+      expected('Python', 'pyproject.toml', 'python'),
+    );
+    expect(() =>
+      loadConfig(gitCheckout({ ...files, 'src/app.ts': '' }, ['src/generated/'])),
+    ).not.toThrow();
   });
 });
