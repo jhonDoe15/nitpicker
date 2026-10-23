@@ -54,7 +54,7 @@ const LANGUAGE_SOURCES = {
   java: ['languages/java'],
   kotlin: ['languages/java'],
 };
-const EVERY_LANGUAGE_SOURCES = ['shared/hygiene'];
+const EVERY_LANGUAGE_SOURCES = ['shared/hygiene', 'shared/history'];
 
 function repositoryFile(relative) {
   const absolute = path.resolve(repositoryRoot, relative);
