@@ -15,6 +15,10 @@ function location(item) {
 function violationMessage(violation) {
   const where = `call site ${violation.site}, path ${violation.path}, ${violation.certainty}`;
   const effect = `${violation.contract}: ${violation.callee} for ${violation.entity}`;
+  if (violation.kind === 'unmodelled') {
+    const region = `unmodelled code (${violation.detail})`;
+    return `${violation.contract}: ${violation.callee} may run inside ${region} and break it (${where}).`;
+  }
   if (violation.kind === 'transition') {
     const move = `from ${violation.from} to ${violation.to}`;
     return `${effect} moves it ${move}, which the transition contract does not allow (${where}).`;

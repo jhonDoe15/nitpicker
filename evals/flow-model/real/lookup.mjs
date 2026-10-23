@@ -42,6 +42,7 @@ const TRY_BLOCK = `  try {\n${RESOLVE}  } catch (error) {\n    return { kind: 'u
 const READ = '  const report = cache.read(analyzer);\n';
 const CATCH_RETURN = "    return { kind: 'unresolved', error };\n";
 const READ_BEFORE = 'resolve-before-read|cache.read|analyzer';
+const READ_ANY = 'resolve-before-read|cache.read|?';
 
 const SEEDED = [
   ['seed-omit-resolution', [[TRY_BLOCK, '']]],
@@ -59,11 +60,13 @@ const UNSUPPORTED = [
     'unsupported-unknown-recovery',
     [[CATCH_RETURN, `    recoverMetadata(analyzer, error);\n${CATCH_RETURN}`]],
     ['unknown-call'],
+    [],
   ],
   [
     'unsupported-alias-dispatch',
     [[READ, '  const read = cache.read;\n  const report = read(analyzer);\n']],
     ['unknown-dispatch', 'unknown-guard'],
+    [READ_ANY],
   ],
   [
     'unsupported-repeated-read',
@@ -74,6 +77,7 @@ const UNSUPPORTED = [
       ],
     ],
     ['loop', 'unknown-guard'],
+    [READ_ANY],
   ],
 ];
 
@@ -105,12 +109,12 @@ export function lookupVariants(text) {
       edits: INVERTED_GUARD,
       expect: clean,
     }),
-    ...UNSUPPORTED.map(([name, edits, reasons]) =>
+    ...UNSUPPORTED.map(([name, edits, reasons, violations]) =>
       variant(text, {
         name,
         kind: 'unsupported',
         edits,
-        expect: { status: 'partial', violations: [], reasons },
+        expect: { status: 'partial', violations, reasons },
       }),
     ),
   ];

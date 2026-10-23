@@ -1,5 +1,5 @@
 import { render } from '../extract/render.mjs';
-import { effectCall, pureCall, unknownCall } from './effects.mjs';
+import { effectCall, opaqueEffects, pureCall, unknownCall } from './effects.mjs';
 import { compare, truth } from './guards.mjs';
 import { UNDEFINED, addPartial, alternatives, mutate, nextCall, stepOf } from './state.mjs';
 import { getField, resolve } from './values.mjs';
@@ -57,33 +57,44 @@ function calleeName(callee, receiver) {
   if (callee.kind !== 'member') {
     return undefined;
   }
-  const base = { input: receiver.path, atom: receiver.key?.replace(/^global:/, '') }[receiver.t];
-  return base === undefined ? undefined : `${base}.${callee.method}`;
+  if (receiver.t === 'input') {
+    return `${receiver.path}.${callee.method}`;
+  }
+  return receiver.t === 'atom' ? `${receiver.key}.${callee.method}` : undefined;
 }
 
-function contractFor(ctx, name) {
-  return name !== undefined && Object.hasOwn(ctx.contracts.effects, name)
+function contractFor(ctx, { name, callee, receiver }) {
+  const bound = callee.kind === 'import' || (receiver.t === 'input' && receiver.effects === true);
+  return bound && Object.hasOwn(ctx.contracts.effects, name)
     ? ctx.contracts.effects[name]
     : undefined;
 }
 
 function dispatch(expr, state, { receiver, args }) {
   const ctx = state.run;
-  const { callee, loc } = expr;
+  const { callee } = expr;
   if (callee.kind === 'helper' && Object.hasOwn(ctx.model.functions, callee.name)) {
     return ctx.callHelper(state, { name: callee.name, args, expr });
   }
   const name = calleeName(callee, receiver);
-  const contract = contractFor(ctx, name);
+  const contract = contractFor(ctx, { name, callee, receiver });
   if (contract !== undefined) {
     return effectCall(state, { name, contract, args, expr });
   }
-  if (name !== undefined && ctx.contracts.pure.includes(name)) {
+  if (callee.kind === 'global' && ctx.contracts.pure.includes(name)) {
     return pureCall(state, { name, args });
   }
-  const reason =
-    name === undefined && callee.kind !== 'helper' ? 'unknown-dispatch' : 'unknown-call';
-  return unknownCall(state, { reason, loc, detail: name ?? render(expr) });
+  return unresolvedCall(state, { expr, name, args: [receiver, ...args] });
+}
+
+function unresolvedCall(state, { expr, name, args }) {
+  const { callee, loc } = expr;
+  const dynamic = name === undefined && callee.kind !== 'helper';
+  if (dynamic) {
+    opaqueEffects(state, { loc, detail: 'dynamic call' });
+  }
+  const reason = dynamic ? 'unknown-dispatch' : 'unknown-call';
+  return unknownCall(state, { reason, loc, detail: name ?? render(expr), args });
 }
 
 function evalCall(expr, state, ctx) {
@@ -100,9 +111,14 @@ function evalCall(expr, state, ctx) {
 
 function evalNew(expr, state, ctx) {
   return chain(evalList(expr.args, state, ctx), (next, args) =>
-    ctx.contracts.constructs.includes(expr.name)
+    expr.global && ctx.contracts.constructs.includes(expr.name)
       ? pureCall(next, { name: expr.name, args, constructs: true })
-      : unknownCall(next, { reason: 'unknown-call', loc: expr.loc, detail: `new ${expr.name}` }),
+      : unknownCall(next, {
+          reason: 'unknown-call',
+          loc: expr.loc,
+          detail: `new ${expr.name}`,
+          args,
+        }),
   );
 }
 
@@ -135,11 +151,12 @@ function evalConditional(expr, state, ctx) {
 function evalUnsupported(expr, state) {
   const { loc, syntax } = expr;
   if (expr.mutates) {
-    mutate(state, { clobbers: expr.clobbers, loc, syntax });
+    mutate(state, { region: expr, loc, syntax });
   } else {
     addPartial(state, { reason: 'unsupported-syntax', loc, detail: syntax });
   }
   if (expr.hasCall) {
+    opaqueEffects(state, { loc, detail: syntax });
     return unknownCall(state, { reason: 'unsupported-syntax', loc, detail: syntax });
   }
   const key = `unknown@${String(loc.line)}:${String(loc.column)}#${String(nextCall(state))}`;

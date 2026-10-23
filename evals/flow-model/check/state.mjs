@@ -15,6 +15,7 @@ export function createState(frame, run) {
     partial: [],
     epoch: 0,
     calls: 0,
+    mutated: false,
   };
 }
 
@@ -79,9 +80,13 @@ function clobberOne(state, target) {
   state.frame = { ...state.frame, args };
 }
 
-export function mutate(state, { reason = 'unsupported-syntax', clobbers, loc, syntax }) {
+export function mutate(state, { reason = 'unsupported-syntax', region, loc, syntax }) {
   addPartial(state, { reason, loc, detail: syntax });
-  widen(state);
+  if (region.writesFields || region.hasCall) {
+    widen(state);
+    state.mutated = true;
+  }
+  const clobbers = region.clobbers ?? [];
   for (const target of clobbers) {
     clobberOne(state, target);
   }

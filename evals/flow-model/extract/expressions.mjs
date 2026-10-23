@@ -76,6 +76,13 @@ function clobberOf(identifier, cx) {
   return local === undefined ? undefined : `local:${local.id}`;
 }
 
+function writesField(node) {
+  const target = isAssignment(node) ? node.left : (node.expression ?? node.operand);
+  return [...depthFirst(target, childrenOf)].some(
+    (item) => ts.isPropertyAccessExpression(item) || ts.isElementAccessExpression(item),
+  );
+}
+
 export function effectsOf(node, cx) {
   const nodes = [...depthFirst(node, childrenOf)];
   const mutations = nodes.filter(isMutation);
@@ -83,6 +90,7 @@ export function effectsOf(node, cx) {
   return {
     hasCall: nodes.some(isCall),
     mutates: mutations.length > 0,
+    writesFields: mutations.some(writesField),
     clobbers: [...new Set(clobbers.filter((item) => item !== undefined))].sort(),
   };
 }
@@ -189,8 +197,11 @@ function callExpr(node, cx) {
 
 function newExpr(node, cx) {
   const target = unwrap(node.expression);
-  const name = ts.isIdentifier(target) ? target.text : '<dynamic>';
-  return { kind: 'new', name, args: argumentsOf(node, cx), loc: locationOf(cx.sourceFile, node) };
+  const identifier = ts.isIdentifier(target);
+  const name = identifier ? target.text : '<dynamic>';
+  const global = identifier && declarationOf(cx.checker, target) === undefined;
+  const loc = locationOf(cx.sourceFile, node);
+  return { kind: 'new', name, global, args: argumentsOf(node, cx), loc };
 }
 
 function binaryExpr(node, cx) {
@@ -231,7 +242,8 @@ function objectField(property, cx) {
   }
   const named =
     ts.isPropertyAssignment(property) &&
-    (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name));
+    (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
+    property.name.text !== '__proto__';
   return named ? [property.name.text, toExpr(property.initializer, cx)] : undefined;
 }
 

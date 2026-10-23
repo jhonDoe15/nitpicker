@@ -168,6 +168,73 @@ describe('extractModel', () => {
     expect(sites).toEqual(['payOrder:bus.publish#1', 'payOrder:bus.publish#2']);
   });
 
+  it.each([
+    ['a getter', 'get pending() { return "paid"; }'],
+    ['a method', 'pending() { return "paid"; }'],
+    ['a computed key', '[key]: "paid"'],
+    ['a spread', '...base'],
+  ])('does not inline members of an as-const object with %s', (_name, member) => {
+    const text = code`
+      const key = 'pending';
+      const base = { pending: 'paid' };
+      const Status = { pending: 'pending', ${member} } as const;
+      export function payOrder(order) {
+        return Status.pending;
+      }
+    `;
+    const model = extractModel({ file: 'members.ts', text, entry: 'payOrder' });
+
+    expect(render(nodes(model, 'return')[0].value)).toEqual('Status.pending');
+  });
+
+  it('resolves the constructor of new and keeps __proto__ out of object literals', () => {
+    const text = code`
+      import { Error as Imported } from './errors';
+      export function payOrder(order) {
+        const first = new Error('a');
+        const second = new Imported('b');
+        return { __proto__: order };
+      }
+    `;
+    const model = extractModel({ file: 'resolve.ts', text, entry: 'payOrder' });
+
+    expect([
+      nodes(model, 'new').map((node) => [node.name, node.global]),
+      nodes(model, 'unsupported').map((node) => node.syntax),
+    ]).toEqual([
+      [
+        ['Error', true],
+        ['Imported', false],
+      ],
+      ['object-member'],
+    ]);
+  });
+
+  it('skips overload signatures and rejects a source that redeclares a binding', () => {
+    const overloaded = code`
+      function settle(order: unknown): void;
+      function settle(order) {
+        return order;
+      }
+      export function payOrder(order) {
+        settle(order);
+      }
+    `;
+    function extractRedeclared() {
+      const text = 'export function payOrder(db) {\n  const db = 1;\n}\n';
+      extractModel({ file: 'redeclared.ts', text, entry: 'payOrder' });
+    }
+
+    expect(
+      Object.keys(
+        extractModel({ file: 'overload.ts', text: overloaded, entry: 'payOrder' }).functions,
+      ),
+    ).toEqual(['payOrder', 'settle']);
+    expect(extractRedeclared).toThrowError(
+      new Error("flow-model: redeclared.ts is not valid source: Duplicate identifier 'db'."),
+    );
+  });
+
   it('fails clearly when the entry function does not exist', () => {
     function extractMissing() {
       extractModel({ file: 'empty.ts', text: 'export const x = 1;\n', entry: 'missing' });

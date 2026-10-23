@@ -104,15 +104,17 @@ describe('path sensitivity', () => {
     ]);
   });
 
-  it('widens facts after an unknown call and marks the resulting violations as possible', () => {
+  it('forgets what an unknown call may change in the objects it receives', () => {
     const result = analyzed('unknown-helper');
 
     expect([result.reasons, outline(result).violations]).toEqual([
-      [{ reason: 'unknown-call', line: 7, column: 3, detail: './audit#audit' }],
       [
-        'order-status|db.commit|A|paid|paid possible',
-        'order-status|db.commit|A|cancelled|paid possible',
+        { reason: 'unknown-call', line: 7, column: 3, detail: './audit#audit' },
+        { reason: 'unknown-entity', line: 8, column: 3, detail: 'argument 0' },
+        { reason: 'unknown-state', line: 8, column: 3, detail: '?' },
+        { reason: 'unknown-entity', line: 9, column: 3, detail: 'argument 1' },
       ],
+      ['order-status|db.commit|?|?|paid possible', 'paid-before-publish|bus.publish|? possible'],
     ]);
   });
 
@@ -177,6 +179,33 @@ describe('soundness of the supported subset', () => {
     });
   });
 
+  it.each([
+    ['a global', 'export function payOrder(order, bus) {\n  db.commit(order, "paid");\n}\n'],
+    [
+      'an undeclared parameter',
+      'export function payOrder(order, ledger) {\n  ledger.commit(order, "paid");\n}\n',
+    ],
+    [
+      'an object input',
+      'export function payOrder(order, items) {\n  items.commit(order, "paid");\n}\n',
+    ],
+  ])('does not treat %s named like a receiver as an effect receiver', (_name, text) => {
+    const contracts = {
+      ...ORDER_CONTRACTS,
+      effects: {
+        'ledger.commit': ORDER_CONTRACTS.effects['db.commit'],
+        'items.commit': ORDER_CONTRACTS.effects['db.commit'],
+        ...ORDER_CONTRACTS.effects,
+      },
+    };
+
+    expect(outline(analyzedText(text, contracts))).toEqual({
+      status: 'partial',
+      reasons: ['unknown-call'],
+      violations: [],
+    });
+  });
+
   it('matches an imported effect on its module specifier and its name', () => {
     const contracts = {
       ...ORDER_CONTRACTS,
@@ -193,7 +222,7 @@ describe('soundness of the supported subset', () => {
     ]);
   });
 
-  it('treats an async same-file helper as an unknown call', () => {
+  it('treats an async same-file helper as unmodelled code that may run any effect', () => {
     const text = code`
       async function settle(order, db) {
         db.commit(order, 'paid');
@@ -209,8 +238,12 @@ describe('soundness of the supported subset', () => {
 
     expect(outline(analyzedText(text))).toEqual({
       status: 'partial',
-      reasons: ['async'],
-      violations: [`${PAID_A} possible`],
+      reasons: ['async', 'unknown-entity'],
+      violations: [
+        'paid-before-publish|bus.publish|? possible',
+        'order-status|db.commit|?|?|? possible',
+        'paid-before-publish|bus.publish|? possible',
+      ],
     });
   });
 

@@ -1,6 +1,4 @@
-import { PAID_A, code, fixture, transition } from './source.mjs';
-
-const UNGUARDED = [transition('A', 'paid', 'paid'), transition('A', 'cancelled', 'paid')];
+import { ANY_EFFECT, PAID_A, PAID_ANY, UNKNOWN_CALL, code, fixture } from './source.mjs';
 
 export const SOUNDNESS_FIXTURES = [
   fixture('loose-inequality', {
@@ -86,8 +84,8 @@ export const SOUNDNESS_FIXTURES = [
     `,
     expect: {
       status: 'partial',
-      reasons: ['unknown-guard', 'unsupported-syntax'],
-      violations: [PAID_A],
+      reasons: ['unknown-entity', 'unknown-guard', 'unsupported-syntax'],
+      violations: [PAID_ANY],
     },
   }),
   fixture('duplicate-publish-sites', {
@@ -137,7 +135,7 @@ export const SOUNDNESS_FIXTURES = [
         return 'paid';
       }
     `,
-    expect: { status: 'partial', reasons: ['unknown-call'], violations: UNGUARDED },
+    expect: UNKNOWN_CALL,
   }),
   fixture('optional-call', {
     title: 'An optional call may skip the commit',
@@ -151,7 +149,11 @@ export const SOUNDNESS_FIXTURES = [
         return 'paid';
       }
     `,
-    expect: { status: 'partial', reasons: ['unsupported-syntax'], violations: [PAID_A] },
+    expect: {
+      status: 'partial',
+      reasons: ['unknown-entity', 'unsupported-syntax'],
+      violations: [...ANY_EFFECT, PAID_ANY],
+    },
   }),
   fixture('unknown-constructor', {
     title: 'A constructor without reviewed semantics is an unknown call',
@@ -166,7 +168,7 @@ export const SOUNDNESS_FIXTURES = [
         return receipt;
       }
     `,
-    expect: { status: 'partial', reasons: ['unknown-call'], violations: UNGUARDED },
+    expect: UNKNOWN_CALL,
   }),
   fixture('async-entry', {
     title: 'An async entry is outside the supported subset',

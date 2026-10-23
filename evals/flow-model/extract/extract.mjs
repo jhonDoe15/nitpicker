@@ -2,9 +2,10 @@ import ts from 'typescript';
 import { depthFirst } from '../../../shared/traversal.mjs';
 import { findFunction } from './module-bindings.mjs';
 import { loadProgram, locationOf } from './program.mjs';
+import { toExpr } from './expressions.mjs';
 import { bodyOf } from './statements.mjs';
 
-export const ANALYZER_VERSION = 'flow-model-2';
+export const ANALYZER_VERSION = 'flow-model-3';
 
 function isSimpleElement(element) {
   return (
@@ -55,9 +56,10 @@ function modifiersOf(fn) {
 function parameterModel(parameter, index, params) {
   const name = ts.isIdentifier(parameter.name) ? parameter.name.text : `arg${String(index)}`;
   const root = { kind: 'param', index, name };
+  const variadic = parameter.dotDotDotToken !== undefined;
   if (ts.isIdentifier(parameter.name)) {
     params.set(parameter, root);
-    return { index, name };
+    return variadic ? { index, name, supported: false } : { index, name };
   }
   const elements = ts.isObjectBindingPattern(parameter.name) ? parameter.name.elements : [];
   const simple = elements.filter(isSimpleElement);
@@ -68,7 +70,11 @@ function parameterModel(parameter, index, params) {
       field: (element.propertyName ?? element.name).text,
     });
   }
-  const supported = simple.length === elements.length && ts.isObjectBindingPattern(parameter.name);
+  const supported =
+    simple.length === elements.length &&
+    ts.isObjectBindingPattern(parameter.name) &&
+    parameter.initializer === undefined &&
+    !variadic;
   return { index, name, fields: simple.map((element) => element.name.text), supported };
 }
 
@@ -80,6 +86,11 @@ function extractFunction(fn, name, context) {
   const locals = collectLocals(fn, name);
   const cx = { ...context, fnName: name, params, locals, helpers: new Set(), sites: new Map() };
   const body = bodyOf(fn, cx);
+  for (const [index, parameter] of fn.parameters.entries()) {
+    if (parameter.initializer !== undefined && ts.isIdentifier(parameter.name)) {
+      parameters[index].default = toExpr(parameter.initializer, cx);
+    }
+  }
   const loc = locationOf(context.sourceFile, fn);
   const model = { name, params: parameters, ...modifiersOf(fn), body, loc };
   return { model, helpers: [...cx.helpers].sort() };

@@ -1,4 +1,4 @@
-import { PAID_A, code, fixture, transition } from './source.mjs';
+import { ANY_EFFECT, PAID_ANY, UNKNOWN_CALL, code, fixture, transition } from './source.mjs';
 
 export const LIMIT_FIXTURES = [
   fixture('unknown-helper', {
@@ -16,11 +16,7 @@ export const LIMIT_FIXTURES = [
         return 'paid';
       }
     `,
-    expect: {
-      status: 'partial',
-      reasons: ['unknown-call'],
-      violations: [transition('A', 'paid', 'paid'), transition('A', 'cancelled', 'paid')],
-    },
+    expect: UNKNOWN_CALL,
   }),
   fixture('unknown-dispatch', {
     title: 'The effect is called through a computed member',
@@ -34,7 +30,11 @@ export const LIMIT_FIXTURES = [
         return 'paid';
       }
     `,
-    expect: { status: 'partial', reasons: ['unknown-dispatch'], violations: [PAID_A] },
+    expect: {
+      status: 'partial',
+      reasons: ['unknown-dispatch', 'unknown-entity'],
+      violations: [...ANY_EFFECT, PAID_ANY],
+    },
   }),
   fixture('recursion', {
     title: 'A same-file helper retries by calling itself',
@@ -77,7 +77,7 @@ export const LIMIT_FIXTURES = [
       }
     `,
     entry: 'payAll',
-    expect: { status: 'partial', reasons: ['loop'] },
+    expect: { status: 'partial', reasons: ['loop'], violations: ANY_EFFECT },
   }),
   fixture('finally-cleanup', {
     title: 'A finally block is outside the supported subset',
@@ -95,7 +95,11 @@ export const LIMIT_FIXTURES = [
         return 'paid';
       }
     `,
-    expect: { status: 'partial', reasons: ['unsupported-syntax'], violations: [PAID_A] },
+    expect: {
+      status: 'partial',
+      reasons: ['unknown-entity', 'unsupported-syntax'],
+      violations: [...ANY_EFFECT, PAID_ANY],
+    },
   }),
   fixture('unknown-recovery', {
     title: 'A failed commit is handed to an unknown recovery call',
@@ -115,7 +119,11 @@ export const LIMIT_FIXTURES = [
         return 'paid';
       }
     `,
-    expect: { status: 'partial', reasons: ['unknown-call'], violations: [PAID_A] },
+    expect: {
+      status: 'partial',
+      reasons: ['unknown-call', 'unknown-entity'],
+      violations: [PAID_ANY],
+    },
   }),
   fixture('exhausted-budget', {
     title: 'More effect outcomes than the declared state budget allows',

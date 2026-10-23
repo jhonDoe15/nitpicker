@@ -32,6 +32,18 @@ function elementStatement(element, source, cx) {
   };
 }
 
+function patternClobbers(pattern, cx) {
+  return pattern.elements
+    .filter((element) => cx.locals.has(element))
+    .map((element) => `local:${cx.locals.get(element).id}`);
+}
+
+function unsupportedPattern(node, pattern, cx) {
+  const statement = unsupportedStatement(node, cx, 'binding-pattern');
+  const clobbers = [...new Set([...statement.clobbers, ...patternClobbers(pattern, cx)])].sort();
+  return { ...statement, mutates: true, clobbers };
+}
+
 function declarationStatements(declaration, cx) {
   const loc = locationOf(cx.sourceFile, declaration);
   const value =
@@ -47,7 +59,7 @@ function declarationStatements(declaration, cx) {
     return [bind];
   }
   if (!declaration.name.elements.every((element) => cx.locals.has(element))) {
-    return [unsupportedStatement(declaration, cx, 'binding-pattern')];
+    return [unsupportedPattern(declaration, declaration.name, cx)];
   }
   const source = { kind: 'local', id: local.id, name: local.name };
   return [
@@ -107,19 +119,29 @@ function completionStatement(node, cx) {
   return [{ kind, value, loc: locationOf(cx.sourceFile, node) }];
 }
 
+function catchField(element, cx) {
+  return [cx.locals.get(element).id, (element.propertyName ?? element.name).text];
+}
+
 function tryStatement(node, cx) {
   if (node.finallyBlock !== undefined || node.catchClause === undefined) {
     return [unsupportedStatement(node, cx, 'finally')];
   }
   const declaration = node.catchClause.variableDeclaration;
   const local = declaration === undefined ? undefined : cx.locals.get(declaration);
+  const pattern = declaration !== undefined && !ts.isIdentifier(declaration.name);
+  if (pattern && !declaration.name.elements.every((element) => cx.locals.has(element))) {
+    return [unsupportedPattern(node, declaration.name, cx)];
+  }
   const handler = blockOf(node.catchClause.block, cx);
   const body = blockOf(node.tryBlock, cx);
+  const fields = pattern ? declaration.name.elements.map((element) => catchField(element, cx)) : [];
   return [
     {
       kind: 'try',
       body,
       ...(local === undefined ? {} : { catchId: local.id }),
+      ...(fields.length === 0 ? {} : { catchFields: fields }),
       handler,
       loc: locationOf(cx.sourceFile, node),
     },
