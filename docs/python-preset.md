@@ -11,6 +11,9 @@ which the conformance suite in [`spec/conformance`](../spec/conformance/README.m
 Python side contributes only two things: producing reports inside the project's own environment,
 and converting them into findings.
 
+The Python and `uv` (or poetry) setup a CI job needs, and recipes for GitHub Actions, GitLab CI and
+Jenkins, are in [nitpicker in CI](ci.md#toolchains-by-preset).
+
 The purpose is the same as everywhere else: narrow a flexible language to roughly one allowed way
 of doing each thing. That "one way" lives in the code and architecture rules (slices 2 to 5), not in
 which tools a project uses, so the preset detects the tools a project already has (uv, poetry,
