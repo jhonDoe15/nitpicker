@@ -4,6 +4,10 @@ import { createProject, factsOf, findingsOf, removeProject } from '../test-suppo
 
 const roots = [];
 
+function publicationOf({ types, callables }) {
+  return [...types, ...callables].map(({ id, published }) => ({ id, published }));
+}
+
 function project(options) {
   const root = createProject(options);
   roots.push(root);
@@ -16,7 +20,7 @@ afterEach(() => {
   }
 });
 
-describe('the modules and packages of a project', () => {
+describe('the modules and public surface of a project', () => {
   it('leaves out generated files and test files', () => {
     const root = project({
       files: {
@@ -43,30 +47,68 @@ describe('the modules and packages of a project', () => {
     ]);
   });
 
-  it('reports a published package', () => {
+  it('publishes what the entry of a published package exports, through its re-exports', () => {
     const root = project({
       manifest: { name: 'lib', main: 'src/index.ts' },
-      files: { 'src/index.ts': 'export const lib = 1;\n' },
+      files: {
+        'src/index.ts':
+          "export { open } from './api';\nexport * from './shapes';\nexport { Widget as Gadget } from './widget';\n",
+        'src/api.ts':
+          'export function open(name: string): string {\n  return name;\n}\nexport function internal(name: string): string {\n  return name;\n}\n',
+        'src/shapes.ts':
+          'export interface Shape {\n  size: number;\n}\nexport function area(shape: Shape): number {\n  return shape.size;\n}\n',
+        'src/widget.ts':
+          'export class Widget {\n  run(): void {}\n}\nexport class Hidden {\n  run(): void {}\n}\n',
+      },
     });
+    const facts = factsOf(root);
 
-    expect(factsOf(root).packages).toEqual([{ root: '', published: true }]);
+    expect(publicationOf(facts)).toEqual([
+      { id: 'src/api.ts', published: undefined },
+      { id: 'src/index.ts', published: true },
+      { id: 'src/shapes.ts', published: true },
+      { id: 'src/shapes.ts#Shape', published: true },
+      { id: 'src/widget.ts', published: undefined },
+      { id: 'src/widget.ts#Widget', published: true },
+      { id: 'src/widget.ts#Hidden', published: undefined },
+      { id: 'src/api.ts#open', published: true },
+      { id: 'src/api.ts#internal', published: undefined },
+      { id: 'src/shapes.ts#area', published: true },
+      { id: 'src/widget.ts#Widget.run', published: undefined },
+      { id: 'src/widget.ts#Hidden.run', published: undefined },
+    ]);
   });
 
-  it('reports every package of a workspace', () => {
+  it('publishes nothing that a private package exports, even from a layout entry point', () => {
     const root = project({
-      manifest: { name: 'repo', private: true, workspaces: ['packages/*'] },
+      files: { 'src/cli.ts': 'export function run(): void {}\n' },
+    });
+
+    expect(publicationOf(factsOf(root, { layout: { entryPoints: ['src/cli.ts'] } }))).toEqual([
+      { id: 'src/cli.ts', published: undefined },
+      { id: 'src/cli.ts#run', published: undefined },
+    ]);
+  });
+
+  it('publishes a layout entry point of a published package, and not its bin', () => {
+    const root = project({
+      manifest: { name: 'tool', bin: 'src/cli.ts' },
       files: {
-        'packages/a/package.json': { name: 'a', main: 'src/index.ts' },
-        'packages/a/src/index.ts': 'export const a = 1;\n',
-        'packages/b/package.json': { name: 'b', private: true },
-        'packages/b/src/index.ts': 'export const b = 1;\n',
+        'src/cli.ts': 'export function run(): void {}\n',
+        'src/plugin.ts': 'export function load(): void {}\n',
+        'src/helper.ts': 'export function help(): void {}\n',
       },
     });
 
-    expect(factsOf(root).packages).toEqual([
-      { root: '', published: false },
-      { root: 'packages/a', published: true },
-      { root: 'packages/b', published: false },
+    const policy = { layout: { entryPoints: ['src/plugin.ts'] } };
+
+    expect(publicationOf(factsOf(root, policy))).toEqual([
+      { id: 'src/cli.ts', published: undefined },
+      { id: 'src/helper.ts', published: undefined },
+      { id: 'src/plugin.ts', published: true },
+      { id: 'src/cli.ts#run', published: undefined },
+      { id: 'src/helper.ts#help', published: undefined },
+      { id: 'src/plugin.ts#load', published: true },
     ]);
   });
 });
@@ -130,6 +172,26 @@ describe('the design rules over the facts of a fixture project', () => {
       { rule: 'forwarding-chain', classification: 'descriptive', path: 'src/forward/outer.ts' },
       { rule: 'caller-protocol', classification: 'descriptive', path: 'src/jobs/export-job.ts' },
       { rule: 'disjoint-consumer-groups', classification: 'descriptive', path: 'src/model.ts' },
+      { rule: 'data-clump', classification: 'descriptive', path: 'src/net/client.ts' },
+      {
+        rule: 'repeated-policy-decision',
+        classification: 'descriptive',
+        path: 'src/policy/cost.ts',
+      },
+      { rule: 'context-threading', classification: 'descriptive', path: 'src/threading/start.ts' },
+    ]);
+  });
+
+  it('skips only the API-shape rules for the types a published package exports', () => {
+    const root = project({ fixture: 'signals', manifest: { name: 'lib', main: 'src/model.ts' } });
+
+    expect(summaryOf(findingsOf(root))).toEqual([
+      {
+        rule: 'foreign-state-decision',
+        classification: 'descriptive',
+        path: 'src/accounts/audit.ts',
+      },
+      { rule: 'forwarding-chain', classification: 'descriptive', path: 'src/forward/outer.ts' },
       { rule: 'data-clump', classification: 'descriptive', path: 'src/net/client.ts' },
       {
         rule: 'repeated-policy-decision',

@@ -256,8 +256,10 @@ describe('the types of a fixture project', () => {
     expect(facts.modules).toEqual(MODULES);
   });
 
-  it('leaves out the packages of a private single-package project', () => {
-    expect(facts.packages).toEqual([]);
+  it('publishes nothing of a private project', () => {
+    expect(
+      [...facts.types, ...facts.callables].filter(({ published }) => published !== undefined),
+    ).toEqual([]);
   });
 
   it.each(TYPES)('describes the type $id', (expected) => {

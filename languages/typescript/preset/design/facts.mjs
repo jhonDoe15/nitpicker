@@ -2,7 +2,8 @@ import ts from 'typescript';
 import { callableFact } from './callables/callable-facts.mjs';
 import { collectCallbackSites, collectNamedSites } from './callables/sites.mjs';
 import { globMatcher } from '../layout.mjs';
-import { moduleFacts, ownedFiles, packageFacts } from './project.mjs';
+import { moduleFacts, ownedFiles } from './project.mjs';
+import { publicSurface } from './publication.mjs';
 import { collectTypes, typeFact } from './types/declarations.mjs';
 
 function projectModuleTest(options) {
@@ -63,7 +64,27 @@ function indexFields(registry, types) {
   }
 }
 
-/** The `modules`, `packages`, `types` and `callables` lists of the facts bundle for the owned production files. */
+function isPublishedType(surface, entry) {
+  if (entry.kind === 'module') {
+    return surface.isWholeModule(entry.node);
+  }
+  return entry.exported && surface.isPublished(entry.node);
+}
+
+function isPublishedCallable(surface, site) {
+  return (
+    site.member === undefined &&
+    site.callback !== true &&
+    site.exported &&
+    surface.isPublished(site.declaration)
+  );
+}
+
+function marked(fact, published) {
+  return published ? { ...fact, published } : fact;
+}
+
+/** The `modules`, `types` and `callables` lists of the facts bundle for the owned production files. */
 export function designFacts({ context, layout, packagesInfo, frameworks, projectRoot }) {
   const files = ownedFiles(context, layout);
   const state = createState({ context, files, frameworks });
@@ -71,12 +92,17 @@ export function designFacts({ context, layout, packagesInfo, frameworks, project
   indexTypes(state.registry);
   collectNamedSites(files, state);
   collectCallbackSites(files, state);
-  const types = state.registry.entries.map((entry) => typeFact(state, entry));
+  const surface = publicSurface({ checker: context.checker, projectRoot, packagesInfo, layout });
+  const { entries, sites } = state.registry;
+  const types = entries.map((entry) =>
+    marked(typeFact(state, entry), isPublishedType(surface, entry)),
+  );
   indexFields(state.registry, types);
   return {
     modules: moduleFacts(files, layout),
-    packages: packageFacts(packagesInfo, projectRoot),
     types,
-    callables: state.registry.sites.map((site) => callableFact(state, site)),
+    callables: sites.map((site) =>
+      marked(callableFact(state, site), isPublishedCallable(surface, site)),
+    ),
   };
 }

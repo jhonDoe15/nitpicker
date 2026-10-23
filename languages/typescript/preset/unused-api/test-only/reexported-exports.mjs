@@ -52,7 +52,7 @@ function entryFilesOf({ projectRoot, entryPatterns, packagesInfo, layout }, walk
   return filesMatching(filesNear(globs, { layout, walk, rules, projectRoot }), globs);
 }
 
-function publicFilesOf({ files, projectRoot, packagesInfo, layout }) {
+export function publicFilesOf({ files, projectRoot, packagesInfo, layout }) {
   const manifestGlobs = packagesInfo.packages
     .filter(({ published }) => published)
     .flatMap((entry) => publicEntryGlobs(entry, layout));
