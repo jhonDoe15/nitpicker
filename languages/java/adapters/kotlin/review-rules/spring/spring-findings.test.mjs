@@ -161,6 +161,7 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       expect(finding.tool).toBe('pmd');
       expect(finding.classification).toBe('enforceable');
       expect(finding.message).toBe(routed(springMessage(finding.rule), finding.rule, finding.path));
+      expect(finding.allowedForm).toBe(springMessage(finding.rule));
     }
   });
 

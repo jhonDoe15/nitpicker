@@ -9,6 +9,12 @@ const CATALOGS = new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)]))
 const CHECKSTYLE_CHECK =
   /^com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?$/u;
 const SENTENCE_END = /[.!?;]$/u;
+const SPRING_RULESET = new URL('../gradle/spring-ruleset.xml', import.meta.url);
+const ALLOWED_FORM_RULES = new Set(
+  [...readFileSync(SPRING_RULESET, 'utf8').matchAll(/<rule name="([A-Za-z]+)"/gu)].map(
+    ([, name]) => name,
+  ),
+);
 
 export function readCatalog(tool) {
   return JSON.parse(readFileSync(new URL(`./${tool}.json`, import.meta.url), 'utf8'));
@@ -54,12 +60,17 @@ function ruleMessage(finding, entry, { preset, javaStyle }) {
     (preset === 'java' || finding.path.endsWith('.java')) &&
     finding.classification === 'enforceable' &&
     entry?.mayBeIntended !== false;
+  const sentence = SENTENCE_END.test(message) ? message : `${message}.`;
   return {
     message: [
-      SENTENCE_END.test(message) ? message : `${message}.`,
+      sentence,
       ...(typeof fix === 'string' ? [fix] : []),
       ...(liftable ? [exceptionHint(`${finding.tool}/${finding.rule}`, finding.path)] : []),
     ].join(' '),
-    ...definedField('allowedForm', typeof fix === 'string' ? fix : undefined),
+    ...definedField('allowedForm', typeof fix === 'string' ? fix : leadingForm(finding, sentence)),
   };
+}
+
+function leadingForm({ tool, rule }, sentence) {
+  return tool === 'pmd' && ALLOWED_FORM_RULES.has(rule) ? sentence : undefined;
 }
