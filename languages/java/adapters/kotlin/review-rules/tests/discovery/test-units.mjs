@@ -1,7 +1,14 @@
 import { scanKotlinSource } from '../../../scan/kotlin-source.mjs';
 import { generatedFile } from '../../../scan/rules/markers.mjs';
-import { classesOf, enclosingClasses, functionsOf } from './declarations.mjs';
-import { hasNestedRegistration, isSpecType, specBodies, specNodes } from './kotest-specs.mjs';
+import { textTables } from './text-scan.mjs';
+import { classesOf, enclosingClasses, ownersOf } from './declarations.mjs';
+import { functionsOf } from './functions.mjs';
+import {
+  hasNestedRegistration,
+  isSpecType,
+  specBodies,
+  specNodes,
+} from './kotest/kotest-specs.mjs';
 
 const JUNIT_TEST_ANNOTATIONS = new Set([
   'Test',
@@ -13,6 +20,26 @@ const JUNIT_TEST_ANNOTATIONS = new Set([
   'Property',
   'Example',
 ]);
+const BACKTICK_NAME = /`[^`\n]+`/gu;
+const NON_WORD = /\W/u;
+
+function maskBackticks(text) {
+  return text.replaceAll(BACKTICK_NAME, (name) =>
+    NON_WORD.test(name.slice(1, -1)) ? `\`${'_'.repeat(name.length - 2)}\`` : name,
+  );
+}
+
+export function scanTestFile(text) {
+  const scanned = scanKotlinSource(maskBackticks(text));
+  if (generatedFile(scanned)) {
+    return undefined;
+  }
+  const literals = scanned.literals.map((literal) => ({
+    ...literal,
+    text: text.slice(literal.bodyStart, literal.bodyStart + literal.text.length),
+  }));
+  return { ...scanned, source: text, literals, tables: textTables(scanned.code), memo: new Map() };
+}
 
 function junitNode(suite, fn) {
   return {
@@ -41,6 +68,7 @@ function kotestNode(suite, raw) {
     body: raw.body,
     ancestors: raw.ancestors,
     leaf: raw.leaf,
+    dynamic: raw.dynamic,
     factory: false,
   };
 }
@@ -57,33 +85,36 @@ function suiteOf(classes, klass) {
   };
 }
 
-function withNodes(context, suite) {
-  const { scanned, classes, functions } = context;
-  const { klass } = suite;
-  const junit = functions
-    .filter(
-      (fn) =>
-        enclosingClasses(classes, fn.offset).at(-1) === klass &&
-        fn.annotations.some(({ name }) => JUNIT_TEST_ANNOTATIONS.has(name)),
-    )
-    .map((fn) => junitNode(suite, fn));
-  const raw = klass.supers.some(({ name }) => isSpecType(name))
-    ? specNodes(scanned, specBodies(scanned, klass))
+function testFunctions(functions, owners) {
+  return Map.groupBy(
+    functions.filter((fn) => fn.annotations.some(({ name }) => JUNIT_TEST_ANNOTATIONS.has(name))),
+    (fn) => owners.get(fn.offset),
+  );
+}
+
+function withNodes(scanned, suite, byOwner) {
+  const junit = (byOwner.get(suite.klass) ?? []).map((fn) => junitNode(suite, fn));
+  const raw = suite.klass.supers.some(({ name }) => isSpecType(name))
+    ? specNodes(scanned, specBodies(scanned, suite.klass))
     : [];
-  return { ...suite, nodes: [...junit, ...raw.map((node) => kotestNode(suite, node))] };
+  const kotest = raw.map((node) => kotestNode(suite, node));
+  return { ...suite, nodes: [...junit, ...kotest].toSorted((a, b) => a.offset - b.offset) };
 }
 
 export function discoverSuites(scanned) {
   const classes = classesOf(scanned);
-  const context = { scanned, classes, functions: functionsOf(scanned) };
+  const functions = functionsOf(scanned);
+  const owners = ownersOf(
+    classes,
+    functions.map(({ offset }) => offset),
+  );
+  const byOwner = testFunctions(functions, owners);
   return classes
-    .map((klass) => withNodes(context, suiteOf(classes, klass)))
+    .map((klass) => {
+      const suite = withNodes(scanned, suiteOf(classes, klass), byOwner);
+      return { ...suite, nodes: suite.nodes.map((node) => ({ ...node, suite })) };
+    })
     .filter(({ nodes }) => nodes.length > 0);
-}
-
-export function scanTestFile(text) {
-  const scanned = scanKotlinSource(text);
-  return generatedFile(scanned) ? undefined : scanned;
 }
 
 export function testBodies(scanned, suites) {

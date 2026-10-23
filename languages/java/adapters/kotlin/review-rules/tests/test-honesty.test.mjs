@@ -24,8 +24,13 @@ function projectWith(files) {
   return root;
 }
 
-function findingsOf(root, testRoots = ['src/test/kotlin']) {
-  return testHonestyFindings({ projectRoot: root, testRoots, finding: findingFactory() });
+function findingsOf(root, testRoots = ['src/test/kotlin'], contextRoots = []) {
+  return testHonestyFindings({
+    projectRoot: root,
+    testRoots,
+    contextRoots,
+    finding: findingFactory(),
+  });
 }
 
 const SKIPPED = `${JUNIT_HEAD}class OrderTest {
@@ -132,23 +137,31 @@ describe('testHonestyFindings', () => {
     );
   });
 
-  it('judges Dispatchers.Main and Kotest scopes from the whole project', () => {
-    const delaying = `${JUNIT_HEAD}class ClockTest {
-    @Test
+  it('finds a Main dispatcher rule in a shared module and needs the test class to apply it', () => {
+    const delaying = (member) => `${JUNIT_HEAD}class ClockTest {
+${member}    @Test
     fun main() = runTest {
         withContext(Dispatchers.Main) { delay(500) }
     }
 }
 `;
-    const replaced = `class MainRule { fun starting() { Dispatchers.setMain(StandardTestDispatcher()) } }\n`;
+    const rule = `class MainRule : TestWatcher() {
+    override fun starting(description: Description) { Dispatchers.setMain(StandardTestDispatcher()) }
+}
+`;
+    const withRule = (member) =>
+      projectWith({
+        'src/test/kotlin/ClockTest.kt': delaying(member),
+        'test-utils/src/main/kotlin/MainRule.kt': rule,
+      });
+    const contextRoots = ['test-utils/src/main/kotlin'];
 
-    expect(findingsOf(projectWith({ 'src/test/kotlin/ClockTest.kt': delaying }))).toHaveLength(1);
+    expect(findingsOf(withRule(''), ['src/test/kotlin'], contextRoots)).toHaveLength(1);
     expect(
       findingsOf(
-        projectWith({
-          'src/test/kotlin/ClockTest.kt': delaying,
-          'src/test/kotlin/MainRule.kt': replaced,
-        }),
+        withRule('    @get:Rule val main = MainRule()\n'),
+        ['src/test/kotlin'],
+        contextRoots,
       ),
     ).toEqual([]);
   });

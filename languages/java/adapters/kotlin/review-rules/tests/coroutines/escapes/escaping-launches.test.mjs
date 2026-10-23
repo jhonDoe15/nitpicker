@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../test-support/sources.mjs';
+import { JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../../test-support/sources.mjs';
 import { ESCAPING_RULE } from './escaping-launches.mjs';
 
 const escapes = (text) => rulesOf(text, ESCAPING_RULE);

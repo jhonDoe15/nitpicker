@@ -47,20 +47,33 @@ function projectView({ reportRoot, projectRoot, manifest, modules = [] }) {
   return { own, projectFiles, javaRoots, projectRoot };
 }
 
+function contextRoots(manifest, modules) {
+  return [manifest, ...modules.map((module) => module.manifest)].flatMap((entry) => [
+    ...(entry?.kotlinSourceRoots ?? []),
+    ...(entry?.kotlinTestSourceRoots ?? []),
+  ]);
+}
+
 export function readKotlinReviewFindings(context) {
-  const { manifest, projectRoot } = context;
+  const { manifest, projectRoot, modules = [] } = context;
   const { own, projectFiles, javaRoots } = projectView(context);
-  if (own.length === 0) {
-    return [];
-  }
   const finding = findingFactory();
+  const honesty = testHonestyFindings({
+    projectRoot,
+    testRoots: manifest.kotlinTestSourceRoots,
+    contextRoots: contextRoots(manifest, modules),
+    finding,
+  });
+  if (own.length === 0) {
+    return honesty;
+  }
   return [
     ...testWaitFindings(own, {
       finding,
       awaitility: hasAwaitility({ manifest, projectRoot }),
       isProduction: productionTypeResolver({ files: projectFiles, projectRoot, javaRoots }),
     }),
-    ...testHonestyFindings({ projectRoot, testRoots: manifest.kotlinTestSourceRoots, finding }),
+    ...honesty,
     ...springContextFindings(own, { finding }),
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),

@@ -3,13 +3,13 @@ import {
   assertionsInControlFlow,
   CONTROL_FLOW_MESSAGE,
   CONTROL_FLOW_RULE,
-} from './assertion-flow.mjs';
+} from './flow/assertion-flow.mjs';
 import { focusedTests, FOCUSED_MESSAGE, FOCUSED_RULE } from './focused-tests.mjs';
-import { constantsOf, DISABLED_MESSAGE, DISABLED_RULE, skippedTests } from './skipped-tests.mjs';
+import { DISABLED_MESSAGE, DISABLED_RULE, skippedTests } from './skipped-tests.mjs';
 
 function flowReports(scanned, suites) {
   return testBodies(scanned, suites).flatMap((test) =>
-    assertionsInControlFlow(scanned, test.body).map((entry) => ({
+    assertionsInControlFlow(scanned, test).map((entry) => ({
       rule: CONTROL_FLOW_RULE,
       offset: entry.from,
       symbol: test.symbol,
@@ -20,13 +20,18 @@ function flowReports(scanned, suites) {
 }
 
 function located(entries, rule, message) {
-  return entries.map(({ symbol, offset }) => ({ rule, offset, symbol, key: symbol, message }));
+  return entries.map(({ symbol, offset, key = symbol }) => ({
+    rule,
+    offset,
+    symbol,
+    key,
+    message,
+  }));
 }
 
-export function honestyReports(scanned, suites) {
-  const skipped = skippedTests(suites, constantsOf(scanned));
+export function honestyReports(scanned, suites, project) {
   return [
-    ...located(skipped, DISABLED_RULE, DISABLED_MESSAGE),
+    ...located(skippedTests(scanned, suites, project), DISABLED_RULE, DISABLED_MESSAGE),
     ...located(focusedTests(suites), FOCUSED_RULE, FOCUSED_MESSAGE),
     ...flowReports(scanned, suites),
   ];

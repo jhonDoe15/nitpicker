@@ -83,8 +83,11 @@ describe('readKotlinReviewFindings', () => {
 });
 
 describe('readKotlinReviewFindings on the test sources', () => {
-  it('reads the Kotlin test sources of the manifest, next to the facts', () => {
-    const { root, reportRoot } = projectWith({ files: [testFile()] });
+  it.each([
+    ['next to the facts', { files: [testFile()] }],
+    ['when the facts report lists no files', { files: [] }],
+  ])('reads the Kotlin test sources of the manifest %s', (_name, facts) => {
+    const { root, reportRoot } = projectWith(facts);
     mkdirSync(path.join(root, 'src/test/kotlin'), { recursive: true });
     writeFileSync(
       path.join(root, 'src/test/kotlin/SkippedTest.kt'),
