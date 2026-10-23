@@ -18,11 +18,11 @@ function infrastructureIn(checker, type) {
 }
 
 function isHandlerSignature(checker, signature) {
-  const [first] = signature.getParameters();
-  return (
-    first !== undefined &&
-    infrastructureIn(checker, checker.getTypeOfSymbol(first)).some((found) => found.request)
-  );
+  return signature
+    .getParameters()
+    .some((parameter) =>
+      infrastructureIn(checker, checker.getTypeOfSymbol(parameter)).some((found) => found.request),
+    );
 }
 
 function signatureLeaks(checker, signature, allowTransport) {
@@ -41,10 +41,19 @@ function isPublic(symbol) {
   );
 }
 
+function isProjectDeclared(symbol) {
+  return (symbol.declarations ?? []).some(
+    (declaration) => !declaration.getSourceFile().isDeclarationFile,
+  );
+}
+
 function callableMembers(checker, type) {
   return type
     .getProperties()
-    .filter((property) => property.name !== 'prototype' && isPublic(property))
+    .filter(
+      (property) =>
+        property.name !== 'prototype' && isPublic(property) && isProjectDeclared(property),
+    )
     .map((property) => ({
       name: property.name,
       signatures: checker.getTypeOfSymbol(property).getCallSignatures(),
@@ -60,38 +69,38 @@ function memberLeaks(checker, members, { label, allowTransport }) {
   );
 }
 
+function isFactory(checker, signature) {
+  const returns = signature.getReturnType();
+  return (
+    (returns.flags & ts.TypeFlags.Object) !== 0 &&
+    checker.getAwaitedType(returns) === returns &&
+    !checker.isArrayLikeType(returns) &&
+    returns.getCallSignatures().length === 0 &&
+    infrastructureIn(checker, returns).length === 0
+  );
+}
+
+function functionLeaks(checker, signatures, label) {
+  return signatures.flatMap((signature) => {
+    if (!isFactory(checker, signature)) {
+      return signatureLeaks(checker, signature, false).map((found) => ({ member: label, found }));
+    }
+    const members = callableMembers(checker, signature.getReturnType());
+    return memberLeaks(checker, members, { label: `${label}()`, allowTransport: false });
+  });
+}
+
 function classLeaks(checker, symbol, label) {
   const declaration = symbol.declarations.find(ts.isClassLike);
   const allowTransport = declaration !== undefined && isNestController(checker, declaration);
   const instance = callableMembers(checker, checker.getDeclaredTypeOfSymbol(symbol));
   const statics = callableMembers(checker, checker.getTypeOfSymbol(symbol));
-  return memberLeaks(checker, [...instance, ...statics], { label, allowTransport });
-}
-
-function isProjectObject(type) {
-  return (
-    (type.flags & ts.TypeFlags.Object) !== 0 &&
-    (type.getSymbol()?.declarations ?? []).some(
-      (declaration) => !declaration.getSourceFile().isDeclarationFile,
-    )
-  );
-}
-
-function returnedMembers(checker, signature) {
-  const returns = signature.getReturnType();
-  const awaited = checker.getAwaitedType(returns) ?? returns;
-  return isProjectObject(awaited) ? callableMembers(checker, awaited) : [];
-}
-
-function functionLeaks(checker, signatures, label) {
-  return signatures.flatMap((signature) => {
-    const direct = signatureLeaks(checker, signature, false);
-    const returnLeaks = infrastructureIn(checker, signature.getReturnType());
-    const members = returnLeaks.length === 0 ? returnedMembers(checker, signature) : [];
-    return members.length === 0
-      ? direct.map((found) => ({ member: label, found }))
-      : memberLeaks(checker, members, { label: `${label}()`, allowTransport: false });
-  });
+  return [
+    ...memberLeaks(checker, instance, { label, allowTransport }),
+    ...statics.flatMap(({ name, signatures }) =>
+      functionLeaks(checker, signatures, `${label}.${name}`),
+    ),
+  ];
 }
 
 function typeLeaks(checker, type, label) {
@@ -102,6 +111,20 @@ function typeLeaks(checker, type, label) {
   ];
 }
 
+function heldInfrastructure(type) {
+  const parts = type.isUnion() ? type.types : [type];
+  return parts
+    .flatMap((part) => typeSymbols(part).map((symbol) => infrastructureOf(symbol)))
+    .filter((found) => found !== undefined);
+}
+
+function variableLeaks(checker, type, label) {
+  const held = heldInfrastructure(type);
+  return held.length === 0
+    ? typeLeaks(checker, type, label)
+    : held.map((found) => ({ member: label, found }));
+}
+
 const OWN_LEAKS = ts.SymbolFlags.Class | ts.SymbolFlags.Function | ts.SymbolFlags.Variable;
 const TYPE_LEAKS = ts.SymbolFlags.Interface | ts.SymbolFlags.TypeAlias;
 
@@ -109,7 +132,10 @@ function symbolLeaks(checker, symbol, label) {
   if ((symbol.flags & ts.SymbolFlags.Class) !== 0) {
     return classLeaks(checker, symbol, label);
   }
-  if ((symbol.flags & (ts.SymbolFlags.Function | ts.SymbolFlags.Variable)) !== 0) {
+  if ((symbol.flags & ts.SymbolFlags.Variable) !== 0) {
+    return variableLeaks(checker, checker.getTypeOfSymbol(symbol), label);
+  }
+  if ((symbol.flags & ts.SymbolFlags.Function) !== 0) {
     return typeLeaks(checker, checker.getTypeOfSymbol(symbol), label);
   }
   return (symbol.flags & TYPE_LEAKS) === 0
