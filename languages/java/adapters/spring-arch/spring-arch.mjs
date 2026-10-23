@@ -37,6 +37,14 @@ const MESSAGES = {
     const consumer = method === '' ? simple : `the bean ${simple}.${method}`;
     return `Inject ObjectProvider<${bean}> into ${consumer} and call getObject() per use, or give ${bean} a scoped proxy (proxyMode = ScopedProxyMode.TARGET_CLASS): a singleton gets one ${bean} when it is created, which fails outside a ${scope} and otherwise keeps the first ${scope}'s bean.`;
   },
+  'ddd-aggregate-reference': ({ simple, detail }) =>
+    `Refer to ${detail} by its identifier or an Association<${detail}, ID> in ${simple}: ${detail} is the root of another aggregate, and holding it lets one aggregate change another outside its consistency boundary.`,
+  'ddd-foreign-entity': ({ simple, detail }) => {
+    const [aggregate, entity] = detail.split(':');
+    return `Refer to ${aggregate} by its identifier in ${simple} instead of holding ${entity}: ${entity} belongs to the aggregate ${aggregate}, and an entity belongs to exactly one aggregate.`;
+  },
+  'ddd-value-object-reference': ({ simple, detail }) =>
+    `Hold the identifier of ${detail} in ${simple}, not the object: a value object is compared by its values, and ${detail} is an entity with an identity and lifecycle of its own.`,
   'spring-test-placement': ({ simple }) =>
     `Test ${simple} with new and mocks, or run it as an integration test: name it ${simple.replace(/Tests?$/u, '')}IT (Failsafe runs *IT on Maven) or put it in an integration test source set. Both keep its package, so package-private classes stay visible; a package named integration or it also counts.`,
   'spring-no-dirties-context': ({ simple }) =>
