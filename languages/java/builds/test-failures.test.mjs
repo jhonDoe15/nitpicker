@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { failedCases, failingTestsError, freshReports } from './test-failures.mjs';
+import { failedCases, failingTestsError, freshReports, moduleName } from './test-failures.mjs';
 
 const roots = [];
 
@@ -25,6 +25,19 @@ const SUITE = `<testsuite name="shop.CartTest">
 </testsuite>`;
 
 describe('failedCases', () => {
+  it('drops the parameter list and the exception class from a JUnit 5 case', () => {
+    const root = directory();
+    const file = path.join(root, 'TEST-demo.GreeterTest.xml');
+    writeFileSync(
+      file,
+      `<testsuite name="demo.GreeterTest"><testcase classname="demo.GreeterTest" name="greetsByName()"><failure message="org.opentest4j.AssertionFailedError: expected: &lt;Hi&gt; but was: &lt;Hello&gt;"/></testcase></testsuite>`,
+    );
+
+    expect(failedCases(file)).toEqual([
+      'demo.GreeterTest.greetsByName: expected: <Hi> but was: <Hello>',
+    ]);
+  });
+
   it('names each failing or erroring test with the first line of its message', () => {
     const root = directory();
     writeFileSync(path.join(root, 'TEST-shop.CartTest.xml'), SUITE);
@@ -52,12 +65,35 @@ describe('freshReports', () => {
 
 describe('failingTestsError', () => {
   it('lists at most ten failing tests and counts the rest', () => {
-    const failures = Array.from({ length: 12 }, (_, index) => `shop.T.t${String(index)}: no`);
+    const tests = Array.from({ length: 12 }, (_, index) => `shop.T.t${String(index)}: no`);
 
-    expect(failingTestsError('/repo', failures).message.split('\n')).toEqual([
+    expect(failingTestsError('/repo', [{ module: '.', tests }]).message.split('\n')).toEqual([
       'Tests fail in /repo; nitpicker needs a passing test suite for coverage and mutation testing:',
-      ...failures.slice(0, 10).map((failure) => `  ${failure}`),
+      ...tests.slice(0, 10).map((test) => `  ${test}`),
       '  and 2 more',
     ]);
+  });
+
+  it('lists the tests of every module', () => {
+    const error = failingTestsError('/repo', [
+      { module: '.', tests: ['shop.T.a: no'] },
+      { module: 'core', tests: ['shop.U.b: no'] },
+    ]);
+
+    expect(error.message.split('\n').slice(1)).toEqual(['  shop.T.a: no', '  shop.U.b: no']);
+  });
+
+  it('keeps the failures on the error without changing how it compares', () => {
+    const failures = [{ module: 'core', tests: ['shop.T.t: no'] }];
+    const error = failingTestsError('/repo', failures);
+
+    expect(error.failures).toBe(failures);
+    expect(Object.keys(error)).toEqual([]);
+  });
+});
+
+describe('moduleName', () => {
+  it('is the dot for the root project and the directory for a module', () => {
+    expect([moduleName(''), moduleName('core')]).toEqual(['.', 'core']);
   });
 });

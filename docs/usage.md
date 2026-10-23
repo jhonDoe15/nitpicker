@@ -82,6 +82,50 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
   or any other file changed). Only mutants that are new on head fail, whichever way the results
   were obtained. `--all` mutates every source file.
 
+### A base whose tests fail
+
+A change that repairs a red base is not blocked. A base is red when its tests ran and at least one
+named test failed, while the tests of the head pass. The run is then not a tool error in any
+preset: the report carries a note (`notes.json`, a `Notes:` section of `report.txt`, one line in
+the console summary, a `system-out` element in the JUnit file and a `note` notification in the
+SARIF file) and the run is judged as follows.
+
+- The base results of the checks that need passing tests are unknown: changed-branch coverage
+  (`changed-branch-coverage`), CRAP (`crap-score-limit`, `crap-coverage-unknown`), mutation
+  (`mutant-*`), slow tests (`slow-test`), test console output (`test-console-output`) and the
+  coverage and efficiency descriptions (`uncovered-function`, `uncovered-method`, `line-coverage`,
+  `test-efficiency`). Every other check (lint, format, types, structure, duplicates, coupling, file
+  limits) is compared with the base as usual.
+- A finding of those checks on the head is new when its file is added by the change or it sits on a
+  line the change adds, edits or deletes from (a CRAP finding: anywhere in a function that has an
+  edited or deleted line). Any other one is unchanged and does not fail, so legacy code cannot fail
+  merely because the base had no data. An edited function over the CRAP limit therefore fails,
+  because there is no base score to hold it against: test it or split it.
+- In a build with several modules (Gradle projects, Maven modules) only the modules whose tests
+  fail are unknown on the base. The modules whose tests pass are compared with the base as usual.
+  A failing root project is unknown only for its own source and test directories, so the modules
+  below it keep their comparison; a TypeScript or Python project counts as one module.
+- A change that removes tests gets no help from the red base. When a test file loses more lines
+  than it gains, or a test file is deleted, every test-dependent result of the head counts as new,
+  as it would on a green base, and a `tests-removed` note says so. A test that is weakened without
+  losing lines cannot be told apart from a repaired one, because the base has no mutation data.
+- A base whose tests did not run is not a red base. Code that cannot be loaded (an unresolved
+  import in a TypeScript test, a Python collection or syntax error), a project that does not
+  compile, a test run that exits non-zero without naming a failing test and a run that times out
+  are tool errors on the base too: `tests-not-run` for TypeScript and Python, `gradle-failure` or
+  `maven-failure` for Java and Kotlin. A test that fails by timing out is an ordinary failing test
+  when the runner names it, so a flaky base counts as red.
+- A red head still fails. Its tool error is `tests-failed` for TypeScript and Python and
+  `gradle-failure` or `maven-failure` for Java and Kotlin. When base and head are both red, both
+  are listed as tool errors.
+- A base that does not type-check (`typecheck-failed-skipped`) or whose build fails for any other
+  reason is still a tool error.
+- Java and Kotlin Gradle builds run the base with `--continue`, so every module's tests run, and
+  rerun it without the tests of the failing modules (any failing `Test` task counts, not only
+  `test`) to read the other checks. A Maven base does not need a rerun: the build
+  runs with `-Dmaven.test.failure.ignore=true`, so the Surefire and Failsafe reports of a failing
+  module are read and only that module skips JaCoCo and PIT.
+
 The base ref is the first match of:
 
 1. `--base <ref>`
@@ -131,7 +175,7 @@ tool error carries the manager's message. Installing the base is not supported o
 
 Reports are written to `reports/quality/diff/` (`reports/quality/snapshot/` for `--all`):
 `report.txt`, `report.junit.xml`, `summary.json`, `new-findings.json`, `resolved-findings.json`,
-`changed-metrics.json` and `tool-errors.json`. The summary records every config override, a
+`changed-metrics.json`, `tool-errors.json` and `notes.json` (informational notes such as a red base). The summary records every config override, a
 policy hash, the `policyChanges` the head config makes against the base and any `notices`. A notice
 is information that never fails the run. Today there is one kind: changed code files that lie
 outside the roots the preset checks. For TypeScript those are `layout.sourceRoots` and
@@ -826,8 +870,9 @@ and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either
 failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
 A project whose root has a `pom.xml` and no Gradle build file (or both, with `mvnw` and no `gradlew`)
 is built with Maven 3.6.3 or newer instead, with the same tools, versions and findings, one module
-at a time (findings carry the module path); a Maven failure or a failing test is a
-`java/maven-failure` tool error naming the cause. Maven runs through `mvnw` when the project has
+at a time (findings carry the module path); a Maven failure or a failing test on the head is a
+`java/maven-failure` tool error naming the cause (a base whose tests fail is a note, see "A base
+whose tests fail"). Maven runs through `mvnw` when the project has
 one, else `mvn` from the PATH; `NITPICKER_MAVEN=<command>` overrides both. See
 [Maven builds](java-preset.md#maven-builds).
 
@@ -955,7 +1000,8 @@ coverage.py, function size limits (lines, statements, control nesting, parameter
 score (cyclomatic complexity computed from Python's own syntax tree, plus per-function coverage; nothing extra to install) run on the merge base and on head, inside the project's own environment, and only new
 enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif` and
 `report.junit.xml` are the same as for TypeScript. If a tool fails on either snapshot (no
-environment, failing tests, a crashing tool), the failure is reported as a tool error of the
+environment, failing tests, a crashing tool; failing tests on the base alone are only a note, see
+[A base whose tests fail](#a-base-whose-tests-fail)), the failure is reported as a tool error of the
 analyzer that ran it, never thrown: `python` for `ruff-failed`, `format-failed`, `tests-failed`,
 `coverage-failed`, `types-failed`, `rules-failed`, `structure-failed` or a plain one when the environment is missing, and `mutation` for
 `mutation-failed` (exit 2 when there are no new findings). A mutation failure keeps the lint,

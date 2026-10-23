@@ -3,7 +3,10 @@ import path from 'node:path';
 import { childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
 
 const MAX_LISTED_FAILURES = 10;
+const ROOT_MODULE = '.';
 const TEST_REPORT = /^TEST-.*\.xml$/u;
+const EXCEPTION_PREFIX = /^(?:[\w$]+\.)*[\w$]*(?:Error|Exception|Failure): /u;
+const PARAMETER_LIST = /\(\)$/u;
 
 export function failedCases(file) {
   const root = parseXml(readFileSync(file, 'utf8'));
@@ -19,8 +22,9 @@ export function failedCases(file) {
           ...childrenNamed(testCase, 'failure'),
           ...childrenNamed(testCase, 'error'),
         ][0];
-        const message = (problem.attrs.message ?? problem.attrs.type ?? '').split('\n')[0];
-        return `${testCase.attrs.classname ?? suite.attrs.name}.${testCase.attrs.name}: ${message}`;
+        const raw = (problem.attrs.message ?? problem.attrs.type ?? '').split('\n')[0];
+        const name = testCase.attrs.name.replace(PARAMETER_LIST, '');
+        return `${testCase.attrs.classname ?? suite.attrs.name}.${name}: ${raw.replace(EXCEPTION_PREFIX, '')}`;
       }),
   );
 }
@@ -34,17 +38,26 @@ export function freshReports(directory, since) {
     : [];
 }
 
-export function failingTestsError(where, failures) {
-  const listed = failures.slice(0, MAX_LISTED_FAILURES).map((failure) => `  ${failure}`);
+function listedFailures(failures) {
+  const lines = failures.flatMap(({ tests }) => tests);
+  const listed = lines.slice(0, MAX_LISTED_FAILURES).map((line) => `  ${line}`);
   const more =
-    failures.length > MAX_LISTED_FAILURES
-      ? [`  and ${String(failures.length - MAX_LISTED_FAILURES)} more`]
+    lines.length > MAX_LISTED_FAILURES
+      ? [`  and ${String(lines.length - MAX_LISTED_FAILURES)} more`]
       : [];
-  return new Error(
+  return [...listed, ...more];
+}
+
+export function moduleName(directory) {
+  return directory === '' ? ROOT_MODULE : directory;
+}
+
+export function failingTestsError(where, failures) {
+  const error = new Error(
     [
       `Tests fail in ${where}; nitpicker needs a passing test suite for coverage and mutation testing:`,
-      ...listed,
-      ...more,
+      ...listedFailures(failures),
     ].join('\n'),
   );
+  return Object.defineProperty(error, 'failures', { value: failures });
 }

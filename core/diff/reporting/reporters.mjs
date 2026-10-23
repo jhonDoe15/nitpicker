@@ -17,6 +17,7 @@ export const REPORT_FILE_NAMES = [
   'changed-metrics.json',
   'held-findings.json',
   'tool-errors.json',
+  'notes.json',
   TEXT_REPORT_FILE_NAME,
   JUNIT_REPORT_FILE_NAME,
   SARIF_REPORT_FILE_NAME,
@@ -39,6 +40,7 @@ export function writeDiffReports(outputRoot, report) {
     report.unchangedFindings.filter((finding) => finding.heldAtBase !== undefined),
   );
   writeJson(path.join(outputRoot, 'tool-errors.json'), report.toolErrors);
+  writeJson(path.join(outputRoot, 'notes.json'), report.notes ?? []);
 
   const text = renderTextReport(report);
   writeFileSync(path.join(outputRoot, TEXT_REPORT_FILE_NAME), text);
