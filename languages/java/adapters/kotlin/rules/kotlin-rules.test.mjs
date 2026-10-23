@@ -6,6 +6,7 @@ import { withKotlinRuleMessage } from './kotlin-messages.mjs';
 import {
   compilerWarningRule,
   isBannedSuppression,
+  isUnusedCodeSuppression,
   ONE_WAY_RULE_IDS,
   ONE_WAY_RULES,
   SUPPRESSION_RULE,
@@ -191,22 +192,30 @@ describe('isBannedSuppression', () => {
     'UNCHECKED_CAST',
     'DEPRECATION',
     'TYPEALIAS_EXPANSION_DEPRECATION',
+    'style:UnusedParameter',
+    'style.UnusedParameter',
+    'potential-bugs:UnsafeCallOnNullableType',
+    'complexity.LongMethod',
+    'empty-blocks.EmptyFunctionBlock',
   ])('bans %s', (token) => {
     expect(isBannedSuppression(token)).toBe(true);
   });
 
-  it.each([
-    'UNUSED_VARIABLE',
-    'unchecked',
-    'unused',
-    'unchecked_cast',
-    'rawtypes',
-    'allowed',
-    'detector',
-    'ktlinter',
-    '',
-  ])('allows the compiler diagnostic or unrelated token %s', (token) => {
-    expect(isBannedSuppression(token)).toBe(false);
+  it.each(['unchecked', 'unchecked_cast', 'rawtypes', 'allowed', 'detector', 'ktlinter', ''])(
+    'allows the compiler diagnostic or unrelated token %s',
+    (token) => {
+      expect(isBannedSuppression(token)).toBe(false);
+    },
+  );
+});
+
+describe('isUnusedCodeSuppression', () => {
+  it.each(['unused', 'UNUSED_PARAMETER', 'UNUSED_VARIABLE'])('names %s', (token) => {
+    expect(isUnusedCodeSuppression(token)).toBe(true);
+  });
+
+  it.each(['unchecked', 'UnusedParameter', 'Unused', ''])('does not name %s', (token) => {
+    expect(isUnusedCodeSuppression(token)).toBe(false);
   });
 });
 

@@ -15,7 +15,7 @@ ALLOWANCES_REPORT = "rules-allowances.json"
 def load_checks():
     sys.path.insert(0, HERE)
     from boundary import domain_types, guards, paths
-    from checks import comments, declarations, shell, state
+    from checks import comments, declarations, parameters, shell, state
     from discovery import helpers, uncollected
     from environment import environment, purity
     from errors import errors
@@ -30,6 +30,7 @@ def load_checks():
 
     return [
         declarations,
+        parameters,
         errors,
         comments,
         environment,
