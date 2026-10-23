@@ -1,6 +1,10 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const NO_INPUTS_CODE = 18003;
 const REMOVED_OPTION_CODES = new Set([5102, 5108]);
@@ -15,9 +19,11 @@ export async function nativeDiagnostics({ ts, configPath, projectRoot }) {
   try {
     collected = collectedDiagnostics(api, configPath);
   } catch (error) {
-    throw new Error(`TypeScript 7 type check failed: ${String(error.message)}\n${ENGINE_HINT}`, {
-      cause: error,
-    });
+    throw troubleshootingError(
+      `TypeScript 7 type check failed: ${String(error.message)}\n${ENGINE_HINT}`,
+      TROUBLESHOOTING_ANCHORS.engineUnavailable,
+      { cause: error },
+    );
   } finally {
     api.close();
   }

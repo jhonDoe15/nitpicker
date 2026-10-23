@@ -4,6 +4,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../../shared/config.mjs';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+  withTroubleshooting,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const MAX_OUTPUT_BYTES = 200 * 1024 * 1024;
 const ENGINE_HINT =
@@ -22,15 +27,18 @@ export function tsgolintBinary() {
       `${platformPackage}/${executable}`,
     );
   } catch (error) {
-    throw new Error(
+    throw troubleshootingError(
       `The type-aware lint rules need ${platformPackage}, which is not installed. ${ENGINE_HINT}`,
+      TROUBLESHOOTING_ANCHORS.engineUnavailable,
       { cause: error },
     );
   }
 }
 
 export function withEngineHint(detail) {
-  return detail.includes(CONFIG_FILE_NAME) ? detail : `${detail}\n${ENGINE_HINT}`;
+  return detail.includes(CONFIG_FILE_NAME)
+    ? detail
+    : withTroubleshooting(`${detail}\n${ENGINE_HINT}`, TROUBLESHOOTING_ANCHORS.engineUnavailable);
 }
 
 export function withCompileCache(environment) {

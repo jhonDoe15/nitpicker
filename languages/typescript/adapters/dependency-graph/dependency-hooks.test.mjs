@@ -9,6 +9,7 @@ import {
   installFakeManagers,
   installOnlyEnv,
 } from './package-managers/test-support/fake-managers.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const git = useGitFixtures();
 const { temporaryRoot } = git;
@@ -145,7 +146,8 @@ describe('dependency hook install', () => {
 
     expect(() => resolveDependencyHook().install(projectRoot)).toThrow(
       new Error(
-        'Failed to install merge-base dependencies with pnpm: ERR_PNPM_OUTDATED_LOCKFILE lockfile is not up to date',
+        'Failed to install merge-base dependencies with pnpm: ERR_PNPM_OUTDATED_LOCKFILE lockfile is not up to date. ' +
+          linkSentence('baseInstallFails'),
       ),
     );
     expect(existsSync(path.join(projectRoot, 'node_modules'))).toBe(false);
@@ -156,7 +158,9 @@ describe('dependency hook install', () => {
     const projectRoot = projectWith({ 'bun.lock': '', 'fake-signal.txt': '' });
 
     expect(() => resolveDependencyHook().install(projectRoot)).toThrow(
-      new Error('Failed to install merge-base dependencies with bun: stopped by SIGKILL'),
+      new Error(
+        `Failed to install merge-base dependencies with bun: stopped by SIGKILL. ${linkSentence('baseInstallFails')}`,
+      ),
     );
     expect(existsSync(path.join(projectRoot, 'node_modules'))).toBe(false);
   });
@@ -186,7 +190,9 @@ describe('dependency hook install', () => {
     vi.stubEnv('PATH', installOnlyEnv(temporaryRoot('only-env-')));
     const projectRoot = projectWith(files);
 
-    expect(() => resolveDependencyHook().install(projectRoot)).toThrow(new Error(message));
+    expect(() => resolveDependencyHook().install(projectRoot)).toThrow(
+      new Error(`${message} ${linkSentence('packageManagerMissing')}`),
+    );
   });
 
   it('explains a Yarn 2 install that left no dependency folder', () => {
@@ -198,7 +204,8 @@ describe('dependency hook install', () => {
 
     expect(() => resolveDependencyHook().install(projectRoot)).toThrow(
       new Error(
-        "Failed to install merge-base dependencies with yarn: the install created no node_modules folder (Yarn Plug'n'Play is not supported: set `nodeLinker: node-modules`)",
+        "Failed to install merge-base dependencies with yarn: the install created no node_modules folder (Yarn Plug'n'Play is not supported: set `nodeLinker: node-modules`). " +
+          linkSentence('unsupportedYarn'),
       ),
     );
   });
@@ -230,7 +237,8 @@ describe('dependency hook install', () => {
 
     expect(() => resolveDependencyHook().install(projectRoot)).toThrow(
       new Error(
-        "Failed to install merge-base dependencies: the base's .yarnrc.yml lists Yarn plugins, which are JavaScript files that Yarn runs during an install, and nitpicker does not run repository code there. Remove the plugins from the base, or make its package.json and lockfile equal to the head's so that no install is needed.",
+        "Failed to install merge-base dependencies: the base's .yarnrc.yml lists Yarn plugins, which are JavaScript files that Yarn runs during an install, and nitpicker does not run repository code there. Remove the plugins from the base, or make its package.json and lockfile equal to the head's so that no install is needed. " +
+          linkSentence('unsupportedYarn'),
       ),
     );
     expect(existsSync(path.join(projectRoot, 'fake-install-call.json'))).toBe(false);
@@ -239,7 +247,8 @@ describe('dependency hook install', () => {
   it('does not install on native Windows', () => {
     expect(() => installDependencies({ name: 'npm', root: '/project' }, 'win32')).toThrow(
       new Error(
-        "Failed to install merge-base dependencies: installing the base dependencies is not supported on native Windows (Node refuses to start the package managers' .cmd shims without a shell). Run nitpicker in WSL.",
+        "Failed to install merge-base dependencies: installing the base dependencies is not supported on native Windows (Node refuses to start the package managers' .cmd shims without a shell). Run nitpicker in WSL. " +
+          linkSentence('windowsAndWsl'),
       ),
     );
   });

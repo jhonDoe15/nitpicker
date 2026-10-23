@@ -2,6 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { commitSource } from './sources.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../shared/messages/troubleshooting.mjs';
 
 const MAX_STYLE_FILES = 1000;
 const MAX_NAME_BYTES = 255;
@@ -56,8 +60,9 @@ function selectedFiles(source, project, named) {
     .filter((file) => isStyleFile(file, project, named))
     .toSorted(byDepth);
   if (files.length > MAX_STYLE_FILES) {
-    throw new Error(
+    throw troubleshootingError(
       `Found ${String(files.length)} style files under ${project === '' ? 'the repository' : project}, more than the ${String(MAX_STYLE_FILES)} that nitpicker copies from the merge base: run it from a narrower project folder`,
+      TROUBLESHOOTING_ANCHORS.tooManyStyleFiles,
     );
   }
   return files;

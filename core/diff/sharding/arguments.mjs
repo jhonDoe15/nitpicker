@@ -1,4 +1,5 @@
 import { takeOptionValue } from '../comparison/cli.mjs';
+import { usageError } from '../../../shared/messages/troubleshooting.mjs';
 
 const OPTION_NAMES = ['--input-root', '--output', '--shard-count', '--policy-root'];
 
@@ -10,7 +11,7 @@ function collectOptionValues(arguments_) {
       return undefined;
     }
     if (!OPTION_NAMES.includes(argument)) {
-      throw new Error(`Unknown argument: ${argument}`);
+      throw usageError(`Unknown argument: ${argument}`);
     }
     values[argument] = takeOptionValue(remaining, argument);
   }
@@ -23,10 +24,10 @@ export function parseArguments(arguments_) {
     return { kind: 'help' };
   }
   if (values['--input-root'] === undefined) {
-    throw new Error('--input-root is required');
+    throw usageError('--input-root is required');
   }
   if (values['--shard-count'] === undefined) {
-    throw new Error('--shard-count is required');
+    throw usageError('--shard-count is required');
   }
   return {
     kind: 'run',

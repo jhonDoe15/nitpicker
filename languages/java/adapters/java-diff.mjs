@@ -11,6 +11,7 @@ import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
 import { runGradle } from './gradle-wrapper/gradle-process.mjs';
 import { withGradleLog } from './gradle-wrapper/diagnostics/failure-log.mjs';
 import { condenseFailure } from './gradle-wrapper/diagnostics/failure-text.mjs';
+import { gradleSpawnFailure } from './gradle-wrapper/diagnostics/spawn-failure.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
@@ -34,7 +35,7 @@ import { gradleOptions, gradleStages } from './gradle-wrapper/gradle-stages.mjs'
 const MAX_FAILURE_LENGTH = 3500;
 const CLOCK_SLACK_MS = 2000;
 
-function assertSucceeded(result, projectRoot, { reportBase, since }) {
+function assertSucceeded(result, projectRoot, { reportBase, since, command, budget, snapshot }) {
   if (result.error === undefined && result.status === 0) {
     return;
   }
@@ -43,8 +44,10 @@ function assertSucceeded(result, projectRoot, { reportBase, since }) {
     MAX_FAILURE_LENGTH,
   );
   const failure =
-    result.error ??
-    failingTestsOf(projectRoot, { reportBase, since }) ??
+    (result.error === undefined
+      ? undefined
+      : gradleSpawnFailure(result.error, { command, budget })) ??
+    failingTestsOf(projectRoot, { reportBase, since, snapshot }) ??
     new Error(`Java preset failed in ${projectRoot}: ${detail || 'no diagnostic output'}`);
   throw withGradleLog(failure, result);
 }
@@ -80,7 +83,13 @@ function runJavaPreset(
         target.args,
         gradleOptions(target, { projectRoot, budget, spawn }),
       );
-      assertSucceeded(result, projectRoot, { reportBase, since });
+      assertSucceeded(result, projectRoot, {
+        reportBase,
+        since,
+        command: target.command,
+        budget,
+        snapshot: policy.snapshot,
+      });
     }
   });
 }

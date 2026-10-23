@@ -4,6 +4,10 @@ import ts from 'typescript';
 import { filesUnder } from '../../../../shared/filesystem.mjs';
 import { codeExtensionNames } from '../layout.mjs';
 import { workspacePaths } from './workspace/entries.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const NO_INPUTS = 18_003;
 const SCRIPT_DIRECTORIES = ['scripts'];
@@ -14,7 +18,10 @@ function configError(diagnostics) {
   const messages = diagnostics.map((diagnostic) =>
     ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
   );
-  return new Error(`The TypeScript config could not be read: ${messages.join('; ')}`);
+  return troubleshootingError(
+    `The TypeScript config could not be read: ${messages.join('; ')}`,
+    TROUBLESHOOTING_ANCHORS.typescriptConfigUnreadable,
+  );
 }
 
 function parseConfig(configPath, projectRoot) {

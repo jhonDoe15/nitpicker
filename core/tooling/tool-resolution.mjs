@@ -6,6 +6,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../shared/messages/troubleshooting.mjs';
 
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
 const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
@@ -32,8 +36,9 @@ function owningTool(name, { projectRoot, packageRoot }) {
 
 function installedTool(name, { owningManifest, owningPeers, from }) {
   const packageFile = findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href);
-  if (packageFile === undefined)
-    throw new Error(`Required tool ${name} is not installed from ${from}`);
+  if (packageFile === undefined) {
+    throw missingToolError(name, from, owningManifest.peerDependencies?.[name]);
+  }
   const root = realpathSync(path.dirname(packageFile));
   if (isAnalyzedSnapshotPath(packageFile) || isAnalyzedSnapshotPath(root))
     throw new Error(`Tool ${name} must not resolve from an analyzed snapshot`);
@@ -45,6 +50,16 @@ function installedTool(name, { owningManifest, owningPeers, from }) {
     isPeer: owningPeers.has(name),
   });
   return { root, installed };
+}
+
+function missingToolError(name, from, peerRange) {
+  const message = `Required tool ${name} is not installed from ${from}`;
+  return peerRange === undefined
+    ? new Error(message)
+    : troubleshootingError(
+        `${message}. Install ${name} ${peerRange} as a dev dependency of the project.`,
+        TROUBLESHOOTING_ANCHORS.missingPeer,
+      );
 }
 
 function toolBinary(name, root, bin) {
@@ -89,12 +104,7 @@ const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
 
 export function resolveProjectRoot(cwd = process.cwd()) {
   const current = realpathSync(cwd);
-  const repositoryRoot = realpathSync(
-    execFileSync('git', ['rev-parse', '--show-toplevel'], {
-      cwd: current,
-      encoding: 'utf8',
-    }).trim(),
-  );
+  const repositoryRoot = repositoryRootOf(current);
   const directories = chainOf(current, (directory) => {
     const parent = path.dirname(directory);
     return directory === repositoryRoot || directory === parent ? undefined : parent;
@@ -103,10 +113,29 @@ export function resolveProjectRoot(cwd = process.cwd()) {
     PROJECT_MARKERS.some((marker) => existsSync(path.join(directory, marker))),
   );
   if (projectRoot !== undefined) return projectRoot;
-  throw new Error(
+  throw troubleshootingError(
     `No package.json or ${CONFIG_FILE_NAME} found between ${current} and repository root ${repositoryRoot}. ` +
       `For a Java, Kotlin or Python project, create ${CONFIG_FILE_NAME} with its preset, for example {"preset": "java"}.`,
+    TROUBLESHOOTING_ANCHORS.noProjectFound,
   );
+}
+
+function repositoryRootOf(directory) {
+  try {
+    return realpathSync(
+      execFileSync('git', ['rev-parse', '--show-toplevel'], {
+        cwd: directory,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }).trim(),
+    );
+  } catch (error) {
+    throw troubleshootingError(
+      `${directory} is not inside a Git repository (or git is not installed). nitpicker compares your changes with their merge base, so run it inside a Git checkout.`,
+      TROUBLESHOOTING_ANCHORS.notAGitRepository,
+      { cause: error },
+    );
+  }
 }
 
 function isAnalyzedSnapshotPath(candidate) {

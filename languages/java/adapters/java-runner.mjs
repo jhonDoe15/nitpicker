@@ -5,10 +5,27 @@ import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingLinkOf,
+  withTroubleshooting,
+} from '../../../shared/messages/troubleshooting.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
 const MAX_MESSAGE_LENGTH = 4000;
+
+function truncated(message) {
+  if (message.length <= MAX_MESSAGE_LENGTH) {
+    return message;
+  }
+  const link = troubleshootingLinkOf(message);
+  const kept = message
+    .replace(link ?? '', '')
+    .trimEnd()
+    .slice(0, MAX_MESSAGE_LENGTH);
+  return `${kept}...${link === undefined ? '' : `\n${link}`}`;
+}
 
 export function javaExecutionBudget(environment = process.env) {
   return gradleBudget(environment);
@@ -35,8 +52,11 @@ export function analyzeJavaSnapshot(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const rule =
-      detectJavaBuild(projectRoot) === 'maven' ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
+    const isMaven = detectJavaBuild(projectRoot) === 'maven';
+    const rule = isMaven ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
+    const anchor = isMaven
+      ? TROUBLESHOOTING_ANCHORS.mavenFails
+      : TROUBLESHOOTING_ANCHORS.gradleFails;
     return {
       findings: [
         {
@@ -44,10 +64,7 @@ export function analyzeJavaSnapshot(
           rule,
           path: '.',
           identity: rule,
-          message:
-            message.length > MAX_MESSAGE_LENGTH
-              ? `${message.slice(0, MAX_MESSAGE_LENGTH)}...`
-              : message,
+          message: withTroubleshooting(truncated(message), anchor),
           classification: 'tool-error',
         },
       ],

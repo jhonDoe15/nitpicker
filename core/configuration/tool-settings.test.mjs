@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { describeConfigOverrides } from './config.mjs';
 import { validateConfig } from './validate.mjs';
+import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 
 describe('tool precedence', () => {
   it('accepts every ordering of the project and nitpicker configs', () => {
@@ -41,13 +42,13 @@ describe('tool precedence', () => {
     for (const precedence of [[], ['project', 'project'], ['workspace'], 'project', undefined]) {
       expect(() => validateConfig({ tools: { prettier: { precedence } } })).toThrow(
         new Error(
-          'nitpicker.config.json: "tools.prettier.precedence" must list "project", "nitpicker" or both, each once, highest first',
+          `nitpicker.config.json: "tools.prettier.precedence" must list "project", "nitpicker" or both, each once, highest first. ${linkSentence('invalidConfiguration')}`,
         ),
       );
     }
     expect(() => validateConfig({ preset: 'java', tools: { pmd: { precedence: [] } } })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools.pmd.precedence" must list "project", "nitpicker" or both, each once',
+        `nitpicker.config.json: "tools.pmd.precedence" must list "project", "nitpicker" or both, each once. ${linkSentence('invalidConfiguration')}`,
       ),
     );
     expect(() => validateConfig({ tools: [] })).toThrow('"tools" must be an object');
@@ -80,12 +81,12 @@ describe('tool precedence', () => {
     const tools = { pmd: { precedence: ['project'] } };
     expect(() => validateConfig({ tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint, typescript, tests',
+        `nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint, typescript, tests. ${linkSentence('invalidConfiguration')}`,
       ),
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut',
+        `nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut. ${linkSentence('invalidConfiguration')}`,
       ),
     );
   });

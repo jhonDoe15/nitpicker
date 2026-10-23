@@ -32,6 +32,10 @@ import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../shared/messages/troubleshooting.mjs';
 
 export function runCli(options = {}) {
   const cli = withCliDefaults(options);
@@ -56,11 +60,14 @@ export function runCli(options = {}) {
   try {
     return runCommand(cli);
   } catch (error) {
-    cli.stderr.write(
-      `nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    cli.stderr.write(`nitpicker failed: ${failureText(error)}\n`);
     return 2;
   }
+}
+
+function failureText(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return withTroubleshooting(message, TROUBLESHOOTING_ANCHORS.exitCode2);
 }
 
 function isTerminal(stream) {

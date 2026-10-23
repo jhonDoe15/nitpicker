@@ -5,6 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { analyzeJavaSnapshot } from './java-runner.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 vi.mock('node:child_process', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -32,7 +33,9 @@ function runGradle() {
     /^nitpicker-gradle-failure-[\w-]+$/,
   );
   roots.push(path.dirname(logFile));
-  expect(message).toBe(`Full Gradle log: ${logFile}\n${error.message}`);
+  expect(message).toBe(
+    `Full Gradle log: ${logFile}\n${error.message}\n${linkSentence('gradleFails')}`,
+  );
   expect(readFileSync(logFile, 'utf8')).toBe('=== stdout ===\n\n=== stderr ===\n');
   return JSON.parse(vi.mocked(spawnSync).mock.calls[0][2].input).options.timeout;
 }

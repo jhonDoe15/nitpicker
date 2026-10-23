@@ -30,6 +30,7 @@ forms below from the start; the gate is a backstop.
    - 2: no new findings, but a tool failed (the build, a compile error, a test failure). Fix the
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
+     Most tool errors end with a link to their entry in [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md): read the cause and fix there.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
    comments, config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one
    exception is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native

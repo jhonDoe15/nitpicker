@@ -1,4 +1,8 @@
 import { createHash } from 'node:crypto';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const POLICY_TOOL = 'nitpicker-config';
 const POLICY_RULE = 'policy-loosened';
@@ -35,7 +39,10 @@ export function policyFindings(loosenings, digest, acceptedDigest) {
     rule: POLICY_RULE,
     path: 'nitpicker.config.json',
     identity: change,
-    message: `${change}. ${ALLOWED_FORM} ${route}`,
+    message: withTroubleshooting(
+      `${change}. ${ALLOWED_FORM} ${route}`,
+      TROUBLESHOOTING_ANCHORS.policyLoosened,
+    ),
     classification: 'enforceable',
   }));
 }

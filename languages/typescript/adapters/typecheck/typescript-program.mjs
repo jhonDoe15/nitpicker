@@ -4,15 +4,20 @@ import path from 'node:path';
 import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { nativeDiagnostics } from './native-diagnostics.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const NO_INPUTS_CODE = 18003;
 export function loadTypeScript(projectRoot = PACKAGE_ROOT) {
   const root = resolveTool('typescript', { projectRoot }).root;
   const libraryPath = path.join(root, 'lib/typescript.js');
   if (!existsSync(libraryPath)) {
-    throw new Error(
+    throw troubleshootingError(
       `The type check reads source files with the project's typescript package, which must be 5.7 to 6.x: ` +
         `${root} has no JavaScript API, which TypeScript 7 does not ship yet.`,
+      TROUBLESHOOTING_ANCHORS.missingPeer,
     );
   }
   return createRequire(import.meta.url)(libraryPath);
@@ -29,7 +34,10 @@ export async function preEmitDiagnostics({ ts, engine, configPath, projectRoot }
 function projectDiagnostics(ts, configPath, projectRoot) {
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
   if (configFile.error !== undefined) {
-    throw new Error(formatDiagnostic(ts, configFile.error));
+    throw troubleshootingError(
+      formatDiagnostic(ts, configFile.error),
+      TROUBLESHOOTING_ANCHORS.typescriptConfigUnreadable,
+    );
   }
   const parsedConfig = ts.parseJsonConfigFileContent(
     configFile.config,
@@ -44,7 +52,10 @@ function projectDiagnostics(ts, configPath, projectRoot) {
   )
     return [];
   if (parsedConfig.errors.length > 0) {
-    throw new Error(parsedConfig.errors.map((error) => formatDiagnostic(ts, error)).join('\n'));
+    throw troubleshootingError(
+      parsedConfig.errors.map((error) => formatDiagnostic(ts, error)).join('\n'),
+      TROUBLESHOOTING_ANCHORS.typescriptConfigUnreadable,
+    );
   }
   const program = ts.createProgram({
     rootNames: parsedConfig.fileNames,

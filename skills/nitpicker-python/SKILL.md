@@ -22,6 +22,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
      tool missing from the environment) and rerun. Exit 2 is never a pass. If it says another run
      is in progress, wait for that run; never kill it.
+     Most tool errors end with a link to their entry in [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md): read the cause and fix there.
 4. Never suppress: no `# noqa`, `# type: ignore`, `# pragma: no mutate`, `do_not_mutate`, config
    `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests (`-x`, `-k`, `--deselect` and
    reruns in `addopts` are ignored anyway). If a finding seems wrong, stop and ask. Never pass

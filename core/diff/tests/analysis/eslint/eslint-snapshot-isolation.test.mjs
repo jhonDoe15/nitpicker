@@ -15,6 +15,7 @@ import {
 } from './test-support/eslint-fixtures.mjs';
 import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 import { commit } from '../../../git/test-support/git-repository.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const { createRepository, temporaryRoot } = useEslintFixtures();
 
@@ -183,7 +184,7 @@ describe('ESLint snapshot isolation and failures', () => {
     expect(report.summary.overallStatus).toBe('tool-error');
     expect(report.toolErrors).toHaveLength(2);
     expect(report.toolErrors[0].message).toEqual(
-      'eslint-lint crashed with exit 2: ESLint differential adapter failed: --pattern must stay within the analyzed snapshot',
+      `eslint-lint crashed with exit 2: ESLint differential adapter failed: --pattern must stay within the analyzed snapshot. ${linkSentence('analyzerCrashed')}`,
     );
   });
   it.each(['malformed', 'configuration-error', 'crash', 'timeout'])(

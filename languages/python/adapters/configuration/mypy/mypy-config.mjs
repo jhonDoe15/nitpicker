@@ -12,6 +12,10 @@ import {
 } from '../../project-tools/mypy-layers.mjs';
 import { attempt } from '../../project-tools/project-tool-layers.mjs';
 import { toml } from '../../../libraries/project-files.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../../shared/messages/troubleshooting.mjs';
 
 const MYPY_CONFIG = 'mypy.ini';
 const GLOBAL_OPTIONS = [
@@ -58,7 +62,10 @@ function iniModel(sections, shared) {
 function tomlModel(text, name) {
   const { value: parsed, error } = attempt(() => toml().parse(text));
   if (error !== undefined) {
-    throw new Error(`${name} could not be parsed (${error.message}): fix it`);
+    throw troubleshootingError(
+      `${name} could not be parsed (${error.message}): fix it`,
+      TROUBLESHOOTING_ANCHORS.projectToolConfigMissing,
+    );
   }
   const { tool = {} } = parsed;
   const { mypy, ...others } = tool;

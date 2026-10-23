@@ -117,6 +117,9 @@ are chosen.
 - [Usage](docs/usage.md): the command line, reports, exit codes, configuration, caching and
   sharding in CI.
 - [Checks](spec/checks.md): every check and rule, and what fails.
+- [Troubleshooting](docs/troubleshooting.md): the cause and fix for a run that exits 2, a tool that
+  cannot start, a base that cannot be analyzed, and the other failures that are not findings.
+- [Changelog](CHANGELOG.md): what changed in each release, and what to do when upgrading.
 
 ## Contributing
 

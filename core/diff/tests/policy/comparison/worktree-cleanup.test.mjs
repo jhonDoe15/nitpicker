@@ -19,6 +19,7 @@ import {
   policy,
 } from '../../../execution/test-support/analyzer-findings.mjs';
 import { readJson, writeFiles } from '../../../git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const { createRepository } = useQualityDiffRepositories();
 
@@ -77,12 +78,12 @@ describe('quality diff temporary worktrees and reports', () => {
       {
         tool: 'fake-quality-analyzer',
         snapshot: 'base',
-        message: 'fake-quality-analyzer timed out after 100 ms',
+        message: `fake-quality-analyzer timed out after 100 ms. ${linkSentence('analyzerTimeout')}`,
       },
       {
         tool: 'fake-quality-analyzer',
         snapshot: 'head',
-        message: 'fake-quality-analyzer timed out after 100 ms',
+        message: `fake-quality-analyzer timed out after 100 ms. ${linkSentence('analyzerTimeout')}`,
       },
     ]);
     expect(worktreePaths(repository.root)).toEqual([repository.root]);

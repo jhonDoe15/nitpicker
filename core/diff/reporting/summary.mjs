@@ -1,5 +1,10 @@
 import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { singleLine } from './format/text.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingLinkOf,
+  troubleshootingUrl,
+} from '../../../shared/messages/troubleshooting.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
 import {
   TESTS_FAILED_RULE,
@@ -116,6 +121,9 @@ function appendToolErrorSummary(lines, toolErrors, color) {
       color,
     ),
   );
+  const unlinked = shown.some(
+    ({ message }) => troubleshootingLinkOf(String(message)) === undefined,
+  );
   for (const error of shown) {
     const label = error.snapshot === undefined ? error.tool : `${error.tool} (${error.snapshot})`;
     if (error.rule === undefined) {
@@ -126,6 +134,15 @@ function appendToolErrorSummary(lines, toolErrors, color) {
     lines.push(
       `  ${style(label, [ANSI.yellow], color)}: ${first}`,
       ...rest.map((line) => `  ${line}`),
+    );
+  }
+  if (unlinked) {
+    lines.push(
+      style(
+        `Help with tool errors: ${troubleshootingUrl(TROUBLESHOOTING_ANCHORS.exitCode2)}`,
+        [ANSI.dim],
+        color,
+      ),
     );
   }
 }
@@ -144,12 +161,15 @@ const ERROR_HEADLINE_LIMIT = 300;
 const ERROR_LINE_PATTERN = /error TS\d+|Error:|ERR_|Cannot find|not found|ENOENT/u;
 
 function errorHeadline(message) {
-  const text = singleLine(message);
+  const link = troubleshootingLinkOf(String(message));
+  const text = singleLine(String(message).replace(link ?? '', ''));
   const start = Math.max(text.search(ERROR_LINE_PATTERN), 0);
-  const headline = text.slice(start, start + ERROR_HEADLINE_LIMIT);
-  return headline.length < text.length - start
-    ? `${headline}… (full text in the diagnostics file)`
-    : headline;
+  const headline = text.slice(start, start + ERROR_HEADLINE_LIMIT).trimEnd();
+  const shown =
+    headline.length < text.length - start
+      ? `${headline}… (full text in the diagnostics file)`
+      : headline;
+  return link === undefined ? shown : `${shown} ${link}`;
 }
 
 function pluralize(noun, count) {

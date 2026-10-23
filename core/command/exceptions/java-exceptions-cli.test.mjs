@@ -6,6 +6,7 @@ import { runCli as nitpickerCli } from '../../cli.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { useGradleFixtures } from '../java/test-support/java-cli-harness.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const { gradleRepository, run } = useGradleFixtures(nitpickerCli);
 
@@ -113,7 +114,7 @@ describe('exceptions with "preset": "java"', () => {
 
       expect(result.exitCode).toBe(2);
       expect(result.output.err).toBe(
-        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${[...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES].join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}\n`,
+        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${[...SHARED_EXCEPTION_RULES, ...JAVA_SIZE_RULES].join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}. ${linkSentence('invalidConfiguration')}\n`,
       );
     });
   });

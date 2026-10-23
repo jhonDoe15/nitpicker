@@ -9,6 +9,7 @@ import { compareFindings } from '../../../comparison/compare.mjs';
 import { describeUncoveredArms } from '../../../../../languages/typescript/adapters/quality-areas/reporting/source-hashes.mjs';
 import { normalizeCoverage } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
 import { fileURLToPath } from 'node:url';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 describe('coverage reporting in the quality-area analyzers', () => {
   it('skips CRAP, without a tool error of its own, when coverage reports failing tests', () => {
@@ -117,12 +118,11 @@ describe('coverage reporting in the quality-area analyzers', () => {
       rule: 'tests-failed',
       path: '.',
       identity: 'tests-failed',
-      message:
-        '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no',
+      message: `1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no\n${linkSentence('testsFail')}`,
       classification: 'tool-error',
     });
     expect(finding.message).toBe(
-      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no',
+      `1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no\n${linkSentence('testsFail')}`,
     );
   });
   it('says which steps of the test script nitpicker did not run before the tests', () => {
@@ -152,13 +152,13 @@ describe('coverage reporting in the quality-area analyzers', () => {
 
     expect(run(['tsc'])).toEqual([
       `${failure}\nThe test script runs "tsc" before the tests; nitpicker runs only the test command, ` +
-        'so run that step first if the tests need it.',
+        `so run that step first if the tests need it.\n${linkSentence('testsFail')}`,
     ]);
     expect(run(['npm run build', 'npm run seed'])).toEqual([
       `${failure}\nThe test script runs "npm run build", "npm run seed" before the tests; ` +
-        'nitpicker runs only the test command, so run those steps first if the tests need it.',
+        `nitpicker runs only the test command, so run those steps first if the tests need it.\n${linkSentence('testsFail')}`,
     ]);
-    expect(run([])).toEqual([failure]);
+    expect(run([])).toEqual([`${failure}\n${linkSentence('testsFail')}`]);
   });
   it('lists at most five failing tests and a test file that could not run', () => {
     const failing = (index) => ({

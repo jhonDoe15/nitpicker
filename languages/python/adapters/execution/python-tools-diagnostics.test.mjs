@@ -14,6 +14,7 @@ import {
   setEnvironment,
   temporaryRoot,
 } from './test-support/python-tools-project.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 afterEach(restoreTemporaryState);
 
@@ -82,8 +83,7 @@ describe('running the import and duplicate tools', () => {
 
     expect(runPythonTools(context)[0]).toEqual({
       rule: 'ruff-failed',
-      message:
-        'ruff was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it',
+      message: `ruff was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. ${linkSentence('pythonToolMissing')}`,
     });
   });
   it('tells how to turn the contracts off when lint-imports is not installed', () => {
@@ -96,8 +96,7 @@ describe('running the import and duplicate tools', () => {
     expect(runPythonTools(context)).toEqual([
       {
         rule: 'import-linter-failed',
-        message:
-          'lint-imports was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it, or turn the contracts off with "python": { "importLinter": false }',
+        message: `lint-imports was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it, or turn the contracts off with "python": { "importLinter": false }. ${linkSentence('pythonToolMissing')}`,
       },
     ]);
   });
@@ -136,8 +135,7 @@ describe('running pytest', () => {
     expect(runPythonTools(context)).toEqual([
       {
         rule: 'environment-failed',
-        message:
-          'pytest is used by this project but cannot be imported in the virtualenv environment: install it there, or set "python.testRunner" to "unittest"',
+        message: `pytest is used by this project but cannot be imported in the virtualenv environment: install it there, or set "python.testRunner" to "unittest". ${linkSentence('pythonEnvironment')}`,
       },
     ]);
   });
@@ -166,7 +164,7 @@ describe('running the Django and nose2 runners', () => {
     expect(runPythonTools(contextFor(root, { testRunner }).context)).toEqual([
       {
         rule: 'environment-failed',
-        message: `${distribution} runs the tests of this project but is not installed in the virtualenv environment: install it there, or set "python.testRunner" to the runner the tests use`,
+        message: `${distribution} runs the tests of this project but is not installed in the virtualenv environment: install it there, or set "python.testRunner" to the runner the tests use. ${linkSentence('pythonEnvironment')}`,
       },
     ]);
     expect(calls('coverage', 'run')).toEqual([]);
@@ -177,7 +175,7 @@ describe('running the Django and nose2 runners', () => {
     expect(runPythonTools(contextFor(root, { testRunner: 'django' }).context)).toEqual([
       {
         rule: 'environment-failed',
-        message: `the tests run with Django's manage.py test, but there is no manage.py at ${path.join(root, 'manage.py')} or one directory below it: add it there, or set "python.testRunner" to the runner the tests use`,
+        message: `the tests run with Django's manage.py test, but there is no manage.py at ${path.join(root, 'manage.py')} or one directory below it: add it there, or set "python.testRunner" to the runner the tests use. ${linkSentence('pythonEnvironment')}`,
       },
     ]);
   });
@@ -195,7 +193,7 @@ describe('failure messages', () => {
     });
 
     expect(error.message).toBe(
-      'coverage run timed out after 25 minutes in the virtualenv environment',
+      `coverage run timed out after 25 minutes in the virtualenv environment. ${linkSentence('analyzerTimeout')}`,
     );
   });
 });

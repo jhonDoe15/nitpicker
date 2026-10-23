@@ -1,6 +1,10 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
+import {
+  testsFailAnchor,
+  troubleshootingError,
+} from '../../../shared/messages/troubleshooting.mjs';
 
 const MAX_LISTED_FAILURES = 10;
 const TEST_REPORT = /^TEST-.*\.xml$/u;
@@ -34,17 +38,18 @@ export function freshReports(directory, since) {
     : [];
 }
 
-export function failingTestsError(where, failures) {
+export function failingTestsError(where, failures, snapshot) {
   const listed = failures.slice(0, MAX_LISTED_FAILURES).map((failure) => `  ${failure}`);
   const more =
     failures.length > MAX_LISTED_FAILURES
       ? [`  and ${String(failures.length - MAX_LISTED_FAILURES)} more`]
       : [];
-  return new Error(
+  return troubleshootingError(
     [
       `Tests fail in ${where}; nitpicker needs a passing test suite for coverage and mutation testing:`,
       ...listed,
       ...more,
     ].join('\n'),
+    testsFailAnchor(snapshot),
   );
 }

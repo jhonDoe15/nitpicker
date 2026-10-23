@@ -13,6 +13,10 @@ import {
   formatProcessOutput,
   readTestReport,
 } from '../quality-areas/reporting/test-report.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 export const TEST_TIMEOUT_MS = TEST_TIMEOUT_CEILING_MS;
 const MAX_WORKERS = 4;
@@ -37,8 +41,9 @@ export function testTimeoutMs(options, files, { hooks = true } = {}) {
   }
   const timeout = limits[0].testTimeoutMs;
   if (!hooks && limits.some((limit) => limit.hookTimeoutMs !== undefined)) {
-    throw new Error(
+    throw troubleshootingError(
       'This test runner cannot set hook deadlines. Use Vitest for configured hook timeouts.',
+      TROUBLESHOOTING_ANCHORS.testTimeoutsNeedVitest,
     );
   }
   if (
@@ -48,8 +53,9 @@ export function testTimeoutMs(options, files, { hooks = true } = {}) {
         (limit.hookTimeoutMs !== undefined && limit.hookTimeoutMs !== timeout),
     )
   ) {
-    throw new Error(
+    throw troubleshootingError(
       'This test runner uses one test and hook deadline. Use Vitest for projects with different timeout scopes.',
+      TROUBLESHOOTING_ANCHORS.testTimeoutsNeedVitest,
     );
   }
   return timeout;

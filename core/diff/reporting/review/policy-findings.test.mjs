@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isPolicyChangeAccepted, policyDigest, policyFindings } from './policy-findings.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 describe('policy findings', () => {
   const loosenings = ['exclude added: src/**', 'analyzer disabled: mutation'];
@@ -21,7 +22,8 @@ describe('policy findings', () => {
 
     expect(finding.message).toBe(
       "exclude added: src/**. Keep the base's policy and change the code until it passes: keep new code under the source roots, where the gate checks it, and fix findings instead of excluding, excepting or reclassifying the code. " +
-        'If the policy change is intended, stop and ask a person reviewing this change: only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6 at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI.',
+        'If the policy change is intended, stop and ask a person reviewing this change: only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6 at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI. ' +
+        linkSentence('policyLoosened'),
     );
   });
 

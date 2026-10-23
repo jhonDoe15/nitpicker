@@ -18,6 +18,7 @@ import {
   configuredAnalyzers,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { runQualitySnapshot } from '../snapshot/run-snapshot.mjs';
+import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 
 const packageAnalyzers = configuredAnalyzers();
 const temporaryRoots = [];
@@ -250,7 +251,8 @@ describe('project root resolution', () => {
     expect(() => resolveProjectRoot(emptyRoot)).toThrow(
       new Error(
         `No package.json or nitpicker.config.json found between ${emptyRoot} and repository root ${emptyRoot}. ` +
-          'For a Java, Kotlin or Python project, create nitpicker.config.json with its preset, for example {"preset": "java"}.',
+          'For a Java, Kotlin or Python project, create nitpicker.config.json with its preset, for example {"preset": "java"}. ' +
+          linkSentence('noProjectFound'),
       ),
     );
   });
