@@ -14,6 +14,7 @@ import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { runQualitySnapshot } from '../snapshot/run-snapshot.mjs';
 import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
+import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
 
 export function runSnapshotCli({
@@ -22,6 +23,8 @@ export function runSnapshotCli({
   analyzers,
   headPolicy,
   stdout,
+  stderr,
+  environment,
   runTasks,
 }) {
   const outputRoot =
@@ -47,6 +50,14 @@ export function runSnapshotCli({
   report.text = writeSnapshotReports(outputRoot, report);
   stdout.write(report.text);
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
+  writeGithubOutput({
+    kind: 'snapshot',
+    report,
+    projectRoot: currentProjectRoot,
+    environment,
+    stdout,
+    stderr,
+  });
   if (report.summary.enforceableFindings > 0) {
     return 1;
   }
