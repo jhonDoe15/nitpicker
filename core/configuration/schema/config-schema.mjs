@@ -12,7 +12,7 @@ import { KEYS, NITPICKER_RULES, SUPPORTED_PRESETS } from '../validate.mjs';
 import { HEAD_NAMES } from '../project-checks/project-config.mjs';
 import { LAYOUT_KEYS, layoutKeysFor } from '../scopes/layout-settings.mjs';
 import * as areas from './area-schemas.mjs';
-import { conventionProperties } from './convention-schema.mjs';
+import { conventionProperties, history, spring } from './setting-schemas.mjs';
 import {
   exceptionDefinitions,
   exceptionList,
@@ -79,7 +79,8 @@ const TOP_LEVEL = {
   tools,
   testConsole: areas.testConsole,
   kotlin: areas.kotlin,
-  spring: areas.spring,
+  spring,
+  history,
   conventions: {
     description: 'Pins a style that nitpicker otherwise measures from the project.',
     type: 'object',
@@ -129,21 +130,54 @@ function presetProperties(preset) {
   return {
     ...forbid(unavailableKeys(preset)),
     ...forbidding('thresholds', unavailableThresholds(preset)),
-    ...forbidding('layout', without(layoutKeysFor(preset), LAYOUT_KEYS)),
+    ...forbidding('layout', without(layoutKeysFor(preset, CO_CHANGE_ON), LAYOUT_KEYS)),
     ...forbidding('tools', without(toolsByPreset[preset], Object.keys(tools.properties))),
     conventions: conventionProperties(conventionDefinitions(preset)),
     exceptions: exceptionsFor(preset),
   };
 }
 
+const CO_CHANGE_ON = { coChange: true };
+
+function coChangeOnlyLayout(preset) {
+  const keys = without(layoutKeysFor(preset), layoutKeysFor(preset, CO_CHANGE_ON));
+  return keys.length === 0
+    ? []
+    : [
+        {
+          if: {
+            not: {
+              required: ['history'],
+              properties: {
+                history: { required: ['coChange'], properties: { coChange: { const: true } } },
+              },
+            },
+          },
+          then: { properties: { layout: { properties: forbid(keys) } } },
+        },
+      ];
+}
+
 function presetBlock(preset) {
+  const layoutRules = coChangeOnlyLayout(preset);
   return {
     if:
       preset === 'typescript'
         ? { properties: { preset: { const: preset } } }
         : { properties: { preset: { const: preset } }, required: ['preset'] },
-    then: { properties: presetProperties(preset) },
+    then: {
+      properties: presetProperties(preset),
+      ...(layoutRules.length === 0 ? {} : { allOf: layoutRules }),
+    },
   };
+}
+
+function topLevelProperties() {
+  const missing = KEYS.filter((key) => TOP_LEVEL[key] === undefined);
+  if (missing.length > 0) {
+    throw new Error(`The config schema has no entry for ${missing.join(', ')}`);
+  }
+  return Object.fromEntries([SCHEMA_KEY, ...KEYS].map((key) => [key, TOP_LEVEL[key]]));
 }
 
 export function buildConfigSchema() {
@@ -155,7 +189,7 @@ export function buildConfigSchema() {
       'Configuration of nitpicker, a quality gate for code written by coding agents. Generated from the definitions the validator reads (npm run gen:schema).',
     type: 'object',
     additionalProperties: false,
-    properties: Object.fromEntries([SCHEMA_KEY, ...KEYS].map((key) => [key, TOP_LEVEL[key]])),
+    properties: topLevelProperties(),
     allOf: SUPPORTED_PRESETS.map(presetBlock),
     definitions: { ...sharedDefinitions, ...exceptionDefinitions },
   };

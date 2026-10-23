@@ -4,7 +4,13 @@ import {
   PROJECT_TOOL_CONFIGS,
   styleToolsOf,
 } from '../../languages/java/adapters/gradle-presets.mjs';
-import { configError, isPlainObject } from '../../shared/config.mjs';
+import {
+  configError,
+  DRIVE_LETTER,
+  GLOB_CHARACTER,
+  isPlainObject,
+  PARENT_SEGMENT,
+} from '../../shared/config.mjs';
 import { TEST_RUNNERS } from '../../languages/typescript/preset/test-runner/runners.mjs';
 import { validateTestTimeouts } from '../../shared/test-timeouts/resolve.mjs';
 
@@ -171,9 +177,9 @@ function validateTypeScriptProject(project) {
     normalized.trim().length === 0 ||
     normalized.includes('\0') ||
     path.posix.isAbsolute(normalized) ||
-    /^[A-Za-z]:/.test(normalized) ||
-    normalized.split('/').includes('..') ||
-    /[*?{}[\]]/.test(normalized) ||
+    DRIVE_LETTER.test(normalized) ||
+    PARENT_SEGMENT.test(normalized) ||
+    GLOB_CHARACTER.test(normalized) ||
     !normalized.endsWith('.json')
   ) {
     throw configError('"tools.typescript.project" must name a JSON config file inside the project');

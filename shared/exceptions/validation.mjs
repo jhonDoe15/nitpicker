@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {
   configError,
+  DRIVE_LETTER,
   filesFix,
   isNonEmptyString,
   isPlainObject,
@@ -119,13 +120,15 @@ function validateException(entry, label, { preset, matchesOwnGlobs }) {
   }
 }
 
+export const EXCEPTION_PARENT_SEGMENT = /(?:^|\/)\.\.(?:\/|$)/u;
+
 export const WINDOWS_SEPARATOR = /\\(?![{}[\],*?\\])/u;
 
 function validateExceptionPath(glob, pathsLabel) {
   if (glob.trim() === '') {
     throw configError(`"${pathsLabel}" has an empty path glob`);
   }
-  if (path.isAbsolute(glob) || /^[A-Za-z]:/u.test(glob)) {
+  if (path.isAbsolute(glob) || DRIVE_LETTER.test(glob)) {
     throw configError(`"${pathsLabel}" has "${glob}": use a glob relative to the project root`);
   }
   if (WINDOWS_SEPARATOR.test(glob)) {
@@ -133,7 +136,7 @@ function validateExceptionPath(glob, pathsLabel) {
       `"${pathsLabel}" has "${glob}": separate folders with "/"; a backslash only escapes one of { } [ ] , * ? \\`,
     );
   }
-  if (glob.split('/').includes('..')) {
+  if (EXCEPTION_PARENT_SEGMENT.test(glob)) {
     throw configError(`"${pathsLabel}" has "${glob}": use a glob without \`..\``);
   }
 }

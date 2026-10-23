@@ -109,6 +109,8 @@ function validateRuleIds(exceptions) {
   }
 }
 
+export const WINDOWS_ABSOLUTE = /^[A-Za-z]:[\\/]/u;
+
 function validateEnvironmentDirectory(directory) {
   if (isAbsolutePath(directory)) {
     return;
@@ -117,7 +119,7 @@ function validateEnvironmentDirectory(directory) {
 }
 
 function isAbsolutePath(value) {
-  return typeof value === 'string' && (path.isAbsolute(value) || /^[A-Za-z]:[\\/]/.test(value));
+  return typeof value === 'string' && (path.isAbsolute(value) || WINDOWS_ABSOLUTE.test(value));
 }
 
 function validateSourceRoots(sourceRoots) {

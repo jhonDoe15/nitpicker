@@ -86,6 +86,12 @@ export const DUPLICATES_KEYS = ['skippedFolders'];
 
 export const SKIPPED_FOLDER_NAME = /^[^/\\*?{}[\],]+$/u;
 
+export const DRIVE_LETTER = /^[A-Za-z]:/u;
+
+export const PARENT_SEGMENT = /(?:^|[/\\])\.\.(?:[/\\]|$)/u;
+
+export const GLOB_CHARACTER = /[*?{}[\]]/u;
+
 export function validateDuplicates(duplicates) {
   if (!isPlainObject(duplicates)) {
     throw configError('"duplicates" must be an object');
@@ -122,7 +128,7 @@ export function validateProjectRelativePath(value, name) {
     throw configError(`"${name}" must be a non-empty string`);
   }
   const normalized = value.replaceAll('\\', '/');
-  if (path.isAbsolute(value) || /^[A-Za-z]:/.test(value) || normalized.split('/').includes('..')) {
+  if (path.isAbsolute(value) || DRIVE_LETTER.test(value) || PARENT_SEGMENT.test(normalized)) {
     throw configError(`"${name}" must be a path inside the project`);
   }
 }
@@ -193,8 +199,8 @@ export function validateFolderGlobs(key, globs) {
     const normalized = glob.replaceAll('\\', '/');
     if (
       path.isAbsolute(normalized) ||
-      /^[A-Za-z]:/.test(normalized) ||
-      normalized.split('/').includes('..')
+      DRIVE_LETTER.test(normalized) ||
+      PARENT_SEGMENT.test(normalized)
     ) {
       throw configError(
         `"layout.${key}" entries must be folder globs inside the project, such as "**/shared": ${glob}`,

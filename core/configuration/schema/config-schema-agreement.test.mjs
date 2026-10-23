@@ -61,6 +61,7 @@ describe('config schema and validator agree', () => {
         testConsole: { allow: [{ contains: 'deprecated api', reason: 'Printed by a library' }] },
         kotlin: { formatter: 'ktlint' },
         spring: { roles: { service: ['com.example.UseCase'] } },
+        history: { coChange: true, commits: 500 },
         conventions: { 'prettier.quotes': 'single' },
         $schema: './node_modules/nitpicker/spec/config.schema.json',
       };
@@ -228,6 +229,37 @@ describe('config schema and validator agree', () => {
       { spring: { roles: { service: [1] } } },
       { spring: { roles: { component: ['com.example.Thing'] } } },
     ];
+    expect(presetDisagreements(configs)).toEqual([]);
+  });
+
+  it('on history settings and the feature roots they open', () => {
+    const configs = [
+      { history: { coChange: true } },
+      { history: { coChange: false } },
+      { history: { coChange: 'yes' } },
+      { history: {} },
+      { history: [] },
+      { history: { other: 1 } },
+      { history: { commits: 300 } },
+      { history: { coChange: false, commits: 300 } },
+      { history: { coChange: true, commits: 19 } },
+      { history: { coChange: true, commits: 2000 } },
+      { history: { coChange: true, commits: 2001 } },
+      { history: { coChange: true, commits: 20.5 } },
+      { history: { coChange: true, minSupport: 1 } },
+      { history: { coChange: true, minSupport: 1000000 } },
+      { history: { coChange: true, minConfidence: 0 } },
+      { history: { coChange: true, minConfidence: 1 } },
+      { history: { coChange: true, minConfidence: 1.2 } },
+      { history: { coChange: true, minConfidence: '0.5' } },
+      { history: { coChange: true, maxCommitFiles: 1 } },
+      { history: { coChange: true, maxCommitFiles: 101 } },
+      { layout: { featureRoots: ['**/features'] } },
+      { layout: { featureRoots: ['**/features'] }, history: { coChange: true } },
+      { layout: { featureRoots: ['**/features'] }, history: { coChange: false } },
+      { layout: { sharedRoots: ['**/shared'] }, history: { coChange: true } },
+    ];
+
     expect(presetDisagreements(configs)).toEqual([]);
   });
 
