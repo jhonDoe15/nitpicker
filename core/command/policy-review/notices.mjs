@@ -50,16 +50,26 @@ function runsCoChange(config) {
   return config.history?.coChange === true && !(config.disable ?? []).includes(CHANGE_HISTORY_TOOL);
 }
 
+function coChangeDescriber(config, headPolicy, projectRoot) {
+  return runsCoChange(config)
+    ? (changedFiles, { mergeBaseSha, touchedPaths } = {}) =>
+        coChangeNotices({
+          projectRoot,
+          policy: headPolicy,
+          ref: mergeBaseSha,
+          changedPaths: touchedPaths ?? changedFiles,
+        })
+    : undefined;
+}
+
 export function noticeDescriber(config, headPolicy, projectRoot) {
   const describers = [
     languageDescriber(config, headPolicy, projectRoot),
-    runsCoChange(config)
-      ? (changedFiles) => coChangeNotices({ projectRoot, policy: headPolicy, changedFiles })
-      : undefined,
+    coChangeDescriber(config, headPolicy, projectRoot),
   ].filter((describer) => describer !== undefined);
   return describers.length === 0
     ? undefined
-    : (changedFiles) => describers.flatMap((describe) => describe(changedFiles));
+    : (changedFiles, context) => describers.flatMap((describe) => describe(changedFiles, context));
 }
 
 export function historyAvailabilityNotes(config, headPolicy, projectRoot) {

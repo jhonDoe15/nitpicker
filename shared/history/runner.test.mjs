@@ -1,20 +1,26 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../core/diff/git/test-support/git-repository.mjs';
-import {
-  amplifiedHistory,
-  commitSteps,
-  SOURCE_FILES,
-} from '../../core/diff/git/test-support/history-repository.mjs';
-import { configurationFiles, createHygieneAnalyzers } from '../hygiene/analyzers.mjs';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { fixtureGit } from '../../core/diff/git/test-support/git-repository.mjs';
+import { useHistoryRepositories } from '../../core/diff/git/test-support/history-repository.mjs';
+import { configurationFiles } from '../hygiene/analyzers.mjs';
 import { HEAD_POLICY_ENV } from '../head-policy.mjs';
 import { createHistoryAnalyzers } from './analyzers.mjs';
 import { runHistoryCheck, runHistoryCli } from './runner.mjs';
 
 const temporaryDirectories = [];
-const { createGitRepository } = useGitFixtures();
+const { historyRepository, temporaryRoot } = useHistoryRepositories();
+const roots = {};
+const ENTRY = '/tool/core/cli.mjs';
+const BASE_ARGUMENTS = [ENTRY, 'history', '--check', 'change-history', '--project-root', '/head'];
+
+beforeAll(() => {
+  roots.full = historyRepository();
+  roots.shallow = temporaryRoot('nitpicker-shallow-hash-');
+  fixtureGit(roots.shallow, ['clone', '-q', '--depth', '3', `file://${roots.full}`, '.']);
+  roots.head = fixtureGit(roots.full, ['rev-parse', 'HEAD']).trim();
+});
 
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
@@ -24,26 +30,33 @@ afterEach(() => {
 
 describe('createHistoryAnalyzers', () => {
   it('runs the history check on the snapshot it is given', () => {
-    const [analyzer, ...others] = createHistoryAnalyzers('/tool/core/cli.mjs');
+    const [analyzer] = createHistoryAnalyzers(ENTRY);
 
-    expect(others).toEqual([]);
-    expect(analyzer.name).toBe('change-history');
-    expect(analyzer.configurationHash).toMatch(/^[0-9a-f]{64}$/u);
-    expect(analyzer.configurationHash).not.toBe(
-      createHygieneAnalyzers('/tool/core/cli.mjs')[0].configurationHash,
-    );
     expect(analyzer.createInvocation({ projectRoot: '/head', toolRoot: '/tool' })).toEqual({
       command: process.execPath,
-      args: [
-        '/tool/core/cli.mjs',
-        'history',
-        '--check',
-        'change-history',
-        '--project-root',
-        '/head',
-      ],
+      args: BASE_ARGUMENTS,
       cwd: '/tool',
     });
+  });
+
+  it('reads the history of the compared base in a head run', () => {
+    const [analyzer] = createHistoryAnalyzers(ENTRY);
+    const invocation = analyzer.createInvocation({
+      projectRoot: '/head',
+      toolRoot: '/tool',
+      baselineRoot: roots.full,
+    });
+
+    expect(invocation.args).toEqual([...BASE_ARGUMENTS, '--history-ref', roots.head]);
+  });
+
+  it('keys the cache on whether the clone is shallow', () => {
+    const [analyzer] = createHistoryAnalyzers(ENTRY);
+    const hashes = [roots.full, roots.full, roots.shallow].map((root) =>
+      analyzer.resolveConfigurationHash(root),
+    );
+
+    expect([hashes[0] === hashes[1], hashes[0] === hashes[2]]).toEqual([true, false]);
   });
 });
 
@@ -76,7 +89,7 @@ describe('the history configuration hash', () => {
 describe('runHistoryCheck', () => {
   it('rejects a check it does not know', () => {
     expect(() => runHistoryCheck({ check: 'nope', projectRoot: '/' })).toThrow(
-      'Unknown history check: nope',
+      new Error('Unknown history check: nope'),
     );
   });
 });
@@ -98,9 +111,7 @@ describe('runHistoryCli', () => {
   }
 
   it('prints the findings as JSON and honours the head policy file', () => {
-    const { root } = createGitRepository(SOURCE_FILES);
-    commitSteps(root, amplifiedHistory());
-    const args = ['--check', 'change-history', '--project-root', root];
+    const args = ['--check', 'change-history', '--project-root', roots.full];
     const enabled = run(args, { history: { coChange: true } });
     const lifted = run(args, {
       history: { coChange: true },
@@ -111,15 +122,22 @@ describe('runHistoryCli', () => {
       status: enabled.status,
       identities: JSON.parse(enabled.stdout).findings.map(({ identity }) => identity),
       stderr: enabled.stderr,
-    }).toEqual({ status: 0, identities: ['src/billing|src/invoicing'], stderr: '' });
-    expect(JSON.parse(lifted.stdout)).toEqual({ findings: [] });
+      lifted: JSON.parse(lifted.stdout),
+    }).toEqual({
+      status: 0,
+      identities: ['src/billing|src/invoicing'],
+      stderr: '',
+      lifted: { findings: [] },
+    });
   });
 
-  it('exits 2 with the cause on bad input', () => {
-    expect(run(['--check', 'nope', '--project-root', '/'], {})).toEqual({
-      status: 2,
-      stdout: '',
-      stderr: 'History check failed: Unknown history check: nope\n',
-    });
+  it.each([
+    [
+      ['--check', 'nope', '--project-root', '/'],
+      'History check failed: Unknown history check: nope\n',
+    ],
+    [['--nope', 'x'], 'History check failed: Invalid history argument: --nope\n'],
+  ])('exits 2 with the cause for %j', (commandArguments, stderr) => {
+    expect(run(commandArguments, {})).toEqual({ status: 2, stdout: '', stderr });
   });
 });

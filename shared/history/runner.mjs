@@ -1,17 +1,13 @@
 import { runCheckCli } from '../hygiene/cli.mjs';
-import { withoutExcepted, withoutExcluded } from '../hygiene/rules.mjs';
-import { trackedFiles } from '../hygiene/tracked-files.mjs';
+import { withoutExcepted } from '../hygiene/rules.mjs';
 import { CHANGE_HISTORY_TOOL } from '../project-rules/hygiene-rules.mjs';
 import { collectChangeHistoryFindings } from './co-change/check.mjs';
 
-export function runHistoryCheck({ check, projectRoot, policy = {} }) {
+export function runHistoryCheck({ check, projectRoot, policy = {}, historyRef }) {
   if (check !== CHANGE_HISTORY_TOOL) {
     throw new Error(`Unknown history check: ${check}`);
   }
-  function listFiles() {
-    return withoutExcluded(trackedFiles(projectRoot), policy.exclude);
-  }
-  const findings = collectChangeHistoryFindings({ projectRoot, listFiles, policy });
+  const findings = collectChangeHistoryFindings({ projectRoot, ref: historyRef, policy });
   return withoutExcepted(findings, policy.exceptions);
 }
 

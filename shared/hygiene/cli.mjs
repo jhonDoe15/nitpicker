@@ -3,9 +3,10 @@ import { readHeadPolicyFile } from '../head-policy.mjs';
 const OPTION_NAMES = {
   '--check': 'check',
   '--project-root': 'projectRoot',
+  '--history-ref': 'historyRef',
 };
 
-export function parseHygieneArguments(commandArguments) {
+export function parseCheckArguments(commandArguments, label = 'hygiene') {
   const options = {};
   for (const [index, flag] of commandArguments.entries()) {
     if (index % 2 === 1) {
@@ -14,7 +15,7 @@ export function parseHygieneArguments(commandArguments) {
     const name = OPTION_NAMES[flag];
     const value = commandArguments[index + 1];
     if (name === undefined || value === undefined) {
-      throw new Error(`Invalid hygiene argument: ${flag}`);
+      throw new Error(`Invalid ${label} argument: ${flag}`);
     }
     options[name] = value;
   }
@@ -23,7 +24,7 @@ export function parseHygieneArguments(commandArguments) {
 
 export function runCheckCli({ commandArguments, stdout, stderr, environment, runCheck, label }) {
   try {
-    const options = parseHygieneArguments(commandArguments);
+    const options = parseCheckArguments(commandArguments, label.toLowerCase());
     const findings = runCheck({ ...options, policy: readHeadPolicyFile(environment) });
     stdout.write(`${JSON.stringify({ findings })}\n`);
     return 0;

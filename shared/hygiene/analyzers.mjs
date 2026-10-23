@@ -21,17 +21,46 @@ function hashConfiguration(runner) {
   return hash.digest('hex');
 }
 
-export function createCheckAnalyzer({ name, command, runner, entryPath }) {
+function withEnvironmentToken(sourceHash, environmentToken) {
+  return environmentToken === undefined
+    ? {}
+    : {
+        resolveConfigurationHash(policyRoot) {
+          return createHash('sha256')
+            .update(`${sourceHash}\0${environmentToken(policyRoot)}`)
+            .digest('hex');
+        },
+      };
+}
+
+export function createCheckAnalyzer({
+  name,
+  command,
+  runner,
+  entryPath,
+  extraArguments = () => [],
+  environmentToken,
+}) {
+  const sourceHash = hashConfiguration(runner);
   return {
     name,
     version: ANALYZER_VERSION,
-    configurationHash: hashConfiguration(runner),
+    configurationHash: sourceHash,
     exclusions: [],
-    createInvocation({ projectRoot, toolRoot }) {
+    ...withEnvironmentToken(sourceHash, environmentToken),
+    createInvocation(context) {
       return {
         command: process.execPath,
-        args: [entryPath, command, '--check', name, '--project-root', projectRoot],
-        cwd: toolRoot,
+        args: [
+          entryPath,
+          command,
+          '--check',
+          name,
+          '--project-root',
+          context.projectRoot,
+          ...extraArguments(context),
+        ],
+        cwd: context.toolRoot,
       };
     },
   };

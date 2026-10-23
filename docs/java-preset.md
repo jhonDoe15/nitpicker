@@ -415,8 +415,9 @@ classpath and its `test` task, and adds no test library to the project.
   timer within its supported range. The analyzer deadline allows two commands (the optional
   Checkstyle configuration export and the analysis), plus one minute for reports. This does
   not change Maven's command budget or configure individual PIT phases.
-- **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude` and
-  `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
+- **Config keys.** `base`, `disable` and `analyzers` work as before. `history` turns on the
+  opt-in [change history](usage.md#change-history) check, which reads git and not the Java runner.
+  `thresholds`, `exclude` and `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
   part of the analyzer's configuration hash:
   - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
@@ -458,8 +459,9 @@ classpath and its `test` task, and adds no test library to the project.
     configuration hash. Every message of a rule nitpicker adds ends with the entry that accepts it, and so does every PMD,
     Checkstyle, SpotBugs and ArchUnit message (`pmd/<rule>`).
   - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
-    keys are TypeScript only, and `layout.sharedRoots` and `layout.featureRoots` are accepted once the
-    Java preset registers the rule that reads them (`shared-used-by-one-feature`) in
+    keys are TypeScript only, `layout.featureRoots` is accepted once `history.coChange` is on (it
+    names the feature folders `co-change` reads), and `layout.sharedRoots` is accepted once the
+    Java preset registers the rule that reads it (`shared-used-by-one-feature`) in
     `shared/project-rules/fact-rules.mjs`. `testConsole` is accepted because the registry lists Java and
     Kotlin for `test-console-output`. `tools` takes `pmd` and `checkstyle`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;

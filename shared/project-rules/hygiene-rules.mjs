@@ -92,6 +92,7 @@ export const CO_CHANGE_LIMITS = {
   minHistory: 20,
   minSupport: 2,
   minCommitFiles: 2,
+  maxCommitFiles: 100,
 };
 
 export const CO_CHANGE_EXAMPLES = 3;
@@ -112,7 +113,7 @@ export const HISTORY_RULES = [
       'two folders of production code that changed together in at least',
       `${String(CO_CHANGE_DEFAULTS.minSupport)} of the last ${String(CO_CHANGE_DEFAULTS.commits)} commits`,
       `and in at least ${String(CO_CHANGE_DEFAULTS.minConfidence * PERCENT)}% of the commits of the less-changed one`,
-      `(commits of more than ${String(CO_CHANGE_DEFAULTS.maxCommitFiles)} files and rename-only commits are ignored);`,
+      `(only edits of production code count, and commits of more than ${String(CO_CHANGE_DEFAULTS.maxCommitFiles)} files are ignored);`,
       'opt-in with `history.coChange`, never fails',
     ].join(' '),
     enforcedBy: REPORTED_EVERYWHERE,

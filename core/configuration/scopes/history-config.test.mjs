@@ -17,6 +17,8 @@ describe('history config', () => {
     [{ history: { coChange: true } }],
     [{ history: { coChange: true, commits: 2000, minSupport: 2, minConfidence: 1 } }],
     [{ history: { coChange: true, commits: 20, maxCommitFiles: 2, minConfidence: 0.01 } }],
+    [{ history: { coChange: true, maxCommitFiles: 100 } }],
+    [{ history: { coChange: false, commits: 500, minSupport: 3, minConfidence: 0.5 } }],
     ...PRESETS.map((preset) => [{ preset, history: { coChange: true } }]),
   ])('accepts %j', (config) => {
     expect(validateConfig(config)).toEqual(config);
@@ -39,8 +41,10 @@ describe('history config', () => {
     ],
     [
       { history: { coChange: true, maxCommitFiles: 1 } },
-      /"history.maxCommitFiles" must be a whole number at least 2/,
+      /"history.maxCommitFiles" must be a whole number from 2 to 100/,
     ],
+    [{ history: { coChange: true, maxCommitFiles: 101 } }, /from 2 to 100/],
+    [{ history: { coChange: false, commits: 5 } }, /"history.commits" must be a whole number/],
     [
       { history: { coChange: true, minConfidence: 0 } },
       /"history.minConfidence" must be a number above 0/,
@@ -50,18 +54,21 @@ describe('history config', () => {
     expect(() => validateConfig(config)).toThrow(message);
   });
 
-  it('takes layout.featureRoots in every preset once co-change is on, and not before', () => {
-    const layout = { featureRoots: ['**/modules'] };
+  it.each(['java', 'kotlin', 'python'])(
+    'takes layout.featureRoots with %s once co-change is on, and not before',
+    (preset) => {
+      const layout = { featureRoots: ['**/modules'] };
+      const accepted = { preset, layout, history: { coChange: true } };
 
-    for (const preset of ['java', 'kotlin', 'python']) {
       expect(() => validateConfig({ preset, layout })).toThrow(/not supported with "preset"/u);
       expect(() => validateConfig({ preset, layout, history: { coChange: false } })).toThrow(
         /not supported/u,
       );
-      const accepted = { preset, layout, history: { coChange: true } };
-
       expect(validateConfig(accepted)).toEqual(accepted);
-    }
+    },
+  );
+
+  it('keeps layout.sharedRoots out of the presets that do not run its rule', () => {
     expect(() =>
       validateConfig({
         preset: 'java',
@@ -71,12 +78,10 @@ describe('history config', () => {
     ).toThrow(/sharedRoots/u);
   });
 
-  it('takes co-change exceptions in every preset', () => {
+  it.each(PRESETS)('takes co-change exceptions with %s', (preset) => {
     const exceptions = [{ rule: 'co-change', paths: ['src/billing/**'], reason: 'one release' }];
 
-    for (const preset of PRESETS) {
-      expect(validateConfig({ preset, exceptions })).toEqual({ preset, exceptions });
-    }
+    expect(validateConfig({ preset, exceptions })).toEqual({ preset, exceptions });
   });
 
   it('is listed as a config override and reaches the head policy', () => {
@@ -84,32 +89,34 @@ describe('history config', () => {
 
     expect(describeConfigOverrides(config)).toEqual(['history: {"coChange":true,"commits":500}']);
     expect(resolveHeadPolicy(config).history).toEqual(config.history);
-    expect(resolveHeadPolicy({})).not.toHaveProperty('history');
+    expect(resolveHeadPolicy({})).toEqual({
+      exclude: [],
+      layout: {},
+      exceptions: [],
+      thresholds: {},
+    });
   });
 });
 
 describe('the change-history analyzer', () => {
   const names = (config) => presetAnalyzers(config).map(({ name }) => name);
 
-  it('is added to every preset only when the project opts in', () => {
-    for (const preset of PRESETS) {
-      const without = names({ preset });
+  it.each(PRESETS)('is added to %s only when the project opts in', (preset) => {
+    const without = names({ preset });
 
-      expect(without).not.toContain('change-history');
-      expect(names({ preset, history: { coChange: false } })).toEqual(without);
-      expect(names({ preset, history: { coChange: true } })).toEqual([
-        ...without,
-        'change-history',
-      ]);
-    }
+    expect({
+      before: without.includes('change-history'),
+      off: names({ preset, history: { coChange: false, commits: 500 } }),
+      on: names({ preset, history: { coChange: true } }),
+    }).toEqual({ before: false, off: without, on: [...without, 'change-history'] });
   });
 
   it('can be disabled like any analyzer, and does not replace injected analyzers', () => {
     const config = { history: { coChange: true }, disable: ['change-history'] };
 
-    expect(
-      configureAnalyzers(presetAnalyzers(config), config, {}).map(({ name }) => name),
-    ).not.toContain('change-history');
+    expect(configureAnalyzers(presetAnalyzers(config), config, {}).map(({ name }) => name)).toEqual(
+      presetAnalyzers({}).map(({ name }) => name),
+    );
     expect(presetAnalyzers(config, [{ name: 'fake' }])).toEqual([{ name: 'fake' }]);
   });
 

@@ -9,14 +9,21 @@ import {
 import { DEFAULT_FEATURE_LAYOUT, featureRoles } from '../../../rules/features/feature-roles.mjs';
 
 const CODE_FILE = /\.(?:tsx?|mts|cts|jsx?|mjs|cjs|py|java|kts?)$/u;
-const DECLARATION_FILE = /\.d\.ts$/u;
+const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
+const BUILD_FILE = new RegExp(
+  [
+    String.raw`(?:^|/)[^/]+\.gradle(?:\.kts)?$`,
+    String.raw`(?:^|/)[^/]+\.config\.[cm]?[jt]s$`,
+    String.raw`(?:^|/)\.[^/]*rc\.[cm]?js$`,
+    String.raw`(?:^|/)(?:setup|conftest)\.py$`,
+  ].join('|'),
+  'u',
+);
 const TEST_FOLDERS = [
   'tests?',
   '__tests__',
   'e2e',
-  'testing',
   'testdata',
-  'fixtures?',
   '__fixtures__',
   '__mocks__',
   'androidTest',
@@ -24,16 +31,21 @@ const TEST_FOLDERS = [
   'testFixtures',
 ];
 const TEST_FOLDER = new RegExp(String.raw`(?:^|/)(?:${TEST_FOLDERS.join('|')})(?:/|$)`, 'u');
+const TEST_SOURCE_SET = /(?:^|\/)src\/(?:tests?|[a-z]\w*Tests?|test[A-Z]\w*)\//u;
+const ROOT_TEST_SUPPORT = /^(?:fixtures?|testing)\//u;
+const JVM_MAIN_SOURCE_SET = /(?:^|\/)src\/main\//u;
 const TEST_NAME = new RegExp(
   [
     String.raw`\.(?:test|spec)\.[^/]+$`,
-    String.raw`(?:^|/)(?:test_[^/]+\.py|[^/]+_test\.py|conftest\.py)$`,
+    String.raw`(?:^|/)(?:test_[^/]+\.py|[^/]+_test\.py|tests\.py|conftest\.py)$`,
     String.raw`(?:^|/)[^/]+(?:Tests?|IT|Spec)\.(?:java|kts?)$`,
   ].join('|'),
   'u',
 );
 const OUTPUT_FOLDERS = [
   'dist',
+  'build',
+  'out',
   'target',
   'coverage',
   'generated',
@@ -45,10 +57,7 @@ const OUTPUT_FOLDERS = [
   String.raw`\.venv`,
   String.raw`\.gradle`,
 ];
-const OUTPUT_FOLDER = new RegExp(
-  String.raw`(?:^|/)(?:${OUTPUT_FOLDERS.join('|')})(?:/|$)|^(?:build|out)/`,
-  'u',
-);
+const OUTPUT_FOLDER = new RegExp(String.raw`(?:^|/)(?:${OUTPUT_FOLDERS.join('|')})(?:/|$)`, 'u');
 const GENERATED_NAME = new RegExp(
   [
     String.raw`\.(?:generated|gen|pb)\.[^/]+$`,
@@ -62,8 +71,15 @@ function isUnderRoot(file, roots) {
   return roots.some((root) => file.startsWith(`${root.replace(/\/+$/u, '')}/`));
 }
 
-function isTestFile(file, testRoots = []) {
-  return TEST_FOLDER.test(file) || TEST_NAME.test(file) || isUnderRoot(file, testRoots);
+function isInTestFolder(file) {
+  if (JVM_MAIN_SOURCE_SET.test(file)) {
+    return false;
+  }
+  return TEST_FOLDER.test(file) || TEST_SOURCE_SET.test(file) || ROOT_TEST_SUPPORT.test(file);
+}
+
+function isTestFile(file, testRoots) {
+  return isUnderRoot(file, testRoots) || TEST_NAME.test(file) || isInTestFolder(file);
 }
 
 function isGeneratedPath(file) {
@@ -73,7 +89,7 @@ function isGeneratedPath(file) {
 function hasGeneratedHead(projectRoot, file) {
   const absolute = pathInside(projectRoot, file);
   if (absolute === undefined || !existsSync(absolute)) {
-    return true;
+    return false;
   }
   const head = readFileHead(absolute);
   return hasGeneratorHeader(head) || hasGeneratorAnnotation(head);
@@ -88,6 +104,10 @@ function moduleFolder(file, roleOf) {
   return folder === '.' ? undefined : folder;
 }
 
+function isProductionCode(file) {
+  return CODE_FILE.test(file) && !DECLARATION_FILE.test(file) && !BUILD_FILE.test(file);
+}
+
 export function moduleResolver({ projectRoot, files, policy = {} }) {
   const tracked = new Set(files);
   const generated = new Set(policy.generatedFiles ?? []);
@@ -100,8 +120,7 @@ export function moduleResolver({ projectRoot, files, policy = {} }) {
   function resolve(file) {
     const production =
       tracked.has(file) &&
-      CODE_FILE.test(file) &&
-      !DECLARATION_FILE.test(file) &&
+      isProductionCode(file) &&
       !isTestFile(file, testRoots) &&
       !isGeneratedPath(file) &&
       !generated.has(file) &&
