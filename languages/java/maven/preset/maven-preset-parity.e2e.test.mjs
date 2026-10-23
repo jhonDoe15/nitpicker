@@ -15,6 +15,7 @@ import {
   twinProjects,
   comparable,
 } from '../__tests__/maven-preset-project.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   useMavenPresetProject();
@@ -57,6 +58,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         `Tests fail in ${path.join(project, 'core')}; nitpicker needs a passing test suite ` +
           'for coverage and mutation testing:',
         '  demo.core.AdderTest.adds: expected: <4> but was: <3>',
+        linkSentence('testsFail'),
       ].join('\n'),
     });
   }, 180_000);
