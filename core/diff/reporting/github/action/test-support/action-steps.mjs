@@ -9,7 +9,8 @@ export const ACTION = parse(readFileSync(path.join(repositoryRoot, 'action.yml')
 
 const FAKE_NPX = `#!/usr/bin/env bash
 printf '%s\\n' "npx $*" >> "$FAKE_LOG"
-shift 2
+while [ "$1" != nitpicker ]; do shift; done
+shift
 case "$*" in
   --help) exit "\${FAKE_HELP_EXIT:-0}" ;;
   base*) exec node "$NITPICKER_CLI" "$@" ;;
@@ -57,8 +58,7 @@ export function prepareRunner(root) {
   return bin;
 }
 
-export function executeStep({ name, root, cwd, environment }) {
-  const step = runStep(name);
+export function executeStep({ name, step = runStep(name), root, cwd, environment }) {
   const bin = prepareRunner(root);
   const outputFile = path.join(root, `output-${name.replaceAll(' ', '-')}.txt`);
   const log = path.join(root, 'commands.log');

@@ -5,8 +5,13 @@ on:
     branches: [main]
     paths:
       - 'action.yml'
-      - 'core/diff/reporting/github/**'
+      - 'core/**'
+      - 'shared/**'
+      - 'languages/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/sample-project/**'
+      - '.github/sample-python/**'
       - '.github/sample-seed/**'
       - '.github/workflows/github-action.yml'
   pull_request:
@@ -64,3 +69,54 @@ jobs:
           test "$EXIT_CODE" = 1
           grep -q 'eslint-lint/no-var' "$REPORT_DIRECTORY/report.txt"
           test -s "$REPORT_DIRECTORY/report.sarif"
+          grep -q '"path": ".github/sample-project/src/' "$REPORT_DIRECTORY/codequality.json"
+
+  # The same on a Python project, which has no package.json: the action runs the tarball of this
+  # checkout through the package input and installs nothing itself (uv sync runs before it).
+  sample-python:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+      - name: Pack this checkout
+        id: pack
+        run: |
+          npm pack --silent --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/packed.txt"
+          echo "tarball=$RUNNER_TEMP/$(tail -n 1 "$RUNNER_TEMP/packed.txt")" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v7.6.0
+      - run: uv sync --frozen
+        working-directory: .github/sample-python
+      - name: Seed a finding
+        id: seed
+        run: |
+          echo "base=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          cp .github/sample-seed/python/shout.py .github/sample-python/src/greeting/shout.py
+          git add .github/sample-python/src
+          git -c user.name=sample -c user.email=sample@example.invalid commit --quiet -m 'Seed a finding'
+      - name: nitpicker on the Python sample project
+        id: nitpicker
+        uses: ./
+        continue-on-error: true
+        with:
+          working-directory: .github/sample-python
+          base-ref: ${{ steps.seed.outputs.base }}
+          install-command: none
+          package: ${{ steps.pack.outputs.tarball }}
+          artifact-name: nitpicker-sample-python-report
+      - name: The action reported the seeded finding
+        env:
+          EXIT_CODE: ${{ steps.nitpicker.outputs.exit-code }}
+          REPORT_DIRECTORY: ${{ steps.nitpicker.outputs.report-directory }}
+        run: |
+          test "$EXIT_CODE" = 1
+          grep -q 'ruff/F401' "$REPORT_DIRECTORY/report.txt"
+          grep -q '"path": ".github/sample-python/src/greeting/shout.py"' "$REPORT_DIRECTORY/codequality.json"

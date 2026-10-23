@@ -6,63 +6,107 @@ branding:
 
 inputs:
   working-directory:
-    description: The project folder, relative to the repository root. Set it when the project is in a subfolder.
+    description: >-
+      The project folder, relative to the repository root, for a project in a subfolder.
+      Annotations, links and report paths carry the folder, so they land on the right files.
     default: '.'
   base-ref:
-    description: The ref to compare against, for example origin/main. Empty uses what nitpicker itself would use (the pull request or merge group target branch, then base in nitpicker.config.json), then the repository default branch.
+    description: >-
+      The ref to compare against, passed as `--base`, for example `origin/release`. Empty takes
+      the base the way nitpicker picks it (the pull request or merge queue target branch, then
+      `base` in `nitpicker.config.json`, then the repository default branch). The action fetches
+      the base and keys the cache on its merge base with `HEAD`.
     default: ''
   arguments:
-    description: Extra nitpicker arguments, split on spaces and new lines (no quoting), for example "--analyzer eslint-lint". --output and --base are refused; use report-directory and base-ref.
+    description: >-
+      Extra nitpicker arguments, one per line or separated by spaces (no quoting), for example
+      `--analyzer eslint-lint`. `--output` and `--base` are refused: use `report-directory` and
+      `base-ref`.
     default: ''
   package:
-    description: A package to run with npx instead of the nitpicker installed in the project, for example nitpicker@<version>. Needed for a project without a package.json (Java, Kotlin or Python). Empty runs the project's own devDependency, so the version matches its lockfile.
+    description: >-
+      A package to run with `npx` instead of the project's own nitpicker, for example
+      `nitpicker@<version>`, the URL of a release tarball or the path of one. A project without a
+      `package.json` (Java, Kotlin or Python) needs it. Empty runs the project's devDependency, so
+      the version is the one in its lockfile.
     default: ''
   node-version:
-    description: The Node.js version to set up (22.14 or newer). Empty keeps the Node.js already on the runner.
+    description: >-
+      The Node.js version to set up (22.14 or newer). Empty keeps the Node.js of the runner.
     default: '24'
   install-command:
-    description: How to install the project's dependencies in the folder that holds its lockfile. Empty detects npm, pnpm or Yarn from the nearest lockfile, none skips the install, anything else is run as a shell command in the working directory.
+    description: >-
+      How to install the project's dependencies. Empty finds the nearest lockfile up to the
+      repository root and runs `npm ci`, `pnpm install --frozen-lockfile`, `yarn install
+      --immutable` (`--frozen-lockfile` for Yarn 1) or `bun install --frozen-lockfile` in its
+      folder; set up Bun before the action for a Bun project. `none` skips the install, and
+      anything else runs as a shell command in the working directory.
     default: ''
   cache:
-    description: Restore and save the findings cache (node_modules/.cache/nitpicker, or the git folder for a project without node_modules) with actions/cache, keyed by the base commit.
+    description: >-
+      Restore and save the findings cache with `actions/cache`, keyed by the merge base and
+      `nitpicker.config.json`, also when the gate fails. It lives in
+      `node_modules/.cache/nitpicker`, or in the `.git` folder for a project without
+      `node_modules`.
     default: 'true'
   cache-url:
-    description: A remote cache prefix (NITPICKER_CACHE_URL). Runs read it; it is also where cache-publish uploads.
+    description: >-
+      A remote cache prefix (`NITPICKER_CACHE_URL`). Runs read it, and `cache-publish` writes to
+      it.
     default: ''
   cache-auth-header:
-    description: The Authorization header value for the remote cache (NITPICKER_CACHE_AUTH_HEADER). Pass a secret. Give write access only on the default branch.
+    description: >-
+      The `Authorization` header value for the remote cache (`NITPICKER_CACHE_AUTH_HEADER`). Pass
+      a secret, and give write access only to the default branch.
     default: ''
   cache-publish:
-    description: On a push to the default branch, run "nitpicker cache publish" so later branches reuse the findings as their base. Needs cache-url.
+    description: >-
+      On a push to the default branch, run `nitpicker cache publish` so later branches reuse its
+      findings as their base. Needs `cache-url`. The comparison is skipped there, since the head
+      is the base.
     default: 'true'
   accept-policy-change:
-    description: The NITPICKER_ACCEPT_POLICY_CHANGE digest. Map the repository variable NITPICKER_ACCEPT_POLICY_CHANGE (vars.NITPICKER_ACCEPT_POLICY_CHANGE), which only an admin can set. Never put a fixed digest in a workflow.
+    description: >-
+      The `NITPICKER_ACCEPT_POLICY_CHANGE` digest that accepts a loosening of
+      `nitpicker.config.json`. Map the repository variable `vars.NITPICKER_ACCEPT_POLICY_CHANGE`,
+      which only an admin can set; never write a digest into a workflow.
     default: ''
   report-directory:
-    description: Where the reports are written, relative to working-directory.
+    description: >-
+      Where the reports are written, relative to `working-directory`.
     default: 'reports/quality/diff'
   upload-sarif:
-    description: Upload report.sarif to code scanning. The job needs the security-events write permission.
+    description: >-
+      Upload `report.sarif` to code scanning. The job needs the `security-events: write`
+      permission; a failed upload only warns.
     default: 'false'
   sarif-category:
-    description: The code scanning category of the upload. Use one per project when several projects upload.
+    description: >-
+      The code scanning category of the upload. Use one per project when several projects upload.
     default: 'nitpicker'
   upload-report:
-    description: Upload the report directory as an artifact when the gate fails.
+    description: >-
+      Upload the report directory as an artifact when the gate fails.
     default: 'true'
   artifact-name:
-    description: The artifact name of the report. Use another name when the job runs the action more than once.
+    description: >-
+      The artifact name of the report. Use another name when a job runs the action more than once.
     default: 'nitpicker-report'
 
 outputs:
   exit-code:
-    description: The exit code of the gate (0 passed, 1 new enforceable findings, 2 tool error or failure to decide). Empty when the gate did not run.
+    description: >-
+      The exit code of the gate: 0 passed, 1 new enforceable findings, 2 a tool error or a failure
+      to decide. Empty when the gate did not run.
     value: ${{ steps.gate.outputs.exit-code }}
   report-directory:
-    description: The absolute path of the report directory.
+    description: >-
+      The absolute path of the report directory.
     value: ${{ steps.gate.outputs.report-directory }}
   skipped:
-    description: 'true when the run was a push to the default branch, where the head is the base and there is nothing to compare.'
+    description: >-
+      `true` on a push to the default branch, where the head is the base and there is nothing to
+      compare.
     value: ${{ steps.prepare.outputs.skip-gate }}
 
 runs:
@@ -163,7 +207,7 @@ runs:
 
         nitpicker() {
           if [ -n "$PACKAGE" ]; then
-            npx --yes "$PACKAGE" "$@"
+            npx --yes --package "$PACKAGE" nitpicker "$@"
           else
             npx --no-install nitpicker "$@"
           fi
@@ -253,7 +297,7 @@ runs:
           args+=(--no-cache)
         fi
         if [ -n "$PACKAGE" ]; then
-          runner=(npx --yes "$PACKAGE")
+          runner=(npx --yes --package "$PACKAGE" nitpicker)
         else
           runner=(npx --no-install nitpicker)
         fi
@@ -282,7 +326,7 @@ runs:
           exit 0
         fi
         if [ -n "$PACKAGE" ]; then
-          npx --yes "$PACKAGE" cache publish
+          npx --yes --package "$PACKAGE" nitpicker cache publish
         else
           npx --no-install nitpicker cache publish
         fi

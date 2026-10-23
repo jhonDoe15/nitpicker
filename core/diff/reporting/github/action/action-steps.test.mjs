@@ -273,7 +273,7 @@ describe('the gate step', () => {
     expect([outputs['exit-code'], commands]).toEqual([
       '2',
       [
-        'npx --yes nitpicker@1.2.3 --base origin/main --output reports/quality/diff --analyzer eslint-lint --verbose --no-cache',
+        'npx --yes --package nitpicker@1.2.3 nitpicker --base origin/main --output reports/quality/diff --analyzer eslint-lint --verbose --no-cache',
       ],
     ]);
   });
@@ -301,6 +301,10 @@ describe('the publish and fail steps', () => {
   it('publishes to the cache url, and only explains itself without one', () => {
     const published = run(PUBLISH, { PACKAGE: '', NITPICKER_CACHE_URL: 'https://cache.example/x' });
     const skipped = run(PUBLISH, { PACKAGE: '', NITPICKER_CACHE_URL: '' });
+    const packaged = run(PUBLISH, {
+      PACKAGE: '/tmp/nitpicker.tgz',
+      NITPICKER_CACHE_URL: 'https://c.example',
+    });
 
     expect([
       published.status,
@@ -308,12 +312,14 @@ describe('the publish and fail steps', () => {
       skipped.status,
       skipped.stdout,
       skipped.commands,
+      packaged.commands,
     ]).toEqual([
       0,
       ['npx --no-install nitpicker cache publish'],
       0,
       '::notice title=nitpicker::Nothing published: set the cache-url input to publish the findings of the default branch.\n',
       [],
+      ['npx --yes --package /tmp/nitpicker.tgz nitpicker cache publish'],
     ]);
   });
 

@@ -3,6 +3,13 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { CI_TARGET_VARIABLES } from '../../../git/repository/base-ref.mjs';
+import { LISTED_FINDINGS, LISTED_TOOL_ERRORS } from '../markdown.mjs';
+import { MAX_ANNOTATIONS, MAX_TOOL_ERROR_ANNOTATIONS } from '../workflow-commands.mjs';
+import {
+  ACTION_BLOCK_END,
+  ACTION_BLOCK_START,
+  renderActionReference,
+} from '../../../../../scripts/action-inputs.mjs';
 
 const repositoryRoot = path.join(import.meta.dirname, '../../../../..');
 
@@ -15,6 +22,13 @@ const action = parse(actionText);
 const steps = action.runs.steps;
 const workflow = parse(readText('.github/workflows/github-action.yml'));
 const docs = readText('docs/ci.md');
+const usage = readText('docs/usage.md');
+const { version } = JSON.parse(readText('package.json'));
+
+function floatingTag(release) {
+  const [major, minor] = release.split(/[.-]/u);
+  return major === '0' ? `v0.${minor}` : `v${major}`;
+}
 
 const FULL_VERSION_TAG = /^[\w.-]+\/[\w./-]+@v\d+\.\d+\.\d+$/u;
 
@@ -73,7 +87,7 @@ describe('action.yml', () => {
 
     expect(gate['working-directory']).toBe('${{ inputs.working-directory }}');
     expect(scriptLines(gate, 'npx')).toEqual([
-      '  runner=(npx --yes "$PACKAGE")',
+      '  runner=(npx --yes --package "$PACKAGE" nitpicker)',
       '  runner=(npx --no-install nitpicker)',
     ]);
   });
@@ -85,7 +99,7 @@ describe('action.yml', () => {
       "${{ steps.prepare.outputs.skip-gate == 'true' && inputs.cache-publish == 'true' }}",
     );
     expect(scriptLines(publish, 'cache publish')).toEqual([
-      '  npx --yes "$PACKAGE" cache publish',
+      '  npx --yes --package "$PACKAGE" nitpicker cache publish',
       '  npx --no-install nitpicker cache publish',
     ]);
   });
@@ -114,8 +128,19 @@ describe('the sample workflow', () => {
     expect(use.with['working-directory']).toBe('.github/sample-project');
   });
 
+  it('runs the action on a Python project without a package.json, from a packed tarball', () => {
+    const use = workflow.jobs['sample-python'].steps.find((step) => step.uses === './');
+
+    expect([use.with['install-command'], use.with.package]).toEqual([
+      'none',
+      '${{ steps.pack.outputs.tarball }}',
+    ]);
+  });
+
   it('pins the actions it uses to full version tags', () => {
-    const used = job.steps.flatMap((step) => (step.uses === undefined ? [] : [step.uses]));
+    const used = Object.values(workflow.jobs)
+      .flatMap((each) => each.steps)
+      .flatMap((step) => (step.uses === undefined ? [] : [step.uses]));
 
     expect(
       used.filter((reference) => reference !== './' && !FULL_VERSION_TAG.test(reference)),
@@ -134,12 +159,49 @@ describe('docs/ci.md', () => {
     expect(CI_TARGET_VARIABLES.filter((variable) => !docs.includes(variable))).toEqual([]);
   });
 
-  it('pins the actions in its examples to full version tags, and the action to main', () => {
+  it('pins the actions in its examples to full version tags, and the action to its floating tag', () => {
     const references = [...docs.matchAll(/uses: ([\w.-]+\/[\w./-]+)@(\S+)/gu)];
     const others = references.filter(([, name]) => name !== 'jhonDoe15/nitpicker');
     const own = references.filter(([, name]) => name === 'jhonDoe15/nitpicker');
 
     expect(others.filter(([, , version]) => !/^v\d+\.\d+\.\d+$/u.test(version))).toEqual([]);
-    expect(new Set(own.map(([, , version]) => version))).toEqual(new Set(['main']));
+    expect(new Set(own.map(([, , tag]) => tag))).toEqual(new Set([floatingTag(version)]));
+    expect(docs).toContain(`\`${floatingTag(version)}\` is a floating tag`);
+  });
+
+  it('states the limits of the job summary and the annotations as the code sets them', () => {
+    expect(
+      [
+        `the first ${String(LISTED_FINDINGS)} new enforceable findings`,
+        `the first ${String(LISTED_TOOL_ERRORS)} tool errors`,
+        `at most ${String(MAX_ANNOTATIONS)} error`,
+        `writes at most ${String(MAX_ANNOTATIONS)} (tool errors take up to ${String(MAX_TOOL_ERROR_ANNOTATIONS)} of them)`,
+      ].filter((text) => !docs.replaceAll(/\s+/gu, ' ').includes(text)),
+    ).toEqual([]);
+  });
+
+  it('lists the inputs and outputs of action.yml in wrapped lines between the markers', () => {
+    const reference = renderActionReference(action);
+
+    expect(docs).toContain(`${ACTION_BLOCK_START}\n\n${reference}\n\n${ACTION_BLOCK_END}`);
+    expect(reference.split('\n').filter((line) => line.length > 100)).toEqual([]);
+  });
+});
+
+describe('floatingTag', () => {
+  it.each([
+    ['0.1.0', 'v0.1'],
+    ['0.12.3-rc.1', 'v0.12'],
+    ['1.4.0', 'v1'],
+  ])('names %s as %s', (release, tag) => {
+    expect(floatingTag(release)).toBe(tag);
+  });
+});
+
+describe('docs/usage.md', () => {
+  it('names every CI variable that picks the base', () => {
+    expect(CI_TARGET_VARIABLES.filter((variable) => !usage.includes(`\`${variable}\``))).toEqual(
+      [],
+    );
   });
 });
