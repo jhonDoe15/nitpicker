@@ -20,6 +20,8 @@ const layer = (rules) =>
     projectText: project(rules),
   });
 
+const HEADER = '<?xml version="1.0" encoding="UTF-8"?>\n';
+const PROJECT_OPEN = '<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">';
 const references = (text) => [...text.matchAll(/<rule ref="([^"]+)"/gu)].map(([, ref]) => ref);
 const excludes = (text) => [...text.matchAll(/<exclude name="([^"]+)"/gu)].map(([, name]) => name);
 
@@ -51,18 +53,21 @@ describe("the shipped PMD ruleset under a project's ruleset", () => {
       '    <priority>1</priority>',
       '  </rule>',
     ]);
-    const projectRules = references(layers.project);
 
     expect(layers.replaced).toEqual(['AvoidSynchronizedStatement']);
     expect(excludes(layers.nitpicker)).toEqual(['AvoidSynchronizedStatement']);
-    expect(projectRules.filter((ref) => ref.endsWith('/AvoidSynchronizedStatement'))).toHaveLength(
-      1,
-    );
-    expect(layers.project).toContain(
+    expect(layers.project).toBe(
       [
+        `${HEADER}${PROJECT_OPEN}`,
+        '  <description>p</description>',
+        '  <rule ref="category/java/multithreading.xml/AvoidUsingVolatile"/>',
+        '  <rule ref="category/java/multithreading.xml/DoNotUseThreads"/>',
+        '  <rule ref="category/java/multithreading.xml/UseConcurrentHashMap"/>',
         '  <rule ref="category/java/multithreading.xml/AvoidSynchronizedStatement">',
         '    <priority>1</priority>',
         '  </rule>',
+        '</ruleset>',
+        '',
       ].join('\n'),
     );
   });
@@ -75,8 +80,20 @@ describe("the shipped PMD ruleset under a project's ruleset", () => {
     ]);
 
     expect(layers.replaced).toEqual(['DontCallThreadRun']);
-    expect(layers.project).toContain('<priority>2</priority>');
-    expect(layers.project).toContain('name="violationSuppressXPath"');
+    expect(layers.project).toBe(
+      [
+        `${HEADER}${PROJECT_OPEN}`,
+        '  <description>p</description>',
+        '  <rule ref="category/java/multithreading.xml/DontCallThreadRun">',
+        '    <priority>2</priority>',
+        '    <properties>',
+        '      <property name="violationSuppressXPath" value=".[*[1][self::SuperExpression]]"/>',
+        '    </properties>',
+        '  </rule>',
+        '</ruleset>',
+        '',
+      ].join('\n'),
+    );
   });
 
   it('keeps a security rule the project sets on main sources only', () => {
@@ -89,14 +106,18 @@ describe("the shipped PMD ruleset under a project's ruleset", () => {
 
     expect(references(layers.project)).toEqual([]);
     expect(layers.replaced).toEqual([]);
-    expect(layers.main).toContain(
+    expect(layers.main).toBe(
       [
+        `${HEADER}<ruleset name="nitpicker-main-rules" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">`,
+        "  <description>Nitpicker's main-only PMD rules, with the project's settings over them.</description>",
         `  <rule ref="${MAIN_RULESET}">`,
         '    <exclude name="HardCodedCryptoKey"/>',
         '  </rule>',
         '  <rule ref="category/java/security.xml/HardCodedCryptoKey">',
         '    <priority>1</priority>',
         '  </rule>',
+        '</ruleset>',
+        '',
       ].join('\n'),
     );
   });
