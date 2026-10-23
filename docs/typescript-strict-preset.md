@@ -808,17 +808,37 @@ hop, and type-only imports do not count.
   A real condition such as `skipIf(process.platform === 'win32')` is allowed, and so is `it.fails`,
   which runs and documents a known bug: it starts failing once the bug is fixed.
 - `nitpicker/no-unowned-async-assertion`: an assertion inside a callback the test hands off must
-  run before the test ends, or its failure is lost or blamed on another test. Reported: a callback
-  passed to `setTimeout`, `setImmediate`, `queueMicrotask` or `process.nextTick` when the test does
-  not advance a fake clock after it (`vi.advanceTimersByTime`, `jest.runAllTimers`, `clock.tick`,
-  `t.mock.timers.tick`, ...); a listener added with `on`, `once`, `addListener` or
-  `addEventListener` as the test's last step (no call or `await` follows it that could fire the
-  event); and an error-first callback (`(err, value) => ...`), which Node-style APIs call later.
-  Allowed: the callback inside an awaited or returned expression (`await new Promise((resolve) =>
-emitter.once('ready', ...))`), a test that takes the runner's `done` callback and calls it, and a
-  test that plans its assertions (`expect.assertions(n)`, `t.plan(n)`). Only callbacks written in
-  the test body are traced; `valid-expect-in-promise` covers promise chains and
-  `no-floating-promises` unawaited promises.
+  run before the test ends, or its failure is lost or blamed on another test. The callbacks it
+  follows, written inline or passed by the name of a local function, anywhere in the test body
+  (also inside helpers and immediately called functions the test defines):
+  - timers: `setTimeout`, `setImmediate`, `requestAnimationFrame`, `requestIdleCallback`, also on
+    `globalThis`/`window` and imported from `node:timers` under any name. The test owns one when
+    a later step awaits anything or advances a fake clock (`vi.advanceTimersByTime`,
+    `jest.runAllTimers`, `clock.tick`, `clock.next`, `t.mock.timers.tick`, `page.clock.runFor`,
+    ..., also inside a local helper the test calls). A clock method on another object
+    (`game.tick()`) does not count.
+  - microtasks: `queueMicrotask` and `process.nextTick`. A later `await` owns them, and so does
+    `jest.runAllTicks()`; advancing fake timers does not, as Vitest's fake timers leave them real.
+  - handlers: `on`, `once`, `addListener`, `prependListener`, `prependOnceListener`,
+    `addEventListener`, `subscribe`, an `onmessage`-style handler property and the callback of a
+    `MutationObserver`, `ResizeObserver`, `IntersectionObserver` or `PerformanceObserver`. A later
+    step that awaits, calls something other than `console` or a log method, creates an object or
+    writes a property may fire the event and owns it.
+  - Node callback APIs: a callback passed to a function of `fs`, `child_process`, `dns`, `zlib`,
+    `crypto`, `stream`, `net`, `http`, `https`, `http2` or `dgram` (imported or required under any
+    name). Only the promise form or `done` owns it; other synchronous callbacks, such as
+    `assert.throws(run, (err) => ...)`, `errors.map((error) => ...)` or `vi.fn((error) => ...)`,
+    are not reported.
+  - Also owned: a callback inside a `new Promise(...)` executor whose promise is awaited, returned,
+    yielded or passed on to something that is (`Promise.all([...])`, a variable awaited later); a
+    test that takes the runner's `done` callback and uses it (Mocha and Jest: the first parameter;
+    `node:test`: the second; Vitest has no `done`, and table tests pass rows, not `done`); and a test
+    whose plan needs an assertion from the callback (`expect.assertions(n)` or `t.plan(n)` with more
+    than the assertions that run synchronously, or `expect.hasAssertions()` with none).
+    Returning or awaiting the timer or listener call itself (`return setTimeout(...)`) does not own
+    it, and an expression-bodied test (`it('x', () => setTimeout(...))`) is checked like a block.
+    Hooks, `describe` bodies and Playwright's `test.step` are not tests: a listener registered in a
+    hook lives through the test.
 - `slow-test` (coverage check, head only): an added or edited test fails above 5 s, or 30 s in an integration/e2e test folder. All supported runners share this policy. Suspected slow tests are rerun without coverage instrumentation, using the existing head policy's thresholds and reviewed exceptions; unchanged test calls do not add findings.
 - `nitpicker/no-real-time-random-or-network`: in tests, no `Date.now()`, `new Date()` without an
   argument or `Math.random()` (fake the clock with `vi.useFakeTimers()` and `vi.setSystemTime`, or
