@@ -26,20 +26,20 @@ function reasonFor(set, file, scope) {
   return set.importable && scope.productionReach().has(file) ? 'imported' : undefined;
 }
 
-function listed(entries, limit) {
+export function listed(entries, limit) {
   const more = entries.length > limit ? `, and ${entries.length - limit} more` : '';
   return `${entries.slice(0, limit).join(', ')}${more}`;
 }
 
-function loosening({ label, reason, files }, scope) {
+function loosening({ set, reason, files }, scope) {
   const entries =
     reason === 'imported'
       ? files.map((file) => `${file} (imported by ${scope.productionReach().get(file)})`)
       : files;
   function describe(limit) {
-    return `${label} hide code this change adds or moves ${REASONS[reason]}: ${listed(entries, limit)}`;
+    return `${set.label} hide code this change adds or moves ${REASONS[reason]}: ${listed(entries, limit)}`;
   }
-  return { text: describe(LISTED_FILES), key: describe(entries.length), files };
+  return { text: describe(LISTED_FILES), key: describe(entries.length), kind: set.kind, files };
 }
 
 export function hiddenCodeChanges(baseConfig, headConfig, scope) {
@@ -51,7 +51,7 @@ export function hiddenCodeChanges(baseConfig, headConfig, scope) {
     );
     return Object.keys(REASONS)
       .filter((reason) => byReason.has(reason))
-      .map((reason) => loosening({ label: set.label, reason, files: byReason.get(reason) }, scope));
+      .map((reason) => loosening({ set, reason, files: byReason.get(reason) }, scope));
   });
   return { loosened, changed: [] };
 }

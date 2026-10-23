@@ -45,9 +45,14 @@ function hashConfiguration(settings, part) {
   return hash.digest('hex');
 }
 
-function resolveVersion(liveProjectRoot, settings, versions) {
+function resolveVersion(liveProjectRoot, versions, { settings, probes }) {
   return versions(
-    createToolContext({ projectRoot: liveProjectRoot, liveRoot: liveProjectRoot, settings }),
+    createToolContext({
+      projectRoot: liveProjectRoot,
+      liveRoot: liveProjectRoot,
+      settings,
+      probes,
+    }),
   );
 }
 
@@ -70,11 +75,12 @@ function pythonInvocation(settings, part) {
   });
 }
 
-export function createPythonAnalyzer(settings = {}) {
+function pythonAnalyzer(settings, probes) {
   return {
     name: PYTHON_ANALYZER_NAME,
     version: UNRESOLVED_VERSION,
-    resolveVersion: (liveProjectRoot) => resolveVersion(liveProjectRoot, settings, toolVersions),
+    resolveVersion: (liveProjectRoot) =>
+      resolveVersion(liveProjectRoot, toolVersions, { settings, probes }),
     configurationHash: hashConfiguration(settings, PYTHON_ANALYZER_NAME),
     exclusions: [],
     reportedTools: [
@@ -101,12 +107,12 @@ export function createPythonAnalyzer(settings = {}) {
   };
 }
 
-export function createMutationAnalyzer(settings = {}) {
+function mutationAnalyzer(settings, probes) {
   return {
     name: MUTATION_ANALYZER_NAME,
     version: UNRESOLVED_VERSION,
     resolveVersion: (liveProjectRoot) =>
-      resolveVersion(liveProjectRoot, settings, mutationVersions),
+      resolveVersion(liveProjectRoot, mutationVersions, { settings, probes }),
     configurationHash: hashConfiguration(settings, MUTATION_ANALYZER_NAME),
     exclusions: [],
     reportedTools: ['mutmut'],
@@ -118,6 +124,15 @@ export function createMutationAnalyzer(settings = {}) {
   };
 }
 
+export function createPythonAnalyzer(settings = {}) {
+  return pythonAnalyzer(settings, new Map());
+}
+
+export function createMutationAnalyzer(settings = {}) {
+  return mutationAnalyzer(settings, new Map());
+}
+
 export function createPythonAnalyzers(settings = {}) {
-  return [createPythonAnalyzer(settings), createMutationAnalyzer(settings)];
+  const probes = new Map();
+  return [pythonAnalyzer(settings, probes), mutationAnalyzer(settings, probes)];
 }

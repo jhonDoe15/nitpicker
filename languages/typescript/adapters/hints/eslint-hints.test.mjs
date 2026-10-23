@@ -3,7 +3,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../eslint/normalize.mjs';
-import { eslintMessageWithHint, growthAdviceFor, withoutFatalDirectives } from './eslint-hints.mjs';
+import {
+  eslintMessageWithHint,
+  growthAdviceFor,
+  routedEslintMessage,
+  withoutFatalDirectives,
+} from './eslint-hints.mjs';
 
 const IMMUTABLE = (kind) =>
   `${kind} should have an immutability of at least "ReadonlyDeep" (actual: "Mutable").`;
@@ -221,6 +226,64 @@ describe('eslintMessageWithHint', () => {
     });
   });
 
+  describe('vitest/no-disabled-tests', () => {
+    const ruleId = 'vitest/no-disabled-tests';
+    const hint =
+      '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`.';
+
+    it.each([
+      ['Disabled test', 'a test'],
+      ['Disabled test suite', 'a test suite'],
+    ])('drops the advice to use .todo() instead from "%s"', (head, kind) => {
+      const text = `${head} - if you want to skip ${kind} temporarily, use .todo() instead`;
+
+      expect(eslintMessageWithHint({ ruleId, text, relativePath: 'test/a.test.ts' })).toBe(
+        `${head}${hint}`,
+      );
+    });
+
+    it.each(['Disabled test', 'Disabled test suite', 'Test is missing function argument'])(
+      'adds the route to the short text oxlint reports: "%s"',
+      (text) => {
+        expect(eslintMessageWithHint({ ruleId, text, relativePath: 'test/a.test.ts' })).toBe(
+          `${text}${hint}`,
+        );
+      },
+    );
+  });
+
+  describe('vitest matchers with a nitpicker message under either lint engine', () => {
+    const relativePath = 'test/a.test.ts';
+    const defined =
+      '`toBeDefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned.';
+
+    it.each([
+      ['Use of `toBeDefined` is disallowed', defined],
+      ['Use of `resolves.toBeDefined` is disallowed', defined],
+      [defined, defined],
+      ['Use of `toHaveLength` is disallowed', 'Use of `toHaveLength` is disallowed'],
+    ])('names the allowed form for no-restricted-matchers: "%s"', (text, expected) => {
+      expect(
+        eslintMessageWithHint({ ruleId: 'vitest/no-restricted-matchers', text, relativePath }),
+      ).toBe(expected);
+    });
+
+    it.each([
+      [
+        'vitest/prefer-called-with',
+        'Suggest using `toBeCalledWith()` or `toHaveBeenCalledWith()`.',
+        'A bare `toHaveBeenCalled()` passes for a call with any arguments. Assert them with `toHaveBeenCalledWith(...)`. An exception fits only when the arguments cannot be pinned.',
+      ],
+      [
+        'vitest/require-to-throw-message',
+        'Require a message for "toThrow".',
+        "A bare `toThrow()` passes for any error. Pass the expected message: `toThrow('the message')`. An exception fits only when the message cannot be pinned.",
+      ],
+    ])('replaces the native text of %s', (ruleId, text, expected) => {
+      expect(eslintMessageWithHint({ ruleId, text, relativePath })).toBe(expected);
+    });
+  });
+
   it('offers growth advice for nitpicker/no-throw only', () => {
     expect(growthAdviceFor('nitpicker/no-throw')).toBe(
       'This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
@@ -236,6 +299,43 @@ describe('eslintMessageWithHint', () => {
         relativePath: 'a.ts',
       }),
     ).toBe('Unexpected debugger.');
+  });
+});
+
+describe('routedEslintMessage', () => {
+  const route = (rule) =>
+    `If this is intended, add {"rule":"${rule}","paths":["src/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
+
+  it('ends the message of any rule with the entry that turns it off for the path', () => {
+    expect(
+      routedEslintMessage({
+        ruleId: '@typescript-eslint/no-explicit-any',
+        text: 'Unexpected any.',
+        relativePath: 'src/a.ts',
+      }),
+    ).toBe(`Unexpected any. ${route('@typescript-eslint/no-explicit-any')}`);
+  });
+
+  it('ends the hint of a rule it rewrites with the entry', () => {
+    expect(
+      routedEslintMessage({
+        ruleId: 'vitest/expect-expect',
+        text: 'Test has no assertions',
+        relativePath: 'src/a.ts',
+      }),
+    ).toBe(
+      `Test has no assertions. Call \`expect\` in the test body: asserting helpers do not count, so return the value and \`expect\` it in the test. ${route('vitest/expect-expect')}`,
+    );
+  });
+
+  it('names no entry for a directive eslint reports without a rule', () => {
+    expect(
+      routedEslintMessage({
+        ruleId: 'eslint/unused-disable-directive',
+        text: 'Unused eslint-disable directive',
+        relativePath: 'src/a.ts',
+      }),
+    ).toBe('Unused eslint-disable directive');
   });
 });
 
@@ -271,7 +371,6 @@ describe('withoutFatalDirectives', () => {
 
 describe('hints for the production policy rules', () => {
   const hint = (ruleId, text) => eslintMessageWithHint({ ruleId, text, relativePath: 'src/a.ts' });
-  const ROUTE = 'add an exception for this rule in nitpicker.config.json';
 
   it('names the awaited form instead of the rule wording that recommends .catch', () => {
     const message = hint(
@@ -284,10 +383,10 @@ describe('hints for the production policy rules', () => {
     );
   });
 
-  it('keeps the rule wording of other floating-promise messages and adds the route', () => {
+  it('keeps the rule wording of other floating-promise messages', () => {
     expect(
       hint('@typescript-eslint/no-floating-promises', 'An array of Promises may be unintentional.'),
-    ).toBe(`An array of Promises may be unintentional. ${ROUTE}.`);
+    ).toBe('An array of Promises may be unintentional.');
   });
 
   it.each([
@@ -313,7 +412,7 @@ describe('hints for the production policy rules', () => {
 
   it('names the allowed casing for a naming-convention finding', () => {
     expect(hint('nitpicker/naming-convention', 'Function name `a_b` must match camelCase')).toBe(
-      `Function name \`a_b\` must match camelCase. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE; a schema constant may be PascalCase (\`const Order = z.object(...)\`). If an external API forces the name, ${ROUTE}.`,
+      `Function name \`a_b\` must match camelCase. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE; a schema constant may be PascalCase (\`const Order = z.object(...)\`). An exception fits only when an external API forces the name.`,
     );
   });
 
@@ -336,11 +435,11 @@ describe('hints for the production policy rules', () => {
     expect(hint(ruleId, text)).toContain(expected);
   });
 
-  it('keeps the deprecation text and names the exception route after it', () => {
+  it('keeps the deprecation text and says when an exception fits', () => {
     expect(
       hint('@typescript-eslint/no-deprecated', '`Buffer` is deprecated. Use `Buffer.from`.'),
     ).toBe(
-      `\`Buffer\` is deprecated. Use \`Buffer.from\`. Call the replacement that the deprecation names instead of the deprecated API. If it names none and the API cannot be avoided, ${ROUTE}.`,
+      `\`Buffer\` is deprecated. Use \`Buffer.from\`. Call the replacement that the deprecation names instead of the deprecated API. An exception fits only when it names none and the API cannot be avoided.`,
     );
   });
 
@@ -348,14 +447,14 @@ describe('hints for the production policy rules', () => {
     [
       'curly',
       "Expected { after 'if' condition.",
-      `Expected { after 'if' condition. Wrap the body in braces: \`if (done) { return; }\`. To keep a file as it is, ${ROUTE}.`,
+      "Expected { after 'if' condition. Wrap the body in braces: `if (done) { return; }`.",
     ],
     [
       'no-param-reassign',
       "Assignment to function parameter 'n'.",
-      `Assignment to function parameter 'n'. Declare a new const with another name instead of reassigning the parameter. If the reassignment is deliberate, ${ROUTE}.`,
+      "Assignment to function parameter 'n'. Declare a new const with another name instead of reassigning the parameter. An exception fits only when the reassignment is deliberate.",
     ],
-  ])('names the exception route for %s', (ruleId, text, expected) => {
+  ])('names the allowed form for %s', (ruleId, text, expected) => {
     expect(hint(ruleId, text)).toBe(expected);
   });
 });

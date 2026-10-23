@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+testing {
+    suites {
+        test {
+            useJUnitJupiter('5.11.4')
+        }
+        integrationTest(JvmTestSuite) {
+            useJUnitJupiter('5.11.4')
+            dependencies {
+                implementation project()
+            }
+        }
+    }
+}

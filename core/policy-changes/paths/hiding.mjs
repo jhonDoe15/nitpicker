@@ -1,17 +1,10 @@
-import { globToRegExp } from '../../../shared/glob.mjs';
+import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { isUnder, matcherOf } from '../policy-scope.mjs';
 import { duplicateFolderExclusions } from './duplicate-folders.mjs';
+import { globsCovering, subjectLabel, subjectsOf } from './exceptions/exception-scopes.mjs';
 
 const EXCLUSIONS = 'exclude and layout.excludedGlobs';
-
-export function exceptionPathsByRule(exceptions = []) {
-  const byRule = new Map();
-  for (const { rule, paths } of exceptions) {
-    byRule.set(rule, [...(byRule.get(rule) ?? []), ...paths]);
-  }
-  return byRule;
-}
 
 export function keyedExclusions(config) {
   const layout = resolveLayoutFor(config);
@@ -41,11 +34,12 @@ export function testRootReclassifier(config) {
         );
 }
 
-function globSet(label, [baseGlobs, headGlobs], importable) {
-  const base = baseGlobs.map((glob) => globToRegExp(glob));
-  const head = headGlobs.map((glob) => globToRegExp(glob));
+function globSet({ label, kind }, [baseGlobs, headGlobs], importable) {
+  const base = baseGlobs.map((glob) => globMatcher(glob));
+  const head = headGlobs.map((glob) => globMatcher(glob));
   return {
     label,
+    kind,
     importable,
     hidesInHead: (file) => head.some((matcher) => matcher.test(file)),
     baseHiders: (basePath) =>
@@ -56,9 +50,12 @@ function globSet(label, [baseGlobs, headGlobs], importable) {
 }
 
 function exceptionSets(label, [baseExceptions, headExceptions]) {
-  const base = exceptionPathsByRule(baseExceptions);
-  return [...exceptionPathsByRule(headExceptions)].map(([rule, paths]) =>
-    globSet(`${label} for ${rule}`, [base.get(rule) ?? [], paths], false),
+  return subjectsOf(headExceptions).map((subject) =>
+    globSet(
+      { label: `${label} for ${subjectLabel(subject)}`, kind: 'hidden-exception' },
+      [globsCovering(baseExceptions, subject), subject.paths],
+      false,
+    ),
   );
 }
 
@@ -67,6 +64,7 @@ function testRootSet(baseConfig, headConfig) {
   const head = testRootReclassifier(headConfig);
   return {
     label: 'layout.testRoots',
+    kind: 'hidden-test-root',
     importable: true,
     hidesInHead: (file) => head(file) !== undefined,
     baseHiders: (basePath) => {
@@ -86,7 +84,11 @@ function duplicateFolderSet(baseConfig, headConfig) {
     ({ permanent }) => permanent || baseConfig.duplicates?.skippedFolders === undefined,
   );
   return {
-    ...globSet('duplicates.skippedFolders', [base, head], false),
+    ...globSet(
+      { label: 'duplicates.skippedFolders', kind: 'hidden-duplicates' },
+      [base, head],
+      false,
+    ),
     establishedInBase: matcherOf(established.map(({ glob }) => glob)),
   };
 }
@@ -94,7 +96,7 @@ function duplicateFolderSet(baseConfig, headConfig) {
 export function hidingSets(baseConfig, headConfig, scope) {
   return [
     globSet(
-      EXCLUSIONS,
+      { label: EXCLUSIONS, kind: 'hidden-exclusion' },
       [keyedExclusions(baseConfig), keyedExclusions(headConfig)].map((entries) =>
         entries.map(({ glob }) => glob),
       ),

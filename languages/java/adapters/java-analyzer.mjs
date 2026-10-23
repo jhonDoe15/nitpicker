@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
@@ -12,6 +13,8 @@ const ENTRY_FILES = [
   'languages/java/adapters/java-analyzer.mjs',
   'languages/java/adapters/java-runner.mjs',
 ];
+const ARCHUNIT_DIRECTORY = 'languages/java/gradle/archunit';
+const KOTLIN_PSI_DIRECTORY = 'languages/java/gradle/kotlin-psi';
 const RESOURCE_FILES = [
   'languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs',
   'languages/java/gradle/nitpicker.init.gradle',
@@ -23,8 +26,8 @@ const RESOURCE_FILES = [
   'languages/java/gradle/pmd-test-ruleset.xml',
   'languages/java/gradle/spring-test-ruleset.xml',
   'languages/java/gradle/StructureMetrics.java',
-  'languages/java/gradle/KotlinMetrics.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
+  'languages/java/gradle/kotlin/kotlin-lint.gradle',
   'languages/java/gradle/errorprone/checks.json',
   'languages/java/adapters/overlaps/overlap-pairs.json',
   'languages/java/gradle/errorprone/ErrorProneReport.java',
@@ -35,8 +38,24 @@ const RESOURCE_FILES = [
   'languages/java/messages/spotbugs.json',
 ];
 
+function javaSources(directory, entries) {
+  return entries
+    .filter((entry) => entry.endsWith('.java'))
+    .map((entry) => `${directory}/${entry.replaceAll(path.sep, '/')}`);
+}
+
 function configurationContents() {
-  return importClosure([...ENTRY_FILES, ...RESOURCE_FILES], packageRoot);
+  const kotlinPsi = readdirSync(path.join(packageRoot, KOTLIN_PSI_DIRECTORY), { recursive: true });
+  const archunit = readdirSync(path.join(packageRoot, ARCHUNIT_DIRECTORY), { recursive: true });
+  return importClosure(
+    [
+      ...ENTRY_FILES,
+      ...RESOURCE_FILES,
+      ...javaSources(KOTLIN_PSI_DIRECTORY, kotlinPsi),
+      ...javaSources(ARCHUNIT_DIRECTORY, archunit),
+    ],
+    packageRoot,
+  );
 }
 
 export function configurationFiles() {
@@ -61,7 +80,7 @@ function hashConfiguration() {
   return hash.digest('hex');
 }
 
-const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
+const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt', 'kotlin-source', 'kotlinc'];
 
 export function createJavaAnalyzer({ kotlin = false } = {}) {
   const budget = javaExecutionBudget();
