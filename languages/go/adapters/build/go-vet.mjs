@@ -17,7 +17,7 @@ export function buildFlags(settings = {}) {
 export function vet(context) {
   const command = ['go', 'vet', '-json', ...buildFlags(context.settings), './...'];
   const result = run(context, command, { rule: 'go-vet-failed', accepted: ANY_STATUS });
-  const text = result.stderr ?? '';
+  const text = `${result.stderr ?? ''}\n${result.stdout ?? ''}`;
   if (result.status !== 0 && vetFindings(context.projectRoot, text).length === 0) {
     throw failure({ command, result, rule: 'go-vet-failed' });
   }
