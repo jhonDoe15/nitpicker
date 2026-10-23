@@ -2,7 +2,7 @@ import { RULES_TOOL } from '../tool.mjs';
 import { parseEffect } from './subject.mjs';
 
 const ADVICE =
-  'Append to one list in the loop (`acc.append(item)`, `acc.extend(items)`), build it with a comprehension or `itertools.chain.from_iterable`, or fill one dict or `collections.defaultdict` in the loop (`acc[key] = value`, `acc.update(pairs)`).';
+  'Append to one list in the loop (`acc.append(item)`, `acc.extend(items)`), build it with a comprehension or `itertools.chain.from_iterable`, or fill one dict or `collections.defaultdict` in the loop (`acc[key] = value`, `acc.update(pairs)`). The unpacked form `[*acc, item]` that ruff suggests for `acc + [item]` is a copy too.';
 
 function describe(subject) {
   const { path, fields } = parseEffect(subject);

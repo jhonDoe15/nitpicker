@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createScripts } from '../../test-support/python-script-helpers.mjs';
+import { createProjects } from '../security/runner/run-project.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const { cleanup, outcomes } = createScripts();
+const projects = createProjects();
 afterEach(cleanup);
+afterEach(projects.cleanup);
 
 const code = (...lines) => `${lines.join('\n')}\n`;
 const loop = (before, step) =>
@@ -233,5 +236,32 @@ describe.skipIf(!enabled)('accumulator-copy', () => {
       ['a test file', { file: 'tests/test_a.py', code: loop('acc = []', 'acc = acc + [x]') }, []],
     ]);
     expect(actual).toEqual(expected);
+  });
+});
+
+describe.skipIf(!enabled)('accumulator-copy and ruff', () => {
+  it('drops the unpacking advice of RUF005 where accumulator-copy reports the copy', () => {
+    const { ruff, rules } = projects.analyse(
+      {
+        'acc.py': code(
+          'def f(items: list[int]) -> list[int]:',
+          '    acc: list[int] = []',
+          '    for x in items:',
+          '        acc = acc + [x]',
+          '    return acc',
+          '',
+          '',
+          'def g(items: list[int]) -> list[int]:',
+          '    return items + [0]',
+        ),
+      },
+      { ruff: true },
+    );
+
+    const rows = ruff
+      .filter(({ rule }) => rule === 'RUF005')
+      .map(({ path: file, location }) => `${file}:${String(location?.line)}`);
+    expect(rows).toEqual(['acc.py:9']);
+    expect(rules.filter(({ rule }) => rule === 'accumulator-copy')).toHaveLength(1);
   });
 });

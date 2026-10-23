@@ -15,6 +15,8 @@ CONSTRUCTORS = {
     "dict": "union",
     "set": "union",
 }
+CANDIDATES = (ast.BinOp, ast.Dict, ast.List, ast.Tuple, ast.Set, ast.IfExp)
+RUFF_CONCATENATION = "RUF005"
 OPENERS = {ast.List: "[*{0}, ...]", ast.Tuple: "(*{0}, ...)", ast.Set: "{{*{0}, ...}}"}
 
 
@@ -104,8 +106,7 @@ def accumulator_name(callback):
     return every[0].arg if every else None
 
 
-def reduce_findings(context):
-    found = []
+def reduce_sites(context):
     for node in ast.walk(context.tree):
         if (
             not isinstance(node, ast.Call)
@@ -116,11 +117,17 @@ def reduce_findings(context):
         name = accumulator_name(callback) if callback is not None else None
         container = container_of(node.args[2]) if len(node.args) > 2 else None
         values = returned(callback) if name else []
-        forms = [copy_form(value, name, container) for value in values]
-        form = next(filter(None, forms), None)
-        if form:
-            found.append(finding(context.path, RULE, f"{name}|{form}|reduce", node))
-    return found
+        forms = [(copy_form(value, name, container), value) for value in values]
+        found = next((pair for pair in forms if pair[0]), None)
+        if found:
+            yield node, name, found[0], found[1]
+
+
+def reduce_findings(context):
+    return [
+        finding(context.path, RULE, f"{name}|{form}|reduce", node)
+        for node, name, form, _value in reduce_sites(context)
+    ]
 
 
 def innermost_loop(node, parents):
@@ -134,15 +141,28 @@ def innermost_loop(node, parents):
     return None
 
 
-def stored_outside(name, loop, scope):
-    inside = {id(node) for node in ast.walk(loop)}
+def stored_names(scope, context):
+    def build(_):
+        found = {}
+        for node in own_nodes(scope):
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+                found.setdefault(node.id, []).append(node)
+        return found
+
+    return context.project.memo(("stored-names", context.path, id(scope)), build)
+
+
+def is_inside(node, loop):
+    start = (loop.lineno, loop.col_offset)
+    end = (loop.end_lineno, loop.end_col_offset)
+    return start <= (node.lineno, node.col_offset) <= end
+
+
+def stored_outside(name, loop, scope, context):
     return [
         node
-        for node in own_nodes(scope)
-        if isinstance(node, ast.Name)
-        and node.id == name
-        and isinstance(node.ctx, ast.Store)
-        and id(node) not in inside
+        for node in stored_names(scope, context).get(name, [])
+        if not is_inside(node, loop)
     ]
 
 
@@ -154,13 +174,13 @@ def is_parameter(name, scope):
     return name in {argument.arg for argument in every}
 
 
-def bound_before(name, loop, scope):
-    return bool(stored_outside(name, loop, scope)) or is_parameter(name, scope)
+def bound_before(name, loop, scope, context):
+    return bool(stored_outside(name, loop, scope, context)) or is_parameter(name, scope)
 
 
 def outside_values(name, loop, scope, context):
     values = []
-    for node in stored_outside(name, loop, scope):
+    for node in stored_outside(name, loop, scope, context):
         parent = context.parents.get(id(node))
         values.append(parent.value if isinstance(parent, ast.Assign) else None)
     return values
@@ -182,7 +202,7 @@ def assignment_form(node, loop, scope, context):
             form = copy_form(node.value, target.id, container)
             return (
                 (target.id, form)
-                if form and bound_before(target.id, loop, scope)
+                if form and bound_before(target.id, loop, scope, context)
                 else None
             )
     if isinstance(node, ast.AugAssign) and isinstance(node.op, ast.Add):
@@ -193,10 +213,22 @@ def assignment_form(node, loop, scope, context):
     return None
 
 
-def loop_findings(context):
-    found = []
+def mentions_target(node):
+    if isinstance(node, ast.AugAssign):
+        return isinstance(node.target, ast.Name) and isinstance(node.value, ast.Tuple)
+    if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+        return False
+    name = node.targets[0].id
+    return isinstance(node.value, CANDIDATES) and any(
+        isinstance(n, ast.Name) and n.id == name for n in ast.walk(node.value)
+    )
+
+
+def loop_sites(context):
     for node in ast.walk(context.tree):
-        if not isinstance(node, (ast.Assign, ast.AugAssign)):
+        if not isinstance(node, (ast.Assign, ast.AugAssign)) or not mentions_target(
+            node
+        ):
             continue
         loop = innermost_loop(node, context.parents)
         if loop is None:
@@ -204,8 +236,26 @@ def loop_findings(context):
         scope = enclosing_function(node, context.parents) or context.tree
         pair = assignment_form(node, loop, scope, context)
         if pair is not None:
-            found.append(finding(context.path, RULE, f"{pair[0]}|{pair[1]}|loop", node))
-    return found
+            yield node, pair
+
+
+def loop_findings(context):
+    return [
+        finding(context.path, RULE, f"{pair[0]}|{pair[1]}|loop", node)
+        for node, pair in loop_sites(context)
+    ]
+
+
+def allowances(context):
+    if context.tests:
+        return []
+    sites = [node for node, _ in loop_sites(context)]
+    sites += [value for _node, _name, _form, value in reduce_sites(context)]
+    return [
+        {"rule": RUFF_CONCATENATION, "path": context.path, "line": line}
+        for node in sites
+        for line in range(node.lineno, (node.end_lineno or node.lineno) + 1)
+    ]
 
 
 def check(context):
