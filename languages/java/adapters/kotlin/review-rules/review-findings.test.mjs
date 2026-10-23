@@ -7,6 +7,7 @@ import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../kotlin-options
 import { readKotlinFacts } from './kotlin-facts.mjs';
 import { readKotlinReviewFindings } from './review-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mjs';
+import { SPRING_RULES } from './spring/spring-messages.mjs';
 import {
   call,
   cleanupCall,
@@ -185,6 +186,8 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/ExhaustiveEnumPredicate',
       'pmd/StaticForwardingWrapper',
       'pmd/SingularAndPluralMember',
+      ...SPRING_RULES.map((rule) => `pmd/${rule}`),
+      'pmd/SpringQueryConcatenation',
       'unused-option',
       'kotlin-source/SuspendFunInFinallySection',
       'kotlin-source/ChildCoroutineOutlivesResource',

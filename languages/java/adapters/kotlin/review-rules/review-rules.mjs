@@ -5,6 +5,7 @@ import { CHILD_OUTLIVES_RESOURCE_RULE } from './coroutines/resource-lifetime.mjs
 import { SUSPEND_CLEANUP_RULE } from './coroutines/suspend-cleanup.mjs';
 import { UNUSED_OPTION_RULE } from './main/unused-options.mjs';
 import { REVIEW_TOOL, SOURCE_TOOL } from './review-finding.mjs';
+import { JAVA_ONLY_SPRING_RULE, SPRING_RULES } from './spring/spring-messages.mjs';
 import { SPRING_UNUSED_CONTEXT_RULE } from './tests/spring-context.mjs';
 import { FIXED_SLEEP_RULE } from '../../../messages/wait-advice.mjs';
 import { NEGATIVE_WAIT_RULE } from './tests/test-waits.mjs';
@@ -16,6 +17,8 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   ENUM_PREDICATE_RULE,
   FORWARDING_RULE,
   SINGULAR_PLURAL_RULE,
+  ...SPRING_RULES,
+  JAVA_ONLY_SPRING_RULE,
 ]
   .map((rule) => `${REVIEW_TOOL}/${rule}`)
   .concat(UNUSED_OPTION_RULE)
