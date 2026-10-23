@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
@@ -11,7 +12,7 @@ function existing(entries) {
   return entries.filter((entry) => existsSync(entry));
 }
 
-function runRules({ module, classpaths, libraries, locations }) {
+function runRules({ module, classpaths, libraries, locations, spawn }) {
   const { classes, output } = locations;
   const projectPath = [
     module.outputDirectory,
@@ -25,12 +26,13 @@ function runRules({ module, classpaths, libraries, locations }) {
     mainClass: 'ArchRules',
     args: [output, module.outputDirectory, module.testOutputDirectory],
     cwd: module.basedir,
+    spawn,
     accept: (result) => result.status === 0,
   });
 }
 
 export function runSpringArch(options) {
-  const { module, reportDir, tools, classpaths, pinned, spring } = options;
+  const { module, reportDir, tools, classpaths, pinned, spring, spawn = spawnSync } = options;
   if (!spring) {
     return;
   }
@@ -44,6 +46,7 @@ export function runSpringArch(options) {
     version: pinned.archunit,
     libraries,
     cwd: module.basedir,
+    spawn,
   });
-  runRules({ module, classpaths, libraries, locations: { classes, output } });
+  runRules({ module, classpaths, libraries, locations: { classes, output }, spawn });
 }

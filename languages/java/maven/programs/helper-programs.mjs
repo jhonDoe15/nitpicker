@@ -7,8 +7,8 @@ import { cacheDirectory } from '../maven-tools.mjs';
 
 const PROPERTY_SEPARATOR = ' = ';
 
-function jdkIdentity(tool) {
-  const result = spawnSync(javaCommand('java'), ['-XshowSettings:properties', '-version'], {
+function jdkIdentity(tool, spawn) {
+  const result = spawn(javaCommand('java'), ['-XshowSettings:properties', '-version'], {
     encoding: 'utf8',
   });
   if (result.error !== undefined || result.status !== 0) {
@@ -35,7 +35,7 @@ export function programSources(directory, { recursive = false } = {}) {
     .map((name) => path.join(directory, name));
 }
 
-function cacheKey({ tool, sources, version, root }) {
+function cacheKey({ tool, sources, version, root, spawn }) {
   const digest = createHash('sha256');
   for (const source of sources) {
     if (root !== undefined) {
@@ -43,7 +43,7 @@ function cacheKey({ tool, sources, version, root }) {
     }
     digest.update(readFileSync(source));
   }
-  digest.update(`${version}|${jdkIdentity(tool)}`);
+  digest.update(`${version}|${jdkIdentity(tool, spawn)}`);
   return digest.digest('hex');
 }
 
@@ -58,10 +58,19 @@ function publish(staging, classes) {
   }
 }
 
-export function compiledProgram({ tool, name, sources, version, root, libraries, cwd }) {
+export function compiledProgram({
+  tool,
+  name,
+  sources,
+  version,
+  root,
+  libraries,
+  cwd,
+  spawn = spawnSync,
+}) {
   const cache = cacheDirectory(name);
   mkdirSync(cache, { recursive: true });
-  const classes = path.join(cache, cacheKey({ tool, sources, version, root }));
+  const classes = path.join(cache, cacheKey({ tool, sources, version, root, spawn }));
   if (existsSync(classes)) {
     return classes;
   }
@@ -75,6 +84,7 @@ export function compiledProgram({ tool, name, sources, version, root, libraries,
       classpath: libraries,
       args: sources,
       cwd,
+      spawn,
       accept: (result) => result.status === 0,
     });
   } catch (error) {
