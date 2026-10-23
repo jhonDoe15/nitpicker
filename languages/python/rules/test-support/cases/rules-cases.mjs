@@ -1,6 +1,7 @@
 import { rulesCases } from './define.mjs';
 
 export const RULES_CASES = [
+  ...rulesCases('cancellation', [['cancellation-not-propagated', 'bare `raise`']]),
   ...rulesCases('sql-queries', [['sql-string-formatting', 'query parameters']]),
   ...rulesCases('tls-verification', [['tls-verification-off', 'trust the certificate authority']]),
   ...rulesCases('security-support-rules', [
@@ -48,4 +49,8 @@ export const RULES_CASES = [
   ...rulesCases('network-test', [['network-in-test', 'fake']]),
   ...rulesCases('uncollected-tests', [['uncollected-tests', 'python_files']]),
   ...rulesCases('test-helper-in-source', [['test-helper-in-source', 'tests folder']]),
+  ...rulesCases('task-lifetimes', [['task-outlives-resource', 'around the whole task group']]),
+  ...rulesCases('cleanup-cancellation', [
+    ['unshielded-cleanup-await', 'shielded scope with a deadline'],
+  ]),
 ];
