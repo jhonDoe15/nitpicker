@@ -109,6 +109,7 @@ describe('a build without a project that applies the plugin', () => {
 });
 const PINNED_TOOLS = [
   'pmd',
+  'forbiddenapis',
   'spotbugs',
   'googleJavaFormat',
   'palantirJavaFormat',

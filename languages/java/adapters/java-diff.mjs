@@ -5,7 +5,7 @@ import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/repository/git.mjs';
 import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
-import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
+import { readProjectMoves } from '../../../core/diff/git/patches/project-moves.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
 import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
 import { runGradle } from './gradle-wrapper/gradle-process.mjs';
@@ -19,6 +19,7 @@ import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
+import { javaFindingOptions } from './reporting/finding-options.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
 import { failingTestsOf } from './gradle-reports/failing-tests.mjs';
@@ -33,20 +34,34 @@ import { gradleOptions, gradleStages } from './gradle-wrapper/gradle-stages.mjs'
 
 const MAX_FAILURE_LENGTH = 3500;
 const CLOCK_SLACK_MS = 2000;
+const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache'];
+
+export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
+  return snapshot === 'head' && baselineRoot !== undefined
+    ? [`-Pnitpicker.lintBaseline=${baselineRoot}`]
+    : [];
+}
 
 function assertSucceeded(result, projectRoot, { reportBase, since }) {
   if (result.error === undefined && result.status === 0) {
     return;
   }
-  const detail = condenseFailure(
-    result.stderr?.trim() ? result.stderr : (result.stdout ?? ''),
-    MAX_FAILURE_LENGTH,
-  );
+  const output = result.stderr?.trim() ? result.stderr : (result.stdout ?? '');
+  const detail = condenseFailure(output, MAX_FAILURE_LENGTH);
   const failure =
     result.error ??
     failingTestsOf(projectRoot, { reportBase, since }) ??
     new Error(`Java preset failed in ${projectRoot}: ${detail || 'no diagnostic output'}`);
   throw withGradleLog(failure, result);
+}
+
+function commonArguments({ reportBase, policy, kotlinArguments }) {
+  return [
+    ...GRADLE_FLAGS,
+    `-Pnitpicker.reportDir=${reportBase}`,
+    ...lintBaselineProperties(policy),
+    ...kotlinArguments,
+  ];
 }
 
 function runJavaPreset(
@@ -65,13 +80,7 @@ function runJavaPreset(
   const directory = path.join(reportBase, 'tool-config');
   const since = Date.now() - CLOCK_SLACK_MS;
   withKotlin((kotlinArguments) => {
-    const common = [
-      '--console=plain',
-      '--quiet',
-      '--no-configuration-cache',
-      `-Pnitpicker.reportDir=${reportBase}`,
-      ...kotlinArguments,
-    ];
+    const common = commonArguments({ reportBase, policy, kotlinArguments });
     const stages = gradleStages(common, { projectRoot, initScript, policy, directory });
     for (const stage of stages) {
       const target = gradleTarget({ projectRoot, configured: gradle, args: stage() });
@@ -91,22 +100,6 @@ function withoutReportBase(error, reportBase) {
     : error;
 }
 
-function readOptions(policy = {}) {
-  return {
-    crapLimit: policy.crapLimit,
-    preset: policy.preset ?? 'java',
-    conventions: policy.conventions,
-    fileLimits: policy.fileLimits,
-    exclude: policy.exclude,
-    exceptions: policy.exceptions,
-    testSeconds: policy.testSeconds,
-    testConsoleAllow: policy.testConsoleAllow,
-    javaStyle: policy.javaStyle,
-    baselineRoot: policy.baselineRoot,
-    baseline: { snapshot: policy.snapshot, baselineRoot: policy.baselineRoot },
-  };
-}
-
 function gradleFindings(projectRoot, options, reportBase) {
   const preset = options.policy?.preset ?? 'java';
   const kotlinRun = resolveKotlinRun(projectRoot, options.policy);
@@ -122,7 +115,7 @@ function gradleFindings(projectRoot, options, reportBase) {
     runKotlinDuplicates(projectRoot, duplicates);
   }
   return readJavaFindings(projectRoot, {
-    ...readOptions(options.policy),
+    ...javaFindingOptions(options.policy),
     formatAdvice: kotlinRun?.advice,
     reportBase,
     report,
@@ -159,7 +152,7 @@ function mavenFindings(projectRoot, options) {
     });
   }
   return readModuleFindings(projectRoot, moduleDirs, {
-    ...readOptions(options.policy),
+    ...javaFindingOptions(options.policy),
     reportDirectory: MAVEN_REPORT_DIRECTORY,
   });
 }
@@ -193,6 +186,20 @@ function sourceText(projectRoot, file) {
   return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
 }
 
+function compareAcrossMoves({ repositoryRoot, comparison, projectRelativePath }, findings) {
+  const commits = {
+    repositoryRoot,
+    mergeBaseSha: comparison.mergeBaseSha,
+    headSha: comparison.headSha,
+    projectRelativePath,
+  };
+  return compareFindings({
+    ...findings,
+    baseToHeadRenames: readProjectMoves(commits).files,
+    touchedCode: { changedLines: readChangedLines(commits), isStrictRule: isJavaTouchedRule },
+  });
+}
+
 function collectBothSnapshots({
   repositoryRoot,
   projectRelativePath,
@@ -208,13 +215,19 @@ function collectBothSnapshots({
         policy: { ...policy, snapshot, policyRoot },
       });
     }
-    const headFindings = collectIn(headWorktree, 'head');
-    const baseFindings = withTemporaryWorktree(
-      repositoryRoot,
-      comparison.mergeBaseSha,
-      (baseWorktree) => collectIn(baseWorktree, 'base'),
-    );
-    return { baseFindings, headFindings };
+    return withTemporaryWorktree(repositoryRoot, comparison.mergeBaseSha, (baseWorktree) => {
+      const baseFindings = collectIn(baseWorktree, 'base');
+      const headFindings = collectJavaFindings(policyRoot, {
+        ...options,
+        policy: {
+          ...policy,
+          snapshot: 'head',
+          policyRoot,
+          baselineRoot: path.join(baseWorktree, projectRelativePath),
+        },
+      });
+      return { baseFindings, headFindings };
+    });
   });
 }
 
@@ -233,12 +246,6 @@ export function runJavaDiff({
   const comparison = includeWorkingTree
     ? { ...committed, headSha: captureWorkingTree(repositoryRoot, committed.headSha) }
     : committed;
-  const baseToHeadRenames = readRenameMap({
-    repositoryRoot,
-    mergeBaseSha: comparison.mergeBaseSha,
-    headSha: comparison.headSha,
-    projectRelativePath,
-  });
   const { baseFindings, headFindings } = collectBothSnapshots({
     repositoryRoot,
     projectRelativePath,
@@ -246,18 +253,15 @@ export function runJavaDiff({
     options: { gradle, maven, spawn, initScript },
     policy,
   });
-  const touchedCode = {
-    changedLines: readChangedLines({
-      repositoryRoot,
-      mergeBaseSha: comparison.mergeBaseSha,
-      headSha: comparison.headSha,
-      projectRelativePath,
-    }),
-    isStrictRule: isJavaTouchedRule,
-  };
-  const result = compareFindings({ baseFindings, headFindings, baseToHeadRenames, touchedCode });
+  const result = compareAcrossMoves(
+    { repositoryRoot, comparison, projectRelativePath },
+    { baseFindings, headFindings },
+  );
   const newEnforceable = result.newFindings.filter(
     (finding) => finding.classification === 'enforceable',
   );
-  return { comparison, ...result, newEnforceable, failed: newEnforceable.length > 0 };
+  const failed =
+    newEnforceable.length > 0 ||
+    result.newFindings.some((finding) => finding.classification === 'tool-error');
+  return { comparison, ...result, newEnforceable, failed };
 }

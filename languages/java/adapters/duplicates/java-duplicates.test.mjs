@@ -24,6 +24,15 @@ const ONE_TWO_CLONE = {
     'This code repeats src/main/java/demo/Two.java:5 (13 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/java/demo/One.java or src/main/java/demo/Two.java to "exclude" in nitpicker.config.json.',
   classification: 'enforceable',
   location: { line: 5 },
+  ratchet: {
+    key: 'pair:src/main/java/demo/One.java|src/main/java/demo/Two.java:clone',
+    value: 70,
+    divisible: true,
+    mustKeepUnchangedLines: [
+      { path: 'src/main/java/demo/One.java', startLine: 5, endLine: 17 },
+      { path: 'src/main/java/demo/Two.java', startLine: 5, endLine: 17 },
+    ],
+  },
 };
 
 const BODY = [

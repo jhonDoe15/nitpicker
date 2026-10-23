@@ -1106,7 +1106,7 @@ return
 ]]></value></property></properties>
   </rule>
   <rule name="SpringQueryConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Write the query as constant text (a text block) and pass values as bind parameters; for a list of values use NamedParameterJdbcTemplate or JdbcClient with in (:ids). Joining or formatting values into SQL or JPQL allows injection.">
+        message="Write the query as constant text (a text block) and pass values as bind parameters; for a list of values use NamedParameterJdbcTemplate or JdbcClient with in (:ids). Joining or formatting values into SQL or JPQL allows injection. A column name chosen from a fixed list can be intended.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 let $scope := function($node) {

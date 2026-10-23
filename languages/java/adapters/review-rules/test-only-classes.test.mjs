@@ -81,8 +81,7 @@ describe('readTestOnlyClassFindings', () => {
     expect(summary(findings)).toEqual(['src/main/java/shop/Fixtures.java:3 class:shop.Fixtures']);
     expect(findings[0].message).toBe(
       'Class shop.Fixtures is only used by tests. Move it to the test sources, or use it from production code. ' +
-        'If this is intended, add ' +
-        '{"rule":"coupling/test-only-export","paths":["src/main/java/shop/Fixtures.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Nitpicker cannot see uses loaded by name from a file it does not read, or uses from another build.',
     );
   });
 

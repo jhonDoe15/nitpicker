@@ -1,0 +1,23 @@
+{
+  "description": "A head finding with toolNotRun for a tool that has no such finding on the base means the change broke that tool: it is reported as a new tool-error finding, which the runner turns into a tool error.",
+  "new": [
+    {
+      "tool": "javac",
+      "rule": "lint-not-run",
+      "path": ".",
+      "identity": "lint-not-run",
+      "classification": "tool-error"
+    }
+  ],
+  "resolved": [
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "src/A.java",
+      "identity": "raw:a",
+      "classification": "enforceable"
+    }
+  ],
+  "unchanged": [],
+  "changedMetrics": []
+}

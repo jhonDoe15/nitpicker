@@ -86,9 +86,10 @@ Before you change code other modules use, or fix a bug, read
   never call `System.exit`. A trailing array parameter is varargs (`String... names`).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
-- nitpicker runs its own PMD rules (errorprone, bestpractices and a broad-catch rule) and Google
-  checks. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
-  when `nitpicker.config.json` opts in under `tools`; then read it too.
+- nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
+  security and its own guard rules), forbiddenapis, javac lint and Google checks. A project's
+  `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only when
+  `nitpicker.config.json` opts in under `tools`; then read it too.
 
 ## Errors
 
@@ -110,8 +111,8 @@ Before you change code other modules use, or fix a bug, read
 - Keep classes small: split by responsibility and prefer holding a collaborator to extending one.
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
-- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails, also
-  when the copy has other names and literals: extract a method.
+- Copied code fails (`duplicate-clone`), also when the copy has other names and literals: extract
+  a method; in tests, a helper or one `@ParameterizedTest`.
 
 ## Tests
 

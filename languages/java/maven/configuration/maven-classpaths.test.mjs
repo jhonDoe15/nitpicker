@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { moduleClasspaths, parseDependencyList } from '../maven-project.mjs';
+import { moduleClasspaths, parseDependencyList, usesSpring } from './maven-classpaths.mjs';
 
 describe('parseDependencyList', () => {
-  it('reads scope and file, with classifiers, module names, optional markers and drive letters', () => {
+  it('reads coordinates, scope and file, with classifiers, module names, optional markers and drive letters', () => {
     const listing = [
       '',
       'The following files have been resolved:',
@@ -14,10 +14,34 @@ describe('parseDependencyList', () => {
     ].join('\n');
 
     expect(parseDependencyList(listing)).toEqual([
-      { scope: 'test', file: '/m2/junit-jupiter-api-5.11.0.jar' },
-      { scope: 'test', file: '/work/core/target/test-classes' },
-      { scope: 'compile', file: 'C:\\work\\shared\\target\\classes' },
-      { scope: 'compile', file: '/m2/z-1.0-runtime.jar' },
+      {
+        groupId: 'org.junit.jupiter',
+        artifactId: 'junit-jupiter-api',
+        type: 'jar',
+        scope: 'test',
+        file: '/m2/junit-jupiter-api-5.11.0.jar',
+      },
+      {
+        groupId: 'demo',
+        artifactId: 'core',
+        type: 'jar',
+        scope: 'test',
+        file: '/work/core/target/test-classes',
+      },
+      {
+        groupId: 'demo',
+        artifactId: 'shared',
+        type: 'jar',
+        scope: 'compile',
+        file: 'C:\\work\\shared\\target\\classes',
+      },
+      {
+        groupId: 'demo',
+        artifactId: 'z',
+        type: 'jar',
+        scope: 'compile',
+        file: '/m2/z-1.0-runtime.jar',
+      },
     ]);
   });
 });
@@ -43,5 +67,23 @@ describe('moduleClasspaths', () => {
         'system.jar',
       ],
     });
+  });
+});
+
+describe('usesSpring', () => {
+  const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
+
+  it('is true for spring-context and spring-boot jars on the main compile classpath', () => {
+    expect([
+      usesSpring(classpaths('spring-context-6.2.10.jar')),
+      usesSpring(classpaths('guava.jar', 'spring-boot-3.5.5.jar')),
+    ]).toEqual([true, true]);
+  });
+
+  it('is false for other jars, other Spring modules and no jars', () => {
+    expect([
+      usesSpring(classpaths('spring-web-6.2.10.jar', 'spring-boot-starter.jar.sha1')),
+      usesSpring(classpaths()),
+    ]).toEqual([false, false]);
   });
 });

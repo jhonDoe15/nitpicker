@@ -107,6 +107,12 @@ The aggregate `java` and `kotlin` checks retain their names and require matrix s
 cancelled or unexpectedly skipped matrix cannot turn green. Unrelated PR labels still skip the
 workflows' test jobs as before.
 
+The Java guard integration adds 23 guard cases. The Failsafe cases stay in the existing split
+Maven integration file rather than running the moved copy a second time. The new Gradle guards, Maven CPD and guard-parity
+files have planning weights of 160, 40 and 150 seconds, respectively. These are explicit
+estimates for deterministic assignment until isolated CI module timings are collected; they
+are not measurements of the new shards.
+
 The Kotlin style file test (`kotlin-e2e/style/kotlin-style-files.e2e.test.mjs`, nine cases) was
 gated on the Java flag but selected by neither suite. It runs the init script's two Kotlin style
 tasks against a stand-in Kotlin plugin, so it now sits under `kotlin-e2e/`, is gated on the Kotlin

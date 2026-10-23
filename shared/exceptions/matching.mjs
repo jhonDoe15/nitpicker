@@ -29,6 +29,7 @@ export function functionNameOf(finding) {
 }
 
 export const RENAMED_IDENTITY_PREFIX = 'renamed:';
+const IDENTITY_KIND_PREFIXES = [RENAMED_IDENTITY_PREFIX, 'cpd:'];
 
 const PAIR_END = /:(?:fragment|occurrence):/;
 
@@ -37,9 +38,8 @@ export function clonePartnerPath(finding) {
     return undefined;
   }
   const prefix = `pair:${finding.path}|`;
-  const identity = finding.identity.startsWith(RENAMED_IDENTITY_PREFIX)
-    ? finding.identity.slice(RENAMED_IDENTITY_PREFIX.length)
-    : finding.identity;
+  const kind = IDENTITY_KIND_PREFIXES.find((candidate) => finding.identity.startsWith(candidate));
+  const identity = finding.identity.slice(kind?.length ?? 0);
   if (!identity.startsWith(prefix)) {
     return undefined;
   }

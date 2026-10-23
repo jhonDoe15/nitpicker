@@ -1,0 +1,219 @@
+def pinned = project.ext.nitpickerPinned
+def reportDir = project.ext.nitpickerReportDir
+def relativeToRoot = project.ext.nitpickerRelativeToRoot
+def analysisRoot = project.ext.nitpickerAnalysisRoot
+def analyzedClassDirs = project.ext.nitpickerAnalyzedClassDirs
+def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
+def gradleDirectory = new File(buildscript.sourceFile.parentFile, '../..').canonicalFile
+
+plugins.withId('org.jetbrains.kotlin.jvm') {
+    def relative = relativeToRoot
+    def kotlinSourceDirsOf = { String sourceSet ->
+        def generated = layout.buildDirectory.get().asFile.toPath()
+        def kotlinSourceSet = project.kotlin.sourceSets.findByName(sourceSet)
+        (kotlinSourceSet == null ? [] : kotlinSourceSet.kotlin.srcDirs).findAll {
+            it.exists() && it.toPath().startsWith(projectDir.toPath()) && !it.toPath().startsWith(generated)
+        }.sort()
+    }
+    def kotlinSourceDirs = { kotlinSourceDirsOf('main') }
+    def kotlinFiles = {
+        kotlinSourceDirs().collectMany { dir -> fileTree(dir) { include '**/*.kt' }.files.sort() }.unique()
+    }
+    def detektJdkHome = {
+        def toolchain = project.extensions.findByType(JavaPluginExtension)?.toolchain
+        toolchain != null && toolchain.languageVersion.isPresent()
+            ? project.extensions.getByType(JavaToolchainService).launcherFor(toolchain).get()
+                .metadata.installationPath.asFile.absolutePath
+            : System.getProperty('java.home')
+    }
+    def hasJavaSources = { !(sourceSets.main.java.files + sourceSets.test.java.files).isEmpty() }
+    def hasJavaClasses = { analyzedClassDirs().any { it.exists() && it.list()?.length } }
+    def kotlinFormatter = { nitpickerArgument('nitpicker.kotlin.formatter')?.toString() ?: 'none' }
+    def writeFormatList = { List<String> files ->
+        reportDir.get().asFile.mkdirs()
+        reportDir.get().file('ktfmt.txt').asFile.text = files.unique().sort().collect { it + '\n' }.join('')
+    }
+
+    configurations {
+        nitpickerDetekt { canBeConsumed = false }
+        nitpickerDetektStdlib { canBeConsumed = false }
+        nitpickerKtlint { canBeConsumed = false }
+        nitpickerKtfmt { canBeConsumed = false }
+        nitpickerKotlinCompiler { canBeConsumed = false }
+    }
+    dependencies {
+        nitpickerKotlinCompiler "org.jetbrains.kotlin:kotlin-compiler-embeddable:${pinned.kotlinCompiler}"
+        nitpickerDetekt("io.gitlab.arturbosch.detekt:detekt-cli:${pinned.detekt}:all") {
+            transitive = false
+        }
+        nitpickerDetektStdlib("org.jetbrains.kotlin:kotlin-stdlib:${pinned.detektKotlin}") {
+            transitive = false
+        }
+        nitpickerKtlint("com.pinterest.ktlint:ktlint-cli:${pinned.ktlint}:all") { transitive = false }
+        nitpickerKtfmt("com.facebook:ktfmt:${pinned.ktfmt}:with-dependencies") { transitive = false }
+    }
+
+    configurations.nitpickerKotlinCompiler.incoming.beforeResolve {
+        configurations.nitpickerKotlinCompiler.resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == 'org.jetbrains.kotlin') {
+                details.useVersion(pinned.kotlinCompiler)
+            }
+        }
+    }
+
+    tasks.named('nitpickerPmd') { onlyIf { hasJavaSources() } }
+    tasks.named('nitpickerFormat') { onlyIf { hasJavaSources() } }
+    tasks.named('nitpickerSpotbugs') { onlyIf { hasJavaSources() && hasJavaClasses() } }
+
+    tasks.register('nitpickerDetekt', JavaExec) {
+        group = 'nitpicker'
+        classpath = configurations.nitpickerDetekt
+        mainClass = 'io.gitlab.arturbosch.detekt.cli.Main'
+        ignoreExitValue = true
+        def report = reportDir.map { it.file('detekt.sarif') }
+        def log = new ByteArrayOutputStream()
+        def nitpickerConfig = new File(gradleDirectory, '../detekt/nitpicker-detekt.yml').canonicalFile
+        def validationOff = new File(gradleDirectory, '../detekt/detekt-validation.yml').canonicalFile
+        dependsOn 'compileJava'
+        onlyIf { !kotlinSourceDirs().isEmpty() }
+        doFirst {
+            reportDir.get().asFile.mkdirs()
+            standardOutput = log
+            errorOutput = log
+            def projectConfig = nitpickerArgument('nitpicker.kotlin.detektConfig')
+            def mergedLists = nitpickerArgument('nitpicker.kotlin.detektLists')
+            def libraries = sourceSets.main.compileClasspath.files.findAll {
+                it.exists() && !it.name.startsWith('kotlin-stdlib')
+            }
+            def typeResolutionClasspath = (configurations.nitpickerDetektStdlib.files +
+                analyzedClassDirs().findAll { it.exists() } + libraries)
+                .collect { it.absolutePath }.join(File.pathSeparator)
+            args(['--input', kotlinSourceDirs().join(','),
+                  '--includes', '**/*.kt',
+                  '--report', "sarif:${report.get().asFile.absolutePath}".toString(),
+                  '--base-path', analysisRoot.absolutePath,
+                  '--build-upon-default-config',
+                  '--config', [projectConfig, nitpickerConfig.absolutePath, mergedLists, validationOff.absolutePath]
+                      .findAll { it }.join(','),
+                  '--classpath', typeResolutionClasspath,
+                  '--jdk-home', detektJdkHome()])
+        }
+        doLast {
+            def code = executionResult.get().exitValue
+            if (!(code in [0, 2]) || !report.get().asFile.exists()) {
+                def output = log.toString('UTF-8').trim()
+                throw new GradleException("detekt failed with exit code ${code}: ${output}")
+            }
+        }
+    }
+
+    tasks.register('nitpickerKtlint', JavaExec) {
+        group = 'nitpicker'
+        classpath = configurations.nitpickerKtlint
+        mainClass = 'com.pinterest.ktlint.Main'
+        ignoreExitValue = true
+        def log = new ByteArrayOutputStream()
+        def report = reportDir.map { it.file('ktlint.sarif') }
+        workingDir = analysisRoot
+        onlyIf { kotlinFormatter() == 'ktlint' && !kotlinFiles().isEmpty() }
+        doFirst {
+            reportDir.get().asFile.mkdirs()
+            standardOutput = log
+            errorOutput = log
+            report.get().asFile.delete()
+            args(['--relative', "--reporter=sarif,output=${report.get().asFile.absolutePath}".toString()] +
+                kotlinSourceDirs().collect { "${relative(it)}/**/*.kt".toString() })
+        }
+        doLast {
+            if (executionResult.get().exitValue > 1 || !report.get().asFile.exists()) {
+                throw new GradleException("ktlint failed: ${log.toString('UTF-8').trim()}")
+            }
+        }
+    }
+
+    tasks.register('nitpickerKtfmt', JavaExec) {
+        group = 'nitpicker'
+        classpath = configurations.nitpickerKtfmt
+        mainClass = 'com.facebook.ktfmt.cli.Main'
+        ignoreExitValue = true
+        def changed = new ByteArrayOutputStream()
+        def errors = new ByteArrayOutputStream()
+        workingDir = analysisRoot
+        onlyIf { kotlinFormatter() == 'ktfmt' && !kotlinFiles().isEmpty() }
+        doFirst {
+            standardOutput = changed
+            errorOutput = errors
+            def style = "--${nitpickerArgument('nitpicker.kotlin.ktfmtStyle') ?: 'meta'}-style".toString()
+            def argumentFile = new File(temporaryDir, 'ktfmt.args')
+            argumentFile.text = ([style, '--dry-run'] +
+                (nitpickerArgument('nitpicker.kotlin.editorconfig') == 'true'
+                    ? ['--enable-editorconfig'] : []) +
+                kotlinFiles().collect { relative(it) }).collect { it + '\n' }.join('')
+            args("@${argumentFile.absolutePath}".toString())
+        }
+        doLast {
+            def problems = errors.toString('UTF-8').trim()
+            if (executionResult.get().exitValue != 0 || problems.contains('Error formatting')) {
+                throw new GradleException("ktfmt failed: ${problems}")
+            }
+            writeFormatList(changed.toString('UTF-8').readLines().collect { it.trim() }
+                .findAll { it.endsWith('.kt') })
+        }
+    }
+
+    tasks.register('nitpickerKotlinMetrics') {
+        group = 'nitpicker'
+        dependsOn tasks.named('classes')
+        def metricsSource = new File(gradleDirectory, 'KotlinMetrics.java')
+        doLast {
+            reportDir.get().asFile.mkdirs()
+            def output = reportDir.get().file('kotlin-metrics.json').asFile
+            def roots = kotlinSourceDirs().collect { relative(it) }
+            if (kotlinFiles().isEmpty()) {
+                output.text = '{"functions":[],"files":[]}'
+                return
+            }
+            def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
+            def process = new ProcessBuilder([java, '-Djava.awt.headless=true',
+                    "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(), '-cp',
+                    configurations.nitpickerKotlinCompiler.asPath, metricsSource.absolutePath,
+                    output.absolutePath, analysisRoot.absolutePath] + roots)
+                .directory(projectDir).redirectErrorStream(true).start()
+            def log = process.inputStream.getText('UTF-8')
+            if (process.waitFor() != 0) {
+                throw new GradleException("KotlinMetrics failed: ${log.trim()}")
+            }
+        }
+    }
+
+    tasks.named('nitpickerJava') {
+        dependsOn 'nitpickerDetekt', 'nitpickerKtlint', 'nitpickerKtfmt', 'nitpickerKotlinMetrics'
+        doLast {
+            def directory = reportDir.get().asFile
+            def emptySarif = '{"version":"2.1.0","runs":[]}'
+            [
+                'pmd.sarif'        : emptySarif,
+                'spotbugs.sarif'   : emptySarif,
+                'detekt.sarif'     : emptySarif,
+                'ktlint.sarif'     : emptySarif,
+                'format.txt'       : '',
+                'ktfmt.txt'        : '',
+                'checkstyle.xml'   :
+                    "<checkstyle version=\"${pinned.checkstyle}\"></checkstyle>".toString(),
+            ].each { name, text ->
+                def report = new File(directory, name)
+                if (!report.exists()) {
+                    report.text = text
+                }
+            }
+            def manifestFile = new File(directory, 'manifest.json')
+            def manifest = new groovy.json.JsonSlurper().parse(manifestFile)
+            manifest.sourceRoots = sourceSets.main.java.srcDirs.collect { relative(it) }
+            manifest.kotlin = true
+            manifest.kotlinSourceRoots = kotlinSourceDirs().collect { relative(it) }
+            manifest.kotlinTestSourceRoots = kotlinSourceDirsOf('test').collect { relative(it) }
+            manifest.kotlinFormatter = kotlinFormatter()
+            manifestFile.text = groovy.json.JsonOutput.toJson(manifest)
+        }
+    }
+}

@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
+import { argumentFileToken } from '../builds/lint/javac-options.mjs';
 
 const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
 const TOOL_TIMEOUT_MS = 15 * 60 * 1000;
@@ -22,7 +23,7 @@ const MAVEN_NOISE = [
   /^\[ERROR\] After correcting the problems/u,
   /^\[ERROR\]\s+mvn <args> -rf/u,
 ];
-const JVM_NOISE =
+export const JVM_NOISE =
   /^(?:Picked up (?:JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS)|NOTE: Picked up)/u;
 
 export function mavenTarget({ projectRoot, configured, args, platform }) {
@@ -104,10 +105,6 @@ export function javaCommand(name) {
   return candidate !== undefined && (existsSync(candidate) || existsSync(`${candidate}.exe`))
     ? candidate
     : name;
-}
-
-function argumentFileToken(value) {
-  return `"${String(value).replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
 }
 
 export function runJava({

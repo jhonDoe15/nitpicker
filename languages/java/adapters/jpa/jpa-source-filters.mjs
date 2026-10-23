@@ -47,15 +47,6 @@ export function dropEntityAssociations(log, projectRoot) {
   };
 }
 
-export function withExposureAdvice(finding) {
-  return EXPOSURE_RULES.includes(finding.rule)
-    ? {
-        ...finding,
-        message: `${finding.message}. Copy on the way in and out (List.copyOf, Map.copyOf), or use a record. An exception fits only when it is right here.`,
-      }
-    : finding;
-}
-
 function javaFilesUnder(projectRoot, sourceRoots) {
   return sourceRoots.flatMap((root) => {
     const directory = path.join(projectRoot, root);

@@ -27,7 +27,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     expect(result.failed).toBe(true);
     expect(summarize(result.newEnforceable)).toEqual([
       ...repeated(2, 'archunit no_classes_use_legacy_date Stamp.java'),
-      ...repeated(4, 'errorprone JavaUtilDate Stamp.java'),
+      ...repeated(4, 'forbiddenapis legacy-date-time Stamp.java'),
       ...repeated(3, 'pit mutant-nocoverage Stamp.java'),
     ]);
     expect(

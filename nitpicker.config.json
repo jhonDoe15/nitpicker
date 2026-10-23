@@ -24,6 +24,9 @@
       "core/diff/execution/analyzer-scheduler.mjs",
       "core/diff/execution/test-support/fake-analyzer.mjs",
       "languages/java/adapters/java-runner.mjs",
+      "languages/java/adapters/gradle-reports/gradle-guards.mjs",
+      "languages/java/builds/rulesets/write-rules.mjs",
+      "languages/java/builds/tools/tool-commands.mjs",
       "languages/typescript/adapters/eslint-runner.mjs",
       "languages/typescript/adapters/quality-areas-runner.mjs",
       "languages/typescript/adapters/static-checks-runner.mjs",
@@ -189,7 +192,9 @@
               "languages/java/maven/preset/**",
               "languages/java/maven/__tests__/**",
               "languages/java/maven/errorprone/*.e2e.test.mjs",
-              "languages/java/messages/*.e2e.test.mjs"
+              "languages/java/messages/*.e2e.test.mjs",
+              "languages/java/guards/**/*.e2e.test.mjs",
+              "languages/java/maven/guards/**/*.e2e.test.mjs"
             ],
             "testTimeoutMs": 180000,
             "hookTimeoutMs": 300000

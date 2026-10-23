@@ -21,12 +21,16 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     expect(style(result.newEnforceable)).toEqual(['palantir-java-format format Messy.java']);
     expect(style(result.newFindings)).toEqual(['palantir-java-format format Messy.java']);
   }, 180_000);
-  it('fails a new clone found by jscpd', () => {
+  it('fails a new clone between two files, and the repeated blocks PMD CPD finds inside each copy', () => {
     const result = fixture.diffOf('clone');
 
     expect(result.failed).toBe(true);
     expect(
       summarize(result.newEnforceable.filter((finding) => finding.tool === 'duplicates')),
-    ).toEqual(['duplicates duplicate-clone Left.java']);
+    ).toEqual([
+      'duplicates duplicate-clone Left.java',
+      'duplicates duplicate-clone Left.java',
+      'duplicates duplicate-clone Right.java',
+    ]);
   }, 180_000);
 });

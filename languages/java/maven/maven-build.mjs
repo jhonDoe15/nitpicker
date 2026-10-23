@@ -1,15 +1,16 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { javaCommand, runJava, runMaven } from './maven-command.mjs';
-import { runCheckstyle, runFormat, runPmd, runSpotbugs } from './maven-lint.mjs';
+import { runMaven } from './maven-command.mjs';
+import { runCheckstyle, runFormat, runSpotbugs, runPmd } from './maven-lint.mjs';
+import { runGuards } from './guards/maven-guards.mjs';
+import { runJdeps as runGuardJdeps } from './coupling/maven-jdeps.mjs';
+import { lifecycleArgs, readReactor } from './maven-project.mjs';
 import {
-  lifecycleArgs,
   moduleClasspaths,
   parseDependencyList,
-  readReactor,
   usesSpring,
-} from './maven-project.mjs';
+} from './configuration/maven-classpaths.mjs';
 import {
   archunitMatcher,
   collectTestResults,
@@ -29,8 +30,8 @@ import {
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
-import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
-import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
+import { readPinnedTools } from '../builds/java-build.mjs';
+import { runJdepsMetrics, runStructure } from './metrics/maven-metrics.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
@@ -86,36 +87,6 @@ function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
   });
 }
 
-function runStructure(module, reportDir, spawn) {
-  const roots = module.sourceRoots
-    .filter((root) => existsSync(root))
-    .map((root) => relativeTo(module.basedir, root));
-  runJava({
-    tool: 'StructureMetrics',
-    args: [
-      path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
-      path.join(reportDir, 'structure.json'),
-      path.join(reportDir, 'classes.json'),
-      module.basedir,
-      ...roots,
-    ],
-    cwd: module.basedir,
-    accept: (result) => result.status === 0,
-    spawn,
-  });
-}
-
-function runJdeps(module, reportDir, spawn) {
-  writeJdepsReports({
-    command: javaCommand('jdeps'),
-    cwd: module.basedir,
-    mainDirectory: module.outputDirectory,
-    testDirectory: module.testOutputDirectory,
-    reportDir,
-    spawn,
-  });
-}
-
 function relativeRoots(module, roots) {
   return roots.map((root) => relativeTo(module.basedir, root));
 }
@@ -144,10 +115,8 @@ export function moduleManifest({ module, classpaths, pinned }) {
 }
 
 function readClasspaths(work, module) {
-  return moduleClasspaths(
-    module,
-    parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8')),
-  );
+  const dependencies = parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8'));
+  return { ...moduleClasspaths(module, dependencies), dependencies };
 }
 
 function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
@@ -162,20 +131,22 @@ function withDeclaredSpring(manifest, declared) {
   return { ...manifest, spring, springArch: spring };
 }
 
-function analyzeSources(options) {
-  const { module, reportDir, classpaths, tools, pinned, configs, style, spring, spawn } = options;
+function analyzeSources(context, project) {
+  const { module, reportDir, tools, classpaths, configs, pinned, style, spring, spawn } = context;
   runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn });
   runSpotbugs({ module, reportDir, tools, spawn });
   runErrorProne({ module, reportDir, tools, classpaths, spawn });
   runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, spawn });
   runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn });
   runStructure(module, reportDir, spawn);
-  runJdeps(module, reportDir, spawn);
+  runJdepsMetrics(module, reportDir, spawn);
+  runGuardJdeps(module, reportDir, spawn);
+  runGuards({ module, reportDir, tools, classpaths, spawn }, project);
 }
 
-function analyzeTests(options) {
-  const { module, reportDir, classpaths, tools, pinned, since, spring, springRoles } = options;
-  const { isArchunit, testsRan, spawn } = options;
+function analyzeTests(context, testsRan) {
+  const { module, reportDir, tools, classpaths, pinned, since, spring, isArchunit } = context;
+  const { springRoles, spawn } = context;
   runJacocoReport({
     module,
     reportDir,
@@ -189,19 +160,19 @@ function analyzeTests(options) {
   runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, springRoles, spawn });
 }
 
-function analyzeModule(options) {
-  const { module, classpaths, pinned, since } = options;
+function analyzeModule({ project, ...options }) {
+  const { module, classpaths, since, pinned } = options;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const manifest = withDeclaredSpring(
     moduleManifest({ module, classpaths, pinned }),
     options.spring,
   );
-  const { spring } = manifest;
+  const context = { ...options, reportDir, isArchunit, spring: manifest.spring };
   const testRuntime = classpaths.testRuntime;
   const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
-  analyzeSources({ ...options, reportDir, spring });
-  analyzeTests({ ...options, reportDir, spring, isArchunit, testsRan });
+  analyzeSources(context, project);
+  analyzeTests(context, testsRan);
   writeFileSync(path.join(reportDir, 'manifest.json'), JSON.stringify(manifest));
 }
 
@@ -242,13 +213,11 @@ function missingLauncherVersions(analyzed) {
 }
 
 function extraTools({ modules, analyzed, policy, pinned }) {
+  const spring = analyzed.some(({ classpaths }) => usesSpring(classpaths));
   return [
     ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     ...formatTool(policy.javaStyle, pinned),
-    ...archunitTool(
-      analyzed.some(({ classpaths }) => usesSpring(classpaths)),
-      pinned,
-    ),
+    ...archunitTool(spring, pinned),
   ];
 }
 
@@ -276,6 +245,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
       launcherVersions: missingLauncherVersions(analyzed),
       extraTools: extraTools({ modules, analyzed, policy, pinned }),
     });
+    const project = guardProject(projectRoot, policy, modules);
     for (const { module, classpaths } of analyzed) {
       analyzeModule({
         module,
@@ -284,6 +254,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
         pinned,
         configs,
         since,
+        project,
         spawn,
         style: {
           javaStyle: policy.javaStyle,
@@ -297,4 +268,12 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
+}
+
+function guardProject(projectRoot, policy, modules) {
+  return {
+    projectRoot,
+    baselineRoot: policy.snapshot === 'head' ? policy.baselineRoot : undefined,
+    reactor: modules.map((module) => module.coordinates),
+  };
 }

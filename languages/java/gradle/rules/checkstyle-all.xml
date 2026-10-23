@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<modules>
+    <module name="ConstantName">
+      <property name="format" value="^([A-Z][A-Z0-9]*(_[A-Z0-9]+)*|log|logger)$"/>
+      <message key="name.invalidPattern" value="Constant ''{0}'' must be UPPER_SNAKE_CASE (a logger may be log or logger)."/>
+    </module>
+    <module name="SuppressionXpathSingleFilter">
+      <property name="checks" value="ConstantNameCheck"/>
+      <property name="query" value="//VARIABLE_DEF[./TYPE[./DOT or ./ARRAY_DECLARATOR or ./TYPE_ARGUMENTS or ./IDENT[not(@text = 'String' or @text = 'Integer' or @text = 'Long' or @text = 'Short' or @text = 'Byte' or @text = 'Double' or @text = 'Float' or @text = 'Character' or @text = 'Boolean' or @text = 'BigDecimal' or @text = 'BigInteger' or @text = 'Duration')]]]/IDENT"/>
+    </module>
+</modules>

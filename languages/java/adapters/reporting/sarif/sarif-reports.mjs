@@ -1,10 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import {
-  dropEntityAssociations,
-  dropInheritedVersions,
-  withExposureAdvice,
-} from '../../jpa/jpa-source-filters.mjs';
+import { dropEntityAssociations, dropInheritedVersions } from '../../jpa/jpa-source-filters.mjs';
 import { ingestSarif, prepareSarif } from '../../../../../shared/ingest/sarif.mjs';
 import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.mjs';
 import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
@@ -49,7 +45,7 @@ export function sarifFindings(context) {
     ),
     ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
       tool: 'spotbugs',
-    }).findings.map(withExposureAdvice),
+    }).findings,
   ];
 }
 

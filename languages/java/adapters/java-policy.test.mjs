@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
+import { lintBaselineProperties } from './java-diff.mjs';
 import {
   configureJavaAnalyzer,
   parseJavaRunnerArguments,
@@ -140,10 +141,13 @@ describe('configureJavaAnalyzer', () => {
       'checkstyle',
       'coupling',
       'crap',
+      'dependencies',
       'duplicates',
       'errorprone',
+      'forbiddenapis',
       'google-java-format',
       'jacoco',
+      'javac',
       'palantir-java-format',
       'pit',
       'pmd',
@@ -242,6 +246,17 @@ describe('project tool configs', () => {
     writeFileSync(path.join(root, 'config/pmd/ruleset.xml'), '<ruleset name="edited"/>');
 
     expect(configured.resolveConfigurationHash(root)).not.toBe(before);
+  });
+});
+
+describe('lintBaselineProperties', () => {
+  it('passes the base project root to the head run only', () => {
+    expect(lintBaselineProperties({ snapshot: 'head', baselineRoot: '/base/app' })).toEqual([
+      '-Pnitpicker.lintBaseline=/base/app',
+    ]);
+    expect(lintBaselineProperties({ snapshot: 'base', baselineRoot: '/base/app' })).toEqual([]);
+    expect(lintBaselineProperties({ snapshot: 'head' })).toEqual([]);
+    expect(lintBaselineProperties()).toEqual([]);
   });
 });
 
