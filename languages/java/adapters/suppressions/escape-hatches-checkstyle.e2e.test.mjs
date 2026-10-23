@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { enabled, ofTool, useEscapeHatchProject } from './__tests__/escape-hatches-project.mjs';
+import {
+  enabled,
+  ofTool,
+  useEscapeHatchProject,
+} from '../java-e2e/__tests__/escape-hatches-project.mjs';
 
 describe.skipIf(!enabled)('Java preset Checkstyle escape hatch', () => {
   const project = useEscapeHatchProject();

@@ -7,7 +7,12 @@ import {
   kotlinPolicy,
   removeProject,
 } from '../test-support/kotlin-e2e-project.mjs';
-import { BANNED_FILES, EXPECTED_BANNED, GUARD_ROOT, summary } from './kotlin-guard-data.mjs';
+import {
+  BANNED_FILES,
+  EXPECTED_BANNED,
+  GUARD_ROOT,
+  summary,
+} from '../test-support/guards/kotlin-guard-data.mjs';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset source guard exceptions end to end', () => {
   let project;

@@ -14,6 +14,8 @@ import {
 import {
   GATE_PACKAGES,
   enforceable,
+  pythonExceptionRoute,
+  reportedFindings,
   withoutMutants,
 } from '../test-support/python-gate-support.mjs';
 
@@ -64,17 +66,17 @@ describe.skipIf(!pythonE2eEnabled)('Python preset one-way rules and exceptions e
       'python-rules no-inline-suppression rules.py',
       'ruff PTH118 rules.py',
     ]);
-    expect(/Declare records as `@dataclass\(frozen=True\)`/.test(result.text), result.text).toBe(
-      true,
-    );
-    expect(/Use `pathlib\.Path`/.test(result.text), result.text).toBe(true);
-    expect(/Remove the comment and fix the code/.test(result.text), result.text).toBe(true);
-    expect(
-      /add \{"rule":"PTH118","paths":\["src\/demo\/rules\.py"\],"reason":"..."\} to "python\.exceptions" in nitpicker\.config\.json\./.test(
-        result.text,
-      ),
-      result.text,
-    ).toBe(true);
+    expect(reportedFindings(result.text)).toEqual([
+      'python-rules/frozen-dataclass src/demo/rules.py:6: Dataclass Order is not frozen. ' +
+        'Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. ' +
+        pythonExceptionRoute('frozen-dataclass', 'src/demo/rules.py'),
+      'python-rules/no-inline-suppression src/demo/rules.py:14: Inline suppression `# noqa: E501`. ' +
+        'Remove the comment and fix the code. ' +
+        pythonExceptionRoute('no-inline-suppression', 'src/demo/rules.py'),
+      'ruff/PTH118 src/demo/rules.py:11: `os.path.join()` should be replaced by `Path` with `/` operator. ' +
+        'Use `pathlib.Path`: `Path(a) / b`, `path.read_text()`, `path.exists()`. ' +
+        pythonExceptionRoute('PTH118', 'src/demo/rules.py'),
+    ]);
   });
   it('fails the exceptions that hide checked code until a person accepts exactly those loosenings', () => {
     const result = gate(project, 'excepted');
