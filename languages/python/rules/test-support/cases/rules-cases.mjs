@@ -34,6 +34,8 @@ export const RULES_CASES = [
   ...rulesCases('test-without-assertion', [
     ['test-without-assertion', 'assert result == expected'],
   ]),
+  ...rulesCases('conditional-assertion', [['conditional-assertion-in-test', 'parametrize']]),
+  ...rulesCases('switched-off-test', [['switched-off-test', 'real condition']]),
   ...rulesCases('catch-log-without-exception', [
     ['catch-log-without-exception', 'logger.exception'],
   ]),

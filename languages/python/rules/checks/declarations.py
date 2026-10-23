@@ -3,6 +3,7 @@ import os
 import re
 
 from checks.common import dotted_name, finding, is_boundary_path
+from syntax.walk import IterativeVisitor
 
 DEFAULT_BOUNDARY_ROOTS = ["pydantic", "pydantic_settings"]
 MIN_CLASS_CONSTANTS = 2
@@ -71,8 +72,9 @@ def is_plain_class(node):
     return not bases and not node.keywords and not node.decorator_list
 
 
-class Declarations(ast.NodeVisitor):
+class Declarations(IterativeVisitor):
     def __init__(self, context):
+        super().__init__()
         self.path = context.path
         self.aliases = context.aliases
         self.scope = []
@@ -89,8 +91,8 @@ class Declarations(ast.NodeVisitor):
     def visit_scope(self, node):
         self.scope.append(node.name)
         self.check_no_type_check(node)
+        self.on_exit(self.scope.pop)
         self.generic_visit(node)
-        self.scope.pop()
 
     def check_no_type_check(self, node):
         if any(
@@ -123,8 +125,8 @@ class Declarations(ast.NodeVisitor):
         self.check_no_type_check(node)
         self.check_dataclass(node, subject)
         self.check_class_constants(node, subject)
+        self.on_exit(self.scope.pop)
         self.generic_visit(node)
-        self.scope.pop()
 
     def check_class_constants(self, node, subject):
         constants = string_constants(node.body)
