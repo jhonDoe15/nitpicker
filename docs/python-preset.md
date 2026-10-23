@@ -148,20 +148,36 @@ set `python.sourceRoots`.
 Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, the keys shared by all languages,
 `thresholds` (`crapLimit`, enforced from slice 3, the file limits `fileLines`, `testFileLines`,
 `lineLength` and `folderFiles`, the size limits `folderDepth`, `classMethods`, `classFields` and
-`inheritanceDepth`, and the test time limits `unitTestSeconds` and `integrationTestSeconds`), `exclude` (findings under the globs are dropped) and
+`inheritanceDepth`, and the [slow test](#slow-tests) budgets `unitTestSeconds` and
+`integrationTestSeconds`), `testConsole` (see [new console output](#new-console-output-from-tests)), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
-below. `layout` and `testConsole` stay a config error with this preset until it runs the rules
-that read them (`shared-used-by-one-feature`, `test-console-output`). The
+below. `layout` stays a config error with this preset: the Python preset has no feature layout
+(no `features/` and `shared/` folders to read), so it does not register the one rule that reads it,
+`shared-used-by-one-feature`. The
 top-level `exceptions` is accepted only for the rules shared with the other languages: the file and size limits
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
 `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), the function rules
 (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
 `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`,
-`mutant-survived`, `mutant-nocoverage`, which take `function` to name one function), whose messages
-name it, and the [dependency and repository checks](usage.md#dependency-and-repository-checks); the
+`mutant-survived`, `mutant-nocoverage`, which take `function` to name one function), and
+`unused-option`, whose messages name it, the
+[dependency and repository checks](usage.md#dependency-and-repository-checks) and the
+[fact rules](../spec/checks.md#custom-rules) every preset shares (`test-console-output`, `test-only-export`, `duplicate-definition`,
+`exported-name-collision`, `sibling-copy-edit`, `doc-comment-content`), which the Python preset runs over its facts scan; the
 Python equivalent of `exceptions` for every other rule is `python.exceptions`. Each list rejects the
 other's rules (a function or file rule in `python.exceptions`, or a ruff code in `exceptions`, is a
 config error that names the right list). `python` is an error with any other preset.
+Where each kind of finding is lifted for some paths:
+
+| Findings                                                                                                                    | Lifted by                   |
+| --------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| ruff codes (or a prefix such as `PTH`), mypy codes, pyright and basedpyright `report*` rules                                | `python.exceptions`         |
+| `python-rules` ids (`sleep-in-test`, `forwarding-wrapper`, `no-inline-suppression`, ...)                                    | `python.exceptions`         |
+| one third-party console message                                                                                             | `testConsole.allow`         |
+| `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `test-runtime/slow-test`, `test-console/test-console-output` | top-level `exceptions` only |
+| the fact rules (`facts/test-only-export`, `facts/doc-comment-content`, `facts/sibling-copy-edit`, ...)                      | top-level `exceptions` only |
+| the size limits (`folder-depth-limit`, `class-methods-limit`, ...) and `python-rules/unused-option`                         | top-level `exceptions` only |
+| the function rules (`function-lines-limit`, `crap-score-limit`, `mutant-survived`, ...)                                     | top-level `exceptions` only |
 
 ```json
 {
@@ -443,29 +459,40 @@ through the real tools.
   check that fails on a file is reported as a `python-rules/rules-check-failed` tool error naming the check
   and the file; that file has no findings of that check, and every other check and file still runs.
 
-| Allowed form                                   | Banned form                                                                  | Rule                                                       |
-| ---------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `pathlib.Path`                                 | `os.path`, `open()`, `os.getcwd()`, ...                                      | ruff `PTH*`                                                |
-| f-strings                                      | `"...".format()`, `"..." % x`, `"".join` of a fixed list                     | ruff `UP031`, `UP032`, `FLY002`                            |
-| `None` default, value built in the function    | a mutable default argument                                                   | ruff `B006`                                                |
-| catch and handle a specific error, or re-raise | bare `except:`, `except Exception:`                                          | ruff `E722`, `BLE001`                                      |
-| re-raise, return a failure value or a default  | `except X:` that only passes, continues, logs, returns or assigns a constant | `swallowed-exception`                                      |
-| `contextlib.suppress(SpecificError)`           | `contextlib.suppress(Exception)`, `BaseException` or no argument             | `blind-suppress`                                           |
-| explicit imports                               | `from module import *`                                                       | ruff `F403`                                                |
-| `logging` (or the project's structlog, loguru) | `print`, `pprint`                                                            | ruff `T201`, `T203`                                        |
-| log the caught exception itself                | logging only `str(error)` or an f-string with it in an `except`              | `catch-log-without-exception`                              |
-| a test that asserts                            | a test function with no assertion                                            | `test-without-assertion`                                   |
-| `@dataclass(frozen=True)`                      | `@dataclass` without `frozen=True`, outside tests                            | `frozen-dataclass`                                         |
-| the validation library in `adapters/` only     | importing pydantic (or the declared library) elsewhere                       | `pydantic-boundary`                                        |
-| an `enum.Enum` / `StrEnum`                     | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
-| fixing the code                                | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                         | `no-inline-suppression`                                    |
-| annotated code the checkers read               | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside                     | `no-type-check`, `not-type-checking`, `stub-beside-source` |
+| Allowed form                                    | Banned form                                                                  | Rule                                                       |
+| ----------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `pathlib.Path`                                  | `os.path`, `open()`, `os.getcwd()`, ...                                      | ruff `PTH*`                                                |
+| f-strings                                       | `"...".format()`, `"..." % x`, `"".join` of a fixed list                     | ruff `UP031`, `UP032`, `FLY002`                            |
+| `None` default, value built in the function     | a mutable default argument                                                   | ruff `B006`                                                |
+| catch and handle a specific error, or re-raise  | bare `except:`, `except Exception:`                                          | ruff `E722`, `BLE001`                                      |
+| re-raise, return a failure value or a default   | `except X:` that only passes, continues, logs, returns or assigns a constant | `swallowed-exception`                                      |
+| `contextlib.suppress(SpecificError)`            | `contextlib.suppress(Exception)`, `BaseException` or no argument             | `blind-suppress`                                           |
+| explicit imports                                | `from module import *`                                                       | ruff `F403`                                                |
+| `logging` (or the project's structlog, loguru)  | `print`, `pprint`                                                            | ruff `T201`, `T203`                                        |
+| log the caught exception itself                 | logging only `str(error)` or an f-string with it in an `except`              | `catch-log-without-exception`                              |
+| a test that asserts                             | a test function with no assertion                                            | `test-without-assertion`                                   |
+| `@dataclass(frozen=True)`                       | `@dataclass` without `frozen=True`, outside tests                            | `frozen-dataclass`                                         |
+| the validation library in `adapters/` only      | importing pydantic (or the declared library) elsewhere                       | `pydantic-boundary`                                        |
+| an `enum.Enum` / `StrEnum`                      | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
+| fixing the code                                 | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                         | `no-inline-suppression`                                    |
+| annotated code the checkers read                | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside                     | `no-type-check`, `not-type-checking`, `stub-beside-source` |
+| a docstring that says what the name cannot      | a docstring that restates the name, or over 5 lines                          | `doc-comment-content` (top-level `exceptions`)             |
+| one plural input, a one-element list            | optional `tag` beside optional `tags: list[...]`                             | `singular-and-plural-field`                                |
+| `match` or `if`/`elif` ending in `assert_never` | `x == E.A or x == E.B` over some members of an enum                          | `exhaustive-enum-predicate`                                |
+| calling (or importing) the target directly      | a module-level function that only forwards to another                        | `forwarding-wrapper`                                       |
+| a parameter some real call passes               | an optional parameter (with a default) that no call passes                   | `unused-option`                                            |
 
 Details that are decisions rather than the table:
 
-- `frozen-dataclass` and `pydantic-boundary` do not apply to test files (a `tests` or `test`
-  directory, `test_*.py`, `*_test.py`, `tests.py`, `conftest.py`), where fakes mutate and tests exercise the
-  adapters. `frozen=True` must be the literal `True`.
+- `frozen-dataclass` and `pydantic-boundary` do not apply to test files, where fakes mutate and
+  tests exercise the adapters. Test files are the same everywhere in this preset: `test_*.py`,
+  `*_test.py`, `conftest.py`, the project's pytest `python_files`, Django's `tests.py`,
+  `tests_*.py` and `*_tests.py` in a Django project only, anything under a `tests` or `test`
+  directory at any depth, and anything under a `testing` directory at the project root (next to
+  `src/` or the package). A `testing` package inside the package (`shop/testing/`, like
+  `numpy.testing`) is shipped code and is checked as production (`isTestFile` in
+  `configuration/pytest/collection-options.mjs`, with `TOP_LEVEL_TEST_DIRECTORIES` from
+  `execution/python-project.mjs`; the rules script gets the list of test files from it). `frozen=True` must be the literal `True`.
 - The validation library is the one the project declares, read from `pyproject.toml` (PEP 621
   `dependencies`, `optional-dependencies` and `dependency-groups`; Poetry, uv and pdm tables),
   `requirements*.txt` (also under `requirements/`), `setup.cfg`, the literal `install_requires` and
@@ -608,7 +635,7 @@ are listed at the end.
 | TLS                      | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                    | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                 |
 | Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                    | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                            |
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                 | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
-| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
+| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
 
 Details that are decisions rather than the table:
@@ -630,7 +657,8 @@ Details that are decisions rather than the table:
   `composition_root`, `settings`, `config` or `conf` folder; an alembic `env.py` (a `script.py.mako`
   beside it); a file that defines `create_app`, `make_app`, `build_app` or a similar factory; a
   module named by a script or plugin entry point of `pyproject.toml` (`[project.scripts]`,
-  `[project.entry-points]`, poetry, flit) or `setup.cfg`; or a file matched by `python.entryPoints`.
+  `[project.entry-points]`, poetry scripts and plugins, flit), `setup.cfg` or `setup.py`; or a file
+  matched by `python.entryPoints`.
   Nothing under a `domain` folder is a composition root.
 - `shell-command` reports running a command through a shell: `shell=True` or a `shell=` value that
   is not a literal (also from `**{"shell": True}`), a list starting with `sh`, `bash`, `cmd`,
@@ -829,9 +857,34 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `pytest.skip()` and `pytest.xfail()` without a message, `@unittest.skip*` and
   `@unittest.expectedFailure` without a reason, `self.skipTest()` and `raise SkipTest` without a
   message, and a test that opens with `if condition: return`. The subject names the form, so the
-  message says which one to fix. `sleep-in-test` ignores
-  `asyncio.sleep(0)` and tests that patch the sleep or freeze the clock; it also follows the
-  project's own helpers that call `time.sleep`. `real-clock-in-test` and `random-in-test` skip a
+  message says which one to fix. `sleep-in-test` (TypeScript:
+  `nitpicker/no-fixed-sleep-synchronization`) reports `time.sleep`, `asyncio.sleep`, `trio.sleep`,
+  `anyio.sleep` and `gevent.sleep` with a delay other than a literal `0` (`asyncio.sleep(0)` only
+  yields), also through a star import (`from time import *`), and Playwright's `wait_for_timeout`.
+  It ignores tests that patch the sleep or freeze the clock, and follows the project's own helpers
+  that sleep, star imports included. A poll is the allowed form, so a sleep is not reported in the
+  body of a `while` loop of the same function with a condition, of a `while True` (or `while 1`)
+  loop that reads the clock (`time.monotonic()`, `time.perf_counter()`, `time.time()`,
+  `datetime.now()`, `loop.time()`, trio's or anyio's `current_time()`) as a deadline, or of a `for`
+  loop whose body leaves early under a condition (a `break` of that loop or a `return` inside an
+  `if`, `try` or `match`, as in `for _ in range(50): if ready(): break`). A `while True` loop
+  without a clock read is reported, as in the Java and Kotlin presets, because nothing bounds it. A
+  `for` loop that only repeats the wait, the `else` of a loop and a comprehension are reported, and
+  so is `wait_for_timeout` in a loop, because Playwright's `expect` already polls. As in the Java
+  preset, a sleep in code that runs off the test's path is not reported: a function or lambda
+  handed to a thread or executor (`Thread(target=...)`, `Timer`, `submit`, `run_in_executor`,
+  `asyncio.to_thread`, `start_new_thread`) or used as a mock's `side_effect` (keyword or
+  assignment). `negative-wait-in-test` (Java: `NegativeWaitInTest`; TypeScript: the timeout-based
+  negative assertion of `nitpicker/no-fixed-sleep-synchronization`) reports a wait that the test
+  expects to run out: `assert not event.wait(0.5)`, `lock.acquire(timeout=1) is False`,
+  `assertFalse(x.wait(...))`, and the first call with a delay (`timeout=`, `asyncio.wait_for(x,
+  t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or `assertRaises`
+  of `TimeoutError`, `queue.Empty` or `TimeoutExpired`. Such a test passes only after the full
+  delay. A delay of `0` or `None` is not reported. Only a real wait counts: a `wait`, `wait_for`,
+  `get`, `join`, `acquire`, `result` or `communicate` call, a `timeout` or `fail_after` scope, or a
+  `subprocess.run`-style call with a `timeout`. A call on a name the test binds to a mock (`Mock()`,
+  `MagicMock()`, `patch(...)`, or a name whose `side_effect` or `return_value` it sets) waits for
+  nothing, and `assert not proc.wait(timeout=5)` on a `Popen` checks an exit code of 0. `real-clock-in-test` and `random-in-test` skip a
   file that uses `freezegun`, `time_machine`, a patched clock, a seed or a `random.Random(...)`, and
   look at the fake per test function, not per file. `network-in-test` skips files that use
   `responses`, `respx`, `requests_mock` and similar or patch the client, and tests under
@@ -849,6 +902,207 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - Deprecation: mypy runs with `--enable-error-code deprecated` when it is version 1.14 or later (the
   code does not exist before), and the generated pyright config sets `reportDeprecated` to
   `error`, so using an API marked `@deprecated` is a finding in each checker.
+
+### Rules from code review
+
+These carry over checks the TypeScript preset added from review findings, with the same decisions
+where Python allows it. Each message names the allowed form and the `python.exceptions` entry that
+lifts the rule for some paths. The per-file rules live in `languages/python/rules/review/`
+and the project-wide ones, which resolve imports across files, in `review/project/`. The
+TypeScript `nitpicker/no-fixed-sleep-synchronization` check is `sleep-in-test` above.
+`singular-and-plural-field`, `exhaustive-enum-predicate` and `forwarding-wrapper` check production
+sources only, never test files, as in TypeScript (its production scope) and Java (main sources); a
+test helper that forwards, a fixture factory with `tag` and `tags`, or a test that compares a few
+members is not reported.
+
+- `doc-comment-content` (TypeScript: the `no-comments` doc-comment checks), the shared rule the
+  facts scan feeds; it replaces the earlier `restating-docstring` and `long-docstring` rules, and a
+  `python.exceptions` entry that still names either is a config error that says to move it to the
+  top-level `exceptions` as `doc-comment-content`. Findings have the tool `facts` and the identity
+  `doc-comment:<qualified name>:restating` or `:long`, so a growing docstring keeps its identity.
+  The Python preset does not ban comments or docstrings; only these two contents are checked, on
+  the docstring of every function, method and class (not modules) of production code; test files
+  are left alone, as TypeScript test files are, where a docstring that names what the test checks
+  is expected. A docstring restates the name
+  when every word of its description, apart from the filler words of the shared rule (`the`,
+  `returns`, `function`, `method`, `class`, ...), is a word of the name or a plural, `-ed` or `-ing`
+  form of one (`load_users`: "Returns the loaded user."), and nothing else in the docstring says
+  more: a section, field or example with text keeps it. Every preset that runs the rule reads tags
+  the same way: a JSDoc `@param id the account`, `@returns the login` or `@throws {E} when ...` with
+  text keeps a restating summary too, while a tag with only a name or a type (`@param {string} id`)
+  does not. PEP 257 and pydocstyle ask every docstring for a summary line, so a docstring whose
+  `Args:` or `Returns:` section carries the information cannot drop the summary that restates the
+  name, and reporting it would leave no allowed form. The description ends at the first
+  `:param`-style field, Google section (`Args:`, `Returns:`, `Raises:`, `Examples:`, ..., also a
+  single-line one such as `Returns: the id`, `Raises ValueError: ...` or `Note: ...`) or numpy
+  section (a title over a `---` line). A docstring whose description has more than 5 non-empty
+  lines is reported with its count. As in TypeScript, bullet items and the body of a directive such
+  as `.. note::` count; only code examples do not: a reST literal block after a line ending in `::`,
+  the body of a code directive (`.. code-block::`, `.. code::`, `.. sourcecode::`, `.. doctest::`,
+  `.. testcode::`, `.. testoutput::`), fenced code, and a doctest block (`>>>` lines up to the next
+  blank line). The version directives (`.. versionadded::`, `.. versionchanged::`,
+  `.. versionremoved::`, `.. deprecated::`) and their bodies do not count either, like JSDoc's
+  `@since` and `@deprecated`, and keep a restating summary when they have text.
+- `sibling-copy-edit`, the shared rule over the facts of both checkouts: on the head run of a
+  change the facts step also scans the base checkout, and a module-level function or class of at
+  least 20 tokens that the change edits so that it drifts from a same-named copy in another module,
+  while that copy is left as it was, is reported. A file the change moves is matched to its base
+  path through the moves file the head run receives. Copies are compared within one top-level
+  package (`src/shop`, or each Django app), as TypeScript compares within one workspace package, and
+  a name a framework requires (`Command`, `Migration`, `Meta`, `Config`), every definition of a
+  Django convention module (`admin.py`, `apps.py`, `urls.py`, `signals.py`, `settings`,
+  `wsgi.py`, `asgi.py`, `templatetags/`, `management/commands/`) and an entry point are never
+  compared.
+- `test-only-export`, `duplicate-definition` and `exported-name-collision` read the same scan. A
+  module Django loads by convention (the list above, in a project with `manage.py` or a Django
+  dependency) and its names are production code; so is what a migration, a settings string
+  (`INSTALLED_APPS`, `MIDDLEWARE`, any dotted path such as `"shop.models.upload_to"`) or
+  `importlib.import_module("app.plugins.csv")` names, and every module of a package an f-string
+  such as `f"app.plugins.{name}"` loads. Migrations are scanned for those references only, never
+  compared as copies. `@overload` stubs are folded into the implementation, as TypeScript folds
+  overload signatures, so two stores with the same overloads and different bodies are no copies.
+  An import inside an `if`, `try` or function (a platform gate, an `ImportError` fallback, a local
+  import) is an alternative implementation, not a collision, as a `require` in a branch is in
+  TypeScript; it still counts as a use.
+- `singular-and-plural-field` (TypeScript: `nitpicker/no-singular-and-plural-prop`): an optional
+  `tag: T` beside an optional `tags` whose element type is `T` (`list`, `Sequence`, `set`,
+  `frozenset`, `Iterable`, `tuple[T, ...]` and the `typing` names; `Optional`, `| None`,
+  `NotRequired` and `Annotated` are looked through; `-es` and `-ies` plurals count, and a name with
+  two plural forms, such as `indexes` and `indices`, is reported once). Optional means a default
+  value in a `@dataclass` (also pydantic's), an attrs class (`@define`, `@frozen`, `@mutable` from
+  `attrs` or `attr`, `@attr.s`), a pydantic `BaseModel` or `BaseSettings` and a `NamedTuple`,
+  `total=False` or `NotRequired` in a `TypedDict`, and a default in a function's parameters. A
+  class whose base is a project class of one of those kinds counts too (followed through imports,
+  up to 10 bases deep). A value that only builds the field is not a default: `Field(...)` or
+  `Field(description=...)` without a default, `field(metadata=...)` and `attr.ib()` without
+  `default`, `default_factory` or `factory` leave the field required. An unannotated
+  `x = attr.ib(default=...)` of an attrs class is a field too, typed by its `type=` argument; two
+  untyped ones are compared by name alone. Unannotated parameters are not compared. Common irregular plurals of the last word
+  count (`child`/`children`, `index`/`indices`, `person`/`people`, `sub_index`/`sub_indices`), and
+  a string annotation (`tags: "list[str]"`) is read as the annotation it spells.
+- `exhaustive-enum-predicate` (TypeScript: `nitpicker/exhaustive-union-predicate`): an `or` chain of
+  `==` or `is`, an `and` chain of `!=` or `is not`, or an `in` / `not in` tuple, list or set, that
+  compares one plain reference (`status`, `self.status`) with two or more distinct members of one
+  project enum, or with values of a `Literal` the parameter is annotated with. A project enum is a
+  class of the project, nested ones included (`Order.Kind.A`), that derives from `Enum`, `IntEnum`,
+  `StrEnum` or `ReprEnum`, directly or through project base classes, resolved through imports, with
+  at least 3 members. `Flag` and `IntFlag` enums, also through a base, are not checked, since their
+  members combine. The `Literal` is written in the annotation or is an alias reached by name,
+  through imports and re-exports or as a module attribute (`st.Mode`), also inside `Optional`,
+  `Annotated` or a string annotation. Only a value is checked (a `return`, an assignment, an
+  augmented assignment, a lambda body, also inside `not`, a conditional expression or another
+  `and`/`or`), never an `if` or `while` condition, and not in a function that returns `TypeGuard`
+  or `TypeIs`. A method of the enum itself may list its own members (`def is_early(self): return
+  self in (Stage.A, Stage.B)`), like the boolean each constant declares in the Java preset. Only a
+  list of some of the members fails, as in the TypeScript and Java presets, because a member added
+  later falls into the default silently; a list of every member is not reported. An alias
+  (`DEFAULT = A`, or a second name with the value of an earlier member) is not a member of its own.
+  Enums from libraries are not checked. The allowed form is a `match` with `case _:
+  assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(value)`.
+- `forwarding-wrapper` (TypeScript: `nitpicker/no-forwarding-wrapper`): an undecorated
+  module-level function whose body (after a docstring) is `return target(...)`, or `return await
+  target(...)` in an `async def`, passing its own parameters in order (by position or as
+  `name=name`, `*args` and `**kwargs` as spreads, keyword-only ones as `name=name`), where `target`
+  is a single undecorated function of the project (same module, imported or reached through a
+  module) with the same parameter names, kinds (positional-only, positional or keyword,
+  keyword-only), annotations and defaults, the same return annotation, and the same `async`. A
+  plain function that returns an `async` target's coroutine is not a wrapper. Unannotated
+  functions, methods and library targets are not checked. The message says to call the target
+  directly, or to import or bind it under the old name.
+- `unused-option` (TypeScript: the same rule of the `structure` check, with the same message and
+  the same top-level `exceptions` route): an option nobody sets. TypeScript judges the properties
+  of the options object of an exported function; Python has keyword parameters with defaults
+  instead, so it judges a parameter with a default of an undecorated public module-level function
+  in production code (no leading underscore, and listed in `__all__` when the module assigns it a
+  literal list once) that no call passes, by keyword, by position, or through `*args` (positional
+  parameters) or `**kwargs` (all). Calls are resolved
+  through imports, aliases, module attributes and package re-exports (`from .pricing import total`
+  in an `__init__.py`), using the module names the coupling check uses. A function nothing calls is
+  not judged, nor one used as a value (passed, stored, decorating), one a star import exposes, one
+  called from an `if __name__ == "__main__":` block or a `__main__.py`, or one an entry point
+  names: `[project.scripts]`, `[project.gui-scripts]`, any `[project.entry-points.<group>]`,
+  `[tool.poetry.scripts]`, `[tool.poetry.plugins.<group>]` and `[tool.flit.scripts]`, the
+  `[options.entry_points]` of `setup.cfg`, and the `name = module:function` strings of `setup.py`
+  (all read once by `rules/libraries/package-facts.mjs`, which never runs `setup.py`; entry points
+  built at run time are not seen). Tests do not count as callers, unless the project is a
+  published package (a `[project]` or poetry `name` with a `[build-system]` table, whose missing
+  `build-backend` means setuptools as PEP 517 says, and no `package-mode = false`, a `setup.cfg` `[metadata] name`, or a `setup.py` whose `setup()` gets a
+  `name`, in each case without a `Private :: Do Not Upload` classifier): then its own tests count,
+  as in the TypeScript preset. `setup.cfg` is read leniently, as for the pytest settings, so a
+  duplicated key in another tool's section is no error; a project file that exists but cannot be
+  read (a folder named `setup.cfg`) fails the run and names the file. The subject is
+  `function.parameter`, so the finding is new only when the change adds the parameter or removes
+  its last caller.
+
+A file with an expression too deep for Python's recursion limit (a sum of 900 terms) does not stop
+the run: the checks that fail on it are skipped for that file and reported as a descriptive
+`python-rules/rules-too-deep` note that does not fail the gate. A file too deep for `ast.parse`
+itself (a sum of tens of thousands of terms) gets the same note, saying every check skipped it.
+
+### Slow tests
+
+`test-runtime/slow-test` fails a test the change adds or edits when it takes more than 5 s as a unit
+test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
+`thresholds.integrationTestSeconds`); [Runner parity](#runner-parity) says how pytest and unittest
+runs are timed and which tests count as edited. A shared fixture that a function fixture or the test
+itself sets up through `request.getfixturevalue` is not charged to the test, and a function fixture
+that another one requests counts once. An inherited test is reported at the file and line where it
+is defined.
+
+### New console output from tests
+
+- **Rule.** `test-console-output` (as for [TypeScript](usage.md#console-output-from-tests)) fails a
+  change when a pytest test prints a message the base run did not print. The usual cause is work
+  that outlives a test or an error a handler now logs and swallows: a thread or task still running,
+  a resource closed twice, a deprecated call. A message counts when it is written to standard error,
+  logged at `WARNING` or above (through any logger; the exception's type and message are added for
+  `logger.exception`), or raised as a warning (`DeprecationWarning: ...`). Standard output
+  (`print`) never counts, and neither does a log record of a test that takes the `caplog` fixture,
+  because that test asserts on its logs, nor the standard error copy of a record `caplog` captured
+  (a project handler from `dictConfig`, or loguru's default sink), as a mocked console is silent in
+  TypeScript. One record is one message: a logger with its own handler on standard error is reported
+  once, from standard error, also in a test that takes `capsys`, and so is a record that reaches
+  standard error a second way (a `QueueListener`, a stream opened on `/dev/stderr`, a handler that
+  writes with `click.echo(err=True)`, loguru records passed on to `logging`). A log call whose
+  message cannot be formatted is left to the project's handlers and `logging.raiseExceptions`; the
+  plugin never makes it fail a test. Standard error printed while pytest
+  imports and collects a file is given to that file with no test name; a warning raised then is
+  given to the file the warning points at (its `location`, which can be the production module that
+  warns), or to the project root when that file is outside the project. What a fixture with a
+  wider scope than a function (`session`, `package`, `module`, `class`) logs, prints to standard
+  error or warns while it sets up or tears down is given to the file that defines it (a
+  `conftest.py`, or the test module, with the class name for a fixture defined in a class; a fixture
+  a plugin wraps, such as a `pytest-asyncio` one, by the function under `__wrapped__`), not to
+  the test that happened to run first, so a new test that uses it adds no message. Its warnings
+  stay where pytest recorded them and are only charged to that file: the plugin does not raise
+  them again, so `filterwarnings` entries that name a module keep matching. The TypeScript
+  preset does the same with Vitest, which gives the output of a `beforeAll` hook to its file or
+  suite; Java findings name the module, not the test class, so they do not move either.
+- **Logging.** The plugin does not add a handler: it reads each record as a logger hands it to its
+  handlers, so `logging.basicConfig` in a `conftest.py` or at import still configures the root
+  logger, and `dictConfig` or `basicConfig(force=True)` cannot remove it.
+- **Matching.** The same as TypeScript, with the same code: a stderr traceback is one message
+  without its frames and source lines, numbers, paths, times and ids are normalized, each message is
+  reported once per test file, and a message that differs from a base message by one random-looking
+  word matches it. `testConsole.allow` drops a third-party message the project cannot fix
+  (`{ "contains": "old client is deprecated", "paths": ["tests/legacy/**"], "reason": "..." }`), and
+  an entry for `test-console-output` in the top-level `exceptions`, as with the other presets,
+  lifts the rule for some test files.
+  The message names `testConsole.allow` and the top-level route.
+- **Measurement.** nitpicker's console plugin (`test-runs/pytest_console.py`, which the timed pytest
+  run of [slow tests](#slow-tests) loads) records the messages in the run that measures coverage,
+  on both snapshots. Standard error is read from pytest's capture. When the
+  project turns capture off (`-s` or `--capture=no` in `addopts` or `PYTEST_ADDOPTS`), the plugin
+  switches nitpicker's run back to `--capture=fd` before pytest starts capturing. That is safe for
+  the run: nitpicker shows no live test output anyway, and the only change a test can notice is that
+  reading standard input raises pytest's "reading from stdin while output is captured" error instead
+  of reaching the end of input. `--capture=sys` and `tee-sys` are left as they are. `unittest` runs
+  are not checked.
+- **Missing report.** The plugin writes `test-console.json` first thing when pytest unconfigures.
+  When pytest ran tests but left no report (the process was killed, or ended itself without
+  unwinding), the run gets a `test-console/test-console-report-missing` tool error, the id the
+  TypeScript preset uses, instead of passing unchecked. A test that calls `os._exit` ends the
+  coverage run too, so that run fails on its missing coverage data first.
 
 ## Slice 1: tools, reports and identities
 
@@ -877,7 +1131,9 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   failure is a tool error.
 - **Tests under coverage.** `coverage run --rcfile <nitpicker> -m pytest -q -o cache_dir=<report
 directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own `discover`, with
-  `-s tests` or `-s test` when that directory exists and `-t .` when it is a package, through a
+  `-s tests` or `-s test` when that directory exists, else `-s testing` when a top-level `testing`
+  folder holds a `test*.py` file (a folder of only helpers is not a start directory), and `-t .`
+  when it is a package, through a
   `TextTestRunner` whose result records each test's time and writes the JUnit report),
   `manage.py test --noinput` (the project's own settings, from `manage.py`, run from the directory
   `manage.py` is in) or `-m nose2`, then `coverage json`. The project's pytest configuration keeps
@@ -886,7 +1142,7 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   `--lf` or `--sw` find their cache in the report directory. The coverage settings are nitpicker's,
   written to the report directory: branch coverage on, `parallel` off, `source` the source roots
   that exist in the snapshot, test files left out of measurement (`test_*.py`, `*_test.py`,
-  `tests.py`, `conftest.py`, `*/tests/*`, `*/test/*`), and a fixed `exclude_lines` of the idioms that
+  `tests.py`, `conftest.py`, `*/tests/*`, `*/test/*`, and `testing/*` at the project root), and a fixed `exclude_lines` of the idioms that
   cannot be tested (see Exceptions under slice 4). From the project's own coverage configuration
   (the first of `.coveragerc`, `setup.cfg` `[coverage:run]`, `tox.ini` `[coverage:run]` and
   `[tool.coverage.run]` that has coverage settings, the order coverage.py reads them in) the run
@@ -928,7 +1184,7 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
 
 - **File limits.** The shared file-limit rule (`shared/rules/file-limits.mjs`) checks every `.py`
   file outside dot, virtualenv (`venv`, `env`), build, `migrations` and `__pycache__` folders: 300 lines per module, 500 per test
-  module (`test_*.py`, `*_test.py`, `tests.py`, `conftest.py`, or anything under a `test` or `tests` folder),
+  module (a test file as defined under the rules),
   120 characters per line, and 6 modules (and separately 6 test modules) directly in one folder, where an `__init__.py` is checked but not counted. A
   file or folder already over a limit fails only when it grows, and a folder moved to a new path is
   matched to its old path.
@@ -991,7 +1247,7 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
 - **Which files.** The `.py` files under the source roots (see `sourceRoots`), skipping hidden
   directories, `__pycache__`, `node_modules` and `site-packages`. When the source root is the whole
   project (`.`: no `src/` and no top-level package), the directories source root detection never
-  treats as packages (`tests`, `test`, `docs`, `doc`, `examples`, `scripts`, `build`, `dist`, `env`,
+  treats as packages (`tests`, `test`, a top-level `testing`, `docs`, `doc`, `examples`, `scripts`, `build`, `dist`, `env`,
   `venv`; one list in `python-project.mjs`) and `conftest.py` are skipped too, so tests, build
   copies and virtualenvs are not gated. Node lists the files once per snapshot
   (`python-files.txt`) and hands the list to the metrics script. Tests are
@@ -1128,8 +1384,8 @@ or remove it if it can't happen. If this is intended, add
 ## Slice 5: duplicates, coupling and import contracts
 
 All three read only the production sources under `python.sourceRoots`. A file is not production
-code when it is `test_*.py`, `*_test.py`, `tests.py` or `conftest.py`, or sits under a directory named `tests`,
-`test`, `migrations`, `build`, `dist`, `venv`, `site-packages`, `node_modules`, `__pycache__` or a
+code when it is `test_*.py`, `*_test.py`, `tests.py` or `conftest.py`, or sits under a directory
+named `tests`, `test` (or a top-level `testing`), `migrations`, `build`, `dist`, `venv`, `site-packages`, `node_modules`, `__pycache__` or a
 hidden one such as `.venv`; the same list feeds jscpd's `--ignore`, the import scan and the module
 list. Only the duplicate scan can be changed: `duplicates.skippedFolders` replaces `tests`, `test`,
 `migrations`, `build` and `dist` there (the other names and the test file patterns always apply),
@@ -1272,8 +1528,8 @@ location.
   (never into your checkout; it creates the file if the project has none, and a table the project
   had is removed from the snapshot's copy, so that file is the one thing besides `mutants/` the
   preset writes into the snapshot): `source_paths` is the source roots and `do_not_mutate` skips the
-  test files (`tests/`, `test_*.py`, `*_test.py`, `conftest.py`, and `tests.py`, `tests_*.py` and
-  `*_tests.py` in a Django project) and the `exclude` globs, so an
+  test files (`tests/`, `test/`, a top-level `testing/`, `test_*.py`, `*_test.py`, `conftest.py`,
+  and the Django test names in a Django project) and the `exclude` globs, so an
   excluded file that mutmut cannot parse (a Python 2 leftover) does not fail the run. From the
   project's table only what the run needs is kept: `also_copy`, the process isolation options
   (`process_isolation`, `forkserver_warmup`, `preload_modules_file`, `max_forkserver_restarts`,
@@ -1368,7 +1624,9 @@ results when that is safe: the `mutants/*.meta` files of the base work tree are 
 head work tree before `mutmut run`, and mutmut re-tests the mutants of the functions whose code
 changed and the ones it has no result for. This happens when every file changed between the base
 commit and head is an added or modified `.py` file under a source root that is not a test
-(`tests/`, `test/`, `test_*.py`, `*_test.py`, `tests.py`, `conftest.py`). Anything else (a test, a dependency
+(a test file as defined under the rules: a file the project's pytest `python_files` and `testpaths`
+collect, a `conftest.py`, a Django `tests.py` only in a Django project, or a file in a test
+folder; the CRAP check leaves out the same files). Anything else (a test, a dependency
 file, a deleted or renamed file, a file outside the project) runs every mutant. When the base side
 comes from the findings cache, there are no base results to copy and head runs every mutant.
 
@@ -1424,7 +1682,8 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   line that names it is new or changed. pytest runs through `test-runs/pytest_timings.py`, which
   times the call phase (`junit_duration_report=call`) plus the setup of function-scoped fixtures
   (`setup_method` is one), so a session, module or class fixture's setup (`setup_class` too) is
-  not charged to the first test that uses it, and records each case's marks; unittest times each
+  not charged to the first test that uses it, nor one that a function fixture or the test sets up
+  through `request.getfixturevalue`, a function fixture another one requests counts once, and records each case's marks; unittest times each
   test from `startTest` to `stopTest` (its `setUp` and `tearDown`, not `setUpClass` or
   `setUpModule`), as JUnit charges `@BeforeEach` and not `@BeforeAll`. A test is an integration
   test under an `integration`, `integration_tests`, `e2e` or `end_to_end` folder, or with
@@ -1621,7 +1880,10 @@ and CRAP rules.
   callee is caught in its unchanged caller (not reused), and a project with xdist in its `addopts`
   and an excluded Python 2 file mutates with the `[tool.mutmut]` that nitpicker adds. The
   `unittest` project mutates with a `[tool.mutmut]` that nitpicker adds, and the xdist project with
-  its own `[tool.mutmut]` runs without a `-n 0` workaround.
+  its own `[tool.mutmut]` runs without a `-n 0` workaround. A change that adds a test sleeping past
+  a lowered `unitTestSeconds` and two tests that log a warning or print to standard error fails
+  `slow-test`, `sleep-in-test` and `test-console-output`, and passes once `python.exceptions`,
+  `testConsole.allow` and top-level exceptions lift them.
 - Slice 2: `languages/python/rules/rule-hints.test.mjs` (always on) checks that every rule has a
   banned and an allowed fixture directory and that its message names the allowed form and the
   exception route; `type-check.test.mjs`, `rules-report.test.mjs`, `python-types.test.mjs`,

@@ -122,8 +122,17 @@ describe('the baseline moves file', () => {
     ]);
   });
 
+  it('reaches the python runner, whose sibling-copy-edit reads the base facts', () => {
+    const args = configuredArguments('python', createPythonAnalyzers(), 'python');
+    const at = args.indexOf('--baseline-moves-file');
+
+    expect(args.slice(at, at + 2)).toEqual(['--baseline-moves-file', '/tmp/moves.json']);
+    expect(configuredArguments('python', createPythonAnalyzers(), 'mutation')).not.toContain(
+      '--baseline-moves-file',
+    );
+  });
+
   it.each([
-    ['python', () => createPythonAnalyzers(), 'python'],
     ['java', () => [createJavaAnalyzer()], 'java'],
     ['kotlin', () => [createJavaAnalyzer({ kotlin: true })], 'kotlin'],
   ])(

@@ -146,6 +146,7 @@ describe('the coverage settings of the project', () => {
         '    */conftest.py',
         '    */tests/*',
         '    */test/*',
+        `    ${path.join(root, 'testing/*')}`,
         '    */gen/*',
         'concurrency =',
         '    multiprocessing',

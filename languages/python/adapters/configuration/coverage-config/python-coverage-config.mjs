@@ -98,7 +98,10 @@ function coverageConfig(projectRoot, sources) {
     'branch = True',
     'parallel = False',
     `source =\n${indented(sources.map((source) => path.join(projectRoot, source)))}`,
-    `omit =\n${indented([...coverageTestOmits(isDjangoProject(projectRoot)), ...omit])}`,
+    `omit =\n${indented([
+      ...absoluteOmits(projectRoot, coverageTestOmits(isDjangoProject(projectRoot))),
+      ...omit,
+    ])}`,
     ...Object.entries(run).map(([key, values]) => `${key} =\n${indented(values)}`),
     '[report]',
     ...(reportOmit.length === 0 ? [] : [`omit =\n${indented(reportOmit)}`]),

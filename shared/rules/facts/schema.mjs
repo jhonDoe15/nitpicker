@@ -98,6 +98,7 @@ const SHAPES = {
     to: isProjectPath,
     names: isNames,
     reexport: optional(isBoolean),
+    conditional: optional(isBoolean),
   },
   docComments: {
     file: isProjectPath,
@@ -105,6 +106,7 @@ const SHAPES = {
     name: isNonEmpty,
     qualifier: optional(isNonEmpty),
     lines: isStrings,
+    detailed: optional(isBoolean),
   },
   console: { file: isRootOrPath, test: isString, messages: isStrings },
 };

@@ -37,8 +37,8 @@ export const UNUSED_API_RULES = [
     id: UNUSED_API_RULE_IDS.unusedOption,
     check: 'structure',
     limit:
-      'a property of the options parameter of an exported function that no call sets (a non-literal argument sets all); Kotlin: a defaulted parameter of a private or internal function or constructor that no call names or fills by position',
-    enforcedBy: TYPESCRIPT_AND_KOTLIN,
+      'a property of the options parameter of an exported function that no call sets (a non-literal argument sets all); Python: an optional parameter (one with a default) of a public module-level function (no leading underscore, and listed in `__all__` when the module has a literal one) that no call passes; Kotlin: a defaulted parameter of a private or internal function or constructor that no call names or fills by position',
+    enforcedBy: { ...TYPESCRIPT_AND_KOTLIN, python: true },
   },
   {
     id: UNUSED_API_RULE_IDS.testOnlyExport,

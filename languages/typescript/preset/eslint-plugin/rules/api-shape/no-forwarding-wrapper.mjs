@@ -1,3 +1,4 @@
+import ts from 'typescript';
 import { variableNamed } from '../analysis/ancestry.mjs';
 import { isComponentName } from '../../../syntax/component-names.mjs';
 
@@ -8,12 +9,17 @@ function isAbsent(value) {
   return value === undefined || value === null;
 }
 
-function forwardedCall(fn) {
+function returnedValue(fn) {
   if (fn.body.type !== 'BlockStatement') {
     return fn.body;
   }
   const [only, ...rest] = fn.body.body;
   return rest.length === 0 && only?.type === 'ReturnStatement' ? only.argument : undefined;
+}
+
+function forwardedCall(fn) {
+  const value = returnedValue(fn);
+  return fn.async && value?.type === 'AwaitExpression' ? value.argument : value;
 }
 
 function parameterName(parameter) {
@@ -50,7 +56,7 @@ function forwardsOwnParameters(fn, call) {
 }
 
 function isPlainFunction(fn) {
-  return !fn.async && !fn.generator && isAbsent(fn.typeParameters);
+  return !fn.generator && isAbsent(fn.typeParameters);
 }
 
 function isModuleLevel(statement) {
@@ -119,6 +125,25 @@ function sameParameters(checker, own, target) {
   );
 }
 
+function isAsyncDeclaration(declaration) {
+  const fn = ts.isVariableDeclaration(declaration) ? declaration.initializer : declaration;
+  return (
+    fn !== undefined &&
+    ts.isFunctionLike(fn) &&
+    (fn.modifiers ?? []).some(({ kind }) => kind === ts.SyntaxKind.AsyncKeyword)
+  );
+}
+
+function isAsyncCallee(services, callee) {
+  const checker = services.program.getTypeChecker();
+  const symbol = checker.getSymbolAtLocation(services.esTreeNodeToTSNodeMap.get(callee));
+  const target =
+    symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+      ? checker.getAliasedSymbol(symbol)
+      : symbol;
+  return (target?.declarations ?? []).some(isAsyncDeclaration);
+}
+
 function hasSameSignature(services, wrapper, callee) {
   const checker = services.program.getTypeChecker();
   const wrapperSignatures = services.getTypeAtLocation(wrapper).getCallSignatures();
@@ -173,6 +198,7 @@ export const rule = {
         call.callee.name === name ||
         !forwardsOwnParameters(fn, call) ||
         hasOverloads(sourceCode, fn) ||
+        (fn.async && !isAsyncCallee(services, call.callee)) ||
         !hasSameSignature(services, fn, call.callee)
       ) {
         return;

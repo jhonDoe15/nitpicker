@@ -220,4 +220,60 @@ describe('rules script report', () => {
   it('reads an empty report', () => {
     expect(ingestRulesReport('[]')).toEqual([]);
   });
+
+  it('turns a check skipped for a too deep expression into a descriptive note', () => {
+    const report = [
+      entry({ rule: 'rules-too-deep', path: 'src/sums.py', subject: 'file', line: 1 }),
+      entry({ rule: 'rules-too-deep', path: '.', subject: 'unused-option', line: 1 }),
+      entry({ rule: 'rules-too-deep', path: 'src/deep.py', subject: 'all', line: 1 }),
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report))).toEqual([
+      {
+        tool: 'python-rules',
+        rule: 'rules-too-deep',
+        path: 'src/sums.py',
+        identity: 'file',
+        subject: 'file',
+        message:
+          "python-rules skipped some of the per-file checks here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+      {
+        tool: 'python-rules',
+        rule: 'rules-too-deep',
+        path: '.',
+        identity: 'unused-option',
+        subject: 'unused-option',
+        message:
+          "python-rules skipped the unused-option checks here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+      {
+        tool: 'python-rules',
+        rule: 'rules-too-deep',
+        path: 'src/deep.py',
+        identity: 'all',
+        subject: 'all',
+        message:
+          "python-rules skipped every check here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.",
+        classification: 'descriptive',
+        location: { line: 1 },
+      },
+    ]);
+  });
+
+  it('names an unused parameter with a default, and which calls count', () => {
+    const report = [
+      entry({ rule: 'unused-option', subject: 'total.rate', data: { scope: 'private' } }),
+      entry({ rule: 'unused-option', subject: 'total.cents', data: { scope: 'published' } }),
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ message }) => message)).toEqual([
+      'Option total.rate is never set. Remove it, or set it from a real call (tests do not count).',
+      "Option total.cents is never set. Remove it, or set it from a real call (this package's own tests count).",
+    ]);
+  });
 });

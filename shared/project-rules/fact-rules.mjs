@@ -7,13 +7,13 @@ const TYPESCRIPT_AND_JAVASCRIPT = {
 };
 
 export const FACT_RULE_LANGUAGES = {
-  'duplicate-definition': { ...TYPESCRIPT_AND_JAVASCRIPT, javascript: 'partial' },
-  'exported-name-collision': { ...TYPESCRIPT_AND_JAVASCRIPT, javascript: 'partial' },
-  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT },
+  'duplicate-definition': { ...TYPESCRIPT_AND_JAVASCRIPT, javascript: 'partial', python: true },
+  'exported-name-collision': { ...TYPESCRIPT_AND_JAVASCRIPT, javascript: 'partial', python: true },
+  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, python: true },
   'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT },
-  'test-only-export': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
-  'doc-comment-content': { ...TYPESCRIPT_AND_JAVASCRIPT },
-  'test-console-output': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
+  'test-only-export': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true, python: true },
+  'doc-comment-content': { ...TYPESCRIPT_AND_JAVASCRIPT, python: true },
+  'test-console-output': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true, python: true },
 };
 
 export const FACT_RULE_LISTS = {

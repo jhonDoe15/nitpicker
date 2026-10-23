@@ -510,15 +510,18 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   for the rule when a partial test is intended.
 - `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
   whose body is one `return` (or an expression body) of a call that passes exactly its own
-  parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`) is
-  flagged when its parameter types and return type are identical to the callee's, so a wrapper that
+  parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`; an
+  `async` one may `await` the call, and is flagged only when the callee is itself declared `async`,
+  since an `async` wrapper turns a synchronous throw of any other callee into a rejection, as the
+  Python preset decides) is flagged when its parameter types and return type are identical to the callee's, so a wrapper that
   brands, narrows or widens a type passes. The callee must be a module-level binding or an import
   that the file could re-export or the caller could import directly. Not flagged: member callees
   (`repo.find(id)`, `Math.abs(x)`, `api.get(url)`), callees that are parameters or closure variables
   (injected dependencies), functions declared inside a component, factory or other function,
   overload implementations, type-predicate and `asserts` functions (on either side), parameters
   whose optional or rest form differs from the callee's (`b?: number` over `b: number | undefined`),
-  methods, `async` and generator functions, functions with type
+  methods, generator functions, an `async` function over a callee that does not return the same
+  promise type, functions with type
   parameters, calls with type arguments, optional calls, PascalCase names (components), functions
   without parameters, default, destructured or transformed parameters, and a `const` with a type
   annotation. A wrapper around a hook (`useUser(key)` over an imported `useQuery(key)`) is reported
@@ -550,7 +553,10 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   drops stopwords (`the`, `a`, `of`, `get`, `returns`, `component`, `class`, `value`...), and reports when
   every remaining description word, with a crude `ing`/`ed`/`es`/`s` stem, is a word of the name
   (`/** Gets the user name. */ getUserName`, `/** The order id */ orderId`, `/** Button component */
-Button`). `@param`, `@returns` and other tag lines are not part of the description. Write the
+Button`). `@param`, `@returns` and other tag lines are not part of the description, but a tag
+  with text (`@param id the account`, `@returns the login name`, `@throws {RangeError} when ...`)
+  says more, so a comment with one is not reported as restating; a tag with only a name or a
+  type (`@param {string} id`, `@returns {string}`) is not text. Write the
   unit, the limit, the edge case or the reason (`/** Price in cents, rounded down. */`). A
   description longer than 5 lines, tag lines, blank lines and code examples not counted (a fenced
   ` ``` ` or `~~~` block, or the body of an `@example` tag; a fence that is never closed counts as prose), is reported too; bullets and
