@@ -822,9 +822,10 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   grows with the square of the list: a `functools.reduce` callback (a lambda, or a function of the same
   file) that returns `acc + [x]`, `[x] + acc`, `[*acc, x]`, `(*acc, x)`, `{**acc, k: v}` or `acc | {k: v}`,
   and a `for` or `while` loop that assigns the same forms (or `acc += (x,)` on a tuple) to a name bound
-  before the loop. `acc + other` counts when the name starts as a list, tuple, dict or set (`[]`, `()`,
-  `{}`, `list()`, a `reduce` initial value); an accumulator of unknown type, a number or a string is not
-  reported. `acc += [x]` and `acc |= {k: v}` change the object in place and are fine. `sum(lists, [])` is
+  before the loop. `acc + ...` and `acc | ...` count only when the name is proven a list, tuple, dict or set
+  (bound to `[]`, `()`, `{}`, `list()` and the like before the loop, a `reduce` initial value, or annotated
+  `list[...]`, `tuple[...]`, `dict[...]` or `set[...]`); a numpy array, a pandas object, the result of an
+  unknown call, an unannotated parameter, a number or a string is not reported. `acc += [x]` and `acc |= {k: v}` change the object in place and are fine. `sum(lists, [])` is
   ruff's `RUF017`, which the preset already selects, so the script does not report it twice. Ruff's
   `RUF005` suggests `[*acc, x]` for `acc + [x]`, which is still a copy, so it is dropped on the lines
   where `accumulator-copy` reports.
@@ -867,7 +868,9 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   request instead of each sending their own, so it is not reported.
 - `retry-without-idempotency` reports a write that a retry can run twice. Retry scopes: a function
   decorated with tenacity `@retry`, `retrying.retry`, `backoff.on_exception` or `on_predicate`, or
-  `stamina.retry`; a `for attempt in Retrying(...)` loop (tenacity, `AsyncRetrying`, `stamina.retry_context`)
+  `stamina.retry`, or a Celery task with `autoretry_for=` or `retry_backoff=` on its decorator or a
+  `bind=True` task that calls `self.retry(...)` (the task body is the retried scope); a
+  `for attempt in Retrying(...)` loop (tenacity, `AsyncRetrying`, `stamina.retry_context`)
   and a function given to `Retrying(...)(fn)`; and a hand-written retry loop (a `try` in a loop that
   leaves on success while its `except` goes on). The writes recognized, direct or through project
   helpers (the path is in the message), are the documented API set and nothing else: a Stripe

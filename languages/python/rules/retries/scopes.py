@@ -1,7 +1,8 @@
 import ast
 from collections import namedtuple
 
-from checks.common import dotted_name
+from checks.common import dotted_name, walk_statements
+from effects.clients import is_task_decorator
 from kinds.names import chain_names
 from security.resolve.scopes import values_of, where_of
 
@@ -14,18 +15,52 @@ DECORATORS = {
     "backoff.on_predicate",
     "stamina.retry",
 }
+TASK_RETRIES = {"autoretry_for", "retry_backoff"}
 ATTEMPTS = {"tenacity.Retrying", "tenacity.AsyncRetrying", "stamina.retry_context"}
 
 
-def decorator_retries(function, aliases):
+def task_options(decorator):
+    if not isinstance(decorator, ast.Call):
+        return set()
+    return {k.arg for k in decorator.keywords if k.arg} & TASK_RETRIES
+
+
+def retries_itself(function):
+    every = function.args.posonlyargs + function.args.args
+    owner = every[0].arg if every else None
+    return owner is not None and any(
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "retry"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == owner
+        for node in walk_statements(function.body)
+    )
+
+
+def task_retries(function, decorator, context):
+    if not is_task_decorator(decorator, context):
+        return []
+    target = decorator.func if isinstance(decorator, ast.Call) else decorator
+    name = (dotted_name(target, context.aliases) or "task").rsplit(".", 1)[-1]
+    options = sorted(task_options(decorator))
+    if options:
+        return [Retry(f"@{name}({options[0]})", function.body, None, None)]
+    if retries_itself(function):
+        return [Retry(f"@{name} with self.retry", function.body, None, None)]
+    return []
+
+
+def decorator_retries(function, context):
     found = []
     for decorator in function.decorator_list:
         target = decorator.func if isinstance(decorator, ast.Call) else decorator
-        name = dotted_name(target, aliases)
+        name = dotted_name(target, context.aliases)
         if name in DECORATORS:
-            found.append(
-                Retry(f"@{name.rsplit('.', 1)[-1]}", function.body, None, None)
-            )
+            label = f"@{name.rsplit('.', 1)[-1]}"
+            found.append(Retry(label, function.body, None, None))
+        else:
+            found.extend(task_retries(function, decorator, context))
     return found
 
 
@@ -73,7 +108,7 @@ def retry_scopes(context):
     attempts = imports_attempts(context)
     for node in ast.walk(context.tree):
         if isinstance(node, FUNCTIONS):
-            found.extend(decorator_retries(node, context.aliases))
+            found.extend(decorator_retries(node, context))
         found.extend(attempt_loops(node, context.aliases))
         if attempts:
             found.extend(retried_calls(node, context))
