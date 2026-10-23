@@ -8,6 +8,7 @@ import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { resolveAnalyzerVersion } from '../../../preset/analyzer-versions.mjs';
 import { POLICY_FILES } from '../../../preset/checks/policy-files.mjs';
+import { accumulatingSpreadMessages } from '../../../preset/eslint-plugin/rules/collections/no-accumulating-spread.mjs';
 import { normalizeEslintResults } from '../../eslint/normalize.mjs';
 import { spawnJson } from '../oxlint-process.mjs';
 import { lintWithOxlint } from '../oxlint-runner.mjs';
@@ -204,9 +205,12 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
 
   it('names the one-pass form and the exception entry instead of mutating the accumulator', () => {
     const domain = ruleFindings(oxlintFindings).find((finding) => finding.path === DOMAIN);
-    expect(domain.message).toContain('Object.fromEntries(xs.map((x) => [x.key, x.value]))');
-    expect(domain.message).toContain(`{"rule":"${RULE}","paths":["${DOMAIN}"],"reason":"..."}`);
-    expect(domain.message).not.toMatch(/Object\.assign\(acc|mutate/u);
+    expect(domain.message).toBe(
+      `${accumulatingSpreadMessages.reduceObject} If this is intended, add {"rule":"${RULE}","paths":["${DOMAIN}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
+    );
+    expect(accumulatingSpreadMessages.reduceObject).toBe(
+      'Spreading the accumulator copies it again on every step, which is quadratic once it grows with the input: build the object in one pass with Object.fromEntries(xs.map((x) => [x.key, x.value])), Object.assign({}, ...xs), Object.groupBy or new Map(xs.map((x) => [x.key, x])); outside domain/, a const accumulator that a for...of loop fills also works.',
+    );
   });
 
   it('leaves the loop accumulator of domain code to the let and loop bans', () => {
@@ -231,10 +235,10 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
     });
     cache.write(analyzer, { findings: oxlintFindings });
 
-    expect(version).toContain('oxlint@1.87.0');
-    expect(POLICY_FILES).toContain(
+    expect(version.split(';').at(-1)).toBe('oxlint@1.87.0,oxlint-tsgolint@7.0.2004');
+    expect(POLICY_FILES.filter((file) => file.includes('no-accumulating-spread'))).toEqual([
       'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulating-spread.mjs',
-    );
+    ]);
     expect(ruleFindings(cache.read(analyzer).findings)).toEqual(ruleFindings(oxlintFindings));
   });
 

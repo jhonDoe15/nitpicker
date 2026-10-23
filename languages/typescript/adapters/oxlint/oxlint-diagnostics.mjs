@@ -19,7 +19,7 @@ export function eslintShapedResults(stage, diagnostics, naming) {
   const byFile = Map.groupBy(reported, (diagnostic) => diagnostic.filename);
   return [...byFile].map(([filename, fileDiagnostics]) => {
     const filePath = filename.replaceAll('\\', '/');
-    const bytes = readFileSync(path.join(stage, filename));
+    const bytes = readFileSync(stagedFile(stage, filename));
     const locate = byteLocator(bytes);
     const neutralized = naming.neutralized.get(filePath) ?? new Set();
     const converted = fileDiagnostics.map((diagnostic) =>
@@ -38,6 +38,14 @@ export function eslintShapedResults(stage, diagnostics, naming) {
         .filter((message) => !isNeutralizerWhitespace(message, neutralized)),
     };
   });
+}
+
+function stagedFile(stage, filename) {
+  const full = path.resolve(stage, filename);
+  if (!full.startsWith(`${stage}${path.sep}`)) {
+    throw new Error(`oxlint reported a file outside its stage: ${filename}`);
+  }
+  return full;
 }
 
 function distinctDiagnostics(diagnostics) {
