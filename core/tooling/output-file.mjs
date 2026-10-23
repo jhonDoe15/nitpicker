@@ -5,7 +5,7 @@ import path from 'node:path';
 
 const REMOVE_OPTIONS = { recursive: true, force: true, maxRetries: 3, retryDelay: 100 };
 
-export class OutputLimitError extends Error {
+class OutputLimitError extends Error {
   code = 'ENOBUFS';
 }
 
@@ -19,7 +19,9 @@ export function openOutputFile() {
     size: () => statSync(file).size,
     read: (encoding) => readFileSync(file, encoding === 'buffer' ? undefined : encoding),
     remove() {
-      if (state.open) closeSync(descriptor);
+      if (state.open) {
+        closeSync(descriptor);
+      }
       state.open = false;
       rmSync(directory, REMOVE_OPTIONS);
     },
@@ -50,11 +52,7 @@ export function spawnSyncWithOutputFile(command, args, options = {}) {
       stdio: stdioWith(stdio, file.descriptor),
     });
     const captured = capturedStdout(command, result, { file, encoding, maxBuffer });
-    return {
-      ...result,
-      ...captured,
-      output: [result.output?.[0] ?? null, captured.stdout, ...(result.output?.slice(2) ?? [])],
-    };
+    return { ...result, ...captured };
   } finally {
     file.remove();
   }

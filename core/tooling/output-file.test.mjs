@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openOutputFile, spawnSyncWithOutputFile } from './output-file.mjs';
 
 const REPORT_BYTES = 3 * 1024 * 1024;
+const GIT_TIMEOUT_MS = 30_000;
 const GIT_ENVIRONMENT = {
   ...process.env,
   GIT_CONFIG_GLOBAL: '/dev/null',
@@ -27,12 +28,17 @@ describe('reading a child report through a file instead of a pipe', () => {
 
   beforeAll(() => {
     repository = mkdtempSync(path.join(tmpdir(), 'nitpicker-output-file-test-'));
-    execFileSync('git', ['init', '-q'], { cwd: repository, env: GIT_ENVIRONMENT });
+    execFileSync('git', ['init', '-q'], {
+      cwd: repository,
+      env: GIT_ENVIRONMENT,
+      timeout: GIT_TIMEOUT_MS,
+    });
     writeFileSync(path.join(repository, 'report.json'), report);
     blob = execFileSync('git', ['hash-object', '-w', 'report.json'], {
       cwd: repository,
       env: GIT_ENVIRONMENT,
       encoding: 'utf8',
+      timeout: GIT_TIMEOUT_MS,
     }).trim();
   });
 
@@ -46,7 +52,6 @@ describe('reading a child report through a file instead of a pipe', () => {
     expect(result.error).toBeUndefined();
     expect(result.status).toBe(0);
     expect(result.stdout).toBe(report);
-    expect(result.output[1]).toBe(report);
     expect(result.stderr).toBe('');
   });
 

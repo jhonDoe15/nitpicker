@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
-import { createSampleRepository, REPOSITORY_ROOT } from './samples.mjs';
+import { createSampleRepository, inside, REPOSITORY_ROOT } from './samples.mjs';
 
 const CLI = path.join(REPOSITORY_ROOT, 'core/cli.mjs');
 const RUN_TIMEOUT_MS = 60 * 60 * 1000;
@@ -25,7 +25,7 @@ export function toolErrorKey({ snapshot, tool, rule }) {
 }
 
 function readReport(directory, name) {
-  const file = path.join(directory, name);
+  const file = inside(directory, name);
   return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
 }
 
@@ -43,11 +43,12 @@ function runNitpicker(runtime, root, args) {
   const [command, ...prefix] = RUNTIMES[runtime]();
   const result = spawnSync(command, [...prefix, CLI, ...args], {
     cwd: root,
-    env: { ...process.env, NO_COLOR: '1', DENO_NO_UPDATE_CHECK: '1' },
     stdio: 'inherit',
     timeout: RUN_TIMEOUT_MS,
   });
-  if (result.error !== undefined) throw result.error;
+  if (result.error !== undefined) {
+    throw result.error;
+  }
   return result.status;
 }
 
@@ -95,8 +96,6 @@ function main() {
   for (const sample of positionals) {
     const run = runSample(sample, values.runtime);
     writeFileSync(path.join(values.output, `${sample}.json`), `${JSON.stringify(run, null, 2)}\n`);
-    process.stdout.write(`${sample} (${values.runtime}): --all exit ${String(run.all.exitCode)}, `);
-    process.stdout.write(`change exit ${String(run.change.exitCode)}\n`);
   }
 }
 

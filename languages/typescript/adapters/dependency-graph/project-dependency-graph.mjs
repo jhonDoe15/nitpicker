@@ -82,11 +82,15 @@ function graphKey(cruise) {
 function runCruise(cruise) {
   const wrapper = installWrapperConfig(cruise);
   try {
-    const result = spawnSyncWithOutputFile(process.execPath, cruiseArguments(cruise, wrapper.path), {
-      cwd: cruise.projectRoot,
-      encoding: 'utf8',
-      maxBuffer: MAX_OUTPUT_BYTES,
-    });
+    const result = spawnSyncWithOutputFile(
+      process.execPath,
+      cruiseArguments(cruise, wrapper.path),
+      {
+        cwd: cruise.projectRoot,
+        encoding: 'utf8',
+        maxBuffer: MAX_OUTPUT_BYTES,
+      },
+    );
     assertCruised(result);
     return result.stdout;
   } finally {

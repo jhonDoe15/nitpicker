@@ -1,7 +1,15 @@
-import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { SAMPLES } from './samples.mjs';
+import { parseArgs } from 'node:util';
+import { inside, SAMPLES } from './samples.mjs';
 
 export const EXPECTED_DIFFERENCES = [
   {
@@ -78,23 +86,31 @@ function differences(reference, run) {
   );
 }
 
-export function compareRuns(reference, run) {
-  const expected = expectedDifferences(run);
-  const allowedTools = new Set(expected.flatMap(({ tools }) => tools));
-  const found = differences(reference, run);
-  const isAllowed = (difference) => allowedTools.has(toolOf(difference.kind, difference.key));
-  const describe = ({ part, sign, key }) => `${label(run)}: ${part} ${sign} ${key}`;
-  const exitProblems = PARTS.filter(
-    (part) => reference[part].exitCode !== run[part].exitCode && !found.some(isAllowed),
+function describeDifference(run, { part, sign, key }) {
+  return `${label(run)}: ${part} ${sign} ${key}`;
+}
+
+function involves(tools, difference) {
+  return tools.includes(toolOf(difference.kind, difference.key));
+}
+
+function exitProblems(reference, run, allowed) {
+  return PARTS.filter(
+    (part) => reference[part].exitCode !== run[part].exitCode && allowed.length === 0,
   ).map(
     (part) =>
       `${label(run)}: ${part} exited ${String(run[part].exitCode)}, the reference ${String(reference[part].exitCode)}`,
   );
+}
+
+export function compareRuns(reference, run) {
+  const expected = expectedDifferences(run);
+  const allowedTools = expected.flatMap(({ tools }) => tools);
+  const found = differences(reference, run);
+  const allowed = found.filter((difference) => involves(allowedTools, difference));
+  const unexpected = found.filter((difference) => !involves(allowedTools, difference));
   const stale = expected
-    .filter(
-      ({ tools }) =>
-        !found.some((difference) => tools.includes(toolOf(difference.kind, difference.key))),
-    )
+    .filter(({ tools }) => !found.some((difference) => involves(tools, difference)))
     .map(
       ({ tools }) =>
         `${label(run)}: the expected difference in ${tools.join(', ')} no longer occurs; update EXPECTED_DIFFERENCES and docs/compatibility.md`,
@@ -102,39 +118,64 @@ export function compareRuns(reference, run) {
   return {
     problems: [
       ...invariantProblems(run),
-      ...found.filter((difference) => !isAllowed(difference)).map(describe),
-      ...exitProblems,
+      ...unexpected.map((difference) => describeDifference(run, difference)),
+      ...exitProblems(reference, run, allowed),
       ...stale,
     ],
-    allowed: found.filter(isAllowed).map(describe),
+    allowed: allowed.map((difference) => describeDifference(run, difference)),
   };
 }
 
 function readRuns(directory) {
   return readdirSync(directory)
     .filter((name) => name.endsWith('.json'))
-    .map((name) => JSON.parse(readFileSync(path.join(directory, name), 'utf8')));
+    .map((name) => JSON.parse(readFileSync(inside(directory, name), 'utf8')));
 }
 
-function main([referenceDirectory, ...directories]) {
-  const references = readRuns(referenceDirectory);
-  const problems = references.flatMap(invariantProblems);
-  for (const directory of directories) {
-    for (const reference of references) {
-      const file = path.join(directory, `${reference.sample}.json`);
-      if (!existsSync(file)) {
-        problems.push(`${directory}: no run of ${reference.sample}`);
-        continue;
-      }
-      const run = JSON.parse(readFileSync(file, 'utf8'));
-      const result = compareRuns(reference, run);
-      for (const line of result.allowed) process.stdout.write(`expected: ${line}\n`);
-      for (const line of run.all.toolErrorMessages) process.stdout.write(`tool error: ${line}\n`);
-      problems.push(...result.problems);
-    }
+function compareWithReference(reference, directory) {
+  const file = inside(directory, `${reference.sample}.json`);
+  if (!existsSync(file)) {
+    return { problems: [`${directory}: no run of ${reference.sample}`], notes: [] };
   }
-  for (const problem of problems) process.stderr.write(`${problem}\n`);
-  process.exitCode = problems.length === 0 ? 0 : 1;
+  const run = JSON.parse(readFileSync(file, 'utf8'));
+  const { problems, allowed } = compareRuns(reference, run);
+  return {
+    problems,
+    notes: [
+      ...allowed.map((line) => `expected: ${line}`),
+      ...run.all.toolErrorMessages.map((line) => `tool error in ${label(run)}: ${line}`),
+    ],
+  };
+}
+
+function compareDirectories(referenceDirectory, directories) {
+  const references = readRuns(referenceDirectory);
+  const comparisons = directories.flatMap((directory) =>
+    references.map((reference) => compareWithReference(reference, directory)),
+  );
+  return {
+    problems: [
+      ...references.flatMap(invariantProblems),
+      ...comparisons.flatMap(({ problems }) => problems),
+    ],
+    notes: comparisons.flatMap(({ notes }) => notes),
+  };
+}
+
+function main(args) {
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: { report: { type: 'string', default: 'reports/platforms/comparison.txt' } },
+  });
+  const [referenceDirectory, ...directories] = positionals;
+  const { problems, notes } = compareDirectories(referenceDirectory, directories);
+  mkdirSync(path.dirname(values.report), { recursive: true });
+  const lines = [...notes, ...problems.map((problem) => `problem: ${problem}`)];
+  writeFileSync(values.report, `${lines.join('\n')}\n`);
+  if (problems.length > 0) {
+    throw new Error(`The runs differ from the reference run:\n${problems.join('\n')}`);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
