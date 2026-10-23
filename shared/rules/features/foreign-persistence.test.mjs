@@ -105,7 +105,10 @@ describe('foreign-feature-persistence', () => {
 
     expect(
       findings(facts, {
-        exceptions: [exception(RULE, `${BILLING}/models.py`), exception(RULE, `${ORDERS}/views.py`)],
+        exceptions: [
+          exception(RULE, `${BILLING}/models.py`),
+          exception(RULE, `${ORDERS}/views.py`),
+        ],
       }),
     ).toEqual([]);
   });

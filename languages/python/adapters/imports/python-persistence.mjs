@@ -60,8 +60,20 @@ const ENTITY_BASES = new Set([
   'piccolo.table.Table',
 ]);
 const TABLE_MODEL = 'sqlmodel.SQLModel';
-const ORM_MODULES =
-  /^(?:sqlalchemy|sqlmodel|flask_sqlalchemy|peewee|pony|tortoise|mongoengine|beanie|odmantic|piccolo|django\.db)(?:\.|$)/u;
+const ORM_PACKAGES = [
+  'sqlalchemy',
+  'sqlmodel',
+  'flask_sqlalchemy',
+  'peewee',
+  'pony',
+  'tortoise',
+  'mongoengine',
+  'beanie',
+  'odmantic',
+  'piccolo',
+  'django\\.db',
+];
+const ORM_MODULES = new RegExp(`^(?:${ORM_PACKAGES.join('|')})(?:\\.|$)`, 'u');
 
 function topOf(module) {
   return module.split('.')[0];
@@ -121,28 +133,34 @@ function isTableModel(entry, { projectRoot }) {
   return /\btable\s*=\s*True\b/u.test(header.exec(text)?.[1] ?? '');
 }
 
-function isEntityBase(name, context, seen) {
+function isEntityBase(name, context) {
   if (ENTITY_BASES.has(name)) {
     return true;
   }
-  const parent = context.index.known.get(name);
-  if (parent !== undefined) {
-    return isEntityClass(parent, context, seen);
-  }
   const owner = owningModule(name, context.index);
-  return owner !== undefined && importsOrm(context.index.fileOfModule.get(owner), context.index);
+  return (
+    !context.index.known.has(name) &&
+    owner !== undefined &&
+    importsOrm(context.index.fileOfModule.get(owner), context.index)
+  );
 }
 
-function isEntityClass(entry, context, seen = new Set()) {
-  if (seen.has(entry)) {
-    return false;
+function isEntityClass(entry, context) {
+  const pending = [entry];
+  const seen = new Set();
+  let reachesTableModel = false;
+  for (const current of pending) {
+    const bases = seen.has(current)
+      ? []
+      : current.bases.map((written) => qualified(written, current.file, context.index));
+    seen.add(current);
+    if (bases.some((name) => name !== TABLE_MODEL && isEntityBase(name, context))) {
+      return true;
+    }
+    reachesTableModel ||= bases.includes(TABLE_MODEL);
+    pending.push(...bases.map((name) => context.index.known.get(name)).filter(Boolean));
   }
-  seen.add(entry);
-  const bases = entry.bases.map((written) => qualified(written, entry.file, context.index));
-  return (
-    (bases.includes(TABLE_MODEL) && isTableModel(entry, context)) ||
-    bases.some((name) => name !== TABLE_MODEL && isEntityBase(name, context, seen))
-  );
+  return reachesTableModel && isTableModel(entry, context);
 }
 
 function kindOf(entry, context) {

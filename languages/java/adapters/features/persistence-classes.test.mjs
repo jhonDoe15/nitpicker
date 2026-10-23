@@ -55,7 +55,9 @@ const EDGES = [
 ];
 
 function findings(springRoot) {
-  const classes = [...new Set(EDGES.flatMap((edge) => edge).filter((name) => name.includes('.shop.')))];
+  const classes = [
+    ...new Set(EDGES.flatMap((edge) => edge).filter((name) => name.includes('.shop.'))),
+  ];
   const project = featureProject({
     files: SOURCES,
     modules: [

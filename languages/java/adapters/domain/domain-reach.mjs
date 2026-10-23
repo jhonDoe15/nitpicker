@@ -50,8 +50,12 @@ export function reachableIo({ edges, libraryEdges }) {
 }
 
 function pathFrom(entry, next) {
-  const step = next.get(entry);
-  return step === undefined ? [entry] : [entry, ...pathFrom(step, next)];
+  const path = [entry];
+  for (const step of path) {
+    const following = next.get(step);
+    path.push(...(following === undefined ? [] : [following]));
+  }
+  return path;
 }
 
 export function reachPath(entry, { hits, next }) {

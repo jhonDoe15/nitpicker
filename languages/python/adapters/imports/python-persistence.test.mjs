@@ -91,13 +91,25 @@ describe('pythonPersistence', () => {
         classes: [{ name: 'Team', bases: ['SQLModel'] }],
         imports: from('sqlmodel', 'SQLModel'),
       },
+      'app/players.py': {
+        classes: [
+          { name: 'PlayerBase', bases: ['SQLModel'] },
+          { name: 'Player', bases: ['PlayerBase'] },
+        ],
+        imports: from('sqlmodel', 'SQLModel'),
+      },
     };
     const sources = {
       'app/heroes.py': 'class HeroBase(SQLModel):\n    pass\n\nclass Hero(HeroBase):\n    pass\n',
       'app/tables.py': 'class Team(SQLModel, table=True):\n    id: int\n',
+      'app/players.py':
+        'class PlayerBase(SQLModel):\n    pass\n\nclass Player(PlayerBase, table=True):\n    id: int\n',
     };
 
-    expect(persistenceOf(files, { sources })).toEqual({ 'app/tables.py': 'entity' });
+    expect(persistenceOf(files, { sources })).toEqual({
+      'app/tables.py': 'entity',
+      'app/players.py': 'entity',
+    });
   });
 
   it('marks runtime imports of drivers and ORM session APIs as data access', () => {
@@ -111,7 +123,9 @@ describe('pythonPersistence', () => {
       'app/repo.py': [{ level: 0, module: 'sqlalchemy.orm', names: ['Session'], typeOnly: false }],
       'app/raw.py': [{ level: 0, module: null, names: ['psycopg'], typeOnly: false }],
       'app/queries.py': [{ level: 0, module: 'django.db', names: ['connection'], typeOnly: false }],
-      'app/service.py': [{ level: 0, module: 'django.db', names: ['transaction'], typeOnly: false }],
+      'app/service.py': [
+        { level: 0, module: 'django.db', names: ['transaction'], typeOnly: false },
+      ],
       'app/typed.py': [{ level: 0, module: 'sqlalchemy.orm', names: ['Session'], typeOnly: true }],
       'app/views.py': [{ level: 1, module: 'repo', names: ['Session'], typeOnly: false }],
     };

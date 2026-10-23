@@ -64,9 +64,12 @@ describe('infrastructure classes', () => {
     const entry = (packageName) => ({ packageName });
 
     expect(
-      ['acme.orders.domain', 'acme.domain.model', 'acme.orders.domain.adapters', 'acme.domains'].map(
-        (name) => isDomain(entry(name)),
-      ),
+      [
+        'acme.orders.domain',
+        'acme.domain.model',
+        'acme.orders.domain.adapters',
+        'acme.domains',
+      ].map((name) => isDomain(entry(name))),
     ).toEqual([true, true, false, false]);
     expect(
       ['acme.infra.db', 'acme.orders.adapter', 'acme.infrastructure', 'acme.infrared'].map((name) =>

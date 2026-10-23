@@ -1,7 +1,7 @@
 import { DEAD_CODE_RULES, FUNCTION_STRUCTURE_LIMITS, RULE_IDS } from '../policy.mjs';
 import { HYGIENE_RULE_IDS, PACKAGE_RULE_IDS } from '../project-rules/hygiene-rules.mjs';
 import { SIZE_RULE_IDS } from '../project-rules/size-rules.mjs';
-import { DOMAIN_RULE_IDS } from '../project-rules/domain-rules.mjs';
+import { DOMAIN_RULE_IDS } from '../project-rules/domain/domain-rules.mjs';
 
 const STRUCTURE_RULES = [
   ...Object.values(FUNCTION_STRUCTURE_LIMITS).map(({ ruleId }) => ruleId),
