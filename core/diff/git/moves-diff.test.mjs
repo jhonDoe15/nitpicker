@@ -15,7 +15,6 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createBaseSetupResolver } from '../../command/policy-review/base-setup.mjs';
 import { reportFromAnalyzerOutput } from '../execution/process.mjs';
 import { runQualityDiff } from '../comparison/run-diff.mjs';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const repositories = [];
 
@@ -342,7 +341,7 @@ describe('a config that changed between base and head', () => {
       resolve({ baseProjectRoot: root, headSnapshotRoot: root, analyzers: [probeAnalyzer()] }),
     ).toEqual(comparedWithDefaults);
     expect(warnings).toEqual([
-      `The base's nitpicker.config.json cannot be applied (nitpicker.config.json is not valid JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2). ${linkSentence('invalidConfiguration')}); the base is analysed with the head config, and the head config is compared with the defaults.`,
+      "The base's nitpicker.config.json cannot be applied (nitpicker.config.json is not valid JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)); the base is analysed with the head config, and the head config is compared with the defaults.",
     ]);
     expect(
       resolve({
