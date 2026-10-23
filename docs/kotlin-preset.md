@@ -783,17 +783,24 @@ and strings (including the implicit throwing `else`), default-argument bridges (
 `suspend` functions. What it leaves is the coroutine state machines of suspend lambdas:
 `sequence { yield(1) }`, `flow { emit(1) }`, `coroutineScope { ... }`, `a.await()` each report one to
 three missed outcomes (the "call returned `COROUTINE_SUSPENDED`" arm no test can take): 9 lines in
-the fixture.
+the fixture. It also leaves the branches of the `@InlineOnly` standard library functions, which the
+compiler copies into the caller under the caller's line (no SMAP entry, so JaCoCo's inline filter
+cannot see them): `text.orEmpty()` on a `String?` or a `List?` and `text.isNullOrBlank()` each
+report a missed null arm on a line with no branch of its own. `Array.orEmpty()`, `maxOf` and
+`minOf` on numbers and strings, `coerceIn` and `use { }` showed none on the same run.
 
 One filter removes them, in `kotlin-branches.mjs`, and it fails open: **a Kotlin line is dropped
-only when it calls a suspension function and contains nothing that can branch**. The suspension
+only when it calls a suspension function or an inlined library function whose arms run none of
+the author's code (`orEmpty`, `isNullOrEmpty`, `isNullOrBlank`, `maxOf`, `minOf` followed by `(`)
+and contains nothing else that can branch**. The suspension
 calls are `emit`, `emitAll`, `yield`, `yieldAll`, `delay`, `await`, `awaitAll`, `withContext`,
 `withTimeout`, `withTimeoutOrNull`, `coroutineScope`, `supervisorScope`, `flow`, `channelFlow`,
 `callbackFlow` and `sequence` followed by `(` or `{`. What can branch is `if`, `when`, `while`,
 `for`, `do`, `is`, `in`, `as`, `&&`, `||`, `?.`, `?:`, any of `<`, `>`, `!`, `==`, a call to
 `require`, `check`, `assert`, `requireNotNull`, `checkNotNull`, or an inline standard library
-function that branches (`takeIf`, `takeUnless`, `ifEmpty`, `ifBlank`, `orEmpty`, `getOrElse`,
-`maxOf`, `minOf`, `coerce*`). The line is judged on its code alone: string literals, comments, type
+function that runs a condition or lambda of the author's on one arm (`takeIf`, `takeUnless`,
+`ifEmpty`, `ifBlank`, `getOrElse`, `coerce*`): those stay counted, as do `?:` and `?.` on a
+platform type. The line is judged on its code alone: string literals, comments, type
 arguments and `->` are removed first, and a line with a string template (`${`) is always kept.
 Every other line is kept, including the continuation lines JaCoCo attributes a branch to when a
 statement spans lines (the operand after a trailing `&&`, the `?:` on the next line, the condition
@@ -803,10 +810,12 @@ so a line the filter does not recognize is judged as written. On the fixture thi
 and an `else -> throw` no test reaches, two `in 90..100 ->` entries). The cost of failing open is a
 report of a generated outcome on a line that also branches. It is never a missed real branch.
 
-Limits. A line that branches and also suspends (`if (ready) emit(1)`, `for (n in 1..2) emit(n)`)
-counts the generated outcome too, so it can fail with every branch the author wrote taken. The
+Limits. A line that branches and also suspends (`if (ready) emit(1)`, `for (n in 1..2) emit(n)`),
+or branches and calls one of those library functions (`if (name.isNullOrEmpty())`), counts the
+generated outcome too, so it can fail with every branch the author wrote taken. The
 message then names the call (`Not taken: emit suspending (move the call to its own line if no
-branch of yours is untested)`); put the suspension call on a line of its own, or, when that is not
+branch of yours is untested)`, or `isNullOrEmpty inlined from the standard library (...)`); put
+the call on a line of its own, or, when that is not
 possible, accept the function with an `exceptions` entry for `changed-branch-coverage` that names it
 (`function` is required; the name is the one the structure findings print, from the Kotlin metrics,
 and only that function's branches are accepted), or `exclude` the file in `nitpicker.config.json`
@@ -1138,7 +1147,9 @@ fails only when it grows, and a package folder moved to a new path is matched to
   (`fixtures/jacoco-kotlin.xml`, class elements dropped; the project is
   `fixtures/kotlin-measurement`) that yields exactly the real misses, and a recorded report of
   statements that span lines (`fixtures/jacoco-kotlin-multiline.xml` with its sources in
-  `fixtures/kotlin-multiline`).
+  `fixtures/kotlin-multiline`), and a line that calls an inlined library function, dropped alone
+  and named when it also branches. The gated e2e test changes lines that call `orEmpty`,
+  `isNullOrBlank` and `maxOf` and expects only the untested `?:` beside them to fail.
 - `languages/java/adapters/kotlin/kotlin-tools.test.mjs`: formatter and ktfmt style detection (Spotless
   blocks, comments, `.editorconfig`, the override), detekt config detection and the override, and
   the Gradle arguments (including `--no-configuration-cache`).

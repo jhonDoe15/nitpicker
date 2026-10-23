@@ -47,4 +47,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
         .sort(),
     ).toEqual(['Offset.kt:4', 'Spread.kt:10', 'Spread.kt:7']);
   });
+  it('passes a line whose only branches are inlined from the standard library and keeps a real ?: counted', () => {
+    const result = diffOf(fixture.project, 'library-branches');
+
+    expect(
+      result.newEnforceable
+        .filter(({ tool }) => tool === 'jacoco')
+        .map(({ path: file, location }) => `${path.basename(file)}:${String(location.line)}`),
+    ).toEqual(['Library.kt:12']);
+  });
 });

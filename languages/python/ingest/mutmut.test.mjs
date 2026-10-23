@@ -320,6 +320,26 @@ describe('mutmut run data ingester', () => {
       'Survived expression',
     ]);
   });
+
+  it('leaves out the mutants of an assert_never the type checker proves unreachable', () => {
+    const match = (...arms) =>
+      ['def f(a):', '    match a:', '        case 1:', '            return 1', ...arms, ''].join(
+        '\n',
+      );
+    const never = ['        case _:', '            assert_never(a)'];
+    const two = ['        case 2:', '            return 2'];
+    const file = fileOf({
+      source: match(...two, ...never),
+      mutants: [
+        match(...two),
+        match(...two, '        case _:', '            assert_never(None)'),
+        match(...never),
+      ],
+      codes: [0, 0, 0],
+    });
+
+    expect(ingest([file]).map(({ location }) => location)).toEqual([{ line: 5 }]);
+  });
 });
 
 describe('generated function blocks', () => {

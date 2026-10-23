@@ -1248,8 +1248,16 @@ or remove it if it can't happen. If this is intended, add
   `exclude_lines` does not list them and `partial_branches` is empty), and the project's own
   report settings are ignored, so the one measurement is the same everywhere. Only idioms that are
   never testable are excluded, with the same list on every coverage.py version: `if TYPE_CHECKING:`
-  (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`)
-  and `raise NotImplementedError`. A branch of a function that legitimately cannot be tested is
+  (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`),
+  `raise NotImplementedError`, a function whose whole body is `...` on its signature line (a
+  `Protocol` method, an `@abstractmethod` stub: `def write(self, text: str) -> object: ...`, a
+  wrapped signature too), and `assert_never(` (also `typing.assert_never` and
+  `typing_extensions.assert_never`) together with a `case _:` right above it. That last pair is the
+  one allowed way to close a `match` over every member of an enum or union: without a wildcard,
+  coverage.py counts the jump out of the `match` when no case matches, which no test can take, and
+  the finding for it says to end the `match` with `case _:` and `assert_never(subject)`. The type
+  checker reports an `assert_never` it cannot prove unreachable, so a missing case still fails, and
+  an untested `case _:` that does something else is still reported. A branch of a function that legitimately cannot be tested is
   accepted with an `exceptions` entry for `changed-branch-coverage` that names the function
   (`"function": "Service.wide"`), which keeps every other finding of the file. Only a branch in no
   function (module-level code) is lifted with `exclude` in `nitpicker.config.json` (a path glob),
@@ -1257,9 +1265,10 @@ or remove it if it can't happen. If this is intended, add
 - **Tests.** `languages/python/ingest/coverage-reports/coverage-branches.test.mjs` (the ingester on a recorded
   coverage.py report, identity stability, baselined / touched / added cases through
   `compareFindings`); `core/command/python/python-cli-*.test.mjs` (the CLI with fake tools); the gated e2e test adds
-  six cases on a real project (moved gap baselined, edited line fails, edited and tested passes,
+  ten cases on a real project (moved gap baselined, edited line fails, edited and tested passes,
   new untested branch fails while the old gap stays baselined, a pragma hides nothing, new tested
-  branch passes).
+  branch passes, `Protocol` and abstract stubs pass, a `match` closed with `assert_never` passes,
+  one with no wildcard fails naming that form, an untested `case _:` default fails).
 
 ## Slice 5: duplicates, coupling and import contracts
 
@@ -1430,7 +1439,9 @@ location.
   patterns still count as `mutant-ignored`, listed or not); `["nitpicker", "project"]` is the
   unlisted behavior. A project listed without a table is a tool error.
 - **Equivalent mutants.** mutmut also mutates strings and logging, so some survivors cannot be
-  killed by any test. The ways out are an `exceptions` entry for `mutant-survived` or
+  killed by any test. Mutants that change only an `assert_never(...)` line, or that remove a
+  `case _:` arm holding nothing but one, are left out: the type checker proves that code
+  unreachable. The ways out are an `exceptions` entry for `mutant-survived` or
   `mutant-nocoverage` (with `function` to name one function; the message prints the entry), a
   `python.exceptions` entry for `mutant-ignored` (below) with the path, or `exclude` (the mutants of
   the file are dropped).

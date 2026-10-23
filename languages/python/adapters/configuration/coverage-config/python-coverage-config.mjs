@@ -12,6 +12,9 @@ const UNTESTABLE_LINES = [
   String.raw`^\s*if __name__ == .__main__.:`,
   String.raw`^\s*@(typing\.)?overload\b`,
   String.raw`^\s*raise NotImplementedError\b`,
+  String.raw`^\s*(?:(?:async\s+)?def\b|\)).*:\s*\.\.\.\s*(?:#.*)?$`,
+  String.raw`^\s*case _:\s*\n\s*(?:\w+\.)?assert_never\(`,
+  String.raw`^\s*(?:\w+\.)?assert_never\(`,
 ];
 const CARRIED_KEYS = ['concurrency', 'patch', 'plugins'];
 const PROJECT_FILES = [

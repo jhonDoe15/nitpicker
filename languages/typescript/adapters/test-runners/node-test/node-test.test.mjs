@@ -26,6 +26,31 @@ const ENUM_AND_ARROW = [
   '',
 ].join('\n');
 
+const COLORS = [
+  "import type { Color } from './ports.ts';",
+  'export function closed(color: Color): string {',
+  '  switch (color) {',
+  "    case 'red':",
+  "      return 'R';",
+  "    case 'blue':",
+  "      return 'B';",
+  '    default: {',
+  '      const unreachable: never = color;',
+  '      return unreachable;',
+  '    }',
+  '  }',
+  '}',
+  'export function open(color: Color): string {',
+  '  switch (color) {',
+  "    case 'red':",
+  "      return 'R';",
+  "    case 'blue':",
+  "      return 'B';",
+  '  }',
+  '}',
+  '',
+].join('\n');
+
 const changedBranchMessages = (findings) =>
   findings.filter(({ rule }) => rule === 'changed-branch-coverage').map(({ message }) => message);
 
@@ -176,6 +201,22 @@ describe('coverage on a node:test project', () => {
 
     expect(changedBranchMessages(findings)).toEqual([
       'Branch coverage is 0.00%; minimum is 95%. Not taken: the true arm of the if at 2:3; the false arm of the if (or its else) at 2:3. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/pick.ts"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+  });
+
+  it('measures no branch in type declarations and names the default an exhaustive switch needs none of', async () => {
+    const root = projects.project({
+      'package.json': { name: 'p', type: 'module', scripts: { test: 'node --test' } },
+      'src/main/ports.ts':
+        "export interface Writer {\n  write(text: string): string;\n}\nexport type Color = 'red' | 'blue';\n",
+      'src/main/colors.ts': COLORS,
+      'test/colors.test.ts': `${IMPORTS}import { closed, open } from '../src/main/colors.ts';\nit('names both', () => {\n  for (const name of [closed, open]) {\n    assert.equal(name('red'), 'R');\n    assert.equal(name('blue'), 'B');\n  }\n});\n`,
+    });
+
+    const findings = await runArea('coverage', root);
+
+    expect(changedBranchMessages(findings)).toEqual([
+      'Branch coverage is 66.67%; minimum is 95%. Not taken: the default case at 8:5 (a switch that lists every member of a union needs no default: switch-exhaustiveness-check proves it complete). Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/colors.ts"],"function":"closed","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 });
