@@ -53,10 +53,19 @@ public final class Psi {
     List<Object> texts = new ArrayList<>();
     for (KtAnnotationEntry entry : annotated.getAnnotationEntries()) {
       if (entry.getShortName() != null) {
-        texts.add(m("name", entry.getShortName().asString(), "arguments", annotationArguments(entry)));
+        String type = entry.getTypeReference() == null
+            ? null
+            : withoutTypeArguments(entry.getTypeReference().getText());
+        texts.add(
+            m("name", entry.getShortName().asString(), "arguments", annotationArguments(entry), "type", type));
       }
     }
     return texts;
+  }
+
+  public static List<Object> annotationEntries(KtAnnotated annotated) {
+    List<Object> texts = annotationTexts(annotated);
+    return texts.isEmpty() ? null : texts;
   }
 
   private static List<Object> annotationArguments(KtAnnotationEntry entry) {
@@ -65,7 +74,8 @@ public final class Psi {
       list.add(
           m(
               "name", argument.getArgumentName() == null ? null : argument.getArgumentName().getAsName().asString(),
-              "text", clip(argument.getArgumentExpression())));
+              "text", argument.getArgumentExpression() == null ? null
+                  : clip(argument.getArgumentExpression().getText(), Integer.MAX_VALUE)));
     }
     return list;
   }
