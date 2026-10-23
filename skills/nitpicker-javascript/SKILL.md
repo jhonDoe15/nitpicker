@@ -22,7 +22,8 @@ Before you change code other modules use or fix a bug, read
 
 ## Finish with the gate
 
-1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.
+1. Run your tests with the project's runner (its `test` script). Failing tests stop coverage, CRAP
+   and mutation from running.
    The gate type-checks for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
@@ -188,8 +189,9 @@ line) is a finding.
 
 ## Tests
 
-- Tests are Vitest files in `test/` (`*.test.js`, `.mjs`), and a test file must `import` from
-  `'vitest'`. `require('vitest')` fails, so a test is ESM even when the code it tests is CommonJS:
+- Tests are files in `test/` (`*.test.js`, `.mjs`) for the project's runner (Vitest, Jest,
+  `node:test` or Mocha). A Vitest test must `import` from `'vitest'`: `require('vitest')` fails, so
+  it is ESM even when the code it tests is CommonJS:
   `import { initials } from '../src/main/features/greeting/domain/initials.cjs';`.
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.

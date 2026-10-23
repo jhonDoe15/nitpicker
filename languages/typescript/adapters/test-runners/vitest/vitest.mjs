@@ -1,15 +1,12 @@
 import path from 'node:path';
 import { timeoutSetupSource } from './test-timeouts-setup.mjs';
 import { readHeadPolicyFile } from '../../../../../shared/head-policy.mjs';
-import { readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { runNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { readRun, removeTemporary, temporaryProjectPath, testTimeouts } from '../test-run.mjs';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
+import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
 
-import { TEST_CONSOLE_REPORT_PATH } from '../../quality-areas/reporting/test-report.mjs';
-import { REPORT_VARIABLE } from '../../../preset/test-console/vitest-reporter.config.mjs';
-
-const CONSOLE_REPORTER = 'languages/typescript/preset/test-console/vitest-reporter.config.mjs';
 const TIMEOUT_SETUP_VARIABLE = 'NITPICKER_TEST_TIMEOUT_SETUP';
 const TIMEOUT_LIMITS_VARIABLE = 'NITPICKER_TEST_TIMEOUT_LIMITS';
 
@@ -22,8 +19,7 @@ export function runVitest(options) {
   const reportPath = temporaryProjectPath(options, 'vitest-report.json');
   writeFileSync(setupPath, timeoutSetupSource(options.policyRoot));
   writeFileSync(configPath, readFileSync(path.join(options.policyRoot, QUALITY_CONFIG), 'utf8'));
-  const consoleReportPath = path.join(options.projectRoot, TEST_CONSOLE_REPORT_PATH);
-  rmSync(consoleReportPath, { force: true });
+  const testConsole = startTestConsole(options, { collectsLines: false });
   try {
     const result = runNodeTool({
       options,
@@ -41,11 +37,10 @@ export function runVitest(options) {
         '--outputFile',
         reportPath,
         ...(options.rerun?.files ?? []),
-        '--reporter',
-        path.join(options.policyRoot, CONSOLE_REPORTER),
+        ...(testConsole.enabled ? ['--reporter', consoleProducerPath(options, 'vitest')] : []),
       ],
       environment: {
-        [REPORT_VARIABLE]: consoleReportPath,
+        ...testConsole.environment,
         ...(configured
           ? {
               [TIMEOUT_SETUP_VARIABLE]: setupPath,

@@ -60,18 +60,21 @@ export function rebaseGlobs(globs, { projectRoot, rootDir }) {
   });
 }
 
-export function shownRootDir(result) {
+export function shownConfig(result) {
   const start = result.stdout.indexOf(SHOWN_CONFIG_START);
   if (result.status !== 0 || start === -1) {
     throw new Error(
       `Jest exited ${String(result.status)} without printing its config for --showConfig${formatProcessOutput(result)}`,
     );
   }
-  const { globalConfig } = parseReportJson(result.stdout.slice(start));
+  const { configs, globalConfig } = parseReportJson(result.stdout.slice(start));
   if (typeof globalConfig?.rootDir !== 'string') {
     throw new TypeError('Jest printed a config without a global rootDir for --showConfig');
   }
-  return globalConfig.rootDir;
+  const printing = [globalConfig, ...(Array.isArray(configs) ? configs : [])].some(
+    (config) => config?.silent === true || config?.verbose === true,
+  );
+  return { rootDir: globalConfig.rootDir, printsDirectly: printing };
 }
 
 export function coverageArguments(options, rootDir) {
