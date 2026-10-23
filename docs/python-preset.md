@@ -769,9 +769,17 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `tomllib` parsing, `.json()` or an `Any` parameter, and `TypeGuard` or `TypeIs` functions over
   `Any` or `object`. `pydantic-any-field` and `pydantic-extra-allow` look at classes deriving from
   `BaseModel`, `BaseSettings` or `RootModel` anywhere (v1 `Config` and `Extra.allow` too).
-- `repeated-string-literal` counts a string of five characters or more used three times or more in
-  a file (not tests) and reports it at its first use. Annotations, f-string parts, dictionary keys,
-  docstrings and bare strings, `Literal[...]` subscripts and translation calls are not counted.
+- `repeated-string-literal` counts a string of five characters or more (with a letter or digit) used
+  three times or more in a file (not tests, not generated migrations) and reports each use from the
+  third on. Not counted: annotations, f-string parts, keyword arguments (Kotlin exempts named
+  arguments the same way; TypeScript and Java have none), dictionary keys, the value under a
+  `type`/`kind`/`tag`/`variant` key, subscript keys, `match` patterns, docstrings and bare strings,
+  `Literal[...]` subscripts, `__all__` and class-body lists, the first argument of a translation or
+  message-key call, and idiomatic text (encodings, HTTP methods, argparse actions, MIME types, time
+  formats). The minimum length, the number of allowed uses and those lists are defined once in
+  [`shared/literals/repeated-literal-exemptions.mjs`](../shared/literals/repeated-literal-exemptions.mjs);
+  `literal-exemptions.test.mjs` fails when `literals.py` drifts from it. The message ends with the
+  `exceptions` route for the rule like every other Python rule.
 - `generic-name` reports a file, a folder or a top-level class whose last word is `util`, `utils`,
   `helper`, `helpers`, `manager`, `common`, `misc` and the like; a class that extends a type with the
   same ending (`class SessionManager(CacheManager)`) is not reported.
