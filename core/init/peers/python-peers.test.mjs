@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useProjects } from '../test-support/projects.mjs';
-import { missingPythonPeers, requiredPythonPeers } from './python-peers.mjs';
+import { pythonPeerStatus, requiredPythonPeers } from './python-peers.mjs';
 
 const project = useProjects();
 const MUTMUT = 'mutmut>=3,<4';
@@ -21,6 +21,12 @@ describe('required Python peers', () => {
     ]);
   });
 });
+
+function missingPythonPeers(root, python) {
+  return pythonPeerStatus(root, python)
+    .filter(({ declared, installed }) => !declared && !installed)
+    .map(({ requirement }) => requirement);
+}
 
 describe('missing Python peers', () => {
   const python = { testRunner: 'pytest', typeChecker: 'mypy' };
@@ -59,6 +65,47 @@ describe('missing Python peers', () => {
     });
 
     expect(missingPythonPeers(root, python)).toEqual(['coverage', 'mypy', 'pytest', MUTMUT]);
+  });
+
+  it('does not take a setup.cfg section of a tool for a declaration', () => {
+    const root = project({
+      'setup.cfg':
+        '[metadata]\nname = x\n[mypy]\nstrict = True\n[coverage:run]\nbranch = True\n[tool:pytest]\n',
+    });
+
+    expect(missingPythonPeers(root, python)).toEqual(['coverage', 'mypy', 'pytest', MUTMUT]);
+  });
+
+  it('reads the extras of setup.cfg as declarations', () => {
+    const root = project({
+      'setup.cfg': '[options.extras_require]\ndev =\n    pytest\n    coverage\n',
+    });
+
+    expect(missingPythonPeers(root, python)).toEqual(['mypy', MUTMUT]);
+  });
+
+  it('does not take a pre-commit hook or a tox command for a declaration', () => {
+    const root = project({
+      'pyproject.toml': '',
+      '.pre-commit-config.yaml': '  - id: mypy\n',
+      'tox.ini': '[testenv]\ncommands = pytest\n',
+    });
+
+    expect(missingPythonPeers(root, python)).toEqual(['coverage', 'mypy', 'pytest', MUTMUT]);
+  });
+
+  it('tells a declared peer from one that is only installed', () => {
+    const root = project({
+      'requirements.txt': 'pytest\n',
+      '.venv/lib/python3.13/site-packages/mypy/__init__.py': '',
+    });
+
+    expect(pythonPeerStatus(root, python)).toEqual([
+      { requirement: 'coverage', declared: false, installed: false },
+      { requirement: 'mypy', declared: false, installed: true },
+      { requirement: 'pytest', declared: true, installed: false },
+      { requirement: MUTMUT, declared: false, installed: false },
+    ]);
   });
 
   it('treats dashes, dots and underscores alike', () => {

@@ -16,14 +16,17 @@ const PROJECT_TOOLS = [
 ];
 const FILE_TOOLS = [['pdm', 'pdm.lock']];
 
+const PIP = 'pip';
+const PIP_ENVIRONMENTS = new Set(['path', 'venv']);
+
 function projectTool(projectRoot, hints) {
   const environment = detectEnvironment(projectRoot).kind;
-  if (environment !== 'path' && environment !== 'venv') {
+  if (!PIP_ENVIRONMENTS.has(environment)) {
     return environment;
   }
   const fromFile = FILE_TOOLS.find(([, file]) => hasProjectFile(projectRoot, file));
   const fromHints = PROJECT_TOOLS.find(([, declares]) => declares(hints));
-  return fromFile?.[0] ?? fromHints?.[0] ?? environment;
+  return fromFile?.[0] ?? fromHints?.[0] ?? PIP;
 }
 
 export function describePythonProject(projectRoot) {

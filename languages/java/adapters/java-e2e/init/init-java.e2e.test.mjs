@@ -31,8 +31,11 @@ describe.skipIf(!enabled)('nitpicker init then --all on a Java project', () => {
     const result = setUp(GRADLE_FIXTURE, 'nitpicker-init-gradle-');
 
     expect(result.init.exitCode, result.init.text).toBe(0);
-    expect(result.init.text.split('\n').slice(0, 2)).toEqual([
+    expect(result.init.text.split('\n').slice(0, 5)).toEqual([
       'nitpicker init: Java, Gradle (preset "java")',
+      '',
+      'Needs Java 21 or newer. nitpicker adds its own analysis tools to the build.',
+      '',
       'created nitpicker.config.json',
     ]);
     expect(result.config).toBe('{ "preset": "java" }\n');
@@ -45,8 +48,11 @@ describe.skipIf(!enabled)('nitpicker init then --all on a Java project', () => {
     const result = setUp(MAVEN_FIXTURE, 'nitpicker-init-maven-');
 
     expect(result.init.exitCode, result.init.text).toBe(0);
-    expect(result.init.text.split('\n').slice(0, 2)).toEqual([
+    expect(result.init.text.split('\n').slice(0, 5)).toEqual([
       'nitpicker init: Java, Maven (preset "java")',
+      '',
+      'Needs Java 21 or newer. nitpicker adds its own analysis tools to the build.',
+      '',
       'created nitpicker.config.json',
     ]);
     expect(result.config).toBe('{ "preset": "java" }\n');

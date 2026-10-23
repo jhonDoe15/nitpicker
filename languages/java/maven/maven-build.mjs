@@ -28,7 +28,7 @@ import {
 } from './maven-tools.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
-import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
+import { buildRunsPreset, GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
@@ -252,7 +252,7 @@ function extraTools({ modules, analyzed, policy, pinned }) {
 }
 
 export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn }) {
-  if (policy.preset === 'kotlin') {
+  if (!buildRunsPreset('maven', policy.preset)) {
     throw new Error(
       'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
     );

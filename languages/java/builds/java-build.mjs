@@ -24,6 +24,10 @@ export function readPinnedTools(initScript = INIT_SCRIPT) {
   return pinned;
 }
 
+export function buildRunsPreset(buildTool, preset) {
+  return buildTool === 'gradle' || preset !== 'kotlin';
+}
+
 export function detectJavaBuild(projectRoot) {
   const present = new Set(
     ['pom.xml', 'mvnw', 'gradlew', ...GRADLE_BUILD_FILES].filter((name) =>

@@ -27,29 +27,42 @@ tool error.
 ### Set up with `nitpicker init`
 
 `npx nitpicker init` sets a project up for its language. Run it in the project's folder: the one
-with the `package.json`, `pom.xml`, `build.gradle(.kts)` or `pyproject.toml`. It asks nothing, so a
-coding agent can run it, and it prints what it did and what is left for you:
+with the `package.json`, `pom.xml`, `build.gradle(.kts)` or `pyproject.toml`, inside a Git
+repository. It asks nothing, so a coding agent can run it, and it prints what it did and what is
+left for you:
 
-1. **Detects the project.** The preset comes from the sources under `src` and the project files:
-   TypeScript (also React, which the TypeScript preset covers), JavaScript (JavaScript sources, no
-   `.ts`, `.tsx` or `.jsx` file and no `tsconfig.json`), Python (`pyproject.toml`, `setup.py`,
-   `setup.cfg`, `Pipfile` or `requirements.txt` and no `package.json`), Java (Gradle or Maven) and
-   Kotlin (Gradle; a Maven project with more Kotlin than Java sources gets the `java` preset, because
-   the Kotlin preset needs Gradle). It also reads the package manager (the `packageManager` field of
-   `package.json`, else the lockfile: `pnpm-lock.yaml`, `yarn.lock`, `bun.lock` or `bun.lockb`,
-   `package-lock.json`; npm without either), the test runner (Vitest, Jest, `node:test` or Mocha, the
-   way [the strict preset](typescript-strict-preset.md) finds it) and, for Python, the project tool
-   (uv, poetry, pipenv, pdm, or pip).
-2. **Writes `nitpicker.config.json`** with the preset only, `{ "preset": "python" }`, formatted as
-   Prettier formats it. Everything else (React, the test runner, the formatter, the build tool) is
-   detected at run time, so init never writes it.
-3. **Prints the install command** for the project's package manager with only the peers that are
+1. **Detects the project.** The preset comes from the sources under the source roots (`src`, or
+   `layout.sourceRoots` of an existing `nitpicker.config.json`) and the project files. A folder
+   with TypeScript or JavaScript sources is a script project when it has a `package.json` or no
+   other project file: TypeScript (also React, which the TypeScript preset covers) when it has a
+   `tsconfig.json` or any `.ts`, `.tsx`, `.mts`, `.cts` or `.jsx` file, and JavaScript otherwise.
+   Without such sources, or when a `pom.xml`, Gradle build or Python file sits next to them and
+   there is no `package.json`, it is Python (`pyproject.toml`, `setup.py`, `setup.cfg`, `Pipfile`
+   or `requirements.txt`), Java (Gradle or Maven) or Kotlin (Gradle, when `.kt` files outnumber
+   `.java` ones). The Kotlin preset needs Gradle today: a Maven project with Kotlin and Java sources
+   gets the `java` preset with a note that only its Java sources are checked, and one with Kotlin
+   sources only stops with exit 2. It also reads the package manager the way the gate does (the
+   lockfile up to the repository root, else the nearest `packageManager` field; npm without
+   either), the test runner (Vitest, Jest, `node:test` or Mocha, for both presets, the way
+   [the strict preset](typescript-strict-preset.md) finds it) and, for Python, the project tool
+   (uv, poetry, pipenv, pdm, hatch, conda, or pip for a plain or `.venv` project).
+2. **Prints the install command** for the project's package manager with only the peers that are
    missing: `nitpicker`, `typescript`, `@types/node` and the test runner's packages (`vitest` and
    `@vitest/coverage-v8` pinned to the installed Vitest, `jest` or `mocha`; `node:test` needs none).
-   A Python project gets `coverage`, its type checker, `pytest`, `mutmut` and a runner plugin if its
-   runner needs one (`pytest-django`, `nose2`), added with uv, poetry, pipenv, pdm or pip. A package
-   counts as present when the project declares it or has it installed. Java and Kotlin projects
-   need Java 21 and nothing else.
+   At a workspace root it adds the flag that pnpm (`-w`) and Yarn 1 (`-W`) need there. A Python
+   project gets `coverage`, its type checker, `pytest`, `mutmut` and a runner plugin if its runner
+   needs one (`pytest-django`, `nose2`), added with `uv add --dev`, `poetry add --group dev`,
+   `pipenv install --dev`, `pdm add -dG dev`, `hatch run python -m pip install` (into the default
+   hatch environment, which nitpicker uses; list them under `[tool.hatch.envs.default]` to keep
+   them), `conda install --channel conda-forge` (in the project's active environment) or
+   `python -m pip install`. A package counts as present when the project declares it (in
+   `package.json`, `pyproject.toml`, `setup.cfg`, `setup.py`, `Pipfile`, `hatch.toml`,
+   `environment.yml` or a requirements file) or has it installed (`node_modules`, `.venv`); one
+   that only `.venv` holds is named, so you can declare it. Java and Kotlin projects need Java 21
+   and nothing else.
+3. **Writes `nitpicker.config.json`** with the preset only, `{ "preset": "python" }`, formatted as
+   Prettier formats it. Everything else (React, the test runner, the formatter, the build tool) is
+   detected at run time, so init never writes it.
 4. **Prints the skill to install**, for example
    `npx skills add jhonDoe15/nitpicker --skill nitpicker-python` (`nitpicker-kotlin` and, with Java
    sources, `nitpicker-java`).
@@ -58,25 +71,54 @@ coding agent can run it, and it prints what it did and what is left for you:
 ```sh
 npx nitpicker init                    # config, install command, skill
 npx nitpicker init --agents-md        # also append the agent snippet to AGENTS.md
-npx nitpicker init --ci github        # also write .github/workflows/nitpicker.yml
+npx nitpicker init --ci github        # also write the GitHub Actions workflow
 ```
 
 `--agents-md` appends the [agent guidance snippet](agents-snippet.md) to `AGENTS.md` (to
-`CLAUDE.md` when only that file exists, and it creates `AGENTS.md` when neither does). It adds the
-section once: running it again, or with the snippet already in either file, changes nothing.
+`CLAUDE.md` when only that file exists, and it creates `AGENTS.md` when neither does), keeping the
+file's line endings. It adds the section once: running it again, or with the snippet already in
+either file, changes nothing.
 
-`--ci github` writes `.github/workflows/nitpicker.yml` at the repository root from the template
-`core/init/templates/github-workflow.yml`: it runs on pull requests, checks out with
-`fetch-depth: 0`, sets up Node.js 24 (plus Java 21 or Python for those presets), installs the
-dependencies with the project's package manager and runs nitpicker. A Python project installs with
-its own tool and a Java or Kotlin project builds as it always does. A project in a subfolder of the
-repository gets a `working-directory` default.
+`--ci github` writes a workflow at the repository root from the template
+`core/init/templates/github-workflow.yml`: `.github/workflows/nitpicker.yml` for a project at the
+root, and `.github/workflows/nitpicker-<path>.yml` (for example `nitpicker-apps-web.yml`) with a
+`working-directory` default for a project in a subfolder, so two projects of one repository get
+two workflows. It runs on pull requests, checks out with `fetch-depth: 0`, sets up Node.js 24 (plus
+Java 21 or Python 3.13 for those presets), installs the dependencies and runs nitpicker:
 
-init never overwrites a file. For `nitpicker.config.json` and the workflow that already exist, it
-prints a unified diff from your file to what it would write and exits 1, and `nitpicker.config.json`
-counts as up to date when it already sets the detected preset, whatever else it holds. Exit codes:
-0 when everything it was asked to write is in place, 1 when an existing file differs (the rest of
-the setup still happens), 2 for an unknown argument or a folder with no project in it.
+- **Node.js.** `npm ci`, `pnpm install --frozen-lockfile`, `yarn install --frozen-lockfile` (Yarn 1),
+  `yarn install --immutable` (Yarn 2 or newer) or `bun install --frozen-lockfile` with a lockfile,
+  and a plain install without one (`yarn install --no-immutable` for Yarn 2 or newer, which is
+  immutable on CI by default). A `corepack enable` step comes first for Yarn 2 or newer and for any
+  project whose `package.json`, or one above it up to the repository root, declares
+  `packageManager`. pnpm is set up with `pnpm/action-setup`: from the declaring `package.json`
+  (`package_json_file` when that file is not at the repository root), else at the major version of
+  the lockfile's `lockfileVersion` (`9.0`: 10, `6.x`: 8, `5.4`: 7), else 10.
+- **Python.** uv, poetry, pipenv, pdm and hatch sync with their own tool (`uv sync`,
+  `poetry install`, `pipenv install --dev`, `pdm install`, `hatch env create`) and then add the
+  peers the project does not declare; a peer that only your local `.venv` holds counts as missing
+  here. pip and conda projects install the root `requirements*.txt` files, the project itself when
+  `pyproject.toml` has a `[project]` or `[build-system]` table (or there is a `setup.py` or
+  `setup.cfg`), and every peer, with pip into the runner's Python: the workflow does not set conda
+  up, and nitpicker falls back to that Python when `conda` is not on the `PATH`, as on GitHub's
+  hosted runners.
+- **Java and Kotlin.** The build runs as it always does.
+
+init never overwrites a file, and never writes through a symbolic link that leads outside the
+project (or the repository, for the workflow); it stops with exit 2 and names the link. For an
+existing file that needs a change it prints a unified diff from your file to what it would write
+and leaves the file alone; line endings (CRLF or LF) do not count as a change.
+`nitpicker.config.json` is up to date when it sets the detected preset, whatever else it holds, or
+sets no preset on a TypeScript project, whose preset is the default. Otherwise the diff changes or
+adds only the `"preset"` line and keeps every other key.
+
+init has exit codes of its own:
+
+| Code | Meaning                                                                                                                                                                                                                    |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Everything it was asked to write is in place: created, or already set up.                                                                                                                                                  |
+| 1    | An existing `nitpicker.config.json` or workflow needs a change, shown as a diff. The rest of the setup still happens.                                                                                                      |
+| 2    | It cannot run: an unknown argument, Node.js older than the `engines` range of the package (22.14), no Git repository, no project in the folder, Kotlin on Maven without Java sources, or a link it does not write through. |
 
 ### From a GitHub release
 
@@ -231,7 +273,7 @@ nitpicker init [--agents-md] [--ci github] [--help]
 nitpicker aggregate --input-root <dir> --shard-count <n>
           [--output <dir>] [--policy-root <dir>]
 nitpicker cache publish [--analyzer <name>]...
-          [--shard-count <n> --shard-index <i>]
+          [--shard-count <n> --shard-index <i>] [--help]
 ```
 
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
@@ -243,14 +285,8 @@ nitpicker cache publish [--analyzer <name>]...
 - `--analyzer <name>`: run only this analyzer (repeatable). Cannot be combined with sharding.
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
 - `--output <dir>`: where reports go.
-
-- `--help`: list the commands and every flag with a one-line description. `nitpicker init --help`
-  describes the flags of `init`.
-- `--version`: print the version of the installed nitpicker.
-- `nitpicker init [--agents-md] [--ci github]`: set the project up; see
-  [Set up with `nitpicker init`](#set-up-with-nitpicker-init). `--agents-md` appends the agent
-  snippet to `AGENTS.md` once; `--ci github` writes `.github/workflows/nitpicker.yml`. It never
-  overwrites a file: for an existing one it prints a diff and exits 1.
+- `--shard-count <n>`, `--shard-index <i>` and `--defer-exit`: run one shard of a split run; see
+  [Sharding in CI](#sharding-in-ci).
 - `--no-cache`: do not read or write the findings cache for this run (local and remote).
 - `--accept-policy-change=<digest>`: accept the loosenings of `nitpicker.config.json` whose digest
   the `nitpicker-config/policy-loosened` findings name (see [Configuration](#configuration)). It is
@@ -260,9 +296,23 @@ nitpicker cache publish [--analyzer <name>]...
   ignored acceptance is named on stderr and the run still fails. The digest covers every loosening
   in full and the content (git blob id) of each file it names, and `summary.json` records it as
   `policyDigest`: editing a named file or adding a loosening changes it and fails again.
-- `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
-  cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
-  everything was uploaded and 2 otherwise.
+- `--help`: list the commands and the flags of each with a one-line description, and exit 0.
+  `nitpicker init --help`, `nitpicker aggregate --help` and `nitpicker cache publish --help` print
+  the help of that command.
+- `--version`: print the version of the installed nitpicker.
+
+The other commands:
+
+- `nitpicker init [--agents-md] [--ci github]`: set the project up; see
+  [Set up with `nitpicker init`](#set-up-with-nitpicker-init). `--agents-md` appends the agent
+  snippet to `AGENTS.md` once; `--ci github` writes a GitHub Actions workflow. It never overwrites a
+  file: for an existing one that needs a change it prints a diff and exits 1.
+- `nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>]`:
+  combine the reports of the shard jobs; see [Sharding in CI](#sharding-in-ci).
+- `nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]`: analyze
+  the committed `HEAD` tree (all analyzers, the named ones, or one shard) and upload its findings to
+  the remote cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits
+  0 when everything was uploaded and 2 otherwise.
 
 ### Findings cache
 

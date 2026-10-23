@@ -18,6 +18,7 @@ import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs'
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { renderConsoleSummary } from '../reporting/summary.mjs';
+import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mjs';
 
 function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
   if (policyRoot !== undefined) {
@@ -99,10 +100,7 @@ export function runAggregateCli({
   try {
     const options = parseArguments(arguments_);
     if (options.kind === 'help') {
-      stdout.write(
-        'Usage: node core/diff/sharding/aggregate-shards.mjs --input-root <directory>' +
-          ' --shard-count <count> [--output <directory>] [--policy-root <directory>]\n',
-      );
+      stdout.write(AGGREGATE_USAGE_TEXT);
       return 0;
     }
     currentProjectRoot =

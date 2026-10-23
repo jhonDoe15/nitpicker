@@ -3,11 +3,12 @@ import { packageVersion } from '../help/package-version.mjs';
 import { INIT_USAGE_TEXT } from '../help/usage-text.mjs';
 import { detectProject } from './detection/detect-project.mjs';
 import { appendSnippet } from './files/agents-md.mjs';
-import { placeWorkflow } from './files/ci-workflow.mjs';
+import { placeWorkflow, workflowPath } from './files/ci-workflow.mjs';
 import { placeConfig } from './files/config-file.mjs';
 import { parseInitArguments } from './init-arguments.mjs';
 import { renderReport } from './init-report.mjs';
 import { planPeers } from './peers/peer-plan.mjs';
+import { assertSupportedNode, requireRepository } from './support/preconditions.mjs';
 
 export function runInitCommand(cli) {
   const options = parseInitArguments(cli.arguments_);
@@ -15,15 +16,16 @@ export function runInitCommand(cli) {
     cli.stdout.write(INIT_USAGE_TEXT);
     return 0;
   }
+  assertSupportedNode(cli.nodeVersion ?? process.versions.node);
   const projectRoot = realpathSync(cli.currentProjectRoot ?? process.cwd());
+  const repository = requireRepository(projectRoot);
   const project = detectProject(projectRoot);
   const peers = planPeers(projectRoot, project);
   const config = placeConfig(projectRoot, project.preset);
-  const workflow =
-    options.ci.length === 0
-      ? undefined
-      : placeWorkflow(projectRoot, { project, missing: peers.missing, version: packageVersion() });
+  const context = { project, peers, version: packageVersion(), repository };
+  const workflow = options.ci.length === 0 ? undefined : placeWorkflow(projectRoot, context);
   const agents = options.agentsMd ? appendSnippet(projectRoot) : undefined;
-  cli.stdout.write(renderReport({ project, peers, config, workflow, agents }));
+  const workflowFile = workflowPath(projectRoot, repository);
+  cli.stdout.write(renderReport({ project, peers, config, workflow, workflowFile, agents }));
   return [config, workflow].some((result) => result?.status === 'differs') ? 1 : 0;
 }

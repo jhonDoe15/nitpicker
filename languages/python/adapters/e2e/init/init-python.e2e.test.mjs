@@ -24,11 +24,12 @@ describe.skipIf(!pythonE2eEnabled)('nitpicker init then --all on a Python projec
     const result = runInitThenAll(root);
 
     expect(result.init.exitCode, result.init.text).toBe(0);
-    expect(result.init.text.split('\n').slice(0, 4)).toEqual([
-      'nitpicker init: Python, venv, pytest, mypy, ruff (preset "python")',
-      'created nitpicker.config.json',
+    expect(result.init.text.split('\n').slice(0, 5)).toEqual([
+      'nitpicker init: Python, pip, pytest, mypy, ruff (preset "python")',
       '',
       'Nothing to install: every peer nitpicker needs is already there.',
+      '',
+      'created nitpicker.config.json',
     ]);
     expect(result.config).toBe('{ "preset": "python" }\n');
     expect(result.all.exitCode, result.all.text).not.toBe(2);

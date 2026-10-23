@@ -1,4 +1,4 @@
-name: nitpicker
+name: '{{NAME}}'
 
 on:
   pull_request:

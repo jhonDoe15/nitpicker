@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { useProjects } from '../../init/test-support/projects.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
 import { javascriptPresetHint, scriptProjectPreset } from './preset-detection.mjs';
 
-const project = useProjects();
+const { temporaryRoot } = useGitFixtures();
+
+function project(files) {
+  const root = temporaryRoot('nitpicker-script-preset-');
+  writeFiles(root, files);
+  return root;
+}
 const HINT =
   'no "preset" is set, so the TypeScript preset runs, but these sources are JavaScript (no TypeScript files or tsconfig.json). Add "preset": "javascript" to nitpicker.config.json, or run `nitpicker init`.';
 

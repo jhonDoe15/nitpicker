@@ -84,7 +84,7 @@ function requirementsInDirectory(projectRoot) {
     : [];
 }
 
-function requirementFiles(projectRoot) {
+export function requirementFiles(projectRoot) {
   return [
     ...readdirSync(projectRoot).filter((name) => REQUIREMENT_FILE.test(name)),
     ...requirementsInDirectory(projectRoot),

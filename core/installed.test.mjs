@@ -14,6 +14,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { readSnippet } from './init/files/agents-md.mjs';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 
 const enabled = process.env.NITPICKER_INSTALLED_TEST === '1';
@@ -171,6 +172,7 @@ suite('packed nitpicker in a separate consumer', () => {
       let subfolder;
       let snapshot;
       let fixed;
+      let initialized;
       let packageLocation;
       const reports = (name) => path.join(root, 'reports', name);
       const invoke = (args, cwd = root) =>
@@ -287,6 +289,7 @@ suite('packed nitpicker in a separate consumer', () => {
           '--output',
           reports('fixed'),
         ]);
+        initialized = invoke(['init', '--agents-md', '--ci', 'github']);
       }, 600_000);
       afterAll(() => {
         if (root) rmSync(root, { recursive: true, force: true });
@@ -375,6 +378,16 @@ suite('packed nitpicker in a separate consumer', () => {
       it('supports --all with the packed prettier analyzer', () => {
         expect(snapshot.status, snapshot.output).toBe(1);
         expect(snapshot.output).toEqual(expectedSnapshotOutput);
+      });
+      it('sets the consumer up with init from the packed files', () => {
+        expect(initialized.status, initialized.output).toBe(0);
+        expect(readFileSync(path.join(root, 'nitpicker.config.json'), 'utf8')).toBe(
+          '{ "preset": "typescript" }\n',
+        );
+        expect(readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toBe(
+          `${readSnippet(packageLocation)}\n`,
+        );
+        expect(existsSync(path.join(root, '.github/workflows/nitpicker.yml'))).toBe(true);
       });
       it('fixes the consumer Prettier violation with --fix', () => {
         expect(fixed.status, fixed.output).toBe(0);
