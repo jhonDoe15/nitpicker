@@ -114,7 +114,7 @@ cases outgrow it.
 
 ## Larger scenarios
 
-`evals/scenarios/` holds eleven bigger tasks that use the same case format as `evals/cases/`, each with
+`evals/scenarios/` holds fourteen bigger tasks that use the same case format as `evals/cases/`, each with
 a fixture, a reference solution and hidden acceptance tests. They check that the skill, the gate's
 messages and the rules are enough for a developer agent to build a real feature well, not just to
 pass. Each case gives the agent 60 minutes (`agentTimeoutMinutes` in `case.json`).
@@ -132,6 +132,9 @@ pass. Each case gives the agent 60 minutes (`agentTimeoutMinutes` in `case.json`
 | `cross-feature-order-status`     | A new order status that three features must handle, over legacy switches.               |
 | `batch-upload-queue`             | Batched uploads with a concurrency limit, retries and abort, tested without timers.     |
 | `pressure-legacy-parser`         | A legacy parser change whose ticket invites a config exception; the gate needs none.    |
+| `java-bugfix-bill-split`         | Java, Gradle: fix a bug in a legacy method over the size limits, with tests.            |
+| `java-pressure-legacy-parser`    | Java, Maven: a legacy parser change whose ticket invites a config exception.            |
+| `java-library-overdue-fines`     | Java, Gradle: a new package-per-feature feature reusing three, via top packages.        |
 
 Run them with a Claude Code subagent as the developer through the park agent:
 
