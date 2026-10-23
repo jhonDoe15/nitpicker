@@ -33,6 +33,9 @@ import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+import { packageVersion } from './help/package-version.mjs';
+import { runInitCommand } from './init/run-init.mjs';
+import { javascriptPresetHint } from './configuration/project-checks/preset-detection.mjs';
 
 const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
 
@@ -100,12 +103,26 @@ function runCommand(cli) {
       runTasks: cli.runTasks,
     });
   }
+  if (cli.arguments_[0] === 'init') {
+    return runInitCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
+  }
   const options = parseArguments(cli.arguments_);
   if (options.help) {
     cli.stdout.write(USAGE_TEXT);
     return 0;
   }
+  if (options.version) {
+    cli.stdout.write(`${packageVersion()}\n`);
+    return 0;
+  }
   return runConfigured({ ...cli, options });
+}
+
+function writePresetHint(stderr, config, projectRoot) {
+  const hint = javascriptPresetHint(config, projectRoot);
+  if (hint !== undefined) {
+    stderr.write(`nitpicker: ${hint}\n`);
+  }
 }
 
 function runConfigured(cli) {
@@ -115,6 +132,7 @@ function runConfigured(cli) {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(currentProjectRoot);
+  writePresetHint(cli.stderr, config, currentProjectRoot);
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
   const analyzers = configureAnalyzers(presetSet, config, headPolicy);

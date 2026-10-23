@@ -1,0 +1,23 @@
+name: nitpicker
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  nitpicker:
+    runs-on: ubuntu-latest
+    defaults: '{{DEFAULTS}}'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: '{{ENVIRONMENT_STEPS}}'
+      - run: '{{INSTALL_STEPS}}'
+      - name: nitpicker
+        run: '{{RUN}}'
