@@ -10,10 +10,12 @@ export const SUSPEND_CLEANUP_RULE = 'SuspendFunInFinallySection';
 
 const BOUNDED =
   'run the release as `withContext(NonCancellable) { withTimeout(5.seconds) { ... } }` so it finishes after cancellation but cannot wait forever, and shield only the release itself, in the scope that opened the resource';
-const FINALLY_MESSAGE = (call) =>
-  `This \`finally\` block calls the suspending \`${call}\`, which throws as soon as the coroutine is cancelled, so the rest of the cleanup is skipped and the resource stays open. Make the release non-suspending (a blocking \`close()\`), or ${BOUNDED}.`;
-const CATCH_MESSAGE = (call) =>
-  `This \`catch (CancellationException)\` block calls the suspending \`${call}\`, but the coroutine is already cancelled, so the call throws at once and the rest of the handler is skipped. Rethrow after non-suspending cleanup, or ${BOUNDED}.`;
+function finallyMessage(call) {
+  return `This \`finally\` block calls the suspending \`${call}\`, which throws as soon as the coroutine is cancelled, so the rest of the cleanup is skipped and the resource stays open. Make the release non-suspending (a blocking \`close()\`), or ${BOUNDED}.`;
+}
+function catchMessage(call) {
+  return `This \`catch (CancellationException)\` block calls the suspending \`${call}\`, but the coroutine is already cancelled, so the call throws at once and the rest of the handler is skipped. Rethrow after non-suspending cleanup, or ${BOUNDED}.`;
+}
 const CANCELLABLE_CONTEXT_TERMS = [
   /^(?:kotlinx\.coroutines\.)?Dispatchers\.\w+(?:\.limitedParallelism\(.*\))?$/u,
   /^CoroutineName\(.*\)$/u,
@@ -122,7 +124,7 @@ export function suspendCleanupFindings(files, { finding, declaredIn = files }) {
           file: file.file,
           line: call.line,
           symbol: `${owner}${call.function}:${inCatch ? 'catch:' : ''}${call.name}`,
-          message: (inCatch ? CATCH_MESSAGE : FINALLY_MESSAGE)(labelOf(call)),
+          message: (inCatch ? catchMessage : finallyMessage)(labelOf(call)),
         });
       });
   });

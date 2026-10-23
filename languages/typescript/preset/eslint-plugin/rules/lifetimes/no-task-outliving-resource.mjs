@@ -41,10 +41,14 @@ export const rule = {
 
     return {
       VariableDeclaration(node) {
-        usingRegions(sourceCode, node).forEach(check);
+        for (const region of usingRegions(sourceCode, node)) {
+          check(region);
+        }
       },
       TryStatement(node) {
-        finallyRegions(sourceCode, node).forEach(check);
+        for (const region of finallyRegions(sourceCode, node)) {
+          check(region);
+        }
       },
     };
   },

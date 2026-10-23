@@ -59,13 +59,8 @@ function stored(sourceCode, parent) {
 
 const FUNCTION_NODES = new Set(['FunctionDeclaration', ...FUNCTION_TYPES]);
 
-function ownerFunction(node) {
-  for (let current = node.parent; current !== null; current = current.parent) {
-    if (FUNCTION_NODES.has(current.type)) {
-      return current;
-    }
-  }
-  return null;
+function ownerFunction(sourceCode, node) {
+  return sourceCode.getAncestors(node).findLast((ancestor) => FUNCTION_NODES.has(ancestor.type));
 }
 
 const AWAITED = { messageId: undefined };
@@ -85,17 +80,17 @@ function formAt(sourceCode, node, step) {
 }
 
 export function detachedForm(sourceCode, identifier, region) {
-  const regionFunction = ownerFunction(region);
-  let child = identifier;
-  for (let node = identifier.parent; node !== null && node !== region; node = node.parent) {
-    const form = formAt(sourceCode, node, {
-      child,
-      direct: ownerFunction(node) === regionFunction,
-    });
+  const regionFunction = ownerFunction(sourceCode, region);
+  const chain = sourceCode.getAncestors(identifier).reverse();
+  const end = chain.indexOf(region);
+  const path = end < 0 ? chain : chain.slice(0, end);
+  for (const [index, node] of path.entries()) {
+    const child = index === 0 ? identifier : path[index - 1];
+    const direct = ownerFunction(sourceCode, node) === regionFunction;
+    const form = formAt(sourceCode, node, { child, direct });
     if (form !== undefined) {
       return form === AWAITED ? undefined : form;
     }
-    child = node;
   }
   return undefined;
 }
