@@ -25,7 +25,7 @@ const NAMED_IDENTIFIER_PLUGIN = `function named(name) {
 }
 `;
 
-export const POLICY = `import tseslint from ${TSESLINT};
+const POLICY = `import tseslint from ${TSESLINT};
 ${NAMED_IDENTIFIER_PLUGIN}
 const nitpicker = { rules: { 'no-foo': named('foo'), 'no-baz': named('baz') } };
 
@@ -46,11 +46,11 @@ export default [
 ];
 `;
 
-export const HOUSE_PLUGIN = `${NAMED_IDENTIFIER_PLUGIN}
+const HOUSE_PLUGIN = `${NAMED_IDENTIFIER_PLUGIN}
 export default { rules: { 'no-bar': named('bar') } };
 `;
 
-export const PROJECT_CONFIG = `import house from './eslint/house.mjs';
+const PROJECT_CONFIG = `import house from './eslint/house.mjs';
 
 export default [
   { ignores: ['src/generated/**', '!src/vendor/**'] },
