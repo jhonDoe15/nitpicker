@@ -153,15 +153,23 @@ function picked(source, keys) {
   );
 }
 
+function headJscpdFacts(settings, headSettings = {}) {
+  if (headSettings.projectConfig === undefined) {
+    return { ...headSettings, precedence: headSettings.precedence ?? ['nitpicker'] };
+  }
+  return { ...settings, ...picked(headSettings, ['projectConfig', 'projectConfigDigest']) };
+}
+
 function headToolFacts(policy, headPolicy) {
   const tools = { ...policy.tools };
-  for (const [tool, keys] of [
-    ['prettier', ['projectConfigDigest']],
-    ['jscpd', ['projectConfig', 'projectConfigDigest']],
-  ]) {
-    if (usesProjectConfig(tools[tool]?.precedence ?? [])) {
-      tools[tool] = { ...tools[tool], ...picked(headPolicy.tools?.[tool] ?? {}, keys) };
-    }
+  if (usesProjectConfig(tools.prettier?.precedence ?? [])) {
+    tools.prettier = {
+      ...tools.prettier,
+      ...picked(headPolicy.tools?.prettier ?? {}, ['projectConfigDigest']),
+    };
+  }
+  if (usesProjectConfig(tools.jscpd?.precedence ?? [])) {
+    tools.jscpd = headJscpdFacts(tools.jscpd, headPolicy.tools?.jscpd);
   }
   return policy.tools === undefined ? {} : { tools };
 }

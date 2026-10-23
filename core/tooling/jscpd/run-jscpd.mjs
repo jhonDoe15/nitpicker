@@ -16,7 +16,7 @@ const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const JSCPD_TIMEOUT_MS = 10 * 60 * 1000;
 const JSCPD_CONFIG = 'jscpd-config.json';
 const RENAMED_CONFIG = 'jscpd-renamed-config.json';
-const JSCPD_SETTINGS = { minTokens: 50, minLines: 5, threshold: 100 };
+const JSCPD_SETTINGS = { minTokens: 50, minLines: 5, threshold: 100, mode: DUPLICATES_MODE };
 
 export function insideReportRoot(reportRoot, ...segments) {
   const root = path.resolve(reportRoot);
@@ -31,7 +31,7 @@ export function jscpdVersion() {
   return resolveTool('jscpd', { bin: 'run-jscpd.js' }).version;
 }
 
-function jscpdArguments({ jscpd, paths, config, format, output, ignore, together, mode }) {
+function jscpdArguments({ jscpd, paths, config, format, output, together, mode }) {
   return [
     jscpd,
     ...(together ? ['.', '--pattern', rootsPattern(paths)] : paths),
@@ -46,7 +46,6 @@ function jscpdArguments({ jscpd, paths, config, format, output, ignore, together
     '--output',
     output,
     '--silent',
-    ...(ignore.length > 0 ? ['--ignore', ignore.join(',')] : []),
   ];
 }
 
@@ -69,11 +68,11 @@ function runJscpdOnce({ cwd, output, args }) {
   return JSON.parse(readFileSync(path.join(output, 'jscpd-report.json'), 'utf8'));
 }
 
-function runGroups({ cwd, roots, together, settings, names, reportRoot, ...tool }) {
+function runGroups({ cwd, roots, together, settings, ignore, names, reportRoot, ...tool }) {
   const jscpd = resolveTool('jscpd', { bin: 'run-jscpd.js' }).binPath;
   const config = insideReportRoot(reportRoot, names.config);
   const { mode = DUPLICATES_MODE, ...written } = settings;
-  writeFileSync(config, JSON.stringify(written));
+  writeFileSync(config, JSON.stringify({ ...written, ...(ignore.length > 0 ? { ignore } : {}) }));
   const groups = together
     ? [roots].filter((group) => group.length > 0)
     : roots.map((root) => [root]);

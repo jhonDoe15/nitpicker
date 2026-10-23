@@ -103,6 +103,38 @@ describe('jscpd project config', () => {
     expect(() => resolveJscpdPolicy(settings, root)).toThrow('must stay inside the project');
   });
 
+  it.each([
+    [{ minTokens: -1 }, 'minTokens must be a whole number of 0 or more'],
+    [{ minLines: '5' }, 'minLines must be a whole number of 0 or more'],
+    [{ maxSize: false }, 'maxSize must be a byte count'],
+    [{ mode: 'loose' }, 'mode must be one of strict, mild, weak'],
+    [{ ignore: 'vendor/**' }, 'ignore must be a list of glob strings'],
+    [{ ignorePattern: [1] }, 'ignorePattern must be a list of pattern strings'],
+    [{ ignoreCase: 'yes' }, 'ignoreCase must be true or false'],
+  ])('rejects the project value %j', (config, message) => {
+    const root = temporaryRoot();
+    projectConfig(root, config);
+    expect(() => resolveJscpdPolicy({ precedence: ['project'] }, root)).toThrow(message);
+  });
+
+  it('applies skipComments as the weak mode jscpd 5 reads', () => {
+    const root = temporaryRoot();
+    const settings = { precedence: ['project'] };
+    projectConfig(root, { skipComments: true });
+    expect(resolveJscpdPolicy(settings, root).projectConfig).toEqual({ mode: 'weak' });
+    projectConfig(root, { skipComments: true, mode: 'strict' });
+    expect(resolveJscpdPolicy(settings, root).projectConfig).toEqual({ mode: 'strict' });
+  });
+
+  it('keeps the digest when only key order or unapplied keys change', () => {
+    const root = temporaryRoot();
+    const settings = { precedence: ['project'] };
+    projectConfig(root, { minTokens: 500, minLines: 9 });
+    const first = resolveJscpdPolicy(settings, root).projectConfigDigest;
+    projectConfig(root, { reporters: ['html'], minLines: 9, minTokens: 500 });
+    expect(resolveJscpdPolicy(settings, root).projectConfigDigest).toBe(first);
+  });
+
   it('captures head config and its digest for both snapshots without replacing base precedence', () => {
     const root = temporaryRoot();
     const config = { preset: 'python', tools: { jscpd: { precedence: ['project', 'nitpicker'] } } };
@@ -118,6 +150,40 @@ describe('jscpd project config', () => {
       precedence: ['nitpicker', 'project'],
     });
     expect(withHeadCheckoutFacts({}, second).tools).toBeUndefined();
+  });
+
+  it.each([[{}], [{ tools: { jscpd: { precedence: ['nitpicker'] } } }]])(
+    'measures the base the head way when the head drops the opt-in (%j)',
+    (headConfig) => {
+      const root = temporaryRoot();
+      const head = resolveHeadPolicy({ preset: 'python', ...headConfig }, root);
+      const base = { tools: { jscpd: { precedence: ['project'] } } };
+      const settings = withHeadCheckoutFacts(base, head).tools.jscpd;
+      expect(settings).toEqual({ precedence: ['nitpicker'] });
+      expect(layeredJscpdConfig({ minTokens: 50 }, settings)).toEqual({ minTokens: 50 });
+    },
+  );
+
+  it('applies project ignore globs that hold braces', () => {
+    const root = temporaryRoot();
+    const reportRoot = temporaryRoot();
+    mkdirSync(path.join(root, 'src'));
+    const source =
+      'def total(lines, discount):\n    value = 0\n    for line in lines:\n        if line.price > 0 and line.quantity > 0:\n            value += line.price * line.quantity\n        else:\n            value -= discount\n    if value < 0 and discount > 0:\n        value = 0\n    return value\n';
+    for (const name of ['a.test.py', 'b.spec.py', 'c.py']) {
+      writeFileSync(path.join(root, 'src', name), source);
+    }
+    projectConfig(root, { ignore: ['**/*.{test,spec}.py'] });
+    const policy = resolveHeadPolicy(
+      { preset: 'python', tools: { jscpd: { precedence: ['project', 'nitpicker'] } } },
+      root,
+    );
+    withHeadPolicyFile(policy, (policyFile) => {
+      vi.stubEnv('NITPICKER_POLICY', policyFile);
+      runJscpd({ cwd: root, roots: ['src'], format: 'python', ignore: [], reportRoot });
+    });
+    const { runs } = JSON.parse(readFileSync(path.join(reportRoot, 'duplicates.json'), 'utf8'));
+    expect(runs[0].report.duplicates).toEqual([]);
   });
 
   it.each(ORDERINGS)('runs the pinned tool with %j', (precedence, minTokens) => {
