@@ -1,8 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { buildFlags, vetFindings } from './go-vet.mjs';
+import { buildFlags, vet, VET_REPORT, vetFindings } from './go-vet.mjs';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-go-vet-'));
 mkdirSync(path.join(root, 'shop'));
@@ -59,6 +59,23 @@ describe('vetFindings', () => {
 
   it('ignores positions outside the project', () => {
     expect(vetFindings(root, 'vet: /elsewhere/x.go:1:1: broken')).toEqual([]);
+  });
+
+  it.each([
+    ['stdout, as Go 1.26 writes it', { stdout: diagnostic(6), stderr: '' }],
+    ['stderr, as older Go writes it', { stdout: '', stderr: diagnostic(6) }],
+  ])('reads the JSON diagnostics from %s', (_stream, output) => {
+    const reportRoot = mkdtempSync(path.join(root, 'report-'));
+    vet({
+      projectRoot: root,
+      reportRoot,
+      environment: {},
+      spawn: () => ({ status: 0, ...output }),
+    });
+    const findings = vetFindings(root, readFileSync(path.join(reportRoot, VET_REPORT), 'utf8'));
+    expect(findings.map(({ rule, path: file }) => `${rule} ${file}`)).toEqual([
+      'printf shop/price.go',
+    ]);
   });
 
   it('passes build tags to every go command', () => {
