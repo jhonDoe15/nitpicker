@@ -26,15 +26,14 @@ const BRANCHING_CALL_NAMES = [
   'takeUnless',
   'ifEmpty',
   'ifBlank',
-  'orEmpty',
   'getOrElse',
-  'maxOf',
-  'minOf',
   'coerceAtLeast',
   'coerceAtMost',
   'coerceIn',
 ];
+const LIBRARY_BRANCH_NAMES = ['orEmpty', 'isNullOrEmpty', 'isNullOrBlank', 'maxOf', 'minOf'];
 const SUSPENSION_CALL = new RegExp(String.raw`\b(${SUSPENSION_NAMES.join('|')})\s*[({]`);
+const LIBRARY_BRANCH_CALL = new RegExp(String.raw`\b(${LIBRARY_BRANCH_NAMES.join('|')})\s*\(`, 'g');
 const BRANCHING_SYNTAX = new RegExp(
   String.raw`\b(?:if|when|while|for|do|is|in|as)\b|&&|\|\||\?[.:]|[<>!]|==|\b(?:${BRANCHING_CALL_NAMES.join('|')})\b`,
 );
@@ -55,10 +54,15 @@ export function suspensionCall(sourceLine) {
   return SUSPENSION_CALL.exec(codeOf(sourceLine))?.[1];
 }
 
+export function libraryBranchCall(sourceLine) {
+  return [...codeOf(sourceLine).matchAll(LIBRARY_BRANCH_CALL)][0]?.[1];
+}
+
 export function isCompilerGeneratedBranchLine(sourceLine) {
   if (sourceLine.includes(STRING_TEMPLATE)) {
     return false;
   }
   const code = codeOf(sourceLine);
-  return SUSPENSION_CALL.test(code) && !BRANCHING_SYNTAX.test(code);
+  const own = code.replaceAll(LIBRARY_BRANCH_CALL, '(');
+  return (SUSPENSION_CALL.test(code) || own !== code) && !BRANCHING_SYNTAX.test(own);
 }

@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ingestJacocoBranches } from './jacoco-branches.mjs';
-import { isCompilerGeneratedBranchLine, suspensionCall } from './kotlin-branches.mjs';
+import {
+  isCompilerGeneratedBranchLine,
+  libraryBranchCall,
+  suspensionCall,
+} from './kotlin-branches.mjs';
 
 const fixtures = path.resolve(import.meta.dirname, '..', 'fixtures');
 const report = readFileSync(path.join(fixtures, 'jacoco-kotlin.xml'), 'utf8');
@@ -35,6 +39,12 @@ describe('isCompilerGeneratedBranchLine', () => {
     'val numbers = flow<Int> {',
     'suspend fun io(x: Int): Int = withContext(Dispatchers.IO) { x + 1 }',
     'emit("a // b")',
+    'return name.orEmpty()',
+    'fun label(text: String?): String = text.orEmpty().trim()',
+    'fun items(list: List<Int>?): List<Int> = list.orEmpty().sorted()',
+    'val missing = name.isNullOrBlank()',
+    'fun widest(a: Long, b: Long): Long = maxOf(a, b)',
+    'emit(minOf(a, b))',
   ])('drops %s', (line) => {
     expect(isCompilerGeneratedBranchLine(line)).toBe(true);
   });
@@ -48,8 +58,12 @@ describe('isCompilerGeneratedBranchLine', () => {
     '.isNotEmpty()',
     'val kept = n.takeIf(::isEven)',
     'fun fallback(s: String): String = s.ifEmpty { "none" }',
-    'return name.orEmpty()',
     'return -v.length',
+    'fun nonBlank(text: String?): String = text.orEmpty() + if (text == null) "?" else "!"',
+    'val size = name?.orEmpty()?.length',
+    'val widest = maxOf(a, b) > limit',
+    'if (name.isNullOrEmpty()) return',
+    'val top = scores.maxOf { it.points }',
     '1 -> "one"',
     'is Shape.Circle -> 3.0 * shape.radius * shape.radius',
     'fun display(): String = nickname ?: name',
@@ -74,6 +88,20 @@ describe('suspensionCall', () => {
     ['println("emit(1)")', undefined],
   ])('names the suspension call in %s', (line, call) => {
     expect(suspensionCall(line)).toBe(call);
+  });
+});
+
+describe('libraryBranchCall', () => {
+  it.each([
+    [
+      'fun nonBlank(text: String?): String = text.orEmpty() + if (text == null) "?" else "!"',
+      'orEmpty',
+    ],
+    ['val widest = maxOf(a, b) > limit', 'maxOf'],
+    ['val top = scores.maxOf { it.points }', undefined],
+    ['println("orEmpty()")', undefined],
+  ])('names the inlined library call in %s', (line, call) => {
+    expect(libraryBranchCall(line)).toBe(call);
   });
 });
 
@@ -116,6 +144,31 @@ describe('changed-branch-coverage on Kotlin sources', () => {
 
   it('skips a Kotlin file that is not in the source tree', () => {
     expect(ingest(report).some((finding) => finding.startsWith('Delegates'))).toBe(false);
+  });
+});
+
+describe('changed-branch-coverage on Kotlin lines that call an inlined library function', () => {
+  it('drops a line whose only branches are the library call and names it on a line that also branches', () => {
+    const names = [
+      'package demo',
+      '',
+      'fun nonBlank(text: String?): String = text.orEmpty() + if (text == null) "?" else "!"',
+      '',
+      'fun label(text: String?): String = text.orEmpty().trim()',
+    ].join('\n');
+    const lines =
+      '<line nr="3" mi="0" ci="9" mb="2" cb="2"/><line nr="5" mi="0" ci="5" mb="1" cb="1"/>';
+    const findings = ingestJacocoBranches(
+      `<report name="r"><package name="demo"><sourcefile name="Names.kt">${lines}</sourcefile></package></report>`,
+      { sourceRoot: 'src/main/kotlin', sourceText: () => names },
+    ).findings;
+
+    expect(findings.map(({ location, message }) => [location.line, message])).toEqual([
+      [
+        3,
+        'Branch coverage is 50.00%; minimum is 95%. Not taken: orEmpty inlined from the standard library (move the call to its own line if no branch of yours is untested). Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
+      ],
+    ]);
   });
 });
 
