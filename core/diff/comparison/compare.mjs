@@ -153,15 +153,15 @@ function withGrowthAdvice({ findings, baseFindings, renames, directories }) {
     const advice = finding.ratchet?.growthAdvice;
     const baseValue =
       advice === undefined ? undefined : baseValues.get(ratchetKey(finding, new Map(), new Map()));
-    return baseValue === undefined
-      ? finding
-      : {
-          ...finding,
-          message: insertBeforeRoute(
-            finding.message,
-            advice.replaceAll('{base}', String(baseValue)),
-          ),
-        };
+    if (baseValue === undefined) {
+      return finding;
+    }
+    const text = advice.replaceAll('{base}', String(baseValue));
+    return {
+      ...finding,
+      message: insertBeforeRoute(finding.message, text),
+      allowedForm: [finding.allowedForm, text].filter((part) => part !== undefined).join(' '),
+    };
   });
 }
 
@@ -186,10 +186,18 @@ function holdCandidatesFor(headFinding, baseByRatchet, touchedCode) {
 }
 
 function grewFinding(headFinding, baseValue) {
-  const { worseMessage } = headFinding.ratchet;
-  return worseMessage === undefined
-    ? headFinding
-    : { ...headFinding, message: worseMessage.replaceAll('{base}', String(baseValue)) };
+  const { worseMessage, worseAllowedForm } = headFinding.ratchet;
+  if (worseMessage === undefined) {
+    return headFinding;
+  }
+  const { allowedForm, ...rest } = headFinding;
+  return {
+    ...rest,
+    message: worseMessage.replaceAll('{base}', String(baseValue)),
+    ...(worseAllowedForm === undefined
+      ? {}
+      : { allowedForm: worseAllowedForm.replaceAll('{base}', String(baseValue)) }),
+  };
 }
 
 function ratchetKey(finding, renames, directories) {

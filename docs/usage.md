@@ -141,6 +141,17 @@ Python, `python.sourceRoots`; for Java and Kotlin, the build's source sets (`src
 list them in `exclude`. Choose another directory
 with `--output <dir>`. Set `NO_COLOR` to disable colored console output.
 
+Each finding in `new-findings.json` has `tool`, `rule`, `path`, `identity`, `message` and
+`classification`, and a `location` when the rule has one. Two things a message says in words are
+also fields, so a script or a review tool need not read English: `allowedForm` is what to write
+instead (the sentence the message gives for it), and `exception` is the entry the message tells you
+to add to `exceptions` (`exceptionList` names the config list that takes it: `exceptions`, or
+`python.exceptions` for the Python rules the top-level list does not take). A rule that states no
+allowed form apart from the problem has no `allowedForm`, and a finding that cannot be accepted
+with an exception (a tool error, a policy change) has no `exception`. The `reason` in `exception`
+is a placeholder: an entry with it is refused until you replace it with the real reason. The
+fields are described in [`spec/findings.schema.json`](../spec/findings.schema.json).
+
 ## Exit codes
 
 | Code | Meaning                                                                                                          |

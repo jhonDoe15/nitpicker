@@ -1,4 +1,4 @@
-import { MESSAGES, renderMessage } from '../../../../../../shared/policy.mjs';
+import { MESSAGES, messageFields } from '../../../../../../shared/policy.mjs';
 import { exceptionText } from '../../../../../../shared/rules/exceptions.mjs';
 import { UNUSED_API_RULE_IDS } from '../../../../../../shared/unused-api/unused-api-policy.mjs';
 import { append } from '../kotlin-facts.mjs';
@@ -176,7 +176,7 @@ export function unusedOptionFindings(files, { finding, mentionedInJava, serializ
               file: unit.file,
               line: parameter.line,
               symbol,
-              message: renderMessage(MESSAGES.unusedOption, {
+              ...messageFields(MESSAGES.unusedOption, {
                 name: symbol,
                 scope: SCOPE,
                 exception: exceptionText(UNUSED_OPTION_RULE, unit.file),

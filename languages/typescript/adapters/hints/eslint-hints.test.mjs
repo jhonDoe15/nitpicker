@@ -6,7 +6,7 @@ import { normalizeEslintResults } from '../eslint/normalize.mjs';
 import {
   eslintMessageWithHint,
   growthAdviceFor,
-  routedEslintMessage,
+  routedEslintFields,
   withoutFatalDirectives,
 } from './eslint-hints.mjs';
 
@@ -302,40 +302,43 @@ describe('eslintMessageWithHint', () => {
   });
 });
 
-describe('routedEslintMessage', () => {
+describe('routedEslintFields', () => {
   const route = (rule) =>
     `If this is intended, add {"rule":"${rule}","paths":["src/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 
   it('ends the message of any rule with the entry that turns it off for the path', () => {
     expect(
-      routedEslintMessage({
+      routedEslintFields({
         ruleId: '@typescript-eslint/no-explicit-any',
         text: 'Unexpected any.',
         relativePath: 'src/a.ts',
       }),
-    ).toBe(`Unexpected any. ${route('@typescript-eslint/no-explicit-any')}`);
+    ).toEqual({ message: `Unexpected any. ${route('@typescript-eslint/no-explicit-any')}` });
   });
 
-  it('ends the hint of a rule it rewrites with the entry', () => {
+  it('ends the hint of a rule it rewrites with the entry, and gives the hint as the allowed form', () => {
+    const advice =
+      'Call `expect` in the test body: asserting helpers do not count, so return the value and `expect` it in the test.';
     expect(
-      routedEslintMessage({
+      routedEslintFields({
         ruleId: 'vitest/expect-expect',
         text: 'Test has no assertions',
         relativePath: 'src/a.ts',
       }),
-    ).toBe(
-      `Test has no assertions. Call \`expect\` in the test body: asserting helpers do not count, so return the value and \`expect\` it in the test. ${route('vitest/expect-expect')}`,
-    );
+    ).toEqual({
+      message: `Test has no assertions. ${advice} ${route('vitest/expect-expect')}`,
+      allowedForm: advice,
+    });
   });
 
   it('names no entry for a directive eslint reports without a rule', () => {
     expect(
-      routedEslintMessage({
+      routedEslintFields({
         ruleId: 'eslint/unused-disable-directive',
         text: 'Unused eslint-disable directive',
         relativePath: 'src/a.ts',
       }),
-    ).toBe('Unused eslint-disable directive');
+    ).toEqual({ message: 'Unused eslint-disable directive' });
   });
 });
 

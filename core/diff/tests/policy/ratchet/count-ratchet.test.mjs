@@ -149,6 +149,25 @@ describe('growth advice on a finding that is new in a function with findings at 
       'Do not throw. The base had 2; keep to it.',
     ]);
   });
+  it('adds the advice to the allowed form too, and tells it alone when there was none', () => {
+    const base = [throwFinding('first', 4, 2), throwFinding('second', 9, 2)];
+    const head = (allowedForm) => [
+      throwFinding('first', 4, 3),
+      throwFinding('second', 9, 3),
+      { ...throwFinding('added', 12, 3), ...allowedForm },
+    ];
+    const allowedForms = (headFindings) =>
+      compareFindings({
+        baseFindings: base,
+        headFindings,
+        touchedCode: inserted([[12, 12]]),
+      }).newFindings.map((finding) => finding.allowedForm);
+
+    expect(allowedForms(head({ allowedForm: 'Return a union.' }))).toEqual([
+      'Return a union. The base had 2; keep to it.',
+    ]);
+    expect(allowedForms(head({}))).toEqual(['The base had 2; keep to it.']);
+  });
   it('puts the advice before the exception sentence, which stays last', () => {
     const route =
       'If this is intended, add {"rule":"nitpicker/no-throw","paths":["src/f.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';

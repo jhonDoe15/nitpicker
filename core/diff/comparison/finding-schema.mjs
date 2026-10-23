@@ -1,6 +1,8 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
+import { isExceptionEntry, routeFields } from '../../../shared/messages/exception-sentence.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
+const EXCEPTION_LISTS = new Set(['exceptions', 'python.exceptions']);
 
 export function parseAnalyzerReport(value, analyzerName) {
   if (!isRecord(value) || !Array.isArray(value.findings)) {
@@ -41,7 +43,11 @@ export function parseFinding(value, context = 'finding') {
     classification,
   };
 
-  return { ...finding, ...parseOptionalFields(value, classification, context) };
+  return {
+    ...finding,
+    ...parseOptionalFields(value, classification, context),
+    ...parseAdvice(value, message, context),
+  };
 }
 
 function parseOptionalFields(value, classification, context) {
@@ -66,6 +72,38 @@ function parseOptionalFields(value, classification, context) {
   }
 
   return fields;
+}
+
+function parseAdvice(value, message, context) {
+  const fields = {};
+  if (value.allowedForm !== undefined) {
+    fields.allowedForm = requiredString(value.allowedForm, `${context}.allowedForm`);
+  }
+  if (value.exception === undefined) {
+    if (value.exceptionList !== undefined) {
+      throw new TypeError(`${context}.exceptionList requires exception`);
+    }
+    return { ...fields, ...routeFields(message) };
+  }
+  return {
+    ...fields,
+    exception: parseException(value.exception, `${context}.exception`),
+    exceptionList: parseExceptionList(value.exceptionList, `${context}.exceptionList`),
+  };
+}
+
+function parseException(value, context) {
+  if (!isExceptionEntry(value)) {
+    throw new TypeError(`${context} must have a rule, a non-empty paths array and a reason`);
+  }
+  return value;
+}
+
+function parseExceptionList(value, context) {
+  if (!EXCEPTION_LISTS.has(value)) {
+    throw new TypeError(`${context} must be one of: ${[...EXCEPTION_LISTS].join(', ')}`);
+  }
+  return value;
 }
 
 function parseLocation(value, context) {
@@ -97,7 +135,7 @@ function parseMetric(value, context) {
   };
 }
 
-const RATCHET_TEXT_FIELDS = ['worseMessage', 'growthAdvice', 'heldMessage'];
+const RATCHET_TEXT_FIELDS = ['worseMessage', 'worseAllowedForm', 'growthAdvice', 'heldMessage'];
 const RATCHET_FLAGS = ['existingCodeOnly', 'pathIsFolder'];
 
 function parseRatchet(value, context) {

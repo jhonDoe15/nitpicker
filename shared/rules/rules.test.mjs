@@ -295,6 +295,7 @@ describe('crapFindings', () => {
         identity: 'function:f',
         message:
           'f has CRAP 9.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["a.ts"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
         classification: 'enforceable',
         symbol: 'f',
         location: { line: 3 },
