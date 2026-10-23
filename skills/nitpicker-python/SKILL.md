@@ -70,7 +70,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
   message. A function, CRAP, changed-branch coverage, mutation, file, size or feature folder
   (`feature-internal-import`, `shared-imports-feature`, `feature-cycle`,
-  `shared-used-by-one-feature`) finding goes under the top-level `exceptions`
+  `shared-used-by-one-feature`, `foreign-feature-persistence`) finding goes under the top-level
+  `exceptions`
   (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`). Each
   message ends with the entry and the list that takes it; each list rejects the other's rules.
   Don't add one to get past the gate: stop and ask.

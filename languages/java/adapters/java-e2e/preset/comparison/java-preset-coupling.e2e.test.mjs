@@ -56,6 +56,22 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       'package-cycle src/main/java/shop/pricing/Prices.java cycle:shop.pricing',
     ]);
   }, 180_000);
+  it("fails domain infrastructure use and another feature's persistence from the class graph", () => {
+    const result = fixture.diffOf('domain');
+    const root = 'src/main/java/shop';
+
+    expect(
+      result.newEnforceable
+        .filter(({ rule }) => rule.startsWith('domain-') || rule === 'foreign-feature-persistence')
+        .map(({ rule, path, identity }) => `${rule} ${path} ${identity}`)
+        .toSorted(),
+    ).toEqual([
+      `domain-imports-io ${root}/orders/domain/OrderNumbers.java library:java.nio.file`,
+      `domain-imports-random ${root}/orders/domain/OrderNumbers.java library:java.util`,
+      `domain-reaches-io ${root}/orders/domain/Order.java domain-reach:${root}/common/Lookup.java`,
+      `foreign-feature-persistence ${root}/features/shipping/Label.java foreign-persistence:${root}/features/billing/InvoiceStore.java`,
+    ]);
+  }, 180_000);
   it('keeps an existing stability-direction violation baselined when the package is edited', () => {
     runGitIn(repository, 'checkout', '-q', 'stability-edited');
     const result = runJavaDiff({

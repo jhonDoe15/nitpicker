@@ -892,8 +892,8 @@ facade belong to that file. A class that no file lists is its own module.
 
 ## Feature packages
 
-`feature-internal-import`, `shared-imports-feature`, `feature-cycle`, `shared-used-by-one-feature`
-and `package-cycle` run as for Java, over the same jdeps graph (see
+`feature-internal-import`, `shared-imports-feature`, `feature-cycle`, `shared-used-by-one-feature`,
+`foreign-feature-persistence` and `package-cycle` run as for Java, over the same jdeps graph (see
 [Feature packages](java-preset.md#feature-packages) for the roles, the Spring root package, the
 ArchUnit dedupe, identities and exceptions). What is particular to Kotlin:
 
@@ -917,6 +917,23 @@ ArchUnit dedupe, identities and exceptions). What is particular to Kotlin:
   its caller, so calling another feature's internal `inline fun` leaves no edge to the file that
   declares it, only to what its body uses; a `reified` type parameter likewise. A `const val` is
   inlined like a Java compile-time constant.
+- **Persistence.** `foreign-feature-persistence` knows the Kotlin forms too: an Exposed `Table`,
+  `IdTable` (`IntIdTable`, `LongIdTable`, `UUIDTable`) or DAO `Entity` subclass is an entity, and a
+  repository declared as `interface PaymentRepository : CrudRepository<Payment, Long>` is a
+  repository even when it shares its file with the entity; the file is the unit.
+
+## Domain boundaries
+
+The [domain rules](java-preset.md#domain-boundaries) (`domain-imports-adapter`, `domain-imports-io`,
+`domain-imports-client`, `domain-imports-logger`, `domain-imports-random`,
+`domain-imports-framework-context`, `domain-reaches-io`) run on Kotlin classes from the same graph.
+Kotlin's own forms are in the lists: `kotlin.io` file functions (`File.readText()` compiles to a
+call on the `FilesKt` facade, reported as `FilesKt`) and `kotlin.io.path`, `kotlin.concurrent`
+threads and timers, `kotlin.random.Random`, kotlin-logging (`io.github.oshai.kotlinlogging`, and
+the older `mu` package), the Ktor client, and `Uuid.random()` from `kotlin.uuid`, found in the
+source like `UUID.randomUUID()`. A top-level function in a domain package is checked through its
+file facade, so the finding is on its file. An `inline` library function is copied into the
+domain class, so the edge is to what its body calls.
 
 ## Failure policy
 

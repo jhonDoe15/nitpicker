@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
+import { persistenceOfModule } from './persistence-modules.mjs';
 
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 
@@ -99,10 +100,17 @@ function neutralDefinition(definition, fact, resolve) {
   };
 }
 
+function moduleFact(fact) {
+  const persistence = persistenceOfModule(fact);
+  return persistence === undefined
+    ? { file: fact.path, role: 'production' }
+    : { file: fact.path, role: 'production', persistence };
+}
+
 export function neutralReuseFacts(facts, resolve) {
   const files = new Set(facts.map(({ path: file }) => file));
   return {
-    modules: facts.map(({ path: file }) => ({ file, role: 'production' })),
+    modules: facts.map((fact) => moduleFact(fact)),
     packages: [],
     definitions: facts.flatMap((fact) =>
       fact.definitions.map((definition) => neutralDefinition(definition, fact, resolve)),

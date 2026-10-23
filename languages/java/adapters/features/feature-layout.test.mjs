@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { springRootFolders } from './feature-layout.mjs';
-import { readFeatureGraphFindings } from './feature-findings.mjs';
+import { classGraphFindings } from '../../builds/project-wide.mjs';
 import { featureProjects, javaSources, rows } from './test-support/feature-project.mjs';
 
 const { project: featureProject, remove } = featureProjects();
@@ -41,7 +41,7 @@ function springFindings({ layout, violations = [BOUNDARY] } = {}) {
     modules: [{ classes: CLASSES, edges: EDGES, springArch: { root: ROOT, violations } }],
   });
   return rows(
-    readFeatureGraphFindings(project.root, {
+    classGraphFindings(project.root, {
       ...project,
       kotlin: false,
       policy: layout === undefined ? {} : { layout },
@@ -102,9 +102,7 @@ describe('Spring package-by-feature roles', () => {
     });
 
     expect(
-      rows(readFeatureGraphFindings(project.root, { ...project, policy: {} })).map(
-        ([rule]) => rule,
-      ),
+      rows(classGraphFindings(project.root, { ...project, policy: {} })).map(([rule]) => rule),
     ).toEqual(['feature-internal-import']);
   });
 });

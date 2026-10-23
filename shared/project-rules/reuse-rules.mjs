@@ -31,6 +31,12 @@ function featureFolderRules(ids) {
         'a production package in a dependency cycle with other packages, one finding per package of the cycle (Java and Kotlin: compiled class dependencies, so mixed Java and Kotlin edges count; Python: runtime imports, where a package `__init__` importing its own submodules is not a dependency); a cycle that only `feature-cycle` edges close is left to that rule (Java and Kotlin: also `shared-imports-feature` edges); TypeScript and JavaScript: dependency-cruiser `no-production-cycles`, which reports every module cycle',
       enforcedBy: { typescript: true, javascript: true, java: true, python: true, kotlin: true },
     },
+    {
+      id: ids.foreignFeaturePersistence,
+      check: 'coupling',
+      limit:
+        "a production module of one feature that uses a persistent entity or data access module of another feature, also through that feature's public face (re-exports are followed by name); TypeScript and JavaScript: a module importing a database client or ORM, or defining TypeORM, MikroORM, Sequelize, Mongoose or Drizzle tables, reported by the `structure` check; Python: a module importing a database driver or ORM session API, or defining Django, SQLAlchemy, SQLModel (`table=True`), Peewee, Tortoise or document models; Java and Kotlin: `@Entity`, `@MappedSuperclass`, Spring Data `@Document`, `@Table`, `@RedisHash`, `@Node`, Exposed tables and entities, `@Repository`, Spring Data repository interfaces, or a class using JDBC, JPA `EntityManager`, Hibernate sessions, Spring JDBC, R2DBC or Mongo templates, jOOQ or Jdbi; read models (`@Immutable`, `@Subselect`, `@View`, TypeORM `@ViewEntity`) are not persistence",
+    },
   ];
 }
 

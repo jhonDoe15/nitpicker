@@ -7,6 +7,10 @@ import { readDeclarations } from '../review-rules/source-declarations.mjs';
 const MAIN_EDGES = 'jdeps.txt';
 const MAIN_CLASSES = 'jdeps-classes.txt';
 
+export function simpleName(className) {
+  return className.slice(className.lastIndexOf('.') + 1);
+}
+
 function packageOf(className) {
   const index = className.lastIndexOf('.');
   return index < 0 ? '' : className.slice(0, index);

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 const ROLES = ['production', 'test'];
+const PERSISTENCE_KINDS = ['entity', 'data-access'];
 const KINDS = ['function', 'class', 'const', 'type', 'interface', 'enum'];
 const SCHEMA_DOCS = 'see "Facts schema" in docs/internals.md';
 const PATH_RULE =
@@ -73,6 +74,7 @@ const SHAPES = {
     file: isProjectPath,
     role: oneOf(ROLES),
     entry: optional(isBoolean),
+    persistence: optional(oneOf(PERSISTENCE_KINDS)),
   },
   packages: { root: isRootOrPath, published: isBoolean },
   definitions: {

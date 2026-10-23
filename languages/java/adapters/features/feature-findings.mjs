@@ -6,19 +6,19 @@ import {
   featureRoles,
   PUBLIC_FACES,
 } from '../../../../shared/rules/features/feature-roles.mjs';
-import { readClassGraph } from './class-graph.mjs';
-import { featurePlan, readSpringReports } from './feature-layout.mjs';
+import { simpleName } from './class-graph.mjs';
+import { featurePlan } from './feature-layout.mjs';
 import { packageCycleFindings } from './package-cycles.mjs';
 
 const COUPLING_TOOL = 'coupling';
-const GRAPH_RULES = [RULE_IDS.featureCycle, RULE_IDS.sharedUsedByOneFeature];
+const GRAPH_RULES = [
+  RULE_IDS.featureCycle,
+  RULE_IDS.sharedUsedByOneFeature,
+  RULE_IDS.foreignFeaturePersistence,
+];
 const BOUNDARY_RULES = [RULE_IDS.featureInternalImport, RULE_IDS.sharedImportsFeature];
 
-function simpleName(className) {
-  return className.slice(className.lastIndexOf('.') + 1);
-}
-
-export function featureFacts({ classes, edges }) {
+export function featureFacts({ classes, edges }, persistence = new Map()) {
   const imports = new Map();
   for (const { source, target } of edges.filter((edge) => edge.source.file !== edge.target.file)) {
     const key = `${source.file}\0${target.file}`;
@@ -29,7 +29,11 @@ export function featureFacts({ classes, edges }) {
   return {
     modules: [...new Set(classes.map(({ file }) => file))]
       .sort()
-      .map((file) => ({ file, role: 'production' })),
+      .map((file) =>
+        persistence.has(file)
+          ? { file, role: 'production', persistence: persistence.get(file) }
+          : { file, role: 'production' },
+      ),
     imports: [...imports.values()].map((entry) => ({
       ...entry,
       names: [...entry.names].sort().map((name) => ({ name })),
@@ -56,8 +60,8 @@ function reportedEdges(facts, layout) {
   );
 }
 
-function featureGraphFindings(graph, { language, policy, reports }) {
-  const facts = featureFacts(graph);
+export function featureGraphFindings(graph, { language, policy, reports, persistence }) {
+  const facts = featureFacts(graph, persistence);
   const plan = featurePlan(policy.layout ?? {}, reports, graph);
   const options = {
     language,
@@ -72,15 +76,4 @@ function featureGraphFindings(graph, { language, policy, reports }) {
       : []),
     ...packageCycleFindings(graph, reportedEdges(facts, plan.layout)),
   ];
-}
-
-export function readFeatureGraphFindings(projectRoot, { projects, kotlin, policy = {} }) {
-  const graph = readClassGraph(projectRoot, projects);
-  return graph.classes.length === 0
-    ? []
-    : featureGraphFindings(graph, {
-        language: kotlin ? 'kotlin' : 'java',
-        policy,
-        reports: readSpringReports(projects),
-      });
 }

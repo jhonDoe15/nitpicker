@@ -1552,9 +1552,23 @@ from a real caller) and the `exceptions` entry that lifts it.
   `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
   `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
   JavaScript preset runs them too.
+- `foreign-feature-persistence` (the `structure` check): a production module of one feature that
+  imports another feature's persistence, directly or through a name its `index.ts` re-exports
+  (re-exports are followed by name, so `import { bill } from '../billing'` passes while
+  `import { invoices } from '../billing'` fails when `invoices` comes from its repository). A
+  module is an entity when it imports `Entity` from TypeORM or MikroORM, `Table` from
+  sequelize-typescript, `Model` from Sequelize, `Schema` or `model` from Mongoose, or a Drizzle
+  table builder (`pgTable`, `mysqlTable`, `sqliteTable`); it is data access when it imports a
+  database client or ORM at run time (`pg`, `mysql2`, `mongodb`, `ioredis`, `knex`, `kysely`,
+  `@prisma/client`, `drizzle-orm`, TypeORM's `DataSource` or `Repository`, `@nestjs/typeorm`,
+  DynamoDB and Firestore clients, ...). Mapping-only imports (`Column` without `Entity`), a
+  TypeORM `@ViewEntity` read model and `import type` do not count. The finding is on the importing
+  module, identity `foreign-persistence:<persistent module>`; the exception may name the importer
+  or the persistent module. The feature folders are `layout.featureRoots` (default
+  `<sourceRoot>/main/features`).
 - `layout.sharedRoots` and `layout.featureRoots` (folder globs, default `<sourceRoot>/main/shared` and
-  `<sourceRoot>/main/features`) change which folders `shared-used-by-one-feature` treats as shared and
-  as features; `[]` in `featureRoots` turns it off. The ESLint boundary rules keep the default layout.
+  `<sourceRoot>/main/features`) change which folders `shared-used-by-one-feature` and
+  `foreign-feature-persistence` treat as shared and as features; `[]` in `featureRoots` turns it off. The ESLint boundary rules keep the default layout.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders only, so
   `src/crypto/e2e/` stays production code; a missing one is ignored). Type checking, duplicate

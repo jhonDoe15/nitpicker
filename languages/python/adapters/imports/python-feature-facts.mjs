@@ -34,11 +34,20 @@ function statementEdges(importer, statement, { known, fileOf }) {
   }));
 }
 
-export function pythonImportFacts({ modules, imports }, isGenerated = () => false) {
+function moduleFact(file, persistence) {
+  return persistence.has(file)
+    ? { file, role: 'production', persistence: persistence.get(file) }
+    : { file, role: 'production' };
+}
+
+export function pythonImportFacts(
+  { modules, imports },
+  { isGenerated = () => false, persistence = new Map() } = {},
+) {
   const known = new Set(modules.map(({ module }) => module));
   const fileOf = new Map(modules.map(({ module, file }) => [module, file]));
   return {
-    modules: modules.map(({ file }) => ({ file, role: 'production' })),
+    modules: modules.map(({ file }) => moduleFact(file, persistence)),
     imports: modules
       .filter(({ file }) => !isGenerated(file))
       .flatMap((importer) =>
@@ -49,8 +58,8 @@ export function pythonImportFacts({ modules, imports }, isGenerated = () => fals
   };
 }
 
-export function pythonFeatureAnalysis(report, { policy = {}, isGenerated } = {}) {
-  const facts = pythonImportFacts(report, isGenerated);
+export function pythonFeatureAnalysis(report, { policy = {}, isGenerated, persistence } = {}) {
+  const facts = pythonImportFacts(report, { isGenerated, persistence });
   const featurePolicy = { exceptions: policy.exceptions ?? [], layout: policy.layout ?? {} };
   const roleOf = featureRoleContract(featurePolicy.layout, PUBLIC_FACES.python);
   return {

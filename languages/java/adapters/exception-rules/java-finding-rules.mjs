@@ -3,6 +3,7 @@ import { checkstyleRuleName } from '../../messages/rule-messages.mjs';
 import { JAVA_TOOLS } from '../gradle-presets.mjs';
 
 const KOTLIN_PATH = /\.kts?$/u;
+const CLASS_GRAPH_TOOLS = new Set(['coupling']);
 
 /** Whether `rule` is `<tool>/<rule>` of a tool whose findings name their own rules. */
 export function isJavaFindingRule(rule) {
@@ -19,7 +20,12 @@ export function validateJavaFindingRule(entry, label) {
       `"${label}" names a Checkstyle check by class; findings print the check's name, so write "checkstyle/${checkstyleRuleName(checkstyleRule)}"`,
     );
   }
-  if (Array.isArray(entry.paths) && entry.paths.length > 0 && entry.paths.every(isKotlinPath)) {
+  if (
+    !CLASS_GRAPH_TOOLS.has(tool) &&
+    Array.isArray(entry.paths) &&
+    entry.paths.length > 0 &&
+    entry.paths.every(isKotlinPath)
+  ) {
     throw configError(
       `"${label}" is a ${tool} finding, which is reported in .java files only: its paths name Kotlin sources`,
     );

@@ -48,5 +48,8 @@ describe('validateJavaFindingRule', () => {
         label,
       );
     }).not.toThrow();
+    expect(() => {
+      validateJavaFindingRule(entry('coupling/domain-imports-io', ['src/main/kotlin/A.kt']), label);
+    }).not.toThrow();
   });
 });

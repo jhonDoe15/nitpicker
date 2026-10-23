@@ -7,6 +7,7 @@ import {
   sharedImportsFeatureFindings,
 } from '../features/feature-boundaries.mjs';
 import { featureCycleFindings } from '../features/feature-cycles.mjs';
+import { foreignPersistenceFindings } from '../features/foreign-persistence.mjs';
 import { featureLayout, featureRoleContract, featureRoles } from '../features/feature-roles.mjs';
 import { sharedUsageFindings, sharedUsedByOneFeature } from '../features/shared-usage.mjs';
 import { duplicateDefinitionFindings } from '../reuse/duplicate-definitions.mjs';
@@ -54,6 +55,11 @@ const EVALUATORS = {
   'feature-internal-import': featureBoundaryRule(featureInternalImportFindings),
   'shared-imports-feature': featureBoundaryRule(sharedImportsFeatureFindings),
   'feature-cycle': featureBoundaryRule(featureCycleFindings),
+  'foreign-feature-persistence': ({ facts, context, options }) =>
+    foreignPersistenceFindings(facts, {
+      ...context,
+      roleOf: featureRoles(featureLayout(options.policy.layout)),
+    }),
   'test-only-export': ({ facts, context }) => testOnlyFactFindings(facts, context),
   'doc-comment-content': ({ facts, context }) => docCommentFindings(facts.docComments, context),
   'test-console-output': ({ facts, context, options }) =>

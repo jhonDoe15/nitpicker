@@ -8,7 +8,11 @@ import {
 import { readJavaFileLimitFindings } from '../adapters/metrics/java-structure.mjs';
 import { kotlinModules, readKotlinMetrics } from '../adapters/kotlin/kotlin-metrics.mjs';
 import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-classes.mjs';
-import { readFeatureGraphFindings } from '../adapters/features/feature-findings.mjs';
+import { readClassGraph } from '../adapters/features/class-graph.mjs';
+import { featureGraphFindings } from '../adapters/features/feature-findings.mjs';
+import { readSpringReports } from '../adapters/features/feature-layout.mjs';
+import { persistenceOf } from '../adapters/features/persistence-classes.mjs';
+import { domainFindings } from '../adapters/domain/domain-findings.mjs';
 
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
@@ -125,6 +129,22 @@ function couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin 
   });
 }
 
+export function classGraphFindings(projectRoot, { projects, kotlin, policy }) {
+  const graph = readClassGraph(projectRoot, projects);
+  if (graph.classes.length === 0) {
+    return [];
+  }
+  return [
+    ...featureGraphFindings(graph, {
+      language: kotlin ? 'kotlin' : 'java',
+      policy,
+      reports: readSpringReports(projects),
+      persistence: persistenceOf(graph, projectRoot),
+    }),
+    ...domainFindings(graph, { projectRoot }),
+  ];
+}
+
 export function projectWideFindings(
   projectRoot,
   { projects, mergedRoot, manifest, kotlin, policy },
@@ -143,7 +163,7 @@ export function projectWideFindings(
     }),
     ...couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin }),
     ...readTestOnlyClassFindings(projectRoot, { projects }),
-    ...readFeatureGraphFindings(projectRoot, {
+    ...classGraphFindings(projectRoot, {
       projects,
       kotlin,
       policy: { layout: policy.layout, exceptions: policy.exceptions },

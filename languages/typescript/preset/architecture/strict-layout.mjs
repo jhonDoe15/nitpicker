@@ -17,7 +17,11 @@ export const layoutFeatures = {
   compositionRoot: `${main}/composition-root(?:\\.[cm]?[jt]sx?$|/)`,
 };
 
-export const featureLayout = {
-  sharedRoots: layout.sharedRoots ?? sourceRoots.map((root) => `**/${root}/${SHARED}`),
-  featureRoots: layout.featureRoots ?? sourceRoots.map((root) => `**/${root}/${FEATURES}`),
-};
+export function featureLayoutOf(roots, configured = {}) {
+  return {
+    sharedRoots: configured.sharedRoots ?? roots.map((root) => `**/${root}/${SHARED}`),
+    featureRoots: configured.featureRoots ?? roots.map((root) => `**/${root}/${FEATURES}`),
+  };
+}
+
+export const featureLayout = featureLayoutOf(sourceRoots, layout);

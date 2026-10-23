@@ -8,6 +8,7 @@ import {
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { reuseRules } from './project-rules/reuse-rules.mjs';
+import { DOMAIN_RULE_IDS, domainRules } from './project-rules/domain-rules.mjs';
 import { testConsoleRule } from './project-rules/test-runtime-rules.mjs';
 import {
   docCommentRule,
@@ -56,6 +57,8 @@ export const RULE_IDS = {
   sharedImportsFeature: 'shared-imports-feature',
   featureCycle: 'feature-cycle',
   packageCycle: 'package-cycle',
+  foreignFeaturePersistence: 'foreign-feature-persistence',
+  ...DOMAIN_RULE_IDS,
   duplicateDefinition: 'duplicate-definition',
   siblingCopyEdit: 'sibling-copy-edit',
   exportedNameCollision: 'exported-name-collision',
@@ -260,6 +263,7 @@ const CATALOG = [
   ...UNUSED_API_RULES,
   ...sizeRules({ all: ALL, withKotlin }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
+  ...domainRules(RULE_IDS),
   ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   {
     id: RULE_IDS.slowTest,

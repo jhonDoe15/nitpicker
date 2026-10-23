@@ -31,6 +31,13 @@ export const FACT_RULE_LANGUAGES = {
   'feature-internal-import': { ...FEATURE_BOUNDARY_LANGUAGES },
   'shared-imports-feature': { ...FEATURE_BOUNDARY_LANGUAGES },
   'feature-cycle': { ...FEATURE_BOUNDARY_LANGUAGES },
+  'foreign-feature-persistence': {
+    typescript: true,
+    javascript: true,
+    java: true,
+    python: true,
+    kotlin: true,
+  },
   'test-only-export': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
   'doc-comment-content': { ...TYPESCRIPT_AND_JAVASCRIPT },
   'test-console-output': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
@@ -44,6 +51,7 @@ export const FACT_RULE_LISTS = {
   'feature-internal-import': ['modules', 'imports'],
   'shared-imports-feature': ['modules', 'imports'],
   'feature-cycle': ['modules', 'imports'],
+  'foreign-feature-persistence': ['modules', 'imports'],
   'test-only-export': ['modules', 'packages', 'definitions', 'imports'],
   'doc-comment-content': ['docComments'],
   'test-console-output': ['console'],
@@ -54,6 +62,7 @@ export const FACT_RULE_SETTINGS = {
   'feature-internal-import': FEATURE_LAYOUT_SETTINGS,
   'shared-imports-feature': FEATURE_LAYOUT_SETTINGS,
   'feature-cycle': FEATURE_LAYOUT_SETTINGS,
+  'foreign-feature-persistence': FEATURE_LAYOUT_SETTINGS,
   'test-console-output': ['testConsole'],
 };
 

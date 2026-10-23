@@ -7,8 +7,9 @@ architecture rules below, `archunit/spring-...`. Write it this way.
 Layout (enforced by `archunit/spring-...`; each message says what to change):
 
 - Package by feature under the `@SpringBootApplication` package: `<root>.<feature>` holds its
-  controller, service, repository and entity; other features use only the classes directly in it;
-  pure utilities go to `<root>.shared`. Controllers call services and exchange records, never
+  controller, service, repository and entity; other features use only the services and records
+  directly in it, never its repositories or entities (`foreign-feature-persistence`); pure
+  utilities go to `<root>.shared`. Controllers call services and exchange records, never
   entities; services know nothing of the web layer.
 - A test that starts a Spring context is an integration test: name it `*IT` in its own package
   (package-private classes stay visible) or put it in an integration test source set; a unit test

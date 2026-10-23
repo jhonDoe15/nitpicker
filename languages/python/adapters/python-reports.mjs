@@ -29,6 +29,7 @@ import { readSlowTestFindings } from './test-runs/slow-tests.mjs';
 import { readCouplingFindings, readImportsReport } from './analysis/python-coupling.mjs';
 import { cycleFindings, outsideRootsFindings } from './imports/python-import-rules.mjs';
 import { pythonFeatureAnalysis } from './imports/python-feature-facts.mjs';
+import { pythonPersistence } from './imports/python-persistence.mjs';
 import {
   pythonClassLimitFindings,
   pythonFolderDepthFindings,
@@ -109,9 +110,11 @@ function baseModules(baselineRoot, sourceRoots) {
 
 function projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }) {
   const limits = { thresholds: policy.fileLimits ?? {}, exceptions: policy.exceptions ?? [] };
+  const classes = readClassesReport(reportRoot);
   const features = pythonFeatureAnalysis(imports, {
     policy,
     isGenerated: (file) => isGeneratedPython(projectRoot, file),
+    persistence: pythonPersistence(imports, { classes, projectRoot }),
   });
   return [
     ...readSlowTestFindings({
@@ -129,7 +132,7 @@ function projectShapeFindings({ projectRoot, reportRoot, policy, imports, manife
       sourceRoots: manifest.sourceRoots ?? [],
       rootModules: baseModules(policy.baselineRoot, manifest.sourceRoots ?? []),
     }),
-    ...pythonClassLimitFindings(readClassesReport(reportRoot), imports.modules, limits),
+    ...pythonClassLimitFindings(classes, imports.modules, limits),
     ...features.findings,
     ...cycleFindings(imports, features.cycleEdges),
     ...outsideRootsFindings(imports),

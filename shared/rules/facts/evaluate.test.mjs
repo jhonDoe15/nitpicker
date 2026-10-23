@@ -18,6 +18,7 @@ import {
 
 const CONSOLE = 'test-console-output';
 const FEATURE_RULES = ['feature-internal-import', 'shared-imports-feature', 'feature-cycle'];
+const PERSISTENCE = 'foreign-feature-persistence';
 
 function factRulesOf(language) {
   return Object.entries(FACT_RULE_LANGUAGES)
@@ -64,10 +65,15 @@ describe('the shared fact rules', () => {
   it('runs every rule registered for a language', () => {
     expect(registeredFactRules('typescript')).toEqual(factRulesOf('typescript'));
     expect(registeredFactRules('javascript')).toEqual(factRulesOf('javascript'));
-    expect(registeredFactRules('python')).toEqual(['shared-used-by-one-feature', ...FEATURE_RULES]);
+    expect(registeredFactRules('python')).toEqual([
+      'shared-used-by-one-feature',
+      ...FEATURE_RULES,
+      PERSISTENCE,
+    ]);
     expect(registeredFactRules('java')).toEqual([
       'shared-used-by-one-feature',
       ...FEATURE_RULES,
+      PERSISTENCE,
       'test-only-export',
       'test-console-output',
     ]);
@@ -173,13 +179,19 @@ describe('the shared fact rules', () => {
   });
 
   it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
-    const lifted = ['shared-used-by-one-feature', ...FEATURE_RULES, 'test-only-export'];
+    const lifted = [
+      'shared-used-by-one-feature',
+      ...FEATURE_RULES,
+      PERSISTENCE,
+      'test-only-export',
+    ];
     expect(sharedFactExceptionRules()).toEqual([...lifted, CONSOLE]);
     withLanguageRegistered('doc-comment-content', 'python', () => {
       expect(sharedFactExceptionRules()).toEqual([...lifted, 'doc-comment-content', CONSOLE]);
       expect(registeredFactRules('python')).toEqual([
         'shared-used-by-one-feature',
         ...FEATURE_RULES,
+        PERSISTENCE,
         'doc-comment-content',
       ]);
     });
