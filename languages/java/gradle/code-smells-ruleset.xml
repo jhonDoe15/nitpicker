@@ -33,11 +33,20 @@ return $literals[let $value := @ConstValue, $literal := . return count($literals
         message="Name this type for what it does (PriceRounder, OrderTotals), not Utils, Helper, Manager, Common or Misc. Pure logic shared between features goes in the shared package under such a name.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration or self::RecordDeclaration]
-  [matches(@SimpleName, '(^|[A-Za-z0-9])(Util|Utils|Utility|Utilities|Helper|Helpers|Manager|Managers|Common|Commons|Misc|Miscellaneous)$')]
-  [let $suffix := replace(@SimpleName, '^.*?(Util|Utils|Utility|Utilities|Helper|Helpers|Manager|Managers|Common|Commons|Misc|Miscellaneous)$', '$1')
-   return not((ExtendsList | ImplementsList)/ClassType[ends-with(@SimpleName, $suffix)])]
-  [not(matches(@SimpleName, '(Authentication|Transaction|Cache|Entity|Session|Connection|Lock|Resource)Manager$'))]
+let $generic := ('util', 'utils', 'utility', 'utilities', 'helper', 'helpers', 'manager', 'managers', 'common', 'commons', 'misc', 'miscellaneous'),
+    $containers := ('functions', 'funcs', 'methods', 'module', 'modules', 'mixin', 'mixins', 'base', 'classes'),
+    $roles := ('authentication', 'transaction', 'cache', 'entity', 'session', 'connection', 'lock', 'resource'),
+    $judged := function($name) {
+      let $words := (tokenize(lower-case(replace(replace($name, '([a-z0-9])([A-Z])', '$1 $2'), '([A-Z]+)([A-Z][a-z])', '$1 $2')), '[^a-z0-9]+')
+            ! replace(., '[0-9]+$', ''))[not(matches(., '^v?$'))]
+      return if (count($words) > 1 and $words[last()] = $containers) then subsequence($words, 1, count($words) - 1) else $words },
+    $isGeneric := function($name) {
+      let $words := $judged($name), $last := $words[last()]
+      return $last = $generic and not($last = ('manager', 'managers') and $words[last() - 1] = $roles) }
+return //*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration or self::RecordDeclaration]
+  [$isGeneric(@SimpleName)]
+  [let $last := $judged(@SimpleName)[last()]
+   return not((ExtendsList | ImplementsList)/ClassType[$judged(@SimpleName)[last()] = $last])]
 ]]></value></property></properties>
   </rule>
 
@@ -45,7 +54,17 @@ return $literals[let $value := @ConstValue, $literal := . return count($literals
         message="Name this package for what it holds, not utils, helpers, common or misc. Pure logic shared between features goes in the shared package under a name that says what it does.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//PackageDeclaration[matches(@Name, '(^|\.)(util|utils|utility|utilities|helper|helpers|manager|managers|common|commons|misc|miscellaneous)(\.|$)')]
+let $generic := ('util', 'utils', 'utility', 'utilities', 'helper', 'helpers', 'manager', 'managers', 'common', 'commons', 'misc', 'miscellaneous'),
+    $containers := ('functions', 'funcs', 'methods', 'module', 'modules', 'mixin', 'mixins', 'base', 'classes'),
+    $roles := ('authentication', 'transaction', 'cache', 'entity', 'session', 'connection', 'lock', 'resource'),
+    $judged := function($name) {
+      let $words := (tokenize(lower-case(replace(replace($name, '([a-z0-9])([A-Z])', '$1 $2'), '([A-Z]+)([A-Z][a-z])', '$1 $2')), '[^a-z0-9]+')
+            ! replace(., '[0-9]+$', ''))[not(matches(., '^v?$'))]
+      return if (count($words) > 1 and $words[last()] = $containers) then subsequence($words, 1, count($words) - 1) else $words },
+    $isGeneric := function($name) {
+      let $words := $judged($name), $last := $words[last()]
+      return $last = $generic and not($last = ('manager', 'managers') and $words[last() - 1] = $roles) }
+return //PackageDeclaration[some $segment in tokenize(@Name, '\.') satisfies $isGeneric($segment)]
 ]]></value></property></properties>
   </rule>
 

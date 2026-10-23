@@ -2,11 +2,14 @@ import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import {
   ACCEPTED_MANAGER_ROLES,
+  CONTAINER_NAME_WORDS,
   GENERIC_NAME_WORDS,
 } from '../../../../../../shared/naming/smell-words.mjs';
 import { wordsOf } from '../support/identifier-words.mjs';
 
 const GENERIC_WORDS = new Set(GENERIC_NAME_WORDS);
+const CONTAINER_WORDS = new Set(CONTAINER_NAME_WORDS);
+const VERSION_WORD = /^v?$/;
 const MANAGER_WORDS = new Set(['manager', 'managers']);
 const MANAGER_ROLES = new Set(ACCEPTED_MANAGER_ROLES);
 const EXPORTS = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
@@ -20,8 +23,15 @@ const FILE_START = { line: 1, column: 0 };
 const SOURCE_EXTENSION = /(?:\.d)?\.[cm]?[jt]sx?$/;
 const TEST_FILE = /(?:^|\/)(?:__tests__|__mocks__)\/|\.(?:test|spec)\.[cm]?[jt]sx?$/;
 
+function judgedWords(name) {
+  const words = wordsOf(name)
+    .map((word) => word.replace(/\d+$/, ''))
+    .filter((word) => !VERSION_WORD.test(word));
+  return words.length > 1 && CONTAINER_WORDS.has(words.at(-1)) ? words.slice(0, -1) : words;
+}
+
 function isGenericContainer(name) {
-  const words = wordsOf(name);
+  const words = judgedWords(name);
   const last = words.at(-1) ?? '';
   if (!GENERIC_WORDS.has(last)) {
     return false;
@@ -30,13 +40,13 @@ function isGenericContainer(name) {
 }
 
 function isGenericFunction(name) {
-  const words = wordsOf(name);
+  const words = judgedWords(name);
   return words.length > 0 && words.every((word) => GENERIC_WORDS.has(word));
 }
 
 function lastWord(node) {
   const name = node?.type === 'Identifier' ? node.name : node?.property?.name;
-  return wordsOf(name ?? '').at(-1);
+  return judgedWords(name ?? '').at(-1);
 }
 
 function followsFrameworkType(declaration) {
