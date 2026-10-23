@@ -65,6 +65,13 @@ Before you change code other modules use, or fix a bug, read
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
+- Signatures: a value with three states is an `enum`, not a boxed `Boolean` parameter, field,
+  return type or record component (`pmd/TriStateBoolean`); return a new collection or array
+  instead of changing a parameter (`items.add`, `Arrays.sort(names)`, `counts[0] = 0`;
+  `pmd/ParameterMutation`). When code moves, change every caller and delete the old name: no
+  `@Deprecated` delegate (`pmd/CompatibilityShim`). Time comes from `java.time` with a `Clock` or
+  a zone, never `Calendar.getInstance()`, `new GregorianCalendar()` or `new SimpleDateFormat(...)`
+  (`pmd/LegacyCalendarApi`).
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
