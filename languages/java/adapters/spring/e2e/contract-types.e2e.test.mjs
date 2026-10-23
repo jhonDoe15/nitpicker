@@ -45,7 +45,7 @@ describe.skipIf(!enabled)('Contract rules on a Java project without Spring', () 
     expect(ranWithoutFeatureFolders).toBe(false);
   });
 
-  it('reports the public classes directly in a feature folder and nothing else', () => {
+  it('reports the public classes directly in a feature folder, leaving web entry points to their frameworks', () => {
     const findings = readSpringArchFindings(path.join(projectRoot, 'build', 'nitpicker'), {
       resolvePath: (className) => `src/main/java/${className.replaceAll('.', '/')}.java`,
       spring: false,
@@ -53,8 +53,11 @@ describe.skipIf(!enabled)('Contract rules on a Java project without Spring', () 
     });
 
     expect(findings.map(({ path: file, identity }) => `${file} ${identity}`)).toEqual([
+      'src/main/java/com/acme/features/orders/OrderHttp.java OrderHttp|open:Connection',
       'src/main/java/com/acme/features/orders/OrderHttp.java OrderHttp|write:HttpServletResponse',
+      'src/main/java/com/acme/features/orders/OrderResource.java OrderResource|export:ResultSet',
       'src/main/java/com/acme/features/orders/OrderStore.java OrderStore|connections:Connection',
+      'src/main/java/com/acme/features/orders/OrderStore.java OrderStore|first:DataSource',
     ]);
   });
 });

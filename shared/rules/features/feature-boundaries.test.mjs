@@ -70,6 +70,38 @@ describe('feature-internal-import', () => {
     expect(findingsOf(facts, [INTERNAL, SHARED])).toEqual([]);
   });
 
+  it('allows a sub-package the __init__ re-exports whole, but not a module it takes a name from', () => {
+    const facts = factsOf([
+      edge(`${BILLING}/__init__.py`, `${BILLING}/models/__init__.py`, { reexport: true }),
+      edge(`${BILLING}/__init__.py`, `${BILLING}/internal/tax.py`, {
+        names: [{ name: 'tax' }],
+        reexport: true,
+      }),
+      edge(`${ORDERS}/cart.py`, `${BILLING}/models/__init__.py`),
+      edge(`${ORDERS}/cart.py`, `${BILLING}/internal/tax.py`),
+    ]);
+
+    expect(rows(findingsOf(facts, [INTERNAL]))).toEqual([
+      [INTERNAL, `${ORDERS}/cart.py`, `feature-internal:${BILLING}/internal/tax.py`],
+    ]);
+  });
+
+  it('never reports an import of or from a generated module', () => {
+    const facts = factsOf([
+      edge(`${ORDERS}/cart.py`, `${BILLING}/generated/stub_pb2.py`),
+      edge(`${ORDERS}/generated/client_pb2.py`, `${BILLING}/_rates.py`),
+    ]);
+    const generated = {
+      ...facts,
+      modules: facts.modules.map((module) => ({
+        ...module,
+        generated: module.file.includes('/generated/'),
+      })),
+    };
+
+    expect(findingsOf(generated, [INTERNAL, SHARED])).toEqual([]);
+  });
+
   it('names the importer, the module and the public face, and ends with the exception', () => {
     const facts = factsOf([edge(`${ORDERS}/cart.py`, `${BILLING}/_rates.py`)]);
 
@@ -78,7 +110,7 @@ describe('feature-internal-import', () => {
       rule: INTERNAL,
       path: `${ORDERS}/cart.py`,
       identity: `feature-internal:${BILLING}/_rates.py`,
-      message: `Import feature billing only through its public face, its __init__.py (a name it imports from an internal module counts) or a module directly in ${BILLING}/ whose name does not start with "_": ${ORDERS}/cart.py imports its internal module ${BILLING}/_rates.py. Expose what ${ORDERS}/cart.py needs there, or move the code both use to a shared root (layout.sharedRoots). ${exceptionHint(INTERNAL, `${ORDERS}/cart.py`)}`,
+      message: `Import feature billing only through ${BILLING}/__init__.py (re-export names or sub-packages there) or a module directly in ${BILLING}/ not starting with "_": ${ORDERS}/cart.py imports its internal module ${BILLING}/_rates.py. Expose what it needs there, or move the code both use to a shared root. ${exceptionHint(INTERNAL, `${ORDERS}/cart.py`)}`,
       classification: 'enforceable',
     });
   });
@@ -108,7 +140,7 @@ describe('shared-imports-feature', () => {
       [SHARED, `${ROOT}/shared/money.py`, `${ORDERS}|${SHARED}`],
     ]);
     expect(findings[0].message).toBe(
-      `Shared code depends only on shared code: ${ROOT}/shared/money.py is under a shared root and imports feature billing (${BILLING}/_rates.py, ${BILLING}/api.py). Move the code it needs from the feature into a shared root, pass it in as a parameter from the composition root, or move ${ROOT}/shared/money.py into the feature if only billing uses it. ${exceptionHint(SHARED, `${ROOT}/shared/money.py`)}`,
+      `Shared code imports only shared code: ${ROOT}/shared/money.py is shared and imports feature billing (${BILLING}/_rates.py, ${BILLING}/api.py). Move what it needs into a shared root, pass it in from the composition root, or move ${ROOT}/shared/money.py into billing. ${exceptionHint(SHARED, `${ROOT}/shared/money.py`)}`,
     );
   });
 

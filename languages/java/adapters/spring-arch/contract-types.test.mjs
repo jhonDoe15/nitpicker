@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -36,7 +36,7 @@ describe('contract-infrastructure-type findings', () => {
     [
       'service|persistence|rows:java.sql.ResultSet',
       'AccountService|rows:ResultSet',
-      'Return a record (DTO) or a domain type from AccountService.rows and take plain values: ResultSet is a persistence handle, so every caller of this service depends on the database session. Keep ResultSet inside the repository or adapter that owns the transaction.',
+      'Take a repository or a port interface and return a record (DTO) or a domain type from AccountService.rows: ResultSet is a persistence handle, so every caller of this service depends on the database session. Keep ResultSet inside the repository or adapter that owns the transaction.',
     ],
     [
       'feature|transport|respond:jakarta.servlet.http.HttpServletResponse',
@@ -145,4 +145,29 @@ describe('featureFaceMatcher', () => {
       expect(featureFaceMatcher({ layout, modulePath })(file)).toBe(expected);
     },
   );
+});
+
+function quotedNames(file, start, end) {
+  const text = readFileSync(path.resolve(import.meta.dirname, file), 'utf8');
+  const from = text.indexOf(start);
+  const block = text.slice(from, text.indexOf(end, from));
+  return [...block.matchAll(/"([a-z]+)"/gu)].map(([, name]) => name).sort();
+}
+
+describe('infrastructure package names', () => {
+  it('are the module names the Python preset skips', () => {
+    const jvm = quotedNames(
+      '../../gradle/archunit/contracts/Contracts.java',
+      'INFRASTRUCTURE_NAMES',
+      ';',
+    );
+    const python = quotedNames(
+      '../../../python/rules/contracts/contract_types.py',
+      'INFRASTRUCTURE_MODULES',
+      '}',
+    );
+
+    expect(jvm).toEqual(python);
+    expect(jvm).toContain('security');
+  });
 });

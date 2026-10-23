@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { exceptionHint } from '../exceptions.mjs';
-import { sharedFactFindings } from '../facts/evaluate.mjs';
+import { featureFactAnalysis, sharedFactFindings } from '../facts/evaluate.mjs';
 import { rows } from '../facts/test-support/fact-fixtures.mjs';
-import { featureCycleEdges } from './feature-cycles.mjs';
-import { featureRoleContract, PUBLIC_FACES } from './feature-roles.mjs';
+import { PUBLIC_FACES } from './feature-roles.mjs';
 
 const RULE = 'feature-cycle';
 const FEATURES = 'src/app/features';
@@ -46,7 +45,7 @@ describe('feature-cycle', () => {
       [RULE, `${FEATURES}/shipping/label.py`, `${FEATURES}/billing|${RULE}`],
     ]);
     expect(findings[0].message).toBe(
-      `Keep dependencies between features one-way: ${FEATURES}/billing/invoice.py in feature billing imports feature shipping (${FEATURES}/shipping/api.py, ${FEATURES}/shipping/rates.py), and shipping depends back on billing, a cycle between features billing, shipping. Move what both need to a shared root, invert this dependency behind an interface billing owns that the composition root wires, or merge the features. ${exceptionHint(RULE, `${FEATURES}/billing/invoice.py`)}`,
+      `Keep feature dependencies one-way: ${FEATURES}/billing/invoice.py in billing imports shipping (${FEATURES}/shipping/api.py, ${FEATURES}/shipping/rates.py), which depends back on billing (cycle: billing, shipping). Move what both need to a shared root, or invert this import behind an interface. ${exceptionHint(RULE, `${FEATURES}/billing/invoice.py`)}`,
     );
   });
 
@@ -63,7 +62,7 @@ describe('feature-cycle', () => {
       `${FEATURES}/shipping/label.py`,
     ]);
     expect(findings[1].message).toBe(
-      `Keep dependencies between features one-way: ${FEATURES}/orders/cart.py in feature orders imports feature shipping (${FEATURES}/shipping/__init__.py), and shipping depends back on orders, a cycle between features billing, orders, shipping. Move what both need to a shared root, invert this dependency behind an interface orders owns that the composition root wires, or merge the features. ${exceptionHint(RULE, `${FEATURES}/orders/cart.py`)}`,
+      `Keep feature dependencies one-way: ${FEATURES}/orders/cart.py in orders imports shipping (${FEATURES}/shipping/__init__.py), which depends back on orders (cycle: billing, orders, shipping). Move what both need to a shared root, or invert this import behind an interface. ${exceptionHint(RULE, `${FEATURES}/orders/cart.py`)}`,
     );
   });
 
@@ -96,28 +95,47 @@ describe('feature-cycle', () => {
     expect(after[0].path).toBe(`${FEATURES}/billing/documents/invoice.py`);
   });
 
-  it('gives the edges inside a cycle to a runner that drops its own duplicate findings', () => {
-    const roleOf = featureRoleContract({}, PUBLIC_FACES.python);
-    const edges = featureCycleEdges(
+  it('names the cycles it reported and the edges inside them', () => {
+    const analysis = featureFactAnalysis(
       factsOf([
         edge('billing/invoice.py', 'shipping/api.py'),
         edge('shipping/label.py', 'billing/__init__.py'),
         edge('orders/cart.py', 'billing/__init__.py'),
       ]),
-      roleOf,
+      { language: 'python', analyzerName: 'coupling', publicFace: PUBLIC_FACES.python },
     );
 
-    expect(edges.map(({ from, to, cycle }) => [from, to, cycle])).toEqual([
-      [
-        `${FEATURES}/billing/invoice.py`,
-        `${FEATURES}/shipping/api.py`,
-        [`${FEATURES}/billing`, `${FEATURES}/shipping`],
-      ],
-      [
-        `${FEATURES}/shipping/label.py`,
-        `${FEATURES}/billing/__init__.py`,
-        [`${FEATURES}/billing`, `${FEATURES}/shipping`],
-      ],
+    expect(analysis.explainedCycles).toEqual([
+      {
+        features: [`${FEATURES}/billing`, `${FEATURES}/shipping`],
+        edges: [
+          { from: `${FEATURES}/billing/invoice.py`, to: `${FEATURES}/shipping/api.py` },
+          { from: `${FEATURES}/shipping/label.py`, to: `${FEATURES}/billing/__init__.py` },
+        ],
+      },
     ]);
+    expect(analysis.featureOf(`${FEATURES}/orders/cart.py`)).toBe(`${FEATURES}/orders`);
+    expect(analysis.featureOf('src/app/main.py')).toBeUndefined();
+  });
+
+  it('explains no cycle whose findings an exception drops', () => {
+    const analysis = featureFactAnalysis(
+      factsOf([
+        edge('billing/invoice.py', 'shipping/api.py'),
+        edge('shipping/label.py', 'billing/__init__.py'),
+      ]),
+      {
+        language: 'python',
+        analyzerName: 'coupling',
+        publicFace: PUBLIC_FACES.python,
+        policy: { exceptions: [{ rule: RULE, paths: ['src/**'] }] },
+      },
+    );
+
+    expect(analysis).toEqual({
+      findings: [],
+      explainedCycles: [],
+      featureOf: expect.any(Function),
+    });
   });
 });

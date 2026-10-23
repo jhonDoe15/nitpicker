@@ -52,14 +52,34 @@ function isOutside(source, target) {
   );
 }
 
+const WHOLE_MODULE = '*';
+
+function isWholeReexport({ from, to, reexport, names }, roleOf) {
+  const source = roleOf(from);
+  return (
+    reexport === true &&
+    names.some(({ name }) => name === WHOLE_MODULE) &&
+    source.kind === 'feature' &&
+    source.isPublic &&
+    roleOf(to).directory === source.directory
+  );
+}
+
+function publicModules(imports, roleOf) {
+  return new Set(imports.filter((edge) => isWholeReexport(edge, roleOf)).map(({ to }) => to));
+}
+
 function featureInternalImports({ imports }, roleOf) {
   const seen = new Set();
-  return productionImports(imports).flatMap(({ from, to }) => {
+  const production = productionImports(imports);
+  const reexported = publicModules(production, roleOf);
+  return production.flatMap(({ from, to }) => {
     const target = roleOf(to);
     const key = `${from}\0${to}`;
     if (
       target.kind !== 'feature' ||
       target.isPublic ||
+      reexported.has(to) ||
       seen.has(key) ||
       !isOutside(roleOf(from), target)
     ) {

@@ -8,7 +8,6 @@ import {
   moduleClasspaths,
   parseDependencyList,
   readReactor,
-  usesSpring,
 } from './maven-project.mjs';
 import {
   archunitMatcher,
@@ -27,6 +26,13 @@ import {
   resolveTools,
 } from './maven-tools.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
+import {
+  buildRunsArchRules,
+  springFacts,
+  withDeclaredSpring,
+  withFeatureFolders,
+} from './spring/arch-rules-gate.mjs';
+import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
@@ -124,7 +130,6 @@ function hasJar(classpath, jar) {
 }
 
 export function moduleManifest({ module, classpaths, pinned }) {
-  const spring = usesSpring(classpaths);
   return {
     versions: pinned,
     build: 'maven',
@@ -132,8 +137,7 @@ export function moduleManifest({ module, classpaths, pinned }) {
     kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
     resourceRoots: relativeRoots(module, module.resourceRoots),
-    spring,
-    springArch: spring,
+    ...springFacts(classpaths),
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
     testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
     testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
@@ -156,11 +160,6 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
   return testsRan;
 }
 
-export function withHeadFacts(manifest, { spring: declared, featureFolders }) {
-  const spring = declared === true || manifest.spring;
-  return { ...manifest, spring, springArch: spring || featureFolders === true };
-}
-
 function analyzeSources(options) {
   const { module, reportDir, classpaths, tools, pinned, configs, style, spring, spawn } = options;
   runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn });
@@ -173,7 +172,7 @@ function analyzeSources(options) {
 }
 
 function analyzeTests(options) {
-  const { module, reportDir, classpaths, tools, pinned, since, springArch } = options;
+  const { module, reportDir, classpaths, tools, pinned, since, springArch, springRoles } = options;
   const { isArchunit, testsRan, spawn } = options;
   runJacocoReport({
     module,
@@ -185,14 +184,26 @@ function analyzeTests(options) {
     spawn,
   });
   runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
-  runSpringArch({ module, reportDir, tools, classpaths, pinned, springArch, spawn });
+  runSpringArch({
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    pinned,
+    archRules: springArch,
+    springRoles,
+    spawn,
+  });
 }
 
 function analyzeModule(options) {
   const { module, classpaths, pinned, since } = options;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const manifest = withHeadFacts(moduleManifest({ module, classpaths, pinned }), options);
+  const manifest = withFeatureFolders(
+    withDeclaredSpring(moduleManifest({ module, classpaths, pinned }), options.spring),
+    options.featureFolders,
+  );
   const { spring, springArch } = manifest;
   const testRuntime = classpaths.testRuntime;
   const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
@@ -241,11 +252,7 @@ function extraTools({ modules, analyzed, policy, pinned }) {
   return [
     ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     ...formatTool(policy.javaStyle, pinned),
-    ...archunitTool(
-      [policy.spring, policy.featureFolders].includes(true) ||
-        analyzed.some(({ classpaths }) => usesSpring(classpaths)),
-      pinned,
-    ),
+    ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
   ];
 }
 
@@ -288,6 +295,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
         },
         spring: policy.spring,
         featureFolders: policy.featureFolders,
+        springRoles: writeSpringRoles(policy.springRoles, work),
       });
     }
     return modules.map((module) => module.basedir);

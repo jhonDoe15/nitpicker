@@ -1,5 +1,6 @@
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaField;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.core.domain.JavaType;
@@ -14,31 +15,48 @@ final class Contracts {
   static final String CONTROLLER = "controller";
   static final String FEATURE = "feature";
   static final String PACKAGE = "package";
-  private static final String CONFIGURATION = "org.springframework.context.annotation.Configuration";
   private static final String BEAN = "org.springframework.context.annotation.Bean";
-  private static final String KOTLIN_METADATA = "kotlin.Metadata";
-  private static final Set<String> ADAPTER_PACKAGES =
-      Set.of("adapter", "adapters", "infrastructure", "infra", "persistence");
+  private static final List<String> RESOURCE_ANNOTATIONS =
+      List.of("jakarta.ws.rs.Path", "javax.ws.rs.Path", "io.micronaut.http.annotation.Controller");
+  private static final String CLIENT_SUFFIX = "Client";
+  private static final Set<String> INFRASTRUCTURE_NAMES =
+      Set.of(
+          "adapter", "adapters", "infrastructure", "infra", "persistence", "repository", "repositories", "db",
+          "database", "dependencies", "deps", "config", "configuration", "security");
 
-  private Contracts() {}
+  private final JavaClasses main;
+  private final String root;
+  private final Roles roles;
 
-  static void check(JavaClasses main, String root, Set<Found> sink) {
+  private Contracts(JavaClasses main, String root, Roles roles) {
+    this.main = main;
+    this.root = root;
+    this.roles = roles;
+  }
+
+  static void check(JavaClasses main, String root, Roles roles, Set<Found> sink) {
+    new Contracts(main, root, roles).checkAll(sink);
+  }
+
+  private void checkAll(Set<Found> sink) {
     for (JavaClass type : main) {
-      String face = faceOf(type, root);
+      String face = faceOf(type);
       if (face == null) {
         continue;
       }
-      for (JavaMethod method : contractMethods(type, main)) {
+      for (JavaMethod method : ContractMethods.of(type, main)) {
+        boolean handler = takesRequestFirst(method) || isOutboundClient(type);
         for (JavaClass leaked : signatureTypes(method)) {
-          report(face, method, leaked, sink);
+          report(face, method, leaked, handler, sink);
         }
       }
     }
   }
 
-  private static void report(String face, JavaMethod method, JavaClass leaked, Set<Found> sink) {
-    String kind = InfrastructureTypes.kindOf(leaked, isRepository(leaked));
-    if (kind == null || coveredBySpringRules(face, kind, leaked)) {
+  private void report(String face, JavaMethod method, JavaClass leaked, boolean handler, Set<Found> sink) {
+    String kind = InfrastructureTypes.kindOf(leaked, roles);
+    boolean webEntry = handler && InfrastructureTypes.TRANSPORT.equals(kind);
+    if (kind == null || webEntry || coveredElsewhere(face, kind, method.getOwner(), leaked)) {
       return;
     }
     JavaClass type = method.getOwner();
@@ -46,14 +64,24 @@ final class Contracts {
     Found.add(sink, RULE, type, face + "|" + kind + "|" + label + ":" + leaked.getName());
   }
 
-  private static boolean coveredBySpringRules(String face, String kind, JavaClass leaked) {
+  private boolean coveredElsewhere(String face, String kind, JavaClass type, JavaClass leaked) {
     if (face.equals(CONTROLLER)) {
-      return kind.equals(InfrastructureTypes.TRANSPORT) || isDataAccess(leaked);
+      return kind.equals(InfrastructureTypes.TRANSPORT)
+          || (roles.isController(Spring.owner(type)) && roles.isDataAccess(leaked));
     }
-    return face.equals(SERVICE) && (isWebLayer(leaked) || Spring.isResponseEntity(leaked));
+    return face.equals(SERVICE) && (roles.isWebLayer(leaked) || Spring.isResponseEntity(leaked));
   }
 
-  private static String faceOf(JavaClass type, String root) {
+  private static boolean isOutboundClient(JavaClass type) {
+    return Spring.owner(type).getSimpleName().endsWith(CLIENT_SUFFIX);
+  }
+
+  private static boolean takesRequestFirst(JavaMethod method) {
+    List<JavaClass> parameters = method.getRawParameterTypes();
+    return !parameters.isEmpty() && InfrastructureTypes.isRequest(parameters.get(0));
+  }
+
+  private String faceOf(JavaClass type) {
     JavaClass owner = Spring.owner(type);
     if (!isPublic(type) || !isPublic(owner) || Spring.isGenerated(type) || frameworkOwned(owner)) {
       return null;
@@ -61,29 +89,33 @@ final class Contracts {
     if (isController(owner)) {
       return CONTROLLER;
     }
-    if (isService(owner)) {
+    if (roles.isService(owner)) {
       return SERVICE;
     }
-    return root != null && directlyInFeature(type.getPackageName(), root) ? FEATURE : PACKAGE;
+    return root != null && directlyInFeature(type.getPackageName()) ? FEATURE : PACKAGE;
   }
 
-  private static boolean frameworkOwned(JavaClass owner) {
-    return isRepository(owner)
-        || owner.isMetaAnnotatedWith(CONFIGURATION)
-        || (isWebLayer(owner) && !isController(owner))
-        || inAdapterPackage(owner.getPackageName());
+  private boolean isController(JavaClass owner) {
+    return roles.isController(owner) || RESOURCE_ANNOTATIONS.stream().anyMatch(owner::isMetaAnnotatedWith);
   }
 
-  private static boolean inAdapterPackage(String packageName) {
+  private boolean frameworkOwned(JavaClass owner) {
+    return roles.isRepository(owner)
+        || owner.isMetaAnnotatedWith(Spring.CONFIGURATION)
+        || (roles.isWebLayer(owner) && !roles.isController(owner))
+        || inInfrastructurePackage(owner.getPackageName());
+  }
+
+  private static boolean inInfrastructurePackage(String packageName) {
     for (String segment : packageName.split("\\.")) {
-      if (ADAPTER_PACKAGES.contains(segment)) {
+      if (INFRASTRUCTURE_NAMES.contains(segment)) {
         return true;
       }
     }
     return false;
   }
 
-  private static boolean directlyInFeature(String packageName, String root) {
+  private boolean directlyInFeature(String packageName) {
     if (!packageName.startsWith(root + ".")) {
       return false;
     }
@@ -95,64 +127,54 @@ final class Contracts {
     return type.getModifiers().contains(JavaModifier.PUBLIC);
   }
 
-  private static List<JavaMethod> contractMethods(JavaClass type, JavaClasses main) {
-    boolean kotlin = type.isAnnotatedWith(KOTLIN_METADATA);
-    List<JavaMethod> methods = new ArrayList<>();
-    for (JavaMethod method : type.getMethods()) {
-      if (isContractMethod(method, kotlin) && !overridesLibraryMethod(method, main)) {
-        methods.add(method);
-      }
-    }
-    return methods;
-  }
-
-  private static boolean isContractMethod(JavaMethod method, boolean kotlin) {
-    Set<JavaModifier> modifiers = method.getModifiers();
-    String name = method.getName();
-    return modifiers.contains(JavaModifier.PUBLIC)
-        && !modifiers.contains(JavaModifier.SYNTHETIC)
-        && !modifiers.contains(JavaModifier.BRIDGE)
-        && !name.contains("$")
-        && !method.isMetaAnnotatedWith(BEAN)
-        && !(kotlin && (name.equals("copy") || name.matches("component\\d+")));
-  }
-
-  private static boolean overridesLibraryMethod(JavaMethod method, JavaClasses main) {
-    Set<JavaClass> supertypes = new LinkedHashSet<>(method.getOwner().getAllRawSuperclasses());
-    supertypes.addAll(method.getOwner().getAllRawInterfaces());
-    int arity = method.getRawParameterTypes().size();
-    return supertypes.stream()
-        .filter(supertype -> !main.contain(supertype.getName()))
-        .flatMap(supertype -> supertype.getMethods().stream())
-        .anyMatch(
-            declared -> declared.getName().equals(method.getName()) && declared.getRawParameterTypes().size() == arity);
-  }
-
-  private static Set<JavaClass> signatureTypes(JavaMethod method) {
+  private Set<JavaClass> signatureTypes(JavaMethod method) {
     Set<JavaClass> types = new LinkedHashSet<>(method.getReturnType().getAllInvolvedRawTypes());
+    if (isFactory(method)) {
+      return types;
+    }
     for (JavaType parameter : method.getParameterTypes()) {
       types.addAll(parameter.getAllInvolvedRawTypes());
     }
     return types;
   }
 
-  private static boolean isController(JavaClass type) {
-    return Spring.isController(type);
+  private boolean isFactory(JavaMethod method) {
+    JavaClass owner = method.getOwner();
+    boolean entry = method.getModifiers().contains(JavaModifier.STATIC) || isCompanion(owner);
+    String name = method.getRawReturnType().getName();
+    if (!entry || !main.contain(name)) {
+      return false;
+    }
+    JavaClass returned = main.get(name);
+    return returned.equals(Spring.owner(owner)) || !ContractMethods.of(returned, main).isEmpty();
   }
 
-  private static boolean isService(JavaClass type) {
-    return Spring.isService(type);
+  private static boolean isCompanion(JavaClass type) {
+    return type.getEnclosingClass()
+        .map(outer -> outer.getFields().stream().anyMatch(field -> isInstanceField(field, type)))
+        .orElse(false);
   }
 
-  private static boolean isRepository(JavaClass type) {
-    return Spring.isRepository(type);
+  private static boolean isInstanceField(JavaField field, JavaClass type) {
+    return field.getModifiers().contains(JavaModifier.STATIC) && field.getRawType().equals(type);
   }
 
-  private static boolean isDataAccess(JavaClass type) {
-    return Spring.isDataAccess(type);
+  static boolean isBean(JavaMethod method) {
+    return method.isMetaAnnotatedWith(BEAN);
   }
 
-  private static boolean isWebLayer(JavaClass type) {
-    return Spring.isWebLayer(type);
+  static List<JavaMethod> publicMethods(JavaClass type) {
+    List<JavaMethod> methods = new ArrayList<>();
+    for (JavaMethod method : type.getMethods()) {
+      Set<JavaModifier> modifiers = method.getModifiers();
+      if (modifiers.contains(JavaModifier.PUBLIC)
+          && !modifiers.contains(JavaModifier.SYNTHETIC)
+          && !modifiers.contains(JavaModifier.BRIDGE)
+          && !method.getName().contains("$")
+          && !isBean(method)) {
+        methods.add(method);
+      }
+    }
+    return methods;
   }
 }

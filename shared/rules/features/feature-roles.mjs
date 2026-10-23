@@ -8,11 +8,11 @@ export const PUBLIC_FACES = {
   python: {
     isPublic: (name) => INIT_MODULE.test(name) || !name.startsWith('_'),
     describe: (directory) =>
-      `its __init__.py (a name it imports from an internal module counts) or a module directly in ${directory}/ whose name does not start with "_"`,
+      `${directory}/__init__.py (re-export names or sub-packages there) or a module directly in ${directory}/ not starting with "_"`,
   },
   jvm: {
     isPublic: () => true,
-    describe: (directory) => `a class directly in the feature package ${directory}/`,
+    describe: (directory) => `a class directly in ${directory}/`,
   },
 };
 
@@ -20,6 +20,7 @@ export function featureLayout(layout = {}) {
   return {
     sharedRoots: layout.sharedRoots ?? DEFAULT_FEATURE_LAYOUT.sharedRoots,
     featureRoots: layout.featureRoots ?? DEFAULT_FEATURE_LAYOUT.featureRoots,
+    sharedInsideFeatures: layout.sharedRoots !== undefined,
   };
 }
 
@@ -36,25 +37,31 @@ function matchesAny(patterns, folder) {
   return patterns.some((pattern) => pattern.test(folder));
 }
 
-function isSharedAbove(sharedFolder, featureDirectory) {
+function isShared(sharedFolder, featureDirectory, sharedInsideFeatures) {
   return (
     sharedFolder !== undefined &&
-    (featureDirectory === undefined || sharedFolder.length <= featureDirectory.length)
+    (sharedInsideFeatures ||
+      featureDirectory === undefined ||
+      sharedFolder.length <= featureDirectory.length)
   );
 }
 
-export function featureRoles({ sharedRoots, featureRoots }) {
+export function featureRoles({ sharedRoots, featureRoots, sharedInsideFeatures = false }) {
   const shared = sharedRoots.map((glob) => globMatcher(glob));
   const features = featureRoots.map((glob) => globMatcher(glob));
   return (file) => {
     const prefixes = folderPrefixes(file);
     const sharedFolder = prefixes.find(({ folder }) => matchesAny(shared, folder))?.folder;
-    const feature = prefixes.find(({ folder, isLast }) => !isLast && matchesAny(features, folder));
+    const feature = prefixes.findLast(
+      ({ folder, isLast }) => !isLast && matchesAny(features, folder),
+    );
     const directory = feature === undefined ? undefined : `${feature.folder}/${feature.child}`;
-    if (isSharedAbove(sharedFolder, directory)) {
+    if (isShared(sharedFolder, directory, sharedInsideFeatures)) {
       return { kind: 'shared' };
     }
-    return directory === undefined ? { kind: 'other' } : { kind: 'feature', directory };
+    return directory === undefined
+      ? { kind: 'other' }
+      : { kind: 'feature', directory, name: feature.child };
   };
 }
 
@@ -77,7 +84,6 @@ export function featureRoleContract(layout, publicFace) {
     const inside = file.slice(role.directory.length + 1);
     return {
       ...role,
-      name: role.directory.split('/').at(-1),
       isPublic: !inside.includes('/') && publicFace.isPublic(inside),
       face: publicFace.describe(role.directory),
     };

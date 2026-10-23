@@ -1,5 +1,6 @@
 package shop.accounts;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.sql.Connection;
 import javax.sql.DataSource;
@@ -18,6 +19,10 @@ public class Accounts {
 
   public HttpServletResponse respond(String body) {
     return null;
+  }
+
+  public ResponseEntity<AccountView> handle(HttpServletRequest request) {
+    return ResponseEntity.ok(view(request.getContentLengthLong()));
   }
 
   public ResponseEntity<AccountView> view() {

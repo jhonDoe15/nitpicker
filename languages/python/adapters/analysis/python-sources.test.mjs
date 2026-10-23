@@ -78,8 +78,8 @@ describe('listing production modules', () => {
       'app/node_modules/x.py',
       'app/site-packages/x.py',
       'app/venv/x.py',
-      'app/build/x.py',
-      'app/dist/x.py',
+      'build/x.py',
+      'dist/x.py',
       'app/migrations/0001_initial.py',
       'app/data.txt',
     ]);
@@ -97,6 +97,37 @@ describe('listing production modules', () => {
     expect(listProductionModules(root, ['.']).map(({ file }) => file)).toEqual([
       'app/__init__.py',
       'app/keep.py',
+    ]);
+  });
+
+  it('skips build and dist only at the project root or next to a manifest', () => {
+    const root = project([
+      'src/app/features/build/__init__.py',
+      'src/app/features/dist/api.py',
+      'tools/pyproject.toml',
+      'tools/build/lib/x.py',
+      'tools/run.py',
+    ]);
+
+    expect(listProductionModules(root, ['.']).map(({ file }) => file)).toEqual([
+      'src/app/features/build/__init__.py',
+      'src/app/features/dist/api.py',
+      'tools/run.py',
+    ]);
+  });
+
+  it('skips a behave or pytest-bdd features tree, but not a package that only has a steps folder', () => {
+    const root = project([
+      'features/checkout.feature',
+      'features/environment.py',
+      'features/steps/checkout_steps.py',
+      'src/app/features/steps/__init__.py',
+      'src/app/features/billing/api.py',
+    ]);
+
+    expect(listProductionModules(root, ['.']).map(({ file }) => file)).toEqual([
+      'src/app/features/billing/api.py',
+      'src/app/features/steps/__init__.py',
     ]);
   });
 
