@@ -1,10 +1,14 @@
 import ast
+from collections import deque
 
-from checks.state import local_names
+from checks.common import is_domain_path
 from effects.calls import Scope, bindings, direct_effects
 from effects.resolve import Caller, display, production_definitions
 
 NESTED_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
+SHOWN_HEAD = 4
+SHOWN_TAIL = 2
+ELLIPSIS = "..."
 
 
 def body_nodes(function):
@@ -21,57 +25,82 @@ def owner_of(qualified):
     return owner or None
 
 
-class FunctionFacts:
-    def __init__(self, context, qualified, function):
-        nodes = list(body_nodes(function))
-        caller = Caller(context, owner_of(qualified), local_names(function))
-        scope = Scope(context, bindings(nodes, context.aliases))
-        self.effects = {}
-        self.callees = []
-        for call in (node for node in nodes if isinstance(node, ast.Call)):
-            for kind, name in direct_effects(call, scope).items():
-                self.effects.setdefault(kind, [(None, name)])
-            callee = caller.resolve(call.func)
-            if callee is not None:
-                self.callees.append(callee)
+def function_facts(context, qualified, function):
+    nodes = list(body_nodes(function))
+    caller = Caller(context, function, owner_of(qualified))
+    scope = Scope(context, bindings(nodes, context.aliases))
+    effects, callees = {}, []
+    for call in (node for node in nodes if isinstance(node, ast.Call)):
+        for kind, name in direct_effects(call, scope).items():
+            effects.setdefault(kind, name)
+        callees.extend(caller.resolve(call.func))
+    return effects, callees
+
+
+def included_functions(project, included):
+    for path, defined in sorted(production_definitions(project).items()):
+        if included is None or included(path):
+            yield from (
+                (path, qualified, node)
+                for qualified, node in defined.items()
+                if not isinstance(node, ast.ClassDef)
+            )
 
 
 class Summaries:
-    def __init__(self, project):
+    def __init__(self, project, included=None):
         self.project = project
-        self.effects = {}
-        self.callees = {}
-        for path, defined in production_definitions(project).items():
+        self.direct, self.next, callers = {}, {}, {}
+        for path, qualified, function in included_functions(project, included):
+            key = (path, qualified)
             context = project.contexts[path]
-            for qualified, function in defined.items():
-                facts = FunctionFacts(context, qualified, function)
-                self.effects[(path, qualified)] = facts.effects
-                self.callees[(path, qualified)] = facts.callees
-        while self.spread():
-            pass
+            effects, callees = function_facts(context, qualified, function)
+            self.direct[key] = effects
+            self.next[key] = {kind: None for kind in effects}
+            for callee in callees:
+                callers.setdefault(callee, set()).add(key)
+        self.spread(callers)
 
-    def spread(self):
-        found = []
-        for key in sorted(self.callees):
-            known = self.effects[key]
-            for callee in self.callees[key]:
-                for kind, chain in self.effects.get(callee, {}).items():
-                    if kind not in known and callee != key:
-                        found.append((key, kind, [self.step(callee), *chain]))
-        for key, kind, chain in found:
-            self.effects[key].setdefault(kind, chain)
-        return bool(found)
+    def spread(self, callers):
+        pending = deque(sorted(key for key, effects in self.direct.items() if effects))
+        while pending:
+            callee = pending.popleft()
+            gained = (
+                c for c in sorted(callers.get(callee, ())) if self.gain(c, callee)
+            )
+            pending.extend(gained)
 
-    def step(self, key):
-        return key[0], display(self.project, key)
+    def gain(self, caller, callee):
+        known = self.next[caller]
+        gained = [kind for kind in self.next[callee] if kind not in known]
+        for kind in gained:
+            known[kind] = callee
+        return bool(gained)
 
-    def of(self, key):
-        return self.effects.get(key, {})
+    def kinds(self, key):
+        return set(self.next.get(key, {}))
+
+    def steps(self, key, kind):
+        found, current = [], key
+        while self.next[current][kind] is not None:
+            current = self.next[current][kind]
+            found.append((current[0], display(self.project, current)))
+        return [*found, (None, self.direct[current][kind])]
 
 
 def summaries_of(project):
     return project.memo("effect-summaries", Summaries)
 
 
+def outside_domain_summaries(project):
+    def build(_):
+        return Summaries(project, lambda path: not is_domain_path(path))
+
+    return project.memo("effect-summaries-outside-domain", build)
+
+
 def chain_text(steps):
-    return " -> ".join(name for _path, name in steps)
+    names = [name for _path, name in steps]
+    if len(names) > SHOWN_HEAD + SHOWN_TAIL + 1:
+        names = [*names[:SHOWN_HEAD], ELLIPSIS, *names[-SHOWN_TAIL:]]
+    return " -> ".join(names)

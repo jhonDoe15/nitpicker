@@ -1,19 +1,16 @@
 import ast
 
-from checks.common import TEST_DIRECTORIES, directories, dotted_name, finding
-from effects.calls import EXTERNAL, Scope, bindings, direct_effects
-from effects.resolve import FUNCTIONS, Caller, display
-from effects.summaries import body_nodes, chain_text, summaries_of
+from checks.common import finding, is_type_checking_block
+from effects.calls import EXTERNAL, IO, Scope, bindings, direct_effects
+from effects.resolve import Caller, display
+from effects.summaries import chain_text, summaries_of
 from environment.environment import is_main_guard
-from environment.roots import is_composition_root, stem_of
+from environment.roots import is_composition_root
+from index.scopes import DEFINITIONS, FUNCTIONS
+from security.support import exempt
 
 RULE = "import-time-effect"
-TYPE_CHECKING_NAMES = {
-    "TYPE_CHECKING",
-    "typing.TYPE_CHECKING",
-    "typing_extensions.TYPE_CHECKING",
-}
-TEST_MODULES = {"conftest"}
+GUARDED = True
 CALL = "call"
 DECORATOR = "decorator"
 
@@ -47,13 +44,6 @@ def definition_heads(node):
         yield from expression_calls(head)
 
 
-def is_type_checking_block(node, aliases):
-    return (
-        isinstance(node, ast.If)
-        and dotted_name(node.test, aliases) in TYPE_CHECKING_NAMES
-    )
-
-
 def skips_body(node, aliases):
     return isinstance(node, ast.If) and (
         is_main_guard(node) or is_type_checking_block(node, aliases)
@@ -65,25 +55,29 @@ def evaluated(node, aliases):
         for statement in node.orelse:
             yield from evaluated(statement, aliases)
         return
-    if isinstance(node, (*FUNCTIONS, ast.ClassDef)):
+    if isinstance(node, DEFINITIONS):
         yield from definition_heads(node)
     if isinstance(node, ast.ClassDef):
         for statement in node.body:
             yield from evaluated(statement, aliases)
     if isinstance(node, ast.expr):
         yield from expression_calls(node)
-    elif not isinstance(node, (*FUNCTIONS, ast.ClassDef)):
+    elif not isinstance(node, DEFINITIONS):
         for child in ast.iter_child_nodes(node):
             yield from evaluated(child, aliases)
 
 
+def load_time_statements(tree):
+    pending = list(tree.body)
+    while pending:
+        node = pending.pop()
+        yield node
+        if not isinstance(node, FUNCTIONS):
+            pending.extend(ast.iter_child_nodes(node))
+
+
 def is_out_of_scope(context):
-    return (
-        context.tests
-        or stem_of(context.path) in TEST_MODULES
-        or bool(TEST_DIRECTORIES.intersection(directories(context.path)))
-        or is_composition_root(context)
-    )
+    return exempt(context) or is_composition_root(context)
 
 
 class ImportTime:
@@ -91,24 +85,30 @@ class ImportTime:
         self.context = context
         self.caller = Caller(context)
         self.summaries = summaries_of(context.project)
-        top = list(body_nodes(context.tree))
-        self.scope = Scope(context, bindings(top, context.aliases))
+        nodes = load_time_statements(context.tree)
+        self.scope = Scope(context, bindings(nodes, context.aliases))
 
     def direct(self, call):
         effects = direct_effects(call, self.scope)
-        if EXTERNAL not in effects or (self.context.domain and "io" in effects):
+        if EXTERNAL not in effects or (self.context.domain and IO in effects):
             return None
         return finding(self.context.path, RULE, effects[EXTERNAL], call)
 
+    def callee(self, target):
+        for key in self.caller.resolve(target):
+            kinds = self.summaries.kinds(key)
+            if EXTERNAL in kinds:
+                return key, kinds
+        return None, set()
+
     def through_helper(self, site, target):
-        callee = self.caller.resolve(target)
-        summary = self.summaries.of(callee) if callee else {}
-        steps = summary.get(EXTERNAL)
-        if not steps or (self.context.domain and "io" in summary):
+        callee, kinds = self.callee(target)
+        if callee is None or (self.context.domain and IO in kinds):
             return None
-        item = finding(self.context.path, RULE, callee[1], site)
-        head = (callee[0], display(self.context.project, callee))
-        item["via"] = chain_text([head, *steps])
+        name = display(self.context.project, callee)
+        item = finding(self.context.path, RULE, name, site)
+        steps = self.summaries.steps(callee, EXTERNAL)
+        item["via"] = chain_text([(callee[0], name), *steps])
         return item
 
     def finding(self, kind, node):

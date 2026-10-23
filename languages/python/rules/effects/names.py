@@ -77,7 +77,6 @@ INPUT_OUTPUT_FUNCTIONS = (
         "urllib.request.urlopen",
         "urllib.request.urlretrieve",
         "urllib3.request",
-        "os.popen",
         "glob.glob",
         "glob.iglob",
     }
@@ -92,7 +91,10 @@ STARTED_FUNCTIONS = {
     "multiprocessing.pool.ThreadPool",
     "uvicorn.run",
     "waitress.serve",
+    "atexit.register",
+    "signal.signal",
 }
+FILE_LOGGING_SETUP = "logging.basicConfig"
 FILE_HANDLERS = {
     "logging.FileHandler",
     "logging.handlers.RotatingFileHandler",
@@ -107,9 +109,31 @@ STARTABLE = {
     "concurrent.futures.ProcessPoolExecutor": {"submit", "map"},
     "asyncio.get_event_loop": {"run_until_complete", "run_forever"},
     "asyncio.new_event_loop": {"run_until_complete", "run_forever"},
+    "sched.scheduler": {"run"},
 }
 SCHEDULER_PACKAGE = "apscheduler."
 SCHEDULER_SUFFIX = "Scheduler"
 SCHEDULER_STARTS = {"start"}
 CLIENT_METHODS = {"connect", "ping", "begin", "raw_connection", "getresponse"}
+REMOTE_CLIENTS = {
+    "boto3.client",
+    "boto3.resource",
+    "redis.Redis",
+    "redis.StrictRedis",
+    "redis.from_url",
+    "redis.asyncio.Redis",
+}
+LOCAL_CLIENT_METHODS = {
+    "get_paginator",
+    "get_waiter",
+    "can_paginate",
+    "generate_presigned_url",
+    "pipeline",
+    "close",
+    "Bucket",
+    "Table",
+    "Object",
+}
+METADATA_METHODS = {"create_all", "drop_all"}
+METADATA = "metadata"
 QUIET_AT_IMPORT = LAZY_CLIENTS | CONNECT_WITH_HOST | {"Path.resolve"}
