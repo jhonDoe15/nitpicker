@@ -62,6 +62,40 @@ coroutines:
     excludes: []
     ignoreAnnotated: []
     includes: []
+  InjectDispatcher:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+    dispatcherNames:
+      - 'IO'
+      - 'Default'
+      - 'Unconfined'
+  RedundantSuspendModifier:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  SleepInsteadOfDelay:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  SuspendFunWithFlowReturnType:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
+  SuspendFunWithCoroutineScopeReceiver:
+    active: true
+    severity: warning
+    excludes: []
+    ignoreAnnotated: []
+    includes: []
 
 style:
   active: true

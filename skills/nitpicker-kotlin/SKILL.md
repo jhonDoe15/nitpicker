@@ -46,6 +46,12 @@ Before you change code other modules use, or fix a bug, read
 - Do not wrap suspending work in `runCatching`: it captures cancellation. Call directly or catch
   only an expected specific failure; a Result helper must immediately rethrow `CancellationException`.
   Non-suspending `runCatching` is allowed.
+- A `catch` of `CancellationException` or `InterruptedException` ends in `throw e`, `ensureActive()` or
+  `Thread.currentThread().interrupt()`; logging or returning a default swallows it
+  (`pmd/SwallowedCancellation`, `pmd/SwallowedInterrupt`).
+- Inject a dispatcher (`dispatcher: CoroutineDispatcher = Dispatchers.IO`) instead of naming `Dispatchers.IO`
+  in main code; no `suspend` on a function that never suspends or returns a `Flow`; no `suspend`
+  `CoroutineScope` extension; `delay`, never `Thread.sleep`, in a `suspend` function.
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
   A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
   annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.

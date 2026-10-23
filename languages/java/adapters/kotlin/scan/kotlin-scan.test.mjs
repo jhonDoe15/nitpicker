@@ -272,4 +272,47 @@ describe('withFrameworkAllowances', () => {
 
     expect(kept).toEqual(findings.slice(1));
   });
+
+  it('keeps one finding for a Thread.sleep in a suspend function and drops the repeat of the forbidden call', () => {
+    const at = (rule, message, line) => ({
+      tool: 'detekt',
+      rule,
+      path: 'src/main/kotlin/demo/Shop.kt',
+      message,
+      location: { line },
+    });
+    const sleep = at(
+      'detekt.coroutines.SleepInsteadOfDelay',
+      'This use of Thread.sleep() inside a suspend function should be replaced by delay().',
+      4,
+    );
+    const forbidden = (line) =>
+      at(
+        'detekt.style.ForbiddenMethodCall',
+        'The method `java.lang.Thread.sleep` has been forbidden: Do not sleep in production code.',
+        line,
+      );
+
+    expect(
+      withFrameworkAllowances([sleep, forbidden(4), forbidden(9)], { projectRoot: root() }),
+    ).toEqual([sleep, forbidden(9)]);
+  });
+
+  it('keeps the dispatcher injection to main sources', () => {
+    const dispatcher = (file) => ({
+      tool: 'detekt',
+      rule: 'detekt.coroutines.InjectDispatcher',
+      path: file,
+      message: 'Dispatcher IO is used without dependency injection.',
+      location: { line: 1 },
+    });
+    const findings = [
+      dispatcher('src/test/kotlin/demo/ShopTest.kt'),
+      dispatcher('src/main/kotlin/Shop.kt'),
+    ];
+
+    expect(
+      withFrameworkAllowances(findings, { projectRoot: root(), testRoots: ['src/test/kotlin'] }),
+    ).toEqual(findings.slice(1));
+  });
 });

@@ -2,6 +2,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import { kotlinRuleCases } from '../kotlin/rules/test-support/kotlin-rule-cases.mjs';
 import {
@@ -60,8 +61,9 @@ it('baselines cancellation findings across line movement in main and test source
       location.line,
     ]),
   ).toEqual(sources.map(() => [`fp:nitpicker/subject=${message}`, 'enforceable', 20]));
-  expect(headFindings[0].message).toContain('direct suspend call');
-  expect(headFindings[0].message).toContain(`"exceptions" entry for rule ${rule}`);
+  expect(headFindings[0].message).toBe(
+    `${message} Use a direct suspend call or catch only the expected specific exception; a Result helper must rethrow CancellationException immediately. ${exceptionHint(rule, sources[0])}`,
+  );
 });
 
 it('lifts only the reviewed cancellation path while preserving other paths and rules', () => {
