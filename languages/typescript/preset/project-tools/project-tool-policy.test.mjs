@@ -86,6 +86,11 @@ describe('project tool configs in the head policy', () => {
     const notice =
       'Ignoring knip.jsonc and the "knip" key in package.json; opt in with "tools": { "knip": { "precedence": ["project", "nitpicker"] } }';
     expect(summary({})).toEqual([notice]);
+    writeFileSync(path.join(root, '.dependency-cruiser.cjs'), 'module.exports = {};');
+    const cruiserNotice =
+      'Ignoring .dependency-cruiser.cjs; opt in with "tools": { "dependency-cruiser": { "precedence": ["project", "nitpicker"] } }';
+    expect(summary({})).toEqual([notice, cruiserNotice]);
+    rmSync(path.join(root, '.dependency-cruiser.cjs'));
     expect(summary({ preset: 'javascript' }, 'javascript')).toEqual([notice]);
     expect(summary({ tools: OPTED_IN })).toEqual([]);
     expect(conventionStyle(undefined, { config: {}, projectRoot: project({}) }).summary()).toEqual(

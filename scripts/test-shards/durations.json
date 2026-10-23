@@ -82,6 +82,7 @@
   "languages/python/metrics/complexity.test.mjs": 2,
   "languages/python/metrics/structure-metrics.test.mjs": 2,
   "languages/typescript/adapters/dependency-graph/architecture-packages.test.mjs": 4,
+  "languages/typescript/adapters/dependency-graph/dependency-cruiser-precedence.test.mjs": 16,
   "languages/typescript/adapters/dependency-graph/project-dependency-graph.test.mjs": 21,
   "languages/typescript/adapters/eslint/dom-environment-fingerprint.test.mjs": 4,
   "languages/typescript/adapters/eslint/fingerprint.test.mjs": 2,
