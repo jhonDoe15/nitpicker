@@ -9,6 +9,7 @@ import { cacheDirectory } from '../maven-tools.mjs';
 const RULES_DIRECTORY = path.join(GRADLE_DIRECTORY, 'archunit');
 const TOOL = 'Spring architecture rules';
 const PROPERTY_SEPARATOR = ' = ';
+const ROLES_PROPERTY = 'nitpicker.spring.roles';
 
 function jdkIdentity(spawn) {
   const result = spawn(javaCommand('java'), ['-XshowSettings:properties', '-version'], {
@@ -31,10 +32,10 @@ function jdkIdentity(spawn) {
 }
 
 function ruleSources(rulesDirectory) {
-  return readdirSync(rulesDirectory)
+  return readdirSync(rulesDirectory, { recursive: true })
     .filter((name) => name.endsWith('.java'))
-    .sort()
-    .map((name) => path.join(rulesDirectory, name));
+    .map((name) => path.join(rulesDirectory, name))
+    .sort();
 }
 
 function cacheKey({ sources, archunit, spawn }) {
@@ -85,7 +86,7 @@ function existing(entries) {
   return entries.filter((entry) => existsSync(entry));
 }
 
-function runRules({ module, classpaths, libraries, locations, spawn }) {
+function runRules({ module, classpaths, libraries, locations, springRoles, spawn }) {
   const { classes, output } = locations;
   const projectPath = [
     module.outputDirectory,
@@ -96,6 +97,7 @@ function runRules({ module, classpaths, libraries, locations, spawn }) {
   runJava({
     tool: TOOL,
     classpath: [...new Set([classes, ...libraries, ...existing(projectPath)])],
+    jvmArgs: springRoles === undefined ? [] : [`-D${ROLES_PROPERTY}=${springRoles}`],
     mainClass: 'ArchRules',
     args: [output, module.outputDirectory, module.testOutputDirectory],
     cwd: module.basedir,
@@ -105,8 +107,17 @@ function runRules({ module, classpaths, libraries, locations, spawn }) {
 }
 
 export function runSpringArch(options) {
-  const { module, reportDir, tools, classpaths, pinned, spring, spawn = spawnSync } = options;
-  if (!spring) {
+  const {
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    pinned,
+    archRules,
+    springRoles,
+    spawn = spawnSync,
+  } = options;
+  if (!archRules) {
     return;
   }
   const output = path.join(reportDir, 'spring-arch.json');
@@ -117,5 +128,5 @@ export function runSpringArch(options) {
   const classes = path.join(root, cacheKey({ sources, archunit: pinned.archunit, spawn }));
   const libraries = existing(tools.archunit);
   compileRules({ classes, sources, libraries, cwd: module.basedir, spawn });
-  runRules({ module, classpaths, libraries, locations: { classes, output }, spawn });
+  runRules({ module, classpaths, libraries, springRoles, locations: { classes, output }, spawn });
 }
