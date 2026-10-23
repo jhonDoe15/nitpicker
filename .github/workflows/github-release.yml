@@ -39,7 +39,8 @@ jobs:
         run: |
           git merge-base --is-ancestor "$COMMIT" origin/main
           echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-      # The notes come from .github/release-notes/<tag>.md on main, or from the released commit.
+      # The notes come from .github/release-notes/<tag>.md on main, or from the released commit, followed by
+      # the version's CHANGELOG.md entry. The run fails when that entry is missing.
       - name: Pack the tarball and checksum
         env:
           TAG: ${{ steps.version.outputs.tag }}
@@ -48,6 +49,10 @@ jobs:
           npm pack --pack-destination release-assets
           (cd release-assets && shasum -a 256 nitpicker-*.tgz > SHA256SUMS)
           git show "origin/main:.github/release-notes/$TAG.md" > notes.md 2>/dev/null || cp ".github/release-notes/$TAG.md" notes.md
+          {
+            printf '\n## Changes\n\n'
+            node scripts/changelog-section.mjs "${TAG#v}"
+          } >> notes.md
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
