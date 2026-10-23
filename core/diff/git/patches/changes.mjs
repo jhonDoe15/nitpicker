@@ -19,7 +19,7 @@ export const RENAME_LIMIT_SETTING = 'diff.renameLimit=20000';
 export const RENAME_DETECTION = '--find-renames=50%';
 
 function parseNameStatus(fields) {
-  const changes = { renames: [], added: new Set(), deleted: new Set() };
+  const changes = { renames: [], added: new Set(), deleted: new Set(), touched: new Set() };
   const entry = { status: '', paths: [] };
   for (const field of fields) {
     if (entry.status === '') {
@@ -47,7 +47,11 @@ function pathCount(status) {
 }
 
 function recordChange(changes, { status, paths }) {
-  const [first, second] = paths.map(normalizeGitPath);
+  const normalized = paths.map(normalizeGitPath);
+  const [first, second] = normalized;
+  for (const touched of status.startsWith('C') ? [second] : normalized) {
+    changes.touched.add(touched);
+  }
   const recorders = new Map([
     ['R', () => changes.renames.push([first, second])],
     ['A', () => changes.added.add(first)],
