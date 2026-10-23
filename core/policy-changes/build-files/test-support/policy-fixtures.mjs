@@ -17,7 +17,7 @@ export function between({ base, head, config = JAVA }) {
   return guided(policyChangeFields(config, config, scope));
 }
 
-export function guided(fields) {
+function guided(fields) {
   for (const text of fields.policyLoosenings) {
     expect(hasSpecificGuidance(fields.policyKinds[text]), text).toBe(true);
   }
