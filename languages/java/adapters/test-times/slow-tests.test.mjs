@@ -12,6 +12,7 @@ const EXCEPTIONS = 'to "exceptions" in nitpicker.config.json.';
 const FAILSAFE_ADVICE = 'or if it is an integration test, name it *IT so that Failsafe runs it';
 const temporaryRoots = [];
 const GROOVY_ROOT = 'src/test/groovy';
+const CONTAINERS = (task) => `test-results/${task}/nitpicker-containers.json`;
 
 function directoryWith(files) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-slow-tests-'));
@@ -38,14 +39,18 @@ function findingsFor({
   snapshot = 'head',
   modulePath,
   testRoots = [TEST_ROOT],
+  containers = {},
 }) {
-  const reportRoot = directoryWith(
-    Object.fromEntries(
+  const reportRoot = directoryWith({
+    ...Object.fromEntries(
       Object.entries(results).flatMap(([task, xml]) =>
         [xml].flat().map((text, index) => [`test-results/${task}/TEST-${String(index)}.xml`, text]),
       ),
     ),
-  );
+    ...Object.fromEntries(
+      Object.entries(containers).map(([task, list]) => [CONTAINERS(task), JSON.stringify(list)]),
+    ),
+  });
   const baseline = { snapshot, baselineRoot: base === undefined ? undefined : directoryWith(base) };
   return readSlowTestFindings({
     reportRoot,
@@ -379,6 +384,29 @@ describe('readSlowTestFindings', () => {
     expect(
       run('7').map(({ path: file, identity, location }) => ({ file, identity, location })),
     ).toEqual([{ file: spec, identity: 'test:shop.CalcSpec#doubles', location: undefined }]);
+  });
+
+  it('gives a Kotest test in a context the whole path on Gradle, as Maven names it, and no other test', () => {
+    const sources = {
+      'src/test/kotlin/shop/CalcSpec.kt': 'class CalcSpec : FunSpec({ context("a") { } })',
+      [`${TEST_ROOT}/shop/OrderTest.java`]: ORDER_SOURCE,
+    };
+    const identities = (className, name, inside) =>
+      findingsFor({
+        sources,
+        results: { test: suite(className, [[name, '9']]) },
+        containers: { test: inside.length === 0 ? [] : [{ className, name, containers: inside }] },
+        testRoots: ['src/test/kotlin', TEST_ROOT],
+      }).map((finding) => finding.identity);
+    expect([
+      identities('shop.CalcSpec', 'doubles', ['twice']),
+      identities('shop.CalcSpec', 'twice/doubles', []),
+      identities('shop.OrderTest', '[1] 1', ['totals(int)']),
+    ]).toEqual([
+      ['test:shop.CalcSpec#twice/doubles'],
+      ['test:shop.CalcSpec#twice/doubles'],
+      ['test:shop.OrderTest#[1] 1'],
+    ]);
   });
 
   it('gives Spock integration specifications the integration budget', () => {

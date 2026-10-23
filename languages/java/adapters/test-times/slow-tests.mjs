@@ -17,10 +17,12 @@ import {
   sourceOf,
 } from './integration-tests.mjs';
 import { inheritedMethod, superclassOf } from './inherited-tests.mjs';
+import { DECLARES_KOTEST_SPEC } from '../test-runs/unrun-tests.mjs';
 import { templateMethods, testMethod } from './test-methods.mjs';
 
 const SLOW_TEST_TOOL = 'test-runtime';
 export const TEST_RESULTS_DIRECTORY = 'test-results';
+const CONTAINERS_FILE = 'nitpicker-containers.json';
 const MOVE_ADVICE = {
   gradle:
     ', or if it is an integration test, name it *IT or move it to an integration test source set',
@@ -48,17 +50,44 @@ export function testCasesOf(xml, task) {
   );
 }
 
+// Gradle names a test after its own display name; the containers it sits in (the contexts of a Kotest
+// spec) are in a side file next to the XML, as `{ className, name, containers }` entries.
+function readContainers(directory) {
+  const file = path.join(directory, CONTAINERS_FILE);
+  const entries = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
+  return new Map(
+    entries.map(({ className, name, containers }) => [`${className}#${name}`, containers]),
+  );
+}
+
 function readTestCases(reportRoot) {
   const resultsRoot = path.join(reportRoot, TEST_RESULTS_DIRECTORY);
   const tasks = existsSync(resultsRoot) ? readdirSync(resultsRoot).sort() : [];
-  return tasks.flatMap((task) =>
-    readdirSync(path.join(resultsRoot, task))
+  return tasks.flatMap((task) => {
+    const directory = path.join(resultsRoot, task);
+    const containers = readContainers(directory);
+    return readdirSync(directory)
       .filter((name) => name.endsWith('.xml'))
       .sort()
-      .flatMap((name) =>
-        testCasesOf(readFileSync(path.join(resultsRoot, task, name), 'utf8'), task),
-      ),
-  );
+      .flatMap((name) => testCasesOf(readFileSync(path.join(directory, name), 'utf8'), task))
+      .map((testCase) => {
+        const found = containers.get(`${testCase.className}#${testCase.name}`);
+        return found === undefined ? testCase : { ...testCase, containers: found };
+      });
+  });
+}
+
+// Maven names a Kotest test by its whole path (twice/doubles the value), so a Gradle result takes the
+// same name, and one slow test has one identity on both builds.
+function withContainerPath(testCase, locate, projectRoot) {
+  const { containers, ...plain } = testCase;
+  if (containers === undefined) {
+    return testCase;
+  }
+  const text = readOptional(projectRoot, sourceOf(locate, testCase.className));
+  return text !== undefined && DECLARES_KOTEST_SPEC.test(text)
+    ? { ...plain, name: [...containers, testCase.name].join('/') }
+    : plain;
 }
 
 function readOptional(root, relative) {
@@ -167,7 +196,7 @@ export function readSlowTestFindings(options) {
   const budget = slowTestBudget(limits);
   const locate = sourceLocator(projectRoot, testRoots);
   return slowestRuns(
-    readTestCases(reportRoot),
+    readTestCases(reportRoot).map((testCase) => withContainerPath(testCase, locate, projectRoot)),
     (testCase) => `${testCase.className}#${testCase.name}`,
   ).flatMap((testCase) => {
     const source = sourceOf(locate, testCase.className);
