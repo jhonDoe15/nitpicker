@@ -912,7 +912,11 @@ run) fails an untested branch on a changed line, as for Java: `if`, `while`, `fo
 arms are judged, an untested `except` handler is not. The project's own coverage configuration is
 ignored (`exclude_lines`, `exclude_also`, `partial_branches`, `omit`, plugins, subprocess
 measurement): nitpicker's rcfile measures branches, skips test files and excludes only
-`if TYPE_CHECKING:`, `if __name__ == "__main__":`, `@overload` and `raise NotImplementedError`.
+`if TYPE_CHECKING:`, `if __name__ == "__main__":`, `@overload`, `raise NotImplementedError`, a
+function whose body is `...` on its signature line (`Protocol` and abstract method stubs) and
+`assert_never(...)` with the `case _:` above it. A `match` over every member of an enum or union
+ends with `case _:` and `assert_never(subject)`: without it, the jump out of the `match` when no
+case matches is an untaken branch.
 A branch that cannot be tested is accepted for one function with an `exceptions` entry for `changed-branch-coverage` that names the function, which keeps every other finding of the file (see [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds)); `exclude` lifts the whole file. A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details: [python-preset.md](python-preset.md).
 
 ## The strict preset

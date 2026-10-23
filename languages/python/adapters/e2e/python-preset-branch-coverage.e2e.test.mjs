@@ -11,6 +11,14 @@ import {
   signsTest,
 } from './test-support/python-preset-data.mjs';
 import {
+  COLORS_DEFAULT,
+  COLORS_EXHAUSTIVE,
+  COLORS_OPEN,
+  COLORS_TEST,
+  PORTS,
+  PORTS_TEST,
+} from './test-support/python-coverage-idioms-data.mjs';
+import {
   commitBranch,
   fixture,
   gate,
@@ -60,6 +68,20 @@ describe.skipIf(!pythonE2eEnabled)('Python changed-branch coverage end to end', 
       'src/demo/signs.py': `${SIGNS}\n\n${BRANCH_CLAMP}`,
       'tests/test_signs.py': signsTest(SIGN_POSITIVE, CLAMP_LOW, CLAMP_HIGH),
     });
+    commitBranch(project, 'ports', {
+      'src/demo/ports.py': PORTS,
+      'tests/test_ports.py': PORTS_TEST,
+    });
+    for (const [name, source] of Object.entries({
+      'colors-open': COLORS_OPEN,
+      'colors-exhaustive': COLORS_EXHAUSTIVE,
+      'colors-default': COLORS_DEFAULT,
+    })) {
+      commitBranch(project, name, {
+        'src/demo/colors.py': source,
+        'tests/test_colors.py': COLORS_TEST,
+      });
+    }
   });
   afterAll(removeRepositories);
   it('keeps an old uncovered branch baselined when its line moves', () => {
@@ -97,5 +119,33 @@ describe.skipIf(!pythonE2eEnabled)('Python changed-branch coverage end to end', 
     const result = gate(project, 'new-tested');
 
     expect(result.exitCode, result.text).toBe(0);
+  });
+  it('accepts the stubs of a Protocol and of an abstract method', () => {
+    const result = gate(project, 'ports');
+
+    expect(branchFindings(result), result.text).toEqual([]);
+  });
+  it('accepts a match over every enum member that ends in assert_never', () => {
+    const result = gate(project, 'colors-exhaustive');
+
+    expect(branchFindings(result), result.text).toEqual([]);
+  });
+  it('still fails a match with no case for the last enum member', () => {
+    const result = gate(project, 'colors-open');
+
+    expect(branchFindings(result)).toEqual(['src/demo/colors.py:14']);
+    expect(
+      result
+        .json('new-findings.json')
+        .filter(({ rule }) => rule === 'changed-branch-coverage')
+        .map(({ message }) => message),
+    ).toEqual([
+      'Branch coverage is 50.00%; minimum is 95%. Not taken: no case matching (if the cases cover every value, end the match with `case _:` and `assert_never(subject)`). Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/demo/colors.py"],"function":"name","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+  });
+  it('still fails a default case no test reaches', () => {
+    const result = gate(project, 'colors-default');
+
+    expect(branchFindings(result)).toEqual(['src/demo/colors.py:14']);
   });
 });

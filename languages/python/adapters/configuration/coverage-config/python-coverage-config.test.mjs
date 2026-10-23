@@ -157,9 +157,36 @@ describe('the coverage settings of the project', () => {
         String.raw`    ^\s*if __name__ == .__main__.:`,
         String.raw`    ^\s*@(typing\.)?overload\b`,
         String.raw`    ^\s*raise NotImplementedError\b`,
+        String.raw`    ^\s*(?:(?:async\s+)?def\b|\)).*:\s*\.\.\.\s*(?:#.*)?$`,
+        String.raw`    ^\s*case _:\s*\n\s*(?:\w+\.)?assert_never\(`,
+        String.raw`    ^\s*(?:\w+\.)?assert_never\(`,
         'partial_branches =',
         '',
       ].join('\n'),
     );
+  });
+
+  it.each([
+    ['    def write(self, text: str) -> object: ...', true],
+    ['    async def read(self) -> bytes: ...  # stub', true],
+    ['    ) -> object: ...', true],
+    ['        case _:\n            assert_never(color)', true],
+    ['    typing_extensions.assert_never(value)', true],
+    ['    def write(self, text: str) -> object:', false],
+    ['    return ...', false],
+    ['        case _:\n            return "other"', false],
+    ['handler: Callable[..., int] = run', false],
+  ])('excludes %j only when no honest test can run it: %s', (source, excluded) => {
+    const config = readFileSync(
+      writeCoverageConfig({ projectRoot: project({}), reportRoot: project({}) }, ['src']),
+      'utf8',
+    );
+    const patterns = config
+      .split('exclude_lines =\n')[1]
+      .split('\npartial_branches')[0]
+      .split('\n')
+      .map((pattern) => new RegExp(pattern.trim(), 'm'));
+
+    expect(patterns.some((pattern) => pattern.test(source))).toBe(excluded);
   });
 });
