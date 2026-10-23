@@ -110,8 +110,16 @@ function createTaskController(child, task) {
   };
 }
 
-export function executeAnalyzerTask(task) {
+export async function executeAnalyzerTask(task) {
   const stdoutFile = openOutputFile();
+  try {
+    return await runAnalyzerChild(task, stdoutFile);
+  } finally {
+    stdoutFile.remove();
+  }
+}
+
+function runAnalyzerChild(task, stdoutFile) {
   return new Promise((resolve, reject) => {
     const child = spawnAnalyzer(task, stdoutFile.descriptor);
     const controller = createTaskController(child, task);
@@ -131,8 +139,6 @@ export function executeAnalyzerTask(task) {
         );
       });
     });
-  }).finally(() => {
-    stdoutFile.remove();
   });
 }
 

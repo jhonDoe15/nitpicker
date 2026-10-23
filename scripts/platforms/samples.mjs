@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { resolveInside } from '../../shared/conventions/read-inside.mjs';
 
 export const REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../..');
 const GRADLE_PROJECT = 'languages/java/adapters/fixtures/gradle-project';
@@ -67,33 +68,51 @@ export const SAMPLES = {
   },
 };
 
-const GIT_IDENTITY = {
-  GIT_AUTHOR_NAME: 'nitpicker',
-  GIT_AUTHOR_EMAIL: 'nitpicker@example.com',
-  GIT_COMMITTER_NAME: 'nitpicker',
-  GIT_COMMITTER_EMAIL: 'nitpicker@example.com',
-};
+const GIT_IDENTITY = [
+  '-c',
+  'user.name=nitpicker',
+  '-c',
+  'user.email=nitpicker@example.com',
+  '-c',
+  'commit.gpgsign=false',
+];
 
-export function runCommand(command, args, cwd) {
+function runCommand(command, args, cwd) {
   return execFileSync(command, args, {
     cwd,
-    env: { ...process.env, ...GIT_IDENTITY },
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'inherit'],
   });
 }
 
+function runGit(args, cwd) {
+  return runCommand('git', [...GIT_IDENTITY, ...args], cwd);
+}
+
+export function inside(base, name) {
+  const full = resolveInside(base, name);
+  if (full === undefined) {
+    throw new Error(`${name} is outside ${base}`);
+  }
+  return full;
+}
+
 function writeFiles(root, files = {}) {
   for (const [name, text] of Object.entries(files)) {
-    writeFileSync(path.join(root, name), text);
+    writeFileSync(inside(root, name), text);
   }
 }
 
 function applyChange(root, { files, append = {} }) {
   writeFiles(root, files);
   for (const [name, text] of Object.entries(append)) {
-    appendFileSync(path.join(root, name), text);
+    appendFileSync(inside(root, name), text);
   }
+}
+
+function commitAll(root, message) {
+  runGit(['add', '-A'], root);
+  runGit(['commit', '-q', '-m', message], root);
 }
 
 function installPythonEnvironment(root, packages) {
@@ -101,16 +120,13 @@ function installPythonEnvironment(root, packages) {
   runCommand('uv', ['pip', 'install', '-q', '--python', '.venv', ...packages], root);
 }
 
-export function createSampleRepository(name) {
-  const sample = SAMPLES[name];
-  if (sample === undefined) {
-    throw new Error(`Unknown sample ${name}; choose one of ${Object.keys(SAMPLES).join(', ')}`);
-  }
-  const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), `nitpicker-platform-${name}-`)));
+function copySample(root, sample) {
   for (const source of sample.sources) {
-    cpSync(path.join(REPOSITORY_ROOT, source), root, { recursive: true });
+    cpSync(inside(REPOSITORY_ROOT, source), root, { recursive: true });
   }
-  for (const removed of sample.removed ?? []) rmSync(path.join(root, removed));
+  for (const removed of sample.removed ?? []) {
+    rmSync(inside(root, removed));
+  }
   writeFiles(root, sample.files);
   if (sample.linkNodeModules) {
     symlinkSync(
@@ -119,18 +135,30 @@ export function createSampleRepository(name) {
       'junction',
     );
   }
-  runCommand('git', ['init', '-q', '-b', 'main'], root);
-  runCommand('git', ['add', '-A'], root);
-  runCommand('git', ['commit', '-q', '-m', 'sample'], root);
-  if (sample.pythonEnvironment !== undefined)
+}
+
+function sampleNamed(name) {
+  if (!Object.hasOwn(SAMPLES, name)) {
+    throw new Error(`Unknown sample ${name}; choose one of ${Object.keys(SAMPLES).join(', ')}`);
+  }
+  return SAMPLES[name];
+}
+
+export function createSampleRepository(name) {
+  const sample = sampleNamed(name);
+  const root = realpathSync.native(mkdtempSync(path.join(tmpdir(), `nitpicker-platform-${name}-`)));
+  copySample(root, sample);
+  runGit(['init', '-q', '-b', 'main'], root);
+  commitAll(root, 'sample');
+  if (sample.pythonEnvironment !== undefined) {
     installPythonEnvironment(root, sample.pythonEnvironment);
+  }
   return {
     root,
     change() {
-      runCommand('git', ['checkout', '-q', '-b', 'change'], root);
+      runGit(['checkout', '-q', '-b', 'change'], root);
       applyChange(root, sample.change);
-      runCommand('git', ['add', '-A'], root);
-      runCommand('git', ['commit', '-q', '-m', 'change'], root);
+      commitAll(root, 'change');
     },
     remove() {
       rmSync(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });

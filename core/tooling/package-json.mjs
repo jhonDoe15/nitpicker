@@ -4,7 +4,8 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chainOf } from '../../shared/traversal.mjs';
 
-export const findPackageJSON = nodeModule.findPackageJSON ?? findPackageJsonByWalking;
+export const findPackageJSON =
+  'findPackageJSON' in nodeModule ? nodeModule.findPackageJSON : findPackageJsonByWalking;
 
 export function findPackageJsonByWalking(specifier, base) {
   const baseUrl = toFileUrl(base);
@@ -13,15 +14,19 @@ export function findPackageJsonByWalking(specifier, base) {
     return closestPackageJson(path.dirname(fileURLToPath(new URL(specifier, baseUrl))));
   }
   const name = packageName(specifier);
-  return (
-    selfReference(name, directory) ??
-    installedPackageJson(name, directory) ??
-    throwNotFound(name, baseUrl)
-  );
+  const found = selfReference(name, directory) ?? installedPackageJson(name, directory);
+  if (found === undefined) {
+    throw new PackageNotFoundError(
+      `Cannot find package '${name}' imported from ${fileURLToPath(baseUrl)}`,
+    );
+  }
+  return found;
 }
 
 function toFileUrl(base) {
-  if (base instanceof URL) return base;
+  if (base instanceof URL) {
+    return base;
+  }
   return String(base).startsWith('file:') ? new URL(base) : pathToFileURL(base);
 }
 
@@ -65,7 +70,9 @@ function packageScope(directory) {
 
 function selfReference(name, directory) {
   const scope = packageScope(directory);
-  if (scope === undefined) return undefined;
+  if (scope === undefined) {
+    return undefined;
+  }
   const manifest = JSON.parse(readFileSync(scope, 'utf8'));
   const exported = manifest.exports !== undefined && manifest.exports !== null;
   return exported && manifest.name === name ? scope : undefined;
@@ -80,10 +87,4 @@ function installedPackageJson(name, directory) {
 
 class PackageNotFoundError extends Error {
   code = 'ERR_MODULE_NOT_FOUND';
-}
-
-function throwNotFound(name, baseUrl) {
-  throw new PackageNotFoundError(
-    `Cannot find package '${name}' imported from ${fileURLToPath(baseUrl)}`,
-  );
 }

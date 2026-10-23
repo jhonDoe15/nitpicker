@@ -87,7 +87,9 @@ describe('the sample report reader', () => {
   const roots = [];
 
   afterEach(() => {
-    for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+    for (const root of roots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('keys findings with forward slashes and sorts them, and keeps tool error messages', () => {
@@ -114,10 +116,34 @@ describe('the sample report reader', () => {
 });
 
 describe('the compatibility table', () => {
-  it('lists every expected difference with its reason', () => {
-    const matrix = renderSupportMatrix();
+  function tableRows(matrix) {
+    return matrix
+      .split('\n')
+      .filter((line) => line.startsWith('| ') && !/^\| -/u.test(line))
+      .map((line) =>
+        line
+          .slice(2, -2)
+          .split(' | ')
+          .map((cell) => cell.trim()),
+      );
+  }
 
-    for (const { reason } of EXPECTED_DIFFERENCES) expect(matrix).toContain(reason);
-    expect(matrix).toContain('| TypeScript |');
+  it('lists every preset and every expected difference with its reason', () => {
+    const rows = tableRows(renderSupportMatrix());
+    const limitsStart = rows.findIndex(([first]) => first === 'Where');
+
+    expect(rows.slice(0, limitsStart).map(([preset]) => preset)).toEqual([
+      'Preset',
+      'TypeScript',
+      'JavaScript',
+      'Java',
+      'Kotlin',
+      'Python',
+    ]);
+    expect(rows.slice(limitsStart)).toEqual([
+      ['Where', 'Sample', 'Analyzers', 'Why'],
+      ['Deno', 'typescript', '`typescript-typecheck`', EXPECTED_DIFFERENCES[0].reason],
+      ['Windows', 'python', '`mutation`', EXPECTED_DIFFERENCES[1].reason],
+    ]);
   });
 });

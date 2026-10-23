@@ -29,6 +29,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Plain logs, and no Deno update check on every CLI start.
+env:
+  NO_COLOR: '1'
+  DENO_NO_UPDATE_CHECK: '1'
+
 jobs:
   samples:
     name: samples ${{ matrix.os }}
@@ -100,7 +105,13 @@ jobs:
       - run: node scripts/platforms/smoke.mjs typescript --output reports/runtimes/node
       - run: node scripts/platforms/smoke.mjs typescript --runtime deno --output reports/runtimes/deno
       - name: Deno gives the findings of Node
-        run: node scripts/platforms/compare-runs.mjs reports/runtimes/node reports/runtimes/deno
+        run: >-
+          node scripts/platforms/compare-runs.mjs --report reports/runtimes/comparison.txt
+          reports/runtimes/node reports/runtimes/deno
+      # The expected differences and the tool error messages of each run.
+      - name: Comparison
+        if: always()
+        run: cat reports/runtimes/comparison.txt || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -124,7 +135,12 @@ jobs:
           path: reports/platforms
           merge-multiple: true
       - name: macOS and Windows give the findings of Linux
-        run: node scripts/platforms/compare-runs.mjs reports/platforms/Linux reports/platforms/macOS reports/platforms/Windows
+        run: >-
+          node scripts/platforms/compare-runs.mjs --report reports/comparison.txt
+          reports/platforms/Linux reports/platforms/macOS reports/platforms/Windows
+      - name: Comparison
+        if: always()
+        run: cat reports/comparison.txt || true
       - name: Every sample and runtime job passed
         env:
           SAMPLES: ${{ needs.samples.result }}

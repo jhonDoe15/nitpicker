@@ -60,12 +60,16 @@ export function spawnNodeTool({
   environment = {},
 }) {
   const toolPaths = nodeToolPaths(options, { relativeToolPath, absoluteToolPath });
-  const result = spawnSyncWithOutputFile(process.execPath, [...nodeArguments, ...toolPaths, ...arguments_], {
-    cwd,
-    env: { ...process.env, ...environment },
-    encoding: 'utf8',
-    maxBuffer: MAX_OUTPUT_BYTES,
-  });
+  const result = spawnSyncWithOutputFile(
+    process.execPath,
+    [...nodeArguments, ...toolPaths, ...arguments_],
+    {
+      cwd,
+      env: { ...process.env, ...environment },
+      encoding: 'utf8',
+      maxBuffer: MAX_OUTPUT_BYTES,
+    },
+  );
   if (result.error !== undefined) {
     throw result.error;
   }

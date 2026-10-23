@@ -17,10 +17,11 @@ function outcome(find, specifier, base) {
   }
 }
 
-function expectSameAsNative(specifier, base) {
-  const walked = outcome(findPackageJsonByWalking, specifier, base);
-  expect(walked).toEqual(outcome(nativeFindPackageJson, specifier, base));
-  return walked;
+function bothOutcomes(specifier, base) {
+  return {
+    walked: outcome(findPackageJsonByWalking, specifier, base),
+    native: outcome(nativeFindPackageJson, specifier, base),
+  };
 }
 
 function writeManifest(directory, manifest) {
@@ -63,29 +64,43 @@ describe('the findPackageJSON fallback for runtimes without node:module findPack
     ['./core/cli.mjs'],
     ['./core'],
   ])('finds the same package.json as the native API for %s', (specifier) => {
-    expect(expectSameAsNative(specifier, packageBase).found).toMatch(/package\.json$/u);
+    const { walked, native } = bothOutcomes(specifier, packageBase);
+
+    expect(walked).toEqual(native);
+    expect(path.basename(walked.found)).toBe('package.json');
   });
 
   it('reports a missing package with the native error code and message', () => {
-    expect(expectSameAsNative('nitpicker-missing-package', packageBase).code).toBe(
-      'ERR_MODULE_NOT_FOUND',
-    );
+    const { walked, native } = bothOutcomes('nitpicker-missing-package', packageBase);
+
+    expect(walked).toEqual(native);
+    expect(walked.code).toBe('ERR_MODULE_NOT_FOUND');
   });
 
   it('accepts a path, a file URL object and a directory URL as the base', () => {
-    expectSameAsNative('eslint', path.join(PACKAGE_ROOT, 'package.json'));
-    expectSameAsNative('eslint', pathToFileURL(path.join(PACKAGE_ROOT, 'core/cli.mjs')));
-    expectSameAsNative('eslint', pathToFileURL(path.join(PACKAGE_ROOT, 'core/')).href);
+    const bases = [
+      path.join(PACKAGE_ROOT, 'package.json'),
+      pathToFileURL(path.join(PACKAGE_ROOT, 'core/cli.mjs')),
+      pathToFileURL(path.join(PACKAGE_ROOT, 'core/')).href,
+    ];
+    const results = bases.map((base) => bothOutcomes('eslint', base));
+
+    expect(results.map(({ walked }) => walked)).toEqual(results.map(({ native }) => native));
   });
 
   it('walks up from a package inside node_modules', () => {
-    expectSameAsNative('espree', pathToFileURL(path.join(PACKAGE_ROOT, 'node_modules/eslint/x')));
+    const base = pathToFileURL(path.join(PACKAGE_ROOT, 'node_modules/eslint/x'));
+    const { walked, native } = bothOutcomes('espree', base);
+
+    expect(walked).toEqual(native);
   });
 
   it('returns the symlinked path of a linked scoped package, which resolves to the store', () => {
     const base = pathToFileURL(path.join(linkedRoot, 'app/package.json'));
-    const { found } = expectSameAsNative('@scope/linked', base);
+    const { walked, native } = bothOutcomes('@scope/linked', base);
+    const { found } = walked;
 
+    expect(walked).toEqual(native);
     expect(found).toBe(path.join(linkedRoot, 'node_modules/@scope/linked/package.json'));
     expect(realpathSync(path.dirname(found))).toBe(
       path.join(linkedRoot, 'node_modules/.pnpm/@scope+linked@1.0.0/node_modules/@scope/linked'),
@@ -97,14 +112,21 @@ describe('the findPackageJSON fallback for runtimes without node:module findPack
       linkedRoot,
       'node_modules/.pnpm/@scope+linked@1.0.0/node_modules/@scope/linked/index.js',
     );
-    expectSameAsNative('nested', pathToFileURL(linked));
+    const { walked, native } = bothOutcomes('nested', pathToFileURL(linked));
+
+    expect(walked).toEqual(native);
     expect(outcome(findPackageJsonByWalking, 'nested', pathToFileURL(linkedRoot)).code).toBe(
       'ERR_MODULE_NOT_FOUND',
     );
   });
 
   it('resolves a package by its own name only when it declares exports', () => {
-    expectSameAsNative('app', pathToFileURL(path.join(linkedRoot, 'app/index.js')));
-    expectSameAsNative('bare', pathToFileURL(path.join(linkedRoot, 'bare/index.js')));
+    const app = bothOutcomes('app', pathToFileURL(path.join(linkedRoot, 'app/index.js')));
+    const bare = bothOutcomes('bare', pathToFileURL(path.join(linkedRoot, 'bare/index.js')));
+
+    expect(app.walked).toEqual(app.native);
+    expect(app.walked.found).toBe(path.join(linkedRoot, 'app/package.json'));
+    expect(bare.walked).toEqual(bare.native);
+    expect(bare.walked.code).toBe('ERR_MODULE_NOT_FOUND');
   });
 });
