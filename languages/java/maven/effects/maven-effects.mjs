@@ -31,7 +31,7 @@ function inputLines({ module, classpaths, options }) {
   ];
 }
 
-export function runEffects({ module, reportDir, tools, classpaths, pinned, options = [] }) {
+export function runEffects({ module, reportDir, tools, classpaths, pinned, options = [], spawn }) {
   const output = path.join(reportDir, `${NAME}.json`);
   rmSync(output, { force: true });
   const libraries = tools.effects.filter((entry) => existsSync(entry));
@@ -43,6 +43,7 @@ export function runEffects({ module, reportDir, tools, classpaths, pinned, optio
     root: EFFECTS_DIRECTORY,
     libraries,
     cwd: module.basedir,
+    spawn,
   });
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-effects-'));
   try {
@@ -59,6 +60,7 @@ export function runEffects({ module, reportDir, tools, classpaths, pinned, optio
       mainClass: 'nitpicker.effects.Effects',
       args: [output, input],
       cwd: module.basedir,
+      spawn,
       accept: (result) => result.status === 0,
     });
   } finally {
