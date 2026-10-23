@@ -25,7 +25,6 @@ const BUILDER_NAME = /^(?:set|with)[A-Z]|^(?:of|from|valueOf|builder)$/;
 const TYPE_KEYWORD = /(?<![\w.:])(?:class|object|interface)\b/g;
 const PACKAGE_OR_IMPORT = /^[ \t]*(?:package|import)\b.*$/gm;
 const CONTINUATION = /^\s*(?:[.?:&|+\-*/%]|else\b|as\b)/;
-const WHEN_BRANCH = /^\s*([^\n{}]+?)\s*->/gm;
 const BRACE = /[{}]/g;
 const HEADER_START = /[;{}]/g;
 const BOOLEAN_PARAMETER =
@@ -123,6 +122,12 @@ function bodyOf(code, close) {
   return code.slice(start, expressionEnd(code, start));
 }
 
+function branchConditions(line) {
+  const arrow = line.indexOf('->');
+  const condition = arrow === -1 ? '' : line.slice(0, arrow);
+  return condition.trim() === '' || /[{}]/.test(condition) ? [] : condition.split(',');
+}
+
 function conditions(body) {
   const heads = [...body.matchAll(/\b(?:if|when|while)\s*\(/g)].map((match) => {
     const open = match.index + match[0].length - 1;
@@ -131,7 +136,7 @@ function conditions(body) {
   const branches = [...body.matchAll(/\bwhen\s*\{/g)].flatMap((match) => {
     const open = match.index + match[0].length - 1;
     const block = body.slice(open + 1, closingIndex(body, open));
-    return [...block.matchAll(WHEN_BRANCH)].flatMap(([, condition]) => condition.split(','));
+    return block.split('\n').flatMap(branchConditions);
   });
   return [...heads, ...branches];
 }

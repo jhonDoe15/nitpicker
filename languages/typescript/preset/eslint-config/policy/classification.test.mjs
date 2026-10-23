@@ -7,7 +7,7 @@ import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mjs';
 import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { isStrictRule, mustMeetOnEditedLines } from '../../strict-rules.mjs';
-import { UNUSED_PARAMETER_ADVICE } from '../../unused-parameters.mjs';
+import { UNUSED_PARAMETER_ADVICE } from './unused-parameters.mjs';
 import { productionLayoutConfigFor, productionPolicyConfigFor } from './production-policy.mjs';
 
 const layout = defaultResolvedLayout;

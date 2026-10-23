@@ -57,7 +57,7 @@ function declarationSpan(code, keyword, keywordIndex) {
   return code.slice(keywordIndex, end);
 }
 
-function hidesUnusedParameter(code, start, end) {
+function hidesUnusedParameter({ code, start, end }) {
   if (FILE_TARGET.test(code.slice(start))) {
     return DECLARES_PARAMETERS.test(code);
   }
@@ -78,10 +78,10 @@ function suppressionUses(source) {
   const { code, literals } = maskKotlinSource(source);
   return [...code.matchAll(SUPPRESS_ANNOTATION)].flatMap((match) => {
     const [text, argumentText] = match;
-    const hides = () => hidesUnusedParameter(code, match.index, match.index + text.length);
+    const annotation = { code, start: match.index, end: match.index + text.length };
     return [...argumentText.matchAll(LITERAL_MARK)].map(([, index]) => ({
       token: literals[Number(index)],
-      hides,
+      annotation,
     }));
   });
 }
@@ -125,9 +125,9 @@ function filesOf(projectRoot, roots) {
   return [...new Set(roots.flatMap((root) => kotlinFiles(projectRoot, root)))].toSorted();
 }
 
-function isBanned({ token, hides }, compiled) {
+function isBanned({ token, annotation }, compiled) {
   if (isUnusedCodeSuppression(token)) {
-    return compiled && hides();
+    return compiled && hidesUnusedParameter(annotation);
   }
   return isBannedSuppression(token) && (compilerWarningRule(token) === undefined || compiled);
 }
