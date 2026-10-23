@@ -27,3 +27,15 @@ export const ACCEPTED_MANAGER_ROLES = [
   'lock',
   'resource',
 ];
+
+export const CONTAINER_NAME_WORDS = [
+  'functions',
+  'funcs',
+  'methods',
+  'module',
+  'modules',
+  'mixin',
+  'mixins',
+  'base',
+  'classes',
+];

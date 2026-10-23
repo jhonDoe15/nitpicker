@@ -346,7 +346,11 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
 - `nitpicker/no-generic-names` (all production code): a file or folder whose name ends in
   `util`, `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `managers`, `common`,
   `commons`, `misc` or `miscellaneous` (`GENERIC_NAME_WORDS` in `shared/naming/smell-words.mjs`;
-  also `string-utils.ts`, `OrderManager.ts`) is reported, and so is every class, type, interface
+  also `string-utils.ts`, `OrderManager.ts`; trailing digits and version words are ignored, so
+  `utils_v2.ts` counts, and a name that ends in a container word of `CONTAINER_NAME_WORDS`
+  (`functions`, `module`, `mixin`, `base`, ...) after other words is judged by the word before it:
+  `util_functions.ts`, `OrderHelperMixin`, `HelperBase` and `UtilsModule` are reported,
+  `LoggingMixin`, `ModelBase` and a lone `Base` are not) is reported, and so is every class, type, interface
   or enum named that way, exported or not (`OrderHelper`, `class Util {}`), and an exported `const`
   (ESM `export` or CommonJS `module.exports`/`exports.name`). An exported function is reported
   when its whole name is generic (`helpers()`, `commonUtils()`), not when it names what it returns

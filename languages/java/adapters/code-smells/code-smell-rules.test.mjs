@@ -9,7 +9,12 @@ import { expectedViolations } from '../test-support/code-smells/violation-marker
 import { codeSmellRules } from '../test-support/code-smells/code-smell-rules.mjs';
 import { withRuleMessage } from '../../messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { GENERIC_NAME_WORDS, LOG_LEVEL_METHODS } from '../../../../shared/naming/smell-words.mjs';
+import {
+  ACCEPTED_MANAGER_ROLES,
+  CONTAINER_NAME_WORDS,
+  GENERIC_NAME_WORDS,
+  LOG_LEVEL_METHODS,
+} from '../../../../shared/naming/smell-words.mjs';
 import { DISCRIMINANT_KEYS } from '../../../typescript/preset/eslint-plugin/rules/code-smells/duplicate-string-literals.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
@@ -70,16 +75,33 @@ describe('the Java code smell ruleset', () => {
     },
   );
 
-  it('names the log levels and generic names the TypeScript rules use', () => {
+  it('names the log levels the TypeScript rules use', () => {
     const levels = `@MethodName = (${LOG_LEVEL_METHODS.map((name) => `'${name}'`).join(', ')})`;
-    const typeWords = GENERIC_NAME_WORDS.map((word) => word[0].toUpperCase() + word.slice(1));
 
-    expect({
-      catch: ruleText('CatchOnlyLogsOrReturnsDefault').includes(levels),
-      type: ruleText('GenericTypeName').split(`(${typeWords.join('|')})$`).length,
-      package: ruleText('GenericPackageName').includes(`(${GENERIC_NAME_WORDS.join('|')})(`),
-    }).toEqual({ catch: true, type: 3, package: true });
+    expect(ruleText('CatchOnlyLogsOrReturnsDefault').includes(levels)).toBe(true);
   });
+
+  it.each(['GenericTypeName', 'GenericPackageName'])(
+    '%s reads the generic, container and manager role words every preset shares',
+    (name) => {
+      const xpath = xpathOf(name);
+      const listed = (variable) =>
+        new RegExp(`\\$${variable} := \\(([^)]*)\\)`)
+          .exec(xpath)?.[1]
+          .split(', ')
+          .map((word) => word.slice(1, -1));
+
+      expect({
+        generic: listed('generic'),
+        containers: listed('containers'),
+        roles: listed('roles'),
+      }).toEqual({
+        generic: GENERIC_NAME_WORDS,
+        containers: CONTAINER_NAME_WORDS,
+        roles: ACCEPTED_MANAGER_ROLES,
+      });
+    },
+  );
 
   it('skips the discriminant values the TypeScript rule skips, after a map key', () => {
     const xpath = xpathOf('RepeatedStringLiteral');
