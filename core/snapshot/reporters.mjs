@@ -1,5 +1,9 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import {
+  CODE_QUALITY_REPORT_FILE_NAME,
+  renderCodeQualityReport,
+} from '../diff/reporting/format/codequality.mjs';
 
 const REPORT_FILE_NAMES = [
   'summary.json',
@@ -7,6 +11,7 @@ const REPORT_FILE_NAMES = [
   'tool-errors.json',
   'report.txt',
   'report.junit.xml',
+  CODE_QUALITY_REPORT_FILE_NAME,
 ];
 
 export function clearSnapshotReports(outputRoot) {
@@ -15,7 +20,7 @@ export function clearSnapshotReports(outputRoot) {
   }
 }
 
-export function writeSnapshotReports(outputRoot, report) {
+export function writeSnapshotReports(outputRoot, report, { projectPath } = {}) {
   mkdirSync(outputRoot, { recursive: true });
   writeJson(path.join(outputRoot, 'summary.json'), report.summary);
   writeJson(path.join(outputRoot, 'findings.json'), report.findings);
@@ -24,6 +29,10 @@ export function writeSnapshotReports(outputRoot, report) {
   const text = renderTextReport(report);
   writeFileSync(path.join(outputRoot, 'report.txt'), text);
   writeFileSync(path.join(outputRoot, 'report.junit.xml'), renderJunitReport(report));
+  writeFileSync(
+    path.join(outputRoot, CODE_QUALITY_REPORT_FILE_NAME),
+    renderCodeQualityReport(report.findings, { projectPath }),
+  );
   return text;
 }
 

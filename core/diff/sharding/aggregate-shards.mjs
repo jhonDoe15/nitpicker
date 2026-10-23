@@ -18,7 +18,7 @@ import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs'
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { renderConsoleSummary } from '../reporting/summary.mjs';
-import { writeGithubOutput } from '../reporting/github/emit.mjs';
+import { projectPrefixOf, writeGithubOutput } from '../reporting/github/emit.mjs';
 
 function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
   if (policyRoot !== undefined) {
@@ -67,7 +67,9 @@ export function aggregateShardReports({
     changedMetrics: sortByToolAndPath(changedMetrics),
     toolErrors: sortByToolAndPath(toolErrors),
   };
-  report.text = writeDiffReports(outputRoot, report);
+  report.text = writeDiffReports(outputRoot, report, {
+    projectPath: liveProjectRoot === undefined ? undefined : projectPrefixOf(liveProjectRoot),
+  });
   return report;
 }
 

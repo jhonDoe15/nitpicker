@@ -30,7 +30,9 @@ export function runQualityDiff(options) {
     compareSnapshots({ settings, comparison, layout, roots, startedAt }),
   );
   report.summary.elapsedMs = Date.now() - startedAt;
-  report.text = writeDiffReports(settings.outputRoot, report);
+  report.text = writeDiffReports(settings.outputRoot, report, {
+    projectPath: settings.projectRelativePath,
+  });
   return report;
 }
 

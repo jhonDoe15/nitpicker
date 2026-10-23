@@ -133,7 +133,8 @@ tool error carries the manager's message. Installing the base is not supported o
 
 Reports are written to `reports/quality/diff/` (`reports/quality/snapshot/` for `--all`):
 `report.txt`, `report.junit.xml`, `summary.json`, `new-findings.json`, `resolved-findings.json`,
-`changed-metrics.json` and `tool-errors.json`. The summary records every config override, a
+`changed-metrics.json` and `tool-errors.json`, plus `codequality.json` (a GitLab Code Quality
+report, see [GitLab CI](ci.md#gitlab-ci)). The summary records every config override, a
 policy hash, the `policyChanges` the head config makes against the base and any `notices`. A notice
 is information that never fails the run. Today there is one kind: changed code files that lie
 outside the roots the preset checks. For TypeScript those are `layout.sourceRoots` and

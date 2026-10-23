@@ -30,7 +30,7 @@ function linkBase(environment) {
     : `${server.replace(/\/+$/u, '')}/${repository}/blob/${sha}`;
 }
 
-function projectPrefixOf(projectRoot) {
+export function projectPrefixOf(projectRoot) {
   try {
     return runGit(projectRoot, ['rev-parse', '--show-prefix']).trim();
   } catch (error) {

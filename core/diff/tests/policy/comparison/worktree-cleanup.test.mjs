@@ -170,6 +170,7 @@ describe('quality diff temporary worktrees and reports', () => {
       'report.txt',
       'report.junit.xml',
       'report.sarif',
+      'codequality.json',
     ]) {
       expect(existsSync(path.join(repository.outputRoot, reportName))).toBe(true);
     }
