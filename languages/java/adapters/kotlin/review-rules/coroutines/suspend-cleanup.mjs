@@ -14,8 +14,11 @@ const FINALLY_MESSAGE = (call) =>
   `This \`finally\` block calls the suspending \`${call}\`, which throws as soon as the coroutine is cancelled, so the rest of the cleanup is skipped and the resource stays open. Make the release non-suspending (a blocking \`close()\`), or ${BOUNDED}.`;
 const CATCH_MESSAGE = (call) =>
   `This \`catch (CancellationException)\` block calls the suspending \`${call}\`, but the coroutine is already cancelled, so the call throws at once and the rest of the handler is skipped. Rethrow after non-suspending cleanup, or ${BOUNDED}.`;
-const CANCELLABLE_CONTEXT_TERM =
-  /^(?:kotlinx\.coroutines\.)?Dispatchers\.\w+(?:\.limitedParallelism\(.*\))?$|^CoroutineName\(.*\)$|^EmptyCoroutineContext$/u;
+const CANCELLABLE_CONTEXT_TERMS = [
+  /^(?:kotlinx\.coroutines\.)?Dispatchers\.\w+(?:\.limitedParallelism\(.*\))?$/u,
+  /^CoroutineName\(.*\)$/u,
+  /^EmptyCoroutineContext$/u,
+];
 const CALL_LABEL_LENGTH = 40;
 
 function ownersOf(owner) {
@@ -54,7 +57,9 @@ function cancellableContext(context) {
   if (context === undefined) {
     return false;
   }
-  return context.split('+').every((term) => CANCELLABLE_CONTEXT_TERM.test(term.trim()));
+  return context
+    .split('+')
+    .every((term) => CANCELLABLE_CONTEXT_TERMS.some((pattern) => pattern.test(term.trim())));
 }
 
 function isSuspendCall({ file, files }, resolves, call) {
