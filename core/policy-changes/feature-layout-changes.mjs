@@ -1,11 +1,9 @@
 import { typescriptFeatureLayout } from '../../languages/typescript/preset/coupling/feature-layout.mjs';
 import { resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
-import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
+import { CONFIG_FILE_NAME, FEATURE_LAYOUT_KEYS } from '../../shared/config.mjs';
 import { factRuleSettings } from '../../shared/project-rules/fact-rules.mjs';
 import { featureLayout, featureRoles } from '../../shared/rules/features/feature-roles.mjs';
 import { listed } from './paths/hidden-code.mjs';
-
-export const FEATURE_LAYOUT_KEYS = ['sharedRoots', 'featureRoots'];
 
 const TYPESCRIPT_LAYOUTS = new Set([undefined, 'typescript', 'javascript']);
 const DEFAULT_PRESET = 'typescript';

@@ -6,7 +6,7 @@ const STEP_FOLDERS = ['steps', 'step_defs'];
 const ENVIRONMENT = 'environment.py';
 const HIDDEN_PREFIX = '.';
 
-function isDirectory(absolute) {
+export function isDirectory(absolute) {
   return existsSync(absolute) && statSync(absolute).isDirectory();
 }
 
