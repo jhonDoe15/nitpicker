@@ -36,6 +36,7 @@
     "test": "vitest run --config vitest.config.mts",
     "check": "node scripts/check.mjs",
     "gen:checks": "node scripts/gen-checks.mjs",
+    "gen:schema": "node scripts/gen-config-schema.mjs",
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
     "test:record-eslint": "node scripts/record-eslint-reports.mjs",
     "test:conformance": "vitest run --config vitest.config.mts core/diff/comparison/conformance.test.mjs",
@@ -55,10 +56,12 @@
     "!**/README.md",
     "!**/__pycache__/**",
     "!**/*.pyc",
-    "skills/**"
+    "skills/**",
+    "spec/config.schema.json"
   ],
   "exports": {
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./config.schema.json": "./spec/config.schema.json"
   },
   "peerDependencies": {
     "@types/node": ">=20",
@@ -128,6 +131,7 @@
     "@types/node": "25.6.0",
     "@types/react": "19.2.2",
     "@vitest/coverage-v8": "4.1.11",
+    "ajv": "8.20.0",
     "jest": "30.5.2",
     "mocha": "12.0.3",
     "ts-jest": "29.4.15",

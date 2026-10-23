@@ -14,11 +14,11 @@ import { ruleIdProblem } from './python-rule-ids.mjs';
 /** The rules the top-level "exceptions" lift; python.exceptions lifts every other rule. */
 export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
 
-const ENVIRONMENTS = ['uv', 'poetry', 'path', 'pipenv', 'hatch', 'conda'];
-const FORMATTERS = ['ruff', 'black'];
-const TEST_RUNNERS = ['pytest', 'unittest', 'django', 'nose2'];
-const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
-const SETTING_KEYS = [
+export const ENVIRONMENTS = ['uv', 'poetry', 'path', 'pipenv', 'hatch', 'conda'];
+export const FORMATTERS = ['ruff', 'black'];
+export const PYTHON_TEST_RUNNERS = ['pytest', 'unittest', 'django', 'nose2'];
+export const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
+export const SETTING_KEYS = [
   'environment',
   'formatter',
   'testRunner',
@@ -59,7 +59,7 @@ function validateKnownKeys(settings) {
 
 function validateChoices(settings) {
   validateChoice(settings.formatter, 'python.formatter', FORMATTERS);
-  validateChoice(settings.testRunner, 'python.testRunner', TEST_RUNNERS);
+  validateChoice(settings.testRunner, 'python.testRunner', PYTHON_TEST_RUNNERS);
   validateChoice(settings.typeChecker, 'python.typeChecker', TYPE_CHECKERS);
   if (settings.environment !== undefined && !ENVIRONMENTS.includes(settings.environment)) {
     validateEnvironmentDirectory(settings.environment);

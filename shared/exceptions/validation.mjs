@@ -16,9 +16,9 @@ import {
 import { PACKAGE_EXCEPTION_RULES } from '../project-rules/hygiene-rules.mjs';
 import { canonicalRule, toolPrefixError } from './rule-names.mjs';
 
-const EXCEPTION_KEYS = ['rule', 'paths', 'packages', 'function', 'name', 'reason'];
+export const EXCEPTION_KEYS = ['rule', 'paths', 'packages', 'function', 'name', 'reason'];
 
-const COMPILER_DIAGNOSTIC = /^(?:[\w-]+\/)?TS\d+$/u;
+export const COMPILER_DIAGNOSTIC = /^(?:[\w-]+\/)?TS\d+$/u;
 
 function canonicalEntries(entries) {
   return entries.map((entry) =>
@@ -119,7 +119,7 @@ function validateException(entry, label, { preset, matchesOwnGlobs }) {
   }
 }
 
-const WINDOWS_SEPARATOR = /\\(?![{}[\],*?\\])/u;
+export const WINDOWS_SEPARATOR = /\\(?![{}[\],*?\\])/u;
 
 function validateExceptionPath(glob, pathsLabel) {
   if (glob.trim() === '') {

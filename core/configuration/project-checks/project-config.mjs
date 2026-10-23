@@ -9,7 +9,7 @@ import {
 } from '../../../languages/typescript/preset/layout.mjs';
 
 const JSX_FILE = /\.[jt]sx$/u;
-const HEAD_NAMES = new Set(['HEAD', '@']);
+export const HEAD_NAMES = new Set(['HEAD', '@']);
 
 export function rejectHeadBase(base) {
   if (HEAD_NAMES.has(base)) {

@@ -59,7 +59,9 @@ and the base with its own when it differs (see [Using nitpicker](usage.md#config
 that checks less fails until a person accepts it. Keys are `base`, `preset` (`typescript`,
 `javascript`, `java`, `kotlin` or `python`), `disable` (analyzer names),
 `thresholds` (`crapLimit` replaces the old `QUALITY_CRAP_SCORE_LIMIT` variable), `exclude`,
-`layout`, `exceptions`, `analyzers`, and `legacyInventory`. Unknown keys are an error. `exclude` and `layout` are
+`layout`, `exceptions`, `analyzers`, and `legacyInventory`. Unknown keys are an error. `$schema`, the line that
+points an editor at `spec/config.schema.json` for completion and inline errors (see
+[Editor support](usage.md#editor-support)), is allowed and ignored. `exclude` and `layout` are
 applied everywhere (see below); `analyzers` are run as custom analyzers (see below).
 
 ### Head policy delivery

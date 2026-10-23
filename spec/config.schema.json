@@ -1,0 +1,2064 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json",
+  "title": "nitpicker.config.json",
+  "description": "Configuration of nitpicker, a quality gate for code written by coding agents. Generated from the definitions the validator reads (npm run gen:schema).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "description": "The JSON Schema of this file, for editor completion and checks. nitpicker ignores it.",
+      "type": "string"
+    },
+    "base": {
+      "description": "The base ref used when neither --base nor a CI target branch is given. Never HEAD or the commit you are on.",
+      "type": "string",
+      "minLength": 1,
+      "not": { "enum": ["HEAD", "@"] }
+    },
+    "preset": {
+      "description": "The preset; typescript when absent. Java, Kotlin and Python are never detected.",
+      "enum": ["typescript", "javascript", "java", "kotlin", "python"]
+    },
+    "disable": {
+      "description": "Analyzer names to turn off, without duplicates. Turning one off also turns off the analyzers that depend on it.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "thresholds": {
+      "description": "Size and time limits, replacing the preset defaults. A raised limit is a policy loosening.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "crapLimit": {
+          "description": "A function whose CRAP score is at or above this fails (default 9).",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "fileLines": {
+          "description": "Lines per source file (default 300).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "testFileLines": {
+          "description": "Lines per test file (default 500).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "lineLength": {
+          "description": "Characters per line (default 120).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "folderFiles": {
+          "description": "Source files, and separately test files, directly in one folder (default 6).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "folderDepth": {
+          "description": "Folders below the feature layer (TypeScript, JavaScript) or packages below the root package.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "classMethods": {
+          "description": "Methods per class (Java, Kotlin, Python).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "classFields": {
+          "description": "Instance fields per class (Java, Kotlin, Python).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "inheritanceDepth": {
+          "description": "Superclasses per class (Java, Kotlin, Python).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "unitTestSeconds": {
+          "description": "Seconds one unit test the change adds or edits may take (default 5).",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "integrationTestSeconds": {
+          "description": "Seconds one integration test the change adds or edits may take (default 30).",
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "exclude": {
+      "description": "Globs, relative to the project root, of files every analyzer skips. Excluding code is a policy loosening.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "layout": {
+      "description": "Where the code lives. The TypeScript and JavaScript presets take every key.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sourceRoots": {
+          "description": "Directories with the production code (TypeScript, JavaScript; default [\"src\"]).",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "allOf": [
+              { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+              { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } },
+              { "not": { "pattern": "[*?{}\\[\\]]" } },
+              { "not": { "pattern": "^(?:\\.[/\\\\]?)?$" } }
+            ]
+          }
+        },
+        "testRoots": {
+          "description": "Directories with the tests (TypeScript, JavaScript).",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "allOf": [
+              { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+              { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } },
+              { "not": { "pattern": "[*?{}\\[\\]]" } },
+              { "not": { "pattern": "^(?:\\.[/\\\\]?)?$" } }
+            ]
+          }
+        },
+        "excludedGlobs": {
+          "description": "Globs that replace the built-in exclusions (TypeScript, JavaScript).",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "entryPoints": {
+          "description": "Globs of files that are started or loaded by path and so are never imported (TypeScript, JavaScript).",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "sharedRoots": {
+          "description": "Folder globs of shared code: a module there that only one feature uses is reported.",
+          "type": "array",
+          "items": { "$ref": "#/definitions/folderGlob" }
+        },
+        "featureRoots": {
+          "description": "Folder globs whose direct subfolders are one feature each; [] turns the rule off.",
+          "type": "array",
+          "items": { "$ref": "#/definitions/folderGlob" }
+        }
+      }
+    },
+    "exceptions": {
+      "description": "Rules lifted for some paths. Each finding prints the entry that lifts it.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/exception" }
+    },
+    "react": {
+      "description": "The React rule scope (TypeScript preset only).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "description": "true or false forces the React rules on or off; without it nitpicker decides from the project's dependencies.",
+          "type": "boolean"
+        },
+        "styling": {
+          "description": "The one styling approach the project uses; inferred from the sources when unset.",
+          "enum": ["class-names", "css-in-js", "inline-style", "style-sheet"]
+        }
+      }
+    },
+    "i18n": {
+      "description": "The i18n rule scope for react-intl (TypeScript preset only).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "description": "true or false forces the i18n rules on or off; without it nitpicker decides from the project's dependencies.",
+          "type": "boolean"
+        },
+        "functionNames": {
+          "description": "Wrappers of formatMessage that are checked too.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "componentNames": {
+          "description": "Wrappers of FormattedMessage that are checked too.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "analyzers": {
+      "description": "Custom analyzers: commands that print a findings report.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "command"],
+        "properties": {
+          "name": {
+            "description": "The analyzer name, shown in reports.",
+            "type": "string",
+            "minLength": 1
+          },
+          "command": {
+            "description": "The command to run, relative to the project root.",
+            "type": "string",
+            "minLength": 1
+          },
+          "args": {
+            "description": "Arguments passed to the command.",
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "legacyInventory": {
+      "description": "Path of the legacy inventory inside the project; nitpicker.legacy.json when absent.",
+      "type": "string",
+      "minLength": 1,
+      "allOf": [
+        { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+        { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
+      ]
+    },
+    "duplicates": {
+      "description": "The duplicate-code scan.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "skippedFolders": {
+          "description": "Folder names (no slashes, commas, glob characters or leading \"!\") the scan skips at any depth. Replaces the built-in list.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[^/\\\\*?{}[\\],]+$",
+            "not": { "pattern": "^(?:!|\\.{1,2}$)" }
+          }
+        }
+      }
+    },
+    "python": {
+      "description": "Overrides for what nitpicker detects in a Python project (python preset only).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "environment": {
+          "description": "The tool that manages the environment, or the directory of a virtual environment.",
+          "anyOf": [
+            { "enum": ["uv", "poetry", "path", "pipenv", "hatch", "conda"] },
+            { "pattern": "^(?:/|[A-Za-z]:[\\\\/])" },
+            {
+              "type": "string",
+              "minLength": 1,
+              "allOf": [
+                { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+                { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
+              ]
+            }
+          ]
+        },
+        "formatter": { "description": "The format check to run.", "enum": ["ruff", "black"] },
+        "testRunner": {
+          "description": "The test runner.",
+          "enum": ["pytest", "unittest", "django", "nose2"]
+        },
+        "typeChecker": {
+          "description": "The type checker.",
+          "enum": ["mypy", "pyright", "basedpyright"]
+        },
+        "importLinter": {
+          "description": "false turns the import-linter check off.",
+          "type": "boolean"
+        },
+        "sourceRoots": {
+          "description": "Directories with the production code.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "allOf": [
+              { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+              { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
+            ]
+          }
+        },
+        "entryPoints": {
+          "description": "Files that are started or loaded by path and so are never imported.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "allOf": [
+              { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+              { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
+            ]
+          }
+        },
+        "exceptions": {
+          "description": "Exceptions for the Python rules that the top-level \"exceptions\" does not take.",
+          "type": "array",
+          "items": {
+            "allOf": [
+              { "$ref": "#/definitions/exception" },
+              {
+                "properties": {
+                  "rule": {
+                    "not": {
+                      "enum": [
+                        "function-lines-limit",
+                        "structure/function-lines-limit",
+                        "function-statements-limit",
+                        "structure/function-statements-limit",
+                        "function-control-nesting-limit",
+                        "structure/function-control-nesting-limit",
+                        "function-parameters-limit",
+                        "structure/function-parameters-limit",
+                        "crap-score-limit",
+                        "crap/crap-score-limit",
+                        "crap-coverage-unknown",
+                        "crap/crap-coverage-unknown",
+                        "changed-branch-coverage",
+                        "coverage/changed-branch-coverage",
+                        "jacoco/changed-branch-coverage",
+                        "coverage-py/changed-branch-coverage",
+                        "mutant-survived",
+                        "mutation/mutant-survived",
+                        "pit/mutant-survived",
+                        "mutmut/mutant-survived",
+                        "mutant-nocoverage",
+                        "mutation/mutant-nocoverage",
+                        "pit/mutant-nocoverage",
+                        "mutmut/mutant-nocoverage",
+                        "file-lines-limit",
+                        "structure/file-lines-limit",
+                        "line-length-limit",
+                        "structure/line-length-limit",
+                        "folder-files-limit",
+                        "structure/folder-files-limit",
+                        "slow-test",
+                        "test-runtime/slow-test",
+                        "committed-env-file",
+                        "repository-hygiene/committed-env-file",
+                        "committed-private-key",
+                        "repository-hygiene/committed-private-key",
+                        "committed-binary",
+                        "repository-hygiene/committed-binary",
+                        "large-file",
+                        "repository-hygiene/large-file",
+                        "committed-build-output",
+                        "repository-hygiene/committed-build-output",
+                        "test-only-export",
+                        "dead-code/test-only-export",
+                        "coupling/test-only-export",
+                        "test-console-output",
+                        "folder-depth-limit",
+                        "structure/folder-depth-limit",
+                        "class-methods-limit",
+                        "structure/class-methods-limit",
+                        "class-fields-limit",
+                        "structure/class-fields-limit",
+                        "inheritance-depth-limit",
+                        "structure/inheritance-depth-limit"
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "paths": {
+                    "items": {
+                      "allOf": [
+                        { "not": { "pattern": "^\\.\\/" } },
+                        { "not": { "pattern": "\\/$" } },
+                        { "not": { "pattern": "\\(\\?" } }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "tools": {
+      "description": "Which config each tool uses, and its engine or runner.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prettier": {
+          "description": "Settings of prettier.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config prettier uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once, highest first.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
+        "eslint": {
+          "description": "Settings of eslint.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "engine": {
+              "description": "\"oxlint\" runs the lint rules on oxlint (the default); \"eslint\" runs them on ESLint",
+              "enum": ["oxlint", "eslint"]
+            }
+          }
+        },
+        "typescript": {
+          "description": "Settings of typescript.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "engine": {
+              "description": "\"native\" type checks with TypeScript 7 (the default); \"project\" uses the project's own TypeScript",
+              "enum": ["native", "project"]
+            },
+            "project": {
+              "description": "The TypeScript config file of the project the type check reads.",
+              "type": "string",
+              "pattern": "^(?![/\\\\])(?![A-Za-z]:)(?!(?:.*[/\\\\])?\\.\\.(?:[/\\\\]|$))[^*?{}\\[\\]\\u0000]*\\.json$"
+            }
+          }
+        },
+        "tests": {
+          "description": "Settings of tests.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "runner": {
+              "description": "It names the runner that runs the project's tests; without it nitpicker uses the runner the project's test script, config files or dependencies name",
+              "enum": ["vitest", "jest", "node", "mocha"]
+            },
+            "timeouts": {
+              "description": "Timeout tiers for the tests of the project.",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "defaults": {
+                  "description": "Limits for every test.",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "testTimeoutMs": {
+                      "description": "The timeout of one test, in milliseconds.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "hookTimeoutMs": {
+                      "description": "The timeout of one setup or teardown hook, in milliseconds.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "testDeclarationCeilingMs": {
+                      "description": "The longest timeout a test may declare for itself, in milliseconds.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "hookDeclarationCeilingMs": {
+                      "description": "The longest timeout a hook may declare for itself, in milliseconds.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  }
+                },
+                "languages": {
+                  "description": "Limits per language.",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "typescript": {
+                      "description": "Limits for typescript tests.",
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "testTimeoutMs": {
+                          "description": "The timeout of one test, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "hookTimeoutMs": {
+                          "description": "The timeout of one setup or teardown hook, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "testDeclarationCeilingMs": {
+                          "description": "The longest timeout a test may declare for itself, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "hookDeclarationCeilingMs": {
+                          "description": "The longest timeout a hook may declare for itself, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        }
+                      }
+                    },
+                    "javascript": {
+                      "description": "Limits for javascript tests.",
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "testTimeoutMs": {
+                          "description": "The timeout of one test, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "hookTimeoutMs": {
+                          "description": "The timeout of one setup or teardown hook, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "testDeclarationCeilingMs": {
+                          "description": "The longest timeout a test may declare for itself, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "hookDeclarationCeilingMs": {
+                          "description": "The longest timeout a hook may declare for itself, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        }
+                      }
+                    },
+                    "java": {
+                      "description": "Limits for java tests.",
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "testTimeoutMs": {
+                          "description": "The timeout of one test, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "hookTimeoutMs": {
+                          "description": "The timeout of one setup or teardown hook, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "testDeclarationCeilingMs": {
+                          "description": "The longest timeout a test may declare for itself, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "hookDeclarationCeilingMs": {
+                          "description": "The longest timeout a hook may declare for itself, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        }
+                      }
+                    },
+                    "kotlin": {
+                      "description": "Limits for kotlin tests.",
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "testTimeoutMs": {
+                          "description": "The timeout of one test, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "hookTimeoutMs": {
+                          "description": "The timeout of one setup or teardown hook, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "testDeclarationCeilingMs": {
+                          "description": "The longest timeout a test may declare for itself, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "hookDeclarationCeilingMs": {
+                          "description": "The longest timeout a hook may declare for itself, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        }
+                      }
+                    },
+                    "python": {
+                      "description": "Limits for python tests.",
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "testTimeoutMs": {
+                          "description": "The timeout of one test, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "hookTimeoutMs": {
+                          "description": "The timeout of one setup or teardown hook, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "testDeclarationCeilingMs": {
+                          "description": "The longest timeout a test may declare for itself, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "hookDeclarationCeilingMs": {
+                          "description": "The longest timeout a hook may declare for itself, in milliseconds.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        }
+                      }
+                    }
+                  }
+                },
+                "projects": {
+                  "description": "Named groups of test files with their own limits.",
+                  "type": "object",
+                  "propertyNames": { "pattern": "\\S" },
+                  "additionalProperties": {
+                    "description": "One group of test files with its own limits.",
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "language": {
+                        "description": "The language the group is timed as.",
+                        "enum": ["typescript", "javascript", "java", "kotlin", "python"]
+                      },
+                      "include": {
+                        "description": "Globs of the test files in the group, relative to the project root.",
+                        "type": "array",
+                        "minItems": 1,
+                        "uniqueItems": true,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "allOf": [
+                            { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+                            { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
+                          ],
+                          "not": { "pattern": "^!" }
+                        }
+                      },
+                      "testTimeoutMs": {
+                        "description": "The timeout of one test, in milliseconds.",
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "hookTimeoutMs": {
+                        "description": "The timeout of one setup or teardown hook, in milliseconds.",
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "testDeclarationCeilingMs": {
+                        "description": "The longest timeout a test may declare for itself, in milliseconds.",
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "hookDeclarationCeilingMs": {
+                        "description": "The longest timeout a hook may declare for itself, in milliseconds.",
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": ["language", "include"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pmd": {
+          "description": "Settings of pmd.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config pmd uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
+        "checkstyle": {
+          "description": "Settings of checkstyle.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config checkstyle uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
+        "ktlint": {
+          "description": "Settings of ktlint.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config ktlint uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once. \"project\" must come first: ktlint reads the project's .editorconfig natively, which always wins over nitpicker's measured conventions.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] },
+              "not": { "minItems": 2, "items": [{ "const": "nitpicker" }] }
+            }
+          }
+        },
+        "ktfmt": {
+          "description": "Settings of ktfmt.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config ktfmt uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once. \"project\" must come first: ktfmt reads the project's .editorconfig natively, which always wins over nitpicker's measured conventions.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] },
+              "not": { "minItems": 2, "items": [{ "const": "nitpicker" }] }
+            }
+          }
+        },
+        "detekt": {
+          "description": "Settings of detekt.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config detekt uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
+        "ruff": {
+          "description": "Settings of ruff.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config ruff uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
+        "black": {
+          "description": "Settings of black.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config black uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once. \"project\" must come first: black has no flag that switches string normalization back on, so nitpicker's quote style cannot win over the project's skip-string-normalization.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] },
+              "not": { "minItems": 2, "items": [{ "const": "nitpicker" }] }
+            }
+          }
+        },
+        "pyright": {
+          "description": "Settings of pyright.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config pyright uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
+        "mypy": {
+          "description": "Settings of mypy.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config mypy uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
+        "mutmut": {
+          "description": "Settings of mutmut.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config mutmut uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        }
+      }
+    },
+    "testConsole": {
+      "description": "The allowlist of the test console output check.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allow": {
+          "description": "Third-party console messages to accept.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["contains", "reason"],
+            "properties": {
+              "contains": {
+                "description": "A fragment of the printed message. At least three characters must remain once numbers become <n> and ids become <id>.",
+                "type": "string"
+              },
+              "paths": {
+                "description": "Test file globs that limit the entry; at least one.",
+                "type": "array",
+                "minItems": 1,
+                "items": { "$ref": "#/definitions/fileGlob" }
+              },
+              "reason": {
+                "description": "Which library prints this and why it is acceptable.",
+                "type": "string",
+                "pattern": "\\S"
+              }
+            }
+          }
+        }
+      }
+    },
+    "kotlin": {
+      "description": "Kotlin preset settings.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "formatter": {
+          "description": "The format check to run; detected when absent.",
+          "enum": ["ktlint", "ktfmt", "none"]
+        },
+        "detektConfig": {
+          "description": "Path of the detekt config inside the project; detected when absent.",
+          "type": "string",
+          "minLength": 1,
+          "allOf": [
+            { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+            { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
+          ]
+        }
+      }
+    },
+    "conventions": {
+      "description": "Pins a style that nitpicker otherwise measures from the project.",
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "preset": { "const": "typescript" } } },
+      "then": {
+        "properties": {
+          "python": false,
+          "kotlin": false,
+          "thresholds": {
+            "properties": { "classMethods": false, "classFields": false, "inheritanceDepth": false }
+          },
+          "tools": {
+            "properties": {
+              "pmd": false,
+              "checkstyle": false,
+              "ktlint": false,
+              "ktfmt": false,
+              "detekt": false,
+              "ruff": false,
+              "black": false,
+              "pyright": false,
+              "mypy": false,
+              "mutmut": false
+            }
+          },
+          "conventions": {
+            "properties": {
+              "prettier.quotes": {
+                "description": "Quotes: \"single\" (single), \"double\" (double).",
+                "enum": ["single", "double"]
+              },
+              "prettier.semicolons": {
+                "description": "Semicolons: \"always\" (always), \"never\" (never).",
+                "enum": ["always", "never"]
+              },
+              "prettier.indentation": {
+                "description": "Indentation: \"2\" (2 spaces), \"4\" (4 spaces), \"tab\" (tabs).",
+                "enum": ["2", "4", "tab"]
+              },
+              "prettier.printWidth": {
+                "description": "Line width: \"80\" (80 columns), \"100\" (100 columns), \"120\" (120 columns), or a whole number from 10 to 999.",
+                "anyOf": [
+                  { "enum": ["80", "100", "120"] },
+                  { "type": "string", "pattern": "^[1-9]\\d{1,2}$" }
+                ]
+              },
+              "prettier.trailingCommas": {
+                "description": "Trailing commas: \"all\" (everywhere), \"es5\" (not after the last argument), \"none\" (none).",
+                "enum": ["all", "es5", "none"]
+              },
+              "prettier.arrowParens": {
+                "description": "Arrow function parameter: \"always\" ((x) =>), \"avoid\" (x =>).",
+                "enum": ["always", "avoid"]
+              },
+              "prettier.bracketSpacing": {
+                "description": "Braces: \"spaced\" ({ a }), \"tight\" ({a}).",
+                "enum": ["spaced", "tight"]
+              },
+              "prettier.endOfLine": {
+                "description": "Line endings: \"lf\" (LF), \"crlf\" (CRLF).",
+                "enum": ["lf", "crlf"]
+              },
+              "prettier.jsonIndentation": {
+                "description": "JSON indentation: \"2\" (2 spaces), \"4\" (4 spaces), \"tab\" (tabs).",
+                "enum": ["2", "4", "tab"]
+              },
+              "prettier.yamlIndentation": {
+                "description": "YAML indentation: \"2\" (2 spaces), \"4\" (4 spaces).",
+                "enum": ["2", "4"]
+              },
+              "typescript.fileNames": {
+                "description": "File names: \"kebab-case\" (kebab-case), \"camelCase\" (camelCase), \"snake_case\" (snake_case).",
+                "enum": ["kebab-case", "camelCase", "snake_case"]
+              },
+              "typescript.assertionHelpers": {
+                "description": "Assertion helpers: the names of the helper functions that count as assertions.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
+              "prettier.jsxQuotes": {
+                "description": "JSX attribute quotes: \"double\" (double (\"\")), \"single\" (single ('')).",
+                "enum": ["double", "single"]
+              },
+              "prettier.bracketSameLine": {
+                "description": "JSX closing bracket: \"newLine\" (on its own line), \"sameLine\" (after the last attribute).",
+                "enum": ["newLine", "sameLine"]
+              },
+              "typescript.typeImports": {
+                "description": "Type-only imports: \"separate\" (import type { A }), \"inline\" (import { type A }).",
+                "enum": ["separate", "inline"]
+              }
+            },
+            "additionalProperties": false
+          },
+          "exceptions": {
+            "items": {
+              "allOf": [
+                { "properties": { "rule": { "not": { "enum": ["doc-comment-content"] } } } },
+                {
+                  "if": {
+                    "required": ["rule"],
+                    "properties": { "rule": { "pattern": "^formatjs/" } }
+                  },
+                  "then": {
+                    "properties": {
+                      "rule": {
+                        "enum": [
+                          "formatjs/enforce-default-message",
+                          "formatjs/enforce-description",
+                          "formatjs/enforce-placeholders",
+                          "formatjs/no-complex-selectors",
+                          "formatjs/no-invalid-icu",
+                          "formatjs/no-literal-string-in-jsx",
+                          "formatjs/no-missing-icu-plural-one-placeholders",
+                          "formatjs/no-multiple-plurals",
+                          "formatjs/no-multiple-whitespaces",
+                          "formatjs/no-offset",
+                          "formatjs/no-useless-message",
+                          "formatjs/prefer-full-sentence",
+                          "formatjs/prefer-pound-in-plural"
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "required": ["rule"],
+                    "properties": { "rule": { "$ref": "#/definitions/nitpickerRule" } }
+                  },
+                  "then": {
+                    "properties": {
+                      "paths": {
+                        "items": {
+                          "allOf": [
+                            { "not": { "pattern": "^\\.\\/" } },
+                            { "not": { "pattern": "\\/$" } },
+                            { "not": { "pattern": "\\(\\?" } }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "rule": {
+                  "examples": [
+                    "function-lines-limit",
+                    "function-statements-limit",
+                    "function-control-nesting-limit",
+                    "function-parameters-limit",
+                    "crap-score-limit",
+                    "crap-coverage-unknown",
+                    "changed-branch-coverage",
+                    "mutant-survived",
+                    "mutant-nocoverage",
+                    "duplicate-clone",
+                    "stability-direction",
+                    "no-production-runtime",
+                    "type-only-production-dependency",
+                    "baseline-expansion",
+                    "public-alternative-bypass",
+                    "unused-prop",
+                    "unused-option",
+                    "test-only-export",
+                    "file-lines-limit",
+                    "line-length-limit",
+                    "folder-files-limit",
+                    "folder-depth-limit",
+                    "class-methods-limit",
+                    "class-fields-limit",
+                    "inheritance-depth-limit",
+                    "shared-used-by-one-feature",
+                    "duplicate-definition",
+                    "sibling-copy-edit",
+                    "exported-name-collision",
+                    "redefined-library-component",
+                    "new-icon-asset",
+                    "component-story-missing",
+                    "javascript-in-typescript-project",
+                    "slow-test",
+                    "committed-env-file",
+                    "committed-private-key",
+                    "committed-binary",
+                    "large-file",
+                    "committed-build-output",
+                    "unused-dependency",
+                    "unlisted-dependency",
+                    "unresolved-import",
+                    "test-console-output",
+                    "doc-comment-content"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "preset": { "const": "javascript" } }, "required": ["preset"] },
+      "then": {
+        "properties": {
+          "react": false,
+          "i18n": false,
+          "python": false,
+          "kotlin": false,
+          "thresholds": {
+            "properties": { "classMethods": false, "classFields": false, "inheritanceDepth": false }
+          },
+          "tools": {
+            "properties": {
+              "pmd": false,
+              "checkstyle": false,
+              "ktlint": false,
+              "ktfmt": false,
+              "detekt": false,
+              "ruff": false,
+              "black": false,
+              "pyright": false,
+              "mypy": false,
+              "mutmut": false
+            }
+          },
+          "conventions": {
+            "properties": {
+              "prettier.quotes": {
+                "description": "Quotes: \"single\" (single), \"double\" (double).",
+                "enum": ["single", "double"]
+              },
+              "prettier.semicolons": {
+                "description": "Semicolons: \"always\" (always), \"never\" (never).",
+                "enum": ["always", "never"]
+              },
+              "prettier.indentation": {
+                "description": "Indentation: \"2\" (2 spaces), \"4\" (4 spaces), \"tab\" (tabs).",
+                "enum": ["2", "4", "tab"]
+              },
+              "prettier.printWidth": {
+                "description": "Line width: \"80\" (80 columns), \"100\" (100 columns), \"120\" (120 columns), or a whole number from 10 to 999.",
+                "anyOf": [
+                  { "enum": ["80", "100", "120"] },
+                  { "type": "string", "pattern": "^[1-9]\\d{1,2}$" }
+                ]
+              },
+              "prettier.trailingCommas": {
+                "description": "Trailing commas: \"all\" (everywhere), \"es5\" (not after the last argument), \"none\" (none).",
+                "enum": ["all", "es5", "none"]
+              },
+              "prettier.arrowParens": {
+                "description": "Arrow function parameter: \"always\" ((x) =>), \"avoid\" (x =>).",
+                "enum": ["always", "avoid"]
+              },
+              "prettier.bracketSpacing": {
+                "description": "Braces: \"spaced\" ({ a }), \"tight\" ({a}).",
+                "enum": ["spaced", "tight"]
+              },
+              "prettier.endOfLine": {
+                "description": "Line endings: \"lf\" (LF), \"crlf\" (CRLF).",
+                "enum": ["lf", "crlf"]
+              },
+              "prettier.jsonIndentation": {
+                "description": "JSON indentation: \"2\" (2 spaces), \"4\" (4 spaces), \"tab\" (tabs).",
+                "enum": ["2", "4", "tab"]
+              },
+              "prettier.yamlIndentation": {
+                "description": "YAML indentation: \"2\" (2 spaces), \"4\" (4 spaces).",
+                "enum": ["2", "4"]
+              },
+              "typescript.fileNames": {
+                "description": "File names: \"kebab-case\" (kebab-case), \"camelCase\" (camelCase), \"snake_case\" (snake_case).",
+                "enum": ["kebab-case", "camelCase", "snake_case"]
+              },
+              "typescript.assertionHelpers": {
+                "description": "Assertion helpers: the names of the helper functions that count as assertions.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              }
+            },
+            "additionalProperties": false
+          },
+          "exceptions": {
+            "items": {
+              "allOf": [
+                { "properties": { "rule": { "not": { "enum": ["doc-comment-content"] } } } },
+                {
+                  "if": {
+                    "required": ["rule"],
+                    "properties": { "rule": { "pattern": "^formatjs/" } }
+                  },
+                  "then": {
+                    "properties": {
+                      "rule": {
+                        "enum": [
+                          "formatjs/enforce-default-message",
+                          "formatjs/enforce-description",
+                          "formatjs/enforce-placeholders",
+                          "formatjs/no-complex-selectors",
+                          "formatjs/no-invalid-icu",
+                          "formatjs/no-literal-string-in-jsx",
+                          "formatjs/no-missing-icu-plural-one-placeholders",
+                          "formatjs/no-multiple-plurals",
+                          "formatjs/no-multiple-whitespaces",
+                          "formatjs/no-offset",
+                          "formatjs/no-useless-message",
+                          "formatjs/prefer-full-sentence",
+                          "formatjs/prefer-pound-in-plural"
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "required": ["rule"],
+                    "properties": { "rule": { "$ref": "#/definitions/nitpickerRule" } }
+                  },
+                  "then": {
+                    "properties": {
+                      "paths": {
+                        "items": {
+                          "allOf": [
+                            { "not": { "pattern": "^\\.\\/" } },
+                            { "not": { "pattern": "\\/$" } },
+                            { "not": { "pattern": "\\(\\?" } }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "properties": {
+                "rule": {
+                  "examples": [
+                    "function-lines-limit",
+                    "function-statements-limit",
+                    "function-control-nesting-limit",
+                    "function-parameters-limit",
+                    "crap-score-limit",
+                    "crap-coverage-unknown",
+                    "changed-branch-coverage",
+                    "mutant-survived",
+                    "mutant-nocoverage",
+                    "duplicate-clone",
+                    "stability-direction",
+                    "no-production-runtime",
+                    "type-only-production-dependency",
+                    "baseline-expansion",
+                    "public-alternative-bypass",
+                    "unused-prop",
+                    "unused-option",
+                    "test-only-export",
+                    "file-lines-limit",
+                    "line-length-limit",
+                    "folder-files-limit",
+                    "folder-depth-limit",
+                    "class-methods-limit",
+                    "class-fields-limit",
+                    "inheritance-depth-limit",
+                    "shared-used-by-one-feature",
+                    "duplicate-definition",
+                    "sibling-copy-edit",
+                    "exported-name-collision",
+                    "redefined-library-component",
+                    "new-icon-asset",
+                    "component-story-missing",
+                    "javascript-in-typescript-project",
+                    "slow-test",
+                    "committed-env-file",
+                    "committed-private-key",
+                    "committed-binary",
+                    "large-file",
+                    "committed-build-output",
+                    "unused-dependency",
+                    "unlisted-dependency",
+                    "unresolved-import",
+                    "test-console-output",
+                    "doc-comment-content"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "preset": { "const": "java" } }, "required": ["preset"] },
+      "then": {
+        "properties": {
+          "react": false,
+          "i18n": false,
+          "python": false,
+          "kotlin": false,
+          "thresholds": { "properties": { "lineLength": false } },
+          "layout": {
+            "properties": {
+              "sourceRoots": false,
+              "testRoots": false,
+              "excludedGlobs": false,
+              "entryPoints": false,
+              "sharedRoots": false,
+              "featureRoots": false
+            }
+          },
+          "tools": {
+            "properties": {
+              "prettier": false,
+              "eslint": false,
+              "typescript": false,
+              "tests": false,
+              "ktlint": false,
+              "ktfmt": false,
+              "detekt": false,
+              "ruff": false,
+              "black": false,
+              "pyright": false,
+              "mypy": false,
+              "mutmut": false
+            }
+          },
+          "conventions": {
+            "properties": {
+              "java.formatter": {
+                "description": "Java formatter: \"google\" (google-java-format), \"palantir\" (palantir-java-format), \"none\" (no Java formatter runs).",
+                "enum": ["google", "palantir", "none"]
+              },
+              "java.indentation": {
+                "description": "Java indentation: \"2\" (2 spaces), \"4\" (4 spaces), \"tab\" (tabs).",
+                "enum": ["2", "4", "tab"]
+              },
+              "java.lineLength": {
+                "description": "Java line length: \"100\" (100 columns), \"120\" (120 columns), \"140\" (140 columns), or a whole number from 10 to 999.",
+                "anyOf": [
+                  { "enum": ["100", "120", "140"] },
+                  { "type": "string", "pattern": "^[1-9]\\d{1,2}$" }
+                ]
+              },
+              "java.wildcardImports": {
+                "description": "Java imports: \"explicit\" (explicit only), \"wildcard\" (wildcards allowed).",
+                "enum": ["explicit", "wildcard"]
+              },
+              "java.testStaticImports": {
+                "description": "Java static imports in tests: \"explicit\" (explicit only), \"wildcard\" (wildcards allowed).",
+                "enum": ["explicit", "wildcard"]
+              },
+              "java.assertionHelpers": {
+                "description": "Java assertion helpers: the names of the helper functions that count as assertions.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              }
+            },
+            "additionalProperties": false
+          },
+          "exceptions": {
+            "items": {
+              "allOf": [
+                {
+                  "properties": {
+                    "rule": {
+                      "anyOf": [
+                        {
+                          "enum": [
+                            "function-lines-limit",
+                            "structure/function-lines-limit",
+                            "function-statements-limit",
+                            "structure/function-statements-limit",
+                            "function-control-nesting-limit",
+                            "structure/function-control-nesting-limit",
+                            "function-parameters-limit",
+                            "structure/function-parameters-limit",
+                            "crap-score-limit",
+                            "crap/crap-score-limit",
+                            "crap-coverage-unknown",
+                            "crap/crap-coverage-unknown",
+                            "changed-branch-coverage",
+                            "coverage/changed-branch-coverage",
+                            "jacoco/changed-branch-coverage",
+                            "coverage-py/changed-branch-coverage",
+                            "mutant-survived",
+                            "mutation/mutant-survived",
+                            "pit/mutant-survived",
+                            "mutmut/mutant-survived",
+                            "mutant-nocoverage",
+                            "mutation/mutant-nocoverage",
+                            "pit/mutant-nocoverage",
+                            "mutmut/mutant-nocoverage",
+                            "duplicate-clone",
+                            "duplicates/duplicate-clone",
+                            "stability-direction",
+                            "coupling/stability-direction",
+                            "file-lines-limit",
+                            "structure/file-lines-limit",
+                            "line-length-limit",
+                            "structure/line-length-limit",
+                            "folder-files-limit",
+                            "structure/folder-files-limit",
+                            "slow-test",
+                            "test-runtime/slow-test",
+                            "committed-env-file",
+                            "repository-hygiene/committed-env-file",
+                            "committed-private-key",
+                            "repository-hygiene/committed-private-key",
+                            "committed-binary",
+                            "repository-hygiene/committed-binary",
+                            "large-file",
+                            "repository-hygiene/large-file",
+                            "committed-build-output",
+                            "repository-hygiene/committed-build-output",
+                            "test-only-export",
+                            "dead-code/test-only-export",
+                            "coupling/test-only-export",
+                            "test-console-output",
+                            "folder-depth-limit",
+                            "structure/folder-depth-limit",
+                            "class-methods-limit",
+                            "structure/class-methods-limit",
+                            "class-fields-limit",
+                            "structure/class-fields-limit",
+                            "inheritance-depth-limit",
+                            "structure/inheritance-depth-limit"
+                          ]
+                        },
+                        {
+                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|spring|test-runtime)/[\\s\\S]"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "paths": {
+                      "items": {
+                        "allOf": [
+                          { "not": { "pattern": "^\\.\\/" } },
+                          { "not": { "pattern": "\\/$" } },
+                          { "not": { "pattern": "\\(\\?" } }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "preset": { "const": "kotlin" } }, "required": ["preset"] },
+      "then": {
+        "properties": {
+          "react": false,
+          "i18n": false,
+          "python": false,
+          "thresholds": { "properties": { "lineLength": false } },
+          "layout": {
+            "properties": {
+              "sourceRoots": false,
+              "testRoots": false,
+              "excludedGlobs": false,
+              "entryPoints": false,
+              "sharedRoots": false,
+              "featureRoots": false
+            }
+          },
+          "tools": {
+            "properties": {
+              "prettier": false,
+              "eslint": false,
+              "typescript": false,
+              "tests": false,
+              "ruff": false,
+              "black": false,
+              "pyright": false,
+              "mypy": false,
+              "mutmut": false
+            }
+          },
+          "conventions": {
+            "properties": {
+              "java.formatter": {
+                "description": "Java formatter: \"google\" (google-java-format), \"palantir\" (palantir-java-format), \"none\" (no Java formatter runs).",
+                "enum": ["google", "palantir", "none"]
+              },
+              "java.indentation": {
+                "description": "Java indentation: \"2\" (2 spaces), \"4\" (4 spaces), \"tab\" (tabs).",
+                "enum": ["2", "4", "tab"]
+              },
+              "java.lineLength": {
+                "description": "Java line length: \"100\" (100 columns), \"120\" (120 columns), \"140\" (140 columns), or a whole number from 10 to 999.",
+                "anyOf": [
+                  { "enum": ["100", "120", "140"] },
+                  { "type": "string", "pattern": "^[1-9]\\d{1,2}$" }
+                ]
+              },
+              "java.wildcardImports": {
+                "description": "Java imports: \"explicit\" (explicit only), \"wildcard\" (wildcards allowed).",
+                "enum": ["explicit", "wildcard"]
+              },
+              "java.testStaticImports": {
+                "description": "Java static imports in tests: \"explicit\" (explicit only), \"wildcard\" (wildcards allowed).",
+                "enum": ["explicit", "wildcard"]
+              },
+              "java.assertionHelpers": {
+                "description": "Java assertion helpers: the names of the helper functions that count as assertions.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
+              "kotlin.indentation": {
+                "description": "Kotlin indentation: \"2\" (2 spaces), \"4\" (4 spaces).",
+                "enum": ["2", "4"]
+              },
+              "kotlin.trailingCommas": {
+                "description": "Kotlin trailing commas: \"always\" (required in wrapped lists), \"never\" (not used).",
+                "enum": ["always", "never"]
+              },
+              "kotlin.wildcardImports": {
+                "description": "Kotlin imports: \"explicit\" (explicit only), \"wildcard\" (wildcards allowed).",
+                "enum": ["explicit", "wildcard"]
+              },
+              "kotlin.lineLength": {
+                "description": "Kotlin line length: \"100\" (100 columns), \"120\" (120 columns), \"140\" (140 columns), or a whole number from 10 to 999.",
+                "anyOf": [
+                  { "enum": ["100", "120", "140"] },
+                  { "type": "string", "pattern": "^[1-9]\\d{1,2}$" }
+                ]
+              },
+              "kotlin.assertionHelpers": {
+                "description": "Kotlin assertion helpers: the names of the helper functions that count as assertions.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              }
+            },
+            "additionalProperties": false
+          },
+          "exceptions": {
+            "items": {
+              "allOf": [
+                {
+                  "properties": {
+                    "rule": {
+                      "anyOf": [
+                        {
+                          "enum": [
+                            "catch-log-without-exception",
+                            "test-without-assertion",
+                            "function-lines-limit",
+                            "structure/function-lines-limit",
+                            "function-statements-limit",
+                            "structure/function-statements-limit",
+                            "function-control-nesting-limit",
+                            "structure/function-control-nesting-limit",
+                            "function-parameters-limit",
+                            "structure/function-parameters-limit",
+                            "crap-score-limit",
+                            "crap/crap-score-limit",
+                            "crap-coverage-unknown",
+                            "crap/crap-coverage-unknown",
+                            "changed-branch-coverage",
+                            "coverage/changed-branch-coverage",
+                            "jacoco/changed-branch-coverage",
+                            "coverage-py/changed-branch-coverage",
+                            "mutant-survived",
+                            "mutation/mutant-survived",
+                            "pit/mutant-survived",
+                            "mutmut/mutant-survived",
+                            "mutant-nocoverage",
+                            "mutation/mutant-nocoverage",
+                            "pit/mutant-nocoverage",
+                            "mutmut/mutant-nocoverage",
+                            "duplicate-clone",
+                            "duplicates/duplicate-clone",
+                            "stability-direction",
+                            "coupling/stability-direction",
+                            "file-lines-limit",
+                            "structure/file-lines-limit",
+                            "line-length-limit",
+                            "structure/line-length-limit",
+                            "folder-files-limit",
+                            "structure/folder-files-limit",
+                            "slow-test",
+                            "test-runtime/slow-test",
+                            "committed-env-file",
+                            "repository-hygiene/committed-env-file",
+                            "committed-private-key",
+                            "repository-hygiene/committed-private-key",
+                            "committed-binary",
+                            "repository-hygiene/committed-binary",
+                            "large-file",
+                            "repository-hygiene/large-file",
+                            "committed-build-output",
+                            "repository-hygiene/committed-build-output",
+                            "test-only-export",
+                            "dead-code/test-only-export",
+                            "coupling/test-only-export",
+                            "test-console-output",
+                            "folder-depth-limit",
+                            "structure/folder-depth-limit",
+                            "class-methods-limit",
+                            "structure/class-methods-limit",
+                            "class-fields-limit",
+                            "structure/class-fields-limit",
+                            "inheritance-depth-limit",
+                            "structure/inheritance-depth-limit",
+                            "test-runtime/test-console-output",
+                            "test-runtime/test-not-run",
+                            "kotlin-source/GeneratedOnHandWrittenCode",
+                            "kotlin-source/MutationIgnoreMarker",
+                            "kotlin-source/CommentedOutCode",
+                            "kotlin-source/MutableModuleState",
+                            "kotlin-source/GenericTypeName",
+                            "kotlin-source/GenericPackageName",
+                            "kotlin-source/LogStringConcatenation",
+                            "kotlin-source/ShellCommand",
+                            "kotlin-source/IoCallInLoop",
+                            "kotlin-source/CatchOnlyLogsOrReturnsDefault",
+                            "kotlin-source/BooleanFlagParameter",
+                            "kotlin-source/HardcodedSecret",
+                            "kotlin-source/CredentialLiteral",
+                            "kotlin-source/SecretInLog",
+                            "kotlin-source/TestClassWithoutTestCases",
+                            "kotlin-source/DetachedTestCase",
+                            "kotlin-source/TestHelperInSource",
+                            "kotlin-source/SqlStringBuilding",
+                            "kotlin-source/WeakHash",
+                            "kotlin-source/TlsVerificationOff",
+                            "kotlin-source/HttpWithoutTimeout",
+                            "kotlin-source/UnsafeDeserialization",
+                            "kotlinc/deprecation",
+                            "kotlinc/unchecked",
+                            "kotlinc/cast",
+                            "kotlinc/lint-not-run",
+                            "pmd/FixedSleepInTest",
+                            "pmd/NegativeWaitInTest",
+                            "pmd/SpringUnusedContext",
+                            "pmd/ExhaustiveEnumPredicate",
+                            "pmd/StaticForwardingWrapper",
+                            "pmd/SingularAndPluralMember",
+                            "unused-option",
+                            "structure/unused-option"
+                          ]
+                        },
+                        { "pattern": "^detekt\\.[a-z-]+\\.[A-Z][A-Za-z0-9]*$" },
+                        {
+                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|spring|test-runtime)/[\\s\\S]"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "paths": {
+                      "items": {
+                        "allOf": [
+                          { "not": { "pattern": "^\\.\\/" } },
+                          { "not": { "pattern": "\\/$" } },
+                          { "not": { "pattern": "\\(\\?" } }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "preset": { "const": "python" } }, "required": ["preset"] },
+      "then": {
+        "properties": {
+          "react": false,
+          "i18n": false,
+          "kotlin": false,
+          "testConsole": false,
+          "layout": {
+            "properties": {
+              "sourceRoots": false,
+              "testRoots": false,
+              "excludedGlobs": false,
+              "entryPoints": false,
+              "sharedRoots": false,
+              "featureRoots": false
+            }
+          },
+          "tools": {
+            "properties": {
+              "prettier": false,
+              "eslint": false,
+              "typescript": false,
+              "tests": false,
+              "pmd": false,
+              "checkstyle": false,
+              "ktlint": false,
+              "ktfmt": false,
+              "detekt": false
+            }
+          },
+          "conventions": {
+            "properties": {
+              "python.quotes": {
+                "description": "Python quotes: \"double\" (double quotes), \"single\" (single quotes).",
+                "enum": ["double", "single"]
+              },
+              "python.lineLength": {
+                "description": "Python line length: \"79\" (79 columns), \"88\" (88 columns), \"100\" (100 columns), \"120\" (120 columns), or a whole number from 10 to 999.",
+                "anyOf": [
+                  { "enum": ["79", "88", "100", "120"] },
+                  { "type": "string", "pattern": "^[1-9]\\d{1,2}$" }
+                ]
+              },
+              "python.indentation": {
+                "description": "Python indentation: \"4\" (4 spaces), \"2\" (2 spaces), \"tab\" (tabs).",
+                "enum": ["4", "2", "tab"]
+              }
+            },
+            "additionalProperties": false
+          },
+          "exceptions": {
+            "items": {
+              "allOf": [
+                {
+                  "properties": {
+                    "rule": {
+                      "enum": [
+                        "function-lines-limit",
+                        "structure/function-lines-limit",
+                        "function-statements-limit",
+                        "structure/function-statements-limit",
+                        "function-control-nesting-limit",
+                        "structure/function-control-nesting-limit",
+                        "function-parameters-limit",
+                        "structure/function-parameters-limit",
+                        "crap-score-limit",
+                        "crap/crap-score-limit",
+                        "crap-coverage-unknown",
+                        "crap/crap-coverage-unknown",
+                        "changed-branch-coverage",
+                        "coverage/changed-branch-coverage",
+                        "jacoco/changed-branch-coverage",
+                        "coverage-py/changed-branch-coverage",
+                        "mutant-survived",
+                        "mutation/mutant-survived",
+                        "pit/mutant-survived",
+                        "mutmut/mutant-survived",
+                        "mutant-nocoverage",
+                        "mutation/mutant-nocoverage",
+                        "pit/mutant-nocoverage",
+                        "mutmut/mutant-nocoverage",
+                        "file-lines-limit",
+                        "structure/file-lines-limit",
+                        "line-length-limit",
+                        "structure/line-length-limit",
+                        "folder-files-limit",
+                        "structure/folder-files-limit",
+                        "slow-test",
+                        "test-runtime/slow-test",
+                        "committed-env-file",
+                        "repository-hygiene/committed-env-file",
+                        "committed-private-key",
+                        "repository-hygiene/committed-private-key",
+                        "committed-binary",
+                        "repository-hygiene/committed-binary",
+                        "large-file",
+                        "repository-hygiene/large-file",
+                        "committed-build-output",
+                        "repository-hygiene/committed-build-output",
+                        "test-only-export",
+                        "dead-code/test-only-export",
+                        "coupling/test-only-export",
+                        "test-console-output",
+                        "folder-depth-limit",
+                        "structure/folder-depth-limit",
+                        "class-methods-limit",
+                        "structure/class-methods-limit",
+                        "class-fields-limit",
+                        "structure/class-fields-limit",
+                        "inheritance-depth-limit",
+                        "structure/inheritance-depth-limit"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "paths": {
+                      "items": {
+                        "allOf": [
+                          { "not": { "pattern": "^\\.\\/" } },
+                          { "not": { "pattern": "\\/$" } },
+                          { "not": { "pattern": "\\(\\?" } }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "fileGlob": {
+      "type": "string",
+      "minLength": 1,
+      "allOf": [
+        { "not": { "pattern": "^\\.\\/" } },
+        { "not": { "pattern": "\\/$" } },
+        { "not": { "pattern": "\\(\\?" } }
+      ]
+    },
+    "folderGlob": {
+      "type": "string",
+      "minLength": 1,
+      "allOf": [
+        { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+        { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } },
+        { "not": { "pattern": "^\\.\\/" } },
+        { "not": { "pattern": "\\/$" } },
+        { "not": { "pattern": "\\(\\?" } }
+      ]
+    },
+    "exception": {
+      "description": "One rule lifted for some paths.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule", "paths", "reason"],
+      "properties": {
+        "rule": {
+          "description": "The rule to lift, as a finding prints it: a nitpicker rule such as \"file-lines-limit\", an ESLint, ruff or other tool rule, or \"<tool>/<rule>\" (for example \"pmd/UnusedPrivateField\"). The message of each finding prints the whole entry to copy.",
+          "type": "string",
+          "minLength": 1,
+          "not": { "pattern": "^(?:[\\w-]+\\/)?TS\\d+$" }
+        },
+        "paths": {
+          "description": "Globs, relative to the project root with \"/\" separators, of the files (or folders, for folder rules) the rule is lifted for.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/exceptionGlob" }
+        },
+        "packages": {
+          "description": "Package names the unused-dependency, unlisted-dependency or unresolved-import rule is lifted for.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "function": {
+          "description": "The name of the one function the rule is lifted for. Only for the function and coverage rules; required for changed-branch-coverage.",
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "name": {
+          "description": "The name of the one declaration the rule is lifted for. Only for the dead-code rules \"exports\" and \"types\".",
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "reason": {
+          "description": "Why the rule is lifted here. Required, and it must say something: the \"...\" a message prints is refused.",
+          "type": "string",
+          "pattern": "[\\p{L}\\p{N}]"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["function"] },
+          "then": { "properties": { "rule": { "$ref": "#/definitions/functionRule" } } }
+        },
+        {
+          "if": { "required": ["name"] },
+          "then": { "properties": { "rule": { "$ref": "#/definitions/nameRule" } } }
+        },
+        {
+          "if": { "required": ["packages"] },
+          "then": { "properties": { "rule": { "$ref": "#/definitions/packageRule" } } }
+        },
+        {
+          "if": {
+            "required": ["rule"],
+            "properties": { "rule": { "$ref": "#/definitions/functionRequiredRule" } }
+          },
+          "then": { "required": ["function"] }
+        },
+        { "not": { "required": ["function", "name"] } }
+      ]
+    },
+    "exceptionGlob": {
+      "type": "string",
+      "allOf": [
+        { "pattern": "\\S" },
+        { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+        { "not": { "pattern": "\\\\(?![{}[\\],*?\\\\])" } },
+        { "not": { "pattern": "(?:^|/)\\.\\.(?:/|$)" } }
+      ]
+    },
+    "functionRule": {
+      "enum": [
+        "function-lines-limit",
+        "structure/function-lines-limit",
+        "function-statements-limit",
+        "structure/function-statements-limit",
+        "function-control-nesting-limit",
+        "structure/function-control-nesting-limit",
+        "function-parameters-limit",
+        "structure/function-parameters-limit",
+        "crap-score-limit",
+        "crap/crap-score-limit",
+        "crap-coverage-unknown",
+        "crap/crap-coverage-unknown",
+        "changed-branch-coverage",
+        "coverage/changed-branch-coverage",
+        "jacoco/changed-branch-coverage",
+        "coverage-py/changed-branch-coverage",
+        "mutant-survived",
+        "mutation/mutant-survived",
+        "pit/mutant-survived",
+        "mutmut/mutant-survived",
+        "mutant-nocoverage",
+        "mutation/mutant-nocoverage",
+        "pit/mutant-nocoverage",
+        "mutmut/mutant-nocoverage"
+      ]
+    },
+    "functionRequiredRule": {
+      "enum": [
+        "changed-branch-coverage",
+        "coverage/changed-branch-coverage",
+        "jacoco/changed-branch-coverage",
+        "coverage-py/changed-branch-coverage"
+      ]
+    },
+    "nameRule": { "enum": ["exports", "dead-code/exports", "types", "dead-code/types"] },
+    "packageRule": {
+      "enum": [
+        "unused-dependency",
+        "dead-code/unused-dependency",
+        "unlisted-dependency",
+        "dead-code/unlisted-dependency",
+        "unresolved-import",
+        "dead-code/unresolved-import"
+      ]
+    },
+    "nitpickerRule": {
+      "enum": [
+        "function-lines-limit",
+        "structure/function-lines-limit",
+        "function-statements-limit",
+        "structure/function-statements-limit",
+        "function-control-nesting-limit",
+        "structure/function-control-nesting-limit",
+        "function-parameters-limit",
+        "structure/function-parameters-limit",
+        "crap-score-limit",
+        "crap/crap-score-limit",
+        "crap-coverage-unknown",
+        "crap/crap-coverage-unknown",
+        "changed-branch-coverage",
+        "coverage/changed-branch-coverage",
+        "jacoco/changed-branch-coverage",
+        "coverage-py/changed-branch-coverage",
+        "mutant-survived",
+        "mutation/mutant-survived",
+        "pit/mutant-survived",
+        "mutmut/mutant-survived",
+        "mutant-nocoverage",
+        "mutation/mutant-nocoverage",
+        "pit/mutant-nocoverage",
+        "mutmut/mutant-nocoverage",
+        "duplicate-clone",
+        "duplicates/duplicate-clone",
+        "stability-direction",
+        "coupling/stability-direction",
+        "no-production-runtime",
+        "test-runtime/no-production-runtime",
+        "type-only-production-dependency",
+        "test-runtime/type-only-production-dependency",
+        "baseline-expansion",
+        "public-alternative-bypass",
+        "entry-points/public-alternative-bypass",
+        "unused-prop",
+        "structure/unused-prop",
+        "unused-option",
+        "structure/unused-option",
+        "test-only-export",
+        "dead-code/test-only-export",
+        "coupling/test-only-export",
+        "file-lines-limit",
+        "structure/file-lines-limit",
+        "line-length-limit",
+        "structure/line-length-limit",
+        "folder-files-limit",
+        "structure/folder-files-limit",
+        "folder-depth-limit",
+        "structure/folder-depth-limit",
+        "class-methods-limit",
+        "structure/class-methods-limit",
+        "class-fields-limit",
+        "structure/class-fields-limit",
+        "inheritance-depth-limit",
+        "structure/inheritance-depth-limit",
+        "shared-used-by-one-feature",
+        "coupling/shared-used-by-one-feature",
+        "duplicate-definition",
+        "structure/duplicate-definition",
+        "sibling-copy-edit",
+        "structure/sibling-copy-edit",
+        "exported-name-collision",
+        "structure/exported-name-collision",
+        "redefined-library-component",
+        "structure/redefined-library-component",
+        "new-icon-asset",
+        "structure/new-icon-asset",
+        "component-story-missing",
+        "structure/component-story-missing",
+        "javascript-in-typescript-project",
+        "structure/javascript-in-typescript-project",
+        "slow-test",
+        "test-runtime/slow-test",
+        "committed-env-file",
+        "repository-hygiene/committed-env-file",
+        "committed-private-key",
+        "repository-hygiene/committed-private-key",
+        "committed-binary",
+        "repository-hygiene/committed-binary",
+        "large-file",
+        "repository-hygiene/large-file",
+        "committed-build-output",
+        "repository-hygiene/committed-build-output",
+        "unused-dependency",
+        "dead-code/unused-dependency",
+        "unlisted-dependency",
+        "dead-code/unlisted-dependency",
+        "unresolved-import",
+        "dead-code/unresolved-import",
+        "test-console-output",
+        "doc-comment-content"
+      ]
+    }
+  }
+}
