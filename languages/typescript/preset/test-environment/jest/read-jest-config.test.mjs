@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -104,7 +104,7 @@ describe('readJestConfig', () => {
     expect(failure).toBeUndefined();
     expect(config.configs).toHaveLength(1);
     expect(config.configs[0].testEnvironment).toBe(
-      path.join(repositoryJest, '../jest-environment-node/build/index.js'),
+      realpathSync(path.join(repositoryJest, '../jest-environment-node/build/index.js')),
     );
   });
 

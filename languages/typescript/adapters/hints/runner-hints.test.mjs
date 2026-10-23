@@ -101,7 +101,7 @@ describe('hints follow the runner the project uses', () => {
   it('tells a Vitest project with node:test files how to run them, without naming issue ids', () => {
     underRunner('vitest', () => {
       expect(hint('vitest/no-import-node-test', 'Import from vitest instead of node:test')).toBe(
-        'Import from vitest instead of node:test nitpicker runs this project\'s tests with Vitest, which does not collect node:test files. Import from `vitest`, or, if the project runs its tests with node:test, set "tools.tests.runner" to "node" in nitpicker.config.json.',
+        'Import from vitest instead of node:test nitpicker runs this project\'s tests with Vitest, which does not collect node:test files. Import from `vitest`, or, if the project runs its tests with node:test, set "tools.tests.runner" to "node" in nitpicker.config.json. An exception fits only a file that must stay on node:test while the rest of the project runs on Vitest.',
       );
     });
   });

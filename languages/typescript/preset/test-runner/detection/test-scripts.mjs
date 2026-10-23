@@ -165,6 +165,12 @@ export function otherTestScriptNames(scripts) {
   );
 }
 
+export function testScriptCommands(scripts) {
+  return [TEST_SCRIPT, ...otherTestScriptNames(scripts)].flatMap((name) =>
+    expandedCommands(scripts, name),
+  );
+}
+
 export function manifestScripts(manifest) {
   const scripts = manifest?.scripts;
   return typeof scripts === 'object' && scripts !== null ? scripts : {};

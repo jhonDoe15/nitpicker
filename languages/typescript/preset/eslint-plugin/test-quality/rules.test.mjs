@@ -200,8 +200,22 @@ tester.run('fake-timers-require-restore under every runner', fakeTimersRequireRe
     "import sinon from 'sinon'; afterEach(() => sinon.restore()); it('a', () => { sinon.useFakeTimers(); });",
     "import FakeTimers from '@sinonjs/fake-timers'; let clock; beforeEach(() => { clock = FakeTimers.install(); }); afterEach(() => clock.uninstall());",
     "it('a', () => { jest.useFakeTimers(); try { run(); } finally { jest.useRealTimers(); } });",
+    'export const mochaHooks = { beforeEach() { this.clock = sinon.useFakeTimers(); }, afterEach() { this.clock.restore(); } };',
+    "import { useFakeTimers } from 'sinon'; let clock; beforeEach(() => { clock = useFakeTimers(); }); afterEach(() => clock.restore());",
   ],
   invalid: [
+    {
+      code: "import { useFakeTimers } from 'sinon'; beforeEach(() => { useFakeTimers(); });",
+      errors: [{ messageId: 'unrestored' }],
+    },
+    {
+      code: "import test from 'node:test'; test('a', () => { test.mock.timers.enable(); });",
+      errors: [{ messageId: 'unrestored' }],
+    },
+    {
+      code: "import * as nt from 'node:test'; nt.it('a', () => { nt.mock.timers.enable(); });",
+      errors: [{ messageId: 'unrestored' }],
+    },
     {
       code: "it('a', () => { jest.useFakeTimers(); run(); });",
       errors: [
