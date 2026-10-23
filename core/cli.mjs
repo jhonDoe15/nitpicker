@@ -3,6 +3,7 @@ import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
 import { reportingProgress } from './diff/execution/progress.mjs';
 import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
+import { runBaseCommand } from './command/base.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
@@ -96,6 +97,9 @@ function runCommand(cli) {
       stderr: cli.stderr,
       runTasks: cli.runTasks,
     });
+  }
+  if (cli.arguments_[0] === 'base') {
+    return runBaseCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
   }
   const options = parseArguments(cli.arguments_);
   if (options.help) {
