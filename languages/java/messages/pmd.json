@@ -12,11 +12,11 @@
     "mayBeIntended": true
   },
   "AddEmptyString": {
-    "fix": "Convert explicitly with String.valueOf(value) instead of concatenating an empty string.",
+    "fix": "Delete the \"\" when another operand is already a String (i + \"x\"); when the value is the only other operand, write String.valueOf(value).",
     "mayBeIntended": true
   },
   "AppendCharacterWithChar": {
-    "fix": "Append a char literal for one character, such as append('x').",
+    "fix": "Append a single character as a char literal: append('x').",
     "mayBeIntended": true
   },
   "ArrayIsStoredDirectly": {
@@ -36,7 +36,7 @@
     "mayBeIntended": true
   },
   "AvoidArrayLoops": {
-    "fix": "Copy arrays with Arrays.copyOf, Arrays.copyOfRange or System.arraycopy instead of an element-copy loop.",
+    "fix": "Copy with System.arraycopy(source, sourceStart, target, targetStart, length) instead of an element-by-element loop.",
     "mayBeIntended": true
   },
   "AvoidAssertAsIdentifier": {
@@ -48,7 +48,7 @@
     "mayBeIntended": false
   },
   "AvoidCalendarDateCreation": {
-    "fix": "Use java.time with an injected Clock when reading the current time; reserve Calendar for calendar calculations.",
+    "fix": "Read the current time from an injected java.time.Clock: Instant.now(clock).",
     "mayBeIntended": true
   },
   "AvoidCallingFinalize": {
@@ -88,7 +88,7 @@
     "mayBeIntended": false
   },
   "AvoidFileStream": {
-    "fix": "Use Files.newInputStream, Files.newOutputStream, Files.newBufferedReader or Files.newBufferedWriter.",
+    "fix": "Replace it with its Files form: Files.newInputStream, newOutputStream, newBufferedReader or newBufferedWriter for the matching java.io class.",
     "mayBeIntended": true
   },
   "AvoidInstanceofChecksInCatchClause": {
@@ -96,7 +96,7 @@
     "mayBeIntended": false
   },
   "AvoidInstantiatingObjectsInLoops": {
-    "fix": "Move reusable allocation outside the loop only when each iteration does not need a distinct object.",
+    "fix": "Create the object once before the loop and reuse it in every iteration.",
     "mayBeIntended": true
   },
   "AvoidLiteralsInIfCondition": {
@@ -136,15 +136,15 @@
     "mayBeIntended": true
   },
   "AvoidSynchronizedAtMethodLevel": {
-    "fix": "Use a private final ReentrantLock released in finally, an atomic or a concurrent collection instead of a synchronized method.",
+    "fix": "Guard the state with a private final ReentrantLock: lock.lock() right before try, lock.unlock() in finally.",
     "mayBeIntended": true
   },
   "AvoidSynchronizedStatement": {
-    "fix": "Use a private final ReentrantLock released in finally, an atomic or a concurrent collection instead of a synchronized block.",
+    "fix": "Guard the state with a private final ReentrantLock: lock.lock() right before try, lock.unlock() in finally.",
     "mayBeIntended": true
   },
   "AvoidThreadGroup": {
-    "fix": "Use an owned ExecutorService or structured task scope instead of ThreadGroup.",
+    "fix": "Run and stop the threads through an ExecutorService instead of a ThreadGroup.",
     "mayBeIntended": true
   },
   "AvoidUsingHardCodedIP": {
@@ -156,11 +156,11 @@
     "mayBeIntended": false
   },
   "AvoidUsingVolatile": {
-    "fix": "Choose a visibility and atomicity strategy appropriate to the shared state; volatile alone does not make compound updates atomic.",
+    "fix": "Hold the value in the matching java.util.concurrent.atomic class (AtomicInteger, AtomicReference) instead of a volatile field.",
     "mayBeIntended": true
   },
   "BigIntegerInstantiation": {
-    "fix": "Reuse BigInteger or BigDecimal constants such as ZERO, ONE and TEN when they represent the value.",
+    "fix": "Use the constant (BigInteger.ZERO, ONE, TWO, TEN or BigDecimal.ZERO, ONE, TEN) instead of creating the value.",
     "mayBeIntended": true
   },
   "BrokenNullCheck": {
@@ -216,11 +216,11 @@
     "mayBeIntended": false
   },
   "ConsecutiveAppendsShouldReuse": {
-    "fix": "Chain consecutive append calls on the same builder.",
+    "fix": "Chain the appends on the same builder in one statement: sb.append(a).append(b).",
     "mayBeIntended": true
   },
   "ConsecutiveLiteralAppends": {
-    "fix": "Combine adjacent literal text into one append call.",
+    "fix": "Join the adjacent literals into one append: append(\"ab\").",
     "mayBeIntended": true
   },
   "ConstantsInInterface": {
@@ -264,11 +264,11 @@
     "mayBeIntended": false
   },
   "DoNotUseThreads": {
-    "fix": "In a managed J2EE container, submit work to its managed executor.",
+    "fix": "Submit the work to the container's ManagedExecutorService instead of creating threads.",
     "mayBeIntended": true
   },
   "DontCallThreadRun": {
-    "fix": "Start the thread with start(), or submit the task to an owned executor; run() executes on the caller thread.",
+    "fix": "Call start(); run() runs the body on the calling thread.",
     "mayBeIntended": true
   },
   "DontImportSun": {
@@ -284,7 +284,7 @@
     "mayBeIntended": false
   },
   "DoubleCheckedLocking": {
-    "fix": "Prefer an initialization-on-demand holder or eager initialization; correct double-checked publication requires a volatile field.",
+    "fix": "Initialize the value eagerly in a final field (static final for a static); class initialization already defers it to first use.",
     "mayBeIntended": true
   },
   "EmptyCatchBlock": {
@@ -328,7 +328,7 @@
     "mayBeIntended": true
   },
   "HardCodedCryptoKey": {
-    "fix": "Load cryptographic keys from an external secret store or key management service instead of embedding key material in source.",
+    "fix": "Read the key at run time from the deployment's secret store; keep no key bytes in source.",
     "mayBeIntended": true
   },
   "IdempotentOperations": {
@@ -340,15 +340,15 @@
     "mayBeIntended": false
   },
   "InefficientEmptyStringCheck": {
-    "fix": "Use String.isBlank() when Unicode whitespace is intended; preserve trim semantics with a dedicated predicate otherwise.",
+    "fix": "Call s.isBlank() instead of trimming and checking the result for emptiness.",
     "mayBeIntended": true
   },
   "InefficientStringBuffering": {
-    "fix": "Append each value separately instead of concatenating values inside the builder constructor or append call.",
+    "fix": "Give each value its own append: sb.append(a).append(b), not sb.append(a + b).",
     "mayBeIntended": true
   },
   "InsecureCryptoIv": {
-    "fix": "Generate a fresh IV or nonce appropriate to the cipher mode for each encryption; store it with the ciphertext.",
+    "fix": "Generate a fresh IV for each encryption with SecureRandom.nextBytes and store it with the ciphertext.",
     "mayBeIntended": true
   },
   "InstantiationToGetClass": {
@@ -356,7 +356,7 @@
     "mayBeIntended": false
   },
   "InsufficientStringBufferDeclaration": {
-    "fix": "Initialize the builder with capacity for the expected output when its size is known.",
+    "fix": "Pass the expected length of the result as the initial capacity: new StringBuilder(expectedLength).",
     "mayBeIntended": true
   },
   "InvalidLogMessageFormat": {
@@ -468,7 +468,7 @@
     "mayBeIntended": false
   },
   "NonThreadSafeSingleton": {
-    "fix": "Prefer dependency injection, eager initialization or an initialization-on-demand holder over unsynchronized lazy singleton state.",
+    "fix": "Initialize the instance eagerly: private static final T INSTANCE = new T(); class initialization already defers it to first use.",
     "mayBeIntended": true
   },
   "NullAssignment": {
@@ -480,7 +480,7 @@
     "mayBeIntended": false
   },
   "OptimizableToArrayCall": {
-    "fix": "Use a zero-length target array, or the array-constructor overload, when converting a collection to an array.",
+    "fix": "Pass a zero-length array: list.toArray(new String[0]).",
     "mayBeIntended": true
   },
   "OverrideBothEqualsAndHashcode": {
@@ -504,7 +504,7 @@
     "mayBeIntended": false
   },
   "RedundantFieldInitializer": {
-    "fix": "Remove the explicit default field initializer; Java initializes the field to that value.",
+    "fix": "Delete the initializer; Java already sets the field to 0, false or null.",
     "mayBeIntended": true
   },
   "ReplaceEnumerationWithIterator": {
@@ -552,11 +552,11 @@
     "mayBeIntended": false
   },
   "StringInstantiation": {
-    "fix": "Reuse the string literal or value instead of constructing a redundant String copy.",
+    "fix": "Use the String itself instead of new String(s); for a StringBuilder or StringBuffer, call sb.toString().",
     "mayBeIntended": true
   },
   "StringToString": {
-    "fix": "Use the String value directly instead of calling toString().",
+    "fix": "Delete the toString() call; the value is already a String.",
     "mayBeIntended": true
   },
   "SuspiciousEqualsMethodName": {
@@ -584,11 +584,11 @@
     "mayBeIntended": true
   },
   "TooFewBranchesForASwitchStatement": {
-    "fix": "Use a small if/else when it expresses the decision more clearly; keep exhaustive switches when appropriate.",
+    "fix": "Write the decision as an if/else instead of a switch with fewer than three branches.",
     "mayBeIntended": true
   },
   "TooFewBranchesForSwitch": {
-    "fix": "Use a small if/else when it expresses the decision more clearly; keep exhaustive switches when appropriate.",
+    "fix": "Write the decision as an if/else instead of a switch with fewer than three branches.",
     "mayBeIntended": true
   },
   "UnconditionalIfStatement": {
@@ -636,7 +636,7 @@
     "mayBeIntended": false
   },
   "UnsynchronizedStaticFormatter": {
-    "fix": "Use an immutable java.time formatter, or confine the mutable formatter to one invocation.",
+    "fix": "Format dates with a static final DateTimeFormatter; create any other Format (DecimalFormat, MessageFormat) as a local where it is used.",
     "mayBeIntended": true
   },
   "UnusedAssignment": {
@@ -664,11 +664,11 @@
     "mayBeIntended": true
   },
   "UseArrayListInsteadOfVector": {
-    "fix": "Use ArrayList for local state; choose an explicit concurrency strategy for shared state.",
+    "fix": "Use new ArrayList<>() instead of new Vector<>().",
     "mayBeIntended": true
   },
   "UseArraysAsList": {
-    "fix": "Use Arrays.asList for an array-backed view, or copy that view when an independent mutable list is required.",
+    "fix": "Replace the loop with Collections.addAll(target, array).",
     "mayBeIntended": true
   },
   "UseCollectionIsEmpty": {
@@ -676,7 +676,7 @@
     "mayBeIntended": false
   },
   "UseConcurrentHashMap": {
-    "fix": "Use ConcurrentHashMap for concurrently accessed mappings; keep HashMap for invocation-local state.",
+    "fix": "Declare the shared map as a ConcurrentHashMap.",
     "mayBeIntended": true
   },
   "UseCorrectExceptionLogging": {
@@ -692,11 +692,11 @@
     "mayBeIntended": false
   },
   "UseIOStreamsWithApacheCommonsFileItem": {
-    "fix": "Process the FileItem input stream instead of materializing the whole upload in memory.",
+    "fix": "Read the upload through item.getInputStream() instead of get() or getString().",
     "mayBeIntended": true
   },
   "UseIndexOfChar": {
-    "fix": "Use the char overload for a single character, such as indexOf('x').",
+    "fix": "Pass a single character as a char literal: indexOf('x').",
     "mayBeIntended": true
   },
   "UseLocaleWithCaseConversions": {
@@ -704,7 +704,7 @@
     "mayBeIntended": false
   },
   "UseNotifyAllInsteadOfNotify": {
-    "fix": "Wake all monitor waiters with notifyAll(), and have each waiter check its condition in a loop.",
+    "fix": "Replace wait/notify with a Condition from a private final ReentrantLock: await() in a loop, signalAll().",
     "mayBeIntended": true
   },
   "UseProperClassLoader": {
@@ -716,11 +716,11 @@
     "mayBeIntended": false
   },
   "UseStringBufferForStringAppends": {
-    "fix": "Accumulate loop output in a local StringBuilder and convert to String once after the loop.",
+    "fix": "Build the text in a local StringBuilder in the loop and call toString() once after it.",
     "mayBeIntended": true
   },
   "UseStringBufferLength": {
-    "fix": "Read the CharSequence length directly instead of allocating a String just to measure it.",
+    "fix": "Call sb.length() instead of converting the builder to a String first.",
     "mayBeIntended": true
   },
   "UseTryWithResources": {
@@ -736,7 +736,7 @@
     "mayBeIntended": false
   },
   "UselessStringValueOf": {
-    "fix": "Append the value directly instead of wrapping it with String.valueOf.",
+    "fix": "Delete the String.valueOf call and pass the value itself to + or append.",
     "mayBeIntended": true
   },
   "WhileLoopWithLiteralBoolean": {
