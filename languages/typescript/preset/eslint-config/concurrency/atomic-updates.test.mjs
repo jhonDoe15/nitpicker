@@ -118,11 +118,12 @@ describe('atomic updates', () => {
     const text =
       'Possible race condition: `state.total` might be assigned based on an outdated state of `state`.';
     const message = routedEslintMessage({ ruleId: rule, text, relativePath: 'src/main/update.ts' });
-    expect(message).toContain(text);
-    expect(message).toContain('this write then overwrites that change');
-    expect(message).toContain('with no `await` between them, or serialize the whole operation');
-    expect(message).toContain(
-      'If this is intended, add {"rule":"require-atomic-updates","paths":["src/main/update.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    expect(message).toBe(
+      `${text} Another call can change it during the \`await\`, and this write then overwrites that change. ` +
+        'Await the new value into a local first and read and write the shared state in one step with no ' +
+        '`await` between them, or serialize the whole operation with a lock or a queue. If this is intended, ' +
+        'add {"rule":"require-atomic-updates","paths":["src/main/update.ts"],"reason":"..."} to "exceptions" ' +
+        'in nitpicker.config.json.',
     );
   });
 });
