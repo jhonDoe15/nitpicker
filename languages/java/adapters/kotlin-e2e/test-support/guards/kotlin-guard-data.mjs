@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { SOURCE_RULE_IDS } from '../../kotlin/rules/kotlin-rules.mjs';
+import { SOURCE_RULE_IDS } from '../../../kotlin/rules/kotlin-rules.mjs';
 
 const PACKAGE = 'package demo.guards\n\n';
 const LOGGER = `${PACKAGE}import java.util.logging.Logger\n\n`;

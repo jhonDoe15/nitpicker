@@ -19,6 +19,8 @@ import {
 import {
   GATE_PACKAGES,
   enforceable,
+  pythonExceptionRoute,
+  reportedFindings,
   withoutMutants,
 } from '../test-support/python-gate-support.mjs';
 
@@ -84,15 +86,38 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint and type gates end to end
       'ruff-format/format',
     ]);
     const junit = readFileSync(path.join(violation.reports, 'report.junit.xml'), 'utf8');
-    expect(/F401/.test(junit), junit).toBe(true);
-    expect(/ruff\/F401 src\/demo\/bad\.py:1\n/.test(violation.text), violation.text).toBe(true);
+    expect(
+      [...junit.matchAll(/<testcase classname="quality\.diff\.new-findings" name="([^"]+)"/g)].map(
+        ([, name]) => name,
+      ),
+    ).toEqual([
+      'mutmut/mutant-nocoverage src/demo/bad.py:5',
+      'mypy/no-untyped-def src/demo/bad.py:4',
+      'ruff/F401 src/demo/bad.py:1',
+      'ruff-format/format src/demo/bad.py',
+    ]);
+    expect(reportedFindings(violation.text)).toEqual([
+      'mypy/no-untyped-def src/demo/bad.py:4: Function is missing a type annotation. ' +
+        'Fix the type; inline ignores are banned. ' +
+        pythonExceptionRoute('no-untyped-def', 'src/demo/bad.py'),
+      'ruff/F401 src/demo/bad.py:1: `sys` imported but unused. ' +
+        pythonExceptionRoute('F401', 'src/demo/bad.py'),
+      'ruff-format/format src/demo/bad.py: ' +
+        'File is not formatted with ruff (detected; set "python.formatter" if wrong). ' +
+        'Format it with the "Format with ruff" command printed at the start of the run.',
+    ]);
   });
   it('fails a new type error found by mypy, strict by default, and keeps the legacy ones baselined', () => {
     const result = gate(project, 'type-error');
 
     expect(result.exitCode, result.text).toBe(1);
     expect(withoutMutants(enforceable(result))).toEqual(['mypy return-value typed.py']);
-    expect(/Fix the type; inline ignores are banned/.test(result.text), result.text).toBe(true);
+    expect(reportedFindings(result.text)).toEqual([
+      'mypy/return-value src/demo/typed.py:2: ' +
+        'Incompatible return value type (got "int", expected "str"). ' +
+        'Fix the type; inline ignores are banned. ' +
+        pythonExceptionRoute('return-value', 'src/demo/typed.py'),
+    ]);
   });
   it('reports line coverage as a descriptive finding', () => {
     expect(violation.json('new-findings.json').filter(({ tool }) => tool === 'coverage')).toEqual([

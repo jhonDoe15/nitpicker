@@ -13,7 +13,7 @@ import {
   guardFindings,
   printedRule,
   summary,
-} from './kotlin-guard-data.mjs';
+} from '../test-support/guards/kotlin-guard-data.mjs';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset banned source guards end to end', () => {
   let project;

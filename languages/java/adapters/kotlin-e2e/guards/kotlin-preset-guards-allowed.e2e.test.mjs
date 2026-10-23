@@ -6,7 +6,7 @@ import {
   kotlinE2eEnabled,
   removeProject,
 } from '../test-support/kotlin-e2e-project.mjs';
-import { ALLOWED_FILES, GUARD_ROOT, summary } from './kotlin-guard-data.mjs';
+import { ALLOWED_FILES, GUARD_ROOT, summary } from '../test-support/guards/kotlin-guard-data.mjs';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset allowed source forms end to end', () => {
   let project;

@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../../builds/java-build.mjs';
-import { collectJavaFindings } from '../java-diff.mjs';
+import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
+import { collectJavaFindings } from '../../java-diff.mjs';
 import {
   ARCHUNIT_FINDING,
   CALC,
@@ -14,7 +14,7 @@ import {
   summary,
   useFrameworkProjects,
   withRuleClassOf,
-} from './__tests__/test-frameworks-project.mjs';
+} from '../__tests__/test-frameworks-project.mjs';
 
 describe.skipIf(!enabled)('Java preset on JUnit and ArchUnit test frameworks', () => {
   const { projectOf, findingsOf } = useFrameworkProjects();

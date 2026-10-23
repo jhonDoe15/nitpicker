@@ -1,12 +1,12 @@
-import { readFileSync, statSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { analyzeJavaSnapshot } from '../java-runner.mjs';
-import { runMaven } from '../../maven/maven-command.mjs';
-import { archunitMatcher } from '../../maven/maven-tests.mjs';
-import { requireTestngRun } from '../../maven/results/maven-test-results.mjs';
-import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
-import { mavenFrameworkFindings } from '../test-support/maven-framework.mjs';
+import { analyzeJavaSnapshot } from '../../java-runner.mjs';
+import { runMaven } from '../../../maven/maven-command.mjs';
+import { archunitMatcher } from '../../../maven/maven-tests.mjs';
+import { requireTestngRun } from '../../../maven/results/maven-test-results.mjs';
+import { childrenNamed, parseXml } from '../../../../../shared/ingest/common.mjs';
+import { mavenFrameworkFindings } from '../../test-support/maven-framework.mjs';
 import {
   ARCHUNIT_FINDING,
   CALC_FINDINGS,
@@ -14,7 +14,7 @@ import {
   maven,
   summary,
   useFrameworkProjects,
-} from './__tests__/test-frameworks-project.mjs';
+} from '../__tests__/test-frameworks-project.mjs';
 
 describe.skipIf(!enabled)('Java preset on TestNG and Spock test frameworks', () => {
   const { projectOf, findingsOf } = useFrameworkProjects();
@@ -52,7 +52,7 @@ describe.skipIf(!enabled)('Java preset on TestNG and Spock test frameworks', () 
       readFileSync(pom, 'utf8').replace('<version>3.5.4</version>', '<version>3.6.0</version>'),
     );
 
-    const since = statSync(pom).mtimeMs;
+    const since = Date.now();
     runMaven({
       projectRoot: root,
       maven,
