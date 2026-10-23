@@ -1,56 +1,69 @@
 import ast
 
 from checks.common import finding, is_boundary_path, is_domain_path
-from checks.state import local_names
-from effects.resolve import FUNCTIONS, Caller, display
-from effects.summaries import chain_text, summaries_of
+from effects.resolve import Caller, display
+from effects.summaries import chain_text, outside_domain_summaries
+from index.scopes import DEFINITIONS, enclosing_function, enclosing_owner
 
+RULE = "helper-chain io-in-domain, clock-now and random-in-domain"
+GUARDED = True
 RULES = (("io", "io-in-domain"), ("clock", "clock-now"), ("random", "random-in-domain"))
-
-
-def enclosing_function(node, parents):
-    while id(node) in parents:
-        node = parents[id(node)]
-        if isinstance(node, FUNCTIONS):
-            return node
-    return None
+DOMAIN_KINDS = {kind for kind, _rule in RULES}
 
 
 def is_outside_domain(path, context):
     return path != context.path and not (is_domain_path(path) or is_boundary_path(path))
 
 
+def call_sites(tree):
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            yield node, node.func
+        elif isinstance(node, DEFINITIONS):
+            yield from (
+                (decorator, decorator)
+                for decorator in node.decorator_list
+                if not isinstance(decorator, ast.Call)
+            )
+
+
 class DomainCalls:
     def __init__(self, context):
         self.context = context
+        self.summaries = outside_domain_summaries(context.project)
         self.callers = {}
 
     def caller(self, function):
-        if function is None:
-            return Caller(self.context), []
         if id(function) not in self.callers:
-            owner = self.context.parents.get(id(function))
-            name = owner.name if isinstance(owner, ast.ClassDef) else None
-            label = f"{name}.{function.name}" if name else function.name
-            caller = Caller(self.context, name, local_names(function))
-            self.callers[id(function)] = caller, [(None, label)]
+            owner = enclosing_owner(function, self.context.parents)
+            label = [] if function is None else [(None, function.name)]
+            if owner and function is not None:
+                label = [(None, f"{owner}.{function.name}")]
+            caller = Caller(self.context, function, owner)
+            self.callers[id(function)] = caller, label
         return self.callers[id(function)]
 
-    def findings(self, call):
-        function = enclosing_function(call, self.context.parents)
+    def callee(self, site, target):
+        function = enclosing_function(site, self.context.parents)
         caller, label = self.caller(function)
-        callee = caller.resolve(call.func)
-        if callee is None or not is_outside_domain(callee[0], self.context):
+        for key in caller.resolve(target):
+            kinds = self.summaries.kinds(key) & DOMAIN_KINDS
+            if kinds and is_outside_domain(key[0], self.context):
+                return key, label
+        return None, label
+
+    def findings(self, site, target):
+        callee, label = self.callee(site, target)
+        if callee is None:
             return []
         project = self.context.project
-        summary = summaries_of(project).of(callee)
+        name = display(project, callee)
         found = []
         for kind, rule in RULES:
-            steps = summary.get(kind, [])
-            if steps and not any(path and is_domain_path(path) for path, _ in steps):
-                item = finding(self.context.path, rule, callee[1], call)
-                via = [*label, (callee[0], display(project, callee)), *steps]
-                item["via"] = chain_text(via)
+            if kind in self.summaries.kinds(callee):
+                item = finding(self.context.path, rule, name, site)
+                steps = [*label, (callee[0], name), *self.summaries.steps(callee, kind)]
+                item["via"] = chain_text(steps)
                 found.append(item)
         return found
 
@@ -61,7 +74,6 @@ def check(context):
     calls = DomainCalls(context)
     return [
         item
-        for node in ast.walk(context.tree)
-        if isinstance(node, ast.Call)
-        for item in calls.findings(node)
+        for site, target in call_sites(context.tree)
+        for item in calls.findings(site, target)
     ]

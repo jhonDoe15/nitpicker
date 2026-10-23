@@ -1,23 +1,18 @@
 import ast
 
-from checks.common import dotted_name
+from index.scopes import (
+    FUNCTIONS,
+    IMPORT,
+    LOCAL,
+    chain_parts,
+    definitions,
+    function_bindings,
+    module_bindings,
+)
 
-FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
 SELF_NAMES = {"self", "cls"}
 CONSTRUCTOR = "__init__"
-REEXPORT_HOPS = 8
-
-
-def definitions(tree):
-    found = {}
-    for node in tree.body:
-        if isinstance(node, FUNCTIONS):
-            found[node.name] = node
-        elif isinstance(node, ast.ClassDef):
-            for item in node.body:
-                if isinstance(item, FUNCTIONS):
-                    found[f"{node.name}.{item.name}"] = item
-    return found
+REEXPORT_HOPS = 16
 
 
 def production_definitions(project):
@@ -31,60 +26,99 @@ def production_definitions(project):
     return project.memo("effect-definitions", build)
 
 
-def in_module(project, path, parts, hops):
-    defined = production_definitions(project).get(path)
-    if defined is None:
-        return None
-    qualified = ".".join(parts)
-    for candidate in (qualified, f"{qualified}.{CONSTRUCTOR}"):
-        if candidate in defined:
-            return path, candidate
-    names, modules = project.contexts[path].aliases[:2]
-    target = names.get(parts[0]) or modules.get(parts[0])
-    if target is None or hops >= REEXPORT_HOPS:
-        return None
-    return resolve_dotted(project, ".".join([target, *parts[1:]]), hops + 1)
-
-
-def resolve_dotted(project, dotted, hops=0):
+def split_module(project, dotted):
     parts = dotted.split(".")
     for size in range(len(parts) - 1, 0, -1):
         path = project.module_path(".".join(parts[:size]))
         if path is not None:
-            return in_module(project, path, parts[size:], hops)
+            return path, parts[size:]
     return None
 
 
-def root_name(node):
-    while isinstance(node, ast.Attribute):
-        node = node.value
-    return node.id if isinstance(node, ast.Name) else None
+def reexported(context, rest):
+    found = []
+    for kind, target in module_bindings(context).targets(rest[0]):
+        if kind == IMPORT:
+            found.append(".".join([target, *rest[1:]]))
+        elif kind == LOCAL and target != rest[0]:
+            module = context.project.module_name(context.path)
+            found.append(".".join([module, target, *rest[1:]]))
+    return found
+
+
+def rebound_by_import(context, name):
+    targets = module_bindings(context).targets(name)
+    return bool(targets) and all(kind == IMPORT for kind, _target in targets)
+
+
+def follow(project, dotted, accept):
+    pending, seen, found = [dotted], set(), []
+    while pending and len(seen) < REEXPORT_HOPS:
+        current = pending.pop(0)
+        located = split_module(project, current) if current not in seen else None
+        seen.add(current)
+        context = project.contexts.get(located[0]) if located else None
+        if context is None:
+            continue
+        own = (
+            None
+            if rebound_by_import(context, located[1][0])
+            else accept(project, located)
+        )
+        found.extend([own] if own is not None and own not in found else [])
+        pending.extend(reexported(context, located[1]))
+    return found
+
+
+def function_at(project, located):
+    path, rest = located
+    defined = production_definitions(project).get(path, {})
+    qualified = ".".join(rest)
+    for candidate in (qualified, f"{qualified}.{CONSTRUCTOR}"):
+        if isinstance(defined.get(candidate), FUNCTIONS):
+            return path, candidate
+    return None
+
+
+def class_at(project, located):
+    path, rest = located
+    qualified = ".".join(rest)
+    node = production_definitions(project).get(path, {}).get(qualified)
+    return (path, qualified) if isinstance(node, ast.ClassDef) else None
 
 
 class Caller:
-    def __init__(self, context, owner=None, shadowed=frozenset()):
+    def __init__(self, context, function=None, owner=None):
         self.context = context
         self.owner = owner
-        self.shadowed = shadowed
+        self.bindings = (
+            function_bindings(context, function)
+            if function is not None
+            else module_bindings(context)
+        )
 
-    def resolve(self, target):
-        root = root_name(target)
-        if root is None or root in self.shadowed and root not in SELF_NAMES:
-            return None
+    def resolve(self, target, accept=function_at):
+        root, parts = chain_parts(target)
+        if root in SELF_NAMES and self.owner and len(parts) == 1:
+            key = accept(
+                self.context.project, (self.context.path, [self.owner, *parts])
+            )
+            return [key] if key else []
+        keys = []
+        for kind, value in self.bindings.targets(root) if root else []:
+            found = self.target_keys((kind, value), parts, accept)
+            keys.extend(key for key in found if key not in keys)
+        return keys
+
+    def target_keys(self, target, parts, accept):
+        kind, value = target
         project = self.context.project
-        if root in SELF_NAMES and isinstance(target, ast.Attribute):
-            return self.own_method(target)
-        names, modules = self.context.aliases[:2]
-        dotted = dotted_name(target, self.context.aliases)
-        if root in names or root in modules:
-            return resolve_dotted(project, dotted)
-        return in_module(project, self.context.path, dotted.split("."), REEXPORT_HOPS)
-
-    def own_method(self, target):
-        if self.owner is None or not isinstance(target.value, ast.Name):
-            return None
-        parts = [self.owner, target.attr]
-        return in_module(self.context.project, self.context.path, parts, REEXPORT_HOPS)
+        if kind == LOCAL:
+            key = accept(project, (self.context.path, [*value.split("."), *parts]))
+            return [key] if key is not None else []
+        if kind == IMPORT:
+            return follow(project, ".".join([value, *parts]), accept)
+        return []
 
 
 def display(project, key):

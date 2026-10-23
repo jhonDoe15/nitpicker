@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createScripts } from '../../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const { cleanup, findingsOf } = createScripts({ hidden: ['http-without-timeout'] });
+const { cleanup, findingsOf } = createScripts({
+  hidden: ['http-without-timeout', 'swallowed-exception'],
+});
 afterEach(cleanup);
 
 const lines = (...rows) => `${rows.join('\n')}\n`;
@@ -106,12 +108,12 @@ describe.skipIf(!enabled)('domain effects reached through project helpers', () =
     };
 
     expect(findingsOf(files)).toEqual([
-      `io-in-domain app/domain/pricing.py:7 fetch via quote -> ${CHAIN}`,
-      `io-in-domain app/domain/pricing.py:11 fetch via quote_again -> ${CHAIN}`,
-      'clock-now app/domain/pricing.py:15 stamp via when -> app.shared.current_prices.stamp -> datetime.datetime.now',
-      'random-in-domain app/domain/pricing.py:19 token via ident -> app.shared.current_prices.token -> uuid.uuid4',
-      'io-in-domain app/domain/pricing.py:23 Client.__init__ via connect -> app.shared.current_prices.Client.__init__ -> app.shared.current_prices.Client.login -> requests.post',
-      'io-in-domain app/domain/pricing.py:27 ping via bounce -> app.shared.current_prices.ping -> requests.head',
+      `io-in-domain app/domain/pricing.py:7 app.shared.current_prices.fetch via quote -> ${CHAIN}`,
+      `io-in-domain app/domain/pricing.py:11 app.shared.current_prices.fetch via quote_again -> ${CHAIN}`,
+      'clock-now app/domain/pricing.py:15 app.shared.current_prices.stamp via when -> app.shared.current_prices.stamp -> datetime.datetime.now',
+      'random-in-domain app/domain/pricing.py:19 app.shared.current_prices.token via ident -> app.shared.current_prices.token -> uuid.uuid4',
+      'io-in-domain app/domain/pricing.py:23 app.shared.current_prices.Client.__init__ via connect -> app.shared.current_prices.Client.__init__ -> app.shared.current_prices.Client.login -> requests.post',
+      'io-in-domain app/domain/pricing.py:27 app.shared.current_prices.ping via bounce -> app.shared.current_prices.ping -> requests.head',
     ]);
   });
 
@@ -127,7 +129,7 @@ describe.skipIf(!enabled)('domain effects reached through project helpers', () =
     };
 
     expect(findingsOf(files)).toEqual([
-      'io-in-domain app/domain/rates.py:3 get_json via app.shared.http.get_json -> requests.get',
+      'io-in-domain app/domain/rates.py:3 app.shared.http.get_json via app.shared.http.get_json -> requests.get',
     ]);
   });
 
@@ -196,7 +198,7 @@ describe.skipIf(!enabled)('domain effects reached through project helpers', () =
     };
 
     expect(findingsOf(files)).toEqual([
-      `io-in-domain app/domain/inner.py:5 fetch via local -> ${CHAIN}`,
+      `io-in-domain app/domain/inner.py:5 app.shared.current_prices.fetch via local -> ${CHAIN}`,
       'io-in-domain app/domain/outer.py:1 app.adapters.prices',
     ]);
   });
@@ -221,5 +223,155 @@ describe.skipIf(!enabled)('domain effects reached through project helpers', () =
     };
 
     expect(findingsOf(files)).toEqual([]);
+  });
+});
+
+const PACKAGES = {
+  'shop/__init__.py': '',
+  'shop/shared/__init__.py': '',
+  'shop/domain/__init__.py': '',
+};
+const GET = lines('import requests', '', '', 'def fetch(url):', '    return requests.get(url)');
+
+describe.skipIf(!enabled)('helper resolution', () => {
+  it('resolves standard-library and installed names to themselves, not to a project module', () => {
+    const files = {
+      ...PACKAGES,
+      'shop/shared/json.py': lines('def loads(path):', '    return open(path).read()'),
+      'shop/domain/pricing.py': lines(
+        'import json',
+        '',
+        '',
+        'def parse(text):',
+        '    return json.loads(text)',
+      ),
+    };
+
+    expect(findingsOf(files)).toEqual([]);
+  });
+
+  it('names each helper by its module so two helpers called fetch stay apart', () => {
+    const files = {
+      ...PACKAGES,
+      'shop/shared/a.py': GET,
+      'shop/shared/c.py': GET,
+      'shop/domain/pricing.py': lines(
+        'from shop.shared.a import fetch',
+        'from shop.shared.c import fetch as fetch_other',
+        '',
+        '',
+        'def quote(url):',
+        '    return fetch(url), fetch_other(url)',
+      ),
+    };
+
+    expect(findingsOf(files)).toEqual([
+      'io-in-domain shop/domain/pricing.py:6 shop.shared.a.fetch via quote -> shop.shared.a.fetch -> requests.get',
+      'io-in-domain shop/domain/pricing.py:6 shop.shared.c.fetch via quote -> shop.shared.c.fetch -> requests.get',
+    ]);
+  });
+
+  it('keeps module definitions over imports nested in other functions and parameters', () => {
+    const files = {
+      ...PACKAGES,
+      'shop/shared/http.py': GET,
+      'shop/domain/pricing.py': lines(
+        'from shop.shared import http',
+        '',
+        '',
+        'def legacy():',
+        '    from shop.shared.http import fetch',
+        '    return fetch',
+        '',
+        '',
+        'def fetch(prices, sku):',
+        '    return prices[sku]',
+        '',
+        '',
+        'def quote(prices, sku, http):',
+        '    return fetch(prices, sku), http.fetch(sku)',
+      ),
+    };
+
+    expect(findingsOf(files)).toEqual([]);
+  });
+
+  it('follows decorators, definitions under if, and both sides of an ImportError fallback', () => {
+    const files = {
+      ...PACKAGES,
+      'shop/shared/http.py': GET,
+      'shop/shared/hooks.py': lines(
+        'import requests',
+        '',
+        '',
+        'def register(function):',
+        '    requests.post("/hooks")',
+        '    return function',
+      ),
+      'shop/shared/loader.py': lines(
+        'import sys',
+        '',
+        'try:',
+        '    from shop.shared.http import fetch',
+        'except ImportError:',
+        '    def fetch(url):',
+        '        return url',
+        '',
+        'if sys.version_info >= (3, 11):',
+        '    from shop.shared.http import fetch as platform_fetch',
+        'else:',
+        '    def platform_fetch(url):',
+        '        return url',
+      ),
+      'shop/domain/pricing.py': lines(
+        'from shop.shared.hooks import register',
+        'from shop.shared.loader import fetch, platform_fetch',
+        '',
+        '',
+        '@register',
+        'def quote(url):',
+        '    return fetch(url), platform_fetch(url)',
+      ),
+    };
+
+    expect(findingsOf(files)).toEqual([
+      'io-in-domain shop/domain/pricing.py:5 shop.shared.hooks.register via shop.shared.hooks.register -> requests.post',
+      'io-in-domain shop/domain/pricing.py:7 shop.shared.http.fetch via quote -> shop.shared.http.fetch -> requests.get',
+    ]);
+  });
+
+  it('shows a chain that stays out of domain/ and shortens a long one', () => {
+    const steps = Array.from({ length: 8 }, (_, index) =>
+      lines('', '', `def step${String(index)}(url):`, `    return step${String(index + 1)}(url)`),
+    );
+    const files = {
+      ...PACKAGES,
+      'shop/domain/other.py': GET,
+      'shop/shared/mixed.py': lines(
+        'import requests',
+        '',
+        'from shop.domain.other import fetch',
+        '',
+        '',
+        'def load(url):',
+        '    fetch(url)',
+        '    return requests.get(url)',
+      ),
+      'shop/shared/deep.py': `import requests\n${steps.join('')}\n\ndef step8(url):\n    return requests.get(url)\n`,
+      'shop/domain/pricing.py': lines(
+        'from shop.shared.deep import step0',
+        'from shop.shared.mixed import load',
+        '',
+        '',
+        'def quote(url):',
+        '    return load(url), step0(url)',
+      ),
+    };
+
+    expect(findingsOf(files)).toEqual([
+      'io-in-domain shop/domain/other.py:1 requests',
+      'io-in-domain shop/domain/pricing.py:6 shop.shared.deep.step0 via quote -> shop.shared.deep.step0 -> shop.shared.deep.step1 -> shop.shared.deep.step2 -> ... -> shop.shared.deep.step8 -> requests.get',
+      'io-in-domain shop/domain/pricing.py:6 shop.shared.mixed.load via quote -> shop.shared.mixed.load -> requests.get',
+    ]);
   });
 });

@@ -34,6 +34,13 @@ const CAUGHT_LOG_ADVICE = {
     'Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes.',
 };
 
+const DOMAIN_CAUGHT_LOG_ADVICE =
+  'Domain code does not log: re-raise the error with its cause (`raise DomainError(...) from error`) or return a failure, and let the caller in `adapters/` or the composition root log it with its traceback.';
+
+function isDomainPath(path = '') {
+  return path.split('/').slice(0, -1).includes('domain');
+}
+
 function validatorForm(name) {
   return `${name} (\`${validatorNamed(name).call}\`)`;
 }
@@ -61,7 +68,10 @@ export const STRUCTURE_HINTS = [
     tool: RULES_TOOL,
     rules: ['catch-log-without-exception'],
     describe: (subject) => `\`${subject}\` logs a caught error without its traceback`,
-    allowed: (_subject, libraries) => CAUGHT_LOG_ADVICE[libraries?.logging ?? 'logging'],
+    allowed: (_subject, libraries, path) =>
+      isDomainPath(path)
+        ? DOMAIN_CAUGHT_LOG_ADVICE
+        : CAUGHT_LOG_ADVICE[libraries?.logging ?? 'logging'],
   },
   {
     tool: RULES_TOOL,
@@ -180,7 +190,7 @@ export const STRUCTURE_HINTS = [
         ? `\`${subject}\` runs an external effect when the module is imported, so every import, tests included, performs it`
         : `\`${subject}()\` runs when the module is imported, so every import, tests included, performs it`,
     allowed:
-      'Move the call into a function and call that from the composition root (`main.py`, a `create_app` factory) or under `if __name__ == "__main__":`, passing the result in; a module that must do it at import is a bootstrap module listed in `python.entryPoints`.',
+      'Move the call into a function and call that from the composition root (`main.py`, a `create_app` factory) or under `if __name__ == "__main__":`, passing the result in.',
   },
   {
     tool: RULES_TOOL,

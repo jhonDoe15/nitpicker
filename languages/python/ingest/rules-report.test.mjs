@@ -12,19 +12,30 @@ const entry = (overrides) => ({
 describe('rules script report', () => {
   it('shows the helper chain in the message and keeps it out of the identity', () => {
     const via = 'quote -> shop.prices.fetch -> requests.get';
-    const report = [entry({ rule: 'io-in-domain', subject: 'fetch', via })];
+    const report = [entry({ rule: 'io-in-domain', subject: 'shop.prices.fetch', via })];
 
     expect(ingestRulesReport(JSON.stringify(report))).toEqual([
       {
         tool: 'python-rules',
         rule: 'io-in-domain',
         path: 'src/order.py',
-        identity: 'fetch',
+        identity: 'shop.prices.fetch',
         subject: via,
         message: `\`${via}\` does input or output through a project helper called from domain code`,
         classification: 'enforceable',
         location: { line: 4 },
       },
+    ]);
+  });
+
+  it('keeps two helpers with the same name apart by their qualified names', () => {
+    const report = ['shop.shared.a.fetch', 'shop.shared.c.fetch'].map((subject) =>
+      entry({ rule: 'io-in-domain', subject, via: `quote -> ${subject} -> requests.get` }),
+    );
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ identity }) => identity)).toEqual([
+      'shop.shared.a.fetch',
+      'shop.shared.c.fetch',
     ]);
   });
 
