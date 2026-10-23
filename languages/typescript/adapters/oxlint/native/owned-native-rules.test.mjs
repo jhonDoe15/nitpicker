@@ -6,10 +6,10 @@ import { nativeRuleIndex, translatePlan, translateRule } from '../oxlint-transla
 import { createProject, lintProject } from '../test-support/oxlint-project.mjs';
 import {
   directReducerCheck,
-  OWNED_NATIVE_PLUGINS,
-  OWNED_NATIVE_RULES,
   ownedNativeMessage,
   ownedNativeName,
+  ownedNativePlugins,
+  ownedNativeRuleIds,
 } from './owned-native-rules.mjs';
 
 const RULE = 'nitpicker/no-accumulating-spread';
@@ -38,10 +38,10 @@ const DIAGNOSTICS = [
 
 describe('the owned native rule allowlist', () => {
   it('pairs each owned rule with one native oxlint rule and enables only its plugin', () => {
-    expect([...OWNED_NATIVE_RULES.keys()]).toEqual([RULE]);
+    expect(ownedNativeRuleIds()).toEqual([RULE]);
     expect(ownedNativeName(RULE)).toBe(NATIVE);
     expect(ownedNativeName('nitpicker/no-comments')).toBeUndefined();
-    expect(OWNED_NATIVE_PLUGINS).toEqual(['oxc']);
+    expect(ownedNativePlugins()).toEqual(['oxc']);
   });
 
   it('runs the owned rule natively when oxlint lists it, and bridges it otherwise', () => {

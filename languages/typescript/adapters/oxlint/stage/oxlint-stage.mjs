@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
-import { OWNED_NATIVE_PLUGINS } from '../native/owned-native-rules.mjs';
+import { ownedNativePlugins } from '../native/owned-native-rules.mjs';
 import { materializedDirectory } from './oxlint-inline-config.mjs';
 import { baseUrlFreeOptions } from './oxlint-paths.mjs';
 
@@ -142,7 +142,7 @@ function stageConfig({ settings, overrides }, jsPlugins) {
     'nursery',
   ];
   return {
-    plugins: ['typescript', 'vitest', ...OWNED_NATIVE_PLUGINS],
+    plugins: ['typescript', 'vitest', ...ownedNativePlugins()],
     jsPlugins,
     categories: Object.fromEntries(categories.map((category) => [category, 'off'])),
     settings,

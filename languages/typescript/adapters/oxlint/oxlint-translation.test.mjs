@@ -232,6 +232,14 @@ describe('eslintShapedResults', () => {
     ).toBe("'Math.random' is restricted from being used. Use crypto.randomUUID().");
   });
 
+  it('rejects a reported file outside the stage', () => {
+    const naming = { ruleNames: new Map(), messageIdOf: () => undefined, neutralized: new Map() };
+    const diagnostic = { filename: '../a.ts', code: 'eslint(no-debugger)', message: 'x' };
+    expect(() => eslintShapedResults(stage, [diagnostic], naming)).toThrow(
+      'oxlint reported a file outside its stage: ../a.ts',
+    );
+  });
+
   it('leaves the generic help of other rules out', () => {
     expect(
       shaped({

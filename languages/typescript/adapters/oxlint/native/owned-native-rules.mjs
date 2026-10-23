@@ -18,7 +18,9 @@ function accumulatingSpreadMessageId({ message, help = '' }) {
   if (message.includes('in loops')) {
     return help.includes('Object.assign') ? 'loopObject' : 'loopArray';
   }
-  if (help.includes('spreading an `Object`')) return 'reduceObject';
+  if (help.includes('spreading an `Object`')) {
+    return 'reduceObject';
+  }
   return help.includes('spreading an `Array`') ? 'reduceArray' : 'reduce';
 }
 
@@ -26,7 +28,7 @@ function isReduceMessage(messageId) {
   return messageId.startsWith('reduce');
 }
 
-export const OWNED_NATIVE_RULES = new Map([
+const OWNED_NATIVE_RULES = new Map([
   [
     'nitpicker/no-accumulating-spread',
     {
@@ -37,9 +39,13 @@ export const OWNED_NATIVE_RULES = new Map([
   ],
 ]);
 
-export const OWNED_NATIVE_PLUGINS = [
-  ...new Set([...OWNED_NATIVE_RULES.values()].map(({ native }) => native.split('/')[0])),
-];
+export function ownedNativeRuleIds() {
+  return [...OWNED_NATIVE_RULES.keys()];
+}
+
+export function ownedNativePlugins() {
+  return [...new Set([...OWNED_NATIVE_RULES.values()].map(({ native }) => native.split('/')[0]))];
+}
 
 export function ownedNativeName(ruleId) {
   return OWNED_NATIVE_RULES.get(ruleId)?.native;
@@ -47,7 +53,9 @@ export function ownedNativeName(ruleId) {
 
 export function ownedNativeMessage({ ruleId, diagnostic, ruleMessages }) {
   const owned = OWNED_NATIVE_RULES.get(ruleId);
-  if (owned === undefined) return undefined;
+  if (owned === undefined) {
+    return undefined;
+  }
   const messageId = owned.messageIdOf(diagnostic);
   const message = ruleMessages[ruleId]?.[messageId];
   if (message === undefined) {
