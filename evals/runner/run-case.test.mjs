@@ -4,16 +4,9 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDetectorRegistry } from './detectors.mjs';
 import { renderMarkdown } from './report.mjs';
-import {
-  copiedWorkdir,
-  installedWorkdir,
-  isStale,
-  listCases,
-  loadCase,
-  referenceTree,
-  runCase,
-} from './run-case.mjs';
+import { isStale, listCases, loadCase, referenceTree, runCase } from './run-case.mjs';
 import { packNitpicker } from '../lib/consumer.mjs';
+import { copiedWorkdir, installedWorkdir } from '../lib/workdirs.mjs';
 
 const casesDirectory = path.join(import.meta.dirname, '..', 'cases');
 const here = (file) => path.join(import.meta.dirname, file);
@@ -147,6 +140,7 @@ describe('running a case with a fake agent', () => {
         costUsd: 0.25,
         inputTokens: 1000,
         outputTokens: 200,
+        totalTokens: 1200,
         turns: 4,
       },
       gate: {
@@ -325,8 +319,8 @@ describe('report', () => {
     records.push({ ...records[0], tier: 'medium', model: 'fake-medium' });
     const markdown = renderMarkdown(records);
     expect(markdown).toContain('## Pass rate per tier');
-    expect(markdown).toContain('| small | 1/3 (33%) | 1.0 | 1.5 | $0.2500 |');
-    expect(markdown).toContain('| medium | 1/1 (100%) | 2.0 | 2.0 | $0.2500 |');
+    expect(markdown).toContain('| small | 1/3 (33%) | 1.0 | 1.5 | $0.2500 | 1,200 |');
+    expect(markdown).toContain('| medium | 1/1 (100%) | 2.0 | 2.0 | $0.2500 | 1,200 |');
     expect(markdown).toContain('| trivial | small | 1/3 (33%) |');
     expect(markdown).toContain('passed 1, acceptance-failed 1, shortcut 1');
     expect(markdown).toContain('| gate-tampering | 1/3 (33%) | 0/1 (0%) |');

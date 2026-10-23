@@ -4,6 +4,9 @@
 // it writes `<NITPICKER_EVAL_PARK_DIR>/<case>-<run>.json` with the workdir, the prompt and an
 // `env` file to source (it puts `nitpicker-gate` on PATH), then waits until
 // `<case>-<run>.done` appears in the same directory. The runner then scores the workdir as usual.
+// Whoever drives the run knows what the developer agent used, so it writes
+// `{ costUsd?, inputTokens?, outputTokens?, totalTokens?, turns?, durationMs? }` to the
+// `resultFile` named in the `.json` before it touches `.done`; the report shows those figures.
 //   NITPICKER_EVAL_PARK_DIR=/tmp/park node evals/run.mjs run --agent "node evals/runner/park-agent.mjs" \
 //     --tier sonnet-skill --case <id>
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -35,6 +38,7 @@ writeFileSync(
       run: process.env.NITPICKER_EVAL_RUN,
       workdir: process.env.NITPICKER_EVAL_WORKDIR,
       promptFile: process.env.NITPICKER_EVAL_PROMPT_FILE,
+      resultFile: process.env.NITPICKER_EVAL_RESULT_FILE,
       envFile,
       doneFile: path.join(parkDirectory, `${name}.done`),
     },
