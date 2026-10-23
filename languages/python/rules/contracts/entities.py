@@ -111,6 +111,12 @@ def entity_of(node, context, known):
     return (name, found[1]) if found and found[0] == "entity" else None
 
 
+def entity_named(node, context):
+    key = located_key(dotted_name(node, context.aliases) or "", context)
+    found = orm_classes(context.project).get(key)
+    return (key[1], found[1]) if found and found[0] == "entity" else None
+
+
 def entities_in(expression, context):
     known = orm_classes(context.project)
     found = []

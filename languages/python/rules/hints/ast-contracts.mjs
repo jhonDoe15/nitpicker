@@ -1,15 +1,15 @@
 import { RULES_TOOL } from './tool.mjs';
 
 function contractParts(subject) {
-  const [member, kind, type, feature] = subject.split('|');
-  return { member, kind, type, feature };
+  const [member, kind, type] = subject.split('|');
+  return { member, kind, type };
 }
 
 function describeContract(subject) {
-  const { member, kind, type, feature } = contractParts(subject);
+  const { member, kind, type } = contractParts(subject);
   return kind === 'persistence'
-    ? `Return a frozen dataclass or a domain type from \`${member}\` and take plain values: \`${type}\` is a persistence handle, so every importer of feature \`${feature}\` depends on its database session`
-    : `Take plain values and return a frozen dataclass or a domain type from \`${member}\`: \`${type}\` is a web request or response object, so every importer of feature \`${feature}\` needs a live HTTP exchange`;
+    ? `Take a repository or a port (a \`Protocol\` the feature defines) and return frozen dataclasses or domain types from \`${member}\`: \`${type}\` is a persistence handle, so every importer of this feature depends on its database session`
+    : `Take plain values and return a frozen dataclass or a domain type from \`${member}\`, and read the request in the route handler or view: \`${type}\` is a web request or response object, so every importer of this feature needs a live HTTP exchange`;
 }
 
 function handlerParts(subject) {
@@ -32,7 +32,7 @@ export const CONTRACT_HINTS = [
     rules: ['contract-infrastructure-type'],
     describe: describeContract,
     allowed:
-      'Keep a persistence handle inside a repository class, an `adapters.py` or `persistence.py` module, or a module whose name starts with `_`, and pass it in from the composition root; read a request in the route handler or view and pass the values in.',
+      'Keep a persistence handle inside a repository class, a module named for infrastructure (`adapters.py`, `persistence.py`, `repository.py`, `db.py`, `deps.py`) or a module whose name starts with `_`, and pass it in from the composition root; read a request in the route handler or view and pass the values in.',
   },
   {
     tool: RULES_TOOL,
