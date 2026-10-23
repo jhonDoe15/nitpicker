@@ -188,9 +188,31 @@ suite('packed nitpicker in a separate consumer', () => {
 
   describe('a consumer on TypeScript 7', () => {
     const typeScript7 = manifest.dependencies['typescript-native'].replace('npm:typescript@', '');
+    const jsApi = manifest.dependencies['typescript-js-api'].replace('npm:typescript@', '');
+    const twiceSource = (expression) =>
+      `export function twice(value: number): number {\n  return ${expression};\n}\n`;
+    const analyzers = 'typescript-typecheck eslint-lint structure dependency-architecture'.split(
+      ' ',
+    );
     let root;
-    let run;
-    const output = () => path.join(root, 'reports', 'ts7');
+    const runs = {};
+    const output = (name) => path.join(root, 'reports', name);
+    const gate = (name) =>
+      command(root, 'npx', [
+        '--no-install',
+        'nitpicker',
+        '--base',
+        'main',
+        ...analyzers.flatMap((analyzer) => ['--analyzer', analyzer]),
+        '--output',
+        output(name),
+      ]);
+    const report = (name) =>
+      JSON.parse(readFileSync(path.join(output(name), 'summary.json'), 'utf8'));
+    const added = (name) =>
+      JSON.parse(readFileSync(path.join(output(name), 'new-findings.json'), 'utf8')).map(
+        ({ tool, rule }) => `${tool}/${rule}`,
+      );
 
     beforeAll(() => {
       root = mkdtempSync(path.join(tmpdir(), 'nitpicker consumer-ts7-'));
@@ -211,6 +233,7 @@ suite('packed nitpicker in a separate consumer', () => {
         }),
       );
       write(root, 'src/main/example.ts', cleanSource);
+      write(root, 'src/main/cycle.ts', twiceSource('value * 2'));
       checked(root, 'npx', ['--yes', installer, 'install', '--no-audit', '--no-fund']);
       checked(root, 'git', ['add', '.']);
       checked(root, 'git', [
@@ -223,39 +246,46 @@ suite('packed nitpicker in a separate consumer', () => {
         'clean baseline',
       ]);
       checked(root, 'git', ['switch', '-c', 'feature']);
-      write(root, 'src/main/example.ts', 'export function example(): number {\n  return "1";\n}\n');
-      run = command(root, 'npx', [
-        '--no-install',
-        'nitpicker',
-        '--base',
-        'main',
-        '--analyzer',
-        'typescript-typecheck',
-        '--analyzer',
-        'eslint-lint',
-        '--analyzer',
-        'structure',
-        '--output',
-        output(),
-      ]);
-    }, 600_000);
+      write(
+        root,
+        'src/main/example.ts',
+        "import { twice } from './cycle.js';\n\nexport function example(): number {\n" +
+          '  const unused = twice(1);\n  return "1";\n}\n',
+      );
+      write(
+        root,
+        'src/main/cycle.ts',
+        `import { example } from './example.js';\n\n${twiceSource('value * example()')}`,
+      );
+      runs.native = gate('native');
+      write(
+        root,
+        'nitpicker.config.json',
+        '{ "tools": { "typescript": { "engine": "project" } } }\n',
+      );
+      runs.project = gate('project');
+    }, 900_000);
     afterAll(() => {
       if (root) rmSync(root, { recursive: true, force: true });
     }, 120_000);
 
-    it('type checks, lints and parses with no tool error', () => {
-      const report = JSON.parse(readFileSync(path.join(output(), 'summary.json'), 'utf8'));
-      const added = JSON.parse(readFileSync(path.join(output(), 'new-findings.json'), 'utf8'));
-
-      expect(run.status, run.output).toBe(1);
-      expect(report.overallStatus).toBe('completed');
-      expect(added.map(({ tool, rule }) => `${tool}/${rule}`)).toEqual([
+    it('type checks, lints and follows imports with no tool error', () => {
+      expect(runs.native.status, runs.native.output).toBe(1);
+      expect(report('native').overallStatus).toBe('completed');
+      expect(added('native')).toEqual([
+        'dependency-architecture/no-production-cycles',
+        'eslint-lint/@typescript-eslint/no-unused-vars',
         'typescript-typecheck/TS2322',
       ]);
-      const jsApi = manifest.dependencies['typescript-js-api'].replace('npm:typescript@', '');
-      expect(report.tools.find(({ name }) => name === 'eslint-lint').version).toBe(
+      expect(report('native').tools.find(({ name }) => name === 'eslint-lint').version).toBe(
         expectedEslintVersion(`js-api-${jsApi}`),
       );
+    });
+
+    it('reports the same findings when it type checks with the project compiler', () => {
+      expect(runs.project.status, runs.project.output).toBe(1);
+      expect(report('project').overallStatus).toBe('completed');
+      expect(added('project')).toEqual(added('native'));
     });
   });
 

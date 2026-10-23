@@ -3,12 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
+import { ts as selectedTypeScript } from '../../typescript-api/typescript-api.mjs';
 import {
   enclosingSymbol,
   formatDiagnostic,
   loadTypeScript,
-  nativeProjectTypeScript,
   preEmitDiagnostics,
+  projectTypeScript,
   withoutProjectRoot,
 } from './typescript-program.mjs';
 
@@ -247,17 +248,17 @@ describe('a project whose own typescript is TypeScript 7', () => {
     );
   });
 
-  it('reads source files with the bundled TypeScript API', () => {
+  it('reads source files with the API nitpicker selected and type checks with the project one', () => {
     const consumer = path.join(root, 'ts7-consumer');
     mkdirSync(path.join(consumer, 'node_modules'), { recursive: true });
     writeFileSync(path.join(consumer, 'package.json'), '{"name":"ts7-consumer"}');
     symlinkSync(projectNative, path.join(consumer, 'node_modules/typescript'));
 
-    const api = loadTypeScript(consumer);
+    const selected = projectTypeScript(consumer);
 
-    expect(nativeProjectTypeScript(consumer)).toBe(realpathSync(projectNative));
-    expect(api.version).toBe(resolveTool('typescript-js-api').version);
-    expect(nativeProjectTypeScript(PACKAGE_ROOT)).toBeUndefined();
+    expect(selected.ts).toBe(selectedTypeScript);
+    expect(selected.native).toBe(realpathSync(projectNative));
+    expect(projectTypeScript(PACKAGE_ROOT).native).toBeUndefined();
   });
 });
 

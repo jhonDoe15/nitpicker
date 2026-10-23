@@ -55,6 +55,7 @@ export function runCli(options = {}) {
     });
   }
   try {
+    redirectToBundledTypeScriptApi(cli.environment);
     return runCommand(cli);
   } catch (error) {
     cli.stderr.write(
@@ -258,6 +259,5 @@ function writeComparisonOutcome({ cli, report, base, outputRoot }) {
 const invokedPath = process.argv[1];
 
 if (invokedPath !== undefined && realpathSync(invokedPath) === import.meta.filename) {
-  redirectToBundledTypeScriptApi(process.env);
   process.exitCode = runCli();
 }

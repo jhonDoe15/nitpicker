@@ -1,30 +1,33 @@
-import { existsSync, realpathSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
-import { ts as bundledTypeScript } from '../../typescript-api/typescript-api.mjs';
+import { packageHasJavaScriptApi } from '../../typescript-api/api-redirect.mjs';
+import { ts as selectedTypeScript } from '../../typescript-api/typescript-api.mjs';
 import { nativeDiagnostics } from './native-diagnostics.mjs';
 
 const NO_INPUTS_CODE = 18003;
 
-function projectTypeScriptRoot(projectRoot) {
-  return resolveTool('typescript', { projectRoot }).root;
+export function projectTypeScript(projectRoot = PACKAGE_ROOT) {
+  const { root } = resolveTool('typescript', { projectRoot });
+  return packageHasJavaScriptApi(root)
+    ? { ts: createRequire(import.meta.url)(path.join(root, 'lib/typescript.js')) }
+    : { ts: selectedTypeScript, native: root };
 }
 
 export function loadTypeScript(projectRoot = PACKAGE_ROOT) {
-  const libraryPath = path.join(projectTypeScriptRoot(projectRoot), 'lib/typescript.js');
-  return existsSync(libraryPath) ? createRequire(import.meta.url)(libraryPath) : bundledTypeScript;
-}
-
-export function nativeProjectTypeScript(projectRoot = PACKAGE_ROOT) {
-  const root = projectTypeScriptRoot(projectRoot);
-  return existsSync(path.join(root, 'lib/typescript.js')) ? undefined : root;
+  return projectTypeScript(projectRoot).ts;
 }
 
 export async function preEmitDiagnostics({ ts, engine, configPath, projectRoot, projectNative }) {
   if (engine === 'native') {
-    const native = await nativeDiagnostics({ ts, configPath, projectRoot });
+    const native = await nativeDiagnostics({
+      ts,
+      configPath,
+      projectRoot,
+      engineHint: projectNative === undefined,
+    });
     if (native.unsupported !== true) return native.diagnostics;
   }
   if (projectNative !== undefined) {

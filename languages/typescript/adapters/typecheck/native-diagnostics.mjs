@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
@@ -8,7 +9,13 @@ const ENGINE_HINT =
   'Set "tools": { "typescript": { "engine": "project" } } in nitpicker.config.json ' +
   "to type check with the project's own TypeScript instead.";
 
-export async function nativeDiagnostics({ ts, configPath, projectRoot, apiRoot }) {
+export async function nativeDiagnostics({
+  ts,
+  configPath,
+  projectRoot,
+  apiRoot,
+  engineHint = true,
+}) {
   const own = apiRoot !== undefined;
   const { api, startError } = await startedApi(projectRoot, apiRoot);
   if (startError !== undefined) {
@@ -21,7 +28,7 @@ export async function nativeDiagnostics({ ts, configPath, projectRoot, apiRoot }
   try {
     collected = collectedDiagnostics(api, configPath);
   } catch (error) {
-    const hint = own ? '' : `\n${ENGINE_HINT}`;
+    const hint = own || !engineHint ? '' : `\n${ENGINE_HINT}`;
     throw new Error(`TypeScript 7 type check failed: ${String(error.message)}${hint}`, {
       cause: error,
     });
@@ -40,7 +47,9 @@ function ownStartError(cause) {
 }
 
 async function startedApi(projectRoot, apiRoot = resolveTool('typescript-native').root) {
-  const apiPath = path.join(apiRoot, 'dist/api/sync/api.js');
+  const apiPath = createRequire(path.join(apiRoot, 'package.json')).resolve(
+    'typescript/unstable/sync',
+  );
   const { API } = await import(pathToFileURL(apiPath).href);
   try {
     return { api: new API({ cwd: projectRoot }) };

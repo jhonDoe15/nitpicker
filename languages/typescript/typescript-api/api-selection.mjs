@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import path from 'node:path';
 import { hasJavaScriptApi, redirectTypeScriptApi } from './api-redirect.mjs';
 
 function resolvedTypeScript(resolve) {
@@ -23,6 +24,6 @@ export const TYPESCRIPT_API = selectTypeScriptApi();
 
 export function redirectToBundledTypeScriptApi(environment, selected = TYPESCRIPT_API) {
   if (selected.bundled) {
-    redirectTypeScriptApi(selected.file, environment);
+    redirectTypeScriptApi(path.dirname(path.dirname(selected.file)), environment);
   }
 }

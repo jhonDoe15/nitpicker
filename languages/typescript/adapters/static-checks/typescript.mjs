@@ -7,14 +7,13 @@ import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 import { diagnosticMessages } from '../typecheck/compiler-hints.mjs';
 import {
   enclosingSymbol,
-  loadTypeScript,
-  nativeProjectTypeScript,
   preEmitDiagnostics,
+  projectTypeScript,
 } from '../typecheck/typescript-program.mjs';
 import { withAssetImportHint } from '../typecheck/asset-import-hint.mjs';
 
 export async function runTypecheck(options) {
-  const ts = loadTypeScript(options.liveProjectRoot);
+  const { ts, native } = projectTypeScript(options.liveProjectRoot);
   const preparedDependencies = prepareSnapshotDependencies(options);
   let installedConfig;
   try {
@@ -24,7 +23,7 @@ export async function runTypecheck(options) {
       engine: typecheckEngine(),
       configPath: installedConfig.targetPath,
       projectRoot: options.projectRoot,
-      projectNative: nativeProjectTypeScript(options.liveProjectRoot),
+      projectNative: native,
     });
     const layout = readLayout();
     return normalizeTypeScriptDiagnostics({
