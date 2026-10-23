@@ -1,6 +1,6 @@
 const PLACEHOLDER_REASON = '...';
 
-const WORD_CHARACTER = /[\p{L}\p{N}]/u;
+export const WORD_CHARACTER = /[\p{L}\p{N}]/u;
 
 /** Whether `reason` says nothing: blank, or only punctuation such as the `...` a message prints. */
 export function isPlaceholderReason(reason) {

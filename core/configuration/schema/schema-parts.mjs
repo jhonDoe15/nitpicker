@@ -1,9 +1,12 @@
-import { GLOB_PROBLEMS } from '../../../shared/config.mjs';
+import {
+  DRIVE_LETTER,
+  GLOB_CHARACTER,
+  GLOB_PROBLEMS,
+  PARENT_SEGMENT,
+} from '../../../shared/config.mjs';
 import { toolsOf } from '../../../shared/exceptions/rule-tools.mjs';
 
-export const ABSOLUTE_PATH = String.raw`^(?:/|[A-Za-z]:)`;
-const PARENT_SEGMENT = String.raw`(?:^|[/\\])\.\.(?:[/\\]|$)`;
-const GLOB_CHARACTERS = String.raw`[*?{}\[\]]`;
+export const ABSOLUTE_PATH = `^/|${DRIVE_LETTER.source}`;
 const EMPTY_DIRECTORY = String.raw`^(?:\.[/\\]?)?$`;
 
 export const nonEmptyString = { type: 'string', minLength: 1 };
@@ -43,12 +46,12 @@ function spelled(rule) {
 export const projectPath = {
   type: 'string',
   minLength: 1,
-  allOf: [never(ABSOLUTE_PATH), never(PARENT_SEGMENT)],
+  allOf: [never(ABSOLUTE_PATH), never(PARENT_SEGMENT.source)],
 };
 
 export const directory = {
   ...projectPath,
-  allOf: [...projectPath.allOf, never(GLOB_CHARACTERS), never(EMPTY_DIRECTORY)],
+  allOf: [...projectPath.allOf, never(GLOB_CHARACTER.source), never(EMPTY_DIRECTORY)],
 };
 
 const globProblemChecks = GLOB_PROBLEMS.filter(({ pattern }) => pattern !== undefined).map(

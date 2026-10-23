@@ -57,22 +57,22 @@
           "minimum": 1
         },
         "folderDepth": {
-          "description": "Folders below the feature layer (TypeScript, JavaScript) or packages below the root package.",
+          "description": "Folders below the feature layer (TypeScript, JavaScript; default 1) or packages below the root package (default 4 for Java and Kotlin, 4 for Python).",
           "type": "integer",
           "minimum": 1
         },
         "classMethods": {
-          "description": "Methods per class (Java, Kotlin, Python).",
+          "description": "Methods per class (Java, Kotlin, Python; default 20).",
           "type": "integer",
           "minimum": 1
         },
         "classFields": {
-          "description": "Instance fields per class (Java, Kotlin, Python).",
+          "description": "Instance fields per class (Java, Kotlin, Python; default 10).",
           "type": "integer",
           "minimum": 1
         },
         "inheritanceDepth": {
-          "description": "Superclasses per class (Java, Kotlin, Python).",
+          "description": "Superclasses per class (Java, Kotlin, Python; default 3).",
           "type": "integer",
           "minimum": 1
         },
@@ -106,24 +106,24 @@
             "type": "string",
             "minLength": 1,
             "allOf": [
-              { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+              { "not": { "pattern": "^/|^[A-Za-z]:" } },
               { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } },
-              { "not": { "pattern": "[*?{}\\[\\]]" } },
+              { "not": { "pattern": "[*?{}[\\]]" } },
               { "not": { "pattern": "^(?:\\.[/\\\\]?)?$" } }
             ]
           }
         },
         "testRoots": {
-          "description": "Directories with the tests (TypeScript, JavaScript).",
+          "description": "Directories with the tests (TypeScript, JavaScript; default [\"test\",\"tests\",\"__tests__\",\"e2e\"]).",
           "type": "array",
           "minItems": 1,
           "items": {
             "type": "string",
             "minLength": 1,
             "allOf": [
-              { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+              { "not": { "pattern": "^/|^[A-Za-z]:" } },
               { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } },
-              { "not": { "pattern": "[*?{}\\[\\]]" } },
+              { "not": { "pattern": "[*?{}[\\]]" } },
               { "not": { "pattern": "^(?:\\.[/\\\\]?)?$" } }
             ]
           }
@@ -222,7 +222,7 @@
       "type": "string",
       "minLength": 1,
       "allOf": [
-        { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+        { "not": { "pattern": "^/|^[A-Za-z]:" } },
         { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
       ]
     },
@@ -252,12 +252,12 @@
           "description": "The tool that manages the environment, or the directory of a virtual environment.",
           "anyOf": [
             { "enum": ["uv", "poetry", "path", "pipenv", "hatch", "conda"] },
-            { "pattern": "^(?:/|[A-Za-z]:[\\\\/])" },
+            { "pattern": "^/|^[A-Za-z]:[\\\\/]" },
             {
               "type": "string",
               "minLength": 1,
               "allOf": [
-                { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+                { "not": { "pattern": "^/|^[A-Za-z]:" } },
                 { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
               ]
             }
@@ -284,7 +284,7 @@
             "type": "string",
             "minLength": 1,
             "allOf": [
-              { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+              { "not": { "pattern": "^/|^[A-Za-z]:" } },
               { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
             ]
           }
@@ -296,7 +296,7 @@
             "type": "string",
             "minLength": 1,
             "allOf": [
-              { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+              { "not": { "pattern": "^/|^[A-Za-z]:" } },
               { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
             ]
           }
@@ -354,6 +354,8 @@
                         "repository-hygiene/large-file",
                         "committed-build-output",
                         "repository-hygiene/committed-build-output",
+                        "co-change",
+                        "change-history/co-change",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
@@ -432,7 +434,7 @@
             "project": {
               "description": "The TypeScript config file of the project the type check reads.",
               "type": "string",
-              "pattern": "^(?![/\\\\])(?![A-Za-z]:)(?!(?:.*[/\\\\])?\\.\\.(?:[/\\\\]|$))[^*?{}\\[\\]\\u0000]*\\.json$"
+              "pattern": "^(?![/\\\\])(?![A-Za-z]:)(?![\\s\\S]*(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$))(?![\\s\\S]*[*?{}[\\]])[^\\u0000]*\\.json$"
             }
           }
         },
@@ -665,7 +667,7 @@
                           "type": "string",
                           "minLength": 1,
                           "allOf": [
-                            { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+                            { "not": { "pattern": "^/|^[A-Za-z]:" } },
                             { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
                           ],
                           "not": { "pattern": "^!" }
@@ -905,7 +907,7 @@
           "type": "string",
           "minLength": 1,
           "allOf": [
-            { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+            { "not": { "pattern": "^/|^[A-Za-z]:" } },
             { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
           ]
         }
@@ -952,6 +954,46 @@
     "conventions": {
       "description": "Pins a style that nitpicker otherwise measures from the project.",
       "type": "object"
+    },
+    "history": {
+      "description": "Opt-in analysis of the commit history (every preset).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "coChange": {
+          "description": "true turns on the change-history analyzer, which reports modules that keep changing together.",
+          "type": "boolean"
+        },
+        "commits": {
+          "description": "How many recent commits to read (default 300). Needs \"coChange\".",
+          "type": "integer",
+          "minimum": 20,
+          "maximum": 2000
+        },
+        "minSupport": {
+          "description": "The commits two modules must share (default 5). Needs \"coChange\".",
+          "type": "integer",
+          "minimum": 2
+        },
+        "minConfidence": {
+          "description": "The share of the less-changed module's commits that must include the other (default 0.6). Needs \"coChange\".",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "maxCommitFiles": {
+          "description": "The most files a commit may touch and still count (default 30). Needs \"coChange\".",
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 100
+        }
+      },
+      "dependencies": {
+        "commits": ["coChange"],
+        "minSupport": ["coChange"],
+        "minConfidence": ["coChange"],
+        "maxCommitFiles": ["coChange"]
+      }
     }
   },
   "allOf": [
@@ -1144,6 +1186,7 @@
                     "unused-dependency",
                     "unlisted-dependency",
                     "unresolved-import",
+                    "co-change",
                     "test-console-output",
                     "doc-comment-content"
                   ]
@@ -1333,6 +1376,7 @@
                     "unused-dependency",
                     "unlisted-dependency",
                     "unresolved-import",
+                    "co-change",
                     "test-console-output",
                     "doc-comment-content"
                   ]
@@ -1358,8 +1402,7 @@
               "testRoots": false,
               "excludedGlobs": false,
               "entryPoints": false,
-              "sharedRoots": false,
-              "featureRoots": false
+              "sharedRoots": false
             }
           },
           "tools": {
@@ -1466,6 +1509,8 @@
                             "repository-hygiene/large-file",
                             "committed-build-output",
                             "repository-hygiene/committed-build-output",
+                            "co-change",
+                            "change-history/co-change",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -1503,7 +1548,23 @@
               ]
             }
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "not": {
+                "required": ["history"],
+                "properties": {
+                  "history": {
+                    "required": ["coChange"],
+                    "properties": { "coChange": { "const": true } }
+                  }
+                }
+              }
+            },
+            "then": { "properties": { "layout": { "properties": { "featureRoots": false } } } }
+          }
+        ]
       }
     },
     {
@@ -1520,8 +1581,7 @@
               "testRoots": false,
               "excludedGlobs": false,
               "entryPoints": false,
-              "sharedRoots": false,
-              "featureRoots": false
+              "sharedRoots": false
             }
           },
           "tools": {
@@ -1651,6 +1711,8 @@
                             "repository-hygiene/large-file",
                             "committed-build-output",
                             "repository-hygiene/committed-build-output",
+                            "co-change",
+                            "change-history/co-change",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -1693,6 +1755,10 @@
                             "kotlinc/lint-not-run",
                             "pmd/FixedSleepInTest",
                             "pmd/NegativeWaitInTest",
+                            "pmd/DisabledTest",
+                            "pmd/FocusedTest",
+                            "pmd/AssertionInControlFlow",
+                            "pmd/CoroutineEscapesTest",
                             "pmd/SpringUnusedContext",
                             "pmd/ExhaustiveEnumPredicate",
                             "pmd/StaticForwardingWrapper",
@@ -1761,7 +1827,23 @@
               ]
             }
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "not": {
+                "required": ["history"],
+                "properties": {
+                  "history": {
+                    "required": ["coChange"],
+                    "properties": { "coChange": { "const": true } }
+                  }
+                }
+              }
+            },
+            "then": { "properties": { "layout": { "properties": { "featureRoots": false } } } }
+          }
+        ]
       }
     },
     {
@@ -1779,8 +1861,7 @@
               "testRoots": false,
               "excludedGlobs": false,
               "entryPoints": false,
-              "sharedRoots": false,
-              "featureRoots": false
+              "sharedRoots": false
             }
           },
           "tools": {
@@ -1865,6 +1946,8 @@
                         "repository-hygiene/large-file",
                         "committed-build-output",
                         "repository-hygiene/committed-build-output",
+                        "co-change",
+                        "change-history/co-change",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
@@ -1897,7 +1980,23 @@
               ]
             }
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "not": {
+                "required": ["history"],
+                "properties": {
+                  "history": {
+                    "required": ["coChange"],
+                    "properties": { "coChange": { "const": true } }
+                  }
+                }
+              }
+            },
+            "then": { "properties": { "layout": { "properties": { "featureRoots": false } } } }
+          }
+        ]
       }
     }
   ],
@@ -1915,7 +2014,7 @@
       "type": "string",
       "minLength": 1,
       "allOf": [
-        { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+        { "not": { "pattern": "^/|^[A-Za-z]:" } },
         { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } },
         { "not": { "pattern": "^\\.\\/" } },
         { "not": { "pattern": "\\/$" } },
@@ -1989,9 +2088,9 @@
       "type": "string",
       "allOf": [
         { "pattern": "\\S" },
-        { "not": { "pattern": "^(?:/|[A-Za-z]:)" } },
+        { "not": { "pattern": "^/|^[A-Za-z]:" } },
         { "not": { "pattern": "\\\\(?![{}[\\],*?\\\\])" } },
-        { "not": { "pattern": "(?:^|/)\\.\\.(?:/|$)" } }
+        { "not": { "pattern": "(?:^|\\/)\\.\\.(?:\\/|$)" } }
       ]
     },
     "functionRule": {
@@ -2133,6 +2232,8 @@
         "dead-code/unlisted-dependency",
         "unresolved-import",
         "dead-code/unresolved-import",
+        "co-change",
+        "change-history/co-change",
         "test-console-output",
         "doc-comment-content"
       ]

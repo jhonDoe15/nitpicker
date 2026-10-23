@@ -4,6 +4,16 @@ import {
   THRESHOLD_KEYS,
   WHOLE_NUMBER_THRESHOLD_KEYS,
 } from '../../../shared/config.mjs';
+import {
+  DEFAULT_CRAP_SCORE_LIMIT,
+  FILE_LIMIT_DEFAULTS,
+  TEST_TIME_DEFAULTS,
+} from '../../../shared/policy.mjs';
+import {
+  CLASS_LIMIT_DEFAULTS,
+  FOLDER_DEPTH_DEFAULTS,
+} from '../../../shared/project-rules/size-rules.mjs';
+import { sourceRoots, testRoots } from '../../../languages/typescript/preset/layout.mjs';
 import { stylingApproaches } from '../../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import {
   KOTLIN_FORMATTERS,
@@ -15,12 +25,8 @@ import {
   PYTHON_TEST_RUNNERS,
   SETTING_KEYS,
   TYPE_CHECKERS,
+  WINDOWS_ABSOLUTE,
 } from '../../../languages/python/adapters/configuration/python-config.mjs';
-import {
-  BINARY_NAME,
-  SPRING_KEYS,
-  SPRING_ROLES,
-} from '../../../languages/java/adapters/spring-arch/spring-roles.mjs';
 import { ALLOW_KEYS, TEST_CONSOLE_KEYS } from '../scopes/scope-settings.mjs';
 import { LAYOUT_KEYS } from '../scopes/layout-settings.mjs';
 import { CUSTOM_ANALYZER_KEYS, I18N_KEYS, REACT_KEYS } from '../validate.mjs';
@@ -38,25 +44,27 @@ import {
   pythonOwnRestriction,
 } from './exception-schema.mjs';
 
+const FILES = FILE_LIMIT_DEFAULTS;
+const CLASSES = CLASS_LIMIT_DEFAULTS;
+const DEPTHS = FOLDER_DEPTH_DEFAULTS;
+
 const THRESHOLD_DESCRIPTIONS = {
-  crapLimit: 'A function whose CRAP score is at or above this fails (default 9).',
-  fileLines: 'Lines per source file (default 300).',
-  testFileLines: 'Lines per test file (default 500).',
-  lineLength: 'Characters per line (default 120).',
-  folderFiles: 'Source files, and separately test files, directly in one folder (default 6).',
-  folderDepth:
-    'Folders below the feature layer (TypeScript, JavaScript) or packages below the root package.',
-  classMethods: 'Methods per class (Java, Kotlin, Python).',
-  classFields: 'Instance fields per class (Java, Kotlin, Python).',
-  inheritanceDepth: 'Superclasses per class (Java, Kotlin, Python).',
-  unitTestSeconds: 'Seconds one unit test the change adds or edits may take (default 5).',
-  integrationTestSeconds:
-    'Seconds one integration test the change adds or edits may take (default 30).',
+  crapLimit: `A function whose CRAP score is at or above this fails (default ${String(DEFAULT_CRAP_SCORE_LIMIT)}).`,
+  fileLines: `Lines per source file (default ${String(FILES.fileLines)}).`,
+  testFileLines: `Lines per test file (default ${String(FILES.testFileLines)}).`,
+  lineLength: `Characters per line (default ${String(FILES.lineLength)}).`,
+  folderFiles: `Source files, and separately test files, directly in one folder (default ${String(FILES.folderFiles)}).`,
+  folderDepth: `Folders below the feature layer (TypeScript, JavaScript; default ${String(DEPTHS.typescript)}) or packages below the root package (default ${String(DEPTHS.java)} for Java and Kotlin, ${String(DEPTHS.python)} for Python).`,
+  classMethods: `Methods per class (Java, Kotlin, Python; default ${String(CLASSES.classMethods)}).`,
+  classFields: `Instance fields per class (Java, Kotlin, Python; default ${String(CLASSES.classFields)}).`,
+  inheritanceDepth: `Superclasses per class (Java, Kotlin, Python; default ${String(CLASSES.inheritanceDepth)}).`,
+  unitTestSeconds: `Seconds one unit test the change adds or edits may take (default ${String(TEST_TIME_DEFAULTS.unitTestSeconds)}).`,
+  integrationTestSeconds: `Seconds one integration test the change adds or edits may take (default ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)}).`,
 };
 
 const LAYOUT_DESCRIPTIONS = {
-  sourceRoots: 'Directories with the production code (TypeScript, JavaScript; default ["src"]).',
-  testRoots: 'Directories with the tests (TypeScript, JavaScript).',
+  sourceRoots: `Directories with the production code (TypeScript, JavaScript; default ${JSON.stringify(sourceRoots)}).`,
+  testRoots: `Directories with the tests (TypeScript, JavaScript; default ${JSON.stringify(testRoots)}).`,
   excludedGlobs: 'Globs that replace the built-in exclusions (TypeScript, JavaScript).',
   entryPoints:
     'Globs of files that are started or loaded by path and so are never imported (TypeScript, JavaScript).',
@@ -212,7 +220,7 @@ const pythonProperties = {
   environment: {
     description:
       'The tool that manages the environment, or the directory of a virtual environment.',
-    anyOf: [{ enum: ENVIRONMENTS }, { pattern: String.raw`^(?:/|[A-Za-z]:[\\/])` }, projectPath],
+    anyOf: [{ enum: ENVIRONMENTS }, { pattern: `^/|${WINDOWS_ABSOLUTE.source}` }, projectPath],
   },
   formatter: enumeration('The format check to run.', FORMATTERS),
   testRunner: enumeration('The test runner.', PYTHON_TEST_RUNNERS),
@@ -246,24 +254,5 @@ export const kotlin = scope('Kotlin preset settings.', KOTLIN_KEYS, {
   detektConfig: {
     description: 'Path of the detekt config inside the project; detected when absent.',
     ...projectPath,
-  },
-});
-
-export const spring = scope('Spring settings (java and kotlin presets).', SPRING_KEYS, {
-  roles: {
-    description:
-      'Annotation or type names, by role, whose classes count in that role for the Spring architecture rules, on top of Spring stereotypes. Removing a name loosens the policy.',
-    type: 'object',
-    additionalProperties: false,
-    properties: Object.fromEntries(
-      SPRING_ROLES.map((role) => [
-        role,
-        {
-          description: `Binary names of annotations or types whose classes are a ${role}, such as "com.example.UseCase".`,
-          type: 'array',
-          items: { type: 'string', pattern: BINARY_NAME.source },
-        },
-      ]),
-    ),
   },
 });

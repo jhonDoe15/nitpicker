@@ -1,9 +1,11 @@
 import {
   COMPILER_DIAGNOSTIC,
   EXCEPTION_KEYS,
+  EXCEPTION_PARENT_SEGMENT,
   WINDOWS_SEPARATOR,
 } from '../../../shared/exceptions/validation.mjs';
 import { GLOB_PROBLEMS } from '../../../shared/config.mjs';
+import { WORD_CHARACTER } from '../../../shared/messages/exception-sentence.mjs';
 import {
   FUNCTION_EXCEPTION_RULES,
   FUNCTION_REQUIRED_RULES,
@@ -19,9 +21,7 @@ import { i18nRuleIds } from '../../../languages/typescript/preset/eslint-config/
 import { NITPICKER_RULES, RENAMED_TYPESCRIPT_RULES } from '../validate.mjs';
 import { ABSOLUTE_PATH, ref, nonEmptyString, never, ruleSpellings } from './schema-parts.mjs';
 
-const EXCEPTION_PARENT_SEGMENT = String.raw`(?:^|/)\.\.(?:/|$)`;
 const NOT_BLANK = String.raw`\S`;
-const HAS_LETTER_OR_DIGIT = String.raw`[\p{L}\p{N}]`;
 
 const exceptionGlob = {
   type: 'string',
@@ -29,7 +29,7 @@ const exceptionGlob = {
     { pattern: NOT_BLANK },
     never(ABSOLUTE_PATH),
     never(WINDOWS_SEPARATOR.source),
-    never(EXCEPTION_PARENT_SEGMENT),
+    never(EXCEPTION_PARENT_SEGMENT.source),
   ],
 };
 
@@ -70,7 +70,7 @@ const entryProperties = {
     description:
       'Why the rule is lifted here. Required, and it must say something: the "..." a message prints is refused.',
     type: 'string',
-    pattern: HAS_LETTER_OR_DIGIT,
+    pattern: WORD_CHARACTER.source,
   },
 };
 

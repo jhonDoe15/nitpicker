@@ -1,10 +1,10 @@
 import { configError, isPlainObject } from '../../../shared/config.mjs';
 import { CO_CHANGE_LIMITS } from '../../../shared/project-rules/hygiene-rules.mjs';
 
-const THRESHOLD_KEYS = ['commits', 'minSupport', 'minConfidence', 'maxCommitFiles'];
-const HISTORY_KEYS = ['coChange', ...THRESHOLD_KEYS];
+export const HISTORY_THRESHOLD_KEYS = ['commits', 'minSupport', 'minConfidence', 'maxCommitFiles'];
+export const HISTORY_KEYS = ['coChange', ...HISTORY_THRESHOLD_KEYS];
 
-const WHOLE_NUMBER_BOUNDS = {
+export const WHOLE_NUMBER_BOUNDS = {
   commits: { min: CO_CHANGE_LIMITS.minHistory, max: CO_CHANGE_LIMITS.maxCommits },
   minSupport: { min: CO_CHANGE_LIMITS.minSupport, max: Number.MAX_SAFE_INTEGER },
   maxCommitFiles: { min: CO_CHANGE_LIMITS.minCommitFiles, max: CO_CHANGE_LIMITS.maxCommitFiles },
@@ -48,7 +48,7 @@ export function validateHistory(history) {
     return;
   }
   validateShape(history);
-  const settings = THRESHOLD_KEYS.filter((key) => history[key] !== undefined);
+  const settings = HISTORY_THRESHOLD_KEYS.filter((key) => history[key] !== undefined);
   if (settings.length > 0 && history.coChange === undefined) {
     throw configError(`"history.${settings[0]}" has no effect until "history.coChange" is true`);
   }

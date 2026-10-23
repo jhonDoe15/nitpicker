@@ -4,6 +4,7 @@ import {
   TIMEOUT_PROJECT_KEYS,
   TIMEOUT_SECTION_KEYS,
 } from '../../../shared/test-timeouts/resolve.mjs';
+import { DRIVE_LETTER, GLOB_CHARACTER, PARENT_SEGMENT } from '../../../shared/config.mjs';
 import { SUPPORTED_PRESETS } from '../validate.mjs';
 import {
   ORDERED_PRECEDENCE_TOOLS,
@@ -21,7 +22,13 @@ const LIMIT_DESCRIPTIONS = {
   hookDeclarationCeilingMs: 'The longest timeout a hook may declare for itself, in milliseconds.',
 };
 
-const TYPESCRIPT_PROJECT = String.raw`^(?![/\\])(?![A-Za-z]:)(?!(?:.*[/\\])?\.\.(?:[/\\]|$))[^*?{}\[\]\u0000]*\.json$`;
+const TYPESCRIPT_PROJECT = [
+  String.raw`^(?![/\\])`,
+  `(?!${DRIVE_LETTER.source.slice(1)})`,
+  String.raw`(?![\s\S]*${PARENT_SEGMENT.source})`,
+  String.raw`(?![\s\S]*${GLOB_CHARACTER.source})`,
+  String.raw`[^\u0000]*\.json$`,
+].join('');
 
 function limitProperties() {
   return Object.fromEntries(
