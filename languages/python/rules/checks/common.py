@@ -167,8 +167,38 @@ def functions_of(tree):
     ]
 
 
+def scoped_walk(tree, kinds):
+    pending = [(tree, ())]
+    while pending:
+        node, chain = pending.pop()
+        inner = (*chain, node) if isinstance(node, kinds) else chain
+        yield node, inner
+        children = list(ast.iter_child_nodes(node))
+        pending.extend((child, inner) for child in reversed(children))
+
+
+class ScopedVisitor:
+    SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+    chain = ()
+
+    def visit(self, tree):
+        for node, chain in scoped_walk(tree, self.SCOPES):
+            self.chain = chain
+            method = getattr(self, f"visit_{type(node).__name__}", None)
+            if method is not None:
+                method(node)
+
+    @property
+    def scope(self):
+        return [node.name for node in self.chain]
+
+
 def own_nodes(root):
-    pending = list(ast.iter_child_nodes(root))
+    return walk_statements(ast.iter_child_nodes(root))
+
+
+def walk_statements(statements):
+    pending = list(statements)
     while pending:
         node = pending.pop()
         yield node

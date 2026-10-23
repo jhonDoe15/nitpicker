@@ -10,21 +10,34 @@ MINIMUM_PYTHON = (3, 10)
 SKIPPED_RULE = "rules-skipped"
 CHECK_FAILED_RULE = "rules-check-failed"
 ALLOWANCES_REPORT = "rules-allowances.json"
+GUARDED = {
+    "smells.loops",
+    "accumulators.copies",
+    "orm.lazy",
+    "transactions.check",
+    "retries.check",
+    "dual_write.check",
+}
 
 
 def load_checks():
     sys.path.insert(0, HERE)
+    from accumulators import copies
     from boundary import domain_types, guards, paths
     from checks import comments, declarations, shell, state
     from discovery import helpers, uncollected
+    from dual_write import check as dual_write
     from environment import environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped
+    from orm import lazy
+    from retries import check as retries
     from security import hashes, loading
     from security.sql import check as sql
     from security.timeouts import check as timeouts
     from security.tls import check as tls
     from silent_tests import unasserted
+    from transactions import check as transactions
     from smells import literals, loops, names, secret_logs, secrets
 
     return [
@@ -48,6 +61,11 @@ def load_checks():
         secrets,
         secret_logs,
         loops,
+        copies,
+        lazy,
+        transactions,
+        retries,
+        dual_write,
         skipped,
         assertions,
         unasserted,
@@ -86,7 +104,7 @@ def parse_file(path):
 
 
 def is_guarded(module):
-    return module.__name__.startswith("security.")
+    return module.__name__.startswith("security.") or module.__name__ in GUARDED
 
 
 def check_failure(module, context, error):
