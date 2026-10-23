@@ -32,6 +32,8 @@ import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+import { runMonorepo } from './projects/run/monorepo.mjs';
+import { monorepoRefusal } from './projects/run/refusal.mjs';
 
 export function runCli(options = {}) {
   const cli = withCliDefaults(options);
@@ -44,14 +46,17 @@ export function runCli(options = {}) {
     });
   }
   if (cli.arguments_[0] === 'aggregate') {
-    return runAggregateCli({
-      arguments_: cli.arguments_.slice(1),
-      currentProjectRoot: cli.currentProjectRoot,
-      analyzers: cli.analyzers,
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-      environment: cli.environment,
-    });
+    return (
+      monorepoRefusal(cli, 'aggregate') ??
+      runAggregateCli({
+        arguments_: cli.arguments_.slice(1),
+        currentProjectRoot: cli.currentProjectRoot,
+        analyzers: cli.analyzers,
+        stdout: cli.stdout,
+        stderr: cli.stderr,
+        environment: cli.environment,
+      })
+    );
   }
   try {
     return runCommand(cli);
@@ -86,15 +91,18 @@ function withCliDefaults(options) {
 
 function runCommand(cli) {
   if (cli.arguments_[0] === 'cache') {
-    return runCacheCommand({
-      arguments_: cli.arguments_.slice(1),
-      environment: cli.environment,
-      currentProjectRoot: cli.currentProjectRoot,
-      analyzers: cli.analyzers,
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-      runTasks: cli.runTasks,
-    });
+    return (
+      monorepoRefusal(cli, 'cache') ??
+      runCacheCommand({
+        arguments_: cli.arguments_.slice(1),
+        environment: cli.environment,
+        currentProjectRoot: cli.currentProjectRoot,
+        analyzers: cli.analyzers,
+        stdout: cli.stdout,
+        stderr: cli.stderr,
+        runTasks: cli.runTasks,
+      })
+    );
   }
   const options = parseArguments(cli.arguments_);
   if (options.help) {
@@ -104,13 +112,32 @@ function runCommand(cli) {
   return runConfigured({ ...cli, options });
 }
 
+function runProjectOf(cli) {
+  return (project, options) =>
+    runConfigured({
+      ...cli,
+      options,
+      currentProjectRoot: project.absolute,
+      configOverlay: project.overlay,
+      singleProject: true,
+    });
+}
+
 function runConfigured(cli) {
   const { options, stdout, runTasks } = cli;
   const currentProjectRoot =
     cli.currentProjectRoot === undefined
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot);
-  const config = loadConfig(currentProjectRoot);
+  const monorepoExitCode = runMonorepo({
+    cli,
+    currentProjectRoot,
+    runProject: runProjectOf(cli),
+  });
+  if (monorepoExitCode !== undefined) {
+    return monorepoExitCode;
+  }
+  const config = loadConfig(currentProjectRoot, { overlay: cli.configOverlay });
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
   const analyzers = configureAnalyzers(presetSet, config, headPolicy);

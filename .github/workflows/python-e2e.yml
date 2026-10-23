@@ -61,6 +61,13 @@ jobs:
       - run: pip install -c .github/python-e2e-constraints.txt basedpyright black coverage mypy pyright pytest ruff uv
       # The base-environment tests install real projects with poetry and uv.
       - run: pipx install poetry==2.4.3
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
       - run: npm ci
       - run: npm run test:python -- --maxWorkers=2 --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/python-e2e/shard-${{ matrix.shard }}.json
       - uses: actions/upload-artifact@v4
