@@ -768,16 +768,23 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - `generic-name` reports a file, a folder or a top-level class whose last word is `util`, `utils`,
   `helper`, `helpers`, `manager`, `common`, `misc` and the like; a class that extends a type with the
   same ending (`class SessionManager(CacheManager)`) is not reported.
-- `boolean-flag-parameter` reports a positional `bool` parameter (annotated `bool`, `bool | None` or
-  `Optional[bool]`, or defaulted to `True` or `False`) of a public function or method that is the
-  condition of an `if`, a conditional expression or a `while` (also under `not`, `and` and `or`). The
-  flag is keyword-only (`def send(message, *, urgent=False)`), two functions, or an enum. Private
-  names (a leading underscore, which covers `__init__` and the other dunder methods), methods of a
-  private class, nested functions, tests, `set_*`, `with_*` and `from_*` names, `of` and `builder`,
-  functions with `@override`, `@abstractmethod`, `@overload` or a property `setter`, and a flag
-  that is only passed on or stored are not reported. A method that overrides a base class without
-  `@override` is reported; mark it `@override`. Java, Kotlin, TypeScript and JavaScript use the
-  same definition, with an options object, a record or an enum as the allowed form.
+- `boolean-flag-parameter` reports a positional `bool` parameter (annotated `bool`, `bool | None`,
+  `Optional[bool]` or `Annotated[bool, ...]`, as a string too, or defaulted to `True` or `False`;
+  `int | bool` is not one) of a public function or method that is a condition: the test of an
+  `if`, a conditional expression, a `while`, an `assert`, a comprehension filter, a `match`
+  subject or guard, also under `not`, `and` and `or`, as `flag is True` or `flag == False`, and
+  inside a nested lambda or closure. The flag is keyword-only (`def send(message, *, urgent=False)`),
+  two functions, or an enum. A name the code rebinds (a loop variable, a lambda parameter, an
+  assignment) is not the flag. Private names (a leading underscore, which covers `__init__` and
+  the other dunder methods), methods of a private class, nested functions, tests, methods named
+  `set_*` or `with_*`, `@classmethod` and `@staticmethod` factories named `from_*`, `of` or
+  `builder`, functions with `@override`, `@abstractmethod`, `@overload`, a property `setter`,
+  `getter` or `deleter`, or a pydantic `field_validator`, `validator` or `model_validator`, and a
+  flag that is only passed on or stored are not reported. A module function named `set_up_db` or
+  `from_config` is checked. A method that overrides a base class without `@override` is reported;
+  mark it `@override` (`typing_extensions.override` before Python 3.12). The finding names the
+  class: `Mailer.deliver(urgent)`. The [parameter rules table](internals.md#parameter-rules-across-presets)
+  compares the presets.
 - Unused arguments (ruff `ARG001`-`ARG005`) skip names that start with `_`, `*args` and `**kwargs`,
   `@override` and `@abstractmethod` methods, `@overload`, dunder methods other than `__init__`,
   `__new__` and `__call__`, and bodies that are only `...`, `pass`, a docstring or
@@ -812,8 +819,7 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   fixed URL), `S311` (`random` for non-crypto use, which the domain rule covers), `S601`, `S603`,
   `S606` and `S607` (see above), and `S110`/`S112` (replaced by `swallowed-exception`).
 - Other rules of the selected groups that are left off: `TRY003` (long messages in `raise`),
-  `TRY300` and `TRY301` (`else` after `try`, `raise` inside `try`), `FBT003` (a boolean argument at
-  the call site) and, for `PT`, `PT009` and `PT027` (`unittest` assertions, which `unittest`
+  `TRY300` and `TRY301` (`else` after `try`, `raise` inside `try`), and, for `PT`, `PT009` and `PT027` (`unittest` assertions, which `unittest`
   projects use by design). `PT011` and `PT030` ask for a `match` or a more specific class.
 - The advice follows the project when two forms are valid. Pytest style: the parentheses of
   `@pytest.fixture` (`PT001`) and marks (`PT023`) and the shape of `parametrize` (`PT006`,
@@ -877,8 +883,8 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `SIM`, `PIE`, `RET`, `PERF`, a list of the stable `RUF` rules (without `RUF001`, `RUF002`,
   `RUF003` and `RUF012`: non-ASCII text and mutable class attributes, both common in correct
   code) and `T20` (no `print`), without `B008` (a call in an argument default, which the web
-  frameworks need). Slice 2 adds the shared one-way groups `G`, `N`, `ERA`, `ARG`, `PT`, `S`, `TRY`,
-  `PLR2004`. The target version follows the project's
+  frameworks need). Slice 2 adds the shared one-way groups `G`, `N`, `ERA`, `ARG`, `PT`, `S`, `TRY`
+  and `PLR2004`. The target version follows the project's
   `requires-python` (or poetry's `python`, or `python_requires`): its lowest version, never lower
   than 3.8, and 3.8 when none is declared, so a rule that exists only on newer versions (`B905`,
   `zip(strict=)`) cannot flag code that must run on an older one. The SARIF goes through the existing generic ingester; identity is the

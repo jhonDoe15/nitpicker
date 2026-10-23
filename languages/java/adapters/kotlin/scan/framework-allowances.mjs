@@ -5,6 +5,7 @@ import { listEntriesOf, MERGED_LISTS } from '../detekt/detekt-lists.mjs';
 import { ONE_WAY_RULES } from '../rules/kotlin-rules.mjs';
 import { isCompositionRoot } from './kotlin-scan.mjs';
 import { lineText, scanKotlinSource } from './kotlin-source.mjs';
+import { hasCallbackAnnotation, UNUSED_PARAMETER_RULE } from './declaration-header.mjs';
 
 const FORBIDDEN_CALL = 'detekt.style.ForbiddenMethodCall';
 const SPREAD = 'detekt.performance.SpreadOperator';
@@ -69,6 +70,10 @@ function isAllowed(finding, source, spring) {
   if (finding.rule === FORBIDDEN_CALL && finding.message.includes(ENVIRONMENT)) {
     const scanned = source(finding.path);
     return scanned !== undefined && isCompositionRoot(scanned);
+  }
+  if (finding.rule === UNUSED_PARAMETER_RULE && finding.location?.line !== undefined) {
+    const scanned = source(finding.path);
+    return scanned !== undefined && hasCallbackAnnotation(scanned, finding.location.line);
   }
   if (spring && finding.rule === SPREAD && finding.location?.line !== undefined) {
     const scanned = source(finding.path);

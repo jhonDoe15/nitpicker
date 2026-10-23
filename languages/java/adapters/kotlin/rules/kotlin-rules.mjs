@@ -12,7 +12,6 @@ const BANNED_SUPPRESSIONS = [
   /^all$/i,
   /^detekt(?:[.:]|$)/i,
   /^ktlint(?:[.:]|$)/i,
-  /^(?:unused|UNUSED_PARAMETER|UNUSED_VARIABLE)$/,
   /^[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*$/,
 ];
 const DETEKT_RULESETS = new Set([
@@ -29,6 +28,8 @@ const DETEKT_RULESETS = new Set([
   'ruleauthors',
   'style',
 ]);
+
+const RULESET_QUALIFIED = new RegExp(`^(?:${[...DETEKT_RULESETS].join('|')})[.:]`);
 
 export const ONE_WAY_RULES = [
   {
@@ -61,7 +62,7 @@ export const ONE_WAY_RULES = [
     ruleset: 'style',
     mainOnly: true,
     allowed:
-      'Remove the parameter and update the callers, or use it. An override, a function with a framework annotation (`@GetMapping`, `@EventListener`, `@Bean`, `@Test`, ...) and a name starting `ignored` or `unused` are skipped.',
+      'Remove the parameter and update the callers, or use it. An override, `main`, a function with any annotation other than `@Deprecated`, `@Suppress`, `@Throws`, `@JvmStatic`, `@JvmOverloads` or `@JvmName` (`@GetMapping`, `@Bean`, `@Test`, `@Inject`, ...) and a name starting `ignored` or `unused` are skipped.',
   },
   { name: 'UseDataClass', ruleset: 'style' },
   { name: 'ForbiddenImport', ruleset: 'style' },
@@ -79,6 +80,12 @@ export const ONE_WAY_RULES = [
   },
 ].map((rule) => ({ ...rule, id: `detekt.${rule.ruleset}.${rule.name}` }));
 
+const UNUSED_CODE_TOKENS = new Set(['unused', 'UNUSED_PARAMETER', 'UNUSED_VARIABLE']);
+
+export function isUnusedCodeSuppression(token) {
+  return UNUSED_CODE_TOKENS.has(token);
+}
+
 export const SUPPRESSION_RULE = 'inline-suppression';
 export const TEST_ASSERTION_RULE = 'test-without-assertion';
 
@@ -90,6 +97,7 @@ export function isBannedSuppression(token) {
   return (
     DETEKT_RULESETS.has(token) ||
     COMPILER_WARNINGS.has(token) ||
+    RULESET_QUALIFIED.test(token) ||
     BANNED_SUPPRESSIONS.some((banned) => banned.test(token))
   );
 }

@@ -6,6 +6,7 @@ import { withKotlinRuleMessage } from './kotlin-messages.mjs';
 import {
   compilerWarningRule,
   isBannedSuppression,
+  isUnusedCodeSuppression,
   ONE_WAY_RULE_IDS,
   ONE_WAY_RULES,
   SUPPRESSION_RULE,
@@ -156,11 +157,10 @@ describe('nitpicker-detekt.yml', () => {
     const pinned = { active: 'true', excludes: '[]', ignoreAnnotated: '[]', includes: '[]' };
     for (const { settings, rules } of Object.values(rulesets)) {
       expect(settings).toEqual(pinned);
-      for (const [name, rule] of Object.entries(rules)) {
+      for (const rule of Object.values(rules)) {
         const { active, excludes, ignoreAnnotated, includes, severity } = rule;
         expect({ active, excludes, ignoreAnnotated, includes, severity }).toEqual({
           ...pinned,
-          ignoreAnnotated: name === 'UnusedParameter' ? undefined : pinned.ignoreAnnotated,
           severity: 'warning',
         });
       }
@@ -192,9 +192,11 @@ describe('isBannedSuppression', () => {
     'UNCHECKED_CAST',
     'DEPRECATION',
     'TYPEALIAS_EXPANSION_DEPRECATION',
-    'unused',
-    'UNUSED_PARAMETER',
-    'UNUSED_VARIABLE',
+    'style:UnusedParameter',
+    'style.UnusedParameter',
+    'potential-bugs:UnsafeCallOnNullableType',
+    'complexity.LongMethod',
+    'empty-blocks.EmptyFunctionBlock',
   ])('bans %s', (token) => {
     expect(isBannedSuppression(token)).toBe(true);
   });
@@ -205,6 +207,16 @@ describe('isBannedSuppression', () => {
       expect(isBannedSuppression(token)).toBe(false);
     },
   );
+});
+
+describe('isUnusedCodeSuppression', () => {
+  it.each(['unused', 'UNUSED_PARAMETER', 'UNUSED_VARIABLE'])('names %s', (token) => {
+    expect(isUnusedCodeSuppression(token)).toBe(true);
+  });
+
+  it.each(['unchecked', 'UnusedParameter', 'Unused', ''])('does not name %s', (token) => {
+    expect(isUnusedCodeSuppression(token)).toBe(false);
+  });
 });
 
 describe('compilerWarningRule', () => {

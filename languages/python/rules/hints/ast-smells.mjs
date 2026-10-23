@@ -99,7 +99,7 @@ export const SMELL_HINTS = [
     rules: ['boolean-flag-parameter'],
     describe: (subject) => `\`${subject}\` switches a public function between two behaviors`,
     allowed:
-      'Make the flag keyword-only, `def send(message, *, urgent=False)`, split the function into two named for each behavior, or pass an enum. click, typer and FastAPI pass options by keyword, so `def command(*, verbose: bool)` works there.',
+      'Make the flag keyword-only, `def send(message, *, urgent=False)`, split the function into two named for each behavior, or pass an enum. click, typer and FastAPI pass options by keyword, so `def command(*, verbose: bool)` works there. A method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12), which lifts the rule.',
   },
   {
     tool: RULES_TOOL,
