@@ -174,3 +174,19 @@ describe('ioInLoops', () => {
     expect(found(ioInLoops, body(lines))).toEqual([]);
   });
 });
+
+describe('ioInLoops next to UnboundedFanOut', () => {
+  const header =
+    'import org.springframework.web.client.RestTemplate\n\nclass Sync(private val restTemplate: RestTemplate) {\n';
+
+  it('leaves a remote call started per element to UnboundedFanOut and still flags a repository call there', () => {
+    const source = `${header}    fun run(items: List<String>) = runBlocking {
+        items.map { async { restTemplate.getForObject(it, String::class.java) } }.awaitAll()
+        items.map { async { repo.findById(it) } }.awaitAll()
+    }
+}
+`;
+
+    expect(found(ioInLoops, source)).toEqual([['IoCallInLoop', 6]]);
+  });
+});

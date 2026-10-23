@@ -56,6 +56,17 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
     expect(timed[0].message).toMatch(/until\(\(\) -> !thread\.isAlive\(\)\)/u);
   });
 
+  it('names the collection and the task start of an unbounded fan-out', () => {
+    const fanOut = runs.gradle.filter(({ rule }) => rule === 'UnboundedFanOut');
+
+    expect(fanOut.map(({ message }) => message.split(' for every element')[0])).toEqual([
+      '`urls` starts `CompletableFuture.supplyAsync`',
+      '`urls` starts `ExecutorService.submit`',
+      '`urls` starts `HttpClient.sendAsync`',
+    ]);
+    expect(fanOut[0].message).toMatch(/Semaphore permit around each call/u);
+  });
+
   it('reports the main classes only tests use and spares the Spring service', () => {
     const testOnly = (findings) =>
       findings

@@ -146,6 +146,7 @@ describe('readKotlinSourceFindings', () => {
         'TestClassWithoutTestCases',
         'TestHelperInSource',
         'TlsVerificationOff',
+        'UnboundedFanOut',
         'UnsafeDeserialization',
         'WeakHash',
       ].map((rule) => `kotlin-source/${rule}`),

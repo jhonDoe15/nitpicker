@@ -23,6 +23,7 @@ import { CLIENT_MESSAGES, httpWithoutTimeout, unsafeDeserialization } from './se
 import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security/crypto.mjs';
 import { SQL_MESSAGES, sqlStringBuilding } from './security/sql.mjs';
 import { kotlinDeclarations } from './security/sql-values.mjs';
+import { FAN_OUT_MESSAGES, unboundedFanOut } from './fan-out/fan-out.mjs';
 
 const KOTLIN_SOURCE_TOOL = 'kotlin-source';
 
@@ -36,6 +37,7 @@ const MESSAGES = {
   ...SQL_MESSAGES,
   ...CRYPTO_MESSAGES,
   ...CLIENT_MESSAGES,
+  ...FAN_OUT_MESSAGES,
 };
 
 export const KOTLIN_SOURCE_RULES = Object.keys(MESSAGES).map(
@@ -50,6 +52,7 @@ const MAIN_RULES = [
   logTemplates,
   shellCommands,
   ioInLoops,
+  unboundedFanOut,
   catchOnlyLogs,
   booleanFlags,
   hardcodedSecrets,
