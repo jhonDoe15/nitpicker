@@ -12,6 +12,7 @@ import com.tngtech.archunit.core.domain.JavaType;
 import com.tngtech.archunit.core.domain.JavaWildcardType;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -76,6 +77,37 @@ final class Lifetimes {
         }
       }
     }
+  }
+
+  static Set<JavaClass> perUseBeans(JavaClasses main) {
+    String scanProxy = componentScanProxy(main);
+    Set<JavaClass> beans = new LinkedHashSet<>();
+    for (JavaClass type : main) {
+      if (isComponent(type) && !BeanScope.of(type.getAnnotations(), scanProxy).isSingleton()) {
+        beans.add(type);
+      }
+    }
+    return beans;
+  }
+
+  static Set<JavaClass> singletons(JavaClasses main) {
+    String scanProxy = componentScanProxy(main);
+    Set<JavaClass> singletons = new LinkedHashSet<>();
+    for (JavaClass type : main) {
+      if (isComponent(type) && BeanScope.of(type.getAnnotations(), scanProxy).isSingleton()) {
+        singletons.add(type);
+      }
+      for (JavaMethod method : type.getMethods()) {
+        if (method.isMetaAnnotatedWith(BEAN) && BeanScope.of(method.getAnnotations(), "NO").isSingleton()) {
+          JavaClass made = method.getRawReturnType();
+          if (!made.getName().equals(Object.class.getName())) {
+            singletons.add(made);
+            made.getAllSubclasses().stream().filter(subclass -> !isComponent(subclass)).forEach(singletons::add);
+          }
+        }
+      }
+    }
+    return singletons;
   }
 
   private static boolean isComponent(JavaClass type) {

@@ -409,7 +409,7 @@ with `fun main`, the `@SpringBootApplication` class or a Ktor module) may read `
 `SpreadOperator` findings in a Spring project; JPA and Spring Data entities are not asked to become
 data classes; parameters with an annotation (`@RequestParam`, `@PathVariable`) are not boolean flags.
 
-The Java preset's Spring architecture rules (feature layout, layering, bean lifetimes, and the
+The Java preset's Spring architecture rules (feature layout, layering, bean lifetimes, request data in singletons (a `companion object` property counts as a static field), and the
 jMolecules aggregate rules, which also run without Spring; "Spring architecture rules" in
 [java-preset.md](java-preset.md)) read compiled classes, so they check Kotlin classes the same way, with the same `archunit/<rule>` exceptions and the same `spring.roles` config
 key.

@@ -2021,6 +2021,7 @@ boundary finding is still reported.
 | Rule                   | Fails when                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `spring-scope-capture` | a singleton bean (a `@Component` class or a `@Bean` method without `@Scope`, or with `singleton` or `application` scope) takes a request-, session-, `websocket`-, Spring Batch `step`- or `job`-scoped bean without a scoped proxy: in a constructor or `@Bean` method parameter, an `@Autowired`, `@Inject` or `@Resource` field or method, also as `Optional<T>`, an array or a collection or map of them |
+| `spring-request-state` | request data reaches a field of a singleton bean or a static field outside set-up: assigned, written into an array element, or passed to a collection, map, `Map.Entry` or `AtomicReference` mutator (`add`, `put`, `computeIfAbsent`, `set`, ...)                                                                                                                                                           |
 
 The scope is read from `@Scope` on the class or `@Bean` method, directly or through a composed
 annotation such as `@RequestScope` (whose own `ScopedProxyMode` attribute, `TARGET_CLASS` by
@@ -2036,6 +2037,26 @@ declares; the rule claims only when all of them have such a scope. So a prototyp
 instance per injection point, often meant), a custom scope it cannot model (`@Scope("tenant")`,
 `thread`), a type with no bean in the module (one from a library or registered in code) or a
 `@ComponentScan(scopedProxy = ...)` default it cannot resolve to one mode is never a finding.
+
+`spring-request-state` follows request data through the compiled code (bytecode dataflow with
+[ASM](https://asm.ow2.io), BSD-3-Clause, added to the rule runner only). Request data is every
+parameter of a handler method (`@RequestMapping` and its shortcuts, `@MessageMapping`,
+`@SchemaMapping`, `@BatchMapping`, `@KafkaListener`, `@RabbitListener`, `@JmsListener`), any
+parameter of a request type (`ServletRequest`, `WebRequest`, `ServerHttpRequest`,
+`ServerWebExchange`, a functional `ServerRequest`) and the result of
+`RequestContextHolder.getRequestAttributes()` / `currentRequestAttributes()`,
+`SecurityContextHolder.getContext()` and `ReactiveSecurityContextHolder.getContext()`. It follows
+the data through local variables, values derived from it, new objects and collections built from it,
+getters, calls into the project's own methods (across classes, through interfaces to every
+implementation, and through lambdas and method references the code runs or passes on) and helper
+objects a singleton holds, and reports the field where it ends up, once per field, with the first
+handler parameter or source that reaches it: `last:put:VisitController.create(visit)`, identity
+`VisitController|last`. Constructors, static initializers, `@PostConstruct`, `afterPropertiesSet`
+and `@Bean` methods are set-up and never report; a local collection, a counter that only counts
+(`AtomicLong.incrementAndGet()`), a cache call (`Cache.put`, `@Cacheable`), a field whose type only a
+per-use bean (`@RequestScope`, prototype) can fill and a field of a request-scoped bean are fine.
+Singletons are the classes `spring-scope-capture` treats as singletons, plus the types a singleton
+`@Bean` method returns (not `Object`) and their subclasses that are not components themselves.
 
 **Aggregates (jMolecules).** A project that declares its domain model with
 [jMolecules](https://github.com/xmolecules/jmolecules) (`org.jmolecules:jmolecules-ddd`, Apache-2.0,
