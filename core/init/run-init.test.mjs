@@ -2,12 +2,13 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../cli.mjs';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
 import { INIT_USAGE_TEXT } from '../help/usage-text.mjs';
 import { readSnippet } from './files/agents-md.mjs';
 import { unifiedDiff } from './files/line-diff.mjs';
-import { captureOutput, readText, useProjects } from './test-support/projects.mjs';
+import { readText, useProjects } from './test-support/projects.mjs';
 
-const project = useProjects();
+const createProject = useProjects();
 const TYPESCRIPT = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };
 const SKILL = 'npx skills add jhonDoe15/nitpicker --skill';
 const NODE_INSTALL = 'nitpicker typescript @types/node vitest @vitest/coverage-v8';
@@ -20,6 +21,8 @@ const JVM_NEEDS = 'Needs Java 21 or newer. nitpicker adds its own analysis tools
 const PYTHON_MISSING = 'coverage, mypy, pytest, mutmut>=3,<4';
 const PYTHON_ARGUMENTS = "coverage mypy pytest 'mutmut>=3,<4'";
 const WORKFLOW_PATH = '.github/workflows/nitpicker.yml';
+const CREATED = ['created nitpicker.config.json'];
+const SET_UP = ['nitpicker.config.json is already set up'];
 const YARN_WORKFLOW = [
   'name: nitpicker',
   '',
@@ -45,7 +48,18 @@ const YARN_WORKFLOW = [
   '',
 ].join('\n');
 
-function expectedReport({ head, peers, skills, offers, command = 'npx nitpicker' }) {
+function project(files) {
+  return createProject(files, { repository: true });
+}
+
+function expectedReport({
+  head,
+  peers,
+  config = CREATED,
+  skills,
+  offers,
+  command = 'npx nitpicker',
+}) {
   const defaultOffers = [
     `To add the agent guidance to AGENTS.md, run: ${command} init --agents-md`,
     `To write ${WORKFLOW_PATH}, run: ${command} init --ci github`,
@@ -55,7 +69,9 @@ function expectedReport({ head, peers, skills, offers, command = 'npx nitpicker'
     '',
     ...peers,
     '',
-    'Teach your coding agent the allowed forms:',
+    ...config,
+    '',
+    'Install the agent skill:',
     ...skills.map((skill) => `  ${SKILL} ${skill}`),
     '',
     ...(offers ?? defaultOffers),
@@ -69,24 +85,29 @@ function install(missing, command) {
   return [`Install what nitpicker needs from your project (missing: ${missing}):`, `  ${command}`];
 }
 
-function npmReport({ headline, headLine, offers }) {
+function npmReport({ config, offers }) {
   return expectedReport({
-    head: [headline, headLine],
+    head: ['nitpicker init: TypeScript, npm, Vitest (preset "typescript")'],
     peers: install(NODE_MISSING, `npm install --save-dev ${NODE_INSTALL}`),
+    config,
     skills: ['nitpicker-typescript'],
     offers,
   });
 }
 
 function init(root, ...initArguments) {
-  const { output, stdout, stderr } = captureOutput();
+  return initWith({ currentProjectRoot: root }, ...initArguments);
+}
+
+function initWith(options, ...initArguments) {
+  const output = captureOutput();
   const exitCode = runCli({
+    ...options,
     arguments_: ['init', ...initArguments],
-    currentProjectRoot: root,
-    stdout,
-    stderr,
+    stdout: output.stdout,
+    stderr: output.stderr,
   });
-  return { exitCode, ...output };
+  return { exitCode, stdoutText: output.stdoutText, stderrText: output.stderrText };
 }
 
 describe('nitpicker init', () => {
@@ -101,10 +122,7 @@ describe('nitpicker init', () => {
       exitCode: 0,
       stderrText: '',
       stdoutText: expectedReport({
-        head: [
-          'nitpicker init: TypeScript, pnpm, Vitest (preset "typescript")',
-          'created nitpicker.config.json',
-        ],
+        head: ['nitpicker init: TypeScript, pnpm, Vitest (preset "typescript")'],
         peers: install(
           'nitpicker, @types/node, vitest, @vitest/coverage-v8',
           'pnpm add --save-dev nitpicker @types/node vitest @vitest/coverage-v8',
@@ -125,10 +143,7 @@ describe('nitpicker init', () => {
 
     expect(init(root).stdoutText).toBe(
       expectedReport({
-        head: [
-          'nitpicker init: TypeScript, npm, Jest (preset "typescript")',
-          'created nitpicker.config.json',
-        ],
+        head: ['nitpicker init: TypeScript, npm, Jest (preset "typescript")'],
         peers: ['Nothing to install: every peer nitpicker needs is already there.'],
         skills: ['nitpicker-typescript'],
       }),
@@ -150,7 +165,7 @@ describe('nitpicker init', () => {
       'a Python project',
       { 'pyproject.toml': '', 'app.py': '' },
       {
-        head: ['nitpicker init: Python, path, unittest, mypy, ruff (preset "python")'],
+        head: ['nitpicker init: Python, pip, unittest, mypy, ruff (preset "python")'],
         peers: install(PYTHON_MISSING, `python -m pip install ${PYTHON_ARGUMENTS}`),
         skills: ['nitpicker-python'],
       },
@@ -170,8 +185,7 @@ describe('nitpicker init', () => {
       'a Gradle project',
       { 'build.gradle': '', 'src/main/java/App.java': 'class App {}' },
       {
-        head: ['nitpicker init: Java, Gradle (preset "java")'],
-        notes: [GRADLE_NOTE],
+        head: ['nitpicker init: Java, Gradle (preset "java")', GRADLE_NOTE],
         peers: [JVM_NEEDS],
         skills: ['nitpicker-java'],
       },
@@ -181,8 +195,7 @@ describe('nitpicker init', () => {
       'a Maven project',
       { 'pom.xml': '', 'src/main/java/App.java': 'class App {}' },
       {
-        head: ['nitpicker init: Java, Maven (preset "java")'],
-        notes: [MAVEN_NOTE],
+        head: ['nitpicker init: Java, Maven (preset "java")', MAVEN_NOTE],
         peers: [JVM_NEEDS],
         skills: ['nitpicker-java'],
       },
@@ -216,18 +229,36 @@ describe('nitpicker init', () => {
     ],
   ])('sets up %s', (_name, files, report, preset) => {
     const root = project(files);
-    const { head, notes = [], ...rest } = report;
-    const created = [...head, 'created nitpicker.config.json', ...notes];
 
     expect(init(root)).toEqual({
       exitCode: 0,
       stderrText: '',
-      stdoutText: expectedReport({ ...rest, head: created }),
+      stdoutText: expectedReport(report),
     });
     expect(readText(root, 'nitpicker.config.json')).toBe(`{ "preset": "${preset}" }\n`);
   });
 
-  it('stops with advice when the folder holds no project', () => {
+  it('suggests declaring a peer that only the local .venv holds', () => {
+    const root = project({
+      'requirements.txt': 'coverage\nmypy\npytest\n',
+      '.venv/lib/python3.13/site-packages/mutmut/__init__.py': '',
+    });
+
+    expect(init(root).stdoutText).toBe(
+      expectedReport({
+        head: ['nitpicker init: Python, pip, pytest, mypy, ruff (preset "python")'],
+        peers: [
+          'Nothing to install: every peer nitpicker needs is already there.',
+          'Installed in .venv but not declared: mutmut>=3,<4. Declare them as development dependencies, so a fresh checkout gets them too; the CI workflow of init installs them itself.',
+        ],
+        skills: ['nitpicker-python'],
+      }),
+    );
+  });
+});
+
+describe('nitpicker init stops before it writes', () => {
+  it('when the folder holds no project', () => {
     const root = project({});
 
     expect(init(root)).toEqual({
@@ -237,6 +268,32 @@ describe('nitpicker init', () => {
         `nitpicker failed: Nothing to detect in ${root}: no package.json, pom.xml, build.gradle, ` +
         "pyproject.toml or other project file. Run nitpicker init in the project's directory.\n",
     });
+  });
+
+  it('when the folder is not in a Git repository', () => {
+    const root = createProject(TYPESCRIPT);
+
+    expect(init(root)).toEqual({
+      exitCode: 2,
+      stdoutText: '',
+      stderrText: `nitpicker failed: ${root} is not in a Git repository. nitpicker compares your changes with their merge base, so it needs one: run git init, commit, and run nitpicker init again.\n`,
+    });
+    expect(existsSync(path.join(root, 'nitpicker.config.json'))).toBe(false);
+  });
+
+  it('when Node.js is older than the engines field of nitpicker allows', () => {
+    const root = project(TYPESCRIPT);
+
+    expect(initWith({ currentProjectRoot: root, nodeVersion: '22.13.1' }).exitCode).toBe(2);
+    expect(existsSync(path.join(root, 'nitpicker.config.json'))).toBe(false);
+  });
+
+  it('when a Maven project has only Kotlin sources', () => {
+    const root = project({ 'pom.xml': '', mvnw: '', 'src/main/kotlin/App.kt': '' });
+
+    expect(init(root).stderrText).toBe(
+      'nitpicker failed: This Maven project has Kotlin sources and no Java ones, and the kotlin preset needs a Gradle build today, so nitpicker cannot check it yet. Build it with Gradle to use the kotlin preset.\n',
+    );
   });
 });
 
@@ -248,35 +305,47 @@ describe('nitpicker init with an existing config', () => {
     expect(init(root)).toEqual({
       exitCode: 0,
       stderrText: '',
-      stdoutText: npmReport({
-        headline: 'nitpicker init: TypeScript, npm, Vitest (preset "typescript")',
-        headLine: 'nitpicker.config.json is already set up',
-      }),
+      stdoutText: npmReport({ config: SET_UP }),
     });
     expect(readText(root, 'nitpicker.config.json')).toBe(text);
   });
 
-  it('exits 1 with the diff and how to apply it when the config differs', () => {
-    const text = '{ "preset": "typescript" }\n';
+  it('exits 0 for a TypeScript project whose config sets no preset, the default one', () => {
+    const root = project({
+      ...TYPESCRIPT,
+      'nitpicker.config.json': '{ "disable": ["mutation"] }\n',
+    });
+
+    expect(init(root)).toEqual({
+      exitCode: 0,
+      stderrText: '',
+      stdoutText: npmReport({ config: SET_UP }),
+    });
+  });
+
+  it('exits 1 with the diff that adds the preset to a config without one', () => {
+    const text = '{\n  "disable": ["mutation"]\n}\n';
     const root = project({ 'src/index.js': '', 'nitpicker.config.json': text });
 
     expect(init(root)).toEqual({
       exitCode: 1,
       stderrText: '',
       stdoutText: expectedReport({
-        head: [
-          'nitpicker init: JavaScript, npm, Vitest (preset "javascript")',
-          'nitpicker.config.json exists and was not changed. It does not set "preset": "javascript", which this project needs. The diff from your file to what init would write:',
+        head: ['nitpicker init: JavaScript, npm, Vitest (preset "javascript")'],
+        peers: install(NODE_MISSING, `npm install --save-dev ${NODE_INSTALL}`),
+        config: [
+          'nitpicker.config.json exists and was not changed. It sets no preset: add "preset": "javascript". The diff from your file to what init would write:',
           '',
           '--- nitpicker.config.json',
           '+++ nitpicker.config.json (nitpicker init)',
-          '@@ -1,1 +1,1 @@',
-          '-{ "preset": "typescript" }',
-          '+{ "preset": "javascript" }',
+          '@@ -1,3 +1,4 @@',
+          ' {',
+          '+  "preset": "javascript",',
+          '   "disable": ["mutation"]',
+          ' }',
           '',
           'Apply the change by hand, or move nitpicker.config.json aside and run nitpicker init again.',
         ],
-        peers: install(NODE_MISSING, `npm install --save-dev ${NODE_INSTALL}`),
         skills: ['nitpicker-javascript'],
       }),
     });
@@ -284,7 +353,7 @@ describe('nitpicker init with an existing config', () => {
   });
 
   it('still does the rest of the setup when the config differs', () => {
-    const root = project({ ...TYPESCRIPT, 'nitpicker.config.json': '{}\n' });
+    const root = project({ ...TYPESCRIPT, 'nitpicker.config.json': '{ "preset": "java" }\n' });
     const result = init(root, '--agents-md');
 
     expect(result.exitCode).toBe(1);
@@ -293,7 +362,6 @@ describe('nitpicker init with an existing config', () => {
 });
 
 describe('nitpicker init --agents-md', () => {
-  const HEADLINE = 'nitpicker init: TypeScript, npm, Vitest (preset "typescript")';
   const ciOffer = `To write ${WORKFLOW_PATH}, run: npx nitpicker init --ci github`;
 
   it('appends the snippet once', () => {
@@ -303,17 +371,12 @@ describe('nitpicker init --agents-md', () => {
     const second = init(root, '--agents-md');
 
     expect(first.stdoutText).toBe(
-      npmReport({
-        headline: HEADLINE,
-        headLine: 'created nitpicker.config.json',
-        offers: ['appended the nitpicker section to AGENTS.md', ciOffer],
-      }),
+      npmReport({ offers: ['appended the nitpicker section to AGENTS.md', ciOffer] }),
     );
     expect(afterFirst).toBe(`# Project\n\n${readSnippet()}\n`);
     expect(second.stdoutText).toBe(
       npmReport({
-        headline: HEADLINE,
-        headLine: 'nitpicker.config.json is already set up',
+        config: SET_UP,
         offers: ['AGENTS.md already has the nitpicker section', ciOffer],
       }),
     );
@@ -324,11 +387,7 @@ describe('nitpicker init --agents-md', () => {
     const root = project(TYPESCRIPT);
 
     expect(init(root, '--agents-md').stdoutText).toBe(
-      npmReport({
-        headline: HEADLINE,
-        headLine: 'created nitpicker.config.json',
-        offers: ['created AGENTS.md with the nitpicker section', ciOffer],
-      }),
+      npmReport({ offers: ['created AGENTS.md with the nitpicker section', ciOffer] }),
     );
   });
 
@@ -341,10 +400,11 @@ describe('nitpicker init --agents-md', () => {
 });
 
 describe('nitpicker init --ci github', () => {
-  const yarnReport = (workflowLines, headLine = 'created nitpicker.config.json') =>
+  const yarnReport = (workflowLines, config = CREATED) =>
     expectedReport({
-      head: ['nitpicker init: TypeScript, yarn, Vitest (preset "typescript")', headLine],
+      head: ['nitpicker init: TypeScript, yarn, Vitest (preset "typescript")'],
       peers: install(NODE_MISSING, `yarn add --dev ${NODE_INSTALL}`),
+      config,
       skills: ['nitpicker-typescript'],
       offers: [
         'To add the agent guidance to AGENTS.md, run: yarn nitpicker init --agents-md',
@@ -354,7 +414,7 @@ describe('nitpicker init --ci github', () => {
     });
 
   it('writes the workflow for the package manager of the project', () => {
-    const root = project({ ...TYPESCRIPT, 'yarn.lock': '' }, { repository: true });
+    const root = project({ ...TYPESCRIPT, 'yarn.lock': '' });
 
     expect(init(root, '--ci', 'github')).toEqual({
       exitCode: 0,
@@ -364,12 +424,24 @@ describe('nitpicker init --ci github', () => {
     expect(readText(root, WORKFLOW_PATH)).toBe(YARN_WORKFLOW);
   });
 
+  it('names the workflow of a project in a subfolder after its path', () => {
+    const root = project({ 'apps/web/package.json': '{}', 'apps/web/src/a.ts': '' });
+    const result = init(path.join(root, 'apps/web'), '--ci', 'github');
+
+    expect(result.stdoutText).toBe(
+      npmReport({
+        offers: [
+          'To add the agent guidance to AGENTS.md, run: npx nitpicker init --agents-md',
+          'created .github/workflows/nitpicker-apps-web.yml',
+        ],
+      }),
+    );
+    expect(existsSync(path.join(root, WORKFLOW_PATH))).toBe(false);
+  });
+
   it('exits 1 with the diff and leaves an existing workflow alone', () => {
     const existing = 'name: nitpicker\non: push\n';
-    const root = project(
-      { ...TYPESCRIPT, 'yarn.lock': '', [WORKFLOW_PATH]: existing },
-      { repository: true },
-    );
+    const root = project({ ...TYPESCRIPT, 'yarn.lock': '', [WORKFLOW_PATH]: existing });
     const diff = unifiedDiff({ name: WORKFLOW_PATH, before: existing, after: YARN_WORKFLOW });
 
     expect(init(root, '--ci', 'github')).toEqual({
@@ -387,16 +459,13 @@ describe('nitpicker init --ci github', () => {
   });
 
   it('exits 0 when the workflow is already what init would write', () => {
-    const root = project({ ...TYPESCRIPT, 'yarn.lock': '' }, { repository: true });
+    const root = project({ ...TYPESCRIPT, 'yarn.lock': '' });
     init(root, '--ci', 'github');
 
     expect(init(root, '--ci', 'github')).toEqual({
       exitCode: 0,
       stderrText: '',
-      stdoutText: yarnReport(
-        [`${WORKFLOW_PATH} is already set up`],
-        'nitpicker.config.json is already set up',
-      ),
+      stdoutText: yarnReport([`${WORKFLOW_PATH} is already set up`], SET_UP),
     });
   });
 

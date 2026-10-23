@@ -6,7 +6,7 @@ const project = useProjects();
 const SOURCE = 'export const value = 1;\n';
 const TYPED_SOURCE = 'export const value: number = 1;\n';
 const MAVEN_KOTLIN_NOTE =
-  'This Maven project has more Kotlin than Java sources, but the kotlin preset needs a Gradle build, so the java preset is set. It checks the Java sources.';
+  'This Maven project has Kotlin sources, but the kotlin preset needs a Gradle build today, so the java preset is set. It checks the Java sources only.';
 const NO_SOURCES_NOTE =
   'No TypeScript or JavaScript sources under src yet, so the TypeScript preset is set. For another layout, set "layout.sourceRoots" in nitpicker.config.json.';
 
@@ -90,13 +90,42 @@ describe('TypeScript and JavaScript detection', () => {
     expect(detected(files)).toEqual(node('typescript', 'TypeScript, pnpm, Jest'));
   });
 
-  it('says the JavaScript preset runs Vitest only when the project uses another runner', () => {
-    const files = { 'package.json': '{"scripts":{"test":"mocha"}}', 'src/index.js': SOURCE };
+  it.each([
+    ['mocha', 'Mocha'],
+    ['jest', 'Jest'],
+    ['node --test', 'node:test'],
+  ])('follows the %s runner of a JavaScript project too', (test, runner) => {
+    const files = { 'package.json': JSON.stringify({ scripts: { test } }), 'src/index.js': SOURCE };
+
+    expect(detected(files)).toEqual(node('javascript', `JavaScript, npm, ${runner}`));
+  });
+
+  it('looks for sources in the source roots of an existing config', () => {
+    const files = {
+      'package.json': '{}',
+      'nitpicker.config.json': '{ "layout": { "sourceRoots": ["lib"] } }',
+      'lib/index.js': SOURCE,
+    };
+
+    expect(detected(files)).toEqual(node('javascript', 'JavaScript, npm, Vitest'));
+  });
+
+  it('names the configured source roots when they hold no sources', () => {
+    const files = {
+      'package.json': '{}',
+      'nitpicker.config.json': '{ "layout": { "sourceRoots": ["lib", "app"] } }',
+    };
+
+    expect(detected(files).notes).toEqual([
+      'No TypeScript or JavaScript sources under lib, app yet, so the TypeScript preset is set. For another layout, set "layout.sourceRoots" in nitpicker.config.json.',
+    ]);
+  });
+
+  it('falls back to src when the existing config is not valid JSON', () => {
+    const files = { 'package.json': '{}', 'nitpicker.config.json': '{', 'lib/index.js': SOURCE };
 
     expect(detected(files)).toEqual(
-      node('javascript', 'JavaScript, npm, Vitest', [
-        'The JavaScript preset runs Vitest only, so a Mocha project cannot pass yet. See "JavaScript preset" in docs/usage.md.',
-      ]),
+      node('typescript', 'TypeScript, npm, Vitest', [NO_SOURCES_NOTE]),
     );
   });
 
@@ -160,10 +189,26 @@ describe('Java and Kotlin detection', () => {
     });
   });
 
-  it('sets the Java preset for Kotlin sources on Maven and says why', () => {
-    const files = { 'pom.xml': '<project/>', 'src/main/kotlin/App.kt': '' };
+  it.each([
+    ['more Kotlin', { 'src/main/kotlin/A.kt': '', 'src/main/kotlin/B.kt': '' }],
+    ['less Kotlin', { 'src/main/java/A.java': '', 'src/main/java/B.java': '' }],
+  ])('sets the Java preset for Java with %s on Maven and says why', (_name, sources) => {
+    const files = {
+      'pom.xml': '<project/>',
+      'src/main/kotlin/App.kt': '',
+      'src/main/java/Main.java': '',
+      ...sources,
+    };
 
     expect(detected(files)).toEqual(jvm('java', 'Java, Maven', [MAVEN_KOTLIN_NOTE, MAVEN_NOTE]));
+  });
+
+  it('stops for Kotlin on Maven without Java sources, which no preset checks yet', () => {
+    const root = project({ 'pom.xml': '<project/>', mvnw: '', 'src/main/kotlin/App.kt': '' });
+
+    expect(() => detectProject(root)).toThrow(
+      'This Maven project has Kotlin sources and no Java ones, and the kotlin preset needs a Gradle build today, so nitpicker cannot check it yet. Build it with Gradle to use the kotlin preset.',
+    );
   });
 
   it('asks for the wrapper when the build has none', () => {
@@ -198,7 +243,7 @@ describe('Python detection', () => {
   it('picks Python from requirements.txt', () => {
     const files = { 'requirements.txt': 'flask\npyright\n', 'app.py': '' };
 
-    expect(detected(files)).toEqual(python('Python, path, unittest, pyright, ruff'));
+    expect(detected(files)).toEqual(python('Python, pip, unittest, pyright, ruff'));
   });
 
   it('reads uv from the lockfile and from [tool.uv]', () => {
@@ -218,6 +263,21 @@ describe('Python detection', () => {
     expect(detected({ Pipfile: '' })).toEqual(python('Python, pipenv, unittest, mypy, ruff'));
   });
 
+  it('reads hatch and conda from their environment files', () => {
+    expect(detected({ 'pyproject.toml': '[tool.hatch.envs.default]\n' })).toEqual(
+      python('Python, hatch, unittest, mypy, ruff'),
+    );
+    expect(detected({ 'environment.yml': 'name: demo\n', 'setup.py': '' })).toEqual(
+      python('Python, conda, unittest, mypy, ruff'),
+    );
+  });
+
+  it('calls a project with a .venv folder a pip project', () => {
+    expect(detected({ 'requirements.txt': '', '.venv/pyvenv.cfg': '' })).toEqual(
+      python('Python, pip, unittest, mypy, ruff'),
+    );
+  });
+
   it('lets a package.json claim TypeScript sources next to Python tooling', () => {
     const files = { 'package.json': '{}', 'pyproject.toml': '', 'src/index.ts': TYPED_SOURCE };
 
@@ -226,7 +286,7 @@ describe('Python detection', () => {
 
   it('lets Python own a folder with TypeScript sources and no package.json', () => {
     expect(detected({ 'pyproject.toml': '', 'src/index.ts': TYPED_SOURCE })).toEqual(
-      python('Python, path, unittest, mypy, ruff'),
+      python('Python, pip, unittest, mypy, ruff'),
     );
   });
 });

@@ -1,29 +1,19 @@
-import { execFileSync } from 'node:child_process';
 import { cpSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runCli } from '../../cli.mjs';
+import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
 import { insideProject } from '../support/inside-project.mjs';
 
-const GIT_TIMEOUT_MS = 30_000;
 const SNAPSHOT_REPORTS = 'reports/quality/snapshot';
-const FIXTURE_IDENTITY = ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.com'];
-
-function git(root, ...gitArguments) {
-  execFileSync('git', [...FIXTURE_IDENTITY, '-c', 'commit.gpgsign=false', ...gitArguments], {
-    cwd: root,
-    timeout: GIT_TIMEOUT_MS,
-  });
-}
 
 export function copyFixtureRepository({ fixtureRoot, prefix, ignored }) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
   cpSync(fixtureRoot, root, { recursive: true });
   rmSync(insideProject(root, 'nitpicker.config.json'), { force: true });
   writeFileSync(insideProject(root, '.gitignore'), `${ignored.join('\n')}\n`);
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', 'fixture');
+  fixtureGit(root, ['init', '-q', '--initial-branch=main']);
+  commit(root, 'fixture');
   return root;
 }
 

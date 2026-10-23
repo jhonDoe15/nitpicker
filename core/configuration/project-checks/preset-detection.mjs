@@ -62,7 +62,12 @@ export function detectedPreset(projectRoot) {
   const files = codeFiles(projectRoot);
   const kotlin = files.filter((name) => KOTLIN_FILE.test(name)).length;
   const java = files.filter((name) => JAVA_FILE.test(name)).length;
-  return { ...marker, preset: kotlin > java ? 'kotlin' : 'java', javaSources: java > 0 };
+  return {
+    ...marker,
+    preset: kotlin > java ? 'kotlin' : 'java',
+    javaSources: java > 0,
+    kotlinSources: kotlin > 0,
+  };
 }
 
 function projectScripts(config, projectRoot) {

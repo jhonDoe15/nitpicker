@@ -1,19 +1,46 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { repositoryRootOf } from '../detection/repository.mjs';
 import { placeFile } from './place-file.mjs';
-import { workflowParts } from './ci-steps.mjs';
+import { workflowParts, yamlScalar } from './ci-steps.mjs';
 
 const TEMPLATE = fileURLToPath(new URL('../templates/github-workflow.yml', import.meta.url));
-export const WORKFLOW_PATH = '.github/workflows/nitpicker.yml';
+const WORKFLOWS = '.github/workflows';
 const TOKEN = /'\{\{(\w+)\}\}'/u;
 
-function defaultsFor(projectRoot, repository) {
-  const relative = path.relative(repository, projectRoot).split(path.sep).join('/');
+function projectPath(projectRoot, repository) {
+  return path.relative(repository, projectRoot).split(path.sep).join('/');
+}
+
+function slugOf(relative) {
+  return (
+    relative
+      .toLowerCase()
+      .replaceAll(/[^a-z0-9]+/gu, '-')
+      .replaceAll(/^-|-$/gu, '') || 'project'
+  );
+}
+
+export function workflowPath(projectRoot, repository) {
+  const relative = projectPath(projectRoot, repository);
   return relative === ''
-    ? []
-    : ['    defaults:', '      run:', `        working-directory: ${relative}`];
+    ? `${WORKFLOWS}/nitpicker.yml`
+    : `${WORKFLOWS}/nitpicker-${slugOf(relative)}.yml`;
+}
+
+function namedParts(projectRoot, repository) {
+  const relative = projectPath(projectRoot, repository);
+  if (relative === '') {
+    return { NAME: 'nitpicker', DEFAULTS: [] };
+  }
+  return {
+    NAME: `nitpicker (${relative})`,
+    DEFAULTS: [
+      '    defaults:',
+      '      run:',
+      `        working-directory: ${JSON.stringify(relative)}`,
+    ],
+  };
 }
 
 function expanded(line, parts) {
@@ -22,23 +49,22 @@ function expanded(line, parts) {
     return [line];
   }
   const value = parts[name];
-  return Array.isArray(value) ? value : [line.replace(TOKEN, value)];
+  return Array.isArray(value) ? value : [line.replace(TOKEN, () => String(yamlScalar(value)))];
 }
 
-export function renderWorkflow(projectRoot, context, repository) {
+export function renderWorkflow(projectRoot, context) {
   const parts = {
     ...workflowParts(projectRoot, context),
-    DEFAULTS: defaultsFor(projectRoot, repository),
+    ...namedParts(projectRoot, context.repository),
   };
   const lines = readFileSync(TEMPLATE, 'utf8').trimEnd().split('\n');
   return `${lines.flatMap((line) => expanded(line, parts)).join('\n')}\n`;
 }
 
 export function placeWorkflow(projectRoot, context) {
-  const repository = repositoryRootOf(projectRoot) ?? projectRoot;
   return placeFile({
-    root: repository,
-    relative: WORKFLOW_PATH,
-    content: renderWorkflow(projectRoot, context, repository),
+    root: context.repository,
+    relative: workflowPath(projectRoot, context.repository),
+    content: renderWorkflow(projectRoot, context),
   });
 }

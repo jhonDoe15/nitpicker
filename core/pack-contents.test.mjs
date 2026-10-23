@@ -102,6 +102,8 @@ describe('npm package contents', () => {
     expect(packedFiles.has('languages/python/adapters/import-scan.py')).toBe(true);
     expect(packedFiles.has('languages/java/gradle/spring-ruleset.xml')).toBe(true);
     expect(packedFiles.has('languages/java/gradle/pmd-ruleset.xml')).toBe(true);
+    expect(packedFiles.has('core/init/templates/github-workflow.yml')).toBe(true);
+    expect(packedFiles.has('docs/agents-snippet.md')).toBe(true);
     expect(
       [...packedFiles].filter((file) => isNotShipped(file) || file === 'package-lock.json'),
     ).toEqual([]);

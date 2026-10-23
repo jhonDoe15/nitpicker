@@ -1,8 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { detectJavaBuild } from '../../../languages/java/builds/java-build.mjs';
+import { buildRunsPreset, detectJavaBuild } from '../../../languages/java/builds/java-build.mjs';
 
-const KOTLIN_BUILDS = ['gradle'];
 const BUILD_LABELS = { gradle: 'Gradle', maven: 'Maven' };
 const LAUNCHERS = { gradle: 'gradlew', maven: 'mvnw' };
 const PATH_COMMANDS = { gradle: 'gradle', maven: 'mvn' };
@@ -17,15 +16,21 @@ function buildNotes(projectRoot, buildTool) {
 }
 
 function presetFor(detected, buildTool) {
-  if (detected.preset === 'kotlin' && !KOTLIN_BUILDS.includes(buildTool)) {
-    return {
-      preset: 'java',
-      notes: [
-        'This Maven project has more Kotlin than Java sources, but the kotlin preset needs a Gradle build, so the java preset is set. It checks the Java sources.',
-      ],
-    };
+  if (detected.kotlinSources !== true || buildRunsPreset(buildTool, 'kotlin')) {
+    return { preset: detected.preset, notes: [] };
   }
-  return { preset: detected.preset, notes: [] };
+  const label = BUILD_LABELS[buildTool];
+  if (!detected.javaSources) {
+    throw new Error(
+      `This ${label} project has Kotlin sources and no Java ones, and the kotlin preset needs a Gradle build today, so nitpicker cannot check it yet. Build it with Gradle to use the kotlin preset.`,
+    );
+  }
+  return {
+    preset: 'java',
+    notes: [
+      `This ${label} project has Kotlin sources, but the kotlin preset needs a Gradle build today, so the java preset is set. It checks the Java sources only.`,
+    ],
+  };
 }
 
 export function describeJvmProject(projectRoot, detected) {

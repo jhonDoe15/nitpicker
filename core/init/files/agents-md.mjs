@@ -1,14 +1,14 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import { insideProject } from '../support/inside-project.mjs';
+import { insideProject, writableProjectFile } from '../support/inside-project.mjs';
 
 const SNIPPET_FILE = 'docs/agents-snippet.md';
 const SNIPPET_SEPARATOR = '\n---\n';
 const INSTRUCTION_FILES = ['AGENTS.md', 'CLAUDE.md'];
 
 export function readSnippet(packageRoot = PACKAGE_ROOT) {
-  const text = readFileSync(path.join(packageRoot, SNIPPET_FILE), 'utf8');
+  const text = readFileSync(path.join(packageRoot, SNIPPET_FILE), 'utf8').replaceAll('\r\n', '\n');
   return text.slice(text.indexOf(SNIPPET_SEPARATOR) + SNIPPET_SEPARATOR.length).trim();
 }
 
@@ -18,9 +18,11 @@ function textOf(root, name) {
 }
 
 function appended(existing, snippet) {
-  return existing === undefined || existing.trim() === ''
-    ? `${snippet}\n`
-    : `${existing.trimEnd()}\n\n${snippet}\n`;
+  if (existing === undefined || existing.trim() === '') {
+    return `${snippet}\n`;
+  }
+  const text = `${existing.trimEnd()}\n\n${snippet}\n`;
+  return existing.includes('\r\n') ? text.replaceAll(/\r?\n/gu, '\r\n') : text;
 }
 
 export function appendSnippet(root, packageRoot = PACKAGE_ROOT) {
@@ -32,6 +34,6 @@ export function appendSnippet(root, packageRoot = PACKAGE_ROOT) {
   }
   const target = INSTRUCTION_FILES.find((name) => textOf(root, name) !== undefined) ?? 'AGENTS.md';
   const existing = textOf(root, target);
-  writeFileSync(insideProject(root, target), appended(existing, snippet));
+  writeFileSync(writableProjectFile(root, target), appended(existing, snippet));
   return { relative: target, status: existing === undefined ? 'created' : 'appended' };
 }

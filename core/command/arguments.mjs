@@ -1,4 +1,4 @@
-import { parseDrillDownOptions } from '../diff/comparison/cli.mjs';
+import { DRILL_DOWN_OPTIONS, parseDrillDownOptions } from '../diff/comparison/cli.mjs';
 
 const FLAGS = new Map([
   ['--all', { property: 'all', value: true }],
@@ -12,6 +12,13 @@ const VALUES = new Map([
   ['--base', 'baseRef'],
   ['--output', 'outputRoot'],
 ]);
+
+export const COMPARISON_OPTIONS = [
+  ...FLAGS.keys(),
+  ...VALUES.keys(),
+  ACCEPT_FLAG,
+  ...DRILL_DOWN_OPTIONS,
+];
 
 function acceptedDigest(argument) {
   const digest = argument.slice(ACCEPT_FLAG.length + 1);

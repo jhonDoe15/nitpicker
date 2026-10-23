@@ -1,6 +1,3 @@
-import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
-import { WORKFLOW_PATH } from './files/ci-workflow.mjs';
-
 const SKILLS_ADD = 'npx skills add jhonDoe15/nitpicker --skill';
 
 function runCommandOf(project) {
@@ -16,19 +13,15 @@ function headline(project) {
   return `nitpicker init: ${project.summary} (preset "${project.preset}")`;
 }
 
-function fileLines(result, { preset }) {
+function fileLines(result) {
   if (result.status === 'created') {
     return [`created ${result.relative}`];
   }
   if (result.status === 'unchanged') {
     return [`${result.relative} is already set up`];
   }
-  const reason =
-    result.relative === CONFIG_FILE_NAME
-      ? `It does not set "preset": "${preset}", which this project needs.`
-      : 'It differs from what init would write.';
   return [
-    `${result.relative} exists and was not changed. ${reason} The diff from your file to what init would write:`,
+    `${result.relative} exists and was not changed. ${result.reason} The diff from your file to what init would write:`,
     '',
     result.diff.trimEnd(),
     '',
@@ -36,22 +29,33 @@ function fileLines(result, { preset }) {
   ];
 }
 
-function peerLines(peers) {
-  if (peers.requirements !== undefined) {
-    return [`Needs ${peers.requirements}`];
-  }
+function installLines(peers) {
   if (peers.missing.length === 0) {
     return ['Nothing to install: every peer nitpicker needs is already there.'];
   }
   return [
     `Install what nitpicker needs from your project (missing: ${peers.missing.join(', ')}):`,
     `  ${peers.command}`,
+    ...(peers.advice === undefined ? [] : [peers.advice]),
   ];
+}
+
+function peerLines(peers) {
+  if (peers.requirements !== undefined) {
+    return [`Needs ${peers.requirements}`];
+  }
+  const undeclared =
+    peers.installedOnly.length === 0
+      ? []
+      : [
+          `Installed in .venv but not declared: ${peers.installedOnly.join(', ')}. Declare them as development dependencies, so a fresh checkout gets them too; the CI workflow of init installs them itself.`,
+        ];
+  return [...installLines(peers), ...undeclared];
 }
 
 function skillLines(project) {
   return [
-    'Teach your coding agent the allowed forms:',
+    'Install the agent skill:',
     ...skillsOf(project).map((skill) => `  ${SKILLS_ADD} ${skill}`),
   ];
 }
@@ -68,20 +72,21 @@ function agentsLines(agents, command) {
   return [outcomes[agents.status]];
 }
 
-function ciLines(workflow, project, command) {
+function ciLines(workflow, workflowFile, command) {
   if (workflow === undefined) {
-    return [`To write ${WORKFLOW_PATH}, run: ${command} init --ci github`];
+    return [`To write ${workflowFile}, run: ${command} init --ci github`];
   }
-  return fileLines(workflow, project);
+  return fileLines(workflow);
 }
 
-export function renderReport({ project, peers, config, workflow, agents }) {
+export function renderReport({ project, peers, config, workflow, workflowFile, agents }) {
   const command = runCommandOf(project);
   const sections = [
-    [headline(project), ...fileLines(config, project), ...project.notes],
+    [headline(project), ...project.notes],
     peerLines(peers),
+    fileLines(config),
     skillLines(project),
-    [...agentsLines(agents, command), ...ciLines(workflow, project, command)],
+    [...agentsLines(agents, command), ...ciLines(workflow, workflowFile, command)],
     [
       `Then run \`${command}\` to check a change, or \`${command} --all\` to survey the whole project.`,
     ],

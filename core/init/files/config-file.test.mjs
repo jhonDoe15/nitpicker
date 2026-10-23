@@ -1,3 +1,4 @@
+import { existsSync, symlinkSync } from 'node:fs';
 import { format } from 'prettier';
 import { describe, expect, it } from 'vitest';
 import { useProjects, readText } from '../test-support/projects.mjs';
@@ -41,13 +42,20 @@ describe('placing the config', () => {
     expect(readText(root, 'nitpicker.config.json')).toBe(text);
   });
 
-  it('never overwrites a file that sets another preset, and returns the diff', () => {
-    const text = '{ "preset": "typescript" }\n';
+  it('leaves a file without a preset on a TypeScript project, the default preset', () => {
+    const text = '{\n  "disable": ["mutation"]\n}\n';
     const root = project({ 'nitpicker.config.json': text });
-    const result = placeConfig(root, 'javascript');
 
-    expect(result.status).toBe('differs');
-    expect(result.diff).toBe(
+    expect(placeConfig(root, 'typescript')).toEqual({
+      relative: 'nitpicker.config.json',
+      status: 'unchanged',
+    });
+  });
+
+  it('reads a file with Windows line endings like any other', () => {
+    const root = project({ 'nitpicker.config.json': '{ "preset": "typescript" }\r\n' });
+
+    expect(placeConfig(root, 'javascript').diff).toBe(
       [
         '--- nitpicker.config.json',
         '+++ nitpicker.config.json (nitpicker init)',
@@ -57,35 +65,95 @@ describe('placing the config', () => {
         '',
       ].join('\n'),
     );
-    expect(readText(root, 'nitpicker.config.json')).toBe(text);
   });
 
-  it('never overwrites a file without a preset', () => {
-    const text = '{\n  "disable": ["mutation"]\n}\n';
+  it('never overwrites a file that sets another preset, and diffs only the preset', () => {
+    const text = '{\n  "preset": "typescript",\n  "disable": ["mutation"]\n}\n';
     const root = project({ 'nitpicker.config.json': text });
-    const result = placeConfig(root, 'python');
 
-    expect(result).toEqual({
+    expect(placeConfig(root, 'javascript')).toEqual({
       relative: 'nitpicker.config.json',
       status: 'differs',
+      reason: 'It sets "preset": "typescript", and this project needs "preset": "javascript".',
       diff: [
         '--- nitpicker.config.json',
         '+++ nitpicker.config.json (nitpicker init)',
-        '@@ -1,3 +1,1 @@',
-        '-{',
-        '-  "disable": ["mutation"]',
-        '-}',
-        '+{ "preset": "python" }',
+        '@@ -1,4 +1,4 @@',
+        ' {',
+        '-  "preset": "typescript",',
+        '+  "preset": "javascript",',
+        '   "disable": ["mutation"]',
+        ' }',
         '',
       ].join('\n'),
     });
     expect(readText(root, 'nitpicker.config.json')).toBe(text);
   });
 
-  it('never overwrites a file that is not valid JSON', () => {
+  it('adds the preset to a file without one and keeps every other key', () => {
+    const text = '{\n  "disable": ["mutation"],\n  "layout": { "sourceRoots": ["lib"] }\n}\n';
+    const root = project({ 'nitpicker.config.json': text });
+
+    expect(placeConfig(root, 'python')).toEqual({
+      relative: 'nitpicker.config.json',
+      status: 'differs',
+      reason: 'It sets no preset: add "preset": "python".',
+      diff: [
+        '--- nitpicker.config.json',
+        '+++ nitpicker.config.json (nitpicker init)',
+        '@@ -1,4 +1,5 @@',
+        ' {',
+        '+  "preset": "python",',
+        '   "disable": ["mutation"],',
+        '   "layout": { "sourceRoots": ["lib"] }',
+        ' }',
+        '',
+      ].join('\n'),
+    });
+    expect(readText(root, 'nitpicker.config.json')).toBe(text);
+  });
+
+  it.each([
+    ['{}\n', '+{ "preset": "java" }'],
+    ['{ "base": "main" }\n', '+{ "preset": "java", "base": "main" }'],
+    ['{"base":"main"}\n', '+{"preset": "java", "base":"main"}'],
+  ])('adds the preset to the one-line file %j', (text, added) => {
+    const root = project({ 'nitpicker.config.json': text });
+
+    expect(placeConfig(root, 'java').diff.split('\n').slice(3)).toEqual([
+      `-${text.trimEnd()}`,
+      added,
+      '',
+    ]);
+  });
+
+  it('never overwrites a file that is not a JSON object', () => {
     const root = project({ 'nitpicker.config.json': '{ preset: python' });
 
-    expect(placeConfig(root, 'python').status).toBe('differs');
+    expect(placeConfig(root, 'python')).toEqual({
+      relative: 'nitpicker.config.json',
+      status: 'differs',
+      reason: 'It is not a JSON object, so init cannot add the preset to it.',
+      diff: [
+        '--- nitpicker.config.json',
+        '+++ nitpicker.config.json (nitpicker init)',
+        '@@ -1,1 +1,1 @@',
+        '-{ preset: python',
+        '+{ "preset": "python" }',
+        '',
+      ].join('\n'),
+    });
     expect(readText(root, 'nitpicker.config.json')).toBe('{ preset: python');
+  });
+
+  it('refuses to write through a link that leaves the project', () => {
+    const root = project({});
+    const outside = project({});
+    symlinkSync(`${outside}/config.json`, `${root}/nitpicker.config.json`);
+
+    expect(() => placeConfig(root, 'java')).toThrow(
+      'nitpicker.config.json is a symbolic link to a missing file, so nitpicker init does not write through it. Replace the link with a file, or make the change by hand.',
+    );
+    expect(existsSync(`${outside}/config.json`)).toBe(false);
   });
 });

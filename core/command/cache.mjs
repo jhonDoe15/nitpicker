@@ -11,6 +11,11 @@ import { publishBaseSnapshot } from '../diff/cache/publish-cache.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
 import { selectAnalyzerShard } from '../diff/sharding/sharding.mjs';
+import { CACHE_PUBLISH_USAGE_TEXT } from '../help/usage-text.mjs';
+
+const HELP = '--help';
+
+export const CACHE_PUBLISH_OPTIONS = ['--analyzer', '--shard-count', '--shard-index', HELP];
 
 function selectedAnalyzers(configured, options) {
   const selected =
@@ -30,11 +35,22 @@ function writableStore(projectRoot, cli) {
   return createLayeredStore({ remote, writeRemote: true });
 }
 
+function rejectUnsupportedOptions(arguments_) {
+  const unsupported = arguments_.find(
+    (argument) => argument.startsWith('--') && !CACHE_PUBLISH_OPTIONS.includes(argument),
+  );
+  if (unsupported !== undefined) {
+    throw new Error(
+      `Unknown argument for cache publish: ${unsupported}. See nitpicker cache publish --help.`,
+    );
+  }
+}
+
 function validateCommand(arguments_) {
   if (arguments_.length === 1 && arguments_[0] === 'publish') return;
   throw new Error(
     arguments_.length === 0 || arguments_[0] === 'publish'
-      ? 'Usage: nitpicker cache publish'
+      ? 'Usage: nitpicker cache publish. See nitpicker cache publish --help.'
       : `Unknown cache command: ${arguments_.join(' ')}`,
   );
 }
@@ -49,7 +65,12 @@ function writeOutcome({ stdout, result, selected }) {
 }
 
 export function runCacheCommand(cli) {
+  rejectUnsupportedOptions(cli.arguments_);
   const options = parseDrillDownOptions(cli.arguments_);
+  if (options.remainingArguments.includes(HELP)) {
+    cli.stdout.write(CACHE_PUBLISH_USAGE_TEXT);
+    return 0;
+  }
   validateCommand(options.remainingArguments);
   const projectRoot =
     cli.currentProjectRoot === undefined

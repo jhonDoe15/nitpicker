@@ -1,20 +1,33 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../cli.mjs';
-import { parseArguments } from '../command/arguments.mjs';
-import { useProjects } from '../init/test-support/projects.mjs';
+import { COMPARISON_OPTIONS, parseArguments } from '../command/arguments.mjs';
+import { CACHE_PUBLISH_OPTIONS } from '../command/cache.mjs';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
+import { AGGREGATE_OPTIONS } from '../diff/sharding/arguments.mjs';
+import { INIT_OPTIONS } from '../init/init-arguments.mjs';
 import { packageVersion } from './package-version.mjs';
-import { COMMANDS, FLAGS, INIT_FLAGS, INIT_USAGE_TEXT, USAGE_TEXT } from './usage-text.mjs';
+import {
+  AGGREGATE_FLAGS,
+  CACHE_PUBLISH_FLAGS,
+  COMMANDS,
+  FLAGS,
+  INIT_FLAGS,
+  INIT_USAGE_TEXT,
+  USAGE_TEXT,
+} from './usage-text.mjs';
 
-const project = useProjects();
+const { temporaryRoot } = useGitFixtures();
 const MANIFEST = new URL('../../package.json', import.meta.url);
+const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--shard-count', '2'] };
 const EXPECTED_USAGE = [
   'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
   '                 [--rule <substring>]... [--shard-count <n> --shard-index <i>] [--defer-exit]',
   '                 [--no-cache] [--accept-policy-change=<digest>] [--help] [--version]',
   '       nitpicker init [--agents-md] [--ci github] [--help]',
   '       nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>]',
-  '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]',
+  '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]',
   '',
   'Commands:',
   '  nitpicker                Compare your changes with the merge base and fail on the problems they add.',
@@ -37,6 +50,24 @@ const EXPECTED_USAGE = [
   '  --help                           Print this help.',
   '  --version                        Print the installed nitpicker version.',
   '',
+  'Options of nitpicker init:',
+  '  --agents-md  Append the agent guidance snippet to AGENTS.md (CLAUDE.md if only that exists).',
+  '  --ci github  Write a GitHub Actions workflow that runs nitpicker on pull requests.',
+  '  --help       Print this help.',
+  '',
+  'Options of nitpicker aggregate:',
+  '  --input-root <dir>   Read the shard reports from <dir>/0 to <dir>/n-1.',
+  '  --shard-count <n>    The number of shards the run was split into.',
+  '  --output <dir>       Write the combined reports here (default reports/quality/diff/combined).',
+  '  --policy-root <dir>  Read the analyzer configuration from this folder, not the head commit.',
+  '  --help               Print this help.',
+  '',
+  'Options of nitpicker cache publish:',
+  '  --analyzer <name>  Publish only this analyzer (repeatable).',
+  '  --shard-count <n>  Split the analyzers over n jobs (with --shard-index).',
+  '  --shard-index <i>  Publish shard i of the split (0 to n-1).',
+  '  --help             Print this help.',
+  '',
   'Start a new project with nitpicker init. Reference: https://github.com/jhonDoe15/nitpicker/blob/main/docs/usage.md',
   '',
 ].join('\n');
@@ -45,12 +76,41 @@ const EXPECTED_INIT_USAGE = [
   '',
   'Detects the language, build tool, test runner and package manager, writes a minimal',
   'nitpicker.config.json, and prints the missing peers, the agent skill to install and the',
-  'command to run. It never overwrites a file: for an existing file it prints a diff and exits 1.',
+  'command to run. It never overwrites a file: when an existing file needs a change, it prints',
+  'the diff and exits 1. It exits 0 when everything is set up, and 2 when it cannot run (no',
+  'project, no Git repository, Node.js older than the package needs, or an unknown argument).',
   '',
   'Options:',
   '  --agents-md  Append the agent guidance snippet to AGENTS.md (CLAUDE.md if only that exists).',
-  '  --ci github  Write .github/workflows/nitpicker.yml.',
+  '  --ci github  Write a GitHub Actions workflow that runs nitpicker on pull requests.',
   '  --help       Print this help.',
+  '',
+].join('\n');
+const EXPECTED_AGGREGATE_USAGE = [
+  'Usage: nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>]',
+  '',
+  'Combines the reports of the shard jobs (run with --shard-count, --shard-index and --defer-exit)',
+  'into one result, with the exit codes of a normal run.',
+  '',
+  'Options:',
+  '  --input-root <dir>   Read the shard reports from <dir>/0 to <dir>/n-1.',
+  '  --shard-count <n>    The number of shards the run was split into.',
+  '  --output <dir>       Write the combined reports here (default reports/quality/diff/combined).',
+  '  --policy-root <dir>  Read the analyzer configuration from this folder, not the head commit.',
+  '  --help               Print this help.',
+  '',
+].join('\n');
+const EXPECTED_CACHE_PUBLISH_USAGE = [
+  'Usage: nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]',
+  '',
+  'Analyzes the committed HEAD tree and uploads its findings to the remote cache',
+  '(NITPICKER_CACHE_URL), so later branches reuse them as their base.',
+  '',
+  'Options:',
+  '  --analyzer <name>  Publish only this analyzer (repeatable).',
+  '  --shard-count <n>  Split the analyzers over n jobs (with --shard-index).',
+  '  --shard-index <i>  Publish shard i of the split (0 to n-1).',
+  '  --help             Print this help.',
   '',
 ].join('\n');
 
@@ -63,6 +123,19 @@ function run(...cliArguments) {
     stderr: { write: (text) => (stderrText += text) },
   });
   return { exitCode, stdoutText, stderrText };
+}
+
+function flagNames(rows) {
+  return rows.map(([flag]) => flag.split(/[ =]/u)[0]).toSorted();
+}
+
+function sampleArguments([flag]) {
+  const [name, placeholder] = flag.split(/[ =]/u);
+  if (placeholder === undefined) {
+    return [name];
+  }
+  const sample = flag.includes('=') ? [`${name}=abc`] : [name, '1'];
+  return [...sample, ...(PAIRED[name] ?? [])];
 }
 
 describe('nitpicker --help', () => {
@@ -80,42 +153,59 @@ describe('nitpicker --help', () => {
     ]);
   });
 
-  it('lists every flag the comparison command accepts, and each one parses', () => {
-    const accepted = [
-      ['--all'],
-      ['--base', 'ref'],
-      ['--fix'],
-      ['--analyzer', 'name'],
-      ['--rule', 'text'],
-      ['--output', 'dir'],
-      ['--shard-count', '2', '--shard-index', '0'],
-      ['--defer-exit'],
-      ['--no-cache'],
-      ['--accept-policy-change=abc'],
-      ['--help'],
-      ['--version'],
-    ];
+  it('lists exactly the flags each command parses', () => {
+    expect(flagNames(FLAGS)).toEqual(COMPARISON_OPTIONS.toSorted());
+    expect(flagNames(INIT_FLAGS)).toEqual(INIT_OPTIONS.toSorted());
+    expect(flagNames(AGGREGATE_FLAGS)).toEqual(AGGREGATE_OPTIONS.toSorted());
+    expect(flagNames(CACHE_PUBLISH_FLAGS)).toEqual(CACHE_PUBLISH_OPTIONS.toSorted());
+  });
 
-    const acceptedFlags = accepted
-      .flat()
-      .filter((argument) => argument.startsWith('--'))
-      .map((argument) => argument.split('=')[0]);
-
-    expect(FLAGS.map(([flag]) => flag.split(/[ =]/u)[0])).toEqual(acceptedFlags);
-    for (const cliArguments of accepted) {
-      expect(() => parseArguments(cliArguments), cliArguments[0]).not.toThrow();
+  it('parses every comparison flag in the form the help shows', () => {
+    for (const row of FLAGS) {
+      expect(() => parseArguments(sampleArguments(row)), row[0]).not.toThrow();
     }
   });
 
   it('describes every flag in one sentence', () => {
-    for (const [, description] of [...FLAGS, ...INIT_FLAGS]) {
+    const rows = [...FLAGS, ...INIT_FLAGS, ...AGGREGATE_FLAGS, ...CACHE_PUBLISH_FLAGS];
+    for (const [, description] of rows) {
       expect(description).toMatch(/^[A-Z][^\n]*\.$/u);
     }
   });
+});
 
+describe('the help of each command', () => {
   it('describes the init flags in init --help', () => {
     expect(INIT_USAGE_TEXT).toBe(EXPECTED_INIT_USAGE);
-    expect(INIT_FLAGS.map(([flag]) => flag)).toEqual(['--agents-md', '--ci github', '--help']);
+    expect(run('init', '--help')).toEqual({
+      exitCode: 0,
+      stdoutText: EXPECTED_INIT_USAGE,
+      stderrText: '',
+    });
+  });
+
+  it('names the public command in aggregate --help', () => {
+    expect(run('aggregate', '--help')).toEqual({
+      exitCode: 0,
+      stdoutText: EXPECTED_AGGREGATE_USAGE,
+      stderrText: '',
+    });
+  });
+
+  it('prints the help of cache publish and exits 0', () => {
+    const expected = { exitCode: 0, stdoutText: EXPECTED_CACHE_PUBLISH_USAGE, stderrText: '' };
+
+    expect(run('cache', 'publish', '--help')).toEqual(expected);
+    expect(run('cache', '--help')).toEqual(expected);
+  });
+
+  it('refuses a flag that cache publish does not take', () => {
+    expect(run('cache', 'publish', '--rule', 'x')).toEqual({
+      exitCode: 2,
+      stdoutText: '',
+      stderrText:
+        'nitpicker failed: Unknown argument for cache publish: --rule. See nitpicker cache publish --help.\n',
+    });
   });
 });
 
@@ -128,7 +218,10 @@ describe('nitpicker --version', () => {
   });
 
   it('reads the version of the package folder it is given', () => {
-    expect(packageVersion(project({ 'package.json': '{"version":"9.9.9"}' }))).toBe('9.9.9');
+    const root = temporaryRoot('nitpicker-version-');
+    writeFiles(root, { 'package.json': '{"version":"9.9.9"}' });
+
+    expect(packageVersion(root)).toBe('9.9.9');
   });
 
   it('is accepted next to other flags and loses to --help', () => {

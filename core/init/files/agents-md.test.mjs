@@ -1,3 +1,4 @@
+import { symlinkSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { readText, useProjects } from '../test-support/projects.mjs';
 import { appendSnippet, readSnippet } from './agents-md.mjs';
@@ -68,5 +69,26 @@ describe('agent guidance snippet', () => {
     appendSnippet(root);
 
     expect(readText(root, 'AGENTS.md')).toBe(`${readSnippet()}\n`);
+  });
+
+  it('appends with the Windows line endings of the existing file', () => {
+    const root = project({ 'CLAUDE.md': '# Mine\r\nline\r\n' });
+    appendSnippet(root);
+
+    expect(readText(root, 'CLAUDE.md')).toBe(
+      `# Mine\r\nline\r\n\r\n${readSnippet().replaceAll('\n', '\r\n')}\r\n`,
+    );
+    expect(appendSnippet(root)).toEqual({ relative: 'CLAUDE.md', status: 'unchanged' });
+  });
+
+  it('refuses to append through a link to a file outside the project', () => {
+    const root = project({});
+    const outside = project({ 'notes.md': 'mine\n' });
+    symlinkSync(`${outside}/notes.md`, `${root}/AGENTS.md`);
+
+    expect(() => appendSnippet(root)).toThrow(
+      `AGENTS.md resolves through a symbolic link to ${outside}/notes.md, outside ${root}, so nitpicker init does not write through it. Replace the link with a file, or make the change by hand.`,
+    );
+    expect(readText(outside, 'notes.md')).toBe('mine\n');
   });
 });
