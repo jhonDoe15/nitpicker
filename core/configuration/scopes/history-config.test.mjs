@@ -54,7 +54,13 @@ describe('history config', () => {
     expect(() => validateConfig(config)).toThrow(message);
   });
 
-  it.each(['java', 'kotlin', 'python'])(
+  it('takes layout.featureRoots with python, which runs the feature folder rules, without co-change', () => {
+    const config = { preset: 'python', layout: { featureRoots: ['**/modules'] } };
+
+    expect(validateConfig(config)).toEqual(config);
+  });
+
+  it.each(['java', 'kotlin'])(
     'takes layout.featureRoots with %s once co-change is on, and not before',
     (preset) => {
       const layout = { featureRoots: ['**/modules'] };
