@@ -21,6 +21,15 @@ const RECORDED = JSON.parse(
     'utf8',
   ),
 );
+const RECORDED_PUBLISHED = JSON.parse(
+  readFileSync(
+    path.resolve(
+      import.meta.dirname,
+      '../../../fixtures/kotlin-design-published/design-facts.json',
+    ),
+    'utf8',
+  ),
+);
 const EMPTY = { modules: [], types: [], callables: [] };
 const PREFIX = 'The design rules did not run on the Kotlin sources: ';
 const temporaryRoots = [];
@@ -61,6 +70,29 @@ describe('the recorded design facts of the fixture sources', () => {
   it('pass the facts schema as the bundle the rules read', () => {
     expect(() => validateFacts(kotlinDesignBundle(RECORDED))).not.toThrow();
     expect(kotlinDesignBundle(RECORDED).packages).toEqual([]);
+  });
+});
+
+describe('the recorded design facts of a published module', () => {
+  it('pass the facts schema as the bundle the rules read', () => {
+    expect(() => validateFacts(kotlinDesignBundle(RECORDED_PUBLISHED))).not.toThrow();
+  });
+
+  it('mark each exported type and each exported top-level function, and nothing else', () => {
+    const marked = [...RECORDED_PUBLISHED.types, ...RECORDED_PUBLISHED.callables]
+      .filter(({ published }) => published === true)
+      .map(({ id, exported }) => [id, exported]);
+
+    expect(marked).toEqual([
+      ['src/lib/Api.kt#Client', true],
+      ['src/lib/Api.kt#Settings', true],
+      ['src/lib/Api.kt#Mode', true],
+      ['src/lib/Api.kt#Transport', true],
+      ['src/lib/Api.kt#Pool', true],
+      ['src/lib/Api.kt', true],
+      ['src/lib/Api.kt#open', true],
+      ['src/lib/Api.kt#tune', true],
+    ]);
   });
 });
 

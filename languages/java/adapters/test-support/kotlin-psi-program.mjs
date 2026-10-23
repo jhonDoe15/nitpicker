@@ -86,6 +86,7 @@ export function prepareCompiler({ workspace, project, gradle, environment }) {
   };
 }
 
+/** Runs the program on `project`; `{ ...compiler, published: true }` runs it as a published library. */
 export function runPsiProgram(compiler, project, roots = ['src']) {
   const metricsOutput = path.join(project, 'metrics.json');
   const factsOutput = path.join(project, 'facts.json');
@@ -93,6 +94,7 @@ export function runPsiProgram(compiler, project, roots = ['src']) {
     javaTool(compiler.javaHome, 'java'),
     [
       `-Dnitpicker.kotlinCompiler=${compiler.pinned}`,
+      ...(compiler.published === true ? ['-Dnitpicker.published=true'] : []),
       '-cp',
       `${compiler.classpath}${path.delimiter}${compiler.classes}`,
       'nitpicker.kotlinpsi.KotlinPsi',

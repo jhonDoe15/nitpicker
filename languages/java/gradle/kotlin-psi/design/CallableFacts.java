@@ -16,16 +16,19 @@ final class CallableFacts {
 
   private CallableFacts() {}
 
-  static Map<String, Object> build(Ctx ctx, Fun function) {
+  static Map<String, Object> build(Ctx ctx, Fun function, boolean library) {
     Walk walk = new Walk(ctx, function);
     walk.run();
     Source source = function.owner.source;
     Map<String, Object> forward = Forwarding.of(ctx, function);
+    boolean exported = !function.isPrivate && function.owner.exported;
     return m(
         "id", function.id, "file", source.path, "name", function.name, "line", line(function, source),
         "kind", function.kind, "owner", function.owner.id,
-        "exported", !function.isPrivate && function.owner.exported,
-        "entry", Entries.of(ctx, function) ? Boolean.TRUE : null, "params", params(ctx, function),
+        "exported", exported,
+        "entry", Entries.of(ctx, function) ? Boolean.TRUE : null,
+        "published", library && exported && function.owner.module() ? Boolean.TRUE : null,
+        "params", params(ctx, function),
         "returns", returns(ctx, function), "forward", forward, "calls", nonEmpty(walk.calls),
         "paramUses", nonEmpty(walk.uses.facts()), "ownFields", nonEmpty(new ArrayList<Object>(walk.own)),
         "returnsField", ReturnsField.of(ctx, function),
