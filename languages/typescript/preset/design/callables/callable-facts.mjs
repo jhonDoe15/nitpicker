@@ -1,4 +1,5 @@
 import { collectCalls } from './calls/calls.mjs';
+import { referenceFacts } from './calls/references.mjs';
 import { forwardFact } from './calls/forward.mjs';
 import { decisionFacts } from './decisions/decisions.mjs';
 import { createScope } from './scope.mjs';
@@ -32,6 +33,7 @@ export function callableFact(state, site) {
     ...optionalValue('returns', returns),
     ...optionalValue('forward', forwardFact(scope)),
     ...listed('calls', collectCalls(scope)),
+    ...listed('references', referenceFacts(scope)),
     ...listed('paramUses', paramUseFacts(scope)),
     ...listed('ownFields', ownFieldNames(scope)),
     ...optionalValue('returnsField', returnedField(scope)),

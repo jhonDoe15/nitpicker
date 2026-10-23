@@ -79,6 +79,18 @@ export function descendants(root) {
   return nodes;
 }
 
+export function outsideClosures(root) {
+  const nodes = [];
+  for (const node of depthFirst(root, (current) =>
+    current !== root && isClosure(current) ? [] : childrenOf(current),
+  )) {
+    if (node !== root && !isClosure(node)) {
+      nodes.push(node);
+    }
+  }
+  return nodes;
+}
+
 export function isAssignmentOperator(token) {
   return ASSIGNMENTS.has(token.kind);
 }

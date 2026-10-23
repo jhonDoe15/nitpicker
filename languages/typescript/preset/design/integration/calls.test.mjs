@@ -194,3 +194,52 @@ describe('the calls of a fixture project', () => {
     expect(byId(facts.callables, id).forward).toEqual(expected);
   });
 });
+
+describe('the callables a fixture project uses as values', () => {
+  let referenced;
+
+  beforeAll(() => {
+    referenced = factsOfFixture('references');
+  });
+
+  it('produces facts that pass the schema', () => {
+    expect(() => validateFacts(referenced)).not.toThrow();
+  });
+
+  it.each([
+    ['src/table.ts#speak', ['src/helpers.ts#shout', 'src/helpers.ts#whisper']],
+    ['src/table.ts#check', ['src/helpers.ts#isText', 'src/helpers.ts#isCount']],
+    ['src/table.ts#filtered', ['src/helpers.ts#isText']],
+    ['src/table.ts#chooser', ['src/helpers.ts#shout']],
+    ['src/table.ts#bound', ['src/helpers.ts#whisper']],
+    ['src/table.ts#compared', undefined],
+    ['src/table.ts#called', undefined],
+    ['src/table.ts#recursive', undefined],
+    ['src/table.ts#Handler.register', ['src/table.ts#Handler.handle']],
+  ])('lists the callables %s uses as values', (id, expected) => {
+    expect(byId(referenced.callables, id).references).toEqual(expected);
+  });
+
+  it('lists what module-level code calls or uses as values on the module type', () => {
+    expect(
+      referenced.types
+        .filter(({ references }) => references !== undefined)
+        .map(({ id, references }) => ({ id, references })),
+    ).toEqual([
+      {
+        id: 'src/registry.ts',
+        references: ['src/helpers.ts#addHandler', 'src/helpers.ts#whisper', 'src/helpers.ts#shout'],
+      },
+      {
+        id: 'src/table.ts',
+        references: [
+          'src/helpers.ts#optional',
+          'src/helpers.ts#isText',
+          'src/helpers.ts#isCount',
+          'src/helpers.ts#shout',
+          'src/helpers.ts#whisper',
+        ],
+      },
+    ]);
+  });
+});

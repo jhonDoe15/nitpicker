@@ -1,5 +1,6 @@
 import ts from 'typescript';
 import { callableFact } from './callables/callable-facts.mjs';
+import { indexConstants, moduleReferences } from './callables/calls/references.mjs';
 import { collectCallbackSites, collectNamedSites } from './callables/sites.mjs';
 import { globMatcher } from '../layout.mjs';
 import { moduleFacts, ownedFiles } from './project.mjs';
@@ -37,6 +38,8 @@ function createState({ context, files, frameworks }) {
       enumNames: new Set(),
       fieldNames: new Set(),
       enumCases: new Set(),
+      constantNames: new Set(),
+      heldByConstant: new Map(),
     },
   };
 }
@@ -80,6 +83,12 @@ function isPublishedCallable(surface, site) {
   );
 }
 
+function withModuleReferences(state, entry) {
+  const fact = typeFact(state, entry);
+  const references = entry.kind === 'module' ? moduleReferences(state, entry.node) : [];
+  return references.length === 0 ? fact : { ...fact, references };
+}
+
 function marked(fact, published) {
   return published ? { ...fact, published } : fact;
 }
@@ -92,10 +101,11 @@ export function designFacts({ context, layout, packagesInfo, frameworks, project
   indexTypes(state.registry);
   collectNamedSites(files, state);
   collectCallbackSites(files, state);
+  indexConstants(files, state.registry);
   const surface = publicSurface({ checker: context.checker, projectRoot, packagesInfo, layout });
   const { entries, sites } = state.registry;
   const types = entries.map((entry) =>
-    marked(typeFact(state, entry), isPublishedType(surface, entry)),
+    marked(withModuleReferences(state, entry), isPublishedType(surface, entry)),
   );
   indexFields(state.registry, types);
   return {
