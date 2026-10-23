@@ -38,27 +38,22 @@ function importsKotlinx(file, name, subpackage = '') {
   );
 }
 
-class View {
-  constructor(files) {
-    this.files = files;
-    this.functions = files.flatMap((file) =>
-      file.functions.map((declared) => ({ ...declared, package: file.package })),
-    );
-    this.classes = files.flatMap((file) => file.classes);
-  }
-
-  members(owner, name) {
-    return this.functions.filter((declared) => declared.owner === owner && declared.name === name);
-  }
-
-  named(name) {
-    return this.functions.filter((declared) => declared.name === name);
-  }
-
-  classNamed(name) {
-    const matches = this.classes.filter((declared) => declared.name === name);
-    return matches.length === 1 ? matches[0] : undefined;
-  }
+function viewOf(files) {
+  const functions = files.flatMap((file) =>
+    file.functions.map((declared) => ({ ...declared, package: file.package })),
+  );
+  const classes = files.flatMap((file) => file.classes);
+  return {
+    functions,
+    classes,
+    members: (owner, name) =>
+      functions.filter((declared) => declared.owner === owner && declared.name === name),
+    named: (name) => functions.filter((declared) => declared.name === name),
+    classNamed: (name) => {
+      const matches = classes.filter((declared) => declared.name === name);
+      return matches.length === 1 ? matches[0] : undefined;
+    },
+  };
 }
 
 function enclosing(update) {
@@ -70,7 +65,7 @@ function enclosing(update) {
   };
 }
 
-function declaredType(name, update, file, view, klass) {
+function declaredType(name, update, { file, view, klass }) {
   const method = enclosing(update).method;
   const parameters = view.functions
     .filter((declared) => declared.name === method && declared.owner === (klass?.qualified ?? ''))
@@ -91,7 +86,7 @@ function declaredType(name, update, file, view, klass) {
   return constructor?.type ?? property?.type;
 }
 
-function suspendsThroughType(call, type, file, view) {
+function suspendsThroughType(call, type, { file, view }) {
   const simple = simpleTypeName(type);
   const projectClass = view.classNamed(simple);
   if (projectClass !== undefined) {
@@ -105,7 +100,7 @@ function suspendsThroughType(call, type, file, view) {
   );
 }
 
-function suspendsWithoutReceiver(call, file, view, klass) {
+function suspendsWithoutReceiver(call, { file, view, klass }) {
   const own = klass === undefined ? [] : view.members(klass.qualified, call);
   if (own.length > 0) {
     return allSuspend(own);
@@ -124,26 +119,27 @@ function suspendsWithoutReceiver(call, file, view, klass) {
   );
 }
 
-function suspendingCalls(update, file, view, klass) {
+function suspendingCalls(update, site) {
+  const { file, view } = site;
   return update.value.filter((item) => {
     if (item.k !== 'call') {
       return false;
     }
     const { kind, name } = item.receiver;
     if (kind === 'none' || kind === 'this') {
-      return suspendsWithoutReceiver(item.name, file, view, klass);
+      return suspendsWithoutReceiver(item.name, site);
     }
     if (kind === 'async') {
       return (
         item.name === 'await' && importsKotlinx(file, 'async') && view.named('async').length === 0
       );
     }
-    const type = kind === 'name' ? declaredType(name, update, file, view, klass) : undefined;
-    return type !== undefined && suspendsThroughType(item.name, bareType(type), file, view);
+    const type = kind === 'name' ? declaredType(name, update, site) : undefined;
+    return type !== undefined && suspendsThroughType(item.name, bareType(type), site);
   });
 }
 
-function memberVariable(update, file, view, klass) {
+function memberVariable(update, { file, view, klass }) {
   if (klass === undefined) {
     return undefined;
   }
@@ -159,19 +155,15 @@ function memberVariable(update, file, view, klass) {
   return parameter?.property ? parameter.property === 'var' : undefined;
 }
 
-function isMember(update, file, view, klass) {
-  return memberVariable(update, file, view, klass) !== undefined;
-}
-
-function isSharedVariable(update, file, view, klass) {
+function isSharedVariable(update, site) {
   if (update.locals.includes(update.target) && !update.viaThis) {
     return false;
   }
-  const member = memberVariable(update, file, view, klass);
+  const member = memberVariable(update, site);
   if (member !== undefined) {
     return member;
   }
-  return !update.viaThis && (file.topLevelVars ?? []).includes(update.target);
+  return !update.viaThis && (site.file.topLevelVars ?? []).includes(update.target);
 }
 
 function readsTargetBefore(update, calls) {
@@ -189,18 +181,19 @@ function staleUpdate(update, calls) {
 }
 
 export function suspendedUpdateFindings(files, { finding, declaredIn }) {
-  const view = new View(declaredIn);
+  const view = viewOf(declaredIn);
   return files.flatMap((file) =>
     (file.updates ?? []).flatMap((update) => {
       const { klass, method, locked } = enclosing(update);
-      if (locked || !isSharedVariable(update, file, view, klass)) {
+      const site = { file, view, klass };
+      if (locked || !isSharedVariable(update, site)) {
         return [];
       }
-      const calls = suspendingCalls(update, file, view, klass);
+      const calls = suspendingCalls(update, site);
       if (calls.length === 0 || !staleUpdate(update, calls)) {
         return [];
       }
-      const member = isMember(update, file, view, klass);
+      const member = memberVariable(update, site) !== undefined;
       const owner = member ? `${klass.qualified}.` : '';
       return [
         finding({

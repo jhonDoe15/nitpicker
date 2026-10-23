@@ -23,7 +23,7 @@ const function_ = (body, prelude = '') =>
 const at = (line, subject) => [`${RULE}:${String(line)} ${subject}`];
 const inRun = (line, subject) => at(line, `${subject} in run`);
 
-describe.skipIf(!enabled)(RULE, () => {
+describe.skipIf(!enabled)('atomic-update-across-await', () => {
   it('flags a shared value updated from a read made before an await', () => {
     const [actual, expected] = outcomes([
       ['augmented attribute', method('self.total += await fetch()'), inRun(3, 'self.total')],
