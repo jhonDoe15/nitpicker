@@ -17,6 +17,10 @@ import {
   readJsonc,
   referencedTsconfigs,
 } from './modules/tsconfig-files.mjs';
+import { readHeadPolicy } from './head-policy.mjs';
+import { policyTestRunner } from './test-runner/project-runner.mjs';
+import { withRunnerTypes } from './test-runner/runner-types.mjs';
+import { libsWithTestDom, withTestDom } from './test-environment/dom-code/test-dom-tsconfig.mjs';
 import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mjs';
 import { END_TO_END_ROOT, sourceRoots, testRoots } from './layout.mjs';
 
@@ -156,33 +160,14 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
           : projectLayeredTsconfig(extended, JSON.parse(text), { layout, projectDirectory });
       return `${JSON.stringify(layered, null, 2)}\n`;
     }
-    const rewritten = withEndToEndDom(layoutTransform?.(text) ?? text, name, {
+    const rewritten = withTestDom(layoutTransform?.(text) ?? text, name, {
       projectDirectory,
       layout,
     });
-    return relaxesMutants ? withoutMutantStrictness(rewritten) : rewritten;
+    const runner = policyTestRunner(readHeadPolicy(), projectDirectory);
+    const typed = withRunnerTypes(rewritten, { runner, projectDirectory });
+    return relaxesMutants ? withoutMutantStrictness(typed) : typed;
   };
-}
-
-const DOM_LIB = 'dom';
-function libsWithEndToEndDom(libs, projectDirectory, layout) {
-  const hasEndToEnd =
-    layout.testRoots.includes(END_TO_END_ROOT) &&
-    existsSync(path.join(projectDirectory, END_TO_END_ROOT));
-  const lacksDom = libs?.every((lib) => lib.toLowerCase() !== DOM_LIB) ?? false;
-  return hasEndToEnd && lacksDom ? [...libs, DOM_LIB] : undefined;
-}
-
-function withEndToEndDom(text, name, { projectDirectory, layout }) {
-  if (name !== 'tsconfig.quality.json') {
-    return text;
-  }
-  const config = JSON.parse(text);
-  const lib = libsWithEndToEndDom(config.compilerOptions?.lib, projectDirectory, layout);
-  if (lib === undefined) {
-    return text;
-  }
-  return `${JSON.stringify({ ...config, compilerOptions: { ...config.compilerOptions, lib } }, null, 2)}\n`;
 }
 
 function withoutMutantStrictness(text) {
@@ -196,6 +181,7 @@ function withoutMutantStrictness(text) {
 }
 
 const PROJECT_JSCONFIG = 'jsconfig.json';
+const JAVASCRIPT_PROJECT_OPTIONS = { ...JAVASCRIPT_COMPILER_OPTIONS, maxNodeModuleJsDepth: 0 };
 const MUTANT_STRICTNESS_OPTIONS = new Set([
   'noImplicitReturns',
   'noFallthroughCasesInSwitch',
@@ -256,19 +242,18 @@ function projectLayeredMutationTsconfig(extended, { strictMutants, layout }) {
     compilerOptions: {
       skipLibCheck: true,
       ...(strictMutants ? POLICY_COMPILER_OPTIONS : {}),
-      ...(layout.javascript ? JAVASCRIPT_COMPILER_OPTIONS : {}),
+      ...(layout.javascript ? JAVASCRIPT_PROJECT_OPTIONS : {}),
     },
   };
 }
 
 function projectLayeredTsconfig(extended, base, { layout, projectDirectory }) {
-  const javascriptOptions = layout.javascript ? JAVASCRIPT_COMPILER_OPTIONS : {};
+  const javascriptOptions = layout.javascript ? JAVASCRIPT_PROJECT_OPTIONS : {};
   const layered = layoutTsconfig(base, layout);
-  const lib = libsWithEndToEndDom(
-    projectLibs(projectDirectory, extended),
+  const lib = libsWithTestDom(projectLibs(projectDirectory, extended), 'tsconfig.quality.json', {
     projectDirectory,
     layout,
-  );
+  });
   return {
     extends: extended,
     compilerOptions: {

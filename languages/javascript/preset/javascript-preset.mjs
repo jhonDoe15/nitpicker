@@ -19,6 +19,10 @@ export const JAVASCRIPT_KNIP_ENTRIES = [
   `src/main/vitest.config.${JAVASCRIPT_GLOB}`,
   `test/vitest.config.${JAVASCRIPT_GLOB}`,
   `tests/vitest.config.${JAVASCRIPT_GLOB}`,
+  `jest.config.${JAVASCRIPT_GLOB}`,
+  `src/main/jest.config.${JAVASCRIPT_GLOB}`,
+  `test/jest.config.${JAVASCRIPT_GLOB}`,
+  `tests/jest.config.${JAVASCRIPT_GLOB}`,
   `test/fixtures/*harness*.${JAVASCRIPT_GLOB}`,
   `tests/fixtures/*harness*.${JAVASCRIPT_GLOB}`,
 ];

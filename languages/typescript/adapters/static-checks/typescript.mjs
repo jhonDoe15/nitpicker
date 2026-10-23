@@ -1,6 +1,11 @@
 import path from 'node:path';
 import { prepareSnapshotDependencies, removeSnapshotDependencies } from './dependencies.mjs';
-import { readLayout, typecheckEngine } from '../../preset/head-policy.mjs';
+import { readHeadPolicy, readLayout, typecheckEngine } from '../../preset/head-policy.mjs';
+import { policyTestRunner } from '../../preset/test-runner/project-runner.mjs';
+import {
+  isUntypedRunnerGlobal,
+  missingRunnerTypes,
+} from '../../preset/test-runner/runner-types.mjs';
 import { projectFile, hash, policyFile } from './shared.mjs';
 import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
 import { layoutTransformFor } from '../../preset/tool-configs.mjs';
@@ -24,14 +29,9 @@ export async function runTypecheck(options) {
       configPath: installedConfig.targetPath,
       projectRoot: options.projectRoot,
     });
-    const layout = readLayout();
     return normalizeTypeScriptDiagnostics({
       ts,
-      diagnostics: diagnostics.filter(
-        (diagnostic) =>
-          diagnostic.file === undefined ||
-          !layout.isExcluded(projectFile(options.projectRoot, diagnostic.file.fileName)),
-      ),
+      diagnostics: gatedDiagnostics(diagnostics, options.projectRoot),
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       configRelativePath: options.configRelativePath,
@@ -43,6 +43,21 @@ export async function runTypecheck(options) {
       removeSnapshotDependencies(preparedDependencies);
     }
   }
+}
+
+function gatedDiagnostics(diagnostics, projectRoot) {
+  const layout = readLayout();
+  const runner = policyTestRunner(readHeadPolicy(), projectRoot);
+  const untyped = missingRunnerTypes(runner, projectRoot) !== undefined;
+  return diagnostics.filter((diagnostic) => {
+    if (diagnostic.file === undefined) {
+      return true;
+    }
+    const file = projectFile(projectRoot, diagnostic.file.fileName);
+    const untypedGlobal =
+      untyped && layout.isTestFile(file) && isUntypedRunnerGlobal(diagnostic, runner);
+    return !layout.isExcluded(file) && !untypedGlobal;
+  });
 }
 
 export function normalizeTypeScriptDiagnostics({

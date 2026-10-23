@@ -1,14 +1,12 @@
 import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
+import { projectRunnerVocabulary } from '../../preset/test-runner/runner-vocabulary.mjs';
 import { immutableTypesMessage } from './immutable-types-hint.mjs';
 import { restrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mjs';
 
 const IMMUTABLE_TYPES_PREFIX =
   /^(Variable|Parameter|Return type|Property) should have an immutability of at least/u;
-
-const REJECT_ERRORS_TEST_HINT =
-  ' In tests, reject with `vi.fn().mockRejectedValue(value)` to use a non-Error reason.';
 
 const FIX_TYPE_ERROR_FIRST = 'fix any TypeScript error on the line first';
 
@@ -17,8 +15,6 @@ const UNRESOLVED_TYPE =
 
 const UNRESOLVED_TYPE_HINT =
   ' The type is unresolved because of a TypeScript error, often a failed import: fix that error first.';
-
-const ASYMMETRIC_MATCHER_HINT = ` In tests the \`any\` usually comes from an asymmetric matcher (\`expect.any\`, \`expect.stringContaining\`, \`expect.objectContaining\`): assert the whole value with \`toEqual\`, and ${FIX_TYPE_ERROR_FIRST}.`;
 
 const LEGACY_ANY_HINT = ` If the value is a legacy \`any\`, read it through one reader function whose parameter is \`unknown\` and that returns a typed object, kept in adapters/; ${FIX_TYPE_ERROR_FIRST}.`;
 
@@ -40,8 +36,6 @@ const THROW_ERROR_HINT = 'Throw an Error subclass.';
 const THROW_ERROR_TEST_HINT = `${THROW_ERROR_HINT} A test double that must throw a non-Error value types it \`unknown\`: \`const value: unknown = 7; throw value;\`.`;
 
 const NO_ASSERTIONS_TEXT = 'Test has no assertions';
-
-const NO_ASSERTIONS_HINT = `${NO_ASSERTIONS_TEXT}. Call \`expect\` in the test body: asserting helpers do not count, so return the value and \`expect\` it in the test.`;
 
 const DUPLICATE_CONSTITUENTS_HINT =
   ' The members are now the same type: use the one type the feature exports (e.g. `import type { Message }`), not a `ReturnType<...>` alias.';
@@ -70,8 +64,11 @@ const THROW_MESSAGE_TEXT =
 const EXPECT_THROWS_HINT =
   ' In a test, assert a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)` instead of asserting inside a `catch`.';
 
+const ASSERT_THROWS_HINT =
+  ' In a test, assert a failure with `assert.throws(() => run(), Specific)` or `await assert.rejects(promise, Specific)` (Chai: `expect(() => run()).to.throw(Specific)`) instead of asserting inside a `catch`.';
+
 const NODE_TEST_HINT =
-  ' nitpicker runs node:test files, but lints every test file with the Vitest rules. An exception fits only a file that must stay on node:test.';
+  ' nitpicker runs this project\'s tests with Vitest, which does not collect node:test files. Import from `vitest`, or, if the project runs its tests with node:test, set "tools.tests.runner" to "node" in nitpicker.config.json. An exception fits only a file that must stay on node:test while the rest of the project runs on Vitest.';
 
 const FLOATING_PROMISE_TEXT = /^Promises must be awaited/u;
 
@@ -111,7 +108,10 @@ function immutableTypesRewrite({ text, node, sourceFile }) {
 }
 
 function rejectErrorsMessage({ text, relativePath }) {
-  return readLayout().isTestFile(relativePath) ? `${text}${REJECT_ERRORS_TEST_HINT}` : text;
+  if (!readLayout().isTestFile(relativePath)) {
+    return text;
+  }
+  return `${text} In tests, reject with ${projectRunnerVocabulary().rejection} to use a non-Error reason.`;
 }
 
 function legacyAnyHint(relativePath) {
@@ -127,7 +127,7 @@ function unsafeAnyMessage({ text, relativePath }) {
     return `${text}${UNRESOLVED_TYPE_HINT}`;
   }
   if (readLayout().isTestFile(relativePath)) {
-    return `${text}${ASYMMETRIC_MATCHER_HINT}`;
+    return `${text} In tests the \`any\` usually comes from ${projectRunnerVocabulary().anyInTests}, and ${FIX_TYPE_ERROR_FIRST}.`;
   }
   return `${text}${legacyAnyHint(relativePath)}`;
 }
@@ -140,7 +140,11 @@ function onlyThrowErrorMessage({ text, relativePath }) {
 }
 
 function expectExpectMessage({ text }) {
-  return text === NO_ASSERTIONS_TEXT ? NO_ASSERTIONS_HINT : text;
+  if (text !== NO_ASSERTIONS_TEXT) {
+    return text;
+  }
+  const { assertCall, assertIt } = projectRunnerVocabulary();
+  return `${NO_ASSERTIONS_TEXT}. Call ${assertCall} in the test body: asserting helpers do not count, so return the value and ${assertIt} in the test.`;
 }
 
 function duplicateConstituentsMessage({ text }) {
@@ -186,10 +190,15 @@ function nodeTestMessage({ text }) {
 
 const MESSAGE_REWRITERS = new Map([
   ['vitest/no-import-node-test', nodeTestMessage],
-  ['vitest/no-disabled-tests', disabledTestMessage],
-  ['vitest/no-restricted-matchers', restrictedMatcherMessage],
-  ['vitest/prefer-called-with', () => PREFER_CALLED_WITH_TEXT],
-  ['vitest/require-to-throw-message', () => THROW_MESSAGE_TEXT],
+  ...['vitest', 'jest', 'node-test', 'mocha'].map((namespace) => [
+    `${namespace}/no-disabled-tests`,
+    disabledTestMessage,
+  ]),
+  ...['vitest', 'jest'].flatMap((namespace) => [
+    [`${namespace}/no-restricted-matchers`, restrictedMatcherMessage],
+    [`${namespace}/prefer-called-with`, () => PREFER_CALLED_WITH_TEXT],
+    [`${namespace}/require-to-throw-message`, () => THROW_MESSAGE_TEXT],
+  ]),
   ['functional/prefer-immutable-types', immutableTypesRewrite],
   ['@typescript-eslint/prefer-promise-reject-errors', rejectErrorsMessage],
   ['@typescript-eslint/no-unsafe-member-access', unsafeAnyMessage],
@@ -199,7 +208,13 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/no-unsafe-return', unsafeAnyMessage],
   ['@typescript-eslint/only-throw-error', onlyThrowErrorMessage],
   ['vitest/expect-expect', expectExpectMessage],
+  ['jest/expect-expect', expectExpectMessage],
+  ['node-test/expect-expect', expectExpectMessage],
+  ['mocha/expect-expect', expectExpectMessage],
   ['vitest/no-conditional-expect', appendHint(EXPECT_THROWS_HINT)],
+  ['jest/no-conditional-expect', appendHint(EXPECT_THROWS_HINT)],
+  ['node-test/no-conditional-expect', appendHint(ASSERT_THROWS_HINT)],
+  ['mocha/no-conditional-expect', appendHint(ASSERT_THROWS_HINT)],
   ['@typescript-eslint/no-duplicate-type-constituents', duplicateConstituentsMessage],
   ['@typescript-eslint/switch-exhaustiveness-check', switchExhaustivenessMessage],
   ['@typescript-eslint/no-invalid-void-type', invalidVoidMessage],

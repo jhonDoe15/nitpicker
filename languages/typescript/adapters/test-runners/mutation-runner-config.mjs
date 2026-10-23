@@ -1,6 +1,10 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mochaMutationOptions, projectMocha } from '../../preset/test-runner/mocha-options.mjs';
+import {
+  mochaMutationOptions,
+  projectMocha,
+} from '../../preset/test-runner/test-files/mocha-options.mjs';
+import { RESTORE_SINON_PLUGIN } from './mocha/mocha.mjs';
 import { nodeTestSelection } from './node-test/node-test.mjs';
 import { TEST_TIMEOUT_MS } from './test-run.mjs';
 
@@ -68,8 +72,10 @@ export function cracoJestConfigText() {
   return CRACO_JEST_CONFIG_LINES.join('\n');
 }
 
+const CREATE_REACT_APP_LAUNCHERS = new Set(['react-scripts', 'react-app-rewired', 'rescripts']);
+
 function jestConfigSource(command) {
-  if (command.launcher === 'react-scripts') {
+  if (CREATE_REACT_APP_LAUNCHERS.has(command.launcher)) {
     return { projectType: 'create-react-app' };
   }
   if (command.launcher === 'craco') {
@@ -87,8 +93,13 @@ function jestConfigSource(command) {
 }
 
 function jestOptions(command) {
-  const { projectType, ...source } = jestConfigSource(command);
-  return { projectType, enableFindRelatedTests: false, ...source };
+  const { projectType, config, ...source } = jestConfigSource(command);
+  return {
+    projectType,
+    enableFindRelatedTests: false,
+    ...source,
+    config: { ...config, restoreMocks: true },
+  };
 }
 
 function mochaConfig(options, command, testFiles) {
@@ -97,7 +108,13 @@ function mochaConfig(options, command, testFiles) {
     tokens: command.arguments_,
     testFiles: relativeFiles(options, testFiles),
   });
-  return { testRunnerNodeArgs: [...command.nodeArguments, ...nodeArguments], mochaOptions };
+  return {
+    testRunnerNodeArgs: [...command.nodeArguments, ...nodeArguments],
+    mochaOptions: {
+      ...mochaOptions,
+      require: [...(mochaOptions.require ?? []), RESTORE_SINON_PLUGIN],
+    },
+  };
 }
 
 function runnerOptions({ options, runner, command, testFiles }) {

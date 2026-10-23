@@ -9,6 +9,10 @@ import { outsideRootsNotices } from '../../../languages/typescript/preset/notice
 const TYPESCRIPT_PRESETS = new Set([undefined, 'typescript']);
 const BUILD_FILE = /(?:^|\/)(?:build\.gradle(?:\.kts)?|pom\.xml)$/u;
 
+export function policyNotices(headPolicy) {
+  return headPolicy.tools?.tests?.notices ?? [];
+}
+
 function jvmDescriber(config, headPolicy, projectRoot) {
   return (changedFiles) =>
     jvmOutsideRootsNotices(changedFiles, {
@@ -23,7 +27,7 @@ function jvmDescriber(config, headPolicy, projectRoot) {
     });
 }
 
-export function noticeDescriber(config, headPolicy, projectRoot) {
+function presetDescriber(config, headPolicy, projectRoot) {
   if (TYPESCRIPT_PRESETS.has(config.preset)) {
     return (changedFiles) => outsideRootsNotices(changedFiles, headPolicy);
   }
@@ -39,4 +43,13 @@ export function noticeDescriber(config, headPolicy, projectRoot) {
   return config.preset === 'java' || config.preset === 'kotlin'
     ? jvmDescriber(config, headPolicy, projectRoot)
     : undefined;
+}
+
+export function noticeDescriber(config, headPolicy, projectRoot) {
+  const notices = policyNotices(headPolicy);
+  const describe = presetDescriber(config, headPolicy, projectRoot);
+  if (describe === undefined) {
+    return notices.length === 0 ? undefined : () => notices;
+  }
+  return (changedFiles) => [...notices, ...describe(changedFiles)];
 }

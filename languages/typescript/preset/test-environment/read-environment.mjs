@@ -1,22 +1,19 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chainOf } from '../../../../shared/traversal.mjs';
+import { chainOf, parentDirectory } from '../../../../shared/traversal.mjs';
+import { loadedMochaOptions } from '../test-runner/test-files/mocha-options.mjs';
 import { aliasesFromConfig } from './aliases.mjs';
-import { environmentsFromConfig } from './environments.mjs';
+import { environmentsFromConfig, testFilesFromConfig } from './environments.mjs';
 
 export const RESULT_MARKER = 'NITPICKER_TEST_ENVIRONMENT_RESULT ';
+export const MOCHA_MODE = '--mocha-options';
 
 function entryOf(manifest) {
   const entry = manifest.exports?.['.'];
   const imported = entry?.import ?? entry;
   const resolved = typeof imported === 'string' ? imported : imported?.default;
   return resolved ?? manifest.module ?? manifest.main ?? 'index.js';
-}
-
-function parentDirectory(directory) {
-  const parent = path.dirname(directory);
-  return parent === directory ? undefined : parent;
 }
 
 function viteManifestFrom(root) {
@@ -54,15 +51,25 @@ export async function readEnvironment({ configFile, projectRoot, resolveRoots })
   );
   const config = loaded?.config;
   return {
-    ...environmentsFromConfig(config, projectRoot),
-    aliases: aliasesFromConfig(config, projectRoot),
+    environments: {
+      ...environmentsFromConfig(config, projectRoot),
+      aliases: aliasesFromConfig(config, projectRoot),
+    },
+    testFiles: testFilesFromConfig(config, projectRoot),
   };
 }
 
-async function main(argumentsList) {
-  const [configFile, projectRoot, ...resolveRoots] = argumentsList;
+function readMocha([projectRoot, liveProjectRoot, ...tokens]) {
+  return loadedMochaOptions({ projectRoot, liveProjectRoot, tokens });
+}
+
+function readVite([configFile, projectRoot, ...resolveRoots]) {
+  return readEnvironment({ configFile, projectRoot, resolveRoots });
+}
+
+async function main([mode, ...rest]) {
   try {
-    const result = await readEnvironment({ configFile, projectRoot, resolveRoots });
+    const result = await (mode === MOCHA_MODE ? readMocha(rest) : readVite([mode, ...rest]));
     process.stdout.write(`\n${RESULT_MARKER}${JSON.stringify({ result })}\n`);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);

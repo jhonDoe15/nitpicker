@@ -36,9 +36,9 @@ function nodeTestMessage() {
 }
 
 describe('node:test hint', () => {
-  it('says node:test files run but are linted with the Vitest rules, and when an exception fits', () => {
+  it('says Vitest does not collect node:test files and names the setting that switches runner', () => {
     expect(nodeTestMessage()).toBe(
-      'Import from vitest instead of node:test nitpicker runs node:test files, but lints every test file with the Vitest rules. An exception fits only a file that must stay on node:test.',
+      'Import from vitest instead of node:test nitpicker runs this project\'s tests with Vitest, which does not collect node:test files. Import from `vitest`, or, if the project runs its tests with node:test, set "tools.tests.runner" to "node" in nitpicker.config.json. An exception fits only a file that must stay on node:test while the rest of the project runs on Vitest.',
     );
   });
 });

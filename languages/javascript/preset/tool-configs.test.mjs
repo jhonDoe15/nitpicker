@@ -109,7 +109,12 @@ describe('generated tsconfig.quality.json', () => {
       projectWith('jsconfig.json'),
     );
     expect(config.extends).toBe('./jsconfig.json');
-    expect(config.compilerOptions.checkJs).toBe(true);
+    const { allowJs, checkJs, maxNodeModuleJsDepth } = config.compilerOptions;
+    expect({ allowJs, checkJs, maxNodeModuleJsDepth }).toEqual({
+      allowJs: true,
+      checkJs: true,
+      maxNodeModuleJsDepth: 0,
+    });
   });
 
   it('prefers tsconfig.json over jsconfig.json', () => {
@@ -156,11 +161,12 @@ describe('generated tsconfig.stryker.json', () => {
       projectWith('jsconfig.json'),
     );
     expect(javascript.extends).toBe('./jsconfig.json');
-    const { skipLibCheck, allowJs, checkJs } = javascript.compilerOptions;
-    expect({ skipLibCheck, allowJs, checkJs }).toEqual({
+    const { skipLibCheck, allowJs, checkJs, maxNodeModuleJsDepth } = javascript.compilerOptions;
+    expect({ skipLibCheck, allowJs, checkJs, maxNodeModuleJsDepth }).toEqual({
       skipLibCheck: true,
       allowJs: true,
       checkJs: true,
+      maxNodeModuleJsDepth: 0,
     });
     const typescript = transformed(
       'tsconfig.stryker.json',
@@ -188,11 +194,21 @@ describe('generated knip.json', () => {
     for (const entry of [
       'src/main.{js,mjs,cjs}',
       'vitest.config.{js,mjs,cjs}',
+      'jest.config.{js,mjs,cjs}',
+      'tests/jest.config.{js,mjs,cjs}',
       'tests/fixtures/*harness*.{js,mjs,cjs}',
     ]) {
       expect(config.entry.includes(entry), entry).toBe(true);
     }
     expect(config.project).toEqual([...base.project, '*.config.{js,mjs,cjs}']);
+  });
+
+  it('lists the Jest and Mocha config files in the shared entries, for both presets', () => {
+    const runnerConfigs = base.entry.filter(
+      (entry) => entry.startsWith('jest.config') || entry.startsWith('.mocharc'),
+    );
+
+    expect(runnerConfigs).toEqual(['jest.config.{ts,mts}', '.mocharc.{js,cjs,mjs}']);
   });
 
   it('does not add them for TypeScript', () => {

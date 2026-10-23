@@ -635,6 +635,47 @@ came from nitpicker's own suite, where it cost CI minutes. "Per test" means code
 `it`/`test` callback or in `beforeEach`. That includes same-file functions those callbacks call, but
 not functions imported from other modules.
 
+The test rules follow the runner the project uses (Vitest, Jest, `node:test` or Mocha). It is
+`tools.tests.runner` in `nitpicker.config.json` when set, else found in the head checkout from the
+`test` script (or another `test*` script), a runner config file, or a dependency, in that order,
+with Vitest as the default. The result is recorded in the head policy, so base and head are
+linted alike. What changes with it:
+
+- The upstream test-file rules come from `@vitest/eslint-plugin` for Vitest and from
+  `eslint-plugin-jest` for the others, under the namespaces `vitest/`, `jest/`, `node-test/` and
+  `mocha/`. The same checks are on for every runner (`expect-expect`, `no-focused-tests`,
+  `no-identical-title`, `no-conditional-in-test`, `no-conditional-expect`, `no-standalone-expect`,
+  `valid-title`, `valid-describe-callback` and the rest), so the strictness does not depend on the
+  runner. Jest also gets the matcher rules (`valid-expect`, `no-mocks-import` and similar);
+  `vitest/require-awaited-expect-poll` and `vitest/no-import-node-test` exist for Vitest only.
+  `vitest/no-import-node-test` therefore never fires on a `node:test` project. The same guard for
+  every runner is `no-restricted-imports` in test files: importing another runner's test functions
+  (`vitest`, `@jest/globals`, `node:test` or `mocha`) fails, with a message that names the runner
+  nitpicker uses, how to set `tools.tests.runner`, and the exception route for a file that needs
+  the module for another reason.
+- On `node:test`, `test`, `it`, `describe` and `suite` (and their `skip`, `todo`, `only` and
+  `expectFailure` forms) return a promise that the runner itself waits for, so
+  `@typescript-eslint/no-floating-promises` leaves them alone in test files; any other promise a
+  test file drops is still reported. An unawaited `t.test()` subtest that is still running when its
+  parent ends is cancelled and fails, so the runner reports it. Mocha's `describe` and `it` return no
+  promise, so nothing changes there.
+- An assertion for `expect-expect` is `expect`, `assert`, `expectTypeOf` or `assertType` on Vitest and
+  Jest, `assert` (`assert.equal`, `t.assert.ok`) or `expect` on `node:test`, and `assert`, `expect`,
+  `sinon.assert` or a `.should` chain on Mocha.
+- The nitpicker test rules below recognise each runner's own APIs: `vi.mock`, `jest.mock` (and
+  `doMock`, `unstable_mockModule`, `setMock`), `mock.module` from `node:test`, `mock-require`,
+  `testdouble`, `quibble`, and the modules a `proxyquire` or `esmock` call replaces (the keys of
+  its stubs object) for module mocks; `vi.useFakeTimers`, `jest.useFakeTimers`,
+  `mock.timers.enable`, `sinon.useFakeTimers` (also on a sandbox) and `@sinonjs/fake-timers`
+  `install` for fake clocks, with `clock.restore()` and `this.clock.restore()` turning a sinon
+  clock off; and `vi.spyOn`, `jest.spyOn`, `mock.method` and sinon's `stub`, `spy` and `replace`
+  for spies. Their messages name the call of the project's runner instead of `vi.*`, and so do the
+  messages of the other test rules (`before` instead of `beforeAll` on `node:test` and Mocha, a
+  `for...of` loop of `it` calls instead of `it.each`).
+- `tsconfig.quality.json` and `tsconfig.stryker.json` list `vitest/globals` in `types` only for a
+  Vitest project. A Jest project gets `jest` when `@types/jest` is installed, a Mocha project gets
+  `mocha` when `@types/mocha` is installed, and `node:test` needs only `node`.
+
 The `duplicates` check scans test files too, but between two test files it reports only a clone
 that defines a named function (a copied helper: keep one in a non-test file such as
 `test/support/` and import it). Repeated expected values and assertions between tests are left
@@ -653,11 +694,15 @@ message names the same route as for any clone: add either file of the pair to `e
 Every runnable test imports production code at runtime
 (`nitpicker/test-must-use-production-runtime`), directly or through a relative test helper that
 does, such as a `renderWithProviders` in `test/support/` that imports the app. The rule follows one
-hop, and type-only imports do not count.
+hop, and type-only imports do not count. Its message sends a shared helper to a file the runner does
+not run as a test, named the runner's way: not `*.test.*` or `*.spec.*` (and not under `__tests__`
+for Jest), not one of Node's default patterns (`*-test.*`, `test/`, ...) for `node:test`, outside
+the spec for Mocha.
 
 - `nitpicker/no-git-repository-per-test`: no `git init` or `git clone` per test. This covers direct
   `child_process`/`execa` calls and same-file wrappers such as `git(root, ['init'])` or
-  `run('git', ['init'])`. Build a template repository once in `beforeAll` and `cpSync` it per test.
+  `run('git', ['init'])`. Build a template repository once in `beforeAll` (`before` on `node:test`
+  and Mocha) and `cpSync` it per test.
 - `nitpicker/hermetic-git-in-tests`: every git process a test-area file starts passes an `env`
   object, written in that file, that sets `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM`. Same-file
   `const` objects and spreads count. An imported env object does not, because the rule cannot see
@@ -669,18 +714,22 @@ hop, and type-only imports do not count.
   analyzer recognizes. Spawning once in `beforeAll` is allowed.
 - `nitpicker/no-server-or-worker-per-test`: no `createServer`/`createSecureServer`/`new Server`
   from `node:http`, `https`, `http2`, `net` or `tls`, and no `new Worker` from
-  `node:worker_threads`, per test. Start them once in `beforeAll` and reset state between tests, or
+  `node:worker_threads`, per test. Start them once in `beforeAll` (`before` on `node:test` and
+  Mocha) and reset state between tests, or
   test the logic against an in-memory implementation.
 - `nitpicker/no-fixed-sleep-synchronization` (existing, extended): besides `await sleep()` and
   `await new Promise((resolve) => setTimeout(resolve, n))`, it also flags
   `setTimeout(() => resolve(), n)`, `await setTimeout(n)` from `node:timers/promises` and
-  `scheduler.wait(n)`. Wait on a condition with `vi.waitFor` or `expect.poll`. It also flags waits
+  `scheduler.wait(n)`. Wait on a condition with `vi.waitFor` or `expect.poll` (a Jest project is
+  pointed at Testing Library's `waitFor` or `jest.advanceTimersByTimeAsync`, a `node:test` project
+  at an awaited event or `mock.timers.tick`, a Mocha project at a fake clock). It also flags waits
   on wall-clock time. A timeout-based negative assertion, `expect(waitFor(...)).rejects`,
   `expect(vi.waitFor(...)).rejects` or `expect(screen.findByRole(...)).rejects` (a `findBy*` or
   `findAllBy*` call on `screen`, on a `within(...)` result or on a render result, or a bare
   `waitFor`; awaited or not, also through a `const`; a data-layer `repo.findByEmail(...)` is not),
   passes only after the full wait times out, so it is slow and depends on the delay: advance fake
-  timers past the delay (`vi.advanceTimersByTime`) and assert absence at once
+  timers past the delay (`vi.advanceTimersByTime`, `jest.advanceTimersByTime`, `mock.timers.tick`)
+  and assert absence at once
   (`expect(screen.queryByRole('tooltip')).toBeNull()`). Playwright `<anything>.waitForTimeout(n)`
   and Cypress `cy.wait(500)` (a number literal, or a `const` bound to a number; `cy.wait('@alias')`
   is fine, and so is `cy.wait(0)`) are flagged too: wait on a condition (`await expect(locator).toBeVisible()`,
@@ -689,10 +738,10 @@ hop, and type-only imports do not count.
   fixtures are skipped). A wait that cannot be avoided gets an exception for the rule.
 - `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
   test timeout nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
-  Stryker also uses, and the timeout it passes to Vitest, Jest, `node:test` and Mocha; a test keeps them in step; the
-  coverage run adds the larger slow-test budget to it, see [Slow tests](#slow-tests)).
-  The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
-  `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
+  Stryker also uses, and the timeout it passes to Vitest, Jest, `node:test` and Mocha; a test keeps them in step; the coverage run adds the larger slow-test budget to it, see [Slow tests](#slow-tests)).
+  The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts
+  (`beforeAll`, `beforeEach`, `afterAll`, `afterEach`, and `before`/`after`), `vi.setConfig`,
+  `jest.setTimeout`, and Mocha's `this.timeout(n)` and chained `.timeout(n)`. A timeout that is not a constant written in the file is also reported. There is
   no e2e exemption; a genuinely long suite needs an exception in the config file.
 - `nitpicker/require-test-process-timeout`: synchronous `spawnSync`, `execSync` and `execFileSync`
   calls from `node:child_process` or `child_process` in test-area files need a positive subprocess
@@ -716,10 +765,16 @@ hop, and type-only imports do not count.
   similar built-ins are not reported. A deliberate memo needs an exception in the config file.
 - `nitpicker/no-unused-dom-environment` (not strict: a finding counts only when new in the diff): a
   runnable test file (`*.test.*`, `*.spec.*`) that runs in `jsdom` or `happy-dom` must use the DOM.
-  Keep `node` as the project's environment and put `/** @vitest-environment jsdom */` only on the
-  files that render. It reports once per file, on the directive when the file has one.
+  Keep `node` as the project's environment and put `/** @vitest-environment jsdom */` (`@jest-environment`
+  under Jest) only on the files that render. It reports once per file, on the directive when the file has one.
+  `node:test` and Mocha run in Node with no DOM environment, so the rule has nothing to report there.
   - Environment: the file's own `@vitest-environment` or `@jest-environment` directive (found in
-    the file text, as Vitest finds it), else the project's. nitpicker loads the project's
+    the file text, as Vitest and Jest find it), else the project's. For Jest, nitpicker runs the
+    project's own `jest --showConfig` once per snapshot, so a `jest.config.*` in any supported
+    format, a preset and the `package.json` `jest` key are all resolved by Jest itself, and reads
+    `testEnvironment` (`node`, `jsdom`, `jest-environment-jsdom`, `happy-dom`), `setupFiles`,
+    `setupFilesAfterEnv` and `moduleNameMapper`; several `projects` become scopes by their
+    `testMatch`. For Vitest, nitpicker loads the project's
     `vitest.config.*` or `vite.config.*` once per snapshot in a short-lived child process, with the
     project's own `vite`, and reads `test.environment` (default `node`), inline `test.projects`
     (`include`, `exclude`, `root`/`dir`, `environment`, `extends: true`) and the `resolve.alias` /
@@ -729,7 +784,8 @@ hop, and type-only imports do not count.
     directives are checked. An unreadable config is also reported as one report-only finding on
     the config file.
   - Uses the DOM, so nothing is reported: the file, or any project module it reaches through
-    imports, re-exports, `require`, dynamic `import()`, `vi.mock`/`vi.importActual`/`vi.doMock`,
+    imports, re-exports, `require`, dynamic `import()`, `vi.mock`/`vi.importActual`/`vi.doMock`
+    (and `jest.mock`/`jest.requireActual`/`jest.unstable_mockModule`, `mock.module`),
     `tsconfig`/`jsconfig` `paths`, Vite aliases, workspace packages linked into `node_modules` and
     barrels: imports a DOM testing package (`@testing-library/*`, `@*/testing-library`,
     `react-dom`, `enzyme`, `@vue/test-utils`, `@storybook/test`, `jest-axe` and similar) or a
@@ -771,32 +827,63 @@ hop, and type-only imports do not count.
   The same holds for `toMatchObject` and for `toEqual`/`toStrictEqual` given `expect.objectContaining`,
   `expect.stringContaining` or `expect.arrayContaining`, even nested inside an object or array
   literal: pass the whole expected value, using `expect.any(Type)` for a field that varies. Asymmetric
-  matchers inside `toHaveBeenCalledWith` are not reported. Output too large or unordered to pin
-  needs an exception in the config file.
+  matchers inside `toHaveBeenCalledWith` are not reported. Under every runner the rule also sees the
+  `assert` and Chai forms of the same checks: a text fragment through `assert.ok(text.includes('x'))`
+  (also `assert(...)`, `t.assert.ok(...)` and Chai's `assert.isTrue(...)`), Chai's
+  `expect(x).to.include('x')`, `contain`, `have.string`, `deep.include`, `assert.include` and
+  `assert.deepInclude`, and a partial match through `assert.partialDeepStrictEqual`, Chai's
+  `include` with an object literal, `include.members`, `containSubset`, `assert.includeMembers` and
+  `assert.containSubset`. Negated forms are allowed. Its messages name the runner's own whole-value
+  assertion (`assert.deepStrictEqual` under `node:test`, `expect(...).to.deep.equal` or
+  `assert.deepStrictEqual` under Mocha). Output too large or unordered to pin needs an exception in
+  the config file.
 - `no-restricted-syntax` bans the same constructs as in production code, with the same messages:
   `for(;;)`, `for...in`, `while` and `do...while` (use `for...of`, or `it.each` for one test per
-  case), `forEach`, `as` (except `as const`) and
+  case; on `node:test` and Mocha, which have no `it.each`,
+  `for (const testCase of cases) { it(testCase.name, () => { ... }); }`), `forEach`, `as` (except `as const`) and
   `<Type>value`; `.then()`/`.catch()`/`.finally()` chains are `nitpicker/no-promise-chain`. `any`
   and non-null `!` are already reported in test files by
   typescript-eslint's `no-explicit-any` and `no-non-null-assertion`. Like the other bans, these are
   strict rules: a finding on a line a change edits, or in a new test file, fails the run. An exception for
   `no-restricted-syntax` lifts all the syntax bans for those paths.
-- Weak assertions pass whatever the code returns, so `vitest/no-restricted-matchers` bans
-  `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `not.toBeNull` and `not.toBeUndefined` (also after
-  `.resolves`/`.rejects`): assert the value with `toBe` or `toEqual`. `vitest/prefer-called-with`
-  rejects a bare `toHaveBeenCalled()` (pass the arguments), `vitest/require-to-throw-message`
-  rejects `toThrow()` without a message or class, and `no-restricted-syntax` rejects a literal
-  subject (`expect(true)`). `nitpicker/no-partial-output-assertion` also rejects `toMatch` with a
-  string or a pattern that is not anchored `^...$`; an anchored pattern pins the whole value.
+- Weak assertions pass whatever the code returns, so `vitest/no-restricted-matchers`
+  (`jest/no-restricted-matchers` under Jest) bans `toBeDefined`, `toBeTruthy`, `toBeFalsy`,
+  `not.toBeNull` and `not.toBeUndefined` (also after `.resolves`/`.rejects`): assert the value with
+  `toBe` or `toEqual`. `vitest/prefer-called-with` rejects a bare `toHaveBeenCalled()` (pass the
+  arguments), `vitest/require-to-throw-message` rejects `toThrow()` without a message or class (both
+  `jest/` under Jest), and `no-restricted-syntax` rejects a literal subject (`expect(true)`).
+  `nitpicker/no-unpinned-assertion` does the same for `node:assert`, Chai and Sinon, under every
+  runner: `assert.ok(value)` or `assert(value)` on a variable or property (a comparison or a call is
+  allowed), `assert.isOk`, `assert.exists`, `assert.isDefined`, `assert.isNotNull`, Chai's `.ok`,
+  `.exist`, `.not.null` and `.not.undefined`, `assert.throws(run)`/`assert.rejects(promise)` and
+  `expect(run).to.throw()` without the expected error, chai-as-promised's bare `.rejected`, and a
+  bare `sinon.assert.called(spy)` or sinon-chai `.called` (use `calledWith`). It follows the
+  assert function under any name: `import { ok } from 'node:assert'`, a renamed default import,
+  `assert.strict.ok`, `require('node:assert')` and Chai's `assert`; `assert.ok(value!)`,
+  `assert.ok(value?.x)` and `assert.ok(!!value)` are the same unpinned check. A literal as the
+  value under test (`assert(true)`, `assert.strictEqual(1, 1)`) can never fail and is reported too.
+  The negated failure checks Chai offers (`.not.throw()`, `.not.be.rejected`) are allowed. The
+  `should` style is not checked. `nitpicker/no-partial-output-assertion` also rejects `toMatch` with a string or a
+  pattern that is not anchored `^...$` (`assert.match` and Chai's `match` with an unanchored
+  pattern too); an anchored pattern pins the whole value.
 - `nitpicker/no-shared-test-state`: no `let` with a value at module level or directly in a `describe`
   callback. Keep the state in the test, or declare it without a value and set it in `beforeEach`.
 - `nitpicker/no-copy-pasted-tests`: three `it`/`test` calls in one block whose callbacks are the same
-  once literals are ignored are reported from the third on. Write one `it.each` table.
+  once literals are ignored are reported from the third on. Write one `it.each` table (on
+  `node:test` and Mocha, one `for...of` over the cases with an `it` per case).
 - `nitpicker/fake-timers-require-restore`: a file that calls `vi.useFakeTimers()` needs
   `vi.useRealTimers()` in `afterEach`/`afterAll` (`afterEach(vi.useRealTimers)` counts), in an
   `onTestFinished` callback or in a `finally`. Otherwise the fake clock leaks into the next tests,
-  which then time out. With `@testing-library/user-event`, create the user with
-  `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })`. In a `*.test.*`/`*.spec.*` file the
+  which then time out. The same holds under the other runners: `jest.useFakeTimers()` needs
+  `jest.useRealTimers()`; `mock.timers.enable()` from `node:test` needs `mock.timers.reset()` or
+  `mock.reset()` (an `after`/`afterEach` hook counts; a clock enabled on the test context,
+  `t.mock.timers.enable()`, resets when the test ends and is not reported, while the module's own
+  tracker reached as `test.mock` or through a namespace import is); a Sinon clock from
+  `sinon.useFakeTimers()` needs `clock.restore()` or `sinon.restore()`, and one from
+  `@sinonjs/fake-timers` `install()` needs `clock.uninstall()`. A restore in the `afterEach` or
+  `afterAll` method of a Mocha root hook plugin (`export const mochaHooks = { ... }`) counts. With `@testing-library/user-event`,
+  create the user with `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })` (the
+  message names the runner's own call). In a `*.test.*`/`*.spec.*` file the
   rule does the same for `vi.stubGlobal` (restore with `vi.unstubAllGlobals()`) and `vi.stubEnv`
   (`vi.unstubAllEnvs()`); a setup file may stub a global for every test, as jsdom setups do. A
   project whose Vitest config sets `unstubGlobals: true` or `unstubEnvs: true` restores that kind of
@@ -806,16 +893,34 @@ hop, and type-only imports do not count.
 - `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
   A real condition such as `skipIf(process.platform === 'win32')` is allowed, and so is `it.fails`,
-  which runs and documents a known bug: it starts failing once the bug is fixed.
+  which runs and documents a known bug: it starts failing once the bug is fixed. Under every runner
+  it also reports a fixed `skip` or `todo` test option (`test('x', { skip: true }, ...)`, a skip
+  reason string, `{ todo: true }`) and an unconditional `t.skip()`, `t.todo()`, `this.skip()` or
+  destructured `skip()` in the test body; a skip under a real condition is allowed, and so is
+  Vitest's `skip(condition)`/`ctx.skip(condition)`, which skips only when the condition holds. Mocha's
+  `specify` and `context` and `node:test` subtests (`t.test(...)`) are checked the same way, and
+  Playwright's `test.describe` counts as a suite while `test.step` and its hooks are not tests. The runner's
+  `no-disabled-tests` (`vitest/`, `jest/`, `node-test/` or `mocha/`) reports `.skip`, `x`-prefixed
+  tests and a Mocha `it('name')` without a callback.
 - `slow-test` (coverage check, head only): an added or edited test fails above 5 s, or 30 s in an integration/e2e test folder. All supported runners share this policy. Suspected slow tests are rerun without coverage instrumentation, using the existing head policy's thresholds and reviewed exceptions; unchanged test calls do not add findings.
 - `nitpicker/no-real-time-random-or-network`: in tests, no `Date.now()`, `new Date()` without an
   argument or `Math.random()` (fake the clock with `vi.useFakeTimers()` and `vi.setSystemTime`, or
-  spy on `Math.random`; either one anywhere in the file lifts the check), and in unit tests
+  spy on `Math.random`; either one anywhere in the file lifts the check). The other runners' fakes
+  count too: `jest.useFakeTimers()`, `mock.timers.enable()` and `mock.timers.setTime()` from
+  `node:test`, a Sinon or `@sinonjs/fake-timers` clock (also from named imports such as
+  `import { useFakeTimers } from 'sinon'`, and from `withGlobal(...).install()`), and `jest.spyOn`,
+  `mock.method` or `sinon.stub` on `Math.random`; the message names the project runner's form.
+  `setSystemTime`/`setTime` count only on a runner or clock object, and fake timers that leave
+  `Date` real (`{ apis: ['setTimeout'] }`, `{ toFake: [...] }` without `Date`, or
+  `{ doNotFake: ['Date'] }`) do not lift the clock check. In unit tests
   (`__tests__/`, `<testRoot>/unit/` and `*.test.*` next to sources) no `fetch`, `http`/`https`
   `request`/`get`, `net.connect` or `new WebSocket`. Inject the client instead.
-- `nitpicker/no-uncollected-tests`: a file in the test area that is not named `*.test.*` or `*.spec.*`
-  (or `*.test-d.*`/`*.spec-d.*`, Vitest's type tests) but defines `describe`/`it`/`test` at its top
-  level is never run by Vitest. Rename it. The structure check reports the same rule on the
+- `nitpicker/no-uncollected-tests`: a file in the test area that the project's runner does not
+  collect but that defines `describe`/`it`/`test` at its top level never runs. The rule uses the
+  runner's own test files, the same set the gate reads (Vitest's `include` plus `*.test-d.*` and
+  `*.spec-d.*` type tests, Jest's `testMatch`/`testRegex`, Mocha's spec, which is
+  `test/*.{js,cjs,mjs}` and not recursive by default, and the `node --test` patterns, where a
+  `*.spec.*` name is not a default). Rename or move the file as the message says. The structure check reports the same rule on the
   `package.json` of a workspace package (npm, yarn or pnpm workspaces) that has test files but no
   `test` script, when the root test config does not include it either: a root Vitest config's
   `test.projects` (read as literals; a glob or a path to the package or its config counts), its
@@ -835,24 +940,59 @@ hop, and type-only imports do not count.
   leave them out.
 - `nitpicker/no-internal-module-mocks` also reports `vi.spyOn(namespace, ...)` on a namespace import
   (`import * as domain`) of production code.
-- `nitpicker/no-production-imports-in-setup-files`: a file the project's Vitest or Vite config lists in
-  `setupFiles` or `globalSetup` may not import production code (a setup file runs before every test
-  file, so calls made there would count as covered). The setup files are read from the config text as
-  string literals, so a computed `setupFiles` value (built from a variable) is not checked. A test
+- `nitpicker/no-production-imports-in-setup-files`: a setup file may not import production code (a
+  setup file runs before every test file, so calls made there would count as covered). The setup
+  files come from the runner's own config: Vitest's or Vite's `setupFiles` and `globalSetup`, Jest's
+  `setupFiles`, `setupFilesAfterEnv`, `globalSetup` and `globalTeardown` (in `jest.config.*` or the
+  `jest` key of `package.json`, `<rootDir>/` read as the config's `rootDir`), Mocha's `require` and
+  `file` (in `.mocharc.*`, the `mocha` key of `package.json`, or the test script's `--require` and
+  `--file`), and the `--import`/`--require`/`--test-global-setup` preloads of a `node --test`
+  script, also inside `NODE_OPTIONS`. The test scripts are `test`, the `test:*` scripts and the
+  scripts they run (`npm run test:unit`). The configs of Vitest and Jest `projects` named by a path
+  or a `dir/*` glob are read for their packages. An entry without an extension counts when it names
+  a project file or a folder with an `index` file. Commented-out keys are ignored. They are read
+  from the config text as string literals, so a computed value (built from a variable) is not
+  checked. A test
   may not mention `__stryker__`,
   `STRYKER_*` or `activeMutant` either (`no-restricted-syntax`): behaviour that depends on the
   mutation harness hides every mutant. For the same reason a test reads a global by its name
   (`globalThis.name`), not by a computed key (`Reflect.get(globalThis, key)`, `globalThis[key]`).
 - `vitest/no-conditional-expect` (from the vitest recommended set) reports an `expect` inside a `catch` or a branch; the message adds that a test asserts a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)`.
-- `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
-  inside a test body. Give each outcome its own `it.each` table row instead of branching on it.
+- `vitest/no-conditional-in-test` (`jest/`, `node-test/` or `mocha/` for the other runners) is
+  enabled for test files: no `if`, ternary or `&&`/`||` branching inside a test body. Give each
+  outcome its own `it.each` table row instead of branching on it.
 - The vitest config nitpicker runs tests with (`defaults/vitest.quality.config.ts`, used for
   coverage and mutation) sets `restoreMocks: true`, so a `vi.spyOn` spy is restored after every test
   even when an assertion fails, and cannot leak into the next test. It also overrides a
-  `restoreMocks` value in the project's own vitest config for these runs. Jest runs with
-  `--restoreMocks` for the same reason, and `node:test` restores a test's `t.mock` itself. Neither
-  Vitest nor Jest restores fake timers automatically: call `vi.useRealTimers()` (or
-  `jest.useRealTimers()`) in `afterEach`.
+  `restoreMocks` value in the project's own vitest config for these runs. Vitest has no option that
+  restores fake timers automatically: call `vi.useRealTimers()` in `afterEach`. Jest runs get
+  `--restoreMocks` as well (Stryker's Jest runner gets `restoreMocks: true`), with
+  `jest.useRealTimers()` in `afterEach`. `node --test` (and Stryker's tap runner) preloads a module
+  with `--import` (with `--require` when the script loads a require hook such as
+  `ts-node/register`, which an `--import` would bypass for the test files) that registers a global
+  `beforeEach` and `afterEach`: a double made with the shared `mock` (`mock.fn`, `mock.method`,
+  `mock.getter`, `mock.setter`, `mock.property`) while a test or its `beforeEach` hooks run is
+  restored after that test, and one made in a `before` hook or at the top of the file stays until
+  the suite restores it, so `before(() => mock.method(...))` with `after(() => mock.restoreAll())`
+  keeps working. A `t.mock` double is restored by Node itself; a `mock.module` mock on the shared
+  `mock` is not restored per test (use `t.mock.module`); call `mock.timers.reset()` in `afterEach`.
+  The preload takes itself out of `process.execArgv` in the test process, so a process a test
+  starts with `child_process.fork()` or a worker does not load it. Mocha (and Stryker's Mocha
+  runner) loads a root hook plugin with `--require` that does the same for the project's sinon,
+  through both its CommonJS and its ESM entry, when the project has sinon (and does nothing
+  otherwise): the stubs, spies, fakes, mocks and `useFakeTimers` clocks made while a test or its
+  `beforeEach` hooks run are restored after that test, and so is what `sinon.replace`,
+  `sinon.define`, `sinon.replaceGetter` and `sinon.replaceSetter` changed, while the doubles a
+  `before` hook made stay until the suite calls `sinon.restore()` (the
+  `before(() => sinon.stub(...))` with `after(() => sinon.restore())` idiom). `sinon.restore()`
+  restores a clock made with `sinon.useFakeTimers()` as well, so only a clock made with
+  `@sinonjs/fake-timers` directly needs its own `clock.uninstall()` in `afterEach`.
+- Vitest versions: nitpicker works with Vitest 3.2 or newer (3, 4 and 5). Vitest 3 needs
+  `coverage.experimentalAstAwareRemapping: true`, which `vitest.quality.config.ts` sets, so that
+  coverage reports branches in the Istanbul shapes the changed-branch check reads; without it
+  Vitest 3 reports generic V8 blocks. Vitest 4 and 5 accept the option and behave the same. Vitest
+  2 and older are not supported: they lack `test.projects`, which splits unit and integration
+  tests, and the AST-aware remapping.
 
 - `test-console-output` (the `test-console` check, not an ESLint rule): a test file that prints
   `console.error` or `console.warn` output the base run did not print fails, with the message and
@@ -936,7 +1076,11 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   confusing-browser-globals list) are restricted wherever those globals apply, `domain/` aside:
   `onPick(name)` with no `name` in scope is a missing parameter, not `window.name`. Write
   `window.name` when the global is meant; otherwise take the value as a parameter
-  (`onClick={(event) => ...}`) or declare it.
+  (`onClick={(event) => ...}`) or declare it. A project without React whose tests run in jsdom or
+  happy-dom (through the runner's environment, an environment comment, or a global DOM registered
+  for Mocha or `node:test`) gets the same globals and the same restriction for the production files
+  those DOM tests import, followed through relative imports; the rest of its production code, such
+  as a Node server, keeps Node's globals, so `document` there is still an error.
 - **Function components only** (`react-x/no-class-component`). Class components are flagged; error
   boundaries, which React only supports as classes, are allowed. The "classes only for `Error`
   subclasses" ban leaves classes that extend `Component` or `PureComponent` to this rule in a React
@@ -1198,9 +1342,10 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `queryBy*` (`testing-library/prefer-presence-queries`). Do not wrap `render` or `user` calls
   in `act` (`testing-library/no-unnecessary-act`), leave `screen.debug()` and other debug
   output in (`testing-library/no-debugging-utils`) or call `cleanup` yourself
-  (`testing-library/no-manual-cleanup`, on when the project's Vitest config sets
-  `globals: true` or the project has no Vitest; with `globals` unset or false, Testing Library
-  cannot register its own cleanup, so the `afterEach(cleanup)` a setup file needs passes). Do not test implementation details
+  (`testing-library/no-manual-cleanup`, on where Testing Library cleans up by itself: under Jest
+  and Mocha, whose `afterEach` is global, and under Vitest when its config sets `globals: true`;
+  under `node:test`, which has no global `afterEach`, and under Vitest without `globals`, Testing
+  Library cannot register its own cleanup, so the `afterEach(cleanup)` a setup file needs passes). Do not test implementation details
   (`nitpicker/react-test-no-implementation-details`): no `.instance()`, no `.state()` or `.setState()` on
   an enzyme or test-renderer wrapper (a store's `setState` is fine), no test-renderer
   `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
@@ -1426,9 +1571,9 @@ from a real caller) and the `exceptions` entry that lifts it.
   judged either.
 - **Exports and modules only tests import** (`test-only-export`). Reported by the `dead-code` check
   from knip itself: a second knip run with the normal config minus test and story files, test
-  entries and test-runner plugins (scripts in `package.json`, tool configs such as
-  `vite.config.ts`, `bin` and `exports` stay entries) lists what production code does not use, and
-  what the normal run does not list is used only by tests. That covers whole modules too: a module
+  entries and test-runner plugins, the Node.js plugin's `node --test` patterns among them (scripts
+  in `package.json`, tool configs such as `vite.config.ts`, `bin` and `exports` stay entries) lists
+  what production code does not use, and what the normal run does not list is used only by tests. That covers whole modules too: a module
   that only tests import should move to a `test-support/` folder, and modules under `test-support/`
   are not reported. A re-export (`export { x } from`, `export * from`, `export * as ns from`, an import that is only
   exported again, or `export const y = x` for an import the file does not otherwise read, which
@@ -1518,7 +1663,7 @@ from a real caller) and the `exceptions` entry that lifts it.
   unfollowed but visible. Generated code is commonly imported from `generated/`, so that folder stays
   allowed. Its message names the ways out: move the file under a source root or add its folder to
   `layout.sourceRoots`; to leave it unchecked, list it in `exclude`.
-- `src/main/composition-root.{ts,mts,js,mjs}` and `src/main/composition-root/index.*` are knip entry
+- `src/main/composition-root.{ts,tsx,mts,js,jsx,mjs}` and `src/main/composition-root/index.*` are knip entry
   points, since nothing imports the composition root.
 - Touched code is enforced by the diff engine (see "How touched code is detected").
 - Exceptions go through `exceptions` in `nitpicker.config.json`. An exception names one rule id and
@@ -1572,8 +1717,8 @@ from a real caller) and the `exceptions` entry that lifts it.
   `page.evaluate` compile (the lib then applies to every file in that check). The default quality
   test run does not run `e2e`, since end-to-end runners start those tests themselves; a `testRoots`
   you list yourself is always run, so list `e2e` to keep a vitest or supertest suite there.
-- A Jest project with tests in a root `__tests__/` gets them run by Jest in the quality test run,
-  like every other test file (see [Test runners](usage.md#test-runners)).
+- A Jest project with tests in a root `__tests__/` gets them run by Jest, with the project's Jest
+  config, like every other test root (see [Test runners](usage.md#test-runners)).
 
 ## Enforcement sources
 

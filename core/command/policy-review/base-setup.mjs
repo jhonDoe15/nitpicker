@@ -9,6 +9,7 @@ import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mjs';
 import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mjs';
 import { readPolicyScope } from '../../policy-changes/policy-scope.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
+import { withBaseTestRunner } from '../../../languages/typescript/preset/diff/base-runner.mjs';
 
 function readBaseConfig(baseProjectRoot, warn) {
   if (!existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
@@ -28,17 +29,26 @@ export function baseSetupResolver(cli, headConfig, headPolicy) {
   return createBaseSetupResolver({
     headConfig,
     headPolicy,
+    liveProjectRoot: cli.currentProjectRoot,
     injectedAnalyzers: cli.injectedAnalyzers,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
 }
 
-export function createBaseSetupResolver({
-  headConfig,
-  headPolicy = {},
-  injectedAnalyzers,
-  warn = () => undefined,
-}) {
+export function createBaseSetupResolver(options) {
+  const { headPolicy = {}, liveProjectRoot, warn = () => undefined } = options;
+  const configured = configuredBaseSetup({ ...options, headPolicy, warn });
+  return (snapshot) =>
+    withBaseTestRunner(configured(snapshot), {
+      headPolicy,
+      baseProjectRoot: snapshot.baseProjectRoot,
+      liveProjectRoot,
+      analyzers: snapshot.analyzers,
+      warn,
+    });
+}
+
+function configuredBaseSetup({ headConfig, headPolicy, injectedAnalyzers, warn }) {
   return ({ baseProjectRoot, headSnapshotRoot, moves, analyzers }) => {
     const baseConfig = readBaseConfig(baseProjectRoot, warn);
     const compared = baseConfig ?? {};

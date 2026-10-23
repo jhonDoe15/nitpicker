@@ -154,7 +154,7 @@ describe('test rule messages under the oxlint engine', () => {
           'test/orders-check.ts',
           1,
           'nitpicker/no-uncollected-tests',
-          'This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose.',
+          'This file defines tests but the test runner does not collect it, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose.',
         ],
         [
           'test/setup.ts',

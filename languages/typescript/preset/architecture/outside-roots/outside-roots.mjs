@@ -28,7 +28,7 @@ export function outsideRootsRule({
     name: NO_IMPORT_OUTSIDE_ROOTS,
     severity: 'error',
     comment: OUTSIDE_ROOTS_COMMENT,
-    from: { path: productionSource },
+    from: productionSource,
     to: {
       pathNot: [
         insideRoots,

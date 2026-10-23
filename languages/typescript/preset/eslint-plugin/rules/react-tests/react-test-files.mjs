@@ -2,7 +2,9 @@ import path from 'node:path';
 import { reachableModules } from '../../../modules/module-resolution.mjs';
 import { moduleSourcesOf, statementSources } from '../../../modules/module-sources.mjs';
 import { readLayout } from '../../../head-policy.mjs';
-import { isBrowserEndToEndTest, mockedModuleSource } from '../analysis/test-code-analysis.mjs';
+import { isBrowserEndToEndTest } from '../analysis/test-code-analysis.mjs';
+import { moduleMocks } from '../runner-apis/module-mocks.mjs';
+import { runnerApisOf } from '../runner-apis/runner-apis.mjs';
 
 const layout = readLayout();
 const REACT_PACKAGE = 'react';
@@ -47,10 +49,30 @@ function reachesTestHelper(source, filename) {
   return false;
 }
 
+function awaited(node) {
+  return node?.type === 'AwaitExpression' ? node.argument : node;
+}
+
+function topLevelCalls(statement) {
+  if (statement.type === 'ExpressionStatement') {
+    return [awaited(statement.expression)];
+  }
+  return statement.type === 'VariableDeclaration'
+    ? statement.declarations.map((declarator) => awaited(declarator.init))
+    : [];
+}
+
+function mockedSources(apis, statement) {
+  return topLevelCalls(statement)
+    .filter((node) => node?.type === 'CallExpression')
+    .flatMap((call) => moduleMocks(apis, call).map(({ name }) => name));
+}
+
 function topLevelSources(program) {
+  const apis = runnerApisOf(program);
   return program.body.flatMap((statement) => [
     ...statementSources(statement),
-    ...(statement.type === 'ExpressionStatement' ? [mockedModuleSource(statement.expression)] : []),
+    ...mockedSources(apis, statement),
   ]);
 }
 

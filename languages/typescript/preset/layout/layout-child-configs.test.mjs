@@ -197,9 +197,10 @@ describe('package-owned child configs', () => {
     const [productionToTest] = config.forbidden;
     expect(new RegExp(productionToTest.from.path).test('lib/live/a.ts')).toBe(true);
     expect(new RegExp(productionToTest.from.path).test('src/a.ts')).toBe(false);
-    expect(new RegExp(productionToTest.to.path).test('spec/helper.ts')).toBe(true);
-    expect(new RegExp(productionToTest.to.path).test('lib/a.test.ts')).toBe(true);
-    expect(new RegExp(productionToTest.to.path).test('test/helper.ts')).toBe(false);
+    const testTarget = new RegExp(productionToTest.to.path.join('|'));
+    expect(testTarget.test('spec/helper.ts')).toBe(true);
+    expect(testTarget.test('lib/a.test.ts')).toBe(true);
+    expect(testTarget.test('test/helper.ts')).toBe(false);
     const doNotFollow = new RegExp(config.options.doNotFollow.path);
     expect(doNotFollow.test('lib/legacy/old.ts')).toBe(true);
     expect(doNotFollow.test('lib/live/new.ts')).toBe(false);

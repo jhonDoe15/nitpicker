@@ -1,17 +1,9 @@
 import { productionModulePath } from '../../../test-isolation/production-source.mjs';
-import { mockedModuleSource } from '../../analysis/test-code-analysis.mjs';
+import { moduleMocks } from '../../runner-apis/module-mocks.mjs';
+import { createRunnerApis, runnerApiVisitors } from '../../runner-apis/runner-apis.mjs';
+import { spiedMember } from '../../runner-apis/runner-doubles.mjs';
 
 const EXCEPTION_ROUTE = 'An exception fits only when injection is not possible.';
-
-function isVitestAlias(specifier) {
-  return specifier.type === 'ImportSpecifier' && ['vi', 'vitest'].includes(specifier.imported.name);
-}
-
-function trackVitestAliases(aliases, node) {
-  for (const specifier of node.specifiers.filter(isVitestAlias)) {
-    aliases.add(specifier.local.name);
-  }
-}
 
 function trackNamespaces(namespaces, node) {
   for (const specifier of node.specifiers) {
@@ -21,44 +13,41 @@ function trackNamespaces(namespaces, node) {
   }
 }
 
-function isVitestMember(aliases, callee) {
-  return callee.type === 'MemberExpression' && !callee.computed && aliases.has(callee.object.name);
-}
-
 export const rule = {
   meta: {
     type: 'problem',
     schema: [],
     messages: {
       internalMock: `Inject the dependency instead of replacing internal production module {{source}}. ${EXCEPTION_ROUTE}`,
-      internalSpy: `Inject the dependency instead of replacing a function of internal production module {{source}} with \`vi.spyOn\`. ${EXCEPTION_ROUTE}`,
+      internalSpy: `Inject the dependency instead of replacing a function of internal production module {{source}} with a spy or stub. ${EXCEPTION_ROUTE}`,
     },
   },
   create(context) {
-    const aliases = new Set(['vi', 'vitest']);
+    const apis = createRunnerApis();
+    const visitors = runnerApiVisitors(apis);
     const productionNamespaces = new Map();
     return {
+      ...visitors,
       ImportDeclaration(node) {
-        if (node.source.value === 'vitest') {
-          trackVitestAliases(aliases, node);
-        } else if (productionModulePath(node.source.value, context.filename) !== undefined) {
+        visitors.ImportDeclaration(node);
+        if (productionModulePath(node.source.value, context.filename) !== undefined) {
           trackNamespaces(productionNamespaces, node);
         }
       },
       CallExpression(node) {
-        const callee = node.callee;
-        if (isVitestMember(aliases, callee) && callee.property.name === 'spyOn') {
-          const source = productionNamespaces.get(node.arguments[0]?.name);
+        const spied = spiedMember(apis, node);
+        if (spied !== undefined) {
+          const source = productionNamespaces.get(spied.target.name);
           if (source !== undefined) {
             context.report({ node, messageId: 'internalSpy', data: { source } });
           }
           return;
         }
-        const source = mockedModuleSource(node, aliases);
-        if (productionModulePath(source, context.filename) === undefined) {
-          return;
+        for (const { name } of moduleMocks(apis, node)) {
+          if (productionModulePath(name, context.filename) !== undefined) {
+            context.report({ node, messageId: 'internalMock', data: { source: name } });
+          }
         }
-        context.report({ node, messageId: 'internalMock', data: { source } });
       },
     };
   },

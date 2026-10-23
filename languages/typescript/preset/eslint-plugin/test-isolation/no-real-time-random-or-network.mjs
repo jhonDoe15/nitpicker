@@ -1,3 +1,7 @@
+import { createRunnerApis, runnerApiVisitors } from '../rules/runner-apis/runner-apis.mjs';
+import { setsFakeClock, spiedMember } from '../rules/runner-apis/runner-doubles.mjs';
+import { RUNNER_OPTION_PROPERTY, vocabularyOf } from '../rules/runner-apis/runner-option.mjs';
+
 const NETWORK_MODULES = new Map([
   ['http', new Set(['request', 'get'])],
   ['https', new Set(['request', 'get'])],
@@ -25,23 +29,12 @@ function isMemberCall(node, objectName, propertyName) {
   );
 }
 
-function isFakeClockSetup(node) {
-  const callee = node.callee;
+function isRandomSpy(apis, node) {
+  const spied = spiedMember(apis, node);
   return (
-    callee.type === 'MemberExpression' &&
-    !callee.computed &&
-    ['useFakeTimers', 'setSystemTime'].includes(callee.property.name)
-  );
-}
-
-function isRandomSpy(node) {
-  const [target, method] = node.arguments;
-  return (
-    node.callee.type === 'MemberExpression' &&
-    node.callee.property.name === 'spyOn' &&
-    target?.type === 'Identifier' &&
-    target.name === 'Math' &&
-    method?.value === 'random'
+    spied?.target.type === 'Identifier' &&
+    spied.target.name === 'Math' &&
+    spied.property.value === 'random'
   );
 }
 
@@ -85,6 +78,17 @@ function isNetworkCall({ sourceCode, bindings }, node) {
   return binding !== undefined && binding.allowed.has(callee.property.name);
 }
 
+function reportUnfaked(context, state, { clockCalls, randomCalls }) {
+  const { fakeClock, fixRandom } = vocabularyOf(context);
+  const unfaked = [
+    ...(state.fakeClock ? [] : clockCalls.map((node) => ({ node, messageId: 'clock' }))),
+    ...(state.randomSpy ? [] : randomCalls.map((node) => ({ node, messageId: 'random' }))),
+  ];
+  for (const report of unfaked) {
+    context.report({ ...report, data: { fakeClock, fixRandom } });
+  }
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -92,15 +96,15 @@ export const rule = {
     schema: [
       {
         type: 'object',
-        properties: { network: { type: 'boolean' } },
+        properties: { network: { type: 'boolean' }, ...RUNNER_OPTION_PROPERTY },
         additionalProperties: false,
       },
     ],
     messages: {
       clock:
-        'The real clock makes the test depend on when it runs. Pass the time in, or fake it with `vi.useFakeTimers()` and `vi.setSystemTime(...)`.',
+        'The real clock makes the test depend on when it runs. Pass the time in, or fake it with {{fakeClock}}.',
       random:
-        'Real randomness makes the test fail on some runs. Pass a seeded or fixed value in, or fix it with `vi.spyOn(Math, "random")`.',
+        'Real randomness makes the test fail on some runs. Pass a seeded or fixed value in, or fix it with {{fixRandom}}.',
       network: 'A unit test must not reach the network. Inject the client and fake it.',
     },
   },
@@ -111,8 +115,12 @@ export const rule = {
     const state = { fakeClock: false, randomSpy: false };
     const networkBindings = new Map();
     const network = { sourceCode: context.sourceCode, bindings: networkBindings };
+    const apis = createRunnerApis();
+    const visitors = runnerApiVisitors(apis);
     return {
+      ...visitors,
       ImportDeclaration(node) {
+        visitors.ImportDeclaration(node);
         trackNetworkImport(networkBindings, node);
       },
       NewExpression(node) {
@@ -134,23 +142,14 @@ export const rule = {
         if (isMemberCall(node, 'Math', 'random')) {
           randomCalls.push(node);
         }
-        state.fakeClock ||= isFakeClockSetup(node);
-        state.randomSpy ||= isRandomSpy(node);
+        state.fakeClock ||= setsFakeClock(apis, node);
+        state.randomSpy ||= isRandomSpy(apis, node);
         if (checksNetwork && isNetworkCall(network, node)) {
           context.report({ node, messageId: 'network' });
         }
       },
       'Program:exit'() {
-        if (!state.fakeClock) {
-          for (const node of clockCalls) {
-            context.report({ node, messageId: 'clock' });
-          }
-        }
-        if (!state.randomSpy) {
-          for (const node of randomCalls) {
-            context.report({ node, messageId: 'random' });
-          }
-        }
+        reportUnfaked(context, state, { clockCalls, randomCalls });
       },
     };
   },

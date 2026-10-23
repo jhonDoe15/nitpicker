@@ -103,7 +103,7 @@ export async function runTestRuntime(options) {
     options,
     'languages/typescript/preset/test-runtime/analyze.mjs',
   );
-  const sourceTexts = await analyzer.loadModuleSources(graph, options.projectRoot);
+  const sourceTexts = await analyzer.loadModuleSources(graph, options.projectRoot, layout);
   const report = analyzer.analyzeTestRuntime(graph, {
     layout,
     productionRoots: layout.sourceRoots,
