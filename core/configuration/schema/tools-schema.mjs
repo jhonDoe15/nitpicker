@@ -6,10 +6,10 @@ import {
 } from '../../../shared/test-timeouts/resolve.mjs';
 import { SUPPORTED_PRESETS } from '../validate.mjs';
 import {
-  ENGINES,
-  NITPICKER_FIRST_REJECTED,
   ORDERED_PRECEDENCE_TOOLS,
   PRECEDENCE_LAYERS,
+  engineOf,
+  nitpickerFirstReason,
   toolSettingKeysOf,
 } from '../tool-settings.mjs';
 import { enumeration, positiveInteger, projectPath } from './schema-parts.mjs';
@@ -84,7 +84,7 @@ const timeouts = {
 
 function precedenceDescription(tool) {
   const order = ORDERED_PRECEDENCE_TOOLS.includes(tool) ? ', highest first' : '';
-  const first = NITPICKER_FIRST_REJECTED.get(tool);
+  const first = nitpickerFirstReason(tool);
   return `Which config ${tool} uses: "project" is your own config file, "nitpicker" is the preset's. List each at most once${order}.${first === undefined ? '' : ` "project" must come first: ${first}.`}`;
 }
 
@@ -95,7 +95,7 @@ function precedence(tool) {
     minItems: 1,
     uniqueItems: true,
     items: { enum: PRECEDENCE_LAYERS },
-    ...(NITPICKER_FIRST_REJECTED.has(tool)
+    ...(nitpickerFirstReason(tool) !== undefined
       ? { not: { minItems: 2, items: [{ const: 'nitpicker' }] } }
       : {}),
   };
@@ -115,7 +115,7 @@ function settingSchema(tool, key) {
   if (key === 'timeouts') {
     return timeouts;
   }
-  const { values, meaning } = ENGINES.get(tool);
+  const { values, meaning } = engineOf(tool);
   return enumeration(meaning, values);
 }
 
@@ -144,7 +144,7 @@ export const tools = {
         description: `Settings of ${tool}.`,
         type: 'object',
         additionalProperties: false,
-        ...(ENGINES.has(tool) ? {} : { required: ['precedence'] }),
+        ...(engineOf(tool) === undefined ? { required: ['precedence'] } : {}),
         properties: Object.fromEntries(keys.map((key) => [key, settingSchema(tool, key)])),
       },
     ]),

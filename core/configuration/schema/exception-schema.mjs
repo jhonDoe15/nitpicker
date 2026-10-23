@@ -16,7 +16,7 @@ import { JAVA_EXCEPTION_RULES } from '../../../languages/java/adapters/java-poli
 import { KOTLIN_EXCEPTION_RULES } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { DETEKT_RULE } from '../../../languages/java/adapters/kotlin/rules/kotlin-messages.mjs';
 import { i18nRuleIds } from '../../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
-import { NITPICKER_RULE_IDS, TYPESCRIPT_RULE_NAMES } from '../validate.mjs';
+import { NITPICKER_RULES, RENAMED_TYPESCRIPT_RULES } from '../validate.mjs';
 import { ABSOLUTE_PATH, ref, nonEmptyString, never, ruleSpellings } from './schema-parts.mjs';
 
 const EXCEPTION_PARENT_SEGMENT = String.raw`(?:^|/)\.\.(?:/|$)`;
@@ -106,7 +106,7 @@ export const exceptionDefinitions = {
   functionRequiredRule: { enum: ruleSpellings(FUNCTION_REQUIRED_RULES) },
   nameRule: { enum: ruleSpellings(NAME_EXCEPTION_RULES) },
   packageRule: { enum: ruleSpellings(PACKAGE_EXCEPTION_RULES) },
-  nitpickerRule: { enum: ruleSpellings([...NITPICKER_RULE_IDS]) },
+  nitpickerRule: { enum: ruleSpellings(NITPICKER_RULES) },
 };
 
 export function exceptionList(description, itemRestrictions = []) {
@@ -120,7 +120,9 @@ export function exceptionList(description, itemRestrictions = []) {
   };
 }
 
-const ruleIs = (rule) => ({ properties: { rule } });
+function ruleIs(rule) {
+  return { properties: { rule } };
+}
 
 export const pythonTopLevelRestriction = ruleIs({
   enum: ruleSpellings(PYTHON_TOP_LEVEL_EXCEPTION_RULES),
@@ -153,7 +155,7 @@ export const pathProblemRestriction = {
 };
 
 export const typescriptRestrictions = [
-  ruleIs({ not: { enum: [...TYPESCRIPT_RULE_NAMES.keys()] } }),
+  ruleIs({ not: { enum: RENAMED_TYPESCRIPT_RULES } }),
   {
     if: { required: ['rule'], properties: { rule: { pattern: '^formatjs/' } } },
     then: ruleIs({ enum: i18nRuleIds }),

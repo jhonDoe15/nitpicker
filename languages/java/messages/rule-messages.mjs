@@ -9,15 +9,15 @@ const CATALOGS = new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)]))
 const CHECKSTYLE_CHECK =
   /^com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?$/u;
 const SENTENCE_END = /[.!?;]$/u;
-const SPRING_RULESET = new URL('../gradle/spring-ruleset.xml', import.meta.url);
-const ALLOWED_FORM_RULES = new Set(
-  [...readFileSync(SPRING_RULESET, 'utf8').matchAll(/<rule name="([A-Za-z]+)"/gu)].map(
-    ([, name]) => name,
-  ),
-);
+const ALLOWED_FORM_RULES = rulesetNames('spring-ruleset.xml');
 
 export function readCatalog(tool) {
   return JSON.parse(readFileSync(new URL(`./${tool}.json`, import.meta.url), 'utf8'));
+}
+
+function rulesetNames(file) {
+  const text = readFileSync(new URL(`../gradle/${file}`, import.meta.url), 'utf8');
+  return new Set([...text.matchAll(/<rule name="([A-Za-z]+)"/gu)].map(([, name]) => name));
 }
 
 export function checkstyleRuleName(source) {

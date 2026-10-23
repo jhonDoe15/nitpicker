@@ -48,5 +48,9 @@ export function routeProblems(finding, message, preset) {
 
 /** The findings as an analyzer wrote them: without the route fields that parsing derives from the message. */
 export function withoutRouteFields(findings) {
-  return findings.map(({ exception, exceptionList, ...rest }) => rest);
+  return findings.map((finding) =>
+    Object.fromEntries(
+      Object.entries(finding).filter(([key]) => key !== 'exception' && key !== 'exceptionList'),
+    ),
+  );
 }

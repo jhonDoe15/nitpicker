@@ -5,7 +5,7 @@ import { withCanonicalRules } from '../../../../shared/exceptions/validation.mjs
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
 import { validateConfig } from '../../validate.mjs';
 
-export const SCHEMA_PATH = path.join(PACKAGE_ROOT, 'spec', 'config.schema.json');
+const SCHEMA_PATH = path.join(PACKAGE_ROOT, 'spec', 'config.schema.json');
 
 export const PRESETS = [undefined, 'typescript', 'javascript', 'java', 'kotlin', 'python'];
 

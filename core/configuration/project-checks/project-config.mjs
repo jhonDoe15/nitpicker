@@ -9,10 +9,10 @@ import {
 } from '../../../languages/typescript/preset/layout.mjs';
 
 const JSX_FILE = /\.[jt]sx$/u;
-export const HEAD_NAMES = new Set(['HEAD', '@']);
+export const HEAD_NAMES = ['HEAD', '@'];
 
 export function rejectHeadBase(base) {
-  if (HEAD_NAMES.has(base)) {
+  if (HEAD_NAMES.includes(base)) {
     throw configError(
       `"base" cannot be "${base}": the change would be compared with itself. Name a branch such as "origin/main", or pass --base <ref>.`,
     );

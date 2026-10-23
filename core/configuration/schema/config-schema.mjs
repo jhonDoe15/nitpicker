@@ -8,7 +8,7 @@ import { factRuleSettings } from '../../../shared/project-rules/fact-rules.mjs';
 import { GRADLE_PRESETS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { NATIVE_LINE_LENGTH } from '../../../languages/java/adapters/java-policy.mjs';
 import { conventionDefinitions } from '../../conventions/definitions.mjs';
-import { KEYS, NITPICKER_RULE_IDS, SUPPORTED_PRESETS } from '../validate.mjs';
+import { KEYS, NITPICKER_RULES, SUPPORTED_PRESETS } from '../validate.mjs';
 import { HEAD_NAMES } from '../project-checks/project-config.mjs';
 import { LAYOUT_KEYS, layoutKeysFor } from '../scopes/layout-settings.mjs';
 import * as areas from './area-schemas.mjs';
@@ -48,7 +48,7 @@ const TOP_LEVEL = {
     description:
       'The base ref used when neither --base nor a CI target branch is given. Never HEAD or the commit you are on.',
     ...nonEmptyString,
-    not: { enum: [...HEAD_NAMES] },
+    not: { enum: HEAD_NAMES },
   },
   preset: enumeration(
     'The preset; typescript when absent. Java, Kotlin and Python are never detected.',
@@ -115,7 +115,7 @@ function exceptionsFor(preset) {
     ? {
         items: {
           allOf: typescriptRestrictions,
-          properties: { rule: { examples: [...NITPICKER_RULE_IDS] } },
+          properties: { rule: { examples: NITPICKER_RULES } },
         },
       }
     : { items: { allOf: [RULE_RESTRICTIONS[preset], pathProblemRestriction] } };

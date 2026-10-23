@@ -13,16 +13,29 @@ import {
   withPreset,
 } from './test-support/schema-harness.mjs';
 
-function expectAgreement(config) {
+function disagreement(config) {
   const accepted = validatorAccepts(config);
-  expect(
-    schemaAccepts(config),
-    `${JSON.stringify(config)}: the validator ${accepted ? 'accepts' : `rejects (${validatorError(config)})`}, the schema says ${schemaErrors(config).join('; ') || 'valid'}`,
-  ).toBe(accepted);
+  return schemaAccepts(config) === accepted
+    ? []
+    : [
+        `${JSON.stringify(config)}: the validator ${accepted ? 'accepts' : `rejects (${validatorError(config)})`}, the schema says ${schemaErrors(config).join('; ') || 'valid'}`,
+      ];
 }
 
 function everyPreset(config) {
   return PRESETS.map((preset) => withPreset(config, preset));
+}
+
+function presetDisagreements(configs) {
+  return configs.flatMap(everyPreset).flatMap(disagreement);
+}
+
+function wronglyRejected(configs) {
+  return configs
+    .filter(validatorAccepts)
+    .flatMap((config) =>
+      schemaErrors(config).map((error) => `${JSON.stringify(config)}: ${error}`),
+    );
 }
 
 describe('config schema and validator agree', () => {
@@ -52,7 +65,7 @@ describe('config schema and validator agree', () => {
         $schema: './node_modules/nitpicker/spec/config.schema.json',
       };
       for (const [key, value] of Object.entries(samples)) {
-        expectAgreement(withPreset({ [key]: value }, preset));
+        expect(disagreement(withPreset({ [key]: value }, preset))).toEqual([]);
       }
     },
   );
@@ -61,12 +74,12 @@ describe('config schema and validator agree', () => {
     const values = [5, 12, 1.5, 0, -3, '5', null, true];
     for (const key of THRESHOLD_KEYS) {
       for (const value of values) {
-        everyPreset({ thresholds: { [key]: value } }).forEach(expectAgreement);
+        expect(presetDisagreements([{ thresholds: { [key]: value } }])).toEqual([]);
       }
     }
-    everyPreset({ thresholds: { unknown: 1 } }).forEach(expectAgreement);
+    expect(presetDisagreements([{ thresholds: { unknown: 1 } }])).toEqual([]);
     expect(
-      THRESHOLD_KEYS.filter((key) => WHOLE_NUMBER_THRESHOLD_KEYS.has(key)).length,
+      THRESHOLD_KEYS.filter((key) => WHOLE_NUMBER_THRESHOLD_KEYS.includes(key)).length,
     ).toBeGreaterThan(5);
   });
 
@@ -89,11 +102,11 @@ describe('config schema and validator agree', () => {
     };
     for (const key of LAYOUT_KEYS) {
       for (const value of values[key]) {
-        everyPreset({ layout: { [key]: value } }).forEach(expectAgreement);
+        expect(presetDisagreements([{ layout: { [key]: value } }])).toEqual([]);
       }
     }
-    everyPreset({ layout: { roots: ['lib'] } }).forEach(expectAgreement);
-    everyPreset({ layout: [] }).forEach(expectAgreement);
+    expect(presetDisagreements([{ layout: { roots: ['lib'] } }])).toEqual([]);
+    expect(presetDisagreements([{ layout: [] }])).toEqual([]);
   });
 
   it('on every tool setting with every preset', () => {
@@ -132,11 +145,11 @@ describe('config schema and validator agree', () => {
     for (const tool of [...tools, 'unknown-tool']) {
       for (const [key, values] of Object.entries(settings)) {
         for (const value of values) {
-          everyPreset({ tools: { [tool]: { [key]: value } } }).forEach(expectAgreement);
+          expect(presetDisagreements([{ tools: { [tool]: { [key]: value } } }])).toEqual([]);
         }
       }
-      everyPreset({ tools: { [tool]: {} } }).forEach(expectAgreement);
-      everyPreset({ tools: { [tool]: [] } }).forEach(expectAgreement);
+      expect(presetDisagreements([{ tools: { [tool]: {} } }])).toEqual([]);
+      expect(presetDisagreements([{ tools: { [tool]: [] } }])).toEqual([]);
     }
   });
 
@@ -148,10 +161,10 @@ describe('config schema and validator agree', () => {
           ? [['assertThat'], [], ['not a name'], 'assertThat']
           : [...definition.options, '7', '250', '1000', 'unknown', 2];
       for (const choice of choices) {
-        everyPreset({ conventions: { [definition.id]: choice } }).forEach(expectAgreement);
+        expect(presetDisagreements([{ conventions: { [definition.id]: choice } }])).toEqual([]);
       }
     }
-    everyPreset({ conventions: { 'no.such.convention': 'x' } }).forEach(expectAgreement);
+    expect(presetDisagreements([{ conventions: { 'no.such.convention': 'x' } }])).toEqual([]);
   });
 
   it('on the scalar and list keys, valid and invalid', () => {
@@ -195,9 +208,7 @@ describe('config schema and validator agree', () => {
       { unknownKey: true },
       [],
     ];
-    for (const config of configs) {
-      everyPreset(config).forEach(expectAgreement);
-    }
+    expect(presetDisagreements(configs)).toEqual([]);
   });
 
   it('on spring roles', () => {
@@ -217,9 +228,7 @@ describe('config schema and validator agree', () => {
       { spring: { roles: { service: [1] } } },
       { spring: { roles: { component: ['com.example.Thing'] } } },
     ];
-    for (const config of configs) {
-      everyPreset(config).forEach(expectAgreement);
-    }
+    expect(presetDisagreements(configs)).toEqual([]);
   });
 
   it('on python and kotlin settings', () => {
@@ -253,9 +262,7 @@ describe('config schema and validator agree', () => {
       { kotlin: { detektConfig: '' } },
       { kotlin: { other: 1 } },
     ];
-    for (const config of configs) {
-      everyPreset(config).forEach(expectAgreement);
-    }
+    expect(presetDisagreements(configs)).toEqual([]);
   });
 
   it('on test console entries and timeouts', () => {
@@ -273,9 +280,7 @@ describe('config schema and validator agree', () => {
       { testConsole: { allow: {} } },
       { testConsole: { other: [] } },
     ];
-    for (const config of configs) {
-      everyPreset(config).forEach(expectAgreement);
-    }
+    expect(presetDisagreements(configs)).toEqual([]);
     const timeouts = [
       { defaults: { testTimeoutMs: 30000, hookTimeoutMs: 30000 } },
       { defaults: { testTimeoutMs: 1.5 } },
@@ -290,7 +295,7 @@ describe('config schema and validator agree', () => {
       { projects: { ' ': { language: 'java', include: ['a'] } } },
     ];
     for (const value of timeouts) {
-      everyPreset({ tools: { tests: { timeouts: value } } }).forEach(expectAgreement);
+      expect(presetDisagreements([{ tools: { tests: { timeouts: value } } }])).toEqual([]);
     }
   });
 });
@@ -302,16 +307,13 @@ describe('config schema and validator on exceptions', () => {
   ];
 
   it('never rejects an exception that the validator accepts', () => {
-    for (const rule of rules) {
-      const variants = [{}, { function: 'run' }, { name: 'run' }, { packages: ['left-pad'] }];
-      for (const variant of variants) {
-        for (const config of everyPreset({ exceptions: [{ rule, ...entry, ...variant }] })) {
-          if (validatorAccepts(config)) {
-            expect(schemaErrors(config), JSON.stringify(config)).toEqual([]);
-          }
-        }
-      }
-    }
+    const variants = [{}, { function: 'run' }, { name: 'run' }, { packages: ['left-pad'] }];
+    const configs = rules.flatMap((rule) =>
+      variants.flatMap((variant) => everyPreset({ exceptions: [{ rule, ...entry, ...variant }] })),
+    );
+
+    expect(configs.filter(validatorAccepts).length).toBeGreaterThan(rules.length);
+    expect(wronglyRejected(configs)).toEqual([]);
   });
 
   it.each([
@@ -352,9 +354,7 @@ describe('config schema and validator on exceptions', () => {
     [{ rule: 'doc-comment-content', paths: ['src/a.ts'], reason: 'Because' }],
     [{ rule: 'file-lines-limit', paths: ['a.ts'], reason: 'Because', extra: true }],
   ])('on %j with every preset', (exception) => {
-    for (const config of everyPreset({ exceptions: [exception] })) {
-      expectAgreement(config);
-    }
+    expect(presetDisagreements([{ exceptions: [exception] }])).toEqual([]);
   });
 
   it('never rejects a python.exceptions entry that the validator accepts', () => {
@@ -366,21 +366,26 @@ describe('config schema and validator on exceptions', () => {
       'swallowed-exception',
       'attr-defined',
     ];
-    for (const rule of ids) {
-      const config = { preset: 'python', python: { exceptions: [{ rule, ...entry }] } };
-      if (validatorAccepts(config)) {
-        expect(schemaErrors(config), rule).toEqual([]);
-      }
-    }
-    expectAgreement({
+    const configs = ids.map((rule) => ({
       preset: 'python',
-      python: { exceptions: [{ rule: 'file-lines-limit', ...entry }] },
-    });
-    expectAgreement({
-      preset: 'python',
-      python: {
-        exceptions: [{ rule: 'swallowed-exception', paths: ['./a.py'], reason: 'Because' }],
-      },
-    });
+      python: { exceptions: [{ rule, ...entry }] },
+    }));
+
+    expect(configs.filter(validatorAccepts).length).toBeGreaterThan(0);
+    expect(wronglyRejected(configs)).toEqual([]);
+    expect(
+      disagreement({
+        preset: 'python',
+        python: { exceptions: [{ rule: 'file-lines-limit', ...entry }] },
+      }),
+    ).toEqual([]);
+    expect(
+      disagreement({
+        preset: 'python',
+        python: {
+          exceptions: [{ rule: 'swallowed-exception', paths: ['./a.py'], reason: 'Because' }],
+        },
+      }),
+    ).toEqual([]);
   });
 });

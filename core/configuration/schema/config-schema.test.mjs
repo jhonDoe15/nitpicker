@@ -53,7 +53,7 @@ describe('config.schema.json', () => {
 
   it('is shipped in the npm package', () => {
     const files = JSON.parse(readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf8')).files;
-    expect(files).toContain('spec/config.schema.json');
+    expect(files.includes('spec/config.schema.json')).toBe(true);
   });
 });
 
@@ -103,6 +103,8 @@ describe('the configurations in the repository', () => {
   const tracked = execFileSync('git', ['ls-files', '*nitpicker.config.json'], {
     cwd: PACKAGE_ROOT,
     encoding: 'utf8',
+    env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
+    timeout: 10_000,
   })
     .trim()
     .split('\n');
@@ -114,7 +116,7 @@ describe('the configurations in the repository', () => {
   });
 
   it('includes the repository config and the fixture configs', () => {
-    expect(tracked).toContain('nitpicker.config.json');
+    expect(tracked.includes('nitpicker.config.json')).toBe(true);
     expect(tracked.length).toBeGreaterThan(5);
   });
 });

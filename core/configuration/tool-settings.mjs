@@ -14,7 +14,7 @@ const TOOL_SETTING_KEYS = new Map([
   ['typescript', ['engine', 'project']],
   ['tests', ['runner', 'timeouts']],
 ]);
-export const ENGINES = new Map([
+const ENGINES = new Map([
   [
     'eslint',
     {
@@ -43,7 +43,7 @@ export const ENGINES = new Map([
   ],
 ]);
 const PRECEDENCE_KEYS = ['precedence'];
-export const NITPICKER_FIRST_REJECTED = new Map([
+const NITPICKER_FIRST_REJECTED = new Map([
   [
     'ktlint',
     "ktlint reads the project's .editorconfig natively, which always wins over nitpicker's measured conventions",
@@ -103,6 +103,16 @@ function validateToolSettings(name, settings, toolSettingKeys) {
   }
   validatePrecedence(settings.precedence, name);
   validatePrecedenceOrder(settings.precedence, name);
+}
+
+/** The engine setting of `tool`, as { key, values, meaning }; undefined for a tool without one. */
+export function engineOf(tool) {
+  return ENGINES.get(tool);
+}
+
+/** Why `tool` must list "project" before "nitpicker"; undefined when either order works. */
+export function nitpickerFirstReason(tool) {
+  return NITPICKER_FIRST_REJECTED.get(tool);
 }
 
 function validateEngineSettings(name, settings) {

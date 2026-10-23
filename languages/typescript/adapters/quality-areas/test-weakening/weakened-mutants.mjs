@@ -129,10 +129,9 @@ function weakenedMessage(filePath, mutant) {
       : `${mutant.mutatorName} mutant (${inlineCode(mutant.original)} replaced with ${inlineCode(mutant.replacement)})`;
   const outcome = mutant.status === 'NoCoverage' ? 'no test runs it now' : 'it survives now';
   const allowedForm = 'Restore the assertion that caught it, or add one.';
-  return {
-    message: `This change weakened the tests of ${filePath}: the base tests caught this ${change}, but ${outcome}. ${allowedForm} ${exceptionRoute({ rule: mutantRuleId(mutant.status), path: filePath })}`,
-    allowedForm,
-  };
+  const route = exceptionRoute({ rule: mutantRuleId(mutant.status), path: filePath });
+  const problem = `This change weakened the tests of ${filePath}: the base tests caught this ${change}`;
+  return { message: `${problem}, but ${outcome}. ${allowedForm} ${route}`, allowedForm };
 }
 
 function weakenedFinding(analyzerName, filePath, { mutant, key }) {
