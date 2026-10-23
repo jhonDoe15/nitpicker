@@ -15,7 +15,12 @@ import {
   sourceRuleMessages,
   sourceRules,
 } from './project-rules/source-rules.mjs';
-import { HYGIENE_EXCEPTION_RULES, HYGIENE_RULES } from './project-rules/hygiene-rules.mjs';
+import {
+  HISTORY_EXCEPTION_RULES,
+  HISTORY_RULES,
+  HYGIENE_EXCEPTION_RULES,
+  HYGIENE_RULES,
+} from './project-rules/hygiene-rules.mjs';
 import { sharedFactExceptionRules, withLanguageColumns } from './project-rules/fact-rules.mjs';
 
 import {
@@ -97,6 +102,7 @@ const FILE_EXCEPTION_RULES = [
   RULE_IDS.folderFiles,
   RULE_IDS.slowTest,
   ...HYGIENE_EXCEPTION_RULES,
+  ...HISTORY_EXCEPTION_RULES,
   ...sharedFactExceptionRules(),
 ];
 
@@ -268,6 +274,7 @@ const CATALOG = [
     enforcedBy: withGo(withKotlin(ALL, true)),
   },
   ...HYGIENE_RULES,
+  ...HISTORY_RULES,
   testConsoleRule(RULE_IDS),
   docCommentRule(RULE_IDS),
 ];
