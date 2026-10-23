@@ -379,4 +379,39 @@ describe('python tool configs the project opted into', () => {
       ),
     ).toEqual([]);
   });
+
+  it('counts an edit of the import-linter contracts the gate runs, without an opt-in', () => {
+    const contracts = (layers) => ({
+      '.importlinter': `[importlinter]\nroot_package = shop\n\n[importlinter:contract:layers]\nname = Layers\ntype = layers\nlayers =\n    ${layers}\n`,
+      'setup.cfg': '[metadata]\nname = shop\n',
+    });
+    const base = contracts('shop.api\n    shop.domain');
+
+    expect(loosenings(base, contracts('shop.api'), { preset: 'python' })).toEqual([
+      'import-linter project config changed: .importlinter',
+    ]);
+    expect(
+      loosenings(
+        base,
+        { ...contracts('shop.api\n    shop.domain'), 'setup.cfg': '[metadata]\nname = store\n' },
+        { preset: 'python' },
+      ),
+    ).toEqual([]);
+    expect(
+      loosenings(base, contracts('shop.api'), {
+        preset: 'python',
+        python: { importLinter: false },
+      }),
+    ).toEqual([]);
+  });
+
+  it('reads the [tool.importlinter] table of pyproject.toml only', () => {
+    const at = (forbidden) => ({
+      'pyproject.toml': `[tool.poetry]\nname = "shop"\n\n[tool.importlinter]\nroot_package = "shop"\n\n[[tool.importlinter.contracts]]\nname = "No db in api"\ntype = "forbidden"\nsource_modules = ["shop.api"]\nforbidden_modules = [${forbidden}]\n`,
+    });
+
+    expect(
+      loosenings(at('"shop.db"'), at('"shop.db", "shop.cache"'), { preset: 'python' }),
+    ).toEqual(['import-linter project config changed: pyproject.toml']);
+  });
 });
