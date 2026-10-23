@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {
   clearSnapshotReports,
+  renderSnapshotConsoleSummary,
   writeSnapshotReports,
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
 } from '../snapshot/reporters.mjs';
@@ -45,7 +46,7 @@ export function runSnapshotCli({
     }),
   );
   report.text = writeSnapshotReports(outputRoot, report);
-  stdout.write(report.text);
+  stdout.write(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt')));
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
   if (report.summary.enforceableFindings > 0) {
     return 1;

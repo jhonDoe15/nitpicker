@@ -2,6 +2,7 @@ import { isPolicyFinding } from './review/policy-findings.mjs';
 import { consolePolicySummary } from './review/policy-changes.mjs';
 import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { singleLine } from './format/text.mjs';
+import { designNoteLines } from './format/design-notes.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
 import {
   TESTS_FAILED_RULE,
@@ -38,6 +39,7 @@ export function renderConsoleSummary(
     style(text, [ANSI.bold, ANSI.yellow], color),
   );
   appendHeldSummary(lines, report.unchangedFindings, color);
+  lines.push(...designNoteLines(report.newFindings, diagnosticsPath));
   appendToolErrorSummary(lines, report.toolErrors, color);
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
   return `${lines.join('\n')}\n`;

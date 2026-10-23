@@ -1,5 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { designNoteLines } from '../diff/reporting/format/design-notes.mjs';
 
 const REPORT_FILE_NAMES = [
   'summary.json',
@@ -27,7 +28,11 @@ export function writeSnapshotReports(outputRoot, report) {
   return text;
 }
 
-function renderTextReport(report) {
+export function renderSnapshotConsoleSummary(report, diagnosticsPath) {
+  return renderTextReport(report, designNoteLines(report.findings, diagnosticsPath));
+}
+
+function renderTextReport(report, descriptiveLines) {
   const enforceable = report.findings.filter((finding) => finding.classification === 'enforceable');
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
@@ -50,7 +55,11 @@ function renderTextReport(report) {
   }
 
   appendFindingSection(lines, 'Enforceable findings', enforceable);
-  appendFindingSection(lines, 'Descriptive findings', descriptive);
+  if (descriptiveLines === undefined) {
+    appendFindingSection(lines, 'Descriptive findings', descriptive);
+  } else if (descriptiveLines.length > 0) {
+    lines.push('', ...descriptiveLines);
+  }
   appendToolErrorSection(lines, report.toolErrors);
   return `${lines.join('\n')}\n`;
 }
