@@ -1,6 +1,8 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { firstFileIn } from '../../../../../shared/filesystem.mjs';
+import { firstFileIn, isDirectory, isFile } from '../../../../../shared/filesystem.mjs';
+import { manifestScripts, testScriptCommands } from '../../test-runner/detection/test-scripts.mjs';
+import { optionEntries, rootDirIn, scriptPreloads, withoutComments } from './setup-option-text.mjs';
 
 const CODE_EXTENSIONS = ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'];
 
@@ -24,29 +26,18 @@ const CONFIG_NAMES = {
   mocha: MOCHA_CONFIG_NAMES,
 };
 const MANIFEST_KEYS = { jest: 'jest', mocha: 'mocha' };
-const QUOTED = /(['"`])([^'"`]+)\1/gu;
 const CODE_FILE = /\.[cm]?[jt]sx?$/u;
-const NODE_PRELOAD = /(?:^|\s)(?:--import|--require|-r)(?:=|\s+)(['"]?)([^\s'"]+)\1/gu;
 const ROOT_DIR = /^<rootDir>\//u;
+const PROJECT_GLOB = /\/\*$/u;
+const PROJECT_RUNNERS = new Set(['jest', 'vitest']);
 
-function optionPattern(keys) {
-  const value = String.raw`(\[[^\]]*\]|(['"\x60])[^'"\x60\n]+\2|[^\s,'"\x60\[\]{}#]+(?:\s*\n(?:\s*-\s*[^\n]+\n?)+)?|\s*\n(?:\s*-\s*[^\n]+\n?)+)`;
-  return new RegExp(String.raw`["']?\b(?:${keys.join('|')})["']?[ \t]*:[ \t]*${value}`, 'gu');
-}
-
-function entriesOf(value) {
-  const quoted = [...value.matchAll(QUOTED)].map((match) => match[2]);
-  if (quoted.length > 0) {
-    return quoted;
+function directoryNames(directory) {
+  if (!isDirectory(directory)) {
+    return [];
   }
-  return value
-    .split('\n')
-    .map((line) => line.replace(/^\s*-\s*/u, '').trim())
-    .filter((line) => line !== '');
-}
-
-function optionEntries(text, keys) {
-  return [...text.matchAll(optionPattern(keys))].flatMap(([, value]) => entriesOf(value));
+  return readdirSync(directory, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
 }
 
 function manifest(projectRoot) {
@@ -60,23 +51,49 @@ function manifest(projectRoot) {
   }
 }
 
-function configEntries(projectRoot, runner) {
-  const keys = SETUP_KEYS[runner];
+function configTexts(projectRoot, runner) {
   const configPath = firstFileIn(projectRoot, CONFIG_NAMES[runner]);
   const fromConfig =
-    configPath === undefined ? [] : optionEntries(readFileSync(configPath, 'utf8'), keys);
+    configPath === undefined ? [] : [withoutComments(readFileSync(configPath, 'utf8'), configPath)];
   const manifestOptions = manifest(projectRoot)[MANIFEST_KEYS[runner]];
-  const fromManifest =
-    manifestOptions === undefined ? [] : optionEntries(JSON.stringify(manifestOptions), keys);
-  return [...fromConfig, ...fromManifest];
+  return manifestOptions === undefined
+    ? fromConfig
+    : [...fromConfig, JSON.stringify(manifestOptions)];
+}
+
+function fromRootDir(entry, rootDir) {
+  return rootDir === undefined
+    ? entry.replace(ROOT_DIR, '')
+    : entry.replace(ROOT_DIR, `${rootDir}/`);
+}
+
+function configEntries(projectRoot, runner) {
+  return configTexts(projectRoot, runner).flatMap((text) =>
+    optionEntries(text, SETUP_KEYS[runner]).map((entry) => fromRootDir(entry, rootDirIn(text))),
+  );
 }
 
 function scriptEntries(projectRoot) {
-  const script = manifest(projectRoot).scripts?.test ?? '';
-  return [...script.matchAll(NODE_PRELOAD)].map((match) => match[2]);
+  return testScriptCommands(manifestScripts(manifest(projectRoot))).flatMap(scriptPreloads);
 }
 
-function runnerEntries(projectRoot, runner) {
+function projectDirectories(projectRoot, entry) {
+  const pattern = entry.replace(ROOT_DIR, '');
+  const parent = PROJECT_GLOB.test(pattern) ? pattern.replace(PROJECT_GLOB, '') : undefined;
+  const candidates =
+    parent === undefined
+      ? [pattern]
+      : directoryNames(path.join(projectRoot, parent)).map((name) => `${parent}/${name}`);
+  return candidates.filter((candidate) => isDirectory(path.join(projectRoot, candidate)));
+}
+
+function projectDirectoriesOf(projectRoot, runner) {
+  return configTexts(projectRoot, runner)
+    .flatMap((text) => optionEntries(text, ['projects']))
+    .flatMap((entry) => projectDirectories(projectRoot, entry));
+}
+
+function ownEntries(projectRoot, runner) {
   if (runner === 'node') {
     return scriptEntries(projectRoot);
   }
@@ -84,13 +101,37 @@ function runnerEntries(projectRoot, runner) {
   return runner === 'mocha' ? [...entries, ...scriptEntries(projectRoot)] : entries;
 }
 
+function runnerEntries(projectRoot, runner) {
+  const pending = ['.'];
+  const entries = [];
+  for (const directory of pending) {
+    const root = path.join(projectRoot, directory);
+    entries.push(...ownEntries(root, runner).map((file) => path.posix.join(directory, file)));
+    const projects = PROJECT_RUNNERS.has(runner) ? projectDirectoriesOf(root, runner) : [];
+    const added = projects
+      .map((project) => path.posix.join(directory, project))
+      .filter((project) => !pending.includes(project));
+    pending.push(...new Set(added));
+  }
+  return entries;
+}
+
+function codeFileOf(projectRoot, entry) {
+  if (CODE_FILE.test(entry)) {
+    return entry;
+  }
+  const candidates = CODE_EXTENSIONS.flatMap((extension) => [
+    `${entry}.${extension}`,
+    `${entry}/index.${extension}`,
+  ]);
+  return candidates.find((candidate) => isFile(path.join(projectRoot, candidate)));
+}
+
 export function setupFilesIn(projectRoot, runner = 'vitest') {
-  return [
-    ...new Set(
-      runnerEntries(projectRoot, runner)
-        .map((entry) => entry.replace(ROOT_DIR, ''))
-        .filter((entry) => CODE_FILE.test(entry) && !entry.startsWith('@'))
-        .map((entry) => path.posix.normalize(entry.replaceAll('\\', '/'))),
-    ),
-  ];
+  const files = runnerEntries(projectRoot, runner)
+    .filter((entry) => !entry.startsWith('@'))
+    .map((entry) => path.posix.normalize(entry.replaceAll('\\', '/')))
+    .map((entry) => codeFileOf(projectRoot, entry))
+    .filter((entry) => entry !== undefined);
+  return [...new Set(files)];
 }

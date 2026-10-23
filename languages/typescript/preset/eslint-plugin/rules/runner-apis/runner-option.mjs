@@ -1,4 +1,6 @@
+import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { ancestorDirectories } from '../../../../../../shared/filesystem.mjs';
 import { readHeadPolicy, readLayout } from '../../../head-policy.mjs';
 import { DEFAULT_TEST_RUNNER, TEST_RUNNERS } from '../../../test-runner/runners.mjs';
 import { recordedTestRunner, runnerVocabulary } from '../../../test-runner/runner-vocabulary.mjs';
@@ -23,10 +25,24 @@ export function vocabularyOf(context) {
   return runnerVocabulary(runnerOf(context));
 }
 
+function packageRoot(directory) {
+  return ancestorDirectories(directory).find((candidate) =>
+    existsSync(path.join(candidate, 'package.json')),
+  );
+}
+
+function posixRelative(from, to) {
+  return path.relative(from, to).split(path.sep).join('/');
+}
+
 export function projectRelative(filename, cwd) {
-  const relative = path.relative(cwd, filename).split(path.sep).join('/');
+  const relative = posixRelative(cwd, filename);
   if (!relative.startsWith('..')) {
     return relative;
+  }
+  const project = packageRoot(path.dirname(filename));
+  if (project !== undefined) {
+    return posixRelative(project, filename);
   }
   const roots = [...layout.sourceRoots, ...layout.testRoots];
   const root = roots.find((candidate) => filename.includes(`/${candidate}/`));

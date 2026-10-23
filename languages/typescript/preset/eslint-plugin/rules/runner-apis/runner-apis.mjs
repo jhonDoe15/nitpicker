@@ -21,11 +21,26 @@ const IMPORTS = [
   { matches: (source) => source === 'mock-require', names: ['default'], kind: 'mockRequire' },
   { matches: (source) => source === 'testdouble', names: WHOLE_MODULE, kind: 'testdouble' },
   { matches: (source) => source === 'quibble', names: ['default'], kind: 'quibble' },
-  { matches: (source) => source === 'sinon', names: WHOLE_MODULE, kind: 'sinon' },
+  {
+    matches: (source) => source === 'sinon',
+    names: WHOLE_MODULE,
+    kind: 'sinon',
+    functions: [
+      'useFakeTimers',
+      'createSandbox',
+      'restore',
+      'stub',
+      'spy',
+      'replace',
+      'replaceGetter',
+      'replaceSetter',
+    ],
+  },
   {
     matches: (source) => source === '@sinonjs/fake-timers',
     names: WHOLE_MODULE,
     kind: 'fakeTimers',
+    functions: ['install', 'createClock', 'withGlobal'],
   },
   {
     matches: (source) => source === 'proxyquire',
@@ -52,11 +67,17 @@ function importedName(specifier) {
   return imported.type === 'Identifier' ? imported.name : imported.value;
 }
 
+function bindingOf(spec, name, local) {
+  if (spec.names.includes(name)) {
+    return [{ local, kind: spec.kind }];
+  }
+  return spec.functions?.includes(name) ? [{ local, kind: spec.kind, method: name }] : [];
+}
+
 function importBindings(node, spec) {
-  return node.specifiers
-    .map((specifier) => ({ name: importedName(specifier), local: specifier.local.name }))
-    .filter(({ name }) => spec.names.includes(name))
-    .map(({ local }) => ({ local, kind: spec.kind }));
+  return node.specifiers.flatMap((specifier) =>
+    bindingOf(spec, importedName(specifier), specifier.local.name),
+  );
 }
 
 function chainedRequire(init) {
@@ -86,10 +107,9 @@ function destructuredBindings(pattern, spec) {
       (property) =>
         property.type === 'Property' &&
         property.key.type === 'Identifier' &&
-        property.value.type === 'Identifier' &&
-        spec.names.includes(property.key.name),
+        property.value.type === 'Identifier',
     )
-    .map((property) => ({ local: property.value.name, kind: spec.kind }));
+    .flatMap((property) => bindingOf(spec, property.key.name, property.value.name));
 }
 
 function requireBindings(declarator, spec) {
@@ -116,13 +136,32 @@ function requiredSpec(init) {
 }
 
 export function createRunnerApis() {
-  return { kinds: new Map(GLOBAL_KINDS) };
+  return { kinds: new Map(GLOBAL_KINDS), functions: new Map() };
 }
 
 function remember(apis, bindings) {
-  for (const { local, kind } of bindings) {
-    apis.kinds.set(local, kind);
+  for (const { local, kind, method } of bindings) {
+    if (method === undefined) {
+      apis.kinds.set(local, kind);
+    } else {
+      apis.functions.set(local, { kind, method });
+    }
   }
+}
+
+function importedFunction(apis, callee) {
+  return callee.type === 'Identifier' ? apis.functions.get(callee.name) : undefined;
+}
+
+export function calledMethod(apis, callee) {
+  const imported = importedFunction(apis, callee);
+  if (imported !== undefined) {
+    return imported;
+  }
+  if (callee.type !== 'MemberExpression') {
+    return undefined;
+  }
+  return { kind: kindOfObject(apis, callee.object), method: propertyName(callee) };
 }
 
 export function propertyName(callee) {
@@ -147,7 +186,20 @@ function bindingKey(node) {
   return name === undefined ? undefined : `this.${name}`;
 }
 
+function producedObjectKind(apis, { callee }) {
+  const imported = importedFunction(apis, callee);
+  const isWithGlobal =
+    imported === undefined
+      ? propertyName(callee) === 'withGlobal' &&
+        apis.kinds.get(bindingKey(callee.object) ?? '') === 'fakeTimers'
+      : imported.kind === 'fakeTimers' && imported.method === 'withGlobal';
+  return isWithGlobal ? 'fakeTimers' : undefined;
+}
+
 export function kindOfObject(apis, node) {
+  if (node.type === 'CallExpression') {
+    return producedObjectKind(apis, node);
+  }
   const kind = apis.kinds.get(bindingKey(node) ?? '');
   if (kind !== undefined || node.type === 'Identifier') {
     return kind;
@@ -156,11 +208,8 @@ export function kindOfObject(apis, node) {
 }
 
 function producedKind(apis, value) {
-  if (value?.type !== 'CallExpression' || value.callee.type !== 'MemberExpression') {
-    return undefined;
-  }
-  const produced = PRODUCED_KINDS[kindOfObject(apis, value.callee.object)];
-  return produced?.[propertyName(value.callee) ?? ''];
+  const called = value?.type === 'CallExpression' ? calledMethod(apis, value.callee) : undefined;
+  return called === undefined ? undefined : PRODUCED_KINDS[called.kind]?.[called.method ?? ''];
 }
 
 function rememberProduced(apis, target, value) {

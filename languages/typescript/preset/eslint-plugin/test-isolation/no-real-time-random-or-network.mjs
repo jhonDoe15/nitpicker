@@ -1,5 +1,5 @@
 import { createRunnerApis, runnerApiVisitors } from '../rules/runner-apis/runner-apis.mjs';
-import { fakeTimerChange, spiedMember } from '../rules/runner-apis/runner-doubles.mjs';
+import { setsFakeClock, spiedMember } from '../rules/runner-apis/runner-doubles.mjs';
 import { RUNNER_OPTION_PROPERTY, vocabularyOf } from '../rules/runner-apis/runner-option.mjs';
 
 const NETWORK_MODULES = new Map([
@@ -27,17 +27,6 @@ function isMemberCall(node, objectName, propertyName) {
     callee.object.name === objectName &&
     callee.property.name === propertyName
   );
-}
-
-const CLOCK_SETTERS = new Set(['setSystemTime', 'setTime']);
-
-function isFakeClockSetup(apis, node) {
-  const callee = node.callee;
-  const setsClock =
-    callee.type === 'MemberExpression' &&
-    !callee.computed &&
-    CLOCK_SETTERS.has(callee.property.name);
-  return setsClock || fakeTimerChange(apis, node)?.fake === true;
 }
 
 function isRandomSpy(apis, node) {
@@ -153,7 +142,7 @@ export const rule = {
         if (isMemberCall(node, 'Math', 'random')) {
           randomCalls.push(node);
         }
-        state.fakeClock ||= isFakeClockSetup(apis, node);
+        state.fakeClock ||= setsFakeClock(apis, node);
         state.randomSpy ||= isRandomSpy(apis, node);
         if (checksNetwork && isNetworkCall(network, node)) {
           context.report({ node, messageId: 'network' });

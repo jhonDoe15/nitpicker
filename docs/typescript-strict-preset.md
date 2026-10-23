@@ -857,8 +857,13 @@ the spec for Mocha.
   allowed), `assert.isOk`, `assert.exists`, `assert.isDefined`, `assert.isNotNull`, Chai's `.ok`,
   `.exist`, `.not.null` and `.not.undefined`, `assert.throws(run)`/`assert.rejects(promise)` and
   `expect(run).to.throw()` without the expected error, chai-as-promised's bare `.rejected`, and a
-  bare `sinon.assert.called(spy)` or sinon-chai `.called` (use `calledWith`). The `should` style is
-  not checked. `nitpicker/no-partial-output-assertion` also rejects `toMatch` with a string or a
+  bare `sinon.assert.called(spy)` or sinon-chai `.called` (use `calledWith`). It follows the
+  assert function under any name: `import { ok } from 'node:assert'`, a renamed default import,
+  `assert.strict.ok`, `require('node:assert')` and Chai's `assert`; `assert.ok(value!)`,
+  `assert.ok(value?.x)` and `assert.ok(!!value)` are the same unpinned check. A literal as the
+  value under test (`assert(true)`, `assert.strictEqual(1, 1)`) can never fail and is reported too.
+  The negated failure checks Chai offers (`.not.throw()`, `.not.be.rejected`) are allowed. The
+  `should` style is not checked. `nitpicker/no-partial-output-assertion` also rejects `toMatch` with a string or a
   pattern that is not anchored `^...$` (`assert.match` and Chai's `match` with an unanchored
   pattern too); an anchored pattern pins the whole value.
 - `nitpicker/no-shared-test-state`: no `let` with a value at module level or directly in a `describe`
@@ -872,9 +877,11 @@ the spec for Mocha.
   which then time out. The same holds under the other runners: `jest.useFakeTimers()` needs
   `jest.useRealTimers()`; `mock.timers.enable()` from `node:test` needs `mock.timers.reset()` or
   `mock.reset()` (an `after`/`afterEach` hook counts; a clock enabled on the test context,
-  `t.mock.timers.enable()`, resets when the test ends and is not reported); a Sinon clock from
+  `t.mock.timers.enable()`, resets when the test ends and is not reported, while the module's own
+  tracker reached as `test.mock` or through a namespace import is); a Sinon clock from
   `sinon.useFakeTimers()` needs `clock.restore()` or `sinon.restore()`, and one from
-  `@sinonjs/fake-timers` `install()` needs `clock.uninstall()`. With `@testing-library/user-event`,
+  `@sinonjs/fake-timers` `install()` needs `clock.uninstall()`. A restore in the `afterEach` or
+  `afterAll` method of a Mocha root hook plugin (`export const mochaHooks = { ... }`) counts. With `@testing-library/user-event`,
   create the user with `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })` (the
   message names the runner's own call). In a `*.test.*`/`*.spec.*` file the
   rule does the same for `vi.stubGlobal` (restore with `vi.unstubAllGlobals()`) and `vi.stubEnv`
@@ -889,7 +896,10 @@ the spec for Mocha.
   which runs and documents a known bug: it starts failing once the bug is fixed. Under every runner
   it also reports a fixed `skip` or `todo` test option (`test('x', { skip: true }, ...)`, a skip
   reason string, `{ todo: true }`) and an unconditional `t.skip()`, `t.todo()`, `this.skip()` or
-  destructured `skip()` in the test body; a skip under a real condition is allowed. The runner's
+  destructured `skip()` in the test body; a skip under a real condition is allowed, and so is
+  Vitest's `skip(condition)`/`ctx.skip(condition)`, which skips only when the condition holds. Mocha's
+  `specify` and `context` and `node:test` subtests (`t.test(...)`) are checked the same way, and
+  Playwright's `test.describe` counts as a suite while `test.step` and its hooks are not tests. The runner's
   `no-disabled-tests` (`vitest/`, `jest/`, `node-test/` or `mocha/`) reports `.skip`, `x`-prefixed
   tests and a Mocha `it('name')` without a callback.
 - `slow-test` (coverage check, head only): an added or edited test fails above 5 s, or 30 s in an integration/e2e test folder. All supported runners share this policy. Suspected slow tests are rerun without coverage instrumentation, using the existing head policy's thresholds and reviewed exceptions; unchanged test calls do not add findings.
@@ -897,8 +907,12 @@ the spec for Mocha.
   argument or `Math.random()` (fake the clock with `vi.useFakeTimers()` and `vi.setSystemTime`, or
   spy on `Math.random`; either one anywhere in the file lifts the check). The other runners' fakes
   count too: `jest.useFakeTimers()`, `mock.timers.enable()` and `mock.timers.setTime()` from
-  `node:test`, a Sinon or `@sinonjs/fake-timers` clock, and `jest.spyOn`, `mock.method` or
-  `sinon.stub` on `Math.random`; the message names the project runner's form. In unit tests
+  `node:test`, a Sinon or `@sinonjs/fake-timers` clock (also from named imports such as
+  `import { useFakeTimers } from 'sinon'`, and from `withGlobal(...).install()`), and `jest.spyOn`,
+  `mock.method` or `sinon.stub` on `Math.random`; the message names the project runner's form.
+  `setSystemTime`/`setTime` count only on a runner or clock object, and fake timers that leave
+  `Date` real (`{ apis: ['setTimeout'] }`, `{ toFake: [...] }` without `Date`, or
+  `{ doNotFake: ['Date'] }`) do not lift the clock check. In unit tests
   (`__tests__/`, `<testRoot>/unit/` and `*.test.*` next to sources) no `fetch`, `http`/`https`
   `request`/`get`, `net.connect` or `new WebSocket`. Inject the client instead.
 - `nitpicker/no-uncollected-tests`: a file in the test area that the project's runner does not
@@ -930,10 +944,15 @@ the spec for Mocha.
   setup file runs before every test file, so calls made there would count as covered). The setup
   files come from the runner's own config: Vitest's or Vite's `setupFiles` and `globalSetup`, Jest's
   `setupFiles`, `setupFilesAfterEnv`, `globalSetup` and `globalTeardown` (in `jest.config.*` or the
-  `jest` key of `package.json`, `<rootDir>/` removed), Mocha's `require` and `file` (in `.mocharc.*`,
-  the `mocha` key of `package.json`, or the test script), and the `--import`/`--require` preloads
-  of a `node --test` script. They are read from the config text as string literals, so a computed
-  value (built from a variable) is not checked. A test
+  `jest` key of `package.json`, `<rootDir>/` read as the config's `rootDir`), Mocha's `require` and
+  `file` (in `.mocharc.*`, the `mocha` key of `package.json`, or the test script's `--require` and
+  `--file`), and the `--import`/`--require`/`--test-global-setup` preloads of a `node --test`
+  script, also inside `NODE_OPTIONS`. The test scripts are `test`, the `test:*` scripts and the
+  scripts they run (`npm run test:unit`). The configs of Vitest and Jest `projects` named by a path
+  or a `dir/*` glob are read for their packages. An entry without an extension counts when it names
+  a project file or a folder with an `index` file. Commented-out keys are ignored. They are read
+  from the config text as string literals, so a computed value (built from a variable) is not
+  checked. A test
   may not mention `__stryker__`,
   `STRYKER_*` or `activeMutant` either (`no-restricted-syntax`): behaviour that depends on the
   mutation harness hides every mutant. For the same reason a test reads a global by its name
