@@ -40,7 +40,7 @@ describe('design notes in the console summary', () => {
     ]);
   });
 
-  it('leaves out other report-only findings', () => {
+  it('leaves out descriptive findings of rules that can fail', () => {
     const other = { ...note(1), rule: 'module-coupling' };
     const summary = renderConsoleSummary(report({ newFindings: [other] }), { color: false });
     expect(summary.includes('Design note')).toBe(false);
