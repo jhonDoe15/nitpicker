@@ -36,18 +36,25 @@ function skipped(name, relative) {
   return name === 'src' && !LOGIC_ROOT.test(relative);
 }
 
+function relativeOf(directory, name) {
+  return directory === '' ? name : `${directory}/${name}`;
+}
+
 function walk(root) {
   const found = [];
   const pending = [''];
   for (const directory of pending) {
-    for (const entry of readdirSync(path.join(root, directory), { withFileTypes: true })) {
-      const relative = directory === '' ? entry.name : `${directory}/${entry.name}`;
-      if (entry.isDirectory() && !skipped(entry.name, directory)) {
-        pending.push(relative);
-      } else if (entry.isFile()) {
-        found.push(relative);
-      }
-    }
+    const entries = readdirSync(path.join(root, directory), { withFileTypes: true });
+    pending.push(
+      ...entries
+        .filter((entry) => entry.isDirectory() && !skipped(entry.name, directory))
+        .map((entry) => relativeOf(directory, entry.name)),
+    );
+    found.push(
+      ...entries
+        .filter((entry) => entry.isFile())
+        .map((entry) => relativeOf(directory, entry.name)),
+    );
   }
   return found;
 }
@@ -157,11 +164,7 @@ export function gradlePath({ value, directory }) {
 }
 
 function ancestors(directory) {
-  const found = [directory];
-  while (found.at(-1) !== '.') {
-    found.push(path.posix.dirname(found.at(-1)));
-  }
-  return found;
+  return directory === '.' ? ['.'] : [directory, ...ancestors(path.posix.dirname(directory))];
 }
 
 function propertyOf(poms, directory, name) {

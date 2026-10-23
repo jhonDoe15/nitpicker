@@ -32,6 +32,11 @@ const BUILD = `spotbugs {
 }
 `;
 const HEAD = { 'build.gradle': BUILD, 'config/spotbugs/exclude.xml': FILTER };
+const NOTHING_DECLARED = new RegExp(
+  '^"tools\\.spotbugs\\.precedence" lists "project" but SpotBugs settings in the build .* is missing: ' +
+    'create it, or remove "project" from tools\\.spotbugs\\.precedence$',
+  'u',
+);
 const choicesOf = (root, precedence, policyRoot = root) =>
   declaredToolChoices(root, { toolPrecedence: { spotbugs: precedence }, policyRoot });
 
@@ -63,9 +68,7 @@ describe('the SpotBugs settings a run takes from the build', () => {
   it('fails when the build declares no SpotBugs settings', () => {
     const root = projectWith({ 'build.gradle': "plugins { id 'java' }\n" });
 
-    expect(() => choicesOf(root, ['project'])).toThrow(
-      /^"tools.spotbugs.precedence" lists "project" but SpotBugs settings in the build .* is missing: create it, or remove "project" from tools.spotbugs.precedence$/u,
-    );
+    expect(() => choicesOf(root, ['project'])).toThrow(NOTHING_DECLARED);
   });
 
   it('fails for a filter that is missing, not XML, not a filter or not a path it can read', () => {
@@ -99,7 +102,7 @@ describe('the SpotBugs settings a run takes from the build', () => {
 
     expect(declaredToolDigest({ spotbugs: ['project'] }, root)).not.toBe(before);
     expect(declaredToolDigest({ spotbugs: ['project'] }, projectWith({}))).toMatch(
-      /lists "project" but SpotBugs settings/u,
+      NOTHING_DECLARED,
     );
   });
 });

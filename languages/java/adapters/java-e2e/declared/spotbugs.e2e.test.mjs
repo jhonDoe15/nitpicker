@@ -18,7 +18,7 @@ import {
   projectWith,
   runJar,
   useDeclaredProjects,
-} from './declared-projects.mjs';
+} from './__tests__/declared-projects.mjs';
 
 const HOLDER = `package demo;
 

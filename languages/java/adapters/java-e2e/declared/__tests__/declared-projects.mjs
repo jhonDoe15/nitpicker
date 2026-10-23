@@ -3,9 +3,9 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { readPinnedTools } from '../../../builds/java-build.mjs';
-import { javaCommand } from '../../../maven/maven-command.mjs';
-import { resolveTools } from '../../../maven/maven-tools.mjs';
+import { readPinnedTools } from '../../../../builds/java-build.mjs';
+import { javaCommand } from '../../../../maven/maven-command.mjs';
+import { resolveTools } from '../../../../maven/maven-tools.mjs';
 
 export const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 export const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
