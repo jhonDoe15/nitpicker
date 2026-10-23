@@ -53,6 +53,10 @@ Before you change code other modules use, or fix a bug, read
   by feature; controllers call services, never repositories or another controller; a repository calls
   no service; a request- or session-scoped bean reaches a singleton only as `ObjectProvider<T>` or
   through a scoped proxy (`@RequestScope`).
+- With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations; also without Spring),
+  the `archunit/ddd-...` rules hold aggregate boundaries: refer to another aggregate's root by its
+  identifier or an `Association`, keep each entity in one aggregate, and keep entities and roots out of
+  value objects.
 - Test sources are linted like main ones (detekt, and ktlint or ktfmt): the rules above, including `!!`, apply
   in tests. detekt keeps its default exclusions for tests, so magic numbers, `lateinit`, many functions,
   duplicated string literals, spread operators and function names in backticks are not findings in a

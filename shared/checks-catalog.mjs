@@ -9,7 +9,12 @@ const LANGUAGE_TITLES = {
   go: 'Go',
 };
 
-const ENFORCEMENT_TEXT = { true: 'enforced', false: 'not enforced', partial: 'partial' };
+const ENFORCEMENT_TEXT = {
+  true: 'enforced',
+  false: 'not enforced',
+  partial: 'partial',
+  reported: 'report-only',
+};
 
 export const GENERATED_BLOCK_START = '<!-- generated:custom-rules begin (npm run gen:checks) -->';
 export const GENERATED_BLOCK_END = '<!-- generated:custom-rules end -->';

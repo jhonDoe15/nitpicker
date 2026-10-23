@@ -489,6 +489,7 @@ describe('describePolicyChanges', () => {
     expect(policyChangeFields(base, head, scopeOf(base, head))).toEqual({
       policyChanges: ['exclude added: src/vendor/**', 'base: "a" -> "b"'],
       policyLoosenings: ['exclude added: src/vendor/**'],
+      policyKinds: { 'exclude added: src/vendor/**': 'exclusion' },
       policyDigest: expect.stringMatching(/^[0-9a-f]{12}$/u),
     });
   });
