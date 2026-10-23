@@ -56,15 +56,19 @@ const LANGUAGE_SOURCES = {
 };
 const EVERY_LANGUAGE_SOURCES = ['shared/hygiene'];
 
+function repositoryFile(relative) {
+  const absolute = path.resolve(repositoryRoot, relative);
+  if (!absolute.startsWith(`${repositoryRoot}${path.sep}`)) {
+    throw new Error(`${relative} is outside the repository`);
+  }
+  return absolute;
+}
+
 function sourceFiles(directories) {
   const found = [];
   const pending = [...directories];
   for (const directory of pending) {
-    const absolute = path.resolve(repositoryRoot, directory);
-    if (!absolute.startsWith(`${repositoryRoot}${path.sep}`)) {
-      throw new Error(`${directory} is outside the repository`);
-    }
-    for (const entry of readdirSync(absolute, { withFileTypes: true })) {
+    for (const entry of readdirSync(repositoryFile(directory), { withFileTypes: true })) {
       const relative = `${directory}/${entry.name}`;
       if (entry.isDirectory()) {
         pending.push(...(IGNORED_FOLDERS.has(entry.name) ? [] : [relative]));
@@ -115,9 +119,8 @@ export function isKotlinPath(file) {
 export function catalogFileOf(ruleId) {
   const needle = NEEDLES.get(ruleId);
   return (
-    CATALOG_FILES.find((file) =>
-      needle.test(readFileSync(path.join(repositoryRoot, file), 'utf8')),
-    ) ?? 'shared/policy.mjs'
+    CATALOG_FILES.find((file) => needle.test(readFileSync(repositoryFile(file), 'utf8'))) ??
+    'shared/policy.mjs'
   );
 }
 

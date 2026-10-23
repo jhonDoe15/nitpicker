@@ -1,9 +1,5 @@
 import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
-import { clearReports, writeReports } from '../diff/reporting/reporters.mjs';
-
-function json(value) {
-  return `${JSON.stringify(value, null, 2)}\n`;
-}
+import { clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
 
 const SNAPSHOT_REPORTS = [
   { name: 'summary.json', render: (report) => json(report.summary) },

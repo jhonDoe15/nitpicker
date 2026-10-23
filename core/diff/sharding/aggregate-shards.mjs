@@ -11,7 +11,7 @@ import {
   absoluteTextReportPath,
 } from '../reporting/reporters.mjs';
 import { parseArguments } from './arguments.mjs';
-import { runGit } from '../git/repository/command.mjs';
+import { GitCommandError, runGit } from '../git/repository/command.mjs';
 import { resolveProjectRoot } from '../../tooling/tool-resolution.mjs';
 import { pathToFileURL } from 'node:url';
 import { loadConfig, describeConfigOverrides } from '../../configuration/config.mjs';
@@ -79,8 +79,11 @@ function projectPathOf(liveProjectRoot) {
   }
   try {
     return runGit(liveProjectRoot, ['rev-parse', '--show-prefix']).trim();
-  } catch {
-    return undefined;
+  } catch (error) {
+    if (error instanceof GitCommandError) {
+      return undefined;
+    }
+    throw error;
   }
 }
 
