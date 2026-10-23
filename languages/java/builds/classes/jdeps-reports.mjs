@@ -56,10 +56,10 @@ export function splitJdepsEdges(text, { mainClasses, testClasses }) {
   };
 }
 
-function runJdepsCommand({ command, cwd, directories, outputFile }) {
+function runJdepsCommand({ command, cwd, directories, outputFile, spawn }) {
   const output = openSync(outputFile, 'w');
   try {
-    const result = spawnSync(command, ['-verbose:class', '-filter:none', ...directories], {
+    const result = spawn(command, ['-verbose:class', '-filter:none', ...directories], {
       cwd,
       encoding: 'utf8',
       stdio: ['ignore', output, 'pipe'],
@@ -130,7 +130,7 @@ function splitFile(file, classes, targets) {
   }
 }
 
-function writeEdges({ command, cwd, directories, reportDir }, classes) {
+function writeEdges({ command, cwd, directories, reportDir, spawn }, classes) {
   const targets = {
     main: openSync(path.join(reportDir, 'jdeps.txt'), 'w'),
     test: openSync(path.join(reportDir, 'jdeps-test.txt'), 'w'),
@@ -138,7 +138,7 @@ function writeEdges({ command, cwd, directories, reportDir }, classes) {
   const outputFile = path.join(reportDir, JDEPS_OUTPUT);
   try {
     if (directories.length > 0) {
-      runJdeps({ command, cwd, directories, outputFile });
+      runJdeps({ command, cwd, directories, outputFile, spawn });
       splitFile(outputFile, classes, targets);
     }
   } finally {
@@ -148,14 +148,21 @@ function writeEdges({ command, cwd, directories, reportDir }, classes) {
   }
 }
 
-export function writeJdepsReports({ command, cwd, mainDirectory, testDirectory, reportDir }) {
+export function writeJdepsReports({
+  command,
+  cwd,
+  mainDirectory,
+  testDirectory,
+  reportDir,
+  spawn = spawnSync,
+}) {
   const mainClasses = classNamesIn(mainDirectory);
   const testClasses = classNamesIn(testDirectory);
   const directories = [
     ...(mainClasses.length > 0 ? [mainDirectory] : []),
     ...(testClasses.length > 0 ? [testDirectory] : []),
   ];
-  writeEdges({ command, cwd, directories, reportDir }, { mainClasses, testClasses });
+  writeEdges({ command, cwd, directories, reportDir, spawn }, { mainClasses, testClasses });
   writeFileSync(
     path.join(reportDir, 'jdeps-classes.txt'),
     mainClasses.map((name) => `${name}\n`).join(''),

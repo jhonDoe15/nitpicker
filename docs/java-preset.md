@@ -52,6 +52,20 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   same names, so a sealed type's `permits` edge is left out whichever project declares it. The
   root's names and identities are as in a one-project build, which reads its own jdeps reports
   unmerged.
+- **Integration tests on Gradle.** As on Maven (Surefire and Failsafe in `verify`), a project's
+  integration tests are run and counted, following what the project's own build runs: Nitpicker runs
+  `test` and every `Test` task that `check` depends on. A test suite of the `jvm-test-suite` plugin
+  (`integrationTest` and so on) is one of them only when the project wires it with
+  `check.dependsOn testing.suites.integrationTest`, because the plugin wires `test` alone, just as
+  Failsafe runs only when it is bound to a phase. A task `check` does not run is not run and not
+  counted. A checked task that the build skips (`enabled = false`, `onlyIf`) adds nothing: the JaCoCo
+  data and the JUnit XML an earlier run left behind are ignored (Maven deletes stale reports before
+  it builds) and PIT leaves its tests out. The JaCoCo data of the checked tasks is merged into one
+  report (coverage, CRAP and `changed-branch-coverage` count what an integration test covers), and
+  their JUnit XML goes to `test-results/<task>/` with the integration budget of the
+  [slow test](#slow-tests) rule (any task but `test`). Every checked task also has its own PIT run
+  and, when the task holds ArchUnit classes, its own ArchUnit run (see
+  [Slice 4](#slice-4-archunit) and [Slice 7](#slice-7-mutation-with-pit)).
 - **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
   `readJavaFindings` converts the reports, `runJavaDiff` does worktrees, rename map, comparison.
   `languages/java/adapters/java-analyzer.mjs` wraps all of it as one analyzer named `java` for the CLI (slice
@@ -260,7 +274,11 @@ for jscpd, a long-running PIT) and each is expensive enough to deserve its own r
   `nitpickerArchunit` task (a `Test` task on the project's test classes and runtime classpath,
   `ignoreFailures`). It runs on the framework the declared ArchUnit library needs: JUnit 4 for
   `archunit-junit4` rules (`@RunWith(ArchUnitRunner.class)`), the JUnit Platform for
-  `archunit-junit5`; with both or neither declared, on the framework of the project's `test` task.
+  `archunit-junit5`; with both or neither declared, on the framework of the task whose classes it
+  runs. The ArchUnit classes are left out of every checked test task (`test` and each task `check`
+  depends on) and run by their own `nitpickerArchunit` task, `nitpickerArchunit<Task>` for a task
+  other than `test` (on that task's test classes and runtime classpath), so a rule in an
+  integration test source set is a finding, not a failed build.
   When the test classes hold ArchUnit classes and none of them produced a report, the task fails
   (a Gradle failure, `tool-error`), as Maven does, instead of passing without findings. The
   project must have one of the two libraries on its test classpath; Nitpicker adds no dependency
@@ -305,9 +323,15 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
   1.0.0, both pinned, added on the conditions below), default mutators, XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
-  `--mutableCodePaths` limits mutation to the main classes. For a JUnit Platform `test` task, its
-  `includeTags` and `excludeTags` also select the tests PIT runs during its green-suite check and
-  mutation testing, including method-level tags. The JUnit Platform is not pinned by
+  `--mutableCodePaths` limits mutation to the main classes. Every test task the build checks (`test`
+  and each task `check` depends on) is a run of its own, `nitpickerPit<Task>`, with that task's test
+  classes (its `include` and `exclude` patterns applied), its runtime classpath, so tasks on
+  different library versions never share one, and, for a JUnit Platform task, its `includeTags` and
+  `excludeTags`, which select the tests PIT runs during the green-suite check and mutation testing,
+  including method-level tags. A task the build skips has no run. With more than one run, each
+  writes `pit/<task>/mutations.xml` and `nitpickerPit` merges them into `pit/mutations.xml`: a mutant
+  counts as killed when any run killed it, as when one run holds every test, which is what Maven's
+  single PIT run does. The JUnit Platform is not pinned by
   Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
   launcher of the project's engine version added when the project does not declare one. PIT
   requires a green test run: a failing test suite fails the build, which is a `java/gradle-failure`
@@ -497,15 +521,20 @@ classpath and its `test` task, and adds no test library to the project.
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
 - **Tests.** `core/command/java/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`),
-  so it runs without Java: pass, new finding in text/JSON/SARIF/JUnit, Gradle failure on head and
-  on base, missing binary, `--all`. The fake runs in the test process: `runFakeGradle({ args, cwd })`
+  and with a fake `mvn` plus a fake JDK (`core/command/java/test-support/`), so it runs without Java:
+  pass, new finding in text/JSON/SARIF/JUnit, build failure on head and on base, an exception entry,
+  missing binary, `--all`, the same cases for both builds. The Gradle fake runs in the test process: `runFakeGradle({ args, cwd })`
   (`languages/java/adapters/test-support/fake-gradle/`) is a pure function, `fixtures/fake-gradle.mjs`
   is the program that calls it, and `spawnFakeGradle` (`languages/java/adapters/test-support/in-process-gradle.mjs`),
   passed as `spawn` through `analyzeJavaSnapshot` and `runGradle`, answers the supervisor call for the fake's
   path, so no Node process starts per Gradle call. Output past `maxBuffer` is answered as `ENOBUFS` and an
   exception of the fake as a failed run; the process-tree deadline is not modelled and stays covered by
-  `gradle-process.test.mjs`, and `subprocess: true` tests run the real supervisor. The real Gradle run stays
-  behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`), unchanged.
+  `gradle-process.test.mjs`, and `subprocess: true` tests run the real supervisor (the one CLI case that does
+  runs on the Gradle build; the process wiring does not depend on the build). The Maven preset takes the same
+  `spawn` option: `runMavenPreset` passes it to `runMaven`, `runJava` and the direct `jar`, `jdeps` and `java -version`
+  calls, and `spawnFakeMaven` (`core/command/java/test-support/in-process-maven.mjs`) answers the fake `mvn`
+  and the fake `java`, `jdeps` and `jar` (by program name, wherever they are found) in process, so no process
+  starts for them. The real Gradle and Maven runs stay behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`), unchanged.
 
 ## Slice 1: tools, reports and identities
 
@@ -780,10 +809,11 @@ resolved plus a new finding, as in the TypeScript check.
   smaller Spring context or a test slice, or, for an integration test, an `*IT` name or an
   integration test source set; on Maven, an `*IT` name so that Failsafe runs it) and the exception
   route. Both keep the test's package, so package-private classes stay visible.
-  Nitpicker runs only the tests its run needs: on Gradle the `test` task and any test task the build
-  makes it depend on, on Maven the `test` phase, so a test moved out of them is not timed.
+  Nitpicker runs only the tests its run needs: on Gradle `test` and the test tasks `check` depends on
+  (see [Integration tests on Gradle](#how-it-works)), on Maven the `test` phase, or `verify` when
+  Failsafe runs, so a test moved out of them is not timed.
 - **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
-  `TEST-*.xml` of every test task in the run (not `nitpickerArchunit`) to
+  `TEST-*.xml` of every checked test task that ran (not the ArchUnit tasks) to
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
   its slowest time; only passed tests are timed (failed, errored and skipped cases are left out).
   A failing build reports its own error and no slow tests.
