@@ -16,7 +16,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 
 ## Finish with the gate
 
-1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.
+1. Run your tests with the project's runner (its `test` script). Failing tests stop coverage, CRAP
+   and mutation from running.
    The gate type-checks for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
