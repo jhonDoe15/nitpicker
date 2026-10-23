@@ -35,8 +35,8 @@ function writableStore(projectRoot, cli) {
   return createLayeredStore({ remote, writeRemote: true });
 }
 
-function rejectUnsupportedOptions(arguments_) {
-  const unsupported = arguments_.find(
+function rejectUnsupportedOptions(commandArguments) {
+  const unsupported = commandArguments.find(
     (argument) => argument.startsWith('--') && !CACHE_PUBLISH_OPTIONS.includes(argument),
   );
   if (unsupported !== undefined) {

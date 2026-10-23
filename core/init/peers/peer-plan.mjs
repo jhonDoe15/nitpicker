@@ -36,14 +36,17 @@ function nodePlan(projectRoot, project) {
   return { ...NOTHING, missing, command: installCommand(project.packageManager.add, missing) };
 }
 
+function requirementsWhere(status, keep) {
+  return status.filter(keep).map(({ requirement }) => requirement);
+}
+
 function pythonPlan(projectRoot, project) {
   const status = pythonPeerStatus(projectRoot, project);
-  const requirements = (keep) => status.filter(keep).map(({ requirement }) => requirement);
-  const missing = requirements(({ declared, installed }) => !declared && !installed);
+  const missing = requirementsWhere(status, ({ declared, installed }) => !declared && !installed);
   return {
     missing,
-    undeclared: requirements(({ declared }) => !declared),
-    installedOnly: requirements(({ declared, installed }) => !declared && installed),
+    undeclared: requirementsWhere(status, ({ declared }) => !declared),
+    installedOnly: requirementsWhere(status, ({ declared, installed }) => !declared && installed),
     command: installCommand(pythonInstaller(project.tool), missing),
     advice: PYTHON_ADVICE[project.tool],
   };

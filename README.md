@@ -68,7 +68,7 @@ to add. `--agents-md` also appends the [agent snippet](docs/agents-snippet.md) t
 `--ci github` writes a GitHub Actions workflow. Setting a TypeScript project up by hand:
 
 ```sh
-npm install --save-dev nitpicker typescript @types/node
+npm install --save-dev nitpicker 'typescript@^6' @types/node
 npx nitpicker
 ```
 

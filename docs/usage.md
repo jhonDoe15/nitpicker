@@ -9,7 +9,7 @@ For a short introduction, see the [README](../README.md).
 Add nitpicker as a dev dependency, together with the peers it needs from your project:
 
 ```sh
-npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node
+npm install --save-dev nitpicker vitest @vitest/coverage-v8 'typescript@^6' @types/node
 ```
 
 `pnpm add --save-dev`, `yarn add --dev` and `bun add --dev` take the same packages; run nitpicker
@@ -20,7 +20,8 @@ installed in `node_modules` by npm, pnpm, Yarn (Yarn Plug'n'Play is not supporte
 `nodeLinker: node-modules`) or Bun. The base's own install supports all four managers; nitpicker
 itself is tested end to end with npm projects. nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
-choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
+choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` (5.7 to 6.x:
+TypeScript 7 has no JavaScript API yet, so a plain `npm install typescript` is too new) come from
 your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
 tool error.
 
@@ -42,12 +43,12 @@ left for you:
    `.java` ones). The Kotlin preset needs Gradle today: a Maven project with Kotlin and Java sources
    gets the `java` preset with a note that only its Java sources are checked, and one with Kotlin
    sources only stops with exit 2. It also reads the package manager the way the gate does (the
-   lockfile up to the repository root, else the nearest `packageManager` field; npm without
-   either), the test runner (Vitest, Jest, `node:test` or Mocha, for both presets, the way
+   `packageManager` field or the lockfile of the nearest folder, up to the repository root, that
+   has a lockfile; without a lockfile, the nearest `packageManager` field; npm without either), the test runner (Vitest, Jest, `node:test` or Mocha, for both presets, the way
    [the strict preset](typescript-strict-preset.md) finds it) and, for Python, the project tool
    (uv, poetry, pipenv, pdm, hatch, conda, or pip for a plain or `.venv` project).
 2. **Prints the install command** for the project's package manager with only the peers that are
-   missing: `nitpicker`, `typescript`, `@types/node` and the test runner's packages (`vitest` and
+   missing: `nitpicker`, `typescript@^6`, `@types/node` and the test runner's packages (`vitest` and
    `@vitest/coverage-v8` pinned to the installed Vitest, `jest` or `mocha`; `node:test` needs none).
    At a workspace root it adds the flag that pnpm (`-w`) and Yarn 1 (`-W`) need there. A Python
    project gets `coverage`, its type checker, `pytest`, `mutmut` and a runner plugin if its runner
@@ -58,7 +59,9 @@ left for you:
    `python -m pip install`. A package counts as present when the project declares it (in
    `package.json`, `pyproject.toml`, `setup.cfg`, `setup.py`, `Pipfile`, `hatch.toml`,
    `environment.yml` or a requirements file) or has it installed (`node_modules`, `.venv`); one
-   that only `.venv` holds is named, so you can declare it. Java and Kotlin projects need Java 21
+   that only `.venv` holds is named, so you can declare it. `typescript` counts only in the range
+   nitpicker reads, 5.7 to 6.x (the installed version, else the declared range): TypeScript 7 has
+   no JavaScript API yet, so init asks for `typescript@^6` instead. Java and Kotlin projects need Java 21
    and nothing else.
 3. **Writes `nitpicker.config.json`** with the preset only, `{ "preset": "python" }`, formatted as
    Prettier formats it. Everything else (React, the test runner, the formatter, the build tool) is
@@ -131,7 +134,7 @@ without access to the release:
 VERSION=0.1.0-rc.1
 gh release download "v$VERSION" --repo jhonDoe15/nitpicker --pattern 'nitpicker-*.tgz' --pattern SHA256SUMS --dir vendor
 (cd vendor && shasum -a 256 -c SHA256SUMS && rm SHA256SUMS)
-npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" vitest @vitest/coverage-v8 typescript @types/node
+npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" vitest @vitest/coverage-v8 'typescript@^6' @types/node
 ```
 
 `package.json` then records `"nitpicker": "file:vendor/nitpicker-<version>.tgz"`. The peers are the

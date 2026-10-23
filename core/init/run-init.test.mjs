@@ -11,8 +11,8 @@ import { readText, useProjects } from './test-support/projects.mjs';
 const createProject = useProjects();
 const TYPESCRIPT = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };
 const SKILL = 'npx skills add jhonDoe15/nitpicker --skill';
-const NODE_INSTALL = 'nitpicker typescript @types/node vitest @vitest/coverage-v8';
-const NODE_MISSING = 'nitpicker, typescript, @types/node, vitest, @vitest/coverage-v8';
+const NODE_INSTALL = "nitpicker 'typescript@^6' @types/node vitest @vitest/coverage-v8";
+const NODE_MISSING = 'nitpicker, typescript@^6, @types/node, vitest, @vitest/coverage-v8';
 const GRADLE_NOTE =
   'There is no gradlew, so nitpicker runs gradle from the PATH. Install it, or add the wrapper.';
 const MAVEN_NOTE =

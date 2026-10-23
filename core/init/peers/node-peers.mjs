@@ -11,6 +11,11 @@ const RUNNER_PEERS = {
   node: [],
 };
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies'];
+const TYPESCRIPT = 'typescript';
+const SUPPORTED_TYPESCRIPT = 'typescript@^6';
+const FIRST_VERSION = /(?<major>\d+)(?:\.(?<minor>\d+))?/u;
+const OLDEST_TYPESCRIPT = [5, 7];
+const NEWEST_TYPESCRIPT_MAJOR = 6;
 
 export function requiredNodePeers(testRunner) {
   return ['nitpicker', 'typescript', '@types/node', ...RUNNER_PEERS[testRunner]];
@@ -23,8 +28,37 @@ function installedManifest(projectRoot, name) {
   return found === undefined ? undefined : JSON.parse(readFileSync(found, 'utf8'));
 }
 
-function isDeclared(manifest, name) {
-  return DEPENDENCY_FIELDS.some((field) => manifest?.[field]?.[name] !== undefined);
+function declaredSpecifier(manifest, name) {
+  return DEPENDENCY_FIELDS.map((field) => manifest?.[field]?.[name]).find(
+    (specifier) => specifier !== undefined,
+  );
+}
+
+function isSupportedTypeScript(version) {
+  const found = FIRST_VERSION.exec(String(version))?.groups;
+  if (found === undefined) {
+    return false;
+  }
+  const [major, minor] = [Number(found.major), Number(found.minor ?? 0)];
+  const [oldestMajor, oldestMinor] = OLDEST_TYPESCRIPT;
+  return major === oldestMajor
+    ? minor >= oldestMinor
+    : major > oldestMajor && major <= NEWEST_TYPESCRIPT_MAJOR;
+}
+
+function isPresent(projectRoot, manifest, name) {
+  const installed = installedManifest(projectRoot, name)?.version;
+  const declared = declaredSpecifier(manifest, name);
+  if (name !== TYPESCRIPT) {
+    return installed !== undefined || declared !== undefined;
+  }
+  return installed === undefined
+    ? isSupportedTypeScript(declared)
+    : isSupportedTypeScript(installed);
+}
+
+function requirementOf(projectRoot, name) {
+  return name === TYPESCRIPT ? SUPPORTED_TYPESCRIPT : pinnedToVitest(projectRoot, name);
 }
 
 function pinnedToVitest(projectRoot, name) {
@@ -35,8 +69,6 @@ function pinnedToVitest(projectRoot, name) {
 export function missingNodePeers(projectRoot, testRunner) {
   const manifest = readManifest(projectRoot);
   return requiredNodePeers(testRunner)
-    .filter(
-      (name) => !isDeclared(manifest, name) && installedManifest(projectRoot, name) === undefined,
-    )
-    .map((name) => pinnedToVitest(projectRoot, name));
+    .filter((name) => !isPresent(projectRoot, manifest, name))
+    .map((name) => requirementOf(projectRoot, name));
 }
