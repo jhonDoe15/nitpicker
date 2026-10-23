@@ -10,6 +10,7 @@ def pinned = [
     pitestJunit5    : '1.2.1',
     pitestTestng    : '1.0.0',
     archunit        : '1.5.1',
+    asm             : '9.9',
     detekt          : '1.23.8',
     detektKotlin    : '2.0.21',
     ktlint          : '1.8.0',
@@ -162,6 +163,7 @@ allprojects {
             }
             nitpickerCheckstyle "com.puppycrawl.tools:checkstyle:${pinned.checkstyle}"
             nitpickerSpringArch "com.tngtech.archunit:archunit:${pinned.archunit}"
+            nitpickerSpringArch "org.ow2.asm:asm-analysis:${pinned.asm}"
         }
         dependencies {
             nitpickerPit "org.pitest:pitest-command-line:${pinned.pitest}"
@@ -494,7 +496,7 @@ allprojects {
                 def digest = java.security.MessageDigest.getInstance('SHA-256')
                 ruleSources.each { digest.update(it.bytes) }
                 def jdk = "${System.getProperty('java.vendor')}|${System.getProperty('java.version')}"
-                digest.update("${pinned.archunit}|${jdk}".getBytes('UTF-8'))
+                digest.update("${pinned.archunit}|${pinned.asm}|${jdk}".getBytes('UTF-8'))
                 def cacheRoot = new File(gradle.gradleUserHomeDir, 'caches/nitpicker/spring-arch')
                 def classes = new File(cacheRoot, digest.digest().encodeHex().toString())
                 if (!classes.isDirectory()) {
