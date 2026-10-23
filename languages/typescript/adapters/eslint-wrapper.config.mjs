@@ -13,7 +13,7 @@ if (!Array.isArray(policyModule.default)) {
 
 const selectedRules = selectedRuleIds(process.env.NITPICKER_DIFF_ESLINT_ONLY_RULES);
 
-export default (await layeredPolicy(policyModule.default)).map((entry) =>
+export default (await layeredPolicy(policyModule.default, process.env)).map((entry) =>
   rebaseTypeScriptProject(entry, projectRoot, projectConfigPath),
 );
 

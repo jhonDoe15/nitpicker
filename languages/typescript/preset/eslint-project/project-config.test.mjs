@@ -61,7 +61,7 @@ describe('the ESLint project config files', () => {
     expect(
       eslintProjectFacts(project({ ...FILES, 'eslint/names.json': '{}\n' })).projectConfigDigest,
     ).not.toBe(facts.projectConfigDigest);
-    expect(eslintProjectFacts(project({}))).toEqual({ projectConfigFile: null });
+    expect(eslintProjectFacts(project({}))).toEqual({ projectConfigMissing: true });
   });
 
   it('do not follow a config that links outside the project', () => {

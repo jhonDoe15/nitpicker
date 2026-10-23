@@ -99,7 +99,9 @@ export function temporaryProjects() {
       return root;
     },
     remove() {
-      for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+      for (const root of roots.splice(0)) {
+        rmSync(root, { recursive: true, force: true });
+      }
     },
   };
 }
@@ -133,7 +135,7 @@ export function lintLayered({
     return results.flatMap((result) =>
       result.messages.map((message) => ({
         file: path.relative(projectRoot, result.filePath).replaceAll('\\', '/'),
-        ruleId: message.ruleId ?? null,
+        ruleId: message.ruleId ?? 'directive',
         line: message.line,
       })),
     );

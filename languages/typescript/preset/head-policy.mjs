@@ -159,7 +159,7 @@ function headToolFacts(policy, headPolicy) {
   const tools = { ...policy.tools };
   for (const [tool, keys] of [
     ['prettier', ['projectConfigDigest']],
-    ['eslint', ['projectConfigFile', 'projectConfigDigest']],
+    ['eslint', ['projectConfigFile', 'projectConfigDigest', 'projectConfigMissing']],
   ]) {
     if (usesProjectConfig(tools[tool]?.precedence ?? [])) {
       tools[tool] = { ...tools[tool], ...picked(headPolicy.tools?.[tool] ?? {}, keys) };

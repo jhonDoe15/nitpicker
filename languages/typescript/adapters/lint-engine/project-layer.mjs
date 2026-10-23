@@ -19,16 +19,16 @@ const OFF_SEVERITIES = new Set([0, '0', 'off']);
 
 export function projectLayerValue(settings, { liveProjectRoot, addsRules }) {
   const layers = precedenceLayers(settings?.precedence);
-  if (!layers.usesProject || settings.projectConfigFile === undefined) {
-    return '';
-  }
-  if (settings.projectConfigFile === null) {
+  if (layers.usesProject && settings.projectConfigMissing === true) {
     throw new Error(
       missingProjectConfig(
         'eslint',
         `an ESLint flat config at the project root (${ESLINT_PROJECT_FILES.join(', ')})`,
       ),
     );
+  }
+  if (!layers.usesProject || settings.projectConfigFile === undefined) {
+    return '';
   }
   return JSON.stringify({
     config: path.join(liveProjectRoot, settings.projectConfigFile),
@@ -37,7 +37,7 @@ export function projectLayerValue(settings, { liveProjectRoot, addsRules }) {
   });
 }
 
-export async function layeredPolicy(policyEntries, environment = process.env) {
+export async function layeredPolicy(policyEntries, environment) {
   const layer = parsedLayer(environment[PROJECT_LAYER_VARIABLE]);
   if (layer === undefined) {
     return policyEntries;

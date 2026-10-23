@@ -188,13 +188,11 @@ describe('nitpicker config file', () => {
         stdout: output.stdout,
         stderr: output.stderr,
       });
-      return output.stdoutText;
+      return output.stdoutText.split('\n').filter((line) => line.startsWith('Ignoring'));
     };
 
-    expect(run({})).toContain(`${notice}\n`);
-    expect(run({ tools: { eslint: { precedence: ['nitpicker', 'project'] } } })).not.toContain(
-      'Ignoring eslint',
-    );
+    expect(run({})).toEqual([notice]);
+    expect(run({ tools: { eslint: { precedence: ['nitpicker', 'project'] } } })).toEqual([]);
   });
   it('reports a strict exception and changes the policy hash', () => {
     const exception = {

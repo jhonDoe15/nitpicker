@@ -13,8 +13,8 @@ const root = projects.create({ ...SOURCES, ...PROJECT_FILES });
 const ALWAYS = [
   { file: 'src/console.ts', ruleId: 'no-console', line: 1 },
   { file: 'src/console.ts', ruleId: 'nitpicker/no-foo', line: 2 },
-  { file: 'src/loose.ts', ruleId: null, line: 1 },
-  { file: 'src/strict/locked.ts', ruleId: null, line: 1 },
+  { file: 'src/loose.ts', ruleId: 'directive', line: 1 },
+  { file: 'src/strict/locked.ts', ruleId: 'directive', line: 1 },
   { file: 'src/strict/locked.ts', ruleId: 'no-console', line: 2 },
 ];
 const NITPICKER_PARAMS = { file: 'src/params.ts', ruleId: 'max-params', line: 1 };

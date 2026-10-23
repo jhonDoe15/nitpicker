@@ -14,17 +14,29 @@ export const ESLINT_PROJECT_FILES = [
 const MODULE_EXTENSIONS = ['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts', '.json'];
 const SCRIPT_SPECIFIER = /\.([cm]?)js$/u;
 
-function isFileInside(root, relative) {
-  const full = path.resolve(root, relative);
-  if (!existsSync(full) || !statSync(full).isFile()) {
-    return false;
+function insideFile(root, relative) {
+  const base = path.resolve(root);
+  const full = path.resolve(base, relative);
+  if (!full.startsWith(base + path.sep) || !existsSync(full) || !statSync(full).isFile()) {
+    return undefined;
   }
-  const inside = path.relative(realpathSync(root), realpathSync(full));
-  return inside !== '' && !inside.startsWith('..') && !path.isAbsolute(inside);
+  const realBase = realpathSync(base);
+  if (!realpathSync(full).startsWith(realBase + path.sep)) {
+    return undefined;
+  }
+  return full;
+}
+
+function projectFileText(root, relative) {
+  const full = insideFile(root, relative);
+  if (full === undefined) {
+    throw new Error(`${relative} is not a file inside the project`);
+  }
+  return readFileSync(full, 'utf8');
 }
 
 export function projectEslintConfig(root) {
-  return ESLINT_PROJECT_FILES.find((name) => isFileInside(root, name));
+  return ESLINT_PROJECT_FILES.find((name) => insideFile(root, name) !== undefined);
 }
 
 function moduleCandidates(relative) {
@@ -40,14 +52,14 @@ function localImports(root, file) {
   if (path.posix.extname(file) === '.json') {
     return [];
   }
-  const text = readFileSync(path.join(root, file), 'utf8');
   return ts
-    .preProcessFile(text, true, true)
+    .preProcessFile(projectFileText(root, file), true, true)
     .importedFiles.map(({ fileName }) => fileName)
     .filter((specifier) => specifier.startsWith('./') || specifier.startsWith('../'))
     .map((specifier) => path.posix.join(path.posix.dirname(file), specifier))
     .flatMap(
-      (relative) => moduleCandidates(relative).find((name) => isFileInside(root, name)) ?? [],
+      (relative) =>
+        moduleCandidates(relative).find((name) => insideFile(root, name) !== undefined) ?? [],
     );
 }
 
@@ -59,11 +71,10 @@ export function eslintConfigFiles(root) {
   const seen = new Set([config]);
   const queue = [config];
   for (const file of queue) {
-    for (const imported of localImports(root, file)) {
-      if (!seen.has(imported)) {
-        seen.add(imported);
-        queue.push(imported);
-      }
+    const unseen = new Set(localImports(root, file).filter((imported) => !seen.has(imported)));
+    for (const imported of unseen) {
+      seen.add(imported);
+      queue.push(imported);
     }
   }
   return [config, ...[...seen].slice(1).toSorted()];
@@ -72,11 +83,11 @@ export function eslintConfigFiles(root) {
 export function eslintProjectFacts(root) {
   const files = eslintConfigFiles(root);
   if (files.length === 0) {
-    return { projectConfigFile: null };
+    return { projectConfigMissing: true };
   }
   const hash = createHash('sha256');
   for (const file of files) {
-    hash.update(`${file}\0${readFileSync(path.join(root, file), 'utf8')}\0`);
+    hash.update(`${file}\0${projectFileText(root, file)}\0`);
   }
   return { projectConfigFile: files[0], projectConfigDigest: hash.digest('hex') };
 }
