@@ -2,6 +2,7 @@ import { isBooleanLiteral } from '../support/literals.mjs';
 
 const NAMED_EXPORT = 'ExportNamedDeclaration';
 const IDENTIFIER = 'Identifier';
+const METHOD = 'MethodDefinition';
 const EXPORT_PARENTS = new Set([NAMED_EXPORT, 'ExportDefaultDeclaration']);
 const FUNCTION_VALUES = new Set(['ArrowFunctionExpression', 'FunctionExpression']);
 const CONDITIONS = new Set([
@@ -33,14 +34,16 @@ function isDocumentedBoolean(type) {
   return type.split('|').some((part) => part.replaceAll(/[?!=\s()]/g, '') === 'boolean');
 }
 
-function documentedNode(fn) {
+function declarationOf(fn) {
   const { parent } = fn;
-  const node =
-    parent.type === 'VariableDeclarator'
-      ? parent.parent
-      : parent.type === 'MethodDefinition'
-        ? parent
-        : fn;
+  if (parent.type === 'VariableDeclarator') {
+    return parent.parent;
+  }
+  return parent.type === METHOD ? parent : fn;
+}
+
+function documentedNode(fn) {
+  const node = declarationOf(fn);
   return EXPORT_PARENTS.has(node.parent?.type) ? node.parent : node;
 }
 
@@ -101,10 +104,7 @@ function isTypePredicate(fn) {
 }
 
 function isSkippedName(fn, name) {
-  return (
-    HOOK_OR_FACTORY.test(name) ||
-    (fn.parent.type === 'MethodDefinition' && METHOD_SETTER.test(name))
-  );
+  return HOOK_OR_FACTORY.test(name) || (fn.parent.type === METHOD && METHOD_SETTER.test(name));
 }
 
 function exportedFunctionName(fn, exported) {
@@ -118,7 +118,7 @@ function exportedFunctionName(fn, exported) {
     const named = declaration.type === NAMED_EXPORT || exported.has(parent.id.name);
     return named ? parent.id.name : undefined;
   }
-  return parent.type === 'MethodDefinition' ? exportedMethodName(parent, exported) : undefined;
+  return parent.type === METHOD ? exportedMethodName(parent, exported) : undefined;
 }
 
 function exportedMethodName(method, exported) {
