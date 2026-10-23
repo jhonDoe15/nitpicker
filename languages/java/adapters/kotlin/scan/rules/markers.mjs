@@ -65,7 +65,8 @@ const NOT_CODE = new RegExp(String.raw`^(?:@|https?:|TODO\b|FIXME\b|[-*>#]|\{@|$
 const EXAMPLE_HEADING =
   /^(?:(?:examples?|usage|samples?)(?:\s+(?:usage|code))?\s*(?::|$)|(?:e\.g\.|for example)\s*(?:[,:]|$))/i;
 const STRING_LITERAL = /"(?:\\.|[^"\\\n])*"/g;
-const GROUPED = /\([^()]*\)|\[[^[\]]*\]/g;
+const OPENERS = new Set(['(', '[']);
+const CLOSERS = new Set([')', ']']);
 const WORD_RUN = /\b(?:[a-z]{2,}|\d+)\s+[a-z]{2,}\b/;
 const KOTLIN_WORD_LIST = [
   ...['if', 'else', 'when', 'try', 'catch', 'is', 'in', 'as', 'by', 'to', 'and', 'or'],
@@ -162,13 +163,18 @@ function commentGroups(scanned) {
 }
 
 function withoutGroups(text) {
-  let current = text;
-  let inner = current.replaceAll(GROUPED, '');
-  while (inner !== current) {
-    current = inner;
-    inner = current.replaceAll(GROUPED, '');
+  let depth = 0;
+  let kept = '';
+  for (const char of text) {
+    if (OPENERS.has(char)) {
+      depth += 1;
+    } else if (CLOSERS.has(char)) {
+      depth = Math.max(depth - 1, 0);
+    } else if (depth === 0) {
+      kept += char;
+    }
   }
-  return current;
+  return kept;
 }
 
 function readsAsProse(text) {
