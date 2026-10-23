@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file.mjs';
 import { createHash } from 'node:crypto';
 import { statSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -82,11 +82,15 @@ function graphKey(cruise) {
 function runCruise(cruise) {
   const wrapper = installWrapperConfig(cruise);
   try {
-    const result = spawnSync(process.execPath, cruiseArguments(cruise, wrapper.path), {
-      cwd: cruise.projectRoot,
-      encoding: 'utf8',
-      maxBuffer: MAX_OUTPUT_BYTES,
-    });
+    const result = spawnSyncWithOutputFile(
+      process.execPath,
+      cruiseArguments(cruise, wrapper.path),
+      {
+        cwd: cruise.projectRoot,
+        encoding: 'utf8',
+        maxBuffer: MAX_OUTPUT_BYTES,
+      },
+    );
     assertCruised(result);
     return result.stdout;
   } finally {

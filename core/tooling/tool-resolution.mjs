@@ -1,7 +1,7 @@
 import { chainOf } from '../../shared/traversal.mjs';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { findPackageJSON } from 'node:module';
+import { findPackageJSON } from './package-json.mjs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';

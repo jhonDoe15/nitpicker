@@ -125,7 +125,8 @@ error that names how to get it (`corepack enable pnpm` or `npm install --global 
 `npm install --global bun`; Node.js no longer bundles Corepack from version 25, so install it
 first there). A lockfile that does not match its `package.json` fails the frozen install and the
 tool error carries the manager's message. Installing the base is not supported on native Windows
-(run nitpicker in WSL).
+(run nitpicker in WSL); [compatibility](compatibility.md#operating-systems) lists the other
+Windows limits.
 
 ### Reports
 
@@ -1433,7 +1434,8 @@ Findings match the project's own TypeScript, with the same messages, positions a
 Switching engines therefore shows those findings as new once. Paths inside messages are relative
 to the project, so they are the same on both sides of the comparison.
 
-To always type check with the project's own TypeScript, set the engine:
+The TypeScript 7 engine fails under Deno ([compatibility](compatibility.md#deno)), so a run on
+Deno needs this setting. To always type check with the project's own TypeScript, set the engine:
 
 ```json
 { "tools": { "typescript": { "engine": "project" } } }
