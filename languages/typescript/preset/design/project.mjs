@@ -1,5 +1,4 @@
-import path from 'node:path';
-import { globMatcher, toPosix } from '../layout.mjs';
+import { globMatcher } from '../layout.mjs';
 import { isGenerated } from '../unused-api/context.mjs';
 import { exportedNodes } from './syntax/exports.mjs';
 
@@ -33,14 +32,4 @@ export function moduleFacts(files, layout) {
     role: 'production',
     ...(entries.some((matcher) => matcher.test(file.path)) ? { entry: true } : {}),
   }));
-}
-
-export function packageFacts(packagesInfo, projectRoot) {
-  const inside = packagesInfo.packages
-    .map((entry) => ({
-      root: toPosix(path.relative(projectRoot, entry.dir)),
-      published: entry.published,
-    }))
-    .filter(({ root }) => !root.startsWith('..') && !path.isAbsolute(root));
-  return inside.length > 1 || inside.some(({ published }) => published) ? inside : [];
 }
