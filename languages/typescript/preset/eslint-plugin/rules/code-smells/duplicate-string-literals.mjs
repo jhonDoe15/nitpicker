@@ -1,7 +1,12 @@
 import { hasLiteralUnionType } from '../support/checked-types.mjs';
+import {
+  DISCRIMINANT_KEYS,
+  MAXIMUM_USES,
+  MINIMUM_LENGTH,
+  TRANSLATION_CALLS,
+  isIdiomaticText,
+} from '../../../../../../shared/literals/repeated-literal-exemptions.mjs';
 
-const MINIMUM_LENGTH = 5;
-const MAXIMUM_USES = 2;
 const SHOWN_LENGTH = 30;
 const ALPHANUMERIC = /[A-Za-z0-9]/;
 const MODULE_SOURCE_PARENTS = new Set([
@@ -14,19 +19,8 @@ const MODULE_SOURCE_PARENTS = new Set([
 ]);
 const PROPERTY = 'Property';
 const KEY_PARENTS = new Set([PROPERTY, 'PropertyDefinition', 'MethodDefinition']);
-export const DISCRIMINANT_KEYS = new Set(['type', 'kind', 'tag', 'variant']);
-const TRANSLATION_CALLS = new Set([
-  't',
-  '$t',
-  '_t',
-  '__',
-  'translate',
-  'formatMessage',
-  'useTranslation',
-  'useTranslations',
-  'getTranslations',
-  'getFixedT',
-]);
+const DISCRIMINANTS = new Set(DISCRIMINANT_KEYS);
+const TRANSLATIONS = new Set(TRANSLATION_CALLS);
 const CALL = 'CallExpression';
 const SKIPPED_PARENTS = new Set([
   'TSLiteralType',
@@ -44,7 +38,7 @@ function textOf(node) {
 }
 
 function isDiscriminant(parent) {
-  return parent.type === PROPERTY && !parent.computed && DISCRIMINANT_KEYS.has(parent.key.name);
+  return parent.type === PROPERTY && !parent.computed && DISCRIMINANTS.has(parent.key.name);
 }
 
 function calleeName({ callee }) {
@@ -57,9 +51,7 @@ function calleeName({ callee }) {
 function isTranslationArgument(node) {
   const { parent } = node;
   return (
-    parent?.type === CALL &&
-    parent.arguments[0] === node &&
-    TRANSLATION_CALLS.has(calleeName(parent))
+    parent?.type === CALL && parent.arguments[0] === node && TRANSLATIONS.has(calleeName(parent))
   );
 }
 
@@ -78,6 +70,9 @@ function isTranslationKey(node) {
 function isCountable(node, value) {
   const { parent } = node;
   if (value === undefined || value.length < MINIMUM_LENGTH || !ALPHANUMERIC.test(value)) {
+    return false;
+  }
+  if (isIdiomaticText(value)) {
     return false;
   }
   if (MODULE_SOURCE_PARENTS.has(parent.type) || SKIPPED_PARENTS.has(parent.type)) {
