@@ -1,6 +1,6 @@
 import ast
 
-from checks.common import dotted_name, finding, type_text
+from checks.common import ScopedVisitor, dotted_name, finding, type_text
 from errors.handling import is_handled
 from errors.logged_errors import logged_findings
 
@@ -34,25 +34,19 @@ def module_tuples(tree):
     return found
 
 
-class Errors(ast.NodeVisitor):
+class Errors(ScopedVisitor):
+    SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef)
+
     def __init__(self, context):
         self.context = context
-        self.scopes = [context.tree]
         self.tuples = module_tuples(context.tree)
         self.findings = []
         self.reported = set()
 
-    def visit_scope(self, node):
-        self.scopes.append(node)
-        self.generic_visit(node)
-        self.scopes.pop()
-
-    visit_FunctionDef = visit_scope
-    visit_AsyncFunctionDef = visit_scope
-
     def visit_ExceptHandler(self, node):
         optional_import = node.type is not None and is_optional_import(node)
-        if is_handled(node, self.context, self.scopes[-1], optional_import):
+        scope = self.chain[-1] if self.chain else self.context.tree
+        if is_handled(node, self.context, scope, optional_import):
             self.findings.extend(logged_findings(node, self.context, self.reported))
         else:
             caught = type_text(node.type) if node.type else ""
@@ -60,7 +54,6 @@ class Errors(ast.NodeVisitor):
             self.findings.append(
                 finding(self.context.path, "swallowed-exception", subject, node)
             )
-        self.generic_visit(node)
 
     def caught_names(self, node):
         for argument in node.args:
@@ -89,7 +82,6 @@ class Errors(ast.NodeVisitor):
                     self.context.path, "blind-suppress", f"{name}({arguments})", node
                 )
             )
-        self.generic_visit(node)
 
 
 def check(context):
