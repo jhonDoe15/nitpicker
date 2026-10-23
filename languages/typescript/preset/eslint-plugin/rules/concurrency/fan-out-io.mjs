@@ -7,7 +7,7 @@ import { createOrigins, skipped } from './io-origin.mjs';
 const GLOBAL_OBJECTS = new Set(['globalThis', 'window', 'self', 'global']);
 const origins = new WeakMap();
 
-export function originsOf(context) {
+function originsOf(context) {
   const program = context.sourceCode.ast;
   if (!origins.has(program)) {
     origins.set(program, createOrigins(context, clientSpec));

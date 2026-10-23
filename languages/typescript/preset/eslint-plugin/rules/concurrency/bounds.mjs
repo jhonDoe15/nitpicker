@@ -61,7 +61,7 @@ const LIMITERS = new Map([
   ['limiter', limiter(['RateLimiter'], (creation) => creation?.arguments[0] !== undefined)],
 ]);
 
-export function limiterSpec(source) {
+function limiterSpec(source) {
   return LIMITERS.get(source);
 }
 

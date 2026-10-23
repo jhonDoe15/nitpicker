@@ -35,7 +35,7 @@ function addLoaded(bindings, declarator) {
   }
 }
 
-export function moduleBindingsOf(program, wanted) {
+function moduleBindingsOf(program, wanted) {
   const declarators = declaratorsOf(program).map((node) => ({
     node,
     source: loadedModule(node.init),
