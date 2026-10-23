@@ -34,11 +34,12 @@ export function testRootReclassifier(config) {
         );
 }
 
-function globSet(label, [baseGlobs, headGlobs], importable) {
+function globSet({ label, kind }, [baseGlobs, headGlobs], importable) {
   const base = baseGlobs.map((glob) => globMatcher(glob));
   const head = headGlobs.map((glob) => globMatcher(glob));
   return {
     label,
+    kind,
     importable,
     hidesInHead: (file) => head.some((matcher) => matcher.test(file)),
     baseHiders: (basePath) =>
@@ -51,7 +52,7 @@ function globSet(label, [baseGlobs, headGlobs], importable) {
 function exceptionSets(label, [baseExceptions, headExceptions]) {
   return subjectsOf(headExceptions).map((subject) =>
     globSet(
-      `${label} for ${subjectLabel(subject)}`,
+      { label: `${label} for ${subjectLabel(subject)}`, kind: 'hidden-exception' },
       [globsCovering(baseExceptions, subject), subject.paths],
       false,
     ),
@@ -63,6 +64,7 @@ function testRootSet(baseConfig, headConfig) {
   const head = testRootReclassifier(headConfig);
   return {
     label: 'layout.testRoots',
+    kind: 'hidden-test-root',
     importable: true,
     hidesInHead: (file) => head(file) !== undefined,
     baseHiders: (basePath) => {
@@ -82,7 +84,11 @@ function duplicateFolderSet(baseConfig, headConfig) {
     ({ permanent }) => permanent || baseConfig.duplicates?.skippedFolders === undefined,
   );
   return {
-    ...globSet('duplicates.skippedFolders', [base, head], false),
+    ...globSet(
+      { label: 'duplicates.skippedFolders', kind: 'hidden-duplicates' },
+      [base, head],
+      false,
+    ),
     establishedInBase: matcherOf(established.map(({ glob }) => glob)),
   };
 }
@@ -90,7 +96,7 @@ function duplicateFolderSet(baseConfig, headConfig) {
 export function hidingSets(baseConfig, headConfig, scope) {
   return [
     globSet(
-      EXCLUSIONS,
+      { label: EXCLUSIONS, kind: 'hidden-exclusion' },
       [keyedExclusions(baseConfig), keyedExclusions(headConfig)].map((entries) =>
         entries.map(({ glob }) => glob),
       ),

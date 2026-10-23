@@ -1,3 +1,5 @@
+import { expect } from 'vitest';
+import { hasSpecificGuidance } from '../../../diff/reporting/review/policy-guidance.mjs';
 import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
 import { policyChangeFields } from '../../describe-policy-changes.mjs';
 import { readPolicyScope } from '../../policy-scope.mjs';
@@ -12,7 +14,14 @@ export function between({ base, head, config = JAVA }) {
     baseProjectRoot: createGitRepository(base).root,
     headProjectRoot: createGitRepository(head).root,
   });
-  return policyChangeFields(config, config, scope);
+  return guided(policyChangeFields(config, config, scope));
+}
+
+function guided(fields) {
+  for (const text of fields.policyLoosenings) {
+    expect(hasSpecificGuidance(fields.policyKinds[text]), text).toBe(true);
+  }
+  return fields;
 }
 
 export function changesOf({ policyLoosenings, policyChanges }) {
