@@ -6,8 +6,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import {
   SPRING_ARCH_FIXTURE as fixture,
+  SPRING_ARCH_ROLES,
   SPRING_ARCH_VIOLATIONS,
 } from '../__tests__/spring-arch-project.mjs';
+import { writeSpringRoles } from '../../spring-arch/spring-roles.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -18,9 +20,17 @@ describe.skipIf(!enabled)('Spring architecture rules on a Spring project', () =>
   beforeAll(() => {
     projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-spring-arch-')), 'shop');
     cpSync(fixture, projectRoot, { recursive: true });
+    const roles = writeSpringRoles(SPRING_ARCH_ROLES, path.dirname(projectRoot));
     const result = spawnSync(
       gradle,
-      ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'nitpickerSpringArch'],
+      [
+        '--console=plain',
+        '--quiet',
+        '-I',
+        INIT_SCRIPT,
+        `-Pnitpicker.spring.roles=${roles}`,
+        'nitpickerSpringArch',
+      ],
       { cwd: projectRoot, encoding: 'utf8', timeout: 180_000 },
     );
     if (result.status !== 0) {
