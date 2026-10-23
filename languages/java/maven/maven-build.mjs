@@ -34,6 +34,7 @@ import {
   writeManifest,
 } from './manifest/maven-manifest.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
+import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
@@ -144,7 +145,8 @@ function readTestRuns(context) {
 }
 
 function analyzeSources(options) {
-  const { module, reportDir, classpaths, tools, pinned, configs, style, spring, spawn } = options;
+  const { module, reportDir, classpaths, tools, pinned, configs, style, spring } = options;
+  const { springRoles, spawn } = options;
   runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn });
   runSpotbugs({ module, reportDir, tools, spawn });
   runErrorProne({ module, reportDir, tools, classpaths, spawn });
@@ -152,7 +154,7 @@ function analyzeSources(options) {
   runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn });
   runStructure(module, reportDir, spawn);
   runJdeps(module, reportDir, spawn);
-  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, spawn });
+  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, springRoles, spawn });
 }
 
 function runCoverageTools(options) {
@@ -279,6 +281,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
         tolerateFailures: policy.snapshot === 'base',
         projectRoot,
         spring: policy.spring,
+        springRoles: writeSpringRoles(policy.springRoles, work),
       }),
     };
   } finally {
