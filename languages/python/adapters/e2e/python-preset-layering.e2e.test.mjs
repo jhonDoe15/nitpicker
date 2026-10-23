@@ -171,7 +171,9 @@ describe.skipIf(!pythonE2eEnabled)(
         ['package-cycle', 'src/shop/features/billing/__init__.py'],
         ['package-cycle', 'src/shop/features/shipping/__init__.py'],
       ]);
-      expect(newRules(result)).toContain('nitpicker-config policy-loosened');
+      expect(newRules(result).filter((rule) => rule.startsWith('nitpicker-config'))).toEqual(
+        Array.from({ length: 6 }, () => 'nitpicker-config policy-loosened'),
+      );
     });
     it('does not run the contracts when the config turns import-linter off', () => {
       const digest = acceptedDigest(['python.importLinter: not set -> false'], {

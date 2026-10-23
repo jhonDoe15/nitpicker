@@ -2,7 +2,7 @@ import path from 'node:path';
 import { readJson, trackedText } from './known-files.mjs';
 import { holdsSources } from './output-sources.mjs';
 
-export const BUILD_MANIFESTS = new Set([
+const BUILD_MANIFESTS = new Set([
   'package.json',
   'build.gradle',
   'build.gradle.kts',
@@ -10,6 +10,10 @@ export const BUILD_MANIFESTS = new Set([
   'pyproject.toml',
 ]);
 const PROJECT_OUTPUT = new Set(['dist', 'build', 'out', 'coverage', 'target']);
+
+export function isBuildManifest(name) {
+  return BUILD_MANIFESTS.has(name);
+}
 const SOURCE_FOLDER_NAMES = new Set(['build', 'out', 'coverage', 'target']);
 const ANY_DEPTH_OUTPUT = new Set(['.next', '.nuxt', 'storybook-static', '.turbo', '.parcel-cache']);
 const PACKAGE_ENTRY_FIELDS = ['main', 'module', 'types', 'typings', 'bin', 'exports', 'browser'];

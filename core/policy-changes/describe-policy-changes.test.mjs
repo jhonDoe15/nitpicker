@@ -259,29 +259,17 @@ describe('describePolicyChanges', () => {
   });
 
   it('lists feature and shared roots that only add or split folders without counting them', () => {
-    const python = (layout) => ({ preset: 'python', layout });
-    const files = ['src/app/features/billing/plugins/pdf/render.py', 'src/app/common/ids.py'];
+    const layout = { featureRoots: ['**/features', 'src/a/features/b/c'], sharedRoots: ['src/d'] };
+    const files = ['src/a/features/b/c/e/f.py', 'src/d/ids.py'];
+    const typescript = { layout: { featureRoots: ['**/src/main/features', 'lib/features'] } };
 
-    expect(
-      changes(
-        python({}),
-        python({
-          featureRoots: ['**/features', 'src/app/features/billing/plugins'],
-          sharedRoots: ['**/shared', 'src/app/common'],
-        }),
-        files,
-      ),
-    ).toEqual({
+    expect(changes({ preset: 'python' }, { preset: 'python', layout }, files)).toEqual({
       loosened: [],
       changed: [
-        'layout.sharedRoots: not set -> ["**/shared","src/app/common"]; layout.featureRoots: not set -> ["**/features","src/app/features/billing/plugins"]',
+        'layout.sharedRoots: not set -> ["src/d"]; layout.featureRoots: not set -> ["**/features","src/a/features/b/c"]',
       ],
     });
-    expect(
-      changes({}, { layout: { featureRoots: ['**/src/main/features', 'lib/features'] } }, [
-        'src/main/features/billing/api.ts',
-      ]),
-    ).toEqual({
+    expect(changes({}, typescript, ['src/main/features/billing/api.ts'])).toEqual({
       loosened: [],
       changed: ['layout.featureRoots: not set -> ["**/src/main/features","lib/features"]'],
     });

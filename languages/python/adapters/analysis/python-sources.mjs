@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   PYTHON_SKIPPED_FOLDERS,
@@ -13,8 +13,8 @@ import {
   NON_SOURCE_FILES,
 } from '../execution/python-project.mjs';
 import { isGeneratedPython } from '../../libraries/generated-files.mjs';
-import { BUILD_MANIFESTS } from '../../../../shared/hygiene/files/build-output.mjs';
-import { bddFeatureMatcher } from '../configuration/pytest/bdd-features.mjs';
+import { isBuildManifest } from '../../../../shared/hygiene/files/build-output.mjs';
+import { bddFeatureMatcher, isDirectory } from '../configuration/pytest/bdd-features.mjs';
 import {
   DJANGO_TEST_FILES,
   isDjangoProject,
@@ -37,10 +37,6 @@ function isPythonFile(entry, { wholeProject }) {
 function isSearched(entry, { wholeProject }) {
   const skipped = wholeProject ? NON_SOURCE_DIRECTORIES : INSTALLED;
   return entry.isDirectory() && !entry.name.startsWith('.') && !skipped.has(entry.name);
-}
-
-function isDirectory(absolute) {
-  return existsSync(absolute) && statSync(absolute).isDirectory();
 }
 
 export function pythonSourceFiles(projectRoot, sourceRoots) {
@@ -148,21 +144,23 @@ export function testFileMatcher(projectRoot) {
   return (file) => isTestFile(file, options) || isBddCode(file);
 }
 
-function holdsBuildOutput(directory, projectRoot) {
+function holdsBuildOutput(directory, { entries, projectRoot }) {
   return (
     path.resolve(directory) === path.resolve(projectRoot) ||
-    [...BUILD_MANIFESTS].some((manifest) => existsSync(path.join(directory, manifest)))
+    entries.some((entry) => entry.isFile() && isBuildManifest(entry.name))
   );
 }
 
-function skippedNames(directory, { skipped, projectRoot }) {
-  const outputs = holdsBuildOutput(directory, projectRoot) ? [...BUILD_OUTPUT_DIRECTORIES] : [];
+function skippedNames(directory, { entries, skipped, projectRoot }) {
+  const outputs = holdsBuildOutput(directory, { entries, projectRoot })
+    ? [...BUILD_OUTPUT_DIRECTORIES]
+    : [];
   return [...EXCLUDED_DIRECTORIES, ...outputs, ...skipped];
 }
 
 function listDirectory(directory, { skipped, isTest, projectRoot }) {
   const entries = readdirSync(directory, { withFileTypes: true });
-  const skippedHere = skippedNames(directory, { skipped, projectRoot });
+  const skippedHere = skippedNames(directory, { entries, skipped, projectRoot });
   function named(entry) {
     return path.join(directory, entry.name);
   }
