@@ -3,12 +3,12 @@ import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
 } from '../../../../shared/messages/troubleshooting.mjs';
+import { printable } from '../format/text.mjs';
+import { policyKindGuidance } from './policy-guidance.mjs';
 
 const POLICY_TOOL = 'nitpicker-config';
 const POLICY_RULE = 'policy-loosened';
 const DIGEST_LENGTH = 12;
-const ALLOWED_FORM =
-  "Keep the base's policy and change the code until it passes: keep new code under the source roots, where the gate checks it, and fix findings instead of excluding, excepting or reclassifying the code.";
 
 export function policyDigest({ loosenings, files = [] }) {
   return createHash('sha256')
@@ -29,7 +29,7 @@ function acceptRoute(digest) {
   );
 }
 
-export function policyFindings(loosenings, digest, acceptedDigest) {
+export function policyFindings(loosenings, digest, { acceptedDigest, kinds = {} } = {}) {
   if (isPolicyChangeAccepted(loosenings, digest, acceptedDigest)) {
     return [];
   }
@@ -40,9 +40,16 @@ export function policyFindings(loosenings, digest, acceptedDigest) {
     path: 'nitpicker.config.json',
     identity: change,
     message: withTroubleshooting(
-      `${change}. ${ALLOWED_FORM} ${route}`,
+      `${printable(change)}. ${policyKindGuidance(kinds[change])} ${route}`,
       TROUBLESHOOTING_ANCHORS.policyLoosened,
     ),
     classification: 'enforceable',
+    ...(kinds[change] === undefined ? {} : { policyKind: kinds[change] }),
   }));
 }
+
+export function isPolicyFinding(finding) {
+  return finding.tool === POLICY_TOOL && finding.rule === POLICY_RULE;
+}
+
+export const POLICY_FINDING_ID = `${POLICY_TOOL}/${POLICY_RULE}`;

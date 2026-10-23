@@ -325,8 +325,10 @@ file names each tool reads.
 ### A policy-loosened finding
 
 **Symptom.** An enforceable `nitpicker-config/policy-loosened` finding on `nitpicker.config.json`. The
-run exits 1. The message names the loosening and ends with
-`--accept-policy-change=<digest>` and `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`.
+run exits 1. The console groups the loosenings by kind, says once what each kind does to the checks,
+and prints the digest with `--accept-policy-change=<digest>` and
+`NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`; `report.txt` and `new-findings.json` keep one finding per
+loosening.
 
 **Cause.** The head controls its own `nitpicker.config.json`, so a change that checks less than the base
 (an added `exclude` or exception that hides existing code, a removed source root, a raised threshold,
@@ -344,7 +346,8 @@ quietly. It is a finding, not a tool error, so the exit code is 1.
    stops and asks that person.
 3. The digest covers every loosening and the content of each file the findings name. Editing a named
    file, or adding another loosening, changes it and the finding returns with a new digest, so accept
-   the final state of the change.
+   the final state of the change. A local run and CI can print different digests, because CI may
+   check the pull request merged into its target branch: accept the digest of the run that fails.
 4. `--accept-policy-change` is ignored when stdin and stdout are not both terminals, and
    `NITPICKER_ACCEPT_POLICY_CHANGE` is ignored when `CI` is unset. Stderr names the ignored acceptance
    and the run still fails.

@@ -52,6 +52,8 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
   (#396).
 - The base of a TypeScript or JavaScript comparison is installed with the project's own package
   manager: pnpm, Yarn or Bun, not only npm (#282).
+- `"history": { "coChange": true }` turns on a report-only `change-history/co-change` analyzer in
+  every preset: it names production modules that keep changing together in the Git history (#492).
 - `nitpicker changelog [<version>]` prints what changed in a version, from this changelog, which now
   ships in the package.
 - `repository-hygiene` fails a change that commits `.env` files, private keys, archives, binaries,
@@ -89,11 +91,21 @@ Stricter rules, which can fail code that passed before:
 - Java and Kotlin Spring projects: a controller that holds another controller, a repository that
   depends on a service, and a singleton bean that takes a request or session scoped bean without a
   scoped proxy now fail (#486).
+- Java and Kotlin projects that use jMolecules: an aggregate that holds another aggregate's root or
+  entity, and a value object that holds an entity, now fail (#498).
+- Python: an async cancellation handler that swallows or replaces the cancellation, a resource
+  closed while a child task can still use it, and an unshielded `await` in Trio or AnyIO cleanup now
+  fail (#377, #484).
+- Kotlin tests: `delay` on a real dispatcher inside `runTest`, coroutines that escape the test,
+  disabled or focused tests, and assertions inside `if`, `when` or loops over case tables now fail
+  (#489).
 - A slow test the change adds fails in Java, and the 5 and 30 second budgets apply to every preset
   (#242, #287).
 - Project tool configs for ruff, black, mypy, pyright, mutmut, ktlint, ktfmt and detekt are read
   only when `tools.<tool>.precedence` lists `"project"` (#266, #273).
 - Gradle failures show the failure block first and link the full build log (#307).
+- The console summary groups policy loosenings by kind, explains each kind once and prints the digest
+  and the acceptance command once (#370).
 - Python complexity is computed from the syntax tree, and a flat `else if` chain counts as one
   nesting level in Python, TypeScript and Java (#227).
 
