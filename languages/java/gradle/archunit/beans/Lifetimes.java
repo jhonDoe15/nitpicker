@@ -26,7 +26,7 @@ final class Lifetimes {
   private static final String COMPONENT_SCAN = "org.springframework.context.annotation.ComponentScan";
   private static final String COMPONENT_SCANS = "org.springframework.context.annotation.ComponentScans";
   private static final String LAZY = "org.springframework.context.annotation.Lazy";
-  private static final List<String> INJECTION_MARKERS =
+  static final List<String> INJECTION_MARKERS =
       List.of(
           "org.springframework.beans.factory.annotation.Autowired",
           "jakarta.inject.Inject",
@@ -86,6 +86,11 @@ final class Lifetimes {
       if (isComponent(type) && !BeanScope.of(type.getAnnotations(), scanProxy).isSingleton()) {
         beans.add(type);
       }
+      for (JavaMethod method : type.getMethods()) {
+        if (method.isMetaAnnotatedWith(BEAN) && !BeanScope.of(method.getAnnotations(), "NO").isSingleton()) {
+          beans.add(method.getRawReturnType());
+        }
+      }
     }
     return beans;
   }
@@ -100,8 +105,8 @@ final class Lifetimes {
       for (JavaMethod method : type.getMethods()) {
         if (method.isMetaAnnotatedWith(BEAN) && BeanScope.of(method.getAnnotations(), "NO").isSingleton()) {
           JavaClass made = method.getRawReturnType();
-          if (!made.getName().equals(Object.class.getName())) {
-            singletons.add(made);
+          singletons.add(made);
+          if (main.contain(made.getName())) {
             made.getAllSubclasses().stream().filter(subclass -> !isComponent(subclass)).forEach(singletons::add);
           }
         }

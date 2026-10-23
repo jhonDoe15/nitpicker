@@ -1,4 +1,5 @@
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -18,6 +19,12 @@ import org.objectweb.asm.tree.analysis.Interpreter;
 
 final class FlowInterpreter extends Interpreter<Flow> {
   private static final String LAMBDA_FACTORY = "java/lang/invoke/LambdaMetafactory";
+  private static final Set<String> PREDICATES =
+      Set.of("filter", "anyMatch", "allMatch", "noneMatch", "takeWhile", "dropWhile", "peek", "removeIf", "sorted",
+          "min", "max");
+  private static final Set<String> VALUES =
+      Set.of("Ljava/lang/Boolean;", "Ljava/lang/Byte;", "Ljava/lang/Character;", "Ljava/lang/Short;",
+          "Ljava/lang/Integer;", "Ljava/lang/Long;", "Ljava/lang/Float;", "Ljava/lang/Double;");
   private static final Set<Integer> DOUBLE_WORDS =
       Set.of(Opcodes.LALOAD, Opcodes.DALOAD, Opcodes.LADD, Opcodes.DADD, Opcodes.LSUB, Opcodes.DSUB,
           Opcodes.LMUL, Opcodes.DMUL, Opcodes.LDIV, Opcodes.DDIV, Opcodes.LREM, Opcodes.DREM, Opcodes.LSHL,
@@ -29,14 +36,18 @@ final class FlowInterpreter extends Interpreter<Flow> {
   private final MethodFlow flow;
   private final Library library;
   private final Flows flows;
+  private final Map<String, Set<String>> spilled;
+  private boolean spilledGrew;
   private final int[] argumentOfLocal;
 
-  FlowInterpreter(MethodNode method, MethodFlow flow, Library library, Flows flows) {
+  FlowInterpreter(
+      MethodNode method, MethodFlow flow, Library library, Flows flows, Map<String, Set<String>> spilled) {
     super(Opcodes.ASM9);
     this.method = method;
     this.flow = flow;
     this.library = library;
     this.flows = flows;
+    this.spilled = spilled;
     this.argumentOfLocal = new int[Math.max(method.maxLocals, 1) + 2];
     boolean isStatic = (method.access & Opcodes.ACC_STATIC) != 0;
     int local = 0;
@@ -98,13 +109,19 @@ final class FlowInterpreter extends Interpreter<Flow> {
   @Override
   public Flow unaryOperation(AbstractInsnNode insn, Flow value) {
     int opcode = insn.getOpcode();
+    if (opcode == Opcodes.GETFIELD && flows.isContinuation(((FieldInsnNode) insn).owner)) {
+      FieldInsnNode field = (FieldInsnNode) insn;
+      return Flow.tainted(Type.getType(field.desc).getSize(), spilled.getOrDefault(field.name, Set.of()));
+    }
     if (opcode == Opcodes.GETFIELD) {
       FieldInsnNode field = (FieldInsnNode) insn;
       return new Flow(Type.getType(field.desc).getSize(), value.taint, fieldOf(value.alias, field.name));
     }
     if (opcode == Opcodes.PUTSTATIC) {
       FieldInsnNode field = (FieldInsnNode) insn;
-      flow.store(index(insn), "=", Set.of(staticField(field)), value.taint);
+      if (holdsData(field.desc)) {
+        flow.store(index(insn), "=", Set.of(staticField(field)), value.taint);
+      }
       return null;
     }
     if (opcode == Opcodes.NEWARRAY || opcode == Opcodes.ANEWARRAY) {
@@ -125,7 +142,12 @@ final class FlowInterpreter extends Interpreter<Flow> {
     int opcode = insn.getOpcode();
     if (opcode == Opcodes.PUTFIELD) {
       FieldInsnNode field = (FieldInsnNode) insn;
-      flow.store(index(insn), "=", fieldOf(first.alias, field.name), second.taint);
+      if (flows.isContinuation(field.owner)) {
+        Set<String> held = spilled.computeIfAbsent(field.name, ignored -> new TreeSet<>());
+        spilledGrew |= held.addAll(second.taint);
+      } else if (holdsData(field.desc)) {
+        flow.store(index(insn), "=", fieldOf(first.alias, field.name), second.taint);
+      }
       return null;
     }
     if (opcode >= Opcodes.IALOAD && opcode <= Opcodes.SALOAD) {
@@ -156,8 +178,8 @@ final class FlowInterpreter extends Interpreter<Flow> {
     }
     MethodInsnNode call = (MethodInsnNode) insn;
     Type returned = Type.getReturnType(call.desc);
-    Set<String> taint = taintOf(values, 0);
-    feedLambdas(insn, values, taint);
+    Set<String> taint = PREDICATES.contains(call.name) ? dataOf(values) : taintOf(values, 0);
+    feedLambdas(insn, values, dataOf(values));
     Optional<String> source = library.source(call.owner, call.name);
     if (source.isPresent()) {
       flow.sources.add(Flow.SOURCE + source.get());
@@ -219,7 +241,7 @@ final class FlowInterpreter extends Interpreter<Flow> {
   private Flow dynamic(InvokeDynamicInsnNode insn, List<? extends Flow> values) {
     Type returned = Type.getReturnType(insn.desc);
     Set<String> taint = taintOf(values, 0);
-    feedLambdas(insn, values, taint);
+    feedLambdas(insn, values, dataOf(values));
     if (insn.bsm.getOwner().equals(LAMBDA_FACTORY) && insn.bsmArgs.length > 1 && insn.bsmArgs[1] instanceof Handle) {
       Handle target = (Handle) insn.bsmArgs[1];
       if (flows.isProjectClass(target.getOwner())) {
@@ -246,6 +268,27 @@ final class FlowInterpreter extends Interpreter<Flow> {
     Set<String> taint = new TreeSet<>();
     for (int position = from; position < values.size(); position++) {
       taint.addAll(values.get(position).taint);
+    }
+    return taint;
+  }
+
+  boolean spilledGrew() {
+    return spilledGrew;
+  }
+
+  private boolean holdsData(String desc) {
+    Type type = Type.getType(desc);
+    return (type.getSort() == Type.OBJECT || type.getSort() == Type.ARRAY)
+        && !VALUES.contains(desc)
+        && !(type.getSort() == Type.OBJECT && flows.isEnum(type.getInternalName()));
+  }
+
+  private static Set<String> dataOf(List<? extends Flow> values) {
+    Set<String> taint = new TreeSet<>();
+    for (Flow value : values) {
+      if (value.alias.stream().noneMatch(id -> id.startsWith(Flow.LAMBDA))) {
+        taint.addAll(value.taint);
+      }
     }
     return taint;
   }
