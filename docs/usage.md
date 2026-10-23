@@ -785,7 +785,8 @@ entry with the same shape as TypeScript's, for example
 
 Set `"preset": "javascript"` to gate a project of plain `.js`, `.mjs` and `.cjs` files with the same
 checks, rules and exit codes as the TypeScript preset; the keys `layout`, `exceptions` and `tools` work the same.
-It is never auto-detected. CI needs what the TypeScript preset needs ([nitpicker in CI](ci.md#toolchains-by-preset)). Types are written as JSDoc and checked by TypeScript with `allowJs` and
+It is never auto-detected. CI needs what the TypeScript preset needs
+([nitpicker in CI](ci.md#toolchains-by-preset)). Types are written as JSDoc and checked by TypeScript with `allowJs` and
 `checkJs`: nitpicker generates the tsconfig, layered over your `tsconfig.json` or `jsconfig.json` when you
 have one. `typescript` and `vitest` are peers as for TypeScript.
 

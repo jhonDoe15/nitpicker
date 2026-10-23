@@ -2,7 +2,7 @@ import { singleLine } from '../format/text.mjs';
 
 export const MAX_ANNOTATIONS = 10;
 
-const MAX_TOOL_ERROR_ANNOTATIONS = 2;
+export const MAX_TOOL_ERROR_ANNOTATIONS = 2;
 
 const MESSAGE_LIMIT = 1000;
 
