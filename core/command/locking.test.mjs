@@ -30,7 +30,7 @@ describe('nitpicker progress and run lock', () => {
       });
       return { exitCode, output };
     };
-    return { repository, run, lockPath: resolveRunLockPath(repository.root) };
+    return { repository, run, cacheDirectory, lockPath: resolveRunLockPath(repository.root) };
   }
   it('prints a start line per phase to stderr and leaves out quick successful analyzers', () => {
     const { run } = setup();
@@ -45,13 +45,13 @@ describe('nitpicker progress and run lock', () => {
     expect(output.stdoutText).not.toContain('nitpicker: head');
   });
   it('says the base was cached instead of running it again', () => {
-    const { run } = setup();
+    const { run, cacheDirectory } = setup();
     run();
 
     const { output } = run();
 
     expect(output.stderrText.split('\n').filter(Boolean)).toEqual([
-      'nitpicker: base 1 analyzer cached',
+      `nitpicker: base 1 analyzer cached (${cacheDirectory}; use --no-cache to rerun)`,
       'nitpicker: head: running 1 analyzer',
     ]);
   });

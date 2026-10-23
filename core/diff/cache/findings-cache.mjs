@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { createDirectoryStore, resolveCacheDirectory } from './cache-stores.mjs';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
 import { resolveAnalyzerMetadata } from '../execution/run-analyzers.mjs';
+import { nitpickerCodeFingerprint } from './code-fingerprint.mjs';
 
 const CACHE_SCHEMA = 1;
 
@@ -11,11 +12,13 @@ export function cacheKey({
   analyzer,
   configOverrides = [],
   headPolicy = {},
+  codeFingerprint = nitpickerCodeFingerprint(),
 }) {
   return createHash('sha256')
     .update(
       JSON.stringify([
         CACHE_SCHEMA,
+        codeFingerprint,
         mergeBaseSha,
         projectRelativePath,
         analyzer.name,
@@ -38,10 +41,18 @@ export function createFindingsCache({
   projectRelativePath,
   configOverrides = [],
   headPolicy = {},
+  codeFingerprint = nitpickerCodeFingerprint(),
 }) {
   const backend = store ?? createDirectoryStore(directory);
   function keyFor(analyzer) {
-    return cacheKey({ mergeBaseSha, projectRelativePath, analyzer, configOverrides, headPolicy });
+    return cacheKey({
+      mergeBaseSha,
+      projectRelativePath,
+      analyzer,
+      configOverrides,
+      headPolicy,
+      codeFingerprint,
+    });
   }
   function readReport(analyzer) {
     const key = keyFor(analyzer);
