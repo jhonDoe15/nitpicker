@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Nitpicker's PMD rules for main sources only: API design rules that, like their TypeScript
-     counterparts, leave test code alone. Gradle and Maven reference this file from a generated
-     ruleset that excludes the test source roots. docs/java-preset.md lists the rules and why each
-     exists. -->
+<!-- Nitpicker's PMD rules for main sources only: API design rules and the class-load effect rule
+     that, like their TypeScript counterparts, leave test code alone. Gradle and Maven reference
+     this file from a generated ruleset that excludes the test source roots. docs/java-preset.md
+     lists the rules and why each exists. -->
 <ruleset name="nitpicker-main-rules"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -126,6 +126,140 @@
             return $plural = ($name || 's', $name || 'es',
                               if (matches($name, '[^aeiou]y$')) then substring($name, 1, string-length($name) - 1) || 'ies' else ())
               and $own[self::ClassType or self::PrimitiveType] and $ownName = $elementName)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ClassLoadEffect" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Do this work in a method that main or the framework calls after startup (a @Bean method, an ApplicationRunner) and pass the result in: this call runs while ${className} loads (a static field or block, an enum constant, a constructor a static field calls, or a helper one of them calls), so it connects, starts threads or touches files in whatever order classes load, and in every test that touches the class. Constants, loggers, Pattern.compile and collections can stay static, and the class with main is not checked.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $owner := function($node) {
+      $node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::CompactConstructorDeclaration
+        or self::Initializer or self::FieldDeclaration or self::EnumConstant or self::LambdaExpression][1]
+    },
+    $typeOf := function($member) {
+      $member/ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration
+        or self::AnonymousClassDeclaration or self::AnnotationTypeDeclaration][1]
+    },
+    $eager := function($type) {
+      $type[self::EnumDeclaration][EnumBody/EnumConstant]
+      or $type[self::AnonymousClassDeclaration][parent::EnumConstant]
+      or exists($type[self::ClassDeclaration or self::RecordDeclaration]/(ClassBody | RecordBody)
+           /(FieldDeclaration[pmd-java:modifiers() = 'static'] | Initializer[@Static = true()])
+           //ConstructorCall[not(ancestor::LambdaExpression)][ClassType[not(TypeArguments)]/@SimpleName = $type/@SimpleName])
+    },
+    $direct := function($member) {
+      let $type := $typeOf($member)
+      return $member[self::Initializer[@Static = true()] or self::FieldDeclaration[pmd-java:modifiers() = 'static'] or self::EnumConstant]
+        or ($member[self::ConstructorDeclaration or self::CompactConstructorDeclaration or self::Initializer
+              or self::FieldDeclaration] and $eager($type))
+    },
+    $entry := function($type) {
+      exists($type/ancestor-or-self::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration][1]
+        /(ClassBody | EnumBody | RecordBody)/MethodDeclaration[@MainMethod = true()])
+    },
+    $loaded := function($node) {
+      let $member := $owner($node), $type := $typeOf($member)
+      return not($member[self::LambdaExpression]) and not($entry($type))
+        and ($direct($member)
+          or ($member[self::MethodDeclaration]
+            and (some $call in $type/(ClassBody | EnumBody | RecordBody)//MethodCall[@MethodName = $member/@Name]
+                   [*[1][self::ArgumentList or self::ThisExpression or self::TypeExpression]]
+                   [ArgumentList/@Size = $member/FormalParameters/@Size]
+                 satisfies let $site := $owner($call)
+                   return not($site[self::LambdaExpression]) and $typeOf($site) is $type and $direct($site))))
+    },
+    $fileArgument := function($call) {
+      $call/ArgumentList/*[1][pmd-java:typeIs('java.lang.String') or pmd-java:typeIs('java.io.File')
+        or pmd-java:typeIs('java.nio.file.Path')]
+    }
+return (
+  //MethodCall[
+    pmd-java:matchesSig('java.sql.DriverManager#getConnection(_*)')
+    or pmd-java:matchesSig('javax.sql.DataSource#getConnection(_*)')
+    or pmd-java:matchesSig('jakarta.persistence.Persistence#createEntityManagerFactory(_*)')
+    or pmd-java:matchesSig('javax.persistence.Persistence#createEntityManagerFactory(_*)')
+    or pmd-java:matchesSig('com.mongodb.client.MongoClients#create(_*)')
+    or pmd-java:matchesSig('com.mongodb.reactivestreams.client.MongoClients#create(_*)')
+    or pmd-java:matchesSig('io.lettuce.core.RedisClient#connect(_*)')
+    or pmd-java:matchesSig('io.lettuce.core.cluster.RedisClusterClient#connect(_*)')
+    or pmd-java:matchesSig('java.net.http.HttpClient#send(_*)')
+    or pmd-java:matchesSig('java.net.http.HttpClient#sendAsync(_*)')
+    or pmd-java:matchesSig('java.net.URL#openConnection(_*)')
+    or pmd-java:matchesSig('java.net.URL#openStream()')
+    or pmd-java:matchesSig('java.net.URL#getContent(_*)')
+    or pmd-java:matchesSig('java.net.Socket#connect(_*)')
+    or pmd-java:matchesSig('java.nio.channels.SocketChannel#open(java.net.SocketAddress)')
+    or pmd-java:matchesSig('java.net.InetAddress#getByName(_*)')
+    or pmd-java:matchesSig('java.net.InetAddress#getAllByName(_*)')
+    or pmd-java:matchesSig('java.net.InetAddress#getLocalHost()')
+    or pmd-java:matchesSig('okhttp3.Call#execute()')
+    or pmd-java:matchesSig('okhttp3.Call#enqueue(_*)')
+    or pmd-java:matchesSig('retrofit2.Call#execute()')
+    or pmd-java:matchesSig('retrofit2.Call#enqueue(_*)')
+    or pmd-java:matchesSig('org.apache.http.client.HttpClient#execute(_*)')
+    or pmd-java:matchesSig('org.apache.hc.client5.http.classic.HttpClient#execute(_*)')
+    or pmd-java:matchesSig('org.apache.hc.client5.http.async.HttpAsyncClient#execute(_*)')
+    or pmd-java:matchesSig('java.nio.file.Files#_(_*)')
+    or pmd-java:matchesSig('java.nio.channels.FileChannel#open(_*)')
+    or pmd-java:matchesSig('java.io.File#createTempFile(_*)')
+    or pmd-java:matchesSig('java.lang.ProcessBuilder#start()')
+    or pmd-java:matchesSig('java.lang.ProcessBuilder#startPipeline(_*)')
+    or pmd-java:matchesSig('java.lang.Runtime#exec(_*)')
+    or pmd-java:matchesSig('java.lang.Thread#start()')
+    or pmd-java:matchesSig('java.lang.Thread#startVirtualThread(_*)')
+    or pmd-java:matchesSig('java.lang.Thread.Builder#start(_*)')
+    or pmd-java:matchesSig('java.util.concurrent.Executor#execute(_*)')
+    or pmd-java:matchesSig('java.util.concurrent.ExecutorService#submit(_*)')
+    or pmd-java:matchesSig('java.util.concurrent.ExecutorService#invokeAll(_*)')
+    or pmd-java:matchesSig('java.util.concurrent.ExecutorService#invokeAny(_*)')
+    or pmd-java:matchesSig('java.util.concurrent.ScheduledExecutorService#schedule(_*)')
+    or pmd-java:matchesSig('java.util.concurrent.ScheduledExecutorService#scheduleAtFixedRate(_*)')
+    or pmd-java:matchesSig('java.util.concurrent.ScheduledExecutorService#scheduleWithFixedDelay(_*)')
+    or pmd-java:matchesSig('java.util.concurrent.CompletableFuture#runAsync(_*)')
+    or pmd-java:matchesSig('java.util.concurrent.CompletableFuture#supplyAsync(_*)')
+    or pmd-java:matchesSig('java.util.Timer#schedule(_*)')
+    or pmd-java:matchesSig('java.util.Timer#scheduleAtFixedRate(_*)')
+    or pmd-java:matchesSig('java.lang.System#setProperty(_*)')
+    or pmd-java:matchesSig('java.lang.System#setProperties(_*)')
+    or pmd-java:matchesSig('java.lang.System#clearProperty(_*)')
+    or pmd-java:matchesSig('java.lang.System#setOut(_*)')
+    or pmd-java:matchesSig('java.lang.System#setErr(_*)')
+    or pmd-java:matchesSig('java.lang.System#setIn(_*)')
+    or pmd-java:matchesSig('java.lang.System#exit(_*)')
+    or pmd-java:matchesSig('java.lang.Runtime#addShutdownHook(_*)')
+    or pmd-java:matchesSig('java.lang.Runtime#exit(_*)')
+    or pmd-java:matchesSig('java.lang.Runtime#halt(_*)')
+    or pmd-java:matchesSig('java.util.Locale#setDefault(_*)')
+    or pmd-java:matchesSig('java.util.TimeZone#setDefault(_*)')
+    or pmd-java:matchesSig('java.lang.Thread#setDefaultUncaughtExceptionHandler(_*)')]
+  | //MethodCall[@MethodName = ('createNewFile', 'delete', 'deleteOnExit', 'mkdir', 'mkdirs', 'renameTo', 'list',
+      'listFiles', 'exists', 'isFile', 'isDirectory', 'length', 'lastModified', 'canRead', 'canWrite')]
+      [*[1][not(self::ArgumentList)][pmd-java:typeIs('java.io.File')]]
+  | //MethodCall[starts-with(@MethodName, 'new')][pmd-java:matchesSig('java.util.concurrent.Executors#_(_*)')]
+  | //MethodCall[@MethodName = ('getForObject', 'getForEntity', 'headForHeaders', 'postForLocation', 'postForObject',
+      'postForEntity', 'put', 'patchForObject', 'delete', 'optionsForAllow', 'exchange', 'execute')]
+      [*[1][pmd-java:typeIs('org.springframework.web.client.RestOperations')]]
+  | //MethodCall[@MethodName = ('retrieve', 'exchange')]
+      [*[1][pmd-java:typeIs('org.springframework.web.client.RestClient.RequestHeadersSpec')]]
+  | //MethodCall[@MethodName = ('block', 'blockOptional', 'blockFirst', 'blockLast', 'subscribe', 'toFuture')]
+      [*[1][pmd-java:typeIs('org.reactivestreams.Publisher')]]
+      [*[1]/descendant-or-self::*[pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient')]]
+  | //ConstructorCall[pmd-java:typeIs('java.io.FileInputStream') or pmd-java:typeIs('java.io.FileOutputStream')
+      or pmd-java:typeIs('java.io.FileReader') or pmd-java:typeIs('java.io.FileWriter')
+      or pmd-java:typeIs('java.io.RandomAccessFile') or pmd-java:typeIs('java.util.zip.ZipFile')
+      or pmd-java:typeIs('java.net.DatagramSocket') or pmd-java:typeIs('java.util.Timer')
+      or pmd-java:typeIs('java.util.concurrent.ThreadPoolExecutor') or pmd-java:typeIs('java.util.concurrent.ForkJoinPool')
+      or pmd-java:typeIs('org.apache.kafka.clients.producer.KafkaProducer')]
+  | //ConstructorCall[pmd-java:typeIs('java.net.Socket') or pmd-java:typeIs('java.net.ServerSocket')
+      or pmd-java:typeIs('com.zaxxer.hikari.HikariDataSource')][ArgumentList/@Size > 0]
+  | //ConstructorCall[pmd-java:typeIs('java.io.PrintWriter') or pmd-java:typeIs('java.io.PrintStream')
+      or pmd-java:typeIs('java.util.Formatter')][$fileArgument(.)[not(pmd-java:typeIs('java.nio.file.Path'))]]
+  | //ConstructorCall[pmd-java:typeIs('java.util.Scanner')][$fileArgument(.)[not(pmd-java:typeIs('java.lang.String'))]]
+)[$loaded(.)]
 ]]></value>
       </property>
     </properties>
