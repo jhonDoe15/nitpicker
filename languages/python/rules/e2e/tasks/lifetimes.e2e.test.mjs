@@ -272,9 +272,21 @@ describe.skipIf(!enabled)('task-outlives-resource in a task group', () => {
         ingestRulesReport(JSON.stringify([{ rule: RULE, path: 'a.py', subject, line: 3 }])),
       )[0].message;
 
-    expect(message('handle passed to start_soon in run')).not.toContain('await the task');
-    expect(message('handle passed to create_task in run')).toContain('await the task');
-    expect(message('handle passed to asyncio.create_task in run')).toContain('await the task');
+    const expected = (subject, advice) =>
+      `\`${subject}\`: the resource closes when its \`with\` block ends, while the child task can still use it. ` +
+      `Open the resource around the whole task group, or inside the child task${advice}. If this is intended, add ` +
+      `{"rule":"task-outlives-resource","paths":["a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`;
+    const subjects = [
+      'handle passed to start_soon in run',
+      'handle passed to create_task in run',
+      'handle passed to asyncio.create_task in run',
+    ];
+
+    expect(subjects.map(message)).toEqual([
+      expected(subjects[0], ''),
+      expected(subjects[1], ', or await the task before the block ends'),
+      expected(subjects[2], ', or await the task before the block ends'),
+    ]);
   });
 });
 
