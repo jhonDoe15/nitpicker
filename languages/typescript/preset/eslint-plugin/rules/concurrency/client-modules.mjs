@@ -175,14 +175,15 @@ const SPECS = new Map([
       derivers: new Set(['createSender']),
     }),
   ],
+  ...FETCH_MODULES.map((name) => [
+    name,
+    client('remote', { callable: true, functions: new Set(['fetch', 'ofetch']) }),
+  ]),
+  ...HTTP_SERVERS.map((name) => [
+    name,
+    client('remote', { functions: new Set(['request', 'get']) }),
+  ]),
 ]);
-
-for (const name of FETCH_MODULES) {
-  SPECS.set(name, client('remote', { callable: true, functions: new Set(['fetch', 'ofetch']) }));
-}
-for (const name of HTTP_SERVERS) {
-  SPECS.set(name, client('remote', { functions: new Set(['request', 'get']) }));
-}
 
 export function clientSpec(source) {
   if (source.startsWith('@aws-sdk/client-') && !DATABASE_SERVICES.test(source)) {
@@ -193,8 +194,4 @@ export function clientSpec(source) {
     });
   }
   return SPECS.get(source);
-}
-
-export function clientSources(sources) {
-  return sources.filter((source) => clientSpec(source) !== undefined);
 }
