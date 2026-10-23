@@ -1,12 +1,18 @@
 import ast
 
-from design.annotations import project_type
-from design.astutil import first_parameter, own_nodes
-from design.classes import enum_cases
-from design.imports import resolve_binding
-from design.lookup import TRANSPARENT_BASES, attribute_of, find_member, linear, lookup
-from design.scope import is_generator
-from design.symbols import Function, Klass, ModuleRef, PrefixRef, Variable
+from design.resolve.annotations import project_type
+from design.resolve.imports import resolve_binding
+from design.resolve.lookup import (
+    TRANSPARENT_BASES,
+    attribute_of,
+    find_member,
+    linear,
+    lookup,
+)
+from design.resolve.symbols import Function, Klass, ModuleRef, PrefixRef, Variable
+from design.support.astutil import first_parameter, own_nodes
+from design.support.scope import is_generator
+from design.types.classes import enum_cases
 
 CAST_NAMES = {"typing.cast", "typing_extensions.cast"}
 CONTEXT_MANAGERS = {"contextlib.contextmanager", "contextlib.asynccontextmanager"}

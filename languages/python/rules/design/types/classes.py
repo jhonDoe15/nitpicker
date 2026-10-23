@@ -1,10 +1,10 @@
 import ast
 
 from checks.common import dotted_name
-from design.attributes import attribute_sites, is_dunder
-from design.decorators import DATACLASS_DECORATORS, VALIDATORS, decorator_names
-from design.lookup import base_entries, external_bases
-from design.symbols import Klass
+from design.resolve.lookup import base_entries, external_bases
+from design.resolve.symbols import Klass
+from design.support.attributes import attribute_sites, is_dunder
+from design.support.decorators import DATACLASS_DECORATORS, VALIDATORS, decorator_names
 
 ENUM_BASES = {"enum.Enum", "enum.IntEnum", "enum.StrEnum", "enum.Flag", "enum.IntFlag"}
 INTERFACE_BASES = {"typing.Protocol", "typing_extensions.Protocol", "abc.ABC"}
@@ -113,7 +113,7 @@ def is_dataclass(klass):
 
 
 def kind_of(index, typedef):
-    from design.symbols import LiteralAlias
+    from design.resolve.symbols import LiteralAlias
 
     return "enum" if isinstance(typedef, LiteralAlias) else classify(index, typedef)
 

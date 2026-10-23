@@ -1,7 +1,7 @@
 import ast
 
-from design.astutil import STORE_CONTEXTS, all_nodes
-from design.calls import resolve_call
+from design.calls.calls import resolve_call
+from design.support.astutil import STORE_CONTEXTS, all_nodes
 
 MUTATORS = {
     "append",

@@ -1,9 +1,9 @@
 import os
 
-from design.classes import classify, enum_cases
-from design.fields import class_fields, module_fields
-from design.published import is_published
-from design.references import module_references
+from design.calls.references import module_references
+from design.types.classes import classify, enum_cases
+from design.types.fields import class_fields, module_fields
+from design.types.published import is_published
 
 
 def is_exported(module, name):

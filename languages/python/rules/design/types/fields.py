@@ -1,12 +1,12 @@
 import ast
 
 from checks.common import dotted_name
-from design.astutil import all_nodes, own_nodes
-from design.attributes import attribute_sites, is_dunder
-from design.calls import canonical_root
-from design.classes import classify, field_names
-from design.evaluate import evaluate
-from design.symbols import Klass
+from design.calls.calls import canonical_root
+from design.resolve.evaluate import evaluate
+from design.resolve.symbols import Klass
+from design.support.astutil import all_nodes, own_nodes
+from design.support.attributes import attribute_sites, is_dunder
+from design.types.classes import classify, field_names
 from index.tables import MUTABLE_CONSTRUCTORS, is_mutable_value
 
 FACTORY_FIELDS = {

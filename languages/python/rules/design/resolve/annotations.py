@@ -1,8 +1,8 @@
 import ast
 
 from checks.common import dotted_name
-from design.lookup import entity_of
-from design.symbols import Klass, LiteralAlias
+from design.resolve.lookup import entity_of
+from design.resolve.symbols import Klass, LiteralAlias
 
 WRAPPERS = {
     "Annotated",

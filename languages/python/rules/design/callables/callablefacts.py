@@ -1,13 +1,13 @@
-from design.annotations import project_type, type_text
-from design.callfacts import call_facts
-from design.decisions import decisions
-from design.entries import is_entry
-from design.fields import own_fields, owner_field_names, returned_field
-from design.published import is_published
-from design.reads import reads
-from design.references import callable_references
-from design.typefacts import is_exported, klass_exported
-from design.uses import forward_fact, param_uses
+from design.callables.entries import is_entry
+from design.callables.uses import forward_fact, param_uses
+from design.calls.callfacts import call_facts
+from design.calls.references import callable_references
+from design.decisions.decisions import decisions
+from design.decisions.reads import reads
+from design.resolve.annotations import project_type, type_text
+from design.types.fields import own_fields, owner_field_names, returned_field
+from design.types.published import is_published
+from design.types.typefacts import is_exported, klass_exported
 
 
 def type_reference(index, module, annotation, owner):

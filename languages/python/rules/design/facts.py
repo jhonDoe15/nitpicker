@@ -1,7 +1,7 @@
-from design.callablefacts import callable_fact
-from design.entries import find_callbacks
+from design.callables.callablefacts import callable_fact
+from design.callables.entries import find_callbacks
 from design.index import Index
-from design.typefacts import module_types
+from design.types.typefacts import module_types
 
 DESIGN_REPORT = "design-facts.json"
 

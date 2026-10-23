@@ -1,10 +1,10 @@
 import ast
 
-from design.astutil import all_nodes
-from design.calls import receiver_key
-from design.classes import classify
-from design.lookup import find_member
-from design.symbols import Klass
+from design.calls.calls import receiver_key
+from design.resolve.lookup import find_member
+from design.resolve.symbols import Klass
+from design.support.astutil import all_nodes
+from design.types.classes import classify
 
 READ_KINDS = {"class", "data"}
 

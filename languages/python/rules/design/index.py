@@ -1,8 +1,8 @@
-from design.attributes import attribute_sites, attribute_type
-from design.imports import bind_imports
-from design.lookup import find_member
-from design.scope import Scope
-from design.symbols import build_module
+from design.resolve.imports import bind_imports
+from design.resolve.lookup import find_member
+from design.resolve.symbols import build_module
+from design.support.attributes import attribute_sites, attribute_type
+from design.support.scope import Scope
 
 
 class Index:
@@ -84,8 +84,8 @@ class Index:
         return found
 
     def statement_type(self, variable):
-        from design.annotations import project_type
-        from design.evaluate import type_of
+        from design.resolve.annotations import project_type
+        from design.resolve.evaluate import type_of
 
         statement = variable.statements[0]
         if getattr(statement, "annotation", None) is not None:

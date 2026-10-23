@@ -1,14 +1,14 @@
 import ast
 
-from design.astutil import (
+from design.resolve.evaluate import evaluate, name_value
+from design.resolve.lookup import find_member
+from design.resolve.symbols import Klass
+from design.support.astutil import (
     STORE_CONTEXTS,
     all_nodes,
     chain,
     chain_text,
 )
-from design.evaluate import evaluate, name_value
-from design.lookup import find_member
-from design.symbols import Klass
 
 MAX_ALIAS_DEPTH = 4
 

@@ -1,7 +1,7 @@
 import ast
 
-from design.annotations import base_name, project_type
-from design.astutil import own_nodes
+from design.resolve.annotations import base_name, project_type
+from design.support.astutil import own_nodes
 
 
 class AttributeSite:
@@ -101,7 +101,7 @@ def declared_type(index, klass, sites):
 
 
 def inferred_type(index, klass, sites):
-    from design.evaluate import type_of
+    from design.resolve.evaluate import type_of
 
     found = set()
     for site in sites:

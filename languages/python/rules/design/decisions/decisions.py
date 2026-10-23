@@ -1,10 +1,10 @@
 import ast
 
-from design.astutil import chain, chain_text, constant_text, own_nodes
-from design.classes import enum_cases
-from design.evaluate import evaluate
-from design.lookup import find_member
-from design.symbols import Klass, LiteralAlias
+from design.resolve.evaluate import evaluate
+from design.resolve.lookup import find_member
+from design.resolve.symbols import Klass, LiteralAlias
+from design.support.astutil import chain, chain_text, constant_text, own_nodes
+from design.types.classes import enum_cases
 
 
 def is_none(node):

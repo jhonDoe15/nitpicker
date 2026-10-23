@@ -1,10 +1,10 @@
 import ast
 
-from design.astutil import FUNCTIONS
-from design.calls import resolve_call
-from design.evaluate import evaluate
-from design.lookup import lookup
-from design.symbols import Function, Variable
+from design.calls.calls import resolve_call
+from design.resolve.evaluate import evaluate
+from design.resolve.lookup import lookup
+from design.resolve.symbols import Function, Variable
+from design.support.astutil import FUNCTIONS
 
 TABLES = (ast.Dict, ast.List, ast.Tuple, ast.Set)
 

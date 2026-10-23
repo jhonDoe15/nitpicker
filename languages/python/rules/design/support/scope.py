@@ -1,9 +1,9 @@
 import ast
 
-from design.annotations import project_type
-from design.astutil import own_nodes
-from design.imports import bind_from, bind_import
-from design.sites import collect_sites, parameters, skips_first
+from design.resolve.annotations import project_type
+from design.resolve.imports import bind_from, bind_import
+from design.support.astutil import own_nodes
+from design.support.sites import collect_sites, parameters, skips_first
 
 UNKNOWN = object()
 NEUTRAL = object()
@@ -64,14 +64,14 @@ class Scope:
             found = project_type(self.index, self.module, site.annotation, self.owner)
             return found if found is not None else UNKNOWN
         if site.kind == "with":
-            from design.evaluate import with_value_type
+            from design.resolve.evaluate import with_value_type
 
             found = with_value_type(self, site)
             return found if found is not None else UNKNOWN
         if site.kind == "assign":
             if isinstance(site.value, ast.Constant) and site.value.value is None:
                 return NEUTRAL
-            from design.evaluate import type_of
+            from design.resolve.evaluate import type_of
 
             found = type_of(self, site.value)
             return found if found is not None else UNKNOWN
