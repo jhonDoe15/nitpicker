@@ -149,16 +149,19 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `thresholds` (`crapLimit`, enforced from slice 3, the file limits `fileLines`, `testFileLines`,
 `lineLength` and `folderFiles`, the size limits `folderDepth`, `classMethods`, `classFields` and
 `inheritanceDepth`, and the test time limits `unitTestSeconds` and `integrationTestSeconds`), `exclude` (findings under the globs are dropped) and
-`legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
-below. `layout` and `testConsole` stay a config error with this preset until it runs the rules
-that read them (`shared-used-by-one-feature`, `test-console-output`). The
+`legacyInventory` (same format and `baseline-expansion` rule as for Java), `history` (the opt-in
+[change history](usage.md#change-history) check), and the `python` object below. `layout` takes
+only `featureRoots`, and only once `history.coChange` is on (it names the feature folders
+`co-change` reads); its other keys and `testConsole` stay a config error with this preset until it
+runs the rules that read them (`shared-used-by-one-feature`, `test-console-output`). The
 top-level `exceptions` is accepted only for the rules shared with the other languages: the file and size limits
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
 `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), the function rules
 (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
 `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`,
 `mutant-survived`, `mutant-nocoverage`, which take `function` to name one function), whose messages
-name it, and the [dependency and repository checks](usage.md#dependency-and-repository-checks); the
+name it, the [dependency and repository checks](usage.md#dependency-and-repository-checks), and
+`co-change` of the [change history](usage.md#change-history) check (with a `<module>/**` glob); the
 Python equivalent of `exceptions` for every other rule is `python.exceptions`. Each list rejects the
 other's rules (a function or file rule in `python.exceptions`, or a ruff code in `exceptions`, is a
 config error that names the right list). `python` is an error with any other preset.

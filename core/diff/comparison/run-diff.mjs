@@ -6,7 +6,11 @@ import { writeDiffReports } from '../reporting/reporters.mjs';
 import path from 'node:path';
 import { resolveComparison, captureWorkingTree } from '../git/repository/git.mjs';
 import { readRepositoryChanges } from '../git/patches/changes.mjs';
-import { resolveBaseProjectPath, readProjectMoves } from '../git/patches/project-moves.mjs';
+import {
+  resolveBaseProjectPath,
+  readProjectMoves,
+  readTouchedPaths,
+} from '../git/patches/project-moves.mjs';
 import { readChangedLines } from '../git/patches/changed-lines.mjs';
 import { withTemporaryWorktree, withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
@@ -81,9 +85,11 @@ function readSnapshotLayout({ repositoryRoot, projectRelativePath }, comparison)
     baseProjectRelativePath,
     inferredMoves: moves.inferred,
   });
+  const touchedPaths = readTouchedPaths({ projectRelativePath, baseProjectRelativePath, changes });
   return {
     baseProjectRelativePath,
     moves,
+    touchedPaths,
     touchedCode: { changedLines, isStrictRule, mustMeetOnEditedLines },
   };
 }
@@ -180,7 +186,11 @@ function runAndCombine(context) {
     acceptPolicyChange: settings.acceptPolicyChange,
     policyAcceptanceSource: settings.policyAcceptanceSource,
     reportsPolicy: settings.reportsPolicy !== false,
-    notices: settings.describeNotices?.([...layout.touchedCode.changedLines.keys()]) ?? [],
+    notices:
+      settings.describeNotices?.([...layout.touchedCode.changedLines.keys()], {
+        mergeBaseSha: comparison.mergeBaseSha,
+        touchedPaths: [...layout.touchedPaths],
+      }) ?? [],
   });
 }
 
