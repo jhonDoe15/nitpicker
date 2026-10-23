@@ -43,7 +43,7 @@ export function jscpdConfigChanges({ base, head }) {
     .map((key) => {
       const text = `jscpd ${JSCPD_PROJECT_FILE} ${key}: ${shown(base[key])} -> ${shown(head[key])}`;
       return LOOSENS[key](base[key], head[key])
-        ? { loosened: { text, files: [JSCPD_PROJECT_FILE] } }
+        ? { loosened: { text, kind: 'tool-config', files: [JSCPD_PROJECT_FILE] } }
         : { changed: text };
     });
 }
