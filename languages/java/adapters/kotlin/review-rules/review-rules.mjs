@@ -3,6 +3,7 @@ import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
 import { UNUSED_OPTION_RULE } from './main/unused-options.mjs';
 import { REVIEW_TOOL } from './review-finding.mjs';
+import { JAVA_ONLY_SPRING_RULE, SPRING_RULES } from './spring/spring-messages.mjs';
 import { SPRING_UNUSED_CONTEXT_RULE } from './tests/spring-context.mjs';
 import { FIXED_SLEEP_RULE } from '../../../messages/wait-advice.mjs';
 import { HONESTY_RULES } from './tests/test-honesty.mjs';
@@ -16,6 +17,8 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   ENUM_PREDICATE_RULE,
   FORWARDING_RULE,
   SINGULAR_PLURAL_RULE,
+  ...SPRING_RULES,
+  JAVA_ONLY_SPRING_RULE,
 ]
   .map((rule) => `${REVIEW_TOOL}/${rule}`)
   .concat(UNUSED_OPTION_RULE);
