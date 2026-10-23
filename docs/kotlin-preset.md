@@ -1087,7 +1087,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
   repository declared in Java. `kotlin-e2e/kotlin-spring-rules.e2e.test.mjs` runs the same project through
   real Gradle, checks that the findings equal those of the recorded facts (so the recording stays
   current and the all-open options reach the manifest), and lifts one rule with an exception.
-- `languages/java/adapters/kotlin-e2e/kotlin-preset-guards.e2e.test.mjs`: real Gradle on the source
+- `languages/java/adapters/kotlin-e2e/guards/*.e2e.test.mjs`: real Gradle on the source
   checks, the compiler warnings and the class limits, banned and allowed, with their exception route
   and an exception for one path.
 - `kotlin-psi` on a fixture (units, lambda properties, package, multifile parts, byte

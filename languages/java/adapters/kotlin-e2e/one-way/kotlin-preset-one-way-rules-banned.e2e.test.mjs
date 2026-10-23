@@ -1,17 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { runJavaDiff } from '../../java-diff.mjs';
 import {
   expectedMessage,
-  fixturePath,
   kotlinRuleCases,
 } from '../../kotlin/rules/test-support/kotlin-rule-cases.mjs';
 import { withKotlinRuleMessage } from '../../kotlin/rules/kotlin-messages.mjs';
 import { SUPPRESSION_RULE } from '../../kotlin/rules/kotlin-rules.mjs';
 import {
   detektFindingsOf,
-  git,
-  gradle,
-  kotlinPolicy,
   kotlinE2eEnabled,
   summarize,
 } from '../test-support/kotlin-e2e-project.mjs';
@@ -58,25 +53,5 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
     expect(detektFindingsOf(result.newEnforceable, suppression).map(({ rule }) => rule)).toEqual([
       SUPPRESSION_RULE,
     ]);
-  });
-  it('lifts a rule for the paths of an exception in nitpicker.config.json only', () => {
-    git(fixture.project, 'checkout', '-q', 'one-way-banned');
-    const exception = (testCase) => ({
-      rule: testCase.rule,
-      paths: [fixturePath(testCase, 'banned')],
-      reason: 'The test lifts this rule for one path.',
-    });
-    const [scopeRun, scopeWith] = ['scopeRun', 'scopeWith'].map((id) =>
-      kotlinRuleCases.find((testCase) => testCase.id === id),
-    );
-    const result = runJavaDiff({
-      repositoryRoot: fixture.project.root,
-      requestedBaseRef: 'main',
-      gradle,
-      policy: { ...kotlinPolicy, exceptions: [exception(scopeRun)] },
-    });
-
-    expect(detektFindingsOf(result.newEnforceable, scopeRun)).toEqual([]);
-    expect(detektFindingsOf(result.newEnforceable, scopeWith)).toHaveLength(1);
   });
 });
