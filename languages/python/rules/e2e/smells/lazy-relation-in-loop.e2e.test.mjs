@@ -261,3 +261,96 @@ describe.skipIf(!enabled)('lazy-relation-in-loop with SQLAlchemy', () => {
     ).toEqual([]);
   });
 });
+
+const SQLMODEL_MODELS = code(
+  'from sqlmodel import Field, Relationship, SQLModel',
+  '',
+  '',
+  'class Team(SQLModel, table=True):',
+  '    id: int | None = Field(default=None, primary_key=True)',
+  '    heroes: list["Hero"] = Relationship(back_populates="team")',
+  '',
+  '',
+  'class Hero(SQLModel, table=True):',
+  '    id: int | None = Field(default=None, primary_key=True)',
+  '    team_id: int | None = Field(default=None, foreign_key="team.id")',
+  '    team: Team | None = Relationship(back_populates="heroes")',
+);
+
+describe.skipIf(!enabled)('lazy-relation-in-loop over other loop and loader forms', () => {
+  it('follows enumerate and a queryset variable refined in the loop', () => {
+    expect(
+      run(
+        django(
+          code(
+            'from django.db.models import Prefetch',
+            '',
+            '',
+            'def a():',
+            '    for i, order in enumerate(Order.objects.all()):',
+            '        print(i, order.customer.name)',
+            '',
+            '',
+            'def b():',
+            '    orders = Order.objects.filter(open=True)',
+            '    return [o.customer.name for o in orders.order_by("id")]',
+            '',
+            '',
+            'def c():',
+            '    query = Order.objects.prefetch_related(Prefetch("lines", queryset=Item.objects.all()))',
+            '    return [o.lines.all() for o in query]',
+          ),
+        ),
+      ),
+    ).toEqual([
+      'lazy-relation-in-loop src/shop/views.py:9 Order.customer|django|Order.objects.all()',
+      'lazy-relation-in-loop src/shop/views.py:14 Order.customer|django|Order.objects.filter(...).order_by()',
+    ]);
+  });
+
+  it('reads every loader of a chained option and the other eager loaders', () => {
+    expect(
+      run(
+        sqlalchemy(
+          code(
+            'from sqlalchemy.orm import defaultload, immediateload, selectinload, subqueryload',
+            '',
+            '',
+            'def a(session):',
+            '    stmt = select(Customer).options(selectinload(Customer.orders).selectinload(Order.notes))',
+            '    return [c.orders for c in session.scalars(stmt)]',
+            '',
+            '',
+            'def b(session):',
+            '    stmt = select(Order).options(subqueryload(Order.notes), immediateload(Order.customer))',
+            '    return [(o.notes, o.customer) for o in session.scalars(stmt)]',
+            '',
+            '',
+            'def c(session):',
+            '    stmt = select(Customer).options(defaultload(Customer.orders).selectinload(Order.notes))',
+            '    return [c.orders for c in session.scalars(stmt)]',
+          ),
+        ),
+      ),
+    ).toEqual([
+      'lazy-relation-in-loop src/shop/queries.py:21 Customer.orders|sqlalchemy|select(Customer)',
+    ]);
+  });
+
+  it('reads a SQLModel exec of a select as the origin', () => {
+    expect(
+      run({
+        'src/shop/models.py': SQLMODEL_MODELS,
+        'src/shop/queries.py': code(
+          'from sqlmodel import Session, select',
+          '',
+          'from shop.models import Hero',
+          '',
+          '',
+          'def names(session: Session):',
+          '    return [hero.team for hero in session.exec(select(Hero)).all()]',
+        ),
+      }),
+    ).toEqual(['lazy-relation-in-loop src/shop/queries.py:7 Hero.team|sqlalchemy|select(Hero)']);
+  });
+});
