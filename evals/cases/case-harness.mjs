@@ -65,12 +65,13 @@ export function linkedWorkdir() {
   };
 }
 
-const gateCommand = (withoutAnalyzers, onlyAnalyzers) => [
+const gateCommand = (withoutAnalyzers, onlyAnalyzers, rule) => [
   'node',
   path.join(packageRoot, 'core', 'cli.mjs'),
   '--base',
   'main',
   ...analyzerArgumentsWithout(withoutAnalyzers, onlyAnalyzers),
+  ...(rule === undefined ? [] : ['--rule', rule]),
 ];
 
 /**
@@ -80,12 +81,12 @@ const gateCommand = (withoutAnalyzers, onlyAnalyzers) => [
  * through `disable` would make an explicit `--analyzer` for it an error, whereas a full-gate run
  * (no `--analyzer` flags) simply skips it.
  */
-export function runReference(caseId, { overlay, withoutAnalyzers } = {}) {
+export function runReference(caseId, { overlay, withoutAnalyzers, rule } = {}) {
   return runCase({
     caseDefinition: loadCase(path.join(casesDirectory, caseId)),
     agentCommand: ['node', referenceAgent, ...(overlay ? ['--overlay', overlay] : [])],
     prepareWorkdir: linkedWorkdir(),
-    gateCommand: gateCommand(withoutAnalyzers),
+    gateCommand: gateCommand(withoutAnalyzers, undefined, rule),
     tier: 'reference',
     model: overlay ? `cheat-${overlay}` : 'reference-solution',
     nitpickerVersion: '0.0.0',
@@ -126,7 +127,7 @@ export function referenceTrees(caseId, { overlay } = {}) {
  */
 export function runApplied(
   caseId,
-  { overlay, withoutAnalyzers, analyzers, casesRoot = casesDirectory } = {},
+  { overlay, withoutAnalyzers, analyzers, rule, casesRoot = casesDirectory } = {},
 ) {
   const caseDefinition = loadCase(path.join(casesRoot, caseId));
   const copies = overlayDirectories(caseDefinition, overlay)
@@ -136,7 +137,7 @@ export function runApplied(
     caseDefinition,
     agentCommand: `cat > /dev/null && ${copies}`,
     prepareWorkdir: linkedWorkdir(),
-    gateCommand: gateCommand(withoutAnalyzers, analyzers),
+    gateCommand: gateCommand(withoutAnalyzers, analyzers, rule),
     tier: 'reference',
     model: overlay ? `cheat-${overlay}` : 'reference-solution',
     nitpickerVersion: '0.0.0',
