@@ -37,7 +37,7 @@ function precedenceLoosened({ before = DEFAULT_PRECEDENCE, after = DEFAULT_PRECE
     : projectWeight(after) > projectWeight(before);
 }
 
-function entriesRemoved({ before = [], after = [] }) {
+function listShrank({ before = [], after = [] }) {
   return before.some((entry) => !after.includes(entry));
 }
 
@@ -59,8 +59,9 @@ const LOOSENING_SETTINGS = [
   [/^kotlin\.formatter$/u, turnedOff('none')],
   [/^kotlin\.detektConfig$/u, () => true],
   [/^go\.formatters$/u, formattersDropped],
-  [/^go\.buildTags$/u, entriesRemoved],
+  [/^go\.buildTags$/u, listShrank],
   [/^tools\.[^.]+\.precedence$/u, precedenceLoosened],
+  [/^spring\.roles\.[^.]+$/u, listShrank],
 ];
 
 export function loosensSetting(change, scope) {
