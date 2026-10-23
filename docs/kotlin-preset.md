@@ -335,7 +335,7 @@ judged by the word before it (`OrderHelperMixin`, `UtilsModule.kt` are reported,
 `Manager` or `Managers`. A ticket reference is `#123`, a key such as `PROJ-123` (not `SHA-1`, `UTF-8`,
 `RFC-7231` and similar standards) or an `http(s)` link, right after the marker. A `TODO` without an issue is
 detekt's `ForbiddenComment` (a one-way rule). Its pattern checks the reference after each marker, so a second
-marker in the same comment needs its own issue. `shared/naming/task-marker-cases.json` lists accepted and
+marker in the same comment needs its own issue. `shared/naming/test-support/task-marker-cases.json` lists accepted and
 rejected comments; the Python preset reads the same table. A repeated literal is
 `StringLiteralDuplication`. The forbidden-API entries of `ForbiddenMethodCall` and `ForbiddenImport`
 count in main sources only (`framework-allowances.mjs` drops them on `kotlinTestSourceRoots`): a sleep in
