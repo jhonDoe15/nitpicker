@@ -72,6 +72,26 @@ describe('readSpringArchFindings messages', () => {
       'Take and return a record (DTO) in Ctrl.all and map it in the service: the entity Customer stays out of controller signatures.',
     ],
     [
+      violation('ddd-aggregate-reference', 'com.shop.orders.Order', 'com.shop.customers.Customer'),
+      'Refer to Customer by its identifier or an Association<Customer, ID> in Order: Customer is the root of another aggregate, and holding it lets one aggregate change another outside its consistency boundary.',
+    ],
+    [
+      violation(
+        'ddd-foreign-entity',
+        'com.shop.orders.Order',
+        'com.shop.carts.Cart:com.shop.carts.LineItem',
+      ),
+      'Refer to Cart by its identifier in Order instead of holding LineItem: LineItem belongs to the aggregate Cart, and an entity belongs to exactly one aggregate.',
+    ],
+    [
+      violation(
+        'ddd-value-object-reference',
+        'com.shop.orders.Address',
+        'com.shop.customers.Customer',
+      ),
+      'Hold the identifier of Customer in Address, not the object: a value object is compared by its values, and Customer is an entity with an identity and lifecycle of its own.',
+    ],
+    [
       violation('spring-controller-controller', 'com.shop.web.Ctrl', 'com.shop.web.OtherCtrl'),
       'Move what Ctrl needs from OtherCtrl into a service both controllers call: a controller handles its own requests and does not hold another controller.',
     ],

@@ -1,0 +1,37 @@
+import { readHeadPolicyFile } from '../head-policy.mjs';
+
+const OPTION_NAMES = {
+  '--check': 'check',
+  '--project-root': 'projectRoot',
+  '--history-ref': 'historyRef',
+};
+
+export function parseCheckArguments(commandArguments, label = 'hygiene') {
+  const options = {};
+  for (const [index, flag] of commandArguments.entries()) {
+    if (index % 2 === 1) {
+      continue;
+    }
+    const name = OPTION_NAMES[flag];
+    const value = commandArguments[index + 1];
+    if (name === undefined || value === undefined) {
+      throw new Error(`Invalid ${label} argument: ${flag}`);
+    }
+    options[name] = value;
+  }
+  return options;
+}
+
+export function runCheckCli({ commandArguments, stdout, stderr, environment, runCheck, label }) {
+  try {
+    const options = parseCheckArguments(commandArguments, label.toLowerCase());
+    const findings = runCheck({ ...options, policy: readHeadPolicyFile(environment) });
+    stdout.write(`${JSON.stringify({ findings })}\n`);
+    return 0;
+  } catch (error) {
+    stderr.write(
+      `${label} check failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    return 2;
+  }
+}
