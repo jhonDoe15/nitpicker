@@ -57,7 +57,7 @@ function moduleIn(root) {
   return { module: { basedir, outputDirectory, testOutputDirectory }, reportDir };
 }
 
-function run({ rules, spring = true, scope = moduleIn(temporary()) }) {
+function run({ rules, archRules = true, scope = moduleIn(temporary()) }) {
   const { module, reportDir } = scope;
   const options = {
     module,
@@ -65,7 +65,7 @@ function run({ rules, spring = true, scope = moduleIn(temporary()) }) {
     tools: { archunit: [] },
     classpaths: { mainCompile: [], testCompile: [] },
     pinned: { archunit: '1.0' },
-    spring,
+    archRules,
     rules,
   };
   runSpringArch(options);
@@ -94,8 +94,8 @@ afterEach(() => {
 });
 
 describe('runSpringArch', () => {
-  it('does nothing for a module that does not use Spring', () => {
-    const { reportDir } = run({ rules: rulesWith(RECORDING_RULES), spring: false });
+  it('does nothing for a module that runs no architecture rules', () => {
+    const { reportDir } = run({ rules: rulesWith(RECORDING_RULES), archRules: false });
 
     expect([readdirSync(reportDir), readdirSync(process.env.XDG_CACHE_HOME)]).toEqual([[], []]);
   });

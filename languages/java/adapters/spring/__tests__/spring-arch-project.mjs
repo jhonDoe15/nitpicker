@@ -14,6 +14,16 @@ export const SPRING_ARCH_ROLES = {
 };
 
 export const SPRING_ARCH_VIOLATIONS = [
+  'ddd-aggregate-reference shop.sales.LineItem shop.sales.Product',
+  'ddd-aggregate-reference shop.sales.Order shop.sales.Cart',
+  'ddd-aggregate-reference shop.sales.Order shop.sales.Customer',
+  'ddd-aggregate-reference shop.sales.Shipment shop.sales.Warehouse',
+  'ddd-foreign-entity shop.sales.Order shop.sales.Cart:shop.sales.CartLine',
+  'ddd-foreign-entity shop.sales.Payment shop.sales.Cart:shop.sales.CartLine',
+  'ddd-foreign-entity shop.sales.Shipment shop.sales.Warehouse:shop.sales.Label',
+  'ddd-foreign-entity shop.sales.Shipment shop.sales.Warehouse:shop.sales.Parcel',
+  'ddd-foreign-entity shop.sales.Warehouse shop.sales.Shipment:shop.sales.Parcel',
+  'ddd-value-object-reference shop.sales.Address shop.sales.Customer',
   'spring-controller-controller shop.carts.CartController shop.orders.OrderController',
   'spring-controller-controller shop.wiring.HealthController shop.wiring.StatusEndpoint',
   'spring-controller-entity shop.orders.OrderController all:shop.orders.Order',
