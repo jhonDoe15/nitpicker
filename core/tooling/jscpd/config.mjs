@@ -1,15 +1,12 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { isPlainObject } from '../../../shared/config.mjs';
+import { isCount, isPlainObject } from '../../../shared/config.mjs';
 import { missingProjectConfig } from '../../../shared/conventions/tool-precedence.mjs';
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
 export const JSCPD_PROJECT_FILE = '.jscpd.json';
 const JSCPD_MODES = ['strict', 'mild', 'weak'];
-function isCount(value) {
-  return Number.isInteger(value) && value >= 0;
-}
 function isGlobList(value) {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 }
