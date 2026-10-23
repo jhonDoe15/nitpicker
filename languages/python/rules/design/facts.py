@@ -36,6 +36,14 @@ def module_callables(index, module):
     return sorted(facts, key=lambda fact: (fact["line"], fact["id"]))
 
 
+def keep_known_references(facts, ids):
+    for fact in facts:
+        if "references" in fact:
+            fact["references"] = [i for i in fact["references"] if i in ids]
+            if not fact["references"]:
+                del fact["references"]
+
+
 def build_facts(project, options):
     paths = options.get("designFiles", [])
     tests = set(options.get("testFiles", []))
@@ -54,4 +62,5 @@ def build_facts(project, options):
         types.extend(module_types(index, module))
         callables.extend(module_callables(index, module))
     modules.sort(key=lambda fact: fact["file"])
+    keep_known_references(types + callables, {fact["id"] for fact in callables})
     return {"modules": modules, "types": types, "callables": callables}

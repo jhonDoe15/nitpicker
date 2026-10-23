@@ -5,6 +5,7 @@ from design.entries import is_entry
 from design.fields import own_fields, owner_field_names, returned_field
 from design.published import is_published
 from design.reads import reads
+from design.references import callable_references
 from design.typefacts import is_exported, klass_exported
 from design.uses import forward_fact, param_uses
 
@@ -83,7 +84,11 @@ def add_optional(fact, scope, function):
     returned = returned_field(scope, names)
     if returned is not None:
         fact["returnsField"] = returned
-    for key, build in (("decisions", decisions), ("reads", reads)):
+    for key, build in (
+        ("references", callable_references),
+        ("decisions", decisions),
+        ("reads", reads),
+    ):
         found = build(scope)
         if found:
             fact[key] = found

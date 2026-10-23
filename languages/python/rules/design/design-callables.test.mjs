@@ -207,3 +207,39 @@ describe.skipIf(!pythonUsable())('the Python design producer callable facts', ()
     });
   });
 });
+
+describe.skipIf(!pythonUsable())('the Python design producer value references', () => {
+  const facts = designFacts('references');
+  const byId = factsById(facts);
+  const REGISTRY = 'registry.py';
+
+  function ids(...names) {
+    return names.map((name) => `${REGISTRY}#${name}`);
+  }
+
+  it.each([
+    ['reads a module-level dispatch table', `${REGISTRY}#dispatch`, ids('on_a', 'on_b')],
+    ['reads a dispatch table it imports', 'client.py#run', ids('on_a', 'on_b')],
+    ['returns functions', `${REGISTRY}#pick`, ids('on_a', 'on_b')],
+    ['passes a callback', `${REGISTRY}#wire`, ids('fallback')],
+    ['stores a function', `${REGISTRY}#store`, ids('on_a')],
+    ['passes a bound method', `${REGISTRY}#Router.bind`, ids('Router.handle')],
+    ['lists a function, also inside a lambda', 'client.py#callbacks', ids('on_b')],
+  ])('lists what a callable that %s uses as values', (_label, id, references) => {
+    expect(byId.callable(id).references).toEqual(references);
+  });
+
+  it.each([
+    ['only calls a function', `${REGISTRY}#calls_only`],
+    ['refers to itself', `${REGISTRY}#Router.again`],
+  ])('lists no reference for a callable that %s', (_label, id) => {
+    expect(byId.callable(id).references).toBeUndefined();
+  });
+
+  it('lists what module-level code calls or uses, decorators and class tables included', () => {
+    expect(byId.type(REGISTRY).references).toEqual(
+      ids('on_a', 'on_b', 'register', 'make', 'fallback'),
+    );
+    expect(byId.type('client.py').references).toBeUndefined();
+  });
+});
