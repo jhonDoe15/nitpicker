@@ -53,9 +53,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
 - Secrets: never put a secret in code (`password`, `token`, `api_key`, ... assigned a literal, also as the
-  fallback of `os.getenv`); read it from the environment in the composition root. Never log it or
-  print it: log that it is set (`token is not None`) or a masked tail.
-- Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
+  fallback of `os.getenv`); read it from the environment in the composition root. Never log, print,
+  warn or raise with it: log that it is set (`token is not None`) or a masked tail.
+- Every other rule (logging, naming, environment access, the domain, paths, shell and SQL,
   test honesty) reports the allowed form in its message: follow the form the message names.
 - Tests: use the project's runner (pytest, unittest, Django or nose2). Every test asserts something. Every branch you add needs a test, and a
   surviving mutant fails: assert the exact value, so a changed line breaks a test. A test you add

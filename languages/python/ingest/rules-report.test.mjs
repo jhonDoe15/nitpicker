@@ -78,7 +78,7 @@ describe('rules script report', () => {
     ['pydantic-extra-allow', 'Payload', 'The pydantic model `Payload` accepts unknown fields'],
     ['repeated-string-literal', 'pending', 'The string "pending" is repeated three times or more'],
     ['generic-name', 'utils', '`utils` has a generic name'],
-    ['hardcoded-secret', 'API_TOKEN', '`API_TOKEN` holds a hardcoded secret'],
+    ['hardcoded-secret', 'API_TOKEN', 'The value of `API_TOKEN` is a hardcoded secret'],
     ['credential-shape', 'credential', 'A string has the shape of a credential'],
     ['secret-in-log', 'token', '`token` is a secret and is passed to a log call'],
     ['io-in-loop', 'requests.get()', '`requests.get()` runs once per item of a loop'],

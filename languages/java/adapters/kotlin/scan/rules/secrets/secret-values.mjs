@@ -1,104 +1,197 @@
-const OPENERS = '([{';
-const CLOSERS = ')]}';
-const CONTINUATION = /^\s*(?:\?:|\.|\+|\|\||&&|else\b)/;
-const AFTER_LITERAL =
-  /^\s*(?:$|[),;}\n]|else\b|\.\s*(?:toCharArray|toByteArray|trim|toString)\s*\()/;
-const CALL_NAME = /([A-Za-z_]\w*)\s*$/;
-const LAST_ARGUMENT_CALLS = new Set(['getOrDefault', 'getProperty', 'requireNonNullElse']);
+import { literalIndex } from './literal-index.mjs';
+
+const TOKEN = /\?:|\?\.|->|[=!]=|[<>]=?|&&|\|\||!in\b|[A-Za-z_]\w*|[()[\]{},;\n+.="]/g;
+const CONTINUED_LINE = /[ \t\r\n]*(?:\?:|\?\.|\.|\+|&&|\|\||else\b|->)/y;
 const ONLY_ARGUMENT_CALLS = new Set(['orElse', 'valueOf', 'copyValueOf', 'String']);
-const LAMBDA_CALLS = new Set(['orElseGet', 'getOrElse']);
-const IF_HEAD = /^\s*if\s*\([^]*\)\s*$/;
-const ELSE_TAIL = /\belse\s*$/;
-const ELVIS_TAIL = /\?:\s*$/;
+const LAST_ARGUMENT_CALLS = new Set(['getOrDefault', 'getProperty', 'requireNonNullElse']);
+const LAMBDA_CALLS = new Set(['lazy', 'getOrElse', 'getOrPut', 'orElseGet', 'run']);
+const COMPARISONS = new Set(['==', '!=', '<', '>', '<=', '>=', 'in', '!in']);
+const KEYWORDS = new Set(['else', 'if', 'when', 'while', 'for']);
+const NOT_THE_VALUE = new Set([
+  'equals',
+  'equalsIgnoreCase',
+  'contentEquals',
+  'toRegex',
+  'toPattern',
+  'format',
+  'startsWith',
+  'endsWith',
+  'contains',
+  'matches',
+]);
+const VALUE_STARTS = new Set(['start', '(', '{', '?:', 'else', '->']);
+const OPEN_ENDED = new Set([
+  'start',
+  '?:',
+  'else',
+  '->',
+  '+',
+  '=',
+  '.',
+  '?.',
+  '&&',
+  '||',
+  'compare',
+]);
+const CLOSERS = new Set([')', ']', '}']);
 
-function continues(code, newline) {
-  return CONTINUATION.test(code.slice(newline + 1).replace(/^\s*/, ''));
-}
-
-function expressionEnd(code, from) {
-  let depth = 0;
-  for (const [offset, char] of [...code.slice(from)].entries()) {
-    depth += OPENERS.includes(char) ? 1 : 0;
-    depth -= CLOSERS.includes(char) ? 1 : 0;
-    const ends = (char === ',' || char === ';') && depth === 0;
-    const wrapped = char === '\n' && depth === 0 && !continues(code, from + offset);
-    if (ends || wrapped || depth < 0) {
-      return from + offset;
-    }
+function kindOf(text) {
+  if (COMPARISONS.has(text)) {
+    return 'compare';
   }
-  return code.length;
-}
-
-function enclosingCall(code, from, at) {
-  let depth = 0;
-  const reversed = [...code.slice(from, at)].toReversed().entries();
-  for (const [back, char] of reversed) {
-    const index = at - 1 - back;
-    depth += CLOSERS.includes(char) ? 1 : 0;
-    const opens = OPENERS.includes(char);
-    if (opens && depth === 0) {
-      return { bracket: char, name: CALL_NAME.exec(code.slice(from, index))?.[1] };
-    }
-    depth -= opens ? 1 : 0;
+  if (/^[A-Za-z_]/.test(text)) {
+    return KEYWORDS.has(text) ? text : 'name';
   }
-  return undefined;
+  return text === '"' ? 'quote' : text;
 }
 
-function isFallbackPosition(code, from, literal) {
-  const before = code.slice(from, literal.start);
-  const previous = before.trimEnd().at(-1);
-  if (before.trim() === '' || ELVIS_TAIL.test(before) || ELSE_TAIL.test(before)) {
+function followsIf(state) {
+  return state.prev === ')' && state.closed?.head === 'if';
+}
+
+function opensValue(state) {
+  const top = state.frames.at(-1);
+  if (top.kind === 'when') {
+    return top.branches && state.prev === '->';
+  }
+  if (top.lastArgument && state.prev === ',') {
     return true;
   }
-  if (IF_HEAD.test(before)) {
-    return true;
-  }
-  const call = enclosingCall(code, from, literal.start);
-  if (call === undefined) {
-    return false;
-  }
-  if (call.bracket === '{') {
-    return LAMBDA_CALLS.has(call.name) && previous === '{';
-  }
-  const last = code.slice(literal.end).trimStart()[0] === ')';
-  return (
-    (ONLY_ARGUMENT_CALLS.has(call.name) && previous === '(') ||
-    (LAST_ARGUMENT_CALLS.has(call.name) && previous === ',' && last)
-  );
+  return top.valued && (VALUE_STARTS.has(state.prev) || followsIf(state));
 }
 
-function chainFrom({ code, outer, head, limit }) {
-  const parts = [head];
-  for (const next of outer) {
-    const gap = code.slice(parts.at(-1).end, next.start);
-    if (next.start >= limit || !/^\s*\+\s*$/.test(gap) || next.template) {
+function settleChain(state, kind, text) {
+  const { chain } = state;
+  if (chain === undefined || (kind === 'quote' && chain.after === '+')) {
+    return;
+  }
+  const dropped = chain.after === '.' ? NOT_THE_VALUE.has(text) : kind === 'compare';
+  chain.value.dropped ||= dropped;
+  chain.value.closed ||= chain.after === 'literal' && kind === ')';
+  const continues = chain.after === 'literal' && (kind === '.' || kind === '+');
+  state.chain = continues ? { ...chain, after: kind } : undefined;
+}
+
+function quote(state, index) {
+  const literal = state.byStart.get(index);
+  if (literal === undefined) {
+    return;
+  }
+  state.skipUntil = literal.end;
+  const top = state.frames.at(-1);
+  if (state.chain?.after === '+' && !literal.template) {
+    state.chain.value.parts.push(literal);
+    state.chain.after = 'literal';
+  } else if (!literal.template && opensValue(state)) {
+    const value = { parts: [literal], needsClose: top.lastArgument === true && state.prev === ',' };
+    state.found.push(value);
+    state.chain = { value, after: 'literal' };
+  }
+  state.prev = 'literal';
+}
+
+function parenFrame(state, top, bracket) {
+  if (bracket === '[') {
+    return { kind: 'index', valued: false };
+  }
+  if (KEYWORDS.has(state.prev) && state.prev !== 'else') {
+    return { kind: 'head', head: state.prev, valued: false };
+  }
+  if (state.prev === 'name') {
+    const { name } = state;
+    const lastArgument = top.valued && LAST_ARGUMENT_CALLS.has(name);
+    return {
+      kind: 'call',
+      name,
+      valued: top.valued && ONLY_ARGUMENT_CALLS.has(name),
+      lastArgument,
+    };
+  }
+  return { kind: 'group', valued: top.valued && VALUE_STARTS.has(state.prev) };
+}
+
+function blockFrame(state, top) {
+  const { closed, prev } = state;
+  if (prev === 'when' || (prev === ')' && closed?.head === 'when')) {
+    return { kind: 'when', branches: top.valued, valued: false };
+  }
+  const lambda =
+    (prev === 'name' && LAMBDA_CALLS.has(state.name)) ||
+    (prev === ')' && closed?.kind === 'call' && LAMBDA_CALLS.has(closed.name));
+  const branch = followsIf(state) || prev === 'else';
+  const arrow = prev === '->' && (top.kind === 'when' ? top.branches : top.valued);
+  return { kind: 'block', valued: arrow || ((lambda || branch) && top.valued) };
+}
+
+function open(state, bracket) {
+  const top = state.frames.at(-1);
+  state.frames.push(bracket === '{' ? blockFrame(state, top) : parenFrame(state, top, bracket));
+  state.prev = bracket;
+}
+
+function close(state) {
+  if (state.frames.length === 1) {
+    state.done = true;
+    return;
+  }
+  state.closed = state.frames.pop();
+  state.prev = ')';
+}
+
+function separate(state, mark, index) {
+  const atRoot = state.frames.length === 1;
+  if (mark !== '\n') {
+    state.done = atRoot;
+    state.prev = mark;
+    return;
+  }
+  CONTINUED_LINE.lastIndex = index + 1;
+  const continued = OPEN_ENDED.has(state.prev) || CONTINUED_LINE.test(state.code);
+  state.done = atRoot && !continued;
+}
+
+function step(state, { index, 0: text }) {
+  const kind = kindOf(text);
+  settleChain(state, kind, text);
+  if (kind === 'quote') {
+    quote(state, index);
+  } else if (kind === '(' || kind === '[' || kind === '{') {
+    open(state, kind);
+  } else if (CLOSERS.has(kind)) {
+    close(state);
+  } else if (kind === ',' || kind === ';' || kind === '\n') {
+    separate(state, kind, index);
+  } else {
+    state.name = text;
+    state.prev = kind;
+  }
+}
+
+function textOf(literal) {
+  const text = literal.text.replaceAll('\\$', '$');
+  return literal.raw ? text.trim() : text;
+}
+
+export function valueLiterals(scanned, from) {
+  const state = {
+    code: scanned.code,
+    byStart: literalIndex(scanned).byStart,
+    frames: [{ kind: 'root', valued: true }],
+    prev: 'start',
+    found: [],
+    skipUntil: 0,
+  };
+  const tokens = new RegExp(TOKEN.source, 'g');
+  tokens.lastIndex = from;
+  for (const match of scanned.code.matchAll(tokens)) {
+    if (match.index >= state.skipUntil) {
+      step(state, match);
+    }
+    if (state.done) {
       break;
     }
-    parts.push(next);
   }
-  return parts;
-}
-
-export function fallbackLiterals(scanned, from) {
-  const { code } = scanned;
-  const limit = expressionEnd(code, from);
-  const inside = scanned.literals.filter(({ start, end }) => start >= from && end <= limit);
-  const outer = inside.filter((literal) => !inside.some((other) => contains(other, literal)));
-  return outer.flatMap((head, index) => {
-    const chain = chainFrom({ code, outer: outer.slice(index + 1), head, limit });
-    const last = chain.at(-1);
-    const joinedBefore = /\+\s*$/.test(code.slice(from, head.start));
-    const stable =
-      !joinedBefore &&
-      !head.template &&
-      isFallbackPosition(code, from, head) &&
-      AFTER_LITERAL.test(code.slice(last.end, limit + 1)) &&
-      !/^\s*\+/.test(code.slice(last.end, limit));
-    const text = chain.map((part) => part.text.replaceAll('\\$', '$')).join('');
-    return stable ? [{ start: head.start, text }] : [];
-  });
-}
-
-function contains(outer, inner) {
-  return outer !== inner && outer.start < inner.start && inner.end <= outer.end;
+  return state.found
+    .filter((value) => !value.dropped && (!value.needsClose || value.closed))
+    .map(({ parts }) => ({ start: parts[0].start, text: parts.map(textOf).join('') }));
 }
