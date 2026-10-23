@@ -48,6 +48,8 @@ SQLALCHEMY_STATEMENT = {
     "execution_options",
 }
 SQLALCHEMY_RESULT = {"all", "unique"}
+SCALAR_EXECUTES = {"scalars", "exec"}
+NOT_LOADING = {"defaultload", "lazyload", "noload", "raiseload"}
 SQLALCHEMY_SELECTS = {
     "sqlalchemy.select",
     "sqlalchemy.future.select",
@@ -97,19 +99,42 @@ def segments(node):
     return result
 
 
+def loader_targets(argument):
+    targets = []
+    node = argument
+    while isinstance(node, ast.Call):
+        function = node.func
+        loader = function.attr if isinstance(function, ast.Attribute) else None
+        loader = loader or getattr(function, "id", "")
+        if node.args and loader not in NOT_LOADING:
+            targets.append(node.args[0])
+        node = function.value if isinstance(function, ast.Attribute) else None
+    return targets
+
+
 def plan_names(arguments):
     names = set()
     for argument in arguments:
         if isinstance(argument, ast.Starred):
             return {EVERYTHING}
-        if isinstance(argument, ast.Call) and argument.args:
-            argument = argument.args[0]
-        for node in ast.walk(argument):
+        targets = (
+            loader_targets(argument) if isinstance(argument, ast.Call) else [argument]
+        )
+        for node in (n for target in targets for n in ast.walk(target)):
             if isinstance(node, ast.Attribute):
                 names.add(node.attr)
             elif isinstance(node, ast.Constant) and isinstance(node.value, str):
                 names.update(node.value.split("__"))
     return names or {EVERYTHING}
+
+
+def segments_text(parts):
+    texts = []
+    for part in parts[:-1]:
+        arguments = part.call is not None and (part.call.args or part.call.keywords)
+        call = "(...)" if arguments else "()" if part.call is not None else ""
+        texts.append(f"{part.name}{call}")
+    return ".".join(texts + [f"{parts[-1].name}()"])
 
 
 def single_value(name, where):
@@ -155,7 +180,7 @@ def django_origin(parts, where):
     orm, relations = relations_of(found[0], found[1].context)
     if orm != "django":
         return None
-    text = ".".join(p.name for p in parts) + "()"
+    text = segments_text(parts)
     return Origin(found[0], found[1].context, orm, django_plan(chain), text, relations)
 
 
@@ -191,7 +216,7 @@ def sqlalchemy_origin(entity, place, options, text):
 def sqlalchemy_select_origin(parts, where):
     for index, part in enumerate(parts):
         rest = parts[index + 1 :]
-        if part.name == "scalars" and part.call and part.call.args:
+        if part.name in SCALAR_EXECUTES and part.call and part.call.args:
             statement, tail = part.call.args[0], rest
         elif part.name == "execute" and part.call and part.call.args:
             if not rest or rest[0].name != "scalars" or rest[0].call is None:
@@ -227,6 +252,16 @@ def sqlalchemy_query_origin(parts, where):
     return None
 
 
+def expanded(parts, place, depth=0):
+    if len(parts) < 2 or parts[0].call is not None or depth > MAX_HOPS:
+        return parts, place
+    found = single_value(parts[0].name, place)
+    inner = segments(strip(found[0])) if found is not None else None
+    if not inner:
+        return parts, place
+    return expanded(inner + parts[1:], found[1], depth + 1)
+
+
 def origin_of(node, context):
     where = where_of(node, context)
     expression, place = resolve_name(strip(node), where)
@@ -234,6 +269,7 @@ def origin_of(node, context):
     parts = segments(expression) if expression is not None else None
     if not parts:
         return None
+    parts, place = expanded(parts, place)
     return (
         django_origin(parts, place)
         or sqlalchemy_select_origin(parts, place)

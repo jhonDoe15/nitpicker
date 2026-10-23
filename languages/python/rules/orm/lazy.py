@@ -27,16 +27,29 @@ MANAGER_QUERIES = {
 }
 
 
+def enumerated(target, iterable):
+    if (
+        isinstance(target, ast.Tuple)
+        and len(target.elts) == 2
+        and isinstance(iterable, ast.Call)
+        and isinstance(iterable.func, ast.Name)
+        and iterable.func.id == "enumerate"
+        and iterable.args
+    ):
+        return target.elts[1], iterable.args[0]
+    return target, iterable
+
+
 def loop_parts(node):
     if isinstance(node, (ast.For, ast.AsyncFor)):
-        return node.target, node.iter, list(node.body)
+        return (*enumerated(node.target, node.iter), list(node.body))
     if isinstance(node, COMPREHENSIONS):
         first = node.generators[0]
         body = [node.key, node.value] if isinstance(node, ast.DictComp) else [node.elt]
         body += first.ifs
         for generator in node.generators[1:]:
             body += [generator.target, generator.iter, *generator.ifs]
-        return first.target, first.iter, body
+        return (*enumerated(first.target, first.iter), body)
     return None
 
 
