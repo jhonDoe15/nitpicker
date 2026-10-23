@@ -14,6 +14,7 @@ final class Ctx {
   final Bindings bindings;
   final Typer typer;
   final CallResolver calls;
+  final References references;
   private final Map<KtFile, Source> files = new IdentityHashMap<>();
 
   Ctx(Index index) {
@@ -28,6 +29,7 @@ final class Ctx {
     this.bindings = new Bindings(this);
     this.typer = new Typer(this);
     this.calls = new CallResolver(this);
+    this.references = new References(this);
   }
 
   Source sourceOf(PsiElement element) {

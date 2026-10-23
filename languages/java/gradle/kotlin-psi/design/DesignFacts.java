@@ -46,7 +46,18 @@ public final class DesignFacts {
         CallableFacts.dropTargets(callable, failed);
       }
     }
-    return m("modules", modules, "types", TypeFacts.build(ctx, library), "callables", new ArrayList<Object>(callables));
+    List<Object> types = TypeFacts.build(ctx, library);
+    dropFromTypes(types, failed);
+    return m("modules", modules, "types", types, "callables", new ArrayList<Object>(callables));
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void dropFromTypes(List<Object> types, Set<String> failed) {
+    if (!failed.isEmpty()) {
+      for (Object type : types) {
+        TypeFacts.dropTargets((Map<String, Object>) type, failed);
+      }
+    }
   }
 
   private static String source(Owner owner) {

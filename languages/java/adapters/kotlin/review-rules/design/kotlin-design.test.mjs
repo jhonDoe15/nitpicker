@@ -73,6 +73,36 @@ describe('the recorded design facts of the fixture sources', () => {
   });
 });
 
+const REFS = 'src/refs/Refs.kt';
+
+describe('the callables the recorded facts list as used as values', () => {
+  it.each([
+    [`${REFS}#Handler.first`, [`${REFS}#double`]],
+    [`${REFS}#Handler.bound`, [`${REFS}#Handler.handle`]],
+    [`${REFS}#Handler.unbound`, [`${REFS}#Handler.handle`]],
+    [`${REFS}#Handler.stored`, [`${REFS}#triple`]],
+    [`${REFS}#Handler.lookup`, [`${REFS}#negate`]],
+    [`${REFS}#Handler.fromFile`, [`${REFS}#double`, `${REFS}#triple`]],
+    [`${REFS}#Handler.ambiguous`, undefined],
+    [`${REFS}#Handler.wrapped`, undefined],
+  ])('are those of %s', (id, expected) => {
+    const callable = RECORDED.callables.find((item) => item.id === id);
+
+    expect(callable.references).toEqual(expected);
+  });
+
+  it('are those that the top-level property initializers of a module call or reference', () => {
+    const module = RECORDED.types.find((item) => item.id === REFS);
+
+    expect(module.references).toEqual([
+      `${REFS}#double`,
+      `${REFS}#triple`,
+      `${REFS}#negate`,
+      `${REFS}#register`,
+    ]);
+  });
+});
+
 describe('the recorded design facts of a published module', () => {
   it('pass the facts schema as the bundle the rules read', () => {
     expect(() => validateFacts(kotlinDesignBundle(RECORDED_PUBLISHED))).not.toThrow();

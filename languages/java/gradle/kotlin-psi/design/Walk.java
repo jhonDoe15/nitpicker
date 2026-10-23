@@ -25,6 +25,7 @@ final class Walk {
 
   final List<Object> calls = new ArrayList<>();
   final Set<String> own = new LinkedHashSet<>();
+  final Set<String> references = new LinkedHashSet<>();
   final Reads reads = new Reads();
   final Uses uses;
   private final Ctx ctx;
@@ -82,7 +83,7 @@ final class Walk {
     } else if (element instanceof KtTryExpression) {
       tryExpression((KtTryExpression) element);
     } else if (element instanceof KtCallableReferenceExpression) {
-      visit(((KtCallableReferenceExpression) element).getReceiverExpression());
+      reference((KtCallableReferenceExpression) element);
     } else if (element instanceof KtSuperTypeCallEntry) {
       delegation(((KtSuperTypeCallEntry) element).getTypeReference(), ((KtSuperTypeCallEntry) element).getValueArguments());
     } else if (element instanceof KtConstructorDelegationCall) {
@@ -90,6 +91,22 @@ final class Walk {
     } else {
       for (PsiElement child : element.getChildren()) {
         visit(child);
+      }
+    }
+  }
+
+  private void reference(KtCallableReferenceExpression expression) {
+    Fun target = ctx.references.function(expression);
+    if (target != null && target.owner.listed && target != function) {
+      references.add(target.id);
+    }
+    visit(expression.getReceiverExpression());
+  }
+
+  private void table(Prop prop) {
+    for (Fun target : ctx.references.table(prop)) {
+      if (target != function) {
+        references.add(target.id);
       }
     }
   }
@@ -157,6 +174,9 @@ final class Walk {
       if (prop != null && prop.getter != null && holder != function.owner) {
         accessor(prop.getter, null, q, selector);
       }
+      if (prop != null) {
+        table(prop);
+      }
       return;
     }
     Ty type = ctx.typer.typeOf(receiver);
@@ -198,6 +218,9 @@ final class Walk {
         uses.opaque(index);
       }
     } else if (binding.kind == Binding.Kind.FIELD) {
+      if (!binding.receiver) {
+        table(binding.prop);
+      }
       if (binding.receiver && function.receiver != null) {
         Ty receiver = ctx.names.resolve(function.receiver, source);
         reads.record(function, receiver.owner, binding.prop.name, Conditions.decided(ref), source.line(ref));

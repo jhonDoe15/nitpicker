@@ -150,7 +150,7 @@ final class CallResolver {
     return !members.isEmpty() || ctx.hierarchy.external(receiver.owner) ? NONE : null;
   }
 
-  private Resolved topLevel(KtCallExpression call, String name, List<Arity.Arg> args, Source source) {
+  List<Fun> plainTopLevel(String name, Source source) {
     List<Fun> plain = new ArrayList<>();
     for (List<Fun> tier : tiers(name, source)) {
       for (Fun function : tier) {
@@ -162,6 +162,11 @@ final class CallResolver {
         break;
       }
     }
+    return plain;
+  }
+
+  private Resolved topLevel(KtCallExpression call, String name, List<Arity.Arg> args, Source source) {
+    List<Fun> plain = plainTopLevel(name, source);
     Owner type = ctx.names.lookup(name, call, source);
     boolean isType = type != null && !type.module() && ctx.typer.constructible(type);
     if (isType && !plain.isEmpty()) {

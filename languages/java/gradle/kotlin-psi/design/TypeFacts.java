@@ -5,6 +5,7 @@ import static nitpicker.kotlinpsi.common.Psi.m;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
@@ -15,7 +16,7 @@ final class TypeFacts {
     List<Object> types = new ArrayList<>();
     for (Owner owner : ctx.index.owners) {
       if (owner.listed && (!owner.module() || hasMembers(owner))) {
-        types.add(describe(owner, published));
+        types.add(describe(ctx, owner, published));
       }
     }
     return types;
@@ -25,13 +26,36 @@ final class TypeFacts {
     return !module.funs.isEmpty() || !module.props.isEmpty();
   }
 
-  private static Map<String, Object> describe(Owner owner, boolean published) {
+  private static Map<String, Object> describe(Ctx ctx, Owner owner, boolean published) {
     String kind = Kinds.of(owner);
     return m(
         "id", owner.id, "file", owner.source.path, "name", owner.name, "line", line(owner), "kind", kind,
         "exported", owner.exported, "published", published && owner.exported ? Boolean.TRUE : null,
         "fields", fields(owner, kind),
-        "cases", kind.equals("enum") ? new ArrayList<Object>(owner.cases) : null);
+        "cases", kind.equals("enum") ? new ArrayList<Object>(owner.cases) : null,
+        "references", references(ctx, owner));
+  }
+
+  private static List<Object> references(Ctx ctx, Owner owner) {
+    if (!owner.module()) {
+      return null;
+    }
+    List<Object> ids = new ArrayList<>();
+    for (Fun target : ctx.references.initializers(owner)) {
+      ids.add(target.id);
+    }
+    return ids.isEmpty() ? null : ids;
+  }
+
+  @SuppressWarnings("unchecked")
+  static void dropTargets(Map<String, Object> type, Set<String> missing) {
+    Object references = type.get("references");
+    if (references instanceof List) {
+      ((List<Object>) references).removeIf(missing::contains);
+      if (((List<?>) references).isEmpty()) {
+        type.remove("references");
+      }
+    }
   }
 
   private static int line(Owner owner) {

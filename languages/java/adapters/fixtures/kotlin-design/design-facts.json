@@ -13,6 +13,10 @@
       "role": "production"
     },
     {
+      "file": "src/refs/Refs.kt",
+      "role": "production"
+    },
+    {
       "file": "src/report/Ambiguous.kt",
       "role": "production"
     },
@@ -89,6 +93,49 @@
       "line": 7,
       "kind": "module",
       "exported": true
+    },
+    {
+      "id": "src/refs/Refs.kt",
+      "file": "src/refs/Refs.kt",
+      "name": "Refs",
+      "line": 3,
+      "kind": "module",
+      "exported": true,
+      "fields": [
+        {
+          "name": "table"
+        },
+        {
+          "name": "registered"
+        }
+      ],
+      "references": [
+        "src/refs/Refs.kt#double",
+        "src/refs/Refs.kt#triple",
+        "src/refs/Refs.kt#negate",
+        "src/refs/Refs.kt#register"
+      ]
+    },
+    {
+      "id": "src/refs/Refs.kt#Handler",
+      "file": "src/refs/Refs.kt",
+      "name": "Handler",
+      "line": 19,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/refs/Refs.kt#Handler.Dispatch",
+      "file": "src/refs/Refs.kt",
+      "name": "Dispatch",
+      "line": 41,
+      "kind": "data",
+      "exported": true,
+      "fields": [
+        {
+          "name": "byName"
+        }
+      ]
     },
     {
       "id": "src/report/Ambiguous.kt",
@@ -533,6 +580,226 @@
         {
           "name": "twin",
           "type": "Twin"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/refs/Refs.kt#double",
+      "file": "src/refs/Refs.kt",
+      "name": "double",
+      "line": 3,
+      "kind": "function",
+      "owner": "src/refs/Refs.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "n",
+          "type": "Int"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/refs/Refs.kt#triple",
+      "file": "src/refs/Refs.kt",
+      "name": "triple",
+      "line": 5,
+      "kind": "function",
+      "owner": "src/refs/Refs.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "n",
+          "type": "Int"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/refs/Refs.kt#negate",
+      "file": "src/refs/Refs.kt",
+      "name": "negate",
+      "line": 7,
+      "kind": "function",
+      "owner": "src/refs/Refs.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "n",
+          "type": "Int"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/refs/Refs.kt#overloaded(Int)",
+      "file": "src/refs/Refs.kt",
+      "name": "overloaded",
+      "line": 9,
+      "kind": "function",
+      "owner": "src/refs/Refs.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "n",
+          "type": "Int"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/refs/Refs.kt#overloaded(Int,Int)",
+      "file": "src/refs/Refs.kt",
+      "name": "overloaded",
+      "line": 11,
+      "kind": "function",
+      "owner": "src/refs/Refs.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "n",
+          "type": "Int"
+        },
+        {
+          "name": "m",
+          "type": "Int"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/refs/Refs.kt#register",
+      "file": "src/refs/Refs.kt",
+      "name": "register",
+      "line": 17,
+      "kind": "function",
+      "owner": "src/refs/Refs.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "f",
+          "type": "(Int)->Int"
+        }
+      ],
+      "returns": "(Int)->Int"
+    },
+    {
+      "id": "src/refs/Refs.kt#Handler.handle",
+      "file": "src/refs/Refs.kt",
+      "name": "handle",
+      "line": 20,
+      "kind": "method",
+      "owner": "src/refs/Refs.kt#Handler",
+      "exported": true,
+      "params": [
+        {
+          "name": "n",
+          "type": "Int"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/refs/Refs.kt#Handler.first",
+      "file": "src/refs/Refs.kt",
+      "name": "first",
+      "line": 22,
+      "kind": "method",
+      "owner": "src/refs/Refs.kt#Handler",
+      "exported": true,
+      "references": ["src/refs/Refs.kt#double"],
+      "returns": "List"
+    },
+    {
+      "id": "src/refs/Refs.kt#Handler.bound",
+      "file": "src/refs/Refs.kt",
+      "name": "bound",
+      "line": 24,
+      "kind": "method",
+      "owner": "src/refs/Refs.kt#Handler",
+      "exported": true,
+      "references": ["src/refs/Refs.kt#Handler.handle"],
+      "returns": "List"
+    },
+    {
+      "id": "src/refs/Refs.kt#Handler.unbound",
+      "file": "src/refs/Refs.kt",
+      "name": "unbound",
+      "line": 26,
+      "kind": "method",
+      "owner": "src/refs/Refs.kt#Handler",
+      "exported": true,
+      "references": ["src/refs/Refs.kt#Handler.handle"],
+      "returns": "(Handler,Int)->Int"
+    },
+    {
+      "id": "src/refs/Refs.kt#Handler.ambiguous",
+      "file": "src/refs/Refs.kt",
+      "name": "ambiguous",
+      "line": 28,
+      "kind": "method",
+      "owner": "src/refs/Refs.kt#Handler",
+      "exported": true,
+      "returns": "(Int)->Int"
+    },
+    {
+      "id": "src/refs/Refs.kt#Handler.wrapped",
+      "file": "src/refs/Refs.kt",
+      "name": "wrapped",
+      "line": 30,
+      "kind": "method",
+      "owner": "src/refs/Refs.kt#Handler",
+      "exported": true,
+      "returns": "List",
+      "calls": [
+        {
+          "target": "src/refs/Refs.kt#double",
+          "line": 30
+        }
+      ]
+    },
+    {
+      "id": "src/refs/Refs.kt#Handler.stored",
+      "file": "src/refs/Refs.kt",
+      "name": "stored",
+      "line": 32,
+      "kind": "method",
+      "owner": "src/refs/Refs.kt#Handler",
+      "exported": true,
+      "references": ["src/refs/Refs.kt#triple"],
+      "returns": "(Int)->Int"
+    },
+    {
+      "id": "src/refs/Refs.kt#Handler.lookup",
+      "file": "src/refs/Refs.kt",
+      "name": "lookup",
+      "line": 37,
+      "kind": "method",
+      "owner": "src/refs/Refs.kt#Handler",
+      "exported": true,
+      "references": ["src/refs/Refs.kt#negate"],
+      "params": [
+        {
+          "name": "key",
+          "type": "String"
+        }
+      ],
+      "returns": "Int"
+    },
+    {
+      "id": "src/refs/Refs.kt#Handler.fromFile",
+      "file": "src/refs/Refs.kt",
+      "name": "fromFile",
+      "line": 39,
+      "kind": "method",
+      "owner": "src/refs/Refs.kt#Handler",
+      "exported": true,
+      "references": ["src/refs/Refs.kt#double", "src/refs/Refs.kt#triple"],
+      "params": [
+        {
+          "name": "key",
+          "type": "String"
         }
       ],
       "returns": "Int"
