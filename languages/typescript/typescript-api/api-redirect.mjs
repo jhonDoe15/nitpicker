@@ -3,7 +3,8 @@ import nodeModule from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const API_SPECIFIERS = new Set(['typescript', 'typescript/lib/typescript.js']);
+const API_SPECIFIER = /^typescript(?:\/package\.json|\/lib\/.+)?$/u;
+const MINIMUM_NODE = [22, 19];
 const UNRESOLVED_CODES = new Set([
   'ERR_MODULE_NOT_FOUND',
   'MODULE_NOT_FOUND',
@@ -12,6 +13,10 @@ const UNRESOLVED_CODES = new Set([
 
 export function hasJavaScriptApi(resolvedFile) {
   return existsSync(path.join(path.dirname(resolvedFile), 'typescript.js'));
+}
+
+export function packageHasJavaScriptApi(packageRoot) {
+  return existsSync(path.join(packageRoot, 'lib/typescript.js'));
 }
 
 function resolvedOrUndefined(nextResolve, specifier, context) {
@@ -25,40 +30,63 @@ function resolvedOrUndefined(nextResolve, specifier, context) {
   }
 }
 
-export function apiResolution(apiUrl) {
+function apiFile(apiRoot, specifier) {
+  if (specifier === 'typescript') {
+    return path.join(apiRoot, 'lib/typescript.js');
+  }
+  const file = path.join(apiRoot, specifier.slice('typescript/'.length));
+  return path.extname(file) === '' ? `${file}.js` : file;
+}
+
+export function apiResolution(apiRoot) {
   return (specifier, context, nextResolve) => {
-    if (!API_SPECIFIERS.has(specifier)) {
+    if (!API_SPECIFIER.test(specifier)) {
       return nextResolve(specifier, context);
     }
-    const resolved = resolvedOrUndefined(nextResolve, specifier, context);
-    return resolved?.url.startsWith('file:') === true &&
-      hasJavaScriptApi(fileURLToPath(resolved.url))
-      ? resolved
-      : { url: apiUrl, format: 'commonjs', shortCircuit: true };
+    const installed = resolvedOrUndefined(nextResolve, 'typescript', context);
+    if (
+      installed?.url.startsWith('file:') === true &&
+      hasJavaScriptApi(fileURLToPath(installed.url))
+    ) {
+      return nextResolve(specifier, context);
+    }
+    const file = apiFile(apiRoot, specifier);
+    return {
+      url: pathToFileURL(file).href,
+      format: path.extname(file) === '.json' ? 'json' : 'commonjs',
+      shortCircuit: true,
+    };
   };
 }
 
-function redirectPreload(apiFile) {
+function redirectPreload(apiRoot) {
   const source =
     `import { redirectTypeScriptApi } from ${JSON.stringify(import.meta.url)};` +
-    `redirectTypeScriptApi(${JSON.stringify(apiFile)}, process.env);`;
+    `redirectTypeScriptApi(${JSON.stringify(apiRoot)}, process.env);`;
   return `--import=data:text/javascript,${encodeURIComponent(source)}`;
 }
 
-export function withRedirectPreload(nodeOptions, apiFile) {
-  const preload = redirectPreload(apiFile);
+export function withRedirectPreload(nodeOptions, apiRoot) {
+  const preload = redirectPreload(apiRoot);
   const current = nodeOptions ?? '';
   return current.split(' ').includes(preload) ? current : `${current} ${preload}`.trim();
 }
 
-export function redirectTypeScriptApi(apiFile, environment) {
-  if (typeof nodeModule.registerHooks !== 'function') {
+export function supportsRedirect(versions = process.versions, hooks = nodeModule.registerHooks) {
+  const [major, minor] = versions.node.split('.').map(Number);
+  const [minimumMajor, minimumMinor] = MINIMUM_NODE;
+  const recentEnough = major > minimumMajor || (major === minimumMajor && minor >= minimumMinor);
+  return recentEnough && typeof hooks === 'function';
+}
+
+export function redirectTypeScriptApi(apiRoot, environment) {
+  if (!supportsRedirect()) {
     throw new Error(
-      "The project's typescript package has no JavaScript API (TypeScript 7 or later), so nitpicker " +
-        'reads source files with its own TypeScript 6, which needs module.registerHooks: run nitpicker ' +
-        'on Node.js 22.15 or newer.',
+      'The typescript package nitpicker resolves has no JavaScript API (it is TypeScript 7 or later, ' +
+        'or no typescript is installed), so nitpicker reads source files with its own TypeScript 6, ' +
+        `which needs Node.js ${MINIMUM_NODE.join('.')} or newer; this is Node.js ${process.versions.node}.`,
     );
   }
-  nodeModule.registerHooks({ resolve: apiResolution(pathToFileURL(apiFile).href) });
-  environment.NODE_OPTIONS = withRedirectPreload(environment.NODE_OPTIONS, apiFile);
+  nodeModule.registerHooks({ resolve: apiResolution(apiRoot) });
+  environment.NODE_OPTIONS = withRedirectPreload(environment.NODE_OPTIONS, apiRoot);
 }

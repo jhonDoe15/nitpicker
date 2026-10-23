@@ -20,6 +20,7 @@ const TOOL_BY_ANALYZER = {
   crap: 'typescript',
 };
 const PACKAGE_ANALYZERS = new Set(['structure', 'crap']);
+const DEPENDENCY_GRAPH_ANALYZERS = new Set(['entry-points', 'dependency-architecture', 'coupling']);
 const TYPESCRIPT_CONSUMERS = new Set([
   'coding-standards',
   'test-runtime',
@@ -99,15 +100,23 @@ export function resolveAnalyzerVersion(
   const version = PACKAGE_ANALYZERS.has(analyzerName)
     ? typeScriptApiVersion(resolve, bundled)
     : resolve(toolName, { projectRoot: liveProjectRoot }).version;
+  return withTypeScriptVersions({ analyzerName, toolName, version }, { resolve, bundled });
+}
+
+function withTypeScriptVersions({ analyzerName, toolName, version }, { resolve, bundled }) {
   if (analyzerName === 'typescript-typecheck') {
-    return `${version};typescript-native@${resolve('typescript-native', { projectRoot: PACKAGE_ROOT }).version}`;
+    const native = `typescript-native@${resolve('typescript-native', { projectRoot: PACKAGE_ROOT }).version}`;
+    return bundled
+      ? `${version};${native};${typeScriptApiVersion(resolve, bundled)}`
+      : `${version};${native}`;
+  }
+  if (DEPENDENCY_GRAPH_ANALYZERS.has(analyzerName)) {
+    return `${version};typescript@${typeScriptApiVersion(resolve, bundled)}`;
   }
   if (!TYPESCRIPT_CONSUMERS.has(analyzerName)) {
     return version;
   }
-
-  const typeScriptVersion = typeScriptApiVersion(resolve, bundled);
-  const base = `${toolName}@${version};typescript@${typeScriptVersion};plugins:${resolveEslintPluginVersions(resolve)}`;
+  const base = `${toolName}@${version};typescript@${typeScriptApiVersion(resolve, bundled)};plugins:${resolveEslintPluginVersions(resolve)}`;
   return analyzerName.startsWith('eslint-') ? `${base};${resolveOxlintVersions(resolve)}` : base;
 }
 

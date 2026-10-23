@@ -63,6 +63,15 @@ describe('ESLint analyzer versions', () => {
 
     expect(resolveAnalyzerVersion('structure', '/project', bundled)).toBe('js-api-6.0.3');
     expect(resolveAnalyzerVersion('crap', '/project', { resolve, bundled: false })).toBe('7.0.2');
+    expect(resolveAnalyzerVersion('typescript-typecheck', '/project', bundled)).toBe(
+      '7.0.2;typescript-native@1.0.0;js-api-6.0.3',
+    );
+    expect(resolveAnalyzerVersion('coupling', '/project', bundled)).toBe(
+      '1.0.0;typescript@js-api-6.0.3',
+    );
+    expect(resolveAnalyzerVersion('entry-points', '/project', { resolve, bundled: false })).toBe(
+      '1.0.0;typescript@7.0.2',
+    );
     expect(resolveAnalyzerVersion('eslint-lint', '/project', bundled)).toBe(
       resolveAnalyzerVersion('eslint-lint', '/project', { resolve, bundled: false }).replace(
         ';typescript@7.0.2;',
