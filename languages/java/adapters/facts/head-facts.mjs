@@ -1,6 +1,7 @@
 import { readInside } from '../../../../shared/conventions/read-inside.mjs';
 import { gitProjectFiles } from '../../../../shared/project-files/project-files.mjs';
 import { kotlinFormatterOf } from '../kotlin/kotlin-tools.mjs';
+import { springRolesFact } from '../spring-arch/spring-roles.mjs';
 
 const BUILD_FILE =
   /(?:^|\/)(?:pom\.xml|[^/]+\.gradle(?:\.kts)?|libs\.versions\.toml|[^/]+\.versions\.toml)$/u;
@@ -20,6 +21,7 @@ export function declaresSpring(projectRoot) {
 export function javaHeadFacts(projectRoot, config) {
   return {
     ...(declaresSpring(projectRoot) ? { spring: true } : {}),
+    ...springRolesFact(config),
     ...(config.preset === 'kotlin'
       ? { kotlin: { formatter: kotlinFormatterOf(projectRoot, config.kotlin?.formatter) } }
       : {}),
