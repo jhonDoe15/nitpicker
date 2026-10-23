@@ -28,6 +28,7 @@ final class CallableFacts {
         "exported", exported,
         "entry", Entries.of(ctx, function) ? Boolean.TRUE : null,
         "published", library && exported && function.owner.module() ? Boolean.TRUE : null,
+        "references", nonEmpty(new ArrayList<Object>(walk.references)),
         "params", params(ctx, function),
         "returns", returns(ctx, function), "forward", forward, "calls", nonEmpty(walk.calls),
         "paramUses", nonEmpty(walk.uses.facts()), "ownFields", nonEmpty(new ArrayList<Object>(walk.own)),
@@ -45,6 +46,13 @@ final class CallableFacts {
     if (uses instanceof List) {
       for (Object use : (List<?>) uses) {
         dropForwards((Map<String, Object>) use, missing);
+      }
+    }
+    Object references = callable.get("references");
+    if (references instanceof List) {
+      ((List<?>) references).removeIf(missing::contains);
+      if (((List<?>) references).isEmpty()) {
+        callable.remove("references");
       }
     }
     Object calls = callable.get("calls");
