@@ -1,6 +1,8 @@
 import { rulesCases } from './define.mjs';
 
 const LOOP_RULE = 'io-in-loop';
+const COPY_RULE = 'accumulator-copy';
+const RETRY_RULE = 'retry-without-idempotency';
 
 export const RULES_CASES = [
   ...rulesCases('sql-queries', [['sql-string-formatting', 'query parameters']]),
@@ -31,9 +33,13 @@ export const RULES_CASES = [
   ...rulesCases('io-in-loop-concurrent', [
     [LOOP_RULE, 'concurrently still sends one query', 'repo.get()|database|concurrent'],
   ]),
-  ...rulesCases('io-in-loop-remote', [[LOOP_RULE, 'asyncio.Semaphore', 'requests.get()|remote']]),
+  ...rulesCases('io-in-loop-remote', [
+    [LOOP_RULE, 'asyncio.Semaphore', 'requests.get()|remote'],
+    [LOOP_RULE, 'issues/313', 'requests.get()|remote'],
+  ]),
   ...rulesCases('accumulator-copy', [
-    ['accumulator-copy', 'itertools.chain', 'merged|merged + [...]|loop'],
+    [COPY_RULE, 'itertools.chain', 'merged|merged + [...]|loop'],
+    [COPY_RULE, '[*acc, item]', 'merged|merged + [...]|loop'],
   ]),
   ...rulesCases('lazy-relation-django', [
     ['lazy-relation-in-loop', 'select_related', 'Order.customer|django|Order.objects.all()'],
@@ -46,16 +52,20 @@ export const RULES_CASES = [
   ]),
   ...rulesCases('remote-under-lock', [
     ['remote-call-under-lock', 'releasing', 'requests.get()|LOCK'],
+    ['remote-call-under-lock', 'fill-once block', 'requests.get()|LOCK'],
   ]),
   ...rulesCases('retry-without-idempotency', [
-    [
-      'retry-without-idempotency',
-      'idempotency key',
-      'stripe.PaymentIntent.create()|payment|@retry',
-    ],
+    [RETRY_RULE, 'idempotency key', 'stripe.PaymentIntent.create()|payment|@retry'],
+  ]),
+  ...rulesCases('retry-message', [
+    [RETRY_RULE, 'task_id=', 'send_receipt.apply_async()|message|@retry'],
+  ]),
+  ...rulesCases('retry-insert', [
+    [RETRY_RULE, 'ON CONFLICT DO NOTHING', 'session.execute()|insert|@retry'],
   ]),
   ...rulesCases('dual-write', [
     ['dual-write-without-outbox', 'outbox', 'place|repository.save()|producer.send()'],
+    ['dual-write-without-outbox', 'marks that row sent', 'place|repository.save()|producer.send()'],
   ]),
   ...rulesCases('todo-without-issue', [['todo-without-issue', '# todo(#123)']]),
   ...rulesCases('skipped-test', [['skipped-test-without-reason', 'reason=']]),

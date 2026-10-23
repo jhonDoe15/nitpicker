@@ -131,6 +131,27 @@ METHOD_NAMES = {
     "bulk_create",
     "bulk_update",
 }
+DJANGO_ASYNC = {
+    "aget",
+    "acreate",
+    "acount",
+    "afirst",
+    "alast",
+    "aexists",
+    "aupdate",
+    "adelete",
+    "aget_or_create",
+    "aupdate_or_create",
+    "abulk_create",
+    "abulk_update",
+    "ain_bulk",
+    "aiterator",
+    "aaggregate",
+    "acontains",
+    "aearliest",
+    "alatest",
+}
+METHOD_NAMES |= DJANGO_ASYNC
 PARTIALS = {"functools.partial", "partial"}
 TASK_DECORATORS = {"celery.shared_task", "celery.task"}
 TASK_METHODS = {"delay", "apply_async"}

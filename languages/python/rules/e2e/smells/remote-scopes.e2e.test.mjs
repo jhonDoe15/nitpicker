@@ -91,7 +91,7 @@ describe.skipIf(!enabled)('remote-call-in-transaction', () => {
           '        session.add(order)',
           '        await httpx.AsyncClient().post("https://pay.test")',
         ),
-        ['remote-call-in-transaction:7 httpx.AsyncClient.post()|session.begin_nested()'],
+        ['remote-call-in-transaction:7 httpx.AsyncClient().post()|session.begin_nested()'],
       ],
       [
         'a psycopg transaction',
@@ -250,7 +250,7 @@ describe.skipIf(!enabled)('remote-call-under-lock', () => {
           '    async with LOCK:',
           '        return await httpx.AsyncClient().get("https://config.test")',
         ),
-        ['remote-call-under-lock:9 httpx.AsyncClient.get()|LOCK'],
+        ['remote-call-under-lock:9 httpx.AsyncClient().get()|LOCK'],
       ],
       [
         'a lock by its name',
@@ -333,6 +333,117 @@ describe.skipIf(!enabled)('remote-call-under-lock', () => {
           '        requests.post("https://x.test", data=handle)',
         ),
         [],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
+  });
+});
+
+describe.skipIf(!enabled)('remote scopes of other libraries and forms', () => {
+  it('reads peewee writes and queries as the database work of an atomic block', () => {
+    const [actual, expected] = outcomes([
+      [
+        'a peewee create in db.atomic',
+        code(
+          'import peewee',
+          'import requests',
+          '',
+          'db = peewee.SqliteDatabase("shop.db")',
+          '',
+          '',
+          'class Order(peewee.Model):',
+          '    total = peewee.IntegerField()',
+          '',
+          '',
+          'def place(total):',
+          '    with db.atomic():',
+          '        Order.create(total=total)',
+          '        requests.post("https://hooks.example.com", timeout=5)',
+        ),
+        ['remote-call-in-transaction:14 requests.post()|db.atomic()'],
+      ],
+      [
+        'a peewee atomic block without database work',
+        code(
+          'import peewee',
+          'import requests',
+          '',
+          'db = peewee.SqliteDatabase("shop.db")',
+          '',
+          '',
+          'def place(total):',
+          '    with db.atomic():',
+          '        requests.post("https://hooks.example.com", json=total, timeout=5)',
+        ),
+        [],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
+  });
+
+  it('stays quiet for a single-flight fill under a lock and flags an unconditional call', () => {
+    const [actual, expected] = outcomes([
+      [
+        'a cached download',
+        code(
+          'import os',
+          '',
+          'import httpx',
+          'from filelock import FileLock',
+          '',
+          '',
+          'def download(url, path):',
+          '    with FileLock(path + ".lock"):',
+          '        if not os.path.exists(path):',
+          '            response = httpx.get(url, timeout=30)',
+          '            with open(path, "wb") as handle:',
+          '                handle.write(response.content)',
+          '    return path',
+        ),
+        [],
+      ],
+      [
+        'a token refresh',
+        code(
+          'import asyncio',
+          'import time',
+          '',
+          'import httpx',
+          '',
+          '',
+          'class Tokens:',
+          '    def __init__(self, client: httpx.AsyncClient):',
+          '        self._client = client',
+          '        self._lock = asyncio.Lock()',
+          '        self._token = None',
+          '        self._expires = 0.0',
+          '',
+          '    async def token(self):',
+          '        async with self._lock:',
+          '            if self._token is None or self._expires < time.time():',
+          '                response = await self._client.post("https://auth.example.com", timeout=5)',
+          '                self._token = response.json()["access_token"]',
+          '                self._expires = time.time() + 300',
+          '            return self._token',
+        ),
+        [],
+      ],
+      [
+        'a check that reads state the block does not set',
+        code(
+          'import threading',
+          '',
+          'import requests',
+          '',
+          'LOCK = threading.Lock()',
+          '',
+          '',
+          'def refresh(state):',
+          '    with LOCK:',
+          '        if state.enabled:',
+          '            state.value = requests.get("https://config.example.com", timeout=5)',
+        ),
+        ['remote-call-under-lock:11 requests.get()|LOCK'],
       ],
     ]);
     expect(actual).toEqual(expected);

@@ -26,6 +26,6 @@ export const SCOPE_HINTS = [
     rules: ['remote-call-under-lock'],
     describe: lockDescribe,
     allowed:
-      'Make the remote call before taking the lock or after releasing it, and keep only the change of the shared state inside; copy the value you need out of the lock first. When the remote effect must happen exactly once per state change, record it in an outbox row and send it from a worker.',
+      'Make the remote call before taking the lock or after releasing it, and keep only the change of the shared state inside; copy the value you need out of the lock first. A fill-once block stays allowed: the call under an `if` that tests the state the block then sets (a token refresh, a cached download), so callers wait for one request instead of each sending their own. When the remote effect must happen exactly once per state change, record it in an outbox row and send it from a worker.',
   },
 ];

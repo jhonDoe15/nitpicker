@@ -159,3 +159,101 @@ describe.skipIf(!enabled)('dual-write-without-outbox', () => {
     expect(actual).toEqual(expected);
   });
 });
+
+describe.skipIf(!enabled)('dual-write-without-outbox relays and commits', () => {
+  it('stays quiet for the outbox relay and flags a publish of a row it does not mark', () => {
+    const [actual, expected] = outcomes([
+      [
+        'a relay that marks each published row',
+        code(
+          ...KAFKA,
+          'from django.db import models',
+          'from shop.models import Outbox',
+          '',
+          '',
+          'def relay():',
+          '    for row in Outbox.objects.filter(sent=False):',
+          '        producer.send(row.topic, row.payload)',
+          '        row.sent = True',
+          '        row.save()',
+        ),
+        [],
+      ],
+      [
+        'a loop that publishes read rows and writes something else',
+        code(
+          ...KAFKA,
+          'from django.db import models',
+          'from shop.models import Audit, Order',
+          '',
+          '',
+          'def announce(day):',
+          '    for order in Order.objects.filter(day=day):',
+          '        producer.send("orders", order.pk)',
+          '        Audit.objects.create(day=day)',
+        ),
+        [
+          'dual-write-without-outbox:12 announce|Audit.objects.create()|producer.send()',
+          'io-in-loop:13 Audit.objects.create()|database',
+        ],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
+  });
+
+  it('names the after-commit window for a publish after a committed atomic block', () => {
+    const [actual, expected] = outcomes([
+      [
+        'a publish after the atomic block',
+        code(
+          ...KAFKA,
+          'from django.db import transaction',
+          'from shop.models import Order',
+          '',
+          '',
+          'def place(data):',
+          '    with transaction.atomic():',
+          '        order = Order.objects.create(**data)',
+          '    producer.send("orders", order.pk)',
+        ),
+        ['dual-write-without-outbox:13 place|Order.objects.create()|producer.send()|on-commit'],
+      ],
+      [
+        'a publish inside the atomic block',
+        code(
+          ...KAFKA,
+          'from django.db import transaction',
+          'from shop.models import Order',
+          '',
+          '',
+          'def place(data):',
+          '    with transaction.atomic():',
+          '        order = Order.objects.create(**data)',
+          '        producer.send("orders", order.pk)',
+        ),
+        ['dual-write-without-outbox:13 place|Order.objects.create()|producer.send()'],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
+  });
+
+  it('reads an HTTP session delete as a remote call, not a database write', () => {
+    const [actual, expected] = outcomes([
+      [
+        'an aiohttp delete and a publish',
+        code(
+          ...KAFKA,
+          'import aiohttp',
+          '',
+          '',
+          'async def drop(url):',
+          '    async with aiohttp.ClientSession() as session:',
+          '        await session.delete(url)',
+          '    producer.send("drops", url)',
+        ),
+        [],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
+  });
+});
