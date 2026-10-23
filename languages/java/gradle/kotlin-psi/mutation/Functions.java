@@ -9,11 +9,14 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.lexer.KtTokens;
+import org.jetbrains.kotlin.psi.KtAnnotationEntry;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.KtFunctionType;
 import org.jetbrains.kotlin.psi.KtNamedFunction;
 import org.jetbrains.kotlin.psi.KtParameter;
+import org.jetbrains.kotlin.psi.KtProperty;
+import org.jetbrains.kotlin.psi.KtPropertyAccessor;
 import org.jetbrains.kotlin.psi.KtTypeElement;
 import org.jetbrains.kotlin.psi.KtTypeReference;
 
@@ -53,6 +56,7 @@ final class Functions {
     entries.add(
         m(
             "name", function.getName(),
+            "jvmName", jvmName(function),
             "class", owner,
             "start", spans.firstLine(function),
             "end", spans.lastLine(function),
@@ -61,6 +65,50 @@ final class Functions {
             "returnsUnit", returnsUnit(function),
             "inlineCalls", inlineCalls(function),
             "staticIn", jvmStatic ? staticOwner : null));
+  }
+
+  void declareAccessors(KtProperty property, String owner) {
+    boolean inlineProperty = property.hasModifier(KtTokens.INLINE_KEYWORD);
+    String name = String.valueOf(property.getName());
+    boolean booleanForm = name.matches("^is[A-Z_].*");
+    accessor(property.getGetter(), booleanForm ? name : "get" + capitalized(name), owner, inlineProperty);
+    accessor(
+        property.getSetter(),
+        "set" + capitalized(booleanForm ? name.substring(2) : name),
+        owner,
+        inlineProperty);
+  }
+
+  private void accessor(KtPropertyAccessor accessor, String name, String owner, boolean inlineProperty) {
+    boolean inline = accessor != null && (inlineProperty || accessor.hasModifier(KtTokens.INLINE_KEYWORD));
+    if (!inline || !accessor.hasBody()) {
+      return;
+    }
+    entries.add(
+        m(
+            "name", name,
+            "class", owner,
+            "start", spans.firstLine(accessor),
+            "end", spans.lastLine(accessor),
+            "suspend", false,
+            "inline", true,
+            "returnsUnit", false,
+            "inlineCalls", List.of()));
+  }
+
+  private String capitalized(String name) {
+    return name.isEmpty() ? name : Character.toUpperCase(name.charAt(0)) + name.substring(1);
+  }
+
+  private String jvmName(KtNamedFunction function) {
+    for (KtAnnotationEntry entry : function.getAnnotationEntries()) {
+      boolean named = entry.getShortName() != null && "JvmName".equals(entry.getShortName().asString());
+      if (named && !entry.getValueArguments().isEmpty()) {
+        KtExpression value = entry.getValueArguments().get(0).getArgumentExpression();
+        return value == null ? null : value.getText().replace("\"", "");
+      }
+    }
+    return null;
   }
 
   private boolean returnsUnit(KtNamedFunction function) {

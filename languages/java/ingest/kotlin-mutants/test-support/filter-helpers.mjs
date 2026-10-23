@@ -19,11 +19,11 @@ const emptyFile = {
   functions: [],
   lambdas: [],
   branching: [],
-  bang: [],
+  casts: [],
 };
 
-export function filterFor(file = {}) {
-  return createGeneratedFilter({ files: [{ ...emptyFile, ...file }] });
+export function filterFor(file = {}, mutants = []) {
+  return createGeneratedFilter({ files: [{ ...emptyFile, ...file }] })(mutants);
 }
 
 export function mutant(overrides) {
@@ -59,7 +59,7 @@ export function removed(call) {
 }
 
 export function lambda(fields) {
-  return { returnLines: [], discarded: false, unitCallee: false, ...fields };
+  return { returnLines: [], discarded: false, projectCallee: false, unitCallee: false, ...fields };
 }
 
 export function fn(fields) {

@@ -39,14 +39,14 @@ function groupMutants(mutants, { resolvePath, generated }) {
   const statusCounts = new Map();
   const groups = new Map();
   let leftOut = 0;
-  generated?.observe?.(mutants);
+  const judge = generated?.(mutants);
   for (const mutant of mutants) {
     const status = STATUS_NAMES[mutant.status] ?? 'Unknown';
     const filePath =
-      status === 'Killed' && generated === undefined
+      status === 'Killed' && judge === undefined
         ? undefined
         : resolvePath(mutant.className, mutant.sourceFile);
-    if (generated?.(mutant, filePath) !== undefined) {
+    if (judge?.(mutant, filePath) !== undefined) {
       leftOut += 1;
       continue;
     }
@@ -62,7 +62,7 @@ function addToGroup(groups, { mutant, status, filePath }) {
   const key = [
     simpleClassName(mutant.className),
     `${mutant.method}${simpleDescriptor(mutant.methodDescription)}`,
-    mutator(mutant.mutator),
+    mutant.mutatorName,
     withoutPackages(mutant.description),
   ].join('|');
   const groupKey = `${status}\0${filePath}\0${key}`;
@@ -89,7 +89,7 @@ function neutralMutants(groups, functionAt) {
         path: filePath,
         identity: `${key}#${String(index + 1)}`,
         status,
-        label: `${mutator(mutant.mutator)}: ${mutant.description}`,
+        label: `${mutant.mutatorName}: ${mutant.description}`,
         symbol: mutantSymbol(mutant, filePath, functionAt),
         line: mutant.line,
       });
@@ -119,7 +119,7 @@ function leftOutSummary(count, tool) {
           rule: 'mutation-summary',
           path: '.',
           identity: 'status:GeneratedCode',
-          message: 'Mutants in code the Kotlin compiler generated, left out',
+          message: 'Mutants in compiler-generated code, left out',
           classification: 'descriptive',
           metric: { name: 'GeneratedCode', value: count },
         },
@@ -159,7 +159,6 @@ function parseMutant(attributes, body) {
     sourceFile,
     method: field('mutatedMethod') ?? '',
     methodDescription: field('methodDescription') ?? '',
-    mutator: field('mutator') ?? 'unknown',
     mutatorName: mutator(field('mutator') ?? 'unknown'),
     description: field('description') ?? '',
     line: Number.parseInt(field('lineNumber') ?? '', 10) || 0,

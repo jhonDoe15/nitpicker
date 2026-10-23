@@ -28,8 +28,8 @@ describe('operands of a multi-line expression in a suspend function', () => {
   });
 });
 
-describe('the null check of a multi-line !! expression', () => {
-  const filter = filterFor({ bang: [5, 7] });
+describe('the null check of a multi-line as cast', () => {
+  const filter = filterFor({ casts: [5, 7] });
   const check = removed('kotlin/jvm/internal/Intrinsics::checkNotNull');
 
   it('keeps the removed check on the first and the last line and drops it on the line between', () => {
@@ -46,7 +46,7 @@ describe('inlined copies in a caller of a project inline function', () => {
   const inlineFn = fn({ name: 'clampInline', start: 10, end: 12, inline: true });
   const plain = fn({ name: 'plain', class: 'demo.Other', start: 30, end: 31 });
 
-  it('keeps a mutant past the end of the file in a class that calls an inline function, nested classes included', () => {
+  it('keeps a mutant past the end of the file in a class that calls an inline function, nested ones too', () => {
     const filter = filterFor({ functions: [inlineFn, caller] });
 
     expect([
@@ -78,7 +78,7 @@ describe('the out-of-line copy of an inline function that inlines another one', 
   });
   const inCopy = (method, line) => filter(mutant({ ...boundary, method, line }), FILE);
 
-  it('drops its mutants on lines past the end of the file, also in the $$forInline copy, and keeps those of a caller', () => {
+  it("drops its mutants past the end of the file, also in the $$forInline copy, and keeps a caller's", () => {
     expect([
       inCopy('runAgain', 55),
       inCopy('runAgain$$forInline', 55),
@@ -111,7 +111,7 @@ describe('suspend lambdas with labeled returns and delegated setters', () => {
   });
   const result = (line) => filter(mutant({ method: 'invokeSuspend', ...returns, line }), FILE);
 
-  it('keeps the value of an early return@async and the final value, and drops the synthetic return on another line', () => {
+  it('keeps an early return@async and the final value, and drops the synthetic return on another line', () => {
     expect([result(12), result(15), result(13)]).toEqual([
       undefined,
       undefined,
@@ -203,7 +203,7 @@ describe('Unit results', () => {
     ]).toEqual(['suspend-unit-result', undefined, undefined, undefined]);
   });
 
-  it('drops the synthetic return of a lambda whose result is discarded or whose callee takes a Unit lambda and keeps that of another callee', () => {
+  it('drops the synthetic return of a discarded result or a Unit callee and keeps that of another callee', () => {
     expect([30, 31, 32].map((line) => inDemo({ method: 'invokeSuspend', line }))).toEqual([
       'suspend-lambda-result',
       'suspend-lambda-result',
@@ -217,14 +217,13 @@ describe('default methods of an interface', () => {
   const twin = { className: 'demo.Animal$DefaultImpls', method: 'sound', ...returns };
 
   it('drops the DefaultImpls copy only when the interface itself has a mutant for the method', () => {
-    const before = filter(mutant(twin), FILE);
-    filter.observe([{ className: 'demo.Animal', method: 'sound' }]);
+    const withSibling = filterFor({}, [{ className: 'demo.Animal', method: 'sound' }]);
 
     expect([
-      before,
       filter(mutant(twin), FILE),
-      filter(mutant({ ...twin, method: 'walk' }), FILE),
-      filter(mutant({ ...twin, className: 'demo.Bird$DefaultImpls' }), FILE),
+      withSibling(mutant(twin), FILE),
+      withSibling(mutant({ ...twin, method: 'walk' }), FILE),
+      withSibling(mutant({ ...twin, className: 'demo.Bird$DefaultImpls' }), FILE),
     ]).toEqual([undefined, 'default-impls-twin', undefined, undefined]);
   });
 });

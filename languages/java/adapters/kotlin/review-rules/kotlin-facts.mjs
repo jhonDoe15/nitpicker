@@ -1,12 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { KOTLIN_REPORTS } from '../reports/kotlin-report-names.mjs';
 
-const FACTS_REPORT = 'kotlin-facts.json';
 const NULLABLE = /\?$/u;
 const GENERIC_ARGUMENTS = /<.*$/u;
 
 export function readKotlinFacts(reportRoot) {
-  const report = path.join(reportRoot, FACTS_REPORT);
+  const report = path.join(reportRoot, KOTLIN_REPORTS.facts);
   if (!existsSync(report)) {
     return { files: [] };
   }

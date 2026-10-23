@@ -55,6 +55,8 @@ final class Classes {
     for (KtDeclaration declaration : declarations) {
       if (declaration instanceof KtNamedFunction) {
         functions.declare((KtNamedFunction) declaration, name, null);
+      } else if (declaration instanceof KtProperty) {
+        functions.declareAccessors((KtProperty) declaration, name);
       }
     }
   }
@@ -76,7 +78,9 @@ final class Classes {
         all.add(parameter);
       }
     }
-    boolean init = members.stream().anyMatch(member -> member instanceof KtClassInitializer);
+    boolean init =
+        members.stream().anyMatch(member -> member instanceof KtClassInitializer)
+            || !klass.getSecondaryConstructors().isEmpty();
     boolean serializable = annotationNames(klass).contains("Serializable");
     Map<String, Object> header =
         m(
@@ -88,6 +92,8 @@ final class Classes {
         declareClass((KtClassOrObject) member, name + "$");
       } else if (member instanceof KtNamedFunction) {
         functions.declare((KtNamedFunction) member, name, staticOwner(klass, prefix));
+      } else if (member instanceof KtProperty) {
+        functions.declareAccessors((KtProperty) member, name);
       }
     }
   }

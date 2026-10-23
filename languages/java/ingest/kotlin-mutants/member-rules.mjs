@@ -44,7 +44,7 @@ function writtenNames(entry) {
   return names;
 }
 
-function generatedAccessor({ mutant, cls }) {
+export function generatedAccessor({ mutant, cls }) {
   const method = accessorMethod(mutant.method);
   return (
     cls !== undefined &&
@@ -66,7 +66,7 @@ function generatedAccessor({ mutant, cls }) {
   );
 }
 
-function generatedMember({ mutant, cls }) {
+export function generatedMember({ mutant, cls }) {
   return (
     cls !== undefined &&
     cls.kind !== 'facade' &&
@@ -78,7 +78,7 @@ function generatedMember({ mutant, cls }) {
   );
 }
 
-function valueClassMember({ mutant, cls }) {
+export function valueClassMember({ mutant, cls }) {
   return (
     cls?.kind === 'value' &&
     VALUE_CLASS_GENERATED.has(mutant.method) &&
@@ -86,5 +86,3 @@ function valueClassMember({ mutant, cls }) {
     !cls.functions.includes(mutant.method.replace(/-impl0?$/, ''))
   );
 }
-
-export { generatedAccessor, generatedMember, valueClassMember };

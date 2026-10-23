@@ -32,7 +32,8 @@ final class Branching {
           "partition", "takeWhile", "dropWhile", "repeat", "use", "require", "requireNotNull", "check",
           "checkNotNull", "assert", "getOrElse", "getOrPut", "takeIf", "takeUnless", "ifEmpty", "ifBlank",
           "coerceAtLeast", "coerceAtMost", "coerceIn", "maxOf", "minOf", "maxOfOrNull", "minOfOrNull", "maxByOrNull",
-          "minByOrNull", "mapCatching", "recover", "getOrNull", "getOrDefault");
+          "minByOrNull", "mapCatching", "recover", "getOrNull", "getOrDefault", "isNullOrBlank", "isNullOrEmpty",
+          "isEmpty", "isNotEmpty", "isBlank", "isNotBlank", "orEmpty");
   private static final Set<Object> COMPARISONS =
       Set.of(KtTokens.LT, KtTokens.GT, KtTokens.LTEQ, KtTokens.GTEQ, KtTokens.EQEQ, KtTokens.EXCLEQ,
           KtTokens.EQEQEQ, KtTokens.EXCLEQEQEQ, KtTokens.ANDAND, KtTokens.OROR, KtTokens.ELVIS,
@@ -41,7 +42,7 @@ final class Branching {
   private final Spans spans;
   private final Set<String> projectInline;
   private final Set<Integer> branching = new TreeSet<>();
-  private final Set<Integer> bang = new TreeSet<>();
+  private final Set<Integer> casts = new TreeSet<>();
 
   Branching(Spans spans, Set<String> projectInline) {
     this.spans = spans;
@@ -52,8 +53,8 @@ final class Branching {
     return new ArrayList<>(branching);
   }
 
-  List<Integer> bangLines() {
-    return new ArrayList<>(bang);
+  List<Integer> castLines() {
+    return new ArrayList<>(casts);
   }
 
   void visit(PsiElement element) {
@@ -68,7 +69,7 @@ final class Branching {
     } else if (element instanceof KtIsExpression) {
       mark(((KtIsExpression) element).getOperationReference());
     } else if (element instanceof KtBinaryExpressionWithTypeRHS) {
-      mark(((KtBinaryExpressionWithTypeRHS) element).getOperationReference());
+      cast((KtBinaryExpressionWithTypeRHS) element);
     } else if (element instanceof KtPrefixExpression) {
       prefix((KtPrefixExpression) element);
     } else if (element instanceof KtPostfixExpression) {
@@ -124,8 +125,14 @@ final class Branching {
   private void postfix(KtPostfixExpression expression) {
     if (expression.getOperationToken() == KtTokens.EXCLEXCL) {
       mark(expression.getOperationReference());
-      bang.add(spans.startLine(expression));
-      bang.add(spans.endLine(expression));
+    }
+  }
+
+  private void cast(KtBinaryExpressionWithTypeRHS expression) {
+    mark(expression.getOperationReference());
+    if (expression.getOperationReference().getReferencedNameElementType() == KtTokens.AS_KEYWORD) {
+      casts.add(spans.startLine(expression));
+      casts.add(spans.endLine(expression));
     }
   }
 

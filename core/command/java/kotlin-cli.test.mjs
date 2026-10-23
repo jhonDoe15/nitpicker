@@ -156,8 +156,14 @@ describe('nitpicker with "preset": "kotlin"', () => {
         rule: 'mutant-survived',
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'KKt|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
-        message:
-          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/kotlin/demo/K.kt"],"function":"KKt.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        message: [
+          'Survived MathMutator: Replaced integer multiplication with division:',
+          'no test fails when this code changes. Add an assertion that would.',
+          'If no input can tell the two apart (a compareTo boundary, a discarded lambda return),',
+          'simplify the code so this mutant disappears.',
+          'If this is intended, add {"rule":"mutant-survived","paths":["src/main/kotlin/demo/K.kt"],',
+          '"function":"KKt.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        ].join(' '),
         classification: 'enforceable',
         symbol: 'KKt#fee(I)I',
         location: { line: 3 },
@@ -166,10 +172,12 @@ describe('nitpicker with "preset": "kotlin"', () => {
   });
   it('leaves out the mutants of code the Kotlin compiler generated', () => {
     const root = kotlinRepository({ 'src/main/kotlin/demo/K.kt': feeSource });
-    const generated = pitReport('demo.KKt', 'K.kt').replace(
-      'Replaced integer multiplication with division',
-      'removed call to kotlin/ResultKt::throwOnFailure',
-    );
+    const generated = pitReport('demo.KKt', 'K.kt')
+      .replace(
+        'Replaced integer multiplication with division',
+        'removed call to kotlin/ResultKt::throwOnFailure',
+      )
+      .replace('<mutatedMethod>fee<', '<mutatedMethod>invokeSuspend<');
     writeFiles(root, { 'mutations.xml': generated });
     commit(root, 'a generated mutant survives');
 

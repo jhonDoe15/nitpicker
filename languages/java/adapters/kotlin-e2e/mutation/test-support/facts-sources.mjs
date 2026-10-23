@@ -40,7 +40,7 @@ suspend fun fetch(id: Int): Int {
     }
 }
 
-fun force(text: String?): Int = text!!.length
+fun narrow(value: Any?): String = value as String
 
 val names = listOf("a", "b").map { it.uppercase() }
 
@@ -62,9 +62,9 @@ fun runMeasured(value: String?): Int =
             ?: 0
     }
 
-fun strict(value: String?): Int =
-    listOf(value)
-        .firstOrNull()!!
+fun narrowMany(values: List<Any?>): Int =
+    (values
+        .first() as String)
         .length
 
 fun repeatAction(times: Int, action: () -> Unit) {
@@ -83,5 +83,44 @@ suspend fun combine(id: Int): Int = coroutineScope {
         2
     }
     first.await()
+}
+
+suspend fun <T> collect(block: suspend () -> T): T = block()
+
+suspend fun viaCollect(id: Int): Int = collect { id * 3 }
+
+suspend fun viaTry(id: Int): Int =
+    try {
+        coroutineScope { id + 1 }
+    } catch (failure: IllegalStateException) {
+        -1
+    }
+
+suspend fun viaIf(flag: Boolean): Int =
+    if (flag) {
+        coroutineScope { 1 }
+    } else {
+        0
+    }
+
+suspend fun discarded(id: Int) {
+    coroutineScope { id }
+    println(id)
+}
+
+class Sink {
+    @JvmName("renamed")
+    suspend fun original(out: StringBuilder) {
+        delay(1)
+        out.append("x")
+    }
+
+    val Int.tripled: Int
+        inline get() = this * 3
+}
+
+@JvmInline
+value class Percent(val share: Int) {
+    constructor(text: String) : this(text.length * 2)
 }
 `;

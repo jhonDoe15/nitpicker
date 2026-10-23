@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { EMPTY_MUTATION_FACTS } from '../test-support/kotlin-empty-reports.mjs';
 import { kotlinGeneratedFilter } from './kotlin-reports.mjs';
 
 const roots = [];
@@ -39,7 +40,7 @@ const USER = {
   functions: [],
   lambdas: [],
   branching: [],
-  bang: [],
+  casts: [],
 };
 
 function reportRoot(facts) {
@@ -63,9 +64,22 @@ const mutant = (method, line) => ({
   line,
 });
 
+function parseFailure(text) {
+  try {
+    JSON.parse(text);
+  } catch (error) {
+    return error.message;
+  }
+  throw new Error('the text is valid JSON');
+}
+
+function filterOf(reportRoot) {
+  return kotlinGeneratedFilter({ reportRoot })([]);
+}
+
 describe('the Kotlin mutation filter of a report directory', () => {
   it('judges a mutant by the mutation facts the kotlin-psi program wrote beside the facts report', () => {
-    const filter = kotlinGeneratedFilter({ reportRoot: reportRoot({ files: [USER] }) });
+    const filter = filterOf(reportRoot({ files: [USER] }));
 
     expect([
       filter(mutant('getId', 3), USER.file),
@@ -74,11 +88,35 @@ describe('the Kotlin mutation filter of a report directory', () => {
     ]).toEqual(['generated-accessor', undefined, undefined]);
   });
 
+  it('accepts the report of a module without Kotlin files', () => {
+    const filter = filterOf(reportRoot(JSON.parse(EMPTY_MUTATION_FACTS)));
+
+    expect(filter(mutant('getId', 3), USER.file)).toBeUndefined();
+  });
+
   it('needs that report, because without it the gate would count the compiler-generated mutants', () => {
     const missing = reportRoot();
 
     expect(() => kotlinGeneratedFilter({ reportRoot: missing })).toThrow(
-      `The Kotlin mutation filter needs kotlin-mutation-facts.json beside kotlin-facts.json in ${missing}; the kotlin-psi program writes it.`,
+      `The Kotlin mutation filter needs kotlin-mutation-facts.json in ${missing}. ` +
+        'The kotlin-psi program writes it beside the facts report; ' +
+        'a build tool that skips the program (no Kotlin files) must write {"files":[]} there.',
+    );
+  });
+
+  it.each([
+    ['{"files":[', parseFailure('{"files":[')],
+    [
+      '{"files":[{"file":"A.kt"}]}',
+      'the entry of A.kt lacks lines, classes, functions, lambdas, branching, casts',
+    ],
+    ['{}', 'the report has no "files" list'],
+  ])('refuses the report %s, naming it and the way to regenerate it', (text, reason) => {
+    const reports = reportRoot();
+    writeFileSync(path.join(reports, 'kotlin-mutation-facts.json'), text);
+
+    expect(() => kotlinGeneratedFilter({ reportRoot: reports })).toThrow(
+      `kotlin-mutation-facts.json in ${reports} is unusable (${reason}); run the kotlin-psi program again`,
     );
   });
 });

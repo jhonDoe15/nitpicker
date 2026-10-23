@@ -14,5 +14,13 @@ export function isSuspendContext({ method, methodDescription }) {
 }
 
 export function unmangled(method) {
-  return method.replace(/-[\w]{7}$/, '');
+  return method.replace(/-.*$/, '').replace(/\$[A-Za-z_]\w*$/, '');
+}
+
+export function jvmNameOf(entry) {
+  return entry.jvmName ?? entry.name;
+}
+
+export function within(entry, line) {
+  return line >= entry.start && line <= entry.end;
 }

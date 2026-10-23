@@ -19,8 +19,6 @@ export function parseJdeps(text) {
   return edges;
 }
 
-export { outerClass };
-
 function packageOf(className) {
   const index = className.lastIndexOf('.');
   return index < 0 ? ROOT_PACKAGE : className.slice(0, index);

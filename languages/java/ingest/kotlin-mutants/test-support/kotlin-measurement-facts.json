@@ -3,7 +3,7 @@
     {
       "file": "src/main/kotlin/demo/Coro.kt",
       "package": "demo",
-      "lines": 77,
+      "lines": 76,
       "classes": [
         {
           "name": "demo.Meters",
@@ -194,6 +194,7 @@
           "returnLines": [],
           "callee": "flow",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -203,6 +204,7 @@
           "returnLines": [],
           "callee": "withContext",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -212,6 +214,7 @@
           "returnLines": [],
           "callee": "coroutineScope",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -221,6 +224,7 @@
           "returnLines": [],
           "callee": "async",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -230,6 +234,7 @@
           "returnLines": [],
           "callee": "async",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -239,6 +244,7 @@
           "returnLines": [],
           "callee": "launch",
           "discarded": true,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -248,6 +254,7 @@
           "returnLines": [],
           "callee": "observable",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -257,6 +264,7 @@
           "returnLines": [],
           "callee": "mapNotNull",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -266,16 +274,17 @@
           "returnLines": [],
           "callee": "buildString",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         }
       ],
       "branching": [26, 43, 44, 45, 46, 66, 69, 73],
-      "bang": []
+      "casts": []
     },
     {
       "file": "src/main/kotlin/demo/Flow.kt",
       "package": "demo",
-      "lines": 28,
+      "lines": 27,
       "classes": [
         {
           "name": "demo.FlowKt",
@@ -348,6 +357,7 @@
           "returnLines": [],
           "callee": "filter",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -357,6 +367,7 @@
           "returnLines": [],
           "callee": "map",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -366,16 +377,17 @@
           "returnLines": [],
           "callee": "firstOrNull",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         }
       ],
       "branching": [7, 14, 20, 22, 25],
-      "bang": []
+      "casts": []
     },
     {
       "file": "src/main/kotlin/demo/More.kt",
       "package": "demo",
-      "lines": 123,
+      "lines": 122,
       "classes": [
         {
           "name": "demo.Holder",
@@ -651,6 +663,7 @@
           "returnLines": [],
           "callee": "let",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -660,6 +673,7 @@
           "returnLines": [],
           "callee": "forEach",
           "discarded": true,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -669,6 +683,7 @@
           "returnLines": [],
           "callee": "use",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -678,6 +693,7 @@
           "returnLines": [],
           "callee": "lazy",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -687,6 +703,7 @@
           "returnLines": [],
           "callee": "require",
           "discarded": true,
+          "projectCallee": false,
           "unitCallee": false
         },
         {
@@ -696,6 +713,7 @@
           "returnLines": [],
           "callee": "check",
           "discarded": true,
+          "projectCallee": true,
           "unitCallee": false
         },
         {
@@ -705,6 +723,7 @@
           "returnLines": [],
           "callee": "sequence",
           "discarded": false,
+          "projectCallee": false,
           "unitCallee": false
         }
       ],
@@ -712,12 +731,12 @@
         7, 10, 13, 21, 24, 30, 33, 34, 35, 36, 42, 46, 48, 53, 55, 61, 65, 77, 85, 88, 91, 92, 112,
         119, 120, 121
       ],
-      "bang": []
+      "casts": []
     },
     {
       "file": "src/main/kotlin/demo/Nulls.kt",
       "package": "demo",
-      "lines": 67,
+      "lines": 68,
       "classes": [
         {
           "name": "demo.Person",
@@ -726,7 +745,15 @@
           "headerEnd": 3,
           "init": false,
           "serializable": false,
-          "functions": ["display", "nickLength", "forced", "castOrNull", "cast", "tagged"],
+          "functions": [
+            "display",
+            "nickLength",
+            "forced",
+            "castOrNull",
+            "cast",
+            "castNullable",
+            "tagged"
+          ],
           "properties": [
             {
               "name": "tag",
@@ -760,16 +787,16 @@
         {
           "name": "demo.Counter",
           "kind": "class",
-          "start": 55,
-          "headerEnd": 55,
+          "start": 57,
+          "headerEnd": 57,
           "init": false,
           "serializable": false,
           "functions": ["increment"],
           "properties": [
             {
               "name": "count",
-              "start": 61,
-              "end": 61,
+              "start": 63,
+              "end": 63,
               "constructor": false,
               "getter": false,
               "setter": false,
@@ -780,16 +807,16 @@
         {
           "name": "demo.Counter$Companion",
           "kind": "object",
-          "start": 56,
-          "headerEnd": 56,
+          "start": 58,
+          "headerEnd": 58,
           "init": false,
           "serializable": false,
           "functions": ["create"],
           "properties": [
             {
               "name": "START",
-              "start": 57,
-              "end": 57,
+              "start": 59,
+              "end": 59,
               "constructor": false,
               "getter": false,
               "setter": false,
@@ -870,7 +897,7 @@
           "inlineCalls": []
         },
         {
-          "name": "tagged",
+          "name": "castNullable",
           "class": "demo.Person",
           "start": 16,
           "end": 16,
@@ -880,10 +907,20 @@
           "inlineCalls": []
         },
         {
+          "name": "tagged",
+          "class": "demo.Person",
+          "start": 18,
+          "end": 18,
+          "suspend": false,
+          "inline": false,
+          "returnsUnit": false,
+          "inlineCalls": []
+        },
+        {
           "name": "create",
           "class": "demo.Counter$Companion",
-          "start": 58,
-          "end": 58,
+          "start": 60,
+          "end": 60,
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
@@ -892,8 +929,8 @@
         {
           "name": "increment",
           "class": "demo.Counter",
-          "start": 63,
-          "end": 65,
+          "start": 65,
+          "end": 67,
           "suspend": false,
           "inline": false,
           "returnsUnit": true,
@@ -902,8 +939,8 @@
         {
           "name": "greet",
           "class": "demo.NullsKt",
-          "start": 19,
-          "end": 20,
+          "start": 21,
+          "end": 22,
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
@@ -912,8 +949,8 @@
         {
           "name": "overloaded",
           "class": "demo.NullsKt",
-          "start": 22,
-          "end": 23,
+          "start": 24,
+          "end": 25,
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
@@ -922,8 +959,8 @@
         {
           "name": "twice",
           "class": "demo.NullsKt",
-          "start": 25,
-          "end": 25,
+          "start": 27,
+          "end": 27,
           "suspend": false,
           "inline": true,
           "returnsUnit": false,
@@ -932,8 +969,8 @@
         {
           "name": "useInline",
           "class": "demo.NullsKt",
-          "start": 27,
-          "end": 27,
+          "start": 29,
+          "end": 29,
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
@@ -942,17 +979,7 @@
         {
           "name": "classify",
           "class": "demo.NullsKt",
-          "start": 29,
-          "end": 34,
-          "suspend": false,
-          "inline": false,
-          "returnsUnit": false,
-          "inlineCalls": []
-        },
-        {
-          "name": "both",
-          "class": "demo.NullsKt",
-          "start": 36,
+          "start": 31,
           "end": 36,
           "suspend": false,
           "inline": false,
@@ -960,7 +987,7 @@
           "inlineCalls": []
         },
         {
-          "name": "either",
+          "name": "both",
           "class": "demo.NullsKt",
           "start": 38,
           "end": 38,
@@ -970,10 +997,20 @@
           "inlineCalls": []
         },
         {
-          "name": "loop",
+          "name": "either",
           "class": "demo.NullsKt",
           "start": 40,
-          "end": 46,
+          "end": 40,
+          "suspend": false,
+          "inline": false,
+          "returnsUnit": false,
+          "inlineCalls": []
+        },
+        {
+          "name": "loop",
+          "class": "demo.NullsKt",
+          "start": 42,
+          "end": 48,
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
@@ -982,8 +1019,8 @@
         {
           "name": "safeParse",
           "class": "demo.NullsKt",
-          "start": 48,
-          "end": 53,
+          "start": 50,
+          "end": 55,
           "suspend": false,
           "inline": false,
           "returnsUnit": false,
@@ -992,22 +1029,23 @@
       ],
       "lambdas": [
         {
-          "start": 27,
-          "end": 27,
-          "valueLines": [27, 27],
+          "start": 29,
+          "end": 29,
+          "valueLines": [29, 29],
           "returnLines": [],
           "callee": "twice",
           "discarded": false,
+          "projectCallee": true,
           "unitCallee": false
         }
       ],
-      "branching": [6, 8, 10, 12, 14, 23, 27, 30, 33, 36, 38, 42],
-      "bang": [10]
+      "branching": [6, 8, 10, 12, 14, 16, 25, 29, 32, 35, 38, 40, 44],
+      "casts": [14, 16]
     },
     {
       "file": "src/main/kotlin/demo/Shapes.kt",
       "package": "demo",
-      "lines": 38,
+      "lines": 37,
       "classes": [
         {
           "name": "demo.Shape",
@@ -1134,7 +1172,7 @@
       ],
       "lambdas": [],
       "branching": [12, 13, 14, 15, 19, 20, 21, 22, 26, 27, 28, 29, 33, 34, 35, 36],
-      "bang": []
+      "casts": []
     }
   ]
 }

@@ -16,7 +16,10 @@ describe('rules that need no source facts', () => {
   const filter = filterFor();
 
   it.each([
-    ['coroutine-throw-on-failure', removed('kotlin/ResultKt::throwOnFailure')],
+    [
+      'coroutine-throw-on-failure',
+      { method: 'invokeSuspend', ...removed('kotlin/ResultKt::throwOnFailure') },
+    ],
     ['null-check-intrinsic', removed('kotlin/jvm/internal/Intrinsics::checkNotNullParameter')],
     [
       'null-check-intrinsic',
@@ -54,11 +57,11 @@ describe('rules that need no source facts', () => {
     expect(filter(mutant(overrides), FILE)).toBeUndefined();
   });
 
-  it('keeps the removal of a !! check, which is written code, and drops it on a line without !!', () => {
-    const withBang = filterFor({ bang: [5] });
+  it('keeps the removal of the null check of an as cast, which is written code, and drops it elsewhere', () => {
+    const withCast = filterFor({ casts: [5] });
     const call = removed('kotlin/jvm/internal/Intrinsics::checkNotNull');
 
-    expect([withBang(mutant(call), FILE), withBang(mutant({ ...call, line: 6 }), FILE)]).toEqual([
+    expect([withCast(mutant(call), FILE), withCast(mutant({ ...call, line: 6 }), FILE)]).toEqual([
       undefined,
       'null-check-intrinsic',
     ]);
@@ -125,7 +128,7 @@ describe('suspend-lambda-result', () => {
     expect(result(13)).toBeUndefined();
   });
 
-  it('keeps the value of an inner lambda that a test could read, not the outer lambda starting on the same line', () => {
+  it('keeps the value of an inner lambda that a test could read, not that of the outer lambda', () => {
     expect([result(18), result(10)]).toEqual([undefined, 'suspend-lambda-result']);
   });
 

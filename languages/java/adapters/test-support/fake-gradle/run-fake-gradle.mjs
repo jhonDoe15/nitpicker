@@ -96,10 +96,9 @@ function writeKotlinReports(module) {
   const facts = [inside(module, 'kotlin-mutation-facts.json'), 'kotlin-mutation-facts.json'].find(
     (file) => exists(run, file),
   );
-  writeFileSync(
-    moduleFile(module, 'kotlin-mutation-facts.json'),
-    facts === undefined ? '{"files":[]}' : bytes(run, facts),
-  );
+  if (facts !== undefined) {
+    writeFileSync(moduleFile(module, 'kotlin-mutation-facts.json'), bytes(run, facts));
+  }
 }
 
 function writeJavaReports(module) {

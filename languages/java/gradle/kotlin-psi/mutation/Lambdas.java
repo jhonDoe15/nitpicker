@@ -13,16 +13,21 @@ import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtBlockExpression;
 import org.jetbrains.kotlin.psi.KtCallExpression;
+import org.jetbrains.kotlin.psi.KtCatchClause;
+import org.jetbrains.kotlin.psi.KtContainerNodeForControlStructureBody;
 import org.jetbrains.kotlin.psi.KtDeclaration;
 import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.KtFunctionLiteral;
+import org.jetbrains.kotlin.psi.KtIfExpression;
 import org.jetbrains.kotlin.psi.KtLambdaArgument;
 import org.jetbrains.kotlin.psi.KtLambdaExpression;
 import org.jetbrains.kotlin.psi.KtLoopExpression;
 import org.jetbrains.kotlin.psi.KtQualifiedExpression;
 import org.jetbrains.kotlin.psi.KtReturnExpression;
+import org.jetbrains.kotlin.psi.KtTryExpression;
 import org.jetbrains.kotlin.psi.KtValueArgument;
 import org.jetbrains.kotlin.psi.KtValueArgumentList;
+import org.jetbrains.kotlin.psi.KtWhenEntry;
 
 final class Lambdas {
   final List<Object> entries = new ArrayList<>();
@@ -37,15 +42,17 @@ final class Lambdas {
   void add(KtLambdaExpression lambda) {
     KtCallExpression call = callOf(lambda);
     KtExpression callee = call == null ? null : call.getCalleeExpression();
+    String name = callee == null ? null : callee.getText();
     entries.add(
         m(
             "start", spans.firstLine(lambda),
             "end", spans.lastLine(lambda),
             "valueLines", valueLines(lambda),
             "returnLines", returnLines(lambda),
-            "callee", callee == null ? null : callee.getText(),
-            "discarded", call != null && discarded(call),
-            "unitCallee", callee != null && unitCallees.getOrDefault(callee.getText(), false)));
+            "callee", name,
+            "discarded", call != null && !valueUsed(qualified(call)),
+            "projectCallee", name != null && unitCallees.containsKey(name),
+            "unitCallee", name != null && unitCallees.getOrDefault(name, false)));
   }
 
   private List<Integer> valueLines(KtLambdaExpression lambda) {
@@ -85,19 +92,45 @@ final class Lambdas {
     return null;
   }
 
-  private boolean discarded(KtCallExpression call) {
+  private PsiElement qualified(KtCallExpression call) {
     PsiElement expression = call;
     while (expression.getParent() instanceof KtQualifiedExpression
         && ((KtQualifiedExpression) expression.getParent()).getSelectorExpression() == expression) {
       expression = expression.getParent();
     }
-    PsiElement block = expression.getParent();
-    if (!(block instanceof KtBlockExpression)) {
-      return false;
+    return expression;
+  }
+
+  private boolean valueUsed(PsiElement expression) {
+    PsiElement parent = expression.getParent();
+    if (parent instanceof KtBlockExpression) {
+      List<KtExpression> statements = ((KtBlockExpression) parent).getStatements();
+      return statements.get(statements.size() - 1) == expression && blockValueUsed((KtBlockExpression) parent);
     }
-    List<KtExpression> statements = ((KtBlockExpression) block).getStatements();
-    boolean lastOfLambda =
-        block.getParent() instanceof KtFunctionLiteral && statements.get(statements.size() - 1) == expression;
-    return !lastOfLambda;
+    if (parent instanceof KtContainerNodeForControlStructureBody) {
+      return branchValueUsed(parent.getParent());
+    }
+    if (parent instanceof KtWhenEntry) {
+      return valueUsed(parent.getParent());
+    }
+    return true;
+  }
+
+  private boolean branchValueUsed(PsiElement owner) {
+    return owner instanceof KtIfExpression ? valueUsed(owner) : !(owner instanceof KtLoopExpression);
+  }
+
+  private boolean blockValueUsed(KtBlockExpression block) {
+    PsiElement parent = block.getParent();
+    if (parent instanceof KtFunctionLiteral) {
+      return true;
+    }
+    if (parent instanceof KtContainerNodeForControlStructureBody) {
+      return branchValueUsed(parent.getParent());
+    }
+    if (parent instanceof KtWhenEntry || parent instanceof KtCatchClause) {
+      return valueUsed(parent.getParent());
+    }
+    return parent instanceof KtTryExpression && valueUsed(parent);
   }
 }

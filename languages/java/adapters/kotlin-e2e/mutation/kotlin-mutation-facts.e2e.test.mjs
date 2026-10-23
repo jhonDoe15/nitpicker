@@ -15,6 +15,10 @@ import { FACTS_SOURCE } from './test-support/facts-sources.mjs';
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixtures = path.resolve(import.meta.dirname, '../../../ingest/fixtures');
+const MEASUREMENT_FACTS = path.resolve(
+  import.meta.dirname,
+  '../../../ingest/kotlin-mutants/test-support/kotlin-measurement-facts.json',
+);
 
 let workspace;
 let java;
@@ -90,7 +94,7 @@ describe.skipIf(!enabled)('the mutation facts of the kotlin-psi program', () => 
     const project = writeSources(workspace, 'measurement', measurementSources());
 
     expect(mutationFactsOf(project, ['src/main/kotlin'])).toEqual(
-      JSON.parse(readFileSync(path.join(fixtures, 'kotlin-measurement-facts.json'), 'utf8')),
+      JSON.parse(readFileSync(MEASUREMENT_FACTS, 'utf8')),
     );
   });
 });

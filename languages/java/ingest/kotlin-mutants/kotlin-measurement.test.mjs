@@ -7,7 +7,10 @@ import { createGeneratedFilter } from './generated-filter.mjs';
 const fixtures = path.resolve(import.meta.dirname, '../fixtures');
 const report = readFileSync(path.join(fixtures, 'kotlin-measurement-pit.xml'), 'utf8');
 const facts = JSON.parse(
-  readFileSync(path.join(fixtures, 'kotlin-measurement-facts.json'), 'utf8'),
+  readFileSync(
+    path.join(import.meta.dirname, 'test-support/kotlin-measurement-facts.json'),
+    'utf8',
+  ),
 );
 
 const resolvePath = (className, sourceFile) =>
@@ -28,20 +31,44 @@ const counts = (options) =>
       .map(({ metric }) => [metric.name, metric.value]),
   );
 
+const droppedByRule = () => {
+  const rules = {};
+  const generated = (mutants) => {
+    const judge = createGeneratedFilter(facts)(mutants);
+    return (mutant, filePath) => {
+      const rule = judge(mutant, filePath);
+      if (rule !== undefined && ['SURVIVED', 'NO_COVERAGE'].includes(mutant.status)) {
+        rules[rule] = (rules[rule] ?? 0) + 1;
+      }
+      return rule;
+    };
+  };
+  ingestPit(report, { resolvePath, generated });
+  return rules;
+};
+
 describe('the Kotlin mutation filter on the measurement fixture', () => {
-  it('reports 60 mutants that would fail the gate when nothing is filtered', () => {
-    expect(leftovers()).toHaveLength(60);
-    expect(counts()).toEqual({ Survived: 43, Killed: 177, NoCoverage: 17, Timeout: 3 });
+  it('counts what the unfiltered report would fail the gate with', () => {
+    expect(counts()).toEqual({ Survived: 42, Killed: 180, NoCoverage: 17, Timeout: 3 });
   });
 
-  it('leaves out the 45 mutants of compiler-generated code and keeps the 15 a test could kill', () => {
+  it('leaves out 45 survivors and uncovered mutants, by rule', () => {
+    expect(droppedByRule()).toEqual({
+      'coroutine-throw-on-failure': 25,
+      'generated-accessor': 7,
+      'suspend-lambda-result': 6,
+      'null-check-intrinsic': 2,
+      'inline-function-body': 2,
+      'state-machine-branch': 1,
+      'generated-member': 1,
+      'default-impls-twin': 1,
+    });
+  });
+
+  it('leaves out the 45 mutants of compiler-generated code that would fail the gate and keeps 14', () => {
     const options = { generated: createGeneratedFilter(facts) };
 
-    expect(counts(options)).toEqual({
-      Survived: 15,
-      Killed: 147,
-      GeneratedCode: 78,
-    });
+    expect(counts(options)).toEqual({ Survived: 14, Killed: 150, GeneratedCode: 78 });
     expect(leftovers(options)).toEqual([
       [
         'More.kt:112',
@@ -104,19 +131,14 @@ describe('the Kotlin mutation filter on the measurement fixture', () => {
         'FlowKt|maybe(LList;)LInteger;|ConditionalsBoundaryMutator|changed conditional boundary#1',
       ],
       [
-        'Nulls.kt:27',
+        'Nulls.kt:29',
         'mutant-survived',
         'NullsKt|useInline(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
       ],
       [
-        'Nulls.kt:27',
+        'Nulls.kt:29',
         'mutant-survived',
         'NullsKt|useInline(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
-      ],
-      [
-        'Nulls.kt:10',
-        'mutant-survived',
-        'Person|forced()I|VoidMethodCallMutator|removed call to Intrinsics::checkNotNull#1',
       ],
     ]);
   });
