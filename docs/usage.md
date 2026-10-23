@@ -1512,7 +1512,7 @@ jobs:
   nitpicker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - run: npm ci
