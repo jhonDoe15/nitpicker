@@ -1,11 +1,11 @@
 package nitpicker.effects.rules;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import nitpicker.effects.Report;
 import nitpicker.effects.flow.Program;
+import nitpicker.effects.kinds.Call;
 import nitpicker.effects.kinds.Kinds;
 import nitpicker.effects.kinds.Summaries;
 import nitpicker.effects.scopes.Scopes;
@@ -27,7 +27,7 @@ public final class HeldScope {
 
   public void run() {
     for (Scopes.Scope scope : scopes.transactions()) {
-      List<Scopes.Site> sites = scopes.sites(scope);
+      List<Call> sites = scopes.sites(scope);
       if (sites.stream().anyMatch(site -> path(site, Kinds.DATABASE) != null)) {
         report(TRANSACTION, scope, sites);
       }
@@ -37,8 +37,8 @@ public final class HeldScope {
     }
   }
 
-  private void report(String rule, Scopes.Scope scope, List<Scopes.Site> sites) {
-    for (Scopes.Site site : sites) {
+  private void report(String rule, Scopes.Scope scope, List<Call> sites) {
+    for (Call site : sites) {
       List<String> path = path(site, Kinds.REMOTE);
       if (path == null || (site.owner().equals(site.flow().owner.name) && program.anonymous(site.owner()))) {
         continue;
@@ -52,18 +52,7 @@ public final class HeldScope {
     }
   }
 
-  List<String> path(Scopes.Site site, String kind) {
-    String direct = program.kinds.direct(site.owner(), site.name(), site.desc());
-    String label = Summaries.label(site.owner(), site.name(), site.desc());
-    if (direct != null) {
-      return direct.equals(kind) ? List.of(label) : null;
-    }
-    List<String> helper = summaries.of(site.owner(), site.name(), site.desc()).get(kind);
-    if (helper == null) {
-      return null;
-    }
-    List<String> path = new ArrayList<>(List.of(label));
-    path.addAll(helper);
-    return path;
+  private List<String> path(Call site, String kind) {
+    return summaries.at(site).get(kind);
   }
 }

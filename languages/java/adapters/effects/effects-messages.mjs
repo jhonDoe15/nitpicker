@@ -72,7 +72,10 @@ function lazyRelation({ method, entity, relation, origin }, language) {
 }
 
 function heldScope(scope, holder) {
-  return scope === '@Transactional' || scope === 'synchronized'
+  if (scope === 'retry loop') {
+    return `a retry loop in ${code(`${holder}()`)}`;
+  }
+  return scope.startsWith('@') || scope === 'synchronized'
     ? `the ${code(scope)} method ${code(`${holder}()`)}`
     : `${code(scope)} in ${code(`${holder}()`)}`;
 }
@@ -95,12 +98,50 @@ function remoteUnderLock({ method, scope, holder, path }) {
   ].join(' ');
 }
 
+const IDEMPOTENT_FORMS = {
+  payment:
+    'Pass a stable idempotency key derived from the request (`RequestOptions.builder().setIdempotencyKey(...)`)',
+  insert:
+    'Make the insert an upsert keyed on a stable id (`ON CONFLICT`, `ON DUPLICATE KEY UPDATE`, `MERGE`)',
+  message:
+    'Give the message a deduplication id the broker honours (SQS or SNS FIFO `messageDeduplicationId`)',
+};
+
+function retryWrite({ method, scope, holder, write, path }) {
+  return [
+    `${IDEMPOTENT_FORMS[write]}, or retry only the read:`,
+    `${code(`${method}()`)} ${callPath(path)} inside ${heldScope(scope, holder)},`,
+    'and when a call times out after the other side accepted the write, the retry makes it again.',
+  ].join(' ');
+}
+
+function dualWrite({ method, form, write, path }) {
+  const where = `${code(`${method}()`)} writes with ${code(write.at(-1))} and publishes`;
+  const outbox = [
+    'Write the message to an outbox table in the same transaction and let a relay publish it',
+    '(or use change data capture or a database-backed queue):',
+  ].join(' ');
+  if (form === 'afterCommit') {
+    return [
+      `${outbox} ${where} after the commit through ${callPath(path).replace(/^calls /u, '')},`,
+      'which never announces a rolled-back change, but a crash between the commit and the publish loses',
+      'the message.',
+    ].join(' ');
+  }
+  return [
+    `${outbox} ${where} through ${callPath(path).replace(/^calls /u, '')}, so a rollback after the`,
+    'publish announces a change that never happened, and a crash after the commit loses the message.',
+  ].join(' ');
+}
+
 export const EFFECTS_MESSAGES = {
   IoCallInLoop: loopIo,
   AccumulatorCopyInLoop: accumulatorCopy,
   LazyRelationInLoop: lazyRelation,
   RemoteCallInTransaction: remoteInTransaction,
   RemoteCallUnderLock: remoteUnderLock,
+  RetryWithoutIdempotency: retryWrite,
+  DualWriteWithoutOutbox: dualWrite,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);
