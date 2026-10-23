@@ -16,6 +16,11 @@ import {
   SETTING_KEYS,
   TYPE_CHECKERS,
 } from '../../../languages/python/adapters/configuration/python-config.mjs';
+import {
+  BINARY_NAME,
+  SPRING_KEYS,
+  SPRING_ROLES,
+} from '../../../languages/java/adapters/spring-arch/spring-roles.mjs';
 import { ALLOW_KEYS, TEST_CONSOLE_KEYS } from '../scopes/scope-settings.mjs';
 import { LAYOUT_KEYS } from '../scopes/layout-settings.mjs';
 import { CUSTOM_ANALYZER_KEYS, I18N_KEYS, REACT_KEYS } from '../validate.mjs';
@@ -239,5 +244,24 @@ export const kotlin = scope('Kotlin preset settings.', KOTLIN_KEYS, {
   detektConfig: {
     description: 'Path of the detekt config inside the project; detected when absent.',
     ...projectPath,
+  },
+});
+
+export const spring = scope('Spring settings (java and kotlin presets).', SPRING_KEYS, {
+  roles: {
+    description:
+      'Annotation or type names, by role, whose classes count in that role for the Spring architecture rules, on top of Spring stereotypes. Removing a name loosens the policy.',
+    type: 'object',
+    additionalProperties: false,
+    properties: Object.fromEntries(
+      SPRING_ROLES.map((role) => [
+        role,
+        {
+          description: `Binary names of annotations or types whose classes are a ${role}, such as "com.example.UseCase".`,
+          type: 'array',
+          items: { type: 'string', pattern: BINARY_NAME.source },
+        },
+      ]),
+    ),
   },
 });

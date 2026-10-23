@@ -5,6 +5,7 @@ import {
   TYPESCRIPT_ONLY_KEYS,
 } from '../../../shared/config.mjs';
 import { factRuleSettings } from '../../../shared/project-rules/fact-rules.mjs';
+import { GRADLE_PRESETS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { NATIVE_LINE_LENGTH } from '../../../languages/java/adapters/java-policy.mjs';
 import { conventionDefinitions } from '../../conventions/definitions.mjs';
 import { KEYS, NITPICKER_RULE_IDS, SUPPORTED_PRESETS } from '../validate.mjs';
@@ -78,6 +79,7 @@ const TOP_LEVEL = {
   tools,
   testConsole: areas.testConsole,
   kotlin: areas.kotlin,
+  spring: areas.spring,
   conventions: {
     description: 'Pins a style that nitpicker otherwise measures from the project.',
     type: 'object',
@@ -89,6 +91,7 @@ function unavailableKeys(preset) {
     ...(preset === 'typescript' ? [] : SCOPE_KEYS),
     ...(preset === 'python' ? [] : ['python']),
     ...(preset === 'kotlin' ? [] : ['kotlin']),
+    ...(GRADLE_PRESETS.includes(preset) ? [] : ['spring']),
     ...(factRuleSettings(preset).includes('testConsole') ? [] : ['testConsole']),
   ];
 }
