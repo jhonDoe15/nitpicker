@@ -129,7 +129,7 @@ export const kotlinRuleCases = [
     allowedForm: 'remove the parameter',
     banned: 'fun total(count: Int, extra: Int): Int = count\n',
     allowed:
-      'interface Source {\n    fun next(step: Int): Int\n}\n\nclass Counter : Source {\n    override fun next(step: Int): Int = 1\n}\n\nfun total(count: Int, ignoredExtra: Int): Int = count\n',
+      'interface Source {\n    fun next(step: Int): Int\n}\n\nclass Counter : Source {\n    override fun next(step: Int): Int = 1\n}\n\nfun total(count: Int, ignoredExtra: Int): Int = count\n\nfun main(args: Array<String>) {\n    total(1, 2)\n}\n\n@Bean\nfun wire(name: String): Int = 1\n\n@Deprecated("use total")\nfun old(count: Int): Int = count\n',
   },
   {
     id: 'suppression',

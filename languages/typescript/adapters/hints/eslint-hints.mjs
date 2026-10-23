@@ -1,6 +1,7 @@
 import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
+import { UNUSED_PARAMETER_HINT } from '../../preset/unused-parameters.mjs';
 import { immutableTypesMessage } from './immutable-types-hint.mjs';
 import { restrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mjs';
 
@@ -62,9 +63,6 @@ const DISABLED_TEST_HINT =
 
 const UNUSED_PARAMETER_TAIL =
   /\s*(?:Allowed unused args must match [^\s]+|Unused parameters should start with a '_')\.$/u;
-
-const UNUSED_PARAMETER_HINT =
-  ' Remove the parameter and update the callers. One that an override or a callback signature requires starts with `_` (`_context`).';
 
 const BACKTICKED_MATCHER = /`([\w.]+)`/u;
 

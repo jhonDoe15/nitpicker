@@ -77,6 +77,42 @@ describe('booleanFlags', () => {
       'a member of a public class inside a public object',
       'object Holder {\n    class Renderer {\n        fun render(bold: Boolean): String {\n            if (bold) return "b"\n            return ""\n        }\n    }\n}\n',
     ],
+    [
+      'a flag behind package and import lines holding "internal"',
+      'package com.acme.internal\n\nimport com.acme.internal.Api\n\nclass Renderer {\n    fun render(bold: Boolean): String {\n        if (bold) return "b"\n        return ""\n    }\n}\n',
+    ],
+    [
+      'a public class after a private constant and a private function',
+      'private const val TAG = "x"\n\nprivate fun helper() = 1\n\nclass Renderer {\n    fun render(bold: Boolean): String {\n        if (bold) return "b"\n        return ""\n    }\n}\n',
+    ],
+    [
+      'a public class after an annotation line',
+      '@Service\nclass Renderer {\n    fun render(bold: Boolean): String {\n        if (bold) return "b"\n        return ""\n    }\n}\n',
+    ],
+    [
+      'a public function after a private function that returns an object',
+      'private fun x() = object {\n    val a = 1\n}\n\nfun render(bold: Boolean): String {\n    if (bold) return "b"\n    return ""\n}\n',
+    ],
+    [
+      'a companion object of a public class',
+      'class Renderer {\n    companion object {\n        fun render(bold: Boolean): String {\n            if (bold) return "b"\n            return ""\n        }\n    }\n}\n',
+    ],
+    [
+      'a subject-less when',
+      'fun render(bold: Boolean): String = when {\n    bold -> "b"\n    else -> ""\n}\n',
+    ],
+    [
+      'a while on the flag',
+      'fun poll(running: Boolean) {\n    while (running) {\n        tick()\n    }\n}\n',
+    ],
+    [
+      'a comparison with a boolean literal',
+      'fun render(bold: Boolean): String {\n    if (bold == true) return "b"\n    return ""\n}\n',
+    ],
+    [
+      'a use inside a nested lambda',
+      'fun render(items: List<String>, bold: Boolean): List<String> {\n    return items.map { if (bold) it.uppercase() else it }\n}\n',
+    ],
   ])('flags %s', (_name, source) => {
     expect(found(booleanFlags, source).map(([rule]) => rule)).toEqual(['BooleanFlagParameter']);
   });
@@ -122,6 +158,26 @@ describe('booleanFlags', () => {
     [
       'a flag compared, not used as the condition',
       'fun same(a: Boolean, b: Boolean): Int {\n    if (a == b) return 1\n    return 0\n}\n',
+    ],
+    [
+      'a function of an anonymous object',
+      'fun make() = object {\n    fun render(bold: Boolean): String {\n        if (bold) return "b"\n        return ""\n    }\n}\n',
+    ],
+    [
+      'a function of a private object after a public class',
+      'class Api\n\nprivate object Holder {\n    fun render(bold: Boolean): String {\n        if (bold) return "b"\n        return ""\n    }\n}\n',
+    ],
+    [
+      'a loop variable that shadows the flag',
+      'fun render(bold: Boolean, items: List<Boolean>) {\n    for (bold in items) {\n        if (bold) tick()\n    }\n}\n',
+    ],
+    [
+      'a lambda parameter that shadows the flag',
+      'fun render(bold: Boolean, items: List<Boolean>) = items.filter { bold -> if (bold) true else false }\n',
+    ],
+    [
+      'a local value that shadows the flag',
+      'fun render(bold: Boolean): String {\n    val bold = compute()\n    if (bold) return "b"\n    return ""\n}\n',
     ],
   ])('passes %s', (_name, source) => {
     expect(found(booleanFlags, source)).toEqual([]);
