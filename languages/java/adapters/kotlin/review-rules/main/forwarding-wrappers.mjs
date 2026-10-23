@@ -1,19 +1,8 @@
-import { annotationNamed, append, compactType } from '../kotlin-facts.mjs';
+import { ancestorsOf, append, compactType, hasSpringStereotype } from '../kotlin-facts.mjs';
 
 export const FORWARDING_RULE = 'StaticForwardingWrapper';
 
 const MESSAGE = `This function only passes its parameters, in order, to another function. Call that function directly where this one is used and delete the wrapper. Factories named of or from and copies such as List.copyOf are allowed.`;
-const SPRING_STEREOTYPES = new Set([
-  'Component',
-  'Service',
-  'Repository',
-  'Controller',
-  'RestController',
-  'ControllerAdvice',
-  'RestControllerAdvice',
-  'Configuration',
-  'SpringBootApplication',
-]);
 const SKIPPED_NAMES = new Set(['main', 'valueOf', 'fromString', 'of', 'from', 'invoke', 'copy']);
 const SKIPPED_MODIFIERS = new Set([
   'override',
@@ -34,11 +23,6 @@ function ownerKinds(file) {
   return new Map(file.classes.map((klass) => [klass.qualified, klass]));
 }
 
-function ancestorsOf(qualified) {
-  const parts = qualified.split('.');
-  return parts.map((_, index) => parts.slice(0, index + 1).join('.'));
-}
-
 function isStaticLike(fn, owners) {
   if (fn.owner === '') {
     return true;
@@ -48,7 +32,7 @@ function isStaticLike(fn, owners) {
     owner !== undefined &&
     STATIC_OWNERS.has(owner.kind) &&
     !ancestorsOf(fn.owner).some((qualified) =>
-      annotationNamed(owners.get(qualified)?.annotations ?? [], SPRING_STEREOTYPES),
+      hasSpringStereotype(owners.get(qualified)?.annotations ?? []),
     )
   );
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { factsView } from '../build-view.mjs';
 import {
   call,
   file,
@@ -18,90 +19,74 @@ const shared = (overrides = {}) => fn('format', { parameters: options, line: 8, 
 const partial = call('format', { positional: 1 });
 const full = call('format', { positional: 2 });
 const never = () => false;
-
-function findingsFor(own, options = {}) {
-  return run(unusedOptionFindings, own, { mentionedInJava: never, ...options });
-}
-
-function judged(own, options) {
-  return summary(findingsFor(own, options));
-}
-
 const FLAGGED = [`${UNUSED_OPTION_RULE} format.pad 8`];
 
-function messageWith(scope) {
+function buildOf(modules, { gaps = [], skipped = [], mentionedInJava = never } = {}) {
+  return factsView({
+    facts: new Map(modules.map((files, index) => [`module-${String(index)}`, { files, skipped }])),
+    manifests: [{ kotlinCallerGaps: gaps }],
+    mentionedInJava,
+  });
+}
+
+function findingsFor(own, { siblings = [], published = false, build } = {}) {
+  return run(unusedOptionFindings, own, {
+    mentionedInJava: never,
+    published,
+    build: build ?? buildOf([own, ...siblings]),
+  });
+}
+
+function judged(own, settings) {
+  return summary(findingsFor(own, settings));
+}
+
+function messageWith(symbol, scope) {
   return (
-    `Option format.pad is never set. Remove it, or set it from a real call (${scope}). If this is intended, ` +
+    `Option ${symbol} is never set. Remove it, or set it from a real call (${scope}). If this is intended, ` +
     'add {"rule":"unused-option","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" ' +
     'in nitpicker.config.json.'
   );
 }
 
-describe('unused option on a public Kotlin function', () => {
+describe('unused option on a public top-level Kotlin function', () => {
   it('reports it in an unpublished module, where tests do not count', () => {
     const own = [file({ functions: [shared()], calls: [partial] }), testFile({ calls: [full] })];
 
     const findings = findingsFor(own);
 
     expect(summary(findings)).toEqual(FLAGGED);
-    expect(findings[0].message).toBe(messageWith('tests do not count'));
+    expect(findings[0].message).toBe(messageWith('format.pad', 'tests do not count'));
   });
 
   it("counts the module's own tests when the module is published, but not another module's", () => {
     const own = [file({ functions: [shared()], calls: [partial] }), testFile({ calls: [full] })];
-    const siblingTest = testFile({ file: OTHER_TESTS, calls: [full] });
     const alone = [file({ functions: [shared()], calls: [partial] })];
+    const siblingTest = [testFile({ file: OTHER_TESTS, calls: [full] })];
 
     expect(judged(own, { published: true })).toEqual([]);
-    expect(judged(alone, { published: true, projectFiles: [...alone, siblingTest] })).toEqual(
-      FLAGGED,
-    );
+    expect(judged(alone, { published: true, siblings: [siblingTest] })).toEqual(FLAGGED);
     expect(findingsFor(alone, { published: true })[0].message).toBe(
-      messageWith('tests of this published module count'),
+      messageWith('format.pad', "this module's own tests count"),
     );
   });
 
   it('counts production calls in every module of the build', () => {
     const own = [file({ functions: [shared()], calls: [partial] })];
-    const sibling = file({ file: OTHER_MODULE, calls: [full] });
 
-    expect(judged(own, { projectFiles: [...own, sibling] })).toEqual([]);
-    expect(
-      judged(own, { projectFiles: [...own, file({ file: OTHER_MODULE, calls: [partial] })] }),
-    ).toEqual(FLAGGED);
+    expect(judged(own, { siblings: [[file({ file: OTHER_MODULE, calls: [full] })]] })).toEqual([]);
+    expect(judged(own, { siblings: [[file({ file: OTHER_MODULE, calls: [partial] })]] })).toEqual(
+      FLAGGED,
+    );
   });
 
-  it('keeps private and internal declarations to calls in their own module, tests included', () => {
-    const own = [
-      file({ functions: [shared({ visibility: 'internal' })], calls: [partial] }),
-      testFile({ calls: [full] }),
-    ];
-    const sibling = file({ file: OTHER_MODULE, calls: [full] });
-    const alone = [file({ functions: [shared({ visibility: 'internal' })], calls: [partial] })];
+  it('leaves it alone when a callable reference or Java code anywhere in the build names it', () => {
+    const own = [file({ functions: [shared()], calls: [partial] })];
+    const referencing = [testFile({ file: OTHER_TESTS, references: ['format'] })];
+    const mentioned = buildOf([own], { mentionedInJava: (name) => name === 'format' });
 
-    expect(judged(own)).toEqual([]);
-    expect(judged(alone, { projectFiles: [...alone, sibling] })).toEqual(FLAGGED);
-  });
-
-  it.each([
-    [
-      'a function of an annotated class',
-      'Service',
-      [klass('Service', { annotations: [{ name: 'Service' }] })],
-    ],
-    [
-      'a function of a companion of an annotated class',
-      'Api.Companion',
-      [
-        klass('Api', { annotations: [{ name: 'RestController' }] }),
-        klass('Companion', { qualified: 'Api.Companion', kind: 'companion' }),
-      ],
-    ],
-    ['an interface member', 'Port', [klass('Port', { kind: 'interface' })]],
-  ])('leaves %s alone', (_name, owner, classes) => {
-    const own = [file({ classes, functions: [shared({ owner })], calls: [partial] })];
-
-    expect(findingsFor(own)).toEqual([]);
+    expect(findingsFor(own, { siblings: [referencing] })).toEqual([]);
+    expect(findingsFor(own, { build: mentioned })).toEqual([]);
   });
 
   it.each([
@@ -114,74 +99,120 @@ describe('unused option on a public Kotlin function', () => {
 
     expect(findingsFor(own)).toEqual([]);
   });
-
-  it('leaves a function alone when a callable reference or Java code anywhere in the build names it', () => {
-    const own = [file({ functions: [shared()], calls: [partial] })];
-    const referencing = file({ file: OTHER_MODULE, references: ['format'] });
-
-    expect(findingsFor(own, { projectFiles: [...own, referencing] })).toEqual([]);
-    expect(findingsFor(own, { mentionedInJava: (name) => name === 'format' })).toEqual([]);
-  });
 });
 
-describe('unused option on a public Kotlin constructor', () => {
-  const host = parameter('host', 'String', { property: 'val' });
-  const retries = parameter('retries', 'Int', { default: true, line: 4 });
-  const mailer = (overrides = {}) =>
-    klass('Mailer', { primaryParameters: [host, retries], ...overrides });
-  const constructed = [call('Mailer', { positional: 1 })];
+describe('which public Kotlin declarations are judged', () => {
+  const top = klass('Formats', { kind: 'object' });
+  const host = klass('Text');
+  const companion = klass('Companion', { qualified: 'Text.Companion', kind: 'companion' });
 
-  it('reports a default no production call fills, and a secondary constructor default', () => {
-    const secondary = fn('<init>', { owner: 'Mailer', parameters: [host, retries], line: 6 });
+  it('judges the functions of a top-level object, a companion and an object with a plain annotation', () => {
+    const suppressed = klass('Formats', { kind: 'object', annotations: [{ name: 'Suppress' }] });
 
-    expect(judged([file({ classes: [mailer()], calls: constructed })])).toEqual([
-      `${UNUSED_OPTION_RULE} Mailer.retries 4`,
-    ]);
     expect(
-      judged([file({ classes: [klass('Mailer')], functions: [secondary], calls: constructed })]),
-    ).toEqual([`${UNUSED_OPTION_RULE} Mailer.retries 4`]);
+      judged([
+        file({ classes: [top], functions: [shared({ owner: 'Formats' })], calls: [partial] }),
+      ]),
+    ).toEqual([`${UNUSED_OPTION_RULE} Formats.format.pad 8`]);
+    expect(
+      judged([
+        file({
+          classes: [host, companion],
+          functions: [shared({ owner: 'Text.Companion' })],
+          calls: [partial],
+        }),
+      ]),
+    ).toEqual([`${UNUSED_OPTION_RULE} Text.Companion.format.pad 8`]);
+    expect(
+      judged([
+        file({
+          classes: [suppressed],
+          functions: [shared({ owner: 'Formats' })],
+          calls: [partial],
+        }),
+      ]),
+    ).toEqual([`${UNUSED_OPTION_RULE} Formats.format.pad 8`]);
   });
 
   it.each([
-    ['a @JvmOverloads constructor', { constructorAnnotations: ['JvmOverloads'] }],
-    ['an injected constructor', { constructorAnnotations: ['Autowired'] }],
-    ['a Spring bean', { annotations: [{ name: 'Component' }] }],
-    ['an open class', { open: true }],
-  ])('leaves %s alone', (_name, overrides) => {
-    expect(findingsFor([file({ classes: [mailer(overrides)], calls: constructed })])).toEqual([]);
-  });
-
-  it('leaves an annotated secondary constructor alone', () => {
-    const secondary = fn('<init>', {
-      owner: 'Mailer',
-      annotations: ['JvmOverloads'],
-      parameters: [host, retries],
-    });
-
-    expect(
-      findingsFor([
-        file({ classes: [klass('Mailer')], functions: [secondary], calls: constructed }),
-      ]),
-    ).toEqual([]);
-  });
-
-  it('leaves a class whose parameters are all properties alone when the module serializes classes', () => {
-    const shaped = mailer({
-      primaryParameters: [host, { ...retries, property: 'val' }],
-    });
-    const plain = mailer();
-
-    expect(
-      findingsFor([file({ classes: [shaped], calls: constructed })], { serialization: true }),
-    ).toEqual([]);
-    expect(
-      judged([file({ classes: [plain], calls: constructed })], { serialization: true }),
-    ).toEqual([`${UNUSED_OPTION_RULE} Mailer.retries 4`]);
-  });
-
-  it('leaves a class alone when a class literal names it', () => {
-    const own = [file({ classes: [mailer()], calls: constructed, references: ['Mailer'] })];
+    ['a member of a class', 'Text', [host]],
+    [
+      'a member of a nested object',
+      'Text.Inner',
+      [host, klass('Inner', { qualified: 'Text.Inner', kind: 'object' })],
+    ],
+    [
+      'a member of a Spring bean object',
+      'Formats',
+      [klass('Formats', { kind: 'object', annotations: [{ name: 'Service' }] })],
+    ],
+    [
+      'a member of the companion of a configuration class',
+      'Text.Companion',
+      [klass('Text', { annotations: [{ name: 'Configuration' }] }), companion],
+    ],
+  ])('leaves %s alone', (_name, owner, classes) => {
+    const own = [file({ classes, functions: [shared({ owner })], calls: [partial] })];
 
     expect(findingsFor(own)).toEqual([]);
+  });
+
+  it('leaves public constructors alone: data classes and classes bound from configuration', () => {
+    const retries = parameter('retries', 'Int', { default: true, property: 'val' });
+    const request = klass('Request', { data: true, primaryParameters: [parameter('id'), retries] });
+    const bound = klass('Retry', {
+      qualified: 'QueueProperties.Retry',
+      primaryParameters: [retries],
+    });
+    const own = [
+      file({
+        classes: [request, bound],
+        calls: [call('Request', { positional: 1 }), call('Retry')],
+      }),
+    ];
+
+    expect(findingsFor(own)).toEqual([]);
+  });
+});
+
+describe('unused option when callers are hidden from the facts', () => {
+  it('notes once that public functions are not judged, and still judges private ones', () => {
+    const build = buildOf([], { gaps: ['the source set integrationTest of :app'] });
+    const own = [
+      file({
+        functions: [shared(), shared({ name: 'trim', visibility: 'private' })],
+        calls: [partial, call('trim', { positional: 1 })],
+      }),
+    ];
+
+    const first = findingsFor(own, { build });
+
+    expect(summary(first)).toEqual([
+      `${UNUSED_OPTION_RULE} trim.pad 8`,
+      `${UNUSED_OPTION_RULE} callers-not-analyzed 8`,
+    ]);
+    expect(first[1]).toEqual({
+      tool: 'structure',
+      rule: UNUSED_OPTION_RULE,
+      path: 'src/main/kotlin/demo/Sample.kt',
+      identity: 'unused-option:callers-not-analyzed',
+      symbol: 'callers-not-analyzed',
+      location: { line: 8 },
+      classification: 'descriptive',
+      message:
+        'Public functions are not checked for unused options: the facts do not cover the source set ' +
+        'integrationTest of :app, so calls there are not seen.',
+    });
+    expect(summary(findingsFor(own, { build }))).toEqual([`${UNUSED_OPTION_RULE} trim.pad 8`]);
+  });
+
+  it('counts a file the facts step skipped as hidden callers', () => {
+    const own = [file({ functions: [shared()], calls: [partial] })];
+    const build = buildOf([own], { skipped: ['src/main/kotlin/demo/Deep.kt'] });
+
+    expect(build.gaps).toEqual(['the skipped file src/main/kotlin/demo/Deep.kt']);
+    expect(summary(findingsFor(own, { build }))).toEqual([
+      `${UNUSED_OPTION_RULE} callers-not-analyzed 8`,
+    ]);
   });
 });

@@ -440,7 +440,7 @@ skipped with a note on stderr.
 | `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                           |
 | `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                           |
 | `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                   |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a function or constructor that no call sets                                                                                                   |
+| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter that no call sets, of a public top-level or `object` function or a private or internal function or constructor                                   |
 
 Limits, all chosen to flag less rather than guess:
 
@@ -484,26 +484,30 @@ Limits, all chosen to flag less rather than guess:
   body of a property getter, or the condition of an `if` that has an `else` and is itself one of those.
   Backticked constants (``Status.`in` ``) are matched by their name. A test in a property initializer is
   named after the property (`Holder.isOpen`), as it is in a getter.
-- Unused option: a defaulted parameter of a function that is not `override`, `open`, `abstract`,
-  `operator`, `infix` or `main`, has no annotation and is not declared in an interface, or of a
-  constructor (primary or secondary, without annotations such as `@JvmOverloads` or `@Autowired`) of a
-  final class without annotations. It is flagged when no call (matched by name, through an import alias
-  or a type alias) sets the parameter by name or position, no callable reference or class literal
-  (`Mailer::class`) names it and no Java file mentions the name. Which calls count follows the
-  TypeScript rule:
-  - a private or internal declaration: the calls of its own module, main and tests;
-  - a public one: the main sources of every module of the build, and also the module's own tests when
-    the module is published (a Gradle `publishing` publication, as for `test-only-export`); Java
-    sources of every module are checked for the name. A public function of an annotated class (a
-    Spring bean or controller, or any class a framework may call by reflection) is left alone.
+- Unused option: a defaulted parameter that no call sets by name or position (matched by name, through an
+  import alias or a type alias). A call that cannot match the signature is ignored, a call with a spread
+  sets every parameter, and a `copy(name = ...)` call sets that parameter of a data class. Functions that
+  are `override`, `open`, `abstract`, `operator`, `infix`, `main` or annotated are never judged, nor are
+  names with a callable reference or that a Java file mentions. Two kinds of declarations are judged:
+  - Public functions at the top level or in a top-level `object` or companion object, the Kotlin form of
+    TypeScript's exported functions and Python's module-level functions. Calls in the main sources of every
+    module of the build count, and so do the module's own tests when the module is published (a Gradle
+    `publishing` publication, as for `test-only-export`); callable references and Java sources of every
+    module are checked. An `object` or companion of a class with a Spring stereotype (`@Component`,
+    `@Service`, `@Configuration` and the others listed for forwarding wrappers) is left alone. Public
+    member functions and public constructors are not judged: frameworks build and call them by
+    reflection (Jackson, configuration binding, injection), out of sight of the facts.
+  - Private and internal functions (not in an interface) and the constructors of final classes without
+    annotations, private or internal. All their callers are in the module, so calls in its main sources and
+    tests count, and only the module's own facts and Java sources are read. Data classes are skipped
+    when the module has `jackson-module-kotlin`, `kotlinx-serialization` or `moshi-kotlin` on its main
+    compile or runtime classpath (`runtimeOnly` counts), since a library may set the defaults; a library
+    that does so without that jar (reflection in a framework) is not seen.
 
-  A call that cannot match the signature is ignored, a call with a spread sets every parameter, and a
-  `copy(name = ...)` call sets that parameter of a data class. When the module has
-  `jackson-module-kotlin`, `kotlinx-serialization` or `moshi-kotlin` on its main compile or runtime
-  classpath (`runtimeOnly` counts), data classes are skipped, and so are public classes whose
-  constructor parameters are all properties, since a library may set the defaults; a library that does
-  so without that jar (reflection in a framework) is not seen. A declaration that only reflection calls
-  has no call to compare and is not judged.
+  When part of the build has no facts, public functions are not judged and one report-only note
+  (`callers-not-analyzed`) names what is missing: an Android or Multiplatform project, a source set
+  other than `main` and `test` (such as `integrationTest`, `testFixtures` or `jmh`), an included build,
+  a Kotlin project outside the analysis root, or a file the facts step skipped.
 
 - Not covered: Android and Kotlin Multiplatform modules (the facts step is registered for
   `org.jetbrains.kotlin.jvm` only), and source-set `exclude` patterns (every `.kt` file under a source

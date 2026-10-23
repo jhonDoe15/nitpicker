@@ -2,7 +2,6 @@ package nitpicker.kotlinpsi.facts;
 
 import static nitpicker.kotlinpsi.common.Psi.m;
 import static nitpicker.kotlinpsi.common.Psi.nameOf;
-import static nitpicker.kotlinpsi.common.Psi.withoutTypeArguments;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -111,16 +110,6 @@ public final class FactsCollector {
       predicates.containsForm((KtDotQualifiedExpression) element, frame);
     } else if (element instanceof KtCallableReferenceExpression) {
       state.references.add(((KtCallableReferenceExpression) element).getCallableReference().getReferencedName());
-    } else if (element instanceof KtClassLiteralExpression) {
-      classLiteral((KtClassLiteralExpression) element);
-    }
-  }
-
-  private void classLiteral(KtClassLiteralExpression literal) {
-    KtExpression receiver = literal.getReceiverExpression();
-    if (receiver != null) {
-      String[] parts = withoutTypeArguments(receiver.getText()).trim().split("\\.");
-      state.references.add(parts[parts.length - 1]);
     }
   }
 }

@@ -147,7 +147,7 @@ describe('unused option in Kotlin', () => {
     ).toEqual([]);
   });
 
-  it('leaves annotated and open classes alone, and a subclass call counts', () => {
+  it('leaves public, annotated and open classes alone, and a subclass call counts', () => {
     const base = {
       visibility: 'internal',
       primaryParameters: [
@@ -157,6 +157,9 @@ describe('unused option in Kotlin', () => {
     };
     const calls = [call('Mailer', { positional: 1 })];
 
+    expect(
+      findingsFor([file({ classes: [klass('Mailer', { ...base, visibility: 'public' })], calls })]),
+    ).toEqual([]);
     expect(
       findingsFor([
         file({
