@@ -52,6 +52,15 @@ Before you change code other modules use, or fix a bug, read
   indentation.
 - Text: `"a".equals(x)` or `a.equals(b)`, never `==` on strings or other objects. Pass a charset and
   a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
+- Strings, arrays and files: no field initializer that repeats the default (`= 0`, `= null`,
+  `= false`). Append one character as a char (`append('x')`) and chain appends
+  (`sb.append(a).append(b)`). Write `i + "x"`, not `"" + i + "x"`; `String.valueOf(i)` only when
+  nothing else is concatenated. Build loop output in a local `StringBuilder`. Copy arrays with
+  `System.arraycopy`, and an array into a collection with `Collections.addAll(target, array)`. Open
+  files with `Files.newInputStream` or `Files.newBufferedReader`, not `FileInputStream`.
+- Threads: no `synchronized`, `wait` or `notify`. Lock with a private final `ReentrantLock`
+  (`lock()` right before `try`, `unlock()` in `finally`) and wait on a `Condition` from it
+  (`await()` in a loop, `signalAll()`).
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
   `System.getLogger(Foo.class.getName())`, or the project's logger.
 - Null: a method returning a collection returns an empty one (`List.of()`), never `null`. Any
@@ -86,9 +95,10 @@ Before you change code other modules use, or fix a bug, read
   never call `System.exit`. A trailing array parameter is varargs (`String... names`).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
-- nitpicker runs its own PMD rules (errorprone, bestpractices and a broad-catch rule) and Google
-  checks. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
-  when `nitpicker.config.json` opts in under `tools`; then read it too.
+- nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
+  security and a broad-catch rule) and Google checks. A project's `config/pmd/ruleset.xml` or
+  `config/checkstyle/checkstyle.xml` counts only when `nitpicker.config.json` opts in under
+  `tools`; then read it too.
 
 ## Errors
 
