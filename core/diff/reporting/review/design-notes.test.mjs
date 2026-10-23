@@ -40,6 +40,12 @@ describe('design notes in the console summary', () => {
     ]);
   });
 
+  it('lists new co-change findings with the design notes', () => {
+    const coChange = { ...note(1), tool: 'change-history', rule: 'co-change' };
+    const summary = renderConsoleSummary(report({ newFindings: [coChange] }), { color: false });
+    expect(summary.includes('  change-history/co-change src/m1.ts:3')).toBe(true);
+  });
+
   it('leaves out descriptive findings of rules that can fail', () => {
     const other = { ...note(1), rule: 'module-coupling' };
     const summary = renderConsoleSummary(report({ newFindings: [other] }), { color: false });

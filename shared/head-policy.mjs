@@ -20,6 +20,7 @@ export function resolveHeadPolicy(config = {}) {
     ...(config.duplicates === undefined ? {} : { duplicates: config.duplicates }),
     ...(config.testConsole === undefined ? {} : { testConsole: config.testConsole }),
     ...(config.protocols === undefined ? {} : { protocols: config.protocols }),
+    ...(config.history === undefined ? {} : { history: config.history }),
   };
 }
 

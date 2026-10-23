@@ -75,6 +75,9 @@ Before you change code other modules use, or fix a bug, read
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
 - A main class only tests use belongs in the test sources (`coupling/test-only-export`).
+- With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations), an aggregate holds
+  another aggregate only by its identifier or an `Association<T, ID>`, an entity sits in one
+  aggregate, and a value object holds identifiers, not entities (`archunit/ddd-...`).
 - Resources: try-with-resources for anything `Closeable`. No `finally` that returns or throws.
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
