@@ -48,7 +48,10 @@ for `--all`):
 
 - `report.txt`: the readable report. Start here.
 - `new-findings.json`: the new findings that count against you. Each has a tool, rule, path,
-  location and message.
+  location and message, and where the rule states them, `allowedForm` (what to write instead) and
+  `exception` (the entry the message tells you to add to `exceptions`, with `exceptionList` naming
+  the config list). Use `allowedForm` to fix the code. Never add `exception` yourself (step 3
+  below).
 - `resolved-findings.json` and `changed-metrics.json`: informational.
 - `tool-errors.json`: the tool errors, whatever the exit code.
 - `summary.json` and `report.junit.xml`: totals and CI output.

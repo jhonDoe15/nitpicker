@@ -39,11 +39,45 @@ export function exceptionSentence(entryText, key = 'exceptions') {
 }
 
 const ROUTE_SENTENCE =
-  /If this is intended, add \{.*\} to "(?:python\.)?exceptions" in nitpicker\.config\.json\.$/su;
+  /If this is intended, add (\{.*\}) to "((?:python\.)?exceptions)" in nitpicker\.config\.json\.$/su;
 
 /** Whether `message` already ends with a sentence that names its exception entry. */
 export function hasExceptionRoute(message) {
   return ROUTE_SENTENCE.test(message);
+}
+
+const isText = (value) => typeof value === 'string' && value !== '' && !value.includes('\0');
+
+/** Whether `value` has the parts every `exceptions` entry names: a rule, some paths and a reason. */
+export function isExceptionEntry(value) {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    isText(value.rule) &&
+    isText(value.reason) &&
+    Array.isArray(value.paths) &&
+    value.paths.length > 0 &&
+    value.paths.every(isText)
+  );
+}
+
+function parsedEntry(text) {
+  try {
+    const entry = JSON.parse(text);
+    return isExceptionEntry(entry) ? entry : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The structured form of the sentence `message` ends with: `exception` is the entry it names and
+ * `exceptionList` the config list that takes it. Empty for a message without the sentence.
+ */
+export function routeFields(message) {
+  const route = ROUTE_SENTENCE.exec(message);
+  const exception = route === null ? undefined : parsedEntry(route[1]);
+  return exception === undefined ? {} : { exception, exceptionList: route[2] };
 }
 
 /** `message` with `text` added so that the exception sentence, if it has one, stays last. */

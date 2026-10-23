@@ -26,10 +26,14 @@ export function kotlinFiles(projectRoot, sourceRoot) {
 
 function suppressionMessage(file, token) {
   const compilerRule = compilerWarningRule(token);
-  if (compilerRule !== undefined) {
-    return `Suppressing "${token}" inline is not allowed. Fix the code the compiler warns about. ${exceptionHint(compilerRule, file)}`;
-  }
-  return `Suppressing "${token}" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. ${exceptionHint(SUPPRESSION_RULE, file)}`;
+  const allowedForm =
+    compilerRule === undefined
+      ? 'Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json.'
+      : 'Fix the code the compiler warns about.';
+  return {
+    message: `Suppressing "${token}" inline is not allowed. ${allowedForm} ${exceptionHint(compilerRule ?? SUPPRESSION_RULE, file)}`,
+    allowedForm,
+  };
 }
 
 function suppressionFinding(file, token, identity) {
@@ -38,7 +42,7 @@ function suppressionFinding(file, token, identity) {
     rule: SUPPRESSION_RULE,
     path: file,
     identity,
-    message: suppressionMessage(file, token),
+    ...suppressionMessage(file, token),
     classification: 'enforceable',
   };
 }

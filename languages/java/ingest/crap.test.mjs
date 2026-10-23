@@ -224,6 +224,7 @@ describe('ingestCrap', () => {
         value: expect.any(Number),
         worseMessage:
           'Calc.classify CRAP rose from {base} to 71.39 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        worseAllowedForm: 'Put new code in a new function and cover it with tests.',
         heldMessage:
           'Calc.classify: CRAP 71.39 (limit 9), allowed because base was {base}; any increase fails.',
       });

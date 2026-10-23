@@ -47,6 +47,13 @@ describe('component-story-missing through the CLI', () => {
         location: { line: 1 },
         message:
           'Most components in this project have a story. Add src/Table.stories.tsx for Table. If this is intended, add {"rule":"component-story-missing","paths":["src/Table.tsx"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Add src/Table.stories.tsx for Table.',
+        exception: {
+          rule: 'component-story-missing',
+          paths: ['src/Table.tsx'],
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         classification: 'enforceable',
       },
     ]);

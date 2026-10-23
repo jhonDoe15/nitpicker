@@ -41,13 +41,16 @@ describe('checkstyleRuleName', () => {
 
 describe('withRuleMessage', () => {
   it('adds the fix and the exception route to a rule that can hit intended code', () => {
-    expect(withRuleMessage(finding('pmd', 'SystemPrintln', 'Usage of System.out/err'))).toEqual(
-      finding(
+    const { fix } = readCatalog('pmd').SystemPrintln;
+
+    expect(withRuleMessage(finding('pmd', 'SystemPrintln', 'Usage of System.out/err'))).toEqual({
+      ...finding(
         'pmd',
         'SystemPrintln',
-        `Usage of System.out/err. ${readCatalog('pmd').SystemPrintln.fix} ${hint('pmd/SystemPrintln')}`,
+        `Usage of System.out/err. ${fix} ${hint('pmd/SystemPrintln')}`,
       ),
-    );
+      allowedForm: fix,
+    });
   });
 
   it('adds only the fix to a rule whose finding is always a defect', () => {

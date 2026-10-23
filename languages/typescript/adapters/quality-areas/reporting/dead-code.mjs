@@ -1,4 +1,5 @@
 import { exceptionHint, isExcepted } from '../../../../../shared/hygiene/rules.mjs';
+import { allowedFormField } from '../../../../../shared/messages/messages.mjs';
 import { PACKAGE_RULE_IDS } from '../../../../../shared/project-rules/hygiene-rules.mjs';
 import {
   hash,
@@ -49,13 +50,17 @@ function unusedFileFindings(file, analyzerName) {
     path: filePath,
     identity: `file:${filePath}|source:${file?.sourceHash ?? hash(filePath)}`,
     message: unusedFileMessage(filePath),
+    ...allowedFormField(UNUSED_FILE_ALLOWED_FORM),
     classification: 'enforceable',
   };
   return [{ finding }];
 }
 
+const UNUSED_FILE_ADVICE = 'delete it, or import it where it is needed';
+const UNUSED_FILE_ALLOWED_FORM = 'Delete it, or import it where it is needed.';
+
 function unusedFileMessage(filePath) {
-  return `Unused file: ${filePath}. Nothing imports it: delete it, or import it where it is needed.`;
+  return `Unused file: ${filePath}. Nothing imports it: ${UNUSED_FILE_ADVICE}.`;
 }
 
 function issueFindings({ issue, analyzerName, occurrences }) {
@@ -82,7 +87,7 @@ function entryFindings({ issue, category, entry, analyzerName, occurrences }) {
     rule,
     path: issue.file,
     identity: `name:${name}|occurrence:${String(occurrence)}${sourceSuffix}`,
-    message: deadCodeMessage({ category, name, entry, file: issue.file }),
+    ...deadCodeMessage({ category, name, entry, file: issue.file }),
     symbol: name,
     classification: declaration || PACKAGE_RULES.has(category) ? 'enforceable' : 'descriptive',
     ...entryLocation(entry),
@@ -100,18 +105,21 @@ function entryLocation(entry) {
 function deadCodeMessage({ category, name, entry, file }) {
   const rule = PACKAGE_RULES.get(category);
   if (rule !== undefined) {
-    return `${packageMessage(rule, name, file)} ${exceptionHint(rule, file, name)}`;
+    return { message: `${packageMessage(rule, name, file)} ${exceptionHint(rule, file, name)}` };
   }
   if (category === 'files') {
-    return unusedFileMessage(name);
+    return { message: unusedFileMessage(name), ...allowedFormField(UNUSED_FILE_ALLOWED_FORM) };
   }
   const kind = DEAD_CODE_DECLARATIONS.get(category);
   if (kind === undefined) {
-    return `${category}: ${name}`;
+    return { message: `${category}: ${name}` };
   }
-  return entry?.usedInFile === true
-    ? `${kind} ${name} is only used in its own file. Remove \`export\`.`
-    : `${kind} ${name} is never imported. Remove \`export\`, or the ${category === 'types' ? 'type' : 'declaration'} if nothing uses it.`;
+  const allowedForm =
+    entry?.usedInFile === true
+      ? 'Remove `export`.'
+      : `Remove \`export\`, or the ${category === 'types' ? 'type' : 'declaration'} if nothing uses it.`;
+  const problem = entry?.usedInFile === true ? 'is only used in its own file' : 'is never imported';
+  return { message: `${kind} ${name} ${problem}. ${allowedForm}`, allowedForm };
 }
 
 function packageMessage(rule, name, file) {

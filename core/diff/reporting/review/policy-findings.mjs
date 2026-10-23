@@ -36,6 +36,7 @@ export function policyFindings(loosenings, digest, acceptedDigest) {
     path: 'nitpicker.config.json',
     identity: change,
     message: `${change}. ${ALLOWED_FORM} ${route}`,
+    allowedForm: ALLOWED_FORM,
     classification: 'enforceable',
   }));
 }

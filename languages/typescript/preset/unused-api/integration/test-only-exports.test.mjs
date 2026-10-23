@@ -17,6 +17,7 @@ const ONLY_TESTS_FINDING = {
   symbol: 'onlyTests',
   classification: 'enforceable',
   location: { line: 2 },
+  allowedForm: 'Remove `export`, or import it from production code.',
   message: `Export onlyTests is only imported by tests. Remove \`export\`, or import it from production code. ${EXCEPTION('src/main/shared.ts')}`,
 };
 const BUILDERS_FINDING = {
@@ -26,6 +27,7 @@ const BUILDERS_FINDING = {
   identity: 'files:src/main/builders.ts',
   symbol: 'src/main/builders.ts',
   classification: 'enforceable',
+  allowedForm: 'Move it to a test-support/ folder, or import it from production code.',
   message: `Module src/main/builders.ts is only imported by tests. Move it to a test-support/ folder, or import it from production code. ${EXCEPTION('src/main/builders.ts')}`,
 };
 const DISCOUNT_FINDING = {
@@ -36,6 +38,9 @@ const DISCOUNT_FINDING = {
   symbol: 'applyDiscount',
   classification: 'enforceable',
   location: { line: 1 },
+  allowedForm:
+    'Remove the re-export and `export`, or import it from production code. If a host or ' +
+    'tool loads src/main/main.ts instead of importing it, list it in "layout.entryPoints".',
   message:
     'Export applyDiscount is only imported by tests, and src/main/main.ts re-exports it, which is ' +
     'not a use. Remove the re-export and `export`, or import it from production code. If a host or ' +

@@ -60,6 +60,10 @@ describe('slow test findings', () => {
           'registered in the pytest config) if it is one. If this is intended, add ' +
           '{"rule":"slow-test","paths":["tests/test_pay.py"],"reason":"..."} ' +
           'to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Remove time.sleep and other waits (patch the clock) and fake network, database and disk ' +
+          'access, or move it to an integration test (an integration or e2e folder, or an ' +
+          'integration or e2e marker registered in the pytest config) if it is one.',
         classification: 'enforceable',
       },
     ]);
@@ -87,6 +91,8 @@ describe('slow test findings', () => {
           'sleeps and real timers (use fake timers) and mock network, database and disk access. If ' +
           'this is intended, add {"rule":"slow-test","paths":["tests/test_pay.py"],"reason":"..."} ' +
           'to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Remove fixed sleeps and real timers (use fake timers) and mock network, database and disk access.',
         classification: 'enforceable',
       },
     ]);

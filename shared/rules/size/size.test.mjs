@@ -42,6 +42,7 @@ describe('folder depth', () => {
     expect(findings[0].ratchet).toEqual({
       key: 'folder-depth:source',
       value: 3,
+      worseAllowedForm: 'Keep it 1 deep.',
       worseMessage: `Folder grew from {base} to 3 levels below the root (limit 1). Keep it 1 deep. ${HINT('folder-depth-limit', 'root/a/b/c/**')}`,
       heldMessage:
         'Folder: 3 levels below the root (limit 1), allowed because base was {base}; any increase fails.',

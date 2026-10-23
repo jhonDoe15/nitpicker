@@ -23,9 +23,17 @@ import {
   BASE_HELD_MESSAGES,
   BASE_MESSAGES,
   EXCEPTION_HINT,
+  allowedForm,
 } from './messages/messages.mjs';
 
-export { EXCEPTION_HINT, renderMessage } from './messages/messages.mjs';
+export {
+  EXCEPTION_HINT,
+  allowedForm,
+  allowedFormField,
+  definedField,
+  messageFields,
+  renderMessage,
+} from './messages/messages.mjs';
 
 export { FILE_LIMIT_DEFAULTS } from './project-rules/size-rules.mjs';
 
@@ -149,11 +157,14 @@ export const TOUCHED_CODE_RULES = [
 
 export const MESSAGES = {
   ...BASE_MESSAGES,
-  ...sizeMessages(EXCEPTION_HINT),
-  ...sourceRuleMessages(EXCEPTION_HINT),
+  ...sizeMessages(EXCEPTION_HINT, allowedForm),
+  ...sourceRuleMessages(EXCEPTION_HINT, allowedForm),
 };
 
-export const GREW_MESSAGES = { ...BASE_GREW_MESSAGES, ...sizeGrewMessages(EXCEPTION_HINT) };
+export const GREW_MESSAGES = {
+  ...BASE_GREW_MESSAGES,
+  ...sizeGrewMessages(EXCEPTION_HINT, allowedForm),
+};
 
 export const HELD_MESSAGES = { ...BASE_HELD_MESSAGES, ...SIZE_HELD_MESSAGES };
 

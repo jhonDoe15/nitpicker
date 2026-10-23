@@ -64,6 +64,24 @@ describe('unused props, options and exports in a project', () => {
     ]);
   });
 
+  it('gives each finding its allowed form and the entry that accepts it as fields of the message', () => {
+    const root = commitProject('unused-api-app');
+    runNitpicker(root, ['--all', ...ANALYZERS, '--output', path.join(root, 'reports/snapshot')]);
+    const findings = readReport(root, 'reports/snapshot/findings.json');
+    const size = findings.find(
+      ({ rule, symbol }) => rule === 'unused-prop' && symbol === 'Button.size',
+    );
+
+    expect(size).toMatchObject({
+      allowedForm: 'Remove it, or pass it from a real caller (tests and stories do not count).',
+      exception: { rule: 'unused-prop', reason: '...' },
+      exceptionList: 'exceptions',
+    });
+    expect(size.exception.paths).toEqual([size.path]);
+    expect(size.message).toContain(size.allowedForm);
+    expect(size.message).toContain(JSON.stringify(size.exception));
+  });
+
   it('fails a commit only for the props it adds or leaves without a caller', () => {
     const root = commitProject('unused-api-diff');
     replaceIn(root, 'src/main/card.tsx', [

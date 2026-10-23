@@ -172,6 +172,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
         identity: 'file:src/main/unused.ts|source:83250426356270ef2c09e1be',
         message:
           'Unused file: src/main/unused.ts. Nothing imports it: delete it, or import it where it is needed.',
+        allowedForm: 'Delete it, or import it where it is needed.',
         classification: 'enforceable',
       },
       {
@@ -181,6 +182,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
         identity: 'name:unusedValue|occurrence:1|source:83250426356270ef2c09e1be',
         message:
           'Export unusedValue is never imported. Remove `export`, or the declaration if nothing uses it.',
+        allowedForm: 'Remove `export`, or the declaration if nothing uses it.',
         classification: 'enforceable',
         symbol: 'unusedValue',
         location: { line: 4, column: 14 },
@@ -192,6 +194,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
         identity: 'name:UnusedType|occurrence:1|source:83250426356270ef2c09e1be',
         message:
           'Exported type UnusedType is never imported. Remove `export`, or the type if nothing uses it.',
+        allowedForm: 'Remove `export`, or the type if nothing uses it.',
         classification: 'enforceable',
         symbol: 'UnusedType',
         location: { line: 8, column: 13 },

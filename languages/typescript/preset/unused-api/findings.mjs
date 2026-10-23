@@ -1,4 +1,4 @@
-import { MESSAGES, renderMessage } from '../../../../shared/policy.mjs';
+import { MESSAGES, messageFields } from '../../../../shared/policy.mjs';
 import { exceptionText } from '../../../../shared/rules/exceptions.mjs';
 import { nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import {
@@ -48,7 +48,7 @@ function memberFinding({ target, member, declaration, context }) {
     rule,
     path: file.path,
     identity: occurrence === 1 ? symbol : `${symbol}#${String(occurrence)}`,
-    message: renderMessage(message, {
+    ...messageFields(message, {
       name: symbol,
       scope,
       exception: exceptionText(rule, file.path),
