@@ -6,6 +6,7 @@ import { readInside } from '../../../../shared/conventions/read-inside.mjs';
 import { detectJavaBuild } from '../../builds/java-build.mjs';
 import { readEffectivePom } from '../../maven/configuration/effective-pom.mjs';
 import { kotlinFormatterOf, mavenKotlinFacts } from '../kotlin/kotlin-tools.mjs';
+import { springRolesFact } from '../spring-arch/spring-roles.mjs';
 
 const BUILD_FILE =
   /(?:^|\/)(?:pom\.xml|[^/]+\.gradle(?:\.kts)?|libs\.versions\.toml|[^/]+\.versions\.toml)$/u;
@@ -53,6 +54,7 @@ function kotlinFacts(projectRoot, config, host) {
 export function javaHeadFacts(projectRoot, config, host = {}) {
   return {
     ...(declaresSpring(projectRoot) ? { spring: true } : {}),
+    ...springRolesFact(config),
     ...(config.preset === 'kotlin' ? { kotlin: kotlinFacts(projectRoot, config, host) } : {}),
   };
 }

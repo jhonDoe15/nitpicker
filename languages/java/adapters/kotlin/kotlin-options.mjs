@@ -14,7 +14,6 @@ import {
 import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 import { isKotlinFindingRule, KOTLIN_LISTED_RULES } from './rules/kotlin-messages.mjs';
 import { SOURCE_RULE_IDS } from './rules/kotlin-rules.mjs';
-import { KOTLIN_SPRING_RULE_IDS } from './spring/spring-rules.mjs';
 import { TEST_ONLY_EXCEPTION_RULE } from '../review-rules/test-only-classes.mjs';
 import { CONSOLE_EXCEPTION_RULE } from '../test-times/console-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules/review-rules.mjs';
@@ -26,7 +25,6 @@ export const KOTLIN_EXCEPTION_RULES = [
   ...new Set([
     ...SOURCE_RULE_IDS,
     ...SPRING_CONFIG_RULE_IDS,
-    ...KOTLIN_SPRING_RULE_IDS,
     ...SHARED_EXCEPTION_RULES,
     ...JAVA_SIZE_RULES,
     'test-runtime/slow-test',

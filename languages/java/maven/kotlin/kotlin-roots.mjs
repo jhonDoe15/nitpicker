@@ -7,6 +7,9 @@ import { executionsOf, goalsOf, pluginsOf, textAt } from '../configuration/pom-e
 const KOTLIN_PLUGIN = 'org.jetbrains.kotlin:kotlin-maven-plugin';
 const MAIN_GOALS = ['compile', 'kapt'];
 const TEST_GOALS = ['test-compile', 'test-kapt'];
+const ALL_OPEN_ANNOTATION = /^all-open:annotation=(.+)$/u;
+const ALL_OPEN_PRESET = /^all-open:preset=(.+)$/u;
+const SPRING_PLUGIN = 'spring';
 
 function runs(execution, goals) {
   return (
@@ -25,6 +28,41 @@ function configuredDirectories(plugin, goals, { pluginLevel }) {
     .filter((execution) => runs(execution, goals))
     .flatMap((execution) => directoriesOf(childAt(execution, 'configuration')));
   return own.length > 0 || !pluginLevel ? own : directoriesOf(childAt(plugin, 'configuration'));
+}
+
+function configurationsOf(plugin, goals) {
+  const own = executionsOf(plugin)
+    .filter((execution) => runs(execution, goals))
+    .map((execution) => childAt(execution, 'configuration'))
+    .filter((configuration) => configuration !== undefined);
+  const pluginLevel = childAt(plugin, 'configuration');
+  return own.length > 0 || pluginLevel === undefined ? own : [pluginLevel];
+}
+
+function textsOf(configurations, ...path) {
+  return configurations
+    .flatMap((configuration) => childrenAt(configuration, ...path))
+    .map((element) => element.text?.trim())
+    .filter((text) => text !== undefined && text !== '');
+}
+
+function optionValues(options, pattern) {
+  return options.flatMap((option) => pattern.exec(option)?.[1].trim() ?? []);
+}
+
+function allOpenOf(plugin) {
+  const configurations = configurationsOf(plugin, ['compile']);
+  const options = textsOf(configurations, 'pluginOptions', 'option');
+  const springPlugin = textsOf(configurations, 'compilerPlugins', 'plugin').includes(SPRING_PLUGIN);
+  return {
+    annotations: [...new Set(optionValues(options, ALL_OPEN_ANNOTATION))],
+    presets: [
+      ...new Set([
+        ...optionValues(options, ALL_OPEN_PRESET),
+        ...(springPlugin ? [SPRING_PLUGIN] : []),
+      ]),
+    ],
+  };
 }
 
 function within(parent, directory) {
@@ -63,6 +101,7 @@ export function kotlinRoots(project, module) {
   }
   return {
     jdkToolchain: jdkRequirements(project),
+    allOpen: allOpenOf(plugin),
     sourceRoots: compiledRoots(
       module,
       configuredDirectories(plugin, MAIN_GOALS, { pluginLevel: true }),

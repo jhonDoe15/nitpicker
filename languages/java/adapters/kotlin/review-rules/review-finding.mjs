@@ -7,7 +7,7 @@ import {
 
 export const REVIEW_TOOL = 'pmd';
 
-export function withRoute({ tool, rule, file, message }) {
+function withRoute({ tool, rule, file, message }) {
   if (hasExceptionRoute(message)) {
     return message;
   }

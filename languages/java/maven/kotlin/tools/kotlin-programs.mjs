@@ -16,11 +16,10 @@ function succeeded(result) {
   return result.status === 0;
 }
 
-export function psiArguments({ metrics, facts, syntax, module }) {
+export function psiArguments({ metrics, facts, module }) {
   return [
     metrics,
     facts,
-    syntax,
     module.basedir,
     ...relativeRoots(module, module.kotlin.sourceRoots),
     ...relativeRoots(module, module.kotlin.testSourceRoots).map((root) => `${TEST_PREFIX}${root}`),
@@ -58,11 +57,9 @@ function compilePsi({ classes, tools, spawn }) {
 export function runKotlinPsi({ module, reportDir, tools, pinned, classes, spawn }) {
   const metrics = path.join(reportDir, 'kotlin-metrics.json');
   const facts = path.join(reportDir, 'kotlin-facts.json');
-  const syntax = path.join(reportDir, 'kotlin-syntax.json');
   if (kotlinFiles(lintedRoots(module.kotlin)).length === 0) {
     writeFileSync(metrics, EMPTY_METRICS);
     writeFileSync(facts, EMPTY_FILES);
-    writeFileSync(syntax, EMPTY_FILES);
     return;
   }
   compilePsi({ classes, tools, spawn });
@@ -71,7 +68,7 @@ export function runKotlinPsi({ module, reportDir, tools, pinned, classes, spawn 
     classpath: [...tools['kotlin-compiler'], classes],
     mainClass: PSI_MAIN_CLASS,
     jvmArgs: compilerOptions(pinned),
-    args: psiArguments({ metrics, facts, syntax, module }),
+    args: psiArguments({ metrics, facts, module }),
     cwd: module.basedir,
     accept: succeeded,
     spawn,

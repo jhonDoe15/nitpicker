@@ -23,6 +23,7 @@ function kotlinManifest(module, options, classpaths) {
     kotlin: true,
     kotlinSerialization: usesSerialization(classpaths),
     kotlinFormatter: options.formatter,
+    kotlinAllOpen: module.kotlin.allOpen,
     kotlinSourceRoots: relativeRoots(module, module.kotlin.sourceRoots),
     kotlinTestSourceRoots: relativeRoots(module, module.kotlin.testSourceRoots),
   };

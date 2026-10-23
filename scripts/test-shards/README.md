@@ -57,11 +57,11 @@ The Kotlin parity guards file and the added one-way rules bring the Kotlin total
 Kotlin review rules file (three cases) and the added `kotlin-psi` cases to 79; the guards and review
 rules files are planning estimates of 100 and 110 seconds for their single builds.
 
-The Kotlin-on-Maven end-to-end files and the Kotlin Spring file add 82 Kotlin cases, giving 79/161 cases
+The Kotlin-on-Maven end-to-end files add Kotlin cases, giving 88/161 cases
 in total. Their weights in `kotlin-e2e.json` are measured where a CI run recorded a file and planning
 estimates otherwise. The Maven test-framework file runs three builds of about 30 seconds each on an idle
 machine and is weighted 120 seconds for a cold dependency cache. The 14 shards keep the estimated
-load of every shard under 300 seconds.
+load of every shard near five minutes (at most 311 seconds).
 
 The split-file weights remain planning estimates, not measurements of the new split. Unchanged files
 use the successful isolated-shard log totals, including hooks. Split case groups sum their
@@ -74,7 +74,7 @@ the banned group also retains its measured 46.52-second exception comparison. Th
 are hypotheses to replace with new full-module measurements.
 
 The deterministic sequencer gives estimated Java loads of 111–181 seconds and Kotlin loads
-of 233–298 seconds (14 shards, after the Maven suites joined), before runner setup. The goal is 2–3 minutes normally and under five minutes
+of 243–311 seconds (14 shards, after the Maven suites joined), before runner setup. The goal is 2–3 minutes normally and under five minutes
 including setup. The successful warm-cache sample on `0925469` measured Java jobs at 112/152/277 seconds
 (minimum/median/maximum) and Kotlin jobs at 110/150.5/206 seconds. Every shard stayed under
 five minutes; two shards per language exceeded three minutes. Java queue delays were

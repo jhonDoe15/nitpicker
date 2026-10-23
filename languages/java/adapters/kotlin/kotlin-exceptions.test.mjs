@@ -1,11 +1,6 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { JAVA_TOOLS } from '../gradle-presets.mjs';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from './kotlin-options.mjs';
-import { KOTLIN_SPRING_RULE_IDS } from './spring/spring-rules.mjs';
-
-const JAVA_RULESET = path.resolve(import.meta.dirname, '../../gradle/spring-ruleset.xml');
 
 function exceptionFor(rule) {
   return {
@@ -36,14 +31,6 @@ describe('exceptions of the kotlin preset for Spring', () => {
     }).toThrow(
       `"exceptions[0].rule" is "SpringConstructorInjection", which is not a rule with exceptions. Write the rule as the finding prints it; rules with exceptions for the kotlin preset: detekt.<ruleset>.<Rule>, ${KOTLIN_EXCEPTION_RULES.join(', ')}, and, for the Java sources of the project, a finding as it is printed, "<tool>/<rule>" (for example "pmd/UnusedPrivateField"; tools: ${JAVA_TOOLS.join(', ')})`,
     );
-  });
-
-  it('gives every rule of the Java Spring ruleset the same exception id on Kotlin', () => {
-    const javaRules = [...readFileSync(JAVA_RULESET, 'utf8').matchAll(/<rule name="(\w+)"/g)].map(
-      ([, name]) => `pmd/${name}`,
-    );
-
-    expect(KOTLIN_SPRING_RULE_IDS.toSorted()).toEqual(javaRules.toSorted());
   });
 
   it('lists each exception id once', () => {
