@@ -93,20 +93,22 @@ async function loadedConfig(file) {
 }
 
 function typescriptLoader(file) {
-  const loader = [file, import.meta.filename].map(jitiFrom).find(Boolean);
-  if (loader === undefined) {
+  const attempts = [file, import.meta.filename].map(jitiFrom);
+  const found = attempts.find(({ loader }) => loader !== undefined);
+  if (found === undefined) {
     throw new Error(
       "the 'jiti' library is required for loading TypeScript configuration files; install it in the project, as ESLint itself needs",
+      { cause: attempts[0].error },
     );
   }
-  return loader.createJiti(file, { moduleCache: false });
+  return found.loader.createJiti(file, { moduleCache: false });
 }
 
 function jitiFrom(file) {
   try {
-    return createRequire(file)('jiti');
-  } catch {
-    return undefined;
+    return { loader: createRequire(file)('jiti') };
+  } catch (error) {
+    return { error };
   }
 }
 

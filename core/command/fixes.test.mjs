@@ -319,6 +319,7 @@ Base: ${repository.baseRef} (argument)
   });
   it('fixes with the ESLint project config the project opted into', () => {
     const repository = createRepository({
+      'quality-policy.json': policy(),
       'nitpicker.config.json': `${JSON.stringify({
         tools: { eslint: { precedence: ['nitpicker', 'project'] } },
       })}\n`,
@@ -336,17 +337,10 @@ Base: ${repository.baseRef} (argument)
     });
     const output = captureOutput();
     const exitCode = runCli({
-      arguments_: [
-        '--fix',
-        '--base',
-        repository.baseRef,
-        '--analyzer',
-        'prettier-format',
-        '--output',
-        makeOutputRoot(),
-      ],
+      arguments_: ['--fix', '--base', repository.baseRef, '--output', makeOutputRoot()],
       currentProjectRoot: repository.root,
       environment: isolatedCache(),
+      analyzers: [fakeAnalyzer()],
       stdout: output.stdout,
       stderr: output.stderr,
     });
