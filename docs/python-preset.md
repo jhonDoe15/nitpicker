@@ -793,7 +793,7 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   similar standards) or an `http(s)` link. Each marker is judged on its own, so a second marker in the
   same comment needs its own issue. Prose that mentions the word (`todo lists`, `Todo list items`,
   `Hack to ...`, `the list of TODO items`) is not a marker. The Kotlin preset's `ForbiddenComment`
-  follows the same rule (plus `STOPSHIP`); `shared/naming/task-marker-cases.json` is the table both are
+  follows the same rule (plus `STOPSHIP`); `shared/naming/test-support/task-marker-cases.json` is the table both are
   tested against. `TD` and `FIX` from ruff are not used, because they ask for an author and a date.
 - `ERA001` finds commented-out code by a heuristic: a comment that parses as a statement. Prose
   that happens to parse is reported too (a label such as `Contact: someone`, a formula, a bare
