@@ -49,4 +49,13 @@ describe('validateJavaFindingRule', () => {
       );
     }).not.toThrow();
   });
+
+  it('accepts an ArchUnit finding on Kotlin sources, which the rules read from compiled Kotlin classes', () => {
+    expect(() => {
+      validateJavaFindingRule(
+        entry('archunit/spring-scope-capture', ['src/main/kotlin/shop/CartService.kt']),
+        label,
+      );
+    }).not.toThrow();
+  });
 });
