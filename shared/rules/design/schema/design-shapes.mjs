@@ -72,6 +72,7 @@ export const DESIGN_SHAPES = {
     fields: isList,
     cases: optional(isStrings),
     published: optional(isBoolean),
+    references: optional(isStrings),
   },
   callables: {
     id: isNonEmpty,
@@ -92,6 +93,7 @@ export const DESIGN_SHAPES = {
     returnsField: optional(isNonEmpty),
     decisions: isList,
     reads: isList,
+    references: optional(isStrings),
   },
 };
 

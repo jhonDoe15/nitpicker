@@ -22,6 +22,8 @@ describe('design facts schema', () => {
   it('accepts every field of the contract', () => {
     const facts = withCallable({
       entry: false,
+      published: true,
+      references: [lines.id],
       returns: 'number',
       forward: { target: lines.id, arguments: [0, -1], returned: true },
       calls: [{ target: lines.id, line: 3, receiver: 'this', cleanup: true, mutation: 'push' }],
@@ -72,8 +74,22 @@ describe('design facts schema', () => {
       'facts.callables[1].decisions[0].subject is "Status", which is neither a type id nor "<type id>.<field>"',
     ],
     [{ id: lines.id }, `facts.callables[1].id "${lines.id}" is used twice`],
+    [
+      { references: ['src/cart.ts#Cart.gone'] },
+      'facts.callables[1].references[0] is "src/cart.ts#Cart.gone", which is not an id in facts.callables',
+    ],
   ])('rejects %j', (extra, message) => {
     expect(() => validateFacts(withCallable(extra))).toThrow(message);
+  });
+
+  it('rejects a type reference that is not a callable id', () => {
+    const facts = designFacts({
+      types: [{ ...cart, references: ['src/cart.ts#nope'] }],
+      callables: [],
+    });
+    expect(() => validateFacts(facts)).toThrow(
+      'facts.types[0].references[0] is "src/cart.ts#nope", which is not an id in facts.callables',
+    );
   });
 
   it('rejects a type in a file that modules do not list', () => {
