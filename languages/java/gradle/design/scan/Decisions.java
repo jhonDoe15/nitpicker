@@ -1,28 +1,32 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.scan;
 
 import com.sun.source.tree.*;
 import java.util.*;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.model.*;
+import nitpicker.designfacts.resolve.*;
+import nitpicker.designfacts.scope.*;
 
-final class Decisions {
-  record Subject(String id, String text, TypeInfo enumType) {
-    boolean sameValue(Subject other) {
+public final class Decisions {
+  public record Subject(String id, String text, TypeInfo enumType) {
+    public boolean sameValue(Subject other) {
       return id.equals(other.id) && text.equals(other.text);
     }
   }
 
-  record Test(Subject subject, List<String> constants) {}
+  public record Test(Subject subject, List<String> constants) {}
 
   private final Typer typer;
   private final Ctx ctx;
   private final Unit unit;
 
-  Decisions(Typer typer, Ctx ctx) {
+  public Decisions(Typer typer, Ctx ctx) {
     this.typer = typer;
     this.ctx = ctx;
     this.unit = ctx.unit;
   }
 
-  Subject subject(Tree expression) {
+  public Subject subject(Tree expression) {
     Tree e = Names.unparen(expression);
     if (e instanceof LiteralTree) {
       return null;
@@ -96,7 +100,7 @@ final class Decisions {
     return forward != null ? forward : pair(right, left);
   }
 
-  Test test(Tree condition, Set<Tree> consumed) {
+  public Test test(Tree condition, Set<Tree> consumed) {
     List<Tree> operands = new ArrayList<>();
     flatten(Names.unparen(condition), operands, consumed);
     Test merged = null;
@@ -126,7 +130,7 @@ final class Decisions {
     }
   }
 
-  List<Map<String, Object>> chain(IfTree head, Set<Tree> tails, Set<Tree> consumed) {
+  public List<Map<String, Object>> chain(IfTree head, Set<Tree> tails, Set<Tree> consumed) {
     List<IfTree> elements = new ArrayList<>(List.of(head));
     Tree tail = head.getElseStatement();
     while (tail instanceof IfTree next) {
@@ -159,7 +163,7 @@ final class Decisions {
     return found;
   }
 
-  Map<String, Object> disjunction(BinaryTree tree, Set<Tree> consumed) {
+  public Map<String, Object> disjunction(BinaryTree tree, Set<Tree> consumed) {
     Test test = test(tree, consumed);
     if (test == null || test.constants().size() < 2) {
       return null;
@@ -167,7 +171,7 @@ final class Decisions {
     return decision(test.subject(), List.of(test.constants()), unit.line(tree), false);
   }
 
-  Map<String, Object> selection(Tree selector, List<? extends CaseTree> cases, int line) {
+  public Map<String, Object> selection(Tree selector, List<? extends CaseTree> cases, int line) {
     Subject subject = subject(selector);
     if (subject == null) {
       return null;

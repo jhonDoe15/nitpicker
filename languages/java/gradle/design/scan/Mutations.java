@@ -1,10 +1,15 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.scan;
 
 import com.sun.source.tree.*;
 import com.sun.source.util.TreeScanner;
 import java.util.*;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.facts.*;
+import nitpicker.designfacts.model.*;
+import nitpicker.designfacts.resolve.*;
+import nitpicker.designfacts.scope.*;
 
-final class Mutations {
+public final class Mutations {
   private static final Set<String> MUTATORS =
       Set.of(
           "add", "addAll", "addFirst", "addLast", "push", "pop", "put", "putAll", "putIfAbsent",
@@ -20,7 +25,7 @@ final class Mutations {
   private final Map<Tree, String> pending = new IdentityHashMap<>();
   private final Map<String, Body.CallFact> aliases = new HashMap<>();
 
-  Mutations(Typer typer, Ctx ctx, Tree block) {
+  public Mutations(Typer typer, Ctx ctx, Tree block) {
     this.typer = typer;
     this.ctx = ctx;
     new TreeScanner<Void, Void>() {
@@ -46,7 +51,7 @@ final class Mutations {
     }.scan(block, null);
   }
 
-  static boolean isStep(UnaryTree tree) {
+  public static boolean isStep(UnaryTree tree) {
     return tree.getKind().name().contains("CREMENT");
   }
 
@@ -56,19 +61,19 @@ final class Mutations {
     }
   }
 
-  void register(Tree call, Body.CallFact fact) {
+  public void register(Tree call, Body.CallFact fact) {
     fact.mutation = pending.remove(call);
     facts.put(call, fact);
   }
 
-  void declared(String name, Tree initializer) {
+  public void declared(String name, Tree initializer) {
     Body.CallFact fact = initializer == null ? null : facts.get(Names.unwrap(initializer));
     if (fact != null && !reassigned.contains(name)) {
       aliases.put(name, fact);
     }
   }
 
-  void invoked(MethodInvocationTree tree) {
+  public void invoked(MethodInvocationTree tree) {
     if (!(tree.getMethodSelect() instanceof MemberSelectTree select)
         || !MUTATORS.contains(select.getIdentifier().toString())) {
       return;
@@ -80,7 +85,7 @@ final class Mutations {
     }
   }
 
-  void assigned(Tree variable) {
+  public void assigned(Tree variable) {
     Tree target = Names.unparen(variable);
     if (target instanceof ArrayAccessTree access) {
       Tree array = Names.unparen(access.getExpression());

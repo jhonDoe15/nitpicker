@@ -1,33 +1,34 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.scope;
 
 import java.util.*;
+import nitpicker.designfacts.model.*;
 
-final class Ctx {
-  final TypeInfo owner;
-  final Unit unit;
-  final Set<String> typeVars;
+public final class Ctx {
+  public final TypeInfo owner;
+  public final Unit unit;
+  public final Set<String> typeVars;
   private final Deque<Map<String, Local>> scopes = new ArrayDeque<>();
 
-  Ctx(TypeInfo owner, Set<String> typeVars) {
+  public Ctx(TypeInfo owner, Set<String> typeVars) {
     this.owner = owner;
     this.unit = owner.unit;
     this.typeVars = typeVars;
     push();
   }
 
-  static Ctx forType(TypeInfo owner) {
+  public static Ctx forType(TypeInfo owner) {
     return new Ctx(owner, Set.of());
   }
 
-  void push() {
+  public void push() {
     scopes.push(new HashMap<>());
   }
 
-  void pop() {
+  public void pop() {
     scopes.pop();
   }
 
-  Local lookup(String name) {
+  public Local lookup(String name) {
     for (Map<String, Local> scope : scopes) {
       Local found = scope.get(name);
       if (found != null) {
@@ -37,7 +38,7 @@ final class Ctx {
     return null;
   }
 
-  Local declare(String name, Ty ty, int param) {
+  public Local declare(String name, Ty ty, int param) {
     Local existing = lookup(name);
     if (existing != null && param < 0) {
       existing.ty = Ty.UNKNOWN;

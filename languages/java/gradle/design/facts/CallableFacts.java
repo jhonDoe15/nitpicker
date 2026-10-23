@@ -1,18 +1,23 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.facts;
 
 import com.sun.source.tree.*;
 import java.util.*;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.model.*;
+import nitpicker.designfacts.resolve.*;
+import nitpicker.designfacts.scan.*;
+import nitpicker.designfacts.scope.*;
 
-final class CallableFacts {
+public final class CallableFacts {
   private final Typer typer;
   private final Surface surface;
 
-  CallableFacts(Typer typer, Surface surface) {
+  public CallableFacts(Typer typer, Surface surface) {
     this.typer = typer;
     this.surface = surface;
   }
 
-  Map<String, Object> build(MethodInfo method) {
+  public Map<String, Object> build(MethodInfo method) {
     Ctx ctx = new Ctx(method.owner, method.typeVars);
     Body body = new Body();
     List<Map<String, Object>> params = parameters(method, ctx, body);

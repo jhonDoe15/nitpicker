@@ -1,21 +1,23 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.resolve;
 
 import com.sun.source.tree.*;
 import java.util.*;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.model.*;
 
-final class Lookup {
-  record Found(MethodInfo method, boolean ambiguous) {
-    static final Found NONE = new Found(null, false);
-    static final Found AMBIGUOUS = new Found(null, true);
+public final class Lookup {
+  public record Found(MethodInfo method, boolean ambiguous) {
+    public static final Found NONE = new Found(null, false);
+    public static final Found AMBIGUOUS = new Found(null, true);
   }
 
   private final Project project;
 
-  Lookup(Project project) {
+  public Lookup(Project project) {
     this.project = project;
   }
 
-  List<TypeInfo> chain(TypeInfo start) {
+  public List<TypeInfo> chain(TypeInfo start) {
     List<TypeInfo> order = new ArrayList<>();
     Deque<TypeInfo> queue = new ArrayDeque<>(List.of(start));
     Set<TypeInfo> seen = new HashSet<>();
@@ -30,7 +32,7 @@ final class Lookup {
     return order;
   }
 
-  boolean incomplete(TypeInfo type) {
+  public boolean incomplete(TypeInfo type) {
     for (TypeInfo member : chain(type)) {
       if (member.hasExternalSuper()) {
         return true;
@@ -39,7 +41,7 @@ final class Lookup {
     return false;
   }
 
-  FieldInfo field(TypeInfo type, String name) {
+  public FieldInfo field(TypeInfo type, String name) {
     for (TypeInfo member : chain(type)) {
       FieldInfo found = member.field(name);
       if (found != null) {
@@ -49,7 +51,7 @@ final class Lookup {
     return null;
   }
 
-  FieldInfo bareField(String name, TypeInfo owner) {
+  public FieldInfo bareField(String name, TypeInfo owner) {
     for (TypeInfo type = owner; type != null; type = type.outer) {
       FieldInfo found = field(type, name);
       if (found != null) {
@@ -62,7 +64,7 @@ final class Lookup {
     return null;
   }
 
-  Found method(TypeInfo type, String name, int argc) {
+  public Found method(TypeInfo type, String name, int argc) {
     List<MethodInfo> candidates = new ArrayList<>();
     for (TypeInfo member : chain(type)) {
       for (MethodInfo method : member.methods) {
@@ -74,7 +76,7 @@ final class Lookup {
     return select(candidates, argc);
   }
 
-  Found constructor(TypeInfo type, int argc) {
+  public Found constructor(TypeInfo type, int argc) {
     List<MethodInfo> candidates = new ArrayList<>();
     for (MethodInfo method : type.methods) {
       if (method.ctor && method.accepts(argc)) {
@@ -84,7 +86,7 @@ final class Lookup {
     return select(candidates, argc);
   }
 
-  MethodInfo onlyMethod(TypeInfo type, String name) {
+  public MethodInfo onlyMethod(TypeInfo type, String name) {
     if (incomplete(type)) {
       return null;
     }
@@ -99,7 +101,7 @@ final class Lookup {
     return bySignature.size() == 1 ? bySignature.values().iterator().next() : null;
   }
 
-  MethodInfo onlyConstructor(TypeInfo type) {
+  public MethodInfo onlyConstructor(TypeInfo type) {
     List<MethodInfo> found = type.methods.stream().filter(method -> method.ctor).toList();
     return found.size() == 1 ? found.get(0) : null;
   }
@@ -128,7 +130,7 @@ final class Lookup {
     return method.tree != null && Names.hasAnnotation(method.tree.getModifiers(), "Override");
   }
 
-  static String signature(MethodInfo method) {
+  public static String signature(MethodInfo method) {
     StringBuilder text = new StringBuilder();
     for (ParamInfo param : method.params) {
       text.append(Names.typeText(param.type)).append(',');
@@ -136,7 +138,7 @@ final class Lookup {
     return text.toString();
   }
 
-  List<MethodInfo> overridden(MethodInfo method) {
+  public List<MethodInfo> overridden(MethodInfo method) {
     List<MethodInfo> found = new ArrayList<>();
     List<TypeInfo> chain = chain(method.owner);
     for (TypeInfo member : chain.subList(1, chain.size())) {

@@ -1,21 +1,24 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.resolve;
 
 import com.sun.source.tree.*;
 import java.util.*;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.model.*;
+import nitpicker.designfacts.scope.*;
 
-final class Calls {
-  record Resolved(MethodInfo target, String receiver) {
-    static final Resolved NONE = new Resolved(null, null);
+public final class Calls {
+  public record Resolved(MethodInfo target, String receiver) {
+    public static final Resolved NONE = new Resolved(null, null);
   }
 
   private final Typer typer;
   private final Map<Tree, Resolved> cache = new IdentityHashMap<>();
 
-  Calls(Typer typer) {
+  public Calls(Typer typer) {
     this.typer = typer;
   }
 
-  Resolved resolve(Tree tree, Ctx c) {
+  public Resolved resolve(Tree tree, Ctx c) {
     Resolved cached = cache.get(tree);
     if (cached == null) {
       cached = compute(tree, c);

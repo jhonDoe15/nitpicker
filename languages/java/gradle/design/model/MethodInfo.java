@@ -1,26 +1,26 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.model;
 
 import com.sun.source.tree.*;
 import java.util.*;
 import javax.lang.model.element.Modifier;
 
-final class MethodInfo {
-  final TypeInfo owner;
-  final MethodTree tree;
-  final String name;
-  final boolean ctor;
-  final boolean isStatic;
-  final List<ParamInfo> params;
-  final Tree returnType;
-  final Set<String> typeVars = new HashSet<>();
-  final Set<Modifier> flags;
-  String id;
-  String accessorField;
-  String lombokField;
-  boolean compact;
-  int line;
+public final class MethodInfo {
+  public final TypeInfo owner;
+  public final MethodTree tree;
+  public final String name;
+  public final boolean ctor;
+  public final boolean isStatic;
+  public final List<ParamInfo> params;
+  public final Tree returnType;
+  public final Set<String> typeVars = new HashSet<>();
+  public final Set<Modifier> flags;
+  public String id;
+  public String accessorField;
+  public String lombokField;
+  public boolean compact;
+  public int line;
 
-  MethodInfo(TypeInfo owner, MethodTree tree, List<ParamInfo> params) {
+  public MethodInfo(TypeInfo owner, MethodTree tree, List<ParamInfo> params) {
     this.owner = owner;
     this.tree = tree;
     this.name = tree.getName().toString();
@@ -34,7 +34,7 @@ final class MethodInfo {
     }
   }
 
-  MethodInfo(
+  public MethodInfo(
       TypeInfo owner, String name, Tree returnType, String field, Set<Modifier> flags, int line) {
     this.owner = owner;
     this.tree = null;
@@ -49,19 +49,19 @@ final class MethodInfo {
     this.line = line;
   }
 
-  boolean hasBody() {
+  public boolean hasBody() {
     return tree == null || tree.getBody() != null;
   }
 
-  boolean isVarargs() {
+  public boolean isVarargs() {
     return !params.isEmpty() && params.get(params.size() - 1).varargs;
   }
 
-  boolean accepts(int argc) {
+  public boolean accepts(int argc) {
     return params.size() == argc || (isVarargs() && argc >= params.size() - 1);
   }
 
-  String displayName() {
+  public String displayName() {
     return ctor ? owner.simple : name;
   }
 }

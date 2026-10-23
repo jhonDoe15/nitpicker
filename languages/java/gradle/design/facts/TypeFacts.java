@@ -1,15 +1,16 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.facts;
 
 import java.util.*;
+import nitpicker.designfacts.model.*;
 
-final class TypeFacts {
+public final class TypeFacts {
   private final Mutability mutability;
 
-  TypeFacts(Mutability mutability) {
+  public TypeFacts(Mutability mutability) {
     this.mutability = mutability;
   }
 
-  Map<String, Object> build(TypeInfo type) {
+  public Map<String, Object> build(TypeInfo type) {
     Map<String, Object> map = new LinkedHashMap<>();
     map.put("id", type.id);
     map.put("file", type.unit.file);

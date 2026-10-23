@@ -1,36 +1,36 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.model;
 
 import com.sun.source.tree.*;
 import java.util.*;
 import java.util.regex.Pattern;
 import javax.lang.model.element.Modifier;
 
-final class TypeInfo {
+public final class TypeInfo {
   private static final Pattern VARARGS = Pattern.compile("\\.\\.\\.\\s*[\\w$]+\\s*$");
 
-  final Unit unit;
-  final ClassTree tree;
-  final TypeInfo outer;
-  final String simple;
-  final String qualified;
-  final String fqn;
-  final String id;
-  final Set<String> typeVars = new HashSet<>();
-  final Map<String, TypeInfo> nested = new LinkedHashMap<>();
-  final List<FieldInfo> fields = new ArrayList<>();
-  final List<String> cases = new ArrayList<>();
-  final List<MethodInfo> methods = new ArrayList<>();
-  final List<TypeInfo> supers = new ArrayList<>();
-  final List<String> externalSupers = new ArrayList<>();
-  TypeInfo superclass;
-  boolean linked;
-  String designKind;
-  boolean lombokData;
-  boolean lombokPrivate;
-  boolean lombokFinal;
-  boolean lombokReplaceable;
+  public final Unit unit;
+  public final ClassTree tree;
+  public final TypeInfo outer;
+  public final String simple;
+  public final String qualified;
+  public final String fqn;
+  public final String id;
+  public final Set<String> typeVars = new HashSet<>();
+  public final Map<String, TypeInfo> nested = new LinkedHashMap<>();
+  public final List<FieldInfo> fields = new ArrayList<>();
+  public final List<String> cases = new ArrayList<>();
+  public final List<MethodInfo> methods = new ArrayList<>();
+  public final List<TypeInfo> supers = new ArrayList<>();
+  public final List<String> externalSupers = new ArrayList<>();
+  public TypeInfo superclass;
+  public boolean linked;
+  public String designKind;
+  public boolean lombokData;
+  public boolean lombokPrivate;
+  public boolean lombokFinal;
+  public boolean lombokReplaceable;
 
-  TypeInfo(Unit unit, ClassTree tree, TypeInfo outer) {
+  public TypeInfo(Unit unit, ClassTree tree, TypeInfo outer) {
     this.unit = unit;
     this.tree = tree;
     this.outer = outer;
@@ -99,27 +99,27 @@ final class TypeInfo {
     return method.getBody().getStatements().get(0).toString().startsWith("this(");
   }
 
-  Tree.Kind kind() {
+  public Tree.Kind kind() {
     return tree.getKind();
   }
 
-  boolean isInterface() {
+  public boolean isInterface() {
     return kind() == Tree.Kind.INTERFACE || kind() == Tree.Kind.ANNOTATION_TYPE;
   }
 
-  boolean isEnum() {
+  public boolean isEnum() {
     return kind() == Tree.Kind.ENUM;
   }
 
-  boolean isRecord() {
+  public boolean isRecord() {
     return kind() == Tree.Kind.RECORD;
   }
 
-  Set<Modifier> flags() {
+  public Set<Modifier> flags() {
     return tree.getModifiers().getFlags();
   }
 
-  FieldInfo field(String name) {
+  public FieldInfo field(String name) {
     for (FieldInfo field : fields) {
       if (field.name.equals(name)) {
         return field;
@@ -128,11 +128,11 @@ final class TypeInfo {
     return null;
   }
 
-  boolean hasExternalSuper() {
+  public boolean hasExternalSuper() {
     return !externalSupers.isEmpty();
   }
 
-  boolean exported() {
+  public boolean exported() {
     boolean visible = flags().contains(Modifier.PUBLIC) || flags().contains(Modifier.PROTECTED);
     if (outer == null) {
       return flags().contains(Modifier.PUBLIC);

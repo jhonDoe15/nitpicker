@@ -1,22 +1,25 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.resolve;
 
 import com.sun.source.tree.*;
 import java.util.*;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.model.*;
+import nitpicker.designfacts.scope.*;
 
-final class Typer {
-  final Project project;
-  final Lookup lookup;
-  final Calls calls;
-  final References references;
+public final class Typer {
+  public final Project project;
+  public final Lookup lookup;
+  public final Calls calls;
+  public final References references;
 
-  Typer(Project project, Lookup lookup) {
+  public Typer(Project project, Lookup lookup) {
     this.project = project;
     this.lookup = lookup;
     this.calls = new Calls(this);
     this.references = new References(this);
   }
 
-  Ty tyOf(Tree type, Ctx c) {
+  public Ty tyOf(Tree type, Ctx c) {
     return switch (type) {
       case null -> Ty.UNKNOWN;
       case PrimitiveTypeTree primitive -> Ty.text(Names.typeText(primitive));
@@ -30,7 +33,7 @@ final class Typer {
     };
   }
 
-  Ty typeOf(Tree tree, Ctx c) {
+  public Ty typeOf(Tree tree, Ctx c) {
     Tree expression = Names.unparen(tree);
     return switch (expression) {
       case IdentifierTree identifier -> identifierType(identifier.getName().toString(), c);
@@ -39,7 +42,8 @@ final class Typer {
       case NewClassTree creation -> tyOf(creation.getIdentifier(), c);
       case TypeCastTree cast -> tyOf(cast.getType(), c);
       case AssignmentTree assignment -> typeOf(assignment.getVariable(), c);
-      case ConditionalExpressionTree conditional -> same(typeOf(conditional.getTrueExpression(), c), typeOf(conditional.getFalseExpression(), c));
+      case ConditionalExpressionTree conditional ->
+          same(typeOf(conditional.getTrueExpression(), c), typeOf(conditional.getFalseExpression(), c));
       case LiteralTree literal ->
           literal.getValue() instanceof String ? Ty.text("String") : Ty.UNKNOWN;
       default -> Ty.UNKNOWN;
@@ -72,7 +76,7 @@ final class Typer {
     return fieldType(lookup.bareField(name, c.owner));
   }
 
-  Ty fieldType(FieldInfo field) {
+  public Ty fieldType(FieldInfo field) {
     return field == null ? Ty.UNKNOWN : tyOf(field.tree.getType(), Ctx.forType(field.owner));
   }
 
@@ -93,7 +97,7 @@ final class Typer {
     return name.equals("length") && baseType.isArray() ? Ty.text("int") : Ty.UNKNOWN;
   }
 
-  TypeInfo typeNameOf(Tree tree, Ctx c) {
+  public TypeInfo typeNameOf(Tree tree, Ctx c) {
     List<String> parts = Names.segments(Names.unparen(tree));
     if (parts.isEmpty()) {
       return null;
@@ -105,7 +109,7 @@ final class Typer {
     return project.resolveQualified(parts, c.owner, c.unit, c.typeVars);
   }
 
-  String keyOf(Tree tree, Ctx c) {
+  public String keyOf(Tree tree, Ctx c) {
     Tree expression = Names.unwrap(tree);
     if (expression instanceof IdentifierTree identifier) {
       String name = identifier.getName().toString();
@@ -127,7 +131,7 @@ final class Typer {
     return null;
   }
 
-  FieldInfo fieldRef(Tree tree, Ctx c) {
+  public FieldInfo fieldRef(Tree tree, Ctx c) {
     Tree expression = Names.unparen(tree);
     if (expression instanceof IdentifierTree identifier) {
       String name = identifier.getName().toString();

@@ -1,18 +1,21 @@
-package nitpicker.designfacts;
+package nitpicker.designfacts.resolve;
 
 import com.sun.source.tree.*;
 import com.sun.source.util.TreeScanner;
 import java.util.*;
+import nitpicker.designfacts.*;
+import nitpicker.designfacts.model.*;
+import nitpicker.designfacts.scope.*;
 
-final class References {
+public final class References {
   private final Typer typer;
   private final Map<FieldInfo, List<MethodInfo>> tables = new IdentityHashMap<>();
 
-  References(Typer typer) {
+  public References(Typer typer) {
     this.typer = typer;
   }
 
-  MethodInfo resolve(MemberReferenceTree tree, Ctx c) {
+  public MethodInfo resolve(MemberReferenceTree tree, Ctx c) {
     TypeInfo type = qualifier(Names.unparen(tree.getQualifierExpression()), c);
     if (type == null) {
       return null;
@@ -36,7 +39,7 @@ final class References {
     return named != null ? named : typer.typeOf(base, c).type();
   }
 
-  List<MethodInfo> table(FieldInfo field) {
+  public List<MethodInfo> table(FieldInfo field) {
     if (field == null || !field.isStatic || !field.isFinal() || field.tree.getInitializer() == null) {
       return List.of();
     }

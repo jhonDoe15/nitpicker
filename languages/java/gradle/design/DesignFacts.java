@@ -9,6 +9,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import javax.tools.*;
+import nitpicker.designfacts.facts.*;
+import nitpicker.designfacts.model.*;
+import nitpicker.designfacts.resolve.*;
 
 public final class DesignFacts {
   private static final int MAX_REPORTED_ERRORS = 5;
