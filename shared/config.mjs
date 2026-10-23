@@ -25,7 +25,7 @@ export const THRESHOLD_PRESETS = {
   classFields: ['java', 'kotlin', 'python'],
   inheritanceDepth: ['java', 'kotlin', 'python'],
 };
-export const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
+export const WHOLE_NUMBER_THRESHOLD_KEYS = [
   'fileLines',
   'testFileLines',
   'lineLength',
@@ -34,7 +34,7 @@ export const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'classMethods',
   'classFields',
   'inheritanceDepth',
-]);
+];
 
 export const FEATURE_LAYOUT_KEYS = ['sharedRoots', 'featureRoots'];
 
@@ -76,7 +76,7 @@ export function validateThresholds(thresholds, preset = 'typescript') {
     if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
       throw configError(`"thresholds.${key}" must be a positive number`);
     }
-    if (WHOLE_NUMBER_THRESHOLD_KEYS.has(key) && !Number.isInteger(value)) {
+    if (WHOLE_NUMBER_THRESHOLD_KEYS.includes(key) && !Number.isInteger(value)) {
       throw configError(`"thresholds.${key}" must be a whole number`);
     }
   }

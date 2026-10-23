@@ -78,9 +78,13 @@ export const I18N_KEYS = ['enabled', 'functionNames', 'componentNames'];
 
 export const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
-export const NITPICKER_RULE_IDS = new Set(RULES.map(({ id }) => id));
+const NITPICKER_RULE_IDS = new Set(RULES.map(({ id }) => id));
 
-export const TYPESCRIPT_RULE_NAMES = new Map([['doc-comment-content', 'nitpicker/no-comments']]);
+export const NITPICKER_RULES = [...NITPICKER_RULE_IDS];
+
+const TYPESCRIPT_RULE_NAMES = new Map([['doc-comment-content', 'nitpicker/no-comments']]);
+
+export const RENAMED_TYPESCRIPT_RULES = [...TYPESCRIPT_RULE_NAMES.keys()];
 
 export function validateConfig(config) {
   if (!isPlainObject(config)) {
@@ -131,7 +135,7 @@ function validateScalars(config) {
   );
 }
 
-export const JAVASCRIPT_UNSUPPORTED_KEYS = [
+const JAVASCRIPT_UNSUPPORTED_KEYS = [
   [
     'react',
     'React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',

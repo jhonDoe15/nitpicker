@@ -106,30 +106,62 @@ const kotlin = (path) =>
     classification: 'enforceable',
   });
 
+const EXPECT_FORM =
+  'Call `expect` in the test body: asserting helpers do not count, so return the value and `expect` it in the test.';
+const SPLIT_FORM = 'Split it into files by responsibility.';
+const NULL_FORM =
+  "Annotate what may be null with the @Nullable the project already uses (JSpecify's org.jspecify.annotations.Nullable if it uses none) and check it before use; otherwise give it a non-null value.";
+const LOGGING_FORM =
+  'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.';
+const CONSTANT_FORM =
+  'Name it once as a constant (`private const val NAME = "..."`) and use the constant.';
+const JAVA = 'src/main/java/A.java';
+const KOTLIN = 'src/main/kotlin/A.kt';
+
 const SAMPLES = [
-  ['typescript', 'src/a.test.ts', typescript, 'exceptions'],
-  ['typescript', 'src/a.ts', fileLines, 'exceptions'],
-  ['javascript', 'src/a.test.js', typescript, 'exceptions'],
-  ['javascript', 'src/a.js', fileLines, 'exceptions'],
-  ['python', 'src/a.py', python, 'python.exceptions'],
-  ['python', 'src/a.py', fileLines, 'exceptions'],
-  ['java', 'src/main/java/A.java', java, 'exceptions'],
-  ['java', 'src/main/java/A.java', javaErrorProne, 'exceptions'],
-  ['java', 'src/main/java/A.java', javaSpring, 'exceptions'],
-  ['kotlin', 'src/main/kotlin/A.kt', kotlin, 'exceptions'],
-  ['kotlin', 'src/main/kotlin/A.kt', fileLines, 'exceptions'],
+  ['typescript', 'src/a.test.ts', typescript, 'exceptions', 'vitest/expect-expect', EXPECT_FORM],
+  ['typescript', 'src/a.ts', fileLines, 'exceptions', 'file-lines-limit', SPLIT_FORM],
+  ['javascript', 'src/a.test.js', typescript, 'exceptions', 'vitest/expect-expect', EXPECT_FORM],
+  ['javascript', 'src/a.js', fileLines, 'exceptions', 'file-lines-limit', SPLIT_FORM],
+  ['python', 'src/a.py', python, 'python.exceptions', 'T201', LOGGING_FORM],
+  ['python', 'src/a.py', fileLines, 'exceptions', 'file-lines-limit', SPLIT_FORM],
+  ['java', JAVA, java, 'exceptions', 'pmd/UnusedPrivateField', 'Remove the field, or use it.'],
+  ['java', JAVA, javaErrorProne, 'exceptions', 'errorprone/NullAway', NULL_FORM],
+  [
+    'java',
+    JAVA,
+    javaSpring,
+    'exceptions',
+    'pmd/SpringConstructorInjection',
+    'Inject through the constructor into final fields.',
+  ],
+  [
+    'kotlin',
+    KOTLIN,
+    kotlin,
+    'exceptions',
+    'detekt.complexity.StringLiteralDuplication',
+    CONSTANT_FORM,
+  ],
+  ['kotlin', KOTLIN, fileLines, 'exceptions', 'file-lines-limit', SPLIT_FORM],
 ];
 
 describe('the allowed form and the exception of a finding', () => {
   it.each(SAMPLES)(
     '%s: %s is told as fields that agree with the message',
-    (_preset, path, build, list) => {
+    (_preset, path, build, list, rule, allowedForm) => {
       const finding = parseFinding(identified(build(path), path));
 
-      expect(finding.allowedForm).toBeTruthy();
-      expect(finding.message).toContain(finding.allowedForm);
-      expect(finding.exceptionList).toBe(list);
-      expect(finding.exception).toMatchObject({ paths: [path], reason: '...' });
+      expect({
+        allowedForm: finding.allowedForm,
+        exception: finding.exception,
+        exceptionList: finding.exceptionList,
+      }).toEqual({
+        allowedForm,
+        exception: { rule, paths: [path], reason: '...' },
+        exceptionList: list,
+      });
+      expect(finding.message.includes(allowedForm)).toBe(true);
       expect(finding.message.endsWith(exceptionSentenceOf(finding))).toBe(true);
       expect(validates({ findings: [finding] })).toBe(true);
     },

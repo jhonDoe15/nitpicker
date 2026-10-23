@@ -72,12 +72,15 @@ describe('unused props, options and exports in a project', () => {
       ({ rule, symbol }) => rule === 'unused-prop' && symbol === 'Button.size',
     );
 
-    expect(size).toMatchObject({
+    expect({
+      allowedForm: size.allowedForm,
+      exception: size.exception,
+      exceptionList: size.exceptionList,
+    }).toEqual({
       allowedForm: 'Remove it, or pass it from a real caller (tests and stories do not count).',
-      exception: { rule: 'unused-prop', reason: '...' },
+      exception: { rule: 'unused-prop', paths: [size.path], reason: '...' },
       exceptionList: 'exceptions',
     });
-    expect(size.exception.paths).toEqual([size.path]);
     expect(size.message).toContain(size.allowedForm);
     expect(size.message).toContain(JSON.stringify(size.exception));
   });

@@ -190,14 +190,15 @@ function grewFinding(headFinding, baseValue) {
   if (worseMessage === undefined) {
     return headFinding;
   }
-  const { allowedForm, ...rest } = headFinding;
-  return {
-    ...rest,
+  const grown = {
+    ...headFinding,
     message: worseMessage.replaceAll('{base}', String(baseValue)),
-    ...(worseAllowedForm === undefined
-      ? {}
-      : { allowedForm: worseAllowedForm.replaceAll('{base}', String(baseValue)) }),
+    allowedForm: worseAllowedForm?.replaceAll('{base}', String(baseValue)),
   };
+  if (grown.allowedForm === undefined) {
+    delete grown.allowedForm;
+  }
+  return grown;
 }
 
 function ratchetKey(finding, renames, directories) {

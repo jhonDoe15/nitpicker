@@ -50,8 +50,6 @@ describe('every shared message template', () => {
     const { message, allowedForm: allowed } = messageFields(text, values);
 
     expect(message).not.toMatch(/[⟦⟧]/u);
-    if (allowed !== undefined) {
-      expect(message).toContain(allowed);
-    }
+    expect(message.includes(allowed ?? '')).toBe(true);
   });
 });

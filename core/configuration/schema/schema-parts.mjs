@@ -55,9 +55,9 @@ const globProblemChecks = GLOB_PROBLEMS.filter(({ pattern }) => pattern !== unde
   ({ pattern }) => never(pattern.source),
 );
 
-export const fileGlob = { type: 'string', minLength: 1, allOf: globProblemChecks };
+const fileGlob = { type: 'string', minLength: 1, allOf: globProblemChecks };
 
-export const folderGlob = {
+const folderGlob = {
   ...projectPath,
   allOf: [...projectPath.allOf, ...globProblemChecks],
 };

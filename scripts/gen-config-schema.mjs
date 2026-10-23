@@ -19,7 +19,7 @@ export async function isStale() {
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   if (process.argv.includes('--check')) {
     if (await isStale()) {
-      console.error(`Stale (run npm run gen:schema): ${SCHEMA_FILE}`);
+      process.stderr.write(`Stale (run npm run gen:schema): ${SCHEMA_FILE}\n`);
       process.exitCode = 1;
     }
   } else {

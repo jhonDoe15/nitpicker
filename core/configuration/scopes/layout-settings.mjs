@@ -18,7 +18,7 @@ export const LAYOUT_KEYS = [
   ...FEATURE_LAYOUT_KEYS,
 ];
 
-export const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
+const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 
 export function layoutKeysFor(preset) {
   const settings = factRuleSettings(preset ?? 'typescript');

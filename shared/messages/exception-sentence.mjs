@@ -46,7 +46,9 @@ export function hasExceptionRoute(message) {
   return ROUTE_SENTENCE.test(message);
 }
 
-const isText = (value) => typeof value === 'string' && value !== '' && !value.includes('\0');
+function isText(value) {
+  return typeof value === 'string' && value !== '' && !value.includes('\0');
+}
 
 /** Whether `value` has the parts every `exceptions` entry names: a rule, some paths and a reason. */
 export function isExceptionEntry(value) {
@@ -62,11 +64,15 @@ export function isExceptionEntry(value) {
 }
 
 function parsedEntry(text) {
+  const parsed = parsedJson(text);
+  return parsed.kind === 'parsed' && isExceptionEntry(parsed.value) ? parsed.value : undefined;
+}
+
+function parsedJson(text) {
   try {
-    const entry = JSON.parse(text);
-    return isExceptionEntry(entry) ? entry : undefined;
-  } catch {
-    return undefined;
+    return { kind: 'parsed', value: JSON.parse(text) };
+  } catch (error) {
+    return { kind: 'malformed-json', error };
   }
 }
 

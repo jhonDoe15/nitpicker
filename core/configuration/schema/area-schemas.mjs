@@ -88,7 +88,7 @@ export const thresholds = {
       key,
       {
         description: THRESHOLD_DESCRIPTIONS[key],
-        ...(WHOLE_NUMBER_THRESHOLD_KEYS.has(key)
+        ...(WHOLE_NUMBER_THRESHOLD_KEYS.includes(key)
           ? { type: 'integer', minimum: 1 }
           : { type: 'number', exclusiveMinimum: 0 }),
       },
@@ -114,10 +114,12 @@ function scope(description, keys, properties) {
   };
 }
 
-const enabled = (what) => ({
-  description: `true or false forces the ${what} on or off; without it nitpicker decides from the project's dependencies.`,
-  type: 'boolean',
-});
+function enabled(what) {
+  return {
+    description: `true or false forces the ${what} on or off; without it nitpicker decides from the project's dependencies.`,
+    type: 'boolean',
+  };
+}
 
 export const react = scope('The React rule scope (TypeScript preset only).', REACT_KEYS, {
   enabled: enabled('React rules'),
