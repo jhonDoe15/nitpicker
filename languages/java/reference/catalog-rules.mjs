@@ -26,6 +26,13 @@ function summaryOf(tool, rule) {
   return tool === 'spotbugs' ? wordsOfConstant(rule) : wordsOfCamelCase(rule);
 }
 
+function allowedOf({ fix, layout }) {
+  if (layout === true) {
+    return { allowed: LAYOUT_ALLOWED };
+  }
+  return typeof fix === 'string' ? { allowed: fix } : {};
+}
+
 function entryOf(tool, rule, { fix, layout, mayBeIntended }) {
   return ruleEntry({
     tool,
@@ -35,11 +42,7 @@ function entryOf(tool, rule, { fix, layout, mayBeIntended }) {
     builds: JVM_BUILDS,
     summary: summaryOf(tool, rule),
     why: WHY[tool],
-    ...(layout === true
-      ? { allowed: LAYOUT_ALLOWED }
-      : typeof fix === 'string'
-        ? { allowed: fix }
-        : {}),
+    ...allowedOf({ fix, layout }),
     exception: {
       key: 'exceptions',
       rule: `${tool}/${rule}`,

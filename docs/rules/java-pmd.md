@@ -494,7 +494,7 @@ Do not throw exception in finally.
 
 Dont import sun.
 
-- **Allowed form:** Use the public java.* or javax.* API instead of a sun.* class, or a supported library for the same job.
+- **Allowed form:** Use the public java.\* or javax.\* API instead of a sun.\* class, or a supported library for the same job.
 - **Exception:** If this is intended, add `{"rule":"pmd/DontImportSun","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="pmd-dontusefloattypeforloopindices"></a>
@@ -726,7 +726,7 @@ Jpa many to many cascade.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Do not cascade ALL or REMOVE on @ManyToMany: removing one parent deletes rows that other parents still share.
+- **Allowed form:** Cascade only PERSIST and MERGE on @ManyToMany, never ALL or REMOVE: removing one parent deletes rows that other parents still share.
 - **Exception:** If this is intended, add `{"rule":"pmd/JpaManyToManyCascade","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-jpamanytomanyset"></a>
@@ -1225,7 +1225,7 @@ Spring cors wildcard.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** List the allowed origins from configuration instead of "*" when credentials are allowed; any site could then call this API as the signed-in user.
+- **Allowed form:** List the allowed origins from configuration instead of "\*" when credentials are allowed; any site could then call this API as the signed-in user.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringCorsWildcard","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springcsrfdisabled"></a>
@@ -1313,7 +1313,7 @@ Spring data no flush.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Do not flush by hand. Let the transaction write changes at commit; an early flush defeats JDBC batching and hides ordering bugs.
+- **Allowed form:** Let the transaction write changes at commit and remove this flush; an early flush defeats JDBC batching and hides ordering bugs.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataNoFlush","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdatanosaveinloop"></a>
@@ -1324,7 +1324,7 @@ Spring data no save in loop.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Do not save or delete one entity per loop iteration. Collect the entities and call saveAll or deleteAll once.
+- **Allowed form:** Collect the entities and call saveAll or deleteAll once, instead of saving or deleting one entity per loop iteration.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataNoSaveInLoop","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdataquerytextblock"></a>
@@ -1390,7 +1390,7 @@ Spring http client timeouts.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Build this HTTP client with connect and read timeouts, from the injected RestClient.Builder or RestTemplateBuilder (spring.http.client.* properties), with a request factory or connector that sets them, or with connectTimeout and readTimeout on the builder; give a Reactor Netty HttpClient a responseTimeout. A client without timeouts waits forever for a slow server.
+- **Allowed form:** Build this HTTP client with connect and read timeouts, from the injected RestClient.Builder or RestTemplateBuilder (spring.http.client.\* properties), with a request factory or connector that sets them, or with connectTimeout and readTimeout on the builder; give a Reactor Netty HttpClient a responseTimeout. A client without timeouts waits forever for a slow server.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringHttpClientTimeouts","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springimmutablebeans"></a>
@@ -1467,7 +1467,7 @@ Spring no post construct io.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Move startup work that calls a database or a remote service out of @PostConstruct into an ApplicationRunner or an @EventListener(ApplicationReadyEvent). @PostConstruct runs before the context is ready: there is no transaction around this call, other beans may not be proxied yet, and a failure stops the application from starting.
+- **Allowed form:** Move startup work that calls a database or a remote service out of @PostConstruct, afterPropertiesSet or a @Bean initMethod (and the private helpers only they call) into an ApplicationRunner or an @EventListener(ApplicationReadyEvent). These run before the context is ready: there is no transaction around this call, other beans may not be proxied yet, and a failure stops the application from starting.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringNoPostConstructIo","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnorequiresnew"></a>
@@ -1478,7 +1478,7 @@ Spring no requires new.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Avoid Propagation.REQUIRES_NEW: each nested transaction holds a second connection and can exhaust the pool under load.
+- **Allowed form:** Keep the default REQUIRED propagation and drop Propagation.REQUIRES_NEW: each nested transaction holds a second connection and can exhaust the pool under load.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringNoRequiresNew","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnoservicelocator"></a>
@@ -1500,7 +1500,7 @@ Spring no swallowed transaction exception.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Do not swallow a broad or persistence exception inside a @Transactional method: the transaction may already be rollback-only, so the commit fails anyway. Rethrow it, or catch it in the caller.
+- **Allowed form:** Rethrow a broad or persistence exception caught inside a @Transactional method, or catch it in the caller. Swallowed there, by a catch without throw, it leaves the transaction rollback-only, so the commit fails anyway.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringNoSwallowedTransactionException","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnotransactionalcontroller"></a>
@@ -1566,7 +1566,7 @@ Spring proxy self call.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** This call stays inside the class, so it skips the proxy and the called method''s annotation does nothing. Move the annotated method to another bean and call it there.
+- **Allowed form:** Move the annotated method to another bean and call it there. This call stays inside the class, so it skips the proxy and the called method''s annotation does nothing.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringProxySelfCall","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springqueryconcatenation"></a>
@@ -1643,7 +1643,7 @@ Spring typed configuration.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Read configuration through a @ConfigurationProperties record and pass the values in through constructors or parameters, not @Value, System.getenv, System.getProperty or Environment.getProperty. JVM properties such as java._, user._, javax._, jdk._ and http.* are fine.
+- **Allowed form:** Read configuration through a @ConfigurationProperties record and pass the values in through constructors or parameters, not @Value, System.getenv, System.getProperty or Environment.getProperty. JVM properties such as java.\*, user.\*, javax.\*, jdk.\* and http.\* are fine.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringTypedConfiguration","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springtypedrequestbody"></a>
@@ -1654,7 +1654,7 @@ Spring typed request body.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Bind this @RequestBody to a record with validation annotations, not to Object, JsonNode, Map<String, Object> or a list of those. Untyped payloads skip validation and allow mass assignment. A Map with typed values, such as Map<String, String>, is fine.
+- **Allowed form:** Bind this @RequestBody to a record with validation annotations, not to Object, JsonNode, Map\<String, Object> or a list of those. Untyped payloads skip validation and allow mass assignment. A Map with typed values, such as Map\<String, String>, is fine.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringTypedRequestBody","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springtypedresponse"></a>
@@ -1665,7 +1665,7 @@ Spring typed response.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Return a record or a specific type from this handler, never Object, JsonNode, Map<String, Object>, ResponseEntity<?>, a list or Optional of those, or null. For no body return void or ResponseEntity<Void>, and for an error throw an exception that a @RestControllerAdvice maps to a ProblemDetail.
+- **Allowed form:** Return a record or a specific type from this handler, never Object, JsonNode, Map\<String, Object>, ResponseEntity\<?>, a list or Optional of those, or null. For no body return void or ResponseEntity\<Void>, and for an error throw an exception that a @RestControllerAdvice maps to a ProblemDetail.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringTypedResponse","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springunusedcontext"></a>
@@ -1943,7 +1943,7 @@ Use correct exception logging.
 
 Use enum collections.
 
-- **Allowed form:** Create EnumSet.noneOf(Key.class) or new EnumMap<>(Key.class) instead of a HashSet or HashMap keyed by the enum.
+- **Allowed form:** Create EnumSet.noneOf(Key.class) or new EnumMap\<>(Key.class) instead of a HashSet or HashMap keyed by the enum.
 - **Exception:** If this is intended, add `{"rule":"pmd/UseEnumCollections","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="pmd-useequalstocomparestrings"></a>

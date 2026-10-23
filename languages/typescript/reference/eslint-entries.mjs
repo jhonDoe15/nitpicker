@@ -1,7 +1,7 @@
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
 import { reactRuleIds, reactTestRuleIds } from '../preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../preset/eslint-config/i18n/i18n-rules.mjs';
-import { eslintInventory } from './eslint-inventory.mjs';
+import { readEslintInventory } from './eslint-inventory.mjs';
 import { ruleSets } from './rule-sets.mjs';
 
 const GUIDE = 'docs/typescript-strict-preset.md';
@@ -80,14 +80,18 @@ function scopeOf(id, presets) {
   return presets.includes('typescript') ? undefined : JAVASCRIPT_ONLY_SCOPE;
 }
 
+function guideAnchorOf(id) {
+  if (REACT_IDS.has(id)) {
+    return 'react';
+  }
+  if (I18N_IDS.has(id)) {
+    return 'internationalized-messages';
+  }
+  return TEST_PREFIXES.some((prefix) => id.startsWith(prefix)) ? 'inside-tests' : undefined;
+}
+
 function docsOf(id) {
-  const anchor = REACT_IDS.has(id)
-    ? 'react'
-    : I18N_IDS.has(id)
-      ? 'internationalized-messages'
-      : TEST_PREFIXES.some((prefix) => id.startsWith(prefix))
-        ? 'inside-tests'
-        : undefined;
+  const anchor = guideAnchorOf(id);
   return [
     { label: 'Strict preset guide', path: GUIDE, ...(anchor === undefined ? {} : { anchor }) },
   ];
@@ -136,9 +140,9 @@ function entryOf(id, byVariant, sets) {
   });
 }
 
-/** The entries of every ESLint rule the TypeScript and JavaScript presets turn on, from their real configs. */
-export async function eslintEntries() {
-  const inventory = await eslintInventory();
+/** The entries of every ESLint rule the TypeScript and JavaScript presets turn on, from the inventory of their configs. */
+export function eslintEntries() {
+  const inventory = readEslintInventory();
   const sets = ruleSets();
   const ids = [...new Set(Object.values(inventory).flatMap((rules) => Object.keys(rules)))].sort();
   return ids.map((id) =>

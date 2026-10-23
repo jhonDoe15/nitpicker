@@ -89,7 +89,7 @@ A string has the shape of a credential.
 
 ### `python-rules/enum-string-constants`
 
-<name> are string constants that belong in one enum.
+\<name> are string constants that belong in one enum.
 
 - **Allowed form:** Declare an enum: `class Status(enum.StrEnum): ACTIVE = "active"` on Python 3.11+, otherwise `class Status(str, enum.Enum)`.
 - **Exception:** If this is intended, add `{"rule":"enum-string-constants","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
@@ -98,7 +98,7 @@ A string has the shape of a credential.
 
 ### `python-rules/frozen-dataclass`
 
-Dataclass <name> is not frozen.
+Dataclass \<name> is not frozen.
 
 - **Allowed form:** Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`.
 - **Exception:** If this is intended, add `{"rule":"frozen-dataclass","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
@@ -224,7 +224,7 @@ The pydantic field `<name>` is typed `Any`.
 
 ### `python-rules/pydantic-boundary`
 
-<name> is imported outside an adapters/ package.
+\<name> is imported outside an adapters/ package.
 
 - **Allowed form:** Use pydantic only in an `adapters/` package to parse untrusted input (`Model.model_validate(data)`), and pass frozen dataclasses on from there.
 - **Exception:** If this is intended, add `{"rule":"pydantic-boundary","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
@@ -269,7 +269,7 @@ The pydantic model `<name>` accepts unknown fields.
 
 ### `python-rules/repeated-string-literal`
 
-The string "<name>" is repeated three times or more.
+The string "\<name>" is repeated three times or more.
 
 - **Allowed form:** Name it once as a constant (`PENDING = "pending"`), or as a member of an enum when the strings form a set of states.
 - **Exception:** If this is intended, add `{"rule":"repeated-string-literal","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.

@@ -22,9 +22,8 @@ function ruffEntry({ code, name, linter, summary }) {
   });
 }
 
-/** The committed snapshot of the ruff rules the preset selects. */
-export function readRuffRules(file = RUFF_RULES_FILE) {
-  return JSON.parse(readFileSync(file, 'utf8'));
+function readRuffRules() {
+  return JSON.parse(readFileSync(RUFF_RULES_FILE, 'utf8'));
 }
 
 /** The entries of the ruff rules the Python preset selects, from the committed snapshot. */

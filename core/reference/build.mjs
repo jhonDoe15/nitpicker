@@ -16,7 +16,7 @@ function duplicates(values) {
 }
 
 /** The GitHub fragment of each heading of a Markdown text. */
-export function headingAnchors(text) {
+function headingAnchors(text) {
   return text
     .split('\n')
     .filter((line) => /^#{1,6} /u.test(line))
@@ -33,7 +33,10 @@ export function headingAnchors(text) {
 
 function docsProblems(entry, repositoryRoot) {
   return (entry.docs ?? []).flatMap(({ path: docsPath, anchor }) => {
-    const file = path.join(repositoryRoot, docsPath);
+    const file = path.resolve(repositoryRoot, docsPath);
+    if (!file.startsWith(repositoryRoot + path.sep)) {
+      return [`${entry.id}: ${docsPath} is outside the repository`];
+    }
     if (!existsSync(file)) {
       return [`${entry.id}: ${docsPath} does not exist`];
     }
@@ -58,12 +61,12 @@ export function entryProblems(entries, repositoryRoot) {
 }
 
 /** Every entry of the reference, read from the rule catalogs, sorted by id. */
-export async function buildReference(repositoryRoot) {
+export function buildReference(repositoryRoot) {
   const entries = [
     ...sharedCheckEntries(),
     ...typescriptCheckEntries(),
     ...coreRuleEntries(),
-    ...(await typescriptRuleEntries()),
+    ...typescriptRuleEntries(),
     ...jvmRuleEntries(),
     ...pythonRuleEntries(),
   ].toSorted((a, b) => a.id.localeCompare(b.id));

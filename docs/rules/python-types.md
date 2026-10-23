@@ -13,7 +13,7 @@ Unless an entry says otherwise:
 
 ### `basedpyright/<rule>`
 
-A diagnostic of basedpyright, named by its <rule>.
+A diagnostic of basedpyright, named by its \<rule>.
 
 - **Printed as:** `basedpyright/<rule>`
 - **Why it is on:** The Python preset runs the type checker the project picks (`python.typeChecker`: mypy, pyright or basedpyright) and fails a diagnostic the change adds.
@@ -105,7 +105,7 @@ A `# pragma: no mutate` comment or a mutmut ignore pattern that hides code from 
 
 ### `mypy/<error code>`
 
-A diagnostic of mypy, named by its <error code>.
+A diagnostic of mypy, named by its \<error code>.
 
 - **Printed as:** `mypy/<error code>`
 - **Why it is on:** The Python preset runs the type checker the project picks (`python.typeChecker`: mypy, pyright or basedpyright) and fails a diagnostic the change adds.
@@ -156,7 +156,7 @@ A mypy diagnostic with the rule unused-ignore.
 
 ### `pyright/<rule>`
 
-A diagnostic of pyright, named by its <rule>.
+A diagnostic of pyright, named by its \<rule>.
 
 - **Printed as:** `pyright/<rule>`
 - **Why it is on:** The Python preset runs the type checker the project picks (`python.typeChecker`: mypy, pyright or basedpyright) and fails a diagnostic the change adds.

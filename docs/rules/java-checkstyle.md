@@ -71,7 +71,7 @@ Avoid escaped unicode characters.
 
 Avoid star import.
 
-- **Allowed form:** Import each class by name (import java.util.List;), never a wildcard like java.util.*.
+- **Allowed form:** Import each class by name (import java.util.List;), never a wildcard like java.util.\*.
 - **Exception:** If this is intended, add `{"rule":"checkstyle/AvoidStarImport","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="checkstyle-catchparametername"></a>
@@ -197,7 +197,7 @@ Interface type parameter name.
 
 Invalid javadoc position.
 
-- **Allowed form:** Put a Javadoc comment directly before the class, method or field it documents; use // or /* */ for any other comment.
+- **Allowed form:** Put a Javadoc comment directly before the class, method or field it documents; use // or /\* \*/ for any other comment.
 - **Exception:** If this is intended, add `{"rule":"checkstyle/InvalidJavadocPosition","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="checkstyle-javadocmethod"></a>
@@ -215,7 +215,7 @@ Javadoc method.
 
 Javadoc paragraph.
 
-- **Allowed form:** Separate paragraphs with an empty Javadoc line and start each following one with <p> glued to its first word, as in <p>Text.
+- **Allowed form:** Separate paragraphs with an empty Javadoc line and start each following one with \<p> glued to its first word, as in \<p>Text.
 - **Exception:** If this is intended, add `{"rule":"checkstyle/JavadocParagraph","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="checkstyle-javadoctagcontinuationindentation"></a>

@@ -1384,7 +1384,7 @@ Disallow specified syntax.
   - domain/ code does not change values through Reflect or Atomics: return a new value with spread, e.g. { ...value, field }.
   - domain/ code does not use delete: build a new object without the key using Object.fromEntries and filter.
   - domain/ types are readonly: write readonly T[] (or a readonly tuple) instead of a mutable array type.
-  - domain/ types are readonly: write ReadonlyArray<T>, ReadonlyMap<K, V> or ReadonlySet<T> instead of Array, Map or Set.
+  - domain/ types are readonly: write ReadonlyArray\<T>, ReadonlyMap\<K, V> or ReadonlySet\<T> instead of Array, Map or Set.
   - domain/ data types are readonly: mark the property readonly.
   - Throw an Error subclass that preserves cause (new DomainError(message, { cause })), not a bare Error or a non-error value.
   - for...of is the only loop; iterate the items with for...of, or give each case its own test with it.each.

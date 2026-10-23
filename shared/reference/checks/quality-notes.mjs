@@ -1,6 +1,6 @@
 export const QUALITY_NOTES = {
   'crap-score-limit': [
-    "A function whose CRAP score (its complexity combined with how little of it the tests cover) is at or above the limit.",
+    'A function whose CRAP score (its complexity combined with how little of it the tests cover) is at or above the limit.',
     'Complex code that tests do not cover is the code most likely to break unnoticed.',
     'Test the uncovered branches, or split a branchy part into its own function.',
   ],
@@ -50,7 +50,7 @@ export const QUALITY_NOTES = {
     'Import and run the production code the test is about.',
   ],
   'type-only-production-dependency': [
-    "A test whose only link to production code is a type-only import.",
+    'A test whose only link to production code is a type-only import.',
     'A type import proves nothing at runtime, so the test cannot fail when the code breaks.',
     'Import and run the production code the test is about.',
   ],

@@ -692,7 +692,7 @@ Allow only features, shared and the composition root under src/main.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-unknown-main-folder","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - '{{folder}}' sits directly in src/main/, which holds only features/, shared/ and the composition root (composition-root.ts, main.ts, server.ts) and index.ts. Move it into the feature that uses it, or into shared/ when several features need it. An exception fits only when the file is deliberate.
-  - '{{folder}}/' is not a layer of this layout. Under src/main/ put code in features/<name>/ (domain/ for pure logic, adapters/ for I/O), in shared/ when several features need it, or in the composition root. An exception fits only when this folder is deliberate.
+  - '{{folder}}/' is not a layer of this layout. Under src/main/ put code in features/\<name>/ (domain/ for pure logic, adapters/ for I/O), in shared/ when several features need it, or in the composition root. An exception fits only when this folder is deliberate.
   - '{{folder}}/' is not a layer of a feature. A feature holds domain/ for pure logic and adapters/ for I/O (and ui/ for components in a React project), and its public index.ts. An exception fits only when this folder is deliberate.
   - '{{folder}}' sits directly in a feature folder, which holds only its public index.ts besides domain/ and adapters/ (and ui/ for components in a React project). Move it into domain/ if it is pure logic or adapters/ if it does I/O. An exception fits only when the file is deliberate.
 
@@ -748,7 +748,7 @@ Disallow z.unknown() and z.any() as a field of a z.object schema.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-unvalidated-schema-field","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - {{factory}}() as a field only checks that the key exists and hands the value on unchecked. Validate the field in the schema, e.g. z.string().trim().min(1) or z.email(). An exception fits only when the field is genuinely opaque.
-  - z.custom() without a check function is a cast, not a validator. Pass the check, z.custom<T>((value) => ...), or build the schema from validating parts. An exception fits only when the value is genuinely opaque.
+  - z.custom() without a check function is a cast, not a validator. Pass the check, z.custom\<T>((value) => ...), or build the schema from validating parts. An exception fits only when the value is genuinely opaque.
   - z.looseObject(), .loose() and .passthrough() let unknown keys through unvalidated, and .catchall(z.unknown()) does the same. Use z.object({...}), which drops unknown keys, or z.strictObject({...}) to reject them. An exception fits only when the extra keys are genuinely opaque.
 
 <a id="eslint-nitpicker-no-wait-for-with-fake-timers"></a>
@@ -987,9 +987,9 @@ Keep a caught error on the logger call in the shape the project logger reads.
 - **Analyzers:** `eslint-logging` and `coding-standards`
 - **Exception:** If this is intended, add `{"rule":"nitpicker/structured-catch-logging","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
-  - Log a caught value as logger.<level>({ err: error, ...context }, message).
+  - Log a caught value as logger.\<level>({ err: error, ...context }, message).
   - Pass the caught value itself to the logger, for example logger.error('message', error), not its message or a template string.
-  - Log a caught value as logger.<level>({ err: error, ...context }, message), or pass the caught value itself, for example logger.error('message', error).
+  - Log a caught value as logger.\<level>({ err: error, ...context }, message), or pass the caught value itself, for example logger.error('message', error).
 
 <a id="eslint-nitpicker-test-must-use-production-runtime"></a>
 
@@ -1000,7 +1000,7 @@ Require tests to execute a production runtime dependency.
 - **Printed as:** `eslint-lint/nitpicker/test-must-use-production-runtime`
 - **Exception:** If this is intended, add `{"rule":"nitpicker/test-must-use-production-runtime","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
-  - This test imports no production code at runtime (only types, libraries, or helpers that import none). Import the code under test from the source root, directly or through a helper such as a render function that imports it. Shared helpers belong in a file not named _.test._ or _.spec._.
+  - This test imports no production code at runtime (only types, libraries, or helpers that import none). Import the code under test from the source root, directly or through a helper such as a render function that imports it. Shared helpers belong in a file not named \*.test.\* or \*.spec.\*.
 
 <a id="eslint-nitpicker-test-tsconfig-pins-lib-and-types"></a>
 

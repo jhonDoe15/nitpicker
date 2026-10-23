@@ -7,6 +7,7 @@ import {
   reactTestRuleIds,
 } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import { SPRING_ARCH_RULES } from '../../languages/java/adapters/spring-arch/spring-arch.mjs';
+import { KOTLIN_EXCEPTION_RULES } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { KOTLIN_SOURCE_MESSAGES } from '../../languages/java/adapters/kotlin/scan/kotlin-scan.mjs';
 import { leftOutPmdRules } from '../../languages/java/reference/pmd-rules.mjs';
 import { CATALOG_TOOLS, readCatalog } from '../../languages/java/messages/rule-messages.mjs';
@@ -105,6 +106,11 @@ describe('the rule reference', () => {
         ...Object.keys(KOTLIN_SOURCE_MESSAGES).map((rule) => ({ tool: 'kotlin-source', rule })),
       ]),
     ).toEqual([]);
+  });
+
+  it('has an entry for each rule the Kotlin preset takes an exception for', () => {
+    expect(KOTLIN_EXCEPTION_RULES.length).toBeGreaterThan(10);
+    expect(missingNames(KOTLIN_EXCEPTION_RULES)).toEqual([]);
   });
 
   it('has an entry for each default rule of the pinned detekt', () => {

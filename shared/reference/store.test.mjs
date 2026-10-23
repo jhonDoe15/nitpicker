@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { docsUrl } from '../messages/docs-url.mjs';
 import { ruleEntry } from './entry.mjs';
 import {
   closestIds,
@@ -85,7 +86,7 @@ describe('lookupEntries', () => {
 describe('closestIds', () => {
   it('names the entries nearest to a misspelled rule, nearest first', () => {
     expect(closestIds(index, 'pmd/UnusedLocalVarable')[0]).toBe('pmd/UnusedLocalVariable');
-    expect(closestIds(index, 'unusedlocal')).toContain('pmd/UnusedLocalVariable');
+    expect(closestIds(index, 'unusedlocal')).toEqual(['pmd/UnusedLocalVariable']);
   });
 
   it('names nothing when nothing is near and limits the list', () => {
@@ -96,8 +97,8 @@ describe('closestIds', () => {
 
 describe('referenceUrl', () => {
   it('links the page of the entry at its anchor', () => {
-    expect(referenceUrl(entries[0])).toMatch(
-      /\/blob\/main\/docs\/rules\/java-pmd\.md#pmd-unusedlocalvariable$/u,
+    expect(referenceUrl(entries[0])).toBe(
+      docsUrl('docs/rules/java-pmd.md', 'pmd-unusedlocalvariable'),
     );
   });
 });
@@ -113,8 +114,8 @@ describe('the committed reference', () => {
   it('gives a helpUri for a rule it knows and none for one it does not', () => {
     const committed = readReferenceIndex();
 
-    expect(helpUriFor(committed, { tool: 'structure', rule: 'function-lines-limit' })).toMatch(
-      /\/docs\/rules\/checks\.md#structure-function-lines-limit$/u,
+    expect(helpUriFor(committed, { tool: 'structure', rule: 'function-lines-limit' })).toBe(
+      docsUrl('docs/rules/checks.md', 'structure-function-lines-limit'),
     );
     expect(helpUriFor(committed, { tool: 'nothing', rule: 'here' })).toBeUndefined();
   });
@@ -128,7 +129,10 @@ describe('withHelpUris', () => {
 
     const [withKnown, withGiven, withUnknown] = withHelpUris([known, given, unknown]);
 
-    expect(withKnown.helpUri).toMatch(/checks\.md#structure-function-lines-limit$/u);
+    expect(withKnown).toEqual({
+      ...known,
+      helpUri: docsUrl('docs/rules/checks.md', 'structure-function-lines-limit'),
+    });
     expect(withGiven.helpUri).toBe('https://example.com/rule');
     expect(withUnknown).toBe(unknown);
   });

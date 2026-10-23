@@ -251,7 +251,7 @@ Bit ior.
 
 Bit ior of signed byte.
 
-- **Allowed form:** Mask the byte before ORing it into a wider value: (b & 0xFF) << 8 | (c & 0xFF).
+- **Allowed form:** Mask the byte before ORing it into a wider value: (b & 0xFF) \<\< 8 | (c & 0xFF).
 - **Exception:** If this is intended, add `{"rule":"spotbugs/BIT_IOR_OF_SIGNED_BYTE","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-bit-signed-check"></a>
@@ -287,7 +287,7 @@ Boa badly overridden adapter.
 
 Bshift wrong add priority.
 
-- **Allowed form:** Add parentheses to say which you mean: (a << 8) + b or a << (8 + b); + binds tighter than <<.
+- **Allowed form:** Add parentheses to say which you mean: (a \<\< 8) + b or a \<\< (8 + b); + binds tighter than \<\<.
 - **Exception:** If this is intended, add `{"rule":"spotbugs/BSHIFT_WRONG_ADD_PRIORITY","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-bx-boxing-immediately-unboxed"></a>
@@ -332,7 +332,7 @@ Bx unboxing immediately reboxed.
 
 Caa covariant array element store.
 
-- **Allowed form:** Use a List<T> or an array of the exact element type so stores cannot hit ArrayStoreException.
+- **Allowed form:** Use a List\<T> or an array of the exact element type so stores cannot hit ArrayStoreException.
 - **Exception:** If this is intended, add `{"rule":"spotbugs/CAA_COVARIANT_ARRAY_ELEMENT_STORE","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-caa-covariant-array-field"></a>
@@ -422,7 +422,7 @@ Cnt rough constant value.
 
 Co abstract self.
 
-- **Allowed form:** Declare the abstract class implements Comparable<ItsType>, so compareTo(ItsType) overrides it, and mark it @Override.
+- **Allowed form:** Declare the abstract class implements Comparable\<ItsType>, so compareTo(ItsType) overrides it, and mark it @Override.
 - **Exception:** If this is intended, add `{"rule":"spotbugs/CO_ABSTRACT_SELF","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-co-compareto-incorrect-floating"></a>
@@ -449,7 +449,7 @@ Co compareto results min value.
 
 Co self no object.
 
-- **Allowed form:** Declare implements Comparable<Foo>, so compareTo(Foo) overrides the interface method, and mark it @Override.
+- **Allowed form:** Declare implements Comparable\<Foo>, so compareTo(Foo) overrides the interface method, and mark it @Override.
 - **Exception:** If this is intended, add `{"rule":"spotbugs/CO_SELF_NO_OBJECT","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-ct-constructor-throw"></a>
@@ -745,7 +745,7 @@ Dm new for getclass.
 
 Dm nextint via nextdouble.
 
-- **Allowed form:** Call random.nextInt(n) instead of (int) (random.nextDouble() * n).
+- **Allowed form:** Call random.nextInt(n) instead of (int) (random.nextDouble() \* n).
 - **Exception:** If this is intended, add `{"rule":"spotbugs/DM_NEXTINT_VIA_NEXTDOUBLE","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-dm-number-ctor"></a>
@@ -1393,7 +1393,7 @@ Fb unexpected warning.
 
 Fe floating point equality.
 
-- **Allowed form:** Compare doubles with Math.abs(a - b) < EPSILON, or use BigDecimal.compareTo for exact values.
+- **Allowed form:** Compare doubles with Math.abs(a - b) \< EPSILON, or use BigDecimal.compareTo for exact values.
 - **Exception:** If this is intended, add `{"rule":"spotbugs/FE_FLOATING_POINT_EQUALITY","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="spotbugs-fe-test-if-equal-to-not-a-number"></a>
@@ -1482,7 +1482,7 @@ Fi useless.
 
 Fl floats as loop counters.
 
-- **Allowed form:** Loop on an int counter and compute the float value from it: for (int i = 0; i < n; i++) { double x = i * step; }.
+- **Allowed form:** Loop on an int counter and compute the float value from it: for (int i = 0; i \< n; i++) { double x = i \* step; }.
 - **Exception:** If this is intended, add `{"rule":"spotbugs/FL_FLOATS_AS_LOOP_COUNTERS","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-fl-math-using-float-precision"></a>
@@ -1653,7 +1653,7 @@ Ic superclass uses subclass during initialization.
 
 Icast bad shift amount.
 
-- **Allowed form:** Shift by an amount from 0 to 31 for int, or make the value a long, e.g. 1L << n.
+- **Allowed form:** Shift by an amount from 0 to 31 for int, or make the value a long, e.g. 1L \<\< n.
 - **Exception:** If this is intended, add `{"rule":"spotbugs/ICAST_BAD_SHIFT_AMOUNT","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-icast-idiv-cast-to-double"></a>
@@ -1671,7 +1671,7 @@ Icast idiv cast to double.
 
 Icast int 2 long as instant.
 
-- **Allowed form:** Convert to long before multiplying, e.g. Instant.ofEpochMilli(seconds * 1000L), or use Instant.ofEpochSecond.
+- **Allowed form:** Convert to long before multiplying, e.g. Instant.ofEpochMilli(seconds \* 1000L), or use Instant.ofEpochSecond.
 - **Exception:** If this is intended, add `{"rule":"spotbugs/ICAST_INT_2_LONG_AS_INSTANT","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-icast-int-cast-to-double-passed-to-ceil"></a>
@@ -1698,7 +1698,7 @@ Icast int cast to float passed to round.
 
 Icast integer multiply cast to long.
 
-- **Allowed form:** Widen an operand before multiplying, as in (long) a * b, or use Math.multiplyExact.
+- **Allowed form:** Widen an operand before multiplying, as in (long) a \* b, or use Math.multiplyExact.
 - **Exception:** If this is intended, add `{"rule":"spotbugs/ICAST_INTEGER_MULTIPLY_CAST_TO_LONG","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-icast-questionable-unsigned-right-shift"></a>
@@ -1869,7 +1869,7 @@ Im bad check for odd.
 
 Im multiplying result of irem.
 
-- **Allowed form:** Add parentheses to show the intent: (i % 60) * 1000 or i % (60 * 1000).
+- **Allowed form:** Add parentheses to show the intent: (i % 60) \* 1000 or i % (60 \* 1000).
 - **Exception:** If this is intended, add `{"rule":"spotbugs/IM_MULTIPLYING_RESULT_OF_IREM","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-ima-inefficient-member-access"></a>
@@ -2571,7 +2571,7 @@ Np argument might be null.
 
 Np boolean return null.
 
-- **Allowed form:** Return Boolean.FALSE or TRUE, or change the return type to boolean or Optional<Boolean>.
+- **Allowed form:** Return Boolean.FALSE or TRUE, or change the return type to boolean or Optional\<Boolean>.
 - **Exception:** If this is intended, add `{"rule":"spotbugs/NP_BOOLEAN_RETURN_NULL","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-np-clone-could-return-null"></a>
@@ -3066,7 +3066,7 @@ Range array index.
 
 Range array length.
 
-- **Allowed form:** Pass a length that fits the array (offset + length <= array.length), or fix the computation.
+- **Allowed form:** Pass a length that fits the array (offset + length \<= array.length), or fix the computation.
 - **Exception:** If this is intended, add `{"rule":"spotbugs/RANGE_ARRAY_LENGTH","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-range-array-offset"></a>
@@ -3264,7 +3264,7 @@ Ru invoke run.
 
 Rv 01 to int.
 
-- **Allowed form:** Cast after the multiplication: (int) (Math.random() * n), or use ThreadLocalRandom.current().nextInt(n).
+- **Allowed form:** Cast after the multiplication: (int) (Math.random() \* n), or use ThreadLocalRandom.current().nextInt(n).
 - **Exception:** If this is intended, add `{"rule":"spotbugs/RV_01_TO_INT","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-rv-absolute-value-of-hashcode"></a>
@@ -3291,7 +3291,7 @@ Rv absolute value of random int.
 
 Rv check compareto for specific return value.
 
-- **Allowed form:** Test only the sign: compareTo(x) < 0, == 0 or > 0, never == 1 or == -1.
+- **Allowed form:** Test only the sign: compareTo(x) \< 0, == 0 or > 0, never == 1 or == -1.
 - **Exception:** If this is intended, add `{"rule":"spotbugs/RV_CHECK_COMPARETO_FOR_SPECIFIC_RETURN_VALUE","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 
 <a id="spotbugs-rv-check-for-positive-indexof"></a>

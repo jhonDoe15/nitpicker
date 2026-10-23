@@ -1,0 +1,2951 @@
+[
+  {
+    "id": "eslint/formatjs/enforce-default-message",
+    "tool": "eslint",
+    "rule": "formatjs/enforce-default-message",
+    "anchor": "eslint-formatjs-enforce-default-message",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce defaultMessage in message descriptor",
+    "why": "The i18n scope turns on the rules for internationalized messages.",
+    "scope": "A TypeScript project with `i18n.enabled` or an i18n library.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#enforce-default-message"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "formatjs/enforce-default-message" }
+  },
+  {
+    "id": "eslint/formatjs/enforce-description",
+    "tool": "eslint",
+    "rule": "formatjs/enforce-description",
+    "anchor": "eslint-formatjs-enforce-description",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce description in message descriptor",
+    "why": "The i18n scope turns on the rules for internationalized messages.",
+    "scope": "A TypeScript project with `i18n.enabled` or an i18n library.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#enforce-description"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "formatjs/enforce-description" }
+  },
+  {
+    "id": "eslint/formatjs/enforce-placeholders",
+    "tool": "eslint",
+    "rule": "formatjs/enforce-placeholders",
+    "anchor": "eslint-formatjs-enforce-placeholders",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce that all messages with placeholders have enough passed-in values",
+    "why": "The i18n scope turns on the rules for internationalized messages.",
+    "scope": "A TypeScript project with `i18n.enabled` or an i18n library.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#enforce-placeholders"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "formatjs/enforce-placeholders" }
+  },
+  {
+    "id": "eslint/formatjs/no-complex-selectors",
+    "tool": "eslint",
+    "rule": "formatjs/no-complex-selectors",
+    "anchor": "eslint-formatjs-no-complex-selectors",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Make sure a sentence is not too complex.\nComplexity is determined by how many strings are produced when we try to\nflatten the sentence given its selectors. For example:\n\"I have {count, plural, one{a dog} other{many dogs}}\"\nhas the complexity of 2 because flattening the plural selector\nresults in 2 sentences: \"I have a dog\" & \"I have many dogs\".\nDefault complexity limit is 20\n(using Smartling as a reference: https://help.smartling.com/hc/en-us/articles/360008030994-ICU-MessageFormat)\n",
+    "why": "The i18n scope turns on the rules for internationalized messages.",
+    "scope": "A TypeScript project with `i18n.enabled` or an i18n library.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-complex-selectors"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "formatjs/no-complex-selectors" }
+  },
+  {
+    "id": "eslint/formatjs/no-invalid-icu",
+    "tool": "eslint",
+    "rule": "formatjs/no-invalid-icu",
+    "anchor": "eslint-formatjs-no-invalid-icu",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Make sure ICU messages are formatted correctly with no bad select statements, plurals, etc.",
+    "why": "The i18n scope turns on the rules for internationalized messages.",
+    "scope": "A TypeScript project with `i18n.enabled` or an i18n library.",
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "formatjs/no-invalid-icu" }
+  },
+  {
+    "id": "eslint/formatjs/no-literal-string-in-jsx",
+    "tool": "eslint",
+    "rule": "formatjs/no-literal-string-in-jsx",
+    "anchor": "eslint-formatjs-no-literal-string-in-jsx",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallow untranslated literal strings without translation.",
+    "why": "The i18n scope turns on the rules for internationalized messages.",
+    "scope": "A TypeScript project with `i18n.enabled` or an i18n library.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-literal-string-in-jsx"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "formatjs/no-literal-string-in-jsx" }
+  },
+  {
+    "id": "eslint/formatjs/no-missing-icu-plural-one-placeholders",
+    "tool": "eslint",
+    "rule": "formatjs/no-missing-icu-plural-one-placeholders",
+    "anchor": "eslint-formatjs-no-missing-icu-plural-one-placeholders",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "We use `one {# item}` instead of `one {1 item}` in ICU messages as some locales use the `one` formatting for other similar numbers.",
+    "why": "The i18n scope turns on the rules for internationalized messages.",
+    "scope": "A TypeScript project with `i18n.enabled` or an i18n library.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-explicit-icu-plural"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "formatjs/no-missing-icu-plural-one-placeholders" }
+  },
+  {
+    "id": "eslint/formatjs/no-multiple-plurals",
+    "tool": "eslint",
+    "rule": "formatjs/no-multiple-plurals",
+    "anchor": "eslint-formatjs-no-multiple-plurals",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallow multiple plural rules in the same message",
+    "why": "The i18n scope turns on the rules for internationalized messages.",
+    "scope": "A TypeScript project with `i18n.enabled` or an i18n library.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-multiple-plurals"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "formatjs/no-multiple-plurals" }
+  },
+  {
+    "id": "eslint/formatjs/no-multiple-whitespaces",
+    "tool": "eslint",
+    "rule": "formatjs/no-multiple-whitespaces",
+    "anchor": "eslint-formatjs-no-multiple-whitespaces",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Prevents usage of multiple consecutive whitespaces in message",
+    "why": "The i18n scope turns on the rules for internationalized messages.",
+    "scope": "A TypeScript project with `i18n.enabled` or an i18n library.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-multiple-whitespaces"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "formatjs/no-multiple-whitespaces" }
+  },
+  {
+    "id": "eslint/formatjs/no-offset",
+    "tool": "eslint",
+    "rule": "formatjs/no-offset",
+    "anchor": "eslint-formatjs-no-offset",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallow offset in plural rules",
+    "why": "The i18n scope turns on the rules for internationalized messages.",
+    "scope": "A TypeScript project with `i18n.enabled` or an i18n library.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-offset"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "formatjs/no-offset" }
+  },
+  {
+    "id": "eslint/formatjs/no-useless-message",
+    "tool": "eslint",
+    "rule": "formatjs/no-useless-message",
+    "anchor": "eslint-formatjs-no-useless-message",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallow unnecessary formatted message",
+    "why": "The i18n scope turns on the rules for internationalized messages.",
+    "scope": "A TypeScript project with `i18n.enabled` or an i18n library.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#no-useless-message"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "formatjs/no-useless-message" }
+  },
+  {
+    "id": "eslint/formatjs/prefer-full-sentence",
+    "tool": "eslint",
+    "rule": "formatjs/prefer-full-sentence",
+    "anchor": "eslint-formatjs-prefer-full-sentence",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Detects messages with leading/trailing whitespace, which suggests string concatenation instead of full sentences",
+    "why": "The i18n scope turns on the rules for internationalized messages.",
+    "scope": "A TypeScript project with `i18n.enabled` or an i18n library.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#prefer-full-sentence"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "formatjs/prefer-full-sentence" }
+  },
+  {
+    "id": "eslint/formatjs/prefer-pound-in-plural",
+    "tool": "eslint",
+    "rule": "formatjs/prefer-pound-in-plural",
+    "anchor": "eslint-formatjs-prefer-pound-in-plural",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Prefer using # to reference the count in the plural argument.",
+    "why": "The i18n scope turns on the rules for internationalized messages.",
+    "scope": "A TypeScript project with `i18n.enabled` or an i18n library.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://formatjs.github.io/docs/tooling/linter#prefer-pound-in-plurals"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "internationalized-messages"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "formatjs/prefer-pound-in-plural" }
+  },
+  {
+    "id": "eslint/functional/no-classes",
+    "tool": "eslint",
+    "rule": "functional/no-classes",
+    "anchor": "eslint-functional-no-classes",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow classes.",
+    "why": "The preset turns on this rule to keep data immutable.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/no-classes.md"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "functional/no-classes" }
+  },
+  {
+    "id": "eslint/functional/no-let",
+    "tool": "eslint",
+    "rule": "functional/no-let",
+    "anchor": "eslint-functional-no-let",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow mutable variables.",
+    "why": "The preset turns on this rule to keep data immutable.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/no-let.md"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "functional/no-let" }
+  },
+  {
+    "id": "eslint/functional/no-this-expressions",
+    "tool": "eslint",
+    "rule": "functional/no-this-expressions",
+    "anchor": "eslint-functional-no-this-expressions",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow this access.",
+    "why": "The preset turns on this rule to keep data immutable.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/no-this-expressions.md"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "functional/no-this-expressions" }
+  },
+  {
+    "id": "eslint/functional/prefer-immutable-types",
+    "tool": "eslint",
+    "rule": "functional/prefer-immutable-types",
+    "anchor": "eslint-functional-prefer-immutable-types",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Require function parameters to be typed as certain immutability",
+    "why": "The preset turns on this rule to keep data immutable.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/prefer-immutable-types.md"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "functional/prefer-immutable-types" }
+  },
+  {
+    "id": "eslint/jsx-a11y/alt-text",
+    "tool": "eslint",
+    "rule": "jsx-a11y/alt-text",
+    "anchor": "eslint-jsx-a11y-alt-text",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce all elements that require alternative text have meaningful information to relay back to end user.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/alt-text.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/alt-text" }
+  },
+  {
+    "id": "eslint/jsx-a11y/anchor-ambiguous-text",
+    "tool": "eslint",
+    "rule": "jsx-a11y/anchor-ambiguous-text",
+    "anchor": "eslint-jsx-a11y-anchor-ambiguous-text",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce `<a>` text to not exactly match \"click here\", \"here\", \"link\", or \"a link\".",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/anchor-ambiguous-text.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/anchor-ambiguous-text" }
+  },
+  {
+    "id": "eslint/jsx-a11y/anchor-has-content",
+    "tool": "eslint",
+    "rule": "jsx-a11y/anchor-has-content",
+    "anchor": "eslint-jsx-a11y-anchor-has-content",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce all anchors to contain accessible content.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/anchor-has-content.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/anchor-has-content" }
+  },
+  {
+    "id": "eslint/jsx-a11y/anchor-is-valid",
+    "tool": "eslint",
+    "rule": "jsx-a11y/anchor-is-valid",
+    "anchor": "eslint-jsx-a11y-anchor-is-valid",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce all anchors are valid, navigable elements.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/anchor-is-valid.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/anchor-is-valid" }
+  },
+  {
+    "id": "eslint/jsx-a11y/aria-activedescendant-has-tabindex",
+    "tool": "eslint",
+    "rule": "jsx-a11y/aria-activedescendant-has-tabindex",
+    "anchor": "eslint-jsx-a11y-aria-activedescendant-has-tabindex",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce elements with aria-activedescendant are tabbable.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-activedescendant-has-tabindex.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/aria-activedescendant-has-tabindex" }
+  },
+  {
+    "id": "eslint/jsx-a11y/aria-props",
+    "tool": "eslint",
+    "rule": "jsx-a11y/aria-props",
+    "anchor": "eslint-jsx-a11y-aria-props",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce all `aria-*` props are valid.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-props.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/aria-props" }
+  },
+  {
+    "id": "eslint/jsx-a11y/aria-proptypes",
+    "tool": "eslint",
+    "rule": "jsx-a11y/aria-proptypes",
+    "anchor": "eslint-jsx-a11y-aria-proptypes",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce ARIA state and property values are valid.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-proptypes.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/aria-proptypes" }
+  },
+  {
+    "id": "eslint/jsx-a11y/aria-role",
+    "tool": "eslint",
+    "rule": "jsx-a11y/aria-role",
+    "anchor": "eslint-jsx-a11y-aria-role",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce that elements with ARIA roles must use a valid, non-abstract ARIA role.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-role.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/aria-role" }
+  },
+  {
+    "id": "eslint/jsx-a11y/aria-unsupported-elements",
+    "tool": "eslint",
+    "rule": "jsx-a11y/aria-unsupported-elements",
+    "anchor": "eslint-jsx-a11y-aria-unsupported-elements",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce that elements that do not support ARIA roles, states, and properties do not have those attributes.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-unsupported-elements.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/aria-unsupported-elements" }
+  },
+  {
+    "id": "eslint/jsx-a11y/autocomplete-valid",
+    "tool": "eslint",
+    "rule": "jsx-a11y/autocomplete-valid",
+    "anchor": "eslint-jsx-a11y-autocomplete-valid",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce that autocomplete attributes are used correctly.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/autocomplete-valid.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/autocomplete-valid" }
+  },
+  {
+    "id": "eslint/jsx-a11y/click-events-have-key-events",
+    "tool": "eslint",
+    "rule": "jsx-a11y/click-events-have-key-events",
+    "anchor": "eslint-jsx-a11y-click-events-have-key-events",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce a clickable non-interactive element has at least one keyboard event listener.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/click-events-have-key-events.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/click-events-have-key-events" }
+  },
+  {
+    "id": "eslint/jsx-a11y/control-has-associated-label",
+    "tool": "eslint",
+    "rule": "jsx-a11y/control-has-associated-label",
+    "anchor": "eslint-jsx-a11y-control-has-associated-label",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce that a control (an interactive element) has a text label.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/control-has-associated-label.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/control-has-associated-label" }
+  },
+  {
+    "id": "eslint/jsx-a11y/heading-has-content",
+    "tool": "eslint",
+    "rule": "jsx-a11y/heading-has-content",
+    "anchor": "eslint-jsx-a11y-heading-has-content",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce heading (`h1`, `h2`, etc) elements contain accessible content.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/heading-has-content.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/heading-has-content" }
+  },
+  {
+    "id": "eslint/jsx-a11y/html-has-lang",
+    "tool": "eslint",
+    "rule": "jsx-a11y/html-has-lang",
+    "anchor": "eslint-jsx-a11y-html-has-lang",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce `<html>` element has `lang` prop.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/html-has-lang.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/html-has-lang" }
+  },
+  {
+    "id": "eslint/jsx-a11y/iframe-has-title",
+    "tool": "eslint",
+    "rule": "jsx-a11y/iframe-has-title",
+    "anchor": "eslint-jsx-a11y-iframe-has-title",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce iframe elements have a title attribute.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/iframe-has-title.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/iframe-has-title" }
+  },
+  {
+    "id": "eslint/jsx-a11y/img-redundant-alt",
+    "tool": "eslint",
+    "rule": "jsx-a11y/img-redundant-alt",
+    "anchor": "eslint-jsx-a11y-img-redundant-alt",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce `<img>` alt prop does not contain the word \"image\", \"picture\", or \"photo\".",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/img-redundant-alt.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/img-redundant-alt" }
+  },
+  {
+    "id": "eslint/jsx-a11y/interactive-supports-focus",
+    "tool": "eslint",
+    "rule": "jsx-a11y/interactive-supports-focus",
+    "anchor": "eslint-jsx-a11y-interactive-supports-focus",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce that elements with interactive handlers like `onClick` must be focusable.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/interactive-supports-focus.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/interactive-supports-focus" }
+  },
+  {
+    "id": "eslint/jsx-a11y/label-has-associated-control",
+    "tool": "eslint",
+    "rule": "jsx-a11y/label-has-associated-control",
+    "anchor": "eslint-jsx-a11y-label-has-associated-control",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce that a `label` tag has a text label and an associated control.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/label-has-associated-control.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/label-has-associated-control" }
+  },
+  {
+    "id": "eslint/jsx-a11y/media-has-caption",
+    "tool": "eslint",
+    "rule": "jsx-a11y/media-has-caption",
+    "anchor": "eslint-jsx-a11y-media-has-caption",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforces that `<audio>` and `<video>` elements must have a `<track>` for captions.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/media-has-caption.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/media-has-caption" }
+  },
+  {
+    "id": "eslint/jsx-a11y/mouse-events-have-key-events",
+    "tool": "eslint",
+    "rule": "jsx-a11y/mouse-events-have-key-events",
+    "anchor": "eslint-jsx-a11y-mouse-events-have-key-events",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce that `onMouseOver`/`onMouseOut` are accompanied by `onFocus`/`onBlur` for keyboard-only users.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/mouse-events-have-key-events.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/mouse-events-have-key-events" }
+  },
+  {
+    "id": "eslint/jsx-a11y/no-access-key",
+    "tool": "eslint",
+    "rule": "jsx-a11y/no-access-key",
+    "anchor": "eslint-jsx-a11y-no-access-key",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce that the `accessKey` prop is not used on any element to avoid complications with keyboard commands used by a screen reader.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-access-key.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/no-access-key" }
+  },
+  {
+    "id": "eslint/jsx-a11y/no-aria-hidden-on-focusable",
+    "tool": "eslint",
+    "rule": "jsx-a11y/no-aria-hidden-on-focusable",
+    "anchor": "eslint-jsx-a11y-no-aria-hidden-on-focusable",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallow `aria-hidden=\"true\"` from being set on focusable elements.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-aria-hidden-on-focusable.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/no-aria-hidden-on-focusable" }
+  },
+  {
+    "id": "eslint/jsx-a11y/no-autofocus",
+    "tool": "eslint",
+    "rule": "jsx-a11y/no-autofocus",
+    "anchor": "eslint-jsx-a11y-no-autofocus",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce autoFocus prop is not enabled.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-autofocus.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/no-autofocus" }
+  },
+  {
+    "id": "eslint/jsx-a11y/no-distracting-elements",
+    "tool": "eslint",
+    "rule": "jsx-a11y/no-distracting-elements",
+    "anchor": "eslint-jsx-a11y-no-distracting-elements",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce distracting elements are not used.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-distracting-elements.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/no-distracting-elements" }
+  },
+  {
+    "id": "eslint/jsx-a11y/no-interactive-element-to-noninteractive-role",
+    "tool": "eslint",
+    "rule": "jsx-a11y/no-interactive-element-to-noninteractive-role",
+    "anchor": "eslint-jsx-a11y-no-interactive-element-to-noninteractive-role",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallow interactive elements being assigned non-interactive roles.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-interactive-element-to-noninteractive-role.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": {
+      "key": "exceptions",
+      "rule": "jsx-a11y/no-interactive-element-to-noninteractive-role"
+    }
+  },
+  {
+    "id": "eslint/jsx-a11y/no-noninteractive-element-interactions",
+    "tool": "eslint",
+    "rule": "jsx-a11y/no-noninteractive-element-interactions",
+    "anchor": "eslint-jsx-a11y-no-noninteractive-element-interactions",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallow non-interactive elements being assigned mouse or keyboard event listeners.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-noninteractive-element-interactions.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/no-noninteractive-element-interactions" }
+  },
+  {
+    "id": "eslint/jsx-a11y/no-noninteractive-element-to-interactive-role",
+    "tool": "eslint",
+    "rule": "jsx-a11y/no-noninteractive-element-to-interactive-role",
+    "anchor": "eslint-jsx-a11y-no-noninteractive-element-to-interactive-role",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallow non-interactive elements being assigned interactive roles.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-noninteractive-element-to-interactive-role.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": {
+      "key": "exceptions",
+      "rule": "jsx-a11y/no-noninteractive-element-to-interactive-role"
+    }
+  },
+  {
+    "id": "eslint/jsx-a11y/no-noninteractive-tabindex",
+    "tool": "eslint",
+    "rule": "jsx-a11y/no-noninteractive-tabindex",
+    "anchor": "eslint-jsx-a11y-no-noninteractive-tabindex",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce `tabIndex` only be declared on interactive elements.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-noninteractive-tabindex.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/no-noninteractive-tabindex" }
+  },
+  {
+    "id": "eslint/jsx-a11y/no-redundant-roles",
+    "tool": "eslint",
+    "rule": "jsx-a11y/no-redundant-roles",
+    "anchor": "eslint-jsx-a11y-no-redundant-roles",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce explicit role property is not the same as implicit/default role property on element.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-redundant-roles.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/no-redundant-roles" }
+  },
+  {
+    "id": "eslint/jsx-a11y/no-static-element-interactions",
+    "tool": "eslint",
+    "rule": "jsx-a11y/no-static-element-interactions",
+    "anchor": "eslint-jsx-a11y-no-static-element-interactions",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce that non-interactive, visible elements (such as `<div>`) that have click handlers use the role attribute.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-static-element-interactions.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/no-static-element-interactions" }
+  },
+  {
+    "id": "eslint/jsx-a11y/prefer-tag-over-role",
+    "tool": "eslint",
+    "rule": "jsx-a11y/prefer-tag-over-role",
+    "anchor": "eslint-jsx-a11y-prefer-tag-over-role",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforces using semantic DOM elements over the ARIA `role` property.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/prefer-tag-over-role.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/prefer-tag-over-role" }
+  },
+  {
+    "id": "eslint/jsx-a11y/role-has-required-aria-props",
+    "tool": "eslint",
+    "rule": "jsx-a11y/role-has-required-aria-props",
+    "anchor": "eslint-jsx-a11y-role-has-required-aria-props",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce that elements with ARIA roles must have all required attributes for that role.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/role-has-required-aria-props.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/role-has-required-aria-props" }
+  },
+  {
+    "id": "eslint/jsx-a11y/role-supports-aria-props",
+    "tool": "eslint",
+    "rule": "jsx-a11y/role-supports-aria-props",
+    "anchor": "eslint-jsx-a11y-role-supports-aria-props",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce that elements with explicit or implicit roles defined contain only `aria-*` properties supported by that `role`.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/role-supports-aria-props.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/role-supports-aria-props" }
+  },
+  {
+    "id": "eslint/jsx-a11y/scope",
+    "tool": "eslint",
+    "rule": "jsx-a11y/scope",
+    "anchor": "eslint-jsx-a11y-scope",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce `scope` prop is only used on `<th>` elements.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/scope.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/scope" }
+  },
+  {
+    "id": "eslint/jsx-a11y/tabindex-no-positive",
+    "tool": "eslint",
+    "rule": "jsx-a11y/tabindex-no-positive",
+    "anchor": "eslint-jsx-a11y-tabindex-no-positive",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce `tabIndex` value is not greater than zero.",
+    "why": "The React scope turns on the accessibility rules for JSX.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/tabindex-no-positive.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "jsx-a11y/tabindex-no-positive" }
+  },
+  {
+    "id": "eslint/react-dom/no-dangerously-set-innerhtml",
+    "tool": "eslint",
+    "rule": "react-dom/no-dangerously-set-innerhtml",
+    "anchor": "eslint-react-dom-no-dangerously-set-innerhtml",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallows DOM elements from using 'dangerouslySetInnerHTML'.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/dom-no-dangerously-set-innerhtml"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-dom/no-dangerously-set-innerhtml" }
+  },
+  {
+    "id": "eslint/react-dom/no-missing-button-type",
+    "tool": "eslint",
+    "rule": "react-dom/no-missing-button-type",
+    "anchor": "eslint-react-dom-no-missing-button-type",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforces an explicit 'type' attribute for 'button' elements.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/dom-no-missing-button-type"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-dom/no-missing-button-type" }
+  },
+  {
+    "id": "eslint/react-dom/no-script-url",
+    "tool": "eslint",
+    "rule": "react-dom/no-script-url",
+    "anchor": "eslint-react-dom-no-script-url",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallows 'javascript:' URLs as attribute values.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/dom-no-script-url"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-dom/no-script-url" }
+  },
+  {
+    "id": "eslint/react-dom/no-unsafe-target-blank",
+    "tool": "eslint",
+    "rule": "react-dom/no-unsafe-target-blank",
+    "anchor": "eslint-react-dom-no-unsafe-target-blank",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallows 'target=\"_blank\"' without 'rel=\"noreferrer noopener\"'.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/dom-no-unsafe-target-blank"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-dom/no-unsafe-target-blank" }
+  },
+  {
+    "id": "eslint/react-hooks/exhaustive-deps",
+    "tool": "eslint",
+    "rule": "react-hooks/exhaustive-deps",
+    "anchor": "eslint-react-hooks-exhaustive-deps",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "verifies the list of dependencies for Hooks like useEffect and similar",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://github.com/facebook/react/issues/14920" }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-hooks/exhaustive-deps" }
+  },
+  {
+    "id": "eslint/react-hooks/rules-of-hooks",
+    "tool": "eslint",
+    "rule": "react-hooks/rules-of-hooks",
+    "anchor": "eslint-react-hooks-rules-of-hooks",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "enforces the Rules of Hooks",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://react.dev/reference/rules/rules-of-hooks" }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-hooks/rules-of-hooks" }
+  },
+  {
+    "id": "eslint/react-web-api/no-leaked-event-listener",
+    "tool": "eslint",
+    "rule": "react-web-api/no-leaked-event-listener",
+    "anchor": "eslint-react-web-api-no-leaked-event-listener",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforces that every 'addEventListener' in a component or custom hook has a corresponding 'removeEventListener'.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/web-api-no-leaked-event-listener"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-web-api/no-leaked-event-listener" }
+  },
+  {
+    "id": "eslint/react-web-api/no-leaked-intersection-observer",
+    "tool": "eslint",
+    "rule": "react-web-api/no-leaked-intersection-observer",
+    "anchor": "eslint-react-web-api-no-leaked-intersection-observer",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforces that every 'IntersectionObserver' created in a component or custom hook has a corresponding 'IntersectionObserver.disconnect()'.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/web-api-no-leaked-intersection-observer"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-web-api/no-leaked-intersection-observer" }
+  },
+  {
+    "id": "eslint/react-web-api/no-leaked-interval",
+    "tool": "eslint",
+    "rule": "react-web-api/no-leaked-interval",
+    "anchor": "eslint-react-web-api-no-leaked-interval",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforces that every 'setInterval' in a component or custom hook has a corresponding 'clearInterval'.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/web-api-no-leaked-interval"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-web-api/no-leaked-interval" }
+  },
+  {
+    "id": "eslint/react-web-api/no-leaked-resize-observer",
+    "tool": "eslint",
+    "rule": "react-web-api/no-leaked-resize-observer",
+    "anchor": "eslint-react-web-api-no-leaked-resize-observer",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforces that every 'ResizeObserver' created in a component or custom hook has a corresponding 'ResizeObserver.disconnect()'.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/web-api-no-leaked-resize-observer"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-web-api/no-leaked-resize-observer" }
+  },
+  {
+    "id": "eslint/react-web-api/no-leaked-timeout",
+    "tool": "eslint",
+    "rule": "react-web-api/no-leaked-timeout",
+    "anchor": "eslint-react-web-api-no-leaked-timeout",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforces that every 'setTimeout' in a component or custom hook has a corresponding 'clearTimeout'.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/web-api-no-leaked-timeout"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-web-api/no-leaked-timeout" }
+  },
+  {
+    "id": "eslint/react-x/immutability",
+    "tool": "eslint",
+    "rule": "react-x/immutability",
+    "anchor": "eslint-react-x-immutability",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Validates against mutating props, state, and other immutable values, including through functions passed into frozen contexts such as JSX props, hook arguments, and hook return values.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint-react.xyz/docs/rules/immutability" }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/immutability" }
+  },
+  {
+    "id": "eslint/react-x/no-array-index-key",
+    "tool": "eslint",
+    "rule": "react-x/no-array-index-key",
+    "anchor": "eslint-react-x-no-array-index-key",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallows using an item's index in the array as its key.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-array-index-key"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/no-array-index-key" }
+  },
+  {
+    "id": "eslint/react-x/no-class-component",
+    "tool": "eslint",
+    "rule": "react-x/no-class-component",
+    "anchor": "eslint-react-x-no-class-component",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallows class components except for error boundaries.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-class-component"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/no-class-component" }
+  },
+  {
+    "id": "eslint/react-x/no-context-provider",
+    "tool": "eslint",
+    "rule": "react-x/no-context-provider",
+    "anchor": "eslint-react-x-no-context-provider",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Replaces usage of '<Context.Provider>' with '<Context>'.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-context-provider"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/no-context-provider" }
+  },
+  {
+    "id": "eslint/react-x/no-duplicate-key",
+    "tool": "eslint",
+    "rule": "react-x/no-duplicate-key",
+    "anchor": "eslint-react-x-no-duplicate-key",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Prevents duplicate 'key' props on sibling elements when rendering lists.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-duplicate-key"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/no-duplicate-key" }
+  },
+  {
+    "id": "eslint/react-x/no-forward-ref",
+    "tool": "eslint",
+    "rule": "react-x/no-forward-ref",
+    "anchor": "eslint-react-x-no-forward-ref",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Replaces usage of 'forwardRef' with passing 'ref' as a prop.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint-react.xyz/docs/rules/no-forward-ref" }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/no-forward-ref" }
+  },
+  {
+    "id": "eslint/react-x/no-leaked-conditional-rendering",
+    "tool": "eslint",
+    "rule": "react-x/no-leaked-conditional-rendering",
+    "anchor": "eslint-react-x-no-leaked-conditional-rendering",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Prevents problematic leaked values from being rendered.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-leaked-conditional-rendering"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/no-leaked-conditional-rendering" }
+  },
+  {
+    "id": "eslint/react-x/no-missing-key",
+    "tool": "eslint",
+    "rule": "react-x/no-missing-key",
+    "anchor": "eslint-react-x-no-missing-key",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallows missing 'key' on items in list rendering.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint-react.xyz/docs/rules/no-missing-key" }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/no-missing-key" }
+  },
+  {
+    "id": "eslint/react-x/no-nested-component-definitions",
+    "tool": "eslint",
+    "rule": "react-x/no-nested-component-definitions",
+    "anchor": "eslint-react-x-no-nested-component-definitions",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallows nesting component definitions inside other components.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-nested-component-definitions"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/no-nested-component-definitions" }
+  },
+  {
+    "id": "eslint/react-x/no-nested-lazy-component-declarations",
+    "tool": "eslint",
+    "rule": "react-x/no-nested-lazy-component-declarations",
+    "anchor": "eslint-react-x-no-nested-lazy-component-declarations",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallows nesting lazy component declarations inside other components or hooks.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-nested-lazy-component-declarations"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/no-nested-lazy-component-declarations" }
+  },
+  {
+    "id": "eslint/react-x/no-unstable-context-value",
+    "tool": "eslint",
+    "rule": "react-x/no-unstable-context-value",
+    "anchor": "eslint-react-x-no-unstable-context-value",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Prevents non-stable values (i.e., object literals) from being used as a value for 'Context.Provider'.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-unstable-context-value"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/no-unstable-context-value" }
+  },
+  {
+    "id": "eslint/react-x/no-unstable-default-props",
+    "tool": "eslint",
+    "rule": "react-x/no-unstable-default-props",
+    "anchor": "eslint-react-x-no-unstable-default-props",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Prevents using referential-type values as default props in object destructuring.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/no-unstable-default-props"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/no-unstable-default-props" }
+  },
+  {
+    "id": "eslint/react-x/purity",
+    "tool": "eslint",
+    "rule": "react-x/purity",
+    "anchor": "eslint-react-x-purity",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Validates that components and hooks are pure by checking that they do not call known-impure functions during render.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      { "label": "Rule documentation", "url": "https://eslint-react.xyz/docs/rules/purity" }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/purity" }
+  },
+  {
+    "id": "eslint/react-x/refs",
+    "tool": "eslint",
+    "rule": "react-x/refs",
+    "anchor": "eslint-react-x-refs",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Validates correct usage of refs by checking that 'ref.current' is not read or written during render.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [{ "label": "Rule documentation", "url": "https://eslint-react.xyz/docs/rules/refs" }],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/refs" }
+  },
+  {
+    "id": "eslint/react-x/set-state-in-render",
+    "tool": "eslint",
+    "rule": "react-x/set-state-in-render",
+    "anchor": "eslint-react-x-set-state-in-render",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Validates against unconditionally setting state during render, which can trigger additional renders and potential infinite render loops.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/set-state-in-render"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/set-state-in-render" }
+  },
+  {
+    "id": "eslint/react-x/static-components",
+    "tool": "eslint",
+    "rule": "react-x/static-components",
+    "anchor": "eslint-react-x-static-components",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Validates that components are static, not recreated every render.",
+    "why": "The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://eslint-react.xyz/docs/rules/static-components"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "react-x/static-components" }
+  },
+  {
+    "id": "eslint/regexp/no-super-linear-backtracking",
+    "tool": "eslint",
+    "rule": "regexp/no-super-linear-backtracking",
+    "anchor": "eslint-regexp-no-super-linear-backtracking",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "disallow exponential and polynomial backtracking",
+    "why": "The preset turns on this rule to keep regular expressions safe and readable.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://ota-meshi.github.io/eslint-plugin-regexp/rules/no-super-linear-backtracking.html"
+      }
+    ],
+    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    "exception": { "key": "exceptions", "rule": "regexp/no-super-linear-backtracking" }
+  },
+  {
+    "id": "eslint/testing-library/await-async-events",
+    "tool": "eslint",
+    "rule": "testing-library/await-async-events",
+    "anchor": "eslint-testing-library-await-async-events",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce promises from async event methods are handled",
+    "why": "The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/await-async-events.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "testing-library/await-async-events" }
+  },
+  {
+    "id": "eslint/testing-library/await-async-queries",
+    "tool": "eslint",
+    "rule": "testing-library/await-async-queries",
+    "anchor": "eslint-testing-library-await-async-queries",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce promises from async queries to be handled",
+    "why": "The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/await-async-queries.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "testing-library/await-async-queries" }
+  },
+  {
+    "id": "eslint/testing-library/await-async-utils",
+    "tool": "eslint",
+    "rule": "testing-library/await-async-utils",
+    "anchor": "eslint-testing-library-await-async-utils",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Enforce promises from async utils to be awaited properly",
+    "why": "The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/await-async-utils.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "testing-library/await-async-utils" }
+  },
+  {
+    "id": "eslint/testing-library/no-debugging-utils",
+    "tool": "eslint",
+    "rule": "testing-library/no-debugging-utils",
+    "anchor": "eslint-testing-library-no-debugging-utils",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallow the use of debugging utilities like `debug`",
+    "why": "The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-debugging-utils.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "testing-library/no-debugging-utils" }
+  },
+  {
+    "id": "eslint/testing-library/no-manual-cleanup",
+    "tool": "eslint",
+    "rule": "testing-library/no-manual-cleanup",
+    "anchor": "eslint-testing-library-no-manual-cleanup",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallow the use of `cleanup`",
+    "why": "The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-manual-cleanup.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "testing-library/no-manual-cleanup" }
+  },
+  {
+    "id": "eslint/testing-library/no-node-access",
+    "tool": "eslint",
+    "rule": "testing-library/no-node-access",
+    "anchor": "eslint-testing-library-no-node-access",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallow direct Node access",
+    "why": "The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-node-access.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "testing-library/no-node-access" }
+  },
+  {
+    "id": "eslint/testing-library/no-test-id-queries",
+    "tool": "eslint",
+    "rule": "testing-library/no-test-id-queries",
+    "anchor": "eslint-testing-library-no-test-id-queries",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Ensure no `data-testid` queries are used",
+    "why": "The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-test-id-queries.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "testing-library/no-test-id-queries" }
+  },
+  {
+    "id": "eslint/testing-library/no-unnecessary-act",
+    "tool": "eslint",
+    "rule": "testing-library/no-unnecessary-act",
+    "anchor": "eslint-testing-library-no-unnecessary-act",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Disallow wrapping Testing Library utils or empty callbacks in `act`",
+    "why": "The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-unnecessary-act.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "testing-library/no-unnecessary-act" }
+  },
+  {
+    "id": "eslint/testing-library/prefer-presence-queries",
+    "tool": "eslint",
+    "rule": "testing-library/prefer-presence-queries",
+    "anchor": "eslint-testing-library-prefer-presence-queries",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Ensure appropriate `get*`/`query*` queries are used with their respective matchers",
+    "why": "The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-presence-queries.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "testing-library/prefer-presence-queries" }
+  },
+  {
+    "id": "eslint/testing-library/prefer-screen-queries",
+    "tool": "eslint",
+    "rule": "testing-library/prefer-screen-queries",
+    "anchor": "eslint-testing-library-prefer-screen-queries",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Suggest using `screen` while querying",
+    "why": "The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-screen-queries.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "testing-library/prefer-screen-queries" }
+  },
+  {
+    "id": "eslint/testing-library/prefer-user-event",
+    "tool": "eslint",
+    "rule": "testing-library/prefer-user-event",
+    "anchor": "eslint-testing-library-prefer-user-event",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Suggest using `userEvent` over `fireEvent` for simulating user interactions",
+    "why": "The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-user-event.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "testing-library/prefer-user-event" }
+  },
+  {
+    "id": "eslint/testing-library/prefer-user-event-setup",
+    "tool": "eslint",
+    "rule": "testing-library/prefer-user-event-setup",
+    "anchor": "eslint-testing-library-prefer-user-event-setup",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"] },
+    "summary": "Suggest using userEvent with setup() instead of direct methods",
+    "why": "The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.",
+    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-user-event-setup.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "react"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "testing-library/prefer-user-event-setup" }
+  },
+  {
+    "id": "eslint/vitest/expect-expect",
+    "tool": "eslint",
+    "rule": "vitest/expect-expect",
+    "anchor": "eslint-vitest-expect-expect",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "enforce having expectation in test body",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/expect-expect.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/expect-expect" }
+  },
+  {
+    "id": "eslint/vitest/no-commented-out-tests",
+    "tool": "eslint",
+    "rule": "vitest/no-commented-out-tests",
+    "anchor": "eslint-vitest-no-commented-out-tests",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "disallow commented out tests",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-commented-out-tests.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/no-commented-out-tests" }
+  },
+  {
+    "id": "eslint/vitest/no-conditional-expect",
+    "tool": "eslint",
+    "rule": "vitest/no-conditional-expect",
+    "anchor": "eslint-vitest-no-conditional-expect",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "disallow conditional expects",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-conditional-expect.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/no-conditional-expect" }
+  },
+  {
+    "id": "eslint/vitest/no-conditional-in-test",
+    "tool": "eslint",
+    "rule": "vitest/no-conditional-in-test",
+    "anchor": "eslint-vitest-no-conditional-in-test",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "disallow conditional tests",
+    "why": "The preset turns on this rule of the Vitest plugin for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-conditional-in-test.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/no-conditional-in-test" }
+  },
+  {
+    "id": "eslint/vitest/no-disabled-tests",
+    "tool": "eslint",
+    "rule": "vitest/no-disabled-tests",
+    "anchor": "eslint-vitest-no-disabled-tests",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "disallow disabled tests",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-disabled-tests.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/no-disabled-tests" }
+  },
+  {
+    "id": "eslint/vitest/no-focused-tests",
+    "tool": "eslint",
+    "rule": "vitest/no-focused-tests",
+    "anchor": "eslint-vitest-no-focused-tests",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "disallow focused tests",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-focused-tests.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/no-focused-tests" }
+  },
+  {
+    "id": "eslint/vitest/no-identical-title",
+    "tool": "eslint",
+    "rule": "vitest/no-identical-title",
+    "anchor": "eslint-vitest-no-identical-title",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "disallow identical titles",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-identical-title.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/no-identical-title" }
+  },
+  {
+    "id": "eslint/vitest/no-import-node-test",
+    "tool": "eslint",
+    "rule": "vitest/no-import-node-test",
+    "anchor": "eslint-vitest-no-import-node-test",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "disallow importing `node:test`",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-import-node-test.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/no-import-node-test" }
+  },
+  {
+    "id": "eslint/vitest/no-interpolation-in-snapshots",
+    "tool": "eslint",
+    "rule": "vitest/no-interpolation-in-snapshots",
+    "anchor": "eslint-vitest-no-interpolation-in-snapshots",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "disallow string interpolation in snapshots",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-interpolation-in-snapshots.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/no-interpolation-in-snapshots" }
+  },
+  {
+    "id": "eslint/vitest/no-mocks-import",
+    "tool": "eslint",
+    "rule": "vitest/no-mocks-import",
+    "anchor": "eslint-vitest-no-mocks-import",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "disallow importing from __mocks__ directory",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-mocks-import.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/no-mocks-import" }
+  },
+  {
+    "id": "eslint/vitest/no-restricted-matchers",
+    "tool": "eslint",
+    "rule": "vitest/no-restricted-matchers",
+    "anchor": "eslint-vitest-no-restricted-matchers",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "disallow the use of certain matchers",
+    "why": "The presets list the forms they ban in the options of this rule. Each form has a message that names the allowed form.",
+    "forms": [
+      {
+        "label": "toBeDefined",
+        "message": "`toBeDefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "resolves.toBeDefined",
+        "message": "`toBeDefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "rejects.toBeDefined",
+        "message": "`toBeDefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "not.toBeUndefined",
+        "message": "`not.toBeUndefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "resolves.not.toBeUndefined",
+        "message": "`not.toBeUndefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "rejects.not.toBeUndefined",
+        "message": "`not.toBeUndefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "not.toBeNull",
+        "message": "`not.toBeNull` passes for any value but null. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "resolves.not.toBeNull",
+        "message": "`not.toBeNull` passes for any value but null. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "rejects.not.toBeNull",
+        "message": "`not.toBeNull` passes for any value but null. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "toBeTruthy",
+        "message": "`toBeTruthy` passes for any truthy value. Assert the exact value with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "resolves.toBeTruthy",
+        "message": "`toBeTruthy` passes for any truthy value. Assert the exact value with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "rejects.toBeTruthy",
+        "message": "`toBeTruthy` passes for any truthy value. Assert the exact value with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "toBeFalsy",
+        "message": "`toBeFalsy` passes for any falsy value. Assert the exact value with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "resolves.toBeFalsy",
+        "message": "`toBeFalsy` passes for any falsy value. Assert the exact value with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "label": "rejects.toBeFalsy",
+        "message": "`toBeFalsy` passes for any falsy value. Assert the exact value with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned."
+      }
+    ],
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-restricted-matchers.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/no-restricted-matchers" }
+  },
+  {
+    "id": "eslint/vitest/no-standalone-expect",
+    "tool": "eslint",
+    "rule": "vitest/no-standalone-expect",
+    "anchor": "eslint-vitest-no-standalone-expect",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "disallow using `expect` outside of `it` or `test` blocks",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-standalone-expect.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/no-standalone-expect" }
+  },
+  {
+    "id": "eslint/vitest/no-unneeded-async-expect-function",
+    "tool": "eslint",
+    "rule": "vitest/no-unneeded-async-expect-function",
+    "anchor": "eslint-vitest-no-unneeded-async-expect-function",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Disallow unnecessary async function wrapper for expected promises",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-unneeded-async-expect-function.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/no-unneeded-async-expect-function" }
+  },
+  {
+    "id": "eslint/vitest/prefer-called-exactly-once-with",
+    "tool": "eslint",
+    "rule": "vitest/prefer-called-exactly-once-with",
+    "anchor": "eslint-vitest-prefer-called-exactly-once-with",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "Prefer `toHaveBeenCalledExactlyOnceWith` over `toHaveBeenCalledOnce` and `toHaveBeenCalledWith`",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/prefer-called-exactly-once-with.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/prefer-called-exactly-once-with" }
+  },
+  {
+    "id": "eslint/vitest/prefer-called-with",
+    "tool": "eslint",
+    "rule": "vitest/prefer-called-with",
+    "anchor": "eslint-vitest-prefer-called-with",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "enforce using `toBeCalledWith()` or `toHaveBeenCalledWith()`",
+    "why": "The preset turns on this rule of the Vitest plugin for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/prefer-called-with.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/prefer-called-with" }
+  },
+  {
+    "id": "eslint/vitest/require-awaited-expect-poll",
+    "tool": "eslint",
+    "rule": "vitest/require-awaited-expect-poll",
+    "anchor": "eslint-vitest-require-awaited-expect-poll",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "ensure that every `expect.poll` call is awaited",
+    "why": "The preset turns on this rule of the Vitest plugin for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/require-awaited-expect-poll.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/require-awaited-expect-poll" }
+  },
+  {
+    "id": "eslint/vitest/require-local-test-context-for-concurrent-snapshots",
+    "tool": "eslint",
+    "rule": "vitest/require-local-test-context-for-concurrent-snapshots",
+    "anchor": "eslint-vitest-require-local-test-context-for-concurrent-snapshots",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "require local Test Context for concurrent snapshot tests",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/require-local-test-context-for-concurrent-snapshots.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": {
+      "key": "exceptions",
+      "rule": "vitest/require-local-test-context-for-concurrent-snapshots"
+    }
+  },
+  {
+    "id": "eslint/vitest/require-to-throw-message",
+    "tool": "eslint",
+    "rule": "vitest/require-to-throw-message",
+    "anchor": "eslint-vitest-require-to-throw-message",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "require toThrow() to be called with an error message",
+    "why": "The preset turns on this rule of the Vitest plugin for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/require-to-throw-message.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/require-to-throw-message" }
+  },
+  {
+    "id": "eslint/vitest/valid-describe-callback",
+    "tool": "eslint",
+    "rule": "vitest/valid-describe-callback",
+    "anchor": "eslint-vitest-valid-describe-callback",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "enforce valid describe callback",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-describe-callback.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/valid-describe-callback" }
+  },
+  {
+    "id": "eslint/vitest/valid-expect",
+    "tool": "eslint",
+    "rule": "vitest/valid-expect",
+    "anchor": "eslint-vitest-valid-expect",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "enforce valid `expect()` usage",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-expect.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/valid-expect" }
+  },
+  {
+    "id": "eslint/vitest/valid-expect-in-promise",
+    "tool": "eslint",
+    "rule": "vitest/valid-expect-in-promise",
+    "anchor": "eslint-vitest-valid-expect-in-promise",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "require promises that have expectations in their chain to be valid",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-expect-in-promise.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/valid-expect-in-promise" }
+  },
+  {
+    "id": "eslint/vitest/valid-title",
+    "tool": "eslint",
+    "rule": "vitest/valid-title",
+    "anchor": "eslint-vitest-valid-title",
+    "findingTools": ["eslint-lint"],
+    "page": "typescript-plugins",
+    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "summary": "enforce valid titles",
+    "why": "Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.",
+    "links": [
+      {
+        "label": "Rule documentation",
+        "url": "https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-title.md"
+      }
+    ],
+    "docs": [
+      {
+        "label": "Strict preset guide",
+        "path": "docs/typescript-strict-preset.md",
+        "anchor": "inside-tests"
+      }
+    ],
+    "exception": { "key": "exceptions", "rule": "vitest/valid-title" }
+  }
+]

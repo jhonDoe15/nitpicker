@@ -14,7 +14,7 @@ function isSelected(code) {
 }
 
 /** The stable ruff rules the preset's ruff config selects, as `{ code, name, linter, summary }` sorted by code. */
-export function selectedRuffRules(rules) {
+function selectedRuffRules(rules) {
   return rules
     .filter(
       (rule) => isStableRule(rule) && isSelected(rule.code) && !RUFF_IGNORE.includes(rule.code),
@@ -23,8 +23,8 @@ export function selectedRuffRules(rules) {
     .toSorted((left, right) => left.code.localeCompare(right.code));
 }
 
-/** The selected rules of the installed ruff, or undefined when it cannot be run. */
-export function installedRuffRules(ruff = process.env.NITPICKER_RUFF ?? 'ruff') {
+/** The selected rules of the ruff at `ruff` (a path, or a command on the PATH), or undefined when it cannot be run. */
+export function installedRuffRules(ruff) {
   const result = spawnSync(ruff, ['rule', '--all', '--output-format', 'json'], {
     encoding: 'utf8',
     maxBuffer: MAXIMUM_OUTPUT,

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { docsUrl } from '../messages/docs-url.mjs';
 import { ruleEntry } from './entry.mjs';
 import {
   analyzersText,
@@ -64,8 +65,8 @@ describe('entryFacts', () => {
     expect(facts.find(({ label }) => label === 'Presets').text).toBe(
       'TypeScript, JavaScript and Java',
     );
-    expect(facts.find(({ label }) => label === 'Exception').text).toContain(
-      '"function":"<function>"',
+    expect(facts.find(({ label }) => label === 'Exception').text).toBe(
+      'If this is intended, add `{"rule":"structure/function-lines-limit","paths":["<path>"],"function":"<function>","reason":"..."}` to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -83,7 +84,18 @@ describe('entryFacts', () => {
       }),
     );
 
-    expect(labels(facts)).toEqual(expect.arrayContaining(['Printed as', 'Builds', 'Scope']));
+    expect(labels(facts)).toEqual([
+      'Printed as',
+      'Presets',
+      'Analyzers',
+      'Builds',
+      'Scope',
+      'Why it is on',
+      'Allowed form',
+      'Threshold',
+      'Exception',
+      'Allowed forms by message',
+    ]);
     expect(facts.find(({ label }) => label === 'Printed as').text).toBe(
       '`structure/function-lines-limit` and `crap/function-lines-limit`',
     );
@@ -105,7 +117,7 @@ describe('entryLinks and linkUrl', () => {
     );
 
     expect(links.map(({ label }) => label)).toEqual(['Checks catalog', 'Rule documentation']);
-    expect(linkUrl(links[0])).toMatch(/\/blob\/main\/spec\/checks\.md#structure$/u);
+    expect(linkUrl(links[0])).toBe(docsUrl('spec/checks.md', 'structure'));
     expect(linkUrl(links[1])).toBe('https://example.com/rule');
   });
 });

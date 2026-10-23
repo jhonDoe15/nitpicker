@@ -2,44 +2,78 @@ import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
+  formattedReferenceFiles,
   formattedText,
-  generatedReferenceFiles,
+  referenceFiles,
   staleReferenceFiles,
 } from '../core/reference/generate.mjs';
 import { installedRuffRules } from '../languages/python/reference/ruff-selection.mjs';
 import { RUFF_RULES_FILE } from '../languages/python/reference/ruff-entries.mjs';
+import {
+  eslintInventoryPath,
+  liveEslintInventory,
+  writeEslintInventory,
+} from '../languages/typescript/reference/eslint-inventory.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..');
 
-/** Regenerates the rule reference, or with `--check` lists what is stale; `--refresh-ruff` first rewrites the ruff snapshot. */
-export async function main(arguments_) {
-  if (arguments_.includes('--refresh-ruff')) {
-    const rules = installedRuffRules();
-    if (rules === undefined) {
-      throw new Error('ruff is not installed: set NITPICKER_RUFF to its path');
-    }
-    const snapshot = path.relative(repositoryRoot, fileURLToPath(RUFF_RULES_FILE));
-    writeFileSync(
-      RUFF_RULES_FILE,
-      await formattedText(repositoryRoot, snapshot, JSON.stringify(rules)),
-    );
+async function refreshRuff(ruff) {
+  const rules = installedRuffRules(ruff);
+  if (rules === undefined) {
+    throw new Error(`ruff could not be run as ${ruff}: set NITPICKER_RUFF to its path`);
   }
-  const generated = await generatedReferenceFiles(repositoryRoot);
-  if (arguments_.includes('--check')) {
-    const stale = await staleReferenceFiles(repositoryRoot, generated);
-    if (stale.length > 0) {
-      console.error(`Stale (run npm run gen:rules): ${stale.join(', ')}`);
-      return 1;
-    }
+  const snapshot = path.relative(repositoryRoot, fileURLToPath(RUFF_RULES_FILE));
+  writeFileSync(
+    RUFF_RULES_FILE,
+    await formattedText(repositoryRoot, snapshot, JSON.stringify(rules)),
+  );
+}
+
+async function refreshEslint(environment) {
+  const inventory = await liveEslintInventory(environment);
+  writeEslintInventory(
+    await formattedText(
+      repositoryRoot,
+      eslintInventoryPath(repositoryRoot),
+      JSON.stringify(inventory),
+    ),
+  );
+}
+
+function writeGenerated(generated) {
+  for (const [file, text] of generated) {
+    const target = path.resolve(repositoryRoot, file);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, text);
+  }
+}
+
+/**
+ * Regenerates the rule reference, or with `--check` lists what is stale. `--refresh-ruff` first
+ * rewrites the ruff snapshot from the ruff at `NITPICKER_RUFF`, and `--refresh-eslint` the ESLint
+ * inventory from the preset configs.
+ */
+export async function main(options, { environment, stderr }) {
+  if (options.includes('--refresh-ruff')) {
+    await refreshRuff(environment.NITPICKER_RUFF ?? 'ruff');
+  }
+  if (options.includes('--refresh-eslint')) {
+    await refreshEslint(environment);
+  }
+  if (!options.includes('--check')) {
+    writeGenerated(await formattedReferenceFiles(repositoryRoot));
     return 0;
   }
-  for (const [file, text] of generated) {
-    mkdirSync(path.dirname(path.join(repositoryRoot, file)), { recursive: true });
-    writeFileSync(path.join(repositoryRoot, file), text);
+  const stale = staleReferenceFiles(repositoryRoot, referenceFiles(repositoryRoot));
+  if (stale.length > 0) {
+    stderr.write(`Stale (run npm run gen:rules): ${stale.join(', ')}\n`);
   }
-  return 0;
+  return stale.length === 0 ? 0 : 1;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
-  process.exitCode = await main(process.argv.slice(2));
+  process.exitCode = await main(process.argv.slice(2), {
+    environment: process.env,
+    stderr: process.stderr,
+  });
 }

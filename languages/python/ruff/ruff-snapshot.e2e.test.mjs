@@ -13,7 +13,7 @@ describe.skipIf(!enabled)('the ruff rule snapshot of the rule reference', () => 
   const snapshot = identities(
     JSON.parse(readFileSync(new URL('./ruff-rules.json', import.meta.url), 'utf8')),
   );
-  const installed = identities(installedRuffRules());
+  const installed = identities(installedRuffRules(process.env.NITPICKER_RUFF ?? 'ruff'));
 
   it('has every rule of the installed ruff that the preset selects (run npm run gen:rules -- --refresh-ruff)', () => {
     expect(installed.size).toBeGreaterThan(0);
