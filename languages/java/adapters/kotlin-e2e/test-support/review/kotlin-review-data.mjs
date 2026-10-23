@@ -101,6 +101,83 @@ class WaitingTest {
 }
 `;
 
+const HANDLERS = `package demo.orders
+
+import java.util.concurrent.CancellationException
+import kotlinx.coroutines.CancellationException as Cancelled
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+
+suspend fun pollQuietly(): Int {
+    try {
+        delay(1)
+    } catch (error: CancellationException) {
+        println("polling stopped")
+    }
+    return 1
+}
+
+suspend fun pollRenamed(): Int =
+    try {
+        delay(1)
+        1
+    } catch (error: Cancelled) {
+        -1
+    }
+
+suspend fun pollAndRethrow(): Int {
+    try {
+        delay(1)
+    } catch (error: CancellationException) {
+        throw error
+    }
+    return 1
+}
+
+suspend fun pollAndCheck(): Int {
+    try {
+        delay(1)
+    } catch (error: CancellationException) {
+        currentCoroutineContext().ensureActive()
+    }
+    return 1
+}
+
+suspend fun pollTimeout(): Int? =
+    try {
+        delay(1)
+        1
+    } catch (error: CancellationException) {
+        if (error is TimeoutCancellationException) null else throw error
+    }
+
+fun pauseQuietly() {
+    try {
+        Thread.sleep(1)
+    } catch (error: InterruptedException) {
+        println("interrupted")
+    }
+}
+
+fun pauseAndRestore() {
+    try {
+        Thread.sleep(1)
+    } catch (error: InterruptedException) {
+        Thread.currentThread().interrupt()
+    }
+}
+
+fun pauseAndFail() {
+    try {
+        Thread.sleep(1)
+    } catch (error: InterruptedException) {
+        throw IllegalStateException("interrupted", error)
+    }
+}
+`;
+
 const SPRING_BOOT_TEST = `package org.springframework.boot.test.context
 
 annotation class SpringBootTest(val webEnvironment: String = "MOCK")
@@ -144,6 +221,7 @@ export const REVIEW_RULE_FILES = {
   [`${MAIN}/Clock.kt`]: CLOCK,
   [`${MAIN}/Settlement.kt`]: SETTLEMENT,
   [`${MAIN}/Formatting.kt`]: FORMATTING,
+  [`${MAIN}/Handlers.kt`]: HANDLERS,
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
   [`${SPRING}/boot/test/context/SpringBootTest.kt`]: SPRING_BOOT_TEST,
@@ -162,6 +240,9 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
   'StaticForwardingWrapper total',
+  'SwallowedCancellation pollQuietly',
+  'SwallowedCancellation pollRenamed',
+  'SwallowedInterrupt pauseQuietly',
   'unused-option Envelope.retries',
   'unused-option Mailer.retries',
   'unused-option pad.width',

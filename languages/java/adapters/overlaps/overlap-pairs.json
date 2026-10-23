@@ -302,6 +302,11 @@
     "scope": "member"
   },
   {
+    "primary": ["pmd/SwallowedInterrupt"],
+    "secondary": ["errorprone/EmptyCatch", "pmd/EmptyCatchBlock", "checkstyle/EmptyCatchBlock"],
+    "scope": "line"
+  },
+  {
     "primary": ["errorprone/EmptyCatch"],
     "secondary": ["pmd/EmptyCatchBlock", "checkstyle/EmptyCatchBlock"],
     "scope": "line"

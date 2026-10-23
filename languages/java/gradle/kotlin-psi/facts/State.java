@@ -15,6 +15,7 @@ final class State {
   final List<Object> properties = new ArrayList<>();
   final List<Object> waits = new ArrayList<>();
   final List<Object> predicates = new ArrayList<>();
+  final List<Object> catches = new ArrayList<>();
   final Set<String> calls = new LinkedHashSet<>();
   final Set<String> references = new LinkedHashSet<>();
   final List<Object> typeAliases = new ArrayList<>();
@@ -52,7 +53,7 @@ final class State {
     return m(
         "file", relative, "test", test, "package", file.getPackageFqName().asString(),
         "imports", imports(), "classes", classes, "functions", functions, "properties", properties,
-        "waits", waits, "predicates", predicates, "typeAliases", typeAliases,
+        "waits", waits, "predicates", predicates, "catches", catches, "typeAliases", typeAliases,
         "calls", new ArrayList<Object>(calls.stream().map(Json.Raw::new).toList()),
         "references", new ArrayList<Object>(references));
   }

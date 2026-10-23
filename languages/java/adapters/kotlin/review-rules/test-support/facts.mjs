@@ -14,6 +14,7 @@ export function file(overrides = {}) {
     properties: [],
     waits: [],
     predicates: [],
+    catches: [],
     calls: [],
     references: [],
     ...overrides,
