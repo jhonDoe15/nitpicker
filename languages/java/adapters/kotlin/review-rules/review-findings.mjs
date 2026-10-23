@@ -1,41 +1,23 @@
-import { readFileSync } from 'node:fs';
 import { hasAwaitility } from '../../../messages/wait-advice.mjs';
-import { pathInside, sourceFilesUnder } from '../../review-rules/java-sources.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { unusedOptionFindings } from './main/unused-options.mjs';
-import { readKotlinFacts } from './kotlin-facts.mjs';
+import { buildViews, javaMentions } from './build-view.mjs';
 import { productionTypeResolver } from './production-types.mjs';
 import { findingFactory } from './review-finding.mjs';
 import { springFindings } from './spring/spring-findings.mjs';
 import { springContextFindings } from './tests/spring-context.mjs';
 import { testWaitFindings } from './tests/test-waits.mjs';
 
-const IDENTIFIER = /[\p{L}_$][\p{L}\p{N}_$]*/gu;
-
-function javaSourceText(projectRoot, manifest) {
-  const roots = [...(manifest.sourceRoots ?? []), ...(manifest.testSourceRoots ?? [])];
-  return roots
-    .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), ['.java']))
-    .map((file) => readFileSync(file, 'utf8'))
-    .join('\n');
-}
-
-function javaMentions(projectRoot, manifest) {
-  let identifiers;
-  return (name) => {
-    identifiers ??= new Set(javaSourceText(projectRoot, manifest).match(IDENTIFIER));
-    return identifiers.has(name);
-  };
-}
-
-function projectView({ reportRoot, projectRoot, manifest, modules = [] }) {
-  const own = readKotlinFacts(reportRoot).files;
+function projectView(context) {
+  const { reportRoot, manifest, modules = [] } = context;
+  const build = (context.buildViews ?? buildViews())(context);
+  const own = build.facts.get(reportRoot).files;
   const siblings = modules.filter((module) => module.reportRoot !== reportRoot);
   const projectFiles = [
     ...own,
-    ...siblings.flatMap((module) => readKotlinFacts(module.reportRoot).files),
+    ...siblings.flatMap((module) => build.facts.get(module.reportRoot).files),
   ];
   const javaRoots = [
     ...new Set(
@@ -44,12 +26,12 @@ function projectView({ reportRoot, projectRoot, manifest, modules = [] }) {
       ),
     ),
   ];
-  return { own, projectFiles, javaRoots, projectRoot };
+  return { own, projectFiles, javaRoots, build };
 }
 
 export function readKotlinReviewFindings(context) {
   const { manifest, projectRoot } = context;
-  const { own, projectFiles, javaRoots } = projectView(context);
+  const { own, projectFiles, javaRoots, build } = projectView(context);
   if (own.length === 0) {
     return [];
   }
@@ -67,8 +49,10 @@ export function readKotlinReviewFindings(context) {
     ...singularPluralFindings(own, { finding }),
     ...unusedOptionFindings(own, {
       finding,
+      build,
+      published: manifest.published === true,
       serialization: manifest.kotlinSerialization === true,
-      mentionedInJava: javaMentions(projectRoot, manifest),
+      mentionedInJava: javaMentions(projectRoot, [manifest]),
     }),
   ];
 }

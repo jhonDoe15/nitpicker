@@ -1,96 +1,20 @@
 import { MESSAGES, renderMessage } from '../../../../../../shared/policy.mjs';
 import { exceptionText } from '../../../../../../shared/rules/exceptions.mjs';
-import { UNUSED_API_RULE_IDS } from '../../../../../../shared/unused-api/unused-api-policy.mjs';
+import {
+  UNUSED_API_RULE_IDS,
+  UNUSED_OPTION_SCOPES,
+} from '../../../../../../shared/unused-api/unused-api-policy.mjs';
 import { append } from '../kotlin-facts.mjs';
+import { limitedUnits, publicFunctionUnits } from './unused-option-units.mjs';
 
 export const UNUSED_OPTION_RULE = UNUSED_API_RULE_IDS.unusedOption;
 export const UNUSED_OPTION_TOOL = 'structure';
 
-const SCOPE = 'private and internal declarations only; calls in tests count';
-const LIMITED = new Set(['private', 'internal']);
-const SKIPPED_MODIFIERS = new Set([
-  'override',
-  'open',
-  'abstract',
-  'operator',
-  'infix',
-  'actual',
-  'expect',
-]);
-const CONSTRUCTOR = '<init>';
+const SCOPES = UNUSED_OPTION_SCOPES.kotlin;
+const NOTE_SYMBOL = 'callers-not-analyzed';
+const LISTED_GAPS = 5;
 const NULLABLE = /\?$/u;
 const COPY = 'copy';
-const CALLABLE_KINDS = new Set(['class']);
-
-function hasOptions(parameters) {
-  return parameters.some(({ default: hasDefault, vararg }) => hasDefault && !vararg);
-}
-
-function functionUnits(file, classes) {
-  return file.functions
-    .filter((fn) => {
-      const owner = classes.get(fn.owner);
-      return (
-        fn.name !== CONSTRUCTOR &&
-        fn.name !== 'main' &&
-        LIMITED.has(fn.visibility) &&
-        fn.annotations.length === 0 &&
-        !fn.modifiers.some((modifier) => SKIPPED_MODIFIERS.has(modifier)) &&
-        fn.owner !== '<anonymous>' &&
-        owner?.kind !== 'interface' &&
-        hasOptions(fn.parameters)
-      );
-    })
-    .map((fn) => ({
-      file: file.file,
-      callee: fn.name,
-      label: [fn.owner, fn.name].filter(Boolean).join('.'),
-      parameters: fn.parameters,
-      line: fn.line,
-    }));
-}
-
-function eligibleClass(klass, serialization) {
-  return (
-    CALLABLE_KINDS.has(klass.kind) &&
-    !klass.local &&
-    !klass.open &&
-    klass.annotations.length === 0 &&
-    !(serialization && klass.data)
-  );
-}
-
-function constructorUnits(file, classes, serialization) {
-  const primary = file.classes
-    .filter(
-      (klass) =>
-        eligibleClass(klass, serialization) &&
-        (LIMITED.has(klass.visibility) || LIMITED.has(klass.constructorVisibility)) &&
-        hasOptions(klass.primaryParameters),
-    )
-    .map((klass) => ({
-      file: file.file,
-      callee: klass.name,
-      label: klass.qualified,
-      data: klass.data,
-      parameters: klass.primaryParameters,
-      line: klass.line,
-    }));
-  const secondary = file.functions
-    .filter(
-      (fn) => fn.name === CONSTRUCTOR && LIMITED.has(fn.visibility) && hasOptions(fn.parameters),
-    )
-    .filter((fn) => classes.has(fn.owner) && eligibleClass(classes.get(fn.owner), serialization))
-    .map((fn) => ({
-      file: file.file,
-      callee: classes.get(fn.owner).name,
-      label: fn.owner,
-      data: false,
-      parameters: fn.parameters,
-      line: fn.line,
-    }));
-  return [...primary, ...secondary];
-}
 
 function typeAliases(files) {
   return new Map(
@@ -100,9 +24,9 @@ function typeAliases(files) {
   );
 }
 
-function callsByName(files) {
+function callsByName(files, { aliases: withTypeAliases = true } = {}) {
   const calls = new Map();
-  const targets = typeAliases(files);
+  const targets = withTypeAliases ? typeAliases(files) : new Map();
   for (const file of files) {
     const aliases = new Map(
       file.imports
@@ -158,32 +82,102 @@ function unusedParameters(unit, calls, copies) {
     .map(({ parameter }) => parameter);
 }
 
-export function unusedOptionFindings(files, { finding, mentionedInJava, serialization = false }) {
-  const main = files.filter(({ test }) => !test);
-  const calls = callsByName(files);
-  const references = referencedNames(files);
-  return main.flatMap((file) => {
-    const classes = new Map(file.classes.map((klass) => [klass.qualified, klass]));
-    return [...functionUnits(file, classes), ...constructorUnits(file, classes, serialization)]
-      .filter((unit) => !references.has(unit.callee) && !mentionedInJava(unit.callee))
-      .flatMap((unit) =>
-        unusedParameters(unit, calls.get(unit.callee) ?? [], calls.get(COPY) ?? []).map(
-          (parameter) => {
-            const symbol = `${unit.label}.${parameter.name}`;
-            return finding({
-              tool: UNUSED_OPTION_TOOL,
-              rule: UNUSED_OPTION_RULE,
-              file: unit.file,
-              line: parameter.line,
-              symbol,
-              message: renderMessage(MESSAGES.unusedOption, {
-                name: symbol,
-                scope: SCOPE,
-                exception: exceptionText(UNUSED_OPTION_RULE, unit.file),
-              }),
-            });
-          },
-        ),
-      );
+function optionFinding({ finding, scope }, unit, parameter) {
+  const symbol = `${unit.label}.${parameter.name}`;
+  return finding({
+    tool: UNUSED_OPTION_TOOL,
+    rule: UNUSED_OPTION_RULE,
+    file: unit.file,
+    line: parameter.line,
+    symbol,
+    message: renderMessage(MESSAGES.unusedOption, {
+      name: symbol,
+      scope,
+      exception: exceptionText(UNUSED_OPTION_RULE, unit.file),
+    }),
   });
+}
+
+function judge(units, { calls, references, mentionedInJava, finding, scope }) {
+  return units
+    .filter((unit) => !references.has(unit.callee))
+    .flatMap((unit) => {
+      const unused = unusedParameters(unit, calls(unit.callee), calls(COPY));
+      if (unused.length === 0 || mentionedInJava(unit.callee)) {
+        return [];
+      }
+      return unused.map((parameter) => optionFinding({ finding, scope }, unit, parameter));
+    });
+}
+
+function gapNote(unit, build, finding) {
+  if (build.notes.has(UNUSED_OPTION_RULE)) {
+    return [];
+  }
+  build.notes.add(UNUSED_OPTION_RULE);
+  const listed = build.gaps.slice(0, LISTED_GAPS).join(', ');
+  const more =
+    build.gaps.length > LISTED_GAPS ? ` and ${String(build.gaps.length - LISTED_GAPS)} more` : '';
+  const note = finding({
+    tool: UNUSED_OPTION_TOOL,
+    rule: UNUSED_OPTION_RULE,
+    file: unit.file,
+    line: unit.line,
+    symbol: NOTE_SYMBOL,
+    message: '',
+  });
+  return [
+    {
+      ...note,
+      message:
+        'Public functions are not checked for unused options: the facts do not cover ' +
+        `${listed}${more}, so calls there are not seen.`,
+      classification: 'descriptive',
+    },
+  ];
+}
+
+function publicFindings(own, { build, published = false, finding }) {
+  const units = own.filter(({ test }) => !test).flatMap(publicFunctionUnits);
+  if (units.length === 0 || build === undefined) {
+    return [];
+  }
+  if (build.gaps.length > 0) {
+    return gapNote(units[0], build, finding);
+  }
+  const production = build.memo('unused-option-calls', () =>
+    callsByName(
+      build.files.filter(({ test }) => !test),
+      { aliases: false },
+    ),
+  );
+  const tests = published
+    ? callsByName(
+        own.filter(({ test }) => test),
+        { aliases: false },
+      )
+    : new Map();
+  return judge(units, {
+    calls: (name) => [...(production.get(name) ?? []), ...(tests.get(name) ?? [])],
+    references: build.memo('unused-option-references', () => referencedNames(build.files)),
+    mentionedInJava: build.mentionedInJava,
+    finding,
+    scope: published ? SCOPES.published : SCOPES.private,
+  });
+}
+
+export function unusedOptionFindings(files, options) {
+  const { finding, mentionedInJava, serialization = false } = options;
+  const calls = callsByName(files);
+  const limited = judge(
+    files.filter(({ test }) => !test).flatMap((file) => limitedUnits(file, serialization)),
+    {
+      calls: (name) => calls.get(name) ?? [],
+      references: referencedNames(files),
+      mentionedInJava,
+      finding,
+      scope: SCOPES.local,
+    },
+  );
+  return [...limited, ...publicFindings(files, options)];
 }

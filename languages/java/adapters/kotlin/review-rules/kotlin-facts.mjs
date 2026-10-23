@@ -5,13 +5,28 @@ const FACTS_REPORT = 'kotlin-facts.json';
 const NULLABLE = /\?$/u;
 const GENERIC_ARGUMENTS = /<.*$/u;
 
+const SPRING_STEREOTYPES = new Set([
+  'Component',
+  'Service',
+  'Repository',
+  'Controller',
+  'RestController',
+  'ControllerAdvice',
+  'RestControllerAdvice',
+  'Configuration',
+  'SpringBootApplication',
+]);
+
 export function readKotlinFacts(reportRoot) {
   const report = path.join(reportRoot, FACTS_REPORT);
   if (!existsSync(report)) {
-    return { files: [] };
+    return { files: [], skipped: [] };
   }
   const { files } = JSON.parse(readFileSync(report, 'utf8'));
-  return { files: files.filter(({ skipped }) => skipped !== true) };
+  return {
+    files: files.filter(({ skipped }) => skipped !== true),
+    skipped: files.filter(({ skipped }) => skipped === true).map(({ file }) => file),
+  };
 }
 
 export function append(map, key, value) {
@@ -45,4 +60,13 @@ export function annotationNamed(annotations, names) {
 
 export function importsFrom(file, prefix) {
   return file.imports.some(({ path: imported }) => imported.startsWith(prefix));
+}
+
+export function ancestorsOf(qualified) {
+  const parts = qualified.split('.');
+  return parts.map((_, index) => parts.slice(0, index + 1).join('.'));
+}
+
+export function hasSpringStereotype(annotations) {
+  return annotationNamed(annotations, SPRING_STEREOTYPES);
 }

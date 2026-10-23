@@ -56,6 +56,46 @@ internal data class Envelope(val id: String, val retries: Int = 3)
 fun report(): String = pad(1) + label(2) + Mailer("h").send() + label(3, "m") + Envelope("e").id
 `;
 
+const PRICING = `package demo.orders
+
+import org.springframework.boot.context.properties.ConfigurationProperties
+
+fun price(cents: Int, discount: Int = 0): Int = cents - discount
+
+data class Quote(val cents: Int, val note: String = "")
+
+@ConfigurationProperties("queue")
+class QueueProperties(val name: String = "jobs", val retry: Retry = Retry()) {
+    class Retry(val attempts: Int = 3, val backoffMs: Long = 500)
+}
+
+internal class Outbox(private val dir: String, private val limit: Int = 10) {
+    private val log = java.util.logging.Logger.getLogger(Outbox::class.java.name)
+
+    fun path(): String = dir + limit + log.name
+}
+
+fun quote(): String = price(100).toString() + Quote(1).cents + QueueProperties().name + Outbox("d").path()
+`;
+
+const CONFIGURATION_PROPERTIES = `package org.springframework.boot.context.properties
+
+annotation class ConfigurationProperties(val prefix: String)
+`;
+
+const PRICING_TEST = `package demo.orders
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class PricingTest {
+    @Test
+    fun discounts() {
+        assertEquals(90, price(100, 10))
+    }
+}
+`;
+
 const WAITING_TEST = `package demo.orders
 
 import kotlinx.coroutines.delay
@@ -144,6 +184,10 @@ export const REVIEW_RULE_FILES = {
   [`${MAIN}/Clock.kt`]: CLOCK,
   [`${MAIN}/Settlement.kt`]: SETTLEMENT,
   [`${MAIN}/Formatting.kt`]: FORMATTING,
+  [`${MAIN}/Pricing.kt`]: PRICING,
+  ['src/main/kotlin/org/springframework/boot/context/properties/ConfigurationProperties.kt']:
+    CONFIGURATION_PROPERTIES,
+  [`${TEST}/PricingTest.kt`]: PRICING_TEST,
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
   [`${SPRING}/boot/test/context/SpringBootTest.kt`]: SPRING_BOOT_TEST,
@@ -164,7 +208,9 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'StaticForwardingWrapper total',
   'unused-option Envelope.retries',
   'unused-option Mailer.retries',
+  'unused-option Outbox.limit',
   'unused-option pad.width',
+  'unused-option price.discount',
 ];
 
 const EMPTY_JAR = Buffer.from([0x50, 0x4b, 0x05, 0x06, ...Array.from({ length: 18 }, () => 0)]);
@@ -177,5 +223,19 @@ dependencies {
 }
 `,
     'libs/jackson-module-kotlin-2.17.2.jar': EMPTY_JAR,
+  };
+}
+
+export function publishedFiles(build) {
+  return {
+    'build.gradle.kts': `${build.replace('kotlin("jvm") version', '`maven-publish`\n    kotlin("jvm") version')}
+publishing {
+    publications {
+        create<MavenPublication>("library") {
+            from(components["java"])
+        }
+    }
+}
+`,
   };
 }
