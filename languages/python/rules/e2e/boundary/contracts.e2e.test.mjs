@@ -6,7 +6,6 @@ const { cleanup, findingsOf } = createScripts();
 afterEach(cleanup);
 
 const CONTRACT = 'contract-infrastructure-type';
-const HANDLER = 'handler-entity-type';
 const ORDERS = 'app/features/orders';
 const SESSION = 'from sqlalchemy.orm import Session\n';
 
@@ -49,10 +48,10 @@ describe.skipIf(!enabled)('persistence and web types in a feature contract', () 
     });
 
     expect(found).toEqual([
-      `${CONTRACT} ${ORDERS}/__init__.py:1 place|persistence|sqlalchemy.orm.Session|orders`,
-      `${CONTRACT} ${ORDERS}/queries.py:9 active|persistence|django.db.models.QuerySet|orders`,
-      `${CONTRACT} ${ORDERS}/queries.py:17 Orders.rows|persistence|sqlite3.Connection|orders`,
-      `${CONTRACT} ${ORDERS}/queries.py:20 Orders.total|transport|starlette.requests.Request|orders`,
+      `${CONTRACT} ${ORDERS}/__init__.py:1 place|persistence|Session`,
+      `${CONTRACT} ${ORDERS}/queries.py:9 active|persistence|QuerySet`,
+      `${CONTRACT} ${ORDERS}/queries.py:17 Orders.rows|persistence|Connection`,
+      `${CONTRACT} ${ORDERS}/queries.py:20 Orders.total|transport|Request`,
     ]);
   });
 
@@ -119,121 +118,94 @@ describe.skipIf(!enabled)('persistence and web types in a feature contract', () 
       ].join('\n'),
     });
 
-    expect(found).toEqual([
-      `${CONTRACT} ${ORDERS}/views.py:5 pending|persistence|django.db.models.QuerySet|orders`,
-    ]);
+    expect(found).toEqual([`${CONTRACT} ${ORDERS}/views.py:5 pending|persistence|QuerySet`]);
   });
-});
 
-const SQLALCHEMY_MODELS = [
-  'from sqlalchemy.orm import DeclarativeBase, Mapped, declarative_base',
-  '',
-  'Legacy = declarative_base()',
-  '',
-  '',
-  'class Base(DeclarativeBase):',
-  '    pass',
-  '',
-  '',
-  'class Order(Base):',
-  '    __tablename__ = "orders"',
-  '    id: Mapped[int]',
-  '',
-  '',
-  'class Rush(Order):',
-  '    pass',
-  '',
-  '',
-  'class Line(Legacy):',
-  '    __tablename__ = "lines"',
-  '',
-].join('\n');
-
-describe.skipIf(!enabled)('ORM entities in route handlers', () => {
-  it('flags SQLAlchemy and SQLModel entities that a handler takes or returns', () => {
-    const found = only(HANDLER, {
-      'app/models.py': SQLALCHEMY_MODELS,
-      'app/api.py': [
-        'from fastapi import FastAPI',
-        'from sqlmodel import SQLModel',
-        'from app.models import Line, Order, Rush',
+  it('follows every re-export of __init__.py, star imports by __all__ included', () => {
+    const found = only(CONTRACT, {
+      [`${ORDERS}/__init__.py`]: [
+        'from ._queries import *',
+        'from .repository import open_session',
         '',
-        'app = FastAPI()',
+      ].join('\n'),
+      [`${ORDERS}/_queries.py`]: [
+        'from django.db.models import QuerySet',
+        '',
+        '__all__ = ["recent"]',
         '',
         '',
-        'class Hero(SQLModel, table=True):',
-        '    id: int',
-        '',
-        '',
-        'class HeroIn(SQLModel):',
-        '    name: str',
-        '',
-        '',
-        '@app.get("/orders/{order_id}", response_model=Order)',
-        'def read_order(order_id: int):',
+        'def recent() -> QuerySet:',
         '    return None',
         '',
         '',
-        '@app.post("/heroes")',
-        'def create_hero(hero: Hero, rush: "Rush") -> list[Line]:',
-        '    return []',
+        'def drafts() -> QuerySet:',
+        '    return None',
+        '',
+      ].join('\n'),
+      [`${ORDERS}/repository.py`]: `${SESSION}\n\ndef open_session() -> Session:\n    return None\n`,
+    });
+
+    expect(found).toEqual([
+      `${CONTRACT} ${ORDERS}/__init__.py:1 recent|persistence|QuerySet`,
+      `${CONTRACT} ${ORDERS}/__init__.py:2 open_session|persistence|Session`,
+    ]);
+  });
+
+  it('leaves injected parameters and request-first views alone but not a transaction decorator', () => {
+    const found = only(CONTRACT, {
+      [`${ORDERS}/__init__.py`]: '',
+      'app/deps.py': [
+        'from typing import Annotated',
+        'from fastapi import Depends',
+        SESSION,
+        'def get_db() -> Session:',
+        '    return None',
         '',
         '',
-        '@app.post("/heroes/new")',
-        'def add_hero(hero: HeroIn) -> int:',
-        '    return 1',
+        'SessionDep = Annotated[Session, Depends(get_db)]',
+        '',
+      ].join('\n'),
+      [`${ORDERS}/pages.py`]: [
+        'from typing import Annotated',
+        'from django.db import models, transaction',
+        'from django.http import HttpResponse',
+        'from fastapi import Depends',
+        SESSION,
+        'from app.deps import SessionDep, get_db',
         '',
         '',
-        'def load(order_id: int) -> Order:',
-        '    return Order()',
+        'def index(request) -> HttpResponse:',
+        '    return HttpResponse()',
+        '',
+        '',
+        'def owner(session: SessionDep, db: Annotated[Session, Depends(get_db)]) -> int:',
+        '    return 0',
+        '',
+        '',
+        'def total(db: Session = Depends(get_db)) -> int:',
+        '    return 0',
+        '',
+        '',
+        '@transaction.atomic',
+        'def lock(rows: models.QuerySet) -> None:',
+        '    pass',
+        '',
+        '',
+        'class OrderManager(models.Manager):',
+        '    def pending(self) -> models.QuerySet:',
+        '        return self.all()',
+        '',
+        '',
+        'class Order(models.Model):',
+        '    def lines(self) -> models.QuerySet:',
+        '        return None',
         '',
       ].join('\n'),
     });
 
     expect(found).toEqual([
-      `${HANDLER} app/api.py:17 read_order|response_model=|Order|SQLAlchemy`,
-      `${HANDLER} app/api.py:22 create_hero|parameter hero|Hero|SQLModel`,
-      `${HANDLER} app/api.py:22 create_hero|parameter rush|Rush|SQLAlchemy`,
-      `${HANDLER} app/api.py:22 create_hero|return type|Line|SQLAlchemy`,
+      `${CONTRACT} ${ORDERS}/pages.py:23 lock|persistence|QuerySet`,
+      `${CONTRACT} ${ORDERS}/pages.py:33 Order.lines|persistence|QuerySet`,
     ]);
-  });
-
-  it('flags Django models in django-ninja and Flask handlers, but not abstract ones', () => {
-    const found = only(HANDLER, {
-      'shop/models.py': [
-        'from django.db import models',
-        '',
-        '',
-        'class Stamped(models.Model):',
-        '    class Meta:',
-        '        abstract = True',
-        '',
-        '',
-        'class Order(Stamped):',
-        '    sku = models.CharField(max_length=20)',
-        '',
-      ].join('\n'),
-      'shop/api.py': [
-        'from flask import Flask',
-        'from ninja import NinjaAPI',
-        'from shop.models import Order, Stamped',
-        '',
-        'api = NinjaAPI()',
-        'web = Flask(__name__)',
-        '',
-        '',
-        '@api.get("/orders", response=list[Order])',
-        'def orders(request):',
-        '    return []',
-        '',
-        '',
-        '@web.route("/stamped")',
-        'def stamped() -> Stamped:',
-        '    return None',
-        '',
-      ].join('\n'),
-    });
-
-    expect(found).toEqual([`${HANDLER} shop/api.py:10 orders|response=|Order|Django`]);
   });
 });
