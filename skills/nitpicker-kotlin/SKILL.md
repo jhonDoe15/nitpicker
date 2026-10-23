@@ -67,8 +67,9 @@ Before you change code other modules use, or fix a bug, read
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
   members and parameters.
 - Names and comments (`kotlin-source` rules): name packages, files and types for their job
-  (`PriceRounding.kt`), never `Utils`, `Helpers`, `Managers`, `Common`, `Misc` or `Miscellaneous`
-  (a framework role such as `TransactionManager` is fine); pure logic shared between features goes in
+  (`PriceRounding.kt`), never `Utils`, `Helpers`, `Managers`, `Common`, `Misc` or `Miscellaneous`,
+  also not before `Mixin`, `Module` or `Base` (`HelperMixin`); a framework role such as
+  `TransactionManager` is fine; pure logic shared between features goes in
   the shared package under such a name. Delete commented-out code, in tests too (`CommentedOutCode`);
   a sample under an `Example:` heading is fine.
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a

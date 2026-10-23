@@ -1,5 +1,6 @@
 import {
   ACCEPTED_MANAGER_ROLES,
+  CONTAINER_NAME_WORDS,
   GENERIC_NAME_WORDS,
 } from '../../../../../../shared/naming/smell-words.mjs';
 import { braceDepths, closingIndex, parenDepths } from '../kotlin-source.mjs';
@@ -71,13 +72,15 @@ function capitalized(word) {
 
 const GENERIC_WORDS = new Set(GENERIC_NAME_WORDS);
 const GENERIC_SUFFIX = GENERIC_NAME_WORDS.map(capitalized).join('|');
-const GENERIC_TYPE = new RegExp(`(?:^|[A-Za-z0-9])(${GENERIC_SUFFIX})$`);
+const CONTAINER_SUFFIX = `(?:${CONTAINER_NAME_WORDS.map(capitalized).join('|')})?`;
+const CONTAINER_WORDS = new Set(CONTAINER_NAME_WORDS);
+const GENERIC_TYPE = new RegExp(`(?:^|[A-Za-z0-9])((?:${GENERIC_SUFFIX})${CONTAINER_SUFFIX})$`);
 const FILE_STEM = /([^/]+?)(?:\.[A-Za-z][A-Za-z0-9]*)?\.kt$/;
 const WORD_BOUNDARIES = [/([a-z0-9])([A-Z])/g, /([A-Z]+)([A-Z][a-z])/g];
 const MANAGER_ROLES = new Set(ACCEPTED_MANAGER_ROLES);
 const MANAGER_WORDS = new Set(['manager', 'managers']);
 const ACCEPTED_MANAGER = new RegExp(
-  `(?:${ACCEPTED_MANAGER_ROLES.map(capitalized).join('|')})Managers?$`,
+  `(?:${ACCEPTED_MANAGER_ROLES.map(capitalized).join('|')})Managers?${CONTAINER_SUFFIX}$`,
 );
 const VERSION_WORD = /^v?$/;
 const TYPE_MODIFIERS =
@@ -180,7 +183,8 @@ function nameWords(name) {
 }
 
 function isGenericFile(stem) {
-  const words = nameWords(stem);
+  const named = nameWords(stem);
+  const words = named.length > 1 && CONTAINER_WORDS.has(named.at(-1)) ? named.slice(0, -1) : named;
   const last = words.at(-1);
   const managerRole = MANAGER_WORDS.has(last) && MANAGER_ROLES.has(words.at(words.length - 2));
   return GENERIC_WORDS.has(last) && !managerRole;

@@ -327,7 +327,10 @@ assignments that read as prose (`timeout = 30 seconds in production`) and the li
 `Usage:` or `e.g.` heading up to the next blank comment line (`sample.run(x)` and `Usage of the old path:`
 are no headings). The generic-name rules skip test sources (a test is not an API anyone calls). They use
 the word list in `shared/naming/smell-words.mjs`, which the Python preset uses too; a Kotlin Multiplatform
-source-set suffix (`.common`, `.jvm`) is dropped from a file name first, and the framework roles are
+source-set suffix (`.common`, `.jvm`) is dropped from a file name first, a name that ends in a container
+word from the same module (`Functions`, `Funcs`, `Methods`, `Module(s)`, `Mixin(s)`, `Base`, `Classes`) is
+judged by the word before it (`OrderHelperMixin`, `UtilsModule.kt` are reported, `LoggingMixin` and
+`ModelBase` pass), and the framework roles are
 `Authentication`, `Transaction`, `Cache`, `Entity`, `Session`, `Connection`, `Lock` and `Resource` before
 `Manager` or `Managers`. A ticket reference is `#123`, a key such as `PROJ-123` (not `SHA-1`, `UTF-8`,
 `RFC-7231` and similar standards) or an `http(s)` link, right after the marker. A `TODO` without an issue is

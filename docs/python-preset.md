@@ -768,8 +768,11 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - `generic-name` reports a file, a folder or a class (nested ones too) whose last name word is `util`,
   `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `managers`, `common`, `commons`,
   `misc` or `miscellaneous` (the list in `shared/naming/smell-words.mjs`, which the Kotlin preset uses
-  too; trailing digits and version words such as `v2` are ignored); a word elsewhere in the name
-  (`common_prefix`, `get_common_ancestor`, `util_functions`, `OrderHelperMixin`) is not reported. Test
+  too; trailing digits and version words such as `v2` are ignored). A last word that only wraps the
+  real one (`functions`, `funcs`, `methods`, `module`, `modules`, `mixin`, `mixins`, `base`, `classes`,
+  the container words of the same module) is skipped, so `util_functions`, `helper_module`,
+  `OrderHelperMixin` and `HelperBase` are reported and `LoggingMixin` or `ModelBase` are not; a word
+  elsewhere in the name (`common_prefix`, `get_common_ancestor`) is not reported. Test
   files are skipped. A class that extends a type with the same ending (`class SessionManager(CacheManager)`),
   a `managers.py` that holds a framework manager (`models.Manager`), `context_manager` and the roles
   `Authentication`, `Transaction`, `Cache`, `Entity`, `Session`, `Connection`, `Lock` and `Resource`
