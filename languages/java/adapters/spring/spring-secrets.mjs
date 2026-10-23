@@ -74,6 +74,10 @@ function endsWithSecretWord(words) {
   return SECRET_WORDS.has(words.at(-1)) || SECRET_WORDS.has(words.slice(-2).join(''));
 }
 
+export function isSecretKey(key) {
+  return endsWithSecretWord(keyWords(key));
+}
+
 export function placeholderDefault(value) {
   const pending = [value];
   for (const text of pending) {

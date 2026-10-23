@@ -6,8 +6,10 @@ import { collectJavaFindings } from '../../adapters/java-diff.mjs';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 import {
   SPRING_ARCH_FIXTURE,
+  SPRING_ARCH_ROLES,
   SPRING_ARCH_VIOLATIONS,
 } from '../../adapters/spring/__tests__/spring-arch-project.mjs';
+import { writeSpringRoles } from '../../adapters/spring-arch/spring-roles.mjs';
 import {
   useMavenPresetProject,
   enabled,
@@ -56,9 +58,17 @@ function readReport(root, directory, name) {
 }
 
 function runSpringArchTask(root) {
+  const roles = writeSpringRoles(SPRING_ARCH_ROLES, root);
   const result = spawnSync(
     gradle,
-    ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'nitpickerSpringArch'],
+    [
+      '--console=plain',
+      '--quiet',
+      '-I',
+      INIT_SCRIPT,
+      `-Pnitpicker.spring.roles=${roles}`,
+      'nitpickerSpringArch',
+    ],
     { cwd: root, encoding: 'utf8', timeout: 180_000 },
   );
   if (result.status !== 0) {
@@ -78,7 +88,10 @@ describe.skipIf(!enabled)('Spring architecture rules on Maven builds', () => {
       withoutRunnableTests(root);
     }
     runSpringArchTask(gradleProject);
-    const findings = collectJavaFindings(mavenProject, { maven, policy: {} });
+    const findings = collectJavaFindings(mavenProject, {
+      maven,
+      policy: { springRoles: SPRING_ARCH_ROLES },
+    });
     const fromMaven = readReport(mavenProject, 'target', 'spring-arch.json');
     const manifest = readReport(mavenProject, 'target', 'manifest.json');
 
