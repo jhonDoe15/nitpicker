@@ -130,4 +130,73 @@
       </property>
     </properties>
   </rule>
+  <rule name="TriStateBoolean" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A boxed Boolean can be true, false or null, so this has three states that the type does not name. Use a primitive boolean, or an enum that names each state (Mode.ON, Mode.OFF, Mode.AUTO).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodDeclaration[not(ModifierList/Annotation[@SimpleName = 'Override'])]
+    /(ClassType | FormalParameters/FormalParameter/ClassType)
+  | //ConstructorDeclaration/FormalParameters/FormalParameter/ClassType
+  | //FieldDeclaration/ClassType
+  | //RecordComponent/ClassType
+)[@SimpleName = 'Boolean'][not(TypeArguments)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ParameterMutation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This changes the collection, map or array the caller passed in. Build and return a new one (List.copyOf, a stream, new ArrayList&lt;&gt;(items) filled and returned), or copy the parameter first and change the copy.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodCall[@MethodName = ('add', 'addAll', 'addFirst', 'addLast', 'remove', 'removeAll', 'removeIf',
+                              'removeFirst', 'removeLast', 'retainAll', 'clear', 'put', 'putAll',
+                              'putIfAbsent', 'merge', 'compute', 'computeIfAbsent', 'computeIfPresent',
+                              'replaceAll', 'sort', 'set', 'push', 'pop', 'poll', 'offer')]
+    /*[1][self::VariableAccess][pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]
+  | //MethodCall[*[1][self::TypeExpression/ClassType[@SimpleName = ('Arrays', 'Collections')]]]
+      [@MethodName = ('sort', 'parallelSort', 'fill', 'setAll', 'shuffle', 'reverse', 'swap', 'rotate', 'replaceAll')]
+    /ArgumentList/*[1][self::VariableAccess]
+  | //AssignmentExpression/ArrayAccess/*[1][self::VariableAccess]
+  | //UnaryExpression[@Operator = ('++', '--')]/ArrayAccess/*[1][self::VariableAccess]
+)[let $name := @Name,
+      $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+  return exists($method/FormalParameters/FormalParameter/VariableId[@Name = $name])
+    and not($method/ModifierList/Annotation[@SimpleName = 'Override'])
+    and not($method//AssignmentExpression[*[1][self::VariableAccess[@Name = $name]]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="CompatibilityShim" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A @Deprecated declaration keeps the old API next to its replacement. Delete it and change its callers to the replacement in the same change.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ModifierList/Annotation[@SimpleName = 'Deprecated']
+  [not(parent::ModifierList/parent::MethodDeclaration/ModifierList/Annotation[@SimpleName = 'Override'])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="LegacyCalendarApi" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Calendar, GregorianCalendar and SimpleDateFormat read the default time zone and are not thread-safe. Use java.time with an explicit zone: Instant, or ZonedDateTime.now(clock), and a DateTimeFormatter with withZone(zone).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodCall[@MethodName = 'getInstance'][*[1][self::TypeExpression/ClassType[@SimpleName = 'Calendar']]]
+  | //ConstructorCall/ClassType[@SimpleName = ('GregorianCalendar', 'SimpleDateFormat')]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
 </ruleset>
