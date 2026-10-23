@@ -1,4 +1,5 @@
 import { parseDrillDownOptions } from '../diff/comparison/cli.mjs';
+import { usageError } from '../../shared/messages/troubleshooting.mjs';
 
 const FLAGS = new Map([
   ['--all', { property: 'all', value: true }],
@@ -15,7 +16,7 @@ const VALUES = new Map([
 function acceptedDigest(argument) {
   const digest = argument.slice(ACCEPT_FLAG.length + 1);
   if (digest === '') {
-    throw new Error(
+    throw usageError(
       `${ACCEPT_FLAG} takes the digest that the policy-loosened finding names: ${ACCEPT_FLAG}=<digest>`,
     );
   }
@@ -47,11 +48,11 @@ function remainingOptions(arguments_) {
     }
     const property = VALUES.get(argument);
     if (property === undefined) {
-      throw new Error(`Unknown argument: ${argument}`);
+      throw usageError(`Unknown argument: ${argument}`);
     }
     const value = remaining.next().value;
     if (value === undefined || value.startsWith('--')) {
-      throw new Error(`${argument} requires a value`);
+      throw usageError(`${argument} requires a value`);
     }
     options[property] = value;
   }
@@ -60,7 +61,7 @@ function remainingOptions(arguments_) {
 
 function validateModes(options) {
   if (!options.all) return;
-  if (options.fix) throw new Error('--fix cannot be combined with --all');
+  if (options.fix) throw usageError('--fix cannot be combined with --all');
   const conflicts = [
     [options.baseRef !== undefined, '--base'],
     [
@@ -70,7 +71,7 @@ function validateModes(options) {
     [options.deferExit, '--defer-exit'],
   ];
   for (const [selected, argument] of conflicts) {
-    if (selected) throw new Error(`--all cannot be combined with ${argument}`);
+    if (selected) throw usageError(`--all cannot be combined with ${argument}`);
   }
 }
 

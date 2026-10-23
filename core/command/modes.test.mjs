@@ -8,6 +8,7 @@ import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs
 import { commit, fixtureGit } from '../diff/git/test-support/git-repository.mjs';
 import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -202,7 +203,7 @@ describe('nitpicker CLI', () => {
         'fake-quality-analyzer: total=0 enforceable=0 descriptive=0',
         '',
         'Tool errors:',
-        'fake-quality-analyzer (head): fake-quality-analyzer crashed with exit 2: fake analyzer crash',
+        `fake-quality-analyzer (head): fake-quality-analyzer crashed with exit 2: fake analyzer crash. ${linkSentence('analyzerCrashed')}`,
         '',
       ].join('\n'),
     );
@@ -255,7 +256,7 @@ describe('nitpicker CLI', () => {
             'fake-quality-analyzer/fixture-rule src/main/new.ts:1 Fixture finding',
             '',
             'Tool errors:',
-            'crashing-analyzer (head): crashing-analyzer crashed with exit 2: no diagnostic output',
+            `crashing-analyzer (head): crashing-analyzer crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}`,
             '',
           ].join('\n')
         : expect.stringMatching(exactText`Base: comparison-base (argument)
@@ -265,8 +266,8 @@ describe('nitpicker CLI', () => {
   \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m src/main/new.ts:1
     Fixture finding
 \u001b[1m\u001b[31m✖ 2 tool errors\u001b[0m
-  \u001b[33mcrashing-analyzer (base)\u001b[0m: crashing-analyzer crashed with exit 2: no diagnostic output
-  \u001b[33mcrashing-analyzer (head)\u001b[0m: crashing-analyzer crashed with exit 2: no diagnostic output
+  \u001b[33mcrashing-analyzer (base)\u001b[0m: crashing-analyzer crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}
+  \u001b[33mcrashing-analyzer (head)\u001b[0m: crashing-analyzer crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}
 \u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
 `);
     it('exits 1 for findings plus a tool error and still lists the error', () => {
@@ -339,7 +340,7 @@ describe('nitpicker CLI', () => {
       }),
     ).toBe(2);
     expect(unknown.stderrText).toEqual(
-      'nitpicker failed: Unknown --analyzer: unknown. Known analyzers: fake-quality-analyzer\n',
+      `nitpicker failed: Unknown --analyzer: unknown. Known analyzers: fake-quality-analyzer. ${linkSentence('invalidArguments')}\n`,
     );
   });
   it('runs the packaged prettier preset against a consumer snapshot', () => {

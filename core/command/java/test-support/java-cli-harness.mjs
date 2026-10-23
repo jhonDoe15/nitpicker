@@ -11,6 +11,7 @@ import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { fakeMavenRun, spawnFakeMaven } from './in-process-maven.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 export { fakeGradle, fakeGradleRun };
 
@@ -80,7 +81,7 @@ export function useGradleFixtures(runNitpickerCli) {
         rule: 'gradle-failure',
         message: (binary) =>
           expect.stringMatching(
-            exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nspawnSync ${binary} ENOENT`,
+            exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\n${binary} was not found. Add the Gradle wrapper (gradlew) to the project, put gradle on the PATH, or set NITPICKER_GRADLE. ${linkSentence('buildToolNotFound')}`,
           ),
       },
     },
@@ -116,14 +117,14 @@ export function useMavenFixtures(runNitpickerCli) {
         error: {
           rule: 'maven-failure',
           message: (snapshot) =>
-            `Maven failed in ${snapshot}:\n[ERROR] COMPILATION ERROR in A.java`,
+            `Maven failed in ${snapshot}:\n[ERROR] COMPILATION ERROR in A.java\n${linkSentence('mavenFails')}`,
         },
       },
       missingBinary: {
         stub: (binary) => vi.stubEnv('NITPICKER_MAVEN', binary),
         rule: 'maven-failure',
         message: (binary) =>
-          `${binary} was not found. Add the Maven wrapper (mvnw) to the project, put mvn on the PATH, or set NITPICKER_MAVEN`,
+          `${binary} was not found. Add the Maven wrapper (mvnw) to the project, put mvn on the PATH, or set NITPICKER_MAVEN. ${linkSentence('buildToolNotFound')}`,
       },
     },
   };
@@ -137,5 +138,6 @@ export function unusedFieldMessage(name, file = 'src/main/java/demo/A.java') {
 export function gradleFailureMessage(detail) {
   const suffix = /[A-Za-z0-9]{6}/;
   return expect.stringMatching(exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${suffix}/gradle.log
-${detail}`);
+${detail}
+${linkSentence('gradleFails')}`);
 }

@@ -10,6 +10,7 @@ import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs
 import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { acceptedDigest } from './test-support/accepted-digest.mjs';
+import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -306,7 +307,7 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
 
     expect(exitCode).toBe(2);
     expect(output.stderrText).toEqual(
-      'nitpicker failed: nitpicker.config.json: "disable" names unknown analyzers: nope. Known analyzers: fake-quality-analyzer\n',
+      `nitpicker failed: nitpicker.config.json: "disable" names unknown analyzers: nope. Known analyzers: fake-quality-analyzer. ${linkSentence('invalidConfiguration')}\n`,
     );
   });
   it('reports every parsed key and changes the policy hash for each', () => {
@@ -412,7 +413,7 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
 
       expect(exitCode).toBe(2);
       expect(output.stderrText).toEqual(
-        'nitpicker failed: nitpicker.config.json: analyzers entry "fake-quality-analyzer" clashes with another analyzer name\n',
+        `nitpicker failed: nitpicker.config.json: analyzers entry "fake-quality-analyzer" clashes with another analyzer name. ${linkSentence('invalidConfiguration')}\n`,
       );
     });
   });

@@ -11,6 +11,12 @@ import { publishBaseSnapshot } from '../diff/cache/publish-cache.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
 import { selectAnalyzerShard } from '../diff/sharding/sharding.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+  usageError,
+  troubleshootingSentence,
+} from '../../shared/messages/troubleshooting.mjs';
 
 function selectedAnalyzers(configured, options) {
   const selected =
@@ -25,14 +31,17 @@ function writableStore(projectRoot, cli) {
   const { remote, warnings } = resolveCacheStore({ projectRoot, environment: cli.environment });
   for (const warning of warnings) cli.stderr.write(`nitpicker: ${warning}\n`);
   if (remote === undefined) {
-    throw new Error('nitpicker cache publish requires NITPICKER_CACHE_URL');
+    throw troubleshootingError(
+      'nitpicker cache publish requires NITPICKER_CACHE_URL',
+      TROUBLESHOOTING_ANCHORS.cachePublishFails,
+    );
   }
   return createLayeredStore({ remote, writeRemote: true });
 }
 
 function validateCommand(arguments_) {
   if (arguments_.length === 1 && arguments_[0] === 'publish') return;
-  throw new Error(
+  throw usageError(
     arguments_.length === 0 || arguments_[0] === 'publish'
       ? 'Usage: nitpicker cache publish'
       : `Unknown cache command: ${arguments_.join(' ')}`,
@@ -45,6 +54,9 @@ function writeOutcome({ stdout, result, selected }) {
       ` for ${result.commitSha}${result.published.length === 0 ? '' : `: ${result.published.join(', ')}`}\n`,
   );
   for (const skipped of result.skipped) stdout.write(`Not published: ${skipped}\n`);
+  if (result.skipped.length > 0) {
+    stdout.write(`${troubleshootingSentence(TROUBLESHOOTING_ANCHORS.cachePublishFails)}\n`);
+  }
   return result.skipped.length === 0 ? 0 : 2;
 }
 

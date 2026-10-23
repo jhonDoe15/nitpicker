@@ -92,7 +92,8 @@ The base ref is the first match of:
    `origin` otherwise)
 5. `origin/main`, then `origin/master`
 
-In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`).
+In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`); a shallow
+clone fails with [no merge base](troubleshooting.md#no-merge-base).
 
 **Dependencies of the base.** The base is checked out in a temporary worktree. The package
 manager's folder is the nearest folder from the project up to the repository root that holds a
@@ -149,7 +150,8 @@ with `--output <dir>`. Set `NO_COLOR` to disable colored console output.
 | 1    | At least one new enforceable finding (`--all`: any violation), even if a tool also errored.                      |
 | 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
 
-A tool error never counts as a pass. When a run has both findings and tool errors it exits 1, and the
+A tool error never counts as a pass. Most tool error messages end with a link to their entry in
+[Troubleshooting](troubleshooting.md), which gives the cause and the fix. When a run has both findings and tool errors it exits 1, and the
 tool errors are still listed in the console and reports and recorded in `summary.json`
 (`overallStatus` stays `tool-error`). `nitpicker aggregate` applies the same rule. With `--defer-exit`, a comparison always exits 0 once it has
 written its reports; use it only for shard workers that are followed by `nitpicker aggregate`.
@@ -162,7 +164,7 @@ dependency failed); stdout still carries only the final summary. Only one run ca
 at a time. A second `nitpicker` started meanwhile prints `nitpicker: another run is in progress in
 this project (pid 1234); wait for it to finish.` and exits 2. The lock is a pid file in the
 repository's `.git` directory (`nitpicker-run-*.lock`); a lock whose process is gone is taken over
-automatically.
+automatically. See [another run is in progress](troubleshooting.md#another-run-is-in-progress).
 
 ## Command line
 
@@ -213,7 +215,8 @@ legacy inventory path, so changing any of them is a miss. Only clean reports are
   Optional `NITPICKER_CACHE_AUTH_HEADER` and `NITPICKER_CACHE_TIMEOUT_MS`. Comparison runs only
   read the remote; give write credentials only to the job that runs `cache publish` on `main`.
 
-See [typescript-single-command.md](typescript-single-command.md) for the full model.
+See [typescript-single-command.md](typescript-single-command.md) for the full model, and
+[a stale or shared cache](troubleshooting.md#a-stale-or-shared-cache) when a cached result looks wrong.
 
 ## Configuration
 
@@ -232,7 +235,8 @@ in the console summary and in `report.txt` as "Policy changed in this change" an
 keep the base's policy and change the code until it passes (new code under the source roots, findings
 fixed rather than excluded, excepted or reclassified). If the change is intended, a coding agent
 stops and asks a person reviewing the change, who accepts it with the `--accept-policy-change=<digest>`
-the finding names (in CI, `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`). A project's first `nitpicker.config.json` is compared with the
+the finding names (in CI, `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`); see
+[a policy-loosened finding](troubleshooting.md#a-policy-loosened-finding). A project's first `nitpicker.config.json` is compared with the
 defaults. These changes are loosening:
 
 - an added `exclude`, `layout.excludedGlobs`, `layout.entryPoints` or
@@ -704,6 +708,13 @@ error with this preset; `layout` is an error too until the Java preset runs the 
 [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds). Details:
 [java-preset.md](java-preset.md).
 
+Troubleshooting: [the Gradle build fails](troubleshooting.md#the-gradle-build-fails),
+[the Maven build fails](troubleshooting.md#the-maven-build-fails),
+[Gradle, Maven or Java is not found](troubleshooting.md#gradle-maven-or-java-is-not-found),
+[Gradle or Maven times out](troubleshooting.md#gradle-or-maven-times-out),
+[Error Prone cannot find a JDK](troubleshooting.md#error-prone-cannot-find-a-jdk) and
+[tests fail](troubleshooting.md#tests-fail).
+
 ## Kotlin preset
 
 Set `"preset": "kotlin"` for a Gradle project with Kotlin JVM modules, including modules that mix
@@ -734,6 +745,12 @@ file with `exclude`.
 Inline `@Suppress` of any detekt or ktlint rule fails (Kotlin compiler warnings may be suppressed). Where a rule flags legitimate code, add an `exceptions`
 entry with the same shape as TypeScript's, for example
 `{ "rule": "detekt.style.ForbiddenMethodCall", "paths": ["src/main/kotlin/app/Main.kt"], "reason": "The entry point blocks on its coroutine." }`.
+
+Troubleshooting: [the Gradle build fails](troubleshooting.md#the-gradle-build-fails),
+[Gradle, Maven or Java is not found](troubleshooting.md#gradle-maven-or-java-is-not-found),
+[Gradle or Maven times out](troubleshooting.md#gradle-or-maven-times-out),
+[a project tool config is missing](troubleshooting.md#a-project-tool-config-is-missing-or-broken) and
+[tests fail](troubleshooting.md#tests-fail).
 
 ## JavaScript preset
 
@@ -795,6 +812,11 @@ this is kept in `languages/javascript/preset/fixtures/js-clean`, and its tests a
 reports no enforceable findings for it.
 
 CRAP is measured on `.js`, `.mjs`, `.cjs`, `.ts`, `.mts` and `.cts` files, the same way as on TypeScript ones.
+
+Troubleshooting: [a peer tool is missing](troubleshooting.md#a-peer-tool-is-missing),
+[installing the base dependencies fails](troubleshooting.md#installing-the-base-dependencies-fails),
+[the test runner ran no tests](troubleshooting.md#the-test-runner-ran-no-tests) and
+[tests fail](troubleshooting.md#tests-fail).
 
 ## Python preset
 
@@ -877,6 +899,12 @@ ignored (`exclude_lines`, `exclude_also`, `partial_branches`, `omit`, plugins, s
 measurement): nitpicker's rcfile measures branches, skips test files and excludes only
 `if TYPE_CHECKING:`, `if __name__ == "__main__":`, `@overload` and `raise NotImplementedError`.
 A branch that cannot be tested is accepted for one function with an `exceptions` entry for `changed-branch-coverage` that names the function, which keeps every other finding of the file (see [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds)); `exclude` lifts the whole file. A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details: [python-preset.md](python-preset.md).
+
+Troubleshooting: [the Python environment cannot be found](troubleshooting.md#the-python-environment-cannot-be-found),
+[a Python tool is missing](troubleshooting.md#a-python-tool-is-missing),
+[the base needs its own Python environment](troubleshooting.md#the-base-needs-its-own-python-environment),
+[a Python tool fails](troubleshooting.md#a-python-tool-fails),
+[mutmut fails](troubleshooting.md#mutmut-fails) and [tests fail](troubleshooting.md#tests-fail).
 
 ## The strict preset
 
@@ -1308,6 +1336,15 @@ an explicitly selected config. A missing config is an error, without a preset fa
 `project` selects the config independently of `engine`, so both keys can be set together. With
 no `project`, nitpicker keeps its strict preset and automatic root tsconfig/jsconfig layering.
 Other analyzers still enforce nitpicker's rules and source/test layout.
+
+Troubleshooting: [a peer tool is missing](troubleshooting.md#a-peer-tool-is-missing),
+[dependencies are not installed](troubleshooting.md#dependencies-are-not-installed),
+[installing the base dependencies fails](troubleshooting.md#installing-the-base-dependencies-fails),
+[unsupported Yarn setup](troubleshooting.md#unsupported-yarn-setup),
+[the lint or type-check engine cannot run](troubleshooting.md#the-lint-or-type-check-engine-cannot-run),
+[the TypeScript config cannot be read](troubleshooting.md#the-typescript-config-cannot-be-read),
+[tests fail](troubleshooting.md#tests-fail) and
+[the test runner ran no tests](troubleshooting.md#the-test-runner-ran-no-tests).
 
 ## Adopting nitpicker on existing code
 

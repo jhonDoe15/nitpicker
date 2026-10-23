@@ -1,3 +1,5 @@
+import { TROUBLESHOOTING_ANCHORS, withTroubleshooting } from '../messages/troubleshooting.mjs';
+
 export function precedenceLayers(precedence = ['nitpicker']) {
   const project = precedence.indexOf('project');
   const nitpicker = precedence.indexOf('nitpicker');
@@ -9,7 +11,10 @@ function projectOptIn(tool) {
 }
 
 export function missingProjectConfig(tool, looked) {
-  return `"tools.${tool}.precedence" lists "project" but ${looked} is missing: create it, or remove "project" from tools.${tool}.precedence`;
+  return withTroubleshooting(
+    `"tools.${tool}.precedence" lists "project" but ${looked} is missing: create it, or remove "project" from tools.${tool}.precedence`,
+    TROUBLESHOOTING_ANCHORS.projectToolConfigMissing,
+  );
 }
 
 export function ignoredConfigNotice(ignored, tool) {

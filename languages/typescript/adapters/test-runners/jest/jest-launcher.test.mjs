@@ -6,6 +6,7 @@ import { testTimeoutMs } from '../test-run.mjs';
 import { createRunnerProjects } from '../test-support/runner-project.mjs';
 import { coverageArguments } from './jest-coverage.mjs';
 import { jestArguments, runJest } from './jest.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const projects = createRunnerProjects();
 
@@ -152,7 +153,8 @@ describe('a Jest run that a Create React App script starts', () => {
     expect(() => runJest(optionsFor(root), command('craco', []))).toThrow(
       new Error(
         `The test script runs "craco test", but @craco/craco is not installed in ${root}. ` +
-          'Install the project dependencies, or set "tools.tests.runner" in nitpicker.config.json.',
+          'Install the project dependencies, or set "tools.tests.runner" in nitpicker.config.json. ' +
+          linkSentence('testRunnerNotInstalled'),
       ),
     );
   });

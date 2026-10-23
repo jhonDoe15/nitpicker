@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { failedCases, failingTestsError, freshReports } from './test-failures.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
 
@@ -58,6 +59,7 @@ describe('failingTestsError', () => {
       'Tests fail in /repo; nitpicker needs a passing test suite for coverage and mutation testing:',
       ...failures.slice(0, 10).map((failure) => `  ${failure}`),
       '  and 2 more',
+      linkSentence('testsFail'),
     ]);
   });
 });

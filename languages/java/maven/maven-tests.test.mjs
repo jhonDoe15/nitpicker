@@ -20,6 +20,7 @@ import {
   freshExecFiles,
   runJacocoReport,
 } from './maven-tests.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
 
@@ -191,6 +192,7 @@ describe('collectTestResults', () => {
           'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
           ...listed,
           '  and 2 more',
+          linkSentence('testsFail'),
         ].join('\n'),
       ),
     );
@@ -214,6 +216,7 @@ describe('collectTestResults', () => {
         [
           'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
           ...lines,
+          linkSentence('testsFail'),
         ].join('\n'),
       );
 

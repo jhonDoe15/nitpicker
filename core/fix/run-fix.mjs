@@ -14,6 +14,10 @@ import { linkPolicyFile } from '../tooling/policy-links.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../tooling/tool-resolution.mjs';
 import { layoutTransformFor } from '../../languages/typescript/preset/tool-configs.mjs';
 import { spawnSync } from 'node:child_process';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../shared/messages/troubleshooting.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
 
@@ -283,6 +287,9 @@ function fixerError(tool, error) {
   return {
     tool,
     snapshot: 'fix',
-    message: error instanceof Error ? error.message : String(error),
+    message: withTroubleshooting(
+      error instanceof Error ? error.message : String(error),
+      TROUBLESHOOTING_ANCHORS.fixersFail,
+    ),
   };
 }

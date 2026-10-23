@@ -5,6 +5,7 @@ import { runCli } from '../../cli.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const { callsLog, pythonRepository, run, temporaryRoot } = usePythonFixtures(nitpickerCli);
 
@@ -44,7 +45,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
         snapshot: 'head',
         rule: 'tests-failed',
         path: '.',
-        message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
+        message: `coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet\n${linkSentence('testsFail')}`,
       },
     ]);
   });
@@ -59,7 +60,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
     const result = run(root);
 
     expect(result.exitCode).toBe(2);
-    const message = `No Python environment at ${path.join(root, 'no-such-venv')} (${path.join(root, 'no-such-venv/bin')} does not exist): create it, or set "python.environment"`;
+    const message = `No Python environment at ${path.join(root, 'no-such-venv')} (${path.join(root, 'no-such-venv/bin')} does not exist): create it, or set "python.environment". ${linkSentence('pythonEnvironment')}`;
     expect(
       result
         .json('tool-errors.json')
@@ -201,6 +202,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
           '  tests/test_greet.py::test_greet',
           'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
           'Mutation testing (mutmut) leaves out the test modules tests/test_greet.py.',
+          linkSentence('testsFail'),
         ].join('\n'),
       },
     ]);

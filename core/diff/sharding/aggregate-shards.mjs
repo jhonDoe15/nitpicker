@@ -18,6 +18,10 @@ import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs'
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { renderConsoleSummary } from '../reporting/summary.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../../shared/messages/troubleshooting.mjs';
 
 function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
   if (policyRoot !== undefined) {
@@ -123,8 +127,9 @@ export function runAggregateCli({
     if (outputRoot !== undefined) {
       clearDiffReports(outputRoot);
     }
+    const message = error instanceof Error ? error.message : String(error);
     stderr.write(
-      `Quality shard aggregation failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      `Quality shard aggregation failed: ${withTroubleshooting(message, TROUBLESHOOTING_ANCHORS.shardAggregationFails)}\n`,
     );
     return 2;
   }

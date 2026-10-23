@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { failingTestsOf } from './failing-tests.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
 
@@ -38,6 +39,7 @@ describe('failingTestsOf', () => {
       [
         `Tests fail in ${root}; nitpicker needs a passing test suite for coverage and mutation testing:`,
         '  shop.CartTest.adds: expected: <4> but was: <3>',
+        linkSentence('testsFail'),
       ].join('\n'),
     );
   });

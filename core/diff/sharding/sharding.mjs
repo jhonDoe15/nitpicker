@@ -1,10 +1,14 @@
+import { withUsageLink } from '../../../shared/messages/troubleshooting.mjs';
+
 export function planAnalyzerShards(analyzers, shardCount) {
   validateShardCount(shardCount);
   validateAnalyzers(analyzers);
   const components = dependencyComponents(analyzers);
   if (shardCount > components.length) {
     throw new RangeError(
-      `shardCount ${String(shardCount)} exceeds ${String(components.length)} independent analyzer components`,
+      withUsageLink(
+        `shardCount ${String(shardCount)} exceeds ${String(components.length)} independent analyzer components`,
+      ),
     );
   }
 
@@ -28,14 +32,16 @@ export function planAnalyzerShards(analyzers, shardCount) {
 export function selectAnalyzerShard(analyzers, shardCount, shardIndex) {
   const shards = planAnalyzerShards(analyzers, shardCount);
   if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= shardCount) {
-    throw new RangeError(`shardIndex must be an integer between 0 and ${String(shardCount - 1)}`);
+    throw new RangeError(
+      withUsageLink(`shardIndex must be an integer between 0 and ${String(shardCount - 1)}`),
+    );
   }
   return shards[shardIndex];
 }
 
 function validateShardCount(shardCount) {
   if (!Number.isInteger(shardCount) || shardCount < 1) {
-    throw new TypeError('shardCount must be a positive integer');
+    throw new TypeError(withUsageLink('shardCount must be a positive integer'));
   }
 }
 

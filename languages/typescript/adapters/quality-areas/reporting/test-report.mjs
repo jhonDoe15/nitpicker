@@ -1,4 +1,10 @@
 import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  testsFailAnchor,
+  troubleshootingError,
+  withTroubleshooting,
+} from '../../../../../shared/messages/troubleshooting.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -32,12 +38,14 @@ export function coverageFailureFindings(
         rule: TESTS_FAILED_RULE,
         path: unhandled[0].file === undefined ? '.' : findingPath(unhandled[0].file),
         message: unhandledErrorText(unhandled),
+        anchor: testsFailAnchor(options.snapshot),
       }),
     ];
   }
   if (firstFailure === undefined) {
-    throw new Error(
+    throw troubleshootingError(
       `${runnerName} exited ${String(result.status)} without naming a failing test${formatProcessOutput(result)}`,
+      testsFailAnchor(options.snapshot),
     );
   }
   return [
@@ -45,6 +53,7 @@ export function coverageFailureFindings(
       rule: TESTS_FAILED_RULE,
       path: findingPath(firstFailure.file),
       message: formatTestFailures(report, options.projectRoot, { runnerName, precedingCommands }),
+      anchor: testsFailAnchor(options.snapshot),
     }),
   ];
 }
@@ -65,20 +74,21 @@ export function readTestReport(reportPath, result, runnerName) {
     return JSON.parse(readFileSync(reportPath, 'utf8'));
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(
+    throw troubleshootingError(
       `${runnerName} exited ${String(result.status)} without a readable test report: ${reason}${formatProcessOutput(result)}`,
+      TROUBLESHOOTING_ANCHORS.testsFail,
       { cause: error },
     );
   }
 }
 
-export function toolErrorFinding(options, { rule, path: findingPath = '.', message }) {
+export function toolErrorFinding(options, { rule, path: findingPath = '.', message, anchor }) {
   return {
     tool: options.analyzerName,
     rule,
     path: findingPath,
     identity: rule,
-    message,
+    message: anchor === undefined ? message : withTroubleshooting(message, anchor),
     classification: 'tool-error',
   };
 }

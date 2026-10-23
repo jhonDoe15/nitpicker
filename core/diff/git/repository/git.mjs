@@ -2,6 +2,10 @@ import { runGit } from './command.mjs';
 import { mkdtempSync, existsSync, copyFileSync, rmSync, statSync, utimesSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 export function resolveComparison(repositoryRoot, requestedBaseRef) {
   let resolvedBase;
@@ -13,8 +17,9 @@ export function resolveComparison(repositoryRoot, requestedBaseRef) {
       `${requestedBaseRef}^{commit}`,
     ]).trim();
   } catch (error) {
-    throw new Error(
+    throw troubleshootingError(
       `Cannot resolve base ref "${requestedBaseRef}". Fetch it before running the comparison.`,
+      TROUBLESHOOTING_ANCHORS.baseRefNotFound,
       { cause: error },
     );
   }
@@ -30,8 +35,9 @@ export function resolveComparison(repositoryRoot, requestedBaseRef) {
     const isShallow =
       runGit(repositoryRoot, ['rev-parse', '--is-shallow-repository']).trim() === 'true';
     const fetchCommand = fetchSuggestion(repositoryRoot, requestedBaseRef, isShallow);
-    throw new Error(
+    throw troubleshootingError(
       `Cannot find a merge base between HEAD and "${requestedBaseRef}". Run \`${fetchCommand}\` and retry.`,
+      TROUBLESHOOTING_ANCHORS.noMergeBase,
       { cause: error },
     );
   }

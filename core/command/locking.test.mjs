@@ -5,6 +5,7 @@ import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
 import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { resolveRunLockPath } from './run-lock.mjs';
+import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -72,7 +73,7 @@ describe('nitpicker progress and run lock', () => {
 
     expect(exitCode).toBe(2);
     expect(output.stderrText).toBe(
-      `nitpicker: another run is in progress in this project (pid ${String(process.ppid)}); wait for it to finish.\n`,
+      `nitpicker: another run is in progress in this project (pid ${String(process.ppid)}); wait for it to finish. ${linkSentence('anotherRun')}\n`,
     );
     expect(output.stdoutText).toBe('');
     expect(readFileSync(lockPath, 'utf8')).toBe(`${String(process.ppid)}\n`);

@@ -15,6 +15,7 @@ import {
 } from '../../../../../languages/typescript/adapters/static-checks/dependencies.mjs';
 import { installFakeManagers } from '../../../../../languages/typescript/adapters/dependency-graph/package-managers/test-support/fake-managers.mjs';
 import { toolRoot, useStaticCheckFixtures } from './test-support/static-check-fixtures.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const { temporaryDirectory, createRepository } = useStaticCheckFixtures();
 
@@ -195,7 +196,7 @@ describe('dependency preparation for every package manager', () => {
 
     expect(() => prepareSnapshotDependencies({ projectRoot, liveProjectRoot, toolRoot })).toThrow(
       new Error(
-        `Dependencies are not installed: ${path.join(liveProjectRoot, 'node_modules')} is missing. Run \`pnpm install\` in ${liveProjectRoot} first.`,
+        `Dependencies are not installed: ${path.join(liveProjectRoot, 'node_modules')} is missing. Run \`pnpm install\` in ${liveProjectRoot} first. ${linkSentence('dependenciesNotInstalled')}`,
       ),
     );
   });
@@ -206,7 +207,7 @@ describe('dependency preparation for every package manager', () => {
 
     expect(() => prepareSnapshotDependencies({ projectRoot, liveProjectRoot, toolRoot })).toThrow(
       new Error(
-        `Dependencies are not installed: ${path.join(liveProjectRoot, 'node_modules')} is missing. Yarn Plug'n'Play is not supported: set \`nodeLinker: node-modules\` in .yarnrc.yml and run \`yarn install\` in ${liveProjectRoot}.`,
+        `Dependencies are not installed: ${path.join(liveProjectRoot, 'node_modules')} is missing. Yarn Plug'n'Play is not supported: set \`nodeLinker: node-modules\` in .yarnrc.yml and run \`yarn install\` in ${liveProjectRoot}. ${linkSentence('unsupportedYarn')}`,
       ),
     );
   });

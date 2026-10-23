@@ -1,6 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const RUFF_FILES = ['.ruff.toml', 'ruff.toml', 'pyproject.toml'];
 const PYPROJECT = 'pyproject.toml';
@@ -10,7 +14,11 @@ function parseToml(file) {
     return createRequire(import.meta.url)('smol-toml').parse(readFileSync(file, 'utf8'));
   } catch (error) {
     throw Object.assign(
-      new Error(`${file} is not valid TOML: ${error.message}`, { cause: error }),
+      troubleshootingError(
+        `${file} is not valid TOML: ${error.message}`,
+        TROUBLESHOOTING_ANCHORS.projectToolConfigMissing,
+        { cause: error },
+      ),
       {
         file,
       },
