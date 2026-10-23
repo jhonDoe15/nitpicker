@@ -15,7 +15,15 @@ export const JAVA_EFFECTS = [
   'AccumulatorCopyInLoop 15 Accumulators.concatenated loop all',
   'AccumulatorCopyInLoop 22 Accumulators.reduced reduce acc',
   'AccumulatorCopyInLoop 31 Accumulators.copiedMap loop byId',
+  'LazyRelationInLoop 21 LazyLoads.customerNames InvoiceRepository.findAll() Invoice.customer',
+  'LazyRelationInLoop 35 LazyLoads.linesFromQuery TypedQuery.getResultList() Invoice.lines',
+  'LazyRelationInLoop 44 LazyLoads.namesNextToFetchedLines InvoiceRepository.findWithLines() Invoice.customer',
+  'LazyRelationInLoop 27 LazyLoads.lineCounts InvoiceRepository.findFrom() Invoice.lines',
 ];
+
+export const JAVA_BATCHED_EFFECTS = JAVA_EFFECTS.filter(
+  (entry) => !entry.startsWith('LazyRelationInLoop'),
+);
 
 export const KOTLIN_EFFECTS = [
   'IoCallInLoop 14 LoopImports.direct loop OrderRepository.deleteById()',
@@ -26,10 +34,18 @@ export const KOTLIN_EFFECTS = [
   'AccumulatorCopyInLoop 6 Accumulators.folded loop acc',
   'AccumulatorCopyInLoop 11 Accumulators.reassigned loop ids',
   'AccumulatorCopyInLoop 18 Accumulators.mapped loop byId',
+  'LazyRelationInLoop 4 LazyLoads.customerNames InvoiceRepository.findAll() Invoice.customer',
+  'LazyRelationInLoop 9 LazyLoads.lineCount InvoiceRepository.findFrom() Invoice.lines',
+  'LazyRelationInLoop 14 LazyLoads.lazySequence InvoiceRepository.findAll() Invoice.lines',
 ];
 
+function summaryOf({ rule, line, method, form, path: calls, variable, origin, entity, relation }) {
+  if (origin !== undefined) {
+    return [rule, line, method, origin, `${entity}.${relation}`].join(' ');
+  }
+  return [rule, line, method, form, calls === undefined ? variable : calls.join('>')].join(' ');
+}
+
 export function effectsSummary({ violations }) {
-  return violations.map(({ rule, line, method, form, path: calls, variable }) =>
-    [rule, line, method, form, calls === undefined ? variable : calls.join('>')].join(' '),
-  );
+  return violations.map(summaryOf);
 }

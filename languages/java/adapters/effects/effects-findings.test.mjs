@@ -134,6 +134,42 @@ describe('readEffectsFindings', () => {
     ]);
   });
 
+  it('names the entity, the relationship, the origin query and the fetch forms for lazy loads', () => {
+    const lazy = {
+      rule: 'LazyRelationInLoop',
+      className: 'shop.Import',
+      line: 30,
+      method: 'Import.names',
+      detail: 'Import.names|Invoice.customer',
+      entity: 'Invoice',
+      relation: 'customer',
+      collection: false,
+      origin: 'InvoiceRepository.findAll()',
+    };
+    const messages = read(
+      [
+        { ...lazy, fileName: 'Import.java' },
+        { ...lazy, fileName: 'Import.kt' },
+      ],
+      { kotlin: true },
+    ).map((finding) => finding.message);
+    const text = (paths, file) =>
+      sentence(
+        'Fetch `Invoice.customer` with the query that loads the list:',
+        `add \`@EntityGraph(attributePaths = ${paths})\` to \`InvoiceRepository.findAll()\``,
+        'or a `JOIN FETCH` of `customer` to its query, batch the loads with `@BatchSize` on the',
+        'relationship or `hibernate.default_batch_fetch_size`, or select a projection that holds the values:',
+        '`Import.names()` reads the lazy `customer` of each `Invoice` that `InvoiceRepository.findAll()`',
+        'returns, one more query per item.',
+        exception('LazyRelationInLoop', file),
+      );
+
+    expect(messages).toEqual([
+      text('"customer"', JAVA_FILE),
+      text('["customer"]', 'src/main/java/shop/Import.kt'),
+    ]);
+  });
+
   it('numbers repeated identities per file and leaves Kotlin files to the kotlin preset', () => {
     const findings = read([loop, { ...loop, line: 14 }, { ...loop, fileName: 'Other.kt' }]);
 

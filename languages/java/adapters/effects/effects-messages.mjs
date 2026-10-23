@@ -55,9 +55,26 @@ function accumulatorCopy({ method, variable, form }, language) {
   ].join(' ');
 }
 
+function graphPaths(relation, language) {
+  return language === 'kotlin' ? `["${relation}"]` : `"${relation}"`;
+}
+
+function lazyRelation({ method, entity, relation, origin }, language) {
+  const loaded = code(`${entity}.${relation}`);
+  return [
+    `Fetch ${loaded} with the query that loads the list:`,
+    `add \`@EntityGraph(attributePaths = ${graphPaths(relation, language)})\` to ${code(origin)}`,
+    `or a \`JOIN FETCH\` of ${code(relation)} to its query, batch the loads with \`@BatchSize\` on the`,
+    'relationship or `hibernate.default_batch_fetch_size`, or select a projection that holds the values:',
+    `${code(`${method}()`)} reads the lazy ${code(relation)} of each ${code(entity)} that ${code(origin)}`,
+    'returns, one more query per item.',
+  ].join(' ');
+}
+
 export const EFFECTS_MESSAGES = {
   IoCallInLoop: loopIo,
   AccumulatorCopyInLoop: accumulatorCopy,
+  LazyRelationInLoop: lazyRelation,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);

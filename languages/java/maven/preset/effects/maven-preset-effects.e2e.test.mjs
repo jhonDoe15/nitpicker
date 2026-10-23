@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -7,7 +7,7 @@ import { collectJavaFindings } from '../../../adapters/java-diff.mjs';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import {
   effectsSummary,
-  JAVA_EFFECTS,
+  JAVA_BATCHED_EFFECTS,
   JAVA_EFFECTS_FIXTURE,
 } from '../../../adapters/effects/test-support/effects-projects.mjs';
 
@@ -16,6 +16,8 @@ const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const maven = process.env.NITPICKER_MAVEN;
 const POM = path.resolve(import.meta.dirname, '../../fixtures/effects');
 const roots = [];
+const BATCH_SETTING =
+  'spring:\n  jpa:\n    properties:\n      hibernate.default_batch_fetch_size: ${BATCH:16}\n';
 
 function copyOf(...sources) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-effects-'));
@@ -37,15 +39,25 @@ describe.skipIf(!enabled)('the effects engine on Maven builds', () => {
     }
   });
 
-  it('reports what Gradle reports, one finding per line next to PMD', () => {
+  it('reports what Gradle reports, one finding per line next to PMD, and reads the batch fetch size', () => {
     const gradleProject = copyOf(JAVA_EFFECTS_FIXTURE);
     const mavenProject = copyOf(JAVA_EFFECTS_FIXTURE, POM);
     for (const name of ['build.gradle', 'settings.gradle']) {
       rmSync(path.join(mavenProject, name));
     }
+    const resources = path.join(mavenProject, 'src', 'main', 'resources');
+    mkdirSync(resources, { recursive: true });
+    writeFileSync(path.join(resources, 'application.yml'), BATCH_SETTING);
     const result = spawnSync(
       gradle,
-      ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'nitpickerEffects'],
+      [
+        '--console=plain',
+        '--quiet',
+        '-Pnitpicker.effects.options=batchFetchSize=16',
+        '-I',
+        INIT_SCRIPT,
+        'nitpickerEffects',
+      ],
       { cwd: gradleProject, encoding: 'utf8', timeout: 120_000 },
     );
     const findings = collectJavaFindings(mavenProject, { maven, policy: {} });
@@ -55,7 +67,7 @@ describe.skipIf(!enabled)('the effects engine on Maven builds', () => {
       stderr: '',
     });
     expect(readReport(mavenProject, 'target')).toEqual(readReport(gradleProject, 'build'));
-    expect(effectsSummary(readReport(mavenProject, 'target'))).toEqual(JAVA_EFFECTS);
+    expect(effectsSummary(readReport(mavenProject, 'target'))).toEqual(JAVA_BATCHED_EFFECTS);
     expect(
       findings
         .filter((finding) => finding.tool === 'effects' && finding.rule === 'IoCallInLoop')
