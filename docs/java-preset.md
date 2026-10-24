@@ -2435,3 +2435,19 @@ first or ignores SIGTERM. On Windows, the deadline force-stops the command tree 
 `taskkill /T /F`. Cleanup adds at most 1.5 seconds on Linux/macOS or 2 seconds on Windows, plus process-launch overhead. Processes
 that deliberately leave the command group, including a pre-existing shared Gradle daemon,
 are outside this boundary; use `--no-daemon` when the whole build must stop with the command.
+
+## Same-class method aliases
+
+`pmd/ForwardingMethodAlias` reports an unannotated instance method whose only statement calls
+another method declared once in the same class with unchanged arguments. Return values must be
+returned unchanged (or both methods must be `void`). Call the target directly and delete the
+alias. Zero-argument methods are included.
+
+The existing javac source parser emits the metadata consumed by both Gradle and Maven reporting.
+Parameter, return and throws types must have identical source forms; this is conservative syntax
+matching, not compiler symbol resolution. Classes with inheritance, interfaces or annotations,
+overloads, generic/vararg/annotated methods, synchronized methods and compatibility factories are
+excluded. Static forwarding remains covered by `StaticForwardingWrapper`. Generated sources and
+test sources are excluded through the existing source policy. The finding's identity is its qualified
+method name, so inserting lines does not create a new finding. Reviewed exceptions use
+`pmd/ForwardingMethodAlias` in `nitpicker.config.json`.

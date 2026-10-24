@@ -40,6 +40,7 @@ public final class StructureMetrics {
     List<String> entries = new ArrayList<>();
     List<String> classes = new ArrayList<>();
     List<String> fileEntries = new ArrayList<>();
+    List<String> forwarders = new ArrayList<>();
     List<String> errors = new ArrayList<>();
     try (StandardJavaFileManager fm =
         compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8)) {
@@ -63,6 +64,7 @@ public final class StructureMetrics {
           new Collector(unit, positions, relative, entries).scan(unit, "");
           fileEntries.add(describeFile(relative, unit));
           new ClassCollector(unit, positions, relative, classes).scan(unit, "");
+          new MemberAliases(unit, positions, DocTrees.instance(task), relative, forwarders).scan(unit, "");
         }
       }
     }
@@ -76,8 +78,132 @@ public final class StructureMetrics {
     Files.writeString(
         classesOutput,
         "{\"files\":{" + String.join(",", fileEntries) + "},\"classes\":["
-            + String.join(",", classes) + "]}\n",
+            + String.join(",", classes) + "],\"forwarders\":[" + String.join(",", forwarders) + "]}\n",
         StandardCharsets.UTF_8);
+  }
+
+  private static final class MemberAliases extends TreeScanner<Void, String> {
+    private final CompilationUnitTree unit;
+    private final SourcePositions positions;
+    private final String file;
+    private final List<String> findings;
+    private final DocTrees documentation;
+
+    MemberAliases(CompilationUnitTree unit, SourcePositions positions, DocTrees documentation, String file, List<String> findings) {
+      this.unit = unit;
+      this.positions = positions;
+      this.file = file;
+      this.findings = findings;
+      this.documentation = documentation;
+    }
+
+    @Override
+    public Void visitClass(ClassTree tree, String parent) {
+      String name = tree.getSimpleName().toString();
+      if (name.isEmpty()) {
+        return null;
+      }
+      String owner = parent.isEmpty() ? name : parent + "." + name;
+      if (tree.getKind() == Tree.Kind.CLASS && tree.getExtendsClause() == null
+          && tree.getImplementsClause().isEmpty() && tree.getModifiers().getAnnotations().isEmpty()) {
+        List<MethodTree> methods = tree.getMembers().stream().filter(MethodTree.class::isInstance)
+            .map(MethodTree.class::cast).toList();
+        for (MethodTree wrapper : methods) {
+          report(wrapper, methods, owner);
+        }
+      }
+      for (Tree member : tree.getMembers()) {
+        if (member instanceof ClassTree) {
+          scan(member, owner);
+        }
+      }
+      return null;
+    }
+
+    private static boolean plain(MethodTree method) {
+      Set<Modifier> flags = method.getModifiers().getFlags();
+      return method.getBody() != null && method.getReturnType() != null
+          && method.getTypeParameters().isEmpty() && method.getModifiers().getAnnotations().isEmpty()
+          && !flags.contains(Modifier.STATIC) && !flags.contains(Modifier.SYNCHRONIZED)
+          && !Set.of("of", "from", "valueOf", "fromString", "toString", "hashCode", "equals", "clone", "finalize").contains(method.getName().toString())
+          && method.getParameters().stream().allMatch(p ->
+              p.getModifiers().getAnnotations().isEmpty() && !p.toString().contains("..."));
+    }
+
+    private static MethodInvocationTree callOf(MethodTree wrapper) {
+      List<? extends StatementTree> statements = wrapper.getBody().getStatements();
+      if (statements.size() != 1) {
+        return null;
+      }
+      StatementTree statement = statements.get(0);
+      ExpressionTree expression = statement instanceof ReturnTree ? ((ReturnTree) statement).getExpression()
+          : statement instanceof ExpressionStatementTree && "void".equals(wrapper.getReturnType().toString())
+              ? ((ExpressionStatementTree) statement).getExpression() : null;
+      return expression instanceof MethodInvocationTree ? (MethodInvocationTree) expression : null;
+    }
+
+    private static String targetName(MethodInvocationTree call) {
+      ExpressionTree selected = call.getMethodSelect();
+      if (selected instanceof IdentifierTree) {
+        return ((IdentifierTree) selected).getName().toString();
+      }
+      if (selected instanceof MemberSelectTree
+          && "this".equals(((MemberSelectTree) selected).getExpression().toString())) {
+        return ((MemberSelectTree) selected).getIdentifier().toString();
+      }
+      return "";
+    }
+
+    private static List<String> contract(MethodTree method) {
+      List<String> result = new ArrayList<>(List.of(method.getReturnType().toString(), method.getThrows().toString(),
+          Boolean.toString(method.getModifiers().getFlags().contains(Modifier.FINAL))));
+      for (VariableTree parameter : method.getParameters()) {
+        result.add(parameter.getType().toString());
+      }
+      return result;
+    }
+
+    private static boolean unchanged(MethodTree method, MethodInvocationTree call) {
+      if (!call.getTypeArguments().isEmpty() || call.getArguments().size() != method.getParameters().size()) {
+        return false;
+      }
+      for (int i = 0; i < call.getArguments().size(); i++) {
+        ExpressionTree argument = call.getArguments().get(i);
+        if (!(argument instanceof IdentifierTree)
+            || !((IdentifierTree) argument).getName().contentEquals(method.getParameters().get(i).getName())) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    private boolean deprecated(MethodTree method) {
+      var comment = documentation.getDocCommentTree(TreePath.getPath(unit, method));
+      return comment != null && comment.getBlockTags().stream()
+          .anyMatch(tag -> tag.getKind() == com.sun.source.doctree.DocTree.Kind.DEPRECATED);
+    }
+
+    private void report(MethodTree wrapper, List<MethodTree> methods, String owner) {
+      if (!plain(wrapper) || methods.stream().filter(m -> m.getName().equals(wrapper.getName())).count() != 1) {
+        return;
+      }
+      MethodInvocationTree call = callOf(wrapper);
+      if (call == null || !unchanged(wrapper, call)) {
+        return;
+      }
+      List<MethodTree> targets = methods.stream().filter(m -> m.getName().contentEquals(targetName(call))).toList();
+      if (targets.size() != 1) {
+        return;
+      }
+      MethodTree target = targets.get(0);
+      if (target == wrapper || !plain(target) || deprecated(wrapper) || deprecated(target)
+          || !contract(wrapper).equals(contract(target))) {
+        return;
+      }
+      long line = unit.getLineMap().getLineNumber(positions.getStartPosition(unit, wrapper));
+      findings.add("{\"file\":" + quote(file) + ",\"symbol\":" + quote(owner + "." + wrapper.getName())
+          + ",\"target\":" + quote(owner + "." + target.getName()) + ",\"line\":" + line + "}");
+    }
   }
 
   /** Walks types and reports each method, constructor, initializer and lambda with the name of its enclosing types. */

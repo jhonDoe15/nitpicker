@@ -1,3 +1,4 @@
+import { isGeneratedPython } from '../../libraries/generated-files.mjs';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
@@ -55,6 +56,7 @@ export function checkRules(context) {
     options,
     JSON.stringify({
       sourceRoots: context.project.sourceRoots,
+      generatedFiles: sources.filter((file) => isGeneratedPython(context.projectRoot, file)),
       testRunner,
       ...collection,
       testFiles: sources.filter(testFileMatcher(context.projectRoot)),

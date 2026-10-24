@@ -30,6 +30,11 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 
 ## Write it this way
 
+- Do not add a same-class method name that only passes unchanged arguments to another method
+  with the same contract (`forwarding-method-alias`). Call the target method directly and delete
+  the alias. Keep methods that adapt types or behavior, implement an inherited contract, or carry
+  annotations/decorators that define a framework or compatibility boundary.
+
 - Types: annotate every function, method and parameter; strict mypy, pyright or basedpyright (the project's own
   choice) checks the source roots. Fix the type. `# type: ignore`, `# noqa` and `# pyright: ignore`
   are findings themselves, so never write them, nor `# fmt: off`, `@no_type_check`, `if not TYPE_CHECKING:`

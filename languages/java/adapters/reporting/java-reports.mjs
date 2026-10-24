@@ -1,3 +1,4 @@
+import { readJavaMemberAliases } from '../review-rules/forwarding/alias-findings.mjs';
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
@@ -146,6 +147,7 @@ function readModuleFindings(context, crapLimit) {
     ...crapFindings(context, jacoco, crapLimit),
     ...pitFindings(context),
     ...readJavaStructureFindings(reportRoot, projectRoot),
+    ...readJavaMemberAliases(context),
     ...readClassLimitFindings(reportRoot, context.classLimits),
     ...branchFindings(context, jacoco),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),

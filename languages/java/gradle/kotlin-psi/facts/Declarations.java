@@ -143,6 +143,8 @@ final class Declarations {
             "modifiers", modifiers(function), "annotations", annotationNames(function),
             "annotationEntries", annotationEntries(function), "typeParameters", !function.getTypeParameters().isEmpty(),
             "receiver", clip(function.getReceiverTypeReference()),
+            "context", (!function.getContextReceivers().isEmpty()
+                || function.getText().stripLeading().startsWith("context")) ? Boolean.TRUE : null,
             "returnType", clip(function.getTypeReference()), "parameters", parameters,
             "hasBody", body != null,
             "emptyBody", body instanceof KtBlockExpression && ((KtBlockExpression) body).getStatements().isEmpty(),

@@ -513,12 +513,13 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`) is
   flagged when its parameter types and return type are identical to the callee's, so a wrapper that
   brands, narrows or widens a type passes. The callee must be a module-level binding or an import
-  that the file could re-export or the caller could import directly. Not flagged: member callees
+  that the file could re-export or the caller could import directly. For module-level wrappers,
+  not flagged: member callees
   (`repo.find(id)`, `Math.abs(x)`, `api.get(url)`), callees that are parameters or closure variables
   (injected dependencies), functions declared inside a component, factory or other function,
   overload implementations, type-predicate and `asserts` functions (on either side), parameters
   whose optional or rest form differs from the callee's (`b?: number` over `b: number | undefined`),
-  methods, `async` and generator functions, functions with type
+  `async` and generator functions, functions with type
   parameters, calls with type arguments, optional calls, PascalCase names (components), functions
   without parameters, default, destructured or transformed parameters, and a `const` with a type
   annotation. A wrapper around a hook (`useUser(key)` over an imported `useQuery(key)`) is reported
@@ -526,6 +527,15 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `export default`, or an export list) the message gives the re-export under the exported name,
   `export { fetchUser as loadUser }` or `export { fetchUser as default }`; for a local one it says to
   call the callee directly and delete the wrapper.
+- The same `nitpicker/no-forwarding-wrapper` rule also checks class and object methods in both
+  TypeScript and JavaScript. `alias(value) { return this.target(value); }` adds a redundant name
+  when both methods have one identical, known call signature. Call `target` directly and delete
+  `alias`. Zero-argument methods are included. JavaScript needs enough type information (for
+  example JSDoc) to prove the contract; `any` and `unknown` are skipped. Inherited or implemented
+  contracts, decorated or deprecated methods, overloads, generic or optional/default/rest parameters,
+  factories named `of`, `from`, `valueOf` or `fromString`, computed members, and assignments to
+  either method through `this` are skipped. External receivers and callback fields are not targets.
+  Generated files use the preset's existing exclusion policy.
 - No `as`, `any`, or non-null assertions.
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
 - No comments, except doc comments (`/** ... */`) on exported declarations and the members of

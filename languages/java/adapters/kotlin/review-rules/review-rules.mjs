@@ -1,3 +1,4 @@
+import { MEMBER_FORWARDING_RULE } from '../../review-rules/forwarding/alias-findings.mjs';
 import { ENUM_PREDICATE_RULE } from '../../review-rules/enum-predicates.mjs';
 import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
@@ -16,6 +17,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   SPRING_UNUSED_CONTEXT_RULE,
   ENUM_PREDICATE_RULE,
   FORWARDING_RULE,
+  MEMBER_FORWARDING_RULE,
   SINGULAR_PLURAL_RULE,
   ...SPRING_RULES,
   JAVA_ONLY_SPRING_RULE,
