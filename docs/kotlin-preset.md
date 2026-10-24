@@ -1240,3 +1240,18 @@ fails only when it grows, and a package folder moved to a new path is matched to
   through the Kotlin Gradle plugin is not loaded (the run is then `kotlinc/lint-not-run`).
 - The source checks read code shapes, not types: a logger or repository under another name, an I/O
   call behind a helper, or a secret read through a constant is not seen.
+
+## Same-owner method aliases
+
+`pmd/ForwardingMethodAlias` reports redundant instance forwarding inside a class, and explicit
+`this.target(...)` forwarding inside objects and companions. Call the target directly and delete
+the alias. Existing implicit object forwarding continues to use `StaticForwardingWrapper`, so a
+method is not reported twice.
+
+The native Kotlin PSI facts must prove an unchanged parameter contract and return type for a
+unique same-owner target. An expression body may infer its return from an explicitly typed target.
+Zero-argument methods are included. Inherited contracts, annotated or open owners, overridden,
+annotated, generic, extension, context, suspend and compatibility methods, defaults and varargs are
+excluded. This is source-fact matching, not compiler symbol resolution; ambiguous targets are
+skipped. Generated and test sources retain their existing exclusions. Qualified method names keep
+finding identities stable when lines move; reviewed exceptions use `pmd/ForwardingMethodAlias`.

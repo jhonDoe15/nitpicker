@@ -44,6 +44,11 @@ Before you change code other modules use, or fix a bug, read
 
 ## Write it this way
 
+- Do not add a same-class method name that only passes unchanged arguments to another method
+  with the same contract (`pmd/ForwardingMethodAlias`). Call the target method directly and delete
+  the alias. Keep methods that adapt types or behavior, implement an inherited contract, or carry
+  annotations/decorators that define a framework or compatibility boundary.
+
 - Style is google-java-format, 100 columns, unless the project formats with palantir-java-format
   (120 columns, 4 spaces). Indent like the files around you (nitpicker follows the project's
   formatter and majority, 2 spaces or 4 with `--aosp`); a misformatted file is one finding, so run the

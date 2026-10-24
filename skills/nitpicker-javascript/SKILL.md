@@ -113,6 +113,11 @@ line) is a finding.
 
 ## Write it this way
 
+- Do not add a same-class method name that only passes unchanged arguments to another method
+  with the same contract (`nitpicker/no-forwarding-wrapper`). Call the target method directly and delete
+  the alias. Keep methods that adapt types or behavior, implement an inherited contract, or carry
+  annotations/decorators that define a framework or compatibility boundary.
+
 - `function` declarations for named functions, nested helpers too; arrows only as callbacks, with a block body when
   they return nothing: `(line) => { out.push(line); }`.
 - String-literal unions, never an enum; no classes except `Error` subclasses.

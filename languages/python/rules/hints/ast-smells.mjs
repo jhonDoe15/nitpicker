@@ -75,6 +75,14 @@ function uncollectedAllowed(subject = '') {
 export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
+    rules: ['forwarding-method-alias'],
+    describe: (subject) =>
+      `The same-class alias \`${subject}\` forwards unchanged parameters with the same contract`,
+    allowed:
+      'Call the target method directly and delete the alias. Keep a method that adds policy or adapts the contract.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['shell-command'],
     describe: (subject) => `\`${subject}\` runs a command through a shell`,
     allowed:

@@ -1795,3 +1795,17 @@ and CRAP rules.
   `import-linter` from PyPI.
 - `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
   import scan, are in the npm package.
+
+## Same-class method aliases
+
+`forwarding-method-alias` reports a method whose entire body is `return self.target(...)`, passing
+every parameter unchanged to a unique method in the same class. Call `target` directly and delete
+the alias. Zero-argument methods and required keyword-only arguments are included.
+
+The AST check requires identical explicit parameter and return annotations, including parameter
+names and positional/keyword-only forms. It skips inheritance, metaclasses, class or method
+decorators (including override and deprecation), async methods, generic methods, defaults,
+variadic arguments, dunder/factory names and targets assigned as callback fields. It does not
+resolve imports or infer unannotated types. Test and generated files are excluded. Subjects name
+the class, alias and target so line movement keeps the existing finding identity. Reviewed
+exceptions use `forwarding-method-alias` in `nitpicker.config.json`.

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { hasAwaitility } from '../../../messages/wait-advice.mjs';
 import { pathInside, sourceFilesUnder } from '../../review-rules/java-sources.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
+import { memberAliasFindings } from './main/member-aliases.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { unusedOptionFindings } from './main/unused-options.mjs';
@@ -79,6 +80,7 @@ export function readKotlinReviewFindings(context) {
     ...springFindings(own, { finding, manifest, projectFiles, projectRoot, javaRoots }),
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
+    ...memberAliasFindings(own),
     ...singularPluralFindings(own, { finding }),
     ...unusedOptionFindings(own, {
       finding,

@@ -1,6 +1,7 @@
 import { rulesCases } from './define.mjs';
 
 export const RULES_CASES = [
+  ...rulesCases('method-alias', [['forwarding-method-alias', 'call the target method directly']]),
   ...rulesCases('cancellation', [['cancellation-not-propagated', 'bare `raise`']]),
   ...rulesCases('sql-queries', [['sql-string-formatting', 'query parameters']]),
   ...rulesCases('tls-verification', [['tls-verification-off', 'trust the certificate authority']]),

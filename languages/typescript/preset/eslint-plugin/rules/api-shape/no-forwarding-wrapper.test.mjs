@@ -1,63 +1,7 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { createTypedCases } from './forwarding/test-support/typed-cases.mjs';
 import { rule } from './no-forwarding-wrapper.mjs';
 
-const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-forwarding-wrapper-')));
-writeFileSync(
-  path.join(root, 'tsconfig.json'),
-  JSON.stringify({
-    compilerOptions: {
-      strict: true,
-      module: 'esnext',
-      moduleResolution: 'bundler',
-      jsx: 'preserve',
-      noEmit: true,
-      types: [],
-      lib: ['ES2022'],
-    },
-    include: ['src'],
-  }),
-);
-mkdirSync(path.join(root, 'src'));
-writeFileSync(
-  path.join(root, 'src/api.ts'),
-  [
-    'export type User = { id: string };',
-    "export type UserId = string & { readonly brand: 'UserId' };",
-    'export declare function fetchUser(id: string): User;',
-    'export declare function fetchUsers(...ids: string[]): User[];',
-    'export type Options = { deep: boolean };',
-    'export declare function findUser(id: string, options: Options): User;',
-    'export declare function fetchWith(id: string, retry?: number): User;',
-    'export declare function fetchRetry(id: string, retry: number | undefined): User;',
-    'export type Foo = { a: string };',
-    'export declare function isObject(value: unknown): boolean;',
-    'export declare function assertOk(value: unknown): void;',
-    'export declare function useQuery(key: string): User;',
-    'export declare function pick<T>(value: T): T;',
-    'export declare function overloaded(id: string | number): User;',
-    'export declare const api: { fetchUser(id: string): User };',
-    '',
-  ].join('\n'),
-);
-
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
-});
-
-const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
-
-let counter = 0;
-
-function typed(code, errors) {
-  counter += 1;
-  const file = path.join(root, `src/case-${String(counter)}.ts`);
-  writeFileSync(file, code);
-  return { filename: file, code, ...(errors === undefined ? {} : { errors }) };
-}
+const { tester, typed } = createTypedCases();
 
 const imports =
   "import { api, assertOk, fetchRetry, fetchUser, fetchUsers, fetchWith, findUser, isObject, overloaded, pick, useQuery } from './api';\nimport type { Foo, Options, User, UserId } from './api';\n";
