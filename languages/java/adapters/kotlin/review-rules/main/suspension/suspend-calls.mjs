@@ -1,4 +1,4 @@
-import { bareType, importsFrom, simpleTypeName } from '../kotlin-facts.mjs';
+import { bareType, importsFrom, simpleTypeName } from '../../kotlin-facts.mjs';
 
 const KOTLINX = 'kotlinx.coroutines';
 const KOTLINX_FUNCTIONS = new Set([
@@ -24,7 +24,7 @@ function allSuspend(functions) {
   return functions.length > 0 && functions.every(({ modifiers }) => modifiers.includes(SUSPEND));
 }
 
-export function importsKotlinx(file, name, subpackage = '') {
+function importsKotlinx(file, name, subpackage = '') {
   const prefix = `${KOTLINX}${subpackage}`;
   return file.imports.some(
     ({ path, all }) => path === `${prefix}.${name}` || (all && path === prefix),

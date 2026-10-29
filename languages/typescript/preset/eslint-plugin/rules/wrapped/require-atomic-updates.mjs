@@ -1,10 +1,15 @@
-import { builtinRules } from 'eslint/use-at-your-own-risk';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { chainOf } from '../../../../../../shared/traversal.mjs';
 import { variableNamed } from '../analysis/ancestry.mjs';
 import { withReportFilter } from './report-filter.mjs';
 
-const baseRule = builtinRules.get('require-atomic-updates');
+const requireFromHere = createRequire(import.meta.url);
+const eslintRules = path.join(path.dirname(requireFromHere.resolve('eslint')), 'rules');
+const baseRule = requireFromHere(path.join(eslintRules, 'require-atomic-updates.js'));
 
 const ANY_KEY = '*';
+const MAX_KEYS = 16;
 const TRANSPARENT = new Set([
   'TSNonNullExpression',
   'TSAsExpression',
@@ -12,9 +17,12 @@ const TRANSPARENT = new Set([
   'ChainExpression',
 ]);
 const SKIPPED_KEYS = new Set(['parent', 'typeAnnotation', 'typeArguments', 'typeParameters']);
+const CHAIN_TYPES = new Set(['Identifier', 'MemberExpression']);
 
 function unwrapped(node) {
-  return TRANSPARENT.has(node.type) ? unwrapped(node.expression) : node;
+  return chainOf(node, (inner) => (TRANSPARENT.has(inner.type) ? inner.expression : undefined)).at(
+    -1,
+  );
 }
 
 function propertyKey(member) {
@@ -24,14 +32,16 @@ function propertyKey(member) {
   return member.property.type === 'Literal' ? String(member.property.value) : ANY_KEY;
 }
 
-function chainOf(expression) {
-  const keys = [];
-  let node = unwrapped(expression);
-  while (node.type === 'MemberExpression') {
-    keys.unshift(propertyKey(node));
-    node = unwrapped(node.object);
+function memberChain(expression) {
+  const nodes = chainOf(unwrapped(expression), (node) =>
+    node.type === 'MemberExpression' ? unwrapped(node.object) : undefined,
+  );
+  const root = nodes.at(-1);
+  if (root.type !== 'Identifier') {
+    return undefined;
   }
-  return node.type === 'Identifier' ? { root: node, keys } : undefined;
+  const members = nodes.slice(0, -1);
+  return { root, members, keys: members.map((member) => propertyKey(member)).toReversed() };
 }
 
 function overlaps(read, written) {
@@ -41,107 +51,129 @@ function overlaps(read, written) {
     .every((key, index) => key === written[index] || key === ANY_KEY || written[index] === ANY_KEY);
 }
 
+function patternStep(keys, child, parent) {
+  if (parent.type === 'RestElement') {
+    return [];
+  }
+  if (parent.type === 'Property' && parent.value === child) {
+    return [parent.computed ? ANY_KEY : (parent.key.name ?? String(parent.key.value)), ...keys];
+  }
+  if (parent.type === 'ArrayPattern') {
+    return [ANY_KEY, ...keys];
+  }
+  return parent.type === 'AssignmentPattern' || parent.type === 'ObjectPattern' ? keys : undefined;
+}
+
 function patternKeys(identifier) {
-  const keys = [];
-  let node = identifier;
-  while (node.parent !== undefined && node.parent.type !== 'VariableDeclarator') {
-    const { parent } = node;
-    if (parent.type === 'RestElement') {
-      keys.length = 0;
-    } else if (parent.type === 'Property' && parent.value === node) {
-      keys.unshift(parent.computed ? ANY_KEY : (parent.key.name ?? String(parent.key.value)));
-    } else if (parent.type === 'ArrayPattern') {
-      keys.unshift(ANY_KEY);
-    } else if (parent.type !== 'AssignmentPattern' && parent.type !== 'ObjectPattern') {
+  const nodes = chainOf(identifier, (node) =>
+    node.parent !== undefined && node.parent.type !== 'VariableDeclarator'
+      ? node.parent
+      : undefined,
+  );
+  let keys = [];
+  for (const [index, parent] of nodes.slice(1).entries()) {
+    keys = patternStep(keys, nodes[index], parent);
+    if (keys === undefined) {
       return [];
     }
-    node = parent;
   }
   return keys;
 }
 
-class ReadPaths {
-  constructor(sourceCode, functionScope) {
-    this.sourceCode = sourceCode;
-    this.functionScope = functionScope;
-    this.expanding = new Set();
+function childrenOf(node) {
+  if (node.type === 'Property' && !node.computed) {
+    return [node.value];
   }
+  if (node.type === 'MemberExpression' && !node.computed) {
+    return [node.object];
+  }
+  return Object.entries(node)
+    .filter(([key]) => !SKIPPED_KEYS.has(key))
+    .flatMap(([, value]) => (Array.isArray(value) ? value : [value]))
+    .filter((value) => value !== null && typeof value === 'object');
+}
 
-  localVariable(identifier) {
-    const variable = variableNamed(this.sourceCode, identifier);
-    const local =
-      variable?.scope.variableScope === this.functionScope &&
-      variable.defs.every(({ type }) => type === 'Variable');
-    return local ? variable : undefined;
-  }
+function firstVisit(seen, variable, keys) {
+  const visited = seen.get(variable) ?? new Set();
+  seen.set(variable, visited);
+  const key = keys.join('\0');
+  const first = !visited.has(key);
+  visited.add(key);
+  return first;
+}
 
-  ofChain({ root, keys }) {
-    const own = [root.name, ...keys];
-    const variable = this.localVariable(root);
-    if (variable === undefined || this.expanding.has(variable)) {
-      return [own];
-    }
-    this.expanding.add(variable);
-    const paths = variable.references
-      .filter((reference) => reference.isWrite() && reference.writeExpr)
-      .flatMap((reference) => this.ofWrite(reference, keys));
-    this.expanding.delete(variable);
-    return [own, ...paths];
+function sourceOf(reference, keys) {
+  const source = memberChain(reference.writeExpr);
+  if (source === undefined) {
+    return { node: reference.writeExpr, keys: [] };
   }
+  return {
+    node: source.root,
+    keys: [...source.keys, ...patternKeys(reference.identifier), ...keys],
+  };
+}
 
-  ofWrite(reference, keys) {
-    const source = chainOf(reference.writeExpr);
-    const pattern = patternKeys(reference.identifier);
-    if (source === undefined) {
-      return this.of(reference.writeExpr);
-    }
-    return this.ofChain({ root: source.root, keys: [...source.keys, ...pattern, ...keys] });
-  }
+function sourcesOf(variable, keys) {
+  return variable.references
+    .filter((reference) => reference.isWrite() && reference.writeExpr)
+    .map((reference) => sourceOf(reference, keys));
+}
 
-  of(node) {
-    if (node === null || typeof node !== 'object') {
-      return [];
-    }
-    if (Array.isArray(node)) {
-      return node.flatMap((item) => this.of(item));
-    }
-    if (node.type === 'Property' && !node.computed) {
-      return this.of(node.value);
-    }
-    const chain =
-      node.type === 'Identifier' || node.type === 'MemberExpression' ? chainOf(node) : undefined;
-    if (chain !== undefined) {
-      return [...this.ofChain(chain), ...this.computedKeys(node)];
-    }
-    return Object.entries(node)
-      .filter(
-        ([key, value]) => !SKIPPED_KEYS.has(key) && value !== null && typeof value === 'object',
-      )
-      .flatMap(([, value]) => this.of(value));
-  }
+function isFunctionLocal(variable, functionScope) {
+  return (
+    variable?.scope.variableScope === functionScope &&
+    variable.defs.every(({ type }) => type === 'Variable')
+  );
+}
 
-  computedKeys(node) {
-    const target = unwrapped(node);
-    if (target.type !== 'MemberExpression') {
-      return [];
+function expansionOf(chain, suffix, context) {
+  const variable = variableNamed(context.sourceCode, chain.root);
+  const expands =
+    isFunctionLocal(variable, context.functionScope) &&
+    suffix.length <= MAX_KEYS &&
+    firstVisit(context.seen, variable, suffix);
+  return expands ? sourcesOf(variable, suffix) : [];
+}
+
+function chainReads(chain, keys, context) {
+  const suffix = [...chain.keys, ...keys];
+  const computed = chain.members.filter((member) => member.computed);
+  return {
+    path: suffix.length > MAX_KEYS ? [ANY_KEY] : [chain.root.name, ...suffix],
+    next: [
+      ...computed.map((member) => ({ node: member.property, keys: [] })),
+      ...expansionOf(chain, suffix, context),
+    ],
+  };
+}
+
+function readPaths(start, sourceCode, functionScope) {
+  const context = { sourceCode, functionScope, seen: new Map() };
+  const paths = [];
+  const pending = [{ node: start, keys: [] }];
+  for (const { node, keys } of pending) {
+    const chain = CHAIN_TYPES.has(node.type) ? memberChain(node) : undefined;
+    if (chain === undefined) {
+      pending.push(...childrenOf(node).map((child) => ({ node: child, keys: [] })));
+    } else {
+      const { path: read, next } = chainReads(chain, keys, context);
+      paths.push(read);
+      pending.push(...next);
     }
-    return [
-      ...(target.computed ? this.of(target.property) : []),
-      ...this.computedKeys(target.object),
-    ];
   }
+  return paths;
 }
 
 function readsWrittenLocation(assignment, sourceCode) {
-  const written = chainOf(assignment.left);
+  const written = memberChain(assignment.left);
   if (written === undefined) {
     return true;
   }
   const functionScope = sourceCode.getScope(assignment).variableScope;
   const target = [written.root.name, ...written.keys];
-  return new ReadPaths(sourceCode, functionScope)
-    .of(assignment.right)
-    .some((path) => overlaps(path, target));
+  return readPaths(assignment.right, sourceCode, functionScope).some((read) =>
+    overlaps(read, target),
+  );
 }
 
 function keepsReport({ node }, context) {

@@ -55,7 +55,7 @@ already serialized.
 | ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | TypeScript and JavaScript | `nitpicker/require-atomic-updates`        | ESLint's `require-atomic-updates` (`allowProperties: false`), reports narrowed, in `eslint-lint`  |
 | Python                    | `python-rules/atomic-update-across-await` | `languages/python/rules/concurrency/atomic_updates.py`                                            |
-| Kotlin                    | `pmd/NonAtomicUpdateAcrossSuspension`     | `review-rules/main/suspended-updates.mjs` over the `kotlin-psi` facts                             |
+| Kotlin                    | `pmd/NonAtomicUpdateAcrossSuspension`     | `review-rules/main/suspension/suspended-updates.mjs` over the `kotlin-psi` facts                  |
 | Java                      | not covered by this rule                  | nothing suspends inside a Java expression; see `errorprone/NonAtomicVolatileUpdate` in the preset |
 
 What each recognizes:

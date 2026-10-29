@@ -30,8 +30,8 @@ final class ValueScan {
         names.add(assignedName(binary));
       }
     }
-    if (statement instanceof KtBinaryExpression && statement != own && assignedName((KtBinaryExpression) statement) != null) {
-      names.add(assignedName((KtBinaryExpression) statement));
+    if (statement instanceof KtBinaryExpression binary && binary != own && assignedName(binary) != null) {
+      names.add(assignedName(binary));
     }
     for (KtUnaryExpression unary : PsiTreeUtil.findChildrenOfType(statement, KtUnaryExpression.class)) {
       Object token = unary.getOperationToken();
