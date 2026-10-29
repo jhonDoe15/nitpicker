@@ -3,6 +3,7 @@ import { realpathSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { sourceFilesUnder } from '../../../../shared/renamed-clones/files.mjs';
 import { RENAMED_SETTINGS, withNormalizedTree } from '../../../../shared/renamed-clones/tree.mjs';
+import { renamedJscpdSettings } from '../../../../core/tooling/jscpd/config.mjs';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
@@ -30,8 +31,7 @@ export function renamedDuplicatesReport({ projectRoot, config, runJscpd, scratch
       const output = path.join(scratch, 'report');
       const configName = '.nitpicker-renamed-jscpd.json';
       const settings = {
-        ...config,
-        ...RENAMED_SETTINGS,
+        ...renamedJscpdSettings(config, RENAMED_SETTINGS),
         path: ['.'],
         absolute: false,
         reporters: ['json'],
