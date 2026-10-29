@@ -16,6 +16,7 @@ Unless an entry says otherwise:
 A diagnostic of basedpyright, named by its \<rule>.
 
 - **Printed as:** `basedpyright/<rule>`
+- **For example:** `basedpyright/reportAny`
 - **Why it is on:** The Python preset runs the type checker the project picks (`python.typeChecker`: mypy, pyright or basedpyright) and fails a diagnostic the change adds.
 - **Allowed form:** Fix the type; inline ignores are banned.
 - **Exception:** If this is intended, add `{"rule":"<rule>","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
@@ -108,6 +109,7 @@ A `# pragma: no mutate` comment or a mutmut ignore pattern that hides code from 
 A diagnostic of mypy, named by its \<error code>.
 
 - **Printed as:** `mypy/<error code>`
+- **For example:** `mypy/arg-type`
 - **Why it is on:** The Python preset runs the type checker the project picks (`python.typeChecker`: mypy, pyright or basedpyright) and fails a diagnostic the change adds.
 - **Allowed form:** Fix the type; inline ignores are banned.
 - **Exception:** If this is intended, add `{"rule":"<error code>","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
@@ -159,6 +161,7 @@ A mypy diagnostic with the rule unused-ignore.
 A diagnostic of pyright, named by its \<rule>.
 
 - **Printed as:** `pyright/<rule>`
+- **For example:** `pyright/reportOptionalMemberAccess`
 - **Why it is on:** The Python preset runs the type checker the project picks (`python.typeChecker`: mypy, pyright or basedpyright) and fails a diagnostic the change adds.
 - **Allowed form:** Fix the type; inline ignores are banned.
 - **Exception:** If this is intended, add `{"rule":"<rule>","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.

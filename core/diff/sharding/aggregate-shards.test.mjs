@@ -80,8 +80,6 @@ small: base=0 head=0 new=1 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[
 
 New findings:
 small/example src/main/example.ts example finding
-
-Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)
 `),
     );
   });
@@ -150,7 +148,9 @@ Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule
     });
 
     expect(report.unchangedFindings).toEqual([held]);
-    expect(readJson(fixture.outputRoot, 'held-findings.json')).toEqual([held]);
+    expect(readJson(fixture.outputRoot, 'held-findings.json')).toEqual([
+      { ...held, helpUri: docsUrl('docs/rules/checks.md', 'structure-function-lines-limit') },
+    ]);
     expect(readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8')).toEqual(
       expect.stringMatching(exactText`Nitpicker quality diff
 Base ref: origin/master

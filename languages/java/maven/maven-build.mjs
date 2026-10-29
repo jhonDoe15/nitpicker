@@ -28,6 +28,7 @@ import {
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
 import { buildRunsArchRules, springFacts, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
+import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
@@ -247,9 +248,9 @@ function extraTools({ modules, analyzed, policy, pinned }) {
 }
 
 export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn }) {
-  if (policy.preset === 'kotlin') {
+  if (policy.preset !== undefined && !MAVEN_PRESETS.includes(policy.preset)) {
     throw new Error(
-      'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
+      `The ${policy.preset} preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources`,
     );
   }
   const pinned = readPinnedTools();

@@ -1,2253 +1,1051 @@
-[
-  {
-    "id": "detekt/detekt.complexity.ComplexCondition",
-    "tool": "detekt",
-    "rule": "detekt.complexity.ComplexCondition",
-    "anchor": "detekt-detekt-complexity-complexcondition",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Complex condition",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+{
+  "fields": [
+    "tool",
+    "rule",
+    "analyzers",
+    "builds",
+    "summary",
+    "why",
+    "links",
+    "docs",
+    "exception",
+    "allowed"
+  ],
+  "values": [
+    "detekt",
+    "detekt.complexity.ComplexCondition",
+    { "kotlin": ["kotlin"] },
+    { "java": ["gradle", "maven"], "kotlin": ["gradle"] },
+    "Complex conditions should be simplified and extracted into well-named methods if necessary.",
+    "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/complexity#complexcondition" }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.complexity.ComplexCondition" }
-  },
-  {
-    "id": "detekt/detekt.complexity.CyclomaticComplexMethod",
-    "tool": "detekt",
-    "rule": "detekt.complexity.CyclomaticComplexMethod",
-    "anchor": "detekt-detekt-complexity-cyclomaticcomplexmethod",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Cyclomatic complex method",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
+    { "key": "exceptions", "rule": "detekt.complexity.ComplexCondition" },
+    "detekt.complexity.CyclomaticComplexMethod",
+    "Prefer splitting up complex methods into smaller, easier to test methods.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/complexity#cyclomaticcomplexmethod"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.complexity.CyclomaticComplexMethod" }
-  },
-  {
-    "id": "detekt/detekt.complexity.LargeClass",
-    "tool": "detekt",
-    "rule": "detekt.complexity.LargeClass",
-    "anchor": "detekt-detekt-complexity-largeclass",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Large class",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/complexity#largeclass" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.complexity.LargeClass" }
-  },
-  {
-    "id": "detekt/detekt.complexity.LongMethod",
-    "tool": "detekt",
-    "rule": "detekt.complexity.LongMethod",
-    "anchor": "detekt-detekt-complexity-longmethod",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Long method",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/complexity#longmethod" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.complexity.LongMethod" }
-  },
-  {
-    "id": "detekt/detekt.complexity.LongParameterList",
-    "tool": "detekt",
-    "rule": "detekt.complexity.LongParameterList",
-    "anchor": "detekt-detekt-complexity-longparameterlist",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Long parameter list",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.complexity.CyclomaticComplexMethod" },
+    "detekt.complexity.LargeClass",
+    "One class should have one responsibility.",
+    "Large classes tend to handle many things at once. Split up large classes into smaller classes that are easier to understand. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/complexity#largeclass" }],
+    { "key": "exceptions", "rule": "detekt.complexity.LargeClass" },
+    "detekt.complexity.LongMethod",
+    "One method should have one responsibility.",
+    "Long methods tend to handle many things at once. Prefer smaller methods to make them easier to understand. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/complexity#longmethod" }],
+    { "key": "exceptions", "rule": "detekt.complexity.LongMethod" },
+    "detekt.complexity.LongParameterList",
+    "The more parameters a function has the more complex it is.",
+    "Long parameter lists are often used to control complex algorithms and violate the Single Responsibility Principle. Prefer functions with short parameter lists. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/complexity#longparameterlist"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.complexity.LongParameterList" }
-  },
-  {
-    "id": "detekt/detekt.complexity.NestedBlockDepth",
-    "tool": "detekt",
-    "rule": "detekt.complexity.NestedBlockDepth",
-    "anchor": "detekt-detekt-complexity-nestedblockdepth",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Nested block depth",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.complexity.LongParameterList" },
+    "detekt.complexity.NestedBlockDepth",
+    "Excessive nesting leads to hidden complexity.",
+    "Prefer extracting code to make it easier to understand. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/complexity#nestedblockdepth" }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.complexity.NestedBlockDepth" }
-  },
-  {
-    "id": "detekt/detekt.complexity.StringLiteralDuplication",
-    "tool": "detekt",
-    "rule": "detekt.complexity.StringLiteralDuplication",
-    "anchor": "detekt-detekt-complexity-stringliteralduplication",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "String literal duplication",
-    "why": "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
-    "allowed": "Name it once as a constant (`private const val NAME = \"...\"`) and use the constant.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.complexity.NestedBlockDepth" },
+    "detekt.complexity.StringLiteralDuplication",
+    "Multiple occurrences of the same string literal within a single file detected.",
+    "Prefer extracting the string literal into a property or constant. A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/complexity#stringliteralduplication"
       }
     ],
-    "docs": [
+    [
       { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
     ],
-    "exception": { "key": "exceptions", "rule": "detekt.complexity.StringLiteralDuplication" }
-  },
-  {
-    "id": "detekt/detekt.complexity.TooManyFunctions",
-    "tool": "detekt",
-    "rule": "detekt.complexity.TooManyFunctions",
-    "anchor": "detekt-detekt-complexity-toomanyfunctions",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Too many functions",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.complexity.StringLiteralDuplication" },
+    "Name it once as a constant (`private const val NAME = \"...\"`) and use the constant.",
+    "detekt.complexity.TooManyFunctions",
+    "Too many functions inside a/an file/class/object/interface always indicate a violation of the single responsibility principle.",
+    "Maybe the file/class/object/interface wants to manage too many things at once. Extract functionality which clearly belongs together. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/complexity#toomanyfunctions" }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.complexity.TooManyFunctions" }
-  },
-  {
-    "id": "detekt/detekt.coroutines.GlobalCoroutineUsage",
-    "tool": "detekt",
-    "rule": "detekt.coroutines.GlobalCoroutineUsage",
-    "anchor": "detekt-detekt-coroutines-globalcoroutineusage",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Global coroutine usage",
-    "why": "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.complexity.TooManyFunctions" },
+    "detekt.coroutines.GlobalCoroutineUsage",
+    "The usage of the `GlobalScope` instance is highly discouraged.",
+    "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/coroutines#globalcoroutineusage"
       }
     ],
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
-    ],
-    "exception": { "key": "exceptions", "rule": "detekt.coroutines.GlobalCoroutineUsage" }
-  },
-  {
-    "id": "detekt/detekt.coroutines.InjectDispatcher",
-    "tool": "detekt",
-    "rule": "detekt.coroutines.InjectDispatcher",
-    "anchor": "detekt-detekt-coroutines-injectdispatcher",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Inject dispatcher",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.coroutines.GlobalCoroutineUsage" },
+    "detekt.coroutines.InjectDispatcher",
+    "Don't hardcode dispatchers when creating new coroutines or calling `withContext`.",
+    "Use dependency injection for dispatchers to make testing easier. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/coroutines#injectdispatcher" }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.coroutines.InjectDispatcher" }
-  },
-  {
-    "id": "detekt/detekt.coroutines.RedundantSuspendModifier",
-    "tool": "detekt",
-    "rule": "detekt.coroutines.RedundantSuspendModifier",
-    "anchor": "detekt-detekt-coroutines-redundantsuspendmodifier",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Redundant suspend modifier",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.coroutines.InjectDispatcher" },
+    "detekt.coroutines.RedundantSuspendModifier",
+    "The `suspend` modifier is only needed for functions that contain suspending calls.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/coroutines#redundantsuspendmodifier"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.coroutines.RedundantSuspendModifier" }
-  },
-  {
-    "id": "detekt/detekt.coroutines.SleepInsteadOfDelay",
-    "tool": "detekt",
-    "rule": "detekt.coroutines.SleepInsteadOfDelay",
-    "anchor": "detekt-detekt-coroutines-sleepinsteadofdelay",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Sleep instead of delay",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.coroutines.RedundantSuspendModifier" },
+    "detekt.coroutines.SleepInsteadOfDelay",
+    "Usage of `Thread.sleep()` in coroutines can potentially halt multiple coroutines at once.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/coroutines#sleepinsteadofdelay"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.coroutines.SleepInsteadOfDelay" }
-  },
-  {
-    "id": "detekt/detekt.coroutines.SuspendFunWithFlowReturnType",
-    "tool": "detekt",
-    "rule": "detekt.coroutines.SuspendFunWithFlowReturnType",
-    "anchor": "detekt-detekt-coroutines-suspendfunwithflowreturntype",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Suspend fun with flow return type",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.coroutines.SleepInsteadOfDelay" },
+    "detekt.coroutines.SuspendFunWithFlowReturnType",
+    "The `suspend` modifier should not be used for functions that return a Coroutines Flow type.",
+    "Flows are cold streams and invoking a function that returns one should not produce any side effects. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/coroutines#suspendfunwithflowreturntype"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.coroutines.SuspendFunWithFlowReturnType" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyCatchBlock",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyCatchBlock",
-    "anchor": "detekt-detekt-empty-blocks-emptycatchblock",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty catch block",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.coroutines.SuspendFunWithFlowReturnType" },
+    "detekt.empty-blocks.EmptyCatchBlock",
+    "Empty catch block detected.",
+    "Empty catch blocks indicate that an exception is ignored and not handled. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/empty-blocks#emptycatchblock"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyCatchBlock" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyClassBlock",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyClassBlock",
-    "anchor": "detekt-detekt-empty-blocks-emptyclassblock",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty class block",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyCatchBlock" },
+    "detekt.empty-blocks.EmptyClassBlock",
+    "Empty block of code detected.",
+    "As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/empty-blocks#emptyclassblock"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyClassBlock" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyDefaultConstructor",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyDefaultConstructor",
-    "anchor": "detekt-detekt-empty-blocks-emptydefaultconstructor",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty default constructor",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyClassBlock" },
+    "detekt.empty-blocks.EmptyDefaultConstructor",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/empty-blocks#emptydefaultconstructor"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyDefaultConstructor" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyDoWhileBlock",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyDoWhileBlock",
-    "anchor": "detekt-detekt-empty-blocks-emptydowhileblock",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty do while block",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyDefaultConstructor" },
+    "detekt.empty-blocks.EmptyDoWhileBlock",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/empty-blocks#emptydowhileblock"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyDoWhileBlock" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyElseBlock",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyElseBlock",
-    "anchor": "detekt-detekt-empty-blocks-emptyelseblock",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty else block",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyDoWhileBlock" },
+    "detekt.empty-blocks.EmptyElseBlock",
+    [
       { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/empty-blocks#emptyelseblock" }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyElseBlock" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyFinallyBlock",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyFinallyBlock",
-    "anchor": "detekt-detekt-empty-blocks-emptyfinallyblock",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty finally block",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyElseBlock" },
+    "detekt.empty-blocks.EmptyFinallyBlock",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/empty-blocks#emptyfinallyblock"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyFinallyBlock" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyForBlock",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyForBlock",
-    "anchor": "detekt-detekt-empty-blocks-emptyforblock",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty for block",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/empty-blocks#emptyforblock" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyForBlock" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyFunctionBlock",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyFunctionBlock",
-    "anchor": "detekt-detekt-empty-blocks-emptyfunctionblock",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty function block",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyFinallyBlock" },
+    "detekt.empty-blocks.EmptyForBlock",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/empty-blocks#emptyforblock" }],
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyForBlock" },
+    "detekt.empty-blocks.EmptyFunctionBlock",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/empty-blocks#emptyfunctionblock"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyFunctionBlock" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyIfBlock",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyIfBlock",
-    "anchor": "detekt-detekt-empty-blocks-emptyifblock",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty if block",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/empty-blocks#emptyifblock" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyIfBlock" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyInitBlock",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyInitBlock",
-    "anchor": "detekt-detekt-empty-blocks-emptyinitblock",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty init block",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyFunctionBlock" },
+    "detekt.empty-blocks.EmptyIfBlock",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/empty-blocks#emptyifblock" }],
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyIfBlock" },
+    "detekt.empty-blocks.EmptyInitBlock",
+    [
       { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/empty-blocks#emptyinitblock" }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyInitBlock" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyKtFile",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyKtFile",
-    "anchor": "detekt-detekt-empty-blocks-emptyktfile",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty kt file",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/empty-blocks#emptyktfile" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyKtFile" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptySecondaryConstructor",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptySecondaryConstructor",
-    "anchor": "detekt-detekt-empty-blocks-emptysecondaryconstructor",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty secondary constructor",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyInitBlock" },
+    "detekt.empty-blocks.EmptyKtFile",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/empty-blocks#emptyktfile" }],
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyKtFile" },
+    "detekt.empty-blocks.EmptySecondaryConstructor",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/empty-blocks#emptysecondaryconstructor"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptySecondaryConstructor" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyTryBlock",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyTryBlock",
-    "anchor": "detekt-detekt-empty-blocks-emptytryblock",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty try block",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/empty-blocks#emptytryblock" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyTryBlock" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyWhenBlock",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyWhenBlock",
-    "anchor": "detekt-detekt-empty-blocks-emptywhenblock",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty when block",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptySecondaryConstructor" },
+    "detekt.empty-blocks.EmptyTryBlock",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/empty-blocks#emptytryblock" }],
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyTryBlock" },
+    "detekt.empty-blocks.EmptyWhenBlock",
+    [
       { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/empty-blocks#emptywhenblock" }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyWhenBlock" }
-  },
-  {
-    "id": "detekt/detekt.empty-blocks.EmptyWhileBlock",
-    "tool": "detekt",
-    "rule": "detekt.empty-blocks.EmptyWhileBlock",
-    "anchor": "detekt-detekt-empty-blocks-emptywhileblock",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Empty while block",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyWhenBlock" },
+    "detekt.empty-blocks.EmptyWhileBlock",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/empty-blocks#emptywhileblock"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyWhileBlock" }
-  },
-  {
-    "id": "detekt/detekt.exceptions.ExceptionRaisedInUnexpectedLocation",
-    "tool": "detekt",
-    "rule": "detekt.exceptions.ExceptionRaisedInUnexpectedLocation",
-    "anchor": "detekt-detekt-exceptions-exceptionraisedinunexpectedlocation",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Exception raised in unexpected location",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.empty-blocks.EmptyWhileBlock" },
+    "detekt.exceptions.ExceptionRaisedInUnexpectedLocation",
+    "This method is not expected to throw exceptions.",
+    "This can cause weird behavior. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/exceptions#exceptionraisedinunexpectedlocation"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": {
-      "key": "exceptions",
-      "rule": "detekt.exceptions.ExceptionRaisedInUnexpectedLocation"
-    }
-  },
-  {
-    "id": "detekt/detekt.exceptions.InstanceOfCheckForException",
-    "tool": "detekt",
-    "rule": "detekt.exceptions.InstanceOfCheckForException",
-    "anchor": "detekt-detekt-exceptions-instanceofcheckforexception",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Instance of check for exception",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.exceptions.ExceptionRaisedInUnexpectedLocation" },
+    "detekt.exceptions.InstanceOfCheckForException",
+    "Instead of catching for a general exception type and checking for a specific exception type, use multiple catch blocks.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/exceptions#instanceofcheckforexception"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.exceptions.InstanceOfCheckForException" }
-  },
-  {
-    "id": "detekt/detekt.exceptions.PrintStackTrace",
-    "tool": "detekt",
-    "rule": "detekt.exceptions.PrintStackTrace",
-    "anchor": "detekt-detekt-exceptions-printstacktrace",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Print stack trace",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/exceptions#printstacktrace" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.exceptions.PrintStackTrace" }
-  },
-  {
-    "id": "detekt/detekt.exceptions.RethrowCaughtException",
-    "tool": "detekt",
-    "rule": "detekt.exceptions.RethrowCaughtException",
-    "anchor": "detekt-detekt-exceptions-rethrowcaughtexception",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Rethrow caught exception",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.exceptions.InstanceOfCheckForException" },
+    "detekt.exceptions.PrintStackTrace",
+    "Do not print a stack trace.",
+    "These debug statements should be removed or replaced with a logger. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/exceptions#printstacktrace" }],
+    { "key": "exceptions", "rule": "detekt.exceptions.PrintStackTrace" },
+    "detekt.exceptions.RethrowCaughtException",
+    "Do not rethrow a caught exception of the same type.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/exceptions#rethrowcaughtexception"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.exceptions.RethrowCaughtException" }
-  },
-  {
-    "id": "detekt/detekt.exceptions.ReturnFromFinally",
-    "tool": "detekt",
-    "rule": "detekt.exceptions.ReturnFromFinally",
-    "anchor": "detekt-detekt-exceptions-returnfromfinally",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Return from finally",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.exceptions.RethrowCaughtException" },
+    "detekt.exceptions.ReturnFromFinally",
+    "Do not return within a finally statement.",
+    "This can discard exceptions. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/exceptions#returnfromfinally"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.exceptions.ReturnFromFinally" }
-  },
-  {
-    "id": "detekt/detekt.exceptions.SwallowedException",
-    "tool": "detekt",
-    "rule": "detekt.exceptions.SwallowedException",
-    "anchor": "detekt-detekt-exceptions-swallowedexception",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Swallowed exception",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.exceptions.ReturnFromFinally" },
+    "detekt.exceptions.SwallowedException",
+    "The caught exception is swallowed.",
+    "The original exception could be lost. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/exceptions#swallowedexception"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.exceptions.SwallowedException" }
-  },
-  {
-    "id": "detekt/detekt.exceptions.ThrowingExceptionFromFinally",
-    "tool": "detekt",
-    "rule": "detekt.exceptions.ThrowingExceptionFromFinally",
-    "anchor": "detekt-detekt-exceptions-throwingexceptionfromfinally",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Throwing exception from finally",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.exceptions.SwallowedException" },
+    "detekt.exceptions.ThrowingExceptionFromFinally",
+    "Do not throw an exception within a finally statement.",
+    "This can discard exceptions and is confusing. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/exceptions#throwingexceptionfromfinally"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.exceptions.ThrowingExceptionFromFinally" }
-  },
-  {
-    "id": "detekt/detekt.exceptions.ThrowingExceptionsWithoutMessageOrCause",
-    "tool": "detekt",
-    "rule": "detekt.exceptions.ThrowingExceptionsWithoutMessageOrCause",
-    "anchor": "detekt-detekt-exceptions-throwingexceptionswithoutmessageorcause",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Throwing exceptions without message or cause",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.exceptions.ThrowingExceptionFromFinally" },
+    "detekt.exceptions.ThrowingExceptionsWithoutMessageOrCause",
+    "A call to the default constructor of an exception was detected.",
+    "Instead one of the constructor overloads should be called. This allows to provide more meaningful exceptions. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/exceptions#throwingexceptionswithoutmessageorcause"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": {
-      "key": "exceptions",
-      "rule": "detekt.exceptions.ThrowingExceptionsWithoutMessageOrCause"
-    }
-  },
-  {
-    "id": "detekt/detekt.exceptions.ThrowingNewInstanceOfSameException",
-    "tool": "detekt",
-    "rule": "detekt.exceptions.ThrowingNewInstanceOfSameException",
-    "anchor": "detekt-detekt-exceptions-throwingnewinstanceofsameexception",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Throwing new instance of same exception",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.exceptions.ThrowingExceptionsWithoutMessageOrCause" },
+    "detekt.exceptions.ThrowingNewInstanceOfSameException",
+    "Avoid catch blocks that rethrow a caught exception wrapped inside a new instance of the same exception.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/exceptions#throwingnewinstanceofsameexception"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": {
-      "key": "exceptions",
-      "rule": "detekt.exceptions.ThrowingNewInstanceOfSameException"
-    }
-  },
-  {
-    "id": "detekt/detekt.exceptions.TooGenericExceptionCaught",
-    "tool": "detekt",
-    "rule": "detekt.exceptions.TooGenericExceptionCaught",
-    "anchor": "detekt-detekt-exceptions-toogenericexceptioncaught",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Too generic exception caught",
-    "why": "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
-    "allowed": "In a test, use `assertFailsWith`.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.exceptions.ThrowingNewInstanceOfSameException" },
+    "detekt.exceptions.TooGenericExceptionCaught",
+    "The caught exception is too generic.",
+    "Prefer catching specific exceptions to the case that is currently handled. A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/exceptions#toogenericexceptioncaught"
       }
     ],
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
-    ],
-    "exception": { "key": "exceptions", "rule": "detekt.exceptions.TooGenericExceptionCaught" }
-  },
-  {
-    "id": "detekt/detekt.exceptions.TooGenericExceptionThrown",
-    "tool": "detekt",
-    "rule": "detekt.exceptions.TooGenericExceptionThrown",
-    "anchor": "detekt-detekt-exceptions-toogenericexceptionthrown",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Too generic exception thrown",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.exceptions.TooGenericExceptionCaught" },
+    "In a test, use `assertFailsWith`.",
+    "detekt.exceptions.TooGenericExceptionThrown",
+    "The thrown exception is too generic.",
+    "Prefer throwing project specific exceptions to handle error cases. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/exceptions#toogenericexceptionthrown"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.exceptions.TooGenericExceptionThrown" }
-  },
-  {
-    "id": "detekt/detekt.naming.ClassNaming",
-    "tool": "detekt",
-    "rule": "detekt.naming.ClassNaming",
-    "anchor": "detekt-detekt-naming-classnaming",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Class naming",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/naming#classnaming" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.naming.ClassNaming" }
-  },
-  {
-    "id": "detekt/detekt.naming.ConstructorParameterNaming",
-    "tool": "detekt",
-    "rule": "detekt.naming.ConstructorParameterNaming",
-    "anchor": "detekt-detekt-naming-constructorparameternaming",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Constructor parameter naming",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.exceptions.TooGenericExceptionThrown" },
+    "detekt.naming.ClassNaming",
+    "A class or object name should fit the naming pattern defined in the projects configuration.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/naming#classnaming" }],
+    { "key": "exceptions", "rule": "detekt.naming.ClassNaming" },
+    "detekt.naming.ConstructorParameterNaming",
+    "Constructor parameter names should follow the naming convention set in the projects configuration.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/naming#constructorparameternaming"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.naming.ConstructorParameterNaming" }
-  },
-  {
-    "id": "detekt/detekt.naming.EnumNaming",
-    "tool": "detekt",
-    "rule": "detekt.naming.EnumNaming",
-    "anchor": "detekt-detekt-naming-enumnaming",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Enum naming",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/naming#enumnaming" }],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.naming.EnumNaming" }
-  },
-  {
-    "id": "detekt/detekt.naming.FunctionNaming",
-    "tool": "detekt",
-    "rule": "detekt.naming.FunctionNaming",
-    "anchor": "detekt-detekt-naming-functionnaming",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Function naming",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/naming#functionnaming" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.naming.FunctionNaming" }
-  },
-  {
-    "id": "detekt/detekt.naming.FunctionParameterNaming",
-    "tool": "detekt",
-    "rule": "detekt.naming.FunctionParameterNaming",
-    "anchor": "detekt-detekt-naming-functionparameternaming",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Function parameter naming",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.naming.ConstructorParameterNaming" },
+    "detekt.naming.EnumNaming",
+    "Enum names should follow the naming convention set in the projects configuration.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/naming#enumnaming" }],
+    { "key": "exceptions", "rule": "detekt.naming.EnumNaming" },
+    "detekt.naming.FunctionNaming",
+    "Function names should follow the naming convention set in the configuration.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/naming#functionnaming" }],
+    { "key": "exceptions", "rule": "detekt.naming.FunctionNaming" },
+    "detekt.naming.FunctionParameterNaming",
+    "Function parameter names should follow the naming convention set in the projects configuration.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/naming#functionparameternaming"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.naming.FunctionParameterNaming" }
-  },
-  {
-    "id": "detekt/detekt.naming.InvalidPackageDeclaration",
-    "tool": "detekt",
-    "rule": "detekt.naming.InvalidPackageDeclaration",
-    "anchor": "detekt-detekt-naming-invalidpackagedeclaration",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Invalid package declaration",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.naming.FunctionParameterNaming" },
+    "detekt.naming.InvalidPackageDeclaration",
+    "Kotlin source files should be stored in the directory corresponding to its package statement.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/naming#invalidpackagedeclaration"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.naming.InvalidPackageDeclaration" }
-  },
-  {
-    "id": "detekt/detekt.naming.MatchingDeclarationName",
-    "tool": "detekt",
-    "rule": "detekt.naming.MatchingDeclarationName",
-    "anchor": "detekt-detekt-naming-matchingdeclarationname",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Matching declaration name",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.naming.InvalidPackageDeclaration" },
+    "detekt.naming.MatchingDeclarationName",
+    "If a source file contains only a single non-private top-level class or object, the file name should reflect the case-sensitive name plus the .kt extension.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/naming#matchingdeclarationname"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.naming.MatchingDeclarationName" }
-  },
-  {
-    "id": "detekt/detekt.naming.MemberNameEqualsClassName",
-    "tool": "detekt",
-    "rule": "detekt.naming.MemberNameEqualsClassName",
-    "anchor": "detekt-detekt-naming-membernameequalsclassname",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Member name equals class name",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.naming.MatchingDeclarationName" },
+    "detekt.naming.MemberNameEqualsClassName",
+    "A member should not be given the same name as its parent class or object.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/naming#membernameequalsclassname"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.naming.MemberNameEqualsClassName" }
-  },
-  {
-    "id": "detekt/detekt.naming.NoNameShadowing",
-    "tool": "detekt",
-    "rule": "detekt.naming.NoNameShadowing",
-    "anchor": "detekt-detekt-naming-nonameshadowing",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "No name shadowing",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/naming#nonameshadowing" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.naming.NoNameShadowing" }
-  },
-  {
-    "id": "detekt/detekt.naming.ObjectPropertyNaming",
-    "tool": "detekt",
-    "rule": "detekt.naming.ObjectPropertyNaming",
-    "anchor": "detekt-detekt-naming-objectpropertynaming",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Object property naming",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.naming.MemberNameEqualsClassName" },
+    "detekt.naming.NoNameShadowing",
+    "Disallow shadowing variable declarations.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/naming#nonameshadowing" }],
+    { "key": "exceptions", "rule": "detekt.naming.NoNameShadowing" },
+    "detekt.naming.ObjectPropertyNaming",
+    "Property names inside objects should follow the naming convention set in the projects configuration.",
+    [
       { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/naming#objectpropertynaming" }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.naming.ObjectPropertyNaming" }
-  },
-  {
-    "id": "detekt/detekt.naming.PackageNaming",
-    "tool": "detekt",
-    "rule": "detekt.naming.PackageNaming",
-    "anchor": "detekt-detekt-naming-packagenaming",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Package naming",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/naming#packagenaming" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.naming.PackageNaming" }
-  },
-  {
-    "id": "detekt/detekt.naming.TopLevelPropertyNaming",
-    "tool": "detekt",
-    "rule": "detekt.naming.TopLevelPropertyNaming",
-    "anchor": "detekt-detekt-naming-toplevelpropertynaming",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Top level property naming",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.naming.ObjectPropertyNaming" },
+    "detekt.naming.PackageNaming",
+    "Package names should match the naming convention set in the configuration.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/naming#packagenaming" }],
+    { "key": "exceptions", "rule": "detekt.naming.PackageNaming" },
+    "detekt.naming.TopLevelPropertyNaming",
+    "Top level property names should follow the naming convention set in the projects configuration.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/naming#toplevelpropertynaming"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.naming.TopLevelPropertyNaming" }
-  },
-  {
-    "id": "detekt/detekt.naming.VariableNaming",
-    "tool": "detekt",
-    "rule": "detekt.naming.VariableNaming",
-    "anchor": "detekt-detekt-naming-variablenaming",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Variable naming",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/naming#variablenaming" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.naming.VariableNaming" }
-  },
-  {
-    "id": "detekt/detekt.performance.ArrayPrimitive",
-    "tool": "detekt",
-    "rule": "detekt.performance.ArrayPrimitive",
-    "anchor": "detekt-detekt-performance-arrayprimitive",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Array primitive",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/performance#arrayprimitive" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.performance.ArrayPrimitive" }
-  },
-  {
-    "id": "detekt/detekt.performance.ForEachOnRange",
-    "tool": "detekt",
-    "rule": "detekt.performance.ForEachOnRange",
-    "anchor": "detekt-detekt-performance-foreachonrange",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "For each on range",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/performance#foreachonrange" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.performance.ForEachOnRange" }
-  },
-  {
-    "id": "detekt/detekt.performance.SpreadOperator",
-    "tool": "detekt",
-    "rule": "detekt.performance.SpreadOperator",
-    "anchor": "detekt-detekt-performance-spreadoperator",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Spread operator",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/performance#spreadoperator" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.performance.SpreadOperator" }
-  },
-  {
-    "id": "detekt/detekt.performance.UnnecessaryTemporaryInstantiation",
-    "tool": "detekt",
-    "rule": "detekt.performance.UnnecessaryTemporaryInstantiation",
-    "anchor": "detekt-detekt-performance-unnecessarytemporaryinstantiation",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unnecessary temporary instantiation",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.naming.TopLevelPropertyNaming" },
+    "detekt.naming.VariableNaming",
+    "Variable names should follow the naming convention set in the projects configuration.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/naming#variablenaming" }],
+    { "key": "exceptions", "rule": "detekt.naming.VariableNaming" },
+    "detekt.performance.ArrayPrimitive",
+    "Using `Array<Primitive>` leads to implicit boxing and a performance hit.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/performance#arrayprimitive" }],
+    { "key": "exceptions", "rule": "detekt.performance.ArrayPrimitive" },
+    "detekt.performance.ForEachOnRange",
+    "Using the forEach method on ranges has a heavy performance cost.",
+    "Prefer using simple for loops. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/performance#foreachonrange" }],
+    { "key": "exceptions", "rule": "detekt.performance.ForEachOnRange" },
+    "detekt.performance.SpreadOperator",
+    "In most cases using a spread operator causes a full copy of the array to be created before calling a method.",
+    "This may result in a performance penalty. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/performance#spreadoperator" }],
+    { "key": "exceptions", "rule": "detekt.performance.SpreadOperator" },
+    "detekt.performance.UnnecessaryTemporaryInstantiation",
+    "Avoid temporary objects when converting primitive types to `String`.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/performance#unnecessarytemporaryinstantiation"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": {
-      "key": "exceptions",
-      "rule": "detekt.performance.UnnecessaryTemporaryInstantiation"
-    }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.AvoidReferentialEquality",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.AvoidReferentialEquality",
-    "anchor": "detekt-detekt-potential-bugs-avoidreferentialequality",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Avoid referential equality",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.performance.UnnecessaryTemporaryInstantiation" },
+    "detekt.potential-bugs.AvoidReferentialEquality",
+    "Avoid using referential equality and prefer to use referential equality checks instead.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#avoidreferentialequality"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.AvoidReferentialEquality" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.CastNullableToNonNullableType",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.CastNullableToNonNullableType",
-    "anchor": "detekt-detekt-potential-bugs-castnullabletononnullabletype",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Cast nullable to non nullable type",
-    "why": "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.AvoidReferentialEquality" },
+    "detekt.potential-bugs.CastNullableToNonNullableType",
+    "Nullable type to non-null type cast is found.",
+    "Consider using two assertions, `null` assertions and type cast A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#castnullabletononnullabletype"
       }
     ],
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
-    ],
-    "exception": {
-      "key": "exceptions",
-      "rule": "detekt.potential-bugs.CastNullableToNonNullableType"
-    }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.DoubleMutabilityForCollection",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.DoubleMutabilityForCollection",
-    "anchor": "detekt-detekt-potential-bugs-doublemutabilityforcollection",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Double mutability for collection",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.CastNullableToNonNullableType" },
+    "detekt.potential-bugs.DoubleMutabilityForCollection",
+    "Using var with mutable collections or values leads to double mutability.",
+    "Consider using val or immutable collection or value types. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#doublemutabilityforcollection"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": {
-      "key": "exceptions",
-      "rule": "detekt.potential-bugs.DoubleMutabilityForCollection"
-    }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.EqualsAlwaysReturnsTrueOrFalse",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.EqualsAlwaysReturnsTrueOrFalse",
-    "anchor": "detekt-detekt-potential-bugs-equalsalwaysreturnstrueorfalse",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Equals always returns true or false",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.DoubleMutabilityForCollection" },
+    "detekt.potential-bugs.EqualsAlwaysReturnsTrueOrFalse",
+    "Having an `equals()` method that always returns true or false is not a good idea.",
+    "It does not follow the contract of this method. Consider a good default implementation (e.g. `this == other`). One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#equalsalwaysreturnstrueorfalse"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": {
-      "key": "exceptions",
-      "rule": "detekt.potential-bugs.EqualsAlwaysReturnsTrueOrFalse"
-    }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.EqualsWithHashCodeExist",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.EqualsWithHashCodeExist",
-    "anchor": "detekt-detekt-potential-bugs-equalswithhashcodeexist",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Equals with hash code exist",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.EqualsAlwaysReturnsTrueOrFalse" },
+    "detekt.potential-bugs.EqualsWithHashCodeExist",
+    "Always override hashCode when you override equals.",
+    "All hash-based collections depend on objects meeting the equals-contract. Two equal objects must produce the same hashcode. When inheriting equals or hashcode, override the inherited and call the super method for clarification. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#equalswithhashcodeexist"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.EqualsWithHashCodeExist" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.ExplicitGarbageCollectionCall",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.ExplicitGarbageCollectionCall",
-    "anchor": "detekt-detekt-potential-bugs-explicitgarbagecollectioncall",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Explicit garbage collection call",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.EqualsWithHashCodeExist" },
+    "detekt.potential-bugs.ExplicitGarbageCollectionCall",
+    "Don't try to be smarter than the JVM.",
+    "Your code should work independently whether the garbage collector is disabled or not. If you face memory issues, try tuning the JVM options instead of relying on code itself. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#explicitgarbagecollectioncall"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": {
-      "key": "exceptions",
-      "rule": "detekt.potential-bugs.ExplicitGarbageCollectionCall"
-    }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.HasPlatformType",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.HasPlatformType",
-    "anchor": "detekt-detekt-potential-bugs-hasplatformtype",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Has platform type",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.ExplicitGarbageCollectionCall" },
+    "detekt.potential-bugs.HasPlatformType",
+    "Platform types must be declared explicitly in public APIs.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#hasplatformtype"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.HasPlatformType" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.IgnoredReturnValue",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.IgnoredReturnValue",
-    "anchor": "detekt-detekt-potential-bugs-ignoredreturnvalue",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Ignored return value",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.HasPlatformType" },
+    "detekt.potential-bugs.IgnoredReturnValue",
+    "This call returns a value which is ignored.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#ignoredreturnvalue"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.IgnoredReturnValue" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.ImplicitDefaultLocale",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.ImplicitDefaultLocale",
-    "anchor": "detekt-detekt-potential-bugs-implicitdefaultlocale",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Implicit default locale",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.IgnoredReturnValue" },
+    "detekt.potential-bugs.ImplicitDefaultLocale",
+    "Implicit default locale used for string processing.",
+    "Consider using explicit locale. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#implicitdefaultlocale"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.ImplicitDefaultLocale" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.InvalidRange",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.InvalidRange",
-    "anchor": "detekt-detekt-potential-bugs-invalidrange",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Invalid range",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.ImplicitDefaultLocale" },
+    "detekt.potential-bugs.InvalidRange",
+    "If a for loops condition is false before the first iteration, the loop will never get executed.",
+    [
       { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/potential-bugs#invalidrange" }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.InvalidRange" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.IteratorHasNextCallsNextMethod",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.IteratorHasNextCallsNextMethod",
-    "anchor": "detekt-detekt-potential-bugs-iteratorhasnextcallsnextmethod",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Iterator has next calls next method",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.InvalidRange" },
+    "detekt.potential-bugs.IteratorHasNextCallsNextMethod",
+    "The `hasNext()` method of an Iterator implementation should not call the `next()` method.",
+    "The state of the iterator should not be changed inside the `hasNext()` method. The `hasNext()` method is not supposed to have any side effects. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#iteratorhasnextcallsnextmethod"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": {
-      "key": "exceptions",
-      "rule": "detekt.potential-bugs.IteratorHasNextCallsNextMethod"
-    }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.IteratorNotThrowingNoSuchElementException",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.IteratorNotThrowingNoSuchElementException",
-    "anchor": "detekt-detekt-potential-bugs-iteratornotthrowingnosuchelementexception",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Iterator not throwing no such element exception",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.IteratorHasNextCallsNextMethod" },
+    "detekt.potential-bugs.IteratorNotThrowingNoSuchElementException",
+    "The `next()` method of an `Iterator` implementation should throw a `NoSuchElementException` when there are no more elements to return.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#iteratornotthrowingnosuchelementexception"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": {
+    {
       "key": "exceptions",
       "rule": "detekt.potential-bugs.IteratorNotThrowingNoSuchElementException"
-    }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.MapGetWithNotNullAssertionOperator",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.MapGetWithNotNullAssertionOperator",
-    "anchor": "detekt-detekt-potential-bugs-mapgetwithnotnullassertionoperator",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Map get with not null assertion operator",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    },
+    "detekt.potential-bugs.MapGetWithNotNullAssertionOperator",
+    "map.get() with not-null assertion operator (!!) can result in a NullPointerException.",
+    "Consider usage of map.getValue(), map.getOrDefault() or map.getOrElse() instead. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#mapgetwithnotnullassertionoperator"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": {
-      "key": "exceptions",
-      "rule": "detekt.potential-bugs.MapGetWithNotNullAssertionOperator"
-    }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.UnnecessaryNotNullOperator",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.UnnecessaryNotNullOperator",
-    "anchor": "detekt-detekt-potential-bugs-unnecessarynotnulloperator",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unnecessary not null operator",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.MapGetWithNotNullAssertionOperator" },
+    "detekt.potential-bugs.UnnecessaryNotNullOperator",
+    "Unnecessary not-null unary operator (!!) detected.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#unnecessarynotnulloperator"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.UnnecessaryNotNullOperator" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.UnnecessarySafeCall",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.UnnecessarySafeCall",
-    "anchor": "detekt-detekt-potential-bugs-unnecessarysafecall",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unnecessary safe call",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.UnnecessaryNotNullOperator" },
+    "detekt.potential-bugs.UnnecessarySafeCall",
+    "Unnecessary safe call operator detected.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#unnecessarysafecall"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.UnnecessarySafeCall" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.UnreachableCatchBlock",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.UnreachableCatchBlock",
-    "anchor": "detekt-detekt-potential-bugs-unreachablecatchblock",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unreachable catch block",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.UnnecessarySafeCall" },
+    "detekt.potential-bugs.UnreachableCatchBlock",
+    "Unreachable catch block detected.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#unreachablecatchblock"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.UnreachableCatchBlock" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.UnreachableCode",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.UnreachableCode",
-    "anchor": "detekt-detekt-potential-bugs-unreachablecode",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unreachable code",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.UnreachableCatchBlock" },
+    "detekt.potential-bugs.UnreachableCode",
+    "Unreachable code detected.",
+    "This code should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#unreachablecode"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.UnreachableCode" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.UnsafeCallOnNullableType",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.UnsafeCallOnNullableType",
-    "anchor": "detekt-detekt-potential-bugs-unsafecallonnullabletype",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unsafe call on nullable type",
-    "why": "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
-    "allowed": "Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { \"why\" }` when null is a bug.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.UnreachableCode" },
+    "detekt.potential-bugs.UnsafeCallOnNullableType",
+    "Unsafe calls on nullable types detected.",
+    "These calls will throw a NullPointerException in case the nullable value is null. A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#unsafecallonnullabletype"
       }
     ],
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
-    ],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.UnsafeCallOnNullableType" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.UnsafeCast",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.UnsafeCast",
-    "anchor": "detekt-detekt-potential-bugs-unsafecast",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unsafe cast",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/potential-bugs#unsafecast" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.UnsafeCast" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.UnusedUnaryOperator",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.UnusedUnaryOperator",
-    "anchor": "detekt-detekt-potential-bugs-unusedunaryoperator",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unused unary operator",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.UnsafeCallOnNullableType" },
+    "Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { \"why\" }` when null is a bug.",
+    "detekt.potential-bugs.UnsafeCast",
+    "Cast operator throws an exception if the cast is not possible.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/potential-bugs#unsafecast" }],
+    { "key": "exceptions", "rule": "detekt.potential-bugs.UnsafeCast" },
+    "detekt.potential-bugs.UnusedUnaryOperator",
+    "This unary operator is unused.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#unusedunaryoperator"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.UnusedUnaryOperator" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.UselessPostfixExpression",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.UselessPostfixExpression",
-    "anchor": "detekt-detekt-potential-bugs-uselesspostfixexpression",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Useless postfix expression",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.UnusedUnaryOperator" },
+    "detekt.potential-bugs.UselessPostfixExpression",
+    "The incremented or decremented value is unused.",
+    "This value is replaced with the original value. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#uselesspostfixexpression"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.UselessPostfixExpression" }
-  },
-  {
-    "id": "detekt/detekt.potential-bugs.WrongEqualsTypeParameter",
-    "tool": "detekt",
-    "rule": "detekt.potential-bugs.WrongEqualsTypeParameter",
-    "anchor": "detekt-detekt-potential-bugs-wrongequalstypeparameter",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Wrong equals type parameter",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.UselessPostfixExpression" },
+    "detekt.potential-bugs.WrongEqualsTypeParameter",
+    "Wrong parameter type for `equals()` method found.",
+    "To correctly override the `equals()` method use `Any?`. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/potential-bugs#wrongequalstypeparameter"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.potential-bugs.WrongEqualsTypeParameter" }
-  },
-  {
-    "id": "detekt/detekt.style.DataClassShouldBeImmutable",
-    "tool": "detekt",
-    "rule": "detekt.style.DataClassShouldBeImmutable",
-    "anchor": "detekt-detekt-style-dataclassshouldbeimmutable",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Data class should be immutable",
-    "why": "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
-    "allowed": "Make the property a `val` and build a changed copy with `copy(...)`.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.potential-bugs.WrongEqualsTypeParameter" },
+    "detekt.style.DataClassShouldBeImmutable",
+    "Data classes should mainly be immutable and should not have any side effects (To copy an object altering some of its properties use the copy function).",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#dataclassshouldbeimmutable"
       }
     ],
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
-    ],
-    "exception": { "key": "exceptions", "rule": "detekt.style.DataClassShouldBeImmutable" }
-  },
-  {
-    "id": "detekt/detekt.style.DestructuringDeclarationWithTooManyEntries",
-    "tool": "detekt",
-    "rule": "detekt.style.DestructuringDeclarationWithTooManyEntries",
-    "anchor": "detekt-detekt-style-destructuringdeclarationwithtoomanyentries",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Destructuring declaration with too many entries",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.DataClassShouldBeImmutable" },
+    "Make the property a `val` and build a changed copy with `copy(...)`.",
+    "detekt.style.DestructuringDeclarationWithTooManyEntries",
+    "Too many entries in a destructuring declaration make the code hard to understand.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#destructuringdeclarationwithtoomanyentries"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": {
-      "key": "exceptions",
-      "rule": "detekt.style.DestructuringDeclarationWithTooManyEntries"
-    }
-  },
-  {
-    "id": "detekt/detekt.style.EqualsNullCall",
-    "tool": "detekt",
-    "rule": "detekt.style.EqualsNullCall",
-    "anchor": "detekt-detekt-style-equalsnullcall",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Equals null call",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#equalsnullcall" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.EqualsNullCall" }
-  },
-  {
-    "id": "detekt/detekt.style.ExplicitItLambdaParameter",
-    "tool": "detekt",
-    "rule": "detekt.style.ExplicitItLambdaParameter",
-    "anchor": "detekt-detekt-style-explicititlambdaparameter",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Explicit it lambda parameter",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.DestructuringDeclarationWithTooManyEntries" },
+    "detekt.style.EqualsNullCall",
+    "Equals() method is called with null as parameter.",
+    "Consider using == to compare to null. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#equalsnullcall" }],
+    { "key": "exceptions", "rule": "detekt.style.EqualsNullCall" },
+    "detekt.style.ExplicitItLambdaParameter",
+    "Declaring lambda parameters as `it` is redundant.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#explicititlambdaparameter"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.ExplicitItLambdaParameter" }
-  },
-  {
-    "id": "detekt/detekt.style.ForbiddenComment",
-    "tool": "detekt",
-    "rule": "detekt.style.ForbiddenComment",
-    "anchor": "detekt-detekt-style-forbiddencomment",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Forbidden comment",
-    "why": "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#forbiddencomment" }
-    ],
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
-    ],
-    "exception": { "key": "exceptions", "rule": "detekt.style.ForbiddenComment" }
-  },
-  {
-    "id": "detekt/detekt.style.ForbiddenImport",
-    "tool": "detekt",
-    "rule": "detekt.style.ForbiddenImport",
-    "anchor": "detekt-detekt-style-forbiddenimport",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Forbidden import",
-    "why": "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#forbiddenimport" }
-    ],
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
-    ],
-    "exception": { "key": "exceptions", "rule": "detekt.style.ForbiddenImport" }
-  },
-  {
-    "id": "detekt/detekt.style.ForbiddenMethodCall",
-    "tool": "detekt",
-    "rule": "detekt.style.ForbiddenMethodCall",
-    "anchor": "detekt-detekt-style-forbiddenmethodcall",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Forbidden method call",
-    "why": "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#forbiddenmethodcall" }
-    ],
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
-    ],
-    "exception": { "key": "exceptions", "rule": "detekt.style.ForbiddenMethodCall" }
-  },
-  {
-    "id": "detekt/detekt.style.ForbiddenVoid",
-    "tool": "detekt",
-    "rule": "detekt.style.ForbiddenVoid",
-    "anchor": "detekt-detekt-style-forbiddenvoid",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Forbidden void",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#forbiddenvoid" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.ForbiddenVoid" }
-  },
-  {
-    "id": "detekt/detekt.style.FunctionOnlyReturningConstant",
-    "tool": "detekt",
-    "rule": "detekt.style.FunctionOnlyReturningConstant",
-    "anchor": "detekt-detekt-style-functiononlyreturningconstant",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Function only returning constant",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.ExplicitItLambdaParameter" },
+    "detekt.style.ForbiddenComment",
+    "Flags a forbidden comment.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#forbiddencomment" }],
+    { "key": "exceptions", "rule": "detekt.style.ForbiddenComment" },
+    "detekt.style.ForbiddenImport",
+    "Mark forbidden imports.",
+    "A forbidden import could be an import for an unstable / experimental api and hence you might want to mark it as forbidden in order to get warned about the usage. A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#forbiddenimport" }],
+    { "key": "exceptions", "rule": "detekt.style.ForbiddenImport" },
+    "detekt.style.ForbiddenMethodCall",
+    "Mark forbidden methods.",
+    "A forbidden method could be an invocation of an unstable / experimental method and hence you might want to mark it as forbidden in order to get warned about the usage. A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#forbiddenmethodcall" }],
+    { "key": "exceptions", "rule": "detekt.style.ForbiddenMethodCall" },
+    "detekt.style.ForbiddenVoid",
+    "`Unit` should be used instead of `Void`.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#forbiddenvoid" }],
+    { "key": "exceptions", "rule": "detekt.style.ForbiddenVoid" },
+    "detekt.style.FunctionOnlyReturningConstant",
+    "A function that only returns a constant is misleading.",
+    "Consider declaring a constant instead. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#functiononlyreturningconstant"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.FunctionOnlyReturningConstant" }
-  },
-  {
-    "id": "detekt/detekt.style.LoopWithTooManyJumpStatements",
-    "tool": "detekt",
-    "rule": "detekt.style.LoopWithTooManyJumpStatements",
-    "anchor": "detekt-detekt-style-loopwithtoomanyjumpstatements",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Loop with too many jump statements",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.FunctionOnlyReturningConstant" },
+    "detekt.style.LoopWithTooManyJumpStatements",
+    "The loop contains more than one break or continue statement.",
+    "The code should be refactored to increase readability. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#loopwithtoomanyjumpstatements"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.LoopWithTooManyJumpStatements" }
-  },
-  {
-    "id": "detekt/detekt.style.MagicNumber",
-    "tool": "detekt",
-    "rule": "detekt.style.MagicNumber",
-    "anchor": "detekt-detekt-style-magicnumber",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Magic number",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#magicnumber" }],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.MagicNumber" }
-  },
-  {
-    "id": "detekt/detekt.style.MaxLineLength",
-    "tool": "detekt",
-    "rule": "detekt.style.MaxLineLength",
-    "anchor": "detekt-detekt-style-maxlinelength",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Max line length",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#maxlinelength" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.MaxLineLength" }
-  },
-  {
-    "id": "detekt/detekt.style.MayBeConst",
-    "tool": "detekt",
-    "rule": "detekt.style.MayBeConst",
-    "anchor": "detekt-detekt-style-maybeconst",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "May be const",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#maybeconst" }],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.MayBeConst" }
-  },
-  {
-    "id": "detekt/detekt.style.ModifierOrder",
-    "tool": "detekt",
-    "rule": "detekt.style.ModifierOrder",
-    "anchor": "detekt-detekt-style-modifierorder",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Modifier order",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#modifierorder" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.ModifierOrder" }
-  },
-  {
-    "id": "detekt/detekt.style.NestedClassesVisibility",
-    "tool": "detekt",
-    "rule": "detekt.style.NestedClassesVisibility",
-    "anchor": "detekt-detekt-style-nestedclassesvisibility",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Nested classes visibility",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.LoopWithTooManyJumpStatements" },
+    "detekt.style.MagicNumber",
+    "Report magic numbers.",
+    "Magic number is a numeric literal that is not defined as a constant and hence it's unclear what the purpose of this number is. It's better to declare such numbers as constants and give them a proper name. By default, -1, 0, 1, and 2 are not considered to be magic numbers. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#magicnumber" }],
+    { "key": "exceptions", "rule": "detekt.style.MagicNumber" },
+    "detekt.style.MaxLineLength",
+    "Line detected, which is longer than the defined maximum line length in the code style.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#maxlinelength" }],
+    { "key": "exceptions", "rule": "detekt.style.MaxLineLength" },
+    "detekt.style.MayBeConst",
+    "Usage of `vals` that can be `const val` detected.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#maybeconst" }],
+    { "key": "exceptions", "rule": "detekt.style.MayBeConst" },
+    "detekt.style.ModifierOrder",
+    "Modifiers are not in the correct order.",
+    "Consider to reorder these modifiers. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#modifierorder" }],
+    { "key": "exceptions", "rule": "detekt.style.ModifierOrder" },
+    "detekt.style.NestedClassesVisibility",
+    "The explicit public modifier still results in an internal nested class.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#nestedclassesvisibility"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.NestedClassesVisibility" }
-  },
-  {
-    "id": "detekt/detekt.style.NewLineAtEndOfFile",
-    "tool": "detekt",
-    "rule": "detekt.style.NewLineAtEndOfFile",
-    "anchor": "detekt-detekt-style-newlineatendoffile",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "New line at end of file",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#newlineatendoffile" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.NewLineAtEndOfFile" }
-  },
-  {
-    "id": "detekt/detekt.style.ObjectLiteralToLambda",
-    "tool": "detekt",
-    "rule": "detekt.style.ObjectLiteralToLambda",
-    "anchor": "detekt-detekt-style-objectliteraltolambda",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Object literal to lambda",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.NestedClassesVisibility" },
+    "detekt.style.NewLineAtEndOfFile",
+    "Checks whether files end with a line separator.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#newlineatendoffile" }],
+    { "key": "exceptions", "rule": "detekt.style.NewLineAtEndOfFile" },
+    "detekt.style.ObjectLiteralToLambda",
+    "Report object literals that can be changed to lambdas.",
+    [
       { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#objectliteraltolambda" }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.ObjectLiteralToLambda" }
-  },
-  {
-    "id": "detekt/detekt.style.OptionalAbstractKeyword",
-    "tool": "detekt",
-    "rule": "detekt.style.OptionalAbstractKeyword",
-    "anchor": "detekt-detekt-style-optionalabstractkeyword",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Optional abstract keyword",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.ObjectLiteralToLambda" },
+    "detekt.style.OptionalAbstractKeyword",
+    "Unnecessary abstract modifier in interface detected.",
+    "This abstract modifier is unnecessary and thus can be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#optionalabstractkeyword"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.OptionalAbstractKeyword" }
-  },
-  {
-    "id": "detekt/detekt.style.ProtectedMemberInFinalClass",
-    "tool": "detekt",
-    "rule": "detekt.style.ProtectedMemberInFinalClass",
-    "anchor": "detekt-detekt-style-protectedmemberinfinalclass",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Protected member in final class",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.OptionalAbstractKeyword" },
+    "detekt.style.ProtectedMemberInFinalClass",
+    "Member with protected visibility in final class is private.",
+    "Consider using private or internal as modifier. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#protectedmemberinfinalclass"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.ProtectedMemberInFinalClass" }
-  },
-  {
-    "id": "detekt/detekt.style.RedundantHigherOrderMapUsage",
-    "tool": "detekt",
-    "rule": "detekt.style.RedundantHigherOrderMapUsage",
-    "anchor": "detekt-detekt-style-redundanthigherordermapusage",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Redundant higher order map usage",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.ProtectedMemberInFinalClass" },
+    "detekt.style.RedundantHigherOrderMapUsage",
+    "Checks for redundant 'map' calls, which can be removed.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#redundanthigherordermapusage"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.RedundantHigherOrderMapUsage" }
-  },
-  {
-    "id": "detekt/detekt.style.ReturnCount",
-    "tool": "detekt",
-    "rule": "detekt.style.ReturnCount",
-    "anchor": "detekt-detekt-style-returncount",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Return count",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#returncount" }],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.ReturnCount" }
-  },
-  {
-    "id": "detekt/detekt.style.SafeCast",
-    "tool": "detekt",
-    "rule": "detekt.style.SafeCast",
-    "anchor": "detekt-detekt-style-safecast",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Safe cast",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#safecast" }],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.SafeCast" }
-  },
-  {
-    "id": "detekt/detekt.style.SerialVersionUIDInSerializableClass",
-    "tool": "detekt",
-    "rule": "detekt.style.SerialVersionUIDInSerializableClass",
-    "anchor": "detekt-detekt-style-serialversionuidinserializableclass",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Serial version uid in serializable class",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.RedundantHigherOrderMapUsage" },
+    "detekt.style.ReturnCount",
+    "Restrict the number of return statements in methods.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#returncount" }],
+    { "key": "exceptions", "rule": "detekt.style.ReturnCount" },
+    "detekt.style.SafeCast",
+    "Prefer to use a safe cast instead of if-else-null.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#safecast" }],
+    { "key": "exceptions", "rule": "detekt.style.SafeCast" },
+    "detekt.style.SerialVersionUIDInSerializableClass",
+    "A class which implements the Serializable interface does not define a correct serialVersionUID field.",
+    "The serialVersionUID field should be a private constant long value inside a companion object. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#serialversionuidinserializableclass"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.SerialVersionUIDInSerializableClass" }
-  },
-  {
-    "id": "detekt/detekt.style.ThrowsCount",
-    "tool": "detekt",
-    "rule": "detekt.style.ThrowsCount",
-    "anchor": "detekt-detekt-style-throwscount",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Throws count",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#throwscount" }],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.ThrowsCount" }
-  },
-  {
-    "id": "detekt/detekt.style.UnnecessaryAbstractClass",
-    "tool": "detekt",
-    "rule": "detekt.style.UnnecessaryAbstractClass",
-    "anchor": "detekt-detekt-style-unnecessaryabstractclass",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unnecessary abstract class",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.SerialVersionUIDInSerializableClass" },
+    "detekt.style.ThrowsCount",
+    "Restrict the number of throw statements in methods.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#throwscount" }],
+    { "key": "exceptions", "rule": "detekt.style.ThrowsCount" },
+    "detekt.style.UnnecessaryAbstractClass",
+    "An abstract class is unnecessary.",
+    "May be refactored to an interface or to a concrete class. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#unnecessaryabstractclass"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UnnecessaryAbstractClass" }
-  },
-  {
-    "id": "detekt/detekt.style.UnnecessaryApply",
-    "tool": "detekt",
-    "rule": "detekt.style.UnnecessaryApply",
-    "anchor": "detekt-detekt-style-unnecessaryapply",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unnecessary apply",
-    "why": "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
-    "allowed": "Remove `apply`; use it only to configure an object you just created.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#unnecessaryapply" }
-    ],
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
-    ],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UnnecessaryApply" }
-  },
-  {
-    "id": "detekt/detekt.style.UnnecessaryFilter",
-    "tool": "detekt",
-    "rule": "detekt.style.UnnecessaryFilter",
-    "anchor": "detekt-detekt-style-unnecessaryfilter",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unnecessary filter",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#unnecessaryfilter" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UnnecessaryFilter" }
-  },
-  {
-    "id": "detekt/detekt.style.UnnecessaryInheritance",
-    "tool": "detekt",
-    "rule": "detekt.style.UnnecessaryInheritance",
-    "anchor": "detekt-detekt-style-unnecessaryinheritance",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unnecessary inheritance",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.UnnecessaryAbstractClass" },
+    "detekt.style.UnnecessaryApply",
+    "The `apply` usage is unnecessary and can be removed.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#unnecessaryapply" }],
+    { "key": "exceptions", "rule": "detekt.style.UnnecessaryApply" },
+    "Remove `apply`; use it only to configure an object you just created.",
+    "detekt.style.UnnecessaryFilter",
+    "`filter()` with other collection operations may be simplified.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#unnecessaryfilter" }],
+    { "key": "exceptions", "rule": "detekt.style.UnnecessaryFilter" },
+    "detekt.style.UnnecessaryInheritance",
+    "The extended super type is unnecessary.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#unnecessaryinheritance"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UnnecessaryInheritance" }
-  },
-  {
-    "id": "detekt/detekt.style.UnnecessaryLet",
-    "tool": "detekt",
-    "rule": "detekt.style.UnnecessaryLet",
-    "anchor": "detekt-detekt-style-unnecessarylet",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unnecessary let",
-    "why": "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
-    "allowed": "Call the member directly; `let` is for `value?.let { ... }`.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#unnecessarylet" }
-    ],
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
-    ],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UnnecessaryLet" }
-  },
-  {
-    "id": "detekt/detekt.style.UnusedParameter",
-    "tool": "detekt",
-    "rule": "detekt.style.UnusedParameter",
-    "anchor": "detekt-detekt-style-unusedparameter",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unused parameter",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#unusedparameter" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UnusedParameter" }
-  },
-  {
-    "id": "detekt/detekt.style.UnusedPrivateClass",
-    "tool": "detekt",
-    "rule": "detekt.style.UnusedPrivateClass",
-    "anchor": "detekt-detekt-style-unusedprivateclass",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unused private class",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#unusedprivateclass" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UnusedPrivateClass" }
-  },
-  {
-    "id": "detekt/detekt.style.UnusedPrivateMember",
-    "tool": "detekt",
-    "rule": "detekt.style.UnusedPrivateMember",
-    "anchor": "detekt-detekt-style-unusedprivatemember",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unused private member",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#unusedprivatemember" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UnusedPrivateMember" }
-  },
-  {
-    "id": "detekt/detekt.style.UnusedPrivateProperty",
-    "tool": "detekt",
-    "rule": "detekt.style.UnusedPrivateProperty",
-    "anchor": "detekt-detekt-style-unusedprivateproperty",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Unused private property",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.UnnecessaryInheritance" },
+    "detekt.style.UnnecessaryLet",
+    "The `let` usage is unnecessary.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#unnecessarylet" }],
+    { "key": "exceptions", "rule": "detekt.style.UnnecessaryLet" },
+    "Call the member directly; `let` is for `value?.let { ... }`.",
+    "detekt.style.UnusedParameter",
+    "Function parameter is unused and should be removed.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#unusedparameter" }],
+    { "key": "exceptions", "rule": "detekt.style.UnusedParameter" },
+    "detekt.style.UnusedPrivateClass",
+    "Private class is unused and should be removed.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#unusedprivateclass" }],
+    { "key": "exceptions", "rule": "detekt.style.UnusedPrivateClass" },
+    "detekt.style.UnusedPrivateMember",
+    "Private function is unused and should be removed.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#unusedprivatemember" }],
+    { "key": "exceptions", "rule": "detekt.style.UnusedPrivateMember" },
+    "detekt.style.UnusedPrivateProperty",
+    "Property is unused and should be removed.",
+    [
       { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#unusedprivateproperty" }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UnusedPrivateProperty" }
-  },
-  {
-    "id": "detekt/detekt.style.UseAnyOrNoneInsteadOfFind",
-    "tool": "detekt",
-    "rule": "detekt.style.UseAnyOrNoneInsteadOfFind",
-    "anchor": "detekt-detekt-style-useanyornoneinsteadoffind",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Use any or none instead of find",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.UnusedPrivateProperty" },
+    "detekt.style.UseAnyOrNoneInsteadOfFind",
+    "Use `any` or `none` instead of `find` and `null` checks.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#useanyornoneinsteadoffind"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UseAnyOrNoneInsteadOfFind" }
-  },
-  {
-    "id": "detekt/detekt.style.UseArrayLiteralsInAnnotations",
-    "tool": "detekt",
-    "rule": "detekt.style.UseArrayLiteralsInAnnotations",
-    "anchor": "detekt-detekt-style-usearrayliteralsinannotations",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Use array literals in annotations",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.UseAnyOrNoneInsteadOfFind" },
+    "detekt.style.UseArrayLiteralsInAnnotations",
+    "Array literals [...] should be preferred as they are more readable than `arrayOf(...)` expressions.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#usearrayliteralsinannotations"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UseArrayLiteralsInAnnotations" }
-  },
-  {
-    "id": "detekt/detekt.style.UseCheckNotNull",
-    "tool": "detekt",
-    "rule": "detekt.style.UseCheckNotNull",
-    "anchor": "detekt-detekt-style-usechecknotnull",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Use check not null",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#usechecknotnull" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UseCheckNotNull" }
-  },
-  {
-    "id": "detekt/detekt.style.UseCheckOrError",
-    "tool": "detekt",
-    "rule": "detekt.style.UseCheckOrError",
-    "anchor": "detekt-detekt-style-usecheckorerror",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Use check or error",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#usecheckorerror" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UseCheckOrError" }
-  },
-  {
-    "id": "detekt/detekt.style.UseDataClass",
-    "tool": "detekt",
-    "rule": "detekt.style.UseDataClass",
-    "anchor": "detekt-detekt-style-usedataclass",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Use data class",
-    "why": "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#usedataclass" }
-    ],
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
-    ],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UseDataClass" }
-  },
-  {
-    "id": "detekt/detekt.style.UseIsNullOrEmpty",
-    "tool": "detekt",
-    "rule": "detekt.style.UseIsNullOrEmpty",
-    "anchor": "detekt-detekt-style-useisnullorempty",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Use is null or empty",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#useisnullorempty" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UseIsNullOrEmpty" }
-  },
-  {
-    "id": "detekt/detekt.style.UselessCallOnNotNull",
-    "tool": "detekt",
-    "rule": "detekt.style.UselessCallOnNotNull",
-    "anchor": "detekt-detekt-style-uselesscallonnotnull",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Useless call on not null",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#uselesscallonnotnull" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UselessCallOnNotNull" }
-  },
-  {
-    "id": "detekt/detekt.style.UseLet",
-    "tool": "detekt",
-    "rule": "detekt.style.UseLet",
-    "anchor": "detekt-detekt-style-uselet",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Use let",
-    "why": "A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.",
-    "links": [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#uselet" }],
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
-    ],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UseLet" }
-  },
-  {
-    "id": "detekt/detekt.style.UseOrEmpty",
-    "tool": "detekt",
-    "rule": "detekt.style.UseOrEmpty",
-    "anchor": "detekt-detekt-style-useorempty",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Use or empty",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#useorempty" }],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UseOrEmpty" }
-  },
-  {
-    "id": "detekt/detekt.style.UseRequire",
-    "tool": "detekt",
-    "rule": "detekt.style.UseRequire",
-    "anchor": "detekt-detekt-style-userequire",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Use require",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#userequire" }],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UseRequire" }
-  },
-  {
-    "id": "detekt/detekt.style.UseRequireNotNull",
-    "tool": "detekt",
-    "rule": "detekt.style.UseRequireNotNull",
-    "anchor": "detekt-detekt-style-userequirenotnull",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Use require not null",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#userequirenotnull" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UseRequireNotNull" }
-  },
-  {
-    "id": "detekt/detekt.style.UtilityClassWithPublicConstructor",
-    "tool": "detekt",
-    "rule": "detekt.style.UtilityClassWithPublicConstructor",
-    "anchor": "detekt-detekt-style-utilityclasswithpublicconstructor",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Utility class with public constructor",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
+    { "key": "exceptions", "rule": "detekt.style.UseArrayLiteralsInAnnotations" },
+    "detekt.style.UseCheckNotNull",
+    "Use checkNotNull() instead of check() for checking not-null.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#usechecknotnull" }],
+    { "key": "exceptions", "rule": "detekt.style.UseCheckNotNull" },
+    "detekt.style.UseCheckOrError",
+    "Use check() or error() instead of throwing an IllegalStateException.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#usecheckorerror" }],
+    { "key": "exceptions", "rule": "detekt.style.UseCheckOrError" },
+    "detekt.style.UseDataClass",
+    "Classes that do nothing but hold data should be replaced with a data class.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#usedataclass" }],
+    { "key": "exceptions", "rule": "detekt.style.UseDataClass" },
+    "detekt.style.UseIsNullOrEmpty",
+    "Use `isNullOrEmpty()` call instead of `x == null || x.isEmpty()`.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#useisnullorempty" }],
+    { "key": "exceptions", "rule": "detekt.style.UseIsNullOrEmpty" },
+    "detekt.style.UselessCallOnNotNull",
+    "This call on a non-null reference may be reduced or removed.",
+    "Some calls are intended to be called on nullable collection or text types (e.g. `String?`).When this call is used on a reference to a non-null type (e.g. `String`) it is redundant and will have no effect, so it can be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#uselesscallonnotnull" }],
+    { "key": "exceptions", "rule": "detekt.style.UselessCallOnNotNull" },
+    "detekt.style.UseLet",
+    "Use `?.let {}` instead of if/else with a null block when checking for nullable values.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#uselet" }],
+    { "key": "exceptions", "rule": "detekt.style.UseLet" },
+    "detekt.style.UseOrEmpty",
+    "Use `orEmpty()` call instead of `?:` with empty collection factory methods.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#useorempty" }],
+    { "key": "exceptions", "rule": "detekt.style.UseOrEmpty" },
+    "detekt.style.UseRequire",
+    "Use require() instead of throwing an IllegalArgumentException.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#userequire" }],
+    { "key": "exceptions", "rule": "detekt.style.UseRequire" },
+    "detekt.style.UseRequireNotNull",
+    "Use requireNotNull() instead of require() for checking not-null.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#userequirenotnull" }],
+    { "key": "exceptions", "rule": "detekt.style.UseRequireNotNull" },
+    "detekt.style.UtilityClassWithPublicConstructor",
+    "The class declaration is unnecessary because it only contains utility functions.",
+    "An object declaration should be used instead. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [
       {
         "label": "detekt rule",
         "url": "https://detekt.dev/docs/rules/style#utilityclasswithpublicconstructor"
       }
     ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.UtilityClassWithPublicConstructor" }
-  },
-  {
-    "id": "detekt/detekt.style.VarCouldBeVal",
-    "tool": "detekt",
-    "rule": "detekt.style.VarCouldBeVal",
-    "anchor": "detekt-detekt-style-varcouldbeval",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Var could be val",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#varcouldbeval" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.VarCouldBeVal" }
-  },
-  {
-    "id": "detekt/detekt.style.WildcardImport",
-    "tool": "detekt",
-    "rule": "detekt.style.WildcardImport",
-    "anchor": "detekt-detekt-style-wildcardimport",
-    "page": "kotlin-detekt",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "Wildcard import",
-    "why": "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
-    "links": [
-      { "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#wildcardimport" }
-    ],
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "detekt.style.WildcardImport" }
-  }
-]
+    { "key": "exceptions", "rule": "detekt.style.UtilityClassWithPublicConstructor" },
+    "detekt.style.VarCouldBeVal",
+    "Var declaration could be val.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#varcouldbeval" }],
+    { "key": "exceptions", "rule": "detekt.style.VarCouldBeVal" },
+    "detekt.style.WildcardImport",
+    "Wildcard imports should be replaced with imports using fully qualified class names.",
+    "Wildcard imports can lead to naming conflicts. A library update can introduce naming clashes with your classes which results in compilation errors. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
+    [{ "label": "detekt rule", "url": "https://detekt.dev/docs/rules/style#wildcardimport" }],
+    { "key": "exceptions", "rule": "detekt.style.WildcardImport" }
+  ],
+  "entries": [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, -1],
+    [0, 9, 2, 3, 10, 5, 11, 7, 12, -1],
+    [0, 13, 2, 3, 14, 15, 16, 7, 17, -1],
+    [0, 18, 2, 3, 19, 20, 21, 7, 22, -1],
+    [0, 23, 2, 3, 24, 25, 26, 7, 27, -1],
+    [0, 28, 2, 3, 29, 30, 31, 7, 32, -1],
+    [0, 33, 2, 3, 34, 35, 36, 37, 38, 39],
+    [0, 40, 2, 3, 41, 42, 43, 7, 44, -1],
+    [0, 45, 2, 3, 46, 47, 48, 37, 49, -1],
+    [0, 50, 2, 3, 51, 52, 53, 7, 54, -1],
+    [0, 55, 2, 3, 56, 5, 57, 7, 58, -1],
+    [0, 59, 2, 3, 60, 5, 61, 7, 62, -1],
+    [0, 63, 2, 3, 64, 65, 66, 7, 67, -1],
+    [0, 68, 2, 3, 69, 70, 71, 7, 72, -1],
+    [0, 73, 2, 3, 74, 75, 76, 7, 77, -1],
+    [0, 78, 2, 3, 74, 75, 79, 7, 80, -1],
+    [0, 81, 2, 3, 74, 75, 82, 7, 83, -1],
+    [0, 84, 2, 3, 74, 75, 85, 7, 86, -1],
+    [0, 87, 2, 3, 74, 75, 88, 7, 89, -1],
+    [0, 90, 2, 3, 74, 75, 91, 7, 92, -1],
+    [0, 93, 2, 3, 74, 75, 94, 7, 95, -1],
+    [0, 96, 2, 3, 74, 75, 97, 7, 98, -1],
+    [0, 99, 2, 3, 74, 75, 100, 7, 101, -1],
+    [0, 102, 2, 3, 74, 75, 103, 7, 104, -1],
+    [0, 105, 2, 3, 74, 75, 106, 7, 107, -1],
+    [0, 108, 2, 3, 74, 75, 109, 7, 110, -1],
+    [0, 111, 2, 3, 74, 75, 112, 7, 113, -1],
+    [0, 114, 2, 3, 74, 75, 115, 7, 116, -1],
+    [0, 117, 2, 3, 118, 119, 120, 7, 121, -1],
+    [0, 122, 2, 3, 123, 5, 124, 7, 125, -1],
+    [0, 126, 2, 3, 127, 128, 129, 7, 130, -1],
+    [0, 131, 2, 3, 132, 5, 133, 7, 134, -1],
+    [0, 135, 2, 3, 136, 137, 138, 7, 139, -1],
+    [0, 140, 2, 3, 141, 142, 143, 7, 144, -1],
+    [0, 145, 2, 3, 146, 147, 148, 7, 149, -1],
+    [0, 150, 2, 3, 151, 152, 153, 7, 154, -1],
+    [0, 155, 2, 3, 156, 5, 157, 7, 158, -1],
+    [0, 159, 2, 3, 160, 161, 162, 37, 163, 164],
+    [0, 165, 2, 3, 166, 167, 168, 7, 169, -1],
+    [0, 170, 2, 3, 171, 5, 172, 7, 173, -1],
+    [0, 174, 2, 3, 175, 5, 176, 7, 177, -1],
+    [0, 178, 2, 3, 179, 5, 180, 7, 181, -1],
+    [0, 182, 2, 3, 183, 5, 184, 7, 185, -1],
+    [0, 186, 2, 3, 187, 5, 188, 7, 189, -1],
+    [0, 190, 2, 3, 191, 5, 192, 7, 193, -1],
+    [0, 194, 2, 3, 195, 5, 196, 7, 197, -1],
+    [0, 198, 2, 3, 199, 5, 200, 7, 201, -1],
+    [0, 202, 2, 3, 203, 5, 204, 7, 205, -1],
+    [0, 206, 2, 3, 207, 5, 208, 7, 209, -1],
+    [0, 210, 2, 3, 211, 5, 212, 7, 213, -1],
+    [0, 214, 2, 3, 215, 5, 216, 7, 217, -1],
+    [0, 218, 2, 3, 219, 5, 220, 7, 221, -1],
+    [0, 222, 2, 3, 223, 5, 224, 7, 225, -1],
+    [0, 226, 2, 3, 227, 228, 229, 7, 230, -1],
+    [0, 231, 2, 3, 232, 233, 234, 7, 235, -1],
+    [0, 236, 2, 3, 237, 5, 238, 7, 239, -1],
+    [0, 240, 2, 3, 241, 5, 242, 7, 243, -1],
+    [0, 244, 2, 3, 245, 246, 247, 37, 248, -1],
+    [0, 249, 2, 3, 250, 251, 252, 7, 253, -1],
+    [0, 254, 2, 3, 255, 256, 257, 7, 258, -1],
+    [0, 259, 2, 3, 260, 261, 262, 7, 263, -1],
+    [0, 264, 2, 3, 265, 266, 267, 7, 268, -1],
+    [0, 269, 2, 3, 270, 5, 271, 7, 272, -1],
+    [0, 273, 2, 3, 274, 5, 275, 7, 276, -1],
+    [0, 277, 2, 3, 278, 279, 280, 7, 281, -1],
+    [0, 282, 2, 3, 283, 5, 284, 7, 285, -1],
+    [0, 286, 2, 3, 287, 288, 289, 7, 290, -1],
+    [0, 291, 2, 3, 292, 5, 293, 7, 294, -1],
+    [0, 295, 2, 3, 296, 297, 298, 7, 299, -1],
+    [0, 300, 2, 3, 301, 5, 302, 7, 303, -1],
+    [0, 304, 2, 3, 305, 5, 306, 7, 307, -1],
+    [0, 308, 2, 3, 309, 5, 310, 7, 311, -1],
+    [0, 312, 2, 3, 313, 314, 315, 7, 316, -1],
+    [0, 317, 2, 3, 318, 319, 320, 37, 321, 322],
+    [0, 323, 2, 3, 324, 5, 325, 7, 326, -1],
+    [0, 327, 2, 3, 328, 5, 329, 7, 330, -1],
+    [0, 331, 2, 3, 332, 333, 334, 7, 335, -1],
+    [0, 336, 2, 3, 337, 338, 339, 7, 340, -1],
+    [0, 341, 2, 3, 342, 47, 343, 37, 344, 345],
+    [0, 346, 2, 3, 347, 5, 348, 7, 349, -1],
+    [0, 350, 2, 3, 351, 352, 353, 7, 354, -1],
+    [0, 355, 2, 3, 356, 5, 357, 7, 358, -1],
+    [0, 359, 2, 3, 360, 47, 361, 37, 362, -1],
+    [0, 363, 2, 3, 364, 365, 366, 37, 367, -1],
+    [0, 368, 2, 3, 369, 370, 371, 37, 372, -1],
+    [0, 373, 2, 3, 374, 5, 375, 7, 376, -1],
+    [0, 377, 2, 3, 378, 379, 380, 7, 381, -1],
+    [0, 382, 2, 3, 383, 384, 385, 7, 386, -1],
+    [0, 387, 2, 3, 388, 389, 390, 7, 391, -1],
+    [0, 392, 2, 3, 393, 5, 394, 7, 395, -1],
+    [0, 396, 2, 3, 397, 5, 398, 7, 399, -1],
+    [0, 400, 2, 3, 401, 402, 403, 7, 404, -1],
+    [0, 405, 2, 3, 406, 5, 407, 7, 408, -1],
+    [0, 409, 2, 3, 410, 5, 411, 7, 412, -1],
+    [0, 413, 2, 3, 414, 5, 415, 7, 416, -1],
+    [0, 417, 2, 3, 418, 419, 420, 7, 421, -1],
+    [0, 422, 2, 3, 423, 424, 425, 7, 426, -1],
+    [0, 427, 2, 3, 428, 5, 429, 7, 430, -1],
+    [0, 431, 2, 3, 432, 5, 433, 7, 434, -1],
+    [0, 435, 2, 3, 436, 5, 437, 7, 438, -1],
+    [0, 439, 2, 3, 440, 441, 442, 7, 443, -1],
+    [0, 444, 2, 3, 445, 5, 446, 7, 447, -1],
+    [0, 448, 2, 3, 449, 450, 451, 7, 452, -1],
+    [0, 453, 2, 3, 454, 47, 455, 37, 456, 457],
+    [0, 458, 2, 3, 459, 5, 460, 7, 461, -1],
+    [0, 462, 2, 3, 463, 5, 464, 7, 465, -1],
+    [0, 466, 2, 3, 467, 47, 468, 37, 469, 470],
+    [0, 471, 2, 3, 472, 5, 473, 7, 474, -1],
+    [0, 475, 2, 3, 476, 5, 477, 7, 478, -1],
+    [0, 479, 2, 3, 480, 5, 481, 7, 482, -1],
+    [0, 483, 2, 3, 484, 5, 485, 7, 486, -1],
+    [0, 487, 2, 3, 488, 5, 489, 7, 490, -1],
+    [0, 491, 2, 3, 492, 5, 493, 7, 494, -1],
+    [0, 495, 2, 3, 496, 5, 497, 7, 498, -1],
+    [0, 499, 2, 3, 500, 5, 501, 7, 502, -1],
+    [0, 503, 2, 3, 504, 47, 505, 37, 506, -1],
+    [0, 507, 2, 3, 508, 5, 509, 7, 510, -1],
+    [0, 511, 2, 3, 512, 513, 514, 7, 515, -1],
+    [0, 516, 2, 3, 517, 47, 518, 37, 519, -1],
+    [0, 520, 2, 3, 521, 5, 522, 7, 523, -1],
+    [0, 524, 2, 3, 525, 5, 526, 7, 527, -1],
+    [0, 528, 2, 3, 529, 5, 530, 7, 531, -1],
+    [0, 532, 2, 3, 533, 534, 535, 7, 536, -1],
+    [0, 537, 2, 3, 538, 5, 539, 7, 540, -1],
+    [0, 541, 2, 3, 542, 543, 544, 7, 545, -1]
+  ]
+}

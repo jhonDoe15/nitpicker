@@ -4,6 +4,8 @@ The rules of the third-party ESLint plugins the presets use: Vitest, React, acce
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
+The summaries of the ESLint rules are the `meta.docs.description` of each rule, from ESLint, typescript-eslint and the plugins, all under the MIT License.
+
 Unless an entry says otherwise:
 
 - **Presets:** TypeScript
@@ -19,6 +21,7 @@ Enforce defaultMessage in message descriptor.
 - **Printed as:** `eslint-lint/formatjs/enforce-default-message`
 - **Scope:** A TypeScript project with `i18n.enabled` or an i18n library.
 - **Why it is on:** The i18n scope turns on the rules for internationalized messages.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://formatjs.github.io/docs/tooling/linter#enforce-default-message).
 - **Exception:** If this is intended, add `{"rule":"formatjs/enforce-default-message","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#internationalized-messages), [Rule documentation](https://formatjs.github.io/docs/tooling/linter#enforce-default-message)
 
@@ -31,6 +34,7 @@ Enforce description in message descriptor.
 - **Printed as:** `eslint-lint/formatjs/enforce-description`
 - **Scope:** A TypeScript project with `i18n.enabled` or an i18n library.
 - **Why it is on:** The i18n scope turns on the rules for internationalized messages.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://formatjs.github.io/docs/tooling/linter#enforce-description).
 - **Exception:** If this is intended, add `{"rule":"formatjs/enforce-description","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#internationalized-messages), [Rule documentation](https://formatjs.github.io/docs/tooling/linter#enforce-description)
 
@@ -43,6 +47,7 @@ Enforce that all messages with placeholders have enough passed-in values.
 - **Printed as:** `eslint-lint/formatjs/enforce-placeholders`
 - **Scope:** A TypeScript project with `i18n.enabled` or an i18n library.
 - **Why it is on:** The i18n scope turns on the rules for internationalized messages.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://formatjs.github.io/docs/tooling/linter#enforce-placeholders).
 - **Exception:** If this is intended, add `{"rule":"formatjs/enforce-placeholders","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#internationalized-messages), [Rule documentation](https://formatjs.github.io/docs/tooling/linter#enforce-placeholders)
 
@@ -63,6 +68,7 @@ Default complexity limit is 20
 - **Printed as:** `eslint-lint/formatjs/no-complex-selectors`
 - **Scope:** A TypeScript project with `i18n.enabled` or an i18n library.
 - **Why it is on:** The i18n scope turns on the rules for internationalized messages.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-complex-selectors).
 - **Exception:** If this is intended, add `{"rule":"formatjs/no-complex-selectors","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#internationalized-messages), [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-complex-selectors)
 
@@ -75,6 +81,7 @@ Make sure ICU messages are formatted correctly with no bad select statements, pl
 - **Printed as:** `eslint-lint/formatjs/no-invalid-icu`
 - **Scope:** A TypeScript project with `i18n.enabled` or an i18n library.
 - **Why it is on:** The i18n scope turns on the rules for internationalized messages.
+- **Allowed form:** See the guide: [Strict preset guide](../typescript-strict-preset.md#internationalized-messages).
 - **Exception:** If this is intended, add `{"rule":"formatjs/no-invalid-icu","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#internationalized-messages)
 
@@ -87,6 +94,7 @@ Disallow untranslated literal strings without translation.
 - **Printed as:** `eslint-lint/formatjs/no-literal-string-in-jsx`
 - **Scope:** A TypeScript project with `i18n.enabled` or an i18n library.
 - **Why it is on:** The i18n scope turns on the rules for internationalized messages.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-literal-string-in-jsx).
 - **Exception:** If this is intended, add `{"rule":"formatjs/no-literal-string-in-jsx","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#internationalized-messages), [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-literal-string-in-jsx)
 
@@ -99,6 +107,7 @@ We use `one {# item}` instead of `one {1 item}` in ICU messages as some locales 
 - **Printed as:** `eslint-lint/formatjs/no-missing-icu-plural-one-placeholders`
 - **Scope:** A TypeScript project with `i18n.enabled` or an i18n library.
 - **Why it is on:** The i18n scope turns on the rules for internationalized messages.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-explicit-icu-plural).
 - **Exception:** If this is intended, add `{"rule":"formatjs/no-missing-icu-plural-one-placeholders","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#internationalized-messages), [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-explicit-icu-plural)
 
@@ -111,6 +120,7 @@ Disallow multiple plural rules in the same message.
 - **Printed as:** `eslint-lint/formatjs/no-multiple-plurals`
 - **Scope:** A TypeScript project with `i18n.enabled` or an i18n library.
 - **Why it is on:** The i18n scope turns on the rules for internationalized messages.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-multiple-plurals).
 - **Exception:** If this is intended, add `{"rule":"formatjs/no-multiple-plurals","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#internationalized-messages), [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-multiple-plurals)
 
@@ -123,6 +133,7 @@ Prevents usage of multiple consecutive whitespaces in message.
 - **Printed as:** `eslint-lint/formatjs/no-multiple-whitespaces`
 - **Scope:** A TypeScript project with `i18n.enabled` or an i18n library.
 - **Why it is on:** The i18n scope turns on the rules for internationalized messages.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-multiple-whitespaces).
 - **Exception:** If this is intended, add `{"rule":"formatjs/no-multiple-whitespaces","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#internationalized-messages), [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-multiple-whitespaces)
 
@@ -135,6 +146,7 @@ Disallow offset in plural rules.
 - **Printed as:** `eslint-lint/formatjs/no-offset`
 - **Scope:** A TypeScript project with `i18n.enabled` or an i18n library.
 - **Why it is on:** The i18n scope turns on the rules for internationalized messages.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-offset).
 - **Exception:** If this is intended, add `{"rule":"formatjs/no-offset","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#internationalized-messages), [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-offset)
 
@@ -147,6 +159,7 @@ Disallow unnecessary formatted message.
 - **Printed as:** `eslint-lint/formatjs/no-useless-message`
 - **Scope:** A TypeScript project with `i18n.enabled` or an i18n library.
 - **Why it is on:** The i18n scope turns on the rules for internationalized messages.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-useless-message).
 - **Exception:** If this is intended, add `{"rule":"formatjs/no-useless-message","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#internationalized-messages), [Rule documentation](https://formatjs.github.io/docs/tooling/linter#no-useless-message)
 
@@ -159,6 +172,7 @@ Detects messages with leading/trailing whitespace, which suggests string concate
 - **Printed as:** `eslint-lint/formatjs/prefer-full-sentence`
 - **Scope:** A TypeScript project with `i18n.enabled` or an i18n library.
 - **Why it is on:** The i18n scope turns on the rules for internationalized messages.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://formatjs.github.io/docs/tooling/linter#prefer-full-sentence).
 - **Exception:** If this is intended, add `{"rule":"formatjs/prefer-full-sentence","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#internationalized-messages), [Rule documentation](https://formatjs.github.io/docs/tooling/linter#prefer-full-sentence)
 
@@ -171,6 +185,7 @@ Prefer using # to reference the count in the plural argument.
 - **Printed as:** `eslint-lint/formatjs/prefer-pound-in-plural`
 - **Scope:** A TypeScript project with `i18n.enabled` or an i18n library.
 - **Why it is on:** The i18n scope turns on the rules for internationalized messages.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://formatjs.github.io/docs/tooling/linter#prefer-pound-in-plurals).
 - **Exception:** If this is intended, add `{"rule":"formatjs/prefer-pound-in-plural","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#internationalized-messages), [Rule documentation](https://formatjs.github.io/docs/tooling/linter#prefer-pound-in-plurals)
 
@@ -183,6 +198,7 @@ Disallow classes.
 - **Printed as:** `eslint-lint/functional/no-classes`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** The preset turns on this rule to keep data immutable.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/no-classes.md).
 - **Exception:** If this is intended, add `{"rule":"functional/no-classes","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/no-classes.md)
 
@@ -195,6 +211,7 @@ Disallow mutable variables.
 - **Printed as:** `eslint-lint/functional/no-let`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** The preset turns on this rule to keep data immutable.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/no-let.md).
 - **Exception:** If this is intended, add `{"rule":"functional/no-let","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/no-let.md)
 
@@ -207,6 +224,7 @@ Disallow this access.
 - **Printed as:** `eslint-lint/functional/no-this-expressions`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** The preset turns on this rule to keep data immutable.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/no-this-expressions.md).
 - **Exception:** If this is intended, add `{"rule":"functional/no-this-expressions","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/no-this-expressions.md)
 
@@ -219,6 +237,7 @@ Require function parameters to be typed as certain immutability.
 - **Printed as:** `eslint-lint/functional/prefer-immutable-types`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** The preset turns on this rule to keep data immutable.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/prefer-immutable-types.md).
 - **Exception:** If this is intended, add `{"rule":"functional/prefer-immutable-types","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://github.com/eslint-functional/eslint-plugin-functional/blob/v10.0.1/docs/rules/prefer-immutable-types.md)
 
@@ -230,6 +249,7 @@ Enforce all elements that require alternative text have meaningful information t
 
 - **Printed as:** `eslint-lint/jsx-a11y/alt-text`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/alt-text.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/alt-text","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/alt-text.md)
 
@@ -241,6 +261,7 @@ Enforce `<a>` text to not exactly match "click here", "here", "link", or "a link
 
 - **Printed as:** `eslint-lint/jsx-a11y/anchor-ambiguous-text`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/anchor-ambiguous-text.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/anchor-ambiguous-text","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/anchor-ambiguous-text.md)
 
@@ -252,6 +273,7 @@ Enforce all anchors to contain accessible content.
 
 - **Printed as:** `eslint-lint/jsx-a11y/anchor-has-content`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/anchor-has-content.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/anchor-has-content","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/anchor-has-content.md)
 
@@ -263,6 +285,7 @@ Enforce all anchors are valid, navigable elements.
 
 - **Printed as:** `eslint-lint/jsx-a11y/anchor-is-valid`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/anchor-is-valid.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/anchor-is-valid","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/anchor-is-valid.md)
 
@@ -274,6 +297,7 @@ Enforce elements with aria-activedescendant are tabbable.
 
 - **Printed as:** `eslint-lint/jsx-a11y/aria-activedescendant-has-tabindex`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-activedescendant-has-tabindex.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/aria-activedescendant-has-tabindex","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-activedescendant-has-tabindex.md)
 
@@ -285,6 +309,7 @@ Enforce all `aria-*` props are valid.
 
 - **Printed as:** `eslint-lint/jsx-a11y/aria-props`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-props.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/aria-props","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-props.md)
 
@@ -296,6 +321,7 @@ Enforce ARIA state and property values are valid.
 
 - **Printed as:** `eslint-lint/jsx-a11y/aria-proptypes`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-proptypes.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/aria-proptypes","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-proptypes.md)
 
@@ -307,6 +333,7 @@ Enforce that elements with ARIA roles must use a valid, non-abstract ARIA role.
 
 - **Printed as:** `eslint-lint/jsx-a11y/aria-role`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-role.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/aria-role","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-role.md)
 
@@ -318,6 +345,7 @@ Enforce that elements that do not support ARIA roles, states, and properties do 
 
 - **Printed as:** `eslint-lint/jsx-a11y/aria-unsupported-elements`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-unsupported-elements.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/aria-unsupported-elements","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/aria-unsupported-elements.md)
 
@@ -329,6 +357,7 @@ Enforce that autocomplete attributes are used correctly.
 
 - **Printed as:** `eslint-lint/jsx-a11y/autocomplete-valid`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/autocomplete-valid.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/autocomplete-valid","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/autocomplete-valid.md)
 
@@ -340,6 +369,7 @@ Enforce a clickable non-interactive element has at least one keyboard event list
 
 - **Printed as:** `eslint-lint/jsx-a11y/click-events-have-key-events`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/click-events-have-key-events.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/click-events-have-key-events","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/click-events-have-key-events.md)
 
@@ -351,6 +381,7 @@ Enforce that a control (an interactive element) has a text label.
 
 - **Printed as:** `eslint-lint/jsx-a11y/control-has-associated-label`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/control-has-associated-label.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/control-has-associated-label","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/control-has-associated-label.md)
 
@@ -362,6 +393,7 @@ Enforce heading (`h1`, `h2`, etc) elements contain accessible content.
 
 - **Printed as:** `eslint-lint/jsx-a11y/heading-has-content`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/heading-has-content.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/heading-has-content","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/heading-has-content.md)
 
@@ -373,6 +405,7 @@ Enforce `<html>` element has `lang` prop.
 
 - **Printed as:** `eslint-lint/jsx-a11y/html-has-lang`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/html-has-lang.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/html-has-lang","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/html-has-lang.md)
 
@@ -384,6 +417,7 @@ Enforce iframe elements have a title attribute.
 
 - **Printed as:** `eslint-lint/jsx-a11y/iframe-has-title`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/iframe-has-title.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/iframe-has-title","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/iframe-has-title.md)
 
@@ -395,6 +429,7 @@ Enforce `<img>` alt prop does not contain the word "image", "picture", or "photo
 
 - **Printed as:** `eslint-lint/jsx-a11y/img-redundant-alt`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/img-redundant-alt.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/img-redundant-alt","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/img-redundant-alt.md)
 
@@ -406,6 +441,7 @@ Enforce that elements with interactive handlers like `onClick` must be focusable
 
 - **Printed as:** `eslint-lint/jsx-a11y/interactive-supports-focus`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/interactive-supports-focus.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/interactive-supports-focus","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/interactive-supports-focus.md)
 
@@ -417,6 +453,7 @@ Enforce that a `label` tag has a text label and an associated control.
 
 - **Printed as:** `eslint-lint/jsx-a11y/label-has-associated-control`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/label-has-associated-control.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/label-has-associated-control","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/label-has-associated-control.md)
 
@@ -428,6 +465,7 @@ Enforces that `<audio>` and `<video>` elements must have a `<track>` for caption
 
 - **Printed as:** `eslint-lint/jsx-a11y/media-has-caption`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/media-has-caption.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/media-has-caption","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/media-has-caption.md)
 
@@ -439,6 +477,7 @@ Enforce that `onMouseOver`/`onMouseOut` are accompanied by `onFocus`/`onBlur` fo
 
 - **Printed as:** `eslint-lint/jsx-a11y/mouse-events-have-key-events`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/mouse-events-have-key-events.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/mouse-events-have-key-events","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/mouse-events-have-key-events.md)
 
@@ -450,6 +489,7 @@ Enforce that the `accessKey` prop is not used on any element to avoid complicati
 
 - **Printed as:** `eslint-lint/jsx-a11y/no-access-key`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-access-key.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/no-access-key","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-access-key.md)
 
@@ -461,6 +501,7 @@ Disallow `aria-hidden="true"` from being set on focusable elements.
 
 - **Printed as:** `eslint-lint/jsx-a11y/no-aria-hidden-on-focusable`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-aria-hidden-on-focusable.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/no-aria-hidden-on-focusable","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-aria-hidden-on-focusable.md)
 
@@ -472,6 +513,7 @@ Enforce autoFocus prop is not enabled.
 
 - **Printed as:** `eslint-lint/jsx-a11y/no-autofocus`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-autofocus.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/no-autofocus","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-autofocus.md)
 
@@ -483,6 +525,7 @@ Enforce distracting elements are not used.
 
 - **Printed as:** `eslint-lint/jsx-a11y/no-distracting-elements`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-distracting-elements.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/no-distracting-elements","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-distracting-elements.md)
 
@@ -494,6 +537,7 @@ Disallow interactive elements being assigned non-interactive roles.
 
 - **Printed as:** `eslint-lint/jsx-a11y/no-interactive-element-to-noninteractive-role`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-interactive-element-to-noninteractive-role.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/no-interactive-element-to-noninteractive-role","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-interactive-element-to-noninteractive-role.md)
 
@@ -505,6 +549,7 @@ Disallow non-interactive elements being assigned mouse or keyboard event listene
 
 - **Printed as:** `eslint-lint/jsx-a11y/no-noninteractive-element-interactions`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-noninteractive-element-interactions.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/no-noninteractive-element-interactions","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-noninteractive-element-interactions.md)
 
@@ -516,6 +561,7 @@ Disallow non-interactive elements being assigned interactive roles.
 
 - **Printed as:** `eslint-lint/jsx-a11y/no-noninteractive-element-to-interactive-role`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-noninteractive-element-to-interactive-role.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/no-noninteractive-element-to-interactive-role","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-noninteractive-element-to-interactive-role.md)
 
@@ -527,6 +573,7 @@ Enforce `tabIndex` only be declared on interactive elements.
 
 - **Printed as:** `eslint-lint/jsx-a11y/no-noninteractive-tabindex`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-noninteractive-tabindex.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/no-noninteractive-tabindex","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-noninteractive-tabindex.md)
 
@@ -538,6 +585,7 @@ Enforce explicit role property is not the same as implicit/default role property
 
 - **Printed as:** `eslint-lint/jsx-a11y/no-redundant-roles`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-redundant-roles.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/no-redundant-roles","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-redundant-roles.md)
 
@@ -549,6 +597,7 @@ Enforce that non-interactive, visible elements (such as `<div>`) that have click
 
 - **Printed as:** `eslint-lint/jsx-a11y/no-static-element-interactions`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-static-element-interactions.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/no-static-element-interactions","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/no-static-element-interactions.md)
 
@@ -560,6 +609,7 @@ Enforces using semantic DOM elements over the ARIA `role` property.
 
 - **Printed as:** `eslint-lint/jsx-a11y/prefer-tag-over-role`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/prefer-tag-over-role.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/prefer-tag-over-role","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/prefer-tag-over-role.md)
 
@@ -571,6 +621,7 @@ Enforce that elements with ARIA roles must have all required attributes for that
 
 - **Printed as:** `eslint-lint/jsx-a11y/role-has-required-aria-props`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/role-has-required-aria-props.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/role-has-required-aria-props","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/role-has-required-aria-props.md)
 
@@ -582,6 +633,7 @@ Enforce that elements with explicit or implicit roles defined contain only `aria
 
 - **Printed as:** `eslint-lint/jsx-a11y/role-supports-aria-props`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/role-supports-aria-props.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/role-supports-aria-props","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/role-supports-aria-props.md)
 
@@ -593,6 +645,7 @@ Enforce `scope` prop is only used on `<th>` elements.
 
 - **Printed as:** `eslint-lint/jsx-a11y/scope`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/scope.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/scope","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/scope.md)
 
@@ -604,6 +657,7 @@ Enforce `tabIndex` value is not greater than zero.
 
 - **Printed as:** `eslint-lint/jsx-a11y/tabindex-no-positive`
 - **Why it is on:** The React scope turns on the accessibility rules for JSX.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/tabindex-no-positive.md).
 - **Exception:** If this is intended, add `{"rule":"jsx-a11y/tabindex-no-positive","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/es-tooling/eslint-plugin-jsx-a11y-x/tree/HEAD/docs/rules/tabindex-no-positive.md)
 
@@ -615,6 +669,7 @@ Disallows DOM elements from using 'dangerouslySetInnerHTML'.
 
 - **Printed as:** `eslint-lint/react-dom/no-dangerously-set-innerhtml`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/dom-no-dangerously-set-innerhtml).
 - **Exception:** If this is intended, add `{"rule":"react-dom/no-dangerously-set-innerhtml","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/dom-no-dangerously-set-innerhtml)
 
@@ -626,6 +681,7 @@ Enforces an explicit 'type' attribute for 'button' elements.
 
 - **Printed as:** `eslint-lint/react-dom/no-missing-button-type`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/dom-no-missing-button-type).
 - **Exception:** If this is intended, add `{"rule":"react-dom/no-missing-button-type","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/dom-no-missing-button-type)
 
@@ -637,6 +693,7 @@ Disallows 'javascript:' URLs as attribute values.
 
 - **Printed as:** `eslint-lint/react-dom/no-script-url`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/dom-no-script-url).
 - **Exception:** If this is intended, add `{"rule":"react-dom/no-script-url","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/dom-no-script-url)
 
@@ -648,6 +705,7 @@ Disallows 'target="\_blank"' without 'rel="noreferrer noopener"'.
 
 - **Printed as:** `eslint-lint/react-dom/no-unsafe-target-blank`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/dom-no-unsafe-target-blank).
 - **Exception:** If this is intended, add `{"rule":"react-dom/no-unsafe-target-blank","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/dom-no-unsafe-target-blank)
 
@@ -659,6 +717,7 @@ Verifies the list of dependencies for Hooks like useEffect and similar.
 
 - **Printed as:** `eslint-lint/react-hooks/exhaustive-deps`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/facebook/react/issues/14920).
 - **Exception:** If this is intended, add `{"rule":"react-hooks/exhaustive-deps","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/facebook/react/issues/14920)
 
@@ -670,6 +729,7 @@ Enforces the Rules of Hooks.
 
 - **Printed as:** `eslint-lint/react-hooks/rules-of-hooks`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://react.dev/reference/rules/rules-of-hooks).
 - **Exception:** If this is intended, add `{"rule":"react-hooks/rules-of-hooks","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://react.dev/reference/rules/rules-of-hooks)
 
@@ -681,6 +741,7 @@ Enforces that every 'addEventListener' in a component or custom hook has a corre
 
 - **Printed as:** `eslint-lint/react-web-api/no-leaked-event-listener`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/web-api-no-leaked-event-listener).
 - **Exception:** If this is intended, add `{"rule":"react-web-api/no-leaked-event-listener","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/web-api-no-leaked-event-listener)
 
@@ -692,6 +753,7 @@ Enforces that every 'IntersectionObserver' created in a component or custom hook
 
 - **Printed as:** `eslint-lint/react-web-api/no-leaked-intersection-observer`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/web-api-no-leaked-intersection-observer).
 - **Exception:** If this is intended, add `{"rule":"react-web-api/no-leaked-intersection-observer","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/web-api-no-leaked-intersection-observer)
 
@@ -703,6 +765,7 @@ Enforces that every 'setInterval' in a component or custom hook has a correspond
 
 - **Printed as:** `eslint-lint/react-web-api/no-leaked-interval`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/web-api-no-leaked-interval).
 - **Exception:** If this is intended, add `{"rule":"react-web-api/no-leaked-interval","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/web-api-no-leaked-interval)
 
@@ -714,6 +777,7 @@ Enforces that every 'ResizeObserver' created in a component or custom hook has a
 
 - **Printed as:** `eslint-lint/react-web-api/no-leaked-resize-observer`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/web-api-no-leaked-resize-observer).
 - **Exception:** If this is intended, add `{"rule":"react-web-api/no-leaked-resize-observer","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/web-api-no-leaked-resize-observer)
 
@@ -725,6 +789,7 @@ Enforces that every 'setTimeout' in a component or custom hook has a correspondi
 
 - **Printed as:** `eslint-lint/react-web-api/no-leaked-timeout`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/web-api-no-leaked-timeout).
 - **Exception:** If this is intended, add `{"rule":"react-web-api/no-leaked-timeout","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/web-api-no-leaked-timeout)
 
@@ -736,6 +801,7 @@ Validates against mutating props, state, and other immutable values, including t
 
 - **Printed as:** `eslint-lint/react-x/immutability`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/immutability).
 - **Exception:** If this is intended, add `{"rule":"react-x/immutability","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/immutability)
 
@@ -747,6 +813,7 @@ Disallows using an item's index in the array as its key.
 
 - **Printed as:** `eslint-lint/react-x/no-array-index-key`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/no-array-index-key).
 - **Exception:** If this is intended, add `{"rule":"react-x/no-array-index-key","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/no-array-index-key)
 
@@ -758,6 +825,7 @@ Disallows class components except for error boundaries.
 
 - **Printed as:** `eslint-lint/react-x/no-class-component`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/no-class-component).
 - **Exception:** If this is intended, add `{"rule":"react-x/no-class-component","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/no-class-component)
 
@@ -769,6 +837,7 @@ Replaces usage of '\<Context.Provider>' with '\<Context>'.
 
 - **Printed as:** `eslint-lint/react-x/no-context-provider`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/no-context-provider).
 - **Exception:** If this is intended, add `{"rule":"react-x/no-context-provider","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/no-context-provider)
 
@@ -780,6 +849,7 @@ Prevents duplicate 'key' props on sibling elements when rendering lists.
 
 - **Printed as:** `eslint-lint/react-x/no-duplicate-key`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/no-duplicate-key).
 - **Exception:** If this is intended, add `{"rule":"react-x/no-duplicate-key","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/no-duplicate-key)
 
@@ -791,6 +861,7 @@ Replaces usage of 'forwardRef' with passing 'ref' as a prop.
 
 - **Printed as:** `eslint-lint/react-x/no-forward-ref`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/no-forward-ref).
 - **Exception:** If this is intended, add `{"rule":"react-x/no-forward-ref","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/no-forward-ref)
 
@@ -802,6 +873,7 @@ Prevents problematic leaked values from being rendered.
 
 - **Printed as:** `eslint-lint/react-x/no-leaked-conditional-rendering`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/no-leaked-conditional-rendering).
 - **Exception:** If this is intended, add `{"rule":"react-x/no-leaked-conditional-rendering","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/no-leaked-conditional-rendering)
 
@@ -813,6 +885,7 @@ Disallows missing 'key' on items in list rendering.
 
 - **Printed as:** `eslint-lint/react-x/no-missing-key`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/no-missing-key).
 - **Exception:** If this is intended, add `{"rule":"react-x/no-missing-key","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/no-missing-key)
 
@@ -824,6 +897,7 @@ Disallows nesting component definitions inside other components.
 
 - **Printed as:** `eslint-lint/react-x/no-nested-component-definitions`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/no-nested-component-definitions).
 - **Exception:** If this is intended, add `{"rule":"react-x/no-nested-component-definitions","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/no-nested-component-definitions)
 
@@ -835,6 +909,7 @@ Disallows nesting lazy component declarations inside other components or hooks.
 
 - **Printed as:** `eslint-lint/react-x/no-nested-lazy-component-declarations`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/no-nested-lazy-component-declarations).
 - **Exception:** If this is intended, add `{"rule":"react-x/no-nested-lazy-component-declarations","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/no-nested-lazy-component-declarations)
 
@@ -846,6 +921,7 @@ Prevents non-stable values (i.e., object literals) from being used as a value fo
 
 - **Printed as:** `eslint-lint/react-x/no-unstable-context-value`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/no-unstable-context-value).
 - **Exception:** If this is intended, add `{"rule":"react-x/no-unstable-context-value","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/no-unstable-context-value)
 
@@ -857,6 +933,7 @@ Prevents using referential-type values as default props in object destructuring.
 
 - **Printed as:** `eslint-lint/react-x/no-unstable-default-props`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/no-unstable-default-props).
 - **Exception:** If this is intended, add `{"rule":"react-x/no-unstable-default-props","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/no-unstable-default-props)
 
@@ -868,6 +945,7 @@ Validates that components and hooks are pure by checking that they do not call k
 
 - **Printed as:** `eslint-lint/react-x/purity`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/purity).
 - **Exception:** If this is intended, add `{"rule":"react-x/purity","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/purity)
 
@@ -879,6 +957,7 @@ Validates correct usage of refs by checking that 'ref.current' is not read or wr
 
 - **Printed as:** `eslint-lint/react-x/refs`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/refs).
 - **Exception:** If this is intended, add `{"rule":"react-x/refs","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/refs)
 
@@ -890,6 +969,7 @@ Validates against unconditionally setting state during render, which can trigger
 
 - **Printed as:** `eslint-lint/react-x/set-state-in-render`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/set-state-in-render).
 - **Exception:** If this is intended, add `{"rule":"react-x/set-state-in-render","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/set-state-in-render)
 
@@ -901,6 +981,7 @@ Validates that components are static, not recreated every render.
 
 - **Printed as:** `eslint-lint/react-x/static-components`
 - **Why it is on:** The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint-react.xyz/docs/rules/static-components).
 - **Exception:** If this is intended, add `{"rule":"react-x/static-components","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://eslint-react.xyz/docs/rules/static-components)
 
@@ -913,6 +994,7 @@ Disallow exponential and polynomial backtracking.
 - **Printed as:** `eslint-lint/regexp/no-super-linear-backtracking`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** The preset turns on this rule to keep regular expressions safe and readable.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://ota-meshi.github.io/eslint-plugin-regexp/rules/no-super-linear-backtracking.html).
 - **Exception:** If this is intended, add `{"rule":"regexp/no-super-linear-backtracking","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://ota-meshi.github.io/eslint-plugin-regexp/rules/no-super-linear-backtracking.html)
 
@@ -924,6 +1006,7 @@ Enforce promises from async event methods are handled.
 
 - **Printed as:** `eslint-lint/testing-library/await-async-events`
 - **Why it is on:** The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/await-async-events.md).
 - **Exception:** If this is intended, add `{"rule":"testing-library/await-async-events","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/await-async-events.md)
 
@@ -935,6 +1018,7 @@ Enforce promises from async queries to be handled.
 
 - **Printed as:** `eslint-lint/testing-library/await-async-queries`
 - **Why it is on:** The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/await-async-queries.md).
 - **Exception:** If this is intended, add `{"rule":"testing-library/await-async-queries","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/await-async-queries.md)
 
@@ -946,6 +1030,7 @@ Enforce promises from async utils to be awaited properly.
 
 - **Printed as:** `eslint-lint/testing-library/await-async-utils`
 - **Why it is on:** The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/await-async-utils.md).
 - **Exception:** If this is intended, add `{"rule":"testing-library/await-async-utils","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/await-async-utils.md)
 
@@ -957,6 +1042,7 @@ Disallow the use of debugging utilities like `debug`.
 
 - **Printed as:** `eslint-lint/testing-library/no-debugging-utils`
 - **Why it is on:** The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-debugging-utils.md).
 - **Exception:** If this is intended, add `{"rule":"testing-library/no-debugging-utils","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-debugging-utils.md)
 
@@ -968,6 +1054,7 @@ Disallow the use of `cleanup`.
 
 - **Printed as:** `eslint-lint/testing-library/no-manual-cleanup`
 - **Why it is on:** The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-manual-cleanup.md).
 - **Exception:** If this is intended, add `{"rule":"testing-library/no-manual-cleanup","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-manual-cleanup.md)
 
@@ -979,6 +1066,7 @@ Disallow direct Node access.
 
 - **Printed as:** `eslint-lint/testing-library/no-node-access`
 - **Why it is on:** The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-node-access.md).
 - **Exception:** If this is intended, add `{"rule":"testing-library/no-node-access","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-node-access.md)
 
@@ -990,6 +1078,7 @@ Ensure no `data-testid` queries are used.
 
 - **Printed as:** `eslint-lint/testing-library/no-test-id-queries`
 - **Why it is on:** The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-test-id-queries.md).
 - **Exception:** If this is intended, add `{"rule":"testing-library/no-test-id-queries","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-test-id-queries.md)
 
@@ -1001,6 +1090,7 @@ Disallow wrapping Testing Library utils or empty callbacks in `act`.
 
 - **Printed as:** `eslint-lint/testing-library/no-unnecessary-act`
 - **Why it is on:** The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-unnecessary-act.md).
 - **Exception:** If this is intended, add `{"rule":"testing-library/no-unnecessary-act","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/no-unnecessary-act.md)
 
@@ -1012,6 +1102,7 @@ Ensure appropriate `get*`/`query*` queries are used with their respective matche
 
 - **Printed as:** `eslint-lint/testing-library/prefer-presence-queries`
 - **Why it is on:** The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-presence-queries.md).
 - **Exception:** If this is intended, add `{"rule":"testing-library/prefer-presence-queries","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-presence-queries.md)
 
@@ -1023,6 +1114,7 @@ Suggest using `screen` while querying.
 
 - **Printed as:** `eslint-lint/testing-library/prefer-screen-queries`
 - **Why it is on:** The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-screen-queries.md).
 - **Exception:** If this is intended, add `{"rule":"testing-library/prefer-screen-queries","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-screen-queries.md)
 
@@ -1034,6 +1126,7 @@ Suggest using `userEvent` over `fireEvent` for simulating user interactions.
 
 - **Printed as:** `eslint-lint/testing-library/prefer-user-event`
 - **Why it is on:** The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-user-event.md).
 - **Exception:** If this is intended, add `{"rule":"testing-library/prefer-user-event","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-user-event.md)
 
@@ -1045,6 +1138,7 @@ Suggest using userEvent with setup() instead of direct methods.
 
 - **Printed as:** `eslint-lint/testing-library/prefer-user-event-setup`
 - **Why it is on:** The React scope turns on the Testing Library rules for component tests: query by role, user-event, no implementation details.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-user-event-setup.md).
 - **Exception:** If this is intended, add `{"rule":"testing-library/prefer-user-event-setup","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#react), [Rule documentation](https://github.com/testing-library/eslint-plugin-testing-library/tree/main/docs/rules/prefer-user-event-setup.md)
 
@@ -1057,6 +1151,7 @@ Enforce having expectation in test body.
 - **Printed as:** `eslint-lint/vitest/expect-expect`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/expect-expect.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/expect-expect","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/expect-expect.md)
 
@@ -1069,6 +1164,7 @@ Disallow commented out tests.
 - **Printed as:** `eslint-lint/vitest/no-commented-out-tests`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-commented-out-tests.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/no-commented-out-tests","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-commented-out-tests.md)
 
@@ -1081,6 +1177,7 @@ Disallow conditional expects.
 - **Printed as:** `eslint-lint/vitest/no-conditional-expect`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-conditional-expect.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/no-conditional-expect","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-conditional-expect.md)
 
@@ -1093,6 +1190,7 @@ Disallow conditional tests.
 - **Printed as:** `eslint-lint/vitest/no-conditional-in-test`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** The preset turns on this rule of the Vitest plugin for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-conditional-in-test.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/no-conditional-in-test","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-conditional-in-test.md)
 
@@ -1105,6 +1203,7 @@ Disallow disabled tests.
 - **Printed as:** `eslint-lint/vitest/no-disabled-tests`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-disabled-tests.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/no-disabled-tests","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-disabled-tests.md)
 
@@ -1117,6 +1216,7 @@ Disallow focused tests.
 - **Printed as:** `eslint-lint/vitest/no-focused-tests`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-focused-tests.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/no-focused-tests","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-focused-tests.md)
 
@@ -1129,6 +1229,7 @@ Disallow identical titles.
 - **Printed as:** `eslint-lint/vitest/no-identical-title`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-identical-title.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/no-identical-title","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-identical-title.md)
 
@@ -1141,6 +1242,7 @@ Disallow importing `node:test`.
 - **Printed as:** `eslint-lint/vitest/no-import-node-test`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-import-node-test.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/no-import-node-test","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-import-node-test.md)
 
@@ -1153,6 +1255,7 @@ Disallow string interpolation in snapshots.
 - **Printed as:** `eslint-lint/vitest/no-interpolation-in-snapshots`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-interpolation-in-snapshots.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/no-interpolation-in-snapshots","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-interpolation-in-snapshots.md)
 
@@ -1165,6 +1268,7 @@ Disallow importing from \_\_mocks\_\_ directory.
 - **Printed as:** `eslint-lint/vitest/no-mocks-import`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-mocks-import.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/no-mocks-import","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-mocks-import.md)
 
@@ -1177,6 +1281,7 @@ Disallow the use of certain matchers.
 - **Printed as:** `eslint-lint/vitest/no-restricted-matchers`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** The presets list the forms they ban in the options of this rule. Each form has a message that names the allowed form.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-restricted-matchers.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/no-restricted-matchers","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - `toBeDefined`, `resolves.toBeDefined`, `rejects.toBeDefined`: `toBeDefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. An exception fits only when the value cannot be pinned.
@@ -1195,6 +1300,7 @@ Disallow using `expect` outside of `it` or `test` blocks.
 - **Printed as:** `eslint-lint/vitest/no-standalone-expect`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-standalone-expect.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/no-standalone-expect","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-standalone-expect.md)
 
@@ -1207,6 +1313,7 @@ Disallow unnecessary async function wrapper for expected promises.
 - **Printed as:** `eslint-lint/vitest/no-unneeded-async-expect-function`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-unneeded-async-expect-function.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/no-unneeded-async-expect-function","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/no-unneeded-async-expect-function.md)
 
@@ -1219,6 +1326,7 @@ Prefer `toHaveBeenCalledExactlyOnceWith` over `toHaveBeenCalledOnce` and `toHave
 - **Printed as:** `eslint-lint/vitest/prefer-called-exactly-once-with`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/prefer-called-exactly-once-with.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/prefer-called-exactly-once-with","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/prefer-called-exactly-once-with.md)
 
@@ -1231,6 +1339,7 @@ Enforce using `toBeCalledWith()` or `toHaveBeenCalledWith()`.
 - **Printed as:** `eslint-lint/vitest/prefer-called-with`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** The preset turns on this rule of the Vitest plugin for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/prefer-called-with.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/prefer-called-with","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/prefer-called-with.md)
 
@@ -1243,6 +1352,7 @@ Ensure that every `expect.poll` call is awaited.
 - **Printed as:** `eslint-lint/vitest/require-awaited-expect-poll`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** The preset turns on this rule of the Vitest plugin for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/require-awaited-expect-poll.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/require-awaited-expect-poll","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/require-awaited-expect-poll.md)
 
@@ -1255,6 +1365,7 @@ Require local Test Context for concurrent snapshot tests.
 - **Printed as:** `eslint-lint/vitest/require-local-test-context-for-concurrent-snapshots`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/require-local-test-context-for-concurrent-snapshots.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/require-local-test-context-for-concurrent-snapshots","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/require-local-test-context-for-concurrent-snapshots.md)
 
@@ -1267,6 +1378,7 @@ Require toThrow() to be called with an error message.
 - **Printed as:** `eslint-lint/vitest/require-to-throw-message`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** The preset turns on this rule of the Vitest plugin for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/require-to-throw-message.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/require-to-throw-message","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/require-to-throw-message.md)
 
@@ -1279,6 +1391,7 @@ Enforce valid describe callback.
 - **Printed as:** `eslint-lint/vitest/valid-describe-callback`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-describe-callback.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/valid-describe-callback","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-describe-callback.md)
 
@@ -1291,6 +1404,7 @@ Enforce valid `expect()` usage.
 - **Printed as:** `eslint-lint/vitest/valid-expect`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-expect.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/valid-expect","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-expect.md)
 
@@ -1303,6 +1417,7 @@ Require promises that have expectations in their chain to be valid.
 - **Printed as:** `eslint-lint/vitest/valid-expect-in-promise`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-expect-in-promise.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/valid-expect-in-promise","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-expect-in-promise.md)
 
@@ -1315,5 +1430,6 @@ Enforce valid titles.
 - **Printed as:** `eslint-lint/vitest/valid-title`
 - **Presets:** TypeScript and JavaScript
 - **Why it is on:** Part of the recommended rules of the Vitest plugin, which the presets turn on for tests.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-title.md).
 - **Exception:** If this is intended, add `{"rule":"vitest/valid-title","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Strict preset guide](../typescript-strict-preset.md#inside-tests), [Rule documentation](https://github.com/vitest-dev/eslint-plugin-vitest/blob/main/docs/rules/valid-title.md)

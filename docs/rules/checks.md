@@ -1,8 +1,22 @@
 # Nitpicker checks
 
-The checks nitpicker runs itself in every preset: function and file size, CRAP, coverage, mutation, duplicates, coupling, dead code, test runtime, repository hygiene and the policy checks on nitpicker.config.json. This page lists 51 rules. [All pages](README.md).
+The checks nitpicker runs itself in every preset: function and file size, CRAP, coverage, mutation, duplicates, coupling, dead code, test runtime, repository hygiene and the policy checks on nitpicker.config.json. This page lists 52 rules. [All pages](README.md).
 
 The guide for these rules: [spec/checks.md](../../spec/checks.md).
+
+<a id="change-history-co-change"></a>
+
+### `change-history/co-change`
+
+Two folders of production code that changed together in most of the commits of the less-changed one, which the history check reads when `history.coChange` is on.
+
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
+- **Analyzers:** `change-history`
+- **Scope:** Report-only: it never fails the gate.
+- **Why it is on:** Folders that keep changing together usually share knowledge that has no single owner, so every change has to touch both.
+- **Allowed form:** This is correlation, not proof of coupling: if they share knowledge (a format, a constant, a schema) give it one owner, and if they only ever change as one unit, merge them.
+- **Threshold:** two folders of production code that changed together in at least 5 of the last 300 commits and in at least 60% of the commits of the less-changed one (only edits of production code count, and commits of more than 30 files are ignored); opt-in with `history.coChange`, never fails
+- **Exception:** If this is intended, add `{"rule":"co-change","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="coding-standards-baseline-expansion"></a>
 
@@ -24,6 +38,7 @@ A change raises an allowance in the legacy baseline (`nitpicker.legacy.json`).
 A callback breaks its protocol: `source-loader-does-not-merge-published-state`, `publication-owner-does-not-commit-external-state` or `correlated-callback-declares-correlation-input`.
 
 - **Printed as:** `coding-standards/callback-protocol/<rule>`
+- **For example:** `coding-standards/callback-protocol/source-loader-does-not-merge-published-state`
 - **Presets:** TypeScript and JavaScript
 - **Analyzers:** `coding-standards`
 - **Why it is on:** Callbacks that belong together keep one owner for the state they publish and declare the input that correlates them. No contract is declared by default, so the rules report only where a callback contract is configured.
@@ -39,9 +54,11 @@ A doc comment that only restates its declaration name, or whose description is l
 - **Presets:** TypeScript and JavaScript
 - **Analyzers:** `coding-standards`
 - **Why it is on:** A comment that repeats the name adds noise; a long one belongs in names and types.
-- **Allowed form:** Delete the comment, or say what the name cannot: a unit, a limit, an edge case or why. TypeScript and JavaScript report this as `nitpicker/no-comments`.
 - **Threshold:** a doc comment that only restates its declaration name, or a description longer than 5 lines, code examples not counted (TypeScript and JavaScript report it as `nitpicker/no-comments`)
-- **Exception:** If this is intended, add `{"rule":"doc-comment-content","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Exception:** If this is intended, add `{"rule":"doc-comment-content","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. With the TypeScript and JavaScript presets: If this is intended, add `{"rule":"nitpicker/no-comments","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `restatingDocComment`: Delete it, or say what the name cannot: a unit, a limit, an edge case or why.
+  - `longDocComment`: Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types.
 
 <a id="coding-standards-public-contract-production-use"></a>
 
@@ -62,6 +79,7 @@ A method of an exported interface that a production class implements, which no p
 A module breaks the runtime boundary of its role: `forbidden-runtime-dependency`, `forbidden-runtime-call` or `unresolved-runtime-dependency`.
 
 - **Printed as:** `coding-standards/runtime-boundary/<rule>`
+- **For example:** `coding-standards/runtime-boundary/forbidden-runtime-call`
 - **Presets:** TypeScript and JavaScript
 - **Analyzers:** `coding-standards`
 - **Why it is on:** Module roles keep the runtime dependencies and side effects of each layer in one direction. No role is declared by default, so the rules report only where a role is configured.
@@ -77,7 +95,7 @@ A module under a shared root that exactly one feature reaches and nothing else u
 - **Presets:** TypeScript and JavaScript
 - **Analyzers:** `coupling`
 - **Why it is on:** `shared` is for code several features use; code with one user belongs with it.
-- **Allowed form:** Move the module into the feature that uses it.
+- **Allowed form:** Move it into \<directory>.
 - **Exception:** If this is intended, add `{"rule":"shared-used-by-one-feature","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="coupling-stability-direction"></a>
@@ -90,7 +108,7 @@ A package that depends on a less stable package.
 - **Analyzers:** `coupling` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Stable code that depends on volatile code breaks whenever the volatile code changes (the Stable Dependencies Principle).
 - **Allowed form:** Depend on an abstraction in a more stable package, or move the dependency inward. An import that exists only for the type checker is never the reported dependency.
-- **Exception:** If this is intended, add `{"rule":"stability-direction","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. With the Python preset, add it to "python.exceptions" instead.
+- **Exception:** If this is intended, add `{"rule":"stability-direction","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. With the Python preset: If this is intended, add `{"rule":"stability-direction","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="coverage-changed-branch-coverage"></a>
 
@@ -115,8 +133,10 @@ A function with unknown coverage and so no CRAP score, because no test runs it.
 - **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `crap` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** A function no test runs cannot be scored, and is the riskiest kind.
-- **Allowed form:** Add a test that calls it; for inline composition-root wiring, move it into a named function and test that.
 - **Exception:** If this is intended, add `{"rule":"crap-coverage-unknown","paths":["<path>"],"function":"<function>","reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `crapCoverageUnknown`: Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.
+  - `crapCoverageUnknownJava`: Add a test that calls it, and remove @Generated from hand-written code.
 
 <a id="crap-crap-score-limit"></a>
 
@@ -127,9 +147,11 @@ A function whose CRAP score (its complexity combined with how little of it the t
 - **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `crap` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Complex code that tests do not cover is the code most likely to break unnoticed.
-- **Allowed form:** Test the uncovered branches, or split a branchy part into its own function.
 - **Threshold:** CRAP score at or above 9; override with `QUALITY_CRAP_SCORE_LIMIT` (positive number) or `thresholds.crapLimit`
 - **Exception:** If this is intended, add `{"rule":"crap-score-limit","paths":["<path>"],"function":"<function>","reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `crapScoreLimit`: Test its uncovered branches, or split a branchy part into its own function.
+  - `crapScoreLimitCovered`: Reduce its branches: split a branchy part into its own function.
 
 <a id="dead-code-exports"></a>
 
@@ -165,8 +187,13 @@ An export, module or main class that only tests use (a re-export is not an impor
 - **Presets:** TypeScript, JavaScript, Java and Kotlin
 - **Analyzers:** `dead-code` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin)
 - **Why it is on:** Code that only tests call is not part of the product, and its tests prove nothing about it.
-- **Allowed form:** Remove `export` or make the declaration private, move a test-only module to a test-support folder, or use it from production code.
 - **Exception:** If this is intended, add `{"rule":"test-only-export","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `testOnlyExport`: Remove `export`, or import it from production code.
+  - `testOnlyReexport`: Remove the re-export and `export`, or import it from production code. If a host or tool loads \<reexporter> instead of importing it, list it in "layout.entryPoints".
+  - `testOnlyModule`: Move it to a test-support/ folder, or import it from production code.
+  - `testOnlyDeclaration`: Make it private to its module, or use it from production code.
+  - `testOnlyFile`: Move it beside the tests as a test helper, or use it from production code.
 
 <a id="dead-code-types"></a>
 
@@ -186,11 +213,11 @@ Unused exported type.
 
 An import of a package that `package.json` does not list.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `dead-code`
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `dead-code` (TypeScript and JavaScript); `python` (Python)
 - **Why it is on:** An unlisted package works only by accident of what else is installed.
 - **Allowed form:** Add the package to the right dependencies of `package.json`.
-- **Exception:** If this is intended, add `{"rule":"unlisted-dependency","paths":["<path>"],"packages":["<package>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Exception:** If this is intended, add `{"rule":"unlisted-dependency","paths":["<path>"],"packages":["<package>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. With the Python preset: If this is intended, add `{"rule":"unlisted-dependency","paths":["<path>"],"packages":["<package>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="dead-code-unresolved-import"></a>
 
@@ -210,11 +237,11 @@ An import that resolves to no file and no package.
 
 A dependency in `package.json` that nothing imports or runs.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `dead-code`
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `dead-code` (TypeScript and JavaScript); `python` (Python)
 - **Why it is on:** Unused dependencies add install time and attack surface.
 - **Allowed form:** Remove it from `package.json`.
-- **Exception:** If this is intended, add `{"rule":"unused-dependency","paths":["<path>"],"packages":["<package>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Exception:** If this is intended, add `{"rule":"unused-dependency","paths":["<path>"],"packages":["<package>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. With the Python preset: If this is intended, add `{"rule":"unused-dependency","paths":["<path>"],"packages":["<package>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="duplicates-duplicate-clone"></a>
 
@@ -227,7 +254,7 @@ A new block of code that repeats another block, also when only the names and lit
 - **Why it is on:** Copies drift apart and each fix has to be made twice.
 - **Allowed form:** Extract the shared code into one function or module and call it from both places. When the copies are meant to be copies, the message names the files to add to `exclude`.
 - **Threshold:** jscpd in `mild` mode, also over sources with names and literals normalized (at least 100 tokens, except code that only repeats one or two statements); any new clone fails
-- **Exception:** If this is intended, add `{"rule":"duplicate-clone","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. With the Python preset, add it to "python.exceptions" instead.
+- **Exception:** If this is intended, add `{"rule":"duplicate-clone","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. With the Python preset: If this is intended, add `{"rule":"duplicate-clone","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="entry-points-public-alternative-bypass"></a>
 
@@ -376,8 +403,10 @@ A component file without a story, in a package that has Storybook.
 - **Analyzers:** `structure`
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** When most components have a story, a component without one is an oversight.
-- **Allowed form:** Add a story for the component. The rule is enforced only when more than half of the component files have one.
 - **Exception:** If this is intended, add `{"rule":"component-story-missing","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `componentStoryMissing`: Add \<story> for \<name>.
+  - `componentStoryMissingUnenforced`: Add \<story>. Not enforced until more than half of the components have one.
 
 <a id="structure-duplicate-definition"></a>
 
@@ -414,7 +443,7 @@ A file longer than the limit (source and test files have separate limits).
 - **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Long files collect unrelated responsibilities and are slow to review.
-- **Allowed form:** Split the file by responsibility and put new code in a new file.
+- **Allowed form:** Split it into files by responsibility.
 - **Threshold:** more than 300 lines in a source file or 500 in a test file; override with `thresholds.fileLines` and `thresholds.testFileLines`
 - **Exception:** If this is intended, add `{"rule":"file-lines-limit","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
@@ -440,7 +469,7 @@ A folder with more source files, or more test files, directly in it than the lim
 - **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** A flat folder of many files has no structure for a reader to follow.
-- **Allowed form:** Group related files into subfolders (packages in Java and Kotlin).
+- **Allowed form:** Group related files into subfolders (packages in Java).
 - **Threshold:** more than 6 source files, or test files, directly in one folder; override with `thresholds.folderFiles`
 - **Exception:** If this is intended, add `{"rule":"folder-files-limit","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
@@ -453,7 +482,7 @@ A function that nests control flow deeper than the limit.
 - **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Deep nesting makes the paths through a function hard to follow and to test.
-- **Allowed form:** Return early instead of nesting, or move the nested part into its own function.
+- **Allowed form:** Return early instead of nesting.
 - **Threshold:** control nesting deeper than 2
 - **Exception:** If this is intended, add `{"rule":"function-control-nesting-limit","paths":["<path>"],"function":"<function>","reason":"..."}` to "exceptions" in nitpicker.config.json.
 
@@ -492,7 +521,7 @@ A function with more statements than the limit.
 - **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Many statements usually mean several responsibilities in one function.
-- **Allowed form:** Split it by responsibility and name each part for what it checks or does. A function, file or class already over its limit may be edited as long as the change does not make it worse.
+- **Allowed form:** Split by responsibility and name each part for what it checks or does.
 - **Threshold:** more than 15 statements
 - **Exception:** If this is intended, add `{"rule":"function-statements-limit","paths":["<path>"],"function":"<function>","reason":"..."}` to "exceptions" in nitpicker.config.json.
 
@@ -518,7 +547,7 @@ A `.js`, `.mjs`, `.cjs` or `.jsx` file in a project that has a `tsconfig.json`.
 - **Presets:** TypeScript
 - **Analyzers:** `structure`
 - **Why it is on:** JavaScript in a TypeScript project has no type checking.
-- **Allowed form:** Write the file as `.ts` or `.tsx`.
+- **Allowed form:** Write it as a .ts or .tsx file: \<typescript>.
 - **Exception:** If this is intended, add `{"rule":"javascript-in-typescript-project","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-line-length-limit"></a>
@@ -530,7 +559,7 @@ A line longer than the limit, except imports, URLs and the text of string litera
 - **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Long lines are hard to review in a diff and hide complexity.
-- **Allowed form:** Break the line up or extract a named value; a formatter wraps what it can.
+- **Allowed form:** Break it up or extract a named value.
 - **Threshold:** a line longer than 120 characters, except imports, URLs and string literal text; override with `thresholds.lineLength` (Java files: the width of the formatter, 100 for google-java-format and 120 for palantir-java-format, or the `java.lineLength` convention (a Checkstyle `LineLength` max, a pin, or measured when no formatter runs); Kotlin files: detekt's)
 - **Exception:** If this is intended, add `{"rule":"line-length-limit","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
@@ -543,7 +572,7 @@ A new icon-sized `.svg` file while an icon package is a dependency.
 - **Presets:** TypeScript and JavaScript
 - **Analyzers:** `structure`
 - **Why it is on:** Icons from one package look consistent; one-off files pile up.
-- **Allowed form:** Use an icon from the icon package instead of adding a file.
+- **Allowed form:** Use an icon from \<package> instead of adding \<path>.
 - **Exception:** If this is intended, add `{"rule":"new-icon-asset","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-redefined-library-component"></a>
@@ -556,7 +585,7 @@ A component named like one the project already renders from a dependency.
 - **Analyzers:** `structure`
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** A second copy of a library component diverges from the real one.
-- **Allowed form:** Use the library's component.
+- **Allowed form:** \<name> is already rendered from \<package> in \<count>. Use that one.
 - **Exception:** If this is intended, add `{"rule":"redefined-library-component","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-sibling-copy-edit"></a>
@@ -568,7 +597,7 @@ A function or class edited so that it drifts from its same-named copy in another
 - **Presets:** TypeScript and JavaScript
 - **Analyzers:** `structure`
 - **Why it is on:** Editing one of two near-identical copies leaves the other with the old bug.
-- **Allowed form:** Edit the copy as well, or merge the copies into one.
+- **Allowed form:** Edit it there too, or merge the copies.
 - **Threshold:** a function or class edited so that it drifts from its same-named copy in another module of the package, at least 80% the same tokens before and after, while that copy is left unedited
 - **Exception:** If this is intended, add `{"rule":"sibling-copy-edit","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
@@ -581,7 +610,7 @@ A property of the options parameter of an exported function that no call sets; i
 - **Presets:** TypeScript and Kotlin
 - **Analyzers:** `structure` (TypeScript); `kotlin` (Kotlin)
 - **Why it is on:** An option nobody sets is dead surface that every reader has to understand.
-- **Allowed form:** Remove the option, or set it from a real call.
+- **Allowed form:** Remove it, or set it from a real call (\<scope>).
 - **Exception:** If this is intended, add `{"rule":"unused-option","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-unused-prop"></a>
@@ -593,7 +622,7 @@ A prop the project declares that no caller passes (a spread of a non-literal pas
 - **Presets:** TypeScript
 - **Analyzers:** `structure`
 - **Why it is on:** An option or prop nobody sets is dead surface that every reader has to understand.
-- **Allowed form:** Remove the prop, or pass it from a real caller.
+- **Allowed form:** Remove it, or pass it from a real caller (\<scope>).
 - **Exception:** If this is intended, add `{"rule":"unused-prop","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="test-console-test-console-output"></a>
@@ -606,7 +635,7 @@ A test file that prints console error or warn output the base run did not print.
 - **Presets:** TypeScript, JavaScript, Java and Kotlin
 - **Analyzers:** `test-console` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin)
 - **Why it is on:** Console noise hides real warnings and usually points at a leaked timer or an unhandled error.
-- **Allowed form:** Fix the cause of the output, or allow a third-party message in `testConsole.allow` of nitpicker.config.json.
+- **Allowed form:** Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json.
 - **Exception:** If this is intended, add `{"rule":"test-console-output","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="test-runtime-no-production-runtime"></a>

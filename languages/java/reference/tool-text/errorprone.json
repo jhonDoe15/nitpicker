@@ -1,0 +1,3215 @@
+{
+  "version": "2.50.0 (NullAway 0.14.2)",
+  "rules": {
+    "ASTHelpersSuggestions": {
+      "severity": "WARNING",
+      "summary": "Prefer ASTHelpers instead of calling this API directly",
+      "url": "https://errorprone.info/bugpattern/ASTHelpersSuggestions"
+    },
+    "AddNullMarkedToClass": {
+      "severity": "SUGGESTION",
+      "summary": "Apply @NullMarked to this class",
+      "url": "https://errorprone.info/bugpattern/AddNullMarkedToClass"
+    },
+    "AddNullMarkedToPackageInfo": {
+      "severity": "SUGGESTION",
+      "summary": "Apply @NullMarked to this package",
+      "url": "https://errorprone.info/bugpattern/AddNullMarkedToPackageInfo"
+    },
+    "AddressSelection": {
+      "severity": "WARNING",
+      "summary": "Prefer InetAddress.getAllByName to APIs that convert a hostname to a single IP address",
+      "url": "https://errorprone.info/bugpattern/AddressSelection"
+    },
+    "AlmostJavadoc": {
+      "severity": "WARNING",
+      "summary": "This comment contains Javadoc or HTML tags, but isn't started with a double asterisk (/**); is it meant to be Javadoc?",
+      "url": "https://errorprone.info/bugpattern/AlmostJavadoc"
+    },
+    "AlreadyChecked": {
+      "severity": "WARNING",
+      "summary": "This condition has already been checked.",
+      "url": "https://errorprone.info/bugpattern/AlreadyChecked"
+    },
+    "AlwaysThrows": {
+      "severity": "ERROR",
+      "summary": "Statically detects calls that will always fail at runtime.",
+      "url": "https://errorprone.info/bugpattern/AlwaysThrows"
+    },
+    "AmbiguousMethodReference": {
+      "severity": "WARNING",
+      "summary": "Method reference is ambiguous",
+      "url": "https://errorprone.info/bugpattern/AmbiguousMethodReference"
+    },
+    "AndroidInjectionBeforeSuper": {
+      "severity": "ERROR",
+      "summary": "AndroidInjection.inject() should always be invoked before calling super.lifecycleMethod()",
+      "url": "https://errorprone.info/bugpattern/AndroidInjectionBeforeSuper"
+    },
+    "AnnotateFormatMethod": {
+      "severity": "WARNING",
+      "summary": "This method uses a pair of parameters as a format string and its arguments, but the enclosing method wasn't annotated. Doing so gives compile-time rather than run-time protection against malformed format strings.",
+      "url": "https://errorprone.info/bugpattern/AnnotateFormatMethod"
+    },
+    "AnnotationMirrorToString": {
+      "severity": "SUGGESTION",
+      "summary": "AnnotationMirror#toString doesn't use fully qualified type names, prefer auto-common's AnnotationMirrors#toString",
+      "url": "https://errorprone.info/bugpattern/AnnotationMirrorToString"
+    },
+    "AnnotationPosition": {
+      "severity": "WARNING",
+      "summary": "Annotations should be positioned after Javadocs, but before modifiers.",
+      "url": "https://google.github.io/styleguide/javaguide.html#s4.8.5-annotations"
+    },
+    "AnnotationValueToString": {
+      "severity": "SUGGESTION",
+      "summary": "AnnotationValue#toString doesn't use fully qualified type names, prefer auto-common's AnnotationValues#toString",
+      "url": "https://errorprone.info/bugpattern/AnnotationValueToString"
+    },
+    "ArgumentSelectionDefectChecker": {
+      "severity": "WARNING",
+      "summary": "Arguments are in the wrong order or could be commented for clarity.",
+      "url": "https://errorprone.info/bugpattern/ArgumentSelectionDefectChecker"
+    },
+    "ArrayAsKeyOfSetOrMap": {
+      "severity": "WARNING",
+      "summary": "Arrays do not override equals() or hashCode, so comparisons will be done on reference equality only. If neither deduplication nor lookup are needed, consider using a List instead. Otherwise, use IdentityHashMap/Set, a Map from a library that handles object arrays, or an Iterable/List of pairs.",
+      "url": "https://errorprone.info/bugpattern/ArrayAsKeyOfSetOrMap"
+    },
+    "ArrayEquals": {
+      "severity": "ERROR",
+      "summary": "Reference equality used to compare arrays",
+      "url": "https://errorprone.info/bugpattern/ArrayEquals"
+    },
+    "ArrayFillIncompatibleType": {
+      "severity": "ERROR",
+      "summary": "Arrays.fill(Object[], Object) called with incompatible types.",
+      "url": "https://errorprone.info/bugpattern/ArrayFillIncompatibleType"
+    },
+    "ArrayHashCode": {
+      "severity": "ERROR",
+      "summary": "hashcode method on array does not hash array contents",
+      "url": "https://errorprone.info/bugpattern/ArrayHashCode"
+    },
+    "ArrayRecordComponent": {
+      "severity": "WARNING",
+      "summary": "Record components should not be arrays.",
+      "url": "https://errorprone.info/bugpattern/ArrayRecordComponent"
+    },
+    "ArrayToString": {
+      "severity": "ERROR",
+      "summary": "Calling toString on an array does not provide useful information",
+      "url": "https://errorprone.info/bugpattern/ArrayToString"
+    },
+    "ArraysAsListPrimitiveArray": {
+      "severity": "ERROR",
+      "summary": "Arrays.asList does not autobox primitive arrays, as one might expect.",
+      "url": "https://errorprone.info/bugpattern/ArraysAsListPrimitiveArray"
+    },
+    "AssertEqualsArgumentOrderChecker": {
+      "severity": "WARNING",
+      "summary": "Arguments are swapped in assertEquals-like call",
+      "url": "https://errorprone.info/bugpattern/AssertEqualsArgumentOrderChecker"
+    },
+    "AssertFalse": {
+      "severity": "WARNING",
+      "summary": "Assertions may be disabled at runtime and do not guarantee that execution will halt here; consider throwing an exception instead",
+      "url": "https://errorprone.info/bugpattern/AssertFalse"
+    },
+    "AssertSameIncompatible": {
+      "severity": "WARNING",
+      "summary": "The types passed to this assertion are incompatible.",
+      "url": "https://errorprone.info/bugpattern/AssertSameIncompatible"
+    },
+    "AssertThrowsBlockToExpression": {
+      "severity": "WARNING",
+      "summary": "assertThrows calls with lambdas containing a single statement can be expressed more concisely",
+      "url": "https://errorprone.info/bugpattern/AssertThrowsBlockToExpression"
+    },
+    "AssertThrowsMinimizer": {
+      "severity": "WARNING",
+      "summary": "Minimize the amount of logic in assertThrows",
+      "url": "https://errorprone.info/bugpattern/AssertThrowsMinimizer"
+    },
+    "AssertThrowsMultipleStatements": {
+      "severity": "WARNING",
+      "summary": "The lambda passed to assertThrows should contain exactly one statement",
+      "url": "https://errorprone.info/bugpattern/AssertThrowsMultipleStatements"
+    },
+    "AssertionFailureIgnored": {
+      "severity": "WARNING",
+      "summary": "This assertion throws an AssertionError if it fails, which will be caught by an enclosing try block.",
+      "url": "https://errorprone.info/bugpattern/AssertionFailureIgnored"
+    },
+    "AssignmentExpression": {
+      "severity": "WARNING",
+      "summary": "The use of an assignment expression can be surprising and hard to read; consider factoring out the assignment to a separate statement.",
+      "url": "https://errorprone.info/bugpattern/AssignmentExpression"
+    },
+    "AssistedInjectAndInjectOnConstructors": {
+      "severity": "WARNING",
+      "summary": "@AssistedInject and @Inject should not be used on different constructors in the same class.",
+      "url": "https://errorprone.info/bugpattern/AssistedInjectAndInjectOnConstructors"
+    },
+    "AssistedInjectAndInjectOnSameConstructor": {
+      "severity": "WARNING",
+      "summary": "@AssistedInject and @Inject cannot be used on the same constructor.",
+      "url": "https://errorprone.info/bugpattern/AssistedInjectAndInjectOnSameConstructor"
+    },
+    "AsyncCallableReturnsNull": {
+      "severity": "ERROR",
+      "summary": "AsyncCallable should not return a null Future, only a Future whose result is null.",
+      "url": "https://errorprone.info/bugpattern/AsyncCallableReturnsNull"
+    },
+    "AsyncFunctionReturnsNull": {
+      "severity": "ERROR",
+      "summary": "AsyncFunction should not return a null Future, only a Future whose result is null.",
+      "url": "https://errorprone.info/bugpattern/AsyncFunctionReturnsNull"
+    },
+    "AttemptedNegativeZero": {
+      "severity": "WARNING",
+      "summary": "-0 is the same as 0. For the floating-point negative zero, use -0.0.",
+      "url": "https://errorprone.info/bugpattern/AttemptedNegativeZero"
+    },
+    "AutoFactoryAtInject": {
+      "severity": "ERROR",
+      "summary": "@AutoFactory and @Inject should not be used in the same type.",
+      "url": "https://errorprone.info/bugpattern/AutoFactoryAtInject"
+    },
+    "AutoValueBoxedValues": {
+      "severity": "WARNING",
+      "summary": "AutoValue instances should not usually contain boxed types that are not Nullable. We recommend removing the unnecessary boxing.",
+      "url": "https://errorprone.info/bugpattern/AutoValueBoxedValues"
+    },
+    "AutoValueBuilderDefaultsInConstructor": {
+      "severity": "ERROR",
+      "summary": "Defaults for AutoValue Builders should be set in the factory method returning Builder instances, not the constructor",
+      "url": "https://errorprone.info/bugpattern/AutoValueBuilderDefaultsInConstructor"
+    },
+    "AutoValueConstructorOrderChecker": {
+      "severity": "ERROR",
+      "summary": "Arguments to AutoValue constructor are in the wrong order",
+      "url": "https://errorprone.info/bugpattern/AutoValueConstructorOrderChecker"
+    },
+    "AutoValueFinalMethods": {
+      "severity": "WARNING",
+      "summary": "Make toString(), hashCode() and equals() final in AutoValue classes, so it is clear to readers that AutoValue is not overriding them",
+      "url": "https://errorprone.info/bugpattern/AutoValueFinalMethods"
+    },
+    "AutoValueImmutableFields": {
+      "severity": "WARNING",
+      "summary": "AutoValue recommends using immutable collections",
+      "url": "https://errorprone.info/bugpattern/AutoValueImmutableFields"
+    },
+    "AutoValueSubclassLeaked": {
+      "severity": "WARNING",
+      "summary": "Do not refer to the autogenerated AutoValue_ class outside the file containing the corresponding @AutoValue base class.",
+      "url": "https://errorprone.info/bugpattern/AutoValueSubclassLeaked"
+    },
+    "AvoidCommonTypeNames": {
+      "severity": "WARNING",
+      "summary": "Never reuse class names from java.lang",
+      "url": "https://errorprone.info/bugpattern/AvoidCommonTypeNames"
+    },
+    "AvoidObjectArrays": {
+      "severity": "WARNING",
+      "summary": "Object arrays are inferior to collections in almost every way. Prefer immutable collections (e.g., ImmutableSet, ImmutableList, etc.) over an object array whenever possible.",
+      "url": "https://errorprone.info/bugpattern/AvoidObjectArrays"
+    },
+    "AvoidValueSetter": {
+      "severity": "WARNING",
+      "summary": "Prefer using the enum-accepting rather than the int-accepting setter for enum fields.",
+      "url": "https://errorprone.info/bugpattern/AvoidValueSetter"
+    },
+    "BadAnnotationImplementation": {
+      "severity": "ERROR",
+      "summary": "Classes that implement Annotation must override equals and hashCode. Consider using AutoAnnotation instead of implementing Annotation by hand.",
+      "url": "https://errorprone.info/bugpattern/BadAnnotationImplementation"
+    },
+    "BadComparable": {
+      "severity": "WARNING",
+      "summary": "Possible sign flip from narrowing conversion",
+      "url": "https://errorprone.info/bugpattern/BadComparable"
+    },
+    "BadImport": {
+      "severity": "WARNING",
+      "summary": "Importing nested classes/static methods/static fields with commonly-used names can make code harder to read, because it may not be clear from the context exactly which type is being referred to. Qualifying the name with that of the containing class can make the code clearer.",
+      "url": "https://errorprone.info/bugpattern/BadImport"
+    },
+    "BadInstanceof": {
+      "severity": "WARNING",
+      "summary": "instanceof used in a way that is equivalent to a null check.",
+      "url": "https://errorprone.info/bugpattern/BadInstanceof"
+    },
+    "BadShiftAmount": {
+      "severity": "ERROR",
+      "summary": "Shift by an amount that is out of range",
+      "url": "https://errorprone.info/bugpattern/BadShiftAmount"
+    },
+    "BanClassLoader": {
+      "severity": "ERROR",
+      "summary": "Using dangerous ClassLoader APIs may deserialize untrusted user input into bytecode, leading to remote code execution vulnerabilities",
+      "url": "https://errorprone.info/bugpattern/BanClassLoader"
+    },
+    "BanJNDI": {
+      "severity": "ERROR",
+      "summary": "Using JNDI may deserialize user input via the `Serializable` API which is extremely dangerous",
+      "url": "https://errorprone.info/bugpattern/BanJNDI"
+    },
+    "BanSerializableRead": {
+      "severity": "ERROR",
+      "summary": "Deserializing user input via the `Serializable` API is extremely dangerous",
+      "url": "https://errorprone.info/bugpattern/BanSerializableRead"
+    },
+    "BareDotMetacharacter": {
+      "severity": "WARNING",
+      "summary": "\".\" is rarely useful as a regex, as it matches any character. To match a literal '.' character, instead write \"\\\\.\".",
+      "url": "https://errorprone.info/bugpattern/BareDotMetacharacter"
+    },
+    "BigDecimalEquals": {
+      "severity": "WARNING",
+      "summary": "BigDecimal#equals has surprising behavior: it also compares scale.",
+      "url": "https://errorprone.info/bugpattern/BigDecimalEquals"
+    },
+    "BigDecimalLiteralDouble": {
+      "severity": "WARNING",
+      "summary": "new BigDecimal(double) loses precision in this case.",
+      "url": "https://errorprone.info/bugpattern/BigDecimalLiteralDouble"
+    },
+    "BinderIdentityRestoredDangerously": {
+      "severity": "WARNING",
+      "summary": "A call to Binder.clearCallingIdentity() should be followed by Binder.restoreCallingIdentity() in a finally block. Otherwise the wrong Binder identity may be used by subsequent code.",
+      "url": "https://errorprone.info/bugpattern/BinderIdentityRestoredDangerously"
+    },
+    "BindingToUnqualifiedCommonType": {
+      "severity": "WARNING",
+      "summary": "This code declares a binding for a common value type without a Qualifier annotation.",
+      "url": "https://errorprone.info/bugpattern/BindingToUnqualifiedCommonType"
+    },
+    "BooleanLiteral": {
+      "severity": "WARNING",
+      "summary": "This expression can be written more clearly with a boolean literal.",
+      "url": "https://errorprone.info/bugpattern/BooleanLiteral"
+    },
+    "BooleanParameter": {
+      "severity": "SUGGESTION",
+      "summary": "Use parameter comments to document ambiguous literals",
+      "url": "https://errorprone.info/bugpattern/BooleanParameter"
+    },
+    "BoxedPrimitiveConstructor": {
+      "severity": "WARNING",
+      "summary": "valueOf or autoboxing provides better time and space performance",
+      "url": "https://errorprone.info/bugpattern/BoxedPrimitiveConstructor"
+    },
+    "BoxedPrimitiveEquality": {
+      "severity": "ERROR",
+      "summary": "Comparison using reference equality instead of value equality. Reference equality of boxed primitive types is usually not useful, as they are value objects, and it is bug-prone, as instances are cached for some values but not others.",
+      "url": "https://errorprone.info/bugpattern/BoxedPrimitiveEquality"
+    },
+    "BoxingComparator": {
+      "severity": "WARNING",
+      "summary": "Comparator.comparing unnecessarily boxes numerical primitives",
+      "url": "https://errorprone.info/bugpattern/BoxingComparator"
+    },
+    "BugPatternNaming": {
+      "severity": "WARNING",
+      "summary": "Giving BugPatterns a name different to the enclosing class can be confusing",
+      "url": "https://errorprone.info/bugpattern/BugPatternNaming"
+    },
+    "BuilderReturnThis": {
+      "severity": "WARNING",
+      "summary": "Builder instance method does not return 'this'",
+      "url": "https://errorprone.info/bugpattern/BuilderReturnThis"
+    },
+    "BundleDeserializationCast": {
+      "severity": "ERROR",
+      "summary": "Object serialized in Bundle may have been flattened to base type.",
+      "url": "https://errorprone.info/bugpattern/BundleDeserializationCast"
+    },
+    "ByteBufferBackingArray": {
+      "severity": "WARNING",
+      "summary": "ByteBuffer.array() shouldn't be called unless ByteBuffer.arrayOffset() is used or if the ByteBuffer was initialized using ByteBuffer.wrap() or ByteBuffer.allocate().",
+      "url": "https://errorprone.info/bugpattern/ByteBufferBackingArray"
+    },
+    "CacheLoaderNull": {
+      "severity": "WARNING",
+      "summary": "The result of CacheLoader#load must be non-null.",
+      "url": "https://errorprone.info/bugpattern/CacheLoaderNull"
+    },
+    "CanIgnoreReturnValueSuggester": {
+      "severity": "WARNING",
+      "summary": "Methods that always return 'this' (or return an input parameter) should be annotated with @com.google.errorprone.annotations.CanIgnoreReturnValue",
+      "url": "https://errorprone.info/bugpattern/CanIgnoreReturnValueSuggester"
+    },
+    "CannotMockFinalClass": {
+      "severity": "WARNING",
+      "summary": "Mockito cannot mock final classes",
+      "url": "https://errorprone.info/bugpattern/CannotMockFinalClass"
+    },
+    "CannotMockMethod": {
+      "severity": "WARNING",
+      "summary": "Mockito cannot mock final or static methods, and can't detect this at runtime",
+      "url": "https://errorprone.info/bugpattern/CannotMockMethod"
+    },
+    "CanonicalDuration": {
+      "severity": "WARNING",
+      "summary": "Duration can be expressed more clearly with different units",
+      "url": "https://errorprone.info/bugpattern/CanonicalDuration"
+    },
+    "CatchAndPrintStackTrace": {
+      "severity": "WARNING",
+      "summary": "Logging or rethrowing exceptions should usually be preferred to catching and calling printStackTrace",
+      "url": "https://errorprone.info/bugpattern/CatchAndPrintStackTrace"
+    },
+    "CatchFail": {
+      "severity": "WARNING",
+      "summary": "Ignoring exceptions and calling fail() is unnecessary, and makes test output less useful",
+      "url": "https://errorprone.info/bugpattern/CatchFail"
+    },
+    "CatchingUnchecked": {
+      "severity": "WARNING",
+      "summary": "This catch block catches `Exception`, but can only catch unchecked exceptions. Consider catching RuntimeException (or something more specific) instead so it is more apparent that no checked exceptions are being handled.",
+      "url": "https://errorprone.info/bugpattern/CatchingUnchecked"
+    },
+    "ChainedAssertionLosesContext": {
+      "severity": "WARNING",
+      "summary": "Inside a Subject, use check(...) instead of assert*() to preserve user-supplied messages and other settings.",
+      "url": "https://errorprone.info/bugpattern/ChainedAssertionLosesContext"
+    },
+    "ChainingConstructorIgnoresParameter": {
+      "severity": "ERROR",
+      "summary": "The called constructor accepts a parameter with the same name and type as one of its caller's parameters, but its caller doesn't pass that parameter to it.  It's likely that it was intended to.",
+      "url": "https://errorprone.info/bugpattern/ChainingConstructorIgnoresParameter"
+    },
+    "CharacterGetNumericValue": {
+      "severity": "WARNING",
+      "summary": "getNumericValue has unexpected behaviour: it interprets A-Z as base-36 digits with values 10-35, but also supports non-arabic numerals and miscellaneous numeric unicode characters like ?; consider using Character.digit or UCharacter.getUnicodeNumericValue instead",
+      "url": "https://errorprone.info/bugpattern/CharacterGetNumericValue"
+    },
+    "CheckNotNullMultipleTimes": {
+      "severity": "ERROR",
+      "summary": "A variable was checkNotNulled multiple times. Did you mean to check something else?",
+      "url": "https://errorprone.info/bugpattern/CheckNotNullMultipleTimes"
+    },
+    "CheckReturnValue": {
+      "severity": "ERROR",
+      "summary": "The result of this call must be used",
+      "url": "https://errorprone.info/bugpattern/CheckReturnValue"
+    },
+    "CheckedExceptionNotThrown": {
+      "severity": "WARNING",
+      "summary": "This method cannot throw a checked exception that it claims to. This may cause consumers of the API to incorrectly attempt to handle, or propagate, this exception.",
+      "url": "https://errorprone.info/bugpattern/CheckedExceptionNotThrown"
+    },
+    "ClassCanBeStatic": {
+      "severity": "WARNING",
+      "summary": "Inner class is non-static but does not reference enclosing class",
+      "url": "https://errorprone.info/bugpattern/ClassCanBeStatic"
+    },
+    "ClassInitializationDeadlock": {
+      "severity": "WARNING",
+      "summary": "Possible class initialization deadlock",
+      "url": "https://errorprone.info/bugpattern/ClassInitializationDeadlock"
+    },
+    "ClassName": {
+      "severity": "ERROR",
+      "summary": "The source file name should match the name of the top-level class it contains",
+      "url": "https://google.github.io/styleguide/javaguide.html#s2.1-file-name"
+    },
+    "ClassNamedLikeTypeParameter": {
+      "severity": "SUGGESTION",
+      "summary": "This class's name looks like a Type Parameter.",
+      "url": "https://errorprone.info/bugpattern/ClassNamedLikeTypeParameter"
+    },
+    "ClassNewInstance": {
+      "severity": "WARNING",
+      "summary": "Class.newInstance() bypasses exception checking; prefer getDeclaredConstructor().newInstance()",
+      "url": "https://errorprone.info/bugpattern/ClassNewInstance"
+    },
+    "CloseableProvides": {
+      "severity": "WARNING",
+      "summary": "Providing Closeable resources makes their lifecycle unclear",
+      "url": "https://errorprone.info/bugpattern/CloseableProvides"
+    },
+    "ClosingStandardOutputStreams": {
+      "severity": "WARNING",
+      "summary": "Don't use try-with-resources to manage standard output streams, closing the stream will cause subsequent output to standard output or standard error to be lost",
+      "url": "https://errorprone.info/bugpattern/ClosingStandardOutputStreams"
+    },
+    "CollectionIncompatibleType": {
+      "severity": "ERROR",
+      "summary": "Incompatible type as argument to Object-accepting Java collections method",
+      "url": "https://errorprone.info/bugpattern/CollectionIncompatibleType"
+    },
+    "CollectionToArraySafeParameter": {
+      "severity": "ERROR",
+      "summary": "The type of the array parameter of Collection.toArray needs to be compatible with the array type",
+      "url": "https://errorprone.info/bugpattern/CollectionToArraySafeParameter"
+    },
+    "CollectionUndefinedEquality": {
+      "severity": "WARNING",
+      "summary": "This type does not have well-defined equals behavior.",
+      "url": "https://errorprone.info/bugpattern/CollectionUndefinedEquality"
+    },
+    "CollectorShouldNotUseState": {
+      "severity": "WARNING",
+      "summary": "Collector.of() should not use state",
+      "url": "https://errorprone.info/bugpattern/CollectorShouldNotUseState"
+    },
+    "ComparableAndComparator": {
+      "severity": "WARNING",
+      "summary": "Class should not implement both `Comparable` and `Comparator`",
+      "url": "https://errorprone.info/bugpattern/ComparableAndComparator"
+    },
+    "ComparableType": {
+      "severity": "ERROR",
+      "summary": "Implementing 'Comparable<T>' where T is not the same as the implementing class is incorrect, since it violates the symmetry contract of compareTo.",
+      "url": "https://errorprone.info/bugpattern/ComparableType"
+    },
+    "CompareToZero": {
+      "severity": "WARNING",
+      "summary": "The result of #compareTo or #compare should only be compared to 0. It is an implementation detail whether a given type returns strictly the values {-1, 0, +1} or others.",
+      "url": "https://errorprone.info/bugpattern/CompareToZero"
+    },
+    "ComparingThisWithNull": {
+      "severity": "ERROR",
+      "summary": "this == null is always false, this != null is always true",
+      "url": "https://errorprone.info/bugpattern/ComparingThisWithNull"
+    },
+    "ComparisonContractViolated": {
+      "severity": "ERROR",
+      "summary": "This comparison method violates the contract",
+      "url": "https://errorprone.info/bugpattern/ComparisonContractViolated"
+    },
+    "ComparisonOutOfRange": {
+      "severity": "ERROR",
+      "summary": "Comparison to value that is out of range for the compared type",
+      "url": "https://errorprone.info/bugpattern/ComparisonOutOfRange"
+    },
+    "CompatibleWithAnnotationMisuse": {
+      "severity": "ERROR",
+      "summary": "@CompatibleWith's value is not a type argument.",
+      "url": "https://errorprone.info/bugpattern/CompatibleWithAnnotationMisuse"
+    },
+    "CompileTimeConstant": {
+      "severity": "ERROR",
+      "summary": "Non-compile-time constant expression passed to parameter with @CompileTimeConstant type annotation.",
+      "url": ""
+    },
+    "ComplexBooleanConstant": {
+      "severity": "WARNING",
+      "summary": "Non-trivial compile time constant boolean expressions shouldn't be used.",
+      "url": "https://errorprone.info/bugpattern/ComplexBooleanConstant"
+    },
+    "ComputeIfAbsentAmbiguousReference": {
+      "severity": "ERROR",
+      "summary": "computeIfAbsent passes the map key to the provided class's constructor",
+      "url": "https://errorprone.info/bugpattern/ComputeIfAbsentAmbiguousReference"
+    },
+    "ConditionalExpressionNumericPromotion": {
+      "severity": "ERROR",
+      "summary": "A conditional expression with numeric operands of differing types will perform binary numeric promotion of the operands; when these operands are of reference types, the expression's result may not be of the expected type.",
+      "url": "https://errorprone.info/bugpattern/ConditionalExpressionNumericPromotion"
+    },
+    "ConstantField": {
+      "severity": "SUGGESTION",
+      "summary": "Fields with CONSTANT_CASE names should be both static and final",
+      "url": "https://errorprone.info/bugpattern/ConstantField"
+    },
+    "ConstantOverflow": {
+      "severity": "ERROR",
+      "summary": "Compile-time constant expression overflows",
+      "url": "https://errorprone.info/bugpattern/ConstantOverflow"
+    },
+    "ConstantPatternCompile": {
+      "severity": "WARNING",
+      "summary": "Variables initialized with Pattern#compile calls on constants can be constants",
+      "url": "https://errorprone.info/bugpattern/ConstantPatternCompile"
+    },
+    "DaggerProvidesNull": {
+      "severity": "ERROR",
+      "summary": "Dagger @Provides methods may not return null unless annotated with @Nullable",
+      "url": "https://errorprone.info/bugpattern/DaggerProvidesNull"
+    },
+    "DangerousLiteralNull": {
+      "severity": "ERROR",
+      "summary": "This method is null-hostile: passing a null literal to it is always wrong",
+      "url": "https://errorprone.info/bugpattern/DangerousLiteralNull"
+    },
+    "DateChecker": {
+      "severity": "WARNING",
+      "summary": "Warns against suspect looking calls to java.util.Date APIs",
+      "url": "https://errorprone.info/bugpattern/DateChecker"
+    },
+    "DateFormatConstant": {
+      "severity": "WARNING",
+      "summary": "DateFormat is not thread-safe, and should not be used as a constant field.",
+      "url": "https://errorprone.info/bugpattern/DateFormatConstant"
+    },
+    "DeadException": {
+      "severity": "ERROR",
+      "summary": "Exception created but not thrown",
+      "url": "https://errorprone.info/bugpattern/DeadException"
+    },
+    "DeadThread": {
+      "severity": "ERROR",
+      "summary": "Thread created but not started",
+      "url": "https://errorprone.info/bugpattern/DeadThread"
+    },
+    "DeduplicateConstants": {
+      "severity": "ERROR",
+      "summary": "This expression was previously declared as a constant; consider replacing this occurrence.",
+      "url": "https://errorprone.info/bugpattern/DeduplicateConstants"
+    },
+    "DeeplyNested": {
+      "severity": "WARNING",
+      "summary": "Very deeply nested code may lead to StackOverflowErrors during compilation",
+      "url": "https://errorprone.info/bugpattern/DeeplyNested"
+    },
+    "DefaultCharset": {
+      "severity": "WARNING",
+      "summary": "Implicit use of the platform default charset, which can result in differing behaviour between JVM executions or incorrect behavior if the encoding of the data source doesn't match expectations.",
+      "url": "https://errorprone.info/bugpattern/DefaultCharset"
+    },
+    "DefaultLocale": {
+      "severity": "WARNING",
+      "summary": "Implicit use of the JVM default locale, which can result in differing behaviour between JVM executions.",
+      "url": "https://errorprone.info/bugpattern/DefaultLocale"
+    },
+    "DefaultPackage": {
+      "severity": "WARNING",
+      "summary": "Java classes shouldn't use default package",
+      "url": "https://errorprone.info/bugpattern/DefaultPackage"
+    },
+    "DepAnn": {
+      "severity": "ERROR",
+      "summary": "Item documented with a @deprecated javadoc note is not annotated with @Deprecated",
+      "url": "https://errorprone.info/bugpattern/DepAnn"
+    },
+    "DeprecatedVariable": {
+      "severity": "WARNING",
+      "summary": "Applying the @Deprecated annotation to local variables or parameters has no effect",
+      "url": "https://errorprone.info/bugpattern/DeprecatedVariable"
+    },
+    "DereferenceWithNullBranch": {
+      "severity": "ERROR",
+      "summary": "Dereference of an expression with a null branch",
+      "url": "https://errorprone.info/bugpattern/DereferenceWithNullBranch"
+    },
+    "DifferentNameButSame": {
+      "severity": "WARNING",
+      "summary": "This type is referred to in different ways within this file, which may be confusing.",
+      "url": "https://errorprone.info/bugpattern/DifferentNameButSame"
+    },
+    "DirectInvocationOnMock": {
+      "severity": "WARNING",
+      "summary": "Methods should not be directly invoked on mocks. Should this be part of a verify(..) call?",
+      "url": "https://errorprone.info/bugpattern/DirectInvocationOnMock"
+    },
+    "DiscardedPostfixExpression": {
+      "severity": "ERROR",
+      "summary": "The result of this unary operation on a lambda parameter is discarded",
+      "url": "https://errorprone.info/bugpattern/DiscardedPostfixExpression"
+    },
+    "DistinctVarargsChecker": {
+      "severity": "WARNING",
+      "summary": "Method expects distinct arguments at some/all positions",
+      "url": "https://errorprone.info/bugpattern/DistinctVarargsChecker"
+    },
+    "DoNotCall": {
+      "severity": "ERROR",
+      "summary": "This method should not be called.",
+      "url": "https://errorprone.info/bugpattern/DoNotCall"
+    },
+    "DoNotCallSuggester": {
+      "severity": "WARNING",
+      "summary": "Consider annotating methods that always throw with @DoNotCall. Read more at https://errorprone.info/bugpattern/DoNotCall",
+      "url": "https://errorprone.info/bugpattern/DoNotCallSuggester"
+    },
+    "DoNotClaimAnnotations": {
+      "severity": "WARNING",
+      "summary": "Don't 'claim' annotations in annotation processors; Processor#process should unconditionally return `false`",
+      "url": "https://errorprone.info/bugpattern/DoNotClaimAnnotations"
+    },
+    "DoNotMock": {
+      "severity": "ERROR",
+      "summary": "Identifies undesirable mocks.",
+      "url": "https://errorprone.info/bugpattern/DoNotMock"
+    },
+    "DoNotMockAutoValue": {
+      "severity": "WARNING",
+      "summary": "AutoValue classes represent pure data classes, so mocking them should not be necessary. Construct a real instance of the class instead.",
+      "url": "https://errorprone.info/bugpattern/DoNotMockAutoValue"
+    },
+    "DoubleBraceInitialization": {
+      "severity": "ERROR",
+      "summary": "Prefer collection factory methods or builders to the double-brace initialization pattern.",
+      "url": "https://errorprone.info/bugpattern/DoubleBraceInitialization"
+    },
+    "DoubleCheckedLocking": {
+      "severity": "WARNING",
+      "summary": "Double-checked locking on non-volatile fields is unsafe",
+      "url": "https://errorprone.info/bugpattern/DoubleCheckedLocking"
+    },
+    "DuplicateAssertion": {
+      "severity": "WARNING",
+      "summary": "This assertion is duplicate.",
+      "url": "https://errorprone.info/bugpattern/DuplicateAssertion"
+    },
+    "DuplicateBranches": {
+      "severity": "WARNING",
+      "summary": "Both branches contain identical code",
+      "url": "https://errorprone.info/bugpattern/DuplicateBranches"
+    },
+    "DuplicateDateFormatField": {
+      "severity": "WARNING",
+      "summary": "Reuse of DateFormat fields is most likely unintentional",
+      "url": "https://errorprone.info/bugpattern/DuplicateDateFormatField"
+    },
+    "DuplicateMapKeys": {
+      "severity": "ERROR",
+      "summary": "Map#ofEntries will throw an IllegalArgumentException if there are any duplicate keys",
+      "url": "https://errorprone.info/bugpattern/DuplicateMapKeys"
+    },
+    "DurationFrom": {
+      "severity": "ERROR",
+      "summary": "Duration.from(Duration) returns itself; from(Period) throws a runtime exception.",
+      "url": "https://errorprone.info/bugpattern/DurationFrom"
+    },
+    "DurationGetTemporalUnit": {
+      "severity": "ERROR",
+      "summary": "Duration.get() only works with SECONDS or NANOS.",
+      "url": "https://errorprone.info/bugpattern/DurationGetTemporalUnit"
+    },
+    "DurationTemporalUnit": {
+      "severity": "ERROR",
+      "summary": "Duration APIs only work for DAYS or exact durations.",
+      "url": "https://errorprone.info/bugpattern/DurationTemporalUnit"
+    },
+    "DurationToLongTimeUnit": {
+      "severity": "ERROR",
+      "summary": "Unit mismatch when decomposing a Duration or Instant to call a <long, TimeUnit> API",
+      "url": "https://errorprone.info/bugpattern/DurationToLongTimeUnit"
+    },
+    "EffectivelyPrivate": {
+      "severity": "WARNING",
+      "summary": "This declaration has public or protected modifiers, but is effectively private.",
+      "url": "https://errorprone.info/bugpattern/EffectivelyPrivate"
+    },
+    "EmptyBlockTag": {
+      "severity": "WARNING",
+      "summary": "A block tag (@param, @return, @throws, @deprecated) has an empty description. Block tags without descriptions don't add much value for future readers of the code; consider removing the tag entirely or adding a description.",
+      "url": "https://google.github.io/styleguide/javaguide.html#s7.1.3-javadoc-block-tags"
+    },
+    "EmptyCatch": {
+      "severity": "WARNING",
+      "summary": "Caught exceptions should not be ignored",
+      "url": "https://google.github.io/styleguide/javaguide.html#s6.2-caught-exceptions"
+    },
+    "EmptyIf": {
+      "severity": "ERROR",
+      "summary": "Empty statement after if",
+      "url": "https://errorprone.info/bugpattern/EmptyIf"
+    },
+    "EmptySetMultibindingContributions": {
+      "severity": "WARNING",
+      "summary": "@Multibinds is a more efficient and declarative mechanism for ensuring that a set multibinding is present in the graph.",
+      "url": "https://errorprone.info/bugpattern/EmptySetMultibindingContributions"
+    },
+    "EmptyTopLevelDeclaration": {
+      "severity": "WARNING",
+      "summary": "Empty top-level type declarations should be omitted",
+      "url": "https://errorprone.info/bugpattern/EmptyTopLevelDeclaration"
+    },
+    "EnumOrdinal": {
+      "severity": "WARNING",
+      "summary": "You should almost never invoke the Enum.ordinal() method or depend on the enum values by index.",
+      "url": "https://errorprone.info/bugpattern/EnumOrdinal"
+    },
+    "EqualsBrokenForNull": {
+      "severity": "WARNING",
+      "summary": "equals() implementation may throw NullPointerException when given null",
+      "url": "https://errorprone.info/bugpattern/EqualsBrokenForNull"
+    },
+    "EqualsGetClass": {
+      "severity": "WARNING",
+      "summary": "Prefer instanceof to getClass when implementing Object#equals. Note that this may be a behaviour change.",
+      "url": "https://errorprone.info/bugpattern/EqualsGetClass"
+    },
+    "EqualsHashCode": {
+      "severity": "ERROR",
+      "summary": "Classes that override equals should also override hashCode.",
+      "url": "https://errorprone.info/bugpattern/EqualsHashCode"
+    },
+    "EqualsIncompatibleType": {
+      "severity": "WARNING",
+      "summary": "An equality test between objects with incompatible types always returns false",
+      "url": "https://errorprone.info/bugpattern/EqualsIncompatibleType"
+    },
+    "EqualsMissingNullable": {
+      "severity": "SUGGESTION",
+      "summary": "Method overrides Object.equals but does not have @Nullable on its parameter",
+      "url": "https://errorprone.info/bugpattern/EqualsMissingNullable"
+    },
+    "EqualsNaN": {
+      "severity": "ERROR",
+      "summary": "== NaN always returns false; use the isNaN methods instead",
+      "url": "https://errorprone.info/bugpattern/EqualsNaN"
+    },
+    "EqualsNull": {
+      "severity": "ERROR",
+      "summary": "The contract of Object.equals() states that for any non-null reference value x, x.equals(null) should return false. If x is null, a NullPointerException is thrown. Consider replacing equals() with the == operator.",
+      "url": "https://errorprone.info/bugpattern/EqualsNull"
+    },
+    "EqualsReference": {
+      "severity": "ERROR",
+      "summary": "== must be used in equals method to check equality to itself or an infinite loop will occur.",
+      "url": "https://errorprone.info/bugpattern/EqualsReference"
+    },
+    "EqualsUnsafeCast": {
+      "severity": "WARNING",
+      "summary": "The contract of #equals states that it should return false for incompatible types, while this implementation may throw ClassCastException.",
+      "url": "https://errorprone.info/bugpattern/EqualsUnsafeCast"
+    },
+    "EqualsUsingHashCode": {
+      "severity": "WARNING",
+      "summary": "Implementing #equals by just comparing hashCodes is fragile. Hashes collide frequently, and this will lead to false positives in #equals.",
+      "url": "https://errorprone.info/bugpattern/EqualsUsingHashCode"
+    },
+    "EqualsWrongThing": {
+      "severity": "ERROR",
+      "summary": "Comparing different pairs of fields/getters in an equals implementation is probably a mistake.",
+      "url": "https://errorprone.info/bugpattern/EqualsWrongThing"
+    },
+    "ErroneousBitwiseExpression": {
+      "severity": "WARNING",
+      "summary": "This expression evaluates to 0. If this isn't an error, consider expressing it as a literal 0.",
+      "url": "https://errorprone.info/bugpattern/ErroneousBitwiseExpression"
+    },
+    "ErroneousThreadPoolConstructorChecker": {
+      "severity": "WARNING",
+      "summary": "Thread pool size will never go beyond corePoolSize if an unbounded queue is used",
+      "url": "https://errorprone.info/bugpattern/ErroneousThreadPoolConstructorChecker"
+    },
+    "EscapedEntity": {
+      "severity": "WARNING",
+      "summary": "HTML entities in @code/@literal tags will appear literally in the rendered javadoc.",
+      "url": "https://errorprone.info/bugpattern/EscapedEntity"
+    },
+    "ExpectedExceptionChecker": {
+      "severity": "WARNING",
+      "summary": "Prefer assertThrows to ExpectedException",
+      "url": "https://errorprone.info/bugpattern/ExpectedExceptionChecker"
+    },
+    "ExpensiveLenientFormatString": {
+      "severity": "WARNING",
+      "summary": "String.format is passed to a lenient formatting method, which can be unwrapped to improve efficiency.",
+      "url": "https://errorprone.info/bugpattern/ExpensiveLenientFormatString"
+    },
+    "ExplicitArrayForVarargs": {
+      "severity": "WARNING",
+      "summary": "Avoid explicit array creation for varargs",
+      "url": "https://errorprone.info/bugpattern/ExplicitArrayForVarargs"
+    },
+    "ExposedPrivateType": {
+      "severity": "WARNING",
+      "summary": "Private member classes should not be referenced in signatures of non-private members.",
+      "url": "https://errorprone.info/bugpattern/ExposedPrivateType"
+    },
+    "ExtendingJUnitAssert": {
+      "severity": "WARNING",
+      "summary": "When only using JUnit Assert's static methods, you should import statically instead of extending.",
+      "url": "https://errorprone.info/bugpattern/ExtendingJUnitAssert"
+    },
+    "ExtendsAutoValue": {
+      "severity": "ERROR",
+      "summary": "Do not extend an @AutoValue-like classes in non-generated code.",
+      "url": "https://errorprone.info/bugpattern/ExtendsAutoValue"
+    },
+    "ExtendsObject": {
+      "severity": "WARNING",
+      "summary": "`T extends Object` is redundant (unless you are using the Checker Framework).",
+      "url": "https://errorprone.info/bugpattern/ExtendsObject"
+    },
+    "FallThrough": {
+      "severity": "WARNING",
+      "summary": "Switch case may fall through",
+      "url": "https://errorprone.info/bugpattern/FallThrough"
+    },
+    "FieldCanBeFinal": {
+      "severity": "SUGGESTION",
+      "summary": "This field is only assigned during initialization; consider making it final",
+      "url": "https://errorprone.info/bugpattern/FieldCanBeFinal"
+    },
+    "FieldCanBeLocal": {
+      "severity": "SUGGESTION",
+      "summary": "This field can be replaced with a local variable in the methods that use it.",
+      "url": "https://errorprone.info/bugpattern/FieldCanBeLocal"
+    },
+    "FieldCanBeStatic": {
+      "severity": "SUGGESTION",
+      "summary": "A final field initialized at compile-time with an instance of an immutable type can be static.",
+      "url": "https://errorprone.info/bugpattern/FieldCanBeStatic"
+    },
+    "FieldMissingNullable": {
+      "severity": "SUGGESTION",
+      "summary": "Field is assigned (or compared against) a definitely null value but is not annotated @Nullable",
+      "url": "https://errorprone.info/bugpattern/FieldMissingNullable"
+    },
+    "Finalize": {
+      "severity": "WARNING",
+      "summary": "Do not override finalize",
+      "url": "https://errorprone.info/bugpattern/Finalize"
+    },
+    "Finally": {
+      "severity": "WARNING",
+      "summary": "If you return or throw from a finally, then values returned or thrown from the try-catch block will be ignored. Consider using try-with-resources instead.",
+      "url": "https://errorprone.info/bugpattern/Finally"
+    },
+    "FloatCast": {
+      "severity": "WARNING",
+      "summary": "Use parentheses to make the precedence explicit",
+      "url": "https://errorprone.info/bugpattern/FloatCast"
+    },
+    "FloatingPointAssertionWithinEpsilon": {
+      "severity": "WARNING",
+      "summary": "This fuzzy equality check is using a tolerance less than the gap to the next number. You may want a less restrictive tolerance, or to assert equality.",
+      "url": "https://errorprone.info/bugpattern/FloatingPointAssertionWithinEpsilon"
+    },
+    "FloatingPointLiteralPrecision": {
+      "severity": "WARNING",
+      "summary": "Floating point literal loses precision",
+      "url": "https://errorprone.info/bugpattern/FloatingPointLiteralPrecision"
+    },
+    "FloggerArgumentToString": {
+      "severity": "WARNING",
+      "summary": "Use Flogger's printf-style formatting instead of explicitly converting arguments to strings. Note that Flogger does more than just call toString; for instance, it formats arrays sensibly.",
+      "url": "https://errorprone.info/bugpattern/FloggerArgumentToString"
+    },
+    "FloggerFormatString": {
+      "severity": "ERROR",
+      "summary": "Invalid printf-style format string",
+      "url": "https://errorprone.info/bugpattern/FloggerFormatString"
+    },
+    "FloggerLogString": {
+      "severity": "ERROR",
+      "summary": "Arguments to log(String) must be compile-time constants or parameters annotated with @CompileTimeConstant. If possible, use Flogger's formatting log methods instead.",
+      "url": ""
+    },
+    "FloggerLogVarargs": {
+      "severity": "ERROR",
+      "summary": "logVarargs should be used to pass through format strings and arguments.",
+      "url": "https://errorprone.info/bugpattern/FloggerLogVarargs"
+    },
+    "FloggerLogWithCause": {
+      "severity": "WARNING",
+      "summary": "Setting the caught exception as the cause of the log message may provide more context for anyone debugging errors.",
+      "url": "https://errorprone.info/bugpattern/FloggerLogWithCause"
+    },
+    "FloggerMessageFormat": {
+      "severity": "WARNING",
+      "summary": "Invalid message format-style format specifier ({0}), expected printf-style (%s)",
+      "url": "https://errorprone.info/bugpattern/FloggerMessageFormat"
+    },
+    "FloggerPerWithoutRateLimit": {
+      "severity": "WARNING",
+      "summary": "per() methods are no-ops unless combined with atMostEvery(), every(), or onAverageEvery()",
+      "url": "https://errorprone.info/bugpattern/FloggerPerWithoutRateLimit"
+    },
+    "FloggerRedundantIsEnabled": {
+      "severity": "WARNING",
+      "summary": "Logger level check is already implied in the log() call. An explicit atLEVEL().isEnabled() check is redundant.",
+      "url": "https://errorprone.info/bugpattern/FloggerRedundantIsEnabled"
+    },
+    "FloggerRequiredModifiers": {
+      "severity": "WARNING",
+      "summary": "FluentLogger.forEnclosingClass should always be saved to a private static final field.",
+      "url": "https://google.github.io/flogger/best_practice#modifiers"
+    },
+    "FloggerSplitLogStatement": {
+      "severity": "ERROR",
+      "summary": "Splitting log statements and using Api instances directly breaks logging.",
+      "url": "https://google.github.io/flogger/best_practice#no-split"
+    },
+    "FloggerStringConcatenation": {
+      "severity": "WARNING",
+      "summary": "Prefer string formatting using printf placeholders (e.g. %s) instead of string concatenation",
+      "url": "https://errorprone.info/bugpattern/FloggerStringConcatenation"
+    },
+    "FloggerWithCause": {
+      "severity": "WARNING",
+      "summary": "Calling withCause(Throwable) with an inline allocated Throwable is discouraged. Consider using withStackTrace(StackSize) instead, and specifying a reduced stack size (e.g. SMALL, MEDIUM or LARGE) instead of FULL, to improve performance.",
+      "url": "https://google.github.io/flogger/best_practice#stack-trace"
+    },
+    "FloggerWithoutCause": {
+      "severity": "WARNING",
+      "summary": "Use withCause to associate Exceptions with log statements",
+      "url": "https://errorprone.info/bugpattern/FloggerWithoutCause"
+    },
+    "ForEachIterable": {
+      "severity": "SUGGESTION",
+      "summary": "This loop can be replaced with an enhanced for loop.",
+      "url": "https://errorprone.info/bugpattern/ForEachIterable"
+    },
+    "ForOverride": {
+      "severity": "ERROR",
+      "summary": "Method annotated @ForOverride must be protected or package-private and only invoked from declaring class, or from an override of the method",
+      "url": "https://errorprone.info/bugpattern/ForOverride"
+    },
+    "FormatString": {
+      "severity": "ERROR",
+      "summary": "Invalid printf-style format string",
+      "url": "https://errorprone.info/bugpattern/FormatString"
+    },
+    "FormatStringAnnotation": {
+      "severity": "ERROR",
+      "summary": "Invalid format string passed to formatting method.",
+      "url": "https://errorprone.info/bugpattern/FormatStringAnnotation"
+    },
+    "FormatStringShouldUsePlaceholders": {
+      "severity": "WARNING",
+      "summary": "Using a format string avoids string concatenation in the common case.",
+      "url": "https://errorprone.info/bugpattern/FormatStringShouldUsePlaceholders"
+    },
+    "FragmentInjection": {
+      "severity": "WARNING",
+      "summary": "Classes extending PreferenceActivity must implement isValidFragment such that it does not unconditionally return true to prevent vulnerability to fragment injection attacks.",
+      "url": "https://errorprone.info/bugpattern/FragmentInjection"
+    },
+    "FragmentNotInstantiable": {
+      "severity": "WARNING",
+      "summary": "Subclasses of Fragment must be instantiable via Class#newInstance(): the class must be public, static and have a public nullary constructor",
+      "url": "https://errorprone.info/bugpattern/FragmentNotInstantiable"
+    },
+    "FromTemporalAccessor": {
+      "severity": "ERROR",
+      "summary": "Certain combinations of javaTimeType.from(TemporalAccessor) will always throw a DateTimeException or return the parameter directly.",
+      "url": "https://errorprone.info/bugpattern/FromTemporalAccessor"
+    },
+    "FunctionalInterfaceClash": {
+      "severity": "WARNING",
+      "summary": "Overloads will be ambiguous when passing lambda arguments.",
+      "url": "https://errorprone.info/bugpattern/FunctionalInterfaceClash"
+    },
+    "FunctionalInterfaceMethodChanged": {
+      "severity": "ERROR",
+      "summary": "Casting a lambda to this @FunctionalInterface can cause a behavior change from casting to a functional superinterface, which is surprising to users.  Prefer decorator methods to this surprising behavior.",
+      "url": "https://errorprone.info/bugpattern/FunctionalInterfaceMethodChanged"
+    },
+    "FutureReturnValueIgnored": {
+      "severity": "WARNING",
+      "summary": "Return value of methods returning Future must be checked. Ignoring returned Futures suppresses exceptions thrown from the code that completes the Future.",
+      "url": "https://errorprone.info/bugpattern/FutureReturnValueIgnored"
+    },
+    "FutureTransformAsync": {
+      "severity": "WARNING",
+      "summary": "Use transform instead of transformAsync when all returns are an immediate future.",
+      "url": "https://errorprone.info/bugpattern/FutureTransformAsync"
+    },
+    "FuturesGetCheckedIllegalExceptionType": {
+      "severity": "ERROR",
+      "summary": "Futures.getChecked requires a checked exception type with a standard constructor.",
+      "url": "https://errorprone.info/bugpattern/FuturesGetCheckedIllegalExceptionType"
+    },
+    "FuzzyEqualsShouldNotBeUsedInEqualsMethod": {
+      "severity": "ERROR",
+      "summary": "DoubleMath.fuzzyEquals should never be used in an Object.equals() method",
+      "url": "https://errorprone.info/bugpattern/FuzzyEqualsShouldNotBeUsedInEqualsMethod"
+    },
+    "GetClassOnAnnotation": {
+      "severity": "ERROR",
+      "summary": "Calling getClass() on an annotation may return a proxy class",
+      "url": "https://errorprone.info/bugpattern/GetClassOnAnnotation"
+    },
+    "GetClassOnClass": {
+      "severity": "ERROR",
+      "summary": "Calling getClass() on an object of type Class returns the Class object for java.lang.Class; you probably meant to operate on the object directly",
+      "url": "https://errorprone.info/bugpattern/GetClassOnClass"
+    },
+    "GetClassOnEnum": {
+      "severity": "WARNING",
+      "summary": "Calling getClass() on an enum may return a subclass of the enum type",
+      "url": "https://errorprone.info/bugpattern/GetClassOnEnum"
+    },
+    "GuardedBy": {
+      "severity": "ERROR",
+      "summary": "Checks for unguarded accesses to fields and methods with @GuardedBy annotations",
+      "url": "https://errorprone.info/bugpattern/GuardedBy"
+    },
+    "GuiceAssistedInjectScoping": {
+      "severity": "ERROR",
+      "summary": "Scope annotation on implementation class of AssistedInject factory is not allowed",
+      "url": "https://errorprone.info/bugpattern/GuiceAssistedInjectScoping"
+    },
+    "GuiceAssistedParameters": {
+      "severity": "ERROR",
+      "summary": "A constructor cannot have two @Assisted parameters of the same type unless they are disambiguated with named @Assisted annotations.",
+      "url": "https://errorprone.info/bugpattern/GuiceAssistedParameters"
+    },
+    "GuiceInjectOnFinalField": {
+      "severity": "ERROR",
+      "summary": "Although Guice allows injecting final fields, doing so is disallowed because the injected value may not be visible to other threads.",
+      "url": "https://errorprone.info/bugpattern/GuiceInjectOnFinalField"
+    },
+    "GuiceNestedCombine": {
+      "severity": "WARNING",
+      "summary": "Nesting Modules.combine() here is unnecessary.",
+      "url": "https://errorprone.info/bugpattern/GuiceNestedCombine"
+    },
+    "HardCodedSdCardPath": {
+      "severity": "WARNING",
+      "summary": "Hardcoded reference to /sdcard",
+      "url": "https://errorprone.info/bugpattern/HardCodedSdCardPath"
+    },
+    "HashtableContains": {
+      "severity": "ERROR",
+      "summary": "contains() is a legacy method that is equivalent to containsValue()",
+      "url": "https://errorprone.info/bugpattern/HashtableContains"
+    },
+    "HidingField": {
+      "severity": "WARNING",
+      "summary": "Hiding fields of superclasses may cause confusion and errors",
+      "url": "https://errorprone.info/bugpattern/HidingField"
+    },
+    "ICCProfileGetInstance": {
+      "severity": "WARNING",
+      "summary": "This method searches the class path for the given file, prefer to read the file and call getInstance(byte[]) or getInstance(InputStream)",
+      "url": "https://errorprone.info/bugpattern/ICCProfileGetInstance"
+    },
+    "IdentifierName": {
+      "severity": "WARNING",
+      "summary": "Methods and non-static variables should be named in lowerCamelCase",
+      "url": "https://google.github.io/styleguide/javaguide.html#s5.2-specific-identifier-names"
+    },
+    "IdentityBinaryExpression": {
+      "severity": "ERROR",
+      "summary": "A binary expression where both operands are the same is usually incorrect.",
+      "url": "https://errorprone.info/bugpattern/IdentityBinaryExpression"
+    },
+    "IdentityHashMapBoxing": {
+      "severity": "ERROR",
+      "summary": "Using IdentityHashMap with a boxed type as the key is risky since boxing may produce distinct instances",
+      "url": "https://errorprone.info/bugpattern/IdentityHashMapBoxing"
+    },
+    "IdentityHashMapUsage": {
+      "severity": "WARNING",
+      "summary": "IdentityHashMap usage shouldn't be intermingled with Map",
+      "url": "https://errorprone.info/bugpattern/IdentityHashMapUsage"
+    },
+    "IfChainToSwitch": {
+      "severity": "WARNING",
+      "summary": "This if-chain may be converted into a switch",
+      "url": "https://errorprone.info/bugpattern/IfChainToSwitch"
+    },
+    "IgnoredPureGetter": {
+      "severity": "WARNING",
+      "summary": "Getters on AutoValues, AutoBuilders, and Protobuf Messages are side-effect free, so there is no point in calling them if the return value is ignored. While there are no side effects from the getter, the receiver may have side effects.",
+      "url": "https://errorprone.info/bugpattern/IgnoredPureGetter"
+    },
+    "Immutable": {
+      "severity": "ERROR",
+      "summary": "Type declaration annotated with @Immutable is not immutable",
+      "url": "https://errorprone.info/bugpattern/Immutable"
+    },
+    "ImmutableAnnotationChecker": {
+      "severity": "WARNING",
+      "summary": "Annotations should always be immutable",
+      "url": "https://errorprone.info/bugpattern/ImmutableAnnotationChecker"
+    },
+    "ImmutableEnumChecker": {
+      "severity": "WARNING",
+      "summary": "Enums should always be immutable",
+      "url": "https://errorprone.info/bugpattern/ImmutableEnumChecker"
+    },
+    "ImmutableMemberCollection": {
+      "severity": "SUGGESTION",
+      "summary": "If you don't intend to mutate a member collection prefer using Immutable types.",
+      "url": "https://errorprone.info/bugpattern/ImmutableMemberCollection"
+    },
+    "ImmutableRefactoring": {
+      "severity": "SUGGESTION",
+      "summary": "Refactors uses of the JSR 305 @Immutable to Error Prone's annotation",
+      "url": "https://errorprone.info/bugpattern/ImmutableRefactoring"
+    },
+    "ImmutableSetForContains": {
+      "severity": "SUGGESTION",
+      "summary": "This private static ImmutableList is only used for contains, containsAll or isEmpty checks; prefer ImmutableSet.",
+      "url": "https://errorprone.info/bugpattern/ImmutableSetForContains"
+    },
+    "ImplementAssertionWithChaining": {
+      "severity": "SUGGESTION",
+      "summary": "Prefer check(...), which usually generates more readable failure messages.",
+      "url": "https://errorprone.info/bugpattern/ImplementAssertionWithChaining"
+    },
+    "ImpossibleNullComparison": {
+      "severity": "ERROR",
+      "summary": "This value cannot be null, and comparing it to null may be misleading.",
+      "url": "https://errorprone.info/bugpattern/ImpossibleNullComparison"
+    },
+    "Incomparable": {
+      "severity": "ERROR",
+      "summary": "Types contained in sorted collections must implement Comparable.",
+      "url": "https://errorprone.info/bugpattern/Incomparable"
+    },
+    "IncompatibleArgumentType": {
+      "severity": "ERROR",
+      "summary": "Passing argument to a generic method with an incompatible type.",
+      "url": "https://errorprone.info/bugpattern/IncompatibleArgumentType"
+    },
+    "IncompatibleModifiers": {
+      "severity": "ERROR",
+      "summary": "This annotation has incompatible modifiers as specified by its @IncompatibleModifiers annotation",
+      "url": ""
+    },
+    "InconsistentCapitalization": {
+      "severity": "WARNING",
+      "summary": "It is confusing to have a field and a parameter under the same scope that differ only in capitalization.",
+      "url": "https://errorprone.info/bugpattern/InconsistentCapitalization"
+    },
+    "InconsistentHashCode": {
+      "severity": "WARNING",
+      "summary": "Including fields in hashCode which are not compared in equals violates the contract of hashCode.",
+      "url": "https://errorprone.info/bugpattern/InconsistentHashCode"
+    },
+    "InconsistentOverloads": {
+      "severity": "WARNING",
+      "summary": "The ordering of parameters in overloaded methods should be as consistent as possible (when viewed from left to right)",
+      "url": "https://errorprone.info/bugpattern/InconsistentOverloads"
+    },
+    "IncorrectMainMethod": {
+      "severity": "WARNING",
+      "summary": "'main' methods must be public, static, and void",
+      "url": "https://errorprone.info/bugpattern/IncorrectMainMethod"
+    },
+    "IncrementInForLoopAndHeader": {
+      "severity": "WARNING",
+      "summary": "This for loop increments the same variable in the header and in the body",
+      "url": "https://errorprone.info/bugpattern/IncrementInForLoopAndHeader"
+    },
+    "IndexOfChar": {
+      "severity": "ERROR",
+      "summary": "The first argument to indexOf is a Unicode code point, and the second is the index to start the search from",
+      "url": "https://errorprone.info/bugpattern/IndexOfChar"
+    },
+    "InexactVarargsConditional": {
+      "severity": "ERROR",
+      "summary": "Conditional expression in varargs call contains array and non-array arguments",
+      "url": "https://errorprone.info/bugpattern/InexactVarargsConditional"
+    },
+    "InfiniteRecursion": {
+      "severity": "ERROR",
+      "summary": "This method calls itself unconditionally; it will throw StackOverflowError",
+      "url": "https://errorprone.info/bugpattern/InfiniteRecursion"
+    },
+    "InheritDoc": {
+      "severity": "WARNING",
+      "summary": "Invalid use of @inheritDoc.",
+      "url": "https://errorprone.info/bugpattern/InheritDoc"
+    },
+    "InitializeInline": {
+      "severity": "WARNING",
+      "summary": "Initializing variables in their declaring statement is clearer, where possible.",
+      "url": "https://errorprone.info/bugpattern/InitializeInline"
+    },
+    "InjectInvalidTargetingOnScopingAnnotation": {
+      "severity": "WARNING",
+      "summary": "A scoping annotation's Target should include TYPE and METHOD.",
+      "url": "https://errorprone.info/bugpattern/InjectInvalidTargetingOnScopingAnnotation"
+    },
+    "InjectMoreThanOneScopeAnnotationOnClass": {
+      "severity": "ERROR",
+      "summary": "A class can be annotated with at most one scope annotation.",
+      "url": "https://errorprone.info/bugpattern/InjectMoreThanOneScopeAnnotationOnClass"
+    },
+    "InjectOnBugCheckers": {
+      "severity": "WARNING",
+      "summary": "BugChecker constructors should be marked @Inject.",
+      "url": "https://errorprone.info/bugpattern/InjectOnBugCheckers"
+    },
+    "InjectOnConstructorOfAbstractClass": {
+      "severity": "WARNING",
+      "summary": "Constructors on abstract classes are never directly @Inject'ed, only the constructors of their subclasses can be @Inject'ed.",
+      "url": "https://errorprone.info/bugpattern/InjectOnConstructorOfAbstractClass"
+    },
+    "InjectOnMemberAndConstructor": {
+      "severity": "ERROR",
+      "summary": "Members shouldn't be annotated with @Inject if constructor is already annotated @Inject",
+      "url": "https://errorprone.info/bugpattern/InjectOnMemberAndConstructor"
+    },
+    "InjectScopeAnnotationOnInterfaceOrAbstractClass": {
+      "severity": "WARNING",
+      "summary": "Scope annotation on an interface or abstract class is not allowed",
+      "url": "https://errorprone.info/bugpattern/InjectScopeAnnotationOnInterfaceOrAbstractClass"
+    },
+    "InjectedConstructorAnnotations": {
+      "severity": "WARNING",
+      "summary": "Injected constructors cannot be optional nor have binding annotations",
+      "url": "https://errorprone.info/bugpattern/InjectedConstructorAnnotations"
+    },
+    "InlineFormatString": {
+      "severity": "WARNING",
+      "summary": "Prefer to create format strings inline, instead of extracting them to a single-use constant",
+      "url": "https://errorprone.info/bugpattern/InlineFormatString"
+    },
+    "InlineMeInliner": {
+      "severity": "WARNING",
+      "summary": "Callers of this API should be inlined.",
+      "url": "https://errorprone.info/bugpattern/InlineMeInliner"
+    },
+    "InlineMeSuggester": {
+      "severity": "WARNING",
+      "summary": "This deprecated API looks inlineable. If you'd like the body of the API to be automatically inlined to its callers, please annotate it with @InlineMe. NOTE: the suggested fix makes the method final if it was not already.",
+      "url": "https://errorprone.info/bugpattern/InlineMeSuggester"
+    },
+    "InlineMeValidator": {
+      "severity": "ERROR",
+      "summary": "Ensures that the @InlineMe annotation is used correctly.",
+      "url": "https://errorprone.info/bugpattern/InlineMeValidator"
+    },
+    "InlineTrivialConstant": {
+      "severity": "WARNING",
+      "summary": "Consider inlining this constant",
+      "url": "https://errorprone.info/bugpattern/InlineTrivialConstant"
+    },
+    "InputStreamSlowMultibyteRead": {
+      "severity": "WARNING",
+      "summary": "Please also override int read(byte[], int, int), otherwise multi-byte reads from this input stream are likely to be slow.",
+      "url": "https://errorprone.info/bugpattern/InputStreamSlowMultibyteRead"
+    },
+    "InsecureCryptoUsage": {
+      "severity": "ERROR",
+      "summary": "A standard cryptographic operation is used in a mode that is prone to vulnerabilities",
+      "url": "https://errorprone.info/bugpattern/InsecureCryptoUsage"
+    },
+    "InstanceOfAndCastMatchWrongType": {
+      "severity": "WARNING",
+      "summary": "Casting inside an if block should be plausibly consistent with the instanceof type",
+      "url": "https://errorprone.info/bugpattern/InstanceOfAndCastMatchWrongType"
+    },
+    "InstantTemporalUnit": {
+      "severity": "ERROR",
+      "summary": "Instant APIs only work for NANOS, MICROS, MILLIS, SECONDS, MINUTES, HOURS, HALF_DAYS and DAYS.",
+      "url": "https://errorprone.info/bugpattern/InstantTemporalUnit"
+    },
+    "IntFloatConversion": {
+      "severity": "WARNING",
+      "summary": "Conversion from int to float may lose precision; use an explicit cast to float if this was intentional",
+      "url": "https://errorprone.info/bugpattern/IntFloatConversion"
+    },
+    "IntLiteralCast": {
+      "severity": "WARNING",
+      "summary": "Consider using a literal of the desired type instead of casting an int literal",
+      "url": "https://errorprone.info/bugpattern/IntLiteralCast"
+    },
+    "IntLongMath": {
+      "severity": "WARNING",
+      "summary": "Expression of type int may overflow before being assigned to a long",
+      "url": "https://errorprone.info/bugpattern/IntLongMath"
+    },
+    "InterfaceWithOnlyStatics": {
+      "severity": "WARNING",
+      "summary": "This interface only contains static fields and methods; consider making it a final class instead to prevent subclassing.",
+      "url": "https://errorprone.info/bugpattern/InterfaceWithOnlyStatics"
+    },
+    "InterruptedExceptionSwallowed": {
+      "severity": "WARNING",
+      "summary": "This catch block appears to be catching an explicitly declared InterruptedException as an Exception/Throwable and not handling the interruption separately.",
+      "url": "https://errorprone.info/bugpattern/InterruptedExceptionSwallowed"
+    },
+    "InterruptedInCatchBlock": {
+      "severity": "WARNING",
+      "summary": "Did you mean to call Thread.currentThread().interrupt() instead of Thread.interrupted()?",
+      "url": "https://errorprone.info/bugpattern/InterruptedInCatchBlock"
+    },
+    "Interruption": {
+      "severity": "WARNING",
+      "summary": "Always pass 'false' to 'Future.cancel()', unless you are propagating a cancellation-with-interrupt from another caller",
+      "url": "https://errorprone.info/bugpattern/Interruption"
+    },
+    "InvalidBlockTag": {
+      "severity": "WARNING",
+      "summary": "This tag is invalid.",
+      "url": "https://errorprone.info/bugpattern/InvalidBlockTag"
+    },
+    "InvalidInlineTag": {
+      "severity": "WARNING",
+      "summary": "This tag is invalid.",
+      "url": "https://errorprone.info/bugpattern/InvalidInlineTag"
+    },
+    "InvalidJavaTimeConstant": {
+      "severity": "ERROR",
+      "summary": "This checker errors on calls to java.time methods using values that are guaranteed to throw a DateTimeException.",
+      "url": "https://errorprone.info/bugpattern/InvalidJavaTimeConstant"
+    },
+    "InvalidLink": {
+      "severity": "WARNING",
+      "summary": "This @link tag looks wrong.",
+      "url": "https://errorprone.info/bugpattern/InvalidLink"
+    },
+    "InvalidParam": {
+      "severity": "WARNING",
+      "summary": "This @param tag doesn't refer to a parameter of the method.",
+      "url": "https://errorprone.info/bugpattern/InvalidParam"
+    },
+    "InvalidPatternSyntax": {
+      "severity": "ERROR",
+      "summary": "Invalid syntax used for a regular expression",
+      "url": "https://errorprone.info/bugpattern/InvalidPatternSyntax"
+    },
+    "InvalidSnippet": {
+      "severity": "WARNING",
+      "summary": "This tag is invalid.",
+      "url": "https://errorprone.info/bugpattern/InvalidSnippet"
+    },
+    "InvalidThrows": {
+      "severity": "WARNING",
+      "summary": "The documented method doesn't actually throw this checked exception.",
+      "url": "https://errorprone.info/bugpattern/InvalidThrows"
+    },
+    "InvalidThrowsLink": {
+      "severity": "WARNING",
+      "summary": "Don't use {@link} or {@code} in @throws tags; mention the exception name directly (e.g., @throws IOException, not @throws {@link IOException}).",
+      "url": "https://errorprone.info/bugpattern/InvalidThrowsLink"
+    },
+    "InvalidTimeZoneID": {
+      "severity": "ERROR",
+      "summary": "Invalid time zone identifier. TimeZone.getTimeZone(String) will silently return GMT instead of the time zone you intended.",
+      "url": "https://errorprone.info/bugpattern/InvalidTimeZoneID"
+    },
+    "InvalidZoneId": {
+      "severity": "ERROR",
+      "summary": "Invalid zone identifier. ZoneId.of(String) will throw exception at runtime.",
+      "url": "https://errorprone.info/bugpattern/InvalidZoneId"
+    },
+    "IsInstanceIncompatibleType": {
+      "severity": "ERROR",
+      "summary": "This use of isInstance will always evaluate to false.",
+      "url": "https://errorprone.info/bugpattern/IsInstanceIncompatibleType"
+    },
+    "IsInstanceOfClass": {
+      "severity": "ERROR",
+      "summary": "The argument to Class#isInstance(Object) should not be a Class",
+      "url": "https://errorprone.info/bugpattern/IsInstanceOfClass"
+    },
+    "IsLoggableTagLength": {
+      "severity": "ERROR",
+      "summary": "Log tag too long, cannot exceed 23 characters.",
+      "url": "https://errorprone.info/bugpattern/IsLoggableTagLength"
+    },
+    "IterableAndIterator": {
+      "severity": "WARNING",
+      "summary": "Class should not implement both `Iterable` and `Iterator`",
+      "url": "https://errorprone.info/bugpattern/IterableAndIterator"
+    },
+    "IterablePathParameter": {
+      "severity": "ERROR",
+      "summary": "Path implements Iterable<Path>; prefer Collection<Path> for clarity",
+      "url": "https://errorprone.info/bugpattern/IterablePathParameter"
+    },
+    "JUnit3FloatingPointComparisonWithoutDelta": {
+      "severity": "WARNING",
+      "summary": "Floating-point comparison without error tolerance",
+      "url": "https://errorprone.info/bugpattern/JUnit3FloatingPointComparisonWithoutDelta"
+    },
+    "JUnit3TestNotRun": {
+      "severity": "ERROR",
+      "summary": "Test method will not be run; please correct method signature (Should be public, non-static, and method name should begin with \"test\").",
+      "url": "https://errorprone.info/bugpattern/JUnit3TestNotRun"
+    },
+    "JUnit4ClassAnnotationNonStatic": {
+      "severity": "ERROR",
+      "summary": "This method should be static",
+      "url": "https://errorprone.info/bugpattern/JUnit4ClassAnnotationNonStatic"
+    },
+    "JUnit4ClassUsedInJUnit3": {
+      "severity": "WARNING",
+      "summary": "Some JUnit4 construct cannot be used in a JUnit3 context. Convert your class to JUnit4 style to use them.",
+      "url": "https://errorprone.info/bugpattern/JUnit4ClassUsedInJUnit3"
+    },
+    "JUnit4EmptyMethods": {
+      "severity": "WARNING",
+      "summary": "Empty JUnit4 @Before, @After, @BeforeClass, and @AfterClass methods are unnecessary and should be deleted.",
+      "url": "https://errorprone.info/bugpattern/JUnit4EmptyMethods"
+    },
+    "JUnit4SetUpNotRun": {
+      "severity": "ERROR",
+      "summary": "setUp() method will not be run; please add JUnit's @Before annotation",
+      "url": "https://errorprone.info/bugpattern/JUnit4SetUpNotRun"
+    },
+    "JUnit4TearDownNotRun": {
+      "severity": "ERROR",
+      "summary": "tearDown() method will not be run; please add JUnit's @After annotation",
+      "url": "https://errorprone.info/bugpattern/JUnit4TearDownNotRun"
+    },
+    "JUnit4TestNotRun": {
+      "severity": "ERROR",
+      "summary": "This looks like a test method but is not run; please add @Test and @Ignore, or, if this is a helper method, reduce its visibility.",
+      "url": "https://errorprone.info/bugpattern/JUnit4TestNotRun"
+    },
+    "JUnit4TestsNotRunWithinEnclosed": {
+      "severity": "ERROR",
+      "summary": "This test is annotated @Test, but given it's within a class using the Enclosed runner, will not run.",
+      "url": "https://errorprone.info/bugpattern/JUnit4TestsNotRunWithinEnclosed"
+    },
+    "JUnitAmbiguousTestClass": {
+      "severity": "WARNING",
+      "summary": "Test class inherits from JUnit 3's TestCase but has JUnit 4 @Test or @RunWith annotations.",
+      "url": "https://errorprone.info/bugpattern/JUnitAmbiguousTestClass"
+    },
+    "JUnitAssertSameCheck": {
+      "severity": "ERROR",
+      "summary": "An object is tested for reference equality to itself using JUnit library.",
+      "url": "https://errorprone.info/bugpattern/JUnitAssertSameCheck"
+    },
+    "JUnitIncompatibleType": {
+      "severity": "WARNING",
+      "summary": "The types passed to this assertion are incompatible.",
+      "url": "https://errorprone.info/bugpattern/JUnitIncompatibleType"
+    },
+    "JUnitMethodInvoked": {
+      "severity": "WARNING",
+      "summary": "Directly invoking a JUnit test method is discouraged; only the JUnit test runner should call these methods. If you need to share logic between tests, extract a helper method or class.",
+      "url": "https://errorprone.info/bugpattern/JUnitMethodInvoked"
+    },
+    "JUnitParameterMethodNotFound": {
+      "severity": "ERROR",
+      "summary": "The method for providing parameters was not found.",
+      "url": "https://errorprone.info/bugpattern/JUnitParameterMethodNotFound"
+    },
+    "Java8ApiChecker": {
+      "severity": "ERROR",
+      "summary": "Use of class, field, or method that is not compatible with JDK 8",
+      "url": "https://errorprone.info/bugpattern/Java8ApiChecker"
+    },
+    "JavaDurationGetSecondsGetNano": {
+      "severity": "WARNING",
+      "summary": "duration.getNano() only accesses the underlying nanosecond adjustment from the whole second.",
+      "url": "https://errorprone.info/bugpattern/JavaDurationGetSecondsGetNano"
+    },
+    "JavaDurationGetSecondsToToSeconds": {
+      "severity": "WARNING",
+      "summary": "Prefer duration.toSeconds() over duration.getSeconds()",
+      "url": "https://errorprone.info/bugpattern/JavaDurationGetSecondsToToSeconds"
+    },
+    "JavaDurationWithNanos": {
+      "severity": "WARNING",
+      "summary": "Use of java.time.Duration.withNanos(int) is not allowed.",
+      "url": "https://errorprone.info/bugpattern/JavaDurationWithNanos"
+    },
+    "JavaDurationWithSeconds": {
+      "severity": "WARNING",
+      "summary": "Use of java.time.Duration.withSeconds(long) is not allowed.",
+      "url": "https://errorprone.info/bugpattern/JavaDurationWithSeconds"
+    },
+    "JavaInstantGetSecondsGetNano": {
+      "severity": "WARNING",
+      "summary": "instant.getNano() only accesses the underlying nanosecond adjustment from the whole second.",
+      "url": "https://errorprone.info/bugpattern/JavaInstantGetSecondsGetNano"
+    },
+    "JavaLocalDateTimeGetNano": {
+      "severity": "WARNING",
+      "summary": "localDateTime.getNano() only access the nanos-of-second field. It's rare to only use getNano() without a nearby getSecond() call.",
+      "url": "https://errorprone.info/bugpattern/JavaLocalDateTimeGetNano"
+    },
+    "JavaLocalTimeGetNano": {
+      "severity": "WARNING",
+      "summary": "localTime.getNano() only accesses the nanos-of-second field. It's rare to only use getNano() without a nearby getSecond() call.",
+      "url": "https://errorprone.info/bugpattern/JavaLocalTimeGetNano"
+    },
+    "JavaPeriodGetDays": {
+      "severity": "WARNING",
+      "summary": "period.getDays() only accesses the \"days\" portion of the Period, and doesn't represent the total span of time of the period. Consider using org.threeten.extra.Days to extract the difference between two civil dates if you want the whole time.",
+      "url": "https://errorprone.info/bugpattern/JavaPeriodGetDays"
+    },
+    "JavaTimeDefaultTimeZone": {
+      "severity": "WARNING",
+      "summary": "java.time APIs that silently use the default system time-zone are not allowed.",
+      "url": "https://errorprone.info/bugpattern/JavaTimeDefaultTimeZone"
+    },
+    "JavaUtilDate": {
+      "severity": "WARNING",
+      "summary": "Date has a bad API that leads to bugs; prefer java.time.Instant or LocalDate.",
+      "url": "https://errorprone.info/bugpattern/JavaUtilDate"
+    },
+    "JavaxInjectOnAbstractMethod": {
+      "severity": "ERROR",
+      "summary": "Abstract and default methods are not injectable with javax.inject.Inject",
+      "url": "https://errorprone.info/bugpattern/JavaxInjectOnAbstractMethod"
+    },
+    "JavaxInjectOnFinalField": {
+      "severity": "WARNING",
+      "summary": "@javax.inject.Inject cannot be put on a final field.",
+      "url": "https://errorprone.info/bugpattern/JavaxInjectOnFinalField"
+    },
+    "JdkObsolete": {
+      "severity": "WARNING",
+      "summary": "Suggests alternatives to obsolete JDK classes.",
+      "url": "https://errorprone.info/bugpattern/JdkObsolete"
+    },
+    "JodaConstructors": {
+      "severity": "WARNING",
+      "summary": "Use of certain JodaTime constructors are not allowed.",
+      "url": "https://errorprone.info/bugpattern/JodaConstructors"
+    },
+    "JodaDateTimeConstants": {
+      "severity": "WARNING",
+      "summary": "Using the `_PER_` constants in `DateTimeConstants` is problematic because they encourage manual date/time math.",
+      "url": "https://errorprone.info/bugpattern/JodaDateTimeConstants"
+    },
+    "JodaDurationWithMillis": {
+      "severity": "WARNING",
+      "summary": "Use of duration.withMillis(long) is not allowed. Please use Duration.millis(long) instead.",
+      "url": "https://errorprone.info/bugpattern/JodaDurationWithMillis"
+    },
+    "JodaInstantWithMillis": {
+      "severity": "WARNING",
+      "summary": "Use of instant.withMillis(long) is not allowed. Use Instant.ofEpochMilli(long) instead.",
+      "url": "https://errorprone.info/bugpattern/JodaInstantWithMillis"
+    },
+    "JodaNewPeriod": {
+      "severity": "WARNING",
+      "summary": "This may have surprising semantics, e.g. new Period(LocalDate.parse(\"1970-01-01\"), LocalDate.parse(\"1970-02-02\")).getDays() == 1, not 32.",
+      "url": "https://errorprone.info/bugpattern/JodaNewPeriod"
+    },
+    "JodaPlusMinusLong": {
+      "severity": "WARNING",
+      "summary": "Use of JodaTime's type.plus(long) or type.minus(long) is not allowed (where <type> = {Duration,Instant,DateTime,DateMidnight}). Please use type.plus(Duration.millis(long)) or type.minus(Duration.millis(long)) instead.",
+      "url": "https://errorprone.info/bugpattern/JodaPlusMinusLong"
+    },
+    "JodaTimeConverterManager": {
+      "severity": "WARNING",
+      "summary": "Joda-Time's ConverterManager makes the semantics of DateTime/Instant/etc construction subject to global static state. If you need to define your own converters, use a helper.",
+      "url": "https://errorprone.info/bugpattern/JodaTimeConverterManager"
+    },
+    "JodaToSelf": {
+      "severity": "ERROR",
+      "summary": "Use of Joda-Time's DateTime.toDateTime(), Duration.toDuration(), Instant.toInstant(), Interval.toInterval(), and Period.toPeriod() are not allowed.",
+      "url": "https://errorprone.info/bugpattern/JodaToSelf"
+    },
+    "JodaWithDurationAddedLong": {
+      "severity": "WARNING",
+      "summary": "Use of JodaTime's type.withDurationAdded(long, int) (where <type> = {Duration,Instant,DateTime}). Please use type.withDurationAdded(Duration.millis(long), int) instead.",
+      "url": "https://errorprone.info/bugpattern/JodaWithDurationAddedLong"
+    },
+    "LabelledBreakTarget": {
+      "severity": "ERROR",
+      "summary": "Labels should only be used on loops.",
+      "url": "https://errorprone.info/bugpattern/LabelledBreakTarget"
+    },
+    "LambdaFunctionalInterface": {
+      "severity": "SUGGESTION",
+      "summary": "Use Java's utility functional interfaces instead of Function<A, B> for primitive types.",
+      "url": "https://errorprone.info/bugpattern/LambdaFunctionalInterface"
+    },
+    "LenientFormatStringValidation": {
+      "severity": "ERROR",
+      "summary": "The number of arguments provided to lenient format methods should match the positional specifiers.",
+      "url": "https://errorprone.info/bugpattern/LenientFormatStringValidation"
+    },
+    "ListRemoveAmbiguous": {
+      "severity": "WARNING",
+      "summary": "Ambiguous call to List.remove; clarify if index-based or value-based removal was intended by adding a comment",
+      "url": "https://errorprone.info/bugpattern/ListRemoveAmbiguous"
+    },
+    "LiteByteStringUtf8": {
+      "severity": "ERROR",
+      "summary": "This pattern will silently corrupt certain byte sequences from the serialized protocol message. Use ByteString or byte[] directly",
+      "url": "https://errorprone.info/bugpattern/LiteByteStringUtf8"
+    },
+    "LiteEnumValueOf": {
+      "severity": "WARNING",
+      "summary": "Instead of looking up a lite enum by name, use its numeric value since that is the stable part of the protocol defined by the enum.",
+      "url": "https://errorprone.info/bugpattern/LiteEnumValueOf"
+    },
+    "LiteProtoToString": {
+      "severity": "WARNING",
+      "summary": "toString() on lite protos will not generate a useful representation of the proto from optimized builds. Consider whether using some subset of fields instead would provide useful information.",
+      "url": "https://errorprone.info/bugpattern/LiteProtoToString"
+    },
+    "LocalDateTemporalAmount": {
+      "severity": "ERROR",
+      "summary": "LocalDate.plus() and minus() does not work with Durations. LocalDate represents civil time (years/months/days), so java.time.Period is the appropriate thing to add or subtract instead.",
+      "url": "https://errorprone.info/bugpattern/LocalDateTemporalAmount"
+    },
+    "LockNotBeforeTry": {
+      "severity": "WARNING",
+      "summary": "Calls to Lock#lock should be immediately followed by a try block which releases the lock.",
+      "url": "https://errorprone.info/bugpattern/LockNotBeforeTry"
+    },
+    "LockOnBoxedPrimitive": {
+      "severity": "ERROR",
+      "summary": "It is dangerous to use a boxed primitive as a lock as it can unintentionally lead to sharing a lock with another piece of code.",
+      "url": "https://errorprone.info/bugpattern/LockOnBoxedPrimitive"
+    },
+    "LockOnNonEnclosingClassLiteral": {
+      "severity": "WARNING",
+      "summary": "Lock on the class other than the enclosing class of the code block can unintentionally prevent the locked class being used properly.",
+      "url": "https://errorprone.info/bugpattern/LockOnNonEnclosingClassLiteral"
+    },
+    "LogicalAssignment": {
+      "severity": "WARNING",
+      "summary": "Assignment where a boolean expression was expected; use == if this assignment wasn't expected or add parentheses for clarity.",
+      "url": "https://errorprone.info/bugpattern/LogicalAssignment"
+    },
+    "LongDoubleConversion": {
+      "severity": "WARNING",
+      "summary": "Conversion from long to double may lose precision; use an explicit cast to double if this was intentional",
+      "url": "https://errorprone.info/bugpattern/LongDoubleConversion"
+    },
+    "LongFloatConversion": {
+      "severity": "WARNING",
+      "summary": "Conversion from long to float may lose precision; use an explicit cast to float if this was intentional",
+      "url": "https://errorprone.info/bugpattern/LongFloatConversion"
+    },
+    "LongLiteralLowerCaseSuffix": {
+      "severity": "ERROR",
+      "summary": "Prefer 'L' to 'l' for the suffix to long literals",
+      "url": "https://errorprone.info/bugpattern/LongLiteralLowerCaseSuffix"
+    },
+    "LoopConditionChecker": {
+      "severity": "ERROR",
+      "summary": "Loop condition is never modified in loop body.",
+      "url": "https://errorprone.info/bugpattern/LoopConditionChecker"
+    },
+    "LoopOverCharArray": {
+      "severity": "WARNING",
+      "summary": "toCharArray allocates a new array, using charAt is more efficient",
+      "url": "https://errorprone.info/bugpattern/LoopOverCharArray"
+    },
+    "LossyPrimitiveCompare": {
+      "severity": "ERROR",
+      "summary": "Using an unnecessarily-wide comparison method can lead to lossy comparison",
+      "url": "https://errorprone.info/bugpattern/LossyPrimitiveCompare"
+    },
+    "MalformedInlineTag": {
+      "severity": "WARNING",
+      "summary": "This Javadoc tag is malformed. The correct syntax is {@tag and not @{tag.",
+      "url": "https://errorprone.info/bugpattern/MalformedInlineTag"
+    },
+    "MathAbsoluteNegative": {
+      "severity": "WARNING",
+      "summary": "Math.abs() does not always give a non-negative result. Please consider other methods for positive numbers, such as IntMath.saturatedAbs() or Math.floorMod().",
+      "url": "https://errorprone.info/bugpattern/MathAbsoluteNegative"
+    },
+    "MathRoundIntLong": {
+      "severity": "ERROR",
+      "summary": "Math.round(Integer) results in truncation",
+      "url": "https://errorprone.info/bugpattern/MathRoundIntLong"
+    },
+    "MemoizeConstantVisitorStateLookups": {
+      "severity": "WARNING",
+      "summary": "Anytime you need to look up a constant value from VisitorState, improve performance by creating a cache for it with VisitorState.memoize",
+      "url": "https://errorprone.info/bugpattern/MemoizeConstantVisitorStateLookups"
+    },
+    "MemorySegmentReferenceEquality": {
+      "severity": "ERROR",
+      "summary": "Do not compare MemorySegments using reference equality.",
+      "url": "https://errorprone.info/bugpattern/MemorySegmentReferenceEquality"
+    },
+    "MethodCanBeStatic": {
+      "severity": "SUGGESTION",
+      "summary": "This method does not reference the enclosing instance and can be static",
+      "url": "https://errorprone.info/bugpattern/MethodCanBeStatic"
+    },
+    "MisformattedTestData": {
+      "severity": "WARNING",
+      "summary": "This test data will be more readable if correctly formatted.",
+      "url": "https://errorprone.info/bugpattern/MisformattedTestData"
+    },
+    "MislabeledAndroidString": {
+      "severity": "ERROR",
+      "summary": "Certain resources in `android.R.string` have names that do not match their content",
+      "url": "https://errorprone.info/bugpattern/MislabeledAndroidString"
+    },
+    "MisleadingEmptyVarargs": {
+      "severity": "ERROR",
+      "summary": "`thenThrow` with no arguments is a no-op, despite reading like it makes the mock throw.",
+      "url": "https://errorprone.info/bugpattern/MisleadingEmptyVarargs"
+    },
+    "MisleadingEscapedSpace": {
+      "severity": "ERROR",
+      "summary": "Using \\s anywhere except at the end of a line in a text block is potentially misleading.",
+      "url": "https://errorprone.info/bugpattern/MisleadingEscapedSpace"
+    },
+    "MisplacedScopeAnnotations": {
+      "severity": "ERROR",
+      "summary": "Scope annotations used as qualifier annotations don't have any effect. Move the scope annotation to the binding location or delete it.",
+      "url": "https://errorprone.info/bugpattern/MisplacedScopeAnnotations"
+    },
+    "MissingBraces": {
+      "severity": "SUGGESTION",
+      "summary": "The Google Java Style Guide requires braces to be used with if, else, for, do and while statements, even when the body is empty or contains only a single statement.",
+      "url": "https://google.github.io/styleguide/javaguide.html#s4.1.1-braces-always-used"
+    },
+    "MissingCasesInEnumSwitch": {
+      "severity": "WARNING",
+      "summary": "Switches on enum types should either handle all values, or have a default case.",
+      "url": "https://errorprone.info/bugpattern/MissingCasesInEnumSwitch"
+    },
+    "MissingDefault": {
+      "severity": "WARNING",
+      "summary": "The Google Java Style Guide requires that each switch statement includes a default statement group (even if it contains no code) unless the switch statement covers all values of an enum.",
+      "url": "https://errorprone.info/bugpattern/MissingDefault"
+    },
+    "MissingFail": {
+      "severity": "WARNING",
+      "summary": "Not calling fail() when expecting an exception masks bugs",
+      "url": "https://errorprone.info/bugpattern/MissingFail"
+    },
+    "MissingImplementsComparable": {
+      "severity": "WARNING",
+      "summary": "Classes implementing valid compareTo function should implement Comparable interface",
+      "url": "https://errorprone.info/bugpattern/MissingImplementsComparable"
+    },
+    "MissingOverride": {
+      "severity": "WARNING",
+      "summary": "method overrides method in supertype; expected @Override",
+      "url": "https://errorprone.info/bugpattern/MissingOverride"
+    },
+    "MissingRefasterAnnotation": {
+      "severity": "WARNING",
+      "summary": "The Refaster template contains a method without any Refaster annotations",
+      "url": "https://errorprone.info/bugpattern/MissingRefasterAnnotation"
+    },
+    "MissingRuntimeRetention": {
+      "severity": "ERROR",
+      "summary": "Scoping and qualifier annotations must have runtime retention.",
+      "url": "https://errorprone.info/bugpattern/MissingRuntimeRetention"
+    },
+    "MissingSummary": {
+      "severity": "WARNING",
+      "summary": "A summary line is required on public/protected Javadocs.",
+      "url": "https://google.github.io/styleguide/javaguide.html#s7.2-summary-fragment"
+    },
+    "MissingSuperCall": {
+      "severity": "ERROR",
+      "summary": "Overriding method is missing a call to overridden super method",
+      "url": "https://errorprone.info/bugpattern/MissingSuperCall"
+    },
+    "MissingTestCall": {
+      "severity": "ERROR",
+      "summary": "A terminating method call is required for a test helper to have any effect.",
+      "url": "https://errorprone.info/bugpattern/MissingTestCall"
+    },
+    "MisusedDayOfYear": {
+      "severity": "ERROR",
+      "summary": "Use of 'DD' (day of year) in a date pattern with 'MM' (month of year) is not likely to be intentional, as it would lead to dates like 'March 73rd'.",
+      "url": "https://errorprone.info/bugpattern/MisusedDayOfYear"
+    },
+    "MisusedWeekYear": {
+      "severity": "ERROR",
+      "summary": "Use of \"YYYY\" (week year) in a date pattern without \"ww\" (week in year). You probably meant to use \"yyyy\" (year) instead.",
+      "url": "https://errorprone.info/bugpattern/MisusedWeekYear"
+    },
+    "MixedArrayDimensions": {
+      "severity": "SUGGESTION",
+      "summary": "C-style array declarations should not be used",
+      "url": "https://errorprone.info/bugpattern/MixedArrayDimensions"
+    },
+    "MixedDescriptors": {
+      "severity": "ERROR",
+      "summary": "The field number passed into #findFieldByNumber belongs to a different proto to the Descriptor.",
+      "url": "https://errorprone.info/bugpattern/MixedDescriptors"
+    },
+    "MixedMutabilityReturnType": {
+      "severity": "WARNING",
+      "summary": "This method returns both mutable and immutable collections or maps from different paths. This may be confusing for users of the method.",
+      "url": "https://errorprone.info/bugpattern/MixedMutabilityReturnType"
+    },
+    "MockIllegalThrows": {
+      "severity": "WARNING",
+      "summary": "This exception can't be thrown by the mocked method.",
+      "url": "https://errorprone.info/bugpattern/MockIllegalThrows"
+    },
+    "MockNotUsedInProduction": {
+      "severity": "WARNING",
+      "summary": "This mock is instantiated and configured, but is never passed to production code. It should be either removed or used.",
+      "url": "https://errorprone.info/bugpattern/MockNotUsedInProduction"
+    },
+    "MockitoDoSetup": {
+      "severity": "WARNING",
+      "summary": "Prefer using when/thenReturn over doReturn/when for additional type safety.",
+      "url": "https://errorprone.info/bugpattern/MockitoDoSetup"
+    },
+    "MockitoUsage": {
+      "severity": "ERROR",
+      "summary": "Missing method call for verify(mock) here",
+      "url": "https://errorprone.info/bugpattern/MockitoUsage"
+    },
+    "ModifiedButNotUsed": {
+      "severity": "WARNING",
+      "summary": "A collection or proto builder was created, but its values were never accessed.",
+      "url": "https://errorprone.info/bugpattern/ModifiedButNotUsed"
+    },
+    "ModifyCollectionInEnhancedForLoop": {
+      "severity": "WARNING",
+      "summary": "Modifying a collection while iterating over it in a loop may cause a ConcurrentModificationException to be thrown or lead to undefined behavior.",
+      "url": "https://errorprone.info/bugpattern/ModifyCollectionInEnhancedForLoop"
+    },
+    "ModifySourceCollectionInStream": {
+      "severity": "WARNING",
+      "summary": "Modifying the backing source during stream operations may cause unintended results.",
+      "url": "https://errorprone.info/bugpattern/ModifySourceCollectionInStream"
+    },
+    "ModifyingCollectionWithItself": {
+      "severity": "ERROR",
+      "summary": "Using a collection function with itself as the argument.",
+      "url": "https://errorprone.info/bugpattern/ModifyingCollectionWithItself"
+    },
+    "MoreThanOneInjectableConstructor": {
+      "severity": "ERROR",
+      "summary": "This class has more than one @Inject-annotated constructor. Please remove the @Inject annotation from all but one of them.",
+      "url": "https://errorprone.info/bugpattern/MoreThanOneInjectableConstructor"
+    },
+    "MoreThanOneQualifier": {
+      "severity": "ERROR",
+      "summary": "Using more than one qualifier annotation on the same element is not allowed.",
+      "url": "https://errorprone.info/bugpattern/MoreThanOneQualifier"
+    },
+    "MultiVariableDeclaration": {
+      "severity": "SUGGESTION",
+      "summary": "Variable declarations should declare only one variable",
+      "url": "https://google.github.io/styleguide/javaguide.html#s4.8.2.1-variables-per-declaration"
+    },
+    "MultimapKeys": {
+      "severity": "WARNING",
+      "summary": "Iterating over `Multimap.keys()` does not collapse duplicates. Did you mean `keySet()`?",
+      "url": "https://errorprone.info/bugpattern/MultimapKeys"
+    },
+    "MultipleNullnessAnnotations": {
+      "severity": "WARNING",
+      "summary": "This type use has conflicting nullness annotations",
+      "url": "https://errorprone.info/bugpattern/MultipleNullnessAnnotations"
+    },
+    "MultipleParallelOrSequentialCalls": {
+      "severity": "WARNING",
+      "summary": "Multiple calls to either parallel or sequential are unnecessary and cause confusion.",
+      "url": "https://errorprone.info/bugpattern/MultipleParallelOrSequentialCalls"
+    },
+    "MultipleTopLevelClasses": {
+      "severity": "SUGGESTION",
+      "summary": "Source files should not contain multiple top-level class declarations",
+      "url": "https://google.github.io/styleguide/javaguide.html#s3.4.1-one-top-level-class"
+    },
+    "MultipleUnaryOperatorsInMethodCall": {
+      "severity": "WARNING",
+      "summary": "Avoid having multiple unary operators acting on the same variable in a method call",
+      "url": "https://errorprone.info/bugpattern/MultipleUnaryOperatorsInMethodCall"
+    },
+    "MustBeClosedChecker": {
+      "severity": "ERROR",
+      "summary": "This method returns a resource which must be managed carefully, not just left for garbage collection. If it is a constant that will persist for the lifetime of your program, move it to a private static final field. Otherwise, you should use it in a try-with-resources.",
+      "url": "https://errorprone.info/bugpattern/MustBeClosedChecker"
+    },
+    "MutableGuiceModule": {
+      "severity": "WARNING",
+      "summary": "Fields in Guice modules should be final",
+      "url": "https://errorprone.info/bugpattern/MutableGuiceModule"
+    },
+    "MutablePublicArray": {
+      "severity": "WARNING",
+      "summary": "Non-empty arrays are mutable, so this `public static final` array is not a constant and can be modified by clients of this class.  Prefer an ImmutableList, or provide an accessor method that returns a defensive copy.",
+      "url": "https://errorprone.info/bugpattern/MutablePublicArray"
+    },
+    "NCopiesOfChar": {
+      "severity": "ERROR",
+      "summary": "The first argument to nCopies is the number of copies, and the second is the item to copy",
+      "url": "https://errorprone.info/bugpattern/NCopiesOfChar"
+    },
+    "NamedLikeContextualKeyword": {
+      "severity": "WARNING",
+      "summary": "Avoid naming of classes and methods that is similar to contextual keywords.  When invoking such a method, qualify it.",
+      "url": "https://errorprone.info/bugpattern/NamedLikeContextualKeyword"
+    },
+    "NarrowCalculation": {
+      "severity": "WARNING",
+      "summary": "This calculation may lose precision compared to its target type.",
+      "url": "https://errorprone.info/bugpattern/NarrowCalculation"
+    },
+    "NarrowingCompoundAssignment": {
+      "severity": "WARNING",
+      "summary": "Compound assignments may hide dangerous casts",
+      "url": "https://errorprone.info/bugpattern/NarrowingCompoundAssignment"
+    },
+    "NegativeBoolean": {
+      "severity": "WARNING",
+      "summary": "Prefer positive boolean names",
+      "url": "https://errorprone.info/bugpattern/NegativeBoolean"
+    },
+    "NegativeCharLiteral": {
+      "severity": "WARNING",
+      "summary": "Casting a negative signed literal to an (unsigned) char might be misleading.",
+      "url": "https://errorprone.info/bugpattern/NegativeCharLiteral"
+    },
+    "NestedInstanceOfConditions": {
+      "severity": "WARNING",
+      "summary": "Nested instanceOf conditions of disjoint types create blocks of code that never execute",
+      "url": "https://errorprone.info/bugpattern/NestedInstanceOfConditions"
+    },
+    "NewFileSystem": {
+      "severity": "WARNING",
+      "summary": "Starting in JDK 13, this call is ambiguous with FileSystem.newFileSystem(Path,Map)",
+      "url": "https://errorprone.info/bugpattern/NewFileSystem"
+    },
+    "NoAllocation": {
+      "severity": "ERROR",
+      "summary": "@NoAllocation was specified on this method, but something was found that would trigger an allocation",
+      "url": "https://errorprone.info/bugpattern/NoAllocation"
+    },
+    "NoCanIgnoreReturnValueOnClasses": {
+      "severity": "ERROR",
+      "summary": "@CanIgnoreReturnValue should not be applied to classes as it almost always overmatches (as it applies to constructors and all methods), and the CIRVness isn't conferred to its subclasses.",
+      "url": "https://errorprone.info/bugpattern/NoCanIgnoreReturnValueOnClasses"
+    },
+    "NonApiType": {
+      "severity": "WARNING",
+      "summary": "Certain types should not be passed across API boundaries.",
+      "url": "https://errorprone.info/bugpattern/NonApiType"
+    },
+    "NonAtomicVolatileUpdate": {
+      "severity": "WARNING",
+      "summary": "This update of a volatile variable is non-atomic",
+      "url": "https://errorprone.info/bugpattern/NonAtomicVolatileUpdate"
+    },
+    "NonCanonicalStaticImport": {
+      "severity": "ERROR",
+      "summary": "Static import of type uses non-canonical name",
+      "url": "https://errorprone.info/bugpattern/NonCanonicalStaticImport"
+    },
+    "NonCanonicalStaticMemberImport": {
+      "severity": "WARNING",
+      "summary": "Static import of member uses non-canonical name",
+      "url": "https://errorprone.info/bugpattern/NonCanonicalStaticMemberImport"
+    },
+    "NonCanonicalType": {
+      "severity": "WARNING",
+      "summary": "This type is referred to by a non-canonical name, which may be misleading.",
+      "url": "https://errorprone.info/bugpattern/NonCanonicalType"
+    },
+    "NonFinalCompileTimeConstant": {
+      "severity": "ERROR",
+      "summary": "@CompileTimeConstant parameters should be final or effectively final",
+      "url": "https://errorprone.info/bugpattern/NonFinalCompileTimeConstant"
+    },
+    "NonFinalStaticField": {
+      "severity": "WARNING",
+      "summary": "Static fields should almost always be final.",
+      "url": "https://errorprone.info/bugpattern/NonFinalStaticField"
+    },
+    "NonOverridingEquals": {
+      "severity": "WARNING",
+      "summary": "equals method doesn't override Object.equals",
+      "url": "https://errorprone.info/bugpattern/NonOverridingEquals"
+    },
+    "NonRuntimeAnnotation": {
+      "severity": "ERROR",
+      "summary": "Calling getAnnotation on an annotation that is not retained at runtime",
+      "url": "https://errorprone.info/bugpattern/NonRuntimeAnnotation"
+    },
+    "NotJavadoc": {
+      "severity": "WARNING",
+      "summary": "Avoid using `/**` for comments which aren't actually Javadoc.",
+      "url": "https://errorprone.info/bugpattern/NotJavadoc"
+    },
+    "NullArgumentForNonNullParameter": {
+      "severity": "ERROR",
+      "summary": "Null is not permitted for this parameter.",
+      "url": "https://errorprone.info/bugpattern/NullArgumentForNonNullParameter"
+    },
+    "NullAway": {
+      "severity": "WARNING",
+      "summary": "Nullability type error.",
+      "url": "https://errorprone.info/bugpattern/NullAway"
+    },
+    "NullNeedsCastForVarargs": {
+      "severity": "ERROR",
+      "summary": "This call passes a null *array*, so it always produces NullPointerException. To pass a null *element*, cast to the element type.",
+      "url": "https://errorprone.info/bugpattern/NullNeedsCastForVarargs"
+    },
+    "NullOptional": {
+      "severity": "WARNING",
+      "summary": "Passing a literal null to an Optional parameter is almost certainly a mistake. Did you mean to provide an empty Optional?",
+      "url": "https://errorprone.info/bugpattern/NullOptional"
+    },
+    "NullTernary": {
+      "severity": "ERROR",
+      "summary": "This conditional expression may evaluate to null, which will result in an NPE when the result is unboxed.",
+      "url": "https://errorprone.info/bugpattern/NullTernary"
+    },
+    "NullableConstructor": {
+      "severity": "WARNING",
+      "summary": "Constructors should not be annotated with @Nullable since they cannot return null",
+      "url": "https://errorprone.info/bugpattern/NullableConstructor"
+    },
+    "NullableOnContainingClass": {
+      "severity": "ERROR",
+      "summary": "Type-use nullability annotations should annotate the inner class, not the outer class (e.g., write `A.@Nullable B` instead of `@Nullable A.B`).",
+      "url": "https://errorprone.info/bugpattern/NullableOnContainingClass"
+    },
+    "NullableOptional": {
+      "severity": "WARNING",
+      "summary": "Using an Optional variable which is expected to possibly be null is discouraged. It is best to indicate the absence of the value by assigning it an empty optional.",
+      "url": "https://errorprone.info/bugpattern/NullableOptional"
+    },
+    "NullablePrimitive": {
+      "severity": "WARNING",
+      "summary": "Nullness annotations should not be used for primitive types since they cannot be null",
+      "url": "https://errorprone.info/bugpattern/NullablePrimitive"
+    },
+    "NullablePrimitiveArray": {
+      "severity": "WARNING",
+      "summary": "@Nullable type annotations should not be used for primitive types since they cannot be null",
+      "url": "https://errorprone.info/bugpattern/NullablePrimitiveArray"
+    },
+    "NullableTypeParameter": {
+      "severity": "WARNING",
+      "summary": "Nullness annotations directly on type parameters are interpreted differently by different tools",
+      "url": "https://errorprone.info/bugpattern/NullableTypeParameter"
+    },
+    "NullableVoid": {
+      "severity": "WARNING",
+      "summary": "void-returning methods should not be annotated with nullness annotations, since they cannot return null",
+      "url": "https://errorprone.info/bugpattern/NullableVoid"
+    },
+    "NullableWildcard": {
+      "severity": "WARNING",
+      "summary": "Nullness annotations directly on wildcard types are interpreted differently by different tools",
+      "url": "https://errorprone.info/bugpattern/NullableWildcard"
+    },
+    "ObjectEqualsForPrimitives": {
+      "severity": "WARNING",
+      "summary": "Avoid unnecessary boxing by using plain == for primitive types.",
+      "url": "https://errorprone.info/bugpattern/ObjectEqualsForPrimitives"
+    },
+    "ObjectToString": {
+      "severity": "WARNING",
+      "summary": "Calling toString on Objects that don't override toString() doesn't provide useful information",
+      "url": "https://errorprone.info/bugpattern/ObjectToString"
+    },
+    "ObjectsHashCodePrimitive": {
+      "severity": "WARNING",
+      "summary": "Objects.hashCode(Object o) should not be passed a primitive value",
+      "url": "https://errorprone.info/bugpattern/ObjectsHashCodePrimitive"
+    },
+    "OperatorPrecedence": {
+      "severity": "WARNING",
+      "summary": "Use grouping parenthesis to make the operator precedence explicit",
+      "url": "https://errorprone.info/bugpattern/OperatorPrecedence"
+    },
+    "OptionalEquality": {
+      "severity": "ERROR",
+      "summary": "Comparison using reference equality instead of value equality",
+      "url": "https://errorprone.info/bugpattern/OptionalEquality"
+    },
+    "OptionalMapToOptional": {
+      "severity": "WARNING",
+      "summary": "Mapping to another Optional will yield a nested Optional. Did you mean flatMap?",
+      "url": "https://errorprone.info/bugpattern/OptionalMapToOptional"
+    },
+    "OptionalMapUnusedValue": {
+      "severity": "ERROR",
+      "summary": "Optional.ifPresent is preferred over Optional.map when the return value is unused",
+      "url": "https://errorprone.info/bugpattern/OptionalMapUnusedValue"
+    },
+    "OptionalNotPresent": {
+      "severity": "WARNING",
+      "summary": "This Optional has been confirmed to be empty at this point, so the call to `get()` or `orElseThrow()` will always throw.",
+      "url": "https://errorprone.info/bugpattern/OptionalNotPresent"
+    },
+    "OptionalOfRedundantMethod": {
+      "severity": "ERROR",
+      "summary": "Optional.of() always returns a non-empty optional. Using ifPresent/isPresent/orElse/orElseGet/orElseThrow/isPresent/or/orNull method on it is unnecessary and most probably a bug.",
+      "url": "https://errorprone.info/bugpattern/OptionalOfRedundantMethod"
+    },
+    "OrphanedFormatString": {
+      "severity": "WARNING",
+      "summary": "String literal contains format specifiers, but is not passed to a format method",
+      "url": "https://errorprone.info/bugpattern/OrphanedFormatString"
+    },
+    "OutlineNone": {
+      "severity": "WARNING",
+      "summary": "Setting CSS outline style to none or 0 (while not otherwise providing visual focus indicators) is inaccessible for users navigating a web page without a mouse.",
+      "url": "https://errorprone.info/bugpattern/OutlineNone"
+    },
+    "OverlappingQualifierAndScopeAnnotation": {
+      "severity": "ERROR",
+      "summary": "Annotations cannot be both Scope annotations and Qualifier annotations: this causes confusion when trying to use them.",
+      "url": "https://errorprone.info/bugpattern/OverlappingQualifierAndScopeAnnotation"
+    },
+    "OverrideThrowableToString": {
+      "severity": "WARNING",
+      "summary": "To return a custom message with a Throwable class, one should override getMessage() instead of toString().",
+      "url": "https://errorprone.info/bugpattern/OverrideThrowableToString"
+    },
+    "Overrides": {
+      "severity": "WARNING",
+      "summary": "Varargs doesn't agree for overridden method",
+      "url": "https://errorprone.info/bugpattern/Overrides"
+    },
+    "OverridesGuiceInjectableMethod": {
+      "severity": "WARNING",
+      "summary": "This method is not annotated with @Inject, but it overrides a method that is annotated with @com.google.inject.Inject. Guice will inject this method, and it is recommended to annotate it explicitly.",
+      "url": "https://errorprone.info/bugpattern/OverridesGuiceInjectableMethod"
+    },
+    "OverridesJavaxInjectableMethod": {
+      "severity": "ERROR",
+      "summary": "This method is not annotated with @Inject, but it overrides a method that is  annotated with @javax.inject.Inject. The method will not be Injected.",
+      "url": "https://errorprone.info/bugpattern/OverridesJavaxInjectableMethod"
+    },
+    "OverridingMethodInconsistentArgumentNamesChecker": {
+      "severity": "WARNING",
+      "summary": "Arguments of overriding method are inconsistent with overridden method.",
+      "url": "https://errorprone.info/bugpattern/OverridingMethodInconsistentArgumentNamesChecker"
+    },
+    "PackageInfo": {
+      "severity": "ERROR",
+      "summary": "Declaring types inside package-info.java files is very bad form",
+      "url": "https://errorprone.info/bugpattern/PackageInfo"
+    },
+    "PackageLocation": {
+      "severity": "SUGGESTION",
+      "summary": "Package names should match the directory they are declared in",
+      "url": "https://errorprone.info/bugpattern/PackageLocation"
+    },
+    "ParameterComment": {
+      "severity": "SUGGESTION",
+      "summary": "Non-standard parameter comment; prefer `/* paramName= */ arg`",
+      "url": "https://errorprone.info/bugpattern/ParameterComment"
+    },
+    "ParameterMissingNullable": {
+      "severity": "SUGGESTION",
+      "summary": "Parameter has handling for null but is not annotated @Nullable",
+      "url": "https://errorprone.info/bugpattern/ParameterMissingNullable"
+    },
+    "ParameterName": {
+      "severity": "WARNING",
+      "summary": "Detects `/* name= */`-style comments on actual parameters where the name doesn't match the formal parameter",
+      "url": "https://errorprone.info/bugpattern/ParameterName"
+    },
+    "ParametersButNotParameterized": {
+      "severity": "ERROR",
+      "summary": "This test has @Parameters but is using the default JUnit4 runner. The parameters will have no effect.",
+      "url": "https://errorprone.info/bugpattern/ParametersButNotParameterized"
+    },
+    "ParcelableCreator": {
+      "severity": "ERROR",
+      "summary": "Detects classes which implement Parcelable but don't have CREATOR",
+      "url": "https://errorprone.info/bugpattern/ParcelableCreator"
+    },
+    "PatternMatchingInstanceof": {
+      "severity": "WARNING",
+      "summary": "This code can be simplified to use a pattern-matching instanceof.",
+      "url": "https://errorprone.info/bugpattern/PatternMatchingInstanceof"
+    },
+    "PeriodFrom": {
+      "severity": "ERROR",
+      "summary": "Period.from(Period) returns itself; from(Duration) throws a runtime exception.",
+      "url": "https://errorprone.info/bugpattern/PeriodFrom"
+    },
+    "PeriodGetTemporalUnit": {
+      "severity": "ERROR",
+      "summary": "Period.get() only works with YEARS, MONTHS, or DAYS.",
+      "url": "https://errorprone.info/bugpattern/PeriodGetTemporalUnit"
+    },
+    "PeriodTimeMath": {
+      "severity": "ERROR",
+      "summary": "When adding or subtracting from a Period, Duration is incompatible.",
+      "url": "https://errorprone.info/bugpattern/PeriodTimeMath"
+    },
+    "PreconditionsCheckNotNullRepeated": {
+      "severity": "WARNING",
+      "summary": "Including the first argument of checkNotNull in the failure message is not useful, as it will always be `null`.",
+      "url": "https://errorprone.info/bugpattern/PreconditionsCheckNotNullRepeated"
+    },
+    "PreconditionsInvalidPlaceholder": {
+      "severity": "ERROR",
+      "summary": "Preconditions only accepts the %s placeholder in error message strings",
+      "url": "https://errorprone.info/bugpattern/PreconditionsInvalidPlaceholder"
+    },
+    "PreferInstanceofOverGetKind": {
+      "severity": "WARNING",
+      "summary": "Prefer instanceof over getKind() checks where possible, as these work well with pattern matching instanceofs",
+      "url": "https://errorprone.info/bugpattern/PreferInstanceofOverGetKind"
+    },
+    "PreferJavaTimeOverload": {
+      "severity": "WARNING",
+      "summary": "Prefer using java.time-based APIs when available. Note that this checker does not and cannot guarantee that the overloads have equivalent semantics, but that is generally the case with overloaded methods.",
+      "url": "https://errorprone.info/bugpattern/PreferJavaTimeOverload"
+    },
+    "PreferTestParameter": {
+      "severity": "WARNING",
+      "summary": "When exhaustively testing all values of a single enum or boolean parameter, prefer @TestParameter over @TestParameters.",
+      "url": "https://errorprone.info/bugpattern/PreferTestParameter"
+    },
+    "PreferThrowsTag": {
+      "severity": "WARNING",
+      "summary": "Prefer the @throws javadoc tag instead of @exception.",
+      "url": "https://errorprone.info/bugpattern/PreferThrowsTag"
+    },
+    "PreferredInterfaceType": {
+      "severity": "WARNING",
+      "summary": "This type can be more specific.",
+      "url": "https://errorprone.info/bugpattern/PreferredInterfaceType"
+    },
+    "PrimitiveArrayPassedToVarargsMethod": {
+      "severity": "WARNING",
+      "summary": "Passing a primitive array to a varargs method is usually wrong",
+      "url": "https://errorprone.info/bugpattern/PrimitiveArrayPassedToVarargsMethod"
+    },
+    "PrimitiveAtomicReference": {
+      "severity": "WARNING",
+      "summary": "Using compareAndSet with boxed primitives is dangerous, as reference rather than value equality is used. Consider using AtomicInteger, AtomicLong, AtomicBoolean from JDK or AtomicDouble from Guava instead.",
+      "url": "https://errorprone.info/bugpattern/PrimitiveAtomicReference"
+    },
+    "PrivateConstructorForNoninstantiableModule": {
+      "severity": "SUGGESTION",
+      "summary": "Add a private constructor to modules that will not be instantiated by Dagger.",
+      "url": "https://errorprone.info/bugpattern/PrivateConstructorForNoninstantiableModule"
+    },
+    "PrivateConstructorForUtilityClass": {
+      "severity": "SUGGESTION",
+      "summary": "Classes which are not intended to be instantiated should be made non-instantiable with a private constructor. This includes utility classes (classes with only static members), and the main class.",
+      "url": "https://errorprone.info/bugpattern/PrivateConstructorForUtilityClass"
+    },
+    "PrivateSecurityContractProtoAccess": {
+      "severity": "ERROR",
+      "summary": "Access to a private protocol buffer field is forbidden. This protocol buffer carries a security contract, and can only be created using an approved library. Direct access to the fields is forbidden.",
+      "url": ""
+    },
+    "ProtectedMembersInFinalClass": {
+      "severity": "WARNING",
+      "summary": "Protected members in final classes can be package-private",
+      "url": "https://errorprone.info/bugpattern/ProtectedMembersInFinalClass"
+    },
+    "ProtoBuilderReturnValueIgnored": {
+      "severity": "ERROR",
+      "summary": "Unnecessary call to proto's #build() method.  If you don't consume the return value of #build(), the result is discarded and the only effect is to verify that all required fields are set, which can be expressed more directly with #isInitialized().",
+      "url": "https://errorprone.info/bugpattern/ProtoBuilderReturnValueIgnored"
+    },
+    "ProtoDurationGetSecondsGetNano": {
+      "severity": "WARNING",
+      "summary": "getNanos() only accesses the underlying nanosecond-adjustment of the duration.",
+      "url": "https://errorprone.info/bugpattern/ProtoDurationGetSecondsGetNano"
+    },
+    "ProtoStringFieldReferenceEquality": {
+      "severity": "ERROR",
+      "summary": "Comparing protobuf fields of type String using reference equality",
+      "url": "https://errorprone.info/bugpattern/ProtoStringFieldReferenceEquality"
+    },
+    "ProtoTimestampGetSecondsGetNano": {
+      "severity": "WARNING",
+      "summary": "getNanos() only accesses the underlying nanosecond-adjustment of the instant.",
+      "url": "https://errorprone.info/bugpattern/ProtoTimestampGetSecondsGetNano"
+    },
+    "ProtoTruthMixedDescriptors": {
+      "severity": "ERROR",
+      "summary": "The arguments passed to `ignoringFields` are inconsistent with the proto which is the subject of the assertion.",
+      "url": "https://errorprone.info/bugpattern/ProtoTruthMixedDescriptors"
+    },
+    "ProtocolBufferOrdinal": {
+      "severity": "ERROR",
+      "summary": "To get the tag number of a protocol buffer enum, use getNumber() instead.",
+      "url": "https://errorprone.info/bugpattern/ProtocolBufferOrdinal"
+    },
+    "ProvidesMethodOutsideOfModule": {
+      "severity": "ERROR",
+      "summary": "@Provides methods need to be declared in a Module to have any effect.",
+      "url": "https://errorprone.info/bugpattern/ProvidesMethodOutsideOfModule"
+    },
+    "PublicApiNamedStreamShouldReturnStream": {
+      "severity": "SUGGESTION",
+      "summary": "Public methods named stream() are generally expected to return a type whose name ends with Stream. Consider choosing a different method name instead.",
+      "url": "https://errorprone.info/bugpattern/PublicApiNamedStreamShouldReturnStream"
+    },
+    "QualifierOrScopeOnInjectMethod": {
+      "severity": "WARNING",
+      "summary": "Qualifiers/Scope annotations on @Inject methods don't have any effect. Move the qualifier annotation to the binding location.",
+      "url": "https://errorprone.info/bugpattern/QualifierOrScopeOnInjectMethod"
+    },
+    "QualifierWithTypeUse": {
+      "severity": "WARNING",
+      "summary": "Injection frameworks currently don't understand Qualifiers in TYPE_PARAMETER or TYPE_USE contexts.",
+      "url": "https://errorprone.info/bugpattern/QualifierWithTypeUse"
+    },
+    "RandomCast": {
+      "severity": "ERROR",
+      "summary": "Casting a random number in the range [0.0, 1.0) to an integer or long always results in 0.",
+      "url": "https://errorprone.info/bugpattern/RandomCast"
+    },
+    "RandomModInteger": {
+      "severity": "ERROR",
+      "summary": "Use Random.nextInt(int).  Random.nextInt() % n can have negative results",
+      "url": "https://errorprone.info/bugpattern/RandomModInteger"
+    },
+    "ReachabilityFenceUsage": {
+      "severity": "WARNING",
+      "summary": "reachabilityFence should always be called inside a finally block",
+      "url": "https://errorprone.info/bugpattern/ReachabilityFenceUsage"
+    },
+    "RecordAccessorInCompactConstructor": {
+      "severity": "ERROR",
+      "summary": "Record accessors read uninitialized fields inside a compact constructor. Use the component parameter instead.",
+      "url": "https://errorprone.info/bugpattern/RecordAccessorInCompactConstructor"
+    },
+    "RecordComponentAccessorAnnotationConflict": {
+      "severity": "WARNING",
+      "summary": "Annotation on record component is ignored.",
+      "url": "https://errorprone.info/bugpattern/RecordComponentAccessorAnnotationConflict"
+    },
+    "RecordComponentOverride": {
+      "severity": "WARNING",
+      "summary": "@Override annotations on record components don't do anything.",
+      "url": "https://errorprone.info/bugpattern/RecordComponentOverride"
+    },
+    "RectIntersectReturnValueIgnored": {
+      "severity": "ERROR",
+      "summary": "Return value of android.graphics.Rect.intersect() must be checked",
+      "url": "https://errorprone.info/bugpattern/RectIntersectReturnValueIgnored"
+    },
+    "RedundantControlFlow": {
+      "severity": "WARNING",
+      "summary": "This continue statement is redundant and can be removed. It may be misleading.",
+      "url": "https://errorprone.info/bugpattern/RedundantControlFlow"
+    },
+    "RedundantNullCheck": {
+      "severity": "WARNING",
+      "summary": "Null check on an expression that is statically determined to be non-null according to language semantics or nullness annotations.",
+      "url": "https://errorprone.info/bugpattern/RedundantNullCheck"
+    },
+    "RedundantOverride": {
+      "severity": "WARNING",
+      "summary": "This overriding method is redundant, and can be removed.",
+      "url": "https://errorprone.info/bugpattern/RedundantOverride"
+    },
+    "RedundantSetterCall": {
+      "severity": "ERROR",
+      "summary": "A field was set twice in the same chained expression.",
+      "url": "https://errorprone.info/bugpattern/RedundantSetterCall"
+    },
+    "RedundantThrows": {
+      "severity": "WARNING",
+      "summary": "Thrown exception is a subtype of another",
+      "url": "https://errorprone.info/bugpattern/RedundantThrows"
+    },
+    "RefactorSwitch": {
+      "severity": "WARNING",
+      "summary": "This switch can be refactored to be more readable",
+      "url": "https://errorprone.info/bugpattern/RefactorSwitch"
+    },
+    "ReferenceEquality": {
+      "severity": "WARNING",
+      "summary": "Comparison using reference equality instead of value equality",
+      "url": "https://errorprone.info/bugpattern/ReferenceEquality"
+    },
+    "RefersToDaggerCodegen": {
+      "severity": "ERROR",
+      "summary": "Don't refer to Dagger's internal or generated code",
+      "url": "https://errorprone.info/bugpattern/RefersToDaggerCodegen"
+    },
+    "RemoveUnusedImports": {
+      "severity": "SUGGESTION",
+      "summary": "Unused imports",
+      "url": "https://errorprone.info/bugpattern/RemoveUnusedImports"
+    },
+    "RequiredModifiers": {
+      "severity": "ERROR",
+      "summary": "This annotation is missing required modifiers as specified by its @RequiredModifiers annotation",
+      "url": ""
+    },
+    "RestrictedApi": {
+      "severity": "ERROR",
+      "summary": "Check for non-allowlisted callers to RestrictedApiChecker.",
+      "url": "https://errorprone.info/bugpattern/RestrictedApi"
+    },
+    "RethrowReflectiveOperationExceptionAsLinkageError": {
+      "severity": "WARNING",
+      "summary": "Prefer LinkageError for rethrowing ReflectiveOperationException as unchecked",
+      "url": "https://errorprone.info/bugpattern/RethrowReflectiveOperationExceptionAsLinkageError"
+    },
+    "ReturnAtTheEndOfVoidFunction": {
+      "severity": "WARNING",
+      "summary": "`return;` is unnecessary at the end of void methods and constructors.",
+      "url": "https://errorprone.info/bugpattern/ReturnAtTheEndOfVoidFunction"
+    },
+    "ReturnFromVoid": {
+      "severity": "WARNING",
+      "summary": "Void methods should not have a @return tag.",
+      "url": "https://errorprone.info/bugpattern/ReturnFromVoid"
+    },
+    "ReturnMissingNullable": {
+      "severity": "SUGGESTION",
+      "summary": "Method returns a definitely null value but is not annotated @Nullable",
+      "url": "https://errorprone.info/bugpattern/ReturnMissingNullable"
+    },
+    "ReturnValueIgnored": {
+      "severity": "ERROR",
+      "summary": "Return value of this method must be used",
+      "url": "https://errorprone.info/bugpattern/ReturnValueIgnored"
+    },
+    "ReturnsNullCollection": {
+      "severity": "SUGGESTION",
+      "summary": "Method has a collection return type and returns {@code null} in some cases but does not annotate the method as @Nullable. See Effective Java 3rd Edition Item 54.",
+      "url": "https://errorprone.info/bugpattern/ReturnsNullCollection"
+    },
+    "RobolectricShadowDirectlyOn": {
+      "severity": "WARNING",
+      "summary": "Migrate off a deprecated overload of org.robolectric.shadow.api.Shadow#directlyOn",
+      "url": "https://errorprone.info/bugpattern/RobolectricShadowDirectlyOn"
+    },
+    "RuleNotRun": {
+      "severity": "WARNING",
+      "summary": "This TestRule isn't annotated with @Rule, so won't be run.",
+      "url": "https://errorprone.info/bugpattern/RuleNotRun"
+    },
+    "RxReturnValueIgnored": {
+      "severity": "WARNING",
+      "summary": "Returned Rx objects must be checked. Ignoring a returned Rx value means it is never scheduled for execution",
+      "url": "https://errorprone.info/bugpattern/RxReturnValueIgnored"
+    },
+    "SameNameButDifferent": {
+      "severity": "WARNING",
+      "summary": "This type name shadows another in a way that may be confusing.",
+      "url": "https://errorprone.info/bugpattern/SameNameButDifferent"
+    },
+    "ScannerUseDelimiter": {
+      "severity": "WARNING",
+      "summary": "Scanner.useDelimiter is not an efficient way to read an entire InputStream",
+      "url": "https://errorprone.info/bugpattern/ScannerUseDelimiter"
+    },
+    "ScopeOnModule": {
+      "severity": "SUGGESTION",
+      "summary": "Scopes on modules have no function and will soon be an error.",
+      "url": "https://errorprone.info/bugpattern/ScopeOnModule"
+    },
+    "SelfAlwaysReturnsThis": {
+      "severity": "WARNING",
+      "summary": "Non-abstract instance methods named 'self()' or 'getThis()' that return the enclosing class must always 'return this'",
+      "url": "https://errorprone.info/bugpattern/SelfAlwaysReturnsThis"
+    },
+    "SelfAssertion": {
+      "severity": "ERROR",
+      "summary": "This assertion will always fail or succeed.",
+      "url": "https://errorprone.info/bugpattern/SelfAssertion"
+    },
+    "SelfAssignment": {
+      "severity": "ERROR",
+      "summary": "Variable assigned to itself",
+      "url": "https://errorprone.info/bugpattern/SelfAssignment"
+    },
+    "SelfComparison": {
+      "severity": "ERROR",
+      "summary": "An object is compared to itself",
+      "url": "https://errorprone.info/bugpattern/SelfComparison"
+    },
+    "SelfEquals": {
+      "severity": "ERROR",
+      "summary": "Testing an object for equality with itself will always be true.",
+      "url": "https://errorprone.info/bugpattern/SelfEquals"
+    },
+    "SelfSet": {
+      "severity": "WARNING",
+      "summary": "This setter seems to be invoked with a value from its own getter. Is it redundant?",
+      "url": "https://errorprone.info/bugpattern/SelfSet"
+    },
+    "SetUnrecognized": {
+      "severity": "ERROR",
+      "summary": "Setting a proto field to an UNRECOGNIZED value will result in an exception at runtime when building.",
+      "url": "https://errorprone.info/bugpattern/SetUnrecognized"
+    },
+    "ShortCircuitBoolean": {
+      "severity": "WARNING",
+      "summary": "Prefer the short-circuiting boolean operators && and || to & and |.",
+      "url": "https://errorprone.info/bugpattern/ShortCircuitBoolean"
+    },
+    "ShouldHaveEvenArgs": {
+      "severity": "ERROR",
+      "summary": "This method must be called with an even number of arguments.",
+      "url": "https://errorprone.info/bugpattern/ShouldHaveEvenArgs"
+    },
+    "SizeGreaterThanOrEqualsZero": {
+      "severity": "ERROR",
+      "summary": "Comparison of a size >= 0 is always true, did you intend to check for non-emptiness?",
+      "url": "https://errorprone.info/bugpattern/SizeGreaterThanOrEqualsZero"
+    },
+    "StatementSwitchToExpressionSwitch": {
+      "severity": "WARNING",
+      "summary": "This statement switch can be converted to a new-style arrow switch",
+      "url": "https://errorprone.info/bugpattern/StatementSwitchToExpressionSwitch"
+    },
+    "StaticAssignmentInConstructor": {
+      "severity": "WARNING",
+      "summary": "This assignment is to a static field. Mutating static state from a constructor is highly error-prone.",
+      "url": "https://errorprone.info/bugpattern/StaticAssignmentInConstructor"
+    },
+    "StaticAssignmentOfThrowable": {
+      "severity": "WARNING",
+      "summary": "Saving instances of Throwable in static fields is discouraged, prefer to create them on-demand when an exception is thrown",
+      "url": "https://errorprone.info/bugpattern/StaticAssignmentOfThrowable"
+    },
+    "StaticGuardedByInstance": {
+      "severity": "WARNING",
+      "summary": "Writes to static fields should not be guarded by instance locks",
+      "url": "https://errorprone.info/bugpattern/StaticGuardedByInstance"
+    },
+    "StaticMockMember": {
+      "severity": "WARNING",
+      "summary": "@Mock members of test classes shouldn't share state between tests and preferably be non-static",
+      "url": "https://errorprone.info/bugpattern/StaticMockMember"
+    },
+    "StaticOrDefaultInterfaceMethod": {
+      "severity": "ERROR",
+      "summary": "Static and default interface methods are not natively supported on older Android devices. ",
+      "url": "https://errorprone.info/bugpattern/StaticOrDefaultInterfaceMethod"
+    },
+    "StaticQualifiedUsingExpression": {
+      "severity": "ERROR",
+      "summary": "A static variable or method should be qualified with a class name, not expression",
+      "url": "https://errorprone.info/bugpattern/StaticQualifiedUsingExpression"
+    },
+    "StreamResourceLeak": {
+      "severity": "WARNING",
+      "summary": "Streams that encapsulate a closeable resource should be closed using try-with-resources",
+      "url": "https://errorprone.info/bugpattern/StreamResourceLeak"
+    },
+    "StreamToIterable": {
+      "severity": "WARNING",
+      "summary": "Using stream::iterator creates a one-shot Iterable, which may cause surprising failures.",
+      "url": "https://errorprone.info/bugpattern/StreamToIterable"
+    },
+    "StreamToString": {
+      "severity": "ERROR",
+      "summary": "Calling toString on a Stream does not provide useful information",
+      "url": "https://errorprone.info/bugpattern/StreamToString"
+    },
+    "StringBuilderInitWithChar": {
+      "severity": "ERROR",
+      "summary": "StringBuilder does not have a char constructor; this invokes the int constructor.",
+      "url": "https://errorprone.info/bugpattern/StringBuilderInitWithChar"
+    },
+    "StringCaseLocaleUsage": {
+      "severity": "WARNING",
+      "summary": "Specify a `Locale` when calling `String#to{Lower,Upper}Case`. (Note: there are multiple suggested fixes; the third may be most appropriate if you're dealing with ASCII Strings.)",
+      "url": "https://errorprone.info/bugpattern/StringCaseLocaleUsage"
+    },
+    "StringCharset": {
+      "severity": "WARNING",
+      "summary": "Prefer StandardCharsets over using string names for charsets",
+      "url": "https://errorprone.info/bugpattern/StringCharset"
+    },
+    "StringConcatToTextBlock": {
+      "severity": "WARNING",
+      "summary": "This string literal can be written more clearly as a text block",
+      "url": "https://errorprone.info/bugpattern/StringConcatToTextBlock"
+    },
+    "StringFormatWithLiteral": {
+      "severity": "WARNING",
+      "summary": "There is no need to use String.format() when all the arguments are literals.",
+      "url": "https://errorprone.info/bugpattern/StringFormatWithLiteral"
+    },
+    "StringJoin": {
+      "severity": "ERROR",
+      "summary": "String.join(CharSequence) performs no joining (it always returns the empty string); String.join(CharSequence, CharSequence) performs no joining (it just returns the 2nd parameter).",
+      "url": "https://errorprone.info/bugpattern/StringJoin"
+    },
+    "StringSplitter": {
+      "severity": "WARNING",
+      "summary": "String.split(String) has surprising behavior",
+      "url": "https://errorprone.info/bugpattern/StringSplitter"
+    },
+    "StronglyTypeByteString": {
+      "severity": "WARNING",
+      "summary": "This primitive byte array is only used to construct ByteStrings. It would be clearer to strongly type the field instead.",
+      "url": "https://errorprone.info/bugpattern/StronglyTypeByteString"
+    },
+    "StronglyTypeTime": {
+      "severity": "WARNING",
+      "summary": "This primitive integral type is only used to construct time types. It would be clearer to strongly type the field instead.",
+      "url": "https://errorprone.info/bugpattern/StronglyTypeTime"
+    },
+    "SubstringOfZero": {
+      "severity": "ERROR",
+      "summary": "String.substring(0) returns the original String",
+      "url": "https://errorprone.info/bugpattern/SubstringOfZero"
+    },
+    "SunApi": {
+      "severity": "WARNING",
+      "summary": "Usage of internal proprietary API which may be removed in a future release",
+      "url": "https://errorprone.info/bugpattern/SunApi"
+    },
+    "SuperCallToObjectMethod": {
+      "severity": "WARNING",
+      "summary": "`super.equals(obj)` and `super.hashCode()` are often bugs when they call the methods defined in `java.lang.Object`",
+      "url": "https://errorprone.info/bugpattern/SuperCallToObjectMethod"
+    },
+    "SuppressWarningsDeprecated": {
+      "severity": "ERROR",
+      "summary": "Suppressing \"deprecated\" is probably a typo for \"deprecation\"",
+      "url": "https://errorprone.info/bugpattern/SuppressWarningsDeprecated"
+    },
+    "SuppressWarningsWithoutExplanation": {
+      "severity": "WARNING",
+      "summary": "Use of @SuppressWarnings should be accompanied by a comment describing why the warning is safe to ignore.",
+      "url": "https://errorprone.info/bugpattern/SuppressWarningsWithoutExplanation"
+    },
+    "SwigMemoryLeak": {
+      "severity": "WARNING",
+      "summary": "SWIG generated code that can't call a C++ destructor will leak memory",
+      "url": "https://errorprone.info/bugpattern/SwigMemoryLeak"
+    },
+    "SwitchDefault": {
+      "severity": "SUGGESTION",
+      "summary": "The default case of a switch should appear at the end of the last statement group",
+      "url": "https://errorprone.info/bugpattern/SwitchDefault"
+    },
+    "SymbolToString": {
+      "severity": "SUGGESTION",
+      "summary": "Element#toString shouldn't be used for comparison as it is expensive and fragile.",
+      "url": "https://errorprone.info/bugpattern/SymbolToString"
+    },
+    "SynchronizeOnNonFinalField": {
+      "severity": "WARNING",
+      "summary": "Synchronizing on non-final fields is not safe: if the field is ever updated, different threads may end up locking on different objects.",
+      "url": "https://errorprone.info/bugpattern/SynchronizeOnNonFinalField"
+    },
+    "SystemConsoleNull": {
+      "severity": "WARNING",
+      "summary": "System.console() no longer returns null in JDK 22 and newer versions",
+      "url": "https://errorprone.info/bugpattern/SystemConsoleNull"
+    },
+    "SystemExitOutsideMain": {
+      "severity": "ERROR",
+      "summary": "Code that contains System.exit() is untestable.",
+      "url": "https://errorprone.info/bugpattern/SystemExitOutsideMain"
+    },
+    "SystemOut": {
+      "severity": "WARNING",
+      "summary": "Production code should not print to standard out or standard error. Standard out and standard error should only be used for debugging.",
+      "url": "https://errorprone.info/bugpattern/SystemOut"
+    },
+    "TemporalAccessorGetChronoField": {
+      "severity": "ERROR",
+      "summary": "TemporalAccessor.get() only works for certain values of ChronoField.",
+      "url": "https://errorprone.info/bugpattern/TemporalAccessorGetChronoField"
+    },
+    "TestExceptionChecker": {
+      "severity": "ERROR",
+      "summary": "Using @Test(expected=...) is discouraged, since the test will pass if *any* statement in the test method throws the expected exception",
+      "url": "https://errorprone.info/bugpattern/TestExceptionChecker"
+    },
+    "TestParametersNotInitialized": {
+      "severity": "ERROR",
+      "summary": "This test has @TestParameter fields but is using the default JUnit4 runner. The parameters will not be initialised beyond their default value.",
+      "url": "https://errorprone.info/bugpattern/TestParametersNotInitialized"
+    },
+    "TheoryButNoTheories": {
+      "severity": "ERROR",
+      "summary": "This test has members annotated with @Theory, @DataPoint, or @DataPoints but is using the default JUnit4 runner.",
+      "url": "https://errorprone.info/bugpattern/TheoryButNoTheories"
+    },
+    "ThreadBuilderNameWithPlaceholder": {
+      "severity": "ERROR",
+      "summary": "Thread.Builder.name() does not accept placeholders (e.g., %d or %s). threadBuilder.name(String) accepts a constant name and threadBuilder.name(String, int) accepts a constant name _prefix_ and an initial counter value.",
+      "url": "https://errorprone.info/bugpattern/ThreadBuilderNameWithPlaceholder"
+    },
+    "ThreadJoinLoop": {
+      "severity": "WARNING",
+      "summary": "Thread.join needs to be immediately surrounded by a loop until it succeeds. Consider using Uninterruptibles.joinUninterruptibly.",
+      "url": "https://errorprone.info/bugpattern/ThreadJoinLoop"
+    },
+    "ThreadLocalUsage": {
+      "severity": "WARNING",
+      "summary": "ThreadLocals should be stored in static fields",
+      "url": "https://errorprone.info/bugpattern/ThreadLocalUsage"
+    },
+    "ThreadPriorityCheck": {
+      "severity": "WARNING",
+      "summary": "Relying on the thread scheduler is discouraged.",
+      "url": "https://errorprone.info/bugpattern/ThreadPriorityCheck"
+    },
+    "ThreeLetterTimeZoneID": {
+      "severity": "WARNING",
+      "summary": "Three-letter time zone identifiers are deprecated, may be ambiguous, and might not do what you intend; the full IANA time zone ID should be used instead.",
+      "url": "https://errorprone.info/bugpattern/ThreeLetterTimeZoneID"
+    },
+    "ThrowIfUncheckedKnownChecked": {
+      "severity": "ERROR",
+      "summary": "throwIfUnchecked(knownCheckedException) is a no-op.",
+      "url": "https://errorprone.info/bugpattern/ThrowIfUncheckedKnownChecked"
+    },
+    "ThrowIfUncheckedKnownUnchecked": {
+      "severity": "WARNING",
+      "summary": "`throwIfUnchecked(knownUnchecked)` is equivalent to `throw knownUnchecked`.",
+      "url": "https://errorprone.info/bugpattern/ThrowIfUncheckedKnownUnchecked"
+    },
+    "ThrowNull": {
+      "severity": "ERROR",
+      "summary": "Throwing 'null' always results in a NullPointerException being thrown.",
+      "url": "https://errorprone.info/bugpattern/ThrowNull"
+    },
+    "ThrowSpecificExceptions": {
+      "severity": "WARNING",
+      "summary": "Base exception classes should be treated as abstract. If the exception is intended to be caught, throw a domain-specific exception. Otherwise, prefer a more specific exception for clarity. Common alternatives include: AssertionError, IllegalArgumentException, IllegalStateException, and (Guava's) VerifyException.",
+      "url": "https://errorprone.info/bugpattern/ThrowSpecificExceptions"
+    },
+    "ThrowableEqualsHashCode": {
+      "severity": "WARNING",
+      "summary": "Overriding Throwable.equals() or hashCode() is discouraged.",
+      "url": "https://errorprone.info/bugpattern/ThrowableEqualsHashCode"
+    },
+    "ThrowsUncheckedException": {
+      "severity": "SUGGESTION",
+      "summary": "Unchecked exceptions do not need to be declared in the method signature.",
+      "url": "https://errorprone.info/bugpattern/ThrowsUncheckedException"
+    },
+    "TimeInStaticInitializer": {
+      "severity": "WARNING",
+      "summary": "Accessing the current time in a static initialiser captures the time at class loading, which is rarely desirable.",
+      "url": "https://errorprone.info/bugpattern/TimeInStaticInitializer"
+    },
+    "TimeUnitConversionChecker": {
+      "severity": "WARNING",
+      "summary": "This TimeUnit conversion looks buggy: converting from a smaller unit to a larger unit (and passing a constant), converting to/from the same TimeUnit, or converting TimeUnits where the result is statically known to be 0 or 1 are all buggy patterns.",
+      "url": "https://errorprone.info/bugpattern/TimeUnitConversionChecker"
+    },
+    "TimeUnitMismatch": {
+      "severity": "WARNING",
+      "summary": "An value that appears to be represented in one unit is used where another appears to be required (e.g., seconds where nanos are needed)",
+      "url": "https://errorprone.info/bugpattern/TimeUnitMismatch"
+    },
+    "ToStringReturnsNull": {
+      "severity": "WARNING",
+      "summary": "An implementation of Object.toString() should never return null.",
+      "url": "https://errorprone.info/bugpattern/ToStringReturnsNull"
+    },
+    "TooManyParameters": {
+      "severity": "WARNING",
+      "summary": "A large number of parameters on public APIs should be avoided.",
+      "url": "https://errorprone.info/bugpattern/TooManyParameters"
+    },
+    "TraditionalSwitchExpression": {
+      "severity": "WARNING",
+      "summary": "Prefer -> switches for switch expressions",
+      "url": "https://errorprone.info/bugpattern/TraditionalSwitchExpression"
+    },
+    "TransientMisuse": {
+      "severity": "WARNING",
+      "summary": "Static fields are implicitly transient, so the explicit modifier is unnecessary",
+      "url": ""
+    },
+    "TreeToString": {
+      "severity": "ERROR",
+      "summary": "Tree#toString shouldn't be used for Trees deriving from the code being compiled, as it discards whitespace and comments.",
+      "url": "https://errorprone.info/bugpattern/TreeToString"
+    },
+    "TruthAssertExpected": {
+      "severity": "WARNING",
+      "summary": "The actual and expected values appear to be swapped, which results in poor assertion failure messages. The actual value should come first.",
+      "url": "https://errorprone.info/bugpattern/TruthAssertExpected"
+    },
+    "TruthConstantAsserts": {
+      "severity": "WARNING",
+      "summary": "Truth Library assert is called on a constant.",
+      "url": "https://errorprone.info/bugpattern/TruthConstantAsserts"
+    },
+    "TruthContainsExactlyElementsInUsage": {
+      "severity": "WARNING",
+      "summary": "containsExactly is preferred over containsExactlyElementsIn when creating new iterables.",
+      "url": "https://errorprone.info/bugpattern/TruthContainsExactlyElementsInUsage"
+    },
+    "TruthGetOrDefault": {
+      "severity": "WARNING",
+      "summary": "Asserting on getOrDefault is unclear; prefer containsEntry or doesNotContainKey",
+      "url": "https://errorprone.info/bugpattern/TruthGetOrDefault"
+    },
+    "TruthIncompatibleType": {
+      "severity": "WARNING",
+      "summary": "Argument is not compatible with the subject's type.",
+      "url": "https://errorprone.info/bugpattern/TruthIncompatibleType"
+    },
+    "TryFailRefactoring": {
+      "severity": "SUGGESTION",
+      "summary": "Prefer assertThrows to try/fail",
+      "url": "https://errorprone.info/bugpattern/TryFailRefactoring"
+    },
+    "TryFailThrowable": {
+      "severity": "ERROR",
+      "summary": "Catching Throwable/Error masks failures from fail() or assert*() in the try block",
+      "url": "https://errorprone.info/bugpattern/TryFailThrowable"
+    },
+    "TryWithResourcesVariable": {
+      "severity": "WARNING",
+      "summary": "This variable is unnecessary, the try-with-resources resource can be a reference to a final or effectively final variable",
+      "url": "https://errorprone.info/bugpattern/TryWithResourcesVariable"
+    },
+    "TypeEquals": {
+      "severity": "WARNING",
+      "summary": "TypeMirror should be compared using Types#isSameType, not equality operators or equals().",
+      "url": "https://errorprone.info/bugpattern/TypeEquals"
+    },
+    "TypeNameShadowing": {
+      "severity": "WARNING",
+      "summary": "Type parameter declaration shadows another named type",
+      "url": "https://errorprone.info/bugpattern/TypeNameShadowing"
+    },
+    "TypeParameterNaming": {
+      "severity": "SUGGESTION",
+      "summary": "Type parameters must be a single letter with an optional numeric suffix, or an UpperCamelCase name followed by the letter 'T'.",
+      "url": "https://google.github.io/styleguide/javaguide.html#s5.2.8-type-variable-names"
+    },
+    "TypeParameterQualifier": {
+      "severity": "ERROR",
+      "summary": "Type parameter used as type qualifier",
+      "url": "https://errorprone.info/bugpattern/TypeParameterQualifier"
+    },
+    "TypeParameterShadowing": {
+      "severity": "WARNING",
+      "summary": "Type parameter declaration overrides another type parameter already declared",
+      "url": "https://errorprone.info/bugpattern/TypeParameterShadowing"
+    },
+    "TypeParameterUnusedInFormals": {
+      "severity": "WARNING",
+      "summary": "Declaring a type parameter that is only used in the return type is a misuse of generics: operations on the type parameter are unchecked, it hides unsafe casts at invocations of the method, and it interacts badly with method overload resolution.",
+      "url": "https://errorprone.info/bugpattern/TypeParameterUnusedInFormals"
+    },
+    "TypeToString": {
+      "severity": "SUGGESTION",
+      "summary": "TypeMirror#toString shouldn't be used for comparison as it is expensive and fragile.",
+      "url": "https://errorprone.info/bugpattern/TypeToString"
+    },
+    "URLEqualsHashCode": {
+      "severity": "WARNING",
+      "summary": "Avoid hash-based containers of java.net.URL--the containers rely on equals() and hashCode(), which cause java.net.URL to make blocking internet connections.",
+      "url": "https://errorprone.info/bugpattern/URLEqualsHashCode"
+    },
+    "UndefinedEquals": {
+      "severity": "WARNING",
+      "summary": "This type is not guaranteed to implement a useful equals() method.",
+      "url": "https://errorprone.info/bugpattern/UndefinedEquals"
+    },
+    "UnescapedEntity": {
+      "severity": "WARNING",
+      "summary": "Javadoc is interpreted as HTML, so HTML entities such as &, <, > must be escaped. If this finding seems wrong (e.g. is within a @code or @literal tag), check whether the tag could be malformed and not recognised by the compiler.",
+      "url": "https://errorprone.info/bugpattern/UnescapedEntity"
+    },
+    "UngroupedOverloads": {
+      "severity": "SUGGESTION",
+      "summary": "Constructors and methods with the same name should appear sequentially with no other code in between, even when modifiers such as static or private differ between the methods. Please re-order or re-name methods.",
+      "url": "https://errorprone.info/bugpattern/UngroupedOverloads"
+    },
+    "UnicodeDirectionalityCharacters": {
+      "severity": "ERROR",
+      "summary": "Unicode directionality modifiers can be used to conceal code in many editors.",
+      "url": "https://errorprone.info/bugpattern/UnicodeDirectionalityCharacters"
+    },
+    "UnicodeEscape": {
+      "severity": "WARNING",
+      "summary": "Using unicode escape sequences for printable ASCII characters is obfuscated, and potentially dangerous.",
+      "url": "https://errorprone.info/bugpattern/UnicodeEscape"
+    },
+    "UnicodeInCode": {
+      "severity": "ERROR",
+      "summary": "Avoid using non-ASCII Unicode characters outside of comments and literals, as they can be confusing.",
+      "url": "https://errorprone.info/bugpattern/UnicodeInCode"
+    },
+    "UnnamedVariable": {
+      "severity": "WARNING",
+      "summary": "Consider renaming unused variables and lambda parameters to _",
+      "url": "https://errorprone.info/bugpattern/UnnamedVariable"
+    },
+    "UnnecessarilyFullyQualified": {
+      "severity": "WARNING",
+      "summary": "This fully qualified name is unambiguous to the compiler if imported.",
+      "url": "https://errorprone.info/bugpattern/UnnecessarilyFullyQualified"
+    },
+    "UnnecessarilyUsedValue": {
+      "severity": "WARNING",
+      "summary": "The result of this API is ignorable, so it does not need to be captured / assigned into an `unused` variable.",
+      "url": "https://errorprone.info/bugpattern/UnnecessarilyUsedValue"
+    },
+    "UnnecessarilyVisible": {
+      "severity": "WARNING",
+      "summary": "Some methods (such as those annotated with @Inject or @Provides) are only intended to be called by a framework, and so should have default visibility.",
+      "url": "https://errorprone.info/bugpattern/UnnecessarilyVisible"
+    },
+    "UnnecessaryAnonymousClass": {
+      "severity": "WARNING",
+      "summary": "Implementing a functional interface is unnecessary; prefer to implement the functional interface method directly and use a method reference instead.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryAnonymousClass"
+    },
+    "UnnecessaryAssignment": {
+      "severity": "WARNING",
+      "summary": "Fields annotated with @Inject/@Mock/@TestParameter should not be manually assigned to, as they should be initialized by a framework. Remove the assignment if a framework is being used, or the annotation if one isn't.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryAssignment"
+    },
+    "UnnecessaryAsync": {
+      "severity": "WARNING",
+      "summary": "Variables which are initialized and do not escape the current scope do not need to worry about concurrency. Using the non-concurrent type will reduce overhead and verbosity.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryAsync"
+    },
+    "UnnecessaryBoxedAssignment": {
+      "severity": "SUGGESTION",
+      "summary": "This expression can be implicitly boxed.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryBoxedAssignment"
+    },
+    "UnnecessaryBoxedVariable": {
+      "severity": "SUGGESTION",
+      "summary": "It is unnecessary for this variable to be boxed. Use the primitive instead.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryBoxedVariable"
+    },
+    "UnnecessaryBreakInSwitch": {
+      "severity": "WARNING",
+      "summary": "This break is unnecessary, fallthrough does not occur in -> switches",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryBreakInSwitch"
+    },
+    "UnnecessaryCheckNotNull": {
+      "severity": "ERROR",
+      "summary": "This null check is unnecessary; the expression can never be null",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryCheckNotNull"
+    },
+    "UnnecessaryCopy": {
+      "severity": "WARNING",
+      "summary": "This collection is already immutable (just not ImmutableList/ImmutableMap); copying it is unnecessary.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryCopy"
+    },
+    "UnnecessaryDefaultInEnumSwitch": {
+      "severity": "WARNING",
+      "summary": "Switch handles all enum values: an explicit default case is unnecessary and defeats error checking for non-exhaustive switches.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryDefaultInEnumSwitch"
+    },
+    "UnnecessaryFinal": {
+      "severity": "WARNING",
+      "summary": "Since Java 8, it's been unnecessary to make local variables and parameters `final` for use in lambdas or anonymous classes. Marking them as `final` is weakly discouraged, as it adds a fair amount of noise for minimal benefit.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryFinal"
+    },
+    "UnnecessaryLambda": {
+      "severity": "WARNING",
+      "summary": "Returning a lambda from a helper method or saving it in a constant is unnecessary; prefer to implement the functional interface method directly and use a method reference instead.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryLambda"
+    },
+    "UnnecessaryLongToIntConversion": {
+      "severity": "WARNING",
+      "summary": "Converting a long or Long to an int to pass as a long parameter is usually not necessary. If this conversion is intentional, consider `Longs.constrainToRange()` instead.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryLongToIntConversion"
+    },
+    "UnnecessaryMethodInvocationMatcher": {
+      "severity": "WARNING",
+      "summary": "It is not necessary to wrap a MethodMatcher with methodInvocation().",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryMethodInvocationMatcher"
+    },
+    "UnnecessaryMethodReference": {
+      "severity": "WARNING",
+      "summary": "This method reference is unnecessary, and can be replaced with the variable itself.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryMethodReference"
+    },
+    "UnnecessaryOptionalGet": {
+      "severity": "WARNING",
+      "summary": "This code can be simplified by directly using the lambda parameters instead of calling get..() on optional.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryOptionalGet"
+    },
+    "UnnecessaryParentheses": {
+      "severity": "WARNING",
+      "summary": "These parentheses are unnecessary; it is unlikely the code will be misinterpreted without them",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryParentheses"
+    },
+    "UnnecessaryQualifier": {
+      "severity": "WARNING",
+      "summary": "A qualifier annotation has no effect here.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryQualifier"
+    },
+    "UnnecessarySemicolon": {
+      "severity": "WARNING",
+      "summary": "Unnecessary semicolons should be omitted. For empty block statements, prefer {}.",
+      "url": "https://errorprone.info/bugpattern/UnnecessarySemicolon"
+    },
+    "UnnecessarySetDefault": {
+      "severity": "SUGGESTION",
+      "summary": "Unnecessary call to NullPointerTester#setDefault",
+      "url": "https://errorprone.info/bugpattern/UnnecessarySetDefault"
+    },
+    "UnnecessaryStaticImport": {
+      "severity": "SUGGESTION",
+      "summary": "Using static imports for types is unnecessary",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryStaticImport"
+    },
+    "UnnecessaryStringBuilder": {
+      "severity": "WARNING",
+      "summary": "Prefer string concatenation over explicitly using `StringBuilder#append`, since `+` reads better and has equivalent or better performance.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryStringBuilder"
+    },
+    "UnnecessaryTestMethodPrefix": {
+      "severity": "WARNING",
+      "summary": "A `test` prefix for a JUnit4 test is redundant, and a holdover from JUnit3. The `@Test` annotation makes it clear it's a test.",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryTestMethodPrefix"
+    },
+    "UnnecessaryTypeArgument": {
+      "severity": "ERROR",
+      "summary": "Non-generic methods should not be invoked with type arguments",
+      "url": "https://errorprone.info/bugpattern/UnnecessaryTypeArgument"
+    },
+    "UnrecognisedJavadocTag": {
+      "severity": "WARNING",
+      "summary": "This Javadoc tag wasn't recognised by the parser. Is it malformed somehow, perhaps with mismatched braces?",
+      "url": "https://errorprone.info/bugpattern/UnrecognisedJavadocTag"
+    },
+    "UnsafeFinalization": {
+      "severity": "WARNING",
+      "summary": "Finalizer may run before native code finishes execution",
+      "url": "https://errorprone.info/bugpattern/UnsafeFinalization"
+    },
+    "UnsafeLocaleUsage": {
+      "severity": "WARNING",
+      "summary": "Possible unsafe operation related to the java.util.Locale class.",
+      "url": "https://errorprone.info/bugpattern/UnsafeLocaleUsage"
+    },
+    "UnsafeReflectiveConstructionCast": {
+      "severity": "WARNING",
+      "summary": "Prefer `asSubclass` instead of casting the result of `newInstance`, to detect classes of incorrect type before invoking their constructors. This way, if the class is of the incorrect type, it will throw an exception before invoking its constructor.",
+      "url": "https://errorprone.info/bugpattern/UnsafeReflectiveConstructionCast"
+    },
+    "UnsafeWildcard": {
+      "severity": "ERROR",
+      "summary": "Certain wildcard types can confuse the compiler.",
+      "url": "https://errorprone.info/bugpattern/UnsafeWildcard"
+    },
+    "UnsynchronizedOverridesSynchronized": {
+      "severity": "WARNING",
+      "summary": "Unsynchronized method overrides a synchronized method.",
+      "url": "https://errorprone.info/bugpattern/UnsynchronizedOverridesSynchronized"
+    },
+    "UnusedAnonymousClass": {
+      "severity": "ERROR",
+      "summary": "Instance created but never used",
+      "url": "https://errorprone.info/bugpattern/UnusedAnonymousClass"
+    },
+    "UnusedCollectionModifiedInPlace": {
+      "severity": "ERROR",
+      "summary": "Collection is modified in place, but the result is not used",
+      "url": "https://errorprone.info/bugpattern/UnusedCollectionModifiedInPlace"
+    },
+    "UnusedException": {
+      "severity": "WARNING",
+      "summary": "This catch block catches an exception and re-throws another, but swallows the caught exception rather than setting it as a cause. This can make debugging harder.",
+      "url": "https://errorprone.info/bugpattern/UnusedException"
+    },
+    "UnusedLabel": {
+      "severity": "WARNING",
+      "summary": "This label is unused.",
+      "url": "https://errorprone.info/bugpattern/UnusedLabel"
+    },
+    "UnusedMethod": {
+      "severity": "WARNING",
+      "summary": "Unused.",
+      "url": "https://errorprone.info/bugpattern/UnusedMethod"
+    },
+    "UnusedNestedClass": {
+      "severity": "WARNING",
+      "summary": "This nested class is unused, and can be removed.",
+      "url": "https://errorprone.info/bugpattern/UnusedNestedClass"
+    },
+    "UnusedTypeParameter": {
+      "severity": "WARNING",
+      "summary": "This type parameter is unused and can be removed.",
+      "url": "https://errorprone.info/bugpattern/UnusedTypeParameter"
+    },
+    "UnusedVariable": {
+      "severity": "WARNING",
+      "summary": "Unused.",
+      "url": "https://errorprone.info/bugpattern/UnusedVariable"
+    },
+    "UrlInSee": {
+      "severity": "WARNING",
+      "summary": "URLs should not be used in @see tags; they are designed for Java elements which could be used with @link.",
+      "url": "https://errorprone.info/bugpattern/UrlInSee"
+    },
+    "UseBinds": {
+      "severity": "WARNING",
+      "summary": "@Binds is a more efficient and declarative mechanism for delegating a binding.",
+      "url": "https://errorprone.info/bugpattern/UseBinds"
+    },
+    "UseCorrectAssertInTests": {
+      "severity": "ERROR",
+      "summary": "Java assert is used in testing code. For testing purposes, prefer using Truth-based assertions.",
+      "url": "https://errorprone.info/bugpattern/UseCorrectAssertInTests"
+    },
+    "UseEnumSwitch": {
+      "severity": "SUGGESTION",
+      "summary": "Prefer using a switch instead of a chained if-else for enums",
+      "url": "https://errorprone.info/bugpattern/UseEnumSwitch"
+    },
+    "UsingJsr305CheckReturnValue": {
+      "severity": "WARNING",
+      "summary": "Prefer ErrorProne's @CheckReturnValue over JSR305's version.",
+      "url": "https://errorprone.info/bugpattern/UsingJsr305CheckReturnValue"
+    },
+    "Var": {
+      "severity": "WARNING",
+      "summary": "Non-constant variable missing @Var annotation",
+      "url": "https://errorprone.info/bugpattern/Var"
+    },
+    "VarTypeName": {
+      "severity": "ERROR",
+      "summary": "`var` should not be used as a type name.",
+      "url": "https://errorprone.info/bugpattern/VarTypeName"
+    },
+    "VarWithPrimitive": {
+      "severity": "SUGGESTION",
+      "summary": "Avoid using `var` with primitive types. Explicit primitive type names are short and clear, and `var` provides no benefit in readability while potentially hiding the type.",
+      "url": "https://errorprone.info/bugpattern/VarWithPrimitive"
+    },
+    "VariableNameSameAsType": {
+      "severity": "WARNING",
+      "summary": "variableName and type with the same name would refer to the static field instead of the class",
+      "url": "https://errorprone.info/bugpattern/VariableNameSameAsType"
+    },
+    "Varifier": {
+      "severity": "WARNING",
+      "summary": "Consider using `var` here to avoid boilerplate.",
+      "url": "https://errorprone.info/bugpattern/Varifier"
+    },
+    "VoidMissingNullable": {
+      "severity": "SUGGESTION",
+      "summary": "The type Void is not annotated @Nullable",
+      "url": "https://errorprone.info/bugpattern/VoidMissingNullable"
+    },
+    "VoidUsed": {
+      "severity": "WARNING",
+      "summary": "Using a Void-typed variable is potentially confusing, and can be replaced with a literal `null`.",
+      "url": "https://errorprone.info/bugpattern/VoidUsed"
+    },
+    "WaitNotInLoop": {
+      "severity": "WARNING",
+      "summary": "Because of spurious wakeups, Object.wait() and Condition.await() must always be called in a loop",
+      "url": "https://errorprone.info/bugpattern/WaitNotInLoop"
+    },
+    "WakelockReleasedDangerously": {
+      "severity": "WARNING",
+      "summary": "On Android versions < P, a wakelock acquired with a timeout may be released by the system before calling `release`, even after checking `isHeld()`. If so, it will throw a RuntimeException. Please wrap in a try/catch block.",
+      "url": "https://errorprone.info/bugpattern/WakelockReleasedDangerously"
+    },
+    "WildcardImport": {
+      "severity": "SUGGESTION",
+      "summary": "Wildcard imports, static or otherwise, should not be used",
+      "url": "https://google.github.io/styleguide/javaguide.html?cl=head#s3.3.1-wildcard-imports"
+    },
+    "WrongOneof": {
+      "severity": "ERROR",
+      "summary": "This field is guaranteed not to be set given it's within a switch over a one_of.",
+      "url": "https://errorprone.info/bugpattern/WrongOneof"
+    },
+    "XorPower": {
+      "severity": "ERROR",
+      "summary": "The `^` operator is binary XOR, not a power operator.",
+      "url": "https://errorprone.info/bugpattern/XorPower"
+    },
+    "YodaCondition": {
+      "severity": "WARNING",
+      "summary": "The non-constant portion of a comparison generally comes first. For equality, prefer e.equals(CONSTANT) if e is non-null or Objects.equals(e, CONSTANT) if e may be null. For standard operators, prefer e <OPERATION> CONSTANT.",
+      "url": "https://errorprone.info/bugpattern/YodaCondition"
+    },
+    "ZoneIdOfZ": {
+      "severity": "ERROR",
+      "summary": "Use ZoneOffset.UTC instead of ZoneId.of(\"Z\").",
+      "url": "https://errorprone.info/bugpattern/ZoneIdOfZ"
+    }
+  }
+}

@@ -175,12 +175,20 @@ function ktlintSwitch(ruleId) {
   return `ktlint_${ruleId.replace(':', '_')}`;
 }
 
+export function ktlintAdvice(advice, ruleId) {
+  return `${advice.ktlint(ktlintSwitch(ruleId))} ${NOT_YOUR_FORMATTER}`;
+}
+
+export function ktfmtMessage(advice) {
+  return `File is not formatted with ktfmt. ${advice.ktfmt} ${NOT_YOUR_FORMATTER}`;
+}
+
 function ktlintFindings(reportRoot, advice) {
   return ingestSarif(readSarif(reportRoot, KTLINT_REPORT), { tool: 'ktlint' }).findings.map(
     (finding) => ({
       ...finding,
       rule: `${KTLINT_PREFIX}${finding.rule}`,
-      message: `${finding.message}. ${advice.ktlint(ktlintSwitch(finding.rule))} ${NOT_YOUR_FORMATTER}`,
+      message: `${finding.message}. ${ktlintAdvice(advice, finding.rule)}`,
     }),
   );
 }
@@ -188,7 +196,7 @@ function ktlintFindings(reportRoot, advice) {
 function ktfmtFindings(reportRoot, advice) {
   return ingestFormatCheck(readFileSync(path.join(reportRoot, KTFMT_REPORT), 'utf8'), {
     tool: 'ktfmt',
-    message: `File is not formatted with ktfmt. ${advice.ktfmt} ${NOT_YOUR_FORMATTER}`,
+    message: ktfmtMessage(advice),
   }).findings;
 }
 

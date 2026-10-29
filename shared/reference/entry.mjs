@@ -20,9 +20,9 @@ export function anchorOf(tool, rule) {
 }
 
 /**
- * A rule's entry. `presets` and `analyzers` say who can report it (the preset names and the analyzer
- * names `disable` takes); `findingTools` lists the tool names its findings print when they differ
- * from `tool`; `pattern` makes the entry stand for every rule that matches it.
+ * A rule's entry. `analyzers` says who can report it (per preset, the analyzer names `disable`
+ * takes); `findingTools` lists the tool names its findings print when they differ from `tool`;
+ * `pattern` makes the entry stand for every rule that matches it, and `samples` names such rules.
  */
 export function ruleEntry({ tool, rule, ...fields }) {
   return { id: `${tool}/${rule}`, tool, rule, anchor: anchorOf(tool, rule), ...fields };
@@ -39,20 +39,62 @@ export function exceptionSnippet({ rule, function: functionName, name, packages 
   });
 }
 
-/** The sentence that tells how to add an exception for the entry, or why it has none. */
-export function exceptionAdvice({ exception }) {
+/** `words` joined with commas and a final "and". */
+export function joinedWords(words) {
+  return words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words.at(-1)}`;
+}
+
+/**
+ * The config list and rule that accept a finding of the entry in `preset`, or undefined when no
+ * exception applies there. `presetKeys` and `presetRules` name the list and the rule a preset uses
+ * instead of the entry's own; `presetNotes` says why a preset has no exception for the rule.
+ */
+export function exceptionFor({ exception }, preset) {
+  if (exception.key === undefined || exception.presetNotes?.[preset] !== undefined) {
+    return undefined;
+  }
+  return {
+    ...exception,
+    key: exception.presetKeys?.[preset] ?? exception.key,
+    rule: exception.presetRules?.[preset] ?? exception.rule,
+  };
+}
+
+function routeText(route) {
+  return exceptionSentence(`\`${exceptionSnippet(route)}\``, route.key);
+}
+
+function withPresets(presets, text) {
+  const titles = joinedWords(presets.map((preset) => PRESET_TITLES[preset]));
+  return `With the ${titles} ${presets.length === 1 ? 'preset' : 'presets'}: ${text}`;
+}
+
+function presetSentences(exception, presets) {
+  const own = routeText(exception);
+  const routed = presets.filter((preset) => exceptionFor({ exception }, preset) !== undefined);
+  const byRoute = Map.groupBy(routed, (preset) => routeText(exceptionFor({ exception }, preset)));
+  const byNote = Map.groupBy(
+    presets.filter((preset) => exception.presetNotes?.[preset] !== undefined),
+    (preset) => exception.presetNotes[preset],
+  );
+  return [
+    ...[...byRoute]
+      .filter(([text]) => text !== own)
+      .map(([text, group]) => withPresets(group, text)),
+    ...[...byNote].map(([note, group]) => withPresets(group, note)),
+  ];
+}
+
+/** How to add an exception for the entry in each of `presets`, or why it has none. */
+export function exceptionAdvice({ exception }, presets = []) {
   if (exception.key === undefined) {
     return exception.note;
   }
-  const snippet = exceptionSnippet(exception);
-  const sentences = [
-    exceptionSentence(`\`${snippet}\``, exception.key),
-    ...Object.entries(exception.presetKeys ?? {}).map(
-      ([preset, key]) => `With the ${PRESET_TITLES[preset]} preset, add it to "${key}" instead.`,
-    ),
+  return [
+    routeText(exception),
+    ...presetSentences(exception, presets),
     ...(exception.note === undefined ? [] : [exception.note]),
-  ];
-  return sentences.join(' ');
+  ].join(' ');
 }
 
 function ownException({ tool, rule, exceptionKey = 'exceptions', exceptionRule }) {

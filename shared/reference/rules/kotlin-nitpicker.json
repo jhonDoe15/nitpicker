@@ -1,515 +1,250 @@
-[
-  {
-    "id": "detekt/catch-log-without-exception",
-    "tool": "detekt",
-    "rule": "catch-log-without-exception",
-    "anchor": "detekt-catch-log-without-exception",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side reports it under the tool detekt.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-scans" }
-    ],
-    "summary": "A `catch` block that logs a failure without passing the caught exception to the logger.",
-    "allowed": "Pass the caught exception to the logger as its own argument so the stack trace is kept (log.error(\"what failed\", e), or logger.error(e) { \"what failed\" }). e.message, e.toString() and a string template of the exception drop it.",
-    "exception": { "key": "exceptions", "rule": "catch-log-without-exception" }
-  },
-  {
-    "id": "detekt/inline-suppression",
-    "tool": "detekt",
-    "rule": "inline-suppression",
-    "anchor": "detekt-inline-suppression",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "An inline suppression of a detekt or ktlint rule",
-    "why": "A `@Suppress` would hide a finding from the report, so a source scan reports every token that targets a detekt or ktlint rule.",
-    "allowed": "Remove the suppression and fix the finding: `@Suppress` of a detekt or ktlint rule, a ruleset, `all` or one of the compiler warnings the kotlinc lint reports would hide it from the report. For generated code the routes are `exclude` and the code itself.",
-    "exception": {
-      "note": "No exception applies; the way out is to fix the finding, `exclude` for generated code, or the code itself."
-    },
-    "docs": [
+{
+  "fields": [
+    "tool",
+    "rule",
+    "analyzers",
+    "builds",
+    "why",
+    "docs",
+    "summary",
+    "allowed",
+    "exception",
+    "forms",
+    "pattern",
+    "samples",
+    "links"
+  ],
+  "values": [
+    "detekt",
+    "catch-log-without-exception",
+    { "kotlin": ["kotlin"] },
+    { "java": ["gradle", "maven"], "kotlin": ["gradle"] },
+    "A scan of the Kotlin sources on the Node side reports it under the tool detekt.",
+    [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-scans" }],
+    "A `catch` block that logs a failure without passing the caught exception to the logger.",
+    "Pass the caught exception to the logger as its own argument so the stack trace is kept (log.error(\"what failed\", e), or logger.error(e) { \"what failed\" }). e.message, e.toString() and a string template of the exception drop it.",
+    { "key": "exceptions", "rule": "catch-log-without-exception" },
+    "inline-suppression",
+    "A `@Suppress` would hide a finding from the report, so a source scan reports every token that targets one.",
+    [
       { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "one-way-rules" }
-    ]
-  },
-  {
-    "id": "detekt/test-without-assertion",
-    "tool": "detekt",
-    "rule": "test-without-assertion",
-    "anchor": "detekt-test-without-assertion",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side reports it under the tool detekt.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-scans" }
     ],
-    "summary": "A test method that calls no assertion.",
-    "allowed": "Assert the result (assertEquals, assertFailsWith, `shouldBe`, MockK `verify`): this test has no assertion, so it passes whenever the code does not throw. A project helper that asserts is learned from the tests that end with it (conventions kotlin.assertionHelpers).",
-    "exception": { "key": "exceptions", "rule": "test-without-assertion" }
-  },
-  {
-    "id": "kotlin-source/BooleanFlagParameter",
-    "tool": "kotlin-source",
-    "rule": "BooleanFlagParameter",
-    "anchor": "kotlin-source-booleanflagparameter",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
+    "An inline `@Suppress` of a detekt or ktlint rule, a ruleset, `all` or a compiler warning the kotlinc lint reports.",
+    {
+      "note": "No exception applies: the routes are to fix the code, and `exclude` for generated code."
+    },
+    [
+      {
+        "label": "detekt.<ruleset>",
+        "message": "Suppressing \"detekt.style\" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to \"exclude\" in nitpicker.config.json."
+      },
+      {
+        "label": "UNCHECKED_CAST",
+        "message": "Suppressing \"UNCHECKED_CAST\" inline is not allowed. Fix the code the compiler warns about."
+      }
+    ],
+    "test-without-assertion",
+    "A test method that calls no assertion.",
+    "Assert the result (assertEquals, assertFailsWith, `shouldBe`, MockK `verify`): this test has no assertion, so it passes whenever the code does not throw. A project helper that asserts is learned from the tests that end with it (conventions kotlin.assertionHelpers).",
+    { "key": "exceptions", "rule": "test-without-assertion" },
+    "kotlin-source",
+    "BooleanFlagParameter",
+    "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
+    [
       { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
     ],
-    "summary": "An unannotated `Boolean` parameter of a public function that is the condition of an `if`, `when` or `while`.",
-    "allowed": "Split the function into two functions named for each behavior, or pass an enum or a small data class: this boolean parameter switches the function between two behaviors, which makes the call site unreadable.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/BooleanFlagParameter" }
-  },
-  {
-    "id": "kotlin-source/CatchOnlyLogsOrReturnsDefault",
-    "tool": "kotlin-source",
-    "rule": "CatchOnlyLogsOrReturnsDefault",
-    "anchor": "kotlin-source-catchonlylogsorreturnsdefault",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A `catch` that neither throws, nor uses the exception, nor answers with an error response.",
-    "allowed": "Rethrow it with the cause (`throw OrderException(message, e)`), return a failure result that carries the exception (`Result.failure(e)`), or answer with an error response: this catch only logs the failure or returns a default, and carries on.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/CatchOnlyLogsOrReturnsDefault" }
-  },
-  {
-    "id": "kotlin-source/CommentedOutCode",
-    "tool": "kotlin-source",
-    "rule": "CommentedOutCode",
-    "anchor": "kotlin-source-commentedoutcode",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "Commented-out code.",
-    "allowed": "Delete the commented-out code; version control keeps it.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/CommentedOutCode" }
-  },
-  {
-    "id": "kotlin-source/CredentialLiteral",
-    "tool": "kotlin-source",
-    "rule": "CredentialLiteral",
-    "anchor": "kotlin-source-credentialliteral",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A literal credential: an AWS key, a GitHub or Slack token, a private key header, a password in a URL.",
-    "allowed": "Read it from the environment or a secrets manager: this string looks like a credential (access key, token, private key, or a password in a URL).",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/CredentialLiteral" }
-  },
-  {
-    "id": "kotlin-source/DetachedTestCase",
-    "tool": "kotlin-source",
-    "rule": "DetachedTestCase",
-    "anchor": "kotlin-source-detachedtestcase",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A test-named public function without a test annotation, in a class that has tests.",
-    "allowed": "Annotate the function with @Test so JUnit runs it, or make it private if it is a helper: this test never runs.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/DetachedTestCase" }
-  },
-  {
-    "id": "kotlin-source/GeneratedOnHandWrittenCode",
-    "tool": "kotlin-source",
-    "rule": "GeneratedOnHandWrittenCode",
-    "anchor": "kotlin-source-generatedonhandwrittencode",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A `Generated` annotation on hand-written code, which JaCoCo and PIT skip.",
-    "allowed": "Remove the annotation from hand-written code: JaCoCo and PIT skip a class, function or constructor annotated @Generated, so this is not measured.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/GeneratedOnHandWrittenCode" }
-  },
-  {
-    "id": "kotlin-source/GenericPackageName",
-    "tool": "kotlin-source",
-    "rule": "GenericPackageName",
-    "anchor": "kotlin-source-genericpackagename",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A package segment named `util`, `helpers`, `manager`, `common`, `misc` or the like.",
-    "allowed": "Name this package for what it holds, not utils, helpers, common or misc. Pure logic shared between features goes in the shared package under a name that says what it does.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/GenericPackageName" }
-  },
-  {
-    "id": "kotlin-source/GenericTypeName",
-    "tool": "kotlin-source",
-    "rule": "GenericTypeName",
-    "anchor": "kotlin-source-generictypename",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A class, interface or object named `Util`, `Helper`, `Manager`, `Common`, `Misc` or the like.",
-    "allowed": "Name this type for what it does (`PriceRounder`, `OrderTotals`), not Utils, Helper, Manager, Common or Misc. Pure logic shared between features goes in the shared package under such a name.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/GenericTypeName" }
-  },
-  {
-    "id": "kotlin-source/HardcodedSecret",
-    "tool": "kotlin-source",
-    "rule": "HardcodedSecret",
-    "anchor": "kotlin-source-hardcodedsecret",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A secret-looking literal assigned to a name such as `password`, `secret`, `token` or `apiKey`.",
-    "allowed": "Read it from the environment or a secrets manager and inject it: this variable holds a hardcoded secret.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/HardcodedSecret" }
-  },
-  {
-    "id": "kotlin-source/HttpWithoutTimeout",
-    "tool": "kotlin-source",
-    "rule": "HttpWithoutTimeout",
-    "anchor": "kotlin-source-httpwithouttimeout",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "An HTTP request or client built without a timeout.",
-    "allowed": "Give the call a deadline: `HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10))` (java.net.http), `connectTimeout` and `readTimeout` on an `HttpURLConnection`, a client with timeouts (OkHttp, which sets them by default, or Ktor with `install(HttpTimeout) { requestTimeoutMillis = 10_000 }`), `RestTemplateBuilder().connectTimeout(...).readTimeout(...)` for Spring, or `RequestConfig.custom().setResponseTimeout(...)` for the Apache client. This HTTP call has no timeout, so a server that never answers hangs it for good.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/HttpWithoutTimeout" }
-  },
-  {
-    "id": "kotlin-source/IoCallInLoop",
-    "tool": "kotlin-source",
-    "rule": "IoCallInLoop",
-    "anchor": "kotlin-source-iocallinloop",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A repository, DAO, JDBC or HTTP client call inside a loop.",
-    "allowed": "Fetch or write all items at once (`findAllById`, `saveAll`, `deleteAll`, `WHERE id IN (...)`, one batched request): this calls a database, HTTP or repository API once per loop item. Paging, polling and retry loops are fine.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/IoCallInLoop" }
-  },
-  {
-    "id": "kotlin-source/LogStringConcatenation",
-    "tool": "kotlin-source",
-    "rule": "LogStringConcatenation",
-    "anchor": "kotlin-source-logstringconcatenation",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A log call whose message is built with a template, `+` or `format` from a runtime value.",
-    "allowed": "Pass values as placeholders (`log.info(\"user {}\", user)`), or give a lambda logger the message (`logger.info { \"user $user\" }`), not a message built with a string template, `+` or `format`.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/LogStringConcatenation" }
-  },
-  {
-    "id": "kotlin-source/MutableModuleState",
-    "tool": "kotlin-source",
-    "rule": "MutableModuleState",
-    "anchor": "kotlin-source-mutablemodulestate",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A top-level `var`, or a mutable collection, array, atomic or flow in a top-level `val`, an `object` or a companion object.",
-    "allowed": "Keep state in an instance: a class whose object the composition root creates and passes in, holding `val`s and immutable `listOf`/`mapOf`. A top-level `var` or a mutable collection in an `object` is shared by the whole program.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/MutableModuleState" }
-  },
-  {
-    "id": "kotlin-source/MutationIgnoreMarker",
-    "tool": "kotlin-source",
-    "rule": "MutationIgnoreMarker",
-    "anchor": "kotlin-source-mutationignoremarker",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "`@DoNotMutate` or `@CoverageIgnore` on a declaration.",
-    "allowed": "Remove the annotation and kill the mutants with a test: PIT does not mutate code annotated @DoNotMutate or @CoverageIgnore.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/MutationIgnoreMarker" }
-  },
-  {
-    "id": "kotlin-source/SecretInLog",
-    "tool": "kotlin-source",
-    "rule": "SecretInLog",
-    "anchor": "kotlin-source-secretinlog",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A secret-named value passed to a log call or `print`.",
-    "allowed": "Log that the secret is set, or a masked tail, instead of the secret itself.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/SecretInLog" }
-  },
-  {
-    "id": "kotlin-source/ShellCommand",
-    "tool": "kotlin-source",
-    "rule": "ShellCommand",
-    "anchor": "kotlin-source-shellcommand",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A shell and its command flag passed as arguments (`\"sh\", \"-c\"`).",
-    "allowed": "Run the program directly with an argument list (`ProcessBuilder(\"git\", \"log\", ref)`), not through a shell with `-c`.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/ShellCommand" }
-  },
-  {
-    "id": "kotlin-source/SqlStringBuilding",
-    "tool": "kotlin-source",
-    "rule": "SqlStringBuilding",
-    "anchor": "kotlin-source-sqlstringbuilding",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "SQL text built from a runtime value with a template, `+` or `format`.",
-    "allowed": "Pass values as bind parameters: `jdbcTemplate.query(\"SELECT * FROM users WHERE id = ?\", mapper, id)`, `prepareStatement(\"... WHERE id = ?\")` with `setLong(1, id)`, `:id` with `NamedParameterJdbcTemplate` or JPA `setParameter(\"id\", id)`, or a query DSL (Exposed, jOOQ). Build placeholder lists from placeholders alone (`ids.joinToString(\", \") { \"?\" }`), optional filters from literal fragments joined with `\" AND \"`, and take a table or column name from a constant or an enum. This SQL text is built from a runtime value with a string template, `+` or `format`, so the value can change the statement (SQL injection).",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/SqlStringBuilding" }
-  },
-  {
-    "id": "kotlin-source/TestClassWithoutTestCases",
-    "tool": "kotlin-source",
-    "rule": "TestClassWithoutTestCases",
-    "anchor": "kotlin-source-testclasswithouttestcases",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A test-named class in the test sources without a test.",
-    "allowed": "Add @Test functions to the class, or rename it if it is a helper (for example `TestInputGenerator` becomes `InputGenerator`): a test class without tests never runs.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/TestClassWithoutTestCases" }
-  },
-  {
-    "id": "kotlin-source/TestHelperInSource",
-    "tool": "kotlin-source",
-    "rule": "TestHelperInSource",
-    "anchor": "kotlin-source-testhelperinsource",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "A main source that imports a test framework.",
-    "allowed": "Move the test helper to the test sources (`src/test/kotlin`): production code must not import a test framework.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/TestHelperInSource" }
-  },
-  {
-    "id": "kotlin-source/TlsVerificationOff",
-    "tool": "kotlin-source",
-    "rule": "TlsVerificationOff",
-    "anchor": "kotlin-source-tlsverificationoff",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "TLS certificate or host-name verification switched off.",
-    "allowed": "Keep certificate and host-name verification on and trust the certificate authority instead: load it into a `KeyStore` and build the `SSLContext` from `TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(keyStore) }`, use OkHttp `HandshakeCertificates.Builder().addTrustedCertificate(certificate)`, or set `-Djavax.net.ssl.trustStore` for a private CA. This trusts any certificate or host name, so anyone on the network can pose as the server, and turning it off by environment ships the switch to production.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/TlsVerificationOff" }
-  },
-  {
-    "id": "kotlin-source/UnsafeDeserialization",
-    "tool": "kotlin-source",
-    "rule": "UnsafeDeserialization",
-    "anchor": "kotlin-source-unsafedeserialization",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "Deserialization that instantiates attacker-chosen types (`XMLDecoder`, default typing, Kryo without registration).",
-    "allowed": "Read the data as JSON into a concrete type: `Json.decodeFromString<Order>(text)` with kotlinx.serialization or `mapper.readValue<Order>(text)` with Jackson, with polymorphism by a logical name (a `sealed` class with kotlinx.serialization, or `@JsonTypeInfo(use = JsonTypeInfo.Id.NAME)` with `@JsonSubTypes`). This reads class names or objects from the data, so a crafted payload builds any class on the classpath and runs code.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/UnsafeDeserialization" }
-  },
-  {
-    "id": "kotlin-source/WeakHash",
-    "tool": "kotlin-source",
-    "rule": "WeakHash",
-    "anchor": "kotlin-source-weakhash",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "A scan of the Kotlin sources on the Node side, after comments and string bodies are masked, reports it: the Kotlin counterpart of a TypeScript, Java or Python rule that narrows one spot to one allowed form.",
-    "docs": [
-      { "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-checks" }
-    ],
-    "summary": "MD2, MD4, MD5 or SHA-1 for hashing or signing, or HMAC-MD5.",
-    "allowed": "Hash with `MessageDigest.getInstance(\"SHA-256\")` (or SHA-384, SHA-512, SHA3-256), sign with `Mac.getInstance(\"HmacSHA256\")`, and hash passwords with Argon2 or bcrypt (`Argon2PasswordEncoder`, `BCryptPasswordEncoder`): MD5 and SHA-1 are broken hashes, collisions are cheap and brute force is fast. A protocol you do not control that requires one (a legacy signature, an ETag, a WebSocket accept key) is the exception.",
-    "exception": { "key": "exceptions", "rule": "kotlin-source/WeakHash" }
-  },
-  {
-    "id": "kotlinc/cast",
-    "tool": "kotlinc",
-    "rule": "cast",
-    "anchor": "kotlinc-cast",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "The kotlinc lint compiles the main Kotlin sources with the pinned compiler and reports these warnings as findings, like -Werror on the code the change touched; a build setting cannot hide them.",
-    "docs": [
+    "An unannotated `Boolean` parameter of a public function that is the condition of an `if`, `when` or `while`; private, `override`, setters, `with*`, `of`/`from`/`valueOf` are skipped.",
+    "Split the function into two functions named for each behavior, or pass an enum or a small data class: this boolean parameter switches the function between two behaviors, which makes the call site unreadable.",
+    { "key": "exceptions", "rule": "kotlin-source/BooleanFlagParameter" },
+    "CatchOnlyLogsOrReturnsDefault",
+    "A `catch` that neither throws, nor uses the exception, nor answers with an error response; log calls and `printStackTrace` do not count (so it is the one finding for a catch that only logs); an interrupt and a retry loop are skipped.",
+    "Rethrow it with the cause (`throw OrderException(message, e)`), return a failure result that carries the exception (`Result.failure(e)`), or answer with an error response: this catch only logs the failure or returns a default, and carries on.",
+    { "key": "exceptions", "rule": "kotlin-source/CatchOnlyLogsOrReturnsDefault" },
+    "CommentedOutCode",
+    "A run of line comments, or a block comment, whose first code-shaped line is a declaration, call, assignment, control header, `fun`, `class`, import or return.",
+    "Delete the commented-out code; version control keeps it.",
+    { "key": "exceptions", "rule": "kotlin-source/CommentedOutCode" },
+    "CredentialLiteral",
+    "An AWS key, a GitHub or Slack token, a `sk_live_`/`sk-proj-` key, a private key header, a password in a URL or a `Bearer`/`Basic` value.",
+    "Read it from the environment or a secrets manager: this string looks like a credential (access key, token, private key, or a password in a URL).",
+    { "key": "exceptions", "rule": "kotlin-source/CredentialLiteral" },
+    "DetachedTestCase",
+    "(test sources) a public no-argument function with a block body and no return type (or `: Unit`) named like a test (backticks, `test*`, `should*`) without an annotation, in a class that has tests; a helper or data provider that returns a value passes.",
+    "Annotate the function with @Test so JUnit runs it, or make it private if it is a helper: this test never runs.",
+    { "key": "exceptions", "rule": "kotlin-source/DetachedTestCase" },
+    "GeneratedOnHandWrittenCode",
+    "An annotation named `Generated` (any package, also `@get:`/`@set:`) on a class, object, interface, function or constructor (JaCoCo and PIT skip it), as the Java rule; `@GeneratedValue` and `@Generated` on a property pass.",
+    "Remove the annotation from hand-written code: JaCoCo and PIT skip a class, function or constructor annotated @Generated, so this is not measured.",
+    { "key": "exceptions", "rule": "kotlin-source/GeneratedOnHandWrittenCode" },
+    "GenericPackageName",
+    "A package segment `util`, `utils`, `utility`, `helpers`, `manager`, `common`, `commons`, `misc`.",
+    "Name this package for what it holds, not utils, helpers, common or misc. Pure logic shared between features goes in the shared package under a name that says what it does.",
+    { "key": "exceptions", "rule": "kotlin-source/GenericPackageName" },
+    "GenericTypeName",
+    "A class, interface or object named `*Util(s)`, `*Utility`, `*Utilities`, `*Helper`, `*Manager`, `*Common(s)`, `*Misc`; framework roles and a type that extends one with the same ending are skipped.",
+    "Name this type for what it does (`PriceRounder`, `OrderTotals`), not Utils, Helper, Manager, Common or Misc. Pure logic shared between features goes in the shared package under such a name.",
+    { "key": "exceptions", "rule": "kotlin-source/GenericTypeName" },
+    "HardcodedSecret",
+    "A secret-looking literal assigned to a name like `*password`, `*secret`, `*token`, `*apiKey`, also as a named argument, a `\"key\" to \"value\"` pair or a `\"key\", \"value\"` argument pair.",
+    "Read it from the environment or a secrets manager and inject it: this variable holds a hardcoded secret.",
+    { "key": "exceptions", "rule": "kotlin-source/HardcodedSecret" },
+    "HttpWithoutTimeout",
+    "A `java.net.http` request built without `.timeout(...)`, an `HttpURLConnection` from an HTTP URL whose block never sets `readTimeout`, `URL(...).readText()`/`readBytes()`/`openStream()`, `RestTemplate()`, `HttpClients.createDefault()`; OkHttp and Ktor pass (their engines set timeouts).",
+    "Give the call a deadline: `HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10))` (java.net.http), `connectTimeout` and `readTimeout` on an `HttpURLConnection`, a client with timeouts (OkHttp, which sets them by default, or Ktor with `install(HttpTimeout) { requestTimeoutMillis = 10_000 }`), `RestTemplateBuilder().connectTimeout(...).readTimeout(...)` for Spring, or `RequestConfig.custom().setResponseTimeout(...)` for the Apache client. This HTTP call has no timeout, so a server that never answers hangs it for good.",
+    { "key": "exceptions", "rule": "kotlin-source/HttpWithoutTimeout" },
+    "IoCallInLoop",
+    "A repository, DAO, JDBC or HTTP client call in a `for`, `while` or `do` body or an iterating lambda (`forEach`, `map`, `filter` and similar); paging and polling loops (a `while` or `do` whose condition, `if (...) break` or `?: break` reads what the call returned) and retries (the call in a `try` that leaves the loop) pass; file calls are not checked.",
+    "Fetch or write all items at once (`findAllById`, `saveAll`, `deleteAll`, `WHERE id IN (...)`, one batched request): this calls a database, HTTP or repository API once per loop item. Paging, polling and retry loops are fine.",
+    { "key": "exceptions", "rule": "kotlin-source/IoCallInLoop" },
+    "LogStringConcatenation",
+    "An `info`, `warn`, `error`, `log`, `config`, `warning` or `severe` call on a logger (the levels of the Java rule) whose message is a string template, `+` or `format` with a value that is not a compile-time constant (a literal, a `CONSTANT_CASE` name or a `const val` is one).",
+    "Pass values as placeholders (`log.info(\"user {}\", user)`), or give a lambda logger the message (`logger.info { \"user $user\" }`), not a message built with a string template, `+` or `format`.",
+    { "key": "exceptions", "rule": "kotlin-source/LogStringConcatenation" },
+    "MutableModuleState",
+    "A top-level `var`, or a mutable collection, array, atomic or `MutableStateFlow` in a top-level `val`, or either in an `object` or companion object.",
+    "Keep state in an instance: a class whose object the composition root creates and passes in, holding `val`s and immutable `listOf`/`mapOf`. A top-level `var` or a mutable collection in an `object` is shared by the whole program.",
+    { "key": "exceptions", "rule": "kotlin-source/MutableModuleState" },
+    "MutationIgnoreMarker",
+    "`@DoNotMutate`, `@CoverageIgnore`.",
+    "Remove the annotation and kill the mutants with a test: PIT does not mutate code annotated @DoNotMutate or @CoverageIgnore.",
+    { "key": "exceptions", "rule": "kotlin-source/MutationIgnoreMarker" },
+    "SecretInLog",
+    "A secret-named value passed to a log call (any level, Android `Log.d` too) or `print`, directly, in a `+`, in a template or in a lambda message (`logger.info { \"token $token\" }`).",
+    "Log that the secret is set, or a masked tail, instead of the secret itself.",
+    { "key": "exceptions", "rule": "kotlin-source/SecretInLog" },
+    "ShellCommand",
+    "A shell and its command flag as consecutive literals (`\"sh\", \"-c\"`, `\"bash\", \"-c\"`, `\"cmd\", \"/c\"`, `\"powershell\", \"-Command\"`).",
+    "Run the program directly with an argument list (`ProcessBuilder(\"git\", \"log\", ref)`), not through a shell with `-c`.",
+    { "key": "exceptions", "rule": "kotlin-source/ShellCommand" },
+    "SqlStringBuilding",
+    "SQL text built from a runtime value with a string template, `+`, `String.format` or `.format`: text that starts like a statement or clause in capitals (`SELECT ... FROM`, `UPDATE ... SET`, `AND name =`), or any case when it reaches a JDBC, Spring `JdbcTemplate`, JPA or R2DBC query call directly or through a `val`.",
+    "Pass values as bind parameters: `jdbcTemplate.query(\"SELECT * FROM users WHERE id = ?\", mapper, id)`, `prepareStatement(\"... WHERE id = ?\")` with `setLong(1, id)`, `:id` with `NamedParameterJdbcTemplate` or JPA `setParameter(\"id\", id)`, or a query DSL (Exposed, jOOQ). Build placeholder lists from placeholders alone (`ids.joinToString(\", \") { \"?\" }`), optional filters from literal fragments joined with `\" AND \"`, and take a table or column name from a constant or an enum. This SQL text is built from a runtime value with a string template, `+` or `format`, so the value can change the statement (SQL injection).",
+    { "key": "exceptions", "rule": "kotlin-source/SqlStringBuilding" },
+    "TestClassWithoutTestCases",
+    "(test sources) a class named `*Test`, `*Tests`, `*TestCase` or `*IT` with no test annotation in it; abstract and open classes, Kotest specs and classes with a superclass, suites and `@Nested` are skipped.",
+    "Add @Test functions to the class, or rename it if it is a helper (for example `TestInputGenerator` becomes `InputGenerator`): a test class without tests never runs.",
+    { "key": "exceptions", "rule": "kotlin-source/TestClassWithoutTestCases" },
+    "TestHelperInSource",
+    "A main source that imports JUnit, kotlin.test, Kotest, MockK, Mockito, AssertJ, Truth, Strikt or Hamcrest.",
+    "Move the test helper to the test sources (`src/test/kotlin`): production code must not import a test framework.",
+    { "key": "exceptions", "rule": "kotlin-source/TestHelperInSource" },
+    "TlsVerificationOff",
+    "An empty `checkServerTrusted`, a host-name verifier or trust strategy that returns `true`, `NoopHostnameVerifier`, `TrustAllStrategy`, `TrustSelfSignedStrategy`, Netty's `InsecureTrustManagerFactory` (its use, not its import).",
+    "Keep certificate and host-name verification on and trust the certificate authority instead: load it into a `KeyStore` and build the `SSLContext` from `TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(keyStore) }`, use OkHttp `HandshakeCertificates.Builder().addTrustedCertificate(certificate)`, or set `-Djavax.net.ssl.trustStore` for a private CA. This trusts any certificate or host name, so anyone on the network can pose as the server, and turning it off by environment ships the switch to production.",
+    { "key": "exceptions", "rule": "kotlin-source/TlsVerificationOff" },
+    "UnsafeDeserialization",
+    "`XMLDecoder`, Jackson `enableDefaultTyping`, `activateDefaultTyping` with `LaissezFaireSubTypeValidator`, `JsonTypeInfo.Id.CLASS`/`MINIMAL_CLASS`, `SerializationUtils.deserialize`, Kryo without class registration (`ObjectInputStream` is detekt's `ForbiddenMethodCall`).",
+    "Read the data as JSON into a concrete type: `Json.decodeFromString<Order>(text)` with kotlinx.serialization or `mapper.readValue<Order>(text)` with Jackson, with polymorphism by a logical name (a `sealed` class with kotlinx.serialization, or `@JsonTypeInfo(use = JsonTypeInfo.Id.NAME)` with `@JsonSubTypes`). This reads class names or objects from the data, so a crafted payload builds any class on the classpath and runs code.",
+    { "key": "exceptions", "rule": "kotlin-source/UnsafeDeserialization" },
+    "WeakHash",
+    "`MessageDigest`, `Signature`, `DigestUtils` with MD2, MD4, MD5 or SHA-1 (a literal, a constant in the file or a commons-codec constant), commons-codec, Spring, Guava and Okio MD5/SHA-1 helpers, and HMAC-MD5 (`Mac`, `KeyGenerator`, `HmacUtils`, its own message); HMAC-SHA1 passes.",
+    "Hash with `MessageDigest.getInstance(\"SHA-256\")` (or SHA-384, SHA-512, SHA3-256), sign with `Mac.getInstance(\"HmacSHA256\")`, and hash passwords with Argon2 or bcrypt (`Argon2PasswordEncoder`, `BCryptPasswordEncoder`): MD5 and SHA-1 are broken hashes, collisions are cheap and brute force is fast. A protocol you do not control that requires one (a legacy signature, an ETag, a WebSocket accept key) is the exception.",
+    { "key": "exceptions", "rule": "kotlin-source/WeakHash" },
+    "kotlinc",
+    "cast",
+    "The kotlinc lint compiles the main Kotlin sources with the pinned compiler and reports these warnings as findings, like -Werror on the code the change touched; a build setting cannot hide them.",
+    [
       {
         "label": "Kotlin preset guide",
         "path": "docs/kotlin-preset.md",
         "anchor": "compiler-warnings"
       }
     ],
-    "summary": "A useless cast (`USELESS_CAST`).",
-    "allowed": "Remove the cast.",
-    "exception": { "key": "exceptions", "rule": "kotlinc/cast" }
-  },
-  {
-    "id": "kotlinc/deprecation",
-    "tool": "kotlinc",
-    "rule": "deprecation",
-    "anchor": "kotlinc-deprecation",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "The kotlinc lint compiles the main Kotlin sources with the pinned compiler and reports these warnings as findings, like -Werror on the code the change touched; a build setting cannot hide them.",
-    "docs": [
+    "A Kotlin compiler warning: `USELESS_CAST`.",
+    "Remove the cast.",
+    { "key": "exceptions", "rule": "kotlinc/cast" },
+    "deprecation",
+    "A Kotlin compiler warning: `DEPRECATION`, `TYPEALIAS_EXPANSION_DEPRECATION`.",
+    "Call the replacement the deprecation names (its `ReplaceWith`, or the Javadoc of a Java API).",
+    { "key": "exceptions", "rule": "kotlinc/deprecation" },
+    "lint-not-run",
+    "Without the lint compile, the compiler warnings above are not checked, so the run says so.",
+    "The kotlinc lint could not compile the sources, for example because a compiler plugin could not be loaded.",
+    "No kotlinc lint report from the lint compile (kotlinc exited with an error), so unchecked casts, deprecated calls and redundant casts were not checked. Fix what that compile reports (the main sources, the compile class path and the compiler plugins).",
+    { "note": "A descriptive finding: it never fails the gate, so no exception applies." },
+    "unchecked",
+    "A Kotlin compiler warning: `UNCHECKED_CAST`.",
+    "Use a typed API, a checked conversion (`as? List<*>` and a check of each element) or a reified generic function instead of the unchecked cast.",
+    { "key": "exceptions", "rule": "kotlinc/unchecked" },
+    "ktfmt",
+    "format",
+    "When the project formats with ktfmt, the format check reports every file it would change.",
+    [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
+    "A Kotlin file is not formatted with ktfmt.",
+    "File is not formatted with ktfmt. Format it with the \"Format with ktfmt\" command printed at the start of the run. Not your formatter: set kotlin.formatter.",
+    {
+      "note": "No exception applies: format the file, or choose another formatter with `kotlin.formatter`."
+    },
+    "ktlint",
+    "ktlint.<rule>",
+    "When the project formats with ktlint, the format check reports each rule of the ktlint standard ruleset that a file breaks.",
+    "A rule of the ktlint standard ruleset that a Kotlin file breaks.",
+    {
+      "note": "No exception applies. Lift this rule with ktlint_standard_<rule> = disabled in .editorconfig, which nitpicker reads only when ktlint lists \"project\" (see the start of the run). Not your formatter: set kotlin.formatter."
+    },
+    "^ktlint\\.",
+    ["ktlint/ktlint.standard:no-wildcard-imports"],
+    [
       {
-        "label": "Kotlin preset guide",
-        "path": "docs/kotlin-preset.md",
-        "anchor": "compiler-warnings"
+        "label": "ktlint standard rules",
+        "url": "https://pinterest.github.io/ktlint/latest/rules/standard/"
       }
     ],
-    "summary": "A use of a deprecated API (`DEPRECATION`, `TYPEALIAS_EXPANSION_DEPRECATION`).",
-    "allowed": "Call the replacement the deprecation names (`ReplaceWith`, or the Java Javadoc).",
-    "exception": { "key": "exceptions", "rule": "kotlinc/deprecation" }
-  },
-  {
-    "id": "kotlinc/lint-not-run",
-    "tool": "kotlinc",
-    "rule": "lint-not-run",
-    "anchor": "kotlinc-lint-not-run",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "The kotlinc lint compiles the main Kotlin sources with the pinned compiler and reports these warnings as findings, like -Werror on the code the change touched; a build setting cannot hide them.",
-    "docs": [
-      {
-        "label": "Kotlin preset guide",
-        "path": "docs/kotlin-preset.md",
-        "anchor": "compiler-warnings"
-      }
-    ],
-    "summary": "The kotlinc lint could not compile the sources, for example because a compiler plugin could not be loaded.",
-    "allowed": "Fix the first compiler error the message names so that the lint can run.",
-    "exception": {
-      "note": "A descriptive finding: it never fails the gate, so no exception applies."
-    }
-  },
-  {
-    "id": "kotlinc/unchecked",
-    "tool": "kotlinc",
-    "rule": "unchecked",
-    "anchor": "kotlinc-unchecked",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "why": "The kotlinc lint compiles the main Kotlin sources with the pinned compiler and reports these warnings as findings, like -Werror on the code the change touched; a build setting cannot hide them.",
-    "docs": [
-      {
-        "label": "Kotlin preset guide",
-        "path": "docs/kotlin-preset.md",
-        "anchor": "compiler-warnings"
-      }
-    ],
-    "summary": "An unchecked cast (`UNCHECKED_CAST`).",
-    "allowed": "Use a typed API, a checked conversion (`as? List<*>`) or a reified function.",
-    "exception": { "key": "exceptions", "rule": "kotlinc/unchecked" }
-  },
-  {
-    "id": "ktfmt/format",
-    "tool": "ktfmt",
-    "rule": "format",
-    "anchor": "ktfmt-format",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "summary": "A file is not formatted with ktfmt",
-    "why": "When the project formats with ktfmt, the format check reports every file it would change.",
-    "allowed": "Run ktfmt on the file; it fixes the layout.",
-    "exception": { "key": "exceptions", "rule": "ktfmt/format" },
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }]
-  },
-  {
-    "id": "ktlint/ktlint.<rule>",
-    "tool": "ktlint",
-    "rule": "ktlint.<rule>",
-    "anchor": "ktlint-ktlint-rule",
-    "page": "kotlin-nitpicker",
-    "analyzers": { "kotlin": ["kotlin"] },
-    "builds": ["gradle", "maven"],
-    "pattern": "^ktlint\\.",
-    "summary": "A ktlint formatting rule",
-    "why": "When the project formats with ktlint, the format check reports each rule of the ktlint standard ruleset that a file breaks.",
-    "allowed": "Run `ktlint --format` on the file; it fixes the layout. Not your formatter: set `kotlin.formatter` in nitpicker.config.json.",
-    "exception": { "key": "exceptions", "rule": "ktlint/ktlint.<rule>" },
-    "docs": [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }]
-  }
-]
+    "pmd",
+    "AssertionInControlFlow",
+    "One of the review rules of the Kotlin preset, a scan of the Kotlin sources on the Node side; it prints as a PMD rule, like the Java rules it mirrors.",
+    [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "review-rules" }],
+    "An assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `||`, `?:`, a swallowing `try` or `runCatching`, or after an early return.",
+    "Assert unconditionally. An assertion inside an if, a when, a loop, a safe call, a try/catch that swallows the failure or a runCatching can be skipped, so the test passes without checking anything: a loop over an empty list, or a branch the data never takes, checks nothing. Assert in every branch (an if/else or when whose branches all assert or fail is fine), or narrow with assertNotNull, assertIs or `?: fail(...)` instead of an if or a safe call. Put a table of cases in a parameterized test (@ParameterizedTest with @MethodSource or @CsvSource, Kotest withData) and assert every time; for a loop over results, assert the whole collection at once (assertEquals(expected, results), shouldContainExactly, AssertJ containsExactly). Do not return early before the assertions, and let assertion errors escape. An exception fits only a case that cannot be stated unconditionally, such as cases generated at run time.",
+    { "key": "exceptions", "rule": "pmd/AssertionInControlFlow" },
+    "CoroutineEscapesTest",
+    "A `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels.",
+    "This test starts a coroutine that the test does not wait for, so it can still be running, or fail, after the test has passed: a launch, async, launchIn, stateIn or shareIn on CoroutineScope(...), MainScope(), a scope kept in a field or a local, a scope a helper returns, lifecycleScope or viewModelScope without a test Main dispatcher, or a TestScope outside runTest is not a child of the test, and with, run, apply or also on such a scope does not change that. Run the body in runTest (or runBlocking, coroutineScope, supervisorScope) and launch from there, keep the Job or Deferred and join or await it (`val job = scope.launch { ... }; job.join()`), or build the scope on the test dispatcher and drive it with advanceUntilIdle; `backgroundScope.launch` inside runTest is for work that should end with the test. An exception fits only when the test waits through a harness this rule cannot see.",
+    { "key": "exceptions", "rule": "pmd/CoroutineEscapesTest" },
+    "DisabledTest",
+    "A skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption.",
+    "Fix or delete this test instead of disabling it: @Disabled, @Ignore, @Ignored (also through an alias or an annotation that carries them), an x-prefixed Kotest name (xtest, xcontext, xdescribe, xit, xshould, xgiven), a \"!\" name prefix, `.config(enabled = false)`, a condition that is always false and an assumption that is always false all skip it while the build stays green, so nothing shows that the behavior it covered is unchecked. Delete the test when the behavior is gone; to run it only where it can run, use a condition on the environment (`@EnabledOnOs`, `@EnabledIfSystemProperty`, an assumption on a real condition). An exception fits only a test that is skipped on purpose until a tracked defect is fixed.",
+    { "key": "exceptions", "rule": "pmd/DisabledTest" },
+    "FocusedTest",
+    "A Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`.",
+    "Remove the focus from this test: a Kotest name with the \"f:\" prefix and the f-prefixed registrations (ftest, fcontext, fdescribe, fit, fshould, fgiven) make Kotest run only the focused tests of the spec, so the rest of the suite is skipped while the build stays green. Run one test while you work with the IDE or a Gradle `--tests` filter, and commit the test without the focus.",
+    { "key": "exceptions", "rule": "pmd/FocusedTest" }
+  ],
+  "entries": [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, -1, -1, -1, -1],
+    [0, 9, 2, 3, 10, 11, 12, -1, 13, 14, -1, -1, -1],
+    [0, 15, 2, 3, 4, 5, 16, 17, 18, -1, -1, -1, -1],
+    [19, 20, 2, 3, 21, 22, 23, 24, 25, -1, -1, -1, -1],
+    [19, 26, 2, 3, 21, 22, 27, 28, 29, -1, -1, -1, -1],
+    [19, 30, 2, 3, 21, 22, 31, 32, 33, -1, -1, -1, -1],
+    [19, 34, 2, 3, 21, 22, 35, 36, 37, -1, -1, -1, -1],
+    [19, 38, 2, 3, 21, 22, 39, 40, 41, -1, -1, -1, -1],
+    [19, 42, 2, 3, 21, 22, 43, 44, 45, -1, -1, -1, -1],
+    [19, 46, 2, 3, 21, 22, 47, 48, 49, -1, -1, -1, -1],
+    [19, 50, 2, 3, 21, 22, 51, 52, 53, -1, -1, -1, -1],
+    [19, 54, 2, 3, 21, 22, 55, 56, 57, -1, -1, -1, -1],
+    [19, 58, 2, 3, 21, 22, 59, 60, 61, -1, -1, -1, -1],
+    [19, 62, 2, 3, 21, 22, 63, 64, 65, -1, -1, -1, -1],
+    [19, 66, 2, 3, 21, 22, 67, 68, 69, -1, -1, -1, -1],
+    [19, 70, 2, 3, 21, 22, 71, 72, 73, -1, -1, -1, -1],
+    [19, 74, 2, 3, 21, 22, 75, 76, 77, -1, -1, -1, -1],
+    [19, 78, 2, 3, 21, 22, 79, 80, 81, -1, -1, -1, -1],
+    [19, 82, 2, 3, 21, 22, 83, 84, 85, -1, -1, -1, -1],
+    [19, 86, 2, 3, 21, 22, 87, 88, 89, -1, -1, -1, -1],
+    [19, 90, 2, 3, 21, 22, 91, 92, 93, -1, -1, -1, -1],
+    [19, 94, 2, 3, 21, 22, 95, 96, 97, -1, -1, -1, -1],
+    [19, 98, 2, 3, 21, 22, 99, 100, 101, -1, -1, -1, -1],
+    [19, 102, 2, 3, 21, 22, 103, 104, 105, -1, -1, -1, -1],
+    [19, 106, 2, 3, 21, 22, 107, 108, 109, -1, -1, -1, -1],
+    [110, 111, 2, 3, 112, 113, 114, 115, 116, -1, -1, -1, -1],
+    [110, 117, 2, 3, 112, 113, 118, 119, 120, -1, -1, -1, -1],
+    [110, 121, 2, 3, 122, 113, 123, 124, 125, -1, -1, -1, -1],
+    [110, 126, 2, 3, 112, 113, 127, 128, 129, -1, -1, -1, -1],
+    [130, 131, 2, 3, 132, 133, 134, 135, 136, -1, -1, -1, -1],
+    [137, 138, 2, 3, 139, 133, 140, -1, 141, -1, 142, 143, 144],
+    [145, 146, 2, 3, 147, 148, 149, 150, 151, -1, -1, -1, -1],
+    [145, 152, 2, 3, 147, 148, 153, 154, 155, -1, -1, -1, -1],
+    [145, 156, 2, 3, 147, 148, 157, 158, 159, -1, -1, -1, -1],
+    [145, 160, 2, 3, 147, 148, 161, 162, 163, -1, -1, -1, -1]
+  ]
+}

@@ -7,8 +7,10 @@ import {
   helpUriFor,
   indexEntries,
   lookupEntries,
+  decodePage,
+  encodePage,
   readReferenceEntries,
-  readReferenceIndex,
+  referenceLinks,
   referenceUrl,
   withHelpUris,
 } from './store.mjs';
@@ -108,16 +110,46 @@ describe('the committed reference', () => {
     const committed = readReferenceEntries();
 
     expect(committed.length).toBeGreaterThan(2000);
-    expect(readReferenceIndex().entries).toHaveLength(committed.length);
+    expect(referenceLinks().index().entries).toHaveLength(committed.length);
   });
 
   it('gives a helpUri for a rule it knows and none for one it does not', () => {
-    const committed = readReferenceIndex();
+    const links = referenceLinks();
 
-    expect(helpUriFor(committed, { tool: 'structure', rule: 'function-lines-limit' })).toBe(
+    expect(helpUriFor(links, { tool: 'structure', rule: 'function-lines-limit' })).toBe(
       docsUrl('docs/rules/checks.md', 'structure-function-lines-limit'),
     );
-    expect(helpUriFor(committed, { tool: 'nothing', rule: 'here' })).toBeUndefined();
+    expect(helpUriFor(links, { tool: 'nothing', rule: 'here' })).toBeUndefined();
+  });
+
+  it('reads the data and the link root once per referenceLinks object', () => {
+    const links = referenceLinks();
+
+    expect(links.index()).toBe(links.index());
+    expect(links.root()).toBe(links.root());
+    expect(links.index()).not.toBe(referenceLinks().index());
+  });
+
+  it('finds a dotted detekt rule by its last part', () => {
+    expect(
+      lookupEntries(referenceLinks().index(), 'MagicNumber')
+        .map(({ id }) => id)
+        .filter((id) => id.startsWith('detekt/')),
+    ).toEqual(['detekt/detekt.style.MagicNumber']);
+  });
+});
+
+describe('encodePage and decodePage', () => {
+  it('keeps each value once and restores the entries with their derived fields', () => {
+    const page = [
+      ruleEntry({ tool: 'demo', rule: 'one', page: 'checks', why: 'Shared.', limit: '5' }),
+      ruleEntry({ tool: 'demo', rule: 'two', page: 'checks', why: 'Shared.' }),
+    ];
+    const encoded = encodePage(page);
+
+    expect(encoded.values.filter((value) => value === 'Shared.')).toHaveLength(1);
+    expect(encoded.fields).toEqual(['tool', 'rule', 'why', 'limit']);
+    expect(decodePage('checks', JSON.parse(JSON.stringify(encoded)))).toEqual(page);
   });
 });
 

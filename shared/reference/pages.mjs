@@ -52,7 +52,7 @@ export const PAGES = [
     id: 'java-spotbugs',
     title: 'Java and Kotlin: SpotBugs rules',
     summary:
-      'The SpotBugs bug patterns, with find-sec-bugs, that the Java and Kotlin presets run on compiled classes, with Gradle and Maven.',
+      'The SpotBugs bug patterns that the Java and Kotlin presets run on compiled classes, with Gradle and Maven.',
     guide: 'docs/java-preset.md',
   },
   {

@@ -7,7 +7,7 @@ import { isIntegrationTest } from '../test-times/integration-tests.mjs';
 export const SPRING_ARCH_REPORT = 'spring-arch.json';
 const TOOL = 'archunit';
 
-const MESSAGES = {
+export const SPRING_ARCH_MESSAGES = {
   'spring-layout': ({ simple, detail, root }) =>
     detail === ''
       ? `Put ${simple} in a feature package ${root}.<feature>: the root package ${root} holds only the application, @Configuration and @ConfigurationProperties classes.`
@@ -51,7 +51,7 @@ const MESSAGES = {
     `Reset state in ${simple} itself, or test the class without a Spring context: @DirtiesContext rebuilds the context and slows the suite.`,
 };
 
-export const SPRING_ARCH_RULES = Object.keys(MESSAGES);
+export const SPRING_ARCH_RULES = Object.keys(SPRING_ARCH_MESSAGES);
 
 const PLACEMENT = 'spring-test-placement';
 const BOUNDARY = 'spring-feature-boundary';
@@ -111,7 +111,7 @@ export function readSpringArchFindings(reportRoot, { resolvePath, isExcepted = (
   return violations.flatMap((violation) => {
     const { rule, className, detail } = violation;
     const filePath = violationPath(resolvePath, violation);
-    const describe = MESSAGES[rule];
+    const describe = SPRING_ARCH_MESSAGES[rule];
     if (describe === undefined) {
       throw new Error(`Unknown Spring architecture rule ${rule} in ${SPRING_ARCH_REPORT}`);
     }

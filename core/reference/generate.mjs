@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import * as prettier from 'prettier';
-import { REFERENCE_DATA_DIRECTORY } from '../../shared/reference/store.mjs';
+import { encodePage, REFERENCE_DATA_DIRECTORY } from '../../shared/reference/store.mjs';
 import { PAGES } from '../../shared/reference/pages.mjs';
 import { buildReference } from './build.mjs';
 import { renderReference } from './render.mjs';
@@ -27,7 +27,7 @@ function dataFiles(entries) {
   const byPage = Map.groupBy(entries, ({ page }) => page);
   return PAGES.map(({ id }) => [
     `${REFERENCE_DATA_DIRECTORY}/${id}.json`,
-    JSON.stringify(byPage.get(id) ?? []),
+    JSON.stringify(encodePage(byPage.get(id) ?? [])),
   ]);
 }
 

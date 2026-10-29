@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { docsUrl } from './docs-url.mjs';
+import { docsRef, docsRootUrl, docsUrl } from './docs-url.mjs';
 
 const REPOSITORY = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
   .repository.url;
@@ -23,5 +23,21 @@ describe('docsUrl', () => {
 
   it('adds no fragment for an empty anchor', () => {
     expect(docsUrl('docs/usage.md', '')).toBe(docsUrl('docs/usage.md'));
+  });
+});
+
+describe('docsRef', () => {
+  it('links an installed package to the release tag of its version and a checkout to main', () => {
+    expect(docsRef({ version: '0.1.0-rc.1', checkout: false })).toBe('v0.1.0-rc.1');
+    expect(docsRef({ version: '0.1.0-rc.1', checkout: true })).toBe('main');
+  });
+});
+
+describe('docsUrl with a root', () => {
+  it('builds the link under the root it is given, and none without a root', () => {
+    const root = 'https://github.com/example/nitpicker/blob/v1.2.3';
+
+    expect(docsUrl('docs/usage.md', 'rules', root)).toBe(`${root}/docs/usage.md#rules`);
+    expect(docsUrl('docs/usage.md', undefined, docsRootUrl())).toBe(docsUrl('docs/usage.md'));
   });
 });

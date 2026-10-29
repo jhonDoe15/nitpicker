@@ -24,7 +24,7 @@ export function kotlinFiles(projectRoot, sourceRoot) {
     .map((entry) => path.posix.join(sourceRoot, entry.replaceAll('\\', '/')));
 }
 
-function suppressionMessage(file, token) {
+export function inlineSuppressionMessage(file, token) {
   const compilerRule = compilerWarningRule(token);
   if (compilerRule !== undefined) {
     return `Suppressing "${token}" inline is not allowed. Fix the code the compiler warns about. ${exceptionHint(compilerRule, file)}`;
@@ -38,7 +38,7 @@ function suppressionFinding(file, token, identity) {
     rule: SUPPRESSION_RULE,
     path: file,
     identity,
-    message: suppressionMessage(file, token),
+    message: inlineSuppressionMessage(file, token),
     classification: 'enforceable',
   };
 }

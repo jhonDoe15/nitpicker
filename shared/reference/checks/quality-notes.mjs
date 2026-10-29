@@ -1,4 +1,9 @@
 export const QUALITY_NOTES = {
+  'co-change': [
+    'Two folders of production code that changed together in most of the commits of the less-changed one, which the history check reads when `history.coChange` is on.',
+    'Folders that keep changing together usually share knowledge that has no single owner, so every change has to touch both.',
+    undefined,
+  ],
   'crap-score-limit': [
     'A function whose CRAP score (its complexity combined with how little of it the tests cover) is at or above the limit.',
     'Complex code that tests do not cover is the code most likely to break unnoticed.',
