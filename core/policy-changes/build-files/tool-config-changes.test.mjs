@@ -104,6 +104,30 @@ describe('project tool configs the project opted into', () => {
       }).policyLoosenings,
     ).toEqual(['prettier project config changed: package.json']);
   });
+
+  it.each([undefined, 'javascript'])(
+    'counts an edit of the Stryker config the %s project opted into',
+    (preset) => {
+      const at = (stryker) => ({
+        'stryker.config.mjs': stryker,
+        'src/a.ts': 'export const a = 1;\n',
+      });
+      const base = at('export default { mutator: { excludedMutations: [] } };\n');
+      const head = at("export default { mutator: { excludedMutations: ['StringLiteral'] } };\n");
+      const comment = at(
+        '// excluded below\nexport default { mutator: { excludedMutations: [] } };\n',
+      );
+
+      expect(
+        between({ base, head, config: { preset, tools: { stryker: PROJECT } } }).policyLoosenings,
+      ).toEqual(['stryker project config changed: stryker.config.mjs']);
+      expect(
+        between({ base, head: comment, config: { preset, tools: { stryker: PROJECT } } })
+          .policyLoosenings,
+      ).toEqual([]);
+      expect(between({ base, head, config: { preset } }).policyLoosenings).toEqual([]);
+    },
+  );
   it.each(['typescript', 'python', 'java', 'kotlin'])(
     'counts an edit of the opted-in .jscpd.json with the %s preset, not a reformat',
     (preset) => {
