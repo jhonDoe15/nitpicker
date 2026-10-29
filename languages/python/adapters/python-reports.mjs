@@ -10,10 +10,11 @@ import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
 import { withoutLineNumbers } from '../ingest/identities.mjs';
 import { ingestRulesReport } from '../ingest/rules-report.mjs';
 import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
-import { applyRuleHints } from '../rules/rule-hints.mjs';
+import { applyRuleHints, RULES_TOOL } from '../rules/rule-hints.mjs';
 import { detectLibraries } from '../rules/libraries/project-libraries.mjs';
 import { pytestStyle } from '../rules/libraries/pytest-style.mjs';
 import { withoutAllowedForms } from '../rules/filters/ruff-allowed-forms.mjs';
+import { applyPythonExceptions } from './configuration/python-exceptions.mjs';
 import { RULES_REPORT, readAllowances, readTestFiles } from './analysis/python-ast-rules.mjs';
 import { readPythonCrapFindings } from './mutation/python-crap.mjs';
 import { readImportLinterFindings } from './analysis/python-import-linter.mjs';
@@ -52,7 +53,13 @@ function readSource(projectRoot, file) {
   return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
 }
 
-export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy = {} }) {
+export function readPythonFindings({
+  projectRoot,
+  reportRoot,
+  crapLimit,
+  policy = {},
+  exceptions = [],
+}) {
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
   const coverage = readReport(reportRoot, COVERAGE_REPORT);
@@ -64,6 +71,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
         roots,
         projectRoot,
         testFiles: readTestFiles(reportRoot),
+        exceptions,
         ...readAllowances(reportRoot),
       }),
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
@@ -135,9 +143,26 @@ function sourceLine(projectRoot, file, line) {
   return readSource(projectRoot, file)?.split(/\r?\n/u)[line - 1];
 }
 
+const RUFF_CODE = /^[A-Z]+\d+$/u;
+
+function ownerSurvives(exceptions) {
+  return ({ owner, path: file, line }) =>
+    applyPythonExceptions(
+      [
+        {
+          tool: RUFF_CODE.test(owner) ? 'ruff' : RULES_TOOL,
+          rule: owner,
+          path: file,
+          location: { line },
+        },
+      ],
+      exceptions,
+    ).length > 0;
+}
+
 export function ruffFindings(
   log,
-  { roots, projectRoot, testFiles = [], supportFiles = [], allowed = [] },
+  { roots, projectRoot, testFiles = [], supportFiles = [], allowed = [], exceptions = [] },
 ) {
   const prepared = prepareSarif(log, {
     roots,
@@ -150,6 +175,7 @@ export function ruffFindings(
     supportFiles,
     allowed,
     lineOf: (file, line) => sourceLine(projectRoot, file, line),
+    keepsOwner: ownerSurvives(exceptions),
   });
 }
 

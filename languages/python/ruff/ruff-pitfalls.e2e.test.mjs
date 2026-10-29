@@ -1,9 +1,10 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createToolContext, lint, RUFF_REPORT } from '../adapters/python-tools.mjs';
 import { ruffFindings } from '../adapters/python-reports.mjs';
+import { applyPythonExceptions } from '../adapters/configuration/python-exceptions.mjs';
 import {
   RULES_REPORT,
   checkRules,
@@ -17,108 +18,144 @@ import { applyRuleHints } from '../rules/rule-hints.mjs';
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const fixtures = path.resolve(import.meta.dirname, '../rules/fixtures/ruff-pitfalls');
 const PITFALL = /^(?:ASYNC|DTZ|LOG|PLE|PLW|T10)\d+$/u;
-const BANNED_FILES = [
-  'async_calls.py',
-  'trio_calls.py',
-  'datetimes.py',
-  'logs.py',
-  'pylint_errors.py',
-  'pylint_warnings.py',
-  'cycle/loop.py',
-  'tests/test_pitfalls.py',
+const OWNERS = [
+  'clock-now',
+  'real-clock-in-test',
+  'sleep-in-test',
+  'tautological-assert',
+  'process-env-access',
+  'LOG015',
+  'ASYNC230',
+  'ASYNC240',
 ];
-const EXPECTED = {
+const EXCEPTIONS = OWNERS.map((rule) => ({ rule, paths: ['excepted/**'], reason: 'Reviewed' }));
+const BANNED = {
   'async_calls.py': [
-    'ASYNC100',
-    'ASYNC100',
-    'ASYNC109',
-    'ASYNC110',
-    'ASYNC210',
-    'ASYNC212',
-    'ASYNC220',
-    'ASYNC221',
-    'ASYNC222',
-    'ASYNC230',
-    'ASYNC240',
-    'ASYNC250',
-    'ASYNC251',
+    '9 ASYNC109',
+    '10 ASYNC100',
+    '15 ASYNC100',
+    '16 ASYNC210',
+    '21 ASYNC212',
+    '25 ASYNC110',
+    '30 ASYNC251',
+    '34 ASYNC221',
+    '35 ASYNC220',
+    '36 ASYNC222',
+    '40 ASYNC230',
+    '42 ASYNC240',
+    '43 ASYNC250',
   ],
-  'trio_calls.py': ['ASYNC105', 'ASYNC115', 'ASYNC116'],
+  'cycle/loop.py': ['1 PLW0406'],
   'datetimes.py': [
-    'DTZ001',
-    'DTZ002',
-    'DTZ003',
-    'DTZ004',
-    'DTZ005',
-    'DTZ006',
-    'DTZ007',
-    'DTZ011',
-    'DTZ012',
-    'DTZ901',
+    '6 DTZ001',
+    '7 DTZ002',
+    '8 DTZ003',
+    '9 DTZ004',
+    '10 DTZ005',
+    '11 DTZ006',
+    '12 DTZ007',
+    '13 DTZ011',
+    '14 DTZ012',
+    '15 DTZ901',
   ],
-  'logs.py': ['LOG001', 'LOG002', 'LOG004', 'LOG007', 'LOG009', 'LOG014', 'LOG015', 'PLE1206'],
+  'logs.py': [
+    '3 LOG001',
+    '4 LOG002',
+    '5 LOG009',
+    '9 LOG004',
+    '10 LOG014',
+    '11 LOG015',
+    '12 PLE1206',
+    '16 LOG007',
+  ],
   'pylint_errors.py': [
-    'PLE0101',
-    'PLE0118',
-    'PLE0237',
-    'PLE0241',
-    'PLE0302',
-    'PLE0303',
-    'PLE0604',
-    'PLE0643',
-    'PLE0704',
-    'PLE1132',
-    'PLE1300',
-    'PLE1310',
-    'PLE1507',
-    'PLE1519',
-    'PLE1700',
-    'PLE2515',
-    'PLW0602',
+    '4 PLE0604',
+    '11 PLE0237',
+    '16 PLE0101',
+    '19 PLE0241',
+    '24 PLE0302',
+    '28 PLE0303',
+    '32 PLE0118',
+    '33 PLW0602',
+    '38 PLE0643',
+    '42 PLE0704',
+    '46 PLE1700',
+    '50 PLE1519',
+    '55 PLE2515',
   ],
   'pylint_warnings.py': [
-    'PLW0108',
-    'PLW0120',
-    'PLW0127',
-    'PLW0128',
-    'PLW0131',
-    'PLW0133',
-    'PLW0177',
-    'PLW0211',
-    'PLW0245',
-    'PLW0604',
-    'PLW0642',
-    'PLW0711',
-    'PLW1501',
-    'PLW1507',
-    'PLW1508',
-    'PLW1509',
-    'PLW1510',
-    'PLW2101',
-    'PLW2901',
-    'PLW3301',
-    'T100',
-    'T100',
+    '3 T100',
+    '8 PLW0604',
+    '12 PLW0108',
+    '19 PLW0120',
+    '24 PLW0127',
+    '25 PLW0128',
+    '30 PLW0131',
+    '35 PLW0133',
+    '36 PLW0177',
+    '41 PLW0211',
+    '45 PLW0642',
+    '52 PLW0245',
+    '56 PLW0129',
+    '60 PLW1501',
+    '65 PLW1509',
+    '66 PLW1510',
+    '67 T100',
+    '71 PLW2101',
+    '77 PLW2901',
+    '82 PLW3301',
   ],
-  'cycle/loop.py': ['PLW0406'],
-  'tests/test_pitfalls.py': ['DTZ001', 'PLW0129'],
+  'settings.py': ['7 PLW1507', '8 PLW1508', '9 PLE1507'],
+  'special/dunders.py': [
+    '3 PLE0100',
+    '6 PLE0304',
+    '9 PLE0305',
+    '12 PLE0307',
+    '15 PLE0308',
+    '18 PLE0309',
+  ],
+  'special/escapes.py': ['1 PLE2502', '2 PLE2510', '3 PLE2512', '4 PLE2513', '5 PLE2514'],
+  'special/scopes.py': [
+    '6 PLE0605',
+    '10 PLE0117',
+    '11 PLE0115',
+    '15 PLE0117',
+    '19 PLW0603',
+    '24 PLE1142',
+    '28 PLE1205',
+    '31 PLE1520',
+  ],
+  'tests/test_pitfalls.py': ['5 DTZ001', '6 PLW0133'],
+  'trio_calls.py': ['5 ASYNC105', '6 ASYNC115', '7 ASYNC116'],
 };
-const OVERLAPS = {
-  'overlap/domain/clock.py':
-    'from datetime import datetime\n\n\ndef stamp():\n    return datetime.now()\n',
-  'overlap/adapters/clock.py':
-    'from datetime import datetime\n\n\ndef stamp():\n    return datetime.now()\n',
-  'overlap/tests/test_waits.py':
-    'import asyncio\nimport time\nfrom datetime import date\n\n\nasync def test_waits(flag):\n    time.sleep(1)\n    while not flag.ready:\n        await asyncio.sleep(1)\n    assert date.today()\n',
-  'overlap/logs.py': 'import logging\n\nlogging.warn("Root logger")\n',
+const OVERLAP = {
+  'adapters/clock.py': ['5 DTZ005'],
+  'async_files.py': ['5 ASYNC230', '7 ASYNC240'],
+  'domain/clock.py': ['6 clock-now', '7 clock-now', '8 clock-now', '9 clock-now'],
+  'logs.py': ['3 LOG015'],
+  'service.py': ['7 process-env-access', '8 process-env-access', '9 process-env-access'],
+  'tests/test_asserts.py': ['2 tautological-assert'],
+  'tests/test_faked.py': ['10 DTZ005', '17 ASYNC110'],
+  'tests/test_waits.py': [
+    '7 sleep-in-test',
+    '9 sleep-in-test',
+    '10 real-clock-in-test',
+    '11 real-clock-in-test',
+  ],
+};
+const EXCEPTED = {
+  'adapters/clock.py': ['5 DTZ005'],
+  'async_files.py': ['5 PTH123', '7 PTH110'],
+  'domain/clock.py': ['6 DTZ005', '7 DTZ003', '8 DTZ002', '9 DTZ011'],
+  'logs.py': ['3 G010'],
+  'service.py': ['7 PLW1507', '8 PLW1508', '9 PLE1507'],
+  'tests/test_asserts.py': ['2 PLW0129'],
+  'tests/test_faked.py': ['10 DTZ005', '17 ASYNC110'],
+  'tests/test_waits.py': ['8 ASYNC110', '10 DTZ011', '11 DTZ003'],
 };
 
-function copyShifted(from, to) {
-  cpSync(from, to, { recursive: true });
-  for (const file of BANNED_FILES) {
-    const target = path.join(to, file);
-    writeFileSync(target, `\n\n${readFileSync(target, 'utf8')}`);
-  }
+function pythonFiles(folder) {
+  return readdirSync(folder, { recursive: true }).filter((file) => file.endsWith('.py'));
 }
 
 function writeProject(root) {
@@ -126,12 +163,18 @@ function writeProject(root) {
     path.join(root, 'pyproject.toml'),
     '[project]\nname = "pitfalls"\nrequires-python = ">=3.12"\n',
   );
-  cpSync(path.join(fixtures, 'banned'), path.join(root, 'banned'), { recursive: true });
-  cpSync(path.join(fixtures, 'allowed'), path.join(root, 'allowed'), { recursive: true });
-  copyShifted(path.join(fixtures, 'banned'), path.join(root, 'shifted'));
-  for (const [file, text] of Object.entries(OVERLAPS)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
+  for (const [from, to] of [
+    ['banned', 'banned'],
+    ['banned', 'shifted'],
+    ['allowed', 'allowed'],
+    ['overlap', 'overlap'],
+    ['overlap', 'excepted'],
+  ]) {
+    cpSync(path.join(fixtures, from), path.join(root, to), { recursive: true });
+  }
+  for (const file of pythonFiles(path.join(root, 'shifted'))) {
+    const target = path.join(root, 'shifted', file);
+    writeFileSync(target, `\n\n${readFileSync(target, 'utf8')}`);
   }
 }
 
@@ -150,31 +193,33 @@ function readFindings(projectRoot, reportRoot) {
     roots: [projectRoot],
     projectRoot,
     testFiles,
+    exceptions: EXCEPTIONS,
     ...readAllowances(reportRoot),
   });
   const rules = ingestRulesReport(readFileSync(path.join(reportRoot, RULES_REPORT), 'utf8'));
-  return { findings: applyRuleHints([...ruff, ...rules]), testFiles };
+  return {
+    findings: applyPythonExceptions(applyRuleHints([...ruff, ...rules]), EXCEPTIONS),
+    testFiles,
+  };
 }
 
 const inside = (folder) => (found) => found.path.startsWith(`${folder}/`);
 const relative = (folder, file) => file.slice(folder.length + 1);
 
-function pitfallsBy(findings, folder) {
+function sitesBy(findings, folder) {
   const grouped = {};
   for (const found of findings.filter(inside(folder))) {
-    if (PITFALL.test(found.rule)) {
-      const file = relative(folder, found.path);
-      grouped[file] = [...(grouped[file] ?? []), found.rule].toSorted();
-    }
+    const file = relative(folder, found.path);
+    grouped[file] = [...(grouped[file] ?? []), `${String(found.location?.line)} ${found.rule}`];
   }
-  return grouped;
-}
-
-function rulesAt(findings, file) {
-  return findings
-    .filter((found) => found.path === file)
-    .map(({ rule, location }) => `${String(location?.line)} ${rule}`)
-    .toSorted();
+  return Object.fromEntries(
+    Object.entries(grouped).map(([file, sites]) => [
+      file,
+      sites.toSorted(
+        (a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10) || a.localeCompare(b),
+      ),
+    ]),
+  );
 }
 
 describe.skipIf(!enabled)('the shipped Ruff pitfall selection', () => {
@@ -195,8 +240,8 @@ describe.skipIf(!enabled)('the shipped Ruff pitfall selection', () => {
     rmSync(reports, { recursive: true, force: true });
   });
 
-  it('reports every family through real linting and SARIF ingestion', () => {
-    expect(pitfallsBy(findings, 'banned')).toEqual(EXPECTED);
+  it('reports every banned form once per site, through real linting and SARIF ingestion', () => {
+    expect(sitesBy(findings, 'banned')).toEqual(BANNED);
   });
 
   it('accepts every allowed counterpart, in source and in tests', () => {
@@ -207,7 +252,10 @@ describe.skipIf(!enabled)('the shipped Ruff pitfall selection', () => {
     expect(testFiles.filter((file) => file.startsWith('banned/'))).toEqual([
       'banned/tests/test_pitfalls.py',
     ]);
-    expect(pitfallsBy(findings, 'banned')['tests/test_pitfalls.py']).toEqual(['DTZ001', 'PLW0129']);
+    expect(sitesBy(findings, 'banned')['tests/test_pitfalls.py']).toEqual([
+      '5 DTZ001',
+      '6 PLW0133',
+    ]);
   });
 
   it('keeps finding identities stable across line movement and names the exception route', () => {
@@ -227,15 +275,11 @@ describe.skipIf(!enabled)('the shipped Ruff pitfall selection', () => {
     expect(identities('banned').every(({ exception }) => exception)).toBe(true);
   });
 
-  it.each([
-    ['overlap/domain/clock.py', ['5 clock-now']],
-    ['overlap/adapters/clock.py', ['5 DTZ005']],
-    [
-      'overlap/tests/test_waits.py',
-      ['10 real-clock-in-test', '7 sleep-in-test', '9 sleep-in-test'],
-    ],
-    ['overlap/logs.py', ['3 LOG015']],
-  ])('reports one finding per site in %s where a clock or logger rule overlaps', (file, rules) => {
-    expect(rulesAt(findings, file)).toEqual(rules);
+  it('leaves one finding where a nitpicker rule or another ruff rule owns the site', () => {
+    expect(sitesBy(findings, 'overlap')).toEqual(OVERLAP);
+  });
+
+  it('keeps the ruff finding when an exception lifts the rule that owns the site', () => {
+    expect(sitesBy(findings, 'excepted')).toEqual(EXCEPTED);
   });
 });

@@ -51,7 +51,7 @@ describe('shell commands', () => {
 describe('test files', () => {
   const inFile = (rule, path) => ({ ...finding(rule, 'm'), path });
 
-  it.each(['ARG001', 'FBT001', 'PLR2004', 'S105', 'S311'])(
+  it.each(['ARG001', 'FBT001', 'PLR2004', 'S105', 'S311', 'ASYNC251'])(
     'drop %s in a file the project runs as tests',
     (rule) => {
       expect(
@@ -122,13 +122,31 @@ describe('sites the rules script allowed', () => {
   it.each([
     ['DTZ005', 'clock-now'],
     ['DTZ011', 'real-clock-in-test'],
-    ['ASYNC251', 'sleep-in-test'],
-  ])('drop %s on a line where %s already reports', (rule) => {
-    const clockSites = [{ rule, path: 'a.py', line: 7 }];
+    ['ASYNC110', 'sleep-in-test'],
+    ['PLW1508', 'process-env-access'],
+    ['PLW0129', 'tautological-assert'],
+  ])('drop %s on a line where %s still reports', (rule, owner) => {
+    const owned = [{ rule, path: 'a.py', line: 7, owner }];
+    const keepsOwner = (site) => site.owner === owner;
 
-    expect(withoutAllowedForms([at(rule, 7), at(rule, 8)], { allowed: clockSites })).toEqual([
-      at(rule, 8),
-    ]);
+    expect(withoutAllowedForms([at(rule, 7), at(rule, 8)], { allowed: owned, keepsOwner })).toEqual(
+      [at(rule, 8)],
+    );
+  });
+
+  it.each([
+    ['DTZ005', 'clock-now'],
+    ['ASYNC110', 'sleep-in-test'],
+  ])('keep %s when an exception lifts its owner %s', (rule, owner) => {
+    const owned = [{ rule, path: 'a.py', line: 7, owner }];
+
+    expect(withoutAllowedForms([at(rule, 7)], { allowed: owned, keepsOwner: () => false })).toEqual(
+      [at(rule, 7)],
+    );
+  });
+
+  it('drop a site without an owner whatever the exceptions say', () => {
+    expect(withoutAllowedForms([at('S303', 4)], { allowed, keepsOwner: () => false })).toEqual([]);
   });
 });
 
@@ -139,15 +157,29 @@ describe('ruff rules that overlap on one line', () => {
     location: { line, column: 1 },
   });
 
-  it('keep the root-logger finding of `logging.warn` and drop the `warn` one', () => {
-    expect(withoutAllowedForms([at('LOG015', 3), at('G010', 3)])).toEqual([at('LOG015', 3)]);
+  it.each([
+    ['LOG015', 'G010'],
+    ['ASYNC230', 'PTH123'],
+    ['ASYNC240', 'PTH110'],
+    ['PLE0115', 'PLW0602'],
+    ['PLE0115', 'PLW0603'],
+  ])('keep %s and drop %s on its line', (owner, owned) => {
+    expect(withoutAllowedForms([at(owner, 3), at(owned, 3)])).toEqual([at(owner, 3)]);
   });
 
-  it('keep G010 on a logger that is not the root logger', () => {
+  it('keep G010 on another line', () => {
     expect(withoutAllowedForms([at('LOG015', 3), at('G010', 4)])).toEqual([
       at('LOG015', 3),
       at('G010', 4),
     ]);
+  });
+
+  it('keep G010 when an exception lifts LOG015', () => {
+    expect(
+      withoutAllowedForms([at('LOG015', 3), at('G010', 3)], {
+        keepsOwner: ({ owner }) => owner !== 'LOG015',
+      }),
+    ).toEqual([at('LOG015', 3), at('G010', 3)]);
   });
 });
 

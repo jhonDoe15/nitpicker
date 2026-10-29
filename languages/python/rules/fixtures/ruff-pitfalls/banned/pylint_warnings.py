@@ -3,6 +3,7 @@ import os
 import pdb
 import subprocess
 import threading
+from pathlib import Path
 
 global SHARED
 
@@ -42,6 +43,7 @@ class Tools:
 
     def reset(self):
         self = Tools()
+        self.ready = True
         return self
 
 
@@ -50,23 +52,13 @@ class Child(Tools):
         super.__init__()
 
 
-def catch(run):
-    try:
-        run()
-    except ValueError or TypeError:
-        return None
-    return run
+def literal():
+    assert "always"
 
 
 def files(name):
-    with open(name, "rwx", encoding="utf-8") as handle:
+    with Path(name).open("rwx", encoding="utf-8") as handle:
         return handle.read()
-
-
-def environment():
-    import copy
-
-    return copy.copy(os.environ), os.getenv("PORT", 8080)
 
 
 def spawn():
@@ -83,7 +75,7 @@ def locked():
 def strip(lines):
     for line in lines:
         line = line.strip()
-        print(line)
+        yield line
 
 
 def largest(a, b, c):

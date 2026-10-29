@@ -224,13 +224,9 @@ select = [
   "PLE0605",
   "PLE0643",
   "PLE0704",
-  "PLE1132",
   "PLE1142",
   "PLE1205",
   "PLE1206",
-  "PLE1300",
-  "PLE1307",
-  "PLE1310",
   "PLE1507",
   "PLE1519",
   "PLE1520",
@@ -254,7 +250,6 @@ select = [
   "PLW0406",
   "PLW0604",
   "PLW0642",
-  "PLW0711",
   "PLW1501",
   "PLW1507",
   "PLW1508",
@@ -297,7 +292,7 @@ ignore-names = [
 [lint.flake8-unused-arguments]
 ignore-variadic-names = true
 
-# Reviewed exclusions: stable codes of the listed groups that are not selected (Ruff 0.16.9).
+# Reviewed exclusions: stable codes of the listed groups that are not selected (Ruff 0.16.8).
 # S101: assert is the native pytest assertion API; stripping it is not evidence of a defect.
 # S103, S104: a file mode or server bind address alone does not establish exposure.
 # S105, S106, S107: hardcoded-secret owns credential recognition with narrower evidence.
@@ -311,7 +306,11 @@ ignore-variadic-names = true
 # TRY300, TRY301: moving a return or raise to another block does not establish better handling.
 # FBT003: a boolean argument at a call site is often the callee's own API; FBT001/FBT002 own the definition.
 # PT009, PT027: unittest-style assertions are the native API of unittest projects.
-# PLE0116: continue in finally is reported only for targets below Python 3.8, under the 3.10 minimum.
+# PLE0116: ruff reports continue in finally only below Python 3.8; lint passes --target-version py38 or later.
+# PLE1132: PIE804 owns the **{...} literal that repeats a keyword; a written repeat is a SyntaxError.
+# PLE1300, PLE1307: UP031 and UP032 already require an f-string, and F509 owns a bad % character.
+# PLE1310: B005 owns a multi-character strip argument, duplicates included.
+# PLW0711: B030 owns an except clause that is not a class or a tuple of classes.
 # PLW1641: defining equality without hashing intentionally makes mutable objects unhashable.
 # Historical codes exposed by Ruff 0.9 catalogs, removed in the current stable catalog:
 # S320, S410: lxml's hardened defaults make a blanket insecure-parser/import claim invalid.

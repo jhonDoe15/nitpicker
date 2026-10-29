@@ -16,4 +16,5 @@ def stamps(value, text):
         datetime.now(tz=PARIS).date(),
         datetime.fromtimestamp(value, tz=timezone.utc).date(),
         datetime.max.replace(tzinfo=timezone.utc),
+        datetime.min.replace(tzinfo=timezone.utc),
     ]

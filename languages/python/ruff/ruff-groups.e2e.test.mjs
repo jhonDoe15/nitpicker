@@ -10,6 +10,11 @@ const LISTED_GROUPS = /^(?:G|N|ERA|ARG|PT|S|TRY|FBT|ASYNC|DTZ|LOG|PLE|PLW|T10)\d
 const DECLINED = new Set([
   'FBT003',
   'PLE0116',
+  'PLE1132',
+  'PLE1300',
+  'PLE1307',
+  'PLE1310',
+  'PLW0711',
   'PLW1641',
   'PT004',
   'PT005',

@@ -7,9 +7,15 @@ export const PYLINT_ERROR_HINTS = [
   },
   {
     tool: 'ruff',
-    rules: ['PLE0115', 'PLE0117', 'PLE0118'],
+    rules: ['PLE0115', 'PLE0118'],
     allowed:
-      'Declare the name once, at the top of the function: `global` for a module name, or `nonlocal` for a name an enclosing function binds.',
+      'Remove the `global` declaration: pass the value in as an argument and return the new value.',
+  },
+  {
+    tool: 'ruff',
+    rules: ['PLE0117'],
+    allowed:
+      'Remove the `nonlocal` declaration and pass the value in, or bind the name in the enclosing function first.',
   },
   {
     tool: 'ruff',
@@ -51,11 +57,6 @@ export const PYLINT_ERROR_HINTS = [
   },
   {
     tool: 'ruff',
-    rules: ['PLE1132'],
-    allowed: 'Pass each keyword argument once.',
-  },
-  {
-    tool: 'ruff',
     rules: ['PLE1142', 'PLE1700'],
     allowed:
       'Use `await` only inside `async def`; an async generator re-yields with `async for item in source: yield item`, not `yield from`.',
@@ -68,19 +69,9 @@ export const PYLINT_ERROR_HINTS = [
   },
   {
     tool: 'ruff',
-    rules: ['PLE1300', 'PLE1307'],
-    allowed: 'Use an f-string with a format spec that fits the value: `f"{count:d}"`, `f"{name}"`.',
-  },
-  {
-    tool: 'ruff',
-    rules: ['PLE1310'],
-    allowed:
-      'Pass each character to strip once, or remove a whole affix with `.removeprefix(...)` or `.removesuffix(...)`.',
-  },
-  {
-    tool: 'ruff',
     rules: ['PLE1507'],
-    allowed: 'Pass the variable name as a `str`: `os.getenv("HOME")`.',
+    allowed:
+      'Pass the variable name as a `str`, in the composition root (`settings.py`): `os.getenv("HOME")`.',
   },
   {
     tool: 'ruff',

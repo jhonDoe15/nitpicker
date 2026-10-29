@@ -1,8 +1,7 @@
 import functools
-import os
 
 counter = 0
-__all__ = [os]
+__all__ = [functools]
 
 
 class Point:
@@ -30,8 +29,9 @@ class Size:
 
 
 def bump():
-    print(counter)
+    value = counter
     global counter
+    return value
 
 
 def first():
@@ -42,24 +42,8 @@ def outside():
     raise
 
 
-def keywords():
-    return dict(a=1, **{"a": 2})
-
-
 async def relay(source):
     yield from source
-
-
-def describe(count):
-    return "%y" % count
-
-
-def trim(name: str):
-    return name.lstrip("hello")
-
-
-def home():
-    return os.getenv(1)
 
 
 class Dispatch:

@@ -17,7 +17,7 @@ export const ASYNC_HINTS = [
     tool: 'ruff',
     rules: ['ASYNC109'],
     allowed:
-      'Drop the `timeout` parameter; the caller bounds the call with `async with asyncio.timeout(...)` (`trio.fail_after` or `anyio.fail_after` on those backends).',
+      'Drop the `timeout` parameter; the caller bounds the call with `async with asyncio.timeout(...)` (`trio.fail_after` or `anyio.fail_after` on those backends). A method that overrides a base signature takes `@typing.override`, and a wrapper of `asyncio.timeout` names its parameter `delay`.',
   },
   {
     tool: 'ruff',
@@ -47,8 +47,19 @@ export const ASYNC_HINTS = [
   },
   {
     tool: 'ruff',
-    rules: ['ASYNC230', 'ASYNC240', 'ASYNC250'],
-    allowed: `Use the backend's async file API (\`anyio.Path\`), ${TO_THREAD}.`,
+    rules: ['ASYNC230'],
+    allowed:
+      'Read the file with `await anyio.Path(path).read_text()`, or in a worker thread with `await asyncio.to_thread(path.read_text)`.',
+  },
+  {
+    tool: 'ruff',
+    rules: ['ASYNC240'],
+    allowed: `Check the path with \`await anyio.Path(path).exists()\`, ${TO_THREAD}.`,
+  },
+  {
+    tool: 'ruff',
+    rules: ['ASYNC250'],
+    allowed: 'Read input in a worker thread: `await asyncio.to_thread(input, prompt)`.',
   },
   {
     tool: 'ruff',
