@@ -556,6 +556,10 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   reported. Callers of a deprecated API are reported by `@typescript-eslint/no-deprecated`. In the
   JavaScript preset the `@deprecated` tag is already rejected as an unsupported JSDoc tag, so only
   the alias form is added.
+- Naive datetimes have no rule in this preset. A `Date` is a UTC instant: it has no naive form and
+  the standard library has no zone-aware replacement, so a check could only match literals. Reading
+  the clock is already limited by `Date.now()` and `new Date()` in `domain/`, and a clock is passed
+  in as a parameter.
 - No `as`, `any`, or non-null assertions.
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
 - No comments, except doc comments (`/** ... */`) on exported declarations and the members of

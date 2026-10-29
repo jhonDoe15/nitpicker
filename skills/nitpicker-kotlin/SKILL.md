@@ -66,6 +66,12 @@ Before you change code other modules use, or fix a bug, read
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
   members and parameters.
+- Signatures: a value with three states is an `enum class`, not a `Boolean?` parameter, return
+  type or property (`kotlin-source/TriStateBoolean`); return a new collection instead of changing a
+  `MutableList`, `MutableMap` or array parameter (`items.add`, `table[key] = v`, `counts[0]++`;
+  `kotlin-source/ParameterMutation`). When code moves, change every caller and delete the old name:
+  no `@Deprecated` delegate or `typealias Old = New` (`kotlin-source/CompatibilityShim`). Time comes
+  from an injected `Clock`; `Calendar`, `Date` and `SimpleDateFormat` are banned.
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`
