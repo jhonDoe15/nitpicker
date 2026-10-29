@@ -160,7 +160,8 @@ describe('readTestRuntimeFindings reports', () => {
         rule: NO_PRODUCTION,
         path: 'src/test/java/shop/MathTest.java',
         identity: `test:src/test/java/shop/MathTest.java:source:${hash(MATH_TEST)}`,
-        message: 'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test',
+        message:
+          'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test',
         classification: 'enforceable',
       },
     ]);
