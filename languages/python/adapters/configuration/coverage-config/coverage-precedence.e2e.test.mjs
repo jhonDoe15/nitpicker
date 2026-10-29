@@ -19,6 +19,16 @@ const CORE = [
 ].join('\n');
 const TEST = 'from shop.core import ship\n\n\ndef test_ship():\n    assert ship(1) == "shipped"\n';
 const PYPROJECT = '[tool.coverage.report]\nexclude_also = ["pragma: no cover"]\n';
+const UNRELATED = '[tool.coverage.report]\nshow_missing = true\n';
+const SKIPPING = [
+  '[tool.coverage.run]',
+  'branch = false',
+  'source = ["tests"]',
+  '',
+  '[tool.coverage.report]',
+  'exclude_also = ["pragma: no cover"]',
+  '',
+].join('\n');
 const roots = [];
 
 function temporaryRoot() {
@@ -59,7 +69,7 @@ describe.skipIf(!pythonE2eEnabled)('coverage with the project config end to end'
     }
   });
 
-  function uncovered(precedence, { policyFiles } = {}) {
+  function measured(precedence, { pyproject = PYPROJECT, policyFiles } = {}) {
     const projectRoot = temporaryRoot();
     const reportRoot = temporaryRoot();
     const files = {
@@ -67,10 +77,7 @@ describe.skipIf(!pythonE2eEnabled)('coverage with the project config end to end'
       'src/shop/core.py': CORE,
       'tests/test_core.py': TEST,
     };
-    write(
-      projectRoot,
-      policyFiles === undefined ? { ...files, 'pyproject.toml': PYPROJECT } : files,
-    );
+    write(projectRoot, { ...files, 'pyproject.toml': pyproject });
     const policyRoot = policyFiles === undefined ? projectRoot : temporaryRoot();
     write(policyRoot, policyFiles ?? {});
     const context = createToolContext({
@@ -84,7 +91,11 @@ describe.skipIf(!pythonE2eEnabled)('coverage with the project config end to end'
     runTests(context, {});
     const report = JSON.parse(readFileSync(path.join(reportRoot, COVERAGE_REPORT), 'utf8'));
     const [core] = Object.entries(report.files).filter(([file]) => file.endsWith('core.py'));
-    return core[1].missing_lines;
+    return { missing: core[1].missing_lines, branches: report.meta.branch_coverage };
+  }
+
+  function uncovered(precedence, options) {
+    return measured(precedence, options).missing;
   }
 
   it('reports the pragma lines without the opt-in and with nitpicker first', () => {
@@ -98,9 +109,23 @@ describe.skipIf(!pythonE2eEnabled)('coverage with the project config end to end'
     expect(uncovered(['project'])).toEqual([]);
   });
 
-  it('reads the exclusions of the head checkout for the base snapshot', () => {
+  it('reads the exclusions of the head checkout for the base snapshot, not its own', () => {
     expect(
-      uncovered(['project', 'nitpicker'], { policyFiles: { 'pyproject.toml': PYPROJECT } }),
+      uncovered(['project', 'nitpicker'], {
+        pyproject: UNRELATED,
+        policyFiles: { 'pyproject.toml': PYPROJECT },
+      }),
     ).toEqual([]);
+    expect(
+      uncovered(['project', 'nitpicker'], {
+        pyproject: PYPROJECT,
+        policyFiles: { 'pyproject.toml': UNRELATED },
+      }),
+    ).toEqual([6]);
+  });
+
+  it('keeps measuring branches of the source roots when the project turns them off', () => {
+    expect(measured(['project'], { pyproject: SKIPPING })).toEqual({ missing: [], branches: true });
+    expect(measured(undefined, { pyproject: SKIPPING })).toEqual({ missing: [6], branches: true });
   });
 });
