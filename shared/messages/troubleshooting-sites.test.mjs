@@ -113,7 +113,7 @@ function objectSite(node, constants) {
 
 function linkingSites(file) {
   const source = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
-  const constants = stringConstants(source);
+  const constants = stringConstants(ts, source);
   const sites = [];
   const visit = (node) => {
     const site = ts.isCallExpression(node)

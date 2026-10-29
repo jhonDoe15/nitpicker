@@ -63,7 +63,7 @@ function parsed(file) {
 
 function sharedConstants(sources) {
   const values = new Map();
-  for (const [name, value] of sources.flatMap((source) => [...stringConstants(source)])) {
+  for (const [name, value] of sources.flatMap((source) => [...stringConstants(ts, source)])) {
     values.set(name, [...new Set([...(values.get(name) ?? []), value])]);
   }
   return new Map(
@@ -72,7 +72,7 @@ function sharedConstants(sources) {
 }
 
 function sourceStrings(source, shared) {
-  const constants = new Map([...shared, ...stringConstants(source)]);
+  const constants = new Map([...shared, ...stringConstants(ts, source)]);
   const strings = [];
   const pending = [source];
   for (const node of pending) {
