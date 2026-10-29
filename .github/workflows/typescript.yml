@@ -46,10 +46,10 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -58,11 +58,11 @@ jobs:
       # The dependency hook tests install fixtures with the real pnpm, Yarn and Bun, whose versions
       # the fixtures pin; in CI a manager that is missing or has another version fails the test.
       - run: corepack enable
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@v2.2.0
         with:
           bun-version: 1.4.2
       # The StructureMetrics unit test runs Java on Java 21 sources, the version the Java preset needs.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
           java-version: 21
@@ -90,11 +90,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           # The merge base with the target branch must be reachable.
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -108,7 +108,7 @@ jobs:
         run: node core/cli.mjs --output reports/nitpicker
         env:
           NITPICKER_ACCEPT_POLICY_CHANGE: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.2
         if: failure()
         with:
           name: nitpicker-report
