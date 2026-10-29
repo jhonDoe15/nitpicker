@@ -844,9 +844,9 @@ console calls only then; a `silent` project then shows its console output in the
 starts the project's own reporters (the slow-test rerun uses `default` alone), as the Vitest, Mocha
 and `node:test` runs use only nitpicker's: a reporter's side effects, such as a JUnit file or an
 upload, are not wanted from the base and head runs of a check. Jest passes only the first message
-argument of `console.assert` on, so a `--require` module in the Jest processes formats a failed
-assertion's message with the rest as Node does: `console.assert(false, 'bad %s', 'input')` gives
-`Assertion failed: bad input` on every runner. With
+argument of `console.assert` on, so an `--import` preload in `NODE_OPTIONS` of the Jest run formats a
+failed assertion's string message with the other arguments as Node does:
+`console.assert(false, 'bad %s', 'input')` gives `Assertion failed: bad input` on every runner. With
 `node:test`, tests of one file that run concurrently can swap the test name, and
 `--experimental-test-isolation=none` (every file in the runner's own process) is not read at all,
 because the file of a call is not known there: the check passes with no findings. Mocha runs every

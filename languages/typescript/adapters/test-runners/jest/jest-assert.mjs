@@ -1,9 +1,38 @@
 const JEST_CONSOLE = '@jest/console';
 
+function formattedMessage(values = [{}].slice(1)) {
+  try {
+    return {
+      message: Reflect.apply(process.getBuiltinModule('node:util').format, undefined, values),
+    };
+  } catch (error) {
+    return { unformattable: error };
+  }
+}
+
 function assertMessage(values = [{}].slice(1)) {
-  return values.length > 1 && typeof values[0] === 'string'
-    ? [Reflect.apply(process.getBuiltinModule('node:util').format, undefined, values)]
-    : values;
+  const formatted =
+    values.length > 1 && typeof values[0] === 'string' ? formattedMessage(values) : {};
+  return 'message' in formatted ? [formatted.message] : values;
+}
+
+function bufferOf(testConsole = {}) {
+  const getBuffer = Reflect.get(testConsole, 'getBuffer');
+  const buffer = typeof getBuffer === 'function' ? Reflect.apply(getBuffer, testConsole, []) : [];
+  return Array.isArray(buffer) ? buffer : [];
+}
+
+function withoutOwnFrame(buffer = [{}], before = 0) {
+  const entry = buffer.at(-1);
+  const origin = buffer.length > before ? Reflect.get(entry ?? {}, 'origin') : undefined;
+  if (typeof origin !== 'string') {
+    return;
+  }
+  const [first = '', ...rest] = origin.split('\n');
+  const ownFile = process.getBuiltinModule('node:url').fileURLToPath(import.meta.url);
+  if (first.includes(import.meta.url) || first.includes(ownFile)) {
+    Reflect.set(entry, 'origin', rest.join('\n'));
+  }
 }
 
 export function withFormattedAssert(consoleClass = Object, patched = new WeakSet()) {
@@ -15,7 +44,13 @@ export function withFormattedAssert(consoleClass = Object, patched = new WeakSet
   patched.add(prototype);
   Reflect.set(prototype, 'assert', function formattedAssert(...values) {
     const [value, ...message] = values;
-    return Reflect.apply(assert, this, value ? values : [value, ...assertMessage(message)]);
+    if (value) {
+      return Reflect.apply(assert, this, values);
+    }
+    const before = bufferOf(this).length;
+    const result = Reflect.apply(assert, this, [value, ...assertMessage(message)]);
+    withoutOwnFrame(bufferOf(this), before);
+    return result;
   });
 }
 
