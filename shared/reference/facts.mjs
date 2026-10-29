@@ -51,7 +51,6 @@ export function analyzersText(entry) {
   );
 }
 
-/** The builds that run the entry's rule, with the presets each one serves. */
 function buildsText(entry) {
   return entry.builds === undefined
     ? undefined
@@ -78,7 +77,6 @@ export function linkUrl({ path, anchor, url }, root = docsRootUrl()) {
   return url ?? docsUrl(path, anchor, root);
 }
 
-/** The documentation the tool itself keeps for the rule, if the entry names it. */
 function toolDocumentation(entry) {
   return entry.links?.[0];
 }
