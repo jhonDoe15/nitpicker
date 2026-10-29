@@ -183,4 +183,13 @@ export const SMELL_HINTS = [
     allowed:
       "Move test helpers and fixtures into the tests folder (`tests/support/`, `conftest.py`) so they do not ship with the package. A library's public `testing` module is allowed when the package `__init__.py` imports it or lists it in `__all__`.",
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['forwarding-method-alias'],
+    describe: (subject) => {
+      const [name, target] = subject.split(' -> ');
+      return `\`${name}\` only forwards its parameters to \`${target}\` and has the same signature`;
+    },
+    allowed: (subject) => `Call \`${subject.split(' -> ')[1]}\` directly and delete the alias.`,
+  },
 ];

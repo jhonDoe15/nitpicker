@@ -149,16 +149,19 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `thresholds` (`crapLimit`, enforced from slice 3, the file limits `fileLines`, `testFileLines`,
 `lineLength` and `folderFiles`, the size limits `folderDepth`, `classMethods`, `classFields` and
 `inheritanceDepth`, and the test time limits `unitTestSeconds` and `integrationTestSeconds`), `exclude` (findings under the globs are dropped) and
-`legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
-below. `layout` and `testConsole` stay a config error with this preset until it runs the rules
-that read them (`shared-used-by-one-feature`, `test-console-output`). The
+`legacyInventory` (same format and `baseline-expansion` rule as for Java), `history` (the opt-in
+[change history](usage.md#change-history) check), and the `python` object below. `layout` takes
+only `featureRoots`, and only once `history.coChange` is on (it names the feature folders
+`co-change` reads); its other keys and `testConsole` stay a config error with this preset until it
+runs the rules that read them (`shared-used-by-one-feature`, `test-console-output`). The
 top-level `exceptions` is accepted only for the rules shared with the other languages: the file and size limits
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
 `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), the function rules
 (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
 `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`,
 `mutant-survived`, `mutant-nocoverage`, which take `function` to name one function), whose messages
-name it, and the [dependency and repository checks](usage.md#dependency-and-repository-checks); the
+name it, the [dependency and repository checks](usage.md#dependency-and-repository-checks), and
+`co-change` of the [change history](usage.md#change-history) check (with a `<module>/**` glob); the
 Python equivalent of `exceptions` for every other rule is `python.exceptions`. Each list rejects the
 other's rules (a function or file rule in `python.exceptions`, or a ruff code in `exceptions`, is a
 config error that names the right list). `python` is an error with any other preset.
@@ -539,7 +542,9 @@ Details that are decisions rather than the table:
   from the checkers: `@no_type_check` on a function or class, an `if not TYPE_CHECKING:` branch,
   and a `.pyi` beside a `.py` of the same stem in the sources (mypy then ignores the `.py` body).
   `typing.cast` is allowed.
-- `swallowed-exception` flags an `except` handler whose body does nothing with the error: every
+- `swallowed-exception` flags an `except` handler whose body does nothing with the error (a handler
+  of an asyncio, Trio or AnyIO cancellation inside `async def` is judged by
+  `cancellation-not-propagated` instead, see [Cancellation propagation](#cancellation-propagation)): every
   statement is `pass`, `...` or another constant expression such as a docstring, `continue`, an
   assignment of a constant (`result = None`, `ok = False`), `return` with no value or a constant
   (`None`, `False`, `0`, `-1`, a string, or an empty or constant-only tuple, list, set or dict such
@@ -603,6 +608,8 @@ are listed at the end.
 | Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
 | Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
 | Input or output per item | one batch call, or `asyncio.gather`                                                                                                              | `io-in-loop` (script)                                                                                                                                |
+| Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                         | `task-outlives-resource` (script)                                                                                                                    |
+| Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                  | `unshielded-cleanup-await` (script)                                                                                                                  |
 | Task markers             | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
 | Commented-out code       | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
 | Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                         | ruff `S` (see below)                                                                                                                                 |
@@ -792,6 +799,62 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
   comprehension; `asyncio.gather` over a comprehension, a paging loop (the condition reads a
   variable the body assigns) and a retry (a `try` in the loop that returns on success) are not.
+- `task-outlives-resource` reports a resource that a `with` or `async with` opened inside a task
+  group closes while a child task can still use it. Task groups are `trio.open_nursery()`,
+  `anyio.create_task_group()` and `asyncio.TaskGroup()` (also through import aliases and a group
+  held in a local variable, `tg = anyio.create_task_group()` then `async with tg:`). The resource is
+  the name an inner `with ... as name` binds, and it is handed over when it is a positional
+  argument of `start_soon` or `start` (`nursery.start_soon(consume, handle)`), a bound method
+  (`start_soon(handle.serve)`), a `lambda`, `functools.partial` or local `def` that captures it
+  (a parameter or a local rebinding of the same name is not a capture), or an argument or receiver
+  of the coroutine passed to `create_task` (`group.create_task(use(handle))`). A task assigned to a
+  name that is read again inside the `with` block (`await task`, `asyncio.wait([task])`) is
+  accepted, since the parent waits for it. Inside a plain `with res:` or `with open(...) as res:`
+  block, `asyncio.create_task(use(res))` or `asyncio.ensure_future(...)` as a statement is
+  reported when the task is discarded or its variable is never read before the block ends. The
+  allowed forms are a `with` that encloses the whole group, a resource opened inside the child, and
+  awaiting the task before the block exits. Ownership is modeled explicitly rather than inferred:
+  only the resource itself counts, so a value derived from it (`handle.name`, `handle.read()`,
+  `stack.pop_all()` for an `ExitStack` that moves ownership) is not reported, and neither is a
+  helper that is given the resource under another name; cancel scopes, timeouts and task groups
+  opened inside a group are not resources; keyword arguments such as `name=` are not passed to the
+  child; a task that is returned, collected or handed to another function is not tracked. A helper
+  that takes ownership and closes the resource itself is not recognized, and neither is a parent
+  that waits on an event instead of the task: open the resource in the child, or add a reviewed
+  `python.exceptions` entry. A group held in an attribute (`self.group`) is not followed. The
+  group-scoped form follows the documented flake8-async ASYNC111 behavior, extended to
+  `asyncio.TaskGroup` with explicit lifetime modeling; Ruff 0.16.8 and 0.16.9 have no ASYNC111, and
+  no flake8-async code is used. The identity is the resource name, the method and the enclosing
+  function. Ruff's `RUF006` reports the discarded `asyncio.create_task(...)` statement for its own
+  reason (the task can be garbage collected) and keeps its own finding.
+- `unshielded-cleanup-await` follows the documented flake8-async ASYNC102 behavior for Trio and
+  AnyIO, which cancel again at every checkpoint of a cancelled scope: an `await`, `async with`,
+  `async for` or async comprehension inside `finally:` or inside a handler for `trio.Cancelled` or
+  `anyio.get_cancelled_exc_class()` (import aliases, tuples and names bound once by assignment
+  included, such as `cancelled = anyio.get_cancelled_exc_class()`) can be cancelled before the
+  cleanup finishes, so the resource may never be released. The check runs only in a module that
+  shows Trio or AnyIO cancellation semantics: any import of `trio`, or for AnyIO a use of
+  `anyio.create_task_group`, `anyio.CancelScope`, `anyio.move_on_after`, `anyio.fail_after`,
+  `anyio.run` or `anyio.get_cancelled_exc_class`, so a module that imports `anyio` only for
+  `to_thread` or `Path` is not checked. It reports the first checkpoint per block and allows it
+  inside a `with` that sets `shield=True` (a literal, or a name bound once to `True`) in a
+  `trio.CancelScope`, `trio.move_on_after`, `move_on_at`, `fail_after`, `fail_at`,
+  `anyio.CancelScope`, `anyio.move_on_after` or `anyio.fail_after`, called in the `with` or held in
+  a variable (`scope = trio.CancelScope(shield=True)`, then `with scope:`), in the block or around
+  the `try`. The message recommends `CancelScope(deadline=..., shield=True)`, because a shield
+  without a deadline can hang shutdown on a stuck close; such an unbounded shield is allowed, and
+  the deadline is not checked. `move_on_after(5, shield=True)` and `fail_after` need Trio 0.27 or
+  later for the `shield` argument. `trio.aclose_forcefully(...)` and the
+  `cancel_shielded_checkpoint()` helpers cannot be interrupted and are allowed. A shield set after
+  the scope is created (`scope.shield = True`) is not followed, and `except BaseException` and bare
+  `except:` handlers are not treated as cancellation handlers, because the evidence that they catch
+  a cancellation is missing. asyncio cancels a task once (`CancelledError` is raised at the `await`
+  that is waiting, and later awaits run normally unless the task is cancelled again), so the Trio
+  assumption does not carry over: modules without that evidence are not checked. `asyncio.shield`
+  is not a scope: it protects the inner task but the shielding `await` is still interrupted, and
+  its inner task must stay referenced; neither is modeled. Ruff 0.16.8 (the version pinned in
+  `.github/python-e2e-constraints.txt`) and 0.16.9 have no ASYNC102, and no flake8-async code is
+  used. The identity is the checkpoint, the block and the enclosing function.
 - `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
   comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
   `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and
@@ -863,6 +926,79 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - Deprecation: mypy runs with `--enable-error-code deprecated` when it is version 1.14 or later (the
   code does not exist before), and the generated pyright config sets `reportDeprecated` to
   `error`, so using an API marked `@deprecated` is a finding in each checker.
+
+### Cancellation propagation
+
+`python-rules/cancellation-not-propagated` rejects an explicit cancellation handler with a modeled
+path that returns, breaks, continues, falls through, or raises a different error. Cleanup and
+logging do not replace propagation: use a bare `raise`, or re-raise the unchanged caught exception
+(`raise error`, including `error.with_traceback(...)`). Returning a failure result containing the
+error or chaining a different exception still consumes the cancellation signal.
+
+The owned AST check recognizes imported `asyncio.CancelledError` (including
+`asyncio.exceptions.CancelledError`), `trio.Cancelled` and `anyio.get_cancelled_exc_class()` in
+handler types, including import aliases, tuples, and names bound once by a plain assignment
+(`E = asyncio.CancelledError`, `cancelled = anyio.get_cancelled_exc_class()`). Shadowed imports and
+local modules with those names are not assumed to be backend APIs. `concurrent.futures.CancelledError`
+is a different class from `asyncio.CancelledError` (since Python 3.8) and is not matched. Only
+handlers lexically inside an `async def` are checked: a plain function or a done-callback
+(`def done(fut): try: fut.result() except CancelledError: return`) keeps the `swallowed-exception`
+behavior it had before, and so does a handler in an `except*` block. Source files, tests and entry
+points use the same rule; generated/excluded files follow the existing source policy. A matching
+handler receives this finding instead of a duplicate `swallowed-exception` or
+`catch-log-without-exception` finding. Ordinary errors retain their existing handling policy. The
+same rule applies to `contextlib.suppress(...)` with a cancellation class in `async def`, which
+consumes the cancellation exactly like an empty handler (subject `suppress(asyncio.CancelledError)`).
+
+Backend boundaries remain explicit. Raising a fresh asyncio `CancelledError` preserves its
+cancellation signal and is allowed; this does not establish preservation of its payload. Trio and
+AnyIO handlers should re-raise the original cancellation. Normal exits from `move_on_after`,
+`CancelScope` or `asyncio.timeout` are intentional scoped boundaries and are not handlers targeted
+by this rule. Deliberate asyncio suppression with `Task.uncancel()` is not inferred from a method
+name: review that boundary with a `python.exceptions` entry for `cancellation-not-propagated`,
+paths and a reason. No inline suppression is added.
+
+The path model covers straight-line handlers, `if` branches (including literal constant branches),
+`for`, `async for` and `while` loops (with `break`, `continue` and `else`), `match` statements and
+`try/finally` completion overrides. A loop that can end without running a `raise` leaves a falling
+path, and a `break` or `continue` that leaves the handler itself consumes the cancellation. A
+`match` without a catch-all case, a nested `try/except`, `except*` and a `with` around a `raise`
+(a context manager can suppress it) may or may not fall through: the statements after them are
+still analysed, so a later `return` or `raise ValueError()` is reported, while a handler that ends
+there is not reported on that evidence alone and a later `raise` is accepted. The check does not
+resolve arbitrary helper implementations, `NoReturn` annotations, runtime monkey patches, broad
+`BaseException` handlers or exception groups. It is a focused source guard, not a proof of
+cancellation safety. Ordinary calls are assumed able to return; helper-based propagation should
+re-raise explicitly in the handler or use a reviewed exception. A handler that deliberately
+translates a cancellation it started itself (a hand-written timeout, or a deferred re-raise after
+a loop) also needs that reviewed exception.
+
+Awaiting a task this function cancelled is the documented way to wait for a child to stop, and the
+`CancelledError` it raises belongs to the child. A `try` (or a `with contextlib.suppress(...)`)
+whose body only awaits tasks, each cancelled earlier by a statement that always runs before it in
+the same function, is therefore accepted when every caught type is an asyncio cancellation and the
+handler body is quiet (`pass`, `...`, a bare `return` or a log call). The awaited task is a name or
+attribute chain (`await task`, `result = await self._task`), or `asyncio.gather(...)` of such
+names or of `*tasks` after `for t in tasks: t.cancel()`; the cancel is `name.cancel()` as a
+statement of an enclosing block, not inside an `if`, and the name must not be rebound in between.
+Such a handler is skipped entirely, so no `swallowed-exception`, `catch-log-without-exception` or
+other handler check applies to it. A handler that does more (`return 5`, `raise RuntimeError()`),
+a mixed tuple such as `(asyncio.CancelledError, Exception)`, or an await of anything else is still
+reported. This asyncio-only allowance cannot tell the child's cancellation from one aimed at the
+current task; Trio and AnyIO handlers have no such allowance.
+
+Ruff **0.16.8** (pinned for the Python end-to-end suite in `.github/python-e2e-constraints.txt`;
+0.16.9 was checked as well) has no ASYNC102, ASYNC103, ASYNC104 or ASYNC111; its `ASYNC` family
+contains only the codes listed in `ruff rule --all`, none of which checks cancellation propagation,
+so nothing is duplicated by the Ruff `ASYNC` selection. Two other Ruff rules can fire on the same
+handler for a different reason and keep their own identity: `TRY203` (a handler that only
+re-raises is pointless) and `B904` (`raise ValueError()` inside an `except` without `from`). The
+documented flake8-async ASYNC103/104 behaviors motivated this narrower owned check; no flake8-async
+dependency or source implementation is used. Existing AST parsing, findings, line-independent
+identities, configuration hashing and path exceptions supply the integration. Regression fixtures
+execute actual asyncio task cancellation and statically exercise the explicit Trio/AnyIO forms;
+they do not establish measured precision over a real-project corpus or execute those third-party
+backends.
 
 ## Slice 1: tools, reports and identities
 
