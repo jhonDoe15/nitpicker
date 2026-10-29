@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { acquireRunLock, describeRunInProgress, isProcessAlive, withRunLock } from './run-lock.mjs';
-import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 
 const temporaryRoots = [];
 
@@ -40,7 +39,7 @@ describe('run lock', () => {
     expect(lock).toEqual({ acquired: false, holder: 1234 });
     expect(readFileSync(lockPath, 'utf8')).toBe('1234\n');
     expect(describeRunInProgress(lock.holder)).toBe(
-      `nitpicker: another run is in progress in this project (pid 1234); wait for it to finish. ${linkSentence('anotherRun')}\n`,
+      `nitpicker: another run is in progress in this project (pid 1234); wait for it to finish.\n`,
     );
   });
 

@@ -63,7 +63,6 @@ describe.skipIf(!pythonE2eEnabled)(
             '  tests/test_more.py::test_two',
             'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
             'Mutation testing (mutmut) leaves out the test modules tests/test_more.py.',
-            linkSentence('testsFail'),
           ].join('\n'),
         },
       ]);

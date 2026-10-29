@@ -16,10 +16,7 @@ import {
   TESTS_FAILED_SKIPPED_RULE,
 } from '../../../../../shared/rules/finding-helpers.mjs';
 import { normalizeCrap } from '../reporting/tests.mjs';
-import {
-  TROUBLESHOOTING_ANCHORS,
-  testsFailAnchor,
-} from '../../../../../shared/messages/troubleshooting.mjs';
+import { testsFailAnchor } from '../../../../../shared/messages/troubleshooting.mjs';
 import { withFunctionSourceHashes } from '../reporting/source-hashes.mjs';
 
 export function runPolicyTests(options) {
@@ -59,7 +56,6 @@ function noTestsRanFinding(options, runnerName) {
     rule: TESTS_FAILED_RULE,
     path: first,
     message: `${runnerName} ran no tests, but nitpicker sees test files such as ${first}. Make the project's ${runnerName} config find them, or set "tools.tests.runner" in nitpicker.config.json to the runner they are written for.`,
-    anchor: TROUBLESHOOTING_ANCHORS.noTestsRan,
   });
 }
 

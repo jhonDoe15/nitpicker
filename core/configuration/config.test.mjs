@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { describeConfigOverrides } from './config.mjs';
 import { validateConfig } from './validate.mjs';
 import { policyHash } from '../diff/reporting/report-model.mjs';
-import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 
 describe('config file', () => {
   it('accepts an empty config and the documented keys', () => {
@@ -273,7 +272,7 @@ describe('config file', () => {
     ]);
     expect(() => validateConfig({ preset: 'java', thresholds: { lineLength: 140 } })).toThrow(
       new Error(
-        `nitpicker.config.json: "thresholds.lineLength" is not supported with "preset": "java": Java line length follows the formatter (google-java-format wraps at 100, palantir-java-format at 120); with the "conventions" key "java.formatter" set to "none", "java.lineLength" (any number of columns) sets it, as does max on LineLength in config/checkstyle/checkstyle.xml once "tools": { "checkstyle": { "precedence": ["project"] } } opts in, and an exception for "line-length-limit" lifts the rule for some paths. ${linkSentence('invalidConfiguration')}`,
+        `nitpicker.config.json: "thresholds.lineLength" is not supported with "preset": "java": Java line length follows the formatter (google-java-format wraps at 100, palantir-java-format at 120); with the "conventions" key "java.formatter" set to "none", "java.lineLength" (any number of columns) sets it, as does max on LineLength in config/checkstyle/checkstyle.xml once "tools": { "checkstyle": { "precedence": ["project"] } } opts in, and an exception for "line-length-limit" lifts the rule for some paths`,
       ),
     );
   });
@@ -391,13 +390,13 @@ describe('tool precedence', () => {
     for (const precedence of [[], ['project', 'project'], ['workspace'], 'project', undefined]) {
       expect(() => validateConfig({ tools: { prettier: { precedence } } })).toThrow(
         new Error(
-          `nitpicker.config.json: "tools.prettier.precedence" must list "project", "nitpicker" or both, each once, highest first. ${linkSentence('invalidConfiguration')}`,
+          `nitpicker.config.json: "tools.prettier.precedence" must list "project", "nitpicker" or both, each once, highest first`,
         ),
       );
     }
     expect(() => validateConfig({ preset: 'java', tools: { pmd: { precedence: [] } } })).toThrow(
       new Error(
-        `nitpicker.config.json: "tools.pmd.precedence" must list "project", "nitpicker" or both, each once. ${linkSentence('invalidConfiguration')}`,
+        `nitpicker.config.json: "tools.pmd.precedence" must list "project", "nitpicker" or both, each once`,
       ),
     );
     expect(() => validateConfig({ tools: [] })).toThrow('"tools" must be an object');
@@ -430,12 +429,12 @@ describe('tool precedence', () => {
     const tools = { pmd: { precedence: ['project'] } };
     expect(() => validateConfig({ tools })).toThrow(
       new Error(
-        `nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint, typescript, tests. ${linkSentence('invalidConfiguration')}`,
+        `nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint, typescript, tests`,
       ),
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        `nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut. ${linkSentence('invalidConfiguration')}`,
+        `nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut`,
       ),
     );
   });

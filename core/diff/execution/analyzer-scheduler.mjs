@@ -5,7 +5,6 @@ import { createWeightedSemaphore } from './capacity.mjs';
 import { createProgressReporter, writeToDescriptor } from './progress.mjs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { withUsageLink } from '../../../shared/messages/troubleshooting.mjs';
 
 const DEFAULT_MAX_PARALLEL = 4;
 
@@ -16,7 +15,7 @@ export function resolveMaxParallel(environment = process.env, available = availa
   }
   const value = Number(configured);
   if (!Number.isInteger(value) || value < 1) {
-    throw new TypeError(withUsageLink('NITPICKER_MAX_PARALLEL must be a positive integer'));
+    throw new TypeError('NITPICKER_MAX_PARALLEL must be a positive integer');
   }
   return value;
 }

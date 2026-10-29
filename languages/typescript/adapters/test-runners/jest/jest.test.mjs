@@ -130,7 +130,7 @@ describe('coverage on a Jest project', () => {
         message:
           'Jest ran no tests, but nitpicker sees test files such as test/pick.test.ts. ' +
           'Make the project\'s Jest config find them, or set "tools.tests.runner" in ' +
-          `nitpicker.config.json to the runner they are written for. ${linkSentence('noTestsRan')}`,
+          `nitpicker.config.json to the runner they are written for.`,
         classification: 'tool-error',
       },
     ]);

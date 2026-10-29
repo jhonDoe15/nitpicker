@@ -14,7 +14,6 @@ import { selectAnalyzerShard } from '../diff/sharding/sharding.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-  usageError,
   troubleshootingSentence,
 } from '../../shared/messages/troubleshooting.mjs';
 
@@ -41,7 +40,7 @@ function writableStore(projectRoot, cli) {
 
 function validateCommand(arguments_) {
   if (arguments_.length === 1 && arguments_[0] === 'publish') return;
-  throw usageError(
+  throw new Error(
     arguments_.length === 0 || arguments_[0] === 'publish'
       ? 'Usage: nitpicker cache publish'
       : `Unknown cache command: ${arguments_.join(' ')}`,
@@ -54,8 +53,9 @@ function writeOutcome({ stdout, result, selected }) {
       ` for ${result.commitSha}${result.published.length === 0 ? '' : `: ${result.published.join(', ')}`}\n`,
   );
   for (const skipped of result.skipped) stdout.write(`Not published: ${skipped}\n`);
-  if (result.skipped.length > 0) {
-    stdout.write(`${troubleshootingSentence(TROUBLESHOOTING_ANCHORS.cachePublishFails)}\n`);
+  const help = troubleshootingSentence(TROUBLESHOOTING_ANCHORS.cachePublishFails);
+  if (result.skipped.length > 0 && help !== undefined) {
+    stdout.write(`${help}\n`);
   }
   return result.skipped.length === 0 ? 0 : 2;
 }

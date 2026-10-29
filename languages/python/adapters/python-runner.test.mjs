@@ -350,7 +350,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'tests-failed',
         path: '.',
         identity: 'tests-failed',
-        message: `coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet\n${linkSentence('testsFail')}`,
+        message: `coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet`,
         classification: 'tool-error',
       },
       {

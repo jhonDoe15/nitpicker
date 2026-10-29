@@ -1,11 +1,9 @@
-import { usageError } from '../../../shared/messages/troubleshooting.mjs';
-
 const VALUE_OPTIONS = new Set(['--analyzer', '--rule', '--shard-count', '--shard-index']);
 
 export function takeOptionValue(remaining, argument) {
   const { value } = remaining.next();
   if (value === undefined || value.startsWith('--')) {
-    throw usageError(`${argument} requires a value`);
+    throw new Error(`${argument} requires a value`);
   }
   return value;
 }
@@ -30,10 +28,10 @@ export function parseDrillDownOptions(arguments_) {
   const shardCount = valuesOf(entries, '--shard-count').map(Number).at(-1);
   const shardIndex = valuesOf(entries, '--shard-index').map(Number).at(-1);
   if ((shardCount === undefined) !== (shardIndex === undefined)) {
-    throw usageError('--shard-count and --shard-index must be provided together');
+    throw new Error('--shard-count and --shard-index must be provided together');
   }
   if (shardCount !== undefined && analyzerNames.length > 0) {
-    throw usageError('--analyzer cannot be combined with --shard-count');
+    throw new Error('--analyzer cannot be combined with --shard-count');
   }
   return {
     analyzerNames,

@@ -12,7 +12,6 @@ import {
   unhandledErrorText,
   withSnapshotAdvice,
 } from './failure-lines.mjs';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const rule = '⎯⎯⎯⎯⎯⎯⎯';
 const unhandledOutput = [
@@ -152,8 +151,7 @@ describe('unhandled errors in the Vitest output', () => {
         path: 'src/t.test.ts',
         identity: 'tests-failed',
         message:
-          "Vitest caught an unhandled rejection from src/t.test.ts: AssertionError: expected 'user-2' to be 'nope' // Object.is equality. Await or return the promise in the test so its failure fails the test, then rerun; coverage, CRAP and mutation were skipped. " +
-          linkSentence('testsFail'),
+          "Vitest caught an unhandled rejection from src/t.test.ts: AssertionError: expected 'user-2' to be 'nope' // Object.is equality. Await or return the promise in the test so its failure fails the test, then rerun; coverage, CRAP and mutation were skipped.",
         classification: 'tool-error',
       },
     ]);
@@ -165,7 +163,6 @@ describe('mutation skip', () => {
     expect(mutationSkipFor('Something went wrong in the initial test run\n at x')).toEqual({
       rule: 'tests-failed-skipped',
       message: 'mutation skipped: tests fail (see coverage findings)',
-      anchor: 'tests-fail',
     });
   });
 });

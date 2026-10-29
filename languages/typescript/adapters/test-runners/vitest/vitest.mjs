@@ -50,7 +50,12 @@ export function runVitest(options) {
       },
       acceptedStatuses: [0, 1],
     });
-    return readRun({ reportPath, result, runnerName: RUNNER_NAMES.vitest });
+    return readRun({
+      reportPath,
+      result,
+      runnerName: RUNNER_NAMES.vitest,
+      snapshot: options.snapshot,
+    });
   } finally {
     removeTemporary(reportPath, configPath, setupPath);
   }

@@ -20,6 +20,7 @@ import {
   freshExecFiles,
   runJacocoReport,
 } from './maven-tests.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
@@ -187,12 +188,11 @@ describe('collectTestResults', () => {
         isArchunit: archunitMatcher(),
       });
     }).toThrow(
-      new Error(
+      explainedError(
         [
           'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
           ...listed,
           '  and 2 more',
-          linkSentence('testsFail'),
         ].join('\n'),
       ),
     );
@@ -212,11 +212,10 @@ describe('collectTestResults', () => {
       });
     };
     const failing = (...lines) =>
-      new Error(
+      explainedError(
         [
           'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
           ...lines,
-          linkSentence('testsFail'),
         ].join('\n'),
       );
 

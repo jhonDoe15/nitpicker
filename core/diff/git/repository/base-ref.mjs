@@ -1,9 +1,5 @@
 import { configError } from '../../../../shared/config.mjs';
 import { GitCommandError, runGit } from './command.mjs';
-import {
-  TROUBLESHOOTING_ANCHORS,
-  troubleshootingError,
-} from '../../../../shared/messages/troubleshooting.mjs';
 
 const COMMIT_ID = /^[0-9a-f]{7,40}$/iu;
 const HEAD_SYNTAX = /^(?:HEAD|@)(?:$|[~^@{])|@\{/u;
@@ -59,10 +55,7 @@ function remoteBase(repositoryRoot) {
     return { baseRef: fallback, source: 'fallback' };
   }
 
-  throw troubleshootingError(
-    'No base could be determined. Use --base <ref>.',
-    TROUBLESHOOTING_ANCHORS.noBase,
-  );
+  throw new Error('No base could be determined. Use --base <ref>.');
 }
 
 function followsHead(repositoryRoot, configuredBase) {
@@ -84,7 +77,6 @@ function notCheckedOutCommit(repositoryRoot, configuredBase) {
   }
   throw configError(
     `"base" is ${configuredBase}, the commit you are on, so the change would be compared with itself. Name a branch such as "origin/main", or pass --base <ref>.`,
-    TROUBLESHOOTING_ANCHORS.noBase,
   );
 }
 

@@ -146,9 +146,9 @@ function isFailing(report) {
   );
 }
 
-export function readRun({ reportPath, result, runnerName }) {
+export function readRun({ reportPath, result, runnerName, snapshot }) {
   return finishedRun({
-    report: readTestReport(reportPath, result, runnerName),
+    report: readTestReport(reportPath, result, { runnerName, snapshot }),
     result,
     runnerName,
   });

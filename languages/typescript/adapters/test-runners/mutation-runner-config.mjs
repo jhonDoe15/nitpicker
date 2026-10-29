@@ -3,10 +3,6 @@ import { fileURLToPath } from 'node:url';
 import { mochaMutationOptions, projectMocha } from '../../preset/test-runner/mocha-options.mjs';
 import { nodeTestSelection } from './node-test/node-test.mjs';
 import { TEST_TIMEOUT_MS } from './test-run.mjs';
-import {
-  TROUBLESHOOTING_ANCHORS,
-  withTroubleshooting,
-} from '../../../../shared/messages/troubleshooting.mjs';
 
 const RUNNER_PLUGINS = {
   vitest: '@stryker-mutator/vitest-runner',
@@ -61,11 +57,10 @@ export function unsupportedMutationRunner(options, runner) {
     return undefined;
   }
   const supported = String(MOCHA_MUTATION_MAX_MAJOR);
-  return withTroubleshooting(
+  return (
     `mutation skipped: Stryker's Mocha runner (@stryker-mutator/mocha-runner 10) supports Mocha up to ${supported}, ` +
-      `and this project uses Mocha ${String(major)}. Coverage and CRAP still run; ` +
-      `use Mocha ${supported} to get mutation testing.`,
-    TROUBLESHOOTING_ANCHORS.mutationUnsupportedRunner,
+    `and this project uses Mocha ${String(major)}. Coverage and CRAP still run; ` +
+    `use Mocha ${supported} to get mutation testing.`
   );
 }
 

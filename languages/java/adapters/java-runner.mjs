@@ -7,8 +7,8 @@ import { javaStyle } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
+  failureText,
   troubleshootingLinkOf,
-  withTroubleshooting,
 } from '../../../shared/messages/troubleshooting.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
@@ -51,7 +51,6 @@ export function analyzeJavaSnapshot(
       }),
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     const isMaven = detectJavaBuild(projectRoot) === 'maven';
     const rule = isMaven ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
     const anchor = isMaven
@@ -64,7 +63,7 @@ export function analyzeJavaSnapshot(
           rule,
           path: '.',
           identity: rule,
-          message: withTroubleshooting(truncated(message), anchor),
+          message: truncated(failureText(error, anchor)),
           classification: 'tool-error',
         },
       ],

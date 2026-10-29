@@ -14,6 +14,7 @@ import {
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
 
 export const SNAPSHOT_DIRECTORY_NAMES = ['base', 'head'];
+const INSTALL_RANGES = { typescript: '>=5.7 <7' };
 
 export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT } = {}) {
   const { owningManifest, owningPeers, from } = owningTool(name, { projectRoot, packageRoot });
@@ -50,10 +51,11 @@ function installedTool(name, { owningManifest, owningPeers, from }) {
 
 function missingToolError(name, from, peerRange) {
   const message = `Required tool ${name} is not installed from ${from}`;
+  const range = INSTALL_RANGES[name] ?? peerRange;
   return peerRange === undefined
     ? new Error(message)
     : troubleshootingError(
-        `${message}. Install ${name} ${peerRange} as a dev dependency of the project.`,
+        `${message}. Install ${name} ${range} as a dev dependency of the project.`,
         TROUBLESHOOTING_ANCHORS.missingPeer,
       );
 }
@@ -126,8 +128,11 @@ function repositoryRootOf(directory) {
       }).trim(),
     );
   } catch (error) {
+    const gitOutput = String(error?.stderr ?? '').trim();
+    const gitSaid = gitOutput === '' ? '' : `\ngit said:\n${gitOutput}`;
     throw troubleshootingError(
-      `${directory} is not inside a Git repository (or git is not installed). nitpicker compares your changes with their merge base, so run it inside a Git checkout.`,
+      `${directory} is not inside a Git repository that git can read (or git is not installed). ` +
+        `nitpicker compares your changes with their merge base, so run it inside a Git checkout.${gitSaid}`,
       TROUBLESHOOTING_ANCHORS.notAGitRepository,
       { cause: error },
     );

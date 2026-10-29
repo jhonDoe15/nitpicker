@@ -8,7 +8,6 @@ import {
   runArea,
   createRunnerProjects,
 } from '../test-support/runner-project.mjs';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const projects = createRunnerProjects();
 
@@ -66,8 +65,7 @@ describe('coverage on a Mocha project', () => {
         message:
           '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
           '  test/broken.test.ts > could not run: Error [ERR_MODULE_NOT_FOUND]: ' +
-          `Cannot find package 'not-installed' imported from ${root}/test/broken.test.ts\n` +
-          linkSentence('testsFail'),
+          `Cannot find package 'not-installed' imported from ${root}/test/broken.test.ts`,
         classification: 'tool-error',
       },
     ]);

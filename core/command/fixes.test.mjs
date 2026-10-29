@@ -323,9 +323,7 @@ Base: ${repository.baseRef} (argument)
     expect(
       runCli({ arguments_: ['--fix', '--all'], stdout: output.stdout, stderr: output.stderr }),
     ).toBe(2);
-    expect(output.stderrText).toEqual(
-      `nitpicker failed: --fix cannot be combined with --all. ${linkSentence('invalidArguments')}\n`,
-    );
+    expect(output.stderrText).toEqual(`nitpicker failed: --fix cannot be combined with --all\n`);
   });
   it('rejects --all combined with --base', () => {
     const output = captureOutput();

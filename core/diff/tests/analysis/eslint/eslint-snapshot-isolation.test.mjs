@@ -184,7 +184,7 @@ describe('ESLint snapshot isolation and failures', () => {
     expect(report.summary.overallStatus).toBe('tool-error');
     expect(report.toolErrors).toHaveLength(2);
     expect(report.toolErrors[0].message).toEqual(
-      `eslint-lint crashed with exit 2: ESLint differential adapter failed: --pattern must stay within the analyzed snapshot. ${linkSentence('analyzerCrashed')}`,
+      `eslint-lint crashed with exit 2: ESLint differential adapter failed: --pattern must stay within the analyzed snapshot. ${linkSentence('typescriptToolFails')}`,
     );
   });
   it.each(['malformed', 'configuration-error', 'crash', 'timeout'])(

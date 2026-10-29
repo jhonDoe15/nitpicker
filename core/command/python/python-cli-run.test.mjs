@@ -45,7 +45,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
         snapshot: 'head',
         rule: 'tests-failed',
         path: '.',
-        message: `coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet\n${linkSentence('testsFail')}`,
+        message: `coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet`,
       },
     ]);
   });
@@ -202,7 +202,6 @@ describe('nitpicker with "preset": "python" running the project', () => {
           '  tests/test_greet.py::test_greet',
           'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
           'Mutation testing (mutmut) leaves out the test modules tests/test_greet.py.',
-          linkSentence('testsFail'),
         ].join('\n'),
       },
     ]);

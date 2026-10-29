@@ -196,7 +196,7 @@ describe('dependency preparation for every package manager', () => {
 
     expect(() => prepareSnapshotDependencies({ projectRoot, liveProjectRoot, toolRoot })).toThrow(
       new Error(
-        `Dependencies are not installed: ${path.join(liveProjectRoot, 'node_modules')} is missing. Run \`pnpm install\` in ${liveProjectRoot} first. ${linkSentence('dependenciesNotInstalled')}`,
+        `Dependencies are not installed: ${path.join(liveProjectRoot, 'node_modules')} is missing. Run \`pnpm install\` in ${liveProjectRoot} first.`,
       ),
     );
   });

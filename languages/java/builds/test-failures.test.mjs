@@ -59,7 +59,6 @@ describe('failingTestsError', () => {
       'Tests fail in /repo; nitpicker needs a passing test suite for coverage and mutation testing:',
       ...failures.slice(0, 10).map((failure) => `  ${failure}`),
       '  and 2 more',
-      linkSentence('testsFail'),
     ]);
   });
 
@@ -78,7 +77,6 @@ describe('failingTestsError', () => {
       [
         'Tests fail in the head snapshot (/repo); nitpicker needs a passing test suite for coverage and mutation testing:',
         '  shop.T.t: no',
-        linkSentence('testsFail'),
       ].join('\n'),
     );
   });
