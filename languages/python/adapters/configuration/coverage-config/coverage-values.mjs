@@ -4,7 +4,7 @@ const INI_TRUE = new Set(['1', 'yes', 'true', 'on']);
 const INI_FALSE = new Set(['0', 'no', 'false', 'off']);
 const WARNING_NAME = /^[\w-]+$/u;
 
-function rejected(file, key, value, expected) {
+function rejected({ file, key, value }, expected) {
   return new Error(
     `The coverage config ${file} sets run ${key} = ${JSON.stringify(value)}, but coverage takes ${expected}: fix it, or remove "project" from tools.coverage.precedence`,
   );
@@ -21,7 +21,7 @@ function booleanValue(file, key, value) {
   if (INI_FALSE.has(word)) {
     return 'False';
   }
-  throw rejected(file, key, value, 'true or false');
+  throw rejected({ file, key, value }, 'true or false');
 }
 
 function choiceValue(file, key, value) {
@@ -29,13 +29,13 @@ function choiceValue(file, key, value) {
   if (CHOICES[key].includes(word)) {
     return word;
   }
-  throw rejected(file, key, value, CHOICES[key].join(', '));
+  throw rejected({ file, key, value }, CHOICES[key].join(', '));
 }
 
 export function warningNames(file, values) {
   const bad = values.find((entry) => !WARNING_NAME.test(entry));
   if (bad !== undefined) {
-    throw rejected(file, 'disable_warnings', bad, 'warning names');
+    throw rejected({ file, key: 'disable_warnings', value: bad }, 'warning names');
   }
   return values;
 }
