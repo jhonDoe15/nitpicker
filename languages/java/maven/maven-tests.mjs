@@ -10,6 +10,7 @@ import {
 import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
+import { NITPICKER_PIT_ARGUMENTS } from '../adapters/tool-config/declared/pit-declared.mjs';
 import { failedCases, failingTestsError, freshReports } from '../builds/test-failures.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
@@ -184,7 +185,7 @@ export function pitClasspath(tools, testRuntime) {
   ];
 }
 
-export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn }) {
+export function runPit({ module, reportDir, tools, classpaths, isArchunit, configs, spawn }) {
   const pitDir = path.join(reportDir, 'pit');
   rmSync(pitDir, { recursive: true, force: true });
   mkdirSync(pitDir, { recursive: true });
@@ -213,8 +214,7 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn
       'XML',
       '--timestampedReports',
       'false',
-      '--threads',
-      '2',
+      ...(configs?.pit?.arguments ?? NITPICKER_PIT_ARGUMENTS),
       '--failWhenNoMutations',
       'false',
       '--verbose',
