@@ -1,3 +1,7 @@
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { kotlinRuleAliasNotices } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { jvmOutsideRootsNotices } from '../../../languages/java/adapters/notices/outside-roots-notice.mjs';
 import { readBuildSources } from '../../../languages/java/builds/narrowing/build-sources.mjs';
 import { listedFiles } from '../../policy-changes/policy-scope.mjs';
@@ -9,9 +13,16 @@ import { outsideRootsNotices } from '../../../languages/typescript/preset/notice
 const TYPESCRIPT_PRESETS = new Set([undefined, 'typescript']);
 const BUILD_FILE = /(?:^|\/)(?:build\.gradle(?:\.kts)?|pom\.xml)$/u;
 
+function rawConfig(projectRoot) {
+  const file = path.join(projectRoot, CONFIG_FILE_NAME);
+  return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
+}
+
 function jvmDescriber(config, headPolicy, projectRoot) {
-  return (changedFiles) =>
-    jvmOutsideRootsNotices(changedFiles, {
+  const renamed = kotlinRuleAliasNotices(rawConfig(projectRoot));
+  return (changedFiles) => [
+    ...renamed,
+    ...jvmOutsideRootsNotices(changedFiles, {
       preset: config.preset,
       exclude: headPolicy.exclude,
       declaredRoots: readBuildSources(
@@ -20,7 +31,8 @@ function jvmDescriber(config, headPolicy, projectRoot) {
       )
         .filter(({ type }) => type === 'roots')
         .flatMap(({ roots }) => roots),
-    });
+    }),
+  ];
 }
 
 export function noticeDescriber(config, headPolicy, projectRoot) {

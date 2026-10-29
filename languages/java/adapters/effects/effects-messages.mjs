@@ -27,8 +27,16 @@ export function callPath(path) {
   return rest.length === 0 ? `calls ${first}` : `calls ${[first, ...rest].join(', which calls ')}`;
 }
 
-function loopIo({ method, kind, form, path }, language) {
+const REDIS_BATCH = '`MGET` (`opsForValue().multiGet(keys)`) or a pipeline (`executePipelined`)';
+
+function loopIo({ method, kind, form, path, store }, language) {
   const where = `${code(`${method}()`)} ${callPath(path)}`;
+  if (store === 'redis') {
+    return [
+      `Read or write all keys in one round trip with ${REDIS_BATCH}:`,
+      `${where} once per loop item, one round trip each. ${LOOPS_FINE}`,
+    ].join(' ');
+  }
   if (form === 'concurrent') {
     return [
       `Fetch or write the items in one query (${ONE_QUERY}): ${where} for each item,`,
@@ -91,10 +99,14 @@ function remoteInTransaction({ method, scope, holder, path }) {
 
 function remoteUnderLock({ method, scope, holder, path }) {
   return [
-    'Move the remote call out of the lock: read what it needs under the lock, release it, make the call,',
-    'and take the lock again to apply the result:',
+    'Make the remote call before taking the lock or after releasing it, and keep only the change of the',
+    'shared state inside; copy the value you need out of the lock first:',
     `${code(`${method}()`)} ${callPath(path)} while holding ${heldScope(scope, holder)},`,
     "so every thread waiting for the lock also waits for the remote call's latency.",
+    'A fill-once block stays allowed: the call under an `if` that tests the state the block then sets',
+    '(a token refresh, a cached download), so callers wait for one request instead of each sending their',
+    'own. When the remote effect must happen exactly once per state change, record it in an outbox row and',
+    'send it from a worker.',
   ].join(' ');
 }
 

@@ -2,7 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { batchFetchSize, effectsOptions, effectsProperties } from './effects-options.mjs';
+import {
+  batchFetchSize,
+  batchFetchSizes,
+  effectsOptions,
+  effectsProperties,
+  moduleEffectsOptions,
+} from './effects-options.mjs';
 
 const roots = [];
 
@@ -51,12 +57,31 @@ describe('batchFetchSize', () => {
     expect(effectsProperties(root)).toEqual([]);
   });
 
-  it('turns the size into an engine option and a Gradle property', () => {
+  it('turns each module size into an engine option and a Gradle property for that module', () => {
     const root = projectWith({
       'src/main/resources/application.properties': 'hibernate.default_batch_fetch_size=25\n',
+      'orders/src/main/resources/application.yml': 'hibernate.default_batch_fetch_size: 8\n',
+      'billing/src/main/resources/application.properties': 'spring.application.name=billing\n',
     });
 
-    expect(effectsOptions(root)).toEqual(['batchFetchSize=25']);
-    expect(effectsProperties(root)).toEqual(['-Pnitpicker.effects.options=batchFetchSize=25']);
+    expect(batchFetchSizes(root)).toEqual(
+      new Map([
+        ['.', 25],
+        ['orders', 8],
+      ]),
+    );
+    expect(effectsOptions(root).sort()).toEqual(
+      [`batchFetchSize=25@${root}`, `batchFetchSize=8@${path.join(root, 'orders')}`].sort(),
+    );
+    expect(effectsProperties(root)).toEqual([
+      '-Pnitpicker.effects.options=batchFetchSize=25@.,batchFetchSize=8@orders',
+    ]);
+  });
+
+  it('keeps the options of one module and the unscoped ones', () => {
+    const options = ['batchFetchSize=8@/p/orders', 'batchFetchSize=25@/p', 'debug=1'];
+
+    expect(moduleEffectsOptions(options, '/p/orders')).toEqual(['batchFetchSize=8', 'debug=1']);
+    expect(moduleEffectsOptions(options, '/p/billing')).toEqual(['debug=1']);
   });
 });

@@ -2,7 +2,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { readEffectsFindings, withoutCoveredLines } from './effects-findings.mjs';
+import {
+  readEffectsFindings,
+  readEffectsReport,
+  withoutCoveredLines,
+} from './effects-findings.mjs';
 import { callPath } from './effects-messages.mjs';
 
 const roots = [];
@@ -11,11 +15,11 @@ afterAll(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function reportWith(violations) {
+function reportWith(violations, counts = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-effects-report-'));
   roots.push(root);
   mkdirSync(root, { recursive: true });
-  writeFileSync(path.join(root, 'effects.json'), JSON.stringify({ violations }));
+  writeFileSync(path.join(root, 'effects.json'), JSON.stringify({ ...counts, violations }));
   return root;
 }
 
@@ -55,6 +59,9 @@ function exception(rule, file) {
 function sentence(...parts) {
   return parts.join(' ');
 }
+
+const ASM_ADVICE =
+  "class files newer than the engine's ASM release are the usual cause: build with a JDK that ASM reads, or raise the pinned ASM version";
 
 describe('readEffectsFindings', () => {
   it('turns a violation into a finding with the call path, the allowed form and the exception', () => {
@@ -195,10 +202,14 @@ describe('readEffectsFindings', () => {
         exception('RemoteCallInTransaction', JAVA_FILE),
       ),
       sentence(
-        'Move the remote call out of the lock: read what it needs under the lock, release it, make the call,',
-        'and take the lock again to apply the result:',
+        'Make the remote call before taking the lock or after releasing it, and keep only the change of the',
+        'shared state inside; copy the value you need out of the lock first:',
         `${calls} while holding \`ReentrantLock.lock()\` in \`Import.confirm()\`,`,
         "so every thread waiting for the lock also waits for the remote call's latency.",
+        'A fill-once block stays allowed: the call under an `if` that tests the state the block then sets',
+        '(a token refresh, a cached download), so callers wait for one request instead of each sending their',
+        'own. When the remote effect must happen exactly once per state change, record it in an outbox row and',
+        'send it from a worker.',
         exception('RemoteCallUnderLock', JAVA_FILE),
       ),
     ]);
@@ -317,16 +328,80 @@ describe('readEffectsFindings', () => {
   });
 });
 
-describe('withoutCoveredLines', () => {
-  const at = (tool, rule, line) => ({ tool, rule, path: 'src/A.java', location: { line } });
+describe('readEffectsReport', () => {
+  const resolvePath = (className, fileName) => `src/main/java/shop/${fileName}`;
 
-  it('drops a loop finding on a line PMD or a Spring Data loop rule reports', () => {
+  it('locates the covered calls and adds a notice for class files the engine could not read', () => {
+    const fact = {
+      rule: 'IoCallInLoop',
+      className: 'shop.Import',
+      fileName: 'Import.java',
+      line: 9,
+      firstLine: 8,
+      kind: 'message',
+      form: 'loop',
+      verdict: 'exempt',
+    };
+    const root = reportWith([], {
+      classes: 3,
+      skipped: 2,
+      unreadableLibraries: 1,
+      covered: [fact],
+    });
+    const { findings, covered } = readEffectsReport(root, { resolvePath });
+
+    expect(covered).toEqual([{ ...fact, path: JAVA_FILE }]);
+    expect(findings).toEqual([
+      {
+        tool: 'effects',
+        rule: 'effects-skipped-classes',
+        path: '.',
+        identity: 'effects-skipped-classes',
+        classification: 'descriptive',
+        message: `The effects engine could not read 2 class files of this module and 1 library classes, so its rules did not check that code; ${ASM_ADVICE}.`,
+      },
+    ]);
+  });
+
+  it('fails when the engine could read none of the class files', () => {
+    const root = reportWith([], { classes: 0, skipped: 4 });
+
+    expect(() => readEffectsReport(root, { resolvePath })).toThrow(
+      new Error(
+        `The effects engine could not read any of the 4 class files of the module, so it checked nothing; ${ASM_ADVICE}`,
+      ),
+    );
+  });
+
+  it('asks for MGET or a pipeline when the loop reads Redis', () => {
+    const redis = { ...loop, store: 'redis', path: ['ValueOperations.get()'] };
+    const [finding] = read([redis]);
+
+    expect(finding.message.split(':')[0]).toBe(
+      'Read or write all keys in one round trip with `MGET` (`opsForValue().multiGet(keys)`) or a pipeline (`executePipelined`)',
+    );
+  });
+});
+
+describe('withoutCoveredLines', () => {
+  const at = (tool, rule, line, firstLine) => ({
+    tool,
+    rule,
+    path: 'src/A.java',
+    location: { line },
+    ...(firstLine === undefined ? {} : { firstLine }),
+  });
+  const fact = (line, verdict) => ({ path: 'src/A.java', line, firstLine: line, verdict });
+
+  it('drops a loop finding when PMD or a Spring Data loop rule reports a line of its call', () => {
     const findings = [
       at('pmd', 'IoCallInLoop', 3),
       at('pmd', 'SpringDataSaveInLoopHelper', 5),
+      at('pmd', 'IoCallInLoop', 10),
       at('effects', 'IoCallInLoop', 3),
       at('effects', 'IoCallInLoop', 5),
       at('effects', 'IoCallInLoop', 7),
+      at('effects', 'IoCallInLoop', 12, 10),
       at('effects', 'AccumulatorCopyInLoop', 3),
     ];
 
@@ -336,11 +411,21 @@ describe('withoutCoveredLines', () => {
     ]);
   });
 
-  it('keeps the loop finding when an exception lifts the covering rule there', () => {
-    const findings = [at('pmd', 'SpringDataNoSaveInLoop', 3), at('effects', 'IoCallInLoop', 3)];
-    const exceptions = [{ rule: 'pmd/SpringDataNoSaveInLoop', paths: ['shop/src/A.java'] }];
+  it('drops PMD loop findings on calls the engine exempts, unless an owned call shares the line', () => {
+    const findings = [
+      at('pmd', 'IoCallInLoop', 3),
+      at('pmd', 'IoCallInLoop', 5),
+      at('pmd', 'IoCallInLoop', 7),
+      at('pmd', 'IoCallInLoop', 9),
+      at('effects', 'IoCallInLoop', 9),
+    ];
+    const covered = [fact(3, 'exempt'), fact(5, 'exempt'), fact(5, 'owned'), fact(9, 'exempt')];
 
-    expect(withoutCoveredLines(findings, { exceptions, modulePath: 'shop' })).toHaveLength(2);
+    expect(withoutCoveredLines(findings, covered)).toEqual([
+      at('pmd', 'IoCallInLoop', 5),
+      at('pmd', 'IoCallInLoop', 7),
+      at('pmd', 'IoCallInLoop', 9),
+    ]);
   });
 });
 
