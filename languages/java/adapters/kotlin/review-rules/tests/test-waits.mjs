@@ -211,6 +211,14 @@ function isSpared(wait, file, isProduction) {
   );
 }
 
+export function isSparedHost(name) {
+  return SPARED_HOSTS.has(name);
+}
+
+export function isInlineHost(name) {
+  return INLINE_HOSTS.has(name);
+}
+
 export function waitMessage(found, awaitility = false) {
   const { rule, kind } = found;
   if (rule === NEGATIVE_WAIT_RULE) {

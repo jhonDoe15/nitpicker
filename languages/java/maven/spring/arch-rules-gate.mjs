@@ -1,0 +1,28 @@
+import path from 'node:path';
+
+const SPRING_JAR = /^spring-(?:context|boot)-.*\.jar$/u;
+const JMOLECULES_JAR = /^jmolecules-ddd-.*\.jar$/u;
+
+export function usesSpring(classpaths) {
+  return classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
+}
+
+export function runsArchRules(classpaths) {
+  return (
+    usesSpring(classpaths) ||
+    classpaths.mainCompile.some((entry) => JMOLECULES_JAR.test(path.basename(entry)))
+  );
+}
+
+export function withDeclaredSpring(manifest, declared) {
+  const spring = declared === true || manifest.spring;
+  return { ...manifest, spring, springArch: spring || manifest.springArch };
+}
+
+export function buildRunsArchRules(policy, analyzed) {
+  return policy.spring === true || analyzed.some(({ classpaths }) => runsArchRules(classpaths));
+}
+
+export function springFacts(classpaths) {
+  return { spring: usesSpring(classpaths), springArch: runsArchRules(classpaths) };
+}
