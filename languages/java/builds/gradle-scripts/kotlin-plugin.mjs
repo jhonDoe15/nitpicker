@@ -3,7 +3,7 @@ import path from 'node:path';
 import { parse } from 'smol-toml';
 import { filesUnder, pathInside } from '../../../../shared/filesystem.mjs';
 
-export const KOTLIN_JVM_PLUGIN = 'org.jetbrains.kotlin.jvm';
+const KOTLIN_JVM_PLUGIN = 'org.jetbrains.kotlin.jvm';
 export const BUILD_LOGIC_FOLDERS = ['buildSrc', 'build-logic'];
 const PLUGIN_IDS = new Set([KOTLIN_JVM_PLUGIN, 'kotlin']);
 const SKIPPED_FOLDERS = new Set(['build', 'node_modules', 'out', 'target']);
