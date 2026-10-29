@@ -1592,6 +1592,20 @@ Findings match the project's own TypeScript, with the same messages, positions a
 Switching engines therefore shows those findings as new once. Paths inside messages are relative
 to the project, so they are the same on both sides of the comparison.
 
+Config diagnostics, such as a removed or unknown compiler option, are reported against the
+project's own config, the one nitpicker's type check config extends (`tsconfig.json`, the config
+`tools.typescript.project` names, or the referenced config of a solution `tsconfig.json`), so an
+exception can name that path. An unknown option is reported at its line in the config that sets it;
+other option diagnostics are reported on the file, without a line. An unknown option is reported and the type check still runs, as
+`tsc` does; TypeScript 5 and 6 may add "Did you mean ...?" to it where TypeScript 7 does not. Any
+other config error, such as broken JSON or an `extends` that names a missing file, stops the
+analyzer, and the message names the project's config.
+
+Both sides of the comparison are type checked with the TypeScript of the current checkout, so their
+findings come from the same compiler. On a branch that upgrades TypeScript, the base is checked
+with the new version too: an option it removed or a check it changed shows up on both sides and is
+not reported as new, even though the base's own compiler never reported it.
+
 To always type check with the project's own TypeScript, set the engine:
 
 ```json

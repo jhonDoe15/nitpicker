@@ -14,6 +14,7 @@ import {
 } from './typescript-program.mjs';
 
 const ASSIGN_NUMBER = "Type 'string' is not assignable to type 'number'.";
+const UNKNOWN_OPTION = "Unknown compiler option 'fooBar'.";
 const ASSIGN_STRING = "Type 'number' is not assignable to type 'string'.";
 const SOURCES = {
   'src/assign.ts':
@@ -246,6 +247,40 @@ describe('a project whose own typescript is TypeScript 7', () => {
     await expect(described('project', configPath, projectNative)).rejects.toThrow(
       /Compiler option 'strict' requires a value of type boolean/u,
     );
+  });
+
+  it('reports an unknown option and still type checks, as tsc does', async () => {
+    writeConfig('tsconfig.own-base.json', { ...STRICT, types: [], fooBar: 1 });
+    const configPath = path.join(root, 'tsconfig.own-unknown.json');
+    writeFileSync(configPath, JSON.stringify({ extends: './tsconfig.own-base.json', fooBaz: 1 }));
+
+    const own = await described('project', configPath, projectNative);
+
+    expect(own).toEqual([
+      finding('tsconfig.own-base.json', 5023, undefined, [0, 132], UNKNOWN_OPTION),
+      ...SOURCE_FINDINGS,
+    ]);
+    expect(await described('project', configPath)).toEqual(own);
+  });
+
+  it('names the project config and keeps the snapshot folder out of config errors', async () => {
+    const configPath = path.join(root, 'tsconfig.own-missing.json');
+    writeFileSync(configPath, JSON.stringify({ extends: './missing.json', include: ['src'] }));
+
+    for (const projectTypeScriptRoot of [projectNative, undefined]) {
+      await expect(
+        preEmitDiagnostics({
+          ts,
+          engine: 'project',
+          configPath,
+          configName: 'tsconfig.json',
+          projectRoot: root,
+          projectNative: projectTypeScriptRoot,
+        }),
+      ).rejects.toThrow(
+        /^TypeScript config tsconfig\.json is invalid: Cannot read file 'missing\.json'/u,
+      );
+    }
   });
 
   it('reads source files with the API nitpicker selected and type checks with the project one', () => {
