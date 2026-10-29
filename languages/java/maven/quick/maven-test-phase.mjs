@@ -33,7 +33,7 @@ export function readTestRuns({ module, reportDir, since, isArchunit, testRuntime
 }
 
 export function analyzeTests(options) {
-  const { module, reportDir, classpaths, tools, pinned, since, spring, springRoles } = options;
+  const { module, reportDir, classpaths, tools, pinned, since, springArch, springRoles } = options;
   const { isArchunit, testsRan, spawn, quick } = options;
   if (!quick) {
     runJacocoReport({
@@ -47,5 +47,14 @@ export function analyzeTests(options) {
     });
     runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
   }
-  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, springRoles, spawn });
+  runSpringArch({
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    pinned,
+    archRules: springArch,
+    springRoles,
+    spawn,
+  });
 }

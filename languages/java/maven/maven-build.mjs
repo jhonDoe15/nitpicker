@@ -3,15 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { javaCommand, runJava, runMaven } from './maven-command.mjs';
 import { runCheckstyle, runFormat, runPmd, runSpotbugs } from './maven-lint.mjs';
-import {
-  moduleClasspaths,
-  parseDependencyList,
-  readReactor,
-  usesSpring,
-} from './maven-project.mjs';
-import { archunitMatcher, junitLauncherVersion } from './maven-tests.mjs';
+import { moduleClasspaths, parseDependencyList, readReactor } from './maven-project.mjs';
+import { archunitMatcher, missingLauncherVersions } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
 import { archunitTool, formatTool, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
+import { buildRunsArchRules, springFacts, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
@@ -113,7 +109,6 @@ function hasJar(classpath, jar) {
 }
 
 export function moduleManifest({ module, classpaths, pinned }) {
-  const spring = usesSpring(classpaths);
   return {
     versions: pinned,
     build: 'maven',
@@ -121,8 +116,7 @@ export function moduleManifest({ module, classpaths, pinned }) {
     kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
     resourceRoots: relativeRoots(module, module.resourceRoots),
-    spring,
-    springArch: spring,
+    ...springFacts(classpaths),
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
     testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
     testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
@@ -136,11 +130,6 @@ function readClasspaths(work, module) {
     module,
     parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8')),
   );
-}
-
-function withDeclaredSpring(manifest, declared) {
-  const spring = declared === true || manifest.spring;
-  return { ...manifest, spring, springArch: spring };
 }
 
 function analyzeSources(options) {
@@ -162,7 +151,7 @@ function analyzeModule(options) {
     moduleManifest({ module, classpaths, pinned }),
     options.spring,
   );
-  const { spring } = manifest;
+  const { spring, springArch } = manifest;
   const testRuntime = classpaths.testRuntime;
   const testsRan = readTestRuns({
     module,
@@ -173,7 +162,7 @@ function analyzeModule(options) {
     quick: options.quick,
   });
   analyzeSources({ ...options, reportDir, spring });
-  analyzeTests({ ...options, reportDir, spring, isArchunit, testsRan });
+  analyzeTests({ ...options, reportDir, springArch, isArchunit, testsRan });
   writeFileSync(path.join(reportDir, 'manifest.json'), JSON.stringify(manifest));
 }
 
@@ -204,19 +193,11 @@ function readModules(run) {
   return modules;
 }
 
-function missingLauncherVersions(analyzed) {
-  const versions = analyzed.map(({ classpaths }) => junitLauncherVersion(classpaths.testRuntime));
-  return [...new Set(versions.filter((version) => version !== undefined))];
-}
-
 function extraTools({ modules, analyzed, policy, pinned }) {
   return [
     ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     ...formatTool(policy.javaStyle, pinned),
-    ...archunitTool(
-      analyzed.some(({ classpaths }) => usesSpring(classpaths)),
-      pinned,
-    ),
+    ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
   ];
 }
 

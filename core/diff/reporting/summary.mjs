@@ -1,3 +1,5 @@
+import { isPolicyFinding } from './review/policy-findings.mjs';
+import { consolePolicySummary } from './review/policy-changes.mjs';
 import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { singleLine } from './format/text.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
@@ -24,8 +26,16 @@ export function renderConsoleSummary(
     ),
   ];
 
-  appendViolationSummary(lines, { violations, incomplete: report.toolErrors.length > 0 }, color);
-  appendReviewSummary(lines, report.summary, (text) =>
+  appendViolationSummary(
+    lines,
+    {
+      violations: violations.filter((finding) => !isPolicyFinding(finding)),
+      incomplete: report.toolErrors.length > 0,
+      policyCount: violations.filter(isPolicyFinding).length,
+    },
+    color,
+  );
+  appendReviewSummary(lines, consolePolicySummary(report), (text) =>
     style(text, [ANSI.bold, ANSI.yellow], color),
   );
   appendHeldSummary(lines, report.unchangedFindings, color);
@@ -61,22 +71,35 @@ function appendHeldSummary(lines, unchangedFindings, color) {
   }
 }
 
-function appendViolationSummary(lines, { violations, incomplete }, color) {
-  if (violations.length === 0 && incomplete) {
-    lines.push('No new enforceable violations, but the run is incomplete:');
-    return;
+function violationHeadline({ violations, incomplete, policyCount }, color) {
+  const policy = `${String(policyCount)} unapproved policy ${pluralize('change', policyCount)}`;
+  const code = `${String(violations.length)} code ${pluralize('violation', violations.length)}`;
+  if (violations.length === 0 && policyCount > 0) {
+    const verb = policyCount === 1 ? 'fails' : 'fail';
+    const tail = incomplete ? ' and the run is incomplete:' : '';
+    return failing(`✖ No new code violations, but ${policy} ${verb} the gate${tail}`, color);
   }
   if (violations.length === 0) {
-    lines.push(style('✓ No new enforceable violations', [ANSI.green], color));
-    return;
+    return incomplete
+      ? 'No new enforceable violations, but the run is incomplete:'
+      : style('✓ No new enforceable violations', [ANSI.green], color);
   }
-  lines.push(
-    style(
-      `✖ ${String(violations.length)} new enforceable ${pluralize('violation', violations.length)}`,
-      [ANSI.bold, ANSI.red],
-      color,
-    ),
+  const total = violations.length + policyCount;
+  return failing(
+    policyCount === 0
+      ? `✖ ${String(total)} new enforceable ${pluralize('violation', total)}`
+      : `✖ ${String(total)} new enforceable violations: ${code} and ${policy}`,
+    color,
   );
+}
+
+function failing(text, color) {
+  return style(text, [ANSI.bold, ANSI.red], color);
+}
+
+function appendViolationSummary(lines, summary, color) {
+  const { violations } = summary;
+  lines.push(violationHeadline(summary, color));
   for (const group of groupRepeatedFindings(violations)) {
     const [finding] = group;
     lines.push(
