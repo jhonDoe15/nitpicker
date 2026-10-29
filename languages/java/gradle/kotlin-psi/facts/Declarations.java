@@ -5,8 +5,10 @@ import static nitpicker.kotlinpsi.common.Psi.*;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import nitpicker.kotlinpsi.bodies.Initializers;
 import nitpicker.kotlinpsi.common.Frame;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
+import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.*;
 
@@ -85,25 +87,49 @@ final class Declarations {
             "local", local, "visibility", effective(own, frame),
             "constructorVisibility", primary == null ? "public" : visibility(primary),
             "annotations", annotationTexts(klass), "supers", supertypes(klass), "superCall", superCall,
-            "primaryParameters", constructor, "entries", entries));
+            "primaryParameters", constructor, "entries", entries, "superClass", superClass(klass),
+            "constructorAnnotations", primary == null ? null : annotationEntries(primary),
+            "genericSupers", genericSupers(klass)));
     return new Frame(frame, m("k", "class", "name", simple, "qualified", qualified,
         "supers", supertypes(klass), "visibility", own, "object", klass instanceof KtObjectDeclaration,
         "annotations", annotationNames(klass)));
+  }
+
+  private static List<Object> genericSupers(KtClassOrObject klass) {
+    List<Object> texts = new ArrayList<>();
+    for (KtSuperTypeListEntry entry : klass.getSuperTypeListEntries()) {
+      if (entry.getTypeReference() != null && entry.getTypeReference().getText().contains("<")) {
+        texts.add(entry.getTypeReference().getText());
+      }
+    }
+    return texts.isEmpty() ? null : texts;
+  }
+
+  private static String superClass(KtClassOrObject klass) {
+    for (KtSuperTypeListEntry entry : klass.getSuperTypeListEntries()) {
+      if (entry instanceof KtSuperTypeCallEntry && entry.getTypeReference() != null) {
+        return withoutTypeArguments(entry.getTypeReference().getText()).trim();
+      }
+    }
+    return null;
   }
 
   private Map<String, Object> parameter(KtParameter parameter) {
     return m(
         "name", parameter.getName(), "type", clip(parameter.getTypeReference()),
         "vararg", parameter.isVarArg(), "default", parameter.hasDefaultValue(),
+        "defaultValue", clip(parameter.getDefaultValue()),
         "property", parameter.hasValOrVar() ? (parameter.isMutable() ? "var" : "val") : null,
-        "line", state.lineOf(parameter.getTextOffset()), "annotations", annotationNames(parameter));
+        "line", state.lineOf(parameter.getTextOffset()), "annotations", annotationNames(parameter),
+        "annotationEntries", annotationEntries(parameter));
   }
 
   private List<Object> modifiers(KtModifierListOwner owner) {
     List<Object> names = new ArrayList<>();
     for (var token : List.of(KtTokens.OVERRIDE_KEYWORD, KtTokens.OPEN_KEYWORD, KtTokens.ABSTRACT_KEYWORD,
         KtTokens.INFIX_KEYWORD, KtTokens.OPERATOR_KEYWORD, KtTokens.INLINE_KEYWORD, KtTokens.SUSPEND_KEYWORD,
-        KtTokens.ACTUAL_KEYWORD, KtTokens.EXPECT_KEYWORD, KtTokens.LATEINIT_KEYWORD)) {
+        KtTokens.ACTUAL_KEYWORD, KtTokens.EXPECT_KEYWORD, KtTokens.LATEINIT_KEYWORD, KtTokens.FINAL_KEYWORD,
+        KtTokens.PROTECTED_KEYWORD)) {
       if (owner.hasModifier(token)) {
         names.add(token.getValue());
       }
@@ -130,11 +156,13 @@ final class Declarations {
             "owner", anonymous ? "<anonymous>" : owner == null ? "" : owner.data.get("qualified"),
             "local", local, "visibility", local ? "private" : effective(visibility(function), frame),
             "modifiers", modifiers(function), "annotations", annotationNames(function),
-            "typeParameters", !function.getTypeParameters().isEmpty(),
+            "annotationEntries", annotationEntries(function), "typeParameters", !function.getTypeParameters().isEmpty(),
             "receiver", clip(function.getReceiverTypeReference()),
             "returnType", clip(function.getTypeReference()), "parameters", parameters,
             "hasBody", body != null,
             "emptyBody", body instanceof KtBlockExpression && ((KtBlockExpression) body).getStatements().isEmpty(),
+            "expressionBody", body != null && !(body instanceof KtBlockExpression) ? Boolean.TRUE : null,
+            "returns", body instanceof KtNameReferenceExpression ? nameOf(body) : null,
             "forward", forward(function)));
     return new Frame(frame, m("k", "fun", "name", function.getName(), "topLevel", owner == null && !local,
         "annotations", annotationNames(function), "receiver", clip(function.getReceiverTypeReference()),
@@ -160,7 +188,8 @@ final class Declarations {
             "name", "<init>", "line", state.lineOf(constructor.getTextOffset()),
             "owner", owner == null ? "" : owner.data.get("qualified"), "local", false,
             "visibility", effective(visibility(constructor), frame), "modifiers", List.of(),
-            "annotations", annotationNames(constructor), "typeParameters", false, "receiver", null,
+            "annotations", annotationNames(constructor), "annotationEntries", annotationEntries(constructor),
+            "typeParameters", false, "receiver", null,
             "returnType", null, "parameters", parameters, "hasBody", true, "emptyBody", false, "forward", null));
     return new Frame(frame, m("k", "fun", "name", "<init>"));
   }
@@ -176,7 +205,26 @@ final class Declarations {
             "name", property.getName(), "line", state.lineOf(property.getTextOffset()),
             "owner", owner.data.get("qualified"), "type", clip(property.getTypeReference()),
             "var", property.isVar(), "lateinit", property.hasModifier(KtTokens.LATEINIT_KEYWORD),
-            "delegated", property.getDelegate() != null, "annotations", annotationNames(property)));
+            "delegated", property.getDelegate() != null, "computed", computed(property),
+            "annotations", annotationNames(property),
+            "annotationEntries", annotationEntries(property), "initializer", Initializers.callee(property),
+            "literal", Initializers.literal(property)));
+  }
+
+  private static Boolean computed(KtProperty property) {
+    KtPropertyAccessor getter = property.getGetter();
+    if (property.hasInitializer() || property.hasDelegate() || getter == null || !getter.hasBody()) {
+      return null;
+    }
+    for (KtPropertyAccessor accessor : property.getAccessors()) {
+      for (KtNameReferenceExpression name
+          : PsiTreeUtil.collectElementsOfType(accessor, KtNameReferenceExpression.class)) {
+        if ("field".equals(name.getReferencedName())) {
+          return null;
+        }
+      }
+    }
+    return Boolean.TRUE;
   }
 
   void typed(String name, KtTypeReference type, KtExpression initializer, Frame frame) {
@@ -194,22 +242,6 @@ final class Declarations {
           m("name", name, "type", clip(text, 120), "scope", frame == null ? null : frame.data.get("id"),
               "member", member));
     }
-  }
-
-  static KtExpression lazyValue(KtProperty property) {
-    KtExpression delegate = property.getDelegateExpression();
-    if (!(delegate instanceof KtCallExpression)
-        || !"lazy".equals(nameOf(((KtCallExpression) delegate).getCalleeExpression()))) {
-      return null;
-    }
-    for (KtLambdaArgument argument : ((KtCallExpression) delegate).getLambdaArguments()) {
-      KtLambdaExpression lambda = argument.getLambdaExpression();
-      KtBlockExpression body = lambda == null ? null : lambda.getBodyExpression();
-      if (body != null && !body.getStatements().isEmpty()) {
-        return body.getStatements().get(body.getStatements().size() - 1);
-      }
-    }
-    return null;
   }
 
   void declareTypeAlias(KtTypeAlias alias) {
@@ -247,6 +279,7 @@ final class Declarations {
     String name = nameOf(call.getCalleeExpression());
     return name == null ? null
         : m("name", name, "qualifier", clip(receiver), "typeArguments", !call.getTypeArguments().isEmpty(),
+            "typeArgumentList", clip(call.getTypeArgumentList()),
             "arguments", arguments(call));
   }
 }

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Nitpicker's PMD rules for main sources only: API design rules that, like their TypeScript
-     counterparts, leave test code alone. Gradle and Maven reference this file from a generated
+     counterparts, leave test code alone, and the security category, since a test encrypts with a
+     fixed key and IV to check known output. Gradle and Maven reference this file from a generated
      ruleset that excludes the test source roots. docs/java-preset.md lists the rules and why each
      exists. -->
 <ruleset name="nitpicker-main-rules"
@@ -8,6 +9,7 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker's PMD rules for main sources.</description>
+  <rule ref="category/java/security.xml"/>
   <rule name="ExhaustiveEnumPredicate" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="These comparisons list only some constants of an enum of the project, so a constant added later silently falls into the other case. Classify every constant: a switch expression without default (adding a constant then fails to compile), or a boolean each constant declares (PAID(true)).">
     <priority>3</priority>
@@ -98,7 +100,7 @@
     </properties>
   </rule>
   <rule name="ServiceLocatorLookup" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Take the dependency as a constructor parameter (a Provider or Instance parameter when it is optional or created per use) instead of looking it up from a Guice Injector, CDI, a BeanManager or a JNDI context where it is used: the lookup hides what the class needs. The main method, a Guice Module's configure method, @Provides and @Produces methods, @Bean methods of a @Configuration class and CDI extensions may look dependencies up.">
+        message="Take the dependency as a constructor parameter (a Provider or Instance parameter when it is optional or created per use) instead of looking it up from a Guice Injector, CDI, a BeanManager or a JNDI context where it is used: the lookup hides what the class needs. The main method, the configure method of a Guice Module, @Provides and @Produces methods, @Bean methods of a @Configuration class and CDI extensions may look dependencies up.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
@@ -131,6 +133,7 @@
       and *[1][pmd-java:typeIs('com.google.inject.Injector')])
      or (@MethodName = ('getReference', 'getInjectableReference', 'createInstance')
          and *[1][pmd-java:typeIs('jakarta.enterprise.inject.spi.BeanContainer')
+                  or pmd-java:typeIs('javax.enterprise.inject.spi.BeanContainer')
                   or pmd-java:typeIs('javax.enterprise.inject.spi.BeanManager')])
      or (@MethodName = 'current'
          and *[1][pmd-java:typeIs('jakarta.enterprise.inject.spi.CDI')

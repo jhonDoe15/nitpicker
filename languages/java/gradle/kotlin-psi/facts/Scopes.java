@@ -16,7 +16,24 @@ final class Scopes {
 
   private Scopes() {}
 
-  static Map<String, Object> lambdaData(KtLambdaExpression lambda) {
+  private static List<Object> parameters(List<? extends KtParameter> declared) {
+    List<Object> parameters = new ArrayList<>();
+    for (KtParameter parameter : declared) {
+      KtDestructuringDeclaration destructuring = parameter.getDestructuringDeclaration();
+      if (destructuring == null) {
+        parameters.add(m("name", parameter.getName(), "type", clip(parameter.getTypeReference())));
+        continue;
+      }
+      List<KtDestructuringDeclarationEntry> entries = destructuring.getEntries();
+      for (int index = 0; index < entries.size(); index++) {
+        parameters.add(m("name", entries.get(index).getName(), "type", clip(entries.get(index).getTypeReference()),
+            "component", index + 1));
+      }
+    }
+    return parameters.isEmpty() ? null : parameters;
+  }
+
+  static Map<String, Object> lambdaData(KtLambdaExpression lambda, State state) {
     PsiElement parent = lambda.getParent();
     while (parent instanceof KtLabeledExpression || parent instanceof KtAnnotatedExpression
         || parent instanceof KtParenthesizedExpression) {
@@ -24,10 +41,16 @@ final class Scopes {
     }
     String host = null;
     String qualifier = null;
+    String argument = null;
     PsiElement call = parent instanceof KtLambdaArgument ? parent.getParent()
         : parent instanceof KtValueArgument ? parent.getParent().getParent() : null;
     if (call instanceof KtCallExpression) {
       host = nameOf(((KtCallExpression) call).getCalleeExpression());
+      List<? extends ValueArgument> values = ((KtCallExpression) call).getValueArguments();
+      if (!values.isEmpty() && !(values.get(0) instanceof KtLambdaArgument)
+          && !(values.get(0).getArgumentExpression() instanceof KtLambdaExpression)) {
+        argument = clip(values.get(0).getArgumentExpression());
+      }
       PsiElement outer = call.getParent();
       if (outer instanceof KtQualifiedExpression
           && ((KtQualifiedExpression) outer).getSelectorExpression() == call) {
@@ -37,10 +60,11 @@ final class Scopes {
         && ((KtBinaryExpression) parent).getOperationToken() == KtTokens.IDENTIFIER) {
       host = ((KtBinaryExpression) parent).getOperationReference().getReferencedName();
     }
-    return m("k", "lambda", "host", host, "qualifier", qualifier);
+    return m("k", "lambda", "host", host, "qualifier", qualifier, "argument", argument,
+        "line", state.lineOf(lambda.getTextOffset()), "params", parameters(lambda.getValueParameters()));
   }
 
-  static Map<String, Object> loopData(KtLoopExpression loop) {
+  static Map<String, Object> loopData(KtLoopExpression loop, State state) {
     String condition = null;
     if (loop instanceof KtWhileExpression && ((KtWhileExpression) loop).getCondition() != null) {
       condition = clip(((KtWhileExpression) loop).getCondition());
@@ -50,9 +74,15 @@ final class Scopes {
       condition = "for";
     }
     boolean counted = !"for".equals(condition) || isCounted(loop);
-    return m(
+    Map<String, Object> data = m(
         "k", counted ? "loop" : "foreach", "condition", condition,
         "clock", CLOCK.matcher(loop.getText()).find());
+    if (loop instanceof KtForExpression && ((KtForExpression) loop).getLoopParameter() != null) {
+      KtForExpression each = (KtForExpression) loop;
+      data.put("params", parameters(List.of(each.getLoopParameter())));
+      data.put("range", clip(each.getLoopRange()));
+    }
+    return data;
   }
 
   private static boolean isCounted(KtLoopExpression loop) {
