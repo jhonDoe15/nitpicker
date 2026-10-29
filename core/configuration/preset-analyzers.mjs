@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { createHistoryAnalyzers } from '../../shared/history/analyzers.mjs';
 import { createHygieneAnalyzers } from '../../shared/hygiene/analyzers.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
@@ -8,12 +9,12 @@ import {
   javascriptAnalyzers,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 
-const hygieneAnalyzers = createHygieneAnalyzers(
-  fileURLToPath(new URL('../cli.mjs', import.meta.url)),
-);
+const entryPath = fileURLToPath(new URL('../cli.mjs', import.meta.url));
+const hygieneAnalyzers = createHygieneAnalyzers(entryPath);
+const historyAnalyzers = createHistoryAnalyzers(entryPath);
 
 export function presetAnalyzers(config, injected) {
-  return injected ?? [...languageAnalyzers(config), ...hygieneAnalyzers];
+  return injected ?? [...languageAnalyzers(config), ...hygieneAnalyzers, ...optInAnalyzers(config)];
 }
 
 function languageAnalyzers(config) {
@@ -24,4 +25,8 @@ function languageAnalyzers(config) {
     return [createJavaAnalyzer({ kotlin: config.preset === 'kotlin' })];
   }
   return config.preset === 'javascript' ? javascriptAnalyzers() : configuredAnalyzers();
+}
+
+function optInAnalyzers(config) {
+  return config.history?.coChange === true ? historyAnalyzers : [];
 }

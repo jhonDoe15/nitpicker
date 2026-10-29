@@ -10,6 +10,57 @@ const entry = (overrides) => ({
 });
 
 describe('rules script report', () => {
+  it('shows the helper chain in the message and keeps it out of the identity', () => {
+    const via = 'quote -> shop.prices.fetch -> requests.get';
+    const report = [entry({ rule: 'io-in-domain', subject: 'shop.prices.fetch', via })];
+
+    expect(ingestRulesReport(JSON.stringify(report))).toEqual([
+      {
+        tool: 'python-rules',
+        rule: 'io-in-domain',
+        path: 'src/order.py',
+        identity: 'shop.prices.fetch',
+        subject: via,
+        message: `\`${via}\` does input or output through a project helper called from domain code`,
+        classification: 'enforceable',
+        location: { line: 4 },
+      },
+    ]);
+  });
+
+  it('keeps two helpers with the same name apart by their qualified names', () => {
+    const report = ['shop.shared.a.fetch', 'shop.shared.c.fetch'].map((subject) =>
+      entry({ rule: 'io-in-domain', subject, via: `quote -> ${subject} -> requests.get` }),
+    );
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ identity }) => identity)).toEqual([
+      'shop.shared.a.fetch',
+      'shop.shared.c.fetch',
+    ]);
+  });
+
+  it.each([
+    [
+      'clock-now',
+      'when -> shop.clock.now -> datetime.datetime.now',
+      '`when -> shop.clock.now -> datetime.datetime.now` reads the clock through a project helper called from domain code',
+    ],
+    [
+      'random-in-domain',
+      'ident -> shop.ids.new -> uuid.uuid4',
+      '`ident -> shop.ids.new -> uuid.uuid4` draws randomness through a project helper called from domain code',
+    ],
+    [
+      'import-time-effect',
+      'shop.db.connect -> sqlite3.connect',
+      '`shop.db.connect -> sqlite3.connect` runs an external effect when the module is imported, so every import, tests included, performs it',
+    ],
+  ])('words the %s helper chain', (rule, via, message) => {
+    const [found] = ingestRulesReport(JSON.stringify([entry({ rule, subject: 'x', via })]));
+
+    expect(found.message).toBe(message);
+  });
+
   it('turns each entry into an enforceable finding identified by its subject', () => {
     expect(ingestRulesReport(JSON.stringify([entry()]))).toEqual([
       {
@@ -62,6 +113,22 @@ describe('rules script report', () => {
     ],
     ['random-in-domain', 'random.random', '`random.random()` draws randomness in domain code'],
     ['io-in-domain', 'requests', '`requests` does input or output in domain code'],
+    [
+      'random-in-domain',
+      'import faker',
+      '`import faker` brings an id or random-data library into domain code',
+    ],
+    ['logger-in-domain', 'logging', '`logging` is imported into domain code'],
+    [
+      'module-state-in-domain',
+      'shop.cache.PRICES',
+      'Domain code uses the module state `shop.cache.PRICES`',
+    ],
+    [
+      'import-time-effect',
+      'sqlite3.connect',
+      '`sqlite3.connect()` runs when the module is imported, so every import, tests included, performs it',
+    ],
     ['module-level-mutable-state', 'ITEMS', '`ITEMS` changes a module-level collection'],
     [
       'unsafe-path-join',
@@ -82,6 +149,16 @@ describe('rules script report', () => {
     ['credential-shape', 'credential', 'A string has the shape of a credential'],
     ['secret-in-log', 'token', '`token` is a secret and is passed to a log call'],
     ['io-in-loop', 'requests.get()', '`requests.get()` runs once per item of a loop'],
+    [
+      'task-outlives-resource',
+      'stream passed to nursery.start_soon',
+      '`stream passed to nursery.start_soon`: the resource closes when its `with` block ends, while the child task can still use it',
+    ],
+    [
+      'unshielded-cleanup-await',
+      'await stream.aclose() in finally',
+      '`await stream.aclose() in finally` can be cancelled before the cleanup finishes, so the resource may stay open',
+    ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
       'skipped-test-without-reason',

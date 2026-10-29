@@ -46,6 +46,10 @@ export function isNonEmptyString(value) {
   return typeof value === 'string' && value.length > 0;
 }
 
+export function isCount(value) {
+  return Number.isInteger(value) && value >= 0;
+}
+
 export function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -199,7 +203,10 @@ function usedFactSettings(config) {
 
 export function validateFactRuleSettings(config) {
   const language = config.preset ?? 'typescript';
-  const accepted = factRuleSettings(language);
+  const accepted = [
+    ...factRuleSettings(language),
+    ...(config.history?.coChange === true ? ['layout.featureRoots'] : []),
+  ];
   const unsupported = usedFactSettings(config).find((setting) => !accepted.includes(setting));
   if (unsupported === undefined) {
     return;

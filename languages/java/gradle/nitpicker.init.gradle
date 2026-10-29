@@ -111,11 +111,10 @@ def rulesetExcluding = { String name, String description, List<String> rules, Co
         + excludes + rules + ['</ruleset>', '']).join('\n')
 }
 
-def mainRulesOnMainSources = { File rulesetDir, boolean spring, Collection<File> testDirectories ->
-    def rulesets = ['pmd-main-ruleset.xml'] + (spring ? ['spring-ruleset.xml'] : [])
+def mainRulesOnMainSources = { File mainRules, File rulesetDir, boolean spring, Collection<File> testDirectories ->
+    def rules = [mainRules] + (spring ? [new File(rulesetDir, 'spring-ruleset.xml')] : [])
     rulesetExcluding('nitpicker-main', "Nitpicker's main-only rules on main sources only.",
-        rulesets.collect { "  <rule ref=\"${escapeXml(new File(rulesetDir, it).absolutePath)}\"/>".toString() },
-        testDirectories)
+        rules.collect { "  <rule ref=\"${escapeXml(it.absolutePath)}\"/>".toString() }, testDirectories)
 }
 
 def testRulesOnTestSources = { File testRules, File rulesetDir, boolean spring, Collection<File> mainDirectories ->
@@ -318,6 +317,10 @@ allprojects {
         def usesSpring = {
             springDeclared || sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
         }
+        def usesJmolecules = {
+            sourceSets.main.compileClasspath.files.any { it.name ==~ /jmolecules-ddd-.*\.jar/ }
+        }
+        def runsArchRules = { usesSpring() || usesJmolecules() }
         def hasGuava = { sourceSet -> sourceSet.compileClasspath.files.any { it.name ==~ /guava-\d.*\.jar/ } }
         def hasAwaitility = { sourceSets.test.compileClasspath.files.any { it.name ==~ /awaitility-\d.*\.jar/ } }
 
@@ -333,6 +336,8 @@ allprojects {
             def nitpickerRuleset = nitpickerArgument('nitpicker.pmd.nitpickerRuleset') ?: new File(initScriptDir, 'pmd-ruleset.xml').absolutePath
             def projectRuleset = nitpickerArgument('nitpicker.pmd.projectConfig')
             def testRules = new File(nitpickerArgument('nitpicker.pmd.testRules') ?: new File(initScriptDir, 'pmd-test-ruleset.xml').absolutePath)
+            def mainRules = new File(nitpickerArgument('nitpicker.pmd.mainRules')
+                ?: new File(initScriptDir, 'pmd-main-ruleset.xml').absolutePath)
             def ruleset = ([nitpickerRuleset] + (projectRuleset ? [projectRuleset] : [])).join(',')
             doFirst {
                 reportDir.get().asFile.mkdirs()
@@ -344,7 +349,8 @@ allprojects {
                     .collectMany { it.compileClasspath.files + it.output.classesDirs.files })
                     .findAll { it.exists() }.unique().collect { it.absolutePath }.join('\n')
                 def mainRuleset = reportDir.get().file('pmd-main.xml').asFile
-                mainRuleset.text = mainRulesOnMainSources(initScriptDir, usesSpring(), testSourceDirectories())
+                mainRuleset.text = mainRulesOnMainSources(
+                    mainRules, initScriptDir, usesSpring(), testSourceDirectories())
                 def testRuleset = reportDir.get().file('pmd-tests.xml').asFile
                 testRuleset.text = testRulesOnTestSources(testRules, initScriptDir, usesSpring(), mainSources.files)
                 def nitpickerExtras = [testRuleset, mainRuleset]
@@ -451,7 +457,7 @@ allprojects {
         tasks.register('nitpickerSpringArch') {
             group = 'nitpicker'
             dependsOn { lintedClassesTasks() }
-            onlyIf { usesSpring() }
+            onlyIf { runsArchRules() }
             def ruleSources = []
             new File(initScriptDir, 'archunit').eachFileRecurse(groovy.io.FileType.FILES) {
                 if (it.name.endsWith('.java')) {
@@ -835,7 +841,7 @@ allprojects {
                     testSourceRoots: testRoots,
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
-                    springArch     : usesSpring(),
+                    springArch     : runsArchRules(),
                     guava          : hasGuava(sourceSets.main),
                     testGuava      : hasGuava(sourceSets.test),
                     testAwaitility : hasAwaitility(),

@@ -1,6 +1,7 @@
 import { rulesCases } from './define.mjs';
 
 export const RULES_CASES = [
+  ...rulesCases('cancellation', [['cancellation-not-propagated', 'bare `raise`']]),
   ...rulesCases('sql-queries', [['sql-string-formatting', 'query parameters']]),
   ...rulesCases('tls-verification', [['tls-verification-off', 'trust the certificate authority']]),
   ...rulesCases('security-support-rules', [
@@ -14,6 +15,13 @@ export const RULES_CASES = [
   ...rulesCases('domain-clock', [['clock-now', 'datetime.now(tz=utc)']]),
   ...rulesCases('domain-random', [['random-in-domain', 'random.random']]),
   ...rulesCases('domain-io', [['io-in-domain', 'protocol']]),
+  ...rulesCases('domain-io-helper', [['io-in-domain', 'implement it in `adapters/`']]),
+  ...rulesCases('domain-id-library', [['random-in-domain', 'id factory']]),
+  ...rulesCases('domain-logger', [['logger-in-domain', 'let `adapters/`']]),
+  ...rulesCases('domain-module-state', [
+    ['module-state-in-domain', 'receive the state as a parameter'],
+  ]),
+  ...rulesCases('import-time-effect', [['import-time-effect', 'composition root']]),
   ...rulesCases('mutable-module-state', [['module-level-mutable-state', 'composition root']]),
   ...rulesCases('path-join', [['unsafe-path-join', 'is_relative_to']]),
   ...rulesCases('boundary-guard', [['handwritten-boundary-guard', 'model_validate']]),
@@ -41,4 +49,8 @@ export const RULES_CASES = [
   ...rulesCases('network-test', [['network-in-test', 'fake']]),
   ...rulesCases('uncollected-tests', [['uncollected-tests', 'python_files']]),
   ...rulesCases('test-helper-in-source', [['test-helper-in-source', 'tests folder']]),
+  ...rulesCases('task-lifetimes', [['task-outlives-resource', 'around the whole task group']]),
+  ...rulesCases('cleanup-cancellation', [
+    ['unshielded-cleanup-await', 'shielded scope with a deadline'],
+  ]),
 ];
