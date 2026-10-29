@@ -9,6 +9,7 @@ import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
 import { testFileMatcher } from './python-sources.mjs';
 import { entryFilesOf, readEntryModules } from '../../rules/libraries/entry-modules.mjs';
 import { boundaryRoots, detectLibraries } from '../../rules/libraries/project-libraries.mjs';
+import { isGeneratedPython } from '../../libraries/generated-files.mjs';
 
 export const RULES_REPORT = 'rules.json';
 export const ALLOWANCES_REPORT = 'rules-allowances.json';
@@ -41,7 +42,7 @@ export function pythonSources(context) {
     .split(/\r?\n/)
     .filter((line) => line.endsWith('.py'))
     .map((line) => normalizeReportPath(line, context.projectRoot))
-    .filter((file) => file !== undefined);
+    .filter((file) => file !== undefined && !isGeneratedPython(context.projectRoot, file));
 }
 
 export function checkRules(context) {
