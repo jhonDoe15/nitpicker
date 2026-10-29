@@ -181,7 +181,14 @@ describe('the strict-clean fixture project', () => {
           'Quality gate summary',
           '✖ 1 new enforceable violation',
           '  eslint-lint/no-restricted-syntax src/main/legacy.ts:2',
-          `    Do not assert with \`as\`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. \`as const\` is allowed. ${EDITED_LINE_SENTENCE} If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
+          [
+            '    Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse)',
+            'or give it the correct type at its source. `as const` is allowed.',
+            EDITED_LINE_SENTENCE,
+            'If this is intended, add',
+            '{"rule":"no-restricted-syntax","paths":["src/main/legacy.ts"],"reason":"..."}',
+            'to "exceptions" in nitpicker.config.json.',
+          ].join(' '),
           `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,
           '',
         ].join('\n'),
@@ -189,12 +196,12 @@ describe('the strict-clean fixture project', () => {
       expect(exitCode).toBe(1);
     });
 
-    it('keeps a legacy line baselined when code is rearranged around it', () => {
+    it('holds a legacy line that the diff shows moved past unchanged code to the rule', () => {
       const moved = newStrictLines('moved', {
         'src/main/moved.ts': lines(DOUBLED, TOTAL, '', WIDENED, 'export { doubled };'),
       });
 
-      expect(moved).toEqual([]);
+      expect(moved).toEqual(['src/main/moved.ts:4']);
     });
 
     it('keeps legacy findings baselined when the formatter rewrites the file', () => {

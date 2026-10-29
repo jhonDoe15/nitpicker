@@ -124,3 +124,11 @@ Four Python files (`ruff/ruff-rules`, `ruff/ruff-groups`, `adapters/formatting/f
 `adapters/configuration/python-ruff-config`, six cases) were gated on the Python flag but selected
 by no script. They are now in `test:python` with a weight of one second each: they only run the
 installed ruff and black, and took under four seconds together locally.
+
+The touched-lines files run one gate over a legacy project after a helper extraction, a formatter
+run, an added repeat and an edited line: `java-preset-touched-lines` (Gradle) and
+`maven-preset-touched-lines` (Maven) share their scenario, and the Kotlin and Python files mirror
+it; the Python one runs the real `ruff format` over a file with 400 legacy findings. They bring the
+suites to 110 Java, 99 Kotlin and 843 Python cases. Their weights (65, 78, 66 and 18 seconds) were
+recorded locally with `record-durations.mjs` on warm Gradle, Maven and uv caches, one file at a
+time; CI measurements should replace them.

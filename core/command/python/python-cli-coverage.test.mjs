@@ -47,7 +47,12 @@ describe('changed-branch-coverage with "preset": "python"', () => {
         rule: 'changed-branch-coverage',
         path: 'src/demo/a.py',
         line: 5,
-        message: `Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it, or remove it if it can't happen. To accept the file, add it to "exclude" in nitpicker.config.json. ${EDITED_LINE_SENTENCE}`,
+        message: [
+          'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7.',
+          "Test it, or remove it if it can't happen.",
+          'To accept the file, add it to "exclude" in nitpicker.config.json.',
+          EDITED_LINE_SENTENCE,
+        ].join(' '),
       },
     ]);
   });

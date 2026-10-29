@@ -2,7 +2,7 @@
   "languages/java/adapters/kotlin-e2e/coverage-and-structure/kotlin-preset-coverage-and-structure-branches.e2e.test.mjs": 130,
   "languages/java/adapters/kotlin-e2e/coverage-and-structure/kotlin-preset-coverage-and-structure-generated-and-init.e2e.test.mjs": 117,
   "languages/java/adapters/kotlin-e2e/coverage-and-structure/kotlin-preset-coverage-and-structure-structure.e2e.test.mjs": 127,
-  "languages/java/adapters/kotlin-e2e/coverage-and-structure/kotlin-preset-touched-lines.e2e.test.mjs": 75,
+  "languages/java/adapters/kotlin-e2e/coverage-and-structure/kotlin-preset-touched-lines.e2e.test.mjs": 66,
   "languages/java/adapters/kotlin-e2e/kotest.e2e.test.mjs": 99,
   "languages/java/adapters/kotlin-e2e/kotlin-preset-guards.e2e.test.mjs": 100,
   "languages/java/adapters/kotlin-e2e/kotlin-preset-review-rules.e2e.test.mjs": 170,
