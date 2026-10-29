@@ -48,7 +48,7 @@ function levelLines(compiler) {
   ];
 }
 
-function writeArguments(work, { name, roots, classpath, own, processors, compiler, test }) {
+function writeArguments(work, { name, roots, classpath, own, processors, compiler, test, flags }) {
   const sources = javaFiles(roots).filter((file) => path.basename(file) !== 'module-info.java');
   if (sources.length === 0) {
     return [];
@@ -66,6 +66,7 @@ function writeArguments(work, { name, roots, classpath, own, processors, compile
     ...compiler.compilerArgs.map((argument) => `--project-arg=${argument}`),
     ...levelLines(compiler),
     ...(compiler.encoding === undefined ? [] : ['-encoding', compiler.encoding]),
+    ...flags.map((flag) => `--errorprone-flag=${flag}`),
     ...(test ? ['--test-only'] : []),
     '--sources',
     ...sources,
@@ -75,12 +76,8 @@ function writeArguments(work, { name, roots, classpath, own, processors, compile
   return [file];
 }
 
-export function runErrorProne({ module, reportDir, tools, classpaths, spawn }) {
-  const report = path.join(reportDir, 'errorprone.json');
-  const work = path.join(reportDir, 'errorprone');
-  rmSync(work, { recursive: true, force: true });
-  const { compiler } = module;
-  const sets = [
+function sourceSets(module, classpaths) {
+  return [
     {
       name: 'main',
       roots: module.sourceRoots,
@@ -96,11 +93,19 @@ export function runErrorProne({ module, reportDir, tools, classpaths, spawn }) {
       test: true,
     },
   ];
-  const argumentFiles = sets.flatMap((set) =>
+}
+
+export function runErrorProne({ module, reportDir, tools, classpaths, configs, spawn }) {
+  const report = path.join(reportDir, 'errorprone.json');
+  const work = path.join(reportDir, 'errorprone');
+  rmSync(work, { recursive: true, force: true });
+  const { compiler } = module;
+  const argumentFiles = sourceSets(module, classpaths).flatMap((set) =>
     writeArguments(work, {
       ...set,
       compiler: set.test ? { ...compiler, ...compiler.test } : compiler,
       processors: [...tools.errorprone, ...processorPath(set.classpath, compiler, tools)],
+      flags: configs?.errorprone?.arguments ?? [],
     }),
   );
   if (argumentFiles.length === 0) {
