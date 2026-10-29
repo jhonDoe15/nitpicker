@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { factsView } from '../build-view.mjs';
+import { factsView } from '../../build-view.mjs';
 import {
   call,
   file,
@@ -9,7 +9,7 @@ import {
   run,
   summary,
   testFile,
-} from '../test-support/facts.mjs';
+} from '../../test-support/facts.mjs';
 import { UNUSED_OPTION_RULE, unusedOptionFindings } from './unused-options.mjs';
 
 const OTHER_MODULE = 'billing/src/main/kotlin/demo/Billing.kt';

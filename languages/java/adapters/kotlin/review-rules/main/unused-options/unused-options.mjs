@@ -1,11 +1,11 @@
-import { MESSAGES, renderMessage } from '../../../../../../shared/policy.mjs';
-import { exceptionText } from '../../../../../../shared/rules/exceptions.mjs';
+import { MESSAGES, renderMessage } from '../../../../../../../shared/policy.mjs';
+import { exceptionText } from '../../../../../../../shared/rules/exceptions.mjs';
 import {
   UNUSED_API_RULE_IDS,
   UNUSED_OPTION_SCOPES,
-} from '../../../../../../shared/unused-api/unused-api-policy.mjs';
-import { append } from '../kotlin-facts.mjs';
-import { declaredNames } from '../spring/spring-names.mjs';
+} from '../../../../../../../shared/unused-api/unused-api-policy.mjs';
+import { append } from '../../kotlin-facts.mjs';
+import { declaredNames } from '../../spring/spring-names.mjs';
 import { callerNote, hiddenCallers } from './unused-option-gaps.mjs';
 import { limitedUnits, publicFunctionUnits } from './unused-option-units.mjs';
 

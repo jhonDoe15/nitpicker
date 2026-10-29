@@ -3,7 +3,7 @@ import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
-import { unusedOptionFindings } from './main/unused-options.mjs';
+import { unusedOptionFindings } from './main/unused-options/unused-options.mjs';
 import { buildViews, javaMentions } from './build-view.mjs';
 import { productionTypeResolver } from './production-types.mjs';
 import { findingFactory } from './review-finding.mjs';
