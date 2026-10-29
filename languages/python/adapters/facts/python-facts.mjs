@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -24,7 +24,7 @@ const SCAN_SCRIPT = path.join(fileURLToPath(new URL('../', import.meta.url)), 'i
 const DJANGO_ENTRY = 'manage.py';
 const DJANGO_SETTING = 'INSTALLED_APPS';
 const DJANGO_DISTRIBUTION = 'django';
-const DISTRIBUTION_FILES = ['pyproject.toml', 'setup.cfg', 'setup.py'];
+const DISTRIBUTION_FILES = new Set(['pyproject.toml', 'setup.cfg', 'setup.py']);
 
 function isDjangoApplication(root, scanned, isTest) {
   return (
@@ -54,7 +54,7 @@ function distributionLookup(root) {
       }
       known.set(
         folder,
-        DISTRIBUTION_FILES.some((name) => existsSync(path.join(full, name))),
+        readdirSync(full).some((entry) => DISTRIBUTION_FILES.has(entry)),
       );
     }
     return known.get(folder);
