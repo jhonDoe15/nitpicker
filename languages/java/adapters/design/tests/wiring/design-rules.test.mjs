@@ -84,4 +84,41 @@ describe('the shared design rules over the Java facts', () => {
       findings.map(({ rule, identity, classification }) => [rule, identity, classification]),
     ).toEqual(expected);
   });
+
+  it('reports a protocols contract breach under protocol-contract, at the open of each unclosed session', () => {
+    const protocols = [
+      {
+        type: 'Session',
+        open: ['begin'],
+        close: ['commit', 'rollback', 'close'],
+        steps: ['write'],
+      },
+    ];
+
+    const findings = designFindings({
+      projectRoot: fixtureRoot('lifecycle'),
+      modules: SINGLE,
+      policy: { protocols },
+    });
+
+    expect(
+      findings.map(({ rule, identity, classification, location }) => [
+        rule,
+        identity,
+        classification,
+        location.line,
+      ]),
+    ).toEqual(
+      [
+        ['Client.deferred', 'session', 47],
+        ['Client.leaked', 'session', 32],
+        ['Client.open', 'created', 56],
+      ].map(([member, receiver, line]) => [
+        'protocol-contract',
+        `${ref('life/Client.java', member)}|${receiver}|unclosed:begin`,
+        'enforceable',
+        line,
+      ]),
+    );
+  });
 });

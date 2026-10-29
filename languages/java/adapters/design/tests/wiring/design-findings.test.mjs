@@ -69,6 +69,10 @@ describe('design findings for Java', () => {
     expect(designPolicy({ exceptions: [] }, head)).toEqual({ ...head, exceptions: [] });
     expect(designPolicy({}, head)).toEqual(head);
     expect(designPolicy({}, {})).toEqual({ exceptions: [] });
+    expect(designPolicy({ protocols: [{ open: 'b' }] }, head)).toEqual({
+      ...head,
+      protocols: [{ open: 'b' }],
+    });
   });
 
   it('writes the bundle to the requested file', () => {
