@@ -1,12 +1,6 @@
 import ast
 
-from checkpoints.effects import (
-    awaited_name,
-    call_label,
-    is_cheap,
-    is_checkpoint,
-    walk_executed,
-)
+from checkpoints.effects import awaited_name, call_label, is_checkpoint, walk_executed
 
 CLEAN = "clean"
 DONE = "done"
@@ -34,9 +28,10 @@ def merge(target, source, skip=()):
 
 
 class Analysis:
-    def __init__(self, aliases, quiet):
+    def __init__(self, aliases, quiet, cheapness):
         self.aliases = aliases
         self.quiet = quiet
+        self.cheapness = cheapness
 
     def effect(self, nodes, states):
         checkpoint, labels = False, []
@@ -50,7 +45,10 @@ class Analysis:
             return {DONE}
         if not labels:
             return set(states)
-        return {state if state == DONE else self.worked(state, min(labels)) for state in states}
+        return {
+            state if state == DONE else self.worked(state, min(labels))
+            for state in states
+        }
 
     def worked(self, state, witness):
         return state if is_dirty(state) else dirty(witness)
@@ -67,7 +65,7 @@ class Analysis:
 
     def is_work(self, call):
         quiet_call = isinstance(call.func, ast.Name) and call.func.id in self.quiet
-        return quiet_call or not is_cheap(call)
+        return quiet_call or not self.cheapness.is_cheap(call)
 
     def block(self, statements, states):
         exits = empty()
@@ -92,7 +90,11 @@ class Analysis:
     def expressions(self, node):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             return []
-        return [child for child in ast.iter_child_nodes(node) if not isinstance(child, ast.stmt)]
+        return [
+            child
+            for child in ast.iter_child_nodes(node)
+            if not isinstance(child, ast.stmt)
+        ]
 
     def on_Return(self, node, states):
         exits = empty()
@@ -191,4 +193,8 @@ class Analysis:
 
     def irrefutable(self, case):
         pattern = case.pattern
-        return case.guard is None and isinstance(pattern, ast.MatchAs) and pattern.pattern is None
+        return (
+            case.guard is None
+            and isinstance(pattern, ast.MatchAs)
+            and pattern.pattern is None
+        )

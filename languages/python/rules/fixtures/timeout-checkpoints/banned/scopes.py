@@ -1,4 +1,8 @@
 import asyncio
+import threading
+from concurrent.futures import Future
+
+import requests
 import trio
 from trio import fail_after as bounded
 
@@ -47,3 +51,35 @@ async def handler_path():
 
 async def wait_for_a_coroutine_that_never_suspends():
     await asyncio.wait_for(quiet(), 3)
+
+
+async def imported_client_get(flag):
+    with trio.fail_after(5):
+        if flag:
+            await trio.sleep(0)
+        else:
+            requests.get("https://example.com", timeout=5)
+
+
+async def future_result(flag, future: Future):
+    with trio.fail_after(5):
+        if flag:
+            await trio.sleep(0)
+        else:
+            future.result()
+
+
+async def thread_join(flag, thread: threading.Thread):
+    with trio.fail_after(5):
+        if flag:
+            await trio.sleep(0)
+        else:
+            thread.join()
+
+
+async def yield_is_not_a_checkpoint(flag):
+    with trio.fail_after(5):
+        if flag:
+            yield render()
+        else:
+            await fetch()
