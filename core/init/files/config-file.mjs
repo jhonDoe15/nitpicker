@@ -1,7 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
 import { CONFIG_FILE_NAME, isPlainObject } from '../../../shared/config.mjs';
-import { insideProject } from '../support/inside-project.mjs';
+import { projectFileText } from '../support/inside-project.mjs';
 import { placeFile } from './place-file.mjs';
 
 const DEFAULT_PRESET = 'typescript';
@@ -26,8 +25,8 @@ function parsedConfig(text) {
 }
 
 export function existingConfig(root) {
-  const file = insideProject(root, CONFIG_FILE_NAME);
-  return existsSync(file) ? parsedConfig(readFileSync(file, 'utf8')) : { kind: 'missing' };
+  const text = projectFileText(root, CONFIG_FILE_NAME);
+  return text === undefined ? { kind: 'missing' } : parsedConfig(text);
 }
 
 function insertedPreset(text, entry) {

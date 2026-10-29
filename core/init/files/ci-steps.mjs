@@ -3,6 +3,10 @@ import path from 'node:path';
 import { hasProjectFile, insideProject } from '../support/inside-project.mjs';
 import { installCommand, pythonInstaller } from '../peers/peer-plan.mjs';
 import { requiredPythonPeers } from '../peers/python-peers.mjs';
+import {
+  condaEnvironmentName,
+  condaFile,
+} from '../../../languages/python/adapters/execution/environments/managed.mjs';
 
 const STEP = '      - ';
 const DETAIL = '        ';
@@ -27,6 +31,9 @@ const PYTHON_SYNC = {
   pdm: ['pipx install pdm', 'pdm install'],
   hatch: ['pipx install hatch', 'hatch env create'],
 };
+const CI_INSTALLERS = { conda: 'conda install --yes --channel conda-forge' };
+const CONDA_ENVIRONMENT = 'nitpicker';
+const LOGIN_SHELL = { shell: 'bash -el {0}' };
 
 export function yamlScalar(value) {
   return typeof value === 'string' && !PLAIN_SCALAR.test(value) ? JSON.stringify(value) : value;
@@ -116,16 +123,34 @@ function pipInstall(root, project) {
   ];
 }
 
-function pythonInstall(root, { project, peers }) {
-  const sync = PYTHON_SYNC[project.tool];
-  if (sync === undefined) {
-    return pipInstall(root, project).flatMap(run);
+function undeclaredInstall({ project, peers }) {
+  if (peers.undeclared.length === 0) {
+    return [];
   }
-  const undeclared =
-    peers.undeclared.length === 0
-      ? []
-      : [installCommand(pythonInstaller(project.tool), peers.undeclared)];
-  return [...sync, ...undeclared].flatMap(run);
+  const installer = CI_INSTALLERS[project.tool] ?? pythonInstaller(project.tool);
+  return [installCommand(installer, peers.undeclared)];
+}
+
+function pythonInstall(root, context) {
+  const sync = PYTHON_SYNC[context.project.tool];
+  if (sync === undefined) {
+    return pipInstall(root, context.project).flatMap(run);
+  }
+  return [...sync, ...undeclaredInstall(context)].flatMap(run);
+}
+
+function condaSteps(root, context) {
+  const file = condaFile(root);
+  const settings = {
+    'environment-file': repositoryPath(context.repository, file),
+    'activate-environment': condaEnvironmentName(file) ?? CONDA_ENVIRONMENT,
+    'auto-activate-base': false,
+  };
+  return {
+    environment: step('conda-incubator/setup-miniconda@v3', settings),
+    install: undeclaredInstall(context).flatMap(run),
+    runDefaults: LOGIN_SHELL,
+  };
 }
 
 const FAMILY_STEPS = {
@@ -133,13 +158,16 @@ const FAMILY_STEPS = {
     environment: nodeEnvironment(project.packageManager, repository),
     install: nodeInstall(root, project.packageManager),
   }),
-  python: (root, context) => ({
-    environment: [
-      ...step('actions/setup-python@v5', { 'python-version': PYTHON_VERSION }),
-      ...(context.project.tool === 'uv' ? step('astral-sh/setup-uv@v5') : []),
-    ],
-    install: pythonInstall(root, context),
-  }),
+  python: (root, context) =>
+    context.project.tool === 'conda' && condaFile(root) !== undefined
+      ? condaSteps(root, context)
+      : {
+          environment: [
+            ...step('actions/setup-python@v5', { 'python-version': PYTHON_VERSION }),
+            ...(context.project.tool === 'uv' ? step('astral-sh/setup-uv@v5') : []),
+          ],
+          install: pythonInstall(root, context),
+        },
   jvm: () => ({
     environment: step('actions/setup-java@v4', {
       distribution: 'temurin',
@@ -155,10 +183,15 @@ function runCommand(root, { project, version }) {
 }
 
 export function workflowParts(root, context) {
-  const { environment, install } = FAMILY_STEPS[context.project.family](root, context);
+  const {
+    environment,
+    install,
+    runDefaults = {},
+  } = FAMILY_STEPS[context.project.family](root, context);
   return {
     ENVIRONMENT_STEPS: environment,
     INSTALL_STEPS: install,
     RUN: runCommand(root, context),
+    runDefaults,
   };
 }

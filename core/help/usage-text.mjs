@@ -85,7 +85,8 @@ export const INIT_USAGE_TEXT =
   'nitpicker.config.json, and prints the missing peers, the agent skill to install and the\n' +
   'command to run. It never overwrites a file: when an existing file needs a change, it prints\n' +
   'the diff and exits 1. It exits 0 when everything is set up, and 2 when it cannot run (no\n' +
-  'project, no Git repository, Node.js older than the package needs, or an unknown argument).\n\n' +
+  'project, no Git repository, Node.js older than the package needs, a folder, file or link in\n' +
+  'the way of a file it writes, or an unknown argument).\n\n' +
   `Options:\n${table(INIT_FLAGS)}`;
 
 export const AGGREGATE_USAGE_TEXT =

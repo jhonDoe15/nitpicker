@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,18 +8,27 @@ import { workflowParts, yamlScalar } from './ci-steps.mjs';
 const TEMPLATE = fileURLToPath(new URL('../templates/github-workflow.yml', import.meta.url));
 const WORKFLOWS = '.github/workflows';
 const TOKEN = /'\{\{(\w+)\}\}'/u;
+const PLAIN_SEGMENT = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/u;
+const SEGMENT_SEPARATOR = '--';
 
 function projectPath(projectRoot, repository) {
   return path.relative(repository, projectRoot).split(path.sep).join('/');
 }
 
+function segmentSlug(segment) {
+  if (PLAIN_SEGMENT.test(segment)) {
+    return segment;
+  }
+  const readable = segment
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/gu, '-')
+    .replaceAll(/^-|-$/gu, '');
+  const digest = createHash('sha256').update(segment).digest('hex').slice(0, 8);
+  return readable === '' ? digest : `${readable}-${digest}`;
+}
+
 function slugOf(relative) {
-  return (
-    relative
-      .toLowerCase()
-      .replaceAll(/[^a-z0-9]+/gu, '-')
-      .replaceAll(/^-|-$/gu, '') || 'project'
-  );
+  return relative.split('/').map(segmentSlug).join(SEGMENT_SEPARATOR);
 }
 
 export function workflowPath(projectRoot, repository) {
@@ -28,18 +38,24 @@ export function workflowPath(projectRoot, repository) {
     : `${WORKFLOWS}/nitpicker-${slugOf(relative)}.yml`;
 }
 
-function namedParts(projectRoot, repository) {
-  const relative = projectPath(projectRoot, repository);
-  if (relative === '') {
-    return { NAME: 'nitpicker', DEFAULTS: [] };
+function defaultsLines(runDefaults) {
+  const entries = Object.entries(runDefaults);
+  if (entries.length === 0) {
+    return [];
   }
+  return [
+    '    defaults:',
+    '      run:',
+    ...entries.map(([key, value]) => `        ${key}: ${JSON.stringify(value)}`),
+  ];
+}
+
+function namedParts(projectRoot, repository, runDefaults) {
+  const relative = projectPath(projectRoot, repository);
+  const folder = relative === '' ? {} : { 'working-directory': relative };
   return {
-    NAME: `nitpicker (${relative})`,
-    DEFAULTS: [
-      '    defaults:',
-      '      run:',
-      `        working-directory: ${JSON.stringify(relative)}`,
-    ],
+    NAME: relative === '' ? 'nitpicker' : `nitpicker (${relative})`,
+    DEFAULTS: defaultsLines({ ...folder, ...runDefaults }),
   };
 }
 
@@ -53,10 +69,8 @@ function expanded(line, parts) {
 }
 
 export function renderWorkflow(projectRoot, context) {
-  const parts = {
-    ...workflowParts(projectRoot, context),
-    ...namedParts(projectRoot, context.repository),
-  };
+  const { runDefaults, ...steps } = workflowParts(projectRoot, context);
+  const parts = { ...steps, ...namedParts(projectRoot, context.repository, runDefaults) };
   const lines = readFileSync(TEMPLATE, 'utf8').trimEnd().split('\n');
   return `${lines.flatMap((line) => expanded(line, parts)).join('\n')}\n`;
 }

@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { insideProject, writableProjectFile } from '../support/inside-project.mjs';
+import { projectFileText, writableProjectFile } from '../support/inside-project.mjs';
 import { unifiedDiff } from './line-diff.mjs';
 
 const DIFFERS = 'It differs from what init would write.';
@@ -14,14 +14,14 @@ function sameText(content) {
 }
 
 export function placeFile({ root, relative, content, revise = sameText(content) }) {
-  const file = insideProject(root, relative);
-  if (!existsSync(file)) {
-    writableProjectFile(root, relative);
+  const existing = projectFileText(root, relative);
+  if (existing === undefined) {
+    const file = writableProjectFile(root, relative);
     mkdirSync(path.dirname(file), { recursive: true });
     writeFileSync(file, content);
     return { relative, status: 'created' };
   }
-  const current = withLineFeeds(readFileSync(file, 'utf8'));
+  const current = withLineFeeds(existing);
   const revision = revise(current);
   if (revision === undefined) {
     return { relative, status: 'unchanged' };

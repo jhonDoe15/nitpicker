@@ -1,12 +1,10 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli } from '../cli.mjs';
-import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
 import { INIT_USAGE_TEXT } from '../help/usage-text.mjs';
 import { readSnippet } from './files/agents-md.mjs';
 import { unifiedDiff } from './files/line-diff.mjs';
-import { readText, useProjects } from './test-support/projects.mjs';
+import { init, initWith, readText, useProjects } from './test-support/projects.mjs';
 
 const createProject = useProjects();
 const TYPESCRIPT = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };
@@ -93,21 +91,6 @@ function npmReport({ config, offers }) {
     skills: ['nitpicker-typescript'],
     offers,
   });
-}
-
-function init(root, ...initArguments) {
-  return initWith({ currentProjectRoot: root }, ...initArguments);
-}
-
-function initWith(options, ...initArguments) {
-  const output = captureOutput();
-  const exitCode = runCli({
-    ...options,
-    arguments_: ['init', ...initArguments],
-    stdout: output.stdout,
-    stderr: output.stderr,
-  });
-  return { exitCode, stdoutText: output.stdoutText, stderrText: output.stderrText };
 }
 
 describe('nitpicker init', () => {
