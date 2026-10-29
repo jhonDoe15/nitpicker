@@ -23,9 +23,10 @@ Beans and configuration:
   it later use `ConcurrentHashMap`, `@Cacheable` or a lock around every write (`synchronized`,
   `withLock`, `@Synchronized`).
 - A request- or session-scoped bean reaches a singleton only as `ObjectProvider<T>` or through a
-  scoped proxy, `@RequestScope`. No `ApplicationContext` or `BeanFactory`
-  lookups, no `@Lazy` on injection points:
-  break a cycle with a new component or an event.
+  scoped proxy, `@RequestScope`. Request data never lands in a singleton's property or its
+  `companion object`: pass it through parameters and return values. No `ApplicationContext` or
+  `BeanFactory` lookups, no `@Lazy` on injection points: break a cycle with a new component or an
+  event.
 - `@Configuration(proxyBeanMethods = false)`, `@Bean` functions take dependencies as parameters. No `@ComponentScan` or `scanBasePackages`.
 - Configuration comes in through a `@ConfigurationProperties` data class:
   `data class RemoteProperties(val url: String, val timeout: Duration)`. `@Value` only in a
