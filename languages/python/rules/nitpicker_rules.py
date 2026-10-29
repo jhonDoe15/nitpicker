@@ -22,6 +22,7 @@ def load_checks():
     from environment import domain_imports, environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped
+    from locking import field_locking, lock_order
     from security import hashes, loading
     from security.sql import check as sql
     from security.timeouts import check as timeouts
@@ -41,6 +42,8 @@ def load_checks():
         import_time,
         state,
         atomic_updates,
+        lock_order,
+        field_locking,
         shell,
         sql,
         tls,

@@ -37,7 +37,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     removeProject(project);
   });
 
-  it('fails the sleeps, enum predicates, wrapper, plural member, unused option, unused context and update across a suspension, and spares the allowed forms', () => {
+  it('fails the sleeps, enum predicates, wrapper, plural member, unused option, unused context, update across a suspension, lock-order inversion and inconsistently locked property, and spares the allowed forms', () => {
     const result = diffOf(project, 'review-rules');
 
     expect(result.failed).toBe(true);
@@ -63,7 +63,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       'ExhaustiveEnumPredicate isSettled',
       'ExhaustiveEnumPredicate weight',
       ...EXPECTED_REVIEW_FINDINGS.filter((entry) =>
-        entry.startsWith('NonAtomicUpdateAcrossSuspension'),
+        /^(?:InconsistentFieldLocking|LockOrderInversion|NonAtomicUpdateAcrossSuspension) /u.test(
+          entry,
+        ),
       ),
       'SingularAndPluralMember Query.tags',
       'StaticForwardingWrapper absOf',

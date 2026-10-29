@@ -170,6 +170,16 @@
     "scope": "line"
   },
   {
+    "primary": ["pmd/InconsistentFieldLocking"],
+    "secondary": [
+      "spotbugs/IS2_INCONSISTENT_SYNC",
+      "spotbugs/AT_STALE_THREAD_WRITE_OF_PRIMITIVE",
+      "spotbugs/AT_NONATOMIC_64BIT_PRIMITIVE",
+      "errorprone/NonAtomicVolatileUpdate"
+    ],
+    "scope": "line"
+  },
+  {
     "primary": ["errorprone/SubstringOfZero"],
     "secondary": ["spotbugs/DMI_USELESS_SUBSTRING"],
     "scope": "line"
