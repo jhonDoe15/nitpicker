@@ -3,6 +3,7 @@ import path from 'node:path';
 import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
 import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
 import { readKotlinClassLimitFindings } from '../kotlin/kotlin-class-limits.mjs';
+import { withDetektCountRatchets } from '../kotlin/detekt/detekt-counts.mjs';
 import { readSarifReport } from './sarif/sarif-reports.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
@@ -103,15 +104,18 @@ export function readKotlinFindings(context, crapLimit) {
   const metrics = readKotlinMetrics(reportRoot);
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
   const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
-  const ruleFindings = applyKotlinRuleMessages([
-    ...withFrameworkAllowances(detektFindings(reportRoot, formatAdvice), {
-      projectRoot,
-      spring: manifest.spring === true,
-      testRoots,
-    }),
-    ...readKotlinSourceFindings(projectRoot, manifest),
-    ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),
-  ]);
+  const ruleFindings = withDetektCountRatchets(
+    applyKotlinRuleMessages([
+      ...withFrameworkAllowances(detektFindings(reportRoot, formatAdvice), {
+        projectRoot,
+        spring: manifest.spring === true,
+        testRoots,
+      }),
+      ...readKotlinSourceFindings(projectRoot, manifest),
+      ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),
+    ]),
+    metrics.detektCounts,
+  );
   return withoutCoveredSourceFindings(
     [
       ...ruleFindings,

@@ -1,0 +1,95 @@
+import { describe, expect, it } from 'vitest';
+import { COUNT, countInMessage, withCountRatchets } from './count-ratchet.mjs';
+
+const RETURNS = new RegExp(`has ${COUNT} return statements`, 'du');
+
+function finding(message, line, extra = {}) {
+  return {
+    tool: 'lint',
+    rule: 'returns',
+    path: 'src/a.kt',
+    identity: `fp:${message}`,
+    message,
+    classification: 'enforceable',
+    location: { line },
+    ...extra,
+  };
+}
+
+function returnCount(item) {
+  const count = countInMessage(item.message, RETURNS);
+  return count === undefined ? undefined : { ...count, unit: 'return statements' };
+}
+
+describe('countInMessage', () => {
+  it('reads the count and leaves the rest of the message as the subject', () => {
+    expect(countInMessage('Function f has 12 return statements, limit 2.', RETURNS)).toEqual({
+      value: 12,
+      subject: 'Function f has # return statements, limit 2.',
+    });
+  });
+
+  it('reads a count printed with grouping commas', () => {
+    const npath = new RegExp(`NPath Complexity is ${COUNT} \\(`, 'du');
+
+    expect(countInMessage('NPath Complexity is 1,234,567 (max allowed is 200).', npath)).toEqual({
+      value: 1_234_567,
+      subject: 'NPath Complexity is # (max allowed is 200).',
+    });
+  });
+
+  it('gives nothing for a message without the count', () => {
+    expect(countInMessage('Function f is fine.', RETURNS)).toBeUndefined();
+  });
+});
+
+describe('withCountRatchets', () => {
+  it('puts the count in the identity and holds the finding by its subject', () => {
+    const [counted] = withCountRatchets(
+      [finding('Function f has 3 return statements.', 4)],
+      returnCount,
+    );
+
+    expect(counted.identity).toBe('fp:Function f has 3 return statements.|value:3');
+    expect(counted.ratchet).toEqual({
+      key: 'count:return statements:Function f has # return statements.:occurrence:1',
+      value: 3,
+      worseMessage: 'Return statements grew from {base} to 3. Function f has 3 return statements.',
+    });
+  });
+
+  it('numbers findings of the same subject by line, whatever order they come in', () => {
+    const counted = withCountRatchets(
+      [
+        finding('Constructor has 9 return statements.', 30),
+        finding('Constructor has 8 return statements.', 10),
+      ],
+      returnCount,
+    );
+
+    expect(counted.map(({ ratchet }) => ratchet.key.split(':').at(-1))).toEqual(['2', '1']);
+  });
+
+  it('keys the subject without the line numbers in it', () => {
+    const at = (line) =>
+      withCountRatchets(
+        [finding(`The literal appears 4 times; first on line ${String(line)}`, 1)],
+        () => ({
+          value: 4,
+          subject: `The literal appears # times; first on line ${String(line)}`,
+          unit: 'repeats',
+        }),
+      )[0].ratchet.key;
+
+    expect(at(3)).toBe(at(17));
+  });
+
+  it('leaves alone a finding that already has a ratchet or has no count', () => {
+    const ratcheted = finding('Function f has 3 return statements.', 1, {
+      ratchet: { key: 'own', value: 3 },
+    });
+    const plain = finding('Something else.', 2);
+
+    expect(withCountRatchets([ratcheted, plain], returnCount)).toEqual([ratcheted, plain]);
+  });
+});

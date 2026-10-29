@@ -16,6 +16,7 @@ import java.util.stream.Stream;
 import nitpicker.kotlinpsi.bodies.Throwing;
 import nitpicker.kotlinpsi.common.Json;
 import nitpicker.kotlinpsi.facts.FactsCollector;
+import nitpicker.kotlinpsi.metrics.DetektCounts;
 import nitpicker.kotlinpsi.metrics.FileClasses;
 import nitpicker.kotlinpsi.metrics.MetricsCollector;
 import nitpicker.kotlinpsi.metrics.Types;
@@ -42,8 +43,8 @@ import org.jetbrains.kotlin.psi.KtFile;
  *     METRICS.json FACTS.json PROJECT_DIR ROOT...</pre>
  *
  * A root prefixed {@code test:} holds test sources. The metrics report (functions, class names and types, see
- * {@link MetricsCollector} and {@link Types}) covers the other roots only; the facts report
- * ({@link FactsCollector}) covers all.
+ * {@link MetricsCollector} and {@link Types}) covers the other roots only; its detekt counts
+ * ({@link DetektCounts}) and the facts report ({@link FactsCollector}) cover all.
  * A syntax error ends the run: the sources compiled, so the pinned compiler does not read them.
  */
 public final class KotlinPsi {
@@ -82,6 +83,7 @@ public final class KotlinPsi {
     List<String> functions = new ArrayList<>();
     List<String> classes = new ArrayList<>();
     List<String> types = new ArrayList<>();
+    List<String> detektCounts = new ArrayList<>();
     List<Object> facts = new ArrayList<>();
     Set<String> claimedFacades = new HashSet<>();
     Disposable disposable = Disposer.newDisposable();
@@ -103,6 +105,7 @@ public final class KotlinPsi {
           classes.add(FileClasses.describe(source.parsed(), source.relative(), claimedFacades));
           Types.collect(source.parsed(), source.text(), source.relative(), types);
         }
+        DetektCounts.collect(source.parsed(), source.text(), source.relative(), detektCounts);
         facts.add(factsOf(source, nothing));
       }
     } finally {
@@ -111,7 +114,8 @@ public final class KotlinPsi {
     Files.writeString(
         metricsOutput,
         "{\"functions\":[" + String.join(",", functions) + "],\"files\":[" + String.join(",", classes)
-            + "],\"types\":[" + String.join(",", types) + "]}\n",
+            + "],\"types\":[" + String.join(",", types) + "],\"detektCounts\":[" + String.join(",", detektCounts)
+            + "]}\n",
         StandardCharsets.UTF_8);
     Files.writeString(factsOutput, Json.of(Map.of("files", facts)) + "\n", StandardCharsets.UTF_8);
   }
