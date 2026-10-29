@@ -80,6 +80,9 @@ Stricter rules, which can fail code that passed before:
 - Python: the one-way rules of the other presets, swallowed errors, logging an error without its
   traceback, tests without an assertion, and the security rules of the TypeScript preset (#228, #273,
   #277, #283).
+- Java: PMD's `performance`, `multithreading` and `security` categories run too, on Gradle and
+  Maven and on the Java sources of the Kotlin preset, so redundant string work, `synchronized`,
+  `Thread.run()`, unsafe singletons and hardcoded crypto keys now fail (#374).
 - Java and Kotlin: limits on class size (20 methods, 10 fields, inheritance depth 3) and folder
   depth, Java initializers, lambdas and local functions are measured as their own units, and Kotlin
   `init` blocks and property initializers are measured (#229, #276, #290).
