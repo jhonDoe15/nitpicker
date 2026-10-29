@@ -148,6 +148,3 @@ Before you change code other modules use, or fix a bug, read
   (`backgroundScope.launch` for work that ends with the test), keep the job and `join()` it or `await()` the
   deferred (a collection of them too), or build the scope on the test dispatcher and drive it with
   `advanceUntilIdle`; a scope the test class cancels in `@AfterEach` or Kotest `afterSpec` is owned too.
-- A `@SpringBootTest` class uses its context: it injects a bean or a `MockMvc`, `WebTestClient` or
-  `TestRestTemplate`, or it starts a web server port. Otherwise create the class with its
-  constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).

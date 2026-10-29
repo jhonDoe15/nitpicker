@@ -14,7 +14,7 @@ preset's, with the type syntax written in JSDoc. A `.ts`, `.mts` or `.cts` file 
 follows the full TypeScript rules (no `as`, `enum`, `interface`, `any`, `!`), not this page: install
 `nitpicker-typescript` too (`npx skills add jhonDoe15/nitpicker --skill nitpicker-typescript`).
 
-If your change edits a function that existed before it, read
+If your change edits a function, file or folder that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
 
 Before you change code other modules use or fix a bug, read

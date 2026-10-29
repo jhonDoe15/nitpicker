@@ -8,7 +8,7 @@ description: Use before writing or changing Python in a project that runs nitpic
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
 
-If your change edits a function that existed before it, read
+If your change edits a function, class, module or package that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
 
 Before you change code other modules use, or fix a bug, read
