@@ -19,6 +19,7 @@ const ERROR_CALLS = [
   String.raw`Result\s*\.\s*failure`,
 ];
 const ERROR_RESPONSE = new RegExp(String.raw`\b(?:${ERROR_CALLS.join('|')})\s*[.(<]`);
+const FAILS = /(?<![\w.])(?:error|TODO|fail)\s*\(|\bensureActive\s*\(/;
 const FUNCTION = /(?<![\w.])fun\s+(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?([A-Za-z_]\w*)\s*\(/g;
 const HIDDEN = /\b(?:private|internal|protected|override)\b/;
 const BUILDER_NAME = /^(?:set|with)[A-Z]|^(?:of|from|valueOf|builder)$/;
@@ -42,7 +43,7 @@ function tryBlockBefore(code, catchIndex) {
 }
 
 function handles(body, name) {
-  if (/\bthrow\b/.test(body) || ERROR_RESPONSE.test(body)) {
+  if (/\bthrow\b/.test(body) || ERROR_RESPONSE.test(body) || FAILS.test(body)) {
     return true;
   }
   return name !== '_' && new RegExp(`(?<![\\w.])${name}\\b`).test(body);

@@ -196,6 +196,7 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'ExhaustiveEnumPredicate isOpen',
   'ExhaustiveEnumPredicate isSettled',
   'ExhaustiveEnumPredicate weight',
+  'FixedSleepInTest HandlersTest.pause',
   'FixedSleepInTest WaitingTest.iterates',
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
