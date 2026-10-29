@@ -47,7 +47,7 @@ function ioKind(call, { context, originOf }) {
   return memberKind(originOf(callee.object), memberName(callee));
 }
 
-function methodOf(context, callee) {
+function methodOf(callee) {
   const member = skipped(callee);
   const isThisCall = member.type === 'MemberExpression' && member.object.type === 'ThisExpression';
   if (!isThisCall) {
@@ -62,7 +62,7 @@ function methodOf(context, callee) {
 
 function helperOf(call, context) {
   const callee = skipped(call.callee);
-  return resolveFunction(context, callee) ?? methodOf(context, callee);
+  return resolveFunction(context, callee) ?? methodOf(callee);
 }
 
 export function createIo(context) {
