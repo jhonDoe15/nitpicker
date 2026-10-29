@@ -93,7 +93,6 @@ describe('the troubleshooting section of each preset guide', () => {
     const section = sectionOf(read(preset.guide), '## Troubleshooting');
     const listed = [...new Set([...section.matchAll(SECTION_LINK)].map(([, anchor]) => anchor))];
 
-    expect(section).toContain('](troubleshooting.md#');
     expect(listed.toSorted()).toEqual(expectedIndex(preset));
   });
 

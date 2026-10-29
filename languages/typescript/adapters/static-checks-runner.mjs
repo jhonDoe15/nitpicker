@@ -15,7 +15,7 @@ import {
   REACH_THROUGH_SHARED_RULE,
   sharedReachPath,
 } from '../preset/architecture/strict-boundary-rules.mjs';
-import { typescriptFailureText } from './hints/tool-failure-hint.mjs';
+import { withTypeScriptHint } from './hints/tool-failure-hint.mjs';
 
 const invokedPath = process.argv[1];
 
@@ -27,8 +27,11 @@ if (
     const options = parseArguments(process.argv.slice(2));
     const findings = await runStaticCheck(options);
     process.stdout.write(`${JSON.stringify({ findings })}\n`);
-  } catch (error) {
-    process.stderr.write(`Static quality adapter failed: ${typescriptFailureText(error)}\n`);
+  } catch (failure) {
+    const error = withTypeScriptHint(failure);
+    process.stderr.write(
+      `Static quality adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
     process.exitCode = 2;
   }
 }

@@ -11,16 +11,21 @@ export const PEER_TOOLS = [
   'typescript',
   'vitest',
 ];
-const MISSING_PACKAGE =
-  /Cannot find (?:package|module) '((?:@[^/']+\/)?[^/']+)[^']*' imported from/u;
+const MISSING_PACKAGE = /Cannot find (?:package|module) '([^']+)' imported from/u;
+
+function packageOf(specifier) {
+  const segments = specifier.split('/');
+  return specifier.startsWith('@') ? segments.slice(0, 2).join('/') : segments[0];
+}
 
 function failureAnchor(message) {
-  const missing = MISSING_PACKAGE.exec(message)?.[1];
-  return PEER_TOOLS.includes(missing)
+  const specifier = MISSING_PACKAGE.exec(message)?.[1];
+  return specifier !== undefined && PEER_TOOLS.includes(packageOf(specifier))
     ? TROUBLESHOOTING_ANCHORS.missingPeer
     : TROUBLESHOOTING_ANCHORS.typescriptToolFails;
 }
 
-export function typescriptFailureText(error) {
-  return failureText(error, failureAnchor(error instanceof Error ? error.message : String(error)));
+export function withTypeScriptHint(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return new Error(failureText(error, failureAnchor(message)), { cause: error });
 }

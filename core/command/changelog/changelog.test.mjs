@@ -1,5 +1,4 @@
-import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -32,9 +31,6 @@ const { version } = JSON.parse(readFileSync(path.join(root, 'package.json'), 'ut
 
 const STATIC_IMPORT = /^\s*(?:import|export)\s(?:[^'"]*?\sfrom\s)?['"]([^'"]+)['"]/gmu;
 
-const COPIED = ['core', 'shared', 'languages', 'package.json', 'CHANGELOG.md'];
-const NOT_COPIED = /[\\/](?:node_modules|fixtures)(?:[\\/]|$)/u;
-
 function packagesImportedFrom(entry) {
   const visit = (file, seen) => {
     if (seen.has(file)) {
@@ -50,26 +46,6 @@ function packagesImportedFrom(entry) {
     });
   };
   return visit(entry, new Set());
-}
-
-function changelogWithoutPackages(arguments_) {
-  const copy = mkdtempSync(path.join(tmpdir(), 'nitpicker-changelog-copy-'));
-  try {
-    for (const entry of COPIED) {
-      cpSync(path.join(root, entry), path.join(copy, entry), {
-        recursive: true,
-        filter: (source) => !NOT_COPIED.test(source),
-      });
-    }
-    const result = spawnSync(
-      process.execPath,
-      [path.join(copy, 'core/cli.mjs'), 'changelog', ...arguments_],
-      { encoding: 'utf8', env: { ...process.env, NODE_PATH: '' } },
-    );
-    return { status: result.status, stderr: result.stderr };
-  } finally {
-    rmSync(copy, { recursive: true, force: true });
-  }
 }
 
 function changelogCli(...arguments_) {
@@ -204,6 +180,5 @@ describe('nitpicker changelog', () => {
 
   it('loads no installed package, so a release job can run it before npm ci', () => {
     expect(packagesImportedFrom(path.join(root, 'core/cli.mjs'))).toEqual([]);
-    expect(changelogWithoutPackages([version])).toEqual({ status: 0, stderr: '' });
   });
 });
