@@ -115,4 +115,14 @@ describe('action reference validation', () => {
 
     expect(actionPinProblems(root)).toEqual([]);
   });
+
+  it('visits shared and recursive YAML aliases once', () => {
+    const root = repository({
+      'action.yml': 'step: &step { uses: actions/checkout@main, again: *step }\ncopy: *step',
+    });
+
+    expect(actionPinProblems(root)).toEqual([
+      'action.yml: pin actions/checkout@main to a full version tag (vX.Y.Z)',
+    ]);
+  });
 });
