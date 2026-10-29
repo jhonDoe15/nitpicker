@@ -70,7 +70,8 @@ Before you change code other modules use, or fix a bug, read
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
   `switch` expression without `default`, or a field each constant declares (`PAID(true)`). Not
   `s == PAID || s == SHIPPED` or `EnumSet.of(...).contains(s)` (`ExhaustiveEnumPredicate`).
-- No static method that only passes its parameters on to another method; call that method.
+- No static method, and no instance method (`ForwardingMethodAlias`), that only passes its
+  parameters on to another method of the same class; call that method.
   Factories named `of` or `from` and copies such as `List.copyOf` are fine.
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
@@ -138,7 +139,7 @@ Before you change code other modules use, or fix a bug, read
 - Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file
   (500 lines) and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection
   read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply
-  to main sources only, as do the enum predicate, forwarding wrapper and singular-and-plural rules.
+  to main sources only, as do the enum predicate, forwarding wrapper, method alias and singular-and-plural rules.
   If a PMD rule or an Error Prone check flags test code that is right, ask a human for a reviewed
   exception for `pmd/<rule>` or `errorprone/<Check>`.
 

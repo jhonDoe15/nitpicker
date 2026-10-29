@@ -97,6 +97,40 @@
       </property>
     </properties>
   </rule>
+  <rule name="ForwardingMethodAlias" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method only passes its parameters, in order, to another method of the same class. Call that method directly and delete the alias. Overrides, annotated methods (a deprecated alias) and factories named of or from are allowed.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodDeclaration[parent::*[self::ClassBody or self::EnumBody or self::RecordBody]/parent::*[self::ClassDeclaration[not(@Interface = true())] or self::EnumDeclaration or self::RecordDeclaration]]
+  [not(pmd-java:modifiers() = ('static', 'abstract'))][not(ModifierList/Annotation)][not(TypeParameters)]
+  [not(@Name = ('of', 'from'))][not(@Overridden = true())]
+  [FormalParameters/@Size > 0]
+  [let $method := .,
+       $parameters := FormalParameters/FormalParameter/VariableId/@Name,
+       $call := Block[count(*) = 1]/(ReturnStatement | ExpressionStatement[$method/VoidType])/MethodCall,
+       $type := function($t) { string-join(($t/descendant-or-self::*/(@SimpleName | @Kind | @ArrayDepth)) ! string(.), '|') },
+       $key := function($m) {
+         string-join((for $t in $m/FormalParameters/FormalParameter/(ClassType | PrimitiveType | ArrayType) return $type($t),
+                      for $v in $m/FormalParameters/FormalParameter[@Varargs = true()] return 'varargs',
+                      for $r in $m/(ClassType | PrimitiveType | ArrayType | VoidType) return local-name($r) || $type($r),
+                      for $e in $m/ThrowsList/* return $e/@SimpleName), ',') },
+       $targets := ../MethodDeclaration[@Name = $call/@MethodName]
+     return exists($call)
+       and not($call/TypeArguments)
+       and ($call/*[1][self::ArgumentList] or $call/*[1][self::ThisExpression][not(*)])
+       and $call/@MethodName != $method/@Name
+       and $call/ArgumentList/@Size = count($parameters)
+       and (every $i in 1 to count($parameters)
+            satisfies $call/ArgumentList/*[$i][self::VariableAccess]/@Name = $parameters[$i])
+       and count($targets) = 1
+       and count(../MethodDeclaration[@Name = $method/@Name]) = 1
+       and exists($targets[not(TypeParameters)][not(pmd-java:modifiers() = 'static')][$key(.) = $key($method)])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="SingularAndPluralMember" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A member and its plural (tag and tags) are two ways to pass the same data. Keep the plural and pass one item as a one-element list.">
     <priority>3</priority>
