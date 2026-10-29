@@ -53,7 +53,15 @@ export function formatTool(javaStyle, pinned) {
 
 export function archunitTool(runsRules, pinned) {
   return runsRules
-    ? [{ name: 'archunit', coordinates: [`com.tngtech.archunit:archunit:${pinned.archunit}`] }]
+    ? [
+        {
+          name: 'archunit',
+          coordinates: [
+            `com.tngtech.archunit:archunit:${pinned.archunit}`,
+            `org.ow2.asm:asm-analysis:${pinned.asm}`,
+          ],
+        },
+      ]
     : [];
 }
 
