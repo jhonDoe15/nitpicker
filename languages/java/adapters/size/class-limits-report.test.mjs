@@ -34,6 +34,7 @@ function kotlinProject() {
     }),
     'pmd.sarif': EMPTY_SARIF,
     'spotbugs.sarif': EMPTY_SARIF,
+    'errorprone.json': '[]',
     'detekt.sarif': EMPTY_SARIF,
     'format.txt': '',
     'checkstyle.xml': '<checkstyle version="10.21.1"></checkstyle>',

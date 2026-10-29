@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -37,7 +37,6 @@ describe('readErrorProneFindings', () => {
       diagnostic(path.join(root, 'src/main/java/demo/A.java')),
       diagnostic(path.join(root, 'src/test/java/demo/ATest.java')),
       diagnostic(path.join(root, 'build/nitpicker/errorprone/generated/main/demo/A_Impl.java')),
-      diagnostic('/elsewhere/src/main/java/demo/B.java'),
     ]);
 
     const findings = readErrorProneFindings({
@@ -150,11 +149,63 @@ describe('readErrorProneFindings', () => {
     ]);
   });
 
-  it('reads no findings when the report is absent', () => {
+  it('reports a missing report as a tool error instead of no findings', () => {
     const { projectRoot, reportRoot } = reportRootWith();
 
     expect(
       readErrorProneFindings({ reportRoot, roots: [projectRoot], lintedRoots: ['src'] }),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        tool: 'errorprone',
+        rule: 'missing-report',
+        path: '.',
+        identity: 'missing-report',
+        message: `Error Prone wrote no report at ${path.join(reportRoot, 'errorprone.json')}.`,
+        classification: 'tool-error',
+      },
+    ]);
+  });
+
+  it('reports diagnostics on files outside every project root as a tool error', () => {
+    const { projectRoot, reportRoot } = reportRootWith((root) => [
+      diagnostic(path.join(root, 'src/main/java/demo/A.java')),
+      diagnostic('/elsewhere/src/main/java/demo/B.java'),
+    ]);
+
+    const findings = readErrorProneFindings({
+      reportRoot,
+      roots: [projectRoot],
+      lintedRoots: ['src/main/java'],
+    });
+
+    expect(
+      findings.map(({ rule, path: file, classification }) => [rule, file, classification]),
+    ).toEqual([
+      ['DeadException', 'src/main/java/demo/A.java', 'enforceable'],
+      ['unmapped-path', '.', 'tool-error'],
+    ]);
+    expect(findings[1].message).toBe(
+      `Error Prone reported 1 file(s) outside the project (${projectRoot}), so their findings ` +
+        'cannot be placed: /elsewhere/src/main/java/demo/B.java',
+    );
+  });
+
+  it('maps the long form of a project root that the build canonicalized', () => {
+    const { projectRoot, reportRoot } = reportRootWith((root) => [
+      diagnostic(path.join(root, 'src/main/java/demo/A.java')),
+    ]);
+    const linked = `${projectRoot}-link`;
+    roots.push(linked);
+    symlinkSync(projectRoot, linked, 'dir');
+
+    const findings = readErrorProneFindings({
+      reportRoot,
+      roots: [linked, projectRoot],
+      lintedRoots: ['src/main/java'],
+    });
+
+    expect(findings.map(({ path: file, classification }) => [file, classification])).toEqual([
+      ['src/main/java/demo/A.java', 'enforceable'],
+    ]);
   });
 });

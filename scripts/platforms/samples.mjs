@@ -37,8 +37,9 @@ const SWALLOWED_PYTHON = `def parse(text: str) -> int:
 
 export const SAMPLES = {
   typescript: {
+    allExitCode: 0,
     sources: ['languages/typescript/preset/fixtures/strict-clean'],
-    files: { '.gitignore': 'node_modules/\nreports/\n' },
+    files: { '.gitignore': '/node_modules\nreports/\n' },
     linkNodeModules: true,
     change: {
       append: {
@@ -48,17 +49,20 @@ export const SAMPLES = {
     },
   },
   gradle: {
+    allExitCode: 1,
     sources: [GRADLE_PROJECT],
     files: { '.gitignore': 'build/\n.gradle/\nreports/\n', 'nitpicker.config.json': JAVA_CONFIG },
     change: { files: { 'src/main/java/demo/Parser.java': SWALLOWED_JAVA } },
   },
   maven: {
+    allExitCode: 1,
     sources: [GRADLE_PROJECT, 'languages/java/maven/fixtures/single'],
     removed: ['build.gradle', 'settings.gradle'],
     files: { '.gitignore': 'target/\nreports/\n', 'nitpicker.config.json': JAVA_CONFIG },
     change: { files: { 'src/main/java/demo/Parser.java': SWALLOWED_JAVA } },
   },
   python: {
+    allExitCode: 1,
     sources: ['languages/python/adapters/fixtures/python-project'],
     files: {
       '.gitignore': '.venv/\n__pycache__/\n.pytest_cache/\n.ruff_cache/\nmutants/\nreports/\n',

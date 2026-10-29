@@ -10,6 +10,8 @@ const END = '<!-- support-matrix:end -->';
 const OS_NAMES = { 'ubuntu-latest': 'Linux', 'macos-latest': 'macOS', 'windows-latest': 'Windows' };
 const PLATFORM_NAMES = { linux: 'Linux', darwin: 'macOS', win32: 'Windows' };
 const RUNTIME_NAMES = { deno: 'Deno' };
+const PACKAGE_MANAGER_FIXTURES =
+  'languages/typescript/adapters/dependency-graph/package-managers/fixtures/projects';
 
 function text(file) {
   return readFileSync(inside(ROOT, file), 'utf8');
@@ -45,6 +47,11 @@ function buildPin(file, pattern) {
   return pattern.exec(text(file))?.[1] ?? 'not pinned';
 }
 
+function packageManagerPin(fixture) {
+  const manifest = JSON.parse(text(`${PACKAGE_MANAGER_FIXTURES}/${fixture}/package.json`));
+  return manifest.packageManager.split('@')[1];
+}
+
 function versions(value) {
   return String(value).trim().split(/\s+/u).join(', ');
 }
@@ -66,6 +73,11 @@ function readSources() {
     sampleSystems: samples.strategy.matrix.os.map((os) => OS_NAMES[os] ?? os),
     deno: step(runtimes, 'denoland/setup-deno')['deno-version'],
     jdk: step(workflows.java.jobs['java-shard'], 'actions/setup-java')['java-version'],
+    sampleJdk: step(samples, 'actions/setup-java')['java-version'],
+    bun: step(workflows.typescript.jobs['test-shard'], 'oven-sh/setup-bun')['bun-version'],
+    pnpm: packageManagerPin('pnpm'),
+    yarn: packageManagerPin('yarn'),
+    berry: packageManagerPin('berry'),
     gradle: step(workflows.java.jobs['java-shard'], 'gradle/actions/setup-gradle')[
       'gradle-version'
     ],
@@ -103,25 +115,21 @@ function presetRows(sources) {
   const node = `Node.js ${String(sources.node)} (needs ${sources.engines})`;
   const vitest = `Vitest ${sources.development.vitest}, Jest ${sources.development.jest}, Mocha ${sources.development.mocha}, \`node:test\``;
   const jdk = `JDK ${String(sources.jdk)} (Temurin)`;
+  const sampledJdk = `JDK ${String(sources.jdk)} (Temurin; samples: ${String(sources.sampleJdk)})`;
+  const managers = `npm; pnpm ${sources.pnpm}, Yarn ${sources.yarn} and ${sources.berry}, Bun ${String(sources.bun)} for base installs`;
   return [
     [
       'TypeScript',
       systemsCell(sources, true),
       `${node}; Deno ${sources.deno} (sample run)`,
-      'npm (pnpm, Yarn and Bun for base installs)',
+      managers,
       vitest,
     ],
-    [
-      'JavaScript',
-      systemsCell(sources, false),
-      node,
-      'npm (pnpm, Yarn and Bun for base installs)',
-      vitest,
-    ],
+    ['JavaScript', systemsCell(sources, false), node, managers, vitest],
     [
       'Java',
       systemsCell(sources, true),
-      `${node}; ${jdk}`,
+      `${node}; ${sampledJdk}`,
       `Gradle ${String(sources.gradle)}; Maven from the runner image`,
       `JUnit ${sources.junit}`,
     ],
@@ -164,7 +172,7 @@ export function renderSupportMatrix(sources = readSources()) {
   const limits = EXPECTED_DIFFERENCES.map((expected) => [
     where(expected),
     expected.sample,
-    expected.tools.map((tool) => `\`${tool}\``).join(', '),
+    [expected.analyzer, ...(expected.findingTools ?? [])].map((tool) => `\`${tool}\``).join(', '),
     expected.reason,
   ]);
   return [

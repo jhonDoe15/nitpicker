@@ -2,7 +2,12 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { compareRuns, EXPECTED_DIFFERENCES, invariantProblems } from './compare-runs.mjs';
+import {
+  compareRuns,
+  EXPECTED_DIFFERENCES,
+  invariantProblems,
+  referenceProblems,
+} from './compare-runs.mjs';
 import { findingKey, normalizedRun, toolErrorKey } from './smoke.mjs';
 import { renderSupportMatrix } from './support-matrix.mjs';
 
@@ -12,9 +17,15 @@ function finding(tool, rule, file = GREET, classification = 'enforceable') {
   return findingKey({ tool, rule, path: file, identity: `${rule}|1`, classification });
 }
 
-function run({ runtime = 'node', platform = 'linux', all = {}, change = {} } = {}) {
+function run({
+  sample = 'typescript',
+  runtime = 'node',
+  platform = 'linux',
+  all = {},
+  change = {},
+} = {}) {
   return {
-    sample: 'typescript',
+    sample,
     runtime,
     platform,
     all: {
@@ -68,6 +79,51 @@ describe('comparing a sample run with the Linux run under Node', () => {
   it('fails when a documented difference no longer occurs, so the docs follow the fix', () => {
     expect(compareRuns(run(), run({ runtime: 'deno' })).problems).toEqual([
       'typescript on linux with deno: the expected difference in typescript-typecheck no longer occurs; update EXPECTED_DIFFERENCES and docs/compatibility.md',
+    ]);
+  });
+
+  it('allows the findings of the expected analyzer that carry another tool name', () => {
+    const parser = 'src/demo/parser.py';
+    const python = (platform, findings) =>
+      run({
+        sample: 'python',
+        platform,
+        all: { exitCode: 1, findings },
+        change: { findings: [finding('python-rules', 'swallowed-exception', parser)] },
+      });
+    const survived = finding('mutmut', 'mutant-survived', 'src/demo/legacy.py');
+    const skipped = finding('mutmut', 'mutation-skipped', '.', 'descriptive');
+
+    const result = compareRuns(python('linux', [survived]), python('win32', [skipped]));
+
+    expect(result).toEqual({
+      problems: [],
+      allowed: [
+        `python on win32 with node: all - ${survived}`,
+        `python on win32 with node: all + ${skipped}`,
+      ],
+    });
+  });
+
+  it('checks exit codes in the part that has no expected difference', () => {
+    const deno = run({
+      runtime: 'deno',
+      all: { exitCode: 2, toolErrors: [typecheckCrash] },
+      change: { exitCode: 2 },
+    });
+
+    expect(compareRuns(run(), deno).problems).toEqual([
+      'typescript on linux with deno: the change exited 2, not 1',
+      'typescript on linux with deno: change exited 2, the reference 1',
+    ]);
+  });
+
+  it('fails a reference run with a tool error or an unexpected --all exit code', () => {
+    const reference = run({ all: { exitCode: 2, toolErrors: [typecheckCrash] } });
+
+    expect(referenceProblems(reference)).toEqual([
+      'typescript on linux with node: --all exited 2, not 0',
+      `typescript on linux with node: the reference run has a tool error in all: ${typecheckCrash}`,
     ]);
   });
 
@@ -143,7 +199,7 @@ describe('the compatibility table', () => {
     expect(rows.slice(limitsStart)).toEqual([
       ['Where', 'Sample', 'Analyzers', 'Why'],
       ['Deno', 'typescript', '`typescript-typecheck`', EXPECTED_DIFFERENCES[0].reason],
-      ['Windows', 'python', '`mutation`', EXPECTED_DIFFERENCES[1].reason],
+      ['Windows', 'python', '`mutation`, `mutmut`', EXPECTED_DIFFERENCES[1].reason],
     ]);
   });
 });
