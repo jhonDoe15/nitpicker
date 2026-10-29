@@ -73,6 +73,35 @@ JavaScript; Python and Kotlin have no such operator, and the checked form
 [Kotlin](../docs/kotlin-preset.md#review-rules) and [Java](../docs/java-preset.md#error-prone-and-nullaway)
 for what each leaves alone.
 
+## Lock discipline
+
+Two rules check how a class takes its locks. A lock-order inversion is two locks of one class taken
+in opposite orders, so two threads that run both nestings can each hold one lock and wait forever for
+the other. Inconsistent locking is a field written while a lock is held in one place and with no lock
+in another, so the unlocked write races with the locked one. Every finding is enforceable, names both
+places, is keyed by the class and the lock pair or the field (no line number) and names a reviewed
+`exceptions` entry.
+
+| Preset                    | Lock order                          | Field written with and without a lock         | Implementation                                                                                 |
+| ------------------------- | ----------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Java                      | `pmd/LockOrderInversion`            | `pmd/InconsistentFieldLocking`                | XPath rules in `pmd-ruleset.xml`; `messages/lock-evidence.mjs` names both places               |
+| Kotlin                    | `pmd/LockOrderInversion`            | `pmd/InconsistentFieldLocking`                | `review-rules/main/locking/` over the `kotlin-psi` locking facts                               |
+| Python                    | `python-rules/lock-order-inversion` | `python-rules/inconsistent-attribute-locking` | `languages/python/rules/locking/`                                                              |
+| TypeScript and JavaScript | not applicable                      | not applicable                                | one thread runs the code between two `await`s; there is no lock to hold or to take in an order |
+
+What each recognizes:
+
+| Preset | Locks                                                                                                                                    | Not followed                                                                                        |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Java   | `synchronized` blocks and methods, `lock()` and `lockInterruptibly()` up to `unlock()`, on a field, `this`, `Type.class` or `Type.FIELD` | a lock passed in, held in a local, taken in a called method, or taken with `tryLock`                |
+| Kotlin | `synchronized(x) { }`, `@Synchronized`, `withLock` of `ReentrantLock` and `Mutex`, also under an import alias                            | a lock passed in or held in a local, a lambda that may run later, a lock taken in a called function |
+| Python | `with` and `async with` on `threading` and `asyncio` locks, `RLock`, `Condition` and a one-slot semaphore built once                     | a lock passed in, an object the analysis cannot identify, a nested function that may run later      |
+
+A write the analysis cannot place (in a constructor or initializer, in a lambda or nested function,
+in a method the class calls while it holds a lock, under a `with` it cannot identify) is never
+reported as unlocked. Java and Kotlin also skip a single write of a `volatile` field and fields of an
+atomic or concurrent type.
+
 ## Entry points
 
 | Check          | Rule                        | Threshold                                         | Status      |

@@ -69,7 +69,7 @@ public final class Updates {
     return new ArrayList<>(names);
   }
 
-  private static List<Object> locals(PsiElement scope) {
+  public static List<Object> locals(PsiElement scope) {
     Set<String> names = new TreeSet<>(Comparator.nullsFirst(Comparator.naturalOrder()));
     if (scope != null) {
       for (KtParameter parameter : PsiTreeUtil.findChildrenOfType(scope, KtParameter.class)) {

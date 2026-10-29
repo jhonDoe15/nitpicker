@@ -34,9 +34,10 @@ def paired(target, value):
 
 
 class LockKeys:
-    def __init__(self, tree, aliases, parents):
+    def __init__(self, tree, aliases, parents, constructions=is_exclusive_construction):
         self.aliases = aliases
         self.parents = parents
+        self.constructions = constructions
         self.classes = {
             node.name: node for node in tree.body if isinstance(node, ast.ClassDef)
         }
@@ -176,7 +177,7 @@ class LockKeys:
         return None
 
     def value_exclusive(self, value, function, seen):
-        if is_exclusive_construction(value, self.aliases):
+        if self.constructions(value, self.aliases):
             return True
         if not isinstance(value, ast.Name):
             return False
@@ -188,7 +189,7 @@ class LockKeys:
     def local_exclusive(self, key):
         entries = self.entries.get(key, [])
         return bool(entries) and all(
-            is_exclusive_construction(value, self.aliases) for value, _, _ in entries
+            self.constructions(value, self.aliases) for value, _, _ in entries
         )
 
     def exclusive(self, key, seen=frozenset()):

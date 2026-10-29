@@ -1,3 +1,5 @@
+import { LOCKING_FILES, LOCKING_FINDINGS } from './kotlin-locking-data.mjs';
+
 const MAIN = 'src/main/kotlin/demo/orders';
 const TEST = 'src/test/kotlin/demo/orders';
 const SPRING = 'src/test/kotlin/org/springframework';
@@ -272,6 +274,7 @@ export const REVIEW_RULE_FILES = {
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
   [`${SPRING}/boot/test/context/SpringBootTest.kt`]: SPRING_BOOT_TEST,
   [`${SPRING}/beans/factory/annotation/Autowired.kt`]: AUTOWIRED,
+  ...LOCKING_FILES,
 };
 
 export const EXPECTED_REVIEW_FINDINGS = [
@@ -299,7 +302,8 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'unused-option Envelope.retries',
   'unused-option Mailer.retries',
   'unused-option pad.width',
-];
+  ...LOCKING_FINDINGS,
+].sort();
 
 const EMPTY_JAR = Buffer.from([0x50, 0x4b, 0x05, 0x06, ...Array.from({ length: 18 }, () => 0)]);
 

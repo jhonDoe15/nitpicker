@@ -1379,6 +1379,7 @@ table:
 - line: `errorprone/LockNotBeforeTry` over `spotbugs/UL_UNRELEASED_LOCK`, `spotbugs/UL_UNRELEASED_LOCK_EXCEPTION_PATH`
 - line: `errorprone/WaitNotInLoop` over `spotbugs/UW_UNCOND_WAIT`, `spotbugs/WA_NOT_IN_LOOP`
 - line: `errorprone/NonAtomicVolatileUpdate` over `spotbugs/VO_VOLATILE_INCREMENT`
+- line: `pmd/InconsistentFieldLocking` over `spotbugs/IS2_INCONSISTENT_SYNC`, `spotbugs/AT_STALE_THREAD_WRITE_OF_PRIMITIVE`, `spotbugs/AT_NONATOMIC_64BIT_PRIMITIVE`, `errorprone/NonAtomicVolatileUpdate`
 - line: `errorprone/SubstringOfZero` over `spotbugs/DMI_USELESS_SUBSTRING`
 - line: `errorprone/IdentityBinaryExpression`, `errorprone/SelfComparison`, `errorprone/SelfEquals` over `spotbugs/SA_FIELD_SELF_COMPARISON`, `spotbugs/SA_LOCAL_SELF_COMPARISON`
 - line: `errorprone/LockOnBoxedPrimitive` over `spotbugs/DL_SYNCHRONIZATION_ON_*`
