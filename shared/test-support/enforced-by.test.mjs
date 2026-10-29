@@ -12,7 +12,7 @@ const REPORT_ONLY_KOTLIN_MUTANTS = {
 };
 const JVM_RUNTIME_EDGES_ONLY = {
   file: 'languages/java/adapters/test-runtime/test-graph.mjs',
-  evidence: /kind: RUNTIME/u,
+  evidence: /kind: EDGE_KINDS\.RUNTIME/u,
 };
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
   java: {

@@ -2,9 +2,8 @@ import { readFileSync } from 'node:fs';
 import { outerClass, parseJdeps } from '../metrics/java-coupling.mjs';
 import { pathInside } from '../review-rules/java-sources.mjs';
 import { ownersOf, resolver } from '../review-rules/test-only-classes.mjs';
+import { EDGE_KINDS } from '../../../../shared/rules/test-runtime/classify.mjs';
 import { isFrameworkBridge, isTestMarker } from './test-markers.mjs';
-
-const RUNTIME = 'runtime';
 
 function readProject(project) {
   function report(name) {
@@ -69,7 +68,7 @@ export function readTestGraph(projects) {
     edges: new Map(
       [...reached].map(([from, targets]) => [
         from,
-        [...targets].map((target) => ({ target, kind: RUNTIME })),
+        [...targets].map((target) => ({ target, kind: EDGE_KINDS.RUNTIME })),
       ]),
     ),
     declaring,

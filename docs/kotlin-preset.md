@@ -1232,7 +1232,13 @@ or through test helpers, base classes and top-level functions of a `...Kt` file,
 `no-production-runtime`. A test that starts a framework context (`@SpringBootTest`, a Spring Boot
 slice, `@QuarkusTest`, `@MicronautTest`, ArchUnit's `@AnalyzeClasses`) is not reported. The exception
 entry is `{ "rule": "no-production-runtime", "paths": ["src/test/kotlin/..."], "reason": "..." }`.
-The test's source file is found in the Kotlin test source roots of the Gradle build.
+The test's source file is found in the Kotlin test source roots of the build (`src/test/kotlin`, or
+the Gradle source sets and the Maven `sourceDirs` of `kotlin-maven-plugin`'s `test-compile`). A Kotest
+spec style (`FunSpec`, `StringSpec`, ...) marks a test; an `open`, `sealed` or `abstract` class is a
+base and is not judged, and tests under `e2e`, `end_to_end`, `contract` folders or an `e2eTest`
+or `contractTest` source set are excluded, as for Java. A `const val` or `inline fun` may leave no
+reference to its class, so a test that uses only that may be reported; lift it with an exception, as
+for reflection-only use. Annotations or base classes from a library jar are not seen.
 
 ## File limits
 

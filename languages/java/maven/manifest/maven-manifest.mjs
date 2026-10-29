@@ -24,6 +24,7 @@ export function moduleManifest({ module, classpaths, pinned }) {
     sourceRoots: relativeRoots(module, module.sourceRoots),
     kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
+    kotlinTestSourceRoots: relativeRoots(module, module.kotlinTestSourceRoots ?? []),
     resourceRoots: relativeRoots(module, module.resourceRoots),
     ...springFacts(classpaths),
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
