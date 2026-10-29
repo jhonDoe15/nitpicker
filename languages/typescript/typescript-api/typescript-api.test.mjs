@@ -63,18 +63,19 @@ describe('choosing the TypeScript API nitpicker reads source files with', () => 
 describe('the resolve hook for TypeScript 7 projects', () => {
   const resolve = apiResolution(bundledRoot);
   const toNative = () => ({ url: pathToFileURL(nativeMain).href });
+  const dependency = { parentURL: 'file:///project/node_modules/typescript-eslint/dist/index.js' };
   const redirected = (file, format = 'commonjs') => ({
     url: pathToFileURL(path.join(bundledRoot, file)).href,
     format,
     shortCircuit: true,
   });
 
-  it('redirects typescript, its manifest and its libraries when it resolves to a package without an API', () => {
-    expect(resolve('typescript', {}, toNative)).toEqual(redirected('lib/typescript.js'));
-    expect(resolve('typescript/package.json', {}, toNative)).toEqual(
+  it('redirects typescript, its manifest and its libraries for a package without an API', () => {
+    expect(resolve('typescript', dependency, toNative)).toEqual(redirected('lib/typescript.js'));
+    expect(resolve('typescript/package.json', dependency, toNative)).toEqual(
       redirected('package.json', 'json'),
     );
-    expect(resolve('typescript/lib/tsserverlibrary', {}, toNative)).toEqual(
+    expect(resolve('typescript/lib/tsserverlibrary', dependency, toNative)).toEqual(
       redirected('lib/tsserverlibrary.js'),
     );
   });
@@ -87,23 +88,28 @@ describe('the resolve hook for TypeScript 7 projects', () => {
       throw notFound('ERR_MODULE_NOT_FOUND');
     };
 
-    expect(resolve('typescript/lib/typescript.js', {}, unexported)).toEqual(
+    expect(resolve('typescript/lib/typescript.js', dependency, unexported)).toEqual(
       redirected('lib/typescript.js'),
     );
-    expect(resolve('typescript', {}, missing)).toEqual(redirected('lib/typescript.js'));
+    expect(resolve('typescript', dependency, missing)).toEqual(redirected('lib/typescript.js'));
   });
 
-  it('leaves a typescript with a JavaScript API, other specifiers and other errors alone', () => {
+  it("leaves the project's own code, a typescript with an API and other specifiers alone", () => {
+    const native = { url: pathToFileURL(nativeMain).href };
     const installed = { url: pathToFileURL(require.resolve('typescript')).href };
     const other = { url: 'node:fs' };
     const broken = () => {
       throw notFound('ERR_INVALID_PACKAGE_CONFIG');
     };
 
-    expect(resolve('typescript', {}, () => installed)).toBe(installed);
-    expect(resolve('typescript/package.json', {}, () => installed)).toBe(installed);
-    expect(resolve('typescript-eslint', {}, () => other)).toBe(other);
-    expect(() => resolve('typescript', {}, broken)).toThrow('ERR_INVALID_PACKAGE_CONFIG');
+    expect(
+      resolve('typescript', { parentURL: 'file:///project/test/a.test.js' }, () => native),
+    ).toBe(native);
+    expect(resolve('typescript', {}, () => native)).toBe(native);
+    expect(resolve('typescript', dependency, () => installed)).toBe(installed);
+    expect(resolve('typescript/package.json', dependency, () => installed)).toBe(installed);
+    expect(resolve('typescript-eslint', dependency, () => other)).toBe(other);
+    expect(() => resolve('typescript', dependency, broken)).toThrow('ERR_INVALID_PACKAGE_CONFIG');
   });
 
   it('adds the preload to NODE_OPTIONS once, after the options already set', () => {
@@ -133,16 +139,23 @@ describe('a Node process started with the preload in a TypeScript 7 project', ()
     project = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker ts7 project-')));
     mkdirSync(path.join(project, 'node_modules'));
     symlinkSync(nativeRoot, path.join(project, 'node_modules/typescript'));
+    mkdirSync(path.join(project, 'node_modules/probe'));
+    writeFileSync(path.join(project, 'node_modules/probe/package.json'), '{"name":"probe"}');
     writeFileSync(
-      path.join(project, 'load.cjs'),
+      path.join(project, 'node_modules/probe/index.js'),
       "const ts = require('typescript');\n" +
         "const lib = require('typescript/lib/typescript.js');\n" +
         "const manifest = require('typescript/package.json');\n" +
         "const server = require('typescript/lib/tsserverlibrary.js');\n" +
-        "import('typescript').then(({ default: esm }) => console.log(JSON.stringify({\n" +
+        "module.exports = import('typescript').then(({ default: esm }) => ({\n" +
         '  cjs: ts.version, lib: lib === ts, esm: esm === ts, parses: typeof ts.createSourceFile,\n' +
         '  manifest: manifest.version, server: typeof server.server,\n' +
-        '})));\n',
+        '}));\n',
+    );
+    writeFileSync(
+      path.join(project, 'load.cjs'),
+      "const own = require('typescript/package.json').version;\n" +
+        "require('probe').then((probe) => console.log(JSON.stringify({ ...probe, own })));\n",
     );
     const output = execFileSync(process.execPath, ['load.cjs'], {
       cwd: project,
@@ -157,7 +170,7 @@ describe('a Node process started with the preload in a TypeScript 7 project', ()
     rmSync(project, { recursive: true, force: true });
   });
 
-  it('gives require and import of typescript, its manifest and tsserverlibrary the bundled API', () => {
+  it('gives packages the bundled API and leaves the project its own typescript', () => {
     expect(loaded).toEqual({
       cjs: bundledVersion,
       lib: true,
@@ -165,6 +178,7 @@ describe('a Node process started with the preload in a TypeScript 7 project', ()
       parses: 'function',
       manifest: bundledVersion,
       server: 'object',
+      own: resolveTool('typescript-native').version,
     });
   });
 });

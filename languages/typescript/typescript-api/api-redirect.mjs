@@ -30,6 +30,10 @@ function resolvedOrUndefined(nextResolve, specifier, context) {
   }
 }
 
+function fromPackage(context) {
+  return context.parentURL?.includes('/node_modules/') === true;
+}
+
 function apiFile(apiRoot, specifier) {
   if (specifier === 'typescript') {
     return path.join(apiRoot, 'lib/typescript.js');
@@ -40,7 +44,7 @@ function apiFile(apiRoot, specifier) {
 
 export function apiResolution(apiRoot) {
   return (specifier, context, nextResolve) => {
-    if (!API_SPECIFIER.test(specifier)) {
+    if (!API_SPECIFIER.test(specifier) || !fromPackage(context)) {
       return nextResolve(specifier, context);
     }
     const installed = resolvedOrUndefined(nextResolve, 'typescript', context);

@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { PACKAGE_ROOT, resolveTool } from '../../../core/tooling/tool-resolution.mjs';
+import {
+  isToolInstalled,
+  PACKAGE_ROOT,
+  resolveTool,
+} from '../../../core/tooling/tool-resolution.mjs';
 import { testRunnerFor } from './test-runner/detect-runner.mjs';
 import { RUNNER_PACKAGES } from './test-runner/runners.mjs';
 import { TYPESCRIPT_API } from '../typescript-api/api-selection.mjs';
@@ -87,10 +91,13 @@ function typeScriptApiVersion(resolve, bundled) {
 export function resolveAnalyzerVersion(
   analyzerName,
   liveProjectRoot,
-  { resolve = resolveTool, bundled = TYPESCRIPT_API.bundled } = {},
+  { resolve = resolveTool, bundled = TYPESCRIPT_API.bundled, installed = isToolInstalled } = {},
 ) {
   if (['coverage', 'mutation', 'test-console'].includes(analyzerName)) {
     return testRunnerAnalyzerVersion(analyzerName, liveProjectRoot, { resolve });
+  }
+  if (analyzerName === 'typescript-typecheck') {
+    return typeCheckVersion(liveProjectRoot, { resolve, bundled, installed });
   }
   const toolName = analyzerName.startsWith('eslint-') ? 'eslint' : TOOL_BY_ANALYZER[analyzerName];
   if (toolName === undefined) {
@@ -103,13 +110,15 @@ export function resolveAnalyzerVersion(
   return withTypeScriptVersions({ analyzerName, toolName, version }, { resolve, bundled });
 }
 
+function typeCheckVersion(liveProjectRoot, { resolve, bundled, installed }) {
+  const project = installed('typescript', { projectRoot: liveProjectRoot })
+    ? resolve('typescript', { projectRoot: liveProjectRoot }).version
+    : 'none';
+  const native = resolve('typescript-native', { projectRoot: PACKAGE_ROOT }).version;
+  return `${project};typescript-native@${native};${typeScriptApiVersion(resolve, bundled)}`;
+}
+
 function withTypeScriptVersions({ analyzerName, toolName, version }, { resolve, bundled }) {
-  if (analyzerName === 'typescript-typecheck') {
-    const native = `typescript-native@${resolve('typescript-native', { projectRoot: PACKAGE_ROOT }).version}`;
-    return bundled
-      ? `${version};${native};${typeScriptApiVersion(resolve, bundled)}`
-      : `${version};${native}`;
-  }
   if (DEPENDENCY_GRAPH_ANALYZERS.has(analyzerName)) {
     return `${version};typescript@${typeScriptApiVersion(resolve, bundled)}`;
   }
