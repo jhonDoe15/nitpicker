@@ -11,6 +11,13 @@ const skillNames = readdirSync(skillsRoot, { withFileTypes: true })
   .map((entry) => entry.name)
   .filter((name) => existsSync(path.join(skillsRoot, name, 'SKILL.md')));
 const PRESET_MENTIONS_ALLOWED = { java: ['kotlin'] };
+const SHARED_PAGES = ['SKILL.md', 'beyond-the-gate.md', 'editing-existing-code.md'];
+const FRAMEWORK_PAGES = {
+  'spring.md': {
+    skills: ['nitpicker-java', 'nitpicker-kotlin'],
+    reason: 'only the JVM presets ship Spring rules',
+  },
+};
 
 function readSkill(name) {
   const text = readFileSync(path.join(skillsRoot, name, 'SKILL.md'), 'utf8').replaceAll(
@@ -68,6 +75,14 @@ describe('agent skills', () => {
       (file) => file.endsWith('.md') && file !== 'SKILL.md',
     );
     expect(pages.filter((page) => !links.includes(page))).toEqual([]);
+  });
+
+  it.each(skillNames)('%s has the pages every preset skill has', (name) => {
+    const pages = readdirSync(path.join(skillsRoot, name)).filter((file) => file.endsWith('.md'));
+    const frameworkPages = Object.keys(FRAMEWORK_PAGES).filter((page) =>
+      FRAMEWORK_PAGES[page].skills.includes(name),
+    );
+    expect(pages.toSorted()).toEqual([...SHARED_PAGES, ...frameworkPages].toSorted());
   });
 
   it.each(skillNames)('%s names other skills by their installable names', (name) => {
