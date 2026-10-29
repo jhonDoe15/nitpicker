@@ -6,6 +6,7 @@ import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
+import java.util.function.Function;
 
 public class GuiceLookups {
   private final Injector injector;
@@ -29,6 +30,10 @@ public class GuiceLookups {
     return injector.getBinding(Pricing.class); // violation: ServiceLocatorLookup
   }
 
+  Function<Class<Pricing>, Pricing> reference() {
+    return injector::getInstance; // violation: ServiceLocatorLookup
+  }
+
   Pricing viaConstructor() {
     return pricing.get();
   }
@@ -36,6 +41,17 @@ public class GuiceLookups {
   public static class Pricing {}
 
   public static class PricingModule extends AbstractModule {
+    private Injector parent;
+
+    @Override
+    protected void configure() {
+      bind(Pricing.class).toInstance(parent.getInstance(Pricing.class));
+    }
+
+    Pricing fallback() {
+      return parent.getInstance(Pricing.class); // violation: ServiceLocatorLookup
+    }
+
     @Provides
     Pricing pricing(Injector injector) {
       return injector.getInstance(Pricing.class);

@@ -3,6 +3,8 @@ package shop.lookup;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
+import javax.naming.directory.DirContext;
+import org.springframework.jndi.JndiTemplate;
 
 public class JndiLookups {
   private final Context context;
@@ -21,6 +23,14 @@ public class JndiLookups {
 
   Object link() throws NamingException {
     return context.lookupLink("orders"); // violation: ServiceLocatorLookup
+  }
+
+  Object template(JndiTemplate jndi) throws NamingException {
+    return jndi.lookup("java:comp/env/jdbc/orders"); // violation: ServiceLocatorLookup
+  }
+
+  Object entry(DirContext directory) throws NamingException {
+    return directory.lookup("cn=orders,ou=apps");
   }
 
   String name() throws NamingException {

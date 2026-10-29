@@ -98,40 +98,71 @@
     </properties>
   </rule>
   <rule name="ServiceLocatorLookup" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Take the dependency as a constructor parameter (a Provider or Instance parameter when it is optional or created per use) instead of looking it up from a Guice Injector, CDI, a BeanManager or a JNDI context where it is used: the lookup hides what the class needs. The class with main, a @SpringBootApplication class, a Guice Module and @Produces or @Provides methods may look dependencies up.">
+        message="Take the dependency as a constructor parameter (a Provider or Instance parameter when it is optional or created per use) instead of looking it up from a Guice Injector, CDI, a BeanManager or a JNDI context where it is used: the lookup hides what the class needs. The main method, a Guice Module's configure method, @Provides and @Produces methods, @Bean methods of a @Configuration class and CDI extensions may look dependencies up.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
         <value><![CDATA[
-//MethodCall
-  [pmd-java:matchesSig('com.google.inject.Injector#getInstance(_*)')
-   or pmd-java:matchesSig('com.google.inject.Injector#getProvider(_*)')
-   or pmd-java:matchesSig('com.google.inject.Injector#getBinding(_*)')
-   or pmd-java:matchesSig('com.google.inject.Injector#getExistingBinding(_*)')
-   or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanManager#getReference(_*)')
-   or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanManager#getInjectableReference(_*)')
-   or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanManager#createInstance()')
-   or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanContainer#getReference(_*)')
-   or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanContainer#createInstance()')
-   or pmd-java:matchesSig('javax.enterprise.inject.spi.BeanManager#getReference(_*)')
-   or pmd-java:matchesSig('javax.enterprise.inject.spi.BeanManager#getInjectableReference(_*)')
-   or pmd-java:matchesSig('javax.enterprise.inject.spi.BeanManager#createInstance()')
-   or pmd-java:matchesSig('jakarta.enterprise.inject.spi.CDI#current()')
-   or pmd-java:matchesSig('javax.enterprise.inject.spi.CDI#current()')
-   or (@MethodName = 'select'
-       and *[1][not(self::MethodCall[@MethodName = 'current'])]
-                [pmd-java:typeIs('jakarta.enterprise.inject.spi.CDI')
-                 or pmd-java:typeIs('javax.enterprise.inject.spi.CDI')])
-   or pmd-java:matchesSig('javax.naming.Context#lookup(_*)')
-   or pmd-java:matchesSig('javax.naming.Context#lookupLink(_*)')]
+(
+  //MethodCall
+    [pmd-java:matchesSig('com.google.inject.Injector#getInstance(_*)')
+     or pmd-java:matchesSig('com.google.inject.Injector#getProvider(_*)')
+     or pmd-java:matchesSig('com.google.inject.Injector#getBinding(_*)')
+     or pmd-java:matchesSig('com.google.inject.Injector#getExistingBinding(_*)')
+     or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanContainer#getReference(_*)')
+     or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanContainer#createInstance()')
+     or pmd-java:matchesSig('jakarta.enterprise.inject.spi.BeanManager#getInjectableReference(_*)')
+     or pmd-java:matchesSig('javax.enterprise.inject.spi.BeanManager#getReference(_*)')
+     or pmd-java:matchesSig('javax.enterprise.inject.spi.BeanManager#getInjectableReference(_*)')
+     or pmd-java:matchesSig('javax.enterprise.inject.spi.BeanManager#createInstance()')
+     or pmd-java:matchesSig('jakarta.enterprise.inject.spi.CDI#current()')
+     or pmd-java:matchesSig('javax.enterprise.inject.spi.CDI#current()')
+     or (@MethodName = 'select'
+         and *[1][not(self::MethodCall[@MethodName = 'current'])]
+                  [pmd-java:typeIs('jakarta.enterprise.inject.spi.CDI')
+                   or pmd-java:typeIs('javax.enterprise.inject.spi.CDI')])
+     or ((pmd-java:matchesSig('javax.naming.Context#lookup(_*)')
+          or pmd-java:matchesSig('javax.naming.Context#lookupLink(_*)'))
+         and not(*[1][pmd-java:typeIs('javax.naming.directory.DirContext')]))
+     or pmd-java:matchesSig('org.springframework.jndi.JndiTemplate#lookup(_*)')
+     or pmd-java:matchesSig('org.springframework.jndi.JndiLocatorDelegate#lookup(_*)')]
+  | //MethodReference
+    [(@MethodName = ('getInstance', 'getProvider', 'getBinding', 'getExistingBinding')
+      and *[1][pmd-java:typeIs('com.google.inject.Injector')])
+     or (@MethodName = ('getReference', 'getInjectableReference', 'createInstance')
+         and *[1][pmd-java:typeIs('jakarta.enterprise.inject.spi.BeanContainer')
+                  or pmd-java:typeIs('javax.enterprise.inject.spi.BeanManager')])
+     or (@MethodName = 'current'
+         and *[1][pmd-java:typeIs('jakarta.enterprise.inject.spi.CDI')
+                  or pmd-java:typeIs('javax.enterprise.inject.spi.CDI')])
+     or (@MethodName = ('lookup', 'lookupLink')
+         and *[1][pmd-java:typeIs('javax.naming.Context')]
+                 [not(pmd-java:typeIs('javax.naming.directory.DirContext'))])
+     or (@MethodName = 'lookup'
+         and *[1][pmd-java:typeIs('org.springframework.jndi.JndiTemplate')
+                  or pmd-java:typeIs('org.springframework.jndi.JndiLocatorDelegate')])]
+)
   [not(ancestor::ClassDeclaration
-         [ModifierList/Annotation[pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')]
-          or pmd-java:typeIs('com.google.inject.Module')
-          or ClassBody/MethodDeclaration[@Name = 'main'][pmd-java:modifiers() = 'static'][FormalParameters/@Size = 1]])]
-  [not(ancestor::MethodDeclaration/ModifierList/Annotation
-         [pmd-java:typeIs('jakarta.enterprise.inject.Produces')
-          or pmd-java:typeIs('javax.enterprise.inject.Produces')
-          or pmd-java:typeIs('com.google.inject.Provides')])]
+         [pmd-java:typeIs('jakarta.enterprise.inject.spi.Extension')
+          or pmd-java:typeIs('javax.enterprise.inject.spi.Extension')])]
+  [not(ancestor::MethodDeclaration[1]
+         [(@Name = 'main' and @Void = true()
+           and (FormalParameters/@Size = 0
+                or FormalParameters[@Size = 1]/FormalParameter
+                     [ArrayType[ClassType[pmd-java:typeIsExactly('java.lang.String')]][count(ArrayDimensions/*) = 1]
+                      or ClassType[pmd-java:typeIsExactly('java.lang.String')][count(../VariableId/ArrayDimensions/*) = 1]]))
+          or (@Name = 'configure' and FormalParameters/@Size = 0
+              and (../.. | ../../self::AnonymousClassDeclaration/..)
+                    [pmd-java:typeIs('com.google.inject.Module')])
+          or ModifierList/Annotation
+               [pmd-java:typeIs('jakarta.enterprise.inject.Produces')
+                or pmd-java:typeIs('javax.enterprise.inject.Produces')
+                or pmd-java:typeIs('com.google.inject.Provides')]
+          or (ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]
+              and ../../ModifierList/Annotation
+                    [pmd-java:typeIs('org.springframework.context.annotation.Configuration')
+                     or pmd-java:typeIs('org.springframework.boot.SpringBootConfiguration')
+                     or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')])])]
 ]]></value>
       </property>
     </properties>
