@@ -13,7 +13,14 @@ const FIXTURE = path.join(FIXTURES, 'kotlin-spring-facts.json');
 const PROJECT = path.join(FIXTURES, 'kotlin-spring-project');
 const RULESET = path.resolve(import.meta.dirname, '../../../../gradle/spring-ruleset.xml');
 const { files } = JSON.parse(readFileSync(FIXTURE, 'utf8'));
-const SPRING_PLUGIN = { annotations: [], presets: ['spring'] };
+const ENTITY_ANNOTATIONS = ['Entity', 'MappedSuperclass', 'Embeddable'].map(
+  (name) => `jakarta.persistence.${name}`,
+);
+const BUILD_PLUGIN = { annotations: ENTITY_ANNOTATIONS, presets: ['spring'] };
+const SKIPPED = {
+  SpringQueryConcatenation:
+    'kotlin-source/SqlStringBuilding flags SQL built from runtime values on the same calls',
+};
 
 function findingsWith(manifest, { projectRoot = PROJECT, javaRoots = ['src/main/java'] } = {}) {
   return springFindings(files, {
@@ -63,6 +70,42 @@ const EXPECTED = [
   'bad/Clients.kt:58 SpringTransactionalReadOnlyWrite Ledger.total.deleteAll',
   'bad/Clients.kt:70 SpringNoSwallowedTransactionException Ledger.apply.e',
   'bad/Clients.kt:77 SpringTransactionalCheckedRollback Ledger.close',
+  'bad/Data.kt:12 SpringDataDerivedQuery InvoiceRepository.findByStatus',
+  'bad/Data.kt:15 SpringDataNamedParameters InvoiceRepository.byId',
+  'bad/Data.kt:18 SpringDataQueryTextBlock InvoiceRepository.byStatus',
+  'bad/Data.kt:21 SpringDataNativeQuery InvoiceRepository.raw',
+  'bad/Data.kt:24 SpringDataNativeQuery InvoiceRepository.rawOpen',
+  'bad/Data.kt:28 SpringDataModifyingQuery InvoiceRepository.markStatus',
+  'bad/Data.kt:36 SpringDataNoSaveInLoop InvoiceService.importAll.save',
+  'bad/Data.kt:38 SpringDataBatchOfOne InvoiceService.importAll.saveAll',
+  'bad/Data.kt:39 SpringDataNoSaveInLoop InvoiceService.importAll.delete',
+  'bad/Data.kt:40 SpringDataRowWriteInLoop InvoiceService.importAll.markStatus',
+  'bad/Data.kt:41 SpringDataSaveInLoopHelper InvoiceService.importAll.store',
+  'bad/Data.kt:42 SpringDataNoSaveInLoop InvoiceService.importAll.persist',
+  'bad/Data.kt:43 SpringDataSaveInLoopHelper InvoiceService.importAll.archive',
+  'bad/Data.kt:47 SpringDataRowWriteInLoop InvoiceService.importAll.executeUpdate',
+  'bad/Data.kt:49 SpringDataNoFlush InvoiceService.importAll.flush',
+  'bad/Data.kt:50 SpringDataNativeQuery InvoiceService.importAll.createNativeQuery',
+  'bad/Data.kt:62 SpringDataFilterInQuery InvoiceService.anyOpen.findAll',
+  'bad/Data.kt:65 SpringDataFilterInQuery InvoiceService.unpaid.findAll',
+  'bad/Data.kt:68 SpringDataFilterInQuery InvoiceService.total.findAll',
+  'bad/Data.kt:76 SpringDataQueryTextBlock ArchiveRepository.openOnes',
+  'bad/Data.kt:94 SpringDataNamedParameters ArchiveRepository.longPositional',
+  'bad/Data.kt:111 SpringDataQueryTextBlock ArchiveRepository.longJoined',
+  'bad/Data.kt:116 SpringDataNoSaveInLoop saveEach.save',
+  'bad/Data.kt:120 SpringDataNoSaveInLoop saveLoop.save',
+  'bad/Data.kt:125 SpringDataNoSaveInLoop persistAll.persist',
+  'bad/Data.kt:132 SpringDataNoSaveInLoop BatchService.importBatch.save',
+  'bad/Data.kt:133 SpringDataNoSaveInLoop BatchService.importBatch.save',
+  'bad/Data.kt:134 SpringDataNoSaveInLoop BatchService.importBatch.save',
+  'bad/Data.kt:135 SpringDataNoSaveInLoop BatchService.importBatch.save',
+  'bad/Data.kt:137 SpringDataNoSaveInLoop BatchService.importBatch.save',
+  'bad/Data.kt:138 SpringDataNoSaveInLoop BatchService.importBatch.save',
+  'bad/Data.kt:139 SpringDataSaveInLoopHelper BatchService.importBatch.keep',
+  'bad/Data.kt:154 SpringDataRowWriteInLoop GroupedService.closeGroups.markStatus',
+  'bad/Data.kt:156 SpringDataRowWriteInLoop GroupedService.closeGroups.markStatus',
+  'bad/Data.kt:157 SpringDataRowWriteInLoop GroupedService.closeGroups.markStatus',
+  'bad/Data.kt:159 SpringDataRowWriteInLoop GroupedService.closeGroups.markStatus',
   'bad/Defaults.kt:17 SpringValueSecretDefault JwtProps.secret',
   'bad/Defaults.kt:23 SpringNoServiceLocator Receipts.context',
   'bad/Defaults.kt:26 SpringProxySelfCall Receipts.issue.record',
@@ -82,6 +125,23 @@ const EXPECTED = [
   'bad/Defaults.kt:93 SpringBeanCollectionState Caches.third',
   'bad/Defaults.kt:103 SpringConstructorInjection SecondaryInjected',
   'bad/Defaults.kt:117 SpringProxyMethodVisibility Invoicing.charge',
+  'bad/Entities.kt:20 JpaEntityClass Customer',
+  'bad/Entities.kt:20 JpaVersion Customer',
+  'bad/Entities.kt:20 JpaIdentityHashCode Customer',
+  'bad/Entities.kt:21 JpaSequenceIds Customer.id',
+  'bad/Entities.kt:32 JpaLazyFetching Invoice.customer',
+  'bad/Entities.kt:33 JpaLazyFetching Invoice.receipt',
+  'bad/Entities.kt:34 JpaLazyFetching Invoice.lines',
+  'bad/Entities.kt:35 JpaManyToManyCascade Invoice.tags',
+  'bad/Entities.kt:35 JpaManyToManySet Invoice.tags',
+  'bad/Entities.kt:36 JpaEnumString Invoice.status',
+  'bad/Entities.kt:37 JpaEnumString Invoice.history',
+  'bad/Entities.kt:38 JpaEnumString Invoice.limits',
+  'bad/Entities.kt:40 JpaIdentityHashCode Invoice.hashCode',
+  'bad/Entities.kt:46 JpaVersion BaseEntity',
+  'bad/Entities.kt:49 JpaSequenceIds BaseEntity.id',
+  'bad/Entities.kt:61 JpaEnumString Refund.state',
+  'bad/Entities.kt:62 JpaEnumString Refund.priority',
   'bad/Handlers.kt:19 SpringTypedResponse InferredController.inferred',
   'bad/Handlers.kt:22 SpringTypedRequestBody InferredController.echo.body',
   'bad/Handlers.kt:22 SpringTypedResponse InferredController.echo',
@@ -93,6 +153,7 @@ const EXPECTED = [
   'bad/Proxies.kt:18 SpringProxySelfCall Billing.charge.record',
   'bad/Proxies.kt:25 SpringNoSwallowedTransactionException Billing.record.e',
   'bad/Proxies.kt:28 SpringNoSwallowedTransactionException Billing.record.runCatching',
+  'bad/Proxies.kt:28 SpringDataNoFlush Billing.record.flush',
   'bad/Proxies.kt:32 SpringProxyMethodVisibility Billing.hidden',
   'bad/Proxies.kt:35 SpringNoRequiresNew Billing.audit',
   'bad/Proxies.kt:39 SpringTransactionalReadOnlyWrite Billing.report.save',
@@ -133,12 +194,12 @@ const EXPECTED = [
 
 describe('Kotlin Spring rules on the recorded fixture facts', () => {
   it('reports every banned form as agents write it and none of the allowed forms', () => {
-    expect(summary(findingsWith({ spring: true, kotlinAllOpen: SPRING_PLUGIN }))).toEqual(EXPECTED);
+    expect(summary(findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN }))).toEqual(EXPECTED);
   });
 
   it('covers every ported rule with a banned fixture', () => {
     const reported = new Set(
-      findingsWith({ spring: true, kotlinAllOpen: SPRING_PLUGIN }).map(({ rule }) => rule),
+      findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN }).map(({ rule }) => rule),
     );
 
     expect([...reported].toSorted()).toEqual([...SPRING_RULES].toSorted());
@@ -150,6 +211,9 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
     );
 
     expect(SPRING_RULES.filter((rule) => !javaRules.has(rule))).toEqual([]);
+    expect([...javaRules].filter((rule) => !SPRING_RULES.includes(rule))).toEqual(
+      Object.keys(SKIPPED),
+    );
     expect(
       SPRING_RULES.every((rule) => KOTLIN_REVIEW_EXCEPTION_RULES.includes(`pmd/${rule}`)),
     ).toBe(true);
@@ -157,7 +221,7 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
   });
 
   it('ends each message with the exception route of its own rule', () => {
-    for (const finding of findingsWith({ spring: true, kotlinAllOpen: SPRING_PLUGIN })) {
+    for (const finding of findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN })) {
       expect(finding.tool).toBe('pmd');
       expect(finding.classification).toBe('enforceable');
       expect(finding.message).toBe(routed(springMessage(finding.rule), finding.rule, finding.path));
@@ -190,6 +254,14 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'good/Clients.kt:85 SpringProxyMethodVisibility Ledger.total',
       'good/Clients.kt:88 SpringProxyMethodVisibility Ledger.settle',
       'good/Clients.kt:102 SpringProxyMethodVisibility Ledger.close',
+      'good/Data.kt:35 SpringProxyMethodVisibility ShipmentService.importAll',
+      'good/Data.kt:48 SpringProxyMethodVisibility ShipmentService.later',
+      'good/Data.kt:51 SpringProxyMethodVisibility ShipmentService.touch',
+      'good/Data.kt:54 SpringProxyMethodVisibility ShipmentService.open',
+      'good/Data.kt:57 SpringProxyMethodVisibility ShipmentService.openCount',
+      'good/Data.kt:73 SpringProxyMethodVisibility StockService.retire',
+      'good/Data.kt:84 SpringProxyMethodVisibility StockService.reopen',
+      'good/Data.kt:95 SpringProxyMethodVisibility GroupedStockService.retireGroups',
       'good/Defaults.kt:23 SpringProxyMethodVisibility Accounts.duplicate',
       'good/Defaults.kt:32 SpringProxyMethodVisibility Accounts.helper',
       'good/Defaults.kt:43 SpringProxyMethodVisibility Accounts.onFailure',
@@ -203,6 +275,10 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'good/Defaults.kt:90 SpringProxyMethodVisibility Inventory.list',
       'good/Defaults.kt:121 SpringProxyMethodVisibility Pricing.quote',
       'good/Defaults.kt:127 SpringProxyMethodVisibility Checks.run',
+      'good/Entities.kt:48 JpaEntityClass Tag',
+      'good/Entities.kt:51 JpaEntityClass Shipment',
+      'good/Entities.kt:64 JpaEntityClass Line',
+      'good/Entities.kt:70 JpaEntityClass Parcel',
       'good/Proxies.kt:14 SpringProxyMethodVisibility Billing.charge',
       'good/Proxies.kt:26 SpringProxyMethodVisibility Billing.record',
       'good/Proxies.kt:31 SpringProxyMethodVisibility Billing.report',
@@ -214,16 +290,37 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
   });
 });
 
+describe('Kotlin Spring Data loop rules on grouped and partitioned locals', () => {
+  const rowWrites = (owner) =>
+    summary(findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN })).filter(
+      (line) => line.includes('SpringDataRowWriteInLoop') && line.includes(` ${owner}.`),
+    );
+
+  it('reads groupBy values and both sides of partition as collections, so passing them is set-based', () => {
+    expect(rowWrites('GroupedStockService')).toEqual([]);
+  });
+
+  it('still reports a per-id write over a partition side, the groupBy keys or one grouped list', () => {
+    expect(rowWrites('GroupedService').map((line) => line.split(' ')[0])).toEqual([
+      'bad/Data.kt:154',
+      'bad/Data.kt:156',
+      'bad/Data.kt:157',
+      'bad/Data.kt:159',
+    ]);
+  });
+});
+
 describe('Kotlin Spring rules that read the rest of the project', () => {
-  it('finds a repository declared in Java by reading its source under the Java roots', () => {
+  it('finds a repository or an enum declared in Java by reading its source under the Java roots', () => {
     const viaJava = summary(
-      findingsWith({ spring: true, kotlinAllOpen: SPRING_PLUGIN }, { javaRoots: [] }),
+      findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN }, { javaRoots: [] }),
     );
 
     expect(EXPECTED.filter((line) => !viaJava.includes(line))).toEqual([
       'bad/Clients.kt:41 SpringNoPostConstructIo Loader.warm.findAll',
       'bad/Clients.kt:53 SpringNoPostConstructIo Ledger.prime.count',
       'bad/Clients.kt:58 SpringTransactionalReadOnlyWrite Ledger.total.deleteAll',
+      'bad/Entities.kt:62 JpaEnumString Refund.priority',
     ]);
   });
 
@@ -231,7 +328,10 @@ describe('Kotlin Spring rules that read the rest of the project', () => {
     const opened = summary(
       findingsWith({
         spring: true,
-        kotlinAllOpen: { annotations: ['org.springframework.stereotype.Service'], presets: [] },
+        kotlinAllOpen: {
+          annotations: ['org.springframework.stereotype.Service', ...ENTITY_ANNOTATIONS],
+          presets: [],
+        },
       }),
     );
 
@@ -258,15 +358,22 @@ describe('Kotlin Spring rules that read the rest of the project', () => {
 describe('withoutCoveredSourceFindings', () => {
   const at = (tool, rule, line) => ({ tool, rule, path: 'A.kt', location: { line } });
 
-  it('keeps one finding when a Spring rule names the allowed form for the same client', () => {
+  it('keeps one finding when a Spring rule names the allowed form for the same client or loop', () => {
     const findings = [
       at('kotlin-source', 'HttpWithoutTimeout', 3),
       at('pmd', 'SpringHttpClientPerCall', 3),
       at('kotlin-source', 'HttpWithoutTimeout', 9),
       at('kotlin-source', 'IoCallInLoop', 3),
+      at('kotlin-source', 'IoCallInLoop', 7),
+      at('pmd', 'SpringDataNoSaveInLoop', 7),
     ];
 
-    expect(withoutCoveredSourceFindings(findings)).toEqual(findings.slice(1));
+    expect(withoutCoveredSourceFindings(findings)).toEqual([
+      findings[1],
+      findings[2],
+      findings[3],
+      findings[5],
+    ]);
   });
 
   it('keeps the Kotlin finding when an exception lifts the Spring finding on that line', () => {

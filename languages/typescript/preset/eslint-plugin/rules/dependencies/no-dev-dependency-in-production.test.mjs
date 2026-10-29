@@ -132,6 +132,7 @@ ruleTester.run('no-dev-dependency-in-production', rule, {
     { filename: inProject(app, '__mocks__/api.ts'), code: "import { vi } from 'vitest';" },
     { filename: inProject(app, 'Button.stories.tsx'), code: "import { z } from 'zod';" },
     { filename: inProject(app, '../testing/render.ts'), code: "import { z } from 'zod';" },
+    { filename: inProject(app, '../test-support/render.ts'), code: "import { z } from 'zod';" },
   ],
   invalid: [
     { filename: app, code: "import { z } from 'zod';", errors: [message('zod')] },
