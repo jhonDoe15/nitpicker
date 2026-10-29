@@ -1,11 +1,20 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  globSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { resolveTool } from '../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT, resolveTool } from '../../../core/tooling/tool-resolution.mjs';
 import {
   apiResolution,
   hasJavaScriptApi,
@@ -180,5 +189,19 @@ describe('a Node process started with the preload in a TypeScript 7 project', ()
       server: 'object',
       own: resolveTool('typescript-native').version,
     });
+  });
+});
+
+describe('modules that load TypeScript', () => {
+  it('go through the selected API instead of importing typescript directly', () => {
+    const direct = /(?:\bfrom\s+|\brequire\(\s*|\bimport\(\s*)['"]typescript(?:\/[^'"]*)?['"]/u;
+    const sources = globSync('{core,languages,shared}/**/*.{mjs,cjs,js}', {
+      cwd: PACKAGE_ROOT,
+      exclude: (name) => ['node_modules', 'fixtures', 'test-support'].includes(name),
+    }).filter((file) => !file.endsWith('.test.mjs'));
+
+    expect(
+      sources.filter((file) => direct.test(readFileSync(path.join(PACKAGE_ROOT, file), 'utf8'))),
+    ).toEqual([]);
   });
 });
