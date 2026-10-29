@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
 import { parseJsonc } from '../../../shared/jsonc/jsonc.mjs';
@@ -104,42 +105,48 @@ function pythonConfigText(tool, file, text) {
   return read.part === undefined ? undefined : JSON.stringify(read.part, sortedKeys);
 }
 
-function relativeTo(root, files) {
-  return files.map((file) => path.relative(root, file).split(path.sep).join('/'));
+function checkoutOf(root) {
+  const start = path.resolve(root);
+  const parts = start.split(path.sep);
+  const found = parts
+    .map((_, index) => parts.slice(0, parts.length - index).join(path.sep) || path.sep)
+    .find((directory) => existsSync(path.join(directory, '.git')));
+  return found ?? start;
 }
 
-function textOf(root, file) {
-  return readInside(root, file, 'utf8');
+function labelsOf(checkout, files) {
+  return files.map((file) => path.relative(checkout, file).split(path.sep).join('/'));
 }
 
 function firstConfigured(tool, root, names) {
   const found = names.find((name) => {
-    const text = textOf(root, name);
+    const text = readInside(root, name, 'utf8');
     return text !== undefined && pythonConfigText(tool, name, text) !== undefined;
   });
-  return found === undefined ? [] : [found];
+  return found === undefined ? [] : [path.join(root, found)];
 }
 
 function candidatesOf(tool, root) {
   if (tool === 'ruff') {
-    return relativeTo(root, ruffConfigFiles(root));
+    return ruffConfigFiles(root);
   }
   if (tool === 'black') {
-    return relativeTo(root, blackConfigFiles(root));
+    return blackConfigFiles(root);
   }
   if (tool === 'pyright') {
     const files = PYRIGHT_CHECKERS.flatMap(
       (checker) => readProjectPyright(root, checker, { upward: true })?.files ?? [],
     );
-    return relativeTo(root, [...new Set(files)]);
+    return [...new Set(files)];
   }
   return firstConfigured(tool, root, FIRST_FILES[tool]);
 }
 
 export function pythonConfigEntries(tool, root) {
-  return candidatesOf(tool, root).flatMap((file) => {
-    const content = textOf(root, file);
+  const checkout = checkoutOf(root);
+  return labelsOf(checkout, candidatesOf(tool, root)).flatMap((file) => {
+    const content = readInside(checkout, file, 'utf8');
     const text = content === undefined ? undefined : pythonConfigText(tool, file, content);
-    return text === undefined ? [] : [[file, text]];
+    return text === undefined ? [] : [{ file, text, content }];
   });
 }

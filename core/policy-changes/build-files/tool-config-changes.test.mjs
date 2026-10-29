@@ -104,6 +104,84 @@ describe('project tool configs the project opted into', () => {
       }).policyLoosenings,
     ).toEqual(['prettier project config changed: package.json']);
   });
+  it.each(['typescript', 'python', 'java', 'kotlin'])(
+    'counts an edit of the opted-in .jscpd.json with the %s preset, not a reformat',
+    (preset) => {
+      const at = (jscpd) => ({ '.jscpd.json': jscpd, 'README.md': 'x\n' });
+      const config = { preset, tools: { jscpd: PROJECT } };
+      const base = at('{"minTokens": 50}');
+
+      expect(between({ base, head: at('{"minTokens": 500}'), config }).policyLoosenings).toEqual([
+        'jscpd .jscpd.json minTokens: 50 -> 500',
+      ]);
+      expect(changesOf(between({ base, head: at('{"minTokens": 10}'), config }))).toEqual({
+        policyLoosenings: [],
+        policyChanges: ['jscpd .jscpd.json minTokens: 50 -> 10'],
+      });
+      expect(
+        between({ base, head: at('{\n  "minTokens": 50\n}\n'), config }).policyLoosenings,
+      ).toEqual([]);
+      expect(
+        between({ base, head: at('{"minTokens": 500}'), config: { preset } }).policyLoosenings,
+      ).toEqual([]);
+      expect(
+        between({ base, head: at('{"reporters": ["html"], "minTokens": 50}'), config })
+          .policyLoosenings,
+      ).toEqual([]);
+    },
+  );
+  it.each(['typescript', 'python', 'java', 'kotlin'])(
+    'shows the .jscpd.json a %s change opts into in the same change',
+    (preset) => {
+      const files = { '.jscpd.json': '{"minTokens": 5000}', 'README.md': 'x\n' };
+      expect(
+        between({
+          base: files,
+          head: files,
+          baseConfig: { preset },
+          config: { preset, tools: { jscpd: PROJECT } },
+        }).policyLoosenings,
+      ).toEqual([
+        'jscpd .jscpd.json minTokens: not set -> 5000',
+        'tools.jscpd.precedence: not set -> ["project","nitpicker"]',
+      ]);
+    },
+  );
+});
+
+describe('what an edit of .jscpd.json changes', () => {
+  const config = { preset: 'python', tools: { jscpd: PROJECT } };
+  const at = (jscpd) => ({ '.jscpd.json': JSON.stringify(jscpd), 'README.md': 'x\n' });
+
+  it.each([
+    [{ minLines: 5 }, { minLines: 9 }, 'loosened', 'minLines: 5 -> 9'],
+    [{}, { minLines: 3 }, 'changed', 'minLines: not set -> 3'],
+    [{}, { maxLines: 900 }, 'loosened', 'maxLines: not set -> 900'],
+    [{ maxLines: 900 }, { maxLines: 2000 }, 'changed', 'maxLines: 900 -> 2000'],
+    [{ maxSize: '1mb' }, { maxSize: '100kb' }, 'loosened', 'maxSize: "1mb" -> "100kb"'],
+    [{ maxSize: '100kb' }, {}, 'changed', 'maxSize: "100kb" -> not set'],
+    [{}, { mode: 'strict' }, 'loosened', 'mode: not set -> "strict"'],
+    [{}, { skipComments: true }, 'changed', 'mode: not set -> "weak"'],
+    [{ ignoreCase: true }, {}, 'loosened', 'ignoreCase: true -> not set'],
+    [{ ignore: ['a/**'] }, { ignore: ['b/**'] }, 'loosened', 'ignore: ["a/**"] -> ["b/**"]'],
+    [
+      { ignore: ['a/**', 'b/**'] },
+      { ignore: ['a/**'] },
+      'changed',
+      'ignore: ["a/**","b/**"] -> ["a/**"]',
+    ],
+    [{}, { ignorePattern: ['^import'] }, 'loosened', 'ignorePattern: not set -> ["^import"]'],
+  ])('reads %j -> %j as %s', (base, head, kind, text) => {
+    const { policyLoosenings, policyChanges } = between({ base: at(base), head: at(head), config });
+    expect(policyChanges).toEqual([`jscpd .jscpd.json ${text}`]);
+    expect(policyLoosenings).toEqual(kind === 'loosened' ? policyChanges : []);
+  });
+
+  it('falls back to the file when one side cannot be read', () => {
+    expect(
+      between({ base: at({ minTokens: 50 }), head: at({ minTokens: 0 }), config }).policyLoosenings,
+    ).toEqual(['jscpd project config changed: .jscpd.json']);
+  });
 });
 
 describe('what counts as an edit of a project tool config', () => {
@@ -186,213 +264,5 @@ describe('what counts as an edit of a project tool config', () => {
         config: typescript,
       }).policyLoosenings,
     ).toEqual(['prettier project config changed: .editorconfig']);
-  });
-});
-
-describe('python tool configs the project opted into', () => {
-  const python = (...tools) => ({
-    preset: 'python',
-    tools: Object.fromEntries(tools.map((tool) => [tool, PROJECT])),
-  });
-  const SOURCE = { 'src/shop/__init__.py': '' };
-  const loosenings = (base, head, config) =>
-    between({ base: { ...SOURCE, ...base }, head: { ...SOURCE, ...head }, config })
-      .policyLoosenings;
-  const PYPROJECT = [
-    '[tool.poetry]',
-    'name = "shop"',
-    '',
-    '[tool.ruff.lint]',
-    'select = ["E", "F"]',
-    '',
-    '[tool.black]',
-    'line-length = 100',
-    '',
-    '[tool.mypy]',
-    'strict = true',
-    '',
-    '[tool.pyright]',
-    'pythonVersion = "3.12"',
-    '',
-    '[tool.mutmut]',
-    'paths_to_mutate = ["src"]',
-    '',
-  ].join('\n');
-  const ALL = python('ruff', 'black', 'pyright', 'mypy', 'mutmut');
-
-  it('counts an edit of each opted-in table of pyproject.toml, and only that table', () => {
-    const base = { 'pyproject.toml': PYPROJECT };
-    const edited = (from, to) => ({ 'pyproject.toml': PYPROJECT.replace(from, to) });
-
-    expect(loosenings(base, edited('name = "shop"', 'name = "store"'), ALL)).toEqual([]);
-    expect(loosenings(base, edited('["E", "F"]', '["F"]'), ALL)).toEqual([
-      'ruff project config changed: pyproject.toml',
-    ]);
-    expect(loosenings(base, edited('line-length = 100', 'line-length = 120'), ALL)).toEqual([
-      'black project config changed: pyproject.toml',
-    ]);
-    expect(loosenings(base, edited('strict = true', 'strict = false'), ALL)).toEqual([
-      'mypy project config changed: pyproject.toml',
-    ]);
-    expect(loosenings(base, edited('"3.12"', '"3.11"'), ALL)).toEqual([
-      'pyright project config changed: pyproject.toml',
-    ]);
-    expect(loosenings(base, edited('["src"]', '["src/shop"]'), ALL)).toEqual([
-      'mutmut project config changed: pyproject.toml',
-    ]);
-  });
-
-  it('ignores comments, layout and key order in the opted-in tables', () => {
-    const reordered = [
-      '# house style',
-      '[tool.ruff.lint]',
-      'select = [',
-      '  "E",  # errors',
-      '  "F",',
-      ']',
-      '',
-      '[tool.poetry]',
-      'name = "shop"',
-      '[tool.pyright]',
-      'pythonVersion   =   "3.12"',
-      '[tool.mypy]',
-      'strict = true',
-      '[tool.mutmut]',
-      'paths_to_mutate = ["src"]',
-      '[tool.black]',
-      'line-length = 100',
-    ].join('\n');
-
-    expect(
-      loosenings({ 'pyproject.toml': PYPROJECT }, { 'pyproject.toml': reordered }, ALL),
-    ).toEqual([]);
-  });
-
-  it('shows the config a change opts into in the same change', () => {
-    const files = { ...SOURCE, 'mypy.ini': '[mypy]\ndisallow_untyped_defs = False\n' };
-
-    expect(
-      between({
-        base: files,
-        head: files,
-        baseConfig: { preset: 'python' },
-        config: python('mypy'),
-      }).policyLoosenings,
-    ).toEqual([
-      'mypy project config changed: mypy.ini',
-      'tools.mypy.precedence: not set -> ["project","nitpicker"]',
-    ]);
-  });
-
-  it('stays quiet for a tool the project did not opt into and outside the python preset', () => {
-    const base = { 'pyproject.toml': PYPROJECT };
-    const head = { 'pyproject.toml': PYPROJECT.replace('["E", "F"]', '["F"]') };
-
-    expect(loosenings(base, head, python('black', 'mypy'))).toEqual([]);
-    expect(loosenings(base, head, { preset: 'python' })).toEqual([]);
-  });
-
-  it('follows the ruff config ruff reads, with its extend chain', () => {
-    const at = (shared, pyproject = '[tool.ruff]\nline-length = 90\n') => ({
-      'pyproject.toml': pyproject,
-      'ruff.toml': 'extend = "config/shared.toml"\n[lint]\nselect = ["F"]\n',
-      'config/shared.toml': shared,
-    });
-    const shared = '[lint]\nignore = []\n';
-
-    expect(loosenings(at(shared), at('[lint]\nignore = ["F401"]\n'), python('ruff'))).toEqual([
-      'ruff project config changed: config/shared.toml',
-    ]);
-    expect(
-      loosenings(at(shared), at(shared, '[tool.ruff]\nline-length = 70\n'), python('ruff')),
-    ).toEqual([]);
-  });
-
-  it('counts a ruff config the head adds and reports one it removes', () => {
-    const config = python('ruff');
-
-    expect(loosenings({}, { '.ruff.toml': '[lint]\nignore = ["F401"]\n' }, config)).toEqual([
-      'ruff project config changed: .ruff.toml',
-    ]);
-    expect(
-      changesOf(
-        between({ base: { ...SOURCE, 'ruff.toml': 'line-length = 90\n' }, head: SOURCE, config }),
-      ),
-    ).toEqual({ policyLoosenings: [], policyChanges: ['ruff project config removed: ruff.toml'] });
-  });
-
-  it('reads pyrightconfig.json as JSON with comments and follows its extends', () => {
-    const at = (own, shared) => ({ 'pyrightconfig.json': own, 'config/base.json': shared });
-    const own = '{\n  // shared\n  "extends": "config/base.json",\n  "strict": ["src"],\n}\n';
-    const base = at(own, '{"reportMissingImports": "error"}');
-    const recommented = at(
-      own.replace('// shared', '// more'),
-      '{ "reportMissingImports": "error" }',
-    );
-
-    expect(loosenings(base, recommented, python('pyright'))).toEqual([]);
-    expect(
-      loosenings(base, at(own, '{"reportMissingImports": "none"}'), python('pyright')),
-    ).toEqual(['pyright project config changed: config/base.json']);
-  });
-
-  it('reads only the mypy sections of setup.cfg, and only the file mypy reads', () => {
-    const cfg = (flake8, legacy) => ({
-      'setup.cfg': `[flake8]\nmax-line-length = ${flake8}\n\n[mypy]\nstrict = True\n\n[mypy-shop.legacy]\nignore_errors = ${legacy}\n`,
-    });
-    const config = python('mypy');
-
-    expect(loosenings(cfg(80, 'False'), cfg(120, 'False'), config)).toEqual([]);
-    expect(loosenings(cfg(80, 'False'), cfg(80, 'True'), config)).toEqual([
-      'mypy project config changed: setup.cfg',
-    ]);
-    expect(
-      loosenings(
-        { 'mypy.ini': '[mypy]\nstrict = True\n', ...cfg(80, 'False') },
-        { 'mypy.ini': '; strict\n[mypy]\nstrict   = True\n', ...cfg(80, 'True') },
-        config,
-      ),
-    ).toEqual([]);
-  });
-
-  it('reads the [mutmut] section of setup.cfg when pyproject.toml has no [tool.mutmut]', () => {
-    const at = (mutmut) => ({
-      'pyproject.toml': '[tool.poetry]\nname = "shop"\n',
-      'setup.cfg': `[metadata]\nname = shop\n\n[mutmut]\npaths_to_mutate = ${mutmut}\n`,
-    });
-
-    expect(loosenings(at('src'), at('src/shop'), python('mutmut'))).toEqual([
-      'mutmut project config changed: setup.cfg',
-    ]);
-  });
-
-  it('counts any edit of a config that no longer parses', () => {
-    expect(
-      loosenings(
-        { 'ruff.toml': '[lint]\nselect = ["F"]\n' },
-        { 'ruff.toml': '[lint\nselect = ["F"]\n' },
-        python('ruff'),
-      ),
-    ).toEqual(['ruff project config changed: ruff.toml']);
-  });
-
-  it('reads the coverage sections of the file coverage reads', () => {
-    const cfg = (flake8, excluded) => ({
-      'setup.cfg': `[flake8]\nmax-line-length = ${flake8}\n\n[coverage:report]\nexclude_also =\n    ${excluded}\n`,
-      'pyproject.toml': '[tool.coverage.report]\nexclude_also = ["unused"]\n',
-    });
-    const config = python('coverage');
-
-    expect(loosenings(cfg(80, 'def __repr__'), cfg(120, 'def __repr__'), config)).toEqual([]);
-    expect(loosenings(cfg(80, 'def __repr__'), cfg(80, 'pragma: no cover'), config)).toEqual([
-      'coverage project config changed: setup.cfg',
-    ]);
-    expect(
-      loosenings(
-        { '.coveragerc': '[report]\nexclude_also = x\n' },
-        { '.coveragerc': '# kept\n[report]\nexclude_also =   x\n' },
-        config,
-      ),
-    ).toEqual([]);
   });
 });

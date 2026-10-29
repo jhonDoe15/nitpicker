@@ -1,6 +1,6 @@
 import { validatedProjectFile } from './paths.mjs';
 import { readFileSync } from 'node:fs';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import {
   scriptKind,
   commentAt,
