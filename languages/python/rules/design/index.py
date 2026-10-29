@@ -8,7 +8,7 @@ from design.support.scope import Scope
 class Index:
     def __init__(self, project, contexts):
         self.project = project
-        self.used = set()
+        self.claims = {}
         self.modules = {}
         self.base_memo = {}
         self.linear_memo = {}
@@ -28,10 +28,10 @@ class Index:
             bind_imports(self, module)
             self.add_prefixes(module.path)
 
-    def claim(self, base, line):
-        candidate = base if base not in self.used else f"{base}@{line}"
-        self.used.add(candidate)
-        return candidate
+    def claim(self, base):
+        count = self.claims.get(base, 0) + 1
+        self.claims[base] = count
+        return base if count == 1 else f"{base}@{count}"
 
     def add_prefixes(self, path):
         parts = self.project.module_name(path).split(".")
