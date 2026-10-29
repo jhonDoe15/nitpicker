@@ -102,26 +102,35 @@ function readModules({ projectRoot, maven, work, spawn }) {
   return { modules, effectivePom };
 }
 
-function analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin, spawn, work }) {
+function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
+  const style = {
+    javaStyle: policy.javaStyle,
+    indentation: checkstyleIndentation(policy.conventions),
+  };
   const springRoles = writeSpringRoles(policy.springRoles, work);
-  for (const { module, classpaths } of analyzed) {
-    analyzeModule({
-      module,
-      classpaths,
-      tools,
-      pinned,
-      configs,
-      since,
-      spawn,
-      style: {
-        javaStyle: policy.javaStyle,
-        indentation: checkstyleIndentation(policy.conventions),
-      },
-      kotlinOptions: kotlin.options,
-      spring: policy.spring,
-      springRoles,
-    });
-  }
+  return analyzed
+    .map(({ module, classpaths }) =>
+      analyzeModule({
+        ...shared,
+        module,
+        classpaths,
+        style,
+        tolerateFailures: policy.snapshot === 'base',
+        kotlinOptions: kotlin.options,
+        spring: policy.spring,
+        springRoles,
+      }),
+    )
+    .filter((failure) => failure !== undefined);
+}
+
+function extraTools({ modules, analyzed, policy, pinned, kotlin }) {
+  return [
+    ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
+    ...formatTool(policy.javaStyle, pinned),
+    ...kotlin.extraTools,
+    ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
+  ];
 }
 
 export function runMavenPreset(
@@ -130,41 +139,34 @@ export function runMavenPreset(
 ) {
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
+  const run = { projectRoot, maven, spawn, pinned };
   try {
-    const { modules, effectivePom } = readModules({ projectRoot, maven, work, spawn });
-    const kotlin = kotlinSetup({
-      projectRoot,
-      policy,
-      modules,
-      effectivePom,
-      work,
-      pinned,
-      maven,
-      environment,
-      spawn,
-    });
+    const { modules, effectivePom } = readModules({ ...run, work });
+    const kotlin = kotlinSetup({ ...run, policy, modules, effectivePom, work, environment });
     const since = Date.now() - 2000;
-    buildAndTest({ projectRoot, maven, work, pinned, modules, spawn });
+    buildAndTest({ ...run, work, modules });
     const analyzed = modules.map((module) => ({
       module,
       classpaths: readClasspaths(work, module),
     }));
     const tools = resolveTools({
-      projectRoot,
-      maven,
-      spawn,
-      pinned,
+      ...run,
       launcherVersions: missingLauncherVersions(analyzed),
-      extraTools: [
-        ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
-        ...formatTool(policy.javaStyle, pinned),
-        ...kotlin.extraTools,
-        ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
-      ],
+      extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
     });
-    analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin, spawn, work });
+    const testsFailures = analyzeAll({
+      ...run,
+      analyzed,
+      tools,
+      configs,
+      since,
+      policy,
+      kotlin,
+      work,
+    });
     return {
       moduleDirs: modules.map((module) => module.basedir),
+      testsFailures,
       formatAdvice: kotlin.options?.advice,
     };
   } finally {
