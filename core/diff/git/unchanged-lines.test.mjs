@@ -2,14 +2,14 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { writeFiles } from '../test-support/fixture-files.mjs';
+import { writeFiles } from './test-support/fixture-files.mjs';
 import {
   commit,
   copyGitTemplate,
   createGitTemplate,
   fixtureGit,
-} from '../test-support/git-repository.mjs';
-import { parseChangedLines, readChangedLines } from './changed-lines.mjs';
+} from './test-support/git-repository.mjs';
+import { parseChangedLines, readChangedLines } from './patches/changed-lines.mjs';
 import { baseLineOf, headLineOf } from './unchanged-lines.mjs';
 
 const lines = (...text) => `${text.join('\n')}\n`;

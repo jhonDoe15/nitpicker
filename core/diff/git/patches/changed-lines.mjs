@@ -4,7 +4,7 @@ import { readBlobTexts } from '../repository/blobs.mjs';
 import { runGit } from '../repository/command.mjs';
 import { RENAME_LIMIT_SETTING, RENAME_DETECTION } from './changes.mjs';
 import { sourceLanguage } from '../../../../shared/source-text/format-tokens.mjs';
-import { alignHunks } from './unchanged-lines.mjs';
+import { alignHunks } from '../unchanged-lines.mjs';
 
 export const DIFF_ALGORITHM = '--diff-algorithm=patience';
 

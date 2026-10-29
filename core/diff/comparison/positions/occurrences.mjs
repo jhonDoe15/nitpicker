@@ -1,5 +1,5 @@
 import { comparisonKey } from '../fingerprint.mjs';
-import { baseLineOf, headLineOf } from '../../git/patches/unchanged-lines.mjs';
+import { baseLineOf, headLineOf } from '../../git/unchanged-lines.mjs';
 
 const NUMBERED = /#\d+$/u;
 const COUNTED = /([|:]occurrence:)\d+/u;
