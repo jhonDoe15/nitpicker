@@ -36,6 +36,7 @@ import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { packageVersion } from './help/package-version.mjs';
 import { runInitCommand } from './init/run-init.mjs';
 import { javascriptPresetHint } from './configuration/project-checks/preset-detection.mjs';
+import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 
 const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
 
@@ -61,6 +62,7 @@ export function runCli(options = {}) {
     });
   }
   try {
+    redirectToBundledTypeScriptApi(cli.environment);
     return runCommand(cli);
   } catch (error) {
     cli.stderr.write(

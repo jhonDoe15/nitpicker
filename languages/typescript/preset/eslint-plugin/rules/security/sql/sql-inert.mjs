@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../../typescript-api/typescript-api.mjs';
 import { DYNAMIC } from '../../../../../../../shared/rules/security/sql-text.mjs';
 import { ancestorsOf, chainOf } from '../../analysis/ancestry.mjs';
 import { findVariable, stringValue } from '../../analysis/constant-resolution.mjs';
