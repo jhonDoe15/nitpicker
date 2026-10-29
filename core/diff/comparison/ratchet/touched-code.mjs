@@ -35,6 +35,23 @@ export function isOnAddedLine(finding, touchedCode) {
   );
 }
 
+export function isOnInsertedLine(finding, touchedCode) {
+  const line = finding.location?.line;
+  const changed = touchedCode?.changedLines.get(finding.path);
+  return (
+    line !== undefined &&
+    changed !== undefined &&
+    (changed.added === true ||
+      (changed.inserted ?? []).some(([start, end]) => start <= line && line <= end))
+  );
+}
+
+export function isBelowChange(finding, touchedCode) {
+  const line = finding.location?.line;
+  const ranges = touchedCode?.changedLines.get(finding.path)?.ranges ?? [];
+  return line !== undefined && ranges.some(([start]) => start < line);
+}
+
 export function isOnUnchangedLine(finding, touchedCode) {
   const line = finding.location?.line;
   if (line === undefined) {

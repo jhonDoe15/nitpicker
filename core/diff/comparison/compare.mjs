@@ -2,7 +2,7 @@ import { changedByDiff } from './base-red/unknown-base.mjs';
 import { comparisonKey } from './fingerprint.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
 import { matchAnchoredFindings } from './anchored/match.mjs';
-import { holdRatchetedFindings, withGrowthAdvice } from './ratchet/ratchet.mjs';
+import { grewFinding, holdRatchetedFindings, withGrowthAdvice } from './ratchet/ratchet.mjs';
 import { isInTouchedCode, isOnAddedLine } from './ratchet/touched-code.mjs';
 
 export function compareFindings({
@@ -26,6 +26,7 @@ export function compareFindings({
     .map(([, baseFinding]) => baseFinding);
   const unmatchedBase = moveAnchoredFindings(present, {
     baseFindings: moveSimilarFindings(present, withoutExactMatch, baseToHeadRenames),
+    snapshots: { base: baseFindings, head: headFindings },
     renames: baseToHeadRenames,
     touchedCode,
   });
@@ -64,16 +65,21 @@ function moveSimilarFindings(present, baseFindings, renames) {
   return baseFindings.filter((finding) => !similar.matchedBase.has(finding));
 }
 
-function moveAnchoredFindings(present, { baseFindings, renames, touchedCode }) {
+function moveAnchoredFindings(present, { baseFindings, snapshots, renames, touchedCode }) {
   const pairs = matchAnchoredFindings({
     headFindings: present.newFindings.filter((finding) => present.withoutBase.has(finding)),
     baseFindings,
+    snapshots,
     renames,
     touchedCode,
   });
   const movedHeads = new Set(pairs.map(({ head }) => head));
   present.newFindings = present.newFindings.filter((finding) => !movedHeads.has(finding));
   for (const { head, base } of pairs) {
+    if (head.ratchet !== undefined && head.ratchet.value > (base.ratchet?.value ?? Infinity)) {
+      present.newFindings.push(grewFinding(head, base.ratchet.value));
+      continue;
+    }
     const { bucket, entry } = classify(head, base, { touchedCode, isUnknown: false });
     present[bucket].push(entry);
   }

@@ -137,7 +137,7 @@ function holdCandidatesFor(headFinding, baseByRatchet, { touchedCode, keyOf }) {
   return key === undefined ? undefined : baseByRatchet.get(key);
 }
 
-function grewFinding(headFinding, baseValue) {
+export function grewFinding(headFinding, baseValue) {
   const { worseMessage } = headFinding.ratchet;
   return worseMessage === undefined
     ? headFinding

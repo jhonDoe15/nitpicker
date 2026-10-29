@@ -28,11 +28,8 @@ export function ingestCrapRows(parsed, options, resolve) {
 function crapRow(fn, filePath, { options, limit, resolve, counters, sameSourceByFile }) {
   const { coverage, name = fn.longName } = resolve(fn, filePath);
   const crap = coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage);
-  const text =
-    coverage === undefined
-      ? undefined
-      : options.sourceText?.({ file: filePath, start: fn.start, end: fn.end });
-  const sourceHash = text === undefined ? undefined : hash(text);
+  const text = options.sourceText?.({ file: filePath, start: fn.start, end: fn.end });
+  const sourceHash = coverage === undefined || text === undefined ? undefined : hash(text);
   const key =
     fn.numberedAmongSameSource === true
       ? keyAmongSameSource(
@@ -49,7 +46,7 @@ function crapRow(fn, filePath, { options, limit, resolve, counters, sameSourceBy
     name,
     identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
     ratchetKey: `${key}:crap`,
-    ...(text === undefined
+    ...(text === undefined || text === ''
       ? {}
       : {
           anchor: `function:crap:text:${nameFreeHash(text, name)}`,

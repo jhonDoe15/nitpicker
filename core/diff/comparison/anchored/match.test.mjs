@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../compare.mjs';
 import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
 import { declarationLine, hash, nameFreeHash } from '../../../../shared/rules/finding-helpers.mjs';
+import { crapFindings } from '../../../../shared/rules/crap.mjs';
 import { mutantFindings } from '../../../../shared/rules/mutation.mjs';
 import { evaluateStructure } from '../../../../shared/rules/structure.mjs';
 
@@ -30,24 +31,24 @@ function structure(...entries) {
   );
 }
 
-function touched(changes) {
+function touched(changes, inserted) {
   return {
     changedLines: new Map(
       Object.entries(changes).map(([file, ranges]) => [
         file,
-        { added: false, ranges, inserted: ranges },
+        { added: false, ranges, inserted: inserted[file] ?? [] },
       ]),
     ),
     isStrictRule: () => false,
   };
 }
 
-function compare({ base, head, changes = {}, renames }) {
+function compare({ base, head, changes = {}, inserted = changes, renames }) {
   const result = compareFindings({
     baseFindings: base,
     headFindings: head,
     baseToHeadRenames: renames,
-    touchedCode: touched(changes),
+    touchedCode: touched(changes, inserted),
   });
   const shown = ({ symbol, location }) => `${symbol}@${String(location?.line)}`;
   return {
@@ -88,6 +89,7 @@ describe('function findings matched by their text without the name', () => {
           }),
         ),
         changes: { 'src/B.java': [[10, 10]] },
+        inserted: {},
         renames: new Map([['src/A.java', 'src/B.java']]),
       }),
     ).toEqual({ added: [], kept: ['B.bar@10'], resolved: [] });
@@ -104,6 +106,19 @@ describe('function findings matched by their text without the name', () => {
         changes: { 'src/A.java': [[80, 146]] },
       }),
     ).toEqual({ added: ['A.bar@80'], kept: ['A.foo@10'], resolved: [] });
+  });
+
+  it('reports a new copy of a legacy function that was shrunk below the limit', () => {
+    expect(
+      compare({
+        base: structure(entry({ name: 'A.foo', start: 10, text: legacy })),
+        head: structure(
+          entry({ name: 'A.bar', start: 30, text: functionText('int bar(int a) {') }),
+        ),
+        changes: { 'src/A.java': [[11, 96]] },
+        inserted: { 'src/A.java': [[30, 96]] },
+      }),
+    ).toEqual({ added: ['A.bar@30'], kept: [], resolved: ['A.foo@10'] });
   });
 
   it('holds an edited legacy function by its declaration when an overload is added above', () => {
@@ -123,6 +138,7 @@ describe('function findings matched by their text without the name', () => {
             [71, 71],
           ],
         },
+        inserted: { 'src/A.java': [[3, 69]] },
       }),
     ).toEqual({ added: ['A.foo@3'], kept: ['A.foo@70'], resolved: [] });
   });
@@ -149,6 +165,7 @@ describe('mutants and branches matched without their function', () => {
         base,
         head: mutantFindings([mutant({ method: 'foo(III)I', line: 12 })], { tool: 'pit' }),
         changes: { 'src/A.java': [[10, 10]] },
+        inserted: {},
       }),
     ).toEqual({ added: [], kept: ['A#foo(III)I@12'], resolved: [] });
   });
@@ -168,6 +185,42 @@ describe('mutants and branches matched without their function', () => {
     ).toEqual({ added: ['A#helper(II)I@30'], kept: [], resolved: ['A#foo(II)I@12'] });
   });
 
+  it('reports a new survivor in an unchanged file that only shares the mutation with a killed one', () => {
+    expect(
+      compare({
+        base,
+        head: mutantFindings([mutant({ method: 'other(II)I', line: 40 })], { tool: 'pit' }),
+      }),
+    ).toEqual({ added: ['A#other(II)I@40'], kept: [], resolved: ['A#foo(II)I@12'] });
+  });
+
+  it('reports a renamed function whose score grew', () => {
+    const crap = (name, value) =>
+      crapFindings(
+        [
+          {
+            path: 'src/A.java',
+            name,
+            identity: `function:${name}`,
+            ratchetKey: `function:${name}:crap`,
+            anchor: 'function:crap:text:h',
+            line: 10,
+            crap: value,
+          },
+        ],
+        { tool: 'crap' },
+      );
+
+    expect(
+      compare({
+        base: crap('A.foo', 20),
+        head: crap('A.bar', 30),
+        changes: { 'src/A.java': [[10, 10]] },
+        inserted: {},
+      }),
+    ).toEqual({ added: ['A.bar@10'], kept: [], resolved: [] });
+  });
+
   it('keeps an uncovered branch when its function is renamed', () => {
     const branch = (symbol) =>
       branchCoverageFindings([{ path: 'src/A.java', key: 'k', percent: 50, line: 12, symbol }], {
@@ -180,6 +233,7 @@ describe('mutants and branches matched without their function', () => {
         base: branch('A.foo'),
         head: branch('A.bar'),
         changes: { 'src/A.java': [[10, 10]] },
+        inserted: {},
       }),
     ).toEqual({ added: [], kept: ['A.bar@12'], resolved: [] });
   });
