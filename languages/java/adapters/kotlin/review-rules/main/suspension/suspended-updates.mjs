@@ -110,97 +110,109 @@ function staleInside(update, calls) {
   return update.operator !== '=' || (!update.branching && readsTargetBefore(update, calls));
 }
 
-class SavedReads {
-  constructor(update, suspends) {
-    this.update = update;
-    this.suspends = suspends;
-    this.saved = new Map();
-    this.locked = false;
-  }
+const NO_SOURCE = Object.freeze({ reads: [], call: undefined });
 
-  isLocal(item) {
-    return !item.viaThis && (this.update.properties ?? []).includes(item.name);
-  }
+function isLocalRead(item, update) {
+  return item.k === 'read' && !item.viaThis && (update.properties ?? []).includes(item.name);
+}
 
-  isShared(item) {
-    return item.viaThis || !this.update.locals.includes(item.name);
-  }
+function isSharedRead(item, update) {
+  return item.viaThis || !update.locals.includes(item.name);
+}
 
-  suspendAll(call) {
-    for (const [name, entry] of this.saved) {
-      this.saved.set(name, { ...entry, call: entry.call ?? call });
-    }
-  }
+function suspendCalls(value, { update, site }) {
+  return value.filter((item) => suspendsAt(item, update, site));
+}
 
-  sourcesOf(value, calls) {
-    const reads = new Set();
-    let call;
-    value.forEach((item, index) => {
-      if (item.k !== 'read') {
-        return;
-      }
-      const entry = this.isLocal(item) ? this.saved.get(item.name) : undefined;
-      entry?.reads.forEach((name) => reads.add(name));
-      call ??= entry === undefined ? undefined : (entry.call ?? calls[0]?.name);
-      if (!this.isLocal(item) && this.isShared(item)) {
-        reads.add(item.name);
-        call ??= calls.find((found) => value.indexOf(found) > index)?.name;
-      }
-    });
-    return { reads, call, underLock: this.locked };
-  }
-
-  step(step) {
-    if (step.lock !== undefined) {
-      this.suspendAll(step.lock);
-      this.locked = true;
-      return;
-    }
-    const calls = step.value.filter(this.suspends);
-    const sources = this.sourcesOf(step.value, calls);
-    const previous = this.saved.get(step.assign);
-    if (calls.length > 0) {
-      this.suspendAll(calls[0].name);
-    }
-    for (const name of step.writes) {
-      this.saved.delete(name);
-    }
-    const name = step.local ?? step.assign;
-    if (name === undefined) {
-      return;
-    }
-    if (step.assign !== undefined && step.operator !== '=' && previous !== undefined) {
-      previous.reads.forEach((read) => sources.reads.add(read));
-      sources.call ??= previous.call ?? calls[0]?.name;
-    }
-    this.saved.set(name, sources);
-  }
-
-  staleCall(held) {
-    for (const step of this.update.steps ?? []) {
-      this.step(step);
-    }
-    const calls = this.update.value.filter(this.suspends);
-    for (const item of this.update.value) {
-      const entry = item.k === 'read' && this.isLocal(item) ? this.saved.get(item.name) : undefined;
-      if (entry?.reads.has(this.update.target) && !(held && entry.underLock)) {
-        const call = entry.call ?? calls[0]?.name;
-        if (call !== undefined) {
-          return call;
-        }
-      }
-    }
-    return undefined;
+function suspendAll(state, call) {
+  for (const [name, entry] of state.saved) {
+    state.saved.set(name, { ...entry, call: entry.call ?? call });
   }
 }
 
+function readSource(state, item, { first, later }) {
+  if (item.k !== 'read') {
+    return NO_SOURCE;
+  }
+  if (isLocalRead(item, state.update)) {
+    const entry = state.saved.get(item.name);
+    return entry === undefined ? NO_SOURCE : { reads: [...entry.reads], call: entry.call ?? first };
+  }
+  if (!isSharedRead(item, state.update)) {
+    return NO_SOURCE;
+  }
+  return { reads: [item.name], call: later };
+}
+
+function sourcesOf(state, value, calls) {
+  const first = calls[0]?.name;
+  const parts = value.map((item, index) => {
+    const later = calls.find((found) => value.indexOf(found) > index)?.name;
+    return readSource(state, item, { first, later });
+  });
+  return {
+    reads: new Set(parts.flatMap(({ reads }) => reads)),
+    call: parts.find(({ call }) => call !== undefined)?.call,
+    underLock: state.locked,
+  };
+}
+
+function extendsPrevious(step, previous) {
+  return step.assign !== undefined && step.operator !== '=' && previous !== undefined;
+}
+
+function accumulated(sources, previous, fallback) {
+  return {
+    reads: new Set([...sources.reads, ...previous.reads]),
+    call: sources.call ?? previous.call ?? fallback,
+    underLock: sources.underLock,
+  };
+}
+
+function applyStep(state, step) {
+  if (step.lock !== undefined) {
+    suspendAll(state, step.lock);
+    state.locked = true;
+    return;
+  }
+  const calls = suspendCalls(step.value, state);
+  const sources = sourcesOf(state, step.value, calls);
+  const previous = state.saved.get(step.assign);
+  if (calls.length > 0) {
+    suspendAll(state, calls[0].name);
+  }
+  for (const name of step.writes) {
+    state.saved.delete(name);
+  }
+  const name = step.local ?? step.assign;
+  if (name !== undefined) {
+    const saved = extendsPrevious(step, previous)
+      ? accumulated(sources, previous, calls[0]?.name)
+      : sources;
+    state.saved.set(name, saved);
+  }
+}
+
+function savedStaleCall(update, site, held) {
+  const state = { update, site, saved: new Map(), locked: false };
+  for (const step of update.steps ?? []) {
+    applyStep(state, step);
+  }
+  const calls = suspendCalls(update.value, state);
+  return update.value
+    .filter((item) => isLocalRead(item, update))
+    .map((item) => state.saved.get(item.name))
+    .filter((entry) => entry?.reads.has(update.target) && !(held && entry.underLock))
+    .map((entry) => entry.call ?? calls[0]?.name)
+    .find((call) => call !== undefined);
+}
+
 function staleCall(update, site, held) {
-  const suspends = (item) => suspendsAt(item, update, site);
-  const calls = update.value.filter(suspends);
+  const calls = suspendCalls(update.value, { update, site });
   if (!held && staleInside(update, calls)) {
     return calls[0].name;
   }
-  return new SavedReads(update, suspends).staleCall(held);
+  return savedStaleCall(update, site, held);
 }
 
 export function suspendedUpdateFindings(files, { finding, declaredIn }) {
