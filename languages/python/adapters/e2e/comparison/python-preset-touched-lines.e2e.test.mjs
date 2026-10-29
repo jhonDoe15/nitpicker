@@ -1,9 +1,11 @@
-import { cpSync } from 'node:fs';
+import { cpSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { EDITED_LINE_SENTENCE } from '../../../../../core/diff/comparison/positions/touched-lines.mjs';
 import {
-  commitBranch,
+  command,
   fixture,
+  git,
   gate,
   initializeRepository,
   installPackages,
@@ -27,7 +29,25 @@ const PRINTS = [
   '    print("b")',
 ];
 
+const LEGACY = 'src/demo/legacy.py';
+const HANDLERS = 80;
+const EDITED_HANDLER = 40;
+const legacyHandler = (index) => [
+  `def handler_${String(index)}(value,flag = False):`,
+  `    if value == ${String(index + 3)}: print( 'hit ${String(index)}' )`,
+  `    if flag and value > ${String(index + 300)}:`,
+  "        print('big',",
+  '              value)',
+  '    items = [ value,',
+  '              flag ]',
+  '    print( "items" , items )',
+  '    return items',
+];
+
 const BASE = {
+  [LEGACY]: lines(
+    ...Array.from({ length: HANDLERS }, (_, index) => [...legacyHandler(index), '', '']).flat(),
+  ),
   'src/demo/proc.py': lines(...PROCESS, ...SUM, '    print("done")', '    return total'),
   'src/demo/messy.py': lines(
     'def hello(name):',
@@ -64,8 +84,25 @@ const HEAD = {
   ),
 };
 
+function commitFormatted(project) {
+  git(project, 'checkout', '-q', '-b', 'touches', 'main');
+  write(project, HEAD);
+  command(project, 'ruff', ['format', '--quiet', LEGACY]);
+  const formatted = readFileSync(path.join(project, LEGACY), 'utf8').split('\n');
+  const edited = formatted
+    .map((line, index) => (line === '    print("items", items)' ? index : undefined))
+    .filter((index) => index !== undefined)[EDITED_HANDLER];
+  write(project, {
+    [LEGACY]: formatted.with(edited, '    print("items", items, value)').join('\n'),
+  });
+  git(project, 'add', '-A');
+  git(project, 'commit', '-q', '-m', 'ruff format and one edit');
+  return { formatted, editedLine: edited + 1 };
+}
+
 describe.skipIf(!pythonE2eEnabled)('Python strict rules on lines a change touches', () => {
   let ruffFindings;
+  let legacy;
 
   beforeAll(() => {
     const project = repository();
@@ -76,7 +113,7 @@ describe.skipIf(!pythonE2eEnabled)('Python strict rules on lines a change touche
     });
     initializeRepository(project, 'legacy strict findings');
     installPackages(project, ['-e', '.', 'coverage', 'pytest', 'mypy']);
-    commitBranch(project, 'touches', HEAD);
+    legacy = commitFormatted(project);
     ruffFindings = gate(project, 'touches')
       .json('new-findings.json')
       .filter(({ tool }) => tool === 'ruff');
@@ -107,5 +144,15 @@ describe.skipIf(!pythonE2eEnabled)('Python strict rules on lines a change touche
     expect(rest).toEqual([]);
     expect({ rule: edited.rule, line: edited.location.line }).toEqual({ rule: 'T201', line: 2 });
     expect(edited.message).toContain(EDITED_LINE_SENTENCE);
+  });
+
+  it('keeps 400 legacy findings baselined through a real ruff format run and holds the one edited line', () => {
+    const legacyFindings = ruffFindings.filter(({ path: file }) => file === LEGACY);
+
+    expect(legacy.formatted.length).toBeGreaterThan(HANDLERS * 9);
+    expect(legacyFindings.map(({ rule, location }) => `${rule}:${String(location.line)}`)).toEqual([
+      `T201:${String(legacy.editedLine)}`,
+    ]);
+    expect(legacyFindings[0].message).toContain(EDITED_LINE_SENTENCE);
   });
 });

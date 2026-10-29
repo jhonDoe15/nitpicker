@@ -110,7 +110,7 @@ describe('a finding anchored on a whole function is about its signature', () => 
     expect(find(call('2'))[0].identity).not.toBe(find(call('1'))[0].identity);
   });
 
-  it('keeps the identity through what a formatter rewrites: quotes, semicolons, trailing commas, arrow parentheses', () => {
+  it('keeps the identity through quotes, semicolons, trailing commas and arrow parentheses', () => {
     const find = (code) =>
       findingFor({ code, reported: code.slice(code.indexOf('items'), code.lastIndexOf(')') + 1) });
     const unformatted = "export const run = () => items.map(item => log('a', item,));\n";
