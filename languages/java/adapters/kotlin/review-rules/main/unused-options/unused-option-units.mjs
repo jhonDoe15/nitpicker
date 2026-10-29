@@ -1,4 +1,4 @@
-import { springManagedOwner } from '../spring/spring-names.mjs';
+import { springManagedOwner } from '../../spring/spring-names.mjs';
 
 const LIMITED = new Set(['private', 'internal']);
 const SKIPPED_MODIFIERS = new Set([

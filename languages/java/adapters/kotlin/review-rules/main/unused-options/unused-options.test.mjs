@@ -8,7 +8,7 @@ import {
   run,
   summary,
   testFile,
-} from '../test-support/facts.mjs';
+} from '../../test-support/facts.mjs';
 import { UNUSED_OPTION_RULE, UNUSED_OPTION_TOOL, unusedOptionFindings } from './unused-options.mjs';
 
 const options = [parameter('value', 'Int'), parameter('pad', 'Int', { default: true, line: 8 })];

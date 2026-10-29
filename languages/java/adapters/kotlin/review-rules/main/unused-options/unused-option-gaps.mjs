@@ -1,5 +1,5 @@
 import { publicFunctionUnits } from './unused-option-units.mjs';
-import { declaredNames } from '../spring/spring-names.mjs';
+import { declaredNames } from '../../spring/spring-names.mjs';
 
 function skippedGaps(module) {
   return module.facts.skipped.map(({ file, test }) =>
