@@ -179,7 +179,8 @@ def declared_entities(function, context, keywords):
         yield from ((site, found) for found in entities_in(keyword.value, context))
 
 
-def handler_findings(function, context, decorators, label):
+def handler_findings(context, handler):
+    function, decorators, label = handler
     keywords = list(response_keywords(decorators))
     typed = bool(keywords) or function.returns is not None
     sites = {}
@@ -201,5 +202,5 @@ def check(context):
     found = []
     for function, decorators in handlers_of(context).items():
         label = labels.get(function, function.name)
-        found.extend(handler_findings(function, context, decorators, label))
+        found.extend(handler_findings(context, (function, decorators, label)))
     return found

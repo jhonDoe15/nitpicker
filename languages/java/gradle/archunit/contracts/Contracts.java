@@ -27,34 +27,34 @@ final class Contracts {
   private final JavaClasses main;
   private final String root;
   private final Roles roles;
+  private final Set<Found> sink;
 
-  private Contracts(JavaClasses main, String root, Roles roles) {
+  private Contracts(JavaClasses main, String root, Roles roles, Set<Found> sink) {
     this.main = main;
     this.root = root;
     this.roles = roles;
+    this.sink = sink;
   }
 
   static void check(JavaClasses main, String root, Roles roles, Set<Found> sink) {
-    new Contracts(main, root, roles).checkAll(sink);
+    new Contracts(main, root, roles, sink).checkAll();
   }
 
-  private void checkAll(Set<Found> sink) {
+  private void checkAll() {
     for (JavaClass type : main) {
       String face = faceOf(type);
       if (face == null) {
         continue;
       }
       for (JavaMethod method : ContractMethods.of(type, main)) {
-        boolean handler = takesRequestFirst(method) || isOutboundClient(type);
-        for (JavaClass leaked : signatureTypes(method)) {
-          report(face, method, leaked, handler, sink);
-        }
+        signatureTypes(method).forEach(leaked -> report(face, method, leaked));
       }
     }
   }
 
-  private void report(String face, JavaMethod method, JavaClass leaked, boolean handler, Set<Found> sink) {
+  private void report(String face, JavaMethod method, JavaClass leaked) {
     String kind = InfrastructureTypes.kindOf(leaked, roles);
+    boolean handler = takesRequestFirst(method) || isOutboundClient(method.getOwner());
     boolean webEntry = handler && InfrastructureTypes.TRANSPORT.equals(kind);
     if (kind == null || webEntry || coveredElsewhere(face, kind, method.getOwner(), leaked)) {
       return;

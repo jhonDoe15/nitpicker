@@ -7,9 +7,11 @@ import {
   withFeatureFolders,
 } from './arch-rules-gate.mjs';
 
-const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
+const jarsOn = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
 
 describe('usesSpring', () => {
+  const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
+
   it('is true for spring-context and spring-boot jars on the main compile classpath', () => {
     expect([
       usesSpring(classpaths('spring-context-6.2.10.jar')),
@@ -26,25 +28,39 @@ describe('usesSpring', () => {
 });
 
 describe('runsArchRules', () => {
-  it('is true for a Spring module only', () => {
+  const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
+
+  it('is true for Spring and for jmolecules-ddd on the main compile classpath', () => {
     expect([
       runsArchRules(classpaths('spring-context-6.2.10.jar')),
-      runsArchRules(classpaths('guava.jar')),
-    ]).toEqual([true, false]);
+      runsArchRules(classpaths('jmolecules-ddd-2.0.1.jar')),
+      runsArchRules(classpaths('jmolecules-layered-architecture-2.0.1.jar')),
+      runsArchRules(classpaths()),
+    ]).toEqual([true, true, false, false]);
   });
 });
 
-describe('withDeclaredSpring and withFeatureFolders', () => {
-  it('turn on the architecture rules for a declared Spring build and for a checkout with feature folders', () => {
+describe('withDeclaredSpring', () => {
+  it('turns on Spring and the architecture rules for a declared Spring build, and keeps a jMolecules module running them', () => {
     expect([
       withDeclaredSpring({ spring: false, springArch: false }, true),
+      withDeclaredSpring({ spring: false, springArch: true }, undefined),
       withDeclaredSpring({ spring: false, springArch: false }, undefined),
+    ]).toEqual([
+      { spring: true, springArch: true },
+      { spring: false, springArch: true },
+      { spring: false, springArch: false },
+    ]);
+  });
+});
+
+describe('withFeatureFolders', () => {
+  it('turns on the architecture rules for a checkout with feature folders and keeps the others', () => {
+    expect([
       withFeatureFolders({ spring: false, springArch: false }, true),
       withFeatureFolders({ spring: true, springArch: true }, undefined),
       withFeatureFolders({ spring: false, springArch: false }, undefined),
     ]).toEqual([
-      { spring: true, springArch: true },
-      { spring: false, springArch: false },
       { spring: false, springArch: true },
       { spring: true, springArch: true },
       { spring: false, springArch: false },
@@ -53,13 +69,13 @@ describe('withDeclaredSpring and withFeatureFolders', () => {
 });
 
 describe('buildRunsArchRules', () => {
-  it('resolves ArchUnit for a declared Spring build, feature folders or a Spring module', () => {
-    const plain = [{ classpaths: classpaths('guava.jar') }];
+  it('resolves ArchUnit for a declared Spring build, feature folders or a module that runs the rules', () => {
+    const plain = [{ classpaths: jarsOn('guava.jar') }];
 
     expect([
       buildRunsArchRules({ spring: true }, plain),
       buildRunsArchRules({ featureFolders: true }, plain),
-      buildRunsArchRules({}, [{ classpaths: classpaths('spring-boot-3.5.5.jar') }]),
+      buildRunsArchRules({}, [{ classpaths: jarsOn('jmolecules-ddd-2.0.1.jar') }]),
       buildRunsArchRules({}, plain),
     ]).toEqual([true, true, true, false]);
   });

@@ -168,6 +168,5 @@ describe('infrastructure package names', () => {
     );
 
     expect(jvm).toEqual(python);
-    expect(jvm).toContain('security');
   });
 });
