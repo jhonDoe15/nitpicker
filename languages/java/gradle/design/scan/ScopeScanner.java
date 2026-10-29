@@ -12,11 +12,13 @@ abstract class ScopeScanner extends TreePathScanner<Void, Void> {
   protected final Typer typer;
   protected final Ctx ctx;
   protected final Usage usage;
+  protected final Mutations mutations;
 
   ScopeScanner(Typer typer, Ctx ctx, Usage usage) {
     this.typer = typer;
     this.ctx = ctx;
     this.usage = usage;
+    this.mutations = new Mutations(typer, ctx, ctx.method.tree.getBody());
   }
 
   protected final void conditioned(Tree condition) {
@@ -37,6 +39,18 @@ abstract class ScopeScanner extends TreePathScanner<Void, Void> {
 
   @Override
   public Void visitClass(ClassTree tree, Void unused) {
+    usage.captured(capturedNames(tree));
+    ctx.classDepth++;
+    usage.closureDepth++;
+    ctx.push();
+    scan(tree.getMembers(), null);
+    ctx.pop();
+    usage.closureDepth--;
+    ctx.classDepth--;
+    return null;
+  }
+
+  private static Set<String> capturedNames(ClassTree tree) {
     Set<String> names = new HashSet<>();
     new TreeScanner<Void, Void>() {
       @Override
@@ -51,8 +65,35 @@ abstract class ScopeScanner extends TreePathScanner<Void, Void> {
         return super.visitMemberSelect(select, unused);
       }
     }.scan(tree, null);
-    usage.captured(names);
+    return names;
+  }
+
+  @Override
+  public Void visitMethod(MethodTree tree, Void unused) {
+    ctx.push();
+    super.visitMethod(tree, unused);
+    ctx.pop();
     return null;
+  }
+
+  @Override
+  public Void visitAssignment(AssignmentTree tree, Void unused) {
+    mutations.assigned(tree.getVariable());
+    return super.visitAssignment(tree, unused);
+  }
+
+  @Override
+  public Void visitCompoundAssignment(CompoundAssignmentTree tree, Void unused) {
+    mutations.assigned(tree.getVariable());
+    return super.visitCompoundAssignment(tree, unused);
+  }
+
+  @Override
+  public Void visitUnary(UnaryTree tree, Void unused) {
+    if (Mutations.isStep(tree)) {
+      mutations.assigned(tree.getExpression());
+    }
+    return super.visitUnary(tree, unused);
   }
 
   @Override

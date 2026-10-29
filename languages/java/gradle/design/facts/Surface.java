@@ -10,22 +10,66 @@ import nitpicker.designfacts.resolve.*;
 public final class Surface {
   private static final Set<String> QUIET =
       Set.of(
-          "Override", "SuppressWarnings", "Deprecated", "SafeVarargs", "FunctionalInterface",
-          "Nullable", "NonNull", "Nonnull", "NotNull", "CheckForNull", "VisibleForTesting",
-          "CanIgnoreReturnValue", "CheckReturnValue", "Contract", "Generated", "Immutable",
-          "ThreadSafe", "NotThreadSafe", "Beta");
+          "Override",
+          "SuppressWarnings",
+          "Deprecated",
+          "SafeVarargs",
+          "FunctionalInterface",
+          "Nullable",
+          "NonNull",
+          "Nonnull",
+          "NotNull",
+          "CheckForNull",
+          "VisibleForTesting",
+          "CanIgnoreReturnValue",
+          "CheckReturnValue",
+          "Contract",
+          "Generated",
+          "Immutable",
+          "ThreadSafe",
+          "NotThreadSafe",
+          "Beta");
   private static final Set<String> LOMBOK =
       Set.of(
-          "Getter", "Setter", "Data", "Value", "Builder", "ToString", "EqualsAndHashCode",
-          "NoArgsConstructor", "AllArgsConstructor", "RequiredArgsConstructor", "Slf4j", "Log",
-          "Log4j2", "CommonsLog", "Accessors", "FieldDefaults", "With", "Singular", "Cleanup",
-          "SneakyThrows", "Synchronized", "Jacksonized", "Delegate", "Generated");
+          "Getter",
+          "Setter",
+          "Data",
+          "Value",
+          "Builder",
+          "ToString",
+          "EqualsAndHashCode",
+          "NoArgsConstructor",
+          "AllArgsConstructor",
+          "RequiredArgsConstructor",
+          "Slf4j",
+          "Log",
+          "Log4j2",
+          "CommonsLog",
+          "Accessors",
+          "FieldDefaults",
+          "With",
+          "Singular",
+          "Cleanup",
+          "SneakyThrows",
+          "Synchronized",
+          "Jacksonized",
+          "Delegate",
+          "Generated");
   private static final List<String> QUIET_PACKAGES =
       List.of(
-          "lombok.", "java.lang.", "org.jetbrains.annotations.", "org.checkerframework.",
-          "org.jspecify.", "com.google.errorprone.annotations.", "javax.annotation.Nonnull",
-          "javax.annotation.Nullable", "javax.annotation.CheckForNull", "jakarta.annotation.Nonnull",
-          "jakarta.annotation.Nullable", "edu.umd.cs.findbugs.annotations.", "java.lang.annotation.");
+          "lombok.",
+          "java.lang.",
+          "org.jetbrains.annotations.",
+          "org.checkerframework.",
+          "org.jspecify.",
+          "com.google.errorprone.annotations.",
+          "javax.annotation.Nonnull",
+          "javax.annotation.Nullable",
+          "javax.annotation.CheckForNull",
+          "jakarta.annotation.Nonnull",
+          "jakarta.annotation.Nullable",
+          "edu.umd.cs.findbugs.annotations.",
+          "java.lang.annotation.");
 
   private final Project project;
   private final Lookup lookup;
@@ -47,22 +91,21 @@ public final class Surface {
     if (method.tree == null) {
       return false;
     }
-    if (frameworkAnnotated(method.tree.getModifiers(), method.owner)
-        || isMain(method)
-        || (method.ctor && frameworkAnnotated(method.owner.tree.getModifiers(), method.owner))) {
+    if (started(method)) {
       return true;
     }
     if (method.ctor || method.isStatic || objectMethod(method)) {
       return false;
     }
-    if (Names.hasAnnotation(method.tree.getModifiers(), "Override")) {
-      return true;
-    }
-    if (!lookup.overridden(method).isEmpty()) {
-      return true;
-    }
-    return !method.flags.contains(Modifier.PRIVATE) && lookup.incomplete(method.owner)
-        && method.flags.contains(Modifier.PUBLIC);
+    return Names.hasAnnotation(method.tree.getModifiers(), "Override")
+        || !lookup.overridden(method).isEmpty();
+  }
+
+  private boolean started(MethodInfo method) {
+    TypeInfo owner = method.owner;
+    return frameworkAnnotated(method.tree.getModifiers(), owner)
+        || isMain(method)
+        || (method.ctor && frameworkAnnotated(owner.tree.getModifiers(), owner));
   }
 
   private static boolean objectMethod(MethodInfo method) {
@@ -72,8 +115,11 @@ public final class Surface {
   }
 
   public static boolean isMain(MethodInfo method) {
-    return method.name.equals("main") && method.isStatic && method.flags.contains(Modifier.PUBLIC)
-        && method.params.size() == 1 && Names.typeText(method.returnType).equals("void");
+    return method.name.equals("main")
+        && method.isStatic
+        && method.flags.contains(Modifier.PUBLIC)
+        && method.params.size() == 1
+        && Names.typeText(method.returnType).equals("void");
   }
 
   private boolean frameworkAnnotated(ModifiersTree modifiers, TypeInfo owner) {

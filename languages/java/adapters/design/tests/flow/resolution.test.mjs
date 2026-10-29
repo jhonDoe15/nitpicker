@@ -27,6 +27,7 @@ const TYPES_0 = [
     line: 3,
     kind: 'class',
     fields: [{ name: 'radius', private: true }],
+    supertypes: [ref('a/Base.java', 'Base'), ref('a/Shape.java', 'Shape')],
   }),
   type({ file: 'a/Outer.java', symbol: 'Outer', line: 3, kind: 'class' }),
   type({ file: 'a/Outer.java', symbol: 'Outer.Inner', line: 4, kind: 'class' }),
@@ -167,7 +168,6 @@ const CALLABLES_1 = [
     owner: 'Outer.Weird',
     member: 'ask',
     line: 24,
-    entry: true,
     returns: 'int',
     calls: [{ target: ref('a/Outer.java', 'Outer.Weird.start2'), line: 25, receiver: 'this' }],
   }),
@@ -176,7 +176,6 @@ const CALLABLES_1 = [
     owner: 'Outer.Weird',
     member: 'start2',
     line: 28,
-    entry: true,
     returns: 'int',
   }),
 ];
@@ -310,7 +309,6 @@ const CALLABLES_3 = [
     member: 'nested',
     line: 53,
     returns: 'int',
-    forward: { target: ref('a/Outer.java', 'Outer.Inner.value'), arguments: [], returned: true },
     calls: [
       { target: ref('a/Outer.java', 'Outer.Inner.make'), line: 54 },
       { target: ref('a/Outer.java', 'Outer.Inner.value'), line: 54 },

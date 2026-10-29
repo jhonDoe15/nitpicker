@@ -25,7 +25,7 @@ public final class Usage {
 
   public void identifier(IdentifierTree tree, TreePath path) {
     String name = tree.getName().toString();
-    if (name.equals("this") || name.equals("super")) {
+    if (ctx.classDepth > 0 || name.equals("this") || name.equals("super")) {
       return;
     }
     Tree parent = path.getParentPath().getLeaf();
@@ -58,25 +58,32 @@ public final class Usage {
     while (current.getParentPath().getLeaf() instanceof ParenthesizedTree) {
       current = current.getParentPath();
     }
-    final Tree child = current.getLeaf();
-    final Tree parent = current.getParentPath().getLeaf();
+    passed(use, current.getLeaf(), current.getParentPath().getLeaf());
+  }
+
+  private void passed(Body.Use use, Tree child, Tree parent) {
     switch (parent) {
-      case MemberSelectTree select when select.getExpression() == child -> {}
       case MethodInvocationTree call -> forward(use, call, call.getArguments().indexOf(child));
       case NewClassTree creation -> forward(use, creation, creation.getArguments().indexOf(child));
-      case BinaryTree binary when binary.getKind() == Tree.Kind.EQUAL_TO
-          || binary.getKind() == Tree.Kind.NOT_EQUAL_TO -> {}
-      case InstanceOfTree check -> {}
-      case TryTree resource -> {}
-      default -> use.opaque = true;
+      default -> use.opaque |= !inspected(child, parent);
     }
+  }
+
+  private static boolean inspected(Tree child, Tree parent) {
+    return switch (parent) {
+      case MemberSelectTree select -> select.getExpression() == child;
+      case BinaryTree binary ->
+          binary.getKind() == Tree.Kind.EQUAL_TO || binary.getKind() == Tree.Kind.NOT_EQUAL_TO;
+      case InstanceOfTree check -> true;
+      case TryTree resource -> true;
+      default -> false;
+    };
   }
 
   private void forward(Body.Use use, Tree call, int position) {
     MethodInfo target = typer.calls.resolve(call, ctx).target();
-    boolean declared =
-        target != null && position >= 0 && position < target.params.size()
-            && !(target.isVarargs() && position >= target.params.size() - 1);
+    int declaredCount = target == null ? 0 : target.params.size() - (target.isVarargs() ? 1 : 0);
+    boolean declared = position >= 0 && position < declaredCount;
     if (declared) {
       use.forwards.add(new Body.Forward(target, position));
     } else {
@@ -85,57 +92,65 @@ public final class Usage {
   }
 
   public void member(MemberSelectTree select, TreePath path) {
-    Tree base = Names.unparen(select.getExpression());
-    String member = select.getIdentifier().toString();
-    if (base instanceof IdentifierTree identifier && identifier.getName().contentEquals("this")) {
-      FieldInfo field = ctx.owner.field(member);
-      if (field != null && !field.isStatic) {
-        body.ownFields.add(member);
-      }
-    }
-    Value value = valueOf(base);
-    if (value == null || value.ty().type() == null) {
+    if (ctx.classDepth > 0) {
       return;
     }
-    Tree parent = path.getParentPath().getLeaf();
-    boolean call = parent instanceof MethodInvocationTree invocation && invocation.getMethodSelect() == select;
-    String name = member;
-    if (call) {
-      MethodInfo target = typer.calls.resolve(parent, ctx).target();
-      name = target != null && target.accessorField != null ? target.accessorField : member;
+    Tree base = Names.unparen(select.getExpression());
+    String member = select.getIdentifier().toString();
+    FieldInfo own = Names.isThis(base) ? ctx.owner.field(member) : null;
+    if (own != null && !own.isStatic) {
+      body.ownFields.add(member);
     }
-    record(value, name, path);
+    Value value = valueOf(base);
+    if (value != null && value.ty().type() != null) {
+      record(value, memberName(select, path), path);
+    }
+  }
+
+  private String memberName(MemberSelectTree select, TreePath path) {
+    String member = select.getIdentifier().toString();
+    Tree parent = path.getParentPath().getLeaf();
+    boolean call =
+        parent instanceof MethodInvocationTree invocation && invocation.getMethodSelect() == select;
+    MethodInfo target = call ? typer.calls.resolve(parent, ctx).target() : null;
+    return target != null && target.accessorField != null ? target.accessorField : member;
   }
 
   private static boolean isWrite(Tree parent, Tree select) {
     return switch (parent) {
       case AssignmentTree assignment -> assignment.getVariable() == select;
       case CompoundAssignmentTree compound -> compound.getVariable() == select;
-      case UnaryTree unary -> unary.getExpression() == select && unary.getKind().name().contains("CREMENT");
+      case UnaryTree unary -> unary.getExpression() == select && Mutations.isStep(unary);
       default -> false;
     };
   }
 
   private Value valueOf(Tree base) {
     if (base instanceof IdentifierTree identifier) {
-      String name = identifier.getName().toString();
-      if (name.equals("this") || name.equals("super")) {
-        return null;
-      }
-      Local local = ctx.lookup(name);
-      if (local != null) {
-        return new Value(name, local.ty, local.param);
-      }
-      FieldInfo field = typer.lookup.bareField(name, ctx.owner);
-      return field == null ? null : new Value("this." + name, typer.fieldType(field), -1);
+      return identifierValue(identifier.getName().toString());
     }
-    if (base instanceof MemberSelectTree select
-        && Names.unparen(select.getExpression()) instanceof IdentifierTree owner
-        && owner.getName().contentEquals("this")) {
-      FieldInfo field = typer.lookup.field(ctx.owner, select.getIdentifier().toString());
-      return field == null ? null : new Value("this." + field.name, typer.fieldType(field), -1);
+    boolean ownField =
+        base instanceof MemberSelectTree select
+            && Names.isThis(Names.unparen(select.getExpression()));
+    String name = ownField ? ((MemberSelectTree) base).getIdentifier().toString() : null;
+    FieldInfo field = name == null ? null : typer.lookup.field(ctx.owner, name);
+    return field == null ? null : fieldValue(field);
+  }
+
+  private Value identifierValue(String name) {
+    if (name.equals("this") || name.equals("super")) {
+      return null;
     }
-    return null;
+    Local local = ctx.lookup(name);
+    if (local != null) {
+      return new Value(local.key, local.ty, local.param);
+    }
+    FieldInfo field = typer.lookup.bareField(name, ctx.owner);
+    return field == null ? null : fieldValue(field);
+  }
+
+  private Value fieldValue(FieldInfo field) {
+    return new Value("this." + field.name, typer.fieldType(field), -1);
   }
 
   private void record(Value value, String name, TreePath path) {

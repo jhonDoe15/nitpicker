@@ -7,15 +7,19 @@ public final class Names {
   private Names() {}
 
   public static String typeText(Tree type) {
-    if (type == null) {
-      return null;
-    }
     return switch (type) {
+      case null -> null;
       case PrimitiveTypeTree primitive ->
           primitive.getPrimitiveTypeKind().name().toLowerCase(Locale.ROOT);
       case ParameterizedTypeTree parameterized -> typeText(parameterized.getType());
       case ArrayTypeTree array -> typeText(array.getType()) + "[]";
       case AnnotatedTypeTree annotated -> typeText(annotated.getUnderlyingType());
+      default -> nameText(type);
+    };
+  }
+
+  private static String nameText(Tree type) {
+    return switch (type) {
       case IdentifierTree identifier -> identifier.getName().toString();
       case MemberSelectTree select -> trimPackage(segments(select));
       case WildcardTree wildcard -> "?";
@@ -45,6 +49,10 @@ public final class Names {
     return List.of();
   }
 
+  public static boolean isThis(Tree tree) {
+    return tree instanceof IdentifierTree identifier && identifier.getName().contentEquals("this");
+  }
+
   public static Tree unparen(Tree tree) {
     Tree current = tree;
     while (current instanceof ParenthesizedTree parenthesized) {
@@ -59,6 +67,10 @@ public final class Names {
       current = unparen(cast.getExpression());
     }
     return current;
+  }
+
+  public static String qualify(String pkg, String name) {
+    return pkg.isEmpty() ? name : pkg + "." + name;
   }
 
   public static String capitalize(String name) {

@@ -13,10 +13,9 @@ public final class BodyScanner extends ScopeScanner {
   private final MethodInfo method;
   private final Decisions decisions;
   private final Arity arity;
-  private final Mutations mutations;
   private final Set<Tree> chainTails = Collections.newSetFromMap(new IdentityHashMap<>());
   private final Set<Tree> consumed = Collections.newSetFromMap(new IdentityHashMap<>());
-  private int finallyDepth;
+  private final Deque<Integer> finallyDepths = new ArrayDeque<>();
 
   public BodyScanner(Body body, Typer typer, Ctx ctx) {
     super(typer, ctx, new Usage(body, typer, ctx));
@@ -24,7 +23,6 @@ public final class BodyScanner extends ScopeScanner {
     this.method = ctx.method;
     this.decisions = new Decisions(typer, ctx);
     this.arity = new Arity(typer, ctx);
-    this.mutations = new Mutations(typer, ctx, ctx.method.tree.getBody());
   }
 
   public void run() {
@@ -48,8 +46,8 @@ public final class BodyScanner extends ScopeScanner {
     boolean inferred =
         type == null || (type instanceof IdentifierTree id && id.getName().contentEquals("var"));
     String name = tree.getName().toString();
-    ctx.declare(name, inferred ? typer.typeOf(initializer, ctx) : typer.tyOf(type, ctx), -1);
-    mutations.declared(name, initializer);
+    Ty ty = inferred ? typer.typeOf(initializer, ctx) : typer.tyOf(type, ctx);
+    mutations.declared(name, ctx.declare(name, ty, -1), initializer);
     return null;
   }
 
@@ -113,29 +111,31 @@ public final class BodyScanner extends ScopeScanner {
     ctx.pop();
     scan(tree.getCatches(), null);
     if (tree.getFinallyBlock() != null) {
-      finallyDepth++;
+      finallyDepths.push(usage.closureDepth);
       scan(tree.getFinallyBlock(), null);
-      finallyDepth--;
+      finallyDepths.pop();
     }
     return null;
   }
 
   private void closing(Tree resource, Tree block) {
-    Ty ty;
-    String key;
-    if (resource instanceof VariableTree variable) {
-      Local local = ctx.lookup(variable.getName().toString());
-      ty = local == null ? Ty.UNKNOWN : local.ty;
-      key = variable.getName().toString();
-    } else {
-      ty = typer.typeOf(resource, ctx);
-      key = typer.keyOf(resource, ctx);
-    }
-    MethodInfo close = ty.type() == null ? null : typer.lookup.method(ty.type(), "close", 0).method();
+    Local local =
+        resource instanceof VariableTree variable
+            ? ctx.lookup(variable.getName().toString())
+            : null;
+    Ty ty = resource instanceof VariableTree ? tyOf(local) : typer.typeOf(resource, ctx);
+    String key = local != null ? local.key : typer.keyOf(resource, ctx);
+    MethodInfo close =
+        ty.type() == null ? null : typer.lookup.method(ty.type(), "close", 0).method();
     if (close != null) {
-      body.calls.add(
-          new Body.CallFact(new Body.Call(close, ctx.unit.line(resource), key, true, ctx.unit.end(block))));
+      int line = ctx.unit.line(resource);
+      Body.Call call = new Body.Call(close, line, key, true, ctx.unit.end(block));
+      body.calls.add(new Body.CallFact(call));
     }
+  }
+
+  private static Ty tyOf(Local local) {
+    return local == null ? Ty.UNKNOWN : local.ty;
   }
 
   @Override
@@ -154,12 +154,19 @@ public final class BodyScanner extends ScopeScanner {
     }
     FieldInfo field = typer.fieldRef(e, ctx);
     boolean own = field != null && field.owner == ctx.owner && !field.isStatic;
-    return own && (e instanceof IdentifierTree || e instanceof MemberSelectTree) ? field.name : null;
+    return own && (e instanceof IdentifierTree || e instanceof MemberSelectTree)
+        ? field.name
+        : null;
   }
 
   @Override
   public Void visitMethodInvocation(MethodInvocationTree tree, Void unused) {
-    Calls.Resolved resolved = typer.calls.resolve(tree, ctx);
+    boolean ownCall =
+        ctx.classDepth > 0
+            && (tree.getMethodSelect() instanceof IdentifierTree
+                || tree.getMethodSelect() instanceof MemberSelectTree select
+                    && Calls.isSelf(Names.unparen(select.getExpression())));
+    Calls.Resolved resolved = ownCall ? Calls.Resolved.NONE : typer.calls.resolve(tree, ctx);
     if (resolved.target() != null) {
       record(tree, resolved, positionOf(tree));
     }
@@ -184,32 +191,13 @@ public final class BodyScanner extends ScopeScanner {
   }
 
   private void record(Tree tree, Calls.Resolved resolved, long position) {
-    boolean cleanup = finallyDepth > 0 && usage.closureDepth == 0;
-    Body.CallFact fact =
-        new Body.CallFact(
-            new Body.Call(resolved.target(), ctx.unit.lineAt(position), resolved.receiver(), cleanup, position));
+    Integer finallyDepth = finallyDepths.peek();
+    boolean cleanup = finallyDepth != null && finallyDepth == usage.closureDepth;
+    int line = ctx.unit.lineAt(position);
+    Body.Call call = new Body.Call(resolved.target(), line, resolved.receiver(), cleanup, position);
+    Body.CallFact fact = new Body.CallFact(call);
     mutations.register(tree, fact);
     body.calls.add(fact);
-  }
-
-  @Override
-  public Void visitAssignment(AssignmentTree tree, Void unused) {
-    mutations.assigned(tree.getVariable());
-    return super.visitAssignment(tree, unused);
-  }
-
-  @Override
-  public Void visitCompoundAssignment(CompoundAssignmentTree tree, Void unused) {
-    mutations.assigned(tree.getVariable());
-    return super.visitCompoundAssignment(tree, unused);
-  }
-
-  @Override
-  public Void visitUnary(UnaryTree tree, Void unused) {
-    if (Mutations.isStep(tree)) {
-      mutations.assigned(tree.getExpression());
-    }
-    return super.visitUnary(tree, unused);
   }
 
   @Override

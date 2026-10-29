@@ -47,7 +47,8 @@ public final class Calls {
     if (type == null || type.isInterface()) {
       return Resolved.NONE;
     }
-    return of(typer.lookup.constructor(type, creation.getArguments().size()), null);
+    int argc = creation.getArguments().size();
+    return of(typer.lookup.constructor(type, argc), null);
   }
 
   private static Resolved of(Lookup.Found found, String receiver) {
@@ -55,42 +56,45 @@ public final class Calls {
   }
 
   private Resolved bare(String name, int argc, Ctx c) {
-    Lookup lookup = typer.lookup;
     if (name.equals("this")) {
-      return of(lookup.constructor(c.owner, argc), null);
+      return of(typer.lookup.constructor(c.owner, argc), null);
     }
     if (name.equals("super")) {
-      typer.project.link(c.owner);
-      return c.owner.superclass == null ? Resolved.NONE : of(lookup.constructor(c.owner.superclass, argc), null);
+      TypeInfo parent = superclassOf(c.owner);
+      return parent == null ? Resolved.NONE : of(typer.lookup.constructor(parent, argc), null);
     }
     for (TypeInfo type = c.owner; type != null; type = type.outer) {
-      Lookup.Found found = lookup.method(type, name, argc);
-      if (found.ambiguous()) {
+      Lookup.Found found = typer.lookup.method(type, name, argc);
+      if (found.ambiguous() || (found.method() == null && typer.lookup.incomplete(type))) {
         return Resolved.NONE;
       }
       if (found.method() != null) {
         boolean own = type == c.owner && !found.method().isStatic;
         return new Resolved(found.method(), own ? "this" : null);
       }
-      if (lookup.incomplete(type)) {
-        return Resolved.NONE;
-      }
     }
     return staticImported(name, argc, c);
+  }
+
+  private TypeInfo superclassOf(TypeInfo type) {
+    typer.project.link(type);
+    return type.superclass;
   }
 
   private Resolved staticImported(String name, int argc, Ctx c) {
     Set<MethodInfo> candidates = new LinkedHashSet<>();
     for (String member : c.unit.staticSingle) {
       if (member.endsWith("." + name)) {
-        candidates.add(staticMethod(member.substring(0, member.length() - name.length() - 1), name, argc));
+        String owner = member.substring(0, member.length() - name.length() - 1);
+        candidates.add(staticMethod(owner, name, argc));
       }
     }
     for (String base : c.unit.staticOnDemand) {
       candidates.add(staticMethod(base, name, argc));
     }
     candidates.remove(null);
-    return candidates.size() == 1 ? new Resolved(candidates.iterator().next(), null) : Resolved.NONE;
+    boolean single = candidates.size() == 1;
+    return single ? new Resolved(candidates.iterator().next(), null) : Resolved.NONE;
   }
 
   private MethodInfo staticMethod(String type, String name, int argc) {
@@ -105,30 +109,43 @@ public final class Calls {
   private Resolved qualified(MemberSelectTree select, int argc, Ctx c) {
     String name = select.getIdentifier().toString();
     Tree base = Names.unparen(select.getExpression());
-    Lookup lookup = typer.lookup;
-    if (base instanceof IdentifierTree identifier) {
-      String word = identifier.getName().toString();
-      if (word.equals("super")) {
-        typer.project.link(c.owner);
-        return c.owner.superclass == null ? Resolved.NONE : of(lookup.method(c.owner.superclass, name, argc), "this");
-      }
-      if (word.equals("this")) {
-        return of(lookup.method(c.owner, name, argc), "this");
-      }
+    TypeInfo self = selfReceiver(base, c);
+    if (self != null) {
+      String receiver = base instanceof IdentifierTree ? "this" : null;
+      return of(typer.lookup.method(self, name, argc), receiver);
     }
-    if (base instanceof MemberSelectTree outerThis && outerThis.getIdentifier().contentEquals("this")) {
-      TypeInfo outer = typer.project.resolveTree(outerThis.getExpression(), c.site());
-      return outer == null ? Resolved.NONE : of(lookup.method(outer, name, argc), null);
+    if (isSelf(base)) {
+      return Resolved.NONE;
     }
     TypeInfo named = typer.typeNameOf(base, c);
     if (named != null) {
-      Lookup.Found found = lookup.method(named, name, argc);
-      return found.method() != null && found.method().isStatic ? new Resolved(found.method(), null) : Resolved.NONE;
+      MethodInfo found = typer.lookup.method(named, name, argc).method();
+      return found != null && found.isStatic ? new Resolved(found, null) : Resolved.NONE;
     }
-    Ty baseType = typer.typeOf(base, c);
-    if (baseType.type() == null) {
-      return Resolved.NONE;
-    }
-    return of(lookup.method(baseType.type(), name, argc), typer.keyOf(base, c));
+    TypeInfo type = typer.typeOf(base, c).type();
+    return type == null
+        ? Resolved.NONE
+        : of(typer.lookup.method(type, name, argc), typer.keyOf(base, c));
+  }
+
+  public static boolean isSelf(Tree base) {
+    boolean word =
+        base instanceof IdentifierTree identifier
+            && (identifier.getName().contentEquals("this")
+                || identifier.getName().contentEquals("super"));
+    return word
+        || (base instanceof MemberSelectTree select
+            && select.getIdentifier().contentEquals("this"));
+  }
+
+  private TypeInfo selfReceiver(Tree base, Ctx c) {
+    return switch (base) {
+      case IdentifierTree identifier when identifier.getName().contentEquals("super") ->
+          superclassOf(c.owner);
+      case IdentifierTree identifier when identifier.getName().contentEquals("this") -> c.owner;
+      case MemberSelectTree select when select.getIdentifier().contentEquals("this") ->
+          typer.project.resolveTree(select.getExpression(), c.site());
+      default -> null;
+    };
   }
 }

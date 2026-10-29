@@ -25,7 +25,8 @@ public final class References {
       return type.isInterface() ? null : typer.lookup.onlyConstructor(type, arity);
     }
     boolean unbound = typer.typeNameOf(base, c) != null;
-    return typer.lookup.onlyMethod(type, tree.getName().toString(), new Lookup.Shape(arity, unbound));
+    return typer.lookup.onlyMethod(
+        type, tree.getName().toString(), new Lookup.Shape(arity, unbound));
   }
 
   private TypeInfo qualifier(Tree base, Ctx c) {
@@ -42,7 +43,10 @@ public final class References {
   }
 
   public List<MethodInfo> table(FieldInfo field) {
-    if (field == null || !field.isStatic || !field.isFinal() || field.tree.getInitializer() == null) {
+    if (field == null
+        || !field.isStatic
+        || !field.isFinal()
+        || field.tree.getInitializer() == null) {
       return List.of();
     }
     return tables.computeIfAbsent(field, this::scan);

@@ -56,17 +56,24 @@ export function markPublished(types, modules) {
   );
 }
 
+function programFacts({ projectRoot, files, work, target }) {
+  if (files.length === 0) {
+    return { modules: [], types: [], callables: [] };
+  }
+  const fileList = path.join(work, 'files.txt');
+  writeFileSync(fileList, files.join('\n'));
+  runDesignProgram({ classes: compileDesignProgram(), projectRoot, fileList, output: target });
+  return JSON.parse(readFileSync(target, 'utf8'));
+}
+
 export function produceDesignFacts({ projectRoot, modules, output }) {
   const files = designSourceFiles(projectRoot, modules);
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-design-'));
   try {
-    const fileList = path.join(work, 'files.txt');
     const target = output ?? path.join(work, 'design-facts.json');
     mkdirSync(path.dirname(target), { recursive: true });
     rmSync(target, { force: true });
-    writeFileSync(fileList, files.join('\n'));
-    runDesignProgram({ classes: compileDesignProgram(), projectRoot, fileList, output: target });
-    const facts = JSON.parse(readFileSync(target, 'utf8'));
+    const facts = programFacts({ projectRoot, files, work, target });
     const bundle = {
       ...facts,
       types: markPublished(facts.types, modules),

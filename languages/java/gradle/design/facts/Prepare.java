@@ -3,6 +3,7 @@ package nitpicker.designfacts.facts;
 import com.sun.source.tree.*;
 import java.nio.file.Path;
 import java.util.*;
+import javax.lang.model.element.Modifier;
 import nitpicker.designfacts.*;
 import nitpicker.designfacts.model.*;
 import nitpicker.designfacts.resolve.*;
@@ -19,6 +20,7 @@ public final class Prepare {
     }
     for (TypeInfo type : project.types) {
       markAccessors(type);
+      addRecordAccessors(type);
     }
     for (TypeInfo type : project.types) {
       type.designKind = kindOf(type);
@@ -35,6 +37,22 @@ public final class Prepare {
       FieldInfo field = returned == null ? null : type.field(returned);
       if (field != null && !field.isStatic) {
         method.accessorField = returned;
+      }
+    }
+  }
+
+  private static void addRecordAccessors(TypeInfo type) {
+    if (!type.isRecord()) {
+      return;
+    }
+    for (FieldInfo field : List.copyOf(type.fields)) {
+      if (!field.isStatic && !type.declaresGetter(field.name)) {
+        Set<Modifier> flags = Set.of(Modifier.PUBLIC);
+        int line = type.unit.line(field.tree);
+        Tree returned = field.tree.getType();
+        MethodInfo.Getter getter =
+            new MethodInfo.Getter(field.name, returned, field.name, flags, line);
+        type.methods.add(new MethodInfo(type, getter));
       }
     }
   }
@@ -61,7 +79,7 @@ public final class Prepare {
 
   private static String kindOf(TypeInfo type) {
     return switch (type.kind()) {
-      case INTERFACE -> "interface";
+      case INTERFACE, ANNOTATION_TYPE -> "interface";
       case ENUM -> "enum";
       case RECORD -> "data";
       case CLASS -> behaves(type) ? "class" : "data";
@@ -91,8 +109,11 @@ public final class Prepare {
   }
 
   private static boolean isSetter(MethodInfo method) {
-    if (method.tree == null || !method.name.startsWith("set") || method.params.size() != 1
-        || method.tree.getBody() == null || method.tree.getBody().getStatements().size() != 1) {
+    if (method.tree == null
+        || !method.name.startsWith("set")
+        || method.params.size() != 1
+        || method.tree.getBody() == null
+        || method.tree.getBody().getStatements().size() != 1) {
       return false;
     }
     StatementTree statement = method.tree.getBody().getStatements().get(0);
@@ -110,10 +131,11 @@ public final class Prepare {
       method.id = idOf(method, counts, false);
       ids.merge(method.id, 1, Integer::sum);
     }
+    Map<String, Integer> seen = new HashMap<>();
     for (MethodInfo method : type.methods) {
-      if (ids.get(method.id) > 1) {
-        method.id = idOf(method, counts, true);
-      }
+      String written = ids.get(method.id) > 1 ? idOf(method, counts, true) : method.id;
+      int ordinal = seen.merge(written, 1, Integer::sum);
+      method.id = ordinal == 1 ? written : written + "~" + ordinal;
     }
   }
 

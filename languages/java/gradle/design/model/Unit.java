@@ -25,19 +25,23 @@ public final class Unit {
     this.pkg = tree.getPackageName() == null ? "" : tree.getPackageName().toString();
     boolean lombokImport = false;
     for (ImportTree item : tree.getImports()) {
-      String name = item.getQualifiedIdentifier().toString();
-      lombokImport |= name.startsWith("lombok.");
-      boolean wildcard = name.endsWith(".*");
-      String base = wildcard ? name.substring(0, name.length() - 2) : name;
-      if (item.isStatic()) {
-        (wildcard ? staticOnDemand : staticSingle).add(base);
-      } else if (wildcard) {
-        onDemand.add(base);
-      } else {
-        single.put(base.substring(base.lastIndexOf('.') + 1), base);
-      }
+      lombokImport |= addImport(item);
     }
     this.lombok = lombokImport;
+  }
+
+  private boolean addImport(ImportTree item) {
+    String name = item.getQualifiedIdentifier().toString();
+    boolean wildcard = name.endsWith(".*");
+    String base = wildcard ? name.substring(0, name.length() - 2) : name;
+    if (item.isStatic()) {
+      (wildcard ? staticOnDemand : staticSingle).add(base);
+    } else if (wildcard) {
+      onDemand.add(base);
+    } else {
+      single.put(base.substring(base.lastIndexOf('.') + 1), base);
+    }
+    return name.startsWith("lombok.");
   }
 
   public int line(Tree node) {
@@ -59,6 +63,7 @@ public final class Unit {
   public String text(Tree node) {
     long from = start(node);
     long to = end(node);
-    return from < 0 || to < from || to > source.length() ? "" : source.substring((int) from, (int) to);
+    boolean outside = from < 0 || to < from || to > source.length();
+    return outside ? "" : source.substring((int) from, (int) to);
   }
 }

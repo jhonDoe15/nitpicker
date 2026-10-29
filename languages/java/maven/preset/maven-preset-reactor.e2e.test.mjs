@@ -2,7 +2,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rules.mjs';
-import { writeEscape } from '../../adapters/design/test-support/escape-sources.mjs';
+import {
+  POOL_PROTOCOL,
+  writeEscape,
+  writePool,
+} from '../../adapters/design/test-support/escape-sources.mjs';
 import { collectJavaFindings, runJavaDiff } from '../../adapters/java-diff.mjs';
 import { commitBranch, runGitIn } from '../../adapters/test-support/gradle-e2e.mjs';
 import {
@@ -76,9 +80,13 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       owner: { root: 'core', package: 'demo.core' },
       caller: { root: 'app', package: 'demo.app' },
     });
+    const leak = writePool(project, {
+      owner: { root: 'core', package: 'demo.core' },
+      caller: { root: 'app', package: 'demo.app' },
+    });
     const findings = collectJavaFindings(project, {
       maven,
-      policy: { testSeconds: { unitTestSeconds: -1 } },
+      policy: { testSeconds: { unitTestSeconds: -1 }, protocols: [POOL_PROTOCOL] },
     });
     const facts = JSON.parse(
       readFileSync(path.join(project, 'target/nitpicker/design-facts.json'), 'utf8'),
@@ -90,9 +98,15 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
     expect(facts.modules.map(({ file }) => file).toSorted()).toEqual([
       'app/src/main/java/demo/app/Main.java',
       'app/src/main/java/demo/app/Report.java',
+      'app/src/main/java/demo/app/Users.java',
+      'core/src/main/java/demo/core/AbstractRes.java',
       'core/src/main/java/demo/core/Adder.java',
       'core/src/main/java/demo/core/Ledger.java',
+      'core/src/main/java/demo/core/Pool.java',
     ]);
+    expect(
+      facts.types.find(({ id }) => id === 'core/src/main/java/demo/core/Pool.java#Pool').supertypes,
+    ).toEqual(['core/src/main/java/demo/core/AbstractRes.java#AbstractRes']);
     expect(facts.callables.find(({ id }) => id === `${main}#Main.main`)).toEqual({
       id: `${main}#Main.main`,
       file: main,
@@ -109,7 +123,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       decisions: [],
       reads: [],
     });
-    expect(findings.filter(({ rule }) => DESIGN_RULES.includes(rule))).toEqual([escape]);
+    expect(findings.filter(({ rule }) => DESIGN_RULES.includes(rule))).toEqual([escape, leak]);
   }, 180_000);
   it('fails a change only on what it adds', () => {
     const repository = copyOf(path.join(fixtures, 'multi-module'));

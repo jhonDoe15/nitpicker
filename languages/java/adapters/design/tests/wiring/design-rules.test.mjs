@@ -72,6 +72,25 @@ describe('the shared design rules over the Java facts', () => {
         ),
       ],
     ],
+    [
+      'mutators',
+      SINGLE,
+      [
+        ['either', 'lines', 'add'],
+        ['filled', 'lines', 'fill'],
+        ['iterated', 'lines', 'remove'],
+        ['ordered', 'codes', 'sort'],
+        ['sliced', 'lines', 'clear'],
+        ['sorted', 'lines', 'sort'],
+      ].map(([caller, accessor, how]) =>
+        escape(
+          ref('store/Sorting.java', `Sorting.${caller}`),
+          ref('store/Basket.java', `Basket.${accessor}`),
+          how,
+        ),
+      ),
+    ],
+    ['hierarchy', SINGLE, []],
     ['lifecycle', SINGLE, []],
     ['resolution', SINGLE, []],
     ['entries', SINGLE, []],
@@ -121,6 +140,7 @@ describe('the shared design rules over the Java facts', () => {
       [
         ['Client.deferred', 'session', 47],
         ['Client.leaked', 'session', 32],
+        ['Client.siblings', 'session', 96],
       ].map(([member, receiver, line]) => [
         'protocol-contract',
         `${ref('life/Client.java', member)}|${receiver}|unclosed:begin`,
@@ -129,4 +149,25 @@ describe('the shared design rules over the Java facts', () => {
       ]),
     );
   });
+
+  it.each(['Pool', 'AbstractRes'])(
+    'matches a contract on %s through the supertypes and accepts the inherited close of a resource',
+    (type) => {
+      const findings = designFindings({
+        projectRoot: fixtureRoot('hierarchy'),
+        listModules: () => SINGLE,
+        policy: { protocols: [{ type, open: ['acquire'], close: ['close'] }] },
+      });
+
+      expect(
+        findings.map(({ rule, identity, location }) => [rule, identity, location.line]),
+      ).toEqual([
+        [
+          'protocol-contract',
+          `${ref('kin/call/Users.java', 'Users.leaked')}|pool|unclosed:acquire`,
+          14,
+        ],
+      ]);
+    },
+  );
 });

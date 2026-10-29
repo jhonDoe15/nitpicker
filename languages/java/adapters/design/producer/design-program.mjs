@@ -12,9 +12,10 @@ const TOOL = 'DesignFacts';
 const MAIN_CLASS = 'nitpicker.designfacts.DesignFacts';
 const KEY_LENGTH = 32;
 const NOISE = /^(?:Picked up |NOTE: Picked up )/u;
+const THREAD_STACK = '-Xss32m';
 
-function versionText(command) {
-  const result = spawnSync(javaCommand(command), ['-version'], { encoding: 'utf8' });
+function versionText(command, spawn) {
+  const result = spawn(javaCommand(command), ['-version'], { encoding: 'utf8' });
   if (result.error !== undefined) {
     throw new Error(
       `${TOOL} needs a JDK, but ${command} could not run: ${result.error.message}. Set JAVA_HOME to a JDK`,
@@ -42,20 +43,20 @@ function inside(root, name) {
   return full;
 }
 
-function cacheKey(sources) {
+function cacheKey(sources, spawn) {
   const digest = createHash('sha256');
   for (const source of sources) {
     digest.update(`${path.relative(SOURCE_DIRECTORY, source).replaceAll('\\', '/')}\n`);
     digest.update(readFileSync(source));
   }
-  digest.update(`${versionText('javac')}|${versionText('java')}`);
+  digest.update(`${versionText('javac', spawn)}|${versionText('java', spawn)}`);
   return digest.digest('hex').slice(0, KEY_LENGTH);
 }
 
-export function compileDesignProgram({ sources = designSources(), cache } = {}) {
+export function compileDesignProgram({ sources = designSources(), cache, spawn = spawnSync } = {}) {
   const root = cache ?? cacheDirectory('design-facts');
   mkdirSync(root, { recursive: true });
-  const classes = inside(root, cacheKey(sources));
+  const classes = inside(root, cacheKey(sources, spawn));
   if (existsSync(classes)) {
     return classes;
   }
@@ -69,6 +70,7 @@ export function compileDesignProgram({ sources = designSources(), cache } = {}) 
       args: sources,
       cwd: SOURCE_DIRECTORY,
       accept: (result) => result.status === 0,
+      spawn,
     });
   } catch (error) {
     rmSync(staging, { recursive: true, force: true });
@@ -78,13 +80,15 @@ export function compileDesignProgram({ sources = designSources(), cache } = {}) 
   return classes;
 }
 
-export function runDesignProgram({ classes, projectRoot, fileList, output }) {
+export function runDesignProgram({ classes, projectRoot, fileList, output, spawn = spawnSync }) {
   runJava({
     tool: TOOL,
     classpath: [classes],
     mainClass: MAIN_CLASS,
+    jvmArgs: [THREAD_STACK],
     args: [output, projectRoot, fileList],
     cwd: projectRoot,
     accept: (result) => result.status === 0,
+    spawn,
   });
 }

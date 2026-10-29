@@ -38,7 +38,9 @@ public final class Decisions {
       return new Subject(ty.type().id, Names.compact(e), ty.type());
     }
     FieldInfo field = typer.fieldRef(e, ctx);
-    return field == null ? null : new Subject(field.owner.id + "." + field.name, Names.compact(e), null);
+    return field == null
+        ? null
+        : new Subject(field.owner.id + "." + field.name, Names.compact(e), null);
   }
 
   private String constant(Tree expression, Subject subject, boolean bareNames) {
@@ -46,11 +48,14 @@ public final class Decisions {
     if (subject.enumType() != null) {
       return enumConstant(e, subject.enumType(), bareNames);
     }
-    if (e instanceof UnaryTree unary && unary.getKind() == Tree.Kind.UNARY_MINUS
-        && unary.getExpression() instanceof LiteralTree literal && literal.getValue() instanceof Number) {
+    if (e instanceof UnaryTree unary
+        && unary.getKind() == Tree.Kind.UNARY_MINUS
+        && unary.getExpression() instanceof LiteralTree literal
+        && literal.getValue() instanceof Number) {
       return "-" + literal.getValue();
     }
-    if (e instanceof LiteralTree literal && literal.getValue() != null
+    if (e instanceof LiteralTree literal
+        && literal.getValue() != null
         && !(literal.getValue() instanceof Boolean)) {
       return String.valueOf(literal.getValue());
     }
@@ -62,7 +67,8 @@ public final class Decisions {
       String name = identifier.getName().toString();
       return type.cases.contains(name) && ctx.lookup(name) == null ? name : null;
     }
-    if (e instanceof MemberSelectTree select && type.cases.contains(select.getIdentifier().toString())
+    if (e instanceof MemberSelectTree select
+        && type.cases.contains(select.getIdentifier().toString())
         && typer.typeNameOf(select.getExpression(), ctx) == type) {
       return select.getIdentifier().toString();
     }
@@ -79,27 +85,33 @@ public final class Decisions {
   }
 
   private Test equality(Tree expression) {
-    Tree e = Names.unparen(expression);
-    Tree left = null;
-    Tree right = null;
-    if (e instanceof BinaryTree binary && binary.getKind() == Tree.Kind.EQUAL_TO) {
-      left = binary.getLeftOperand();
-      right = binary.getRightOperand();
-    } else if (e instanceof MethodInvocationTree call && call.getMethodSelect() instanceof MemberSelectTree select
-        && select.getIdentifier().contentEquals("equals")) {
-      if (call.getArguments().size() == 1) {
-        left = select.getExpression();
-        right = call.getArguments().get(0);
-      } else if (call.getArguments().size() == 2 && select.getExpression().toString().equals("Objects")) {
-        left = call.getArguments().get(0);
-        right = call.getArguments().get(1);
-      }
-    }
-    if (left == null) {
+    List<Tree> sides = sides(Names.unparen(expression));
+    if (sides.isEmpty()) {
       return null;
     }
-    Test forward = pair(left, right);
-    return forward != null ? forward : pair(right, left);
+    Test forward = pair(sides.get(0), sides.get(1));
+    return forward != null ? forward : pair(sides.get(1), sides.get(0));
+  }
+
+  private static List<Tree> sides(Tree e) {
+    if (e instanceof BinaryTree binary && binary.getKind() == Tree.Kind.EQUAL_TO) {
+      return List.of(binary.getLeftOperand(), binary.getRightOperand());
+    }
+    boolean equals =
+        e instanceof MethodInvocationTree call
+            && call.getMethodSelect() instanceof MemberSelectTree select
+            && select.getIdentifier().contentEquals("equals");
+    if (!equals) {
+      return List.of();
+    }
+    MethodInvocationTree call = (MethodInvocationTree) e;
+    Tree receiver = ((MemberSelectTree) call.getMethodSelect()).getExpression();
+    List<? extends ExpressionTree> arguments = call.getArguments();
+    if (arguments.size() == 1) {
+      return List.of(receiver, arguments.get(0));
+    }
+    boolean objects = arguments.size() == 2 && receiver.toString().equals("Objects");
+    return objects ? List.of(arguments.get(0), arguments.get(1)) : List.of();
   }
 
   public Test test(Tree condition, Set<Tree> consumed) {
@@ -133,6 +145,25 @@ public final class Decisions {
   }
 
   public List<Map<String, Object>> chain(IfTree head, Set<Tree> tails, Set<Tree> consumed) {
+    List<IfTree> elements = elements(head, tails);
+    List<Test> tests =
+        elements.stream().map(element -> test(element.getCondition(), consumed)).toList();
+    boolean otherwise = elements.get(elements.size() - 1).getElseStatement() != null;
+    List<Map<String, Object>> found = new ArrayList<>();
+    int index = 0;
+    while (index < tests.size()) {
+      boolean decided = tests.get(index) != null;
+      int end = decided ? runEnd(tests, index) : index + 1;
+      if (decided) {
+        boolean last = end == tests.size() && otherwise;
+        found.add(run(tests.subList(index, end), last, unit.line(elements.get(index))));
+      }
+      index = end;
+    }
+    return found;
+  }
+
+  private static List<IfTree> elements(IfTree head, Set<Tree> tails) {
     List<IfTree> elements = new ArrayList<>(List.of(head));
     Tree tail = head.getElseStatement();
     while (tail instanceof IfTree next) {
@@ -140,32 +171,21 @@ public final class Decisions {
       tails.add(next);
       tail = next.getElseStatement();
     }
-    List<Test> tests = new ArrayList<>();
-    for (IfTree element : elements) {
-      tests.add(test(element.getCondition(), consumed));
-    }
-    List<Map<String, Object>> found = new ArrayList<>();
-    int index = 0;
-    while (index < tests.size()) {
-      Test first = tests.get(index);
-      if (first == null) {
-        index++;
-        continue;
-      }
-      int end = runEnd(tests, index);
-      List<List<String>> groups = new ArrayList<>();
-      tests.subList(index, end).forEach(next -> groups.add(next.constants()));
-      Arms arms = new Arms(groups, end == elements.size() && tail != null);
-      found.add(decision(first.subject(), arms, unit.line(elements.get(index))));
-      index = end;
-    }
-    return found;
+    return elements;
+  }
+
+  private static Map<String, Object> run(List<Test> tests, boolean otherwise, int line) {
+    List<List<String>> groups = new ArrayList<>();
+    tests.forEach(next -> groups.add(next.constants()));
+    return decision(tests.get(0).subject(), new Arms(groups, otherwise), line);
   }
 
   private static int runEnd(List<Test> tests, int start) {
     Subject subject = tests.get(start).subject();
     int end = start + 1;
-    while (end < tests.size() && tests.get(end) != null && tests.get(end).subject().sameValue(subject)) {
+    while (end < tests.size()
+        && tests.get(end) != null
+        && tests.get(end).subject().sameValue(subject)) {
       end++;
     }
     return end;
@@ -206,24 +226,32 @@ public final class Decisions {
     private boolean add(CaseTree entry) {
       otherwise |= entry.getLabels().isEmpty();
       for (CaseLabelTree label : entry.getLabels()) {
-        if (label instanceof DefaultCaseLabelTree) {
-          otherwise = true;
-          continue;
-        }
-        String constant = label instanceof ConstantCaseLabelTree constantLabel
-            ? labelText(constantLabel.getConstantExpression(), subject)
-            : null;
-        if (constant == null) {
+        if (!addLabel(label)) {
           return false;
         }
-        pending.add(constant);
       }
-      boolean closes = entry.getCaseKind() == CaseTree.CaseKind.RULE || !entry.getStatements().isEmpty();
+      boolean closes =
+          entry.getCaseKind() == CaseTree.CaseKind.RULE || !entry.getStatements().isEmpty();
       if (closes && !pending.isEmpty()) {
         groups.add(pending);
         pending = new ArrayList<>();
       }
       return true;
+    }
+
+    private boolean addLabel(CaseLabelTree label) {
+      if (label instanceof DefaultCaseLabelTree) {
+        otherwise = true;
+        return true;
+      }
+      String constant =
+          label instanceof ConstantCaseLabelTree constantLabel
+              ? labelText(constantLabel.getConstantExpression(), subject)
+              : null;
+      if (constant != null) {
+        pending.add(constant);
+      }
+      return constant != null;
     }
 
     private Arms finish() {

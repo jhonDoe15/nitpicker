@@ -1,6 +1,12 @@
+import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { inModule } from '../../builds/module-path.mjs';
-import { readInside } from '../../../../shared/conventions/read-inside.mjs';
+import { moduleProject } from '../../builds/java-modules.mjs';
+import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
+
+function hasManifest(moduleDir, reportDirectory) {
+  const manifest = resolveInside(moduleDir, `${reportDirectory}/manifest.json`);
+  return manifest !== undefined && existsSync(manifest);
+}
 
 export function gradleDesignModules(report) {
   return report.modules.map((module) => ({
@@ -12,16 +18,15 @@ export function gradleDesignModules(report) {
 
 export function mavenDesignModules(projectRoot, moduleDirs, reportDirectory) {
   return moduleDirs.map((moduleDir) => {
-    const prefix = path.relative(projectRoot, moduleDir).replaceAll('\\', '/');
-    const text = readInside(moduleDir, `${reportDirectory}/manifest.json`, 'utf8');
-    if (text === undefined) {
-      throw new Error(`The design rules found no manifest.json for the Maven module ${prefix}`);
+    if (!hasManifest(moduleDir, reportDirectory)) {
+      const name = path.relative(projectRoot, moduleDir).replaceAll('\\', '/') || '.';
+      throw new Error(`The design rules found no manifest.json for the Maven module ${name}`);
     }
-    const manifest = JSON.parse(text);
+    const project = moduleProject(projectRoot, moduleDir, { reportDirectory });
     return {
-      dir: prefix,
-      sourceRoots: (manifest.sourceRoots ?? []).map((root) => inModule(prefix, root)),
-      published: manifest.published === true,
+      dir: project.qualifier,
+      sourceRoots: project.sourceRoots,
+      published: project.published,
     };
   });
 }

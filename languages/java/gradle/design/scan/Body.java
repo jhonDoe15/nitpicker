@@ -21,7 +21,8 @@ public final class Body {
     }
   }
 
-  public record Call(MethodInfo target, int line, String receiver, boolean cleanup, long position) {}
+  public record Call(
+      MethodInfo target, int line, String receiver, boolean cleanup, long position) {}
 
   public record Forward(MethodInfo target, int position) {}
 
