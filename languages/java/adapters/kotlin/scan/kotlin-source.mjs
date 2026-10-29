@@ -14,6 +14,7 @@ const BLOCK_COMMENT_MARK = /\/\*|\*\//g;
 const RAW_QUOTES = '"""';
 const TOP_LEVEL_MAIN = /(?<![\w.])fun\s+main\s*\(/g;
 const ROOT_MARKERS = [
+  /@JvmStatic\s+(?:\w+\s+)*fun\s+main\s*\(/,
   /@(?:[\w.]+\.)?SpringBootApplication\b/,
   /(?<![\w.])fun\s+Application\s*\.\s*\w+\s*\(/,
 ];

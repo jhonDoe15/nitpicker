@@ -195,7 +195,8 @@ after detekt runs, not by a path glob, so a `test` package inside the main sourc
 `ProcessBuilder` is the one way to start a process. Randomness and
 `System.currentTimeMillis` are banned in Kotlin as well, and a shell run through
 `ProcessBuilder("sh", "-c", ...)` is a [source check](#source-checks). The environment ban is lifted
-in the composition root by the gate (a file with a top-level `fun main`, an `@SpringBootApplication`
+in the composition root by the gate (a file with a top-level `fun main` or a `@JvmStatic fun main` in an
+`object` or companion object, an `@SpringBootApplication`
 class or a Ktor `fun Application.module()`), see [Frameworks](#frameworks). `print` and `println`
 stay banned everywhere, the composition root included: program output goes through a writer the
 entry point passes, and logging through the logger.
@@ -422,7 +423,8 @@ example) is one descriptive `kotlinc/lint-not-run` finding naming the first erro
 
 Spring is detected from the compile classpath (`spring-context` or `spring-boot`), Ktor from the
 source (`fun Application.module()`). What they require is not flagged: the composition root (the file
-with `fun main`, the `@SpringBootApplication` class or a Ktor module) may read `System.getenv` and
+with `fun main`, a `@JvmStatic fun main` in an `object` or companion object, the `@SpringBootApplication`
+class or a Ktor module) may read `System.getenv` and
 reference `System.out` and `System.err` (`show(System.out)`, `items.forEach(System.out::println)`);
 `runApplication<App>(*args)` and `SpringApplication.run(App::class.java, *args)` are not
 `SpreadOperator` findings in a Spring project; JPA and Spring Data entities are not asked to become
@@ -846,7 +848,7 @@ paths to files). `line-coverage` and `uncovered-method` are descriptive. Kover i
 is applied by the init script whatever the project uses, so a Kover-only project still gets coverage;
 reading Kover's own report is a follow-up only if it is wanted.
 
-The entry point needs no exclusion. A top-level `fun main` that builds the objects and passes
+The entry point needs no exclusion. A `fun main` (top-level or `@JvmStatic`) that builds the objects and passes
 `System.out` has no branch for `changed-branch-coverage` to count, `line-coverage` and
 `uncovered-method` are descriptive, and the PIT mutants of Kotlin classes never fail the gate (see
 [Mutation](#mutation-report-only-for-kotlin)). A branch in `main` itself (an `if` on `args`) is a

@@ -73,7 +73,8 @@ const BATCH_METHODS = new Set([
 const MEMBER_CALL = /\b([A-Za-z_]\w*)\s*\.\s*([A-Za-z_]\w*)\s*\(/g;
 const MESSAGE_LEVELS = new Set(['info', 'warn', 'error', 'log', 'config', 'warning', 'severe']);
 const OPERAND_MARK = /[()[\]{}+]/g;
-const STANDARD_STREAM = /(?<![\w.])(?:java\s*\.\s*lang\s*\.\s*)?System\s*\.\s*(?:out|err)(?!\w)/g;
+const STANDARD_STREAM =
+  /(?<![\w.])(?:java\s*\.\s*lang\s*\.\s*)?`?System`?\s*\??\.\s*`?(?:out|err)`?(?!\w)/g;
 export const CALL_MESSAGES = {
   LogStringConcatenation:
     'Pass values as placeholders (`log.info("user {}", user)`), or give a lambda logger the message (`logger.info { "user $user" }`), not a message built with a string template, `+` or `format`.',
@@ -196,7 +197,7 @@ export function standardStreams(scanned) {
   if (isCompositionRoot(scanned)) {
     return [];
   }
-  return [...scanned.code.matchAll(STANDARD_STREAM)].map(({ index }) => ({
+  return [...scanned.contextCode.matchAll(STANDARD_STREAM)].map(({ index }) => ({
     rule: 'StandardStreamOutsideEntryPoint',
     offset: index,
   }));
