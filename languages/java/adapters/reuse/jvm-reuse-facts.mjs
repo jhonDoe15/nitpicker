@@ -4,13 +4,20 @@ import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { baselinePathsOf } from '../../../../shared/rules/facts/baseline.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
 import { pathInside, sourceFilesUnder } from '../review-rules/java-sources.mjs';
-import { definitionKey, fileBindings, importFacts, projectIndex } from './jvm-references.mjs';
+import {
+  definitionKey,
+  fileBindings,
+  importFacts,
+  projectIndex,
+  referenceScope,
+} from './jvm-references.mjs';
 import { readJvmDefinitions } from './source/jvm-definitions.mjs';
 
 const REUSE_TOOL = 'structure';
 const REUSE_RULES = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
 const OUTSIDE_SOURCES = /^(?:\.\.(?:\/|$))|(?:^|\/)build(?:\/|$)/u;
 const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified names.';
+const NOTHING_SKIPPED = new Set();
 const UNKNOWN_BASE = { unchanged: false, definitions: [] };
 
 function sourceRootsOf(project, kotlin) {
@@ -23,7 +30,7 @@ function sourceRootsOf(project, kotlin) {
 function projectSources(projectRoot, { project, kotlin }) {
   const extensions = kotlin ? ['.java', '.kt'] : ['.java'];
   return [...new Set(sourceRootsOf(project, kotlin))]
-    .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), extensions))
+    .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), extensions, NOTHING_SKIPPED))
     .map((full) => [path.relative(projectRoot, full).replaceAll('\\', '/'), project]);
 }
 
@@ -48,7 +55,7 @@ function isPublished(project) {
 }
 
 function neutralDefinition(file, definition, context) {
-  const { start, end, owner, ...rest } = definition;
+  const { start, end, owner, supertypes, ...rest } = definition;
   return { file, ...rest, key: definitionKey(definition, context) };
 }
 
@@ -60,7 +67,11 @@ export function jvmReuseFacts(projectRoot, { projects, kotlin = false, exclude }
     parsed: parse(readFileSync(pathInside(projectRoot, file), 'utf8'), file),
   }));
   const index = projectIndex(files);
-  const bound = files.map((entry) => ({ ...entry, bindings: fileBindings(index, entry) }));
+  const bound = files.map((entry) => ({
+    ...entry,
+    bindings: fileBindings(index, entry),
+    scope: referenceScope(index, entry),
+  }));
   return {
     modules: bound.map(({ file, parsed }) => ({
       file,

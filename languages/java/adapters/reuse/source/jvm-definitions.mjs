@@ -14,7 +14,14 @@ const ANGLE_DEPTH = new Map([
 ]);
 const TYPE_KEYWORDS = new Set(['class', 'interface', 'enum', 'record', 'object']);
 const MEMBER_ACCESS = new Set(['.', '::']);
-const STATIC_OWNERS = { java: new Set(['class', 'interface']), kotlin: new Set(['object']) };
+const STATIC_OWNERS = {
+  java: new Set(['class', 'interface', 'enum']),
+  kotlin: new Set(['object']),
+};
+const COMPANION_OWNERS = new Set(['class', 'interface']);
+const SUPERTYPE_MARKS = new Set(['extends', 'implements', ':']);
+const NOT_DEFINED = new Set(['variable', 'fields']);
+const PLATFORM_MODIFIERS = ['expect', 'actual'];
 
 function parameterRanges(tokens, close, paren) {
   const ranges = [];
@@ -67,6 +74,9 @@ function signature(structure, { paren }, kotlin) {
 }
 
 function constKind(info, { language, ownerKind }) {
+  if (NOT_DEFINED.has(info.kind) || PLATFORM_MODIFIERS.some((name) => info.modifiers.has(name))) {
+    return undefined;
+  }
   if (info.kind !== 'field') {
     return info.kind;
   }
@@ -75,11 +85,28 @@ function constKind(info, { language, ownerKind }) {
   return language === 'kotlin' || javaConstant ? 'const' : undefined;
 }
 
-function staticMembers(structure, { language, owner, ownerKind, body }) {
+function supertypesOf(structure, { member, body }) {
+  const { tokens, close } = structure;
+  const header = { from: member.start, to: body.from - 1 };
+  const mark = topLevelIndexes(close, header).find((index) =>
+    SUPERTYPE_MARKS.has(tokens[index].text),
+  );
+  return mark === undefined
+    ? ''
+    : tokens
+        .slice(mark, header.to)
+        .map(({ text }) => text)
+        .join(' ');
+}
+
+function staticMembers(structure, { language, owner, ownerKind, body, supertypes }) {
   const { tokens, close } = structure;
   const rules = LANGUAGE_RULES[language];
   return rules.members(tokens, close, body).flatMap((member) => {
     const info = rules.member(tokens, close, member);
+    if (info?.name !== undefined) {
+      structure.memberNames.add(info.name);
+    }
     if (info === undefined || info.name === undefined || info.type) {
       return [];
     }
@@ -90,24 +117,27 @@ function staticMembers(structure, { language, owner, ownerKind, body }) {
     const kind = constKind(info, { language, ownerKind });
     const constructor = info.kind === 'function' && info.name === owner;
     const kept = isStatic && kind !== undefined && !constructor && !info.modifiers.has('override');
-    return kept ? [{ ...info, kind, owner, member }] : [];
+    return kept ? [{ ...info, kind, owner, member, supertypes }] : [];
   });
 }
 
-function companions(structure, { name, body }) {
+function companions(structure, { name, body, supertypes }) {
   const { tokens, close } = structure;
   return LANGUAGE_RULES.kotlin.members(tokens, close, body).flatMap((member) => {
     const info = LANGUAGE_RULES.kotlin.member(tokens, close, member);
     const inner = info?.keyword === 'object' && info.modifiers.has('companion');
     const innerBody = inner ? bodyOf(tokens, close, member) : undefined;
-    return innerBody === undefined
-      ? []
-      : staticMembers(structure, {
-          language: 'kotlin',
-          owner: name,
-          ownerKind: 'object',
-          body: innerBody,
-        });
+    if (innerBody === undefined) {
+      return [];
+    }
+    const own = supertypesOf(structure, { member, body: innerBody });
+    return staticMembers(structure, {
+      language: 'kotlin',
+      owner: name,
+      ownerKind: 'object',
+      body: innerBody,
+      supertypes: `${supertypes}|${own}`,
+    });
   });
 }
 
@@ -117,12 +147,12 @@ function typeMembers(structure, info, { language, member }) {
     return [];
   }
   const ownerKind = language === 'kotlin' ? info.keyword : info.kind;
-  const own = STATIC_OWNERS[language].has(ownerKind)
-    ? staticMembers(structure, { language, owner: info.name, ownerKind, body })
-    : [];
+  const supertypes = supertypesOf(structure, { member, body });
+  const owner = { language, owner: info.name, ownerKind, body, supertypes };
+  const own = STATIC_OWNERS[language].has(ownerKind) ? staticMembers(structure, owner) : [];
   const companion =
-    language === 'kotlin' && info.keyword === 'class'
-      ? companions(structure, { name: info.name, body })
+    language === 'kotlin' && COMPANION_OWNERS.has(info.keyword)
+      ? companions(structure, { name: info.name, body, supertypes })
       : [];
   return [...own, ...companion];
 }
@@ -133,6 +163,10 @@ function topLevel(structure, language) {
   return rules.members(tokens, close, { from: header.end, to: tokens.length }).flatMap((member) => {
     const info = rules.member(tokens, close, member);
     if (info === undefined || info.name === undefined) {
+      return [];
+    }
+    structure.memberNames.add(info.name);
+    if (info.type && constKind(info, { language }) === undefined) {
       return [];
     }
     if (info.type) {
@@ -184,7 +218,7 @@ function definition(structure, found, context) {
     usedLocally: usedLocally(context.positions, found),
     start,
     end,
-    ...(found.owner === undefined ? {} : { owner: found.owner }),
+    ...(found.owner === undefined ? {} : { owner: found.owner, supertypes: found.supertypes }),
     ...(qualifier === undefined ? {} : { qualifier }),
     ...(found.kind === 'const'
       ? { literal: isLiteral(initializer(tokens, structure.close, { from: start, to: end })) }
@@ -224,7 +258,7 @@ function declaredTypes(tokens) {
 
 export function readJvmDefinitions(source, { kotlin = false } = {}) {
   const language = kotlin ? 'kotlin' : 'java';
-  const structure = parseStructure(source, { kotlin });
+  const structure = { ...parseStructure(source, { kotlin }), memberNames: new Set() };
   const found = topLevel(structure, language);
   const signatures = new Map(found.map((item) => [item, signature(structure, item, kotlin)]));
   const mainTypes = new Set(
@@ -244,6 +278,7 @@ export function readJvmDefinitions(source, { kotlin = false } = {}) {
     tokens: structure.tokens,
     headerEnd: structure.header.end,
     declaredTypes: declaredTypes(structure.tokens),
+    memberNames: structure.memberNames,
     definitions: found.map((item) => definition(structure, item, context)),
   };
 }

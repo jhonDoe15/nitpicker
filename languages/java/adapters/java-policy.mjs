@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
 import { withLegacyInventory } from '../../../shared/legacy-inventory.mjs';
@@ -43,8 +43,11 @@ const MOVES_OPTION = '--baseline-moves-file';
 export function parseJavaRunnerArguments(argumentList) {
   const at = argumentList.indexOf(MOVES_OPTION);
   const movesFile = at === -1 ? undefined : argumentList[at + 1];
-  if (at !== -1 && (movesFile === undefined || movesFile.startsWith('--'))) {
-    throw new Error(`${MOVES_OPTION} needs a file`);
+  if (
+    at !== -1 &&
+    !(movesFile !== undefined && existsSync(movesFile) && statSync(movesFile).isFile())
+  ) {
+    throw new Error(`${MOVES_OPTION} must be a file`);
   }
   const parsed = parseRunnerArguments(at === -1 ? argumentList : argumentList.toSpliced(at, 2), {
     runner: 'java-runner.mjs',
@@ -54,6 +57,12 @@ export function parseJavaRunnerArguments(argumentList) {
   return movesFile === undefined
     ? parsed
     : { ...parsed, policy: { ...parsed.policy, baselineMovesFile: movesFile } };
+}
+
+function movesArguments(analyzer, { baselineMovesFile }) {
+  return baselineMovesFile === undefined || !GRADLE_PRESETS.includes(analyzer.name)
+    ? []
+    : [MOVES_OPTION, baselineMovesFile];
 }
 
 export function validateJavaConfig(config) {
@@ -162,9 +171,7 @@ export function configureJavaAnalyzer(analyzer, options) {
             ? []
             : ['--policy-root', context.projectPolicyRoot]),
           ...(context.baselineRoot === undefined ? [] : ['--baseline-root', context.baselineRoot]),
-          ...(context.baselineMovesFile === undefined
-            ? []
-            : ['--baseline-moves-file', context.baselineMovesFile]),
+          ...movesArguments(analyzer, context),
         ],
       };
     },

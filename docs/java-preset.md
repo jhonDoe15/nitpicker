@@ -455,7 +455,8 @@ classpath and its `test` task, and adds no test library to the project.
     `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, the structure rules (`function-lines-limit`,
     `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`),
     `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
-    `mutant-nocoverage` and `stability-direction`, and the
+    `mutant-nocoverage` and `stability-direction`, the reuse rules `duplicate-definition`,
+    `sibling-copy-edit` and `exported-name-collision` (see "Reuse rules"), and the
     [dependency and repository checks](usage.md#dependency-and-repository-checks). `function` names one method
     (`Big.run`, parameter lists ignored; matched exactly, so `run` alone does not accept
     `Big.run`) for the structure, CRAP, coverage and mutation rules, and is required for
@@ -2542,10 +2543,16 @@ object`. Instance methods are left to the duplicates check, as class methods are
   function, and a static or `object` import (`import static shop.util.Strings.trim;`) uses that
   member. These uses decide whether a definition is used (an unused one is the dead-code checks'
   business), and the free names of each definition, resolved this way, are part of its identity,
-  so two `capped()` copies that call different `limit()` helpers are not duplicates.
+  so two copies that use different library types (`java.util.Date` and `java.sql.Date`) are not
+  duplicates. A name of the copy's own file other than a literal constant (a helper, a mutable
+  field, a nested type) is its own, so two `capped()` copies that call their class's `limit()`
+  are not duplicates either; the helper is reported, if it is a copy. A static member that reads an
+  upper-case name the file does not declare (an inherited constant) also takes its class's
+  supertypes into its identity. Kotlin `expect` and `actual` declarations and `override` members
+  are left out.
 - **`exported-name-collision`.** In Java a file cannot import two classes of one simple name, so the
   collision is a class imported (or of the same package) while another class of that name is
-  written fully qualified; in Kotlin it is an `import ... as` alias, as in TypeScript. The Java
+  written fully qualified; in Kotlin it is that too, or an `import ... as` alias, as in TypeScript. The Java
   message tells to rename one or to use both by their fully qualified names. Functions are left out
   in both languages: two same-named functions imported into one file are overloads, and extension
   functions of one name on different receivers are idiomatic Kotlin.

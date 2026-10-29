@@ -113,6 +113,7 @@ describe('readJvmDefinitions', () => {
       'const Pricing.LIMIT line 22 exported literal',
       'function Pricing.twice line 22 exported',
       'enum Color line 23 exported',
+      'function Color.parse line 23 exported',
       'class Point line 24 exported',
       'function Point.origin line 24 exported',
       'type Marker line 25 exported',
@@ -149,6 +150,7 @@ describe('readJvmDefinitions', () => {
       name: 'CURRENCY',
       kind: 'const',
       owner: 'Money',
+      supertypes: '',
       qualifier: 'Money.CURRENCY',
       line: 9,
       lines: 1,
@@ -173,6 +175,44 @@ describe('readJvmDefinitions', () => {
       byName.get('second').overloads,
       byName.get('GREETING').overloads,
     ]).toEqual([true, false, true, undefined]);
+  });
+});
+
+describe('readJvmDefinitions on Kotlin layout', () => {
+  it('keeps an expression that continues on the next line in its function', () => {
+    const source = [
+      'package shop',
+      '',
+      'fun ok(x: String?) = x != null &&',
+      '    value.isNotEmpty()',
+      'fun create() =',
+      '    object : Runnable { override fun run() {} }',
+      'object Limits { const val MAX = 5 }',
+      'expect fun platform(): String',
+      'var counter = 0',
+      '',
+    ].join('\n');
+    const parsed = readJvmDefinitions(source, { kotlin: true });
+
+    expect([
+      parsed.definitions.map(({ qualifier, name, text }) => `${qualifier ?? name}: ${text}`),
+      [...parsed.memberNames].sort(),
+    ]).toEqual([
+      [
+        'ok: fun ok ( x : String ? ) = x != null && value . isNotEmpty ( )',
+        'create: fun create ( ) = object : Runnable { override fun run ( ) { } }',
+        'Limits: object Limits { const val MAX = 5 }',
+        'Limits.MAX: const val MAX = 5',
+      ],
+      ['Limits', 'MAX', 'counter', 'create', 'ok', 'platform'],
+    ]);
+  });
+
+  it('reads Java annotations after modifiers and leaves several declarators out', () => {
+    const source =
+      'class A {\n  public static @Deprecated String f() { return ""; }\n  static final int X = 1, Y = 2;\n}\n';
+
+    expect(summary(source)).toEqual(['class A line 1 exported', 'function A.f line 2 exported']);
   });
 });
 

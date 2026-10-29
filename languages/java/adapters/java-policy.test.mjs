@@ -182,25 +182,31 @@ describe('the duplicate folder list', () => {
 });
 
 describe('the baseline moves file', () => {
+  function movesFile() {
+    const root = mkdtempSync(path.join(tmpdir(), 'java-moves-'));
+    roots.push(root);
+    writeFileSync(path.join(root, 'moves.json'), '[]');
+    return path.join(root, 'moves.json');
+  }
+
   it('hands the renames of a change to the runner when the head run has them', () => {
     const configured = configureJavaAnalyzer(createJavaAnalyzer(), { exclude: ['a/**'] });
-    const { args } = configured.createInvocation({
-      ...context(),
-      baselineMovesFile: '/tmp/moves.json',
-    });
-
+    const baselineMovesFile = movesFile();
+    const { args } = configured.createInvocation({ ...context(), baselineMovesFile });
     const { policy } = parseJavaRunnerArguments(args.slice(1));
 
-    expect([policy.exclude, policy.baselineMovesFile]).toEqual([['a/**'], '/tmp/moves.json']);
+    expect([policy.exclude, policy.baselineMovesFile]).toEqual([['a/**'], baselineMovesFile]);
     expect(
       parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1)).policy,
     ).not.toHaveProperty('baselineMovesFile');
   });
 
-  it('rejects the option without a file', () => {
-    expect(() =>
-      parseJavaRunnerArguments(['--project-root', '/p', '--baseline-moves-file']),
-    ).toThrow('--baseline-moves-file needs a file');
+  it('rejects the option without an existing file', () => {
+    for (const rest of [[], ['/missing/moves.json'], [tmpdir()]]) {
+      expect(() =>
+        parseJavaRunnerArguments(['--project-root', '/p', '--baseline-moves-file', ...rest]),
+      ).toThrow('--baseline-moves-file must be a file');
+    }
   });
 });
 
