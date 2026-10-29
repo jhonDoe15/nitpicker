@@ -79,6 +79,19 @@ function formAt(sourceCode, node, step) {
   return messageId === undefined ? undefined : { messageId, node };
 }
 
+function settlesAwaitedPromise(sourceCode, outer, regionFunction) {
+  const executor = outer.find((node) => FUNCTION_TYPES.has(node.type));
+  const promise = executor?.parent;
+  return (
+    promise?.type === 'NewExpression' &&
+    promise.callee.type === 'Identifier' &&
+    promise.callee.name === 'Promise' &&
+    promise.arguments[0] === executor &&
+    promise.parent.type === 'AwaitExpression' &&
+    ownerFunction(sourceCode, promise.parent) === regionFunction
+  );
+}
+
 export function detachedForm(sourceCode, identifier, region) {
   const regionFunction = ownerFunction(sourceCode, region);
   const chain = sourceCode.getAncestors(identifier).reverse();
@@ -88,6 +101,12 @@ export function detachedForm(sourceCode, identifier, region) {
     const child = index === 0 ? identifier : path[index - 1];
     const direct = ownerFunction(sourceCode, node) === regionFunction;
     const form = formAt(sourceCode, node, { child, direct });
+    if (
+      form?.messageId === 'deferred' &&
+      settlesAwaitedPromise(sourceCode, path.slice(index + 1), regionFunction)
+    ) {
+      return undefined;
+    }
     if (form !== undefined) {
       return form === AWAITED ? undefined : form;
     }
