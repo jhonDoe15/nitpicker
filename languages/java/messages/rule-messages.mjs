@@ -3,6 +3,7 @@ import { hasExceptionRoute } from '../../../shared/messages/exception-sentence.m
 import { definedField } from '../../../shared/messages/messages.mjs';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../adapters/style/java-style.mjs';
+import { lazy } from '../../../shared/rules/finding-helpers.mjs';
 
 export const CATALOG_TOOLS = ['pmd', 'checkstyle', 'spotbugs'];
 const catalogs = lazy(() => new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)])));
@@ -20,14 +21,6 @@ const leadingFormRules = lazy(
       ]),
     ]),
 );
-
-function lazy(read) {
-  let value;
-  return () => {
-    value ??= read();
-    return value;
-  };
-}
 
 export function readCatalog(tool) {
   return JSON.parse(readFileSync(new URL(`./${tool}.json`, import.meta.url), 'utf8'));

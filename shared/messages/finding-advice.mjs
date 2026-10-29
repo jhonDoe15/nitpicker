@@ -1,25 +1,21 @@
 import { isExceptionEntry, routeFields } from './exception-sentence.mjs';
 
-export const EXCEPTION_LISTS = ['exceptions', 'python.exceptions'];
+const EXCEPTION_LISTS = ['exceptions', 'python.exceptions'];
 
 const ADVICE_KEYS = new Set(['allowedForm', 'exception', 'exceptionList']);
 
-function canonical(value) {
-  if (Array.isArray(value)) {
-    return value.map(canonical);
-  }
-  return typeof value === 'object' && value !== null
+function sortedKeys(_key, value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
     ? Object.fromEntries(
         Object.keys(value)
           .toSorted()
-          .map((key) => [key, canonical(value[key])]),
+          .map((key) => [key, value[key]]),
       )
     : value;
 }
 
-/** Whether two exception entries name the same rule, paths, reason and narrowing, in any key order. */
-export function sameExceptionEntry(left, right) {
-  return JSON.stringify(canonical(left)) === JSON.stringify(canonical(right));
+function sameExceptionEntry(left, right) {
+  return JSON.stringify(left, sortedKeys) === JSON.stringify(right, sortedKeys);
 }
 
 /** What is wrong with the advice fields of a finding against its message; empty when they agree. */
