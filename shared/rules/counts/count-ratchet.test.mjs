@@ -48,6 +48,7 @@ describe('withCountRatchets', () => {
     const [counted] = withCountRatchets(
       [finding('Function f has 3 return statements.', 4)],
       returnCount,
+      () => undefined,
     );
 
     expect(counted.identity).toBe('fp:Function f has 3 return statements.|in:|value:3');
@@ -67,6 +68,7 @@ describe('withCountRatchets', () => {
     const [counted] = withCountRatchets(
       [finding(`Function f has 3 return statements. ${route}`, 4)],
       returnCount,
+      () => undefined,
     );
 
     expect(counted.ratchet.heldMessage).not.toContain('If this is intended');
@@ -99,6 +101,7 @@ describe('withCountRatchets', () => {
           subject: `The literal appears # times; first on line ${String(line)}`,
           unit: 'repeats',
         }),
+        () => undefined,
       )[0].ratchet.key;
 
     expect(at(3)).toBe(at(17));
@@ -110,6 +113,9 @@ describe('withCountRatchets', () => {
     });
     const plain = finding('Something else.', 2);
 
-    expect(withCountRatchets([ratcheted, plain], returnCount)).toEqual([ratcheted, plain]);
+    expect(withCountRatchets([ratcheted, plain], returnCount, () => undefined)).toEqual([
+      ratcheted,
+      plain,
+    ]);
   });
 });

@@ -47,7 +47,7 @@ export function anchorAt(finding, locate) {
   return line === undefined ? undefined : locate(finding.path, line);
 }
 
-export function withCountRatchets(findings, countOf, anchorOf = () => undefined) {
+export function withCountRatchets(findings, countOf, anchorOf) {
   return findings.map((finding) => {
     const count = finding.ratchet === undefined ? countOf(finding) : undefined;
     if (count === undefined) {
