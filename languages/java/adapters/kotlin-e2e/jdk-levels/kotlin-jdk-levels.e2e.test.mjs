@@ -4,8 +4,11 @@ import {
   jdkHome,
   removeLevelProjects,
   TESTS_FAILED,
-} from '../java-e2e/test-support/jdk-levels-run.mjs';
-import { KOTLIN_POLICY, kotlinLevelFiles } from '../java-e2e/test-support/kotlin-levels-data.mjs';
+} from '../../java-e2e/test-support/jdk-levels-run.mjs';
+import {
+  KOTLIN_POLICY,
+  kotlinLevelFiles,
+} from '../../java-e2e/test-support/kotlin-levels-data.mjs';
 
 const kotlinEnabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

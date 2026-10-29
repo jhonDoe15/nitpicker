@@ -1124,10 +1124,11 @@ fits and otherwise a toolchain launcher:
   error names the tool, the side and what to install. Without `KotlinMetrics`, the structure and
   CRAP findings of the module are skipped with it.
 
-`languages/java/adapters/kotlin-e2e/kotlin-jdk-levels.e2e.test.mjs` (with `npm run test:kotlin`) runs a Kotlin
-project with a failing test at JDK 17 (Gradle on 17) and at JDK 25 (Gradle 8.14 on 21, toolchain
-25). With `NITPICKER_GRADLE_ON_JDK25` set to a Gradle that runs on JDK 25 (9.1 or newer), it also
-runs the JDK 25 project with Gradle on JDK 25, where detekt must move to an older JDK.
+`languages/java/adapters/kotlin-e2e/jdk-levels/kotlin-jdk-levels.e2e.test.mjs` (with
+`npm run test:kotlin`) runs a Kotlin project with a failing test at JDK 17 (Gradle on 17) and at JDK 25
+(Gradle 8.14 on 21, toolchain 25). With `NITPICKER_GRADLE_ON_JDK25` set to a Gradle that runs on JDK
+25 (9.1 or newer), it also runs the JDK 25 project with Gradle on JDK 25, where detekt must move to
+an older JDK.
 
 ## Failure policy
 
