@@ -1,6 +1,6 @@
 import { closingIndex, enclosingOpen, splitArguments } from '../kotlin-source.mjs';
 import { reportingCalls, withoutCalls } from '../log-calls.mjs';
-import { leadingDeclaration } from '../declaration-header.mjs';
+import { leadingDeclaration } from '../parameters/declaration-header.mjs';
 import { isRetry } from '../loops.mjs';
 
 const CATCH = /\bcatch\s*\(\s*([A-Za-z_]\w*|`[^`]+`)\s*:([^)]*)\)\s*\{/g;

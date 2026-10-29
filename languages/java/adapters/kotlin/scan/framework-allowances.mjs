@@ -5,7 +5,7 @@ import { listEntriesOf, MERGED_LISTS } from '../detekt/detekt-lists.mjs';
 import { ONE_WAY_RULES } from '../rules/kotlin-rules.mjs';
 import { isCompositionRoot } from './kotlin-scan.mjs';
 import { lineText, scanKotlinSource } from './kotlin-source.mjs';
-import { hasCallbackAnnotation, UNUSED_PARAMETER_RULE } from './declaration-header.mjs';
+import { hasCallbackAnnotation, UNUSED_PARAMETER_RULE } from './parameters/declaration-header.mjs';
 
 const FORBIDDEN_CALL = 'detekt.style.ForbiddenMethodCall';
 const SPREAD = 'detekt.performance.SpreadOperator';

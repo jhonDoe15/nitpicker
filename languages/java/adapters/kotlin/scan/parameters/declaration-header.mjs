@@ -1,4 +1,4 @@
-import { closingIndex } from './kotlin-source.mjs';
+import { closingIndex } from '../kotlin-source.mjs';
 
 export const UNUSED_PARAMETER_RULE = 'detekt.style.UnusedParameter';
 
