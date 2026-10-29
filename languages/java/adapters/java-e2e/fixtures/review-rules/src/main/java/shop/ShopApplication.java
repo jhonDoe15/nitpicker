@@ -1,5 +1,7 @@
 package shop;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -9,7 +11,12 @@ import org.springframework.context.annotation.Bean;
 
 @SpringBootApplication
 public class ShopApplication {
+  private static final boolean LOCAL = Files.exists(Path.of("application-local.yml"));
+
   public static void main(String[] args) {
+    if (LOCAL) {
+      System.setProperty("spring.profiles.active", "local");
+    }
     SpringApplication.run(ShopApplication.class, args);
   }
 

@@ -10,7 +10,6 @@ MINIMUM_PYTHON = (3, 10)
 SKIPPED_RULE = "rules-skipped"
 CHECK_FAILED_RULE = "rules-check-failed"
 ALLOWANCES_REPORT = "rules-allowances.json"
-GUARDED_PACKAGES = ("security.", "locators.")
 
 
 def load_checks():
@@ -18,7 +17,8 @@ def load_checks():
     from boundary import domain_types, guards, paths
     from checks import comments, declarations, shell, state
     from discovery import helpers, uncollected
-    from environment import environment, purity
+    from effects import import_time, reach
+    from environment import domain_imports, environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped
     from locators import lookups
@@ -37,6 +37,9 @@ def load_checks():
         environment,
         purity,
         lookups,
+        reach,
+        domain_imports,
+        import_time,
         state,
         shell,
         sql,
@@ -92,7 +95,7 @@ def parse_file(path):
 
 
 def is_guarded(module):
-    return module.__name__.startswith(GUARDED_PACKAGES)
+    return getattr(module, "GUARDED", False) or module.__name__.startswith("security.")
 
 
 def check_failure(module, context, error):

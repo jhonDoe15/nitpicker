@@ -1,5 +1,5 @@
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { cruise } from 'dependency-cruiser';
 import config from '../fixtures/dependency-cruiser.strict.fixture.config.mjs';
 

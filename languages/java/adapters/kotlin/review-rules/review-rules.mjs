@@ -1,4 +1,5 @@
 import { ENUM_PREDICATE_RULE } from '../../review-rules/enum-predicates.mjs';
+import { LOAD_EFFECT_RULE } from '../../../messages/load-effects.mjs';
 import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
 import { SERVICE_LOOKUP_RULE } from './main/service-lookups/service-lookups.mjs';
@@ -19,6 +20,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   FORWARDING_RULE,
   SINGULAR_PLURAL_RULE,
   SERVICE_LOOKUP_RULE,
+  LOAD_EFFECT_RULE,
   ...SPRING_RULES,
   JAVA_ONLY_SPRING_RULE,
 ]
