@@ -44,20 +44,23 @@ number about a function (`nitpicker/cognitive-complexity`, `complexity`, `max-li
 
 ### I/O and write rules
 
-The `nitpicker/` rules below read one shared notion of a call's effect (`database`, `remote` or
-`message`), resolved from the type checker first, then from summaries of project helpers, then
-from receiver names where no type is known. Each finding is enforceable and names the path through
-helpers.
+The first five `nitpicker/` rules below read one shared notion of a call's effect (`database`,
+`remote` or `message`), resolved from the type checker first, then from summaries of project
+helpers (type- or import-proven effects only), then from receiver names where no type is known
+(for a call written in the loop or scope itself); their findings name the path through helpers.
+`no-lazy-relation-in-loop` reads TypeORM relation declarations and `no-accumulator-spread-in-reduce`
+reads the syntax (with the type checker to tell arrays and fixed records apart). Each finding is
+enforceable.
 
 | Rule                                        | Reports                                                                                                                        |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `nitpicker/no-io-in-loop`                   | a database query per loop item (also inside `Promise.all`), a remote request per item of a sequential loop                     |
+| `nitpicker/no-io-in-loop`                   | a database query per loop item (also inside `Promise.all`), a remote request per item of a sequential loop, not a chunked call |
 | `nitpicker/no-lazy-relation-in-loop`        | a lazy TypeORM relation awaited per item of a `find`/`getMany` result that does not fetch it                                   |
 | `nitpicker/no-remote-call-in-transaction`   | a remote call, direct or through helpers, inside a transaction that also runs a query                                          |
 | `nitpicker/no-remote-call-under-lock`       | a remote call, direct or through helpers, while a mutex or distributed lock is held                                            |
 | `nitpicker/no-retry-without-idempotency`    | a Stripe create without an idempotency key, a broker publish without a deduplication id or a plain SQL `INSERT` inside a retry |
 | `nitpicker/no-dual-write`                   | a function that writes to the database and publishes a broker message at separate calls (outbox missing)                       |
-| `nitpicker/no-accumulator-spread-in-reduce` | an accumulator copied on every step of `reduce` or of a loop (`acc = [...acc, x]`, `acc.concat(x)`)                            |
+| `nitpicker/no-accumulator-spread-in-reduce` | an accumulator copied on every step of `reduce` or of a loop (`acc = [...acc, x]`, an array's `acc.concat(x)`)                 |
 
 ## Entry points
 

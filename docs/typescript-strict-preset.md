@@ -366,46 +366,72 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `better-sqlite3`, `@aws-sdk/client-dynamodb` and similar) is a query, and one from `fetch`,
   `node:http`/`https`, `axios`, `got`, `undici`, `ky`, `superagent`, `@grpc/grpc-js` or another
   `@aws-sdk` client is a request, when it returns a promise or takes a callback (so
-  `repository.create(...)`, which only builds an entity, is not one). Sequelize association getters
-  (`order.getCustomer()`) are typed by `sequelize` and count as queries. A call to a project
-  function or method counts when its body does, through up to four helpers, and the message names
-  the path (`` `loadOrder()`, which calls `pool.query()` ``); a method declared on a type
-  (`type OrderStore = { find(...) }`) is judged by the classes and object literals that implement it. Only
-  where the type is unknown (`any`, an untyped module, a file the type checker does not see) are
-  the receiver names used: `find*`/`save*`/`query*`-style methods (`get` itself, `getById`,
-  `getAll`) on a receiver whose name ends in `repo`, `repository`, `dao`, `db`, `prisma`, `pool`,
-  `connection`, `redis` (a query), `client` (a query for SQL-style methods such as `query`,
-  otherwise a request), `http`, `api` or `gateway` (a request); a project type named like a
+  `repository.create(...)`, which only builds an entity, is not one). A query builder of `knex`,
+  `mongoose`, `kysely`, `objection` or `drizzle-orm` counts only where the query runs: the call is
+  awaited, `then`-ed, returned, pushed or passed to `Promise.all`, or is a terminal method (`exec`,
+  `first`, `execute`, `getMany`, `getOne` and similar), so adding `query.where(...)` filters in a
+  loop is not reported. Sequelize association getters (`order.getCustomer()`) are typed by
+  `sequelize` and count as queries. A call to a project function or method counts when its body
+  does, through up to four helpers, and the message names the shortest path
+  (`` `loadOrder()`, which calls `pool.query()` ``); overloads, members of an object literal
+  (`{ load }`) and methods inherited from a base class are followed, and a method declared on a
+  type (`type OrderStore = { find(...) }`) is judged by the classes and object literals that
+  implement it outside test files (`*.test.*`, `*.spec.*`, `test/`, `__tests__/`, `__mocks__/`,
+  `test-support/`, `fixtures/` and the layout's test roots), so a test fake does not hide the real
+  implementation. A helper's callback counts only when it runs during the call: iteration methods,
+  `then`/`catch`/`finally`, `new Promise`, transaction and lock callbacks and retry wrappers; a
+  handler registered with `on`, `setTimeout` or a router runs later and is not counted. Only where
+  the type is unknown (`any`, an untyped module, a file the type checker does not see, or a member
+  declared without a body that nothing implements) are the receiver names used, and only for a
+  call written in the loop itself (never through a helper): `find*`/`save*`/`query*`-style methods
+  (`get` itself, `getById`, `getAll`) on a receiver whose name ends in `repo`, `repository`, `dao`,
+  `db`, `database`, `prisma`, `connection`, `knex`, `redis`, `sql`, `pg` or `mongo` (a query),
+  `pool` (a query for `query`, `connect` and `execute` only), `client` (a query when another word of
+  the name is one of those or the method is SQL-style, such as `query`, otherwise a request), `http`,
+  `axios`, `api` or `gateway` (a request); `find`, `filter`, `some`, `every` and `map` with a
+  function argument search a collection and are never a query, and a project type named like a
   repository whose method does no I/O is not reported. A query is reported also inside
   `Promise.all(items.map(...))`, a `const` holding `items.map(...)` that is only passed to
   `Promise.all`, `allSettled`, `any` or `race`, or an array the loop only `push`es un-awaited calls
   into before passing it to one of them: running them concurrently still sends one query per item.
   Fetch or write them in one query (`findByIds`, `findAllById`, `createMany`, `insertMany`,
-  `WHERE id IN (...)`). A request is reported in a sequential loop only; use the API's batch
-  endpoint, or bounded concurrency (`p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over
-  fixed-size chunks). Broker publishes and job enqueues (`kafkajs`, `amqplib`, SQS `SendMessage`,
-  SNS `Publish`, `@google-cloud/pubsub`, `nats`, BullMQ `queue.add`) are not reported: one publish
-  per item is the protocol. Paging, cursor and polling loops (the loop condition reads a variable
-  the body assigns, as in
+  `WHERE id IN (...)`); a Redis command is told to use `mget`/`mset`/`hmget` or a `pipeline()`. A
+  request is reported in a sequential loop only; use the API's batch endpoint, or bounded
+  concurrency (`p-limit`, `p-map` with `{ concurrency }`, or `Promise.all` over fixed-size chunks).
+  A call that takes a whole chunk of the items is the batch form and is not reported: its argument
+  uses the element of a loop over chunks (an iterable named like `chunk(rows, 500)`, `_.chunk`,
+  `chunks` or `batches`, a typed array of arrays, or a `const` holding `rows.slice(...)` in the
+  loop body), as in `await prisma.user.createMany({ data: part })` or
+  `await repo.findBy({ id: In(part) })`. Broker publishes and job enqueues (`kafkajs`, `amqplib`,
+  SQS `SendMessage`, SNS `Publish`, `@google-cloud/pubsub`, `nats`, BullMQ `queue.add`) are not
+  reported: one publish per item is the protocol. Paging, cursor and polling loops (the loop
+  condition reads a variable the body assigns, as in
   `do { page = await repo.findPage(cursor); cursor = page.next; } while (cursor)`; stepping an index with `i += 1`, `i++` or `i = i + 1` does not count) and retries (a
   `try` directly in the loop body that returns or breaks on success, with a `catch` that lets the
   loop go on) are not reported, and neither are file system calls (`node:fs`, `node:fs/promises`):
   one read or write per file has no batch form, as in the Python and Java presets. One chain
   (`db.select().from(t).where(...)`) is reported once.
 - `nitpicker/no-accumulator-spread-in-reduce` (all production code): `reduce` callbacks do not
-  spread their accumulator (`{ ...acc, [id]: x }`, `[...acc, x]`), and a loop or iteration callback
-  does not reassign a variable declared outside it from a copy of itself (`acc = [...acc, x]`,
-  `acc = [x, ...acc]`, `acc = { ...acc, [k]: v }`, `acc = acc.concat(x)`): each step copies it, so
-  the work grows with the square of the list. Use `Object.fromEntries(xs.map(...))`,
-  `Object.groupBy`, `Map.groupBy` or `flatMap`, or push into an array (or `set` into a `Map`)
-  created before the loop. An object accumulator whose type has a fixed set of keys
-  (`Record<Status, number>`) is not reported: copying it costs the same on every step.
+  spread their accumulator (`{ ...acc, [id]: x }`, `[...acc, x]`) or `concat` onto it
+  (`acc.concat([x])`), and a loop or iteration callback does not reassign a variable declared
+  outside it from a copy of itself (`acc = [...acc, x]`, `acc = [x, ...acc]`,
+  `acc = { ...acc, [k]: v }`, `acc = acc.concat(x)`): each step copies it, so the work grows with
+  the square of the list. Use `Object.fromEntries(xs.map(...))`, `Object.groupBy`, `Map.groupBy`
+  or `flatMap`, or push into an array (or `set` into a `Map`) created before the loop. An object
+  accumulator whose type has a fixed set of keys (`Record<Status, number>`) is not reported:
+  copying it costs the same on every step. `concat` counts only on an array: with the type checker
+  the accumulator's type must be an array or a tuple (a string's `concat` is not reported);
+  without it, the variable or the `reduce` start value must be an array literal.
 - `nitpicker/no-lazy-relation-in-loop` (all production code, needs the type checker):
   `await item.relation` in a loop or iteration callback over the result of a TypeORM `find`,
-  `findAndCount`, `findBy`, `findAndCountBy` or query builder `getMany` in the same function, where
-  `relation` is declared lazy (`@ManyToOne(() => Customer, { lazy: true })` or a relation property
-  typed `Promise<T>`), is reported: each item runs one more query. Fetch it in that query: name it
-  in `relations` (`relations: { customer: true }` or `['customer']`) or join it with
+  `findAndCount`, `findBy`, `findAndCountBy` (on a repository, or on an `EntityManager` with the
+  entity first: `manager.find(Order, options)`) or query builder `getMany` in the same function,
+  where `relation` is declared lazy (`@ManyToOne(() => Customer, { lazy: true })`, a relation
+  property typed `Promise<T>`, or an `EntitySchema` relation with `lazy: true`, in TypeScript or
+  JavaScript), is reported: each item runs one more query. An `EntitySchema` relation is matched
+  by the schema's type argument or `name`, or by its relation name when the item's type is unknown
+  (`any`, `ObjectLiteral`). Fetch it in that query: name it in `relations`
+  (`relations: { customer: true }` or `['customer']`) or join it with
   `leftJoinAndSelect('order.customer', 'customer')`. Only proven cases are reported: a collection
   of unknown origin (a parameter, a field), options that are not a literal, and a query builder
   that does not start from `createQueryBuilder` in the same chain are not. Prisma has no lazy
@@ -414,46 +440,66 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
 - `nitpicker/no-remote-call-in-transaction` (all production code): a remote call (HTTP, gRPC, a
   cloud SDK call that is not a store or a broker), direct or through project helpers (the message
   names the path), inside an open transaction is reported when the transaction also runs a query,
-  which proves it holds a connection: the callback of Prisma's interactive `$transaction`, and of
-  `transaction(...)`/`transactional(...)` on knex, TypeORM, Sequelize, Drizzle or MikroORM (a call
-  on the callback's parameter counts as a query), or the calls between `startTransaction()`,
-  `beginTransaction()` or an awaited `transaction()` without a callback and the next `commit`,
-  `commitTransaction`, `rollback` or `rollbackTransaction`. The connection stays held for the
-  remote latency, so the pool runs dry under load. Make the remote call before the transaction
-  starts or after it commits; when its side effect must match the transaction's outcome, write an
-  outbox row inside the transaction and send it from a worker. Broker publishes are
-  `nitpicker/no-dual-write`'s.
+  which proves it holds a connection. Transactions are the callback of Prisma's interactive
+  `$transaction` and of `transaction(...)`/`transactional(...)`, and the calls between a begin
+  (`startTransaction()`, `beginTransaction()`, an awaited `transaction()` without a callback, or
+  SQL `BEGIN`/`START TRANSACTION` text) and the next `commit`, `commitTransaction`, `rollback`,
+  `rollbackTransaction` or SQL `COMMIT`/`ROLLBACK`, including calls in callbacks that run there
+  (`await Promise.all(items.map(() => axios.post(...)))`). With the type checker a begin must be
+  declared by a database package (TypeORM `QueryRunner`, Sequelize, knex, `pg`), so an APM
+  `apm.startTransaction('job')` is not one, a callback opener must be declared by a database
+  package or by the project, and the proof is a query recognized in the transaction; without it,
+  any receiver counts and a call on the callback's parameter also proves the connection. A
+  handler registered inside the transaction (`setTimeout`, `on`) runs later and is not judged. The
+  connection stays held for the remote latency, so the pool runs dry under load. Make the remote
+  call before the transaction starts or after it commits; when its side effect must match the
+  transaction's outcome, write an outbox row inside the transaction and send it from a worker.
+  Broker publishes are `nitpicker/no-dual-write`'s.
 - `nitpicker/no-remote-call-under-lock` (all production code): a remote call, direct or through
-  helpers, while a lock is held: the callback of async-mutex `runExclusive`, async-lock
-  `acquire(key, fn)`, `navigator.locks.request` and redlock `using`, or the calls between
-  `await mutex.acquire()` (a receiver named like a lock, mutex or semaphore) and the next
-  `release()`/`unlock()`. Every waiter queues behind the remote latency. Make the remote call
-  before taking the lock or after releasing it and keep only the shared-state change under it.
+  helpers, while a lock is held: the callback of `runExclusive`, async-lock `acquire(key, fn)`,
+  `navigator.locks.request` and redlock `using`, or the calls between `await lock.acquire()` and
+  the next `release()`/`unlock()`, including calls in callbacks that run there. With the type
+  checker the lock is decided by its type: an async-mutex `Mutex`, a `Semaphore` constructed with
+  one permit, async-lock, redlock and `navigator.locks` are locks, while a `Semaphore` with more
+  permits bounds concurrency (`limiter.runExclusive(() => axios.get(url))` is the bounded form
+  `nitpicker/no-io-in-loop` asks for) and is not reported; receiver names (`lock`, `mutex`,
+  `semaphore`, `redlock`, or `runExclusive`) decide only when the type is unknown or declared by
+  the project. Every waiter queues behind the remote latency. Make the remote call before taking
+  the lock or after releasing it and keep only the shared-state change under it.
 - `nitpicker/no-retry-without-idempotency` (all production code): a write with no idempotency
   contract, direct or through project helpers, inside a retry is reported, since a timeout after
   the server accepted the write makes the retry run it twice. Retries are `p-retry`, `async-retry`,
-  `exponential-backoff` `backOff`, a cockatiel policy's `execute` (the policy built in the same
-  expression or held in a `const`), and the hand-written retry loop that
-  `nitpicker/no-io-in-loop` exempts (a `try` in the loop that leaves on success while its `catch`
-  goes on). The supported writes are: a Stripe `create` without `{ idempotencyKey }` in its request
-  options; a broker publish (`kafkajs`, `amqplib`, `@google-cloud/pubsub`, `nats` without a
-  JetStream `msgID`, BullMQ `add` without `jobId`, SQS `SendMessage` or SNS `Publish` without
-  `MessageDeduplicationId`); and SQL `INSERT` text without `ON CONFLICT`, `ON DUPLICATE KEY UPDATE`,
-  `INSERT IGNORE` or `INSERT OR IGNORE`/`REPLACE` sent through a recognized database call. Options
-  that are not a literal count as a contract, an HTTP `POST` alone is not reported, and other writes
-  are not judged. Give the write a stable idempotency key derived from the request, a provider
+  `exponential-backoff` `backOff` (imported, required, or loaded with `import x = require(...)`),
+  a cockatiel policy's `execute` (the policy built in the same expression or held in a `const`),
+  and the hand-written retry loop that `nitpicker/no-io-in-loop` exempts (a `try` in the loop that
+  leaves on success while its `catch` goes on); a retried function passed by name or as
+  `this.send.bind(this)` is followed with the type checker. The supported writes are: a Stripe
+  `create` without `{ idempotencyKey }` in its request options; a broker publish (`kafkajs`,
+  `amqplib`, `@google-cloud/pubsub`, `nats` without a JetStream `msgID`, BullMQ `add` without
+  `jobId`, SQS `SendMessage` or SNS `Publish` without `MessageDeduplicationId`); and SQL `INSERT`
+  text without `ON CONFLICT`, `ON DUPLICATE KEY UPDATE`, `INSERT IGNORE` or
+  `INSERT OR IGNORE`/`REPLACE` sent through a recognized database call. Options that are not a
+  literal count as a contract, an HTTP `POST` alone is not reported, and other writes are not
+  judged. Give the write a stable idempotency key derived from the request, a provider
   deduplication id, an upsert, or retry only the read.
 - `nitpicker/no-dual-write` (all production code): a function that writes to the database
   (`save`, `insert`, `update`, `upsert`, `delete`, `remove`, `destroy`, `create`, `persist`, Redis
   `set`/`hset`/`lpush`-style commands, DynamoDB `Put`/`Update`/`Delete` commands, SQL `INSERT`,
-  `UPDATE`, `DELETE` or `MERGE` text) at one call and publishes a broker message at another, each
-  direct or through helpers, is reported at the publish. A helper call that does both counts for
-  neither, so only the lowest function that does both is reported; a function defined inside
-  another is judged on its own, while callbacks passed to a call (a transaction callback) belong to
-  the function that passes them. A publish inside a Sequelize `transaction.afterCommit(...)` hook
-  gets its own message: it no longer publishes a rolled-back change, but a crash after the commit
-  still loses the message. Write the message to an outbox table in the same transaction and let a
-  relay publish it, or use change data capture or a database-backed queue.
+  `UPDATE`, `DELETE`, `MERGE` or `UPSERT` text) at one call and publishes a broker message at
+  another, each direct or through helpers, is reported at the publish. A helper call that does
+  both counts for neither, so only the lowest function that does both is reported. Each function
+  is judged on its own, and so is the module's top level, except a callback that runs during the
+  call it is passed to (iteration methods, `then`/`catch`/`finally`, `new Promise`, transaction and
+  lock callbacks, retry wrappers, `afterCommit`), which belongs to the function that passes it: a
+  route handler or an event listener is its own unit, so two handlers registered by one function,
+  one writing and one publishing, are not a dual write, and a handler that does both is. The
+  outbox relay is not reported: a publish inside a loop over rows read from the database, that
+  uses the row, followed in the loop by a write that uses the same row (marking it sent). A
+  publish inside a Sequelize `transaction.afterCommit(...)` hook, or after an awaited transaction
+  callback or a `commit` that every write is inside, gets its own message: it no longer publishes
+  a rolled-back change, but a crash after the commit still loses the message. Write the message to
+  an outbox table in the same transaction and let a relay publish it, or use change data capture
+  or a database-backed queue.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
