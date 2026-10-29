@@ -47,8 +47,7 @@ def runProcess = { String name, List<String> command, File directory ->
 }
 
 def kotlinPsiKeys = [] as Set
-def kotlinCallerGapList = []
-def kotlinCallerGapsRead = false
+def kotlinBuildFacts = [:]
 def gradleJavac = {
     def bin = new File(System.getProperty('java.home'), 'bin')
     def javac = ['javac', 'javac.exe'].collect { new File(bin, it) }.find { it.isFile() }
@@ -87,33 +86,88 @@ def kotlinPsiClasses = { project, String compiler ->
     classes
 }
 
+def projectPathOf = { dependency ->
+    dependency.respondsTo('getPath') ? dependency.path : dependency.dependencyProject.path
+}
+
+def projectDependencyClosure = { Project root ->
+    def direct = root.allprojects.collectEntries { project ->
+        [project.path, project.configurations.collectMany { configuration ->
+            configuration.dependencies.withType(ProjectDependency).collect { projectPathOf(it) }
+        }.toSet()]
+    }
+    direct.collectEntries { path, ignored ->
+        def seen = [] as Set
+        def pending = new ArrayDeque(direct[path])
+        while (!pending.isEmpty()) {
+            def next = pending.poll()
+            if (next != path && seen.add(next)) {
+                pending.addAll(direct[next] ?: [])
+            }
+        }
+        [path, seen.sort()]
+    }
+}
+
+def callerSources = { Project project, sourceSet ->
+    def kotlin = sourceSet instanceof ExtensionAware ? sourceSet.extensions.findByName('kotlin') : null
+    def dirs = (sourceSet.allSource.srcDirs + (kotlin instanceof SourceDirectorySet ? kotlin.srcDirs : []))
+    dirs.findAll { it.exists() }.collectMany { project.fileTree(it) { include '**/*.kt', '**/*.java' }.files }
+}
+
+def holdsTests = { Project project, sourceSet ->
+    def suites = project.extensions.findByName('testing')?.suites?.names ?: []
+    def testClassDirs = project.tasks.withType(Test).collectMany { it.testClassesDirs.files }
+    sourceSet.name.toLowerCase().contains('test') || sourceSet.name.toLowerCase().contains('jmh') ||
+        suites.contains(sourceSet.name) || sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) }
+}
+
+def includedBuildReach = { Project root, build, Map dependencies ->
+    def scripts = root.fileTree(build.projectDir) {
+        include '**/*.gradle', '**/*.gradle.kts', '**/*.versions.toml'
+        exclude '**/build/**', '**/.gradle/**', '**/node_modules/**'
+    }.files.collect { it.getText('UTF-8') }.join('\n')
+    def used = root.allprojects.findAll { project ->
+        project.group.toString() != '' && scripts.contains("${project.group}:${project.name}".toString())
+    }.collect { it.path }
+    (used + used.collectMany { dependencies[it] }).unique().sort()
+}
+
 def kotlinCallerGaps = { Project root ->
-    synchronized (kotlinPsiKeys) {
-        if (!kotlinCallerGapsRead) {
+    synchronized (kotlinBuildFacts) {
+        if (kotlinBuildFacts.isEmpty()) {
+            def dependencies = projectDependencyClosure(root)
+            def gaps = []
             def kotlinLike = ['org.jetbrains.kotlin.android', 'org.jetbrains.kotlin.multiplatform',
                 'com.android.application', 'com.android.library']
             root.allprojects.each { other ->
+                def reach = dependencies[other.path]
                 if (kotlinLike.any { other.plugins.hasPlugin(it) }) {
-                    kotlinCallerGapList << "the Android or Multiplatform project ${other.path}".toString()
-                } else if (other.plugins.hasPlugin('org.jetbrains.kotlin.jvm')) {
+                    gaps << [label: "the Android or Multiplatform project ${other.path}".toString(), reaches: reach]
+                } else if (other.plugins.hasPlugin('java')) {
                     if (!other.projectDir.toPath().startsWith(analysisRoot.toPath())) {
-                        kotlinCallerGapList << "the project ${other.path} outside the analysis root".toString()
-                    }
-                    other.kotlin.sourceSets.findAll { !(it.name in ['main', 'test']) }.each { set ->
-                        def sources = set.kotlin.srcDirs.findAll { it.exists() }.collectMany { dir ->
-                            other.fileTree(dir) { include '**/*.kt', '**/*.java' }.files
-                        }
-                        if (!sources.isEmpty()) {
-                            kotlinCallerGapList << "the source set ${set.name} of ${other.path}".toString()
+                        gaps << [label: "the project ${other.path} outside the analysis root".toString(), reaches: reach]
+                    } else {
+                        other.sourceSets.findAll { !(it.name in ['main', 'test']) }.each { set ->
+                            if (!callerSources(other, set).isEmpty()) {
+                                gaps << [label: "the source set ${set.name} of ${other.path}".toString(),
+                                         tests: holdsTests(other, set), owner: other.path,
+                                         reaches: ([other.path] + reach).unique().sort()]
+                            }
                         }
                     }
                 }
             }
-            root.gradle.includedBuilds.each { kotlinCallerGapList << "the included build ${it.name}".toString() }
-            kotlinCallerGapList.sort()
-            kotlinCallerGapsRead = true
+            root.gradle.includedBuilds.each { build ->
+                def reach = includedBuildReach(root, build, dependencies)
+                if (!reach.isEmpty()) {
+                    gaps << [label: "the included build ${build.name}".toString(), reaches: reach]
+                }
+            }
+            kotlinBuildFacts.gaps = gaps.sort { it.label }
+            kotlinBuildFacts.dependencies = dependencies
         }
-        kotlinCallerGapList
+        kotlinBuildFacts
     }
 }
 
@@ -1250,7 +1304,9 @@ allprojects {
                         manifest.kotlinSourceRoots = kotlinSourceDirs().collect { relative(it) }
                         manifest.kotlinTestSourceRoots = kotlinSourceDirsOf('test').collect { relative(it) }
                         manifest.kotlinFormatter = kotlinFormatter()
-                        manifest.kotlinCallerGaps = kotlinCallerGaps(project.rootProject)
+                        def buildFacts = kotlinCallerGaps(project.rootProject)
+                        manifest.kotlinCallerGaps = buildFacts.gaps
+                        manifest.projectDependencies = buildFacts.dependencies[project.path]
                         def mainClasspath = sourceSets.main.compileClasspath.files +
                             sourceSets.main.runtimeClasspath.files
                         manifest.kotlinSerialization = mainClasspath.any {

@@ -20,20 +20,36 @@ const partial = call('format', { positional: 1 });
 const full = call('format', { positional: 2 });
 const never = () => false;
 const FLAGGED = [`${UNUSED_OPTION_RULE} format.pad 8`];
+const TEST_CONFIGURATION = 'org.springframework.boot.test.context.TestConfiguration';
+const SPRING_IMPORTS = [
+  { path: 'org.springframework.stereotype.Service', all: false },
+  { path: 'org.springframework.context.annotation', all: true },
+];
 
-function buildOf(modules, { gaps = [], skipped = [], mentionedInJava = never } = {}) {
-  return factsView({
-    facts: new Map(modules.map((files, index) => [`module-${String(index)}`, { files, skipped }])),
-    manifests: [{ kotlinCallerGaps: gaps }],
-    mentionedInJava,
-  });
+function moduleOf(files, index, { manifest = {}, skipped = [] } = {}) {
+  return {
+    reportRoot: `module-${String(index)}`,
+    path: `:m${String(index)}`,
+    manifest,
+    facts: { files, skipped },
+  };
 }
 
-function findingsFor(own, { siblings = [], published = false, build } = {}) {
+function buildOf(modules, { mentionedInJava = never } = {}) {
+  return factsView({ modules, mentionedInJava });
+}
+
+function findingsFor(own, { siblings = [], published = false, gaps = [], build, index = 0 } = {}) {
+  const view =
+    build ??
+    buildOf([
+      moduleOf(own, 0, { manifest: { published, kotlinCallerGaps: gaps } }),
+      ...siblings.map((files, offset) => moduleOf(files, offset + 1)),
+    ]);
   return run(unusedOptionFindings, own, {
     mentionedInJava: never,
-    published,
-    build: build ?? buildOf([own, ...siblings]),
+    build: view,
+    reportRoot: `module-${String(index)}`,
   });
 }
 
@@ -83,7 +99,7 @@ describe('unused option on a public top-level Kotlin function', () => {
   it('leaves it alone when a callable reference or Java code anywhere in the build names it', () => {
     const own = [file({ functions: [shared()], calls: [partial] })];
     const referencing = [testFile({ file: OTHER_TESTS, references: ['format'] })];
-    const mentioned = buildOf([own], { mentionedInJava: (name) => name === 'format' });
+    const mentioned = buildOf([moduleOf(own, 0)], { mentionedInJava: (name) => name === 'format' });
 
     expect(findingsFor(own, { siblings: [referencing] })).toEqual([]);
     expect(findingsFor(own, { build: mentioned })).toEqual([]);
@@ -106,8 +122,9 @@ describe('which public Kotlin declarations are judged', () => {
   const host = klass('Text');
   const companion = klass('Companion', { qualified: 'Text.Companion', kind: 'companion' });
 
-  it('judges the functions of a top-level object, a companion and an object with a plain annotation', () => {
+  it('judges the functions of a top-level object, a companion and an object without a Spring annotation', () => {
     const suppressed = klass('Formats', { kind: 'object', annotations: [{ name: 'Suppress' }] });
+    const ownComponent = klass('Formats', { kind: 'object', annotations: [{ name: 'Component' }] });
 
     expect(
       judged([
@@ -132,6 +149,15 @@ describe('which public Kotlin declarations are judged', () => {
         }),
       ]),
     ).toEqual([`${UNUSED_OPTION_RULE} Formats.format.pad 8`]);
+    expect(
+      judged([
+        file({
+          classes: [ownComponent],
+          functions: [shared({ owner: 'Formats' })],
+          calls: [partial],
+        }),
+      ]),
+    ).toEqual([`${UNUSED_OPTION_RULE} Formats.format.pad 8`]);
   });
 
   it.each([
@@ -144,15 +170,25 @@ describe('which public Kotlin declarations are judged', () => {
     [
       'a member of a Spring bean object',
       'Formats',
-      [klass('Formats', { kind: 'object', annotations: [{ name: 'Service' }] })],
+      [klass('Formats', { kind: 'object', annotations: [{ name: 'Service', type: 'Service' }] })],
     ],
     [
       'a member of the companion of a configuration class',
       'Text.Companion',
       [klass('Text', { annotations: [{ name: 'Configuration' }] }), companion],
     ],
+    [
+      'a member of the companion of a fully qualified test configuration',
+      'Text.Companion',
+      [
+        klass('Text', { annotations: [{ name: 'TestConfiguration', type: TEST_CONFIGURATION }] }),
+        companion,
+      ],
+    ],
   ])('leaves %s alone', (_name, owner, classes) => {
-    const own = [file({ classes, functions: [shared({ owner })], calls: [partial] })];
+    const own = [
+      file({ imports: SPRING_IMPORTS, classes, functions: [shared({ owner })], calls: [partial] }),
+    ];
 
     expect(findingsFor(own)).toEqual([]);
   });
@@ -176,14 +212,26 @@ describe('which public Kotlin declarations are judged', () => {
 });
 
 describe('unused option when callers are hidden from the facts', () => {
-  it('notes once that public functions are not judged, and still judges private ones', () => {
-    const build = buildOf([], { gaps: ['the source set integrationTest of :app'] });
-    const own = [
-      file({
-        functions: [shared(), shared({ name: 'trim', visibility: 'private' })],
-        calls: [partial, call('trim', { positional: 1 })],
-      }),
-    ];
+  const own = [
+    file({
+      functions: [shared(), shared({ name: 'trim', visibility: 'private' })],
+      calls: [partial, call('trim', { positional: 1 })],
+    }),
+  ];
+  const other = [file({ file: OTHER_MODULE, functions: [shared({ line: 3 })], calls: [partial] })];
+  const otherFlagged = [`${UNUSED_OPTION_RULE} format.pad 8`];
+  const sourceSet = (tests) => ({
+    label: 'the source set integration of :m0',
+    tests,
+    owner: ':m0',
+    reaches: [':m0'],
+  });
+
+  it('notes, once and on the first public function, a gap that can call the module', () => {
+    const build = buildOf([
+      moduleOf(own, 0, { manifest: { kotlinCallerGaps: [sourceSet(false)] } }),
+      moduleOf(other, 1),
+    ]);
 
     const first = findingsFor(own, { build });
 
@@ -200,19 +248,71 @@ describe('unused option when callers are hidden from the facts', () => {
       location: { line: 8 },
       classification: 'descriptive',
       message:
-        'Public functions are not checked for unused options: the facts do not cover the source set ' +
-        'integrationTest of :app, so calls there are not seen.',
+        'Public functions are not checked for unused options where these can call them: the facts ' +
+        'do not cover the source set integration of :m0.',
     });
-    expect(summary(findingsFor(own, { build }))).toEqual([`${UNUSED_OPTION_RULE} trim.pad 8`]);
+    expect(summary(findingsFor(other, { build, index: 1 }))).toEqual(otherFlagged);
   });
 
-  it('counts a file the facts step skipped as hidden callers', () => {
-    const own = [file({ functions: [shared()], calls: [partial] })];
-    const build = buildOf([own], { skipped: ['src/main/kotlin/demo/Deep.kt'] });
+  it("ignores a test suite unless the module is published, since only a published module's tests count", () => {
+    const tests = sourceSet(true);
 
-    expect(build.gaps).toEqual(['the skipped file src/main/kotlin/demo/Deep.kt']);
-    expect(summary(findingsFor(own, { build }))).toEqual([
+    expect(judged(own, { gaps: [tests] })).toEqual([
+      ...FLAGGED.map((entry) => entry.replace('format', 'trim')),
+      ...FLAGGED,
+    ]);
+    expect(judged(own, { gaps: [tests], published: true })).toEqual([
+      `${UNUSED_OPTION_RULE} trim.pad 8`,
       `${UNUSED_OPTION_RULE} callers-not-analyzed 8`,
+    ]);
+  });
+
+  it('applies an included build or a skipped file only to the modules it can call', () => {
+    const included = { label: 'the included build tools', reaches: [':m1'] };
+    const build = buildOf([
+      moduleOf(own, 0, { manifest: { kotlinCallerGaps: [included] } }),
+      moduleOf(other, 1),
+    ]);
+    const skippedTest = buildOf([
+      moduleOf(own, 0, { skipped: [{ file: 'src/test/kotlin/demo/DeepTest.kt', test: true }] }),
+    ]);
+    const skippedMain = buildOf([
+      moduleOf(own, 0),
+      moduleOf(other, 1, {
+        manifest: { projectDependencies: [':m0'] },
+        skipped: [{ file: 'billing/src/main/kotlin/demo/Deep.kt', test: false }],
+      }),
+    ]);
+
+    expect(summary(findingsFor(own, { build }))).toEqual([
+      `${UNUSED_OPTION_RULE} trim.pad 8`,
+      ...FLAGGED,
+    ]);
+    expect(summary(findingsFor(other, { build, index: 1 }))).toEqual([
+      `${UNUSED_OPTION_RULE} callers-not-analyzed 3`,
+    ]);
+    expect(summary(findingsFor(own, { build: skippedTest }))).toEqual([
+      `${UNUSED_OPTION_RULE} trim.pad 8`,
+      ...FLAGGED,
+    ]);
+    expect(summary(findingsFor(own, { build: skippedMain }))).toEqual([
+      `${UNUSED_OPTION_RULE} trim.pad 8`,
+    ]);
+    expect(summary(findingsFor(other, { build: skippedMain, index: 1 }))).toEqual([
+      `${UNUSED_OPTION_RULE} callers-not-analyzed 3`,
+    ]);
+  });
+
+  it('anchors the note on the first public function of the build in path order', () => {
+    const gap = { label: 'the included build tools', reaches: [':m0', ':m1'] };
+    const build = buildOf([
+      moduleOf(own, 0, { manifest: { kotlinCallerGaps: [gap] } }),
+      moduleOf(other, 1),
+    ]);
+
+    expect(summary(findingsFor(own, { build }))).toEqual([`${UNUSED_OPTION_RULE} trim.pad 8`]);
+    expect(summary(findingsFor(other, { build, index: 1 }))).toEqual([
+      `${UNUSED_OPTION_RULE} callers-not-analyzed 3`,
     ]);
   });
 });

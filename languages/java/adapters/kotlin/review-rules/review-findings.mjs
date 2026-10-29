@@ -65,7 +65,7 @@ export function readKotlinReviewFindings(context) {
     ...unusedOptionFindings(own, {
       finding,
       build,
-      published: manifest.published === true,
+      reportRoot: context.reportRoot,
       serialization: manifest.kotlinSerialization === true,
       mentionedInJava: javaMentions(projectRoot, [manifest]),
     }),

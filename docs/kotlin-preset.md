@@ -478,7 +478,8 @@ Limits, all chosen to flag less rather than guess:
   `main`, `valueOf`, `fromString`, `of`, `from`, `invoke` and `copy`; copies such as `copyOf`,
   `unmodifiable*`, `synchronized*` and `checked*`; and functions in or below a class with a Spring
   stereotype (`@Component`, `@Service`, `@Repository`, `@Controller`, `@RestController`, `@ControllerAdvice`,
-  `@Configuration`, `@SpringBootApplication`).
+  `@RestControllerAdvice`, `@Configuration`, `@SpringBootApplication`, `@AutoConfiguration`,
+  `@TestConfiguration`), resolved through the imports or written fully qualified, as in the Spring rules.
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Only the primary-constructor properties of a `data class` and the
   properties of a `@ConfigurationProperties` class are inspected.
@@ -491,30 +492,42 @@ Limits, all chosen to flag less rather than guess:
   body of a property getter, or the condition of an `if` that has an `else` and is itself one of those.
   Backticked constants (``Status.`in` ``) are matched by their name. A test in a property initializer is
   named after the property (`Holder.isOpen`), as it is in a getter.
-- Unused option: a defaulted parameter that no call sets by name or position (matched by name, through an
-  import alias or a type alias). A call that cannot match the signature is ignored, a call with a spread
-  sets every parameter, and a `copy(name = ...)` call sets that parameter of a data class. Functions that
-  are `override`, `open`, `abstract`, `operator`, `infix`, `main` or annotated are never judged, nor are
-  names with a callable reference or that a Java file mentions. Two kinds of declarations are judged:
-  - Public functions at the top level or in a top-level `object` or companion object, the Kotlin form of
-    TypeScript's exported functions and Python's module-level functions. Calls in the main sources of every
-    module of the build count, and so do the module's own tests when the module is published (a Gradle
-    `publishing` publication, as for `test-only-export`); callable references and Java sources of every
-    module are checked. An `object` or companion of a class with a Spring stereotype (`@Component`,
-    `@Service`, `@Configuration` and the others listed for forwarding wrappers) is left alone. Public
-    member functions and public constructors are not judged: frameworks build and call them by
-    reflection (Jackson, configuration binding, injection), out of sight of the facts.
+- Unused option: a defaulted parameter that no call sets by name or position (matched by name and through
+  an import alias). A call that cannot match the signature is ignored, a call with a spread sets every
+  parameter, and a `copy(name = ...)` call sets that parameter of a data class. Functions that are
+  `override`, `open`, `abstract`, `operator`, `infix`, `main` or annotated are never judged, nor are names
+  with a callable reference or that a Java file mentions. Two kinds of declarations are judged:
+  - Public functions at the top level, in a top-level `object` or in the companion object of a top-level
+    class, the Kotlin form of TypeScript's exported functions and Python's module-level functions. Calls in
+    the main sources of every module of the build count, and so do the module's own tests when the module
+    is published (a Gradle `publishing` publication, as for `test-only-export`); callable references and
+    Java sources of every module are checked. An `object` or companion of a Spring-managed class is left
+    alone; the annotation is resolved through the imports as in the Spring rules (`@Component`, `@Service`,
+    `@Repository`, `@Controller`, `@RestController`, `@ControllerAdvice`, `@RestControllerAdvice`,
+    `@Configuration`, `@SpringBootApplication`, `@AutoConfiguration`, `@TestConfiguration`, also written
+    fully qualified), and the forwarding-wrapper rule uses the same check. Public member functions and
+    public constructors are not judged: frameworks build and call them by reflection (Jackson,
+    configuration binding, injection), out of sight of the facts, and TypeScript and Python do not judge
+    them either.
   - Private and internal functions (not in an interface) and the constructors of final classes without
     annotations, private or internal. All their callers are in the module, so calls in its main sources and
-    tests count, and only the module's own facts and Java sources are read. Data classes are skipped
-    when the module has `jackson-module-kotlin`, `kotlinx-serialization` or `moshi-kotlin` on its main
-    compile or runtime classpath (`runtimeOnly` counts), since a library may set the defaults; a library
-    that does so without that jar (reflection in a framework) is not seen.
+    tests count, a type alias of the class counts as its name, and only the module's own facts and Java
+    sources are read. Data classes are skipped when the module has `jackson-module-kotlin`,
+    `kotlinx-serialization` or `moshi-kotlin` on its main compile or runtime classpath (`runtimeOnly`
+    counts), since a library may set the defaults; a library that does so without that jar (reflection in
+    a framework) is not seen.
 
-  When part of the build has no facts, public functions are not judged and one report-only note
-  (`callers-not-analyzed`) names what is missing: an Android or Multiplatform project, a source set
-  other than `main` and `test` (such as `integrationTest`, `testFixtures` or `jmh`), an included build,
-  a Kotlin project outside the analysis root, or a file the facts step skipped.
+  Callers the facts do not see switch off the judging of public functions only in the modules they can
+  call. Each such place, read from the Gradle build, reaches the projects it depends on (directly or
+  through other projects): an Android or Multiplatform project; a Kotlin or Java project outside the
+  analysis root; a source set other than `main` and `test` that holds `.kt` or `.java` files (it also
+  reaches its own project); an included build whose build files name a project of this build as
+  `group:name` (an included build that names none, such as a plugin build, reaches nothing); and a file
+  the facts step skipped, which reaches its module and that module's dependencies. Test code (a source set
+  whose name has `test` or `jmh`, a JVM test suite, a source set a `Test` task runs, a skipped test file)
+  only counts for the declarations of its own module when that module is published, since tests count
+  nowhere else. One report-only note (`callers-not-analyzed`) names these places, anchored on the public
+  function of an affected module that comes first by path and line.
 
 - Not covered: Android and Kotlin Multiplatform modules (the facts step is registered for
   `org.jetbrains.kotlin.jvm` only), and source-set `exclude` patterns (every `.kt` file under a source

@@ -116,8 +116,8 @@ describe('readKotlinReviewFindings across the project', () => {
     return {
       first,
       modules: [
-        { reportRoot: first.reportRoot, manifest: { sourceRoots: [] } },
-        { reportRoot: second.reportRoot, manifest: { sourceRoots: [] } },
+        { reportRoot: first.reportRoot, path: ':', manifest: { sourceRoots: [] } },
+        { reportRoot: second.reportRoot, path: ':billing', manifest: { sourceRoots: [] } },
       ],
     };
   }
@@ -158,23 +158,25 @@ describe('readKotlinReviewFindings across the project', () => {
       },
       { files: [] },
     );
-    const context = { reportRoot: first.reportRoot, projectRoot: first.root, modules };
+    const context = { reportRoot: first.reportRoot, projectRoot: first.root, manifest: {} };
     const javaRoot = path.join(first.root, 'billing/src/main/java');
-    const options = (manifest) => readKotlinReviewFindings({ ...context, manifest });
+    const judgedWith = (index, manifest) =>
+      readKotlinReviewFindings({
+        ...context,
+        modules: modules.map((module, at) =>
+          at === index ? { ...module, manifest: { ...module.manifest, ...manifest } } : module,
+        ),
+      });
 
-    expect(options({})).toHaveLength(1);
-    expect(options({ published: true })).toEqual([]);
+    expect(judgedWith(0, {})).toHaveLength(1);
+    expect(judgedWith(0, { published: true })).toEqual([]);
     mkdirSync(javaRoot, { recursive: true });
     writeFileSync(path.join(javaRoot, 'Bill.java'), 'class Bill { int a = Kt.format(1, 2); }\n');
-    const withManifest = (manifest) =>
-      modules.map((module, index) => (index === 1 ? { ...module, manifest } : module));
-    const sibling = (manifest) =>
-      readKotlinReviewFindings({ ...context, modules: withManifest(manifest), manifest: {} });
-    expect(sibling({ sourceRoots: ['billing/src/main/java'] })).toEqual([]);
+    expect(judgedWith(1, { sourceRoots: ['billing/src/main/java'] })).toEqual([]);
     expect(
-      sibling({ kotlinCallerGaps: ['the included build tools'] }).map(
-        ({ symbol, classification }) => `${symbol} ${classification}`,
-      ),
+      judgedWith(1, {
+        kotlinCallerGaps: [{ label: 'the included build tools', reaches: [':'] }],
+      }).map(({ symbol, classification }) => `${symbol} ${classification}`),
     ).toEqual(['callers-not-analyzed descriptive']);
   });
 
@@ -218,7 +220,10 @@ describe('readKotlinReviewFindings across the project', () => {
   it('leaves a file whose collection was skipped out of the facts', () => {
     const { reportRoot } = projectWith({ files: [{ file: 'a.kt', test: false, skipped: true }] });
 
-    expect(readKotlinFacts(reportRoot)).toEqual({ files: [], skipped: ['a.kt'] });
+    expect(readKotlinFacts(reportRoot)).toEqual({
+      files: [],
+      skipped: [{ file: 'a.kt', test: false }],
+    });
   });
 });
 
