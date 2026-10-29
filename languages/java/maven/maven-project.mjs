@@ -9,7 +9,6 @@ import { kotlinRoots } from './kotlin/kotlin-roots.mjs';
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
 const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
 const MAIN_RUNTIME_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'runtime']);
-const SPRING_JAR = /^spring-(?:context|boot)-.*\.jar$/u;
 const TEST_COMPILE_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'test']);
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
@@ -273,8 +272,4 @@ export function moduleClasspaths(module, dependencies) {
       ...dependencies.map((entry) => entry.file),
     ],
   };
-}
-
-export function usesSpring(classpaths) {
-  return classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
 }
