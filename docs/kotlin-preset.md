@@ -170,7 +170,8 @@ message names the fix and both routes. Each rule has a banned and an allowed fix
 |                   | `Thread.sleep` in a `suspend` function                                                                                                            | `delay`                                                                                                                      | `coroutines.SleepInsteadOfDelay`                                                                   |
 |                   | `suspend fun ...: Flow<T>`                                                                                                                        | a plain function returning the `Flow`                                                                                        | `coroutines.SuspendFunWithFlowReturnType`                                                          |
 |                   | `suspend fun CoroutineScope.f()`                                                                                                                  | `coroutineScope { ... }` inside a `suspend` function, or a non-`suspend` extension that only launches                        | `coroutines.SuspendFunWithCoroutineScopeReceiver`                                                  |
-|                   | `catch (e: CancellationException)` or `catch (e: InterruptedException)` that completes without rethrowing                                         | `throw e`, `ensureActive()`, or `Thread.currentThread().interrupt()`                                                         | `pmd/SwallowedCancellation`, `pmd/SwallowedInterrupt` (review rules)                               |
+|                   | `catch (e: CancellationException)` in a suspend function or coroutine body that can complete                                                      | `throw e` or `ensureActive()`                                                                                                | `pmd/SwallowedCancellation` (review rule)                                                          |
+|                   | `catch (e: InterruptedException)` that can complete                                                                                               | `throw e` or `Thread.currentThread().interrupt()`                                                                            | `pmd/SwallowedInterrupt` (review rule)                                                             |
 | Exceptions        | `catch (e: Exception)`, `Throwable`                                                                                                               | catch the specific exception type; `assertFailsWith` in a test                                                               | `exceptions.TooGenericExceptionCaught`                                                             |
 | Records           | a class that only holds `val`s                                                                                                                    | `data class`                                                                                                                 | `style.UseDataClass` (`allowVars: true`)                                                           |
 |                   | a `data class` with a `var`                                                                                                                       | `val` and `copy(...)`                                                                                                        | `style.DataClassShouldBeImmutable`                                                                 |
@@ -188,35 +189,39 @@ message names the fix and both routes. Each rule has a banned and an allowed fix
 
 `SuspendFunSwallowedCancellation` is enforced with detekt 1.23.8 in main and test sources,
 including aliased and qualified `kotlin.runCatching` calls. A suspend call inside `runCatching`
-can turn cancellation into a `Result` failure and let work outlive its owner. Call it directly,
-catch only the expected specific failure, or use a separate Result helper that immediately
-rethrows `CancellationException`. Non-suspending `runCatching` remains allowed, even in a
-suspend function. Adding `getOrThrow` or an `onFailure` rethrow after `runCatching` does not
-exempt the call: the pinned rule rejects the suspend/runCatching combination itself.
-This is separate from broad catch and lost-cause rules; it reports at the `runCatching` call.
-It uses type resolution, with the classpath/version limitations above; unresolved external
-calls are not proof of cancellation safety. A failed detekt invocation or missing report
-remains a tool error. Lift a legitimate path only through a reviewed Nitpicker exception.
+turns cancellation into a `Result` failure and lets work outlive its owner. Call the suspending work
+directly and catch only the specific failure you expect. A `Result` helper that rethrows
+`CancellationException` first (`catch (e: CancellationException) { throw e } catch (e: Exception) { ... }`)
+is not an allowed form: its `catch (e: Exception)` is `TooGenericExceptionCaught`, so where such a
+boundary is needed it takes a reviewed `exceptions` entry. Non-suspending `runCatching` remains allowed,
+even in a suspend function. Adding `getOrThrow` or an `onFailure` rethrow after `runCatching` does not
+exempt the call: the pinned rule rejects the suspend/runCatching combination itself. It reports at the
+`runCatching` call; a `try`/`catch` of `CancellationException` is `pmd/SwallowedCancellation` (see the
+[review rules](#review-rules)). It needs type resolution, with the classpath and version limits above: a
+call it cannot resolve leaves it silent, which is not proof of cancellation safety. A detekt run that
+fails or writes no report is a tool error, never an empty result. Lift a legitimate path only through a
+reviewed Nitpicker exception.
 
 **The coroutines rule set.** detekt 1.23.8 has seven rules in `coroutines`; each has been reviewed and
 the layered state (detekt's defaults, then `languages/java/detekt/nitpicker-detekt.yml`) is:
 
-| Rule                                   | In detekt's defaults | In Nitpicker | Decision                                                                                                                                                                                                                                          |
-| -------------------------------------- | -------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GlobalCoroutineUsage`                 | off                  | enforced     | `GlobalScope` outlives every owner.                                                                                                                                                                                                               |
-| `SuspendFunSwallowedCancellation`      | off                  | enforced     | See above.                                                                                                                                                                                                                                        |
-| `InjectDispatcher`                     | on                   | enforced     | A hard-coded `Dispatchers.IO`, `Default` or `Unconfined` cannot be replaced in a test; same reason as the injected clock and random source. Main sources only (a test may pick a real dispatcher); a default parameter value is the allowed form. |
-| `RedundantSuspendModifier`             | on                   | enforced     | `suspend` on a function that never suspends forces coroutine callers for nothing and hides what really blocks. Overrides and open members are skipped by detekt.                                                                                  |
-| `SleepInsteadOfDelay`                  | on                   | enforced     | `Thread.sleep` in a `suspend` function blocks the coroutine's thread. It repeats `ForbiddenMethodCall` on `Thread.sleep` in main sources, so that repeat is dropped and the finding names `delay`; in a test it is the only finding.              |
-| `SuspendFunWithFlowReturnType`         | on                   | enforced     | A `Flow` is cold: the function that builds it needs no `suspend`, and collecting it is what suspends.                                                                                                                                             |
-| `SuspendFunWithCoroutineScopeReceiver` | off                  | enforced     | A function that is both `suspend` and a `CoroutineScope` extension is ambiguous about who owns the launched work; use `coroutineScope { }` or drop `suspend`.                                                                                     |
+| Rule                                   | In detekt's defaults | In Nitpicker | Decision                                                                                                                                                                                                                                                                     |
+| -------------------------------------- | -------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GlobalCoroutineUsage`                 | off                  | enforced     | `GlobalScope` outlives every owner.                                                                                                                                                                                                                                          |
+| `SuspendFunSwallowedCancellation`      | off                  | enforced     | See above.                                                                                                                                                                                                                                                                   |
+| `InjectDispatcher`                     | on                   | enforced     | A hard-coded `Dispatchers.IO`, `Default` or `Unconfined` cannot be replaced in a test; same reason as the injected clock and random source. Main sources only (a test may pick a real dispatcher); a default parameter value is the allowed form.                            |
+| `RedundantSuspendModifier`             | on                   | enforced     | `suspend` on a function that never suspends forces coroutine callers for nothing and hides what really blocks. Overrides and open members are skipped by detekt.                                                                                                             |
+| `SleepInsteadOfDelay`                  | on                   | enforced     | `Thread.sleep` in a `suspend` function blocks the coroutine's thread. It repeats `ForbiddenMethodCall` on `Thread.sleep` in main sources, so that repeat is dropped and the finding names `delay`; in a test, `pmd/FixedSleepInTest` reports the same line and stands alone. |
+| `SuspendFunWithFlowReturnType`         | on                   | enforced     | A `Flow` is cold: the function that builds it needs no `suspend`, and collecting it is what suspends.                                                                                                                                                                        |
+| `SuspendFunWithCoroutineScopeReceiver` | off                  | enforced     | A function that is both `suspend` and a `CoroutineScope` extension is ambiguous about who owns the launched work; use `coroutineScope { }` or drop `suspend`.                                                                                                                |
 
 Every one of them is pinned with `active`, `severity`, `includes`, `excludes` and `ignoreAnnotated` in the Nitpicker layer
 (and `dispatcherNames` for `InjectDispatcher`), so a project `detekt.yml` cannot turn them off, lower them or
 exclude paths. `CoroutineLaunchedInTestWithoutRunTest` is not in detekt 1.23.8 at all (it ships with detekt 2); coroutine
 launches in tests are the subject of the test-coroutine work and are not covered here, and neither is
-`SuspendFunInFinallySection`, which also needs detekt 2. Each rule reports through type resolution, so an unresolved
-call (a library built with a Kotlin newer than detekt's, see above) leaves it silent rather than guessing.
+`SuspendFunInFinallySection`, which also needs detekt 2. `GlobalCoroutineUsage` matches the `GlobalScope` name and
+needs no type resolution; the other six report through type resolution, so a call they cannot resolve (a library
+built with a Kotlin newer than detekt's, see above) leaves them silent rather than guessing.
 
 Rule ids in findings are `detekt.<ruleset>.<Rule>`. Test sources are analyzed with the same rules, so
 `runBlocking` in a test is a finding too; its message points to `runTest`. A broad catch in a test
@@ -476,21 +481,21 @@ declarations, across all modules of the build; a call that cannot be tied to one
 an unclear case is not flagged. A file nested deeper than even the large stack of that program allows is
 skipped with a note on stderr.
 
-| Rule id                                  | Where                                          | Flags                                                                                                                                                                                                                                                                 |
-| ---------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`            | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                                |
-| `DisabledTest`                           | `review-rules/tests/honesty/`                  | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption     |
-| `FocusedTest`                            | `review-rules/tests/honesty/`                  | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                                   |
-| `AssertionInControlFlow`                 | `review-rules/tests/honesty/`                  | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                 |
-| `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`               | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                               |
-| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs`    | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                       |
-| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`           | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                          |
-| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`        | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                          |
-| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`        | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                                  |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`         | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                              |
-| `ClassLoadEffect`                        | `review-rules/main/load-effects.mjs`           | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads                                                                                     |
-| `SwallowedCancellation`                  | `review-rules/handlers/swallowed-handlers.mjs` | a `catch` of `CancellationException` (`kotlin.coroutines.cancellation`, `kotlinx.coroutines` or `java.util.concurrent`, also renamed, qualified or through a `typealias`) whose handler can complete without `throw`, `ensureActive()` or a hand-off of the exception |
-| `SwallowedInterrupt`                     | `review-rules/handlers/swallowed-handlers.mjs` | a `catch` of `InterruptedException` whose handler can complete without a `throw`, `Thread.currentThread().interrupt()` or a hand-off of the exception (the Java PMD rule of the same name)                                                                            |
+| Rule id                                  | Where                                          | Flags                                                                                                                                                                                                                                                                                                                     |
+| ---------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`            | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                                                                                    |
+| `DisabledTest`                           | `review-rules/tests/honesty/`                  | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption                                                         |
+| `FocusedTest`                            | `review-rules/tests/honesty/`                  | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                                                                                       |
+| `AssertionInControlFlow`                 | `review-rules/tests/honesty/`                  | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                     |
+| `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`               | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                   |
+| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs`    | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                           |
+| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`           | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                                                                              |
+| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`        | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                                                                              |
+| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`        | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                                                                                      |
+| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`         | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                                                                                  |
+| `ClassLoadEffect`                        | `review-rules/main/load-effects.mjs`           | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads                                                                                                                                         |
+| `SwallowedCancellation`                  | `review-rules/handlers/swallowed-handlers.mjs` | a `catch` of `CancellationException` (`kotlin.coroutines.cancellation`, `kotlinx.coroutines` or `java.util.concurrent`, also renamed, qualified or through a `typealias`) in a `suspend` function or coroutine builder lambda whose handler can complete without `throw`, `ensureActive()` or a hand-off of the exception |
+| `SwallowedInterrupt`                     | `review-rules/handlers/swallowed-handlers.mjs` | a `catch` of `InterruptedException` whose handler can complete without a `throw`, `Thread.currentThread().interrupt()` or a hand-off of the exception (the Java PMD rule of the same name)                                                                                                                                |
 
 Limits, all chosen to flag less rather than guess:
 
@@ -523,18 +528,42 @@ Limits, all chosen to flag less rather than guess:
   `unmodifiable*`, `synchronized*` and `checked*`; and functions in or below a class with a Spring
   stereotype (`@Component`, `@Service`, `@Repository`, `@Controller`, `@RestController`, `@ControllerAdvice`,
   `@Configuration`, `@SpringBootApplication`).
-- Swallowed cancellation and interrupt: the handler's control flow is followed in the syntax tree. It
-  passes when every path ends in a `throw`, in `ensureActive()` (`SwallowedCancellation`) or in a
-  `.interrupt()` call (`SwallowedInterrupt`), when the exception variable is passed to another call that is
-  not a logging call (`future.completeExceptionally(e)`, `Result.failure(e)`), when a `throw` sits in a
-  lambda handed to a call, or when a condition that reads the exception (`e is TimeoutCancellationException`)
-  or the coroutine's liveness (`isActive`, `coroutineContext`) guards a branch that throws. A handler that
-  can complete, `return`, `break` or `continue` on a path with none of those is flagged, even after a
-  conditional `throw e`. The caught type is resolved from the file's imports (explicit, renamed, wildcard,
-  qualified or a `typealias`); a project class of the same name, `TimeoutCancellationException` and other
-  subclasses are left alone. `catch (e: Exception)` and `Throwable` are not read here (broad catches are
-  `TooGenericExceptionCaught`, enforced with no exception for a variable name), nor is a `Result` helper
-  such as `runCatching` without suspend calls.
+- Swallowed cancellation and interrupt: the handler's control flow is followed in the syntax tree, and
+  the `finally` of its `try` with it. A path is handled when it reaches a `throw`; a call that never
+  returns (`error`, `TODO`, `exitProcess`, `kotlin.test.fail`, JUnit's and AssertJ's `fail`, or a function of
+  the main sources declared `: Nothing`, the same calls the Spring rules read as throwing); `ensureActive()`
+  (`SwallowedCancellation` only) or `Thread.currentThread().interrupt()` (`SwallowedInterrupt` only; a bare
+  `interrupt()` counts inside a class that extends `Thread`); or a call that takes the caught variable itself
+  as an argument and is not a logging call (`future.completeExceptionally(e)`, `Result.failure(e)`,
+  `IllegalStateException("x", e)`), outside the arguments of a logging call. Reading the exception
+  (`errors.add("failed: ${e.message}")`, `sink.update(e.toString())`, `"$e"`) is not a hand-off. The
+  logging calls are the levels and logger names of `languages/java/source/loggers.mjs` (shared with the
+  Java rule and the source checks, a test keeps the three lists equal), `print`, `println` and
+  `printStackTrace`. Code that may not run does not count: a lambda that is not called right there (only
+  the lambdas of `run`, `let`, `also`, `apply`, `with`, `use`, `synchronized`, `withLock`, `withContext`,
+  `coroutineScope` and `supervisorScope` are followed), a local function or object, the body of a `for`
+  or `while` loop or of `repeat` (a `do` loop runs once), the right side of `&&`, `||` and `?:`, a safe
+  call. Of a condition, only a type check of the caught variable (`if (e !is TimeoutCancellationException)
+throw e`, `when (e) { is ... -> ...; else -> throw e }`) and, for a cancellation, the coroutine's
+  `isActive` guard a branch: when one branch is handled, the other is taken to be the case that is not
+  this coroutine's cancellation. Any other condition is followed both ways, so `if (e.message == "x") throw
+e` still reports the path that skips it. A handler that can complete, `return`, `break` or `continue` on
+  an unhandled path is flagged. `SwallowedCancellation` reads only a catch in a `suspend` function or in a
+  lambda of a coroutine builder (`launch`, `async`, `runBlocking`, `withContext`, `coroutineScope`,
+  `supervisorScope`, `withTimeout`, `withTimeoutOrNull`, `runTest`, `flow`, `channelFlow`, `callbackFlow`,
+  `produce`, `actor`, `future`, `promise`, `suspend`), also through the inline collection and scope
+  functions in between; a catch anywhere else, such as `Future.get()` cancelled by someone else, is left
+  alone, as Python reads only `async def`. The caught type is resolved from the file's imports (explicit,
+  renamed, wildcard, qualified or a `typealias`); a project class of the same name,
+  `TimeoutCancellationException` and other subclasses are left alone. `catch (e: Exception)` and
+  `Throwable` are not read here (broad catches are `TooGenericExceptionCaught`, enforced with no exception
+  for a variable name), nor is `runCatching` (`SuspendFunSwallowedCancellation`). A catch these rules report
+  is not reported again as `kotlin-source/CatchOnlyLogsOrReturnsDefault` on the same line, and a catch of
+  `InterruptedException` is left to `SwallowedInterrupt` alone (its log calls are not `catch-log`
+  findings). Limits: a handler that restores the interrupt through a variable (`val t =
+Thread.currentThread(); t.interrupt()`) or hands the exception off through a lambda that some other
+  function calls is reported; a call that takes the exception only to format it (`describe(e)`) counts as
+  a hand-off.
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Only the primary-constructor properties of a `data class` and the
   properties of a `@ConfigurationProperties` class are inspected.

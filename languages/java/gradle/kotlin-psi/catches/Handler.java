@@ -2,52 +2,61 @@ package nitpicker.kotlinpsi.catches;
 
 import static nitpicker.kotlinpsi.common.Psi.nameOf;
 
-import java.util.List;
-import java.util.Set;
-import java.util.regex.Pattern;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
+import org.jetbrains.kotlin.com.intellij.psi.tree.IElementType;
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
+import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.KtAnnotatedExpression;
+import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtBlockExpression;
 import org.jetbrains.kotlin.psi.KtBreakExpression;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtCatchClause;
+import org.jetbrains.kotlin.psi.KtClassOrObject;
 import org.jetbrains.kotlin.psi.KtContinueExpression;
-import org.jetbrains.kotlin.psi.KtDotQualifiedExpression;
+import org.jetbrains.kotlin.psi.KtDoWhileExpression;
 import org.jetbrains.kotlin.psi.KtExpression;
+import org.jetbrains.kotlin.psi.KtExpressionWithLabel;
 import org.jetbrains.kotlin.psi.KtFinallySection;
 import org.jetbrains.kotlin.psi.KtIfExpression;
+import org.jetbrains.kotlin.psi.KtIsExpression;
 import org.jetbrains.kotlin.psi.KtLabeledExpression;
 import org.jetbrains.kotlin.psi.KtLambdaExpression;
 import org.jetbrains.kotlin.psi.KtLoopExpression;
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
+import org.jetbrains.kotlin.psi.KtNamedFunction;
+import org.jetbrains.kotlin.psi.KtObjectLiteralExpression;
 import org.jetbrains.kotlin.psi.KtParenthesizedExpression;
+import org.jetbrains.kotlin.psi.KtPrefixExpression;
+import org.jetbrains.kotlin.psi.KtPsiUtil;
+import org.jetbrains.kotlin.psi.KtQualifiedExpression;
 import org.jetbrains.kotlin.psi.KtReturnExpression;
+import org.jetbrains.kotlin.psi.KtSafeQualifiedExpression;
 import org.jetbrains.kotlin.psi.KtThrowExpression;
 import org.jetbrains.kotlin.psi.KtTryExpression;
-import org.jetbrains.kotlin.psi.KtValueArgument;
+import org.jetbrains.kotlin.psi.KtWhenCondition;
+import org.jetbrains.kotlin.psi.KtWhenConditionIsPattern;
+import org.jetbrains.kotlin.psi.KtWhenConditionWithExpression;
 import org.jetbrains.kotlin.psi.KtWhenEntry;
 import org.jetbrains.kotlin.psi.KtWhenExpression;
 
 final class Handler {
-  private static final Set<String> REPORTING =
-      Set.of(
-          "trace", "debug", "info", "warn", "warning", "error", "severe", "fine", "finer", "finest", "config",
-          "log", "print", "println", "printStackTrace", "printf", "format");
-  private static final Pattern LOGGER = Pattern.compile("(?i)(?:^|\\.)(?:log|logger|logging|timber)\\w*$");
-  private static final Pattern LIVENESS =
-      Pattern.compile("\\b(?:isActive|isCancelled|isCompleted|coroutineContext|currentCoroutineContext)\\b");
-
   private final String caught;
-  private final List<String> handling;
-  private final boolean liveness;
-  private final Pattern mention;
+  private final boolean cancellation;
+  private final Handling handling;
+  private int loops;
+  private int lambdas;
 
-  Handler(String caught, List<String> handling, boolean liveness) {
+  Handler(String caught, boolean cancellation, Handling handling) {
     this.caught = caught;
+    this.cancellation = cancellation;
     this.handling = handling;
-    this.liveness = liveness;
-    this.mention = Pattern.compile("(?<![\\w.])" + Pattern.quote(caught) + "\\b");
+  }
+
+  boolean completes(KtCatchClause clause, KtFinallySection section) {
+    Flow body = flow(clause.getCatchBody());
+    Flow after = section == null ? Flow.FALLS : flow(section.getFinalExpression());
+    return after.falls ? body.completes() : after.leaves;
   }
 
   Flow flow(PsiElement element) {
@@ -78,51 +87,136 @@ final class Handler {
     if (element instanceof KtTryExpression) {
       return attempt((KtTryExpression) element);
     }
+    if (element instanceof KtDoWhileExpression) {
+      Flow body = looped(((KtDoWhileExpression) element).getBody());
+      return body.completes() ? new Flow(true, body.leaves) : Flow.STOPS;
+    }
     if (element instanceof KtLoopExpression) {
-      return handoff(element) ? Flow.STOPS : new Flow(true, returns(element));
+      return new Flow(true, returns(element));
     }
     return leaf(element);
   }
 
+  private Flow looped(PsiElement body) {
+    loops++;
+    try {
+      return flow(body);
+    } finally {
+      loops--;
+    }
+  }
+
+  private Flow invoked(KtLambdaExpression lambda) {
+    lambdas++;
+    try {
+      return flow(lambda.getBodyExpression());
+    } finally {
+      lambdas--;
+    }
+  }
+
   private Flow leaf(PsiElement element) {
-    if (handoff(element)) {
+    KtLambdaExpression once = element instanceof KtCallExpression
+        ? Handling.onceLambda((KtCallExpression) element) : null;
+    if (once != null) {
+      Flow inner = invoked(once);
+      return handling.stops((KtCallExpression) element) ? Flow.STOPS : inner;
+    }
+    if (runs(element)) {
       return Flow.STOPS;
     }
-    if (element instanceof KtReturnExpression || element instanceof KtBreakExpression
-        || element instanceof KtContinueExpression) {
-      return Flow.LEAVES;
+    if (element instanceof KtReturnExpression) {
+      return lambdas > 0 && ((KtReturnExpression) element).getLabelName() != null ? Flow.FALLS : Flow.LEAVES;
+    }
+    if (element instanceof KtBreakExpression || element instanceof KtContinueExpression) {
+      boolean local = loops > 0 && ((KtExpressionWithLabel) element).getLabelName() == null;
+      return local ? Flow.FALLS : Flow.LEAVES;
     }
     return new Flow(true, returns(element));
   }
 
+  private boolean runs(PsiElement element) {
+    if (element == null || element instanceof KtLambdaExpression || element instanceof KtNamedFunction
+        || element instanceof KtObjectLiteralExpression || element instanceof KtClassOrObject
+        || element instanceof KtLoopExpression && !(element instanceof KtDoWhileExpression)) {
+      return false;
+    }
+    if (element instanceof KtThrowExpression || element instanceof KtDoWhileExpression
+        || element instanceof KtIfExpression || element instanceof KtWhenExpression
+        || element instanceof KtTryExpression) {
+      return !flow(element).completes();
+    }
+    if (element instanceof KtCallExpression) {
+      KtLambdaExpression once = Handling.onceLambda((KtCallExpression) element);
+      if (handling.stops((KtCallExpression) element) || once != null && !invoked(once).completes()) {
+        return true;
+      }
+    }
+    if (element instanceof KtBinaryExpression && conditional(((KtBinaryExpression) element).getOperationToken())) {
+      return runs(((KtBinaryExpression) element).getLeft());
+    }
+    if (element instanceof KtSafeQualifiedExpression) {
+      return runs(((KtSafeQualifiedExpression) element).getReceiverExpression());
+    }
+    for (PsiElement child : element.getChildren()) {
+      if (runs(child)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean conditional(IElementType token) {
+    return token == KtTokens.ANDAND || token == KtTokens.OROR || token == KtTokens.ELVIS;
+  }
+
+  private static boolean returns(PsiElement element) {
+    for (KtReturnExpression found : PsiTreeUtil.findChildrenOfType(element, KtReturnExpression.class)) {
+      if (PsiTreeUtil.getParentOfType(found, KtLambdaExpression.class, true, element.getClass()) == null) {
+        return true;
+      }
+    }
+    return element instanceof KtReturnExpression;
+  }
+
   private Flow block(KtBlockExpression block) {
-    boolean reachable = true;
     boolean leaves = false;
     for (KtExpression statement : block.getStatements()) {
       Flow flow = flow(statement);
       leaves |= flow.leaves;
-      reachable = flow.falls;
-      if (!reachable) {
-        break;
+      if (!flow.falls) {
+        return new Flow(false, leaves);
       }
     }
-    return new Flow(reachable, leaves);
+    return new Flow(true, leaves);
   }
 
   private Flow branch(KtIfExpression expression) {
+    if (runs(expression.getCondition())) {
+      return Flow.STOPS;
+    }
     Flow then = flow(expression.getThen());
     Flow otherwise = expression.getElse() == null ? Flow.FALLS : flow(expression.getElse());
-    return guarded(expression.getCondition(), then, otherwise) ? Flow.STOPS : then.or(otherwise);
+    boolean oneStops = !then.completes() || !otherwise.completes();
+    return oneStops && guards(expression.getCondition()) ? Flow.STOPS : then.or(otherwise);
   }
 
   private Flow branch(KtWhenExpression expression) {
-    Flow all = new Flow(false, false);
+    if (runs(expression.getSubjectExpression())) {
+      return Flow.STOPS;
+    }
+    boolean subject = isCaught(expression.getSubjectExpression());
+    Flow all = expression.getElseExpression() == null ? Flow.FALLS : Flow.STOPS;
     boolean stops = false;
-    boolean guard = expression.getSubjectExpression() != null && guards(expression.getSubjectExpression());
+    boolean guard = false;
     for (KtWhenEntry entry : expression.getEntries()) {
       Flow flow = flow(entry.getExpression());
       stops |= !flow.completes();
-      guard |= entry.getConditions().length > 0 && guards(entry.getConditions()[0]);
+      for (KtWhenCondition condition : entry.getConditions()) {
+        guard |= subject && condition instanceof KtWhenConditionIsPattern
+            || condition instanceof KtWhenConditionWithExpression
+                && guards(((KtWhenConditionWithExpression) condition).getExpression());
+      }
       all = all.or(flow);
     }
     return guard && stops ? Flow.STOPS : all;
@@ -141,86 +235,25 @@ final class Handler {
     return after.falls ? all : new Flow(false, after.leaves);
   }
 
-  private boolean guarded(KtExpression condition, Flow then, Flow otherwise) {
-    return condition != null && guards(condition) && (!then.completes() || !otherwise.completes());
-  }
-
-  private boolean guards(PsiElement condition) {
-    String text = condition.getText();
-    return mention.matcher(text).find() || (liveness && LIVENESS.matcher(text).find());
-  }
-
-  private boolean returns(PsiElement element) {
-    for (KtReturnExpression found : PsiTreeUtil.findChildrenOfType(element, KtReturnExpression.class)) {
-      if (PsiTreeUtil.getParentOfType(found, KtLambdaExpression.class, true, element.getClass()) == null) {
-        return true;
-      }
+  private boolean guards(KtExpression condition) {
+    KtExpression plain = KtPsiUtil.safeDeparenthesize(condition);
+    if (plain instanceof KtPrefixExpression && ((KtPrefixExpression) plain).getOperationToken() == KtTokens.EXCL) {
+      return guards(((KtPrefixExpression) plain).getBaseExpression());
     }
-    return element instanceof KtReturnExpression;
+    if (plain instanceof KtIsExpression) {
+      return isCaught(((KtIsExpression) plain).getLeftHandSide());
+    }
+    return cancellation && liveness(plain);
   }
 
-  private boolean handoff(PsiElement element) {
-    for (KtCallExpression call : PsiTreeUtil.collectElementsOfType(element, KtCallExpression.class)) {
-      if (handles(call)) {
-        return true;
-      }
-    }
-    return element instanceof KtCallExpression && handles((KtCallExpression) element);
+  private static boolean liveness(KtExpression expression) {
+    KtExpression name = expression instanceof KtQualifiedExpression
+        ? ((KtQualifiedExpression) expression).getSelectorExpression() : expression;
+    return name instanceof KtNameReferenceExpression && "isActive".equals(nameOf(name));
   }
 
-  private boolean handles(KtCallExpression call) {
-    String name = nameOf(call.getCalleeExpression());
-    if (name != null && handling.contains(name)) {
-      return true;
-    }
-    if (isReporting(call, name)) {
-      return false;
-    }
-    return mentionsCaught(call) || throwsInLambda(call) || hasCaughtReceiver(call);
-  }
-
-  private boolean isReporting(KtCallExpression call, String name) {
-    if (name != null && REPORTING.contains(name)) {
-      return true;
-    }
-    KtExpression receiver = receiverOf(call);
-    return receiver != null && LOGGER.matcher(receiver.getText()).find();
-  }
-
-  private boolean mentionsCaught(KtCallExpression call) {
-    for (KtValueArgument argument : call.getValueArguments()) {
-      KtExpression expression = argument.getArgumentExpression();
-      boolean lambda = expression instanceof KtLambdaExpression;
-      if (expression != null && !lambda && mention.matcher(expression.getText()).find()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private boolean throwsInLambda(KtCallExpression call) {
-    for (KtValueArgument argument : call.getValueArguments()) {
-      KtExpression expression = argument.getArgumentExpression();
-      if (expression instanceof KtLambdaExpression
-          && PsiTreeUtil.findChildOfType(expression, KtThrowExpression.class) != null) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private boolean hasCaughtReceiver(KtCallExpression call) {
-    KtExpression receiver = receiverOf(call);
-    return receiver instanceof KtNameReferenceExpression
-        && caught.equals(((KtNameReferenceExpression) receiver).getReferencedName());
-  }
-
-  private static KtExpression receiverOf(KtCallExpression call) {
-    PsiElement parent = call.getParent();
-    if (parent instanceof KtDotQualifiedExpression) {
-      KtDotQualifiedExpression qualified = (KtDotQualifiedExpression) parent;
-      return qualified.getSelectorExpression() == call ? qualified.getReceiverExpression() : null;
-    }
-    return null;
+  private boolean isCaught(KtExpression expression) {
+    KtExpression plain = KtPsiUtil.safeDeparenthesize(expression);
+    return plain instanceof KtNameReferenceExpression && caught.equals(nameOf(plain));
   }
 }

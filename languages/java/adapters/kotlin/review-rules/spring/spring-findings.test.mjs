@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { findingFactory } from '../review-finding.mjs';
 import { routed } from '../test-support/facts.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../review-rules.mjs';
-import { springFindings, withoutCoveredSourceFindings } from './spring-findings.mjs';
+import { springFindings } from './spring-findings.mjs';
 import { ALLOWED_FORM_FIRST } from '../../../spring/test-support/allowed-form.mjs';
 import { SPRING_RULES, springMessage } from './spring-messages.mjs';
 
@@ -351,42 +351,5 @@ describe('Kotlin Spring rules that read the rest of the project', () => {
     expect(opened.filter((line) => /Pricing\.quote|Invoicing\.charge/u.test(line))).toEqual([
       'bad/Defaults.kt:117 SpringProxyMethodVisibility Invoicing.charge',
     ]);
-  });
-});
-
-describe('withoutCoveredSourceFindings', () => {
-  const at = (tool, rule, line) => ({ tool, rule, path: 'A.kt', location: { line } });
-
-  it('keeps one finding when a Spring rule names the allowed form for the same client or loop', () => {
-    const findings = [
-      at('kotlin-source', 'HttpWithoutTimeout', 3),
-      at('pmd', 'SpringHttpClientPerCall', 3),
-      at('kotlin-source', 'HttpWithoutTimeout', 9),
-      at('kotlin-source', 'IoCallInLoop', 3),
-      at('kotlin-source', 'IoCallInLoop', 7),
-      at('pmd', 'SpringDataNoSaveInLoop', 7),
-    ];
-
-    expect(withoutCoveredSourceFindings(findings)).toEqual([
-      findings[1],
-      findings[2],
-      findings[3],
-      findings[5],
-    ]);
-  });
-
-  it('keeps the Kotlin finding when an exception lifts the Spring finding on that line', () => {
-    const findings = [
-      at('kotlin-source', 'HttpWithoutTimeout', 3),
-      at('pmd', 'SpringHttpClientPerCall', 3),
-    ];
-    const exceptions = [{ rule: 'pmd/SpringHttpClientPerCall', glob: 'app/A.kt' }];
-
-    expect(withoutCoveredSourceFindings(findings, { exceptions, modulePath: 'app' })).toEqual(
-      findings,
-    );
-    expect(withoutCoveredSourceFindings(findings, { exceptions, modulePath: 'other' })).toEqual(
-      findings.slice(1),
-    );
   });
 });

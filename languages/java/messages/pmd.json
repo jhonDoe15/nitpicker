@@ -572,7 +572,7 @@
     "mayBeIntended": false
   },
   "SwallowedInterrupt": {
-    "fix": "Call Thread.currentThread().interrupt() before leaving the handler, or rethrow: declare throws InterruptedException, or throw a new exception with the cause.",
+    "fix": "Call Thread.currentThread().interrupt() before leaving the handler, or rethrow: throw e, or throw a new exception with the cause.",
     "mayBeIntended": true
   },
   "SwitchStmtsShouldHaveDefault": {

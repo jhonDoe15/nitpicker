@@ -26,11 +26,11 @@ public final class Bodies {
   private final Throwing throwing;
   private final Set<String> handlerNames;
 
-  public Bodies(String text, boolean test, Set<String> nothing, Set<String> handlerNames) {
+  public Bodies(String text, boolean test, Throwing throwing, Set<String> handlerNames) {
     this.active = !test;
     this.lines = new Lines(text);
     this.exceptionUses = new ExceptionUses(this::lineOf);
-    this.throwing = new Throwing(nothing);
+    this.throwing = throwing;
     this.handlerNames = handlerNames;
   }
 

@@ -1,5 +1,37 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { isFailureCall, logCalls, loggerNames, topLevelArguments } from './loggers.mjs';
+import {
+  LOG_LEVELS,
+  LOGGER_NAME_PATTERNS,
+  isFailureCall,
+  logCalls,
+  loggerNames,
+  topLevelArguments,
+} from './loggers.mjs';
+
+const GRADLE = path.resolve(import.meta.dirname, '../gradle');
+const HANDLING = readFileSync(path.join(GRADLE, 'kotlin-psi/catches/Handling.java'), 'utf8');
+const RULESET = readFileSync(path.join(GRADLE, 'pmd-ruleset.xml'), 'utf8');
+const SWALLOWED_INTERRUPT = RULESET.slice(
+  RULESET.indexOf('<rule name="SwallowedInterrupt"'),
+  RULESET.indexOf('</rule>', RULESET.indexOf('<rule name="SwallowedInterrupt"')),
+);
+
+function quoted(text, quote) {
+  return [...text.matchAll(new RegExp(`${quote}([^${quote}]*)${quote}`, 'gu'))].map(
+    ([, value]) => value,
+  );
+}
+
+function between(text, start, end) {
+  const from = text.indexOf(start) + start.length;
+  return text.slice(from, text.indexOf(end, from));
+}
+
+function printed(pattern) {
+  return `${pattern.source}${pattern.flags.includes('i') ? ' (i)' : ''}`;
+}
 
 describe('loggerNames', () => {
   it.each([
@@ -111,5 +143,35 @@ describe('topLevelArguments', () => {
       'listOf(d, e)',
       '{x, y}',
     ]);
+  });
+});
+
+describe('one notion of a log call for the handler rules', () => {
+  it('gives the Kotlin program and the Java SwallowedInterrupt rule the levels and logger names of loggers.mjs', () => {
+    const javaLevels = quoted(between(HANDLING, 'LOG_LEVELS =', ');'), '"');
+    const javaNames = [
+      ...between(HANDLING, 'LOGGER_NAMES =', 'CONSOLE =').matchAll(
+        /Pattern\.compile\("([^"]+)"(, Pattern\.CASE_INSENSITIVE)?\)/gu,
+      ),
+    ].map(([, source, flag]) => `${source}${flag === undefined ? '' : ' (i)'}`);
+    const xpathLevels = quoted(between(SWALLOWED_INTERRUPT, '$levels := (', ')'), "'");
+    const xpathNames = [
+      ...SWALLOWED_INTERRUPT.matchAll(/matches\(@Name, '([^']+)'(, 'i')?\)/gu),
+    ].map(([, source, flag]) => `${source}${flag === undefined ? '' : ' (i)'}`);
+
+    expect(javaLevels).toEqual(LOG_LEVELS);
+    expect(xpathLevels).toEqual(LOG_LEVELS);
+    expect(javaNames).toEqual(LOGGER_NAME_PATTERNS.map(printed));
+    expect(xpathNames).toEqual(LOGGER_NAME_PATTERNS.map(printed));
+  });
+
+  it('gives both the same console and stack trace calls', () => {
+    const javaConsole = quoted(between(HANDLING, 'CONSOLE = Set.of(', ');'), '"');
+    const xpathConsole = quoted(between(SWALLOWED_INTERRUPT, "[@MethodName = ('print'", ')]'), "'");
+
+    expect(javaConsole).toEqual(['print', 'println', 'printf', 'format']);
+    expect(['print', ...xpathConsole]).toEqual(javaConsole);
+    expect(HANDLING).toContain('STACK_TRACE = "printStackTrace"');
+    expect(SWALLOWED_INTERRUPT).toContain("$call/@MethodName = 'printStackTrace'");
   });
 });
