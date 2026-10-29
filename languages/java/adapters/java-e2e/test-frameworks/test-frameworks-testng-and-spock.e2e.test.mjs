@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../../java-runner.mjs';
@@ -52,13 +52,13 @@ describe.skipIf(!enabled)('Java preset on TestNG and Spock test frameworks', () 
       readFileSync(pom, 'utf8').replace('<version>3.5.4</version>', '<version>3.6.0</version>'),
     );
 
-    const since = Date.now();
+    const reports = path.join(root, 'target/surefire-reports');
+    rmSync(reports, { recursive: true, force: true });
     runMaven({
       projectRoot: root,
       maven,
       args: ['--quiet', 'test', '-Dmaven.test.failure.ignore=true'],
     });
-    const reports = path.join(root, 'target/surefire-reports');
     for (const [className, reportedClass] of [
       ['demo.CalcTest', 'demo.CalcTest'],
       ['demo.NamingArchTest', 'NamingArchTest'],
@@ -75,7 +75,7 @@ describe.skipIf(!enabled)('Java preset on TestNG and Spock test frameworks', () 
         surefireReports: reports,
         failsafeReports: reports,
       },
-      since,
+      since: 0,
       isArchunit: archunitMatcher(),
       testRuntime: ['testng-7.10.2.jar', 'junit-platform-engine-1.12.2.jar'],
     });
