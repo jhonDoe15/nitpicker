@@ -1,13 +1,9 @@
+import { typeServices } from '../security/security-values.mjs';
 import { callEffects, chainOuterCall, describePath, ioKind } from '../support/io-effects.mjs';
+import { memoized } from '../support/memo.mjs';
 import { heldScope, isOnParameter, scopeLabel } from './held-scopes.mjs';
 
 const REMOTE = 'remote';
-
-function provesConnection(context, scope) {
-  return scope.calls.some(
-    (call) => isOnParameter(call, scope.param) || ioKind(call, context) === 'database',
-  );
-}
 
 function remotePath(context, node) {
   const path = callEffects(node, context).get(REMOTE);
@@ -18,11 +14,20 @@ function remotePath(context, node) {
 
 export function remoteInScope(kind, needsDatabase) {
   return function create(context) {
-    const functionCalls = new Map();
+    const proofs = new WeakMap();
+    const untyped = typeServices(context) === undefined;
+    function provesConnection(scope) {
+      return memoized(proofs, scope, () =>
+        scope.calls.some(
+          (call) =>
+            (untyped && isOnParameter(call, scope.param)) || ioKind(call, context) === 'database',
+        ),
+      );
+    }
     function check(node) {
-      const scope = heldScope(kind, node, { sourceCode: context.sourceCode, functionCalls });
+      const scope = heldScope(kind, node, context);
       const path = scope === undefined ? undefined : remotePath(context, node);
-      if (path === undefined || (needsDatabase && !provesConnection(context, scope))) {
+      if (path === undefined || (needsDatabase && !provesConnection(scope))) {
         return;
       }
       context.report({

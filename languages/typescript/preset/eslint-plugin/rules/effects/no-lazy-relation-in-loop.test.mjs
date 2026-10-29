@@ -17,12 +17,33 @@ const ENTITIES = [
   '}',
 ].join('\n');
 
-const { tester, typed } = typedIoProject('lazy-relation', ENTITIES);
+const SCHEMAS = [
+  "import { EntitySchema, Repository } from 'typeorm';",
+  'export interface Invoice { id: number; payer: Promise<object>; owner: Promise<object> }',
+  'export const InvoiceSchema = new EntitySchema<Invoice>({',
+  "  name: 'Invoice',",
+  "  relations: { payer: { type: 'many-to-one', lazy: true }, owner: { type: 'many-to-one' } },",
+  '});',
+  'export declare const shipments: Repository<any>;',
+].join('\n');
+
+const SCRIPT_SCHEMA = [
+  "const { EntitySchema } = require('typeorm');",
+  "module.exports = new EntitySchema({ name: 'Shipment', relations: { carrier: { lazy: true } } });",
+].join('\n');
+
+const { tester, typed, typedScript } = typedIoProject('lazy-relation', ENTITIES, {
+  'schemas.ts': SCHEMAS,
+  'shipment.cjs': SCRIPT_SCHEMA,
+});
 
 const HEADER = [
-  "import { Repository } from 'typeorm';",
+  "import { Repository, EntityManager } from 'typeorm';",
   "import { Order } from './store';",
+  "import type { Invoice } from './schemas';",
   'declare const orders: Repository<Order>;',
+  'declare const invoices: Repository<Invoice>;',
+  'declare const manager: EntityManager;',
   'declare function use(value: unknown): void;',
   'declare const loaded: Order[];',
   'declare const base: object;',
@@ -53,6 +74,8 @@ tester.run('no-lazy-relation-in-loop', rule, {
     'const found = await orders.find(); for (const order of found) { use(order.total); }',
     'const found = await orders.find(); const first = found[0]; use(await first.customer);',
     'const found = await orders.find(); for (const order of found) { const other = found[0]; use(await other.customer); }',
+    `const found = await manager.find(Order, { relations: ['customer'] }); ${loop}`,
+    'for (const invoice of await invoices.find()) { use(await invoice.owner); }',
   ].map((body) => typed(inRun(body))),
   invalid: [
     invalid(`const found = await orders.find(); ${loop}`, {
@@ -70,6 +93,27 @@ tester.run('no-lazy-relation-in-loop', rule, {
     invalid(
       'const found = await orders.find(); await Promise.all(found.map(async (order) => use(await order.lines)));',
     ),
+    invalid(`const found = await manager.find(Order); ${loop}`, {
+      entity: 'Order',
+      relation: 'customer',
+      origin: 'manager.find()',
+    }),
+    invalid('for (const invoice of await invoices.find()) { use(await invoice.payer); }', {
+      entity: 'Invoice',
+      relation: 'payer',
+      origin: 'invoices.find()',
+    }),
+    {
+      ...typedScript(
+        "import { shipments } from './schemas';\nexport async function run() { for (const shipment of await shipments.find()) { await shipment.carrier; } }",
+      ),
+      errors: [
+        {
+          messageId: 'lazy',
+          data: { entity: 'Shipment', relation: 'carrier', origin: 'shipments.find()' },
+        },
+      ],
+    },
   ],
 });
 
