@@ -208,6 +208,38 @@ describe('what an edit of .jscpd.json changes', () => {
   });
 });
 
+describe('the TypeScript compiler options the project opted into', () => {
+  const at = (base, extra = {}) => ({
+    'tsconfig.json': '{ "extends": "./config/tsconfig.base.json", "include": ["src"] }\n',
+    'config/tsconfig.base.json': base,
+    'src/a.ts': 'export const a = 1;\n',
+    ...extra,
+  });
+  const STRICT = '{ "compilerOptions": { "strict": true } }\n';
+  const RELAXED = '{ "compilerOptions": { "strict": false } }\n';
+
+  it.each([undefined, 'javascript'])(
+    'counts an edit of any tsconfig in the extends chain of the %s project',
+    (preset) => {
+      const config = { preset, tools: { typescript: PROJECT } };
+
+      expect(between({ base: at(STRICT), head: at(RELAXED), config }).policyLoosenings).toEqual([
+        'typescript project config changed: config/tsconfig.base.json',
+      ]);
+      expect(
+        between({
+          base: at(STRICT),
+          head: at(`// shared\n${STRICT}`, { 'other/tsconfig.json': RELAXED }),
+          config,
+        }).policyLoosenings,
+      ).toEqual([]);
+      expect(
+        between({ base: at(STRICT), head: at(RELAXED), config: { preset } }).policyLoosenings,
+      ).toEqual([]);
+    },
+  );
+});
+
 describe('what counts as an edit of a project tool config', () => {
   const java = { preset: 'java', tools: { checkstyle: PROJECT } };
   const checkstyle = (rules, extra = {}) => ({

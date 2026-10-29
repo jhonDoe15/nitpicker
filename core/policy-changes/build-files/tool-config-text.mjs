@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { codeExtensionNames } from '../../../languages/typescript/preset/layout.mjs';
+import { parseJsonc } from '../../../shared/jsonc/jsonc.mjs';
 
 const EDITORCONFIG = '.editorconfig';
 const KOTLIN_FILES = ['A.kt', 'A.kts'];
@@ -66,9 +67,9 @@ function scriptText(text) {
   return keptLines(text.replaceAll(BLOCK_COMMENT, ''), (trimmed) => SLASH_COMMENT.test(trimmed));
 }
 
-function jsonText(text) {
+function jsonText(text, parse) {
   try {
-    return { kind: 'json', text: JSON.stringify(JSON.parse(text)) };
+    return { kind: 'json', text: JSON.stringify(parse(text)) };
   } catch {
     return { kind: 'malformed-json' };
   }
@@ -77,7 +78,8 @@ function jsonText(text) {
 export function toolConfigText(tool, file, text) {
   const name = path.posix.basename(file);
   const extension = path.posix.extname(file);
-  const json = extension === '.json' || name === '.prettierrc' ? jsonText(text) : undefined;
+  const parse = tool === 'typescript' ? parseJsonc : JSON.parse;
+  const json = extension === '.json' || name === '.prettierrc' ? jsonText(text, parse) : undefined;
   if (json?.kind === 'json') {
     return json.text;
   }

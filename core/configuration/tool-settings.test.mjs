@@ -26,8 +26,11 @@ describe('tool precedence', () => {
         `"tools.${tool}.engine" must be "${engines[0]}" or "${engines[1]}"`,
       );
     }
-    expect(() => validateConfig({ tools: { [tool]: { precedence: ['project'] } } })).toThrow(
-      `"tools.${tool}" has unknown key "precedence"`,
+  });
+
+  it('rejects a precedence for the lint engine', () => {
+    expect(() => validateConfig({ tools: { eslint: { precedence: ['project'] } } })).toThrow(
+      '"tools.eslint" has unknown key "precedence"',
     );
   });
 

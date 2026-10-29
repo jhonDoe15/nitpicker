@@ -237,6 +237,7 @@ export function resolveLayoutFor(policy = {}) {
     }),
     duplicateSkippedFolders: policy.duplicates?.skippedFolders,
     typescriptProject: policy.tools?.typescript?.project,
+    typescriptSettings: policy.tools?.typescript,
   };
 }
 

@@ -80,3 +80,41 @@ export function projectLibs(projectDirectory, configName) {
   const { options } = parsedTsconfig(path.join(projectDirectory, configName));
   return options.lib?.map((lib) => path.basename(lib).replace(LIB_FILE, '$1'));
 }
+
+const NO_INPUTS = 18003;
+
+export function tsconfigProblems(configFile) {
+  const typescript = typescriptCompiler();
+  const { error } = typescript.readConfigFile(configFile, typescript.sys.readFile);
+  const problems =
+    error === undefined
+      ? parsedTsconfig(configFile).errors.filter(({ code }) => code !== NO_INPUTS)
+      : [error];
+  return problems.map((problem) =>
+    typescript.flattenDiagnosticMessageText(problem.messageText, '\n'),
+  );
+}
+
+function extendedFiles(configFile) {
+  const extended = readJsonc(configFile)?.extends;
+  return (Array.isArray(extended) ? extended : [extended])
+    .filter((entry) => typeof entry === 'string' && entry.startsWith('.'))
+    .map((entry) => path.resolve(path.dirname(configFile), entry))
+    .map((file) => (existsSync(file) || file.endsWith('.json') ? file : `${file}.json`));
+}
+
+export function tsconfigChain(projectRoot, relativeConfig) {
+  const root = path.resolve(projectRoot);
+  const found = [path.resolve(root, relativeConfig)];
+  for (const file of found) {
+    found.push(
+      ...extendedFiles(file).filter(
+        (next) =>
+          !found.includes(next) && next.startsWith(`${root}${path.sep}`) && existsSync(next),
+      ),
+    );
+  }
+  return found
+    .filter((file) => existsSync(file))
+    .map((file) => path.relative(root, file).split(path.sep).join('/'));
+}
