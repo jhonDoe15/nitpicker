@@ -179,10 +179,10 @@ describe.skipIf(!enabled)('timeout scopes with a path that has no checkpoint', (
         finding(5, 'trio.fail_after: recover()'),
       ],
       [
-        'a finally clause that checkpoints',
+        'an else clause that checkpoints',
         inAsync(
           TRIO,
-          '    with trio.fail_after(5):\n        try:\n            work()\n        finally:\n            await close()\n',
+          '    with trio.fail_after(5):\n        try:\n            work()\n        except ValueError:\n            raise\n        else:\n            await close()\n',
         ),
         [],
       ],

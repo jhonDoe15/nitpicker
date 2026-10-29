@@ -841,6 +841,32 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   its inner task must stay referenced; neither is modeled. Ruff 0.16.8 (the version pinned in
   `.github/python-e2e-constraints.txt`) and 0.16.9 have no ASYNC102, and no flake8-async code is
   used. The identity is the checkpoint, the block and the enclosing function.
+- `timeout-scope-path-without-checkpoint` reports a timeout or cancel scope in production code
+  whose body suspends on some paths but also has a path that runs real work without reaching a
+  checkpoint, so the deadline cannot interrupt that path (the semantics of flake8-async
+  ASYNC912/ASYNC913, which Ruff does not implement). The scopes are `trio.move_on_after`,
+  `move_on_at`, `fail_after`, `fail_at`, `trio.CancelScope`, `anyio.move_on_after`,
+  `anyio.fail_after`, `anyio.CancelScope`, `asyncio.timeout` and `asyncio.timeout_at` (import
+  renames and module aliases included; `with` and `async with`), and `asyncio.wait_for` of a call
+  to a coroutine defined once, undecorated, at module level of the same file (the coroutine body is
+  the scope). A `CancelScope(shield=True)` without a `deadline` is not a timeout and is skipped.
+  A checkpoint is an `await` that can suspend, `async for`, `async with` (and async comprehensions);
+  the path analysis follows `if`, `match`, `for`, `while`, `try`/`except`/`else`/`finally`,
+  `return`, `break` and `continue`, and `raise` ends a path. An `await` of a coroutine defined in
+  the same module whose body never suspends is not a checkpoint. A path is reported only when it
+  runs a call that is not on a short list of cheap ones (builtins such as `len` and `sorted`,
+  `append`, `get`, logger methods, `start_soon`, `create_task`); a branch that only logs or returns
+  a cached value is allowed. The allowed forms are to await the slow work
+  (`await asyncio.to_thread(work)`, `await trio.to_thread.run_sync(work)`,
+  `await anyio.to_thread.run_sync(work)`), an explicit checkpoint before it
+  (`await asyncio.sleep(0)`, `await trio.lowlevel.checkpoint()`), or moving the path out of the
+  scope. Overlap with Ruff: a scope that contains no checkpoint at all is Ruff's `ASYNC100`
+  and is never reported here (the rule requires at least one checkpoint in the scope), so the
+  two never report the same scope. Test files are not checked. The identity is the scope and the
+  first offending call. Limits: only calls resolved by name are judged, a callee imported from
+  another module is assumed to be a real call but not to suspend, a loop is unrolled four rounds,
+  and a scope held in a variable (`scope = trio.move_on_after(5)`, then `with scope:`) is not
+  followed.
 - `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
   comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
   `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and
