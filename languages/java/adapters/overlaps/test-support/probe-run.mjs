@@ -5,9 +5,17 @@ import { collectJavaFindings } from '../../java-diff.mjs';
 
 export const PROBE_FILE = path.resolve(import.meta.dirname, '../fixtures/probe-findings.json');
 const PROJECT = path.resolve(import.meta.dirname, '../../fixtures/gradle-project');
+const POM = path.resolve(import.meta.dirname, '../../../maven/fixtures/single/pom.xml');
+const GRADLE_FILES = ['build.gradle', 'settings.gradle'];
 const EXTRA_DEPENDENCIES = [
   "    implementation 'org.jspecify:jspecify:1.0.0'",
   "    testImplementation 'junit:junit:4.13.2'",
+];
+const EXTRA_MAVEN_DEPENDENCIES = [
+  '    <dependency><groupId>org.jspecify</groupId><artifactId>jspecify</artifactId>' +
+    '<version>1.0.0</version></dependency>',
+  '    <dependency><groupId>junit</groupId><artifactId>junit</artifactId>' +
+    '<version>4.13.2</version><scope>test</scope></dependency>',
 ];
 const KEPT_TOOLS = new Set(['pmd', 'spotbugs', 'checkstyle', 'errorprone']);
 
@@ -19,7 +27,26 @@ export function printProbe(probe) {
   return `${JSON.stringify(probe, null, 2)}\n`;
 }
 
-function writeProject(root, sources) {
+function addDependencies(file, opening, lines) {
+  writeFileSync(
+    file,
+    readFileSync(file, 'utf8').replace(opening, `${opening}${lines.join('\n')}\n`),
+  );
+}
+
+function writeBuild(root, build) {
+  if (build === 'maven') {
+    for (const name of GRADLE_FILES) {
+      rmSync(path.join(root, name));
+    }
+    cpSync(POM, path.join(root, 'pom.xml'));
+    addDependencies(path.join(root, 'pom.xml'), '<dependencies>\n', EXTRA_MAVEN_DEPENDENCIES);
+  } else {
+    addDependencies(path.join(root, 'build.gradle'), 'dependencies {\n', EXTRA_DEPENDENCIES);
+  }
+}
+
+function writeProject(root, sources, build) {
   cpSync(PROJECT, root, { recursive: true });
   rmSync(path.join(root, 'src'), { recursive: true });
   for (const [file, text] of Object.entries(sources)) {
@@ -30,14 +57,7 @@ function writeProject(root, sources) {
     mkdirSync(path.dirname(full), { recursive: true });
     writeFileSync(full, text);
   }
-  const build = path.join(root, 'build.gradle');
-  writeFileSync(
-    build,
-    readFileSync(build, 'utf8').replace(
-      'dependencies {\n',
-      `dependencies {\n${EXTRA_DEPENDENCIES.join('\n')}\n`,
-    ),
-  );
+  writeBuild(root, build);
 }
 
 function fixtureEntry({ tool, rule, path: file, location, symbol }) {
@@ -63,12 +83,13 @@ function probeEntries(findings) {
     .sort((left, right) => entryKey(left).localeCompare(entryKey(right), 'en'));
 }
 
-export function runProbe(sources, { gradle = 'gradle' } = {}) {
+export function runProbe(sources, { gradle = 'gradle', maven, build = 'gradle' } = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-overlap-probe-'));
   try {
-    writeProject(root, sources);
+    writeProject(root, sources, build);
     const findings = collectJavaFindings(root, {
       gradle,
+      maven,
       resolveOverlaps: (reported) => reported,
     });
     return { sources, findings: probeEntries(findings) };

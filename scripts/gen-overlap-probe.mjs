@@ -8,12 +8,17 @@ import {
   runProbe,
 } from '../languages/java/adapters/overlaps/test-support/probe-run.mjs';
 
-const GRADLE_OPTION = '--gradle=';
+const OPTIONS = ['gradle', 'maven', 'build'];
 const STDERR = 2;
 
-function gradleOption(argv) {
-  const given = argv.find((argument) => argument.startsWith(GRADLE_OPTION));
-  return given === undefined ? {} : { gradle: given.slice(GRADLE_OPTION.length) };
+function runOptions(argv) {
+  return Object.fromEntries(
+    OPTIONS.flatMap((name) => {
+      const prefix = `--${name}=`;
+      const given = argv.find((argument) => argument.startsWith(prefix));
+      return given === undefined ? [] : [[name, given.slice(prefix.length)]];
+    }),
+  );
 }
 
 function driftReport({ added, removed }) {
@@ -25,7 +30,7 @@ function driftReport({ added, removed }) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
-  const options = gradleOption(process.argv);
+  const options = runOptions(process.argv);
   if (process.argv.includes('--check')) {
     const drift = currentDrift(options);
     if (!drift.formatted) {
