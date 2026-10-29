@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { file, fn, klass, parameter, property, run, summary } from '../test-support/facts.mjs';
+import { file, fn, klass, parameter, property, run, summary } from '../../test-support/facts.mjs';
 import { SUSPENDED_UPDATE_RULE, suspendedUpdateFindings } from './suspended-updates.mjs';
 
 const suspendFun = (name, owner = 'Ledger', overrides = {}) =>
