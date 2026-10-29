@@ -14,7 +14,6 @@ import {
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
 
 export const SNAPSHOT_DIRECTORY_NAMES = ['base', 'head'];
-const INSTALL_RANGES = { typescript: '>=5.7 <7' };
 
 export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT } = {}) {
   const { owningManifest, owningPeers, from } = owningTool(name, { projectRoot, packageRoot });
@@ -24,14 +23,7 @@ export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT
 
 export function isToolInstalled(name, { projectRoot, packageRoot = PACKAGE_ROOT } = {}) {
   const { from } = owningTool(name, { projectRoot, packageRoot });
-  try {
-    return findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href) !== undefined;
-  } catch (error) {
-    if (error?.code === 'ERR_MODULE_NOT_FOUND') {
-      return false;
-    }
-    throw error;
-  }
+  return packageFileOf(name, from) !== undefined;
 }
 
 function owningTool(name, { projectRoot, packageRoot }) {
@@ -43,8 +35,19 @@ function owningTool(name, { projectRoot, packageRoot }) {
   return { owningManifest, owningPeers, from };
 }
 
+function packageFileOf(name, from) {
+  try {
+    return findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href);
+  } catch (error) {
+    if (error?.code === 'ERR_MODULE_NOT_FOUND') {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
 function installedTool(name, { owningManifest, owningPeers, from }) {
-  const packageFile = findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href);
+  const packageFile = packageFileOf(name, from);
   if (packageFile === undefined) {
     throw missingToolError(name, from, owningManifest.peerDependencies?.[name]);
   }
@@ -63,11 +66,10 @@ function installedTool(name, { owningManifest, owningPeers, from }) {
 
 function missingToolError(name, from, peerRange) {
   const message = `Required tool ${name} is not installed from ${from}`;
-  const range = INSTALL_RANGES[name] ?? peerRange;
   return peerRange === undefined
     ? new Error(message)
     : troubleshootingError(
-        `${message}. Install ${name} ${range} as a dev dependency of the project.`,
+        `${message}. Install ${name} ${peerRange} as a dev dependency of the project.`,
         TROUBLESHOOTING_ANCHORS.missingPeer,
       );
 }

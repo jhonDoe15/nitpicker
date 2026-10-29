@@ -6,6 +6,7 @@ import {
   plainText,
   productionSources,
   read,
+  stringConstants,
 } from './test-support/troubleshooting-page.mjs';
 
 const LINKING_CALLS = new Set([
@@ -26,25 +27,6 @@ const MESSAGES_BUILT_ELSEWHERE = [
   'languages/java/adapters/red-base/tests-failed.mjs',
 ];
 const symptoms = new Map(pageEntries().map(({ slug, symptom }) => [slug, symptom]));
-
-function stringConstants(source) {
-  const constants = new Map();
-  for (const statement of source.statements) {
-    const declarations = ts.isVariableStatement(statement)
-      ? statement.declarationList.declarations
-      : [];
-    for (const { name, initializer } of declarations) {
-      if (
-        ts.isIdentifier(name) &&
-        initializer !== undefined &&
-        ts.isStringLiteralLike(initializer)
-      ) {
-        constants.set(name.text, initializer.text);
-      }
-    }
-  }
-  return constants;
-}
 
 function segments(node, constants) {
   if (node === undefined) {
