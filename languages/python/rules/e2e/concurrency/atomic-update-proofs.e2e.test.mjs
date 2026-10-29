@@ -20,7 +20,7 @@ const run = (text) =>
     '',
     '',
     'class Store:',
-    '    async def run(self, fetch, flag=False):',
+    '    async def run(self, fetch, *, flag=False):',
     body(text, 8),
   );
 const gated = (init, enter = 'self.gate', imports = 'import asyncio') =>
