@@ -3,7 +3,7 @@ import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { noteSectionLines } from './format/notes.mjs';
 import { noticeSection } from './review/notices.mjs';
 import { policyChangeSection } from './review/policy-changes.mjs';
-import { docsUrl } from '../../../shared/messages/docs-url.mjs';
+import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
 
 export function renderTextReport(report, { reference = referenceLinks() } = {}) {
@@ -90,7 +90,9 @@ function appendFindingSection(lines, heading, findings) {
 /** The line that points at the rule reference, when one of `findings` has an entry there. */
 export function ruleReferenceLines(findings, reference) {
   const known = findings.some((finding) => helpUriFor(reference, finding) !== undefined);
-  const url = known ? docsUrl('docs/rules/README.md', undefined, reference.root()) : undefined;
+  const url = known
+    ? repositoryUrl('docs/rules/README.md', undefined, reference.root())
+    : undefined;
   return url === undefined
     ? []
     : ['', `Rule reference: ${url} (nitpicker explain <tool/rule> prints one rule)`];

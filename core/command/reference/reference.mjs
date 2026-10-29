@@ -2,7 +2,13 @@ import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE_NAME, configError } from '../../../shared/config.mjs';
 import { PRESET_TITLES, PRESETS } from '../../../shared/reference/entry.mjs';
-import { entryFacts, entryLinks, linkUrl, plainText } from '../../../shared/reference/facts.mjs';
+import {
+  entryFacts,
+  entryLinks,
+  linkUrl,
+  plainText,
+  repositoryUrl,
+} from '../../../shared/reference/facts.mjs';
 import {
   closestIds,
   indexEntries,
@@ -13,7 +19,7 @@ import {
 import { applyDisable, readConfigFile } from '../../configuration/config.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 import { chainOf } from '../../../shared/traversal.mjs';
-import { docsRootUrl, docsUrl } from '../../../shared/messages/docs-url.mjs';
+import { docsRootUrl } from '../../../shared/messages/docs-url.mjs';
 
 const EXPLAIN_USAGE = 'Usage: nitpicker explain <tool/rule>...\n';
 const RULES_USAGE = `Usage: nitpicker rules [--preset <${PRESETS.join('|')}>] [--tool <name>]\n`;
@@ -54,7 +60,7 @@ function categoryText(name, rules, root) {
     name,
     'A check nitpicker runs itself. Its rules (nitpicker explain <rule> describes one):',
     ...rules.map((entry) => `${INDENT}${summaryLine(entry, root)}`),
-    ...urlLines('Checks catalog', docsUrl(CHECKS_CATALOG, CATEGORY_ANCHOR, root)),
+    ...urlLines('Checks catalog', repositoryUrl(CHECKS_CATALOG, CATEGORY_ANCHOR, root)),
     '',
   ].join('\n');
 }

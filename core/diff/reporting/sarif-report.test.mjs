@@ -8,6 +8,7 @@ import { expectValidSarif } from './test-support/report-assertions.mjs';
 import { sarifSchemaErrors } from './test-support/sarif-schema.mjs';
 import { finding, report } from './test-support/report-builders.mjs';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
+import { referenceLinks } from '../../../shared/reference/store.mjs';
 
 const projectPath = 'packages/my app';
 
@@ -135,6 +136,29 @@ describe('renderSarifReport', () => {
         name: 'attr-defined',
         shortDescription: { text: 'A diagnostic of mypy, named by its <error code>.' },
         helpUri: docsUrl('docs/rules/python-types.md', 'mypy-error-code'),
+      },
+    ]);
+  });
+  it('leaves out the helpUri when the package gives no link root', () => {
+    const known = referenceLinks();
+    const reference = { index: () => known.index(), root: () => undefined };
+    const log = JSON.parse(
+      renderSarifReport(
+        report({
+          newFindings: [finding({ tool: 'pmd', rule: 'UnusedLocalVariable', identity: 'g' })],
+        }),
+        { reference },
+      ),
+    );
+
+    expectValidSarif(log);
+    expect(log.runs[0].tool.driver.rules).toEqual([
+      {
+        id: 'pmd/UnusedLocalVariable',
+        name: 'UnusedLocalVariable',
+        shortDescription: {
+          text: 'Detects when a local variable is declared and/or assigned, but not used.',
+        },
       },
     ]);
   });

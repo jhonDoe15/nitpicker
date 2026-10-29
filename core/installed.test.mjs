@@ -1,16 +1,5 @@
 import { createRequire } from 'node:module';
-import { spawnSync } from 'node:child_process';
-import {
-  existsSync,
-  lstatSync,
-  mkdtempSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -19,6 +8,13 @@ import { docsRef } from '../shared/messages/docs-url.mjs';
 import { runCli } from './cli.mjs';
 import { captureOutput } from './diff/reporting/test-support/output-capture.mjs';
 import { indexEntries, readReferenceEntries, referenceUrl } from '../shared/reference/store.mjs';
+import {
+  checked,
+  command,
+  listing,
+  temporaryFiles,
+  write,
+} from './test-support/installed-package.mjs';
 
 const enabled = process.env.NITPICKER_INSTALLED_TEST === '1';
 const packageRoot = PACKAGE_ROOT;
@@ -148,55 +144,6 @@ function expectedEslintVersion(typeScriptVersion) {
     `plugins:${[...plugins, `nitpicker-plugin@${manifest.version}`].join(',')};` +
     `oxlint@${manifest.dependencies.oxlint},oxlint-tsgolint@${manifest.dependencies['oxlint-tsgolint']}`
   );
-}
-
-function command(cwd, executable, args) {
-  const result = spawnSync(executable, args, {
-    cwd,
-    encoding: 'utf8',
-    env: { ...process.env, NO_COLOR: '1' },
-    timeout: 180_000,
-  });
-  if (result.error) throw result.error;
-  return { status: result.status, output: `${result.stdout}${result.stderr}` };
-}
-
-function checked(cwd, executable, args) {
-  const result = command(cwd, executable, args);
-  expect(result.status, `${executable} ${args.join(' ')}\n${result.output}`).toBe(0);
-  return result.output.trim();
-}
-
-function write(root, relative, contents) {
-  const target = path.join(root, relative);
-  mkdirSync(path.dirname(target), { recursive: true });
-  writeFileSync(target, contents);
-}
-
-function listing(root) {
-  function walk(directory, prefix = '') {
-    return readdirSync(directory).flatMap((name) => {
-      const relative = path.posix.join(prefix, name);
-      const location = path.join(directory, name);
-      if (lstatSync(location).isDirectory()) return walk(location, relative);
-      return [`${relative}:${lstatSync(location).size}`];
-    });
-  }
-  return walk(realpathSync(root)).sort();
-}
-
-function temporaryFiles(root) {
-  const result = [];
-  function walk(directory) {
-    for (const item of readdirSync(directory, { withFileTypes: true })) {
-      if (item.name === 'node_modules' || item.name === '.git') continue;
-      const location = path.join(directory, item.name);
-      if (/^\.(?:quality|nitpicker)-/.test(item.name)) result.push(path.relative(root, location));
-      if (item.isDirectory()) walk(location);
-    }
-  }
-  walk(root);
-  return result;
 }
 
 const suite = enabled ? describe : describe.skip;

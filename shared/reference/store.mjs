@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { docsRootUrl, docsUrl } from '../messages/docs-url.mjs';
+import { docsRootUrl } from '../messages/docs-url.mjs';
+import { repositoryUrl } from './facts.mjs';
 import { ruleEntry } from './entry.mjs';
 import { PAGE_IDS } from './pages.mjs';
 
@@ -169,9 +170,12 @@ export function closestIds(index, query, limit = FIRST_RESULTS) {
   return scored.slice(0, limit).map(({ id }) => id);
 }
 
-/** The link to a rule's entry in the reference on GitHub, under `root` (see `docsRootUrl`). */
-export function referenceUrl(entry, root = docsRootUrl()) {
-  return docsUrl(`docs/rules/${entry.page}.md`, entry.anchor, root);
+/**
+ * The link to a rule's entry in the reference on GitHub, under `root` (see `docsRootUrl`), or
+ * undefined without a root.
+ */
+export function referenceUrl(entry, root) {
+  return repositoryUrl(`docs/rules/${entry.page}.md`, entry.anchor, root);
 }
 
 /**

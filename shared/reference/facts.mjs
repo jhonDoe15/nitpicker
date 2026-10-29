@@ -1,4 +1,4 @@
-import { docsRootUrl, docsUrl } from '../messages/docs-url.mjs';
+import { docsUrl } from '../messages/docs-url.mjs';
 import { exceptionAdvice, joinedWords, PRESET_TITLES, PRESETS } from './entry.mjs';
 
 const BUILD_TITLES = { gradle: 'Gradle', maven: 'Maven' };
@@ -70,11 +70,19 @@ function formItems(forms) {
 }
 
 /**
- * The URL of a link of `entryLinks`: a guide of this repository on GitHub under `root` (see
- * `docsRootUrl`), or the outside address.
+ * The GitHub URL of a file of this repository under `root` (see `docsRootUrl`), or undefined when
+ * there is no root, as for a package whose package.json names no repository.
  */
-export function linkUrl({ path, anchor, url }, root = docsRootUrl()) {
-  return url ?? docsUrl(path, anchor, root);
+export function repositoryUrl(relativePath, anchor, root) {
+  return root === undefined ? undefined : docsUrl(relativePath, anchor, root);
+}
+
+/**
+ * The URL of a link of `entryLinks`: the outside address, or a guide of this repository under
+ * `root`, which is undefined without a root.
+ */
+export function linkUrl({ path, anchor, url }, root) {
+  return url ?? repositoryUrl(path, anchor, root);
 }
 
 function toolDocumentation(entry) {
@@ -166,15 +174,16 @@ function linkText(label, target, root) {
     return `${label} (${target})`;
   }
   const [file, anchor] = target.split('#');
-  const url = docsUrl(file, anchor, root);
+  const url = repositoryUrl(file, anchor, root);
   return url === undefined ? label : `${label} (${url})`;
 }
 
 /**
  * A Markdown text of the reference as a terminal prints it: no code-span backticks, and links as
- * their label and URL, with the guides of this repository under `root` (see `docsRootUrl`).
+ * their label and URL, with the guides of this repository under `root` (see `docsRootUrl`), or as
+ * their label alone without a root.
  */
-export function plainText(text, root = docsRootUrl()) {
+export function plainText(text, root) {
   return text
     .replaceAll(MARKDOWN_LINK, (_, label, target) => linkText(label, target, root))
     .replaceAll(CODE_SPAN, '$1');
