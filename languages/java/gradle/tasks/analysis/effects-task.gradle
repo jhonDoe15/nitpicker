@@ -1,13 +1,21 @@
 def reportDir = project.ext.nitpickerReportDir
 def pinned = project.ext.nitpickerPinned
 def effectsDirectory = new File(buildscript.sourceFile.parentFile, '../../effects').canonicalFile
-def effectsOptions = { -> (gradle.startParameter.projectProperties['nitpicker.effects.options'] ?: '').toString() }
+def moduleDir = rootDir.toPath().relativize(projectDir.toPath()).toString().replace(File.separator, '/') ?: '.'
+def effectsOptions = { ->
+    (gradle.startParameter.projectProperties['nitpicker.effects.options'] ?: '').toString().split(',')*.trim()
+        .findAll { it }
+        .findAll { !it.contains('@') || it.substring(it.lastIndexOf('@') + 1) == moduleDir }
+        .collect { it.contains('@') ? it.substring(0, it.lastIndexOf('@')) : it }
+}
 
 configurations {
     nitpickerEffects { canBeConsumed = false }
 }
 dependencies {
-    ['asm', 'asm-tree', 'asm-analysis'].each { nitpickerEffects "org.ow2.asm:${it}:${pinned.asm}" }
+    nitpickerEffects "org.ow2.asm:asm:${pinned.asm}"
+    nitpickerEffects "org.ow2.asm:asm-tree:${pinned.asm}"
+    nitpickerEffects "org.ow2.asm:asm-analysis:${pinned.asm}"
 }
 configurations.nitpickerEffects.incoming.beforeResolve {
     configurations.nitpickerEffects.resolutionStrategy.eachDependency { details ->
@@ -20,7 +28,17 @@ configurations.nitpickerEffects.incoming.beforeResolve {
 tasks.register('nitpickerEffects') {
     group = 'nitpicker'
     dependsOn tasks.named('classes')
+    inputs.files(fileTree(effectsDirectory) { include '**/*.java' }).withPropertyName('engine')
+    inputs.files(sourceSets.main.output.classesDirs, sourceSets.main.compileClasspath).withPropertyName('classes')
+    inputs.files(configurations.nitpickerEffects).withPropertyName('asm')
+    inputs.property('options', providers.provider { effectsOptions().join(',') })
+    inputs.property('jdk', "${System.getProperty('java.vendor')}|${System.getProperty('java.version')}")
+    outputs.file(reportDir.map { it.file('effects.json') }).withPropertyName('report')
     doLast {
+        if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
+            throw new GradleException("The effects engine needs JDK 17 or newer, but Gradle runs on Java " +
+                "${JavaVersion.current()}; run Gradle with JDK 17 or newer (JAVA_HOME or org.gradle.java.home)")
+        }
         def directory = reportDir.get().asFile
         directory.mkdirs()
         def output = new File(directory, 'effects.json')
@@ -31,7 +49,8 @@ tasks.register('nitpickerEffects') {
         def digest = java.security.MessageDigest.getInstance('SHA-256')
         sources.each { digest.update((effectsDirectory.toPath().relativize(it.toPath()).toString() + '\u0000').bytes) }
         sources.each { digest.update(it.bytes) }
-        digest.update("${pinned.asm}|${System.getProperty('java.vendor')}|${System.getProperty('java.version')}".bytes)
+        def jdk = "${System.getProperty('java.vendor')}|${System.getProperty('java.version')}"
+        digest.update("${pinned.asm}|${jdk}|17".bytes)
         def cacheRoot = new File(gradle.gradleUserHomeDir, 'caches/nitpicker/effects')
         def classes = new File(cacheRoot, digest.digest().encodeHex().toString())
         def run = { List<String> command ->
@@ -45,8 +64,8 @@ tasks.register('nitpickerEffects') {
         if (!classes.isDirectory()) {
             def staging = new File(cacheRoot, "${classes.name}.${UUID.randomUUID()}")
             staging.mkdirs()
-            run([bin('javac'), '-proc:none', '-nowarn', '-d', staging.absolutePath, '-cp', classpath] +
-                sources*.absolutePath)
+            run([bin('javac'), '-proc:none', '-nowarn', '--release', '17', '-d', staging.absolutePath,
+                 '-cp', classpath] + sources*.absolutePath)
             try {
                 java.nio.file.Files.move(staging.toPath(), classes.toPath(),
                     java.nio.file.StandardCopyOption.ATOMIC_MOVE)
@@ -61,7 +80,7 @@ tasks.register('nitpickerEffects') {
         def input = new File(temporaryDir, 'effects-input.txt')
         input.text = (mainClasses.collect { "main ${it.absolutePath}" } +
             sourceSets.main.compileClasspath.files.findAll { it.exists() }.collect { "classpath ${it.absolutePath}" } +
-            effectsOptions().split(',')*.trim().findAll { it }.collect { "option ${it}" })
+            effectsOptions().collect { "option ${it}" })
             .collect { it + '\n' }.join('')
         run([bin('java'), '-cp', classes.absolutePath + File.pathSeparator + classpath, 'nitpicker.effects.Effects',
              output.absolutePath, input.absolutePath])

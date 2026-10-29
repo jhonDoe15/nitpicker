@@ -127,6 +127,7 @@ const PINNED_TOOLS = [
   'kotlinCompiler',
   'errorProne',
   'nullAway',
+  'asm',
   'jscpd',
 ];
 
