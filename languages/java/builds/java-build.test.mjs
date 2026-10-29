@@ -51,6 +51,7 @@ describe('readPinnedTools', () => {
       'pitestJunit5',
       'pitestTestng',
       'archunit',
+      'asm',
       'detekt',
       'detektKotlin',
       'ktlint',
