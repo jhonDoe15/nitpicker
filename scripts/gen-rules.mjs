@@ -87,6 +87,19 @@ const RUFF_OPTION = /^--refresh-ruff(?:=(.+))?$/u;
 const USAGE =
   'Usage: node scripts/gen-rules.mjs [--check] [--refresh-eslint] [--refresh-jvm] [--refresh-ruff[=<path>]]\n';
 
+async function refreshSnapshots(options, stderr) {
+  const ruffOption = options.map((option) => RUFF_OPTION.exec(option)).find(Boolean);
+  if (ruffOption !== undefined) {
+    await refreshRuff(ruffOption[1] ?? 'ruff', stderr);
+  }
+  if (options.includes('--refresh-eslint')) {
+    await refreshEslint();
+  }
+  if (options.includes('--refresh-jvm')) {
+    await refreshJvm();
+  }
+}
+
 /**
  * Regenerates the rule reference, or with `--check` lists what is stale. `--refresh-ruff[=<path>]`
  * first rewrites the ruff snapshot from that ruff (`ruff` on the PATH by default),
@@ -98,16 +111,7 @@ export async function main(options, { stderr }) {
     stderr.write(USAGE);
     return 2;
   }
-  const ruffOption = options.map((option) => RUFF_OPTION.exec(option)).find(Boolean);
-  if (ruffOption !== undefined) {
-    await refreshRuff(ruffOption[1] ?? 'ruff', stderr);
-  }
-  if (options.includes('--refresh-eslint')) {
-    await refreshEslint();
-  }
-  if (options.includes('--refresh-jvm')) {
-    await refreshJvm();
-  }
+  await refreshSnapshots(options, stderr);
   if (!options.includes('--check')) {
     writeGenerated(await formattedReferenceFiles(repositoryRoot));
     return 0;

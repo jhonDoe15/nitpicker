@@ -21,7 +21,7 @@ import {
   removeRepositories,
   summarize,
 } from './test-support/python-e2e-support.mjs';
-import { helpUriProblems } from '../../../../../shared/reference/test-support/help-uris.mjs';
+import { helpUriProblems } from '../../../../shared/reference/test-support/help-uris.mjs';
 
 const enforceable = (result) =>
   summarize(

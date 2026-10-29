@@ -16,6 +16,8 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 import { docsRef } from '../shared/messages/docs-url.mjs';
+import { runCli } from './cli.mjs';
+import { captureOutput } from './diff/reporting/test-support/output-capture.mjs';
 import { indexEntries, readReferenceEntries, referenceUrl } from '../shared/reference/store.mjs';
 
 const enabled = process.env.NITPICKER_INSTALLED_TEST === '1';
@@ -109,11 +111,15 @@ nitpicker: head: running 2 analyzers
 }
 
 function checkoutOutput(args) {
-  const result = spawnSync(process.execPath, [path.join(packageRoot, 'core/cli.mjs'), ...args], {
-    cwd: packageRoot,
-    encoding: 'utf8',
+  const output = captureOutput();
+  runCli({
+    arguments_: args,
+    currentProjectRoot: packageRoot,
+    environment: {},
+    stdout: output.stdout,
+    stderr: output.stderr,
   });
-  return `${result.stdout}${result.stderr}`.replaceAll(
+  return `${output.stdoutText}${output.stderrText}`.replaceAll(
     `${repositoryUrl}/blob/main/`,
     `${tagRoot}/`,
   );

@@ -14,22 +14,29 @@ const MINIMUM_DISTANCE = 3;
 const DISTANCE_DIVISOR = 3;
 const MINIMUM_KEY = 6;
 
+function valueTable() {
+  const values = [];
+  const indexes = new Map();
+  return {
+    values,
+    indexOf(value) {
+      const key = JSON.stringify(value);
+      if (!indexes.has(key)) {
+        indexes.set(key, values.length);
+        values.push(value);
+      }
+      return indexes.get(key);
+    },
+  };
+}
+
 /**
  * The data file of a page: each distinct field value once, in `values`, the field names, in
  * `fields`, and each entry as a row of value indexes, one per field, -1 where the entry has none.
  * The fields that follow from the others (`id`, `anchor`, `page`) are left out.
  */
 export function encodePage(entries) {
-  const values = [];
-  const indexes = new Map();
-  const indexOf = (value) => {
-    const key = JSON.stringify(value);
-    if (!indexes.has(key)) {
-      indexes.set(key, values.length);
-      values.push(value);
-    }
-    return indexes.get(key);
-  };
+  const { values, indexOf } = valueTable();
   const fields = [...new Set(entries.flatMap(Object.keys))].filter(
     (field) => !DERIVED_FIELDS.includes(field),
   );

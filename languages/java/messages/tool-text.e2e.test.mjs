@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { liveToolText, readToolText, TOOL_TEXT_TOOLS } from './tool-text.mjs';
+import { liveToolText, readToolText, TOOL_TEXT_TOOLS } from '../reference/tool-text/tool-text.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 
@@ -9,6 +9,6 @@ describe.skipIf(!enabled)('the JVM rule text snapshots against the pinned jars',
     (tool) => {
       expect(liveToolText(tool)).toEqual(readToolText(tool));
     },
-    300_000,
+    180_000,
   );
 });

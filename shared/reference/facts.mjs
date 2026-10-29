@@ -26,12 +26,15 @@ function byPresets(entry, valuesOf) {
   }));
 }
 
+function titles(presets) {
+  return joinedWords(presets.map((preset) => PRESET_TITLES[preset]));
+}
+
 function groupedText(entry, valuesOf, format) {
   const groups = byPresets(entry, valuesOf);
   if (groups.every(({ values }) => values.length === 0)) {
     return undefined;
   }
-  const titles = (presets) => joinedWords(presets.map((preset) => PRESET_TITLES[preset]));
   return groups.length === 1
     ? joinedWords(groups[0].values.map(format))
     : groups
@@ -49,7 +52,7 @@ export function analyzersText(entry) {
 }
 
 /** The builds that run the entry's rule, with the presets each one serves. */
-export function buildsText(entry) {
+function buildsText(entry) {
   return entry.builds === undefined
     ? undefined
     : groupedText(
@@ -76,7 +79,7 @@ export function linkUrl({ path, anchor, url }, root = docsRootUrl()) {
 }
 
 /** The documentation the tool itself keeps for the rule, if the entry names it. */
-export function toolDocumentation(entry) {
+function toolDocumentation(entry) {
   return entry.links?.[0];
 }
 

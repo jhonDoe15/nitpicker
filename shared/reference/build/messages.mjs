@@ -5,7 +5,7 @@ const ROUTE =
  * A finding message split into its text and the exception entry its last sentence names, as the
  * `exception` of an entry: the config list, the rule and the narrowing keys it uses.
  */
-export function splitRoute(message) {
+function splitRoute(message) {
   const match = ROUTE.exec(message);
   if (match === null) {
     return { text: message, route: undefined };
