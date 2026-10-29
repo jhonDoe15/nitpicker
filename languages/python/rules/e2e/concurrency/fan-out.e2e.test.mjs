@@ -114,7 +114,9 @@ describe.skipIf(!enabled)('unbounded-fan-out over task creation', () => {
       [
         'a nursery',
         fan('    for u in urls:\n        client.nursery.start_soon(one, client, u)'),
-        [`unbounded-fan-out:12 client.nursery.start_soon${S}urls${S}one()${S}client.get()${S}remote`],
+        [
+          `unbounded-fan-out:12 client.nursery.start_soon${S}urls${S}one()${S}client.get()${S}remote`,
+        ],
       ],
       [
         'a task awaited at once',

@@ -2484,7 +2484,7 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   next lazy stage joins the futures (`.map(CompletableFuture::join)` before any
   `collect`/`toList`). A task started per batch of `Lists.partition(items, 20)` is reported, since
   the number of batches grows with the collection. The message names the iterated collection and
-  the call that starts the tasks (`messages/fan-out-details.mjs`), read from the source at the
+  the call that starts the tasks (`messages/fan-out/fan-out-details.mjs`), read from the source at the
   reported line. Limits: a `while (it.hasNext())` loop, a list of callables filled in a loop and
   then passed to `invokeAll`, a `ThreadPoolExecutor` constructed with an unbounded maximum and
   helpers of other classes are not followed; PMD resolves types from the compile classpath, so a

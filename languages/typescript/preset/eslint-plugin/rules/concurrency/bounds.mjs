@@ -1,35 +1,11 @@
 import { ancestorsOf, chainOf } from '../analysis/ancestry.mjs';
-import { findVariable, resolveConstant } from '../analysis/constant-resolution.mjs';
+import { findVariable } from '../analysis/constant-resolution.mjs';
 import { memberName } from '../security/security-values.mjs';
 import { createOrigins, descendants, skipped } from './io-origin.mjs';
 
-const CHUNKERS = new Set([
-  'chunk',
-  'chunked',
-  'chunks',
-  'splitEvery',
-  'cluster',
-  'batch',
-  'batches',
-  'inGroupsOf',
-]);
-const KEEPS_SIZE = new Set([
-  'filter',
-  'map',
-  'sort',
-  'toSorted',
-  'reverse',
-  'toReversed',
-  'flat',
-  'fill',
-  'keys',
-]);
-const OBJECT_VIEWS = new Set(['keys', 'values', 'entries']);
 const INFINITE = new Set(['Infinity']);
-const SIZES = new Set(['length', 'size']);
 const LIMITER_NAME = /(?:limit|limiter|queue|sema|semaphore|throttle|throttler|mutex)$/iu;
 const PROJECT_MODULE = /^[./]/u;
-const MAX_DEPTH = 6;
 
 function hasProperty(object, name) {
   const target = skipped(object);
@@ -124,217 +100,70 @@ function receivedField(member, isParameter) {
   );
 }
 
-export function createBounds(context) {
-  const { originOf, moduleRef } = createOrigins(context, limiterSpec);
-
-  function isParameter(identifier) {
-    const variable = findVariable(context, identifier, identifier.name);
-    return variable?.defs.some((definition) => definition.type === 'Parameter') === true;
-  }
-
-  function isImportedLimiter(identifier) {
-    const definition = findVariable(context, identifier, identifier.name)?.defs[0];
-    const source = definition?.type === 'ImportBinding' ? definition.parent.source.value : '';
-    return PROJECT_MODULE.test(source) && LIMITER_NAME.test(identifier.name);
-  }
-
-  function received(holder) {
-    if (holder.type === 'Identifier') {
-      return isParameter(holder) || isImportedLimiter(holder);
-    }
-    return isThisMember(holder) && receivedField(holder, isParameter);
-  }
-
-  function limiterAt(callee, root) {
-    const holder = holderOf(callee);
-    if (received(holder)) {
-      return true;
-    }
-    const found = originOf(holder);
-    if (found?.instance !== true) {
-      return false;
-    }
-    return (
-      found.creation === undefined ||
-      (!isWithin(found.creation, root) && found.spec.valid(found.creation))
-    );
-  }
-
-  function wrapsInFunction(call, fn) {
-    const path = ancestorsOf(call);
-    const inside = path.includes(fn) ? path.slice(0, path.indexOf(fn)) : path;
-    const start = inside.findIndex((node) => /Function/u.test(node.type));
-    return (
-      start >= 0 &&
-      inside
-        .slice(start)
-        .some((node) => node.type === 'CallExpression' && limiterAt(node.callee, fn))
-    );
-  }
-
-  function acquiresIn(fn) {
-    return [...descendants(fn.body)].some(
-      (node) =>
-        node.type === 'CallExpression' &&
-        node.callee.type === 'MemberExpression' &&
-        ['acquire', 'removeTokens', 'runExclusive'].includes(memberName(node.callee)) &&
-        limiterAt(node.callee, fn),
-    );
-  }
-
-  return {
-    wrapsInFunction,
-    acquiresIn,
-    limiterAt,
-    isUnboundedPMap: (call) => isUnboundedPMap(moduleRef, call),
-  };
+function isParameter(context, identifier) {
+  const variable = findVariable(context, identifier, identifier.name);
+  return variable?.defs.some((definition) => definition.type === 'Parameter') === true;
 }
 
-function numericParts(target) {
-  if (target.type === 'Literal') {
-    return typeof target.value === 'number' ? [] : undefined;
-  }
-  if (target.type === 'UnaryExpression') {
-    return [target.argument];
-  }
-  return target.type === 'BinaryExpression' ? [target.left, target.right] : undefined;
-}
-
-function numeric(context, node) {
-  const pending = [{ node, depth: 0 }];
-  for (const entry of pending) {
-    const target = resolveConstant(context, skipped(entry.node));
-    const parts =
-      target === undefined || entry.depth > MAX_DEPTH ? undefined : numericParts(target);
-    if (parts === undefined) {
-      return false;
-    }
-    pending.push(...parts.map((part) => ({ node: part, depth: entry.depth + 1 })));
-  }
-  return true;
-}
-
-function explicitSize(node) {
-  return ![...descendants(node)].some(
-    (child) => child.type === 'MemberExpression' && SIZES.has(memberName(child)),
-  );
-}
-
-function resolvedValue(context, node) {
-  let current = skipped(node);
-  for (let depth = 0; depth < MAX_DEPTH; depth += 1) {
-    const next = skipped(resolveConstant(context, current));
-    if (next === current || next === undefined) {
-      return next;
-    }
-    current = next;
-  }
-  return current;
-}
-
-function isEnum(context, identifier) {
+function isImportedLimiter(context, identifier) {
   const definition = findVariable(context, identifier, identifier.name)?.defs[0];
-  return definition?.type === 'TSEnumName';
+  const source = definition?.type === 'ImportBinding' ? definition.parent.source.value : '';
+  return PROJECT_MODULE.test(source) && LIMITER_NAME.test(identifier.name);
 }
 
-function sizedWindow(context, call) {
-  const [first, second] = call.arguments;
-  if (memberName(call.callee) === 'slice' && second === undefined) {
-    return first !== undefined && numeric(context, first);
-  }
-  return second !== undefined && explicitSize(second);
-}
-
-function sizedByLength(context, node) {
-  const object = skipped(node);
-  const length =
-    object?.type === 'ObjectExpression'
-      ? object.properties.find((p) => p.key?.name === 'length')
-      : undefined;
-  return length !== undefined && explicitSize(resolvedValue(context, length.value));
-}
-
-function countOf(context, node) {
-  return node !== undefined && explicitSize(resolvedValue(context, node));
-}
-
-function isChunkCall(context, node) {
-  const target = resolveConstant(context, skipped(node));
-  const name = target?.callee?.name ?? (target?.callee ? memberName(target.callee) : undefined);
-  const chunker = target?.type === 'CallExpression' && CHUNKERS.has(name);
-  return chunker && target.arguments[1] !== undefined && explicitSize(target.arguments[1]);
-}
-
-function isChunkVariable(context, identifier) {
-  const definition = findVariable(context, identifier, identifier.name)?.defs[0];
-  const loop = definition?.type === 'Variable' ? definition.node.parent?.parent : undefined;
-  return loop?.type === 'ForOfStatement' && isChunkCall(context, loop.right);
-}
-
-function fixedCall(context, call) {
-  const name = call.callee.type === 'MemberExpression' ? memberName(call.callee) : call.callee.name;
-  const owner = call.callee.type === 'MemberExpression' ? skipped(call.callee.object) : undefined;
-  if (['slice', 'splice'].includes(name)) {
-    return sizedWindow(context, call);
-  }
-  if (owner?.name === 'Object' && OBJECT_VIEWS.has(name)) {
-    return { next: call.arguments[0] };
-  }
-  if (owner?.name === 'Array' && name === 'from') {
-    return sizedByLength(context, call.arguments[0]);
-  }
-  if (name === 'Array' && call.arguments.length === 1) {
-    return countOf(context, call.arguments[0]);
-  }
-  return KEEPS_SIZE.has(name) && owner !== undefined ? { next: owner } : false;
-}
-
-function fixedStep(context, target, depth) {
-  if (target.type === 'ArrayExpression') {
-    return (
-      target.elements.length > 0 &&
-      target.elements.every(
-        (element) =>
-          element !== null &&
-          (element.type !== 'SpreadElement' ||
-            isFixedCollection(context, element.argument, depth + 1)),
-      )
-    );
-  }
-  if (target.type === 'ObjectExpression') {
-    return (
-      target.properties.length > 0 &&
-      target.properties.every((property) => property.type === 'Property')
-    );
-  }
-  if (target.type === 'CallExpression') {
-    return fixedCall(context, target);
-  }
-  if (target.type === 'NewExpression') {
-    return (
-      target.callee.name === 'Array' &&
-      target.arguments.length === 1 &&
-      countOf(context, target.arguments[0])
-    );
+function received(context, holder) {
+  if (holder.type === 'Identifier') {
+    return isParameter(context, holder) || isImportedLimiter(context, holder);
   }
   return (
-    target.type === 'Identifier' &&
-    (isEnum(context, target) || isChunkVariable(context, target))
+    isThisMember(holder) && receivedField(holder, (identifier) => isParameter(context, identifier))
   );
 }
 
-export function isFixedCollection(context, node, start = 0) {
-  const pending = [{ node, depth: start }];
-  for (const entry of pending) {
-    const target = resolvedValue(context, entry.node);
-    if (target === undefined || entry.depth > MAX_DEPTH) {
-      return false;
-    }
-    const step = fixedStep(context, target, entry.depth);
-    if (typeof step === 'boolean') {
-      return step;
-    }
-    pending.push({ node: step.next, depth: entry.depth + 1 });
+function limiterAt({ context, originOf }, callee, root) {
+  const holder = holderOf(callee);
+  if (received(context, holder)) {
+    return true;
   }
-  return false;
+  const found = originOf(holder);
+  if (found?.instance !== true) {
+    return false;
+  }
+  return (
+    found.creation === undefined ||
+    (!isWithin(found.creation, root) && found.spec.valid(found.creation))
+  );
+}
+
+function wrapsInFunction(scope, call, fn) {
+  const path = ancestorsOf(call);
+  const inside = path.includes(fn) ? path.slice(0, path.indexOf(fn)) : path;
+  const start = inside.findIndex((node) => /Function/u.test(node.type));
+  return (
+    start >= 0 &&
+    inside
+      .slice(start)
+      .some((node) => node.type === 'CallExpression' && limiterAt(scope, node.callee, fn))
+  );
+}
+
+function acquiresIn(scope, fn) {
+  return [...descendants(fn.body)].some(
+    (node) =>
+      node.type === 'CallExpression' &&
+      node.callee.type === 'MemberExpression' &&
+      ['acquire', 'removeTokens', 'runExclusive'].includes(memberName(node.callee)) &&
+      limiterAt(scope, node.callee, fn),
+  );
+}
+
+export function createBounds(context) {
+  const { originOf, moduleRef } = createOrigins(context, limiterSpec);
+  const scope = { context, originOf };
+  return {
+    wrapsInFunction: (call, fn) => wrapsInFunction(scope, call, fn),
+    acquiresIn: (fn) => acquiresIn(scope, fn),
+    limiterAt: (callee, root) => limiterAt(scope, callee, root),
+    isUnboundedPMap: (call) => isUnboundedPMap(moduleRef, call),
+  };
 }

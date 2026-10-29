@@ -80,14 +80,14 @@ function fanOutParts(subject = '') {
   return { combinator, collection, operation, via, kind };
 }
 
-export function fanOutDescription(subject) {
+function fanOutDescription(subject) {
   const { combinator, collection, operation, via, kind } = fanOutParts(subject);
   const verb = kind === 'message' ? 'publishes through' : 'calls';
   const through = via === '' ? '' : ` (which ${verb} \`${via}\`)`;
   return `\`${combinator}\` starts \`${operation}\`${through} for every element of \`${collection}\` at once`;
 }
 
-export function fanOutAllowed(subject) {
+function fanOutAllowed(subject) {
   const { kind } = fanOutParts(subject);
   const target = kind === 'message' ? "the broker's" : "the remote service's";
   return `A large collection exhausts ${target} connections or rate limit. Hold one \`asyncio.Semaphore(8)\` created outside the tasks with \`async with limit:\` around each call, gather fixed-size slices (\`items[i : i + 20]\`), or make one batch call when the API has one.`;

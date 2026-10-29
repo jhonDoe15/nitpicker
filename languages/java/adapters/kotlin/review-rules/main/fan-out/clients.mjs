@@ -1,6 +1,6 @@
 import { typeName } from '../../spring/spring-names.mjs';
 
-export const REMOTE_KIND = 'remote';
+const REMOTE_KIND = 'remote';
 export const MESSAGE_KIND = 'message';
 const ANY = '*';
 const KTOR_METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'request'];
@@ -55,10 +55,7 @@ const CLIENTS = new Map([
     messages: ['publish', 'publishBatch'],
   }),
 ]);
-export const SEMAPHORES = new Set([
-  'kotlinx.coroutines.sync.Semaphore',
-  'java.util.concurrent.Semaphore',
-]);
+const SEMAPHORES = new Set(['kotlinx.coroutines.sync.Semaphore', 'java.util.concurrent.Semaphore']);
 
 function kindOf(spec, method) {
   if (NOT_CALLS.has(method)) {
@@ -70,7 +67,7 @@ function kindOf(spec, method) {
   return spec.methods === ANY || spec.methods?.includes(method) ? REMOTE_KIND : undefined;
 }
 
-export function clientOf(view, type) {
+function clientOf(view, type) {
   const name = typeName(type);
   if (name === '') {
     return undefined;
@@ -89,4 +86,8 @@ export function callKind(view, invocation) {
     return undefined;
   }
   return kindOfType(view, view.typeOf(invocation.scope, invocation.receiver), invocation.name);
+}
+
+export function isSemaphoreType(view, type) {
+  return view.is(type, SEMAPHORES);
 }

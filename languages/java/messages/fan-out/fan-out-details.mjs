@@ -1,4 +1,4 @@
-import { offsetOf, pathInside, readJavaSource } from '../adapters/review-rules/java-sources.mjs';
+import { offsetOf, pathInside, readJavaSource } from '../../adapters/review-rules/java-sources.mjs';
 
 export const FAN_OUT_RULE = 'UnboundedFanOut';
 export const FAN_OUT_LEAD =
@@ -6,7 +6,7 @@ export const FAN_OUT_LEAD =
 const SCAN_LENGTH = 2000;
 const DEPTH = { '(': 1, '{': 1, '[': 1, ')': -1, '}': -1, ']': -1 };
 const FOR_EACH = /^\s*for\s*\(/u;
-const INDEXED = /^[^;]*;[^;<]*<=?\s*([^;]+?)\s*;/u;
+const INDEXED = /^[^;]*;[^;<]*<=?([^;]*);/u;
 const SIZE_OWNER = /([\w$.()]+?)\s*\.\s*(?:size\s*\(\s*\)|length\b)/u;
 const STREAM_SITE =
   /\.\s*(stream|parallelStream|forEach|map|flatMap|mapToObj|invokeAll|invokeAny)\s*\(/gu;
@@ -38,10 +38,10 @@ function compact(text) {
 
 function closingOf(text, open) {
   let depth = 0;
-  for (let index = open; index < text.length; index += 1) {
-    depth += DEPTH[text[index]] ?? 0;
+  for (const [index, character] of text.slice(open).split('').entries()) {
+    depth += DEPTH[character] ?? 0;
     if (depth === 0) {
-      return index;
+      return open + index;
     }
   }
   return text.length;

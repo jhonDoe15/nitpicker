@@ -2,7 +2,8 @@ import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { fanOutFindings } from '../kotlin/review-rules/main/fan-out/fan-out.mjs';
+import { fanOutFindings } from '../../kotlin/review-rules/main/fan-out/fan-out.mjs';
+import { withKotlinRuleMessage } from '../../kotlin/rules/kotlin-messages.mjs';
 import {
   diffOf,
   git,
@@ -10,9 +11,9 @@ import {
   kotlinPolicy,
   removeProject,
   writeAll,
-} from './test-support/kotlin-e2e-project.mjs';
+} from '../test-support/kotlin-e2e-project.mjs';
 
-const FIXTURES = path.resolve(import.meta.dirname, '../fixtures');
+const FIXTURES = path.resolve(import.meta.dirname, '../../fixtures');
 const FIXTURE = path.join(FIXTURES, 'kotlin-fan-out-project');
 const SHOP = 'src/main/kotlin/shop';
 const BASE_FILES = new Set([
@@ -101,8 +102,14 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin unbounded fan-out end to end', () => 
   });
 
   it('names the exception route that lifts the rule', () => {
-    const [first] = result.newEnforceable.filter(({ rule }) => rule === 'UnboundedFanOut');
+    const messages = (findings) =>
+      findings
+        .filter(({ rule }) => rule === 'UnboundedFanOut')
+        .toSorted((left, right) => left.location.line - right.location.line)
+        .map(({ message }) => message);
 
-    expect(first.message).toContain('"kotlin-source/UnboundedFanOut"');
+    expect(messages(result.newEnforceable)).toEqual(
+      messages(recordedFindings().map((finding) => withKotlinRuleMessage(finding))),
+    );
   });
 });

@@ -116,6 +116,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/guards/no-unsafe-path-join.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/bounds.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/client-modules.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/concurrency/collections/fixed-collections.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/fan-out-io.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/io-origin.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/sites.mjs',

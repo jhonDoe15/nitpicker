@@ -1,4 +1,5 @@
-import { isFixedCollection, createBounds } from './bounds.mjs';
+import { createBounds } from './bounds.mjs';
+import { isFixedCollection } from './collections/fixed-collections.mjs';
 import { createIo } from './fan-out-io.mjs';
 import { combinatorName, callsOf, mappings, workerOf } from './sites.mjs';
 
