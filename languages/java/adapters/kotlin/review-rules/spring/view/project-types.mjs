@@ -102,6 +102,15 @@ export function isRepositoryType(context, resolve, text) {
   return context.repositories.get(key);
 }
 
+export function isJavaEnum(context, candidates) {
+  return candidates.some((candidate) => {
+    const simple = candidate.split('.').at(-1);
+    return new RegExp(String.raw`\benum\s+${simple}\b`, 'u').test(
+      javaSource(context, candidate) ?? '',
+    );
+  });
+}
+
 export function projectClass(context, candidates) {
   return candidates.map((candidate) => context.classes.get(candidate)).find(Boolean);
 }

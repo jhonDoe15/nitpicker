@@ -57,7 +57,7 @@ The Kotlin parity guards file and the added one-way rules bring the Kotlin total
 Kotlin review rules file (three cases) and the added `kotlin-psi` cases to 79; the guards and review
 rules files are planning estimates of 100 and 110 seconds for their single builds.
 
-The Kotlin-on-Maven end-to-end files add Kotlin cases, giving 88/161 cases
+The Kotlin-on-Maven end-to-end files add Kotlin cases, giving 90/160 cases
 in total. Their weights in `kotlin-e2e.json` are measured where a CI run recorded a file and planning
 estimates otherwise. The Maven test-framework file runs three builds of about 30 seconds each on an idle
 machine and is weighted 120 seconds for a cold dependency cache. The 14 shards keep the estimated
