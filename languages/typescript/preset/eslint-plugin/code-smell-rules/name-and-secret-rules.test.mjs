@@ -1,6 +1,7 @@
 import { rule as genericNames } from '../rules/code-smells/generic-names.mjs';
 import { rule as hardcodedSecret } from '../rules/code-smells/hardcoded-secret.mjs';
 import { cases, typescriptRuleTester } from '../test-support/rule-tester.mjs';
+import { SECRET_VALUE_CASES } from '../../../../../shared/naming/test-support/secret-value-cases.mjs';
 
 const PRIVATE_KEY_HEADER = ['-----BEGIN RSA', 'PRIVATE KEY-----'].join(' ');
 
@@ -144,6 +145,14 @@ const secretCases = {
     'logger.info({ isPasswordSet: password !== undefined });',
     "logger.info('token set: ' + (token !== undefined));",
     'logger.info(`token ends with ${token.slice(-4)}`);',
+    'logger.info(API_TOKEN);',
+    'logger.info({ hasToken });',
+    'logger.info(hasToken, isPasswordSet);',
+    'logger.info(tokenizer.eosToken, tokenizer.token, tokenizer.getToken());',
+    'logger.info({ eosToken, padToken });',
+    "throw new Error('token expired');",
+    "MDC.put('password', hasPassword);",
+    "const token = process.env.TOKEN || 'dev-token-123456';",
   ],
   invalid: [
     ["export const API_KEY = 'sk-live-abcdef1234567890abcdef';", 'credentialShape'],
@@ -165,8 +174,8 @@ const secretCases = {
     ["class A { private password = 'hunter2'; }", 'hardcoded'],
     ["settings.password = 'hunter2';", 'hardcoded'],
     ["function login(password = 'hunter2') { return password; }", 'hardcoded'],
-    ["const token = process.env.TOKEN || 'dev-token-123456';", 'hardcoded'],
-    ['const token = process.env.TOKEN ?? `dev-token-123456`;', 'hardcoded'],
+    ["const token = process.env.TOKEN || 'dev-T0ken-123456';", 'hardcoded'],
+    ['const token = process.env.TOKEN ?? `dev-T0ken-123456`;', 'hardcoded'],
     ["const token = ready ? 'abc123def456' : undefined;", 'hardcoded'],
     ["const id = 'AKIAIOSFODNN7EXAMPLE';", 'credentialShape'],
     ["const id = 'ghp_abcdefghijklmnopqrstuvwxyz0123456789';", 'credentialShape'],
@@ -178,6 +187,14 @@ const secretCases = {
     ['log.debug({ creds: { password: input } });', 'logged'],
     ["logger.info('token: ' + token);", 'logged'],
     ['logger.info({ value: token ?? fallback });', 'logged'],
+    ['logger.info(config.API_TOKEN);', 'logged'],
+    ["logger.info({ 'API_TOKEN': current });", 'logged'],
+    ['logger.info(user.getPassword());', 'logged'],
+    ['throw new Error(`login failed for ${password}`);', 'logged'],
+    ["throw new AuthError('bad token ' + token);", 'logged'],
+    ["logger.atInfo().addKeyValue('password', current).log('signed in');", 'logged'],
+    ["logger.atInfo().addArgument(secret).log('signed in');", 'logged'],
+    ["MDC.put('apiToken', current);", 'logged'],
   ],
 };
 
@@ -187,4 +204,21 @@ ruleTester.run('no-hardcoded-secret', hardcodedSecret, {
     code,
     errors: [{ messageId }],
   })),
+});
+
+const TABLE_MESSAGES = { secret: 'hardcoded', credential: 'credentialShape' };
+const tableCode = (name, value) => `const ${name} = ${JSON.stringify(value)};`;
+
+ruleTester.run('no-hardcoded-secret on the shared secret value cases', hardcodedSecret, {
+  valid: cases(
+    SECRET_VALUE_CASES.filter(([, , verdict]) => verdict === 'none').map(([name, value]) =>
+      tableCode(name, value),
+    ),
+  ),
+  invalid: SECRET_VALUE_CASES.filter(([, , verdict]) => verdict !== 'none').map(
+    ([name, value, verdict]) => ({
+      code: tableCode(name, value),
+      errors: [{ messageId: TABLE_MESSAGES[verdict] }],
+    }),
+  ),
 });

@@ -333,20 +333,31 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   there. A constant's own initializer counts as a use. The length, the number of allowed uses, the
   idiomatic texts, the translation calls and the discriminant keys come from
   `shared/literals/repeated-literal-exemptions.mjs`, which every preset reads.
-- `nitpicker/no-hardcoded-secret` (all production code): a secret-looking string (six characters
-  or more with letters and digits, or three character classes) assigned to a secret-named
-  variable, property, parameter default or fallback (`password`, `token`, `secret`,
-  `credentials`, `apiKey`, `privateKey` and similar, also after `||` or `??`, through `as const`,
-  `atob(...)`, `Buffer.from(...)` or a concatenation of literals) is reported, and so is a string
-  shaped like an AWS key, a GitHub or Slack token, a `sk_live_`/`sk-proj-` key, a private key
-  header, a URL with `user:password@`, a `password=` query parameter or a `Bearer` header value
-  anywhere. Read secrets from the environment in the composition root. A secret-named value
-  passed to a `logger.*`, `console.*` or `process.stdout.write` call, directly, as a property
-  value or in a template or `+` concatenation, is reported too: log that it is set
-  (`{ hasToken: token !== undefined }`) or a masked tail. Placeholders (`changeme`, `<token>`,
-  `[redacted]`), environment variable names (`MY_API_KEY`), URLs, header and storage key names
-  (`X-XSRF-TOKEN`, `auth_token`) and translation keys are not secrets. Like the other guards
-  below, it fails a change only when the change adds a finding.
+- `nitpicker/no-hardcoded-secret` (all production code): a secret value assigned to a
+  secret-named variable, property, parameter default or fallback (also after `||` or `??`,
+  through `as const`, `atob(...)`, `Buffer.from(...)` or a concatenation of literals) is
+  reported, and so is a string shaped like an AWS key, a GitHub or Slack token, a
+  `sk_live_`/`sk-proj-` key, a private key header, a `django-insecure-` key, a URL with
+  `user:password@`, a `password=` query parameter or a `Bearer`/`Basic`/`Token` header value
+  anywhere; a credential-shaped value gets only that finding. Names and values follow
+  `shared/naming/secret-words.mjs`, which every preset shares: a name ending in `password`,
+  `token`, `secret`, `credentials`, `apiKey`, `privateKey`, `hmacKey`, `jwtKey` and similar (a
+  trailing `Value`, `Raw`, `Str`, `String`, `Text` or `Plain` is ignored, and tokenizer marker
+  tokens such as `eosToken` are not secrets), and a value of six characters or more with letters
+  and digits or three character classes, or for a `password` or `passphrase` name eight
+  characters or more with a lowercase letter followed by an uppercase one
+  (`CorrectHorseBatteryStaple`). Placeholders (`changeme`, `<token>`, `${...}`, `$NAME`, `{name}`,
+  `%s`, `****1234`), environment variable names (`MY_API_KEY`), header names (`X-XSRF-TOKEN`),
+  lowercase paths and message keys, regular expressions, URLs, a value equal to its name and an
+  identifier that contains a secret word (`auth_token`, `dev-token-123456`) are not secrets. Read
+  secrets from the environment in the composition root. A secret-named value passed to a
+  `logger.*`, `console.*` or `process.stdout.write` call, SLF4J-style `addKeyValue`/`addArgument`,
+  `MDC.put` or a thrown error's message, directly, as a property value or key, through a getter
+  (`user.getPassword()`) or in a template or `+` concatenation, is reported too: log that it is
+  set (`{ hasToken: token !== undefined }`) or a masked tail. A status (`hasToken`,
+  `isPasswordSet`), a member of a `tokenizer` and a constant name used on its own (`API_TOKEN`,
+  not `config.API_TOKEN`) are fine. Like the other guards below, it fails a change only when the
+  change adds a finding.
 - `nitpicker/no-generic-names` (all production code): a file or folder whose name ends in
   `util`, `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `managers`, `common`,
   `commons`, `misc` or `miscellaneous` (`GENERIC_NAME_WORDS` in `shared/naming/smell-words.mjs`;
