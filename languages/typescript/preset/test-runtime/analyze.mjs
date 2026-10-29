@@ -138,7 +138,9 @@ export function analyzeTestRuntime(
     .map((module) => normalizePath(module.source))
     .filter(isTest)
     .sort();
-  const isProductionModule = (source) => isProduction(source, context.productionRoots, layout);
+  function isProductionModule(source) {
+    return isProduction(source, context.productionRoots, layout);
+  }
   return testRuntimeReport({
     tests: allTests.filter((source) => !isPathExcludedTest(source, layout)),
     excluded: allTests.filter((source) => isPathExcludedTest(source, layout)),

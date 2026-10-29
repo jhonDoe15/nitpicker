@@ -1201,6 +1201,16 @@ as a unit test or 30 s as an integration test (`thresholds.unitTestSeconds`,
 `thresholds.integrationTestSeconds`), measured on head from the JUnit XML of the test tasks, once and
 without a rerun (see Java). A Kotlin test named with backticks is found by its name.
 
+## Tests without production runtime
+
+As for Java ([tests without production runtime](java-preset.md#tests-without-production-runtime)): a
+Kotlin test class (a `@Test` class, a Kotest spec) whose class files reach no production class, directly
+or through test helpers, base classes and top-level functions of a `...Kt` file, fails as
+`no-production-runtime`. A test that starts a framework context (`@SpringBootTest`, a Spring Boot
+slice, `@QuarkusTest`, `@MicronautTest`, ArchUnit's `@AnalyzeClasses`) is not reported. The exception
+entry is `{ "rule": "no-production-runtime", "paths": ["src/test/kotlin/..."], "reason": "..." }`.
+The test's source file is found in the Kotlin test source roots of the Gradle build.
+
 ## File limits
 
 The shared file-limit rule (`shared/rules/file-limits.mjs`) checks the `.kt` and `.java` files of the

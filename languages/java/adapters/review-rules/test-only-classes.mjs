@@ -30,7 +30,7 @@ function readProject(project) {
   };
 }
 
-function ownersOf(projects) {
+export function ownersOf(projects) {
   const owners = new Map();
   for (const project of projects) {
     for (const name of new Set(project.classes.map(outerClass))) {
@@ -40,7 +40,7 @@ function ownersOf(projects) {
   return owners;
 }
 
-function resolver(owners) {
+export function resolver(owners) {
   return (target, qualifier) => {
     const found = owners.get(outerClass(target)) ?? [];
     if (found.includes(qualifier)) {
