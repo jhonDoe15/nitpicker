@@ -12,6 +12,7 @@ const TRI_STATE_PARAMETER = /^\s*(?:(?:val|var)\s+)?([A-Za-z_]\w*)\s*:\s*Boolean
 const PARAMETER_MODIFIERS = /\boverride\b|@/;
 const RETURN_TYPE = /^\s*:\s*(Boolean\?)(?![\w?])/;
 const PROPERTY = /(?<![\w.])(?:val|var)\s+([A-Za-z_]\w*)\s*:\s*(Boolean\?)(?![\w?])/g;
+const TYPE_HEADER_WINDOW = 300;
 const TYPE_HEADER = /\b(?:class|object|interface)\b[^{};]*$/;
 
 export const TRI_STATE_MESSAGES = {
@@ -32,8 +33,10 @@ function parameterFindings(code, header, open) {
   const name = header[2] ?? header[4] ?? header[5];
   const parameters = parts.flatMap((part) => {
     const text = code.slice(part.start, part.end);
-    const found = PARAMETER_MODIFIERS.test(text) ? undefined : TRI_STATE_PARAMETER.exec(text);
-    return found === null || found === undefined
+    const found = PARAMETER_MODIFIERS.test(text)
+      ? undefined
+      : (TRI_STATE_PARAMETER.exec(text) ?? undefined);
+    return found === undefined
       ? []
       : [
           {
@@ -43,8 +46,9 @@ function parameterFindings(code, header, open) {
           },
         ];
   });
-  const returned = header[1] === 'fun' ? RETURN_TYPE.exec(code.slice(close + 1)) : null;
-  return returned === null
+  const returned =
+    header[1] === 'fun' ? (RETURN_TYPE.exec(code.slice(close + 1)) ?? undefined) : undefined;
+  return returned === undefined
     ? parameters
     : [
         ...parameters,
@@ -58,7 +62,7 @@ function parameterFindings(code, header, open) {
 
 function isMemberLevel(code, offset) {
   const open = enclosingOpen(code, offset);
-  return open === -1 || TYPE_HEADER.test(code.slice(Math.max(0, open - 300), open));
+  return open === -1 || TYPE_HEADER.test(code.slice(Math.max(0, open - TYPE_HEADER_WINDOW), open));
 }
 
 export function triStateBooleans(scanned) {

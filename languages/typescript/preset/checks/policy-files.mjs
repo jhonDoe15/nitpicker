@@ -67,7 +67,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/analysis/static-shapes.mjs',
   'languages/typescript/preset/eslint-plugin/rules/api-shape/exhaustive-union-predicate.mjs',
   'languages/typescript/preset/eslint-plugin/rules/api-shape/no-forwarding-wrapper.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/analysis/mutating-methods.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/analysis/mutation/mutating-methods.mjs',
   'languages/typescript/preset/eslint-plugin/rules/signatures/no-compatibility-shim.mjs',
   'languages/typescript/preset/eslint-plugin/rules/signatures/no-parameter-mutation.mjs',
   'languages/typescript/preset/eslint-plugin/rules/signatures/no-tri-state-boolean.mjs',

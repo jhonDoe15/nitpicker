@@ -60,7 +60,7 @@ function mutationOf(body, name) {
     String.raw`${target}\s*[-+]=`,
     String.raw`(?:${JAVA_MUTATORS})\s*\(\s*${name}\b`,
   ];
-  return new RegExp(forms.join('|')).exec(body);
+  return new RegExp(forms.join('|')).exec(body) ?? undefined;
 }
 
 function isRebound(body, name) {
@@ -94,11 +94,15 @@ export function parameterMutations(scanned) {
       }
       return parts.flatMap((part) => {
         const text = code.slice(part.start, part.end);
-        const parameter = text.includes('@') ? null : MUTABLE_PARAMETER.exec(text);
+        const parameter = text.includes('@')
+          ? undefined
+          : (MUTABLE_PARAMETER.exec(text) ?? undefined);
         const name = parameter?.[1];
         const found =
-          name === undefined || isRebound(body.text, name) ? null : mutationOf(body.text, name);
-        return found === null
+          name === undefined || isRebound(body.text, name)
+            ? undefined
+            : mutationOf(body.text, name);
+        return found === undefined
           ? []
           : [
               {

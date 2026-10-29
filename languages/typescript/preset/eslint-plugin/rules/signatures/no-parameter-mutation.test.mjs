@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -28,11 +29,8 @@ afterAll(() => {
 
 const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
 
-let counter = 0;
-
 function typed(code, name) {
-  counter += 1;
-  const file = path.join(root, `src/case-${String(counter)}.ts`);
+  const file = path.join(root, `src/case-${randomUUID()}.ts`);
   writeFileSync(file, code);
   return {
     filename: file,

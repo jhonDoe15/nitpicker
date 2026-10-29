@@ -66,13 +66,21 @@ function isOptionalBoolean(parameter) {
   );
 }
 
-function bareParameter(parameter) {
-  let current = parameter;
-  while (PARAMETER_WRAPPERS.has(current.type)) {
-    current =
-      current.type === 'AssignmentPattern' ? current.left : (current.parameter ?? current.argument);
+function unwrapped(parameter) {
+  if (parameter.type === 'AssignmentPattern') {
+    return parameter.left;
   }
-  return current;
+  return parameter.parameter ?? parameter.argument;
+}
+
+function bareParameter(parameter) {
+  const chain = [parameter];
+  for (const current of chain) {
+    if (PARAMETER_WRAPPERS.has(current.type)) {
+      chain.push(unwrapped(current));
+    }
+  }
+  return chain.at(-1);
 }
 
 export const rule = {
@@ -104,7 +112,9 @@ export const rule = {
       if (isOverride(node.parent)) {
         return;
       }
-      node.params.forEach(checkParameter);
+      for (const parameter of node.params) {
+        checkParameter(parameter);
+      }
       if (isTriState(node.returnType)) {
         report(node.returnType, 'The return value');
       }

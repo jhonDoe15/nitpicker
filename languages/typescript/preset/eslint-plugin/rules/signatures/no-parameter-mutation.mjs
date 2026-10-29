@@ -1,5 +1,5 @@
 import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
-import { mutatedOwner, staticName } from '../analysis/mutating-methods.mjs';
+import { mutatedOwner, staticName } from '../analysis/mutation/mutating-methods.mjs';
 
 const DRAFT_CALLEES = new Set([
   'produce',
@@ -24,15 +24,23 @@ function calleeName(call) {
     : undefined;
 }
 
-function subscriptRoot(node) {
-  let current = node;
-  while (
-    (current.type === 'MemberExpression' && current.computed) ||
-    current.type === 'TSNonNullExpression'
-  ) {
-    current = current.type === 'TSNonNullExpression' ? current.expression : current.object;
+function subscriptStep(node) {
+  if (node.type === 'TSNonNullExpression') {
+    return node.expression;
   }
-  return current.type === 'Identifier' ? current : undefined;
+  return node.type === 'MemberExpression' && node.computed ? node.object : undefined;
+}
+
+function subscriptRoot(node) {
+  const chain = [node];
+  for (const current of chain) {
+    const next = subscriptStep(current);
+    if (next !== undefined) {
+      chain.push(next);
+    }
+  }
+  const root = chain.at(-1);
+  return root.type === 'Identifier' ? root : undefined;
 }
 
 function parameterOf(sourceCode, identifier) {
@@ -68,6 +76,40 @@ function textOf(sourceCode, node) {
   return sourceCode.getText(node).replaceAll(/\s+/g, ' ');
 }
 
+function reportIfParameter({ context, sourceCode }, { node, target, name }) {
+  const root = subscriptRoot(target);
+  const definition = root === undefined ? undefined : parameterOf(sourceCode, root);
+  if (
+    definition !== undefined &&
+    FUNCTIONS.has(definition.node.type) &&
+    !isDraftOrAccumulator(definition)
+  ) {
+    context.report({ node, messageId: 'parameterMutation', data: { name } });
+  }
+}
+
+function checkWrite(scope, node, target) {
+  const { services, sourceCode } = scope;
+  const writesElement =
+    target.type === 'MemberExpression' && (target.computed || target.property.name === 'length');
+  if (writesElement && isMutableIndexed(services, target.object)) {
+    const name = `${textOf(sourceCode, target.object)}[…]`;
+    reportIfParameter(scope, { node, target: target.object, name });
+  }
+}
+
+function checkCall(scope, node) {
+  const { callee } = node;
+  if (callee.type !== 'MemberExpression') {
+    return;
+  }
+  const method = staticName(callee, scope.services);
+  if (method !== undefined && mutatedOwner(callee, method, scope.services) !== undefined) {
+    const name = `${textOf(scope.sourceCode, callee.object)}.${method}`;
+    reportIfParameter(scope, { node, target: callee.object, name });
+  }
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -88,51 +130,14 @@ export const rule = {
     if (services?.program === null || services?.program === undefined) {
       return {};
     }
-
-    function reportIfParameter(node, target, name) {
-      const root = subscriptRoot(target);
-      const definition = root === undefined ? undefined : parameterOf(sourceCode, root);
-      if (
-        definition !== undefined &&
-        FUNCTIONS.has(definition.node.type) &&
-        !isDraftOrAccumulator(definition)
-      ) {
-        context.report({ node, messageId: 'parameterMutation', data: { name } });
-      }
-    }
-
-    function checkWrite(node, target) {
-      if (
-        target.type !== 'MemberExpression' ||
-        !(target.computed || target.property.name === 'length')
-      ) {
-        return;
-      }
-      if (isMutableIndexed(services, target.object)) {
-        reportIfParameter(node, target.object, `${textOf(sourceCode, target.object)}[…]`);
-      }
-    }
-
+    const scope = { context, sourceCode, services };
     return {
-      CallExpression(node) {
-        const { callee } = node;
-        if (callee.type !== 'MemberExpression') {
-          return;
-        }
-        const method = staticName(callee, services);
-        if (method !== undefined && mutatedOwner(callee, method, services) !== undefined) {
-          reportIfParameter(node, callee.object, `${textOf(sourceCode, callee.object)}.${method}`);
-        }
-      },
-      AssignmentExpression(node) {
-        checkWrite(node, node.left);
-      },
-      UpdateExpression(node) {
-        checkWrite(node, node.argument);
-      },
+      CallExpression: (node) => checkCall(scope, node),
+      AssignmentExpression: (node) => checkWrite(scope, node, node.left),
+      UpdateExpression: (node) => checkWrite(scope, node, node.argument),
       UnaryExpression(node) {
         if (node.operator === 'delete') {
-          checkWrite(node, node.argument);
+          checkWrite(scope, node, node.argument);
         }
       },
     };

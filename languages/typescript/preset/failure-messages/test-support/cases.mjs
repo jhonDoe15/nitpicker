@@ -178,7 +178,10 @@ export const failureMessageCases = [
       'export function fetchOne(id: string): string { return id; }\nexport function readOne(id: string): string { return fetchOne(id); }',
     allowed,
   })),
-  ...signatureFailureMessageCases,
+  ...signatureFailureMessageCases({
+    typedConfig: typedStrictConfig,
+    typedFile: path.resolve('src/fixture.ts'),
+  }),
   ...domainFailureMessageCases,
   {
     name: 'domain recursion names flatMap',

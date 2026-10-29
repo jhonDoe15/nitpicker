@@ -1,4 +1,8 @@
-import { ARRAY_MUTATORS, mutatedOwner, staticName } from '../analysis/mutating-methods.mjs';
+import {
+  isArrayMutator,
+  mutatedOwner,
+  staticName,
+} from '../analysis/mutation/mutating-methods.mjs';
 
 const INDIRECT_CALLS = new Set(['call', 'apply', 'bind']);
 
@@ -7,7 +11,7 @@ function isPlainCallee(node) {
 }
 
 function isReportedBySyntax(node, method) {
-  if (!ARRAY_MUTATORS.has(method) || node.computed) {
+  if (!isArrayMutator(method) || node.computed) {
     return false;
   }
   if (isPlainCallee(node)) {
