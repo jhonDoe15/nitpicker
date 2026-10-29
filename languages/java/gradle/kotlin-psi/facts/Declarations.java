@@ -239,7 +239,7 @@ final class Declarations {
     if (text != null) {
       boolean member = frame != null && ("class".equals(frame.kind()) || "object".equals(frame.kind()));
       state.typed.add(
-          m("name", name, "type", clip(text, 120), "scope", frame == null ? null : frame.data.get("id"),
+          m("name", name, "type", clip(text, 120), "scope", frame == null ? null : frame.data.get("frameId"),
               "member", member));
     }
   }

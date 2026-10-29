@@ -246,7 +246,7 @@ describe('service lookups by shape, scope and receiver', () => {
   });
 
   it('types a receiver by the nearest declaration in scope, not by its name elsewhere in the file', () => {
-    const scopes = (owner, id) => [inFun('load', { id: 3 }), inClass(owner, { id })];
+    const scopes = (owner, id) => [inFun('load', { frameId: 3 }), inClass(owner, { frameId: id })];
 
     expect(
       flagged({
@@ -261,7 +261,7 @@ describe('service lookups by shape, scope and receiver', () => {
           lookup('get', { qualifier: 'scope', scopes: scopes('B', 2), line: 8 }),
           lookup('get', {
             qualifier: 'scope',
-            scopes: [inFun('shadow', { id: 4 }), inClass('A', { id: 1 })],
+            scopes: [inFun('shadow', { frameId: 4 }), inClass('A', { frameId: 1 })],
             line: 9,
           }),
         ],
