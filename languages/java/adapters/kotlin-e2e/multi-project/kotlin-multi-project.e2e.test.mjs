@@ -29,8 +29,19 @@ describe.skipIf(!kotlinE2eEnabled)('a Kotlin Gradle build of two projects', () =
   });
 
   it('puts the folder of each project in the paths of the Kotlin and the Java tools', () => {
-    expect(pathsOf(findings, 'detekt')).toContain('lib/src/main/kotlin/demo/lib/Counter.kt');
-    expect(pathsOf(findings, 'ktlint')).toContain('app/src/main/kotlin/demo/app/Main.kt');
-    expect(pathsOf(findings, 'pmd')).toContain('lib/src/main/java/demo/lib/Bridge.java');
+    const expected = {
+      detekt: 'lib/src/main/kotlin/demo/lib/Counter.kt',
+      ktlint: 'app/src/main/kotlin/demo/app/Main.kt',
+      pmd: 'lib/src/main/java/demo/lib/Bridge.java',
+    };
+
+    expect(
+      Object.fromEntries(
+        Object.entries(expected).map(([tool, file]) => [
+          tool,
+          pathsOf(findings, tool).filter((found) => found === file),
+        ]),
+      ),
+    ).toEqual(Object.fromEntries(Object.entries(expected).map(([tool, file]) => [tool, [file]])));
   });
 });

@@ -78,7 +78,7 @@ describe('SARIF upload limits', () => {
     expect(gzipSync(text).length).toBeLessThanOrEqual(limits.gzipBytes);
     expect(gzipped(kept + 1)).toBeGreaterThan(limits.gzipBytes);
     expect(notificationsOf(log)[0].message.text).toBe(
-      `This file lists the first ${String(kept)} of 40 findings, because GitHub code scanning rejects a SARIF run of more than 25000 results or a file over ${String(Math.round((limits.gzipBytes / 1_048_576) * 10) / 10)} MB gzipped. New findings come first, and findings.json lists them all.`,
+      `This file lists the first ${String(kept)} of 40 findings, because GitHub code scanning rejects a SARIF run of more than 25000 results or a file over ${String(Math.round((limits.gzipBytes / 1_048_576) * 10) / 10)} MB gzipped. The rest are in findings.json.`,
     );
   });
   it('cuts a run at 25,000 results by default', () => {

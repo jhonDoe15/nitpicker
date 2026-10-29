@@ -36,11 +36,14 @@ Contributor notes on formats and protocols that code and names cannot carry. Sou
   the analyzers built on it, oxlint (its byte offsets are converted when read), pyright, PMD, detekt, ktlint and the
   Kotlin compiler count UTF-16 code units with a tab as one. Four tools count otherwise, and `withUtf16Columns`
   (`shared/ingest/columns/utf16-columns.mjs`) converts their columns after ingestion from the source line: ruff counts
-  code points (`code-points`, in `readPythonFindings`), Checkstyle and javac (Error Prone) expand tabs to every eighth
-  column (`tab-expanded`, in `collectJavaFindings`; a project Checkstyle config with another `tabWidth` is not read),
-  and mypy, run with `--show-column-numbers`, counts UTF-8 bytes in 2.3 and a smaller, different number in 2.4, so
-  `ascii-only` keeps its column only on an ASCII line. Code scanning reads a relative `uri`
-  as relative to the repository root and never reads `uriBaseId` or `originalUriBaseIds`, so each location's `uri` is
+  code points (`code-points`, in `readPythonFindings`); javac (Error Prone) expands tabs to every eighth column
+  (`tab-stops`); Checkstyle takes the code-point index of the token, then expands tabs to its `tabWidth` over that many
+  UTF-16 code units of the line (`checkstyle-tab-stops`, measured with Checkstyle 10.21.1; `withJavaColumns` in
+  `languages/java/adapters/reporting/columns/java-columns.mjs` reads `tabWidth` from the project Checkstyle config when
+  `tools.checkstyle.precedence` uses it, else 8), both in `collectJavaFindings`; and mypy, run with
+  `--show-column-numbers`, counts UTF-8 bytes in 2.3 and a smaller, different number in 2.4, so `ascii-only` keeps its
+  column only on an ASCII line it can read. A byte order mark is not part of line 1. Code scanning reads a relative
+  `uri` as relative to the repository root and never reads `uriBaseId` or `originalUriBaseIds`, so each location's `uri` is
   repository-relative and percent-encoded: the project folder's prefix in the repository (`projectRelativePath` in
   `run-diff.mjs`, `relativeProjectPath` in `snapshot.mjs`, `git rev-parse --show-prefix` of `liveProjectRoot` in
   `aggregate-shards.mjs`) joined to the project-relative finding path, with `uriBaseId: "%SRCROOT%"` meaning the

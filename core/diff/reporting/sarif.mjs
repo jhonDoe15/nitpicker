@@ -112,7 +112,15 @@ function renderSarifRun({ entries, toolErrors, notes, location, dropped }) {
   return `${JSON.stringify(log, null, 2)}\n`;
 }
 
-function renderSarifLog({ entries, toolErrors, notes = [], location, sources, limits }) {
+function renderSarifLog({
+  entries,
+  toolErrors,
+  notes = [],
+  location,
+  sources,
+  newFirst = true,
+  limits,
+}) {
   return renderWithinUploadLimits(
     entries,
     (kept) =>
@@ -124,7 +132,10 @@ function renderSarifLog({ entries, toolErrors, notes = [], location, sources, li
         dropped:
           kept.length === entries.length
             ? undefined
-            : droppedResultsText({ kept: kept.length, total: entries.length, sources }, limits),
+            : droppedResultsText(
+                { kept: kept.length, total: entries.length, sources, newFirst },
+                limits,
+              ),
       }),
     limits,
   );
@@ -165,6 +176,7 @@ export function renderSnapshotSarifReport(report, options = {}) {
     toolErrors: report.toolErrors,
     location: options,
     sources: 'findings.json',
+    newFirst: false,
     limits: options.limits ?? SARIF_UPLOAD_LIMITS,
   });
 }
