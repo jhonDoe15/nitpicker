@@ -15,6 +15,12 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
     'mutant-survived': REPORT_ONLY_KOTLIN_MUTANTS,
     'mutant-nocoverage': REPORT_ONLY_KOTLIN_MUTANTS,
   },
+  go: {
+    'inheritance-depth-limit': {
+      file: 'languages/go/adapters/configuration/go-config.mjs',
+      evidence: /Go has no inheritance/u,
+    },
+  },
   javascript: {
     'unused-prop': {
       file: 'languages/typescript/preset/unused-api/analyze.mjs',
