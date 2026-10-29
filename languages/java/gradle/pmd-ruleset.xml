@@ -111,7 +111,7 @@
     </properties>
   </rule>
   <rule name="TaskOutlivesTryResource" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This task uses a try-with-resources resource but nothing waits for it before the block ends, so the resource is closed while the task can still run. Wait for it inside the block (get() or join() on the future, or awaitTermination on the executor), declare the executor as a later resource of the same try so it closes first and waits, or open the resource inside the task.">
+        message="The task started by {0}() reads a resource of its try-with-resources, but nothing waits for it after it starts, unconditionally, before the block ends, so the resource is closed while the task can still run. Wait inside the block: get() or join() on the future, awaitTermination or close on the executor, take() or a timed poll() on its CompletionService, await() on a latch or barrier, or declare the executor as a later resource of the same try so it closes first and waits. Or open the resource inside the task.">
     <priority>2</priority>
     <properties>
       <property name="xpath">
@@ -145,7 +145,27 @@
           $top := $chain[1],
           $holder := ($top/parent::VariableDeclarator/VariableId/@Name,
                       $top/parent::AssignmentExpression[*[2] is $top]/*[1][self::VariableAccess]/@Name),
-          $uses := $block//VariableAccess[@Name = $holder][not(parent::AssignmentExpression and . is ../*[1])]
+          $uses := $block//VariableAccess[@Name = $holder][. >> $s][not(parent::AssignmentExpression and . is ../*[1])],
+          $waits := $block//MethodCall[. >> $s]
+            [@MethodName = ('awaitTermination', 'close') and *[1][self::VariableAccess/@Name = $receiver]
+             or @MethodName = 'take' and *[1][self::VariableAccess/@Name = $receiver]
+                [pmd-java:typeIs('java.util.concurrent.CompletionService')]
+             or @MethodName = 'poll' and ArgumentList[@Size = 2] and *[1][self::VariableAccess/@Name = $receiver]
+                [pmd-java:typeIs('java.util.concurrent.CompletionService')]
+             or @MethodName = ('await', 'awaitAdvance', 'awaitAdvanceInterruptibly', 'arriveAndAwaitAdvance',
+                               'acquire', 'acquireUninterruptibly')
+                and *[1][pmd-java:typeIs('java.util.concurrent.CountDownLatch')
+                  or pmd-java:typeIs('java.util.concurrent.CyclicBarrier')
+                  or pmd-java:typeIs('java.util.concurrent.Phaser')
+                  or pmd-java:typeIs('java.util.concurrent.Semaphore')]]
+            [every $region in ancestor::*[. >> $block]
+                [self::CatchClause or self::LambdaExpression or self::AnonymousClassDeclaration
+                 or (parent::IfStatement or parent::ConditionalExpression or parent::SwitchStatement
+                     or parent::SwitchExpression) and not(. is ../*[1])
+                 or (parent::ForeachStatement or parent::ForStatement or parent::WhileStatement)
+                    and . is ../*[last()]
+                 or parent::InfixExpression[@Operator = ('&&', '||')] and . is ../*[2]]
+             satisfies exists($region intersect $s/ancestor-or-self::*)]
       return exists($captured)
         and not(ancestor::*[self::LambdaExpression or self::AnonymousClassDeclaration][. >> $block])
         and not($chain[@MethodName = ('get', 'join', 'getNow', 'resultNow', 'awaitTermination')])
@@ -153,8 +173,7 @@
              or (exists($holder) and (every $use in $uses satisfies $use/parent::ReturnStatement)))
         and (some $resource in $captured satisfies empty($resource/following-sibling::Resource[
                (LocalVariableDeclaration/VariableDeclarator/VariableId/@Name, VariableAccess/@Name) = $receiver]))
-        and empty($block//MethodCall[@MethodName = ('awaitTermination', 'close')]
-                                    [*[1][self::VariableAccess/@Name = $receiver]]))]
+        and empty($waits))]
 ]]></value>
       </property>
     </properties>
