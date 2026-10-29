@@ -6,7 +6,7 @@ import { coveredPathChanges } from './paths/covered-paths.mjs';
 import { generatedMarkingChanges } from './paths/generated-marking.mjs';
 import { hiddenCodeChanges } from './paths/hidden-code.mjs';
 import { tsconfigChanges } from './paths/tsconfig-changes.mjs';
-import { listedChanges, loosensSetting } from './loosenings.mjs';
+import { listedChanges, looseningKindOfSetting } from './loosenings.mjs';
 import { timeoutChanges } from './timeout-changes.mjs';
 
 const LISTED_KEYS = new Set([
@@ -75,9 +75,7 @@ function changedSettings(baseConfig, headConfig) {
 }
 
 function loosening(entry) {
-  return typeof entry === 'string'
-    ? { text: entry, key: entry, files: [CONFIG_FILE_NAME] }
-    : { key: entry.text, ...entry };
+  return { key: entry.text, files: [CONFIG_FILE_NAME], ...entry };
 }
 
 function sourceNote(scope) {
@@ -96,7 +94,10 @@ function attributed(entries, scope) {
 }
 
 function describedEntries(baseConfig, headConfig, scope, extra = []) {
-  const settings = changedSettings(baseConfig, headConfig);
+  const settings = changedSettings(baseConfig, headConfig).map((entry) => ({
+    ...entry,
+    kind: looseningKindOfSetting(entry, scope),
+  }));
   const configParts = [
     ...coveredPathChanges(baseConfig, headConfig, scope),
     ...listedChanges(baseConfig, headConfig),
@@ -118,14 +119,14 @@ function describedEntries(baseConfig, headConfig, scope, extra = []) {
       ),
       ...scopeParts.flatMap((part) => part.loosened).map(loosening),
       ...attributed(
-        settings.filter((entry) => loosensSetting(entry, scope)).map(({ text }) => text),
+        settings.filter(({ kind }) => kind !== undefined).map(({ text, kind }) => ({ text, kind })),
         scope,
       ),
       ...extra.map(loosening),
     ],
     changed: [
       ...parts.flatMap((part) => part.changed),
-      ...settings.filter((entry) => !loosensSetting(entry, scope)).map(({ text }) => text),
+      ...settings.filter(({ kind }) => kind === undefined).map(({ text }) => text),
     ],
   };
 }
@@ -149,6 +150,7 @@ export function policyChangeFields(baseConfig, headConfig, scope, extra = []) {
   return {
     policyChanges: [...texts, ...changed],
     policyLoosenings: texts,
+    policyKinds: Object.fromEntries(loosened.map(({ text, kind }) => [text, kind])),
     ...(loosened.length === 0 ? {} : { policyDigest: evidenceDigest(loosened, scope) }),
   };
 }

@@ -57,7 +57,7 @@ export function repositoryPolicy({ loosenings, root, acceptedDigest }) {
     files: files.map((file) => [file, gitBlobId(readFileSync(path.join(root, file)))]),
   });
   const texts = loosenings.map(({ text }) => text);
-  const findings = policyFindings(texts, digest, acceptedDigest);
+  const findings = policyFindings(texts, digest, { acceptedDigest });
   return {
     policyLoosenings: texts,
     policyDigest: digest,
