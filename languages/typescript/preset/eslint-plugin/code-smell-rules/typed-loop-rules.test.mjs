@@ -10,6 +10,7 @@ const STORE = [
   'export async function loadPrice(id: string) { return axios.get(`/prices/${id}`); }',
   'export async function viaHelper(id: string) { return loadOrder(id); }',
   'export function format(id: string) { return id.trim(); }',
+  'export async function saveBatch(rows: string[]) { return pool.query("insert", [rows]); }',
   'export class OrderService {',
   '  constructor(private readonly db: Pool) {}',
   '  async find(id: string) { return this.db.query("select 1", [id]); }',
@@ -28,11 +29,15 @@ const STORE = [
 const { tester, typed, typedScript } = typedIoProject('io-in-loop', STORE);
 
 const STORE_IMPORT =
-  "import { loadOrder, loadPrice, viaHelper, format, OrderService, UserRepository, createOrderStore, pool, Customer } from './store';\n";
+  "import { loadOrder, loadPrice, viaHelper, format, saveBatch, OrderService, UserRepository, createOrderStore, pool, Customer } from './store';\n";
 const declared = 'declare const ids: string[];\ndeclare function use(value: unknown): void;\n';
 
 function loop(statement, header = '') {
   return `${header}${STORE_IMPORT}${declared}export async function run() { for (const id of ids) { ${statement} } }`;
+}
+
+function body(statements) {
+  return `${STORE_IMPORT}${declared}declare const parts: string[][];\nexport async function run() { ${statements} }`;
 }
 
 function caseOf(code, messageId, callee) {
@@ -62,6 +67,9 @@ tester.run('no-io-in-loop with types', ioInLoop, {
     loop('new Customer().get(id);'),
     `${STORE_IMPORT}${declared}export async function run() { await Promise.all(ids.map((id) => loadPrice(id))); }`,
     loop('const store = createOrderStore(pool); use(store);'),
+    body('for (const part of chunk(ids, 100)) { await saveBatch(part); }'),
+    body('for (const part of parts) { await saveBatch(part); }'),
+    body('for (let i = 0; i < ids.length; i += 100) { await saveBatch(ids.slice(i, i + 100)); }'),
   ].map((code) => typed(code)),
   invalid: [
     caseOf(loop('await loadOrder(id);'), 'query', '`loadOrder()`, which calls `pool.query()`'),
@@ -95,6 +103,13 @@ tester.run('no-io-in-loop with types', ioInLoop, {
     ),
     caseOf(loop('await db("users").where({ id });', knex), 'query', '`db().where()`'),
     caseOf(loop('await fetch(`/orders/${id}`);'), 'request', '`fetch()`'),
+    ...[
+      'Array.from(ids, (id) => loadOrder(id));',
+      'ids.sort((a, b) => { void loadOrder(a); return a.localeCompare(b); });',
+      'for await (const id of ids) { await loadOrder(id); }',
+      'new Map(ids.map((id) => [id, id])).forEach((value) => { void loadOrder(value); });',
+      'for (const id of ids) { await saveBatch([id]); }',
+    ].map((statements) => caseOf(body(statements), 'query')),
     {
       ...typedScript(
         "import { loadOrder } from './store';\nexport async function run(ids) { for (const id of ids) { await loadOrder(id); } }",

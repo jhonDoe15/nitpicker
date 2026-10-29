@@ -1,6 +1,6 @@
 import { hasArrayType } from '../support/checked-types.mjs';
 import { wordsOf } from '../support/identifier-words.mjs';
-import { contains } from './loop-shapes.mjs';
+import { childrenOf, contains } from './loop-shapes.mjs';
 
 const CHUNK_WORDS = new Set(['chunk', 'chunks', 'chunked', 'batch', 'batches', 'batched']);
 const SLICES = new Set(['slice', 'splice', 'subarray']);
@@ -75,8 +75,22 @@ function chunkVariables(context, found) {
   return [...iterated, ...slicedChunks(context, found.loop)];
 }
 
+function slicesInline(args, visitorKeys) {
+  const pending = [...args];
+  for (const node of pending) {
+    if (isSlice(node) || (node.type === CALL && isChunkSource(node))) {
+      return true;
+    }
+    pending.push(...childrenOf(node, visitorKeys));
+  }
+  return false;
+}
+
 export function passesChunk(call, found, context) {
   const args = call.type === CALL ? call.arguments : [call.quasi];
+  if (slicesInline(args, context.sourceCode.visitorKeys)) {
+    return true;
+  }
   return chunkVariables(context, found).some((variable) =>
     variable.references.some((reference) =>
       args.some((argument) => contains(argument, reference.identifier)),
