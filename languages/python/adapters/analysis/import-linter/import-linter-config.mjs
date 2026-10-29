@@ -1,10 +1,9 @@
-import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
+import { readInside } from '../../../../../shared/conventions/read-inside.mjs';
 import { parseIni } from '../../configuration/ini-parser.mjs';
 import { attempt, parseToml } from '../../project-tools/project-tool-layers.mjs';
 
 const PYPROJECT = 'pyproject.toml';
-export const IMPORT_LINTER_FILES = ['setup.cfg', '.importlinter', PYPROJECT];
+const IMPORT_LINTER_FILES = ['setup.cfg', '.importlinter', PYPROJECT];
 const SECTION = 'importlinter';
 const CONTRACT_PREFIX = `${SECTION}:`;
 
@@ -64,11 +63,10 @@ function tomlConfig(text) {
 }
 
 function configIn(root, file) {
-  const full = path.join(root, file);
-  if (!existsSync(full)) {
+  const text = readInside(root, file, 'utf8');
+  if (text === undefined) {
     return undefined;
   }
-  const text = readFileSync(full, 'utf8');
   const { value, error } = attempt(() => (file === PYPROJECT ? tomlConfig(text) : iniConfig(text)));
   if (error !== undefined) {
     throw Object.assign(new Error(`${file}: ${error.message}`, { cause: error }), { file });

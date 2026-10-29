@@ -6,7 +6,7 @@ import { coveredPathChanges } from './paths/covered-paths.mjs';
 import { generatedMarkingChanges } from './paths/generated-marking.mjs';
 import { hiddenCodeChanges } from './paths/hidden-code.mjs';
 import { tsconfigChanges } from './paths/tsconfig-changes.mjs';
-import { listedChanges, looseningKindOfSetting } from './loosenings.mjs';
+import { listedChanges, looseningKindOfSetting, shownSetting } from './loosenings.mjs';
 import { timeoutChanges } from './timeout-changes.mjs';
 
 const LISTED_KEYS = new Set([
@@ -59,10 +59,6 @@ function settingLeaves(config) {
   );
 }
 
-function show(value) {
-  return value === undefined ? 'not set' : JSON.stringify(value);
-}
-
 function changedSettings(baseConfig, headConfig) {
   const before = settingLeaves(baseConfig);
   const after = settingLeaves(headConfig);
@@ -70,7 +66,12 @@ function changedSettings(baseConfig, headConfig) {
     const change = { setting, before: before.get(setting), after: after.get(setting) };
     return JSON.stringify(change.before) === JSON.stringify(change.after)
       ? []
-      : [{ ...change, text: `${setting}: ${show(change.before)} -> ${show(change.after)}` }];
+      : [
+          {
+            ...change,
+            text: `${setting}: ${shownSetting(change.before)} -> ${shownSetting(change.after)}`,
+          },
+        ];
   });
 }
 

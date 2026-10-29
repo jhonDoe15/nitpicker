@@ -1,3 +1,5 @@
+import { shownSetting } from '../loosenings.mjs';
+
 const KIND = 'tool-config';
 const NEUTRAL = new Set(['name', 'cache_dir']);
 const NARROWED_BY_REMOVAL = new Set([
@@ -60,10 +62,6 @@ function loosens(key, before, after) {
   return !NEUTRAL.has(key);
 }
 
-function shown(value) {
-  return value === undefined ? 'not set' : JSON.stringify(value);
-}
-
 function entry(text, loosened, file) {
   return loosened ? { loosened: { text, kind: KIND, files: [file] } } : { changed: text };
 }
@@ -74,7 +72,7 @@ function optionChanges(label, { base, head, file }) {
     .filter((key) => JSON.stringify(base[key]) !== JSON.stringify(head[key]))
     .map((key) =>
       entry(
-        `${label} ${key}: ${shown(base[key])} -> ${shown(head[key])}`,
+        `${label} ${key}: ${shownSetting(base[key])} -> ${shownSetting(head[key])}`,
         loosens(key, base[key], head[key]),
         file,
       ),
