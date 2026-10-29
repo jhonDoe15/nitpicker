@@ -2,6 +2,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { inModule } from '../../builds/module-path.mjs';
+import { TEST_DECLARATION } from '../test-runtime/test-markers.mjs';
+import { isAbstract } from '../test-runtime/test-sources.mjs';
 
 const TOOL = 'test-runtime';
 const UNRUN_TEST_RULE = 'test-not-run';
@@ -9,11 +11,6 @@ export const UNRUN_TEST_EXCEPTION_RULE = `${TOOL}/${UNRUN_TEST_RULE}`;
 const TEST_RESULTS = 'test-results';
 const SOURCE_FILE = /\.(?:java|kt|groovy)$/u;
 const FAILSAFE_NAME = /^IT|IT$|ITCase$/u;
-const KOTEST_SPECS = 'Fun|String|Should|Describe|Behavior|Word|Free|Feature|Expect|Annotation';
-const DECLARES_TESTS = new RegExp(
-  String.raw`@(?:Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate)\b|\bextends\s+Specification\b|:\s*(?:${KOTEST_SPECS})Spec\b`,
-  'u',
-);
 const PACKAGE = /^\s*package\s+([\w.]+)/mu;
 const JAVA_TEST_ROOT = /(^|\/)src\/test\/java$/u;
 
@@ -47,14 +44,7 @@ function testClasses({ projectRoot, modulePath }, roots) {
         className: owner === undefined ? simple : `${owner}.${simple}`,
       };
     })
-    .filter(({ text, simple }) => DECLARES_TESTS.test(text) && !isAbstract(text, simple));
-}
-
-function isAbstract(text, simple) {
-  return new RegExp(
-    String.raw`\b(?:abstract\s+(?:\w+\s+)*class|interface|@interface)\s+${simple}\b`,
-    'u',
-  ).test(text);
+    .filter(({ text, simple }) => TEST_DECLARATION.test(text) && !isAbstract(text, simple));
 }
 
 function ranClasses(reportRoot) {

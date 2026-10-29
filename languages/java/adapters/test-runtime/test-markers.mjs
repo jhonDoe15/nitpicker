@@ -1,4 +1,4 @@
-const TEST_ANNOTATIONS = new Set([
+const TEST_ANNOTATIONS = [
   'org.junit.Test',
   'org.junit.jupiter.api.Test',
   'org.junit.jupiter.api.RepeatedTest',
@@ -7,9 +7,27 @@ const TEST_ANNOTATIONS = new Set([
   'org.junit.jupiter.params.ParameterizedTest',
   'org.testng.annotations.Test',
   'com.tngtech.archunit.junit.ArchTest',
-  'junit.framework.TestCase',
+];
+const TEST_SUPERCLASSES = ['junit.framework.TestCase', 'spock.lang.Specification'];
+const KOTEST_PACKAGE = 'io.kotest.core.spec.';
+const KOTEST_STYLES = [
+  'Fun',
+  'String',
+  'Should',
+  'Describe',
+  'Behavior',
+  'Word',
+  'Free',
+  'Feature',
+  'Expect',
+  'Annotation',
+].map((style) => `${style}Spec`);
+const TEST_MARKERS = new Set([
+  ...TEST_ANNOTATIONS,
+  ...TEST_SUPERCLASSES,
+  `${KOTEST_PACKAGE}Spec`,
+  ...KOTEST_STYLES.map((style) => `${KOTEST_PACKAGE}style.${style}`),
 ]);
-const SPEC_STYLES = 'io.kotest.core.spec.style.';
 const BRIDGE_CLASSES = new Set([
   'org.springframework.boot.test.context.SpringBootTest',
   'org.springframework.test.context.ContextConfiguration',
@@ -28,8 +46,18 @@ const BRIDGE_PATTERNS = [
   /^io\.micronaut\.test\.extensions\.(?:[a-z][a-z0-9]*\.)*MicronautTest$/u,
 ];
 
+function simpleName(className) {
+  return className.slice(className.lastIndexOf('.') + 1);
+}
+
+export const TEST_DECLARATION = new RegExp(
+  String.raw`@(?:${TEST_ANNOTATIONS.map(simpleName).join('|')})\b|` +
+    String.raw`(?:\bextends\s+|:\s*)(?:${[...TEST_SUPERCLASSES.map(simpleName), ...KOTEST_STYLES].join('|')})\b`,
+  'u',
+);
+
 export function isTestMarker(className) {
-  return TEST_ANNOTATIONS.has(className) || className.startsWith(SPEC_STYLES);
+  return TEST_MARKERS.has(className);
 }
 
 export function isFrameworkBridge(className) {

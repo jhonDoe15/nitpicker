@@ -1,7 +1,8 @@
 import { RULE_IDS } from '../../policy.mjs';
 
-const RUNTIME = 'runtime';
-const TYPE_ONLY = 'type-only';
+export const EDGE_KINDS = Object.freeze({ RUNTIME: 'runtime', TYPE_ONLY: 'type-only' });
+export const FRAMEWORK_BRIDGE = 'framework-production-runtime';
+const { RUNTIME, TYPE_ONLY } = EDGE_KINDS;
 const SUBPROCESS = 'subprocess-production-runtime';
 const FINDING_CATEGORIES = new Set([
   RULE_IDS.noProductionRuntime,

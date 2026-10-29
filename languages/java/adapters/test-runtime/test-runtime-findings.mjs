@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import {
+  FRAMEWORK_BRIDGE,
   classifyTestRuntime,
   testRuntimeReport,
 } from '../../../../shared/rules/test-runtime/classify.mjs';
@@ -8,21 +9,16 @@ import { evaluateTestRuntime } from '../../../../shared/rules/test-runtime/evalu
 import { pathInside } from '../review-rules/java-sources.mjs';
 import { readDeclarations } from '../review-rules/source-declarations.mjs';
 import { readTestGraph } from './test-graph.mjs';
+import { isAbstract, isEndToEndPath } from './test-sources.mjs';
 
 const TEST_RUNTIME_TOOL = 'test-runtime';
-const FRAMEWORK_CATEGORY = 'framework-production-runtime';
 const REPORTS = ['jdeps-classes.txt', 'jdeps-test.txt'];
-
-function isAbstract(text, className) {
-  const simple = className.slice(className.lastIndexOf('.') + 1);
-  return new RegExp(String.raw`\babstract\s+(?:\w+\s+)*class\s+${simple}\b`, 'u').test(text);
-}
 
 function testRoots(project) {
   return [...(project.testSourceRoots ?? []), ...(project.kotlinTestSourceRoots ?? [])];
 }
 
-function judgedTests(projectRoot, projects, declaring) {
+function declaredTests(projectRoot, projects, declaring) {
   return projects.flatMap((project) => {
     const nodes = [...declaring].filter((node) => node.startsWith(`${project.qualifier}\0`));
     if (nodes.length === 0) {
@@ -36,7 +32,8 @@ function judgedTests(projectRoot, projects, declaring) {
         return [];
       }
       const text = readFileSync(pathInside(projectRoot, declared.file), 'utf8');
-      return isAbstract(text, className)
+      const simple = className.slice(className.lastIndexOf('.') + 1);
+      return isAbstract(text, simple, { kotlinOpen: true })
         ? []
         : [{ node, file: declared.file, sourceHash: hash(text) }];
     });
@@ -62,18 +59,21 @@ export function readTestRuntimeFindings(projectRoot, { projects }) {
     return [];
   }
   const graph = readTestGraph(complete);
-  const judged = judgedTests(projectRoot, complete, graph.declaring);
-  if (judged.length === 0) {
+  const declared = declaredTests(projectRoot, complete, graph.declaring);
+  const judged = declared.filter(({ file }) => !isEndToEndPath(file));
+  const excluded = declared.filter(({ file }) => isEndToEndPath(file)).map(({ node }) => node);
+  if (declared.length === 0) {
     return [];
   }
   const report = testRuntimeReport({
     tests: judged.map(({ node }) => node).toSorted(),
+    excluded,
     classify: (node) =>
       classifyTestRuntime(node, {
         edges: graph.edges,
         isProduction: graph.isProduction,
         bridgesOf: graph.bridgesOf,
-        bridgeCategory: FRAMEWORK_CATEGORY,
+        bridgeCategory: FRAMEWORK_BRIDGE,
       }),
   });
   return evaluateTestRuntime(

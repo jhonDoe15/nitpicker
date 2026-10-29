@@ -886,9 +886,14 @@ directly or through test helpers and base classes, reference a main class of any
 
 - **Which tests.** The finding is per test file. A class is judged when it declares tests (`@Test`,
   `@ParameterizedTest`, `@RepeatedTest`, `@TestFactory`, `@TestTemplate`, TestNG `@Test`, ArchUnit
-  `@ArchTest`, a Kotest spec, a JUnit 3 `TestCase`) and is not abstract. Helpers, fixtures and abstract
-  bases are not judged. Nested, anonymous and Kotlin lambda classes count for the class that declares
-  them. A class whose source file is not under a test source root is skipped.
+  `@ArchTest`, a Kotest spec style such as `FunSpec`, a JUnit 3 `TestCase`) and is not abstract (nor,
+  in Kotlin, `open` or `sealed`). The markers are the same list `test-not-run` uses. Helpers, fixtures
+  and abstract bases are not judged. Nested, anonymous and Kotlin lambda classes count for the class
+  that declares them. A class whose source file is not under a Java or Kotlin test source root is
+  skipped, so Groovy and Spock tests are not judged.
+- **End-to-end and contract tests.** A test under a folder named `e2e`, `end_to_end`, `endtoend`,
+  `contract` or `contracts`, or under a source set folder such as `e2eTest`, `endToEndTest` or
+  `contractTest` (any case), drives a deployed system and is not judged; it is counted as excluded.
 - **Framework contexts.** A test annotated `@SpringBootTest`, a Spring Boot test slice (`@WebMvcTest`,
   `@DataJpaTest`, `@JsonTest`, ...), `@SpringJUnitConfig`, `@ContextConfiguration`, `@QuarkusTest`,
   `@QuarkusIntegrationTest`, `@MicronautTest` or ArchUnit's `@AnalyzeClasses` (or one that imports
@@ -901,9 +906,12 @@ directly or through test helpers and base classes, reference a main class of any
 - **Exception.** The message ends with the shared sentence naming
   `{ "rule": "no-production-runtime", "paths": ["<test file>"], "reason": "..." }`; `test-runtime/no-production-runtime`
   is accepted as the same rule and lifts the finding for the matching paths.
-- **Limits.** A constant that javac inlines, or a Kotlin `inline` function, leaves no reference to its
-  class, so a test that uses only that is reported; lift it with an exception. A test that extends a base
-  class which declares the tests, and declares none itself, is not judged. Tests:
+- **Limits.** The check reads class references, so a test that reaches production only by reflection
+  (`Class.forName("shop.Cart")`, a service loaded by name) is reported; lift it with an exception. A
+  production type used only in a field or parameter signature counts as reached. An annotation or
+  base class that comes from a library jar (not from a module of the build) and starts a framework
+  context is not seen, so such a test is reported. A test that extends a base class which declares
+  the tests, and declares none itself, is not judged. Tests:
   `adapters/test-runtime/test-runtime-findings.test.mjs`.
 
 ## Console output of tests
