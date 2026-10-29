@@ -1389,7 +1389,8 @@ for `ruff` and `detekt` and a config error for `ktlint` and `ktfmt` (both read t
 `.editorconfig` first) and `black` (no flag switches string normalization back on), which must list
 `"project"` first. The files are read from the head checkout and apply to both sides of the
 comparison; they are part of the cache key, so editing one invalidates cached results. An edit of
-an opted-in config is a policy change a person reviews (see [Configuration](#configuration)). For
+an opted-in config is a policy change a person reviews (see [Configuration](#configuration)), and
+so is the config a change opts into. For
 `ruff` and `black` only the tool's own settings count: the `[tool.ruff]` or `[tool.black]` table of
 `pyproject.toml` (an edit of `[tool.poetry]` is not one), the whole `ruff.toml` or `.ruff.toml`, and
 the files its `extend` chain names; comments, layout and key order never count. A project
@@ -1455,7 +1456,7 @@ is added with `--exclude`. mutmut's notice is printed only when the project's ta
 ignores.
 
 An edit of an opted-in config is a policy change a person reviews, with any `precedence` that lists
-`"project"`. Only the tool's own settings count: `pyrightconfig.json` and the files its `extends`
+`"project"`, and so is the config a change opts into. Only the tool's own settings count: `pyrightconfig.json` and the files its `extends`
 chain names, or the `[tool.pyright]` and `[tool.basedpyright]` tables; for mypy and mutmut the one
 file the tool reads, and of it only the `[mypy]` and `[mypy-*]` sections (`mypy.ini`, `.mypy.ini`,
 `setup.cfg`), `[tool.mypy]`, `[tool.mutmut]` or the `[mutmut]` section. An edit of `[flake8]` in
