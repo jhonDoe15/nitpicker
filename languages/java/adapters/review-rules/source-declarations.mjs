@@ -12,8 +12,10 @@ const TOP_LEVEL_MEMBER = new RegExp(
   'gmu',
 );
 const JAVA_MAIN = /\bstatic\s+(?:final\s+)?void\s+main\s*\(/u;
+const MAIN_PARAMETER_PREFIX = String.raw`(?:final\s+|@[\w.]+(?:\([^()]*\))?\s+)*(?:java\.lang\.)?String`;
+const MAIN_PARAMETER_ARRAY = String.raw`(?:\s*(?:\[\s*\]|\.\.\.)\s*\w+|\s+\w+\s*\[\s*\])`;
 const JAVA_MAIN_METHOD = new RegExp(
-  String.raw`\bstatic\s+(?:final\s+)?void\s+main\s*\(\s*(?:final\s+)?String(?:\s*(?:\[\s*\]|\.\.\.)\s*\w+|\s+\w+\s*\[\s*\])\s*\)`,
+  String.raw`\bvoid\s+main\s*\(\s*(?:${MAIN_PARAMETER_PREFIX}${MAIN_PARAMETER_ARRAY}\s*)?\)`,
   'gu',
 );
 const KOTLIN_STATIC_MAIN = /@JvmStatic\s+(?:\w+\s+)*fun\s+main\s*\(/u;
@@ -99,10 +101,15 @@ function declarationsIn(file) {
   return [...classes, ...(kotlin ? facadeOf(file, raw, { text, depths, qualify }) : [])];
 }
 
+function hasBody(text, from) {
+  return /^[^;{]*\{/u.test(text.slice(from));
+}
+
 export function mainMethodLines(raw) {
   const text = blankLiterals(raw);
   const depths = depthsOf(text);
   return [...text.matchAll(JAVA_MAIN_METHOD)]
+    .filter((match) => hasBody(text, match.index + match[0].length))
     .map((match) => bodyRange(text, depths, match.index))
     .filter((range) => range !== undefined)
     .map(({ open, close }) => [lineAt(text, open), lineAt(text, close - 1)]);
