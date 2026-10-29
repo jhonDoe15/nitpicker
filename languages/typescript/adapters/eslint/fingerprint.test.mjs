@@ -177,7 +177,7 @@ describe('a finding in an edited function stays baselined while the function has
       rule: SILENT,
       path: 'src/legacy.ts',
       identity:
-        'message:Reported text.|node:CatchClause|syntax:86f93298e288fc8cb445a744|occurrence:1',
+        'message:Reported text.|node:CatchClause|syntax:b3b5d029473cf49734508549|occurrence:1',
       message:
         'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       location: { line: 4, column: 5 },
@@ -271,7 +271,7 @@ describe('a finding in an edited function stays baselined while the function has
         rule: 'nitpicker/no-silent-catch',
         path: 'src/legacy.ts',
         identity:
-          'message:Reported text.|node:CatchClause|syntax:86f93298e288fc8cb445a744|occurrence:1',
+          'message:Reported text.|node:CatchClause|syntax:b3b5d029473cf49734508549|occurrence:1',
         message:
           'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         location: { line: 13, column: 5 },

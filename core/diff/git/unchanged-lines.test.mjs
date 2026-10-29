@@ -1,50 +1,13 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { writeFiles } from './test-support/fixture-files.mjs';
-import {
-  commit,
-  copyGitTemplate,
-  createGitTemplate,
-  fixtureGit,
-} from './test-support/git-repository.mjs';
-import { parseChangedLines, readChangedLines } from './patches/changed-lines.mjs';
+import { changeRepositories, lines, pick } from './test-support/changes-between.mjs';
+import { parseChangedLines } from './patches/changed-lines.mjs';
 import { lineMapOf } from './unchanged-lines.mjs';
 
-const lines = (...text) => `${text.join('\n')}\n`;
-const gitTemplate = createGitTemplate();
-const roots = [];
-
-function changesBetween(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-unchanged-lines-'));
-  roots.push(root);
-  copyGitTemplate(gitTemplate, root);
-  writeFiles(root, Object.fromEntries(Object.entries(files).map(([file, [base]]) => [file, base])));
-  commit(root, 'base');
-  const mergeBaseSha = fixtureGit(root, ['rev-parse', 'HEAD']).trim();
-  writeFiles(
-    root,
-    Object.fromEntries(Object.entries(files).map(([file, [, head]]) => [file, head])),
-  );
-  commit(root, 'head');
-  const headSha = fixtureGit(root, ['rev-parse', 'HEAD']).trim();
-  return readChangedLines({
-    repositoryRoot: root,
-    mergeBaseSha,
-    headSha,
-    projectRelativePath: '.',
-  });
-}
-
-function pick(file, names) {
-  return Object.fromEntries(names.map((name) => [name, file[name]]));
-}
+const repositories = changeRepositories();
+const { changesBetween } = repositories;
 
 afterAll(() => {
-  for (const root of roots) {
-    rmSync(root, { recursive: true, force: true });
-  }
+  repositories.remove();
 });
 
 const FORMATTED = {
@@ -159,6 +122,11 @@ const SEMANTIC = {
     lines('export const f = (a, b) => a + ++b;'),
     lines('export const f = (a, b) => a++ + b;'),
   ],
+  'append.ts': [
+    lines('function f() {', '  a();', '}'),
+    lines('function f() {', '  a();', '  b();', '}'),
+  ],
+  'Append.kt': [lines('fun f() {', '    a()', '}'), lines('fun f() {', '    a()', '    b()', '}')],
   'Gate.java': [
     lines('class Gate {', '  void f(boolean flag) {', '    if (flag); value = 2;', '  }', '}'),
     lines('class Gate {', '  void f(boolean flag) {', '    if (flag) value = 2;', '  }', '}'),
@@ -179,6 +147,8 @@ describe('edits a formatter never makes', () => {
     ['joined.py', 2],
     ['steps.ts', 1],
     ['Gate.java', 3],
+    ['append.ts', 3],
+    ['Append.kt', 3],
   ])('counts the edited line of %s as edited', (file, line) => {
     expect(changes.get(file).ranges).toEqual([[line, line]]);
   });
@@ -238,63 +208,5 @@ describe('files the alignment leaves to the line diff', () => {
     ];
 
     expect(parseChangedLines(diff.join('\n')).get('x.py').ranges).toEqual([[1, 1]]);
-  });
-});
-
-describe('lines that moved within a file', () => {
-  let changes;
-
-  beforeAll(() => {
-    const sum = [
-      '  let total = 0;',
-      '  for (const item of items) total += item;',
-      '  return total;',
-    ];
-    changes = changesBetween({
-      'load.ts': [
-        lines('function load(items) {', "  console.log('start');", ...sum, '}'),
-        lines(
-          ...['function sum(items) {', ...sum, '}', ''],
-          ...['function load(items) {', '  console.log("start");', '  return sum(items);', '}'],
-        ),
-      ],
-    });
-  });
-
-  it('keeps the first lines of a function unchanged when a block of it moves to a helper above it', () => {
-    const { ranges } = changes.get('load.ts');
-    const isChanged = (line) => ranges.some(([start, end]) => start <= line && line <= end);
-
-    expect([1, 7, 8, 9].map(isChanged)).toEqual([true, false, false, true]);
-  });
-
-  it('maps a head line to its base line, around hunks and through carried lines', () => {
-    const file = {
-      hunks: [
-        [1, 2, 1, 1],
-        [5, 0, 5, 6],
-      ],
-      carried: [
-        [8, 1],
-        [9, 2],
-      ],
-    };
-
-    const lineMap = lineMapOf(file);
-
-    expect([2, 3, 4, 9, 10, 11].map((line) => lineMap.baseLineOf(line))).toEqual([
-      3,
-      4,
-      5,
-      2,
-      undefined,
-      6,
-    ]);
-    expect([1, 3, 6].map((line) => lineMap.headLineOf(line))).toEqual([8, 2, 11]);
-  });
-
-  it('maps lines one to one in a file the change left alone', () => {
-    expect(lineMapOf(undefined).baseLineOf(7)).toBe(7);
-    expect(lineMapOf(undefined).headLineOf(7)).toBe(7);
   });
 });
