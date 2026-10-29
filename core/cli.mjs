@@ -158,7 +158,7 @@ function runComparisonCli(cli) {
   const analyzers = selectComparisonAnalyzers(cli);
   const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
   const fixResult = fixIfRequested({ ...cli, headPolicy }, repositoryRoot, base);
-  const cacheStore = resolveRunCacheStore(cli);
+  const cache = resolveRunCacheStore(cli);
   const report = runQualityDiff({
     repositoryRoot,
     projectRelativePath: path.relative(repositoryRoot, currentProjectRoot) || '.',
@@ -166,7 +166,8 @@ function runComparisonCli(cli) {
     requestedBaseRef: base.baseRef,
     outputRoot,
     analyzers,
-    cacheStore,
+    cacheStore: cache.store,
+    cacheLocation: cache.location,
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
@@ -210,7 +211,7 @@ function fixIfRequested(cli, repositoryRoot, base) {
 }
 
 function resolveRunCacheStore(cli) {
-  const { store, warnings } = resolveCacheStore({
+  const { store, warnings, location } = resolveCacheStore({
     projectRoot: cli.currentProjectRoot,
     environment: cli.environment,
   });
@@ -219,7 +220,7 @@ function resolveRunCacheStore(cli) {
       cli.stderr.write(`nitpicker: ${warning}\n`);
     }
   }
-  return cli.options.cache ? store : undefined;
+  return cli.options.cache ? { store, location } : {};
 }
 
 function selectComparisonAnalyzers({ options, analyzers }) {

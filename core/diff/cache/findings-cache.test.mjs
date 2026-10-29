@@ -8,6 +8,7 @@ import {
   resolveCacheDirectory,
   runBaseWithCache,
 } from './findings-cache.mjs';
+import { codeFingerprint } from './code-fingerprint.mjs';
 
 const temporaryRoots = [];
 
@@ -47,6 +48,7 @@ describe('cache key', () => {
     ['head policy thresholds', { headPolicy: { thresholds: { crapLimit: 10 } } }],
     ['head policy exceptions', { headPolicy: { exceptions: [{ rule: 'x' }] } }],
     ['legacy inventory path', { analyzer: { ...analyzer, legacyInventory: 'legacy.json' } }],
+    ['code that produced the findings', { producedBy: 'other-code' }],
   ])('changes with the %s', (_label, change) => {
     expect(cacheKey({ ...key, ...change })).not.toBe(cacheKey(key));
   });
@@ -67,6 +69,33 @@ describe('cache directory', () => {
 });
 
 describe('findings cache', () => {
+  it('misses when the analyzer code changed without a version bump, not when only a test changed', () => {
+    const packageRoot = temporaryRoot();
+    const write = (file, text) => {
+      mkdirSync(path.dirname(path.join(packageRoot, file)), { recursive: true });
+      writeFileSync(path.join(packageRoot, file), text);
+    };
+    write('package.json', '{ "version": "1.0.0" }\n');
+    write('core/cli.mjs', 'export const run = 1;\n');
+    write('languages/python/rules/rule.mjs', 'export const banned = ["print"];\n');
+    write('languages/python/rules/rule.test.mjs', 'export const checked = 1;\n');
+    const directory = path.join(temporaryRoot(), 'cache');
+    const cacheOf = () =>
+      createFindingsCache({
+        directory,
+        mergeBaseSha: 'abc',
+        projectRelativePath: '.',
+        producedBy: codeFingerprint(packageRoot),
+      });
+    cacheOf().write(analyzer, { findings: [finding] });
+
+    write('languages/python/rules/rule.test.mjs', 'export const checked = 2;\n');
+    expect(cacheOf().read(analyzer)).toEqual({ findings: [finding] });
+
+    write('languages/python/rules/rule.mjs', 'export const banned = ["print", "pprint"];\n');
+    expect(cacheOf().read(analyzer)).toBeUndefined();
+  });
+
   it('round-trips a report and treats corrupt entries as misses', () => {
     const directory = path.join(temporaryRoot(), 'cache');
     const cache = createFindingsCache({ directory, mergeBaseSha: 'abc', projectRelativePath: '.' });
