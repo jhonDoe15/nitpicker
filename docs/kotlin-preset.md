@@ -1155,6 +1155,13 @@ clones that only repeat one or two statements (DTO mappers, `when` tables, `if` 
 `pmd-kotlin` lexer ignores the identifier and literal flags. The message names the same route as for
 any clone: add either file of the pair to `exclude`.
 
+The reuse rules `duplicate-definition`, `sibling-copy-edit` and `exported-name-collision` run on
+Kotlin and Java sources together, the way the Java preset runs them (see "Reuse rules" in
+`java-preset.md`): top-level functions and properties, the members of `object`s and companion
+objects, and top-level classes are compared within one Gradle module; an `import ... as` alias that
+keeps two different classes of one name apart is a collision, and same-named functions, which
+overload, are not.
+
 ## Coupling
 
 The stability-direction rule runs on Kotlin. `nitpickerJdeps` runs the JDK's `jdeps` over every main
