@@ -132,6 +132,7 @@ ruleTester.run('no-dev-dependency-in-production', rule, {
     { filename: inProject(app, '__mocks__/api.ts'), code: "import { vi } from 'vitest';" },
     { filename: inProject(app, 'Button.stories.tsx'), code: "import { z } from 'zod';" },
     { filename: inProject(app, '../testing/render.ts'), code: "import { z } from 'zod';" },
+    { filename: inProject(app, '../test-support/render.ts'), code: "import { z } from 'zod';" },
   ],
   invalid: [
     { filename: app, code: "import { z } from 'zod';", errors: [message('zod')] },
@@ -195,6 +196,7 @@ describe('isTestSupportFile', () => {
       'src/testUtils.ts',
       'src/test-utils/render.tsx',
       'src/testing/render.ts',
+      'src/test-support/render.ts',
       'src/__mocks__/api.ts',
       'src/main/ui/Button.stories.tsx',
       '.storybook/preview.ts',
@@ -203,7 +205,7 @@ describe('isTestSupportFile', () => {
       'src/main/setup.ts',
     ];
 
-    expect(paths.filter((file) => isTestSupportFile(file))).toEqual(paths.slice(0, 10));
+    expect(paths.filter((file) => isTestSupportFile(file))).toEqual(paths.slice(0, 11));
   });
 });
 
