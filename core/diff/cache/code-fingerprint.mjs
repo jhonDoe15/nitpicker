@@ -5,7 +5,10 @@ import { filesUnder } from '../../../shared/filesystem.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 
 const UNSHIPPED_DIRECTORIES = new Set(['fixtures', 'test-support', '__tests__', '__pycache__']);
-export const NITPICKER_CODE_FINGERPRINT = fingerprintPackageCode(PACKAGE_ROOT);
+
+export function nitpickerCodeFingerprint() {
+  return fingerprintPackageCode(PACKAGE_ROOT);
+}
 
 export function fingerprintPackageCode(packageRoot) {
   const hash = createHash('sha256');

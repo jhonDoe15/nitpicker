@@ -7,7 +7,7 @@ import {
 } from '../../../core/tooling/tool-resolution.mjs';
 import { testRunnerFor } from './test-runner/detect-runner.mjs';
 import { RUNNER_PACKAGES } from './test-runner/runners.mjs';
-import { typeScriptApi } from '../typescript-api/api-selection.mjs';
+import { selectTypeScriptApi } from '../typescript-api/api-selection.mjs';
 
 const TOOL_BY_ANALYZER = {
   'entry-points': 'dependency-cruiser',
@@ -93,7 +93,7 @@ export function resolveAnalyzerVersion(
   liveProjectRoot,
   {
     resolve = resolveTool,
-    bundled = typeScriptApi().bundled,
+    bundled = selectTypeScriptApi().bundled,
     installed = isToolInstalled,
   } = {},
 ) {
