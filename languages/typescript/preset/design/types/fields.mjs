@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { isFunctionValue } from '../syntax/function-values.mjs';
 import {
   assignedNames,
