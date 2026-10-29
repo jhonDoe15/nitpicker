@@ -105,17 +105,28 @@ public final class Prepare {
     for (MethodInfo method : type.methods) {
       counts.merge(method.ctor ? "<init>" : method.name, 1, Integer::sum);
     }
+    Map<String, Integer> ids = new HashMap<>();
     for (MethodInfo method : type.methods) {
-      String name = method.ctor ? "<init>" : method.name;
-      String suffix = counts.get(name) > 1 ? "(" + parameterTexts(method) + ")" : "";
-      method.id = type.id + "." + name + suffix;
+      method.id = idOf(method, counts, false);
+      ids.merge(method.id, 1, Integer::sum);
+    }
+    for (MethodInfo method : type.methods) {
+      if (ids.get(method.id) > 1) {
+        method.id = idOf(method, counts, true);
+      }
     }
   }
 
-  private static String parameterTexts(MethodInfo method) {
+  private static String idOf(MethodInfo method, Map<String, Integer> counts, boolean written) {
+    String name = method.ctor ? "<init>" : method.name;
+    String suffix = counts.get(name) > 1 ? "(" + parameterTexts(method, written) + ")" : "";
+    return method.owner.id + "." + name + suffix;
+  }
+
+  private static String parameterTexts(MethodInfo method, boolean written) {
     StringJoiner joiner = new StringJoiner(",");
     for (ParamInfo param : method.params) {
-      joiner.add(String.valueOf(Names.typeText(param.type)));
+      joiner.add(written ? Names.compact(param.type) : String.valueOf(Names.typeText(param.type)));
     }
     return joiner.toString();
   }

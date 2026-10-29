@@ -133,7 +133,7 @@ public final class TypeInfo {
   }
 
   public boolean exported() {
-    boolean visible = flags().contains(Modifier.PUBLIC) || flags().contains(Modifier.PROTECTED);
+    boolean visible = flags().contains(Modifier.PUBLIC);
     if (outer == null) {
       return flags().contains(Modifier.PUBLIC);
     }

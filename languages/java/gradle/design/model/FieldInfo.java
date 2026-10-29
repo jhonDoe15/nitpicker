@@ -22,7 +22,10 @@ public final class FieldInfo {
   }
 
   public boolean isPrivate() {
-    return flags().contains(Modifier.PRIVATE) || owner.isRecord() || owner.lombokPrivate;
+    return flags().contains(Modifier.PRIVATE)
+        || flags().contains(Modifier.PROTECTED)
+        || owner.isRecord()
+        || owner.lombokPrivate;
   }
 
   public boolean isFinal() {

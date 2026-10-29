@@ -39,8 +39,7 @@ public final class Surface {
     if (!method.owner.exported()) {
       return false;
     }
-    boolean visible =
-        method.flags.contains(Modifier.PUBLIC) || method.flags.contains(Modifier.PROTECTED);
+    boolean visible = method.flags.contains(Modifier.PUBLIC);
     return visible || (method.owner.isInterface() && !method.flags.contains(Modifier.PRIVATE));
   }
 
