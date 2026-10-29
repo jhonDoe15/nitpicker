@@ -43,19 +43,25 @@ export function moveIntegrationTest(project) {
   );
 }
 
-export const comparable = (findings) =>
-  findings
+export function comparable(findings) {
+  return findings
     .filter(({ tool }) => tool !== 'test-runtime')
     .map((finding) => JSON.stringify(finding))
     .sort();
+}
 
-export const slowTests = (findings) =>
-  findings
+export function slowTests(findings) {
+  return findings
     .filter(({ tool }) => tool === 'test-runtime')
     .map(({ path: file, message }) => `${file}: ${message.split(' took ')[0]}`);
+}
 
-export const coverage = (findings) =>
-  findings.filter(({ tool }) => tool === 'jacoco').map(({ message }) => message);
+export function coverage(findings) {
+  return findings.filter(({ tool }) => tool === 'jacoco').map(({ message }) => message);
+}
 
-export const mutations = (findings) =>
-  findings.filter(({ tool }) => tool === 'pit').map(({ rule, identity }) => `${rule} ${identity}`);
+export function mutations(findings) {
+  return findings
+    .filter(({ tool }) => tool === 'pit')
+    .map(({ rule, identity }) => `${rule} ${identity}`);
+}

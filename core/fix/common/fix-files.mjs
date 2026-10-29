@@ -1,6 +1,5 @@
 import { isUtf8 } from 'node:buffer';
 import { lstatSync, readFileSync } from 'node:fs';
-import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { collectWorkingTreeChanges } from '../changes.mjs';
 import { containedPath } from './contained-path.mjs';
@@ -26,7 +25,7 @@ export function collectFixFiles({ repositoryRoot, projectRoot, baseRef, accepts 
 }
 
 function isLink(projectRoot, name) {
-  const stats = lstatSync(path.join(projectRoot, ...name.split('/')), { throwIfNoEntry: false });
+  const stats = lstatSync(containedPath(projectRoot, name), { throwIfNoEntry: false });
   return stats?.isSymbolicLink() === true;
 }
 

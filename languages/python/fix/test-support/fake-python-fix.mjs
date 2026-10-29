@@ -39,7 +39,6 @@ export function fakePythonTools({
   function format(invocation) {
     if (missingFormatter) {
       return {
-        status: null,
         stdout: '',
         stderr: '',
         error: Object.assign(new Error('spawn'), { code: 'ENOENT' }),
