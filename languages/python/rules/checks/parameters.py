@@ -21,7 +21,7 @@ FACTORY_NAME = re.compile(r"^(?:from_|of$|builder$)")
 FUNCTION_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef)
 MATCH = getattr(ast, "Match", ())
 MATCH_CASE = getattr(ast, "match_case", ())
-BOOLEAN_TYPES = {"bool", "None"}
+BOOLEAN_TYPES = {"bool"}
 COMPARISONS = (ast.Is, ast.IsNot, ast.Eq, ast.NotEq)
 
 
@@ -51,9 +51,9 @@ def subscript_members(annotation):
         else [annotation.slice]
     )
     if wrapper == "Annotated":
-        return annotation_members(arguments[0])
+        return annotation_members(arguments[0]) if arguments else {"?"}
     if wrapper in {"Optional", "Union"}:
-        members = set()
+        members = {"None"} if wrapper == "Optional" else set()
         for argument in arguments:
             members |= annotation_members(argument)
         return members
@@ -64,7 +64,7 @@ def is_boolean_annotation(annotation):
     if annotation is None:
         return False
     members = annotation_members(annotation)
-    return "bool" in members and members <= BOOLEAN_TYPES
+    return members == BOOLEAN_TYPES
 
 
 def is_boolean_literal(node):
