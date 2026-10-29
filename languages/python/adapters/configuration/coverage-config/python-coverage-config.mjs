@@ -133,7 +133,10 @@ function runValue(key, value) {
   if (LIST_RUN_KEYS.has(key)) {
     return listValue(value);
   }
-  return typeof value === 'boolean' ? (value ? 'True' : 'False') : String(value);
+  if (typeof value !== 'boolean') {
+    return String(value);
+  }
+  return value ? 'True' : 'False';
 }
 
 function projectSettings(context) {
@@ -141,7 +144,9 @@ function projectSettings(context) {
   const { value, error } = attempt(() => readCoverageSettings(layers.configRoot));
   if (!layers.optedIn) {
     if (error !== undefined) {
-      throw error;
+      throw new Error(`The coverage config could not be parsed (${error.message}): fix it`, {
+        cause: error,
+      });
     }
     return { layers, found: value };
   }
@@ -157,8 +162,9 @@ function optedSettings({ layers, found }) {
     return { run: [], excluded: [], partial: [] };
   }
   const { run, report } = found;
-  const listed = (keys) =>
-    layers.nitpickerFirst ? [] : keys.flatMap((key) => regexList(report[key] ?? []));
+  function listed(keys) {
+    return layers.nitpickerFirst ? [] : keys.flatMap((key) => regexList(report[key] ?? []));
+  }
   return {
     run: OPTED_RUN_KEYS.filter((key) => run[key] !== undefined).map((key) => [
       key,

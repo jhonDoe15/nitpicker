@@ -52,7 +52,7 @@ describe.skipIf(!pythonE2eEnabled)('coverage with the project config end to end'
   beforeAll(() => {
     environment = path.join(temporaryRoot(), 'venv');
     install(environment);
-  }, INSTALL_TIMEOUT_MS * 2);
+  });
   afterAll(() => {
     for (const root of roots.splice(0)) {
       rmSync(root, { recursive: true, force: true });
