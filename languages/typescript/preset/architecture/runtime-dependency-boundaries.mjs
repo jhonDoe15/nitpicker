@@ -6,7 +6,7 @@ import { format as formatOutput } from 'node:util';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { moduleRoleBoundaries } from './runtime-dependency-boundaries.config.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 
