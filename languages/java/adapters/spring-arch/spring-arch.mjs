@@ -7,6 +7,7 @@ import { CONTRACT_RULE, contractEntry, keepsContract, simpleName } from './contr
 
 export const SPRING_ARCH_REPORT = 'spring-arch.json';
 const TOOL = 'archunit';
+const SPRING_RULE_PREFIX = 'spring-';
 
 const MESSAGES = {
   'spring-layout': ({ simple, detail, root }) =>
@@ -106,7 +107,7 @@ function isKept(violation, filePath, options) {
     return keepsContract(detail, filePath, options.isFeatureFace ?? (() => false));
   }
   return (
-    options.spring !== false &&
+    (options.spring !== false || !rule.startsWith(SPRING_RULE_PREFIX)) &&
     !(rule === PLACEMENT && isIntegrationTest({ className, unitSource: true })) &&
     !(rule === BOUNDARY && options.shown.has(dependencyKey(violation)))
   );
