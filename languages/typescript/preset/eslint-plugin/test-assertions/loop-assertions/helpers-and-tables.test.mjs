@@ -13,9 +13,9 @@ runCases('no-assertion-in-loop through helpers, async callbacks and tables', {
     "it('x', () => { orders.forEach(register); expect(registry.size).toBe(2); });",
     "it('x', () => { const check = (o) => run(o); orders.forEach(check); expect(done()).toBe(true); });",
     "it('x', () => { const log = (o) => console.assert(o); orders.forEach(log); });",
-    `${NODE_TEST}test('cases', async (t) => { for (const c of cases) { await t.test(c.name, () => { assert.equal(run(c.input), c.output); }); } });`,
-    `${NODE_TEST}test('cases', async (t) => { for (const c of cases) { await t.test(c.name, (s) => { s.assert.equal(run(c.input), c.output); }); } });`,
-    `${NODE_TEST}test('cases', async (t) => { cases.forEach((c) => { t.it(c.name, () => { assert.equal(run(c.input), c.output); }); }); });`,
+    `${NODE_TEST}test('cases', async (t) => { for (const c of [{ name: 'a', input: 1, output: 1 }]) { await t.test(c.name, () => { assert.equal(run(c.input), c.output); }); } });`,
+    `${NODE_TEST}const cases = [{ name: 'a', input: 1, output: 1 }];\ntest('cases', async (t) => { for (const c of cases) { await t.test(c.name, (s) => { s.assert.equal(run(c.input), c.output); }); } });`,
+    `${NODE_TEST}test('cases', async (t) => { [1, 2].forEach((c) => { t.it(String(c), () => { assert.equal(run(c), c); }); }); });`,
     "it('x', () => { expect(/a/.test(text)).toBe(true); for (const o of orders) { /a/.test(o); } });",
   ],
   invalid: [

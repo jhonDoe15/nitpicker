@@ -28,9 +28,11 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
       );
 
       expect(found.length, summarize(result.newEnforceable).join('\n')).toBeGreaterThan(0);
-      expect(found.map(({ message }) => message.toLowerCase())).toEqual(
-        found.map(() => expect.stringContaining(testCase.allowedForm.toLowerCase())),
-      );
+      expect(
+        found
+          .map(({ message }) => message)
+          .filter((message) => !message.toLowerCase().includes(testCase.allowedForm.toLowerCase())),
+      ).toEqual([]);
     },
   );
   it('reports the detekt message each case records and the hint that the gate adds', () => {

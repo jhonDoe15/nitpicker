@@ -33,6 +33,7 @@ describe('positive case definitions', () => {
         const strict = loadTree(strictCleanRoot);
         strict.delete('package.json');
         const fixture = loadTree(definition.fixtureDirectory);
+        expect(strict.size).toBeGreaterThan(0);
         const differing = [...strict]
           .filter(([file, text]) => fixture.get(file) !== text && !EXTENDED_BY_CASE.has(file))
           .map(([file]) => file);

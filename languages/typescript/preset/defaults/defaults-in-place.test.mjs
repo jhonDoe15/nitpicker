@@ -158,6 +158,7 @@ describe('default configs used in place', () => {
     it('reports no error for every file-driven quality analyzer with no source or tests', () => {
       const run = runEmptyProject();
       const names = fileDrivenChecks.map(({ name }) => name);
+      expect(names).not.toHaveLength(0);
       expect(toolErrorsFor(run, names)).toEqual([]);
       expect(names.map((name) => run.reports.get(name)?.findings)).toEqual(names.map(() => []));
     });

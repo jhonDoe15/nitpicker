@@ -129,6 +129,7 @@ describe('ingestPythonCrap', () => {
   });
 
   it('puts no line number in the identity', () => {
+    expect(ingest({ limit: 4 })).not.toHaveLength(0);
     expect(ingest({ limit: 4 }).filter((finding) => /\d{2,}/.test(finding.identity))).toEqual([]);
   });
 

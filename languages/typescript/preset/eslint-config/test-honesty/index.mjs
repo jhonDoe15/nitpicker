@@ -54,7 +54,12 @@ function testPlacementBlock(layout, { testAreaGlobs, testRootsOnDisk }) {
 
 export function testHonestyConfigFor(
   layout,
-  { setupFiles = [], stubRestores = [], testRootsOnDisk = layout.testRoots } = {},
+  {
+    setupFiles = [],
+    stubRestores = [],
+    testRootsOnDisk = layout.testRoots,
+    assertionFunctionNames = [],
+  } = {},
 ) {
   const files = testAreaGlobsFor(layout);
   return [
@@ -70,7 +75,7 @@ export function testHonestyConfigFor(
         'nitpicker/fake-timers-require-restore': 'error',
         'nitpicker/no-real-time-random-or-network': 'error',
         'nitpicker/no-switched-off-tests': 'error',
-        'nitpicker/no-assertion-in-loop': 'error',
+        'nitpicker/no-assertion-in-loop': ['error', { assertionFunctionNames }],
         'nitpicker/no-unowned-async-assertion': 'error',
         'vitest/no-restricted-matchers': ['error', restrictedMatchers],
         'vitest/prefer-called-with': 'error',
