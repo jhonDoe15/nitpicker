@@ -700,9 +700,11 @@ name (a plugin in a config file) needs an `unused-dependency` exception for `pac
 names the package:
 `{ "rule": "unused-dependency", "paths": ["package.json"], "packages": ["prettier-plugin-x"], "reason": "Loaded by .prettierrc" }`.
 
-The Python preset fails a new `unused-dependency` and `unlisted-dependency` the same way, reading the
-dependencies from `pyproject.toml`, `Pipfile`, `requirements*.txt` or `setup.cfg` (see
-[python-preset.md](python-preset.md)); the Java and Kotlin presets have neither rule.
+The Python preset fails a new `unused-dependency`, `unlisted-dependency` and `unresolved-import` the
+same way, reading the dependencies from `pyproject.toml`, `Pipfile`, `requirements*.txt` or
+`setup.cfg` and the modules from the project and its environment (see
+[python-preset.md](python-preset.md)). The Java and Kotlin presets have none of these rules: an import
+that does not resolve there fails the compile.
 
 ### Change history
 
