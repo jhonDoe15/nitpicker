@@ -100,9 +100,9 @@ const javaErrorProne = (path) => {
 const kotlin = (path) =>
   withKotlinRuleMessage({
     tool: 'detekt',
-    rule: 'detekt.complexity.StringLiteralDuplication',
+    rule: 'detekt.potential-bugs.UnsafeCallOnNullableType',
     path,
-    message: 'The String literal "x" appears 3 times.',
+    message: 'Calling methods on a nullable type with `!!` may throw.',
     classification: 'enforceable',
   });
 
@@ -113,8 +113,8 @@ const NULL_FORM =
   "Annotate what may be null with the @Nullable the project already uses (JSpecify's org.jspecify.annotations.Nullable if it uses none) and check it before use; otherwise give it a non-null value.";
 const LOGGING_FORM =
   'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.';
-const CONSTANT_FORM =
-  'Name it once as a constant (`private const val NAME = "..."`) and use the constant.';
+const NULL_SAFE_FORM =
+  'Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug.';
 const JAVA = 'src/main/java/A.java';
 const KOTLIN = 'src/main/kotlin/A.kt';
 
@@ -140,8 +140,8 @@ const SAMPLES = [
     KOTLIN,
     kotlin,
     'exceptions',
-    'detekt.complexity.StringLiteralDuplication',
-    CONSTANT_FORM,
+    'detekt.potential-bugs.UnsafeCallOnNullableType',
+    NULL_SAFE_FORM,
   ],
   ['kotlin', KOTLIN, fileLines, 'exceptions', 'file-lines-limit', SPLIT_FORM],
 ];
