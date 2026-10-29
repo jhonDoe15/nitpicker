@@ -40,6 +40,16 @@ export const codeSmellFailureMessageCases = [
     ['request in a loop names bounded concurrency', request, 'p-limit'],
     ['query in Promise.all names one query', concurrentQuery, 'in one query'],
     [
+      'Redis command in a loop names mget and a pipeline',
+      'for (const id of ids) { await redisClient.get(id); }',
+      'pipeline()',
+    ],
+    [
+      'accumulator concat names pushing into the accumulator',
+      'xs.reduce((acc, x) => acc.concat([x]), []);',
+      'push into the accumulator',
+    ],
+    [
       'accumulator spread names Object.fromEntries',
       'xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {});',
       'Object.fromEntries',
@@ -68,6 +78,11 @@ export const codeSmellFailureMessageCases = [
       'dual write names the outbox',
       "import { send } from 'kafkajs';\nexport async function run(o) { await orderRepository.save(o); await send(o); }",
       'outbox table',
+    ],
+    [
+      'dual write names the relay',
+      "import { send } from 'kafkajs';\nexport async function run(o) { await orderRepository.save(o); await send(o); }",
+      'relay loop',
     ],
     ['generic file name names the exception', 'export const a = 1;', EXCEPTION, GENERIC_FILE],
     [

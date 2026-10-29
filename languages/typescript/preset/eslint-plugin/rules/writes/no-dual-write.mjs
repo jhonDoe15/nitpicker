@@ -1,41 +1,29 @@
-import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { callsWithin } from '../effects/held-scopes.mjs';
-import { callEffects, describePath } from '../support/io-effects.mjs';
+import { estreeRunsWithCaller } from '../support/flow/sync-callbacks.mjs';
+import { callEffects, describePath, mayPublish } from '../support/io-effects.mjs';
+import { isRelayPublish, publishesAfterCommit } from './write-sites.mjs';
 
-const FUNCTIONS = new Set(['ArrowFunctionExpression', 'FunctionExpression']);
 const WRITE = 'write';
 const MESSAGE = 'message';
 const OUTBOX = [
   'Write the message to an outbox table in the same transaction and let a relay publish it',
-  '(or use change data capture or a database-backed queue).',
+  '(or use change data capture or a database-backed queue);',
+  'a relay loop that reads rows from the database, publishes each and then updates that row is fine.',
 ].join(' ');
-
-function isCallback(fn) {
-  return fn.parent.type === 'CallExpression' && fn.parent.arguments.includes(fn);
-}
-
-function isAfterCommit(call, fn) {
-  return ancestorsOf(call)
-    .filter(
-      (ancestor) =>
-        FUNCTIONS.has(ancestor.type) && ancestor !== fn && fn.range[0] <= ancestor.range[0],
-    )
-    .filter(isCallback)
-    .some((callback) => callback.parent.callee.property?.name === 'afterCommit');
-}
 
 function sitesWith(effects, tag, other) {
   return effects.filter((site) => site.effects.has(tag) && !site.effects.has(other));
 }
 
-function sites(context, fn) {
-  const effects = callsWithin(fn.body, context.sourceCode.visitorKeys).map((call) => ({
+function unitSites(context, body) {
+  const effects = callsWithin(body, context.sourceCode.visitorKeys).map((call) => ({
     call,
     effects: callEffects(call, context),
   }));
+  const publishes = sitesWith(effects, MESSAGE, WRITE);
   return {
-    writes: sitesWith(effects, WRITE, MESSAGE),
-    publishes: sitesWith(effects, MESSAGE, WRITE),
+    publishes,
+    writes: publishes.length === 0 ? [] : sitesWith(effects, WRITE, MESSAGE),
   };
 }
 
@@ -62,25 +50,37 @@ export const rule = {
     },
   },
   create(context) {
-    function check(fn) {
-      const { writes, publishes } = isCallback(fn) ? { writes: [] } : sites(context, fn);
-      const [publish] = publishes ?? [];
+    if (!mayPublish(context)) {
+      return {};
+    }
+    function check(unit, body) {
+      const { writes, publishes } = unitSites(context, body);
+      const publish = publishes.find((site) => !isRelayPublish(site, writes, context));
       if (writes.length === 0 || publish === undefined) {
         return;
       }
+      const afterCommit = publishesAfterCommit(publish, writes, { context, unit });
       context.report({
         node: publish.call,
-        messageId: isAfterCommit(publish.call, fn) ? 'afterCommit' : 'dualWrite',
+        messageId: afterCommit ? 'afterCommit' : 'dualWrite',
         data: {
           message: describePath(publish.effects.get(MESSAGE)),
           write: describePath(writes[0].effects.get(WRITE)),
         },
       });
     }
+    function checkFunction(fn) {
+      if (!estreeRunsWithCaller(fn)) {
+        check(fn, fn.body);
+      }
+    }
     return {
-      FunctionDeclaration: check,
-      FunctionExpression: check,
-      ArrowFunctionExpression: check,
+      Program(node) {
+        check(node, node);
+      },
+      FunctionDeclaration: checkFunction,
+      FunctionExpression: checkFunction,
+      ArrowFunctionExpression: checkFunction,
     };
   },
 };

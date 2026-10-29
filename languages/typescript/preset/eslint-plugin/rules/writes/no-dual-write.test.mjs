@@ -9,8 +9,18 @@ typescriptRuleTester().run('no-dual-write', rule, {
     `${kafka}export async function run(order) { await send({ topic: 'o', messages: [order] }); }`,
     'export async function run(order) { await orderRepository.save(order); await httpClient.post(order); }',
     `${kafka}export async function run(order) { await orderRepository.findById(order); await send(order); }`,
+    `${kafka}export function routes(app) { app.post('/o', async (req) => { await orderRepository.save(req.body); }); app.post('/p', async (req) => { await send(req.body); }); }`,
+    `${kafka}export function listen(bus) { bus.on('o', async (o) => { await orderRepository.save(o); }); bus.on('p', (o) => send(o)); }`,
   ]),
   invalid: [
+    {
+      code: `${kafka}app.post('/o', async (req) => { await orderRepository.save(req.body); await send(req.body); });`,
+      errors: [{ messageId: 'dualWrite' }],
+    },
+    {
+      code: `${kafka}await orderRepository.save(order);\nawait send(order);`,
+      errors: [{ messageId: 'dualWrite' }],
+    },
     {
       code: `${kafka}export async function run(order) { await orderRepository.save(order); await send(order); }`,
       errors: [
@@ -55,6 +65,9 @@ tester.run('no-dual-write with types', rule, {
       'await prisma.$transaction(async (tx) => { await tx.order.create({ data: { id } }); await tx.user.create({ data: { id } }); });',
     ),
     run(`const later = async () => { ${send} }; await saveOrder(id); return later;`),
+    run(
+      "const rows = await prisma.order.findMany({ where: { id } }); for (const row of rows) { await producer.send({ topic: 'o', messages: [row.id] }); await prisma.order.update({ where: { id: row.id }, data: {} }); }",
+    ),
   ],
   invalid: [
     {
@@ -89,6 +102,18 @@ tester.run('no-dual-write with types', rule, {
         `const t = await sequelize.transaction(); await saveOrder(id); t.afterCommit(async () => { ${send} }); await t.commit();`,
       ),
       errors: [{ messageId: 'afterCommit' }],
+    },
+    {
+      ...run(
+        `await prisma.$transaction(async (tx) => { await tx.order.create({ data: { id } }); }); ${send}`,
+      ),
+      errors: [{ messageId: 'afterCommit' }],
+    },
+    {
+      ...run(
+        `const rows = await prisma.order.findMany({ where: { id } }); for (const row of rows) { ${send} await prisma.order.update({ where: { id }, data: {} }); }`,
+      ),
+      errors: [{ messageId: 'dualWrite' }],
     },
     {
       ...typed(
