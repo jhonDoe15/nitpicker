@@ -5,7 +5,7 @@ export const SWALLOWED_CANCELLATION_RULE = 'SwallowedCancellation';
 
 export const INTERRUPT_MESSAGE =
   'This catch of InterruptedException neither rethrows it nor restores the interrupt, so the interrupt status of the thread is lost and work that was asked to stop keeps running. Call Thread.currentThread().interrupt() before leaving the handler, or rethrow: throw e, or throw a new exception with the cause.';
-export const CANCELLATION_MESSAGE =
+const CANCELLATION_MESSAGE =
   'This catch of CancellationException neither rethrows it nor checks that the coroutine is still active, so cancellation is consumed and the coroutine keeps running after its owner cancelled it. Rethrow it (throw e), call ensureActive() in the handler to rethrow only when this coroutine was itself cancelled, or catch only the specific failure you expect.';
 
 const INTERRUPTED = 'java.lang.InterruptedException';
@@ -40,8 +40,11 @@ function wildcardMatch(file, name) {
   return candidates.length === 1 ? candidates[0] : undefined;
 }
 
-function resolve(file, type, files) {
-  const name = bareType(type).replace(GENERIC_ARGUMENTS, '');
+function plainName(type) {
+  return bareType(type).replace(GENERIC_ARGUMENTS, '');
+}
+
+function resolveUnaliased(file, name, files) {
   if (name.includes('.')) {
     return name;
   }
@@ -49,16 +52,20 @@ function resolve(file, type, files) {
   if (imported !== undefined) {
     return imported;
   }
-  const alias = file.typeAliases?.find((entry) => entry.name === name);
-  if (alias !== undefined) {
-    return alias.target === name
-      ? undefined
-      : resolve({ ...file, typeAliases: [] }, alias.target, files);
-  }
   if (declaredInProject(files, name)) {
     return undefined;
   }
   return wildcardMatch(file, name) ?? (name === 'InterruptedException' ? INTERRUPTED : undefined);
+}
+
+function resolve(file, type, files) {
+  const name = plainName(type);
+  const direct = name.includes('.') || importedAs(file, name) !== undefined;
+  const alias = direct ? undefined : file.typeAliases?.find((entry) => entry.name === name);
+  if (alias === undefined) {
+    return resolveUnaliased(file, name, files);
+  }
+  return alias.target === name ? undefined : resolveUnaliased(file, plainName(alias.target), files);
 }
 
 function ruleOf(caught, resolved) {
