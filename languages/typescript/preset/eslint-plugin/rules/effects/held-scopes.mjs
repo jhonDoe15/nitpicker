@@ -1,5 +1,5 @@
 import { ancestorsOf } from '../analysis/ancestry.mjs';
-import { childrenOf } from '../loops/loop-shapes.mjs';
+import { childrenOf, contains } from '../loops/loop-shapes.mjs';
 import { isOwned } from '../support/flow/scope-owners.mjs';
 import { estreeRunsWithCaller } from '../support/flow/sync-callbacks.mjs';
 import { estreeCallView } from '../support/io/call-views.mjs';
@@ -25,6 +25,7 @@ const SCOPES = {
     ends: new Set(['release', 'unlock', 'releaseLock']),
   },
 };
+const BRANCHES = new Set(['IfStatement', 'CatchClause', 'SwitchCase', 'ConditionalExpression']);
 const bodyIndexes = new WeakMap();
 const callbackScopes = new WeakMap();
 
@@ -100,30 +101,49 @@ function markerRole(kind, call, context) {
   return begins && isOwned(kind, { call, view, role: BEGINS }, context) ? BEGINS : undefined;
 }
 
+function branchOf(node, body) {
+  const inside = ancestorsOf(node).filter((ancestor) => contains(body, ancestor));
+  return inside.find(
+    (ancestor) =>
+      BRANCHES.has(ancestor.type) &&
+      !(ancestor.test !== undefined && contains(ancestor.test, node)),
+  );
+}
+
 function bodyIndex(kind, body, context) {
   const perBody = memoized(bodyIndexes, body, () => new Map());
   return memoized(perBody, kind, () => {
     const calls = callsWithin(body, context.sourceCode.visitorKeys);
     const markers = calls
       .map((call) => ({ call, role: markerRole(kind, call, context) }))
-      .filter(({ role }) => role !== undefined);
-    return { calls, markers, scopes: new Map() };
+      .filter(({ role }) => role !== undefined)
+      .map((marker) => ({ ...marker, branch: branchOf(marker.call, body) }));
+    return { body, calls, markers, scopes: new Map() };
   });
+}
+
+function closes(marker, node) {
+  return marker.branch === undefined || contains(marker.branch, node);
 }
 
 function openScope(index, begin) {
   const end = index.markers.find(
-    ({ call, role }) => role === ENDS && call.range[0] >= begin.range[1],
+    (marker) =>
+      marker.role === ENDS && marker.call.range[0] >= begin.range[1] && closes(marker, begin),
   )?.call;
   const calls = index.calls.filter(
     (call) =>
       call.range[0] >= begin.range[1] && (end === undefined || call.range[1] <= end.range[0]),
   );
-  return { opener: begin, calls, param: estreeCallView(begin).root, closing: end };
+  const root = index.body;
+  return { opener: begin, calls, param: estreeCallView(begin).root, closing: end, root };
 }
 
 function rangeScope(index, node) {
-  const last = index.markers.filter(({ call }) => call.range[1] <= node.range[0]).at(-1);
+  const last = index.markers
+    .filter((marker) => marker.call.range[1] <= node.range[0])
+    .filter((marker) => marker.role === BEGINS || closes(marker, node))
+    .at(-1);
   return last?.role === BEGINS
     ? memoized(index.scopes, last.call, () => openScope(index, last.call))
     : undefined;
@@ -136,6 +156,7 @@ function callbackScope(kind, node, context) {
         opener: fn.parent,
         calls: callsWithin(fn.body, context.sourceCode.visitorKeys),
         param: fn.params[0],
+        root: fn.body,
         closing: fn.parent.parent.type === 'AwaitExpression' ? fn.parent : undefined,
       }));
     }

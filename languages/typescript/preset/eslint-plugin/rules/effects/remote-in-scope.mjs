@@ -1,4 +1,5 @@
 import { typeServices } from '../security/security-values.mjs';
+import { isFillOnce } from '../support/flow/fill-once.mjs';
 import { callEffects, chainOuterCall, describePath, ioKind } from '../support/io-effects.mjs';
 import { memoized } from '../support/memo.mjs';
 import { heldScope, isOnParameter, scopeLabel } from './held-scopes.mjs';
@@ -28,6 +29,9 @@ export function remoteInScope(kind, needsDatabase) {
       const scope = heldScope(kind, node, context);
       const path = scope === undefined ? undefined : remotePath(context, node);
       if (path === undefined || (needsDatabase && !provesConnection(scope))) {
+        return;
+      }
+      if (!needsDatabase && isFillOnce(node, scope.root, context.sourceCode)) {
         return;
       }
       context.report({
