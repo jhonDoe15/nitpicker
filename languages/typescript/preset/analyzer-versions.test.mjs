@@ -48,12 +48,23 @@ describe('ESLint analyzer versions', () => {
     );
   });
 
-  it('records both TypeScript versions for the type check, whichever engine runs', () => {
+  it('records the project, native and source-reading TypeScript versions for the type check', () => {
+    const resolve = fakeResolver({ typescript: '5.9.3', 'typescript-native': '7.0.2' });
+
     expect(
       resolveAnalyzerVersion('typescript-typecheck', '/project', {
-        resolve: fakeResolver({ typescript: '5.9.3', 'typescript-native': '7.0.2' }),
+        resolve,
+        bundled: false,
+        installed: () => true,
       }),
-    ).toBe('5.9.3;typescript-native@7.0.2');
+    ).toBe('5.9.3;typescript-native@7.0.2;5.9.3');
+    expect(
+      resolveAnalyzerVersion('typescript-typecheck', '/project', {
+        resolve,
+        bundled: false,
+        installed: () => false,
+      }),
+    ).toBe('none;typescript-native@7.0.2;5.9.3');
   });
 
   it('records the bundled TypeScript API when the installed typescript has none', () => {
@@ -63,9 +74,12 @@ describe('ESLint analyzer versions', () => {
 
     expect(resolveAnalyzerVersion('structure', '/project', bundled)).toBe('js-api-6.0.3');
     expect(resolveAnalyzerVersion('crap', '/project', { resolve, bundled: false })).toBe('7.0.2');
-    expect(resolveAnalyzerVersion('typescript-typecheck', '/project', bundled)).toBe(
-      '7.0.2;typescript-native@1.0.0;js-api-6.0.3',
-    );
+    expect(
+      resolveAnalyzerVersion('typescript-typecheck', '/project', {
+        ...bundled,
+        installed: () => true,
+      }),
+    ).toBe('7.0.2;typescript-native@1.0.0;js-api-6.0.3');
     expect(resolveAnalyzerVersion('coupling', '/project', bundled)).toBe(
       '1.0.0;typescript@js-api-6.0.3',
     );

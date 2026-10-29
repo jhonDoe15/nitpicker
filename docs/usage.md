@@ -1313,10 +1313,10 @@ TypeScript 7's behavior, and redirects `typescript` to it in the processes it st
 Node.js 22.19 or newer. The type check still runs on the project's own TypeScript 7 with the
 `project` engine, and an option it removed is reported as the project's compiler reports it.
 
-The redirect reaches the project's own test runs too (for coverage, mutation and test console
-output), so a test that loads `typescript` through Node gets TypeScript 6.0's API there. Code that
-Vite or Jest resolve themselves (Vitest's transformed modules, Jest's module registry) does not go
-through Node's resolver and still gets the project's TypeScript 7.
+The redirect applies only to modules loaded from a `node_modules` package, so the project's own
+code and tests, including the test runs nitpicker starts for coverage and mutation, keep getting the
+project's TypeScript 7; a dependency they load that reads `typescript` gets TypeScript 6.0's API. A
+project with no `typescript` installed is read and type checked with nitpicker's own TypeScript.
 
 Findings match the project's own TypeScript, with the same messages, positions and symbols, except:
 

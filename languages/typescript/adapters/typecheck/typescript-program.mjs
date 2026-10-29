@@ -1,7 +1,11 @@
 import { realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
+import {
+  isToolInstalled,
+  PACKAGE_ROOT,
+  resolveTool,
+} from '../../../../core/tooling/tool-resolution.mjs';
 import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { packageHasJavaScriptApi } from '../../typescript-api/api-redirect.mjs';
 import { ts as selectedTypeScript } from '../../typescript-api/typescript-api.mjs';
@@ -10,6 +14,9 @@ import { nativeDiagnostics } from './native-diagnostics.mjs';
 const NO_INPUTS_CODE = 18003;
 
 export function projectTypeScript(projectRoot = PACKAGE_ROOT) {
+  if (!isToolInstalled('typescript', { projectRoot })) {
+    return { ts: selectedTypeScript };
+  }
   const { root } = resolveTool('typescript', { projectRoot });
   return packageHasJavaScriptApi(root)
     ? { ts: createRequire(import.meta.url)(path.join(root, 'lib/typescript.js')) }

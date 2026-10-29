@@ -23,7 +23,7 @@ async function listedNativeRules() {
   const { stdout } = await promisify(execFile)(
     process.execPath,
     [oxlintBinary(), '--rules', '--format', 'json'],
-    { cwd: tmpdir(), maxBuffer: MAX_LISTING_BYTES },
+    { cwd: path.parse(tmpdir()).root, maxBuffer: MAX_LISTING_BYTES },
   );
   return JSON.parse(stdout);
 }

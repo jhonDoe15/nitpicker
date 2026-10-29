@@ -260,6 +260,14 @@ describe('a project whose own typescript is TypeScript 7', () => {
     expect(selected.native).toBe(realpathSync(projectNative));
     expect(projectTypeScript(PACKAGE_ROOT).native).toBeUndefined();
   });
+
+  it('reads and type checks a project without typescript with the API nitpicker selected', () => {
+    const consumer = path.join(root, 'no-typescript-consumer');
+    mkdirSync(consumer);
+    writeFileSync(path.join(consumer, 'package.json'), '{"name":"no-typescript-consumer"}');
+
+    expect(projectTypeScript(consumer)).toStrictEqual({ ts: selectedTypeScript });
+  });
 });
 
 describe('the default quality config', () => {
