@@ -5,17 +5,8 @@ const PYTHON_PACKAGE = '__init__';
 const KOTLIN_FACADE = 'Kt';
 const DESCRIPTOR_PREFIX = 'L';
 const AMBIGUOUS = Symbol('ambiguous');
-const NO_MOVES = new Map();
-const cachedMoves = new WeakMap();
 
 export function qualifiedNameMoves(renames) {
-  if (renames.size === 0) {
-    return NO_MOVES;
-  }
-  const cached = cachedMoves.get(renames);
-  if (cached !== undefined) {
-    return cached;
-  }
   const moves = new Map();
   for (const [oldPath, newPath] of renames) {
     for (const [from, to] of namePairs(oldPath, newPath)) {
@@ -23,9 +14,7 @@ export function qualifiedNameMoves(renames) {
       moves.set(from, known === undefined || known === to ? to : AMBIGUOUS);
     }
   }
-  const resolved = new Map([...moves].filter(([, to]) => to !== AMBIGUOUS));
-  cachedMoves.set(renames, resolved);
-  return resolved;
+  return new Map([...moves].filter(([, to]) => to !== AMBIGUOUS));
 }
 
 function namePairs(oldPath, newPath) {
@@ -77,15 +66,11 @@ function matchingRootLength(oldRoot, to) {
 }
 
 function sharedTail(left, right) {
-  let shared = 0;
-  while (
-    shared < left.length &&
-    shared < right.length &&
-    left[left.length - 1 - shared] === right[right.length - 1 - shared]
-  ) {
-    shared += 1;
-  }
-  return shared;
+  const reversedRight = right.toReversed();
+  const mismatch = left
+    .toReversed()
+    .findIndex((segment, index) => segment !== reversedRight[index]);
+  return mismatch === -1 ? left.length : mismatch;
 }
 
 export function remapQualifiedNames(text, moves) {

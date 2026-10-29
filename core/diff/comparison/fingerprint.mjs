@@ -7,10 +7,10 @@ export function comparisonKey(
   finding,
   baseToHeadRenames = new Map(),
   baseToHeadDirectories = new Map(),
+  names = qualifiedNameMoves(baseToHeadRenames),
 ) {
   const normalizedPath = normalizeGitPath(finding.path);
   const cycle = parseCycleIdentity(finding.identity);
-  const names = qualifiedNameMoves(baseToHeadRenames);
   const canonical =
     cycle === undefined
       ? {
