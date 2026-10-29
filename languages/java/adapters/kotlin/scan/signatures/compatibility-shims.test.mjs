@@ -30,6 +30,8 @@ describe('compatibilityShims', () => {
 
   it.each([
     ['an override of a deprecated member', '@Deprecated("x")\noverride fun old() {}\n'],
+    ['an override on the line above', 'override\n@Deprecated("x")\nfun old() {}\n'],
+    ['an override before the annotation', 'override @Deprecated("x") fun old() {}\n'],
     ['a type alias of a library type', 'typealias Handler = Callback\n'],
     ['a generic type alias', 'class Order\n\ntypealias Orders = List<Order>\n'],
     ['a function type alias', 'typealias Handler = (String) -> Unit\n'],
