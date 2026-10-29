@@ -943,7 +943,7 @@ let $fields := //ClassDeclaration[ModifierList/Annotation[
     or pmd-java:typeIs('org.hibernate.annotations.Type')])],
     $converted := //ClassDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.Converter') or pmd-java:typeIs('javax.persistence.Converter'))]
       [AnnotationMemberList/MemberValuePair[@Name = 'autoApply']/BooleanLiteral[@True = true()]]]
-    /ImplementsList/ClassType[(pmd-java:typeIs('jakarta.persistence.AttributeConverter') or pmd-java:typeIs('javax.persistence.AttributeConverter'))]/TypeArguments/ClassType[1]/@SimpleName,
+    /(ImplementsList | ExtendsList)/ClassType[(pmd-java:typeIs('jakarta.persistence.AttributeConverter') or pmd-java:typeIs('javax.persistence.AttributeConverter'))]/TypeArguments/ClassType[1]/@SimpleName,
     $string := function($field) {
   exists($field/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Enumerated') or pmd-java:typeIs('javax.persistence.Enumerated')]
     [.//*[@Name = 'STRING']])
@@ -1054,7 +1054,7 @@ let $iterated := function($call) {
     $loop := function($node) {
   exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
     [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
-  or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
+  or exists($node/ancestor::LambdaExpression[not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])][parent::ArgumentList/parent::MethodCall
     [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')][$iterated(.)]])
 },
     $entityWrite := function($node) {
@@ -1077,12 +1077,14 @@ return
   </rule>
 
   <rule name="SpringDataNoFlush" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Let the transaction write changes at commit and remove this flush; an early flush defeats JDBC batching and hides ordering bugs.">
+        message="Let the transaction write changes at commit and remove this flush; in a batch loop, flush and then call entityManager.clear() every N entities. Any other early flush defeats JDBC batching and hides ordering bugs.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodCall[@MethodName = ('saveAndFlush', 'saveAllAndFlush', 'flush')]
   [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]]
-  [not(ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement][1]//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])]
+  [not(ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement
+    or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]]][1]
+    //MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])]
 ]]></value></property></properties>
   </rule>
 
@@ -1170,7 +1172,7 @@ return //MethodCall[
 let $loop := function($node) {
   exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
     [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
-  or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
+  or exists($node/ancestor::LambdaExpression[not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])][parent::ArgumentList/parent::MethodCall
     [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
     [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
       or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
@@ -1183,7 +1185,8 @@ let $loop := function($node) {
 return //MethodCall[@MethodName = ('saveAll', 'saveAllAndFlush', 'deleteAll', 'deleteAllById', 'deleteAllInBatch')]
   [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]
   [ArgumentList[count(*) = 1]/*[
-    self::MethodCall[@MethodName = ('of', 'singletonList', 'singleton')][*[1][self::TypeExpression]][ArgumentList[count(*) = 1]]
+    self::MethodCall[@MethodName = ('of', 'singletonList', 'singleton')][*[1][self::TypeExpression]]
+      [ArgumentList[count(*) = 1][not(*[pmd-java:typeIs('java.lang.Object[]')])]]
     or self::VariableAccess[let $name := @Name
       return exists(ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement or self::LambdaExpression][1]
         //VariableDeclarator[VariableId/@Name = $name]
@@ -1199,7 +1202,7 @@ return //MethodCall[@MethodName = ('saveAll', 'saveAllAndFlush', 'deleteAll', 'd
 let $loop := function($node) {
   exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
     [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
-  or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
+  or exists($node/ancestor::LambdaExpression[not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])][parent::ArgumentList/parent::MethodCall
     [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
     [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
       or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
@@ -1221,6 +1224,7 @@ return (
      or parent::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'peek')]]
      or matches(@MethodName, $write)]
   | //MethodCall[@MethodName = 'executeUpdate'][*[1][(pmd-java:typeIs('jakarta.persistence.Query') or pmd-java:typeIs('javax.persistence.Query'))]]
+    [not(.//MethodCall[@MethodName = 'setParameter']/ArgumentList/*[2][pmd-java:typeIs('java.lang.Iterable')])]
 )[$loop(.)]
 |
 //MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'peek')]
@@ -1236,7 +1240,7 @@ return (
 let $loop := function($node) {
   exists($node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement]
     [not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])])
-  or exists($node/ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall
+  or exists($node/ancestor::LambdaExpression[not(.//MethodCall[@MethodName = 'clear'][*[1][(pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]])][parent::ArgumentList/parent::MethodCall
     [@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
     [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
       or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
@@ -1247,9 +1251,12 @@ let $loop := function($node) {
     or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
 }
 return //MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
-  [let $name := @MethodName, $arity := count(ArgumentList/*)
+  [let $name := @MethodName, $arity := count(ArgumentList/*), $arguments := ArgumentList/*
    return exists(ancestor::ClassDeclaration[1]/ClassBody/MethodDeclaration[@Name = $name]
-     [@Arity = $arity or (@Varargs and $arity >= @Arity - 1)]//MethodCall[$entityWrite(.)])]
+     [@Arity = $arity or (@Varargs and $arity >= @Arity - 1)]
+     [every $index in 1 to $arity satisfies (not($arguments[$index][pmd-java:typeIs('java.lang.Iterable')])
+       or FormalParameters/FormalParameter[$index]/ClassType[pmd-java:typeIs('java.lang.Iterable')])]
+     //MethodCall[$entityWrite(.)])]
   [$loop(.)]
 |
 //MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
