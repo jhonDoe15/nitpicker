@@ -8,6 +8,7 @@ from locators.resolve.references import uses_containers
 from locators.wrappers import wrapper_label
 
 RULE = "service-locator-lookup"
+GUARDED = True
 SITES = (ast.Call, ast.Subscript, ast.Attribute)
 
 

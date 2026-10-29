@@ -201,7 +201,7 @@ describe.skipIf(!pythonE2eEnabled)(
             message:
               'pipeline.score has CRAP 10.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
             classification: 'enforceable',
-            location: { line: 2 },
+            location: { line: 2, endLine: 12 },
             ratchet: {
               key: 'function:pipeline.score:crap',
               value: 10,
@@ -227,7 +227,7 @@ describe.skipIf(!pythonE2eEnabled)(
             message:
               'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
             classification: 'enforceable',
-            location: { line: 1 },
+            location: { line: 1, endLine: 8 },
             ratchet: {
               key: 'function:pick:crap',
               value: 20,
