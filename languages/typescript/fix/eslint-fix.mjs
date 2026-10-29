@@ -1,4 +1,4 @@
-import { realpathSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { eslintChecks } from '../preset/quality-checks.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
@@ -6,7 +6,7 @@ import { linkPolicyFile } from '../../../core/tooling/policy-links.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../../../core/tooling/tool-resolution.mjs';
 import { containedPath } from '../../../core/fix/common/contained-path.mjs';
 import { fixerError, runFixCommand } from '../../../core/fix/common/fix-command.mjs';
-import { readBytes, splitByEncoding } from '../../../core/fix/common/fix-files.mjs';
+import { readBytes } from '../../../core/fix/common/fix-files.mjs';
 import { formatNotes } from '../../../core/fix/common/fix-notes.mjs';
 import { withFixedLineEndingsOf } from '../../../core/fix/common/rewrite/line-endings.mjs';
 import { replaceIfUnchanged } from '../../../core/fix/common/rewrite/safe-write.mjs';
@@ -49,15 +49,17 @@ function namesByPath(projectRoot, files) {
   return new Map(
     files.flatMap(({ path: name }) => {
       const full = containedPath(projectRoot, name);
-      return [
-        [full, name],
-        [realpathSync(full), name],
-      ];
+      return existsSync(full)
+        ? [
+            [full, name],
+            [realpathSync(full), name],
+          ]
+        : [[full, name]];
     }),
   );
 }
 
-function fixedOutputs(projectRoot, files, stdout) {
+function parseReport(stdout) {
   let results;
   try {
     results = JSON.parse(stdout);
@@ -69,10 +71,17 @@ function fixedOutputs(projectRoot, files, stdout) {
       `ESLint returned an unexpected report: ${stdout.slice(0, REPORT_EXCERPT_LENGTH)}`,
     );
   }
+  return results;
+}
+
+function reportedFiles(projectRoot, files, stdout) {
   const names = namesByPath(projectRoot, files);
-  return results.flatMap(({ filePath, output }) => {
+  return parseReport(stdout).map(({ filePath, output, messages = [] }) => {
     const name = names.get(filePath);
-    return typeof output === 'string' && name !== undefined ? [{ name, output }] : [];
+    if (name === undefined) {
+      throw new Error(`ESLint reported a file it was not given: ${filePath}`);
+    }
+    return { name, output, fatal: messages.some(({ fatal }) => fatal === true) };
   });
 }
 
@@ -101,13 +110,18 @@ function attemptEslintFix(settings, files, before) {
       path.join(projectRoot, '.nitpicker-fix-tsconfig.json'),
       layoutTransformFor(eslintPolicy.policyFiles[0], layout),
     );
-    const result = runEslint(settings, files, linked);
+    const reported = reportedFiles(projectRoot, files, runEslint(settings, files, linked).stdout);
     return {
       linked,
-      ...writeOutputs(projectRoot, before, fixedOutputs(projectRoot, files, result.stdout)),
+      unformattable: reported.filter(({ fatal }) => fatal).map(({ name }) => name),
+      ...writeOutputs(
+        projectRoot,
+        before,
+        reported.filter(({ output }) => typeof output === 'string'),
+      ),
     };
   } catch (error) {
-    return { linked, failure: error, rewritten: [], changedMeanwhile: [] };
+    return { linked, failure: error, rewritten: [], changedMeanwhile: [], unformattable: [] };
   }
 }
 
@@ -120,30 +134,20 @@ function removeLinkedFile(linked) {
   }
 }
 
-function notesOf(outcome) {
-  return formatNotes(TOOL, {
-    rewritten: [],
-    changedMeanwhile: [],
-    keptAsIs: [],
-    unformattable: [],
-    ...outcome,
-  });
-}
-
-export function eslintFixStep(settings, eslintFiles) {
-  const { files, undecodable } = splitByEncoding(settings.projectRoot, eslintFiles);
+export function eslintFixStep(settings, files) {
   if (files.length === 0) {
-    return { toolErrors: [], notes: notesOf({ undecodable }) };
+    return { toolErrors: [], notes: [] };
   }
   const attempt = attemptEslintFix(settings, files, readBytes(settings.projectRoot, files));
   const removalFailure = removeLinkedFile(attempt.linked);
   const failure = attempt.failure ?? removalFailure;
   return {
     toolErrors: failure === undefined ? [] : [fixerError('eslint-fix', failure)],
-    notes: notesOf({
+    notes: formatNotes(TOOL, {
       rewritten: attempt.rewritten,
       changedMeanwhile: attempt.changedMeanwhile,
-      undecodable,
+      unformattable: attempt.unformattable,
+      keptAsIs: [],
     }),
   };
 }

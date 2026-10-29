@@ -298,8 +298,8 @@ nitpicker cache publish [--analyzer <name>]...
   Prettier and the Python, Java and Kotlin formatters replace a file in one step (a temporary file
   renamed over it), leave alone a file that changed while they ran or is not UTF-8, and do not
   follow symbolic links; each of these is named in a "Fix notes:" line. ESLint and the Python, Java
-  and Kotlin formatters keep CRLF line endings; Prettier's follow the gate's `prettier.endOfLine`
-  convention, as its format check does. A fixer that fails is reported as a tool error; the
+  and Kotlin formatters keep CRLF line endings; a file Prettier rewrites gets the line endings of
+  the gate's `prettier.endOfLine` convention, as its format check expects. A fixer that fails is reported as a tool error; the
   other fixers and the comparison still run. Cannot be combined with `--all`.
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer (repeatable). Cannot be combined with sharding.

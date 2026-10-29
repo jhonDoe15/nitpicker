@@ -24,38 +24,34 @@ function optionsFor(input, layers, relativePath) {
     : layers.policyOptions;
 }
 
+function messageOf(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 async function formatOne(input, layers, { path: relativePath, filePath, source }) {
-  if (await isIgnored(input, layers, relativePath)) {
-    return { path: relativePath, ignored: true };
-  }
-  const options = await optionsFor(input, layers, relativePath);
   try {
+    if (await isIgnored(input, layers, relativePath)) {
+      return { path: relativePath, ignored: true };
+    }
+    const options = await optionsFor(input, layers, relativePath);
     return {
       path: relativePath,
       formatted: await prettier.format(source, { ...options, filepath: filePath }),
     };
   } catch (error) {
-    if (error?.loc === undefined) {
-      throw error;
-    }
-    return { path: relativePath, unparsable: true };
+    return error?.loc === undefined
+      ? { path: relativePath, error: messageOf(error) }
+      : { path: relativePath, unparsable: true };
   }
 }
 
-try {
-  const input = JSON.parse(await text(process.stdin));
-  const layers = {
-    precedence: prettierPrecedence(),
-    policyOptions: JSON.parse(readFileSync(process.argv[2], 'utf8')),
-    policyIgnorePath: process.argv[3],
-    projectRoot: input.projectRoot,
-    liveProjectRoot: input.projectRoot,
-  };
-  const results = await Promise.all(input.files.map((file) => formatOne(input, layers, file)));
-  process.stdout.write(`${JSON.stringify({ results })}\n`);
-} catch (error) {
-  process.stderr.write(
-    `Prettier fix failed: ${error instanceof Error ? error.message : String(error)}\n`,
-  );
-  process.exitCode = 2;
-}
+const input = JSON.parse(await text(process.stdin));
+const layers = {
+  precedence: prettierPrecedence(),
+  policyOptions: JSON.parse(readFileSync(process.argv[2], 'utf8')),
+  policyIgnorePath: process.argv[3],
+  projectRoot: input.projectRoot,
+  liveProjectRoot: input.projectRoot,
+};
+const results = await Promise.all(input.files.map((file) => formatOne(input, layers, file)));
+process.stdout.write(`${JSON.stringify({ results })}\n`);

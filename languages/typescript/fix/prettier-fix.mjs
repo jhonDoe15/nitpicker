@@ -24,6 +24,10 @@ function parseResults(stdout, expectedCount) {
       `Prettier returned an unexpected report: ${stdout.slice(0, REPORT_EXCERPT_LENGTH)}`,
     );
   }
+  const failed = report.results.find(({ error }) => error !== undefined);
+  if (failed !== undefined) {
+    throw new Error(`Prettier could not format ${failed.path}: ${failed.error}`);
+  }
   return report.results;
 }
 

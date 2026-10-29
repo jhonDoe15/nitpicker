@@ -6,6 +6,10 @@ export function rewrittenNote(tool, paths) {
   return listed(paths, (names) => `${tool} rewrote ${names}`);
 }
 
+export function undecodableNote(paths) {
+  return listed(paths, (names) => `--fix left ${names} as is: not UTF-8 text`);
+}
+
 export function linkNote(paths) {
   return listed(paths, (names) => `--fix left ${names} as is: symbolic links are not followed`);
 }
@@ -24,7 +28,7 @@ export function formatNotes(tool, outcome) {
       (names) => `${tool} left ${names} as is: already unformatted before your change`,
     ),
     ...listed(outcome.unformattable, (names) => `${tool} could not parse ${names}`),
-    ...listed(undecodable, (names) => `--fix left ${names} as is: not UTF-8 text`),
+    ...undecodableNote(undecodable),
     ...listed(
       changedMeanwhile,
       (names) => `--fix left ${names} as is: the file changed while --fix ran`,
