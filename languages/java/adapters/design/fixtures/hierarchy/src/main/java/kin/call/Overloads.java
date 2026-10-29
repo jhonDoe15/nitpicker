@@ -55,4 +55,8 @@ public class Overloads {
   public static <T extends CharSequence> T notEmpty(T value, String message) {
     return value;
   }
+
+  public static class CountHandler implements Handler<Integer> {
+    public void handle(Integer value) {}
+  }
 }

@@ -171,6 +171,7 @@ public final class Lookup {
   private static boolean sameShape(MethodInfo candidate, MethodInfo method) {
     return named(candidate, method.name)
         && !candidate.isStatic
-        && candidate.params.size() == method.params.size();
+        && candidate.params.size() == method.params.size()
+        && candidate.matchesParams(method);
   }
 }

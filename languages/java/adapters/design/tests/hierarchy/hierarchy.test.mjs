@@ -92,6 +92,13 @@ const TYPES_1 = [
     kind: 'class',
     supertypes: [ref('kin/call/Overloads.java', 'Overloads.Handler')],
   }),
+  type({
+    file: 'kin/call/Overloads.java',
+    symbol: 'Overloads.CountHandler',
+    line: 59,
+    kind: 'class',
+    supertypes: [ref('kin/call/Overloads.java', 'Overloads.Handler')],
+  }),
   type({ file: 'kin/call/Users.java', symbol: 'Users', line: 5, kind: 'class' }),
 ];
 const CALLABLES_0 = [
@@ -149,7 +156,6 @@ const CALLABLES_1 = [
     member: 'find(Integer)',
     line: 19,
     name: 'find',
-    entry: true,
     params: [{ name: 'id', type: 'Integer' }],
     returns: 'String',
   }),
@@ -210,6 +216,15 @@ const CALLABLES_1 = [
     line: 43,
     entry: true,
     params: [{ name: 'value', type: 'String' }],
+    returns: 'void',
+  }),
+  callable({
+    file: 'kin/call/Overloads.java',
+    owner: 'Overloads.CountHandler',
+    member: 'handle',
+    line: 60,
+    entry: true,
+    params: [{ name: 'value', type: 'Integer' }],
     returns: 'void',
   }),
 ];
@@ -341,6 +356,7 @@ describe('design facts: supertypes and overloads across a hierarchy', () => {
       ref('kin/Point.java', 'Point'),
       ref('kin/Pool.java', 'Pool'),
       ref('kin/call/Overloads.java', 'Overloads'),
+      ref('kin/call/Overloads.java', 'Overloads.CountHandler'),
       ref('kin/call/Overloads.java', 'Overloads.Finder'),
       ref('kin/call/Overloads.java', 'Overloads.Handler'),
       ref('kin/call/Overloads.java', 'Overloads.Printer'),
@@ -357,6 +373,7 @@ describe('design facts: supertypes and overloads across a hierarchy', () => {
       ref('kin/Point.java', 'Point.x'),
       ref('kin/Pool.java', 'Pool.acquire'),
       ref('kin/Pool.java', 'Pool.name'),
+      ref('kin/call/Overloads.java', 'Overloads.CountHandler.handle'),
       ref('kin/call/Overloads.java', 'Overloads.Finder.find'),
       ref('kin/call/Overloads.java', 'Overloads.Handler.handle'),
       ref('kin/call/Overloads.java', 'Overloads.Printer.visit(Point)'),
