@@ -10,6 +10,7 @@ import { validateTestTimeouts } from '../../shared/test-timeouts/resolve.mjs';
 
 const TOOL_SETTING_KEYS = new Map([
   ['prettier', ['precedence']],
+  ['jscpd', ['precedence']],
   ['knip', ['precedence']],
   ['eslint', ['engine']],
   ['typescript', ['engine', 'project']],
@@ -58,7 +59,7 @@ const NITPICKER_FIRST_REJECTED = new Map([
     "black has no flag that switches string normalization back on, so nitpicker's quote style cannot win over the project's skip-string-normalization",
   ],
 ]);
-const ORDERED_PRECEDENCE_TOOLS = ['prettier', 'knip'];
+const ORDERED_PRECEDENCE_TOOLS = ['prettier', 'jscpd', 'knip'];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
 function toolSettingKeysOf(preset) {
@@ -67,7 +68,7 @@ function toolSettingKeysOf(preset) {
       ...(GRADLE_PRESETS.includes(preset) ? PROJECT_TOOL_CONFIGS.keys() : []),
       ...styleToolsOf(preset),
     ];
-    return new Map(names.map((tool) => [tool, PRECEDENCE_KEYS]));
+    return new Map([...names, 'jscpd'].map((tool) => [tool, PRECEDENCE_KEYS]));
   }
   return TOOL_SETTING_KEYS;
 }

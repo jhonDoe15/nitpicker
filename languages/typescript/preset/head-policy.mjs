@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { resolveJscpdPolicy } from '../../../core/tooling/jscpd/config.mjs';
 import {
   readHeadPolicyFile,
   resolveHeadPolicy as resolveSharedHeadPolicy,
@@ -77,7 +78,11 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 
 function withProjectFacts(policy, config, projectRoot) {
   const prettier = policy.tools?.prettier;
-  const tools = withProjectToolConfigs(policy.tools, projectRoot);
+  const jscpd = resolveJscpdPolicy(policy.tools?.jscpd, projectRoot);
+  const tools = withProjectToolConfigs(
+    jscpd === undefined ? policy.tools : { ...policy.tools, jscpd },
+    projectRoot,
+  );
   return {
     ...policy,
     ...(tools === undefined ? {} : { tools }),
@@ -155,17 +160,25 @@ function picked(source, keys) {
   );
 }
 
+function headJscpdFacts(settings, headSettings = {}) {
+  if (headSettings.projectConfig === undefined) {
+    return { ...headSettings, precedence: headSettings.precedence ?? ['nitpicker'] };
+  }
+  return { ...settings, ...picked(headSettings, ['projectConfig', 'projectConfigDigest']) };
+}
+
 function headToolFacts(policy, headPolicy) {
   const tools = headProjectToolFacts(policy.tools, headPolicy.tools);
-  const digest = headPolicy.tools?.prettier?.projectConfigDigest;
-  const prettier = tools.prettier;
-  const withDigest =
-    digest === undefined || !usesProjectConfig(prettier?.precedence ?? [])
-      ? tools
-      : { ...tools, prettier: { ...prettier, projectConfigDigest: digest } };
-  return policy.tools === undefined && Object.keys(withDigest).length === 0
-    ? {}
-    : { tools: withDigest };
+  if (usesProjectConfig(tools.prettier?.precedence ?? [])) {
+    tools.prettier = {
+      ...tools.prettier,
+      ...picked(headPolicy.tools?.prettier ?? {}, ['projectConfigDigest']),
+    };
+  }
+  if (usesProjectConfig(tools.jscpd?.precedence ?? [])) {
+    tools.jscpd = headJscpdFacts(tools.jscpd, headPolicy.tools?.jscpd);
+  }
+  return policy.tools === undefined && Object.keys(tools).length === 0 ? {} : { tools };
 }
 
 function headTestPlacement(policy, headPolicy) {
