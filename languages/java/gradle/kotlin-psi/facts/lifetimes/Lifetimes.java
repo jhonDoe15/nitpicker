@@ -8,6 +8,7 @@ import java.util.function.IntUnaryOperator;
 import nitpicker.kotlinpsi.common.Frame;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtFile;
+import org.jetbrains.kotlin.psi.KtNamedFunction;
 import org.jetbrains.kotlin.psi.KtTryExpression;
 
 public final class Lifetimes {
@@ -15,12 +16,16 @@ public final class Lifetimes {
   private final UseBlocks useBlocks;
 
   public Lifetimes(KtFile file, IntUnaryOperator lines) {
-    this.cleanups = new Cleanups(file, new Shields(file), lines);
-    this.useBlocks = new UseBlocks(lines);
+    this.cleanups = new Cleanups(file, lines);
+    this.useBlocks = new UseBlocks(file, lines);
   }
 
   public void tryExpression(KtTryExpression expression, Frame frame) {
     cleanups.tryExpression(expression, where(frame));
+  }
+
+  public boolean shieldsWholeBody(KtNamedFunction function) {
+    return cleanups.shieldsWholeBody(function);
   }
 
   public void call(KtCallExpression call, Frame frame) {

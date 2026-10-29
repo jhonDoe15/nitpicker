@@ -5,17 +5,27 @@ import static nitpicker.kotlinpsi.common.Psi.nameOf;
 import java.util.*;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
+import org.jetbrains.kotlin.resolve.ImportPath;
 
 final class Hosts {
   private Hosts() {}
 
-  static KtCallExpression of(KtLambdaExpression lambda) {
-    PsiElement parent = lambda.getParent();
-    while (parent instanceof KtLabeledExpression
-        || parent instanceof KtAnnotatedExpression
-        || parent instanceof KtParenthesizedExpression) {
-      parent = parent.getParent();
+  static boolean isWrapper(PsiElement element) {
+    return element instanceof KtLabeledExpression
+        || element instanceof KtAnnotatedExpression
+        || element instanceof KtParenthesizedExpression;
+  }
+
+  static PsiElement outermost(PsiElement element) {
+    PsiElement current = element;
+    while (isWrapper(current.getParent())) {
+      current = current.getParent();
     }
+    return current;
+  }
+
+  static KtCallExpression of(KtLambdaExpression lambda) {
+    PsiElement parent = outermost(lambda).getParent();
     PsiElement call =
         parent instanceof KtLambdaArgument
             ? parent.getParent()
@@ -42,16 +52,7 @@ final class Hosts {
   }
 
   static KtExpression unwrap(KtExpression expression) {
-    KtExpression current = expression;
-    while (current instanceof KtLabeledExpression || current instanceof KtParenthesizedExpression
-        || current instanceof KtAnnotatedExpression) {
-      current = current instanceof KtLabeledExpression
-          ? ((KtLabeledExpression) current).getBaseExpression()
-          : current instanceof KtParenthesizedExpression
-              ? ((KtParenthesizedExpression) current).getExpression()
-              : ((KtAnnotatedExpression) current).getBaseExpression();
-    }
-    return current;
+    return expression == null ? null : KtPsiUtil.deparenthesize(expression);
   }
 
   static KtExpression receiverOf(KtCallExpression call) {
@@ -64,6 +65,19 @@ final class Hosts {
 
   static Set<String> names(String... names) {
     return new HashSet<>(Arrays.asList(names));
+  }
+
+  static Set<String> aliases(KtFile file, String... declared) {
+    Set<String> found = names(declared);
+    Set<String> real = names(declared);
+    for (KtImportDirective directive : file.getImportDirectives()) {
+      ImportPath path = directive.getImportPath();
+      if (path != null && !path.isAllUnder() && path.getAlias() != null
+          && real.contains(path.getFqName().shortName().asString())) {
+        found.add(path.getAlias().asString());
+      }
+    }
+    return found;
   }
 
   static KtClassOrObject classOf(PsiElement element) {

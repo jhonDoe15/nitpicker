@@ -12,8 +12,8 @@ import {
 import { CHILD_OUTLIVES_RESOURCE_RULE, childLifetimeFindings } from './resource-lifetime.mjs';
 
 const COROUTINES = importOf('kotlinx.coroutines', { all: true });
-const childMessage = (resource, reopened) =>
-  `\`launch\` starts a child coroutine in \`scope\`, which keeps running after this \`use\` block, and the child reads \`${resource}\`; \`use\` closes \`${resource}\` when the block ends, so the child can run on a closed resource. Start the child inside \`coroutineScope { ... }\` or \`supervisorScope { ... }\` in the block, join it before the block ends (\`.join()\` or \`.await()\`), or open and close the resource inside the child (\`scope.launch { ${reopened}.use { ... } }\`).`;
+const childMessage = (resource, builder = 'launch', scope = '`scope`') =>
+  `\`${builder}\` starts a child coroutine in ${scope}, which keeps running after this \`use\` block, and the child reads \`${resource}\`; \`use\` closes the resource when the block ends, so the child can run on a closed resource. Start the child inside \`coroutineScope { ... }\` or \`supervisorScope { ... }\` in the block, wait for the launched job before the block ends (\`job.join()\`, \`deferred.await()\` or \`joinAll(...)\`, outside any \`if\`, loop or \`catch\` that the launch is not in), or open and close the resource inside the child (\`scope.launch { open().use { ... } }\`).`;
 const findingsFor = (launches, overrides = {}) =>
   run(childLifetimeFindings, [
     file({ imports: [COROUTINES], useLaunches: launches, ...overrides }),
@@ -24,18 +24,21 @@ describe('child coroutine started in a use block', () => {
     const findings = findingsFor([useLaunch({ line: 14 })]);
 
     expect(summary(findings)).toEqual([
-      `${CHILD_OUTLIVES_RESOURCE_RULE} Store.copy:reader:launch 14`,
+      `${CHILD_OUTLIVES_RESOURCE_RULE} Store.copy:source:launch 14`,
     ]);
     expect(findings[0].tool).toBe('kotlin-source');
     expect(findings[0].message).toBe(
-      sourceRouted(childMessage('reader', 'reader'), CHILD_OUTLIVES_RESOURCE_RULE),
+      sourceRouted(childMessage('reader'), CHILD_OUTLIVES_RESOURCE_RULE),
     );
   });
 
   it.each([
     ['async', useLaunch({ launch: 'async' })],
     ['a scope built by CoroutineScope(...)', useLaunch({ scopeType: 'call:CoroutineScope' })],
-    ['GlobalScope', useLaunch({ scope: 'GlobalScope', scopeType: undefined })],
+    [
+      'a GlobalScope imported under another name',
+      useLaunch({ scope: 'Forever', scopeType: undefined }),
+    ],
     [
       'an implicit enclosing builder scope',
       useLaunch({ scope: undefined, scopeType: undefined, implicit: 'builder' }),
@@ -58,14 +61,38 @@ describe('child coroutine started in a use block', () => {
       klass('AppScope', { supers: ['CoroutineScope'] }),
     ];
 
-    expect(findingsFor([launch], { classes })).toHaveLength(1);
+    const imports = [COROUTINES, importOf('kotlinx.coroutines.GlobalScope', { alias: 'Forever' })];
+
+    expect(findingsFor([launch], { classes, imports })).toHaveLength(1);
+  });
+
+  it('reports a launch imported under another name and names the real builder', () => {
+    const imports = [COROUTINES, importOf('kotlinx.coroutines.launch', { alias: 'start' })];
+    const findings = findingsFor([useLaunch({ launch: 'start' })], { imports });
+
+    expect(summary(findings)).toEqual([
+      `${CHILD_OUTLIVES_RESOURCE_RULE} Store.copy:source:launch 9`,
+    ]);
+    expect(findings[0].message).toBe(
+      sourceRouted(childMessage('reader'), CHILD_OUTLIVES_RESOURCE_RULE),
+    );
+  });
+
+  it('keeps the identity when the lambda parameter is renamed', () => {
+    const identities = ['reader', 'input', 'it'].flatMap((resource) =>
+      findingsFor([useLaunch({ resource })]).map(({ identity }) => identity),
+    );
+
+    expect(new Set(identities)).toEqual(
+      new Set(['ChildCoroutineOutlivesResource:Store.copy:source:launch']),
+    );
   });
 
   it('reads the resource name `it` for an implicit lambda parameter', () => {
     const findings = findingsFor([useLaunch({ resource: 'it' })]);
 
     expect(findings[0].message).toBe(
-      sourceRouted(childMessage('it', 'resource'), CHILD_OUTLIVES_RESOURCE_RULE),
+      sourceRouted(childMessage('it'), CHILD_OUTLIVES_RESOURCE_RULE),
     );
   });
 
@@ -73,8 +100,8 @@ describe('child coroutine started in a use block', () => {
     const findings = findingsFor([useLaunch({ line: 3 }), useLaunch({ line: 8 })]);
 
     expect(findings.map(({ identity }) => identity)).toEqual([
-      'ChildCoroutineOutlivesResource:Store.copy:reader:launch',
-      'ChildCoroutineOutlivesResource:Store.copy:reader:launch#2',
+      'ChildCoroutineOutlivesResource:Store.copy:source:launch',
+      'ChildCoroutineOutlivesResource:Store.copy:source:launch#2',
     ]);
   });
 });
@@ -89,6 +116,10 @@ describe('use blocks the rule leaves alone', () => {
       useLaunch({ scope: undefined, scopeType: undefined, implicit: 'class' }),
     ],
     ['a launch that is not kotlinx.coroutines', useLaunch({ launch: 'thread' })],
+    [
+      'plain GlobalScope, which detekt GlobalCoroutineUsage reports',
+      useLaunch({ scope: 'GlobalScope', scopeType: undefined }),
+    ],
   ])('allows %s', (_name, launch) => {
     expect(findingsFor([launch])).toEqual([]);
   });

@@ -1,17 +1,16 @@
 import {
   importResolver,
-  isGlobalScope,
+  isGlobalScopeAlias,
   isScope,
   isScopeClass,
   isScopeExtension,
-  resolvesAs,
+  launchBuilder,
 } from './coroutine-names.mjs';
 
 export const CHILD_OUTLIVES_RESOURCE_RULE = 'ChildCoroutineOutlivesResource';
 
-const LAUNCH_NAMES = new Set(['launch', 'async']);
-function message({ launch, resource, scope }) {
-  return `\`${launch}\` starts a child coroutine in ${scope}, which keeps running after this \`use\` block, and the child reads \`${resource}\`; \`use\` closes \`${resource}\` when the block ends, so the child can run on a closed resource. Start the child inside \`coroutineScope { ... }\` or \`supervisorScope { ... }\` in the block, join it before the block ends (\`.join()\` or \`.await()\`), or open and close the resource inside the child (\`scope.launch { ${resource === 'it' ? 'resource' : resource}.use { ... } }\`).`;
+function message({ builder, resource, scope }) {
+  return `\`${builder}\` starts a child coroutine in ${scope}, which keeps running after this \`use\` block, and the child reads \`${resource}\`; \`use\` closes the resource when the block ends, so the child can run on a closed resource. Start the child inside \`coroutineScope { ... }\` or \`supervisorScope { ... }\` in the block, wait for the launched job before the block ends (\`job.join()\`, \`deferred.await()\` or \`joinAll(...)\`, outside any \`if\`, loop or \`catch\` that the launch is not in), or open and close the resource inside the child (\`scope.launch { open().use { ... } }\`).`;
 }
 
 function scopeDescription({ scope, implicit }) {
@@ -24,7 +23,7 @@ function outerScope(file, resolves, launch) {
   if (launch.scope !== undefined) {
     return (
       isScope(resolves, file, launch.scopeType) ||
-      (launch.scopeType === undefined && isGlobalScope(resolves, launch.scope))
+      (launch.scopeType === undefined && isGlobalScopeAlias(resolves, launch.scope))
     );
   }
   if (launch.implicit === 'builder') {
@@ -33,7 +32,7 @@ function outerScope(file, resolves, launch) {
   if (launch.implicit === 'class') {
     return isScopeClass(resolves, file, launch.owner);
   }
-  return launch.implicit === 'extension' && isScopeExtension(resolves, 'CoroutineScope');
+  return launch.implicit === 'extension' && isScopeExtension(resolves);
 }
 
 function isStandardUse(file) {
@@ -45,22 +44,20 @@ export function childLifetimeFindings(files, { finding }) {
     .filter((file) => isStandardUse(file))
     .flatMap((file) => {
       const resolves = importResolver(file);
-      return (file.useLaunches ?? [])
-        .filter(
-          (launch) =>
-            LAUNCH_NAMES.has(launch.launch) &&
-            resolvesAs(resolves, launch.launch, launch.launch) &&
-            outerScope(file, resolves, launch),
-        )
-        .map((launch) =>
-          finding({
-            tool: 'kotlin-source',
-            rule: CHILD_OUTLIVES_RESOURCE_RULE,
-            file: file.file,
-            line: launch.line,
-            symbol: `${launch.owner === undefined ? '' : `${launch.owner}.`}${launch.function}:${launch.resource}:${launch.launch}`,
-            message: message({ ...launch, scope: scopeDescription(launch) }),
-          }),
-        );
+      return (file.useLaunches ?? []).flatMap((launch) => {
+        const builder = launchBuilder(resolves, launch.launch);
+        return builder !== undefined && outerScope(file, resolves, launch)
+          ? [
+              finding({
+                tool: 'kotlin-source',
+                rule: CHILD_OUTLIVES_RESOURCE_RULE,
+                file: file.file,
+                line: launch.line,
+                symbol: `${launch.owner === undefined ? '' : `${launch.owner}.`}${launch.function}:${launch.opened}:${builder}`,
+                message: message({ ...launch, builder, scope: scopeDescription(launch) }),
+              }),
+            ]
+          : [];
+      });
     });
 }

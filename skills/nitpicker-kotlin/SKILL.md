@@ -46,7 +46,8 @@ Before you change code other modules use, or fix a bug, read
   Cleanup in `finally` (or after `catch (CancellationException)`) that suspends must run as
   `withContext(NonCancellable) { withTimeout(5.seconds) { ... } }`, or be a plain blocking `close()`. Do not start
   `scope.launch { ... }` from `x.use { }` with an outer scope while the child reads `x`: use `coroutineScope { }`
-  in the block or `join()` the job before it ends.
+  in the block, `join()` the launched job before it ends (not under an `if`), or open the resource inside the
+  child (`scope.launch { open().use { ... } }`).
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
   A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
   annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.
