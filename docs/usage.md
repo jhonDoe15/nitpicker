@@ -1275,8 +1275,9 @@ own tools do:
 - **Coverage and mutation tests** load the project's `vitest.config.*` or `vite.config.*` (the
   first found, `.ts`, `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files,
   aliases and plugins apply. The options that decide whether a run passes are fixed by nitpicker
-  whatever the project sets: no retries (unless `tools.tests.precedence` puts `"project"` first;
-  see [Test runner configs](#test-runner-configs-typescript-and-javascript-presets)), no `bail`, no
+  whatever the project sets: no config-level retries (the coverage, CRAP and test-console runs can
+  opt into them with `tools.tests.precedence`, mutation runs never retry; see
+  [Test runner configs](#test-runner-configs-typescript-and-javascript-presets)), no `bail`, no
   `.only`, no passing without tests, test and hook timeouts of 10 s, unhandled errors fail the run,
   and snapshots are never written (a snapshot
   must be committed, or the test fails). `vi.stubEnv` and `vi.stubGlobal` are undone after each
@@ -1658,36 +1659,61 @@ The coverage, CRAP and test-console runs use the project's own test runner and i
 the tests need its setup to run at all. What nitpicker reads from that config without an opt-in, and
 what it sets over it whatever the config says:
 
-| Runner      | Read without the opt-in                                                                                                                                                                                                                                                | Set by nitpicker                                                                                                                                                                                                                                                                           |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Vitest      | the first `vitest.config.*` or `vite.config.*`: environment, setup files, aliases, plugins, `include` and `exclude` (nitpicker's are added), `projects`, and, while `tools.tests.timeouts` is not set, a `hookTimeout` or an inline project's `testTimeout` above 10 s | `retry: 0`, `allowOnly: false`, `restoreMocks: true`, `bail: 0`, `passWithNoTests: false`, `dangerouslyIgnoreUnhandledErrors: false`, no snapshot writes, the test timeout, `dir`, the reporters, the worker count and the whole `coverage` block                                          |
-| Jest        | the config Jest itself resolves (`jest.config.*`, the `jest` key in `package.json`, or the test script's `--config`): transforms, environment, setup files, module mapping, `projects`, `testMatch`, `testPathIgnorePatterns` and `bail`                               | `--ci`, `--restoreMocks`, `--passWithNoTests` (a run with no test is reported on its own), `--testTimeout`, the worker count, the JSON report, and the coverage options: the babel provider, `collectCoverageFrom`, `coveragePathIgnorePatterns` (only `/node_modules/`) and no thresholds |
-| Mocha       | `.mocharc.*` or the `mocha` key in `package.json` (`require`, `ui`, `extension`, `node-option` and the rest), and the test script's options                                                                                                                            | the test files, `--timeout`, `--retries 0`, the JSON reporter and V8 coverage; the script's `--bail`, `--forbid-only`, `--reporter`, `--timeout`, `--retries` and watch options are dropped                                                                                                |
-| `node:test` | no config file; the test script's options                                                                                                                                                                                                                              | the test files, the reporter, `--test-timeout`, `--test-concurrency` and V8 coverage; the script's `--test-only`, watch, reporter, timeout, concurrency, shard, coverage and snapshot-update options are dropped                                                                           |
+| Runner      | Read without the opt-in                                                                                                                                                                                                                                                | Set by nitpicker                                                                                                                                                                                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vitest      | the first `vitest.config.*` or `vite.config.*`: environment, setup files, aliases, plugins, `include` and `exclude` (nitpicker's are added), `projects`, and, while `tools.tests.timeouts` is not set, a `hookTimeout` or an inline project's `testTimeout` above 10 s | `retry: 0`, `allowOnly: false`, `restoreMocks: true`, `bail: 0`, `passWithNoTests: false`, `dangerouslyIgnoreUnhandledErrors: false`, no snapshot writes, the test timeout, `dir`, the reporters, the worker count and the whole `coverage` block                               |
+| Jest        | the config Jest itself resolves (`jest.config.*`, the `jest` key in `package.json`, or the test script's `--config`): transforms, environment, setup files, module mapping, `projects`, `testMatch`, `testPathIgnorePatterns` and `bail`                               | `--ci`, `--restoreMocks`, `--passWithNoTests` (a run with no test is reported on its own), `--testTimeout`, the worker count, the JSON report, and the coverage options: the babel provider, `collectCoverageFrom` and no thresholds                                            |
+| Mocha       | `.mocharc.*` or the `mocha` key in `package.json` (`require`, `ui`, `extension`, `node-option` and the rest), and the test script's options                                                                                                                            | the test files, `--timeout`, `--retries 0`, `--no-bail`, `--no-forbid-only`, the JSON reporter and V8 coverage; the script's `--bail`, `--forbid-only`, `--reporter`, `--timeout`, `--retries` and watch options are dropped, and so are the rc file's `bail` and `forbid-only` |
+| `node:test` | no config file; the test script's options                                                                                                                                                                                                                              | the test files, the reporter, `--test-timeout`, `--test-concurrency` and V8 coverage; the script's `--test-only`, watch, reporter, timeout, concurrency, shard, coverage and snapshot-update options are dropped                                                                |
 
 Coverage never follows the project's config: its include, its exclusions and its thresholds would decide
 what nitpicker measures, and an absolute threshold says nothing about the change under review. Code a
 project does not want measured goes in `exclude` (see [Configuration](#configuration)). Test timeouts have
 their own setting, `tools.tests.timeouts` (see [Test timeout tiers](#test-timeout-tiers)).
 
-`tools.tests.precedence` decides one thing: whether a failing test is retried. Without the opt-in a test
-that fails once fails the run.
+`tools.tests.precedence` decides one thing: whether the retries set in the test runner's config apply.
+Without the opt-in, a test that fails once fails the run as far as config-level retries in Vitest and
+Mocha go. Retries set in test code (a per-test `{ retry }`, `vi.setConfig`, `jest.retryTimes`, Mocha's
+`this.retries`) are not controlled by this setting and are tracked in
+[#630](https://github.com/jhonDoe15/nitpicker/issues/630).
 
-| `precedence`                                          | Retries                                                                                                                                                                               |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `["nitpicker"]` (default), `["nitpicker", "project"]` | none: nitpicker sets `retry: 0` (Vitest) and `--retries 0` (Mocha), whatever the config says                                                                                          |
-| `["project"]`, `["project", "nitpicker"]`             | Vitest's `test.retry` (a count, or `{ count, delay, condition }` with a condition without flags) for the root config and every project, or Mocha's `retries`, as the config sets them |
+| `precedence`                              | Retries                                                                                                                                                                                                                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `["nitpicker"]` (default)                 | none: nitpicker sets `retry: 0` (Vitest) and `--retries 0` (Mocha), whatever the config says                                                                                                                                                                       |
+| `["nitpicker", "project"]`                | the same: nitpicker always wins, so the config is not read or run, and it is not an error if it is missing or broken                                                                                                                                               |
+| `["project"]`, `["project", "nitpicker"]` | Vitest's root `test.retry` (a count up to 10, or `{ count, delay, condition }` with a delay up to 10 s and a RegExp condition without flags), or Mocha's `retries` (0 to 10), as the config sets them; the base keeps `retry: 0` unless its own config opts in too |
+
+Vitest reads the root `test.retry` only. It is passed on the command line, so it applies to every
+project; a `test.retry` inside an inline `test.projects` entry is ignored, with the notice `Ignoring
+test.retry of the Vitest project "unit" in vitest.config.ts; with the opt-in only test.retry of the root
+config applies, to every project` (projects loaded from their own config files are not read). A
+function `condition` is rejected, since only a RegExp can be passed on to Vitest. Mocha's `retries` is
+what Mocha resolves from the rc file it would use (`.mocharc.cjs`, `.js`, `.mjs`, `.yaml`, `.yml`,
+`.jsonc` or `.json`, the first one found), the `mocha` key in `package.json`, or the `--config` and
+`--package` of the test script; a `--retries` in the script is dropped as before. The rc file's `bail` and
+`forbid-only` are switched off like the script's.
 
 Jest has no retry option in its config (`jest.retryTimes` is called from test code) and `node:test` has no
-config file, so listing `"project"` with either runner is a tool error that says to remove it. The value
-is read from the head checkout and applies to both sides of the comparison: Vitest's config is loaded once
-with vite, Mocha's with Mocha's own option loader. It is part of the head policy, and an edit of
-`vitest.config.*`, `vite.config.*`, `.mocharc.*` or the `mocha` key in `package.json` is a policy change
-while `precedence` lists `"project"`. Naming `"project"` without the runner's config, with one that cannot
-be loaded, or with a retry that is not a count of 0 or more is a tool error of the test runs. Mutation runs
-never retry, so a mutant is killed by its first failing test. Without the opt-in, a config that sets one
-gets the notice `Ignoring test.retry in vitest.config.ts; opt in with "tools": { "tests": { "precedence":
-["project", "nitpicker"] } }` (or `retries in .mocharc.yml`, `retries in package.json "mocha"`).
+config file, so listing `"project"` first with either runner is a tool error that says to remove it. The
+value is read from the head checkout and applies to both sides of the comparison. The config is loaded in
+a child process with a timeout (30 s) and an output cap (10 MB): a Vitest config is loaded with vite, a
+Mocha config with Mocha's own option loader, and a config that ends the process, prints too much or does
+not finish is a tool error of the test runs. Naming `"project"` without the runner's config, with one that
+cannot be loaded, or with a retry above the caps or that is not a whole number is a tool error too.
+Mutation runs never retry, so a mutant is killed by its first failing test.
+
+Policy review loads the retry on both sides and lists each value that moved, as `tests vitest.config.ts
+retry: 0 -> 5` (or `retry.delay`, `retry.condition`). More retries, a longer delay and a changed or
+removed condition are loosenings; fewer retries, a shorter delay and a new condition are plain changes.
+Comments and unrelated edits show nothing, and a config that takes over when the winning one is deleted
+(`vitest.config.ts` to `vite.config.ts`, `.mocharc.cjs` to `.mocharc.json`) or a value the config imports
+is compared by what applies. A side that cannot be loaded, or a change that adds the opt-in, lists the
+config files (`vitest.config.*`, `vite.config.*`, the Mocha rc files, `package.json`) instead.
+
+Without the opt-in, the config of the runner that runs the tests gets the notice `Ignoring test.retry in
+vitest.config.ts; opt in with "tools": { "tests": { "precedence": ["project", "nitpicker"] } }` (or `retries in
+.mocharc.yml`, `retries in package.json "mocha"`) when its retry is above 0. Jest and `node:test` projects get
+none, since there is nothing to opt into.
 
 ### Lint engine
 

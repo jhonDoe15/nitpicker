@@ -11,6 +11,13 @@ export function isRegularFile(file) {
   return statSync(file, { throwIfNoEntry: false })?.isFile() === true;
 }
 
+export function firstProjectFile(root, names) {
+  return names.find((name) => {
+    const file = resolveInside(root, name);
+    return file !== undefined && isRegularFile(file);
+  });
+}
+
 export function staysInside(root, file) {
   const relative = path.relative(realpathSync(root), realpathSync(file));
   return !(relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative));

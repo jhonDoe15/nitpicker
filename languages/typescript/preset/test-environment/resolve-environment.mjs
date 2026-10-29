@@ -1,5 +1,4 @@
 import path from 'node:path';
-import { markedPayload } from '../../../../core/tooling/child-output.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { projectConfigFile } from './config-files.mjs';
 import { DEFAULT_ENVIRONMENT } from './environments.mjs';

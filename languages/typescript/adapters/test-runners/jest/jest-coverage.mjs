@@ -85,7 +85,6 @@ export function coverageArguments(options, rootDir) {
     '--coverageReporters=json',
     `--coverageDirectory=${path.dirname(coverageOutputFile(options))}`,
     '--coverageThreshold={}',
-    '--coveragePathIgnorePatterns=/node_modules/',
     ...globs.map((glob) => `--collectCoverageFrom=${glob}`),
   ];
 }

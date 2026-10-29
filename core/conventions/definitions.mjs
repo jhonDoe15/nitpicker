@@ -11,9 +11,9 @@ import {
 } from '../../languages/typescript/conventions/typescript-conventions.mjs';
 import {
   strykerIgnoredNotices,
-  testsIgnoredNotices,
   typescriptIgnoredNotices,
 } from '../../languages/typescript/preset/project-configs/ignored-notices.mjs';
+import { testsIgnoredNotices } from '../../languages/typescript/preset/project-configs/test-runner/test-runner-notices.mjs';
 
 const BY_PRESET = new Map([
   ['typescript', TYPESCRIPT_CONVENTIONS],

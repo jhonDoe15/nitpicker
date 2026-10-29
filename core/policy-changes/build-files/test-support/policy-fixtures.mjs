@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { expect } from 'vitest';
+import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
 import { hasSpecificGuidance } from '../../../diff/reporting/review/policy-guidance.mjs';
 import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
 import { policyChangeFields } from '../../describe-policy-changes.mjs';
@@ -14,6 +15,7 @@ export function between({ base, head, config = JAVA, baseConfig = config, direct
     headConfig: config,
     baseProjectRoot: path.join(createGitRepository(base).root, directory),
     headProjectRoot: path.join(createGitRepository(head).root, directory),
+    liveProjectRoot: PACKAGE_ROOT,
   });
   return guided(policyChangeFields(baseConfig, config, scope));
 }

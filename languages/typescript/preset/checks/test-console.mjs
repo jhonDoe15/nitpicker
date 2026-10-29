@@ -1,4 +1,5 @@
 import { MINUTE_MS, vitestVersion } from './constants.mjs';
+import { TEST_RUNNER_CONFIGURATION_FILES } from './policy-files.mjs';
 
 export function testConsoleCheckFor(exclusions) {
   return {
@@ -10,6 +11,7 @@ export function testConsoleCheckFor(exclusions) {
     shardWeight: 1,
     timeoutMs: MINUTE_MS,
     configurationFiles: [
+      ...TEST_RUNNER_CONFIGURATION_FILES,
       'languages/typescript/adapters/quality-areas/reporting/test-report.mjs',
       'languages/typescript/adapters/quality-areas/runners/console/test-console.mjs',
       'languages/typescript/adapters/quality-areas/runners/tests.mjs',

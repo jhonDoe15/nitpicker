@@ -10,21 +10,31 @@ const LOAD_TIMEOUT_MS = 30_000;
 const MAX_OUTPUT_MB = 10;
 const BYTES_PER_MB = 1024 * 1024;
 const MAX_OUTPUT_BYTES = MAX_OUTPUT_MB * BYTES_PER_MB;
-const DEFAULT_EXPORT_SCRIPT = [
-  "const { pathToFileURL } = await import('node:url');",
+const REPORT_PREAMBLE = [
   `const marker = ${JSON.stringify(RESULT_MARKER)};`,
   `for (const name of ${JSON.stringify(HOST_CI_OUTPUT_VARIABLES)}) delete process.env[name];`,
   'const report = (payload) => {',
   '  const line = `\\n${marker}${JSON.stringify(payload)}\\n`;',
   '  process.stdout.write(line, () => process.exit(0));',
   '};',
-  'try {',
-  '  const loaded = await import(pathToFileURL(process.argv[1]).href);',
-  '  report({ value: loaded.default ?? null });',
-  '} catch (error) {',
-  '  report({ failure: String(error?.message ?? error) });',
-  '}',
-].join('\n');
+];
+
+export function loaderScript(...body) {
+  return [
+    ...REPORT_PREAMBLE,
+    'try {',
+    ...body.map((line) => `  ${line}`),
+    '} catch (error) {',
+    '  report({ failure: String(error?.message ?? error) });',
+    '}',
+  ].join('\n');
+}
+
+const DEFAULT_EXPORT_SCRIPT = loaderScript(
+  "const { pathToFileURL } = await import('node:url');",
+  'const loaded = await import(pathToFileURL(process.argv[1]).href);',
+  'report({ value: loaded.default ?? null });',
+);
 
 function insideProject(projectRoot, name) {
   const file = resolveInside(projectRoot, name);
@@ -53,10 +63,10 @@ function loadFailure(name, result, timeoutMs) {
   return `${name} could not be loaded: ${reason}`;
 }
 
-function defaultExport(file, name, { projectRoot, timeoutMs }) {
+export function loadInChild({ script, args, name, projectRoot, timeoutMs = LOAD_TIMEOUT_MS }) {
   const result = spawnSync(
     process.execPath,
-    ['--no-warnings', '--input-type=module', '--eval', DEFAULT_EXPORT_SCRIPT, file],
+    ['--no-warnings', '--input-type=module', '--eval', script, ...args],
     {
       cwd: projectRoot,
       encoding: 'utf8',
@@ -82,7 +92,7 @@ export function readConfigObject(projectRoot, name, timeoutMs = LOAD_TIMEOUT_MS)
   const json = path.extname(name) === '.json';
   const value = json
     ? parsedJson(file, name)
-    : defaultExport(file, name, { projectRoot, timeoutMs });
+    : loadInChild({ script: DEFAULT_EXPORT_SCRIPT, args: [file], name, projectRoot, timeoutMs });
   if (!isPlainObject(value)) {
     throw new Error(
       `${name} must ${json ? 'contain a JSON object' : 'export an object as its default export'}`,

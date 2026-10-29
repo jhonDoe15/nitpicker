@@ -133,6 +133,7 @@ function compareSnapshots(context) {
     policyLoosenings: [],
     ...settings.resolveBaseSetup?.({
       ...roots,
+      liveProjectRoot: settings.headProjectRoot,
       moves: layout.moves,
       analyzers: settings.analyzers,
     }),
