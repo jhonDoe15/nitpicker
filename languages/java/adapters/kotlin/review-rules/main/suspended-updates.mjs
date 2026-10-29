@@ -20,7 +20,6 @@ const KOTLINX_METHODS = new Map([
   ['StateFlow', new Set(['first', 'single', 'last', 'count', 'fold', 'reduce'])],
   ['SharedFlow', new Set(['first', 'single', 'last', 'count', 'fold', 'reduce'])],
 ]);
-const LOCK_HOSTS = new Set(['withLock', 'withPermit']);
 const SUSPEND = 'suspend';
 
 function message(call, target) {
@@ -61,8 +60,23 @@ function enclosing(update) {
   return {
     klass: scopes.find(({ k }) => k === 'class'),
     method: scopes.find(({ k }) => k === 'fun')?.name,
-    locked: scopes.some(({ k, host }) => k === 'lambda' && LOCK_HOSTS.has(host)),
+    lambdas: scopes.filter(({ k }) => k === 'lambda'),
   };
+}
+
+function singlePermit(qualifier, { file, klass }) {
+  const name = qualifier?.replace(/^this\./, '');
+  const property = file.properties.find(
+    (declared) => declared.owner === (klass?.qualified ?? '') && declared.name === name,
+  );
+  return property?.initializer === 'Semaphore' && !property.var && property.argument === '1';
+}
+
+function locked(lambdas, site) {
+  return lambdas.some(
+    ({ host, qualifier }) =>
+      host === 'withLock' || (host === 'withPermit' && singlePermit(qualifier, site)),
+  );
 }
 
 function declaredType(name, update, { file, view, klass }) {
@@ -184,9 +198,9 @@ export function suspendedUpdateFindings(files, { finding, declaredIn }) {
   const view = viewOf(declaredIn);
   return files.flatMap((file) =>
     (file.updates ?? []).flatMap((update) => {
-      const { klass, method, locked } = enclosing(update);
+      const { klass, method, lambdas } = enclosing(update);
       const site = { file, view, klass };
-      if (locked || !isSharedVariable(update, site)) {
+      if (locked(lambdas, site) || !isSharedVariable(update, site)) {
         return [];
       }
       const calls = suspendingCalls(update, site);

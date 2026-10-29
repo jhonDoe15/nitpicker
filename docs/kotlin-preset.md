@@ -504,8 +504,10 @@ Limits, all chosen to flag less rather than guess:
   `last`, `count`, `fold`, `reduce`). Everything else is left alone: a call on a receiver whose type
   is inferred (`val repository = Repository()`), on a longer chain or on a type from outside the
   project, a function with a non-`suspend` overload, a local `var` shared by `launch` blocks, and an
-  update of a property of another object (`ledger.total += load()`). An update inside a `withLock` or
-  `withPermit` block passes; a confined dispatcher (`limitedParallelism(1)`) or an actor is not
+  update of a property of another object (`ledger.total += load()`). An update inside a `withLock` block passes,
+  and so does one inside `withPermit` on a `val` property of the class built as `Semaphore(1)`; a
+  semaphore with more permits, or one the class does not build with the literal `1`, lets two
+  updates interleave and is reported; a confined dispatcher (`limitedParallelism(1)`) or an actor is not
   seen, so state that only one coroutine touches at a time takes a reviewed `exceptions` entry. Test
   files are checked like main files. Java has no suspension inside an expression, so the Java preset
   has no equivalent. detekt 1.23.8 (default config, including its `coroutines` rule set and its type

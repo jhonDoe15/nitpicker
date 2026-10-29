@@ -16,6 +16,17 @@ public final class Initializers {
     return value instanceof KtCallExpression ? nameOf(((KtCallExpression) value).getCalleeExpression()) : null;
   }
 
+  public static String argument(KtProperty property) {
+    KtExpression value = property.getInitializer();
+    if (value instanceof KtQualifiedExpression) {
+      value = ((KtQualifiedExpression) value).getSelectorExpression();
+    }
+    if (!(value instanceof KtCallExpression) || ((KtCallExpression) value).getValueArguments().size() != 1) {
+      return null;
+    }
+    return clip(((KtCallExpression) value).getValueArguments().get(0).getArgumentExpression());
+  }
+
   static String alias(KtProperty property) {
     KtExpression value = property.getInitializer();
     while (value instanceof KtDotQualifiedExpression
