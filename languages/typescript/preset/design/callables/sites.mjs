@@ -8,14 +8,9 @@ import { memberSite } from './member-sites.mjs';
 import { targetSite } from './calls/targets.mjs';
 
 function reserve(registry, candidate) {
-  let id = candidate;
-  let ordinal = 1;
-  while (registry.siteIds.has(id)) {
-    ordinal += 1;
-    id = `${candidate}@${String(ordinal)}`;
-  }
-  registry.siteIds.add(id);
-  return id;
+  const count = (registry.siteCounts.get(candidate) ?? 0) + 1;
+  registry.siteCounts.set(candidate, count);
+  return count === 1 ? candidate : `${candidate}~${String(count)}`;
 }
 
 function register(state, site) {

@@ -63,10 +63,12 @@ function isFinallyBlock(node, root) {
   );
 }
 
+function ownFunctionParent(root) {
+  return (current) => (current === root || isClosure(current) ? undefined : current.parent);
+}
+
 function isInFinally(node, root) {
-  const ownFunction = (current) =>
-    current === root || isClosure(current) ? undefined : current.parent;
-  return chainOf(node, ownFunction).some((current) => isFinallyBlock(current, root));
+  return chainOf(node, ownFunctionParent(root)).some((current) => isFinallyBlock(current, root));
 }
 
 function hasInstanceReceiver(site) {

@@ -29,7 +29,7 @@ function createState({ context, files, frameworks }) {
       typeByNode: new Map(),
       exportedByFile: new Map(),
       sites: [],
-      siteIds: new Set(),
+      siteCounts: new Map(),
       siteNames: new Set(),
       siteByNode: new Map(),
       constructorByClass: new Map(),

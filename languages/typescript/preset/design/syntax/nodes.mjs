@@ -48,11 +48,6 @@ export function lineOf(node) {
   return sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
 }
 
-export function columnOf(node) {
-  const sourceFile = node.getSourceFile();
-  return sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).character + 1;
-}
-
 export function isClosure(node) {
   return (
     ts.isArrowFunction(node) ||
