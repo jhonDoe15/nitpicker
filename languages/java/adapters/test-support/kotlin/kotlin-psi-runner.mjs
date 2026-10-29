@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { INIT_SCRIPT } from '../../builds/java-build.mjs';
+import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 
 const GRADLE_TIMEOUT = 180_000;
 const PRINT_CLASSPATH = `allprojects {
@@ -53,7 +53,7 @@ function gradleClasspath(workspace, project, gradle) {
 }
 
 function compilePsiProgram(workspace, { javaHome, classpath }) {
-  const sources = path.resolve(import.meta.dirname, '../../gradle/kotlin-psi');
+  const sources = path.resolve(import.meta.dirname, '../../../gradle/kotlin-psi');
   const output = path.join(workspace, 'psi-classes');
   const files = readdirSync(sources, { recursive: true })
     .filter((entry) => entry.endsWith('.java'))
