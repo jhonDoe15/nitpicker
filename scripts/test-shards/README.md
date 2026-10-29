@@ -35,8 +35,12 @@ with one file, its test step less two seconds of Vitest startup).
   with two workers, so a shard's test step takes about half its weight sum, and never less than
   its longest file: the project-setups file (164 seconds) sets the length of its shard. Setup
   took 45-66 seconds per Python job.
-- `kotlin-spring-rules.e2e.test.mjs` arrived after that run. Its 100 seconds are an estimate:
-  it runs two diffs of one project, and the measured one-diff review rule files took 50-65.
+- Files that arrived after that run carry estimates until a run measures them.
+  `kotlin-spring-rules.e2e.test.mjs` has 100 seconds: it runs two diffs of one project, and the
+  measured one-diff review rule files took 50-65. The Java `pmd-categories.e2e.test.mjs` (two PMD
+  builds of one project) keeps its author's 40 seconds, and the Python rule files
+  `errors/cancellation`, `errors/cancellation-scope`, `tasks/cleanup` and `tasks/lifetimes`
+  keep their authors' 4-6 seconds, in line with the measured rule files beside them.
 
 The same file varied by 30-60% between runs (Java style-and-clones 71 and then 116 seconds,
 Spring review 37 and 92, Spring architecture 41 and 8), so shards drift by about half a minute.
@@ -51,14 +55,14 @@ The targets are 2-3 minutes of job time for a Java or Kotlin shard (#364, #365) 
 minutes for a Python shard (#366). The account runs at most about 20 jobs at once, so the counts
 are also weighed against queue time.
 
-- Java has 19 shards: 122-139 seconds of tests (about 2.5-3 minutes of job time), plus 175
+- Java has 19 shards: 127-141 seconds of tests (about 2.5-3 minutes of job time), plus 175
   seconds for the Spring console file, whose single case compares the full Gradle and Maven
   findings of two builds and has a shard of its own. 20 or 21 shards would shorten the longest
-  regular shard by 7-8 seconds, and 21 shards and the plan job exceed the 20 concurrent jobs.
+  regular shard by 8-10 seconds, and 21 shards and the plan job exceed the 20 concurrent jobs.
   19 shards and the plan job fit.
 - Kotlin has 15 shards: 125-149 seconds of tests, plus 156 for the structure file alone. 14
   shards would raise the longest to 163 seconds, and 16 would not shorten it.
-- Python has 4 shards: about 123 seconds of tests each, 165 for the shard with the project-setups
+- Python has 4 shards: about 125 seconds of tests each, 165 for the shard with the project-setups
   file, so about 3-3.6 minutes of job time.
 
 When the `run-ci` label starts every workflow at once, about 40 jobs compete for 20 runners, and
@@ -76,7 +80,7 @@ test framework and escape hatch files, the Kotlin guards, review rules, lint, co
 and one-way rules files, and the Python gate file. Identical builds repeated in one file now run
 once and are shared by the cases that read them. Kotlin one-way rules build only the banned,
 allowed or hostile-config snapshot their file needs. Spring keeps its three independent build
-hooks in separate files. Java has 88 cases and Kotlin 91, and every one stays selected.
+hooks in separate files. Java has 94 cases and Kotlin 91, and every one stays selected.
 
 Named timeout projects select the Java/Kotlin test subject independently of the `.mjs` harness
 extension. Tests have a three-minute execution deadline; Java build hooks have five minutes and

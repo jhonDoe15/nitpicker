@@ -33,7 +33,7 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
     runs-on: ubuntu-latest
     # Files run serially inside each isolated shard to avoid competing JVM builds. The matrix size comes from
-    # scripts/test-shards: at most about 2.3 minutes of tests per shard, one shard for the file that is longer
+    # scripts/test-shards: at most about 2.4 minutes of tests per shard, one shard for the file that is longer
     # than that. 19 shards and the plan job fit the account's 20 concurrent jobs.
     timeout-minutes: 60
     strategy:
