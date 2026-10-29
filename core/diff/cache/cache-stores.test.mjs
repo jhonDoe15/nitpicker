@@ -169,25 +169,6 @@ describe('layered store', () => {
     createLayeredStore({ local, remote: remoteStore, writeRemote: true }).put('published', 'p');
     expect(remoteStore.objects.get('published')).toBe('p');
   });
-
-  it('names the layer each hit came from, so the progress line names the right cache', () => {
-    const remoteStore = memoryRemote();
-    const local = createDirectoryStore(temporaryDirectory());
-    remoteStore.put('only-remote', 'r');
-    local.put('local', 'l');
-    const names = { local: '/cache', remote: 'NITPICKER_CACHE_URL' };
-    const layered = createLayeredStore({ local, remote: remoteStore, names });
-
-    layered.get('local');
-    layered.get('only-remote');
-    layered.get('missing');
-
-    expect(['local', 'only-remote', 'missing'].map((key) => layered.servedBy(key))).toEqual([
-      '/cache',
-      'NITPICKER_CACHE_URL',
-      undefined,
-    ]);
-  });
 });
 
 describe('findings cache over a remote store', () => {

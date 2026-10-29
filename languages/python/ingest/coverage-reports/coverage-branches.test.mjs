@@ -90,6 +90,38 @@ describe('ingestCoverageBranches', () => {
     );
   });
 
+  it.each([
+    ['the exit', -1],
+    ['the line after the match', 7],
+  ])('names the assert_never form when no case matching leads to %s', (_, destination) => {
+    const source =
+      'def name(color):\n    match color:\n        case Color.RED:\n            return 1\n        case Color.BLUE:\n            return 2\n    return 0\n';
+    const findings = ingest(
+      { sourceText: () => source },
+      reportOf(
+        [
+          [5, 6],
+          [3, 4],
+          [3, 5],
+        ],
+        [[5, destination]],
+      ),
+    );
+
+    expect(findings.map((finding) => finding.message)).toEqual([
+      'Branch coverage is 50.00%; minimum is 95%. Not taken: no case matching (if the cases cover every value, end the match with `case _:` and `assert_never(subject)`). Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
+    ]);
+  });
+
+  it('names an untested default case by its line', () => {
+    const source = 'match color:\n    case Color.RED:\n        x = 1\n    case _:\n        x = 2\n';
+    const [finding] = ingest({ sourceText: () => source }, reportOf([[2, 3]], [[2, 4]]));
+
+    expect(finding.message).toBe(
+      'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 4. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
+    );
+  });
+
   it('skips files without source, without branches and with unusable data', () => {
     expect(ingest({ sourceText: () => undefined })).toEqual([]);
     expect(ingest({ sourceText: undefined })).toEqual([]);

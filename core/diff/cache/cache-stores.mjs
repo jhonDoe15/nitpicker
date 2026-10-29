@@ -86,20 +86,14 @@ export function createHttpStore({ baseUrl, authHeader, timeoutMs = DEFAULT_TIMEO
   };
 }
 
-export function createLayeredStore({ local, remote, writeRemote = false, names = {} }) {
-  const served = new Map();
-  function serve(key, text, name) {
-    if (text !== undefined) {
-      served.set(key, name);
-    }
-    return text;
-  }
+export function createLayeredStore({ local, remote, writeRemote = false }) {
   return {
     get(key) {
-      return serve(key, local?.get(key), names.local) ?? serve(key, remote?.get(key), names.remote);
-    },
-    servedBy(key) {
-      return served.get(key);
+      const localText = local?.get(key);
+      if (localText !== undefined) {
+        return localText;
+      }
+      return remote?.get(key);
     },
     keep(key, text) {
       if (local?.get(key) === undefined) {
@@ -122,12 +116,7 @@ export function resolveCacheStore({ projectRoot, environment = process.env, writ
   const store =
     local === undefined && remote === undefined
       ? undefined
-      : createLayeredStore({
-          local,
-          remote,
-          writeRemote,
-          names: { local: directory, remote: 'NITPICKER_CACHE_URL' },
-        });
+      : { ...createLayeredStore({ local, remote, writeRemote }), directory };
   return { store, remote, warnings };
 }
 

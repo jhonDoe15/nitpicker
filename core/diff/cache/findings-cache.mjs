@@ -2,8 +2,7 @@ import { createHash } from 'node:crypto';
 import { createDirectoryStore, resolveCacheDirectory } from './cache-stores.mjs';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
 import { resolveAnalyzerMetadata } from '../execution/run-analyzers.mjs';
-import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import { computeCodeFingerprint } from './code-fingerprint.mjs';
+import { NITPICKER_CODE_FINGERPRINT } from './code-fingerprint.mjs';
 
 const CACHE_SCHEMA = 1;
 
@@ -13,7 +12,7 @@ export function cacheKey({
   analyzer,
   configOverrides = [],
   headPolicy = {},
-  codeFingerprint,
+  codeFingerprint = NITPICKER_CODE_FINGERPRINT,
 }) {
   return createHash('sha256')
     .update(
@@ -35,24 +34,6 @@ export function cacheKey({
 
 export { resolveCacheDirectory };
 
-function readReport(backend, key, analyzer) {
-  const text = backend.get(key);
-  if (text === undefined) {
-    return undefined;
-  }
-  const entry = JSON.parse(text);
-  if (entry?.key !== key) {
-    return undefined;
-  }
-  const report = parseAnalyzerReport(entry, analyzer.name);
-  backend.keep?.(key, text);
-  return report;
-}
-
-function writeReport(backend, key, report) {
-  return backend.put(key, `${JSON.stringify({ key, findings: report.findings })}\n`);
-}
-
 export function createFindingsCache({
   store,
   directory,
@@ -60,7 +41,7 @@ export function createFindingsCache({
   projectRelativePath,
   configOverrides = [],
   headPolicy = {},
-  codeFingerprint = computeCodeFingerprint(PACKAGE_ROOT),
+  codeFingerprint = NITPICKER_CODE_FINGERPRINT,
 }) {
   const backend = store ?? createDirectoryStore(directory);
   function keyFor(analyzer) {
@@ -73,17 +54,32 @@ export function createFindingsCache({
       codeFingerprint,
     });
   }
+  function readReport(analyzer) {
+    const key = keyFor(analyzer);
+    const text = backend.get(key);
+    if (text === undefined) {
+      return undefined;
+    }
+    const entry = JSON.parse(text);
+    if (entry?.key !== key) {
+      return undefined;
+    }
+    const report = parseAnalyzerReport(entry, analyzer.name);
+    backend.keep?.(key, text);
+    return report;
+  }
+  function writeReport(analyzer, report) {
+    const key = keyFor(analyzer);
+    return backend.put(key, `${JSON.stringify({ key, findings: report.findings })}\n`);
+  }
   return {
     read(analyzer) {
-      const outcome = attempt(() => readReport(backend, keyFor(analyzer), analyzer));
+      const outcome = attempt(() => readReport(analyzer));
       return outcome.kind === 'done' ? outcome.value : undefined;
     },
     write(analyzer, report) {
-      const outcome = attempt(() => writeReport(backend, keyFor(analyzer), report));
+      const outcome = attempt(() => writeReport(analyzer, report));
       return outcome.kind === 'done' ? outcome.value : false;
-    },
-    servedBy(analyzer) {
-      return store === undefined ? directory : store.servedBy?.(keyFor(analyzer));
     },
   };
 }
@@ -99,13 +95,7 @@ function attempt(action) {
 export function runBaseWithCache({ cache, analyzers, run, resolveContext, onCached }) {
   const cached = readCachedReports(cache, analyzers, resolveContext);
   if (cached.size > 0) {
-    const sources = analyzers
-      .filter(({ name }) => cached.has(name))
-      .map((analyzer) => cache.servedBy?.(analyzer));
-    onCached?.(
-      cached.size,
-      [...new Set(sources)].filter((source) => source !== undefined),
-    );
+    onCached?.(cached.size);
   }
 
   const toRun = uncachedDependencies(cached, analyzers);

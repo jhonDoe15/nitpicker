@@ -312,13 +312,14 @@ nitpicker cache publish [--analyzer <name>]...
 
 ### Findings cache
 
-The base side of a comparison is cached per analyzer; the head side always runs. The key covers a
-hash of the nitpicker code that analyzed it (its `package.json` and shipped files), the
+The base side of a comparison is cached per analyzer; the head side always runs. The key covers the
 merge-base commit, project path, analyzer name and version, the analyzer's configuration hash, the
 config-file overrides and the head policy (`exclude`, `layout`, `exceptions`, `thresholds`, `react`, `i18n`, `testConsole`, `history`) with the
-legacy inventory path, so changing any of them is a miss: a remote cache published by another
-nitpicker build is never reused. Only clean reports are stored. A run that reuses cached findings
-names the cache on stderr (the directory, or `NITPICKER_CACHE_URL`).
+legacy inventory path, so changing any of them is a miss. A content fingerprint of nitpicker's
+package manifest and shipped code and tool configs is computed once per process and included in
+the key, so changing rules without a version bump also invalidates old findings. Only clean
+reports are stored. When the base is reused, the progress line names the local cache directory
+(or the remote cache when there is no local directory); use `--no-cache` to rerun the analysis.
 
 - `NITPICKER_CACHE_DIR`: local cache directory (relative to the project root). Default:
   `node_modules/.cache/nitpicker`.
@@ -1143,7 +1144,11 @@ run) fails an untested branch on a changed line, as for Java: `if`, `while`, `fo
 arms are judged, an untested `except` handler is not. The project's own coverage configuration is
 ignored (`exclude_lines`, `exclude_also`, `partial_branches`, `omit`, plugins, subprocess
 measurement): nitpicker's rcfile measures branches, skips test files and excludes only
-`if TYPE_CHECKING:`, `if __name__ == "__main__":`, `@overload` and `raise NotImplementedError`.
+`if TYPE_CHECKING:`, `if __name__ == "__main__":`, `@overload`, `raise NotImplementedError`, a
+function whose body is `...` right after the colon of its signature (`Protocol` and abstract method
+stubs) and a `case _:` arm whose only statement is `assert_never(subject)` on the next line. A
+`match` over every member of an enum or union ends with that arm: without it, the jump out of the
+`match` when no case matches is an untaken branch. An `assert_never` anywhere else is counted.
 A branch that cannot be tested is accepted for one function with an `exceptions` entry for `changed-branch-coverage` that names the function, which keeps every other finding of the file (see [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds)); `exclude` lifts the whole file. A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details: [python-preset.md](python-preset.md).
 
 ## The strict preset

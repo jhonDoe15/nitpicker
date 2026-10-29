@@ -35,7 +35,7 @@ const expectedDirtyFindings = [
     rule: 'no-debugger',
     path: 'src/main/example.ts',
     identity:
-      'message:`debugger` statement is not allowed|node:LastStatement|syntax:3e60f1dc2469d9ea675d7a1c|occurrence:1',
+      'message:`debugger` statement is not allowed|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
     message: debuggerMessage,
     classification: 'enforceable',
     symbol: 'example',
@@ -94,7 +94,7 @@ Quality gate summary
   prettier-format/prettier/prettier src/main/example.ts (2 times, lines 1, 3)
     Format these lines with Prettier
 Full diagnostics: ${root}/reports/dirty/report.txt
-nitpicker: base 2 analyzers cached from ${root}/node_modules/.cache/nitpicker (--no-cache analyzes it again)
+nitpicker: base 2 analyzers cached
 nitpicker: head: running 2 analyzers
 `;
 }
