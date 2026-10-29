@@ -55,12 +55,13 @@ function outputsOf(directory) {
   );
 }
 
+function hasChild(directory, name) {
+  const file = childPath(directory, name);
+  return file !== undefined && existsSync(file);
+}
+
 function isClientDirectory(directory) {
-  const exists = (name) => {
-    const file = childPath(directory, name);
-    return file !== undefined && existsSync(file);
-  };
-  return exists(SCHEMA) && CLIENT_ENTRIES.some(exists);
+  return hasChild(directory, SCHEMA) && CLIENT_ENTRIES.some((name) => hasChild(directory, name));
 }
 
 function ancestors(fileName) {
