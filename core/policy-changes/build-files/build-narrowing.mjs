@@ -26,10 +26,10 @@ function rootsChange(base, head, { scope, headEntries }) {
       within(base, file) &&
       !headRoots.some((entry) => (entry.applies?.(file) ?? true) && within(entry, file)),
   );
-  return lostChange({ label: base.label, file: (head ?? base).file, lost });
+  return lostChange({ label: base.label, file: (head ?? base).file, lost, kind: base.kind });
 }
 
-function lostChange({ label, file, lost }) {
+function lostChange({ label, file, lost, kind = 'build-roots' }) {
   if (lost.length === 0) {
     return { loosened: [], changed: [] };
   }
@@ -38,6 +38,7 @@ function lostChange({ label, file, lost }) {
       {
         text: lostText(label, lost, LISTED_FILES),
         key: lostText(label, lost, lost.length),
+        kind,
         files: [file, ...lost],
       },
     ],
@@ -72,6 +73,7 @@ function includesChange(base, head, scope) {
       {
         text: `${head.label} leave out checked code: ${listed(lost, LISTED_FILES)}`,
         key: `${head.label} leave out checked code: ${listed(lost, lost.length)}`,
+        kind: 'build-filter',
         files: [head.file, ...lost],
       },
     ],
@@ -93,6 +95,7 @@ function excludesChange(base, head, scope) {
       .filter(({ covered }) => covered.length > 0)
       .map(({ pattern, covered }) => ({
         text: `${head.label} added: ${pattern}`,
+        kind: 'build-filter',
         files: [head.file, ...covered],
       })),
     changed: [

@@ -30,6 +30,14 @@ function importBoundaryAdvice(libraries) {
 }
 
 export const STRUCTURE_HINTS = [
+  {
+    tool: RULES_TOOL,
+    rules: ['cancellation-not-propagated'],
+    describe: (subject) =>
+      `\`${subject}\` has a path that consumes cancellation or replaces it with another error`,
+    allowed:
+      "After cleanup, use a bare `raise` or re-raise the unchanged caught cancellation. Keep intentional cancellation boundaries in the backend's timeout or cancellation scope; returning a failure result or chaining another error does not propagate cancellation.",
+  },
   { tool: 'ruff', rules: ['E722', 'BLE001'], allowed: HANDLE_EXCEPTION },
   {
     tool: RULES_TOOL,

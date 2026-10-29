@@ -18,7 +18,11 @@ import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
 import { runSnapshotCli } from './command/snapshot.mjs';
 import { baseSetupResolver } from './command/policy-review/base-setup.mjs';
-import { noticeDescriber, policyNotices } from './command/policy-review/notices.mjs';
+import {
+  historyAvailabilityNotes,
+  noticeDescriber,
+  policyNotices,
+} from './command/policy-review/notices.mjs';
 import { policyAcceptance } from './command/policy-review/policy-acceptance.mjs';
 import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
@@ -32,12 +36,16 @@ import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
+import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+
+const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
 
 export function runCli(options = {}) {
   const cli = withCliDefaults(options);
-  if (cli.arguments_[0] === 'hygiene') {
-    return runHygieneCli({
+  const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
+  if (checkCommand !== undefined) {
+    return checkCommand({
       commandArguments: cli.arguments_.slice(1),
       stdout: cli.stdout,
       stderr: cli.stderr,
@@ -128,8 +136,11 @@ function runConfigured(cli) {
   }
   return withRunLock({ projectRoot: currentProjectRoot, stderr: cli.stderr }, () => {
     if (options.all) {
-      for (const notice of policyNotices(headPolicy)) {
-        cli.stderr.write(`nitpicker: ${notice}\n`);
+      for (const note of [
+        ...policyNotices(headPolicy),
+        ...historyAvailabilityNotes(config, headPolicy, currentProjectRoot),
+      ]) {
+        cli.stderr.write(`nitpicker: ${note}\n`);
       }
       return runSnapshotCli({
         options,

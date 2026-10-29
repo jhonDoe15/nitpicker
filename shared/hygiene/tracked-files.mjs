@@ -3,19 +3,26 @@ import { execFileSync } from 'node:child_process';
 const MAX_LISTING_BYTES = 256 * 1024 * 1024;
 const REGULAR_FILE_MODES = new Set(['100644', '100755']);
 
-function git(root, gitArguments, input) {
+export function git(root, gitArguments, input) {
   return execFileSync('git', gitArguments, {
     cwd: root,
     encoding: 'utf8',
     input,
     maxBuffer: MAX_LISTING_BYTES,
+    stdio: ['pipe', 'pipe', 'pipe'],
   });
 }
 
+function nameList(listing) {
+  return listing.split('\0').filter((entry) => entry.length > 0);
+}
+
 export function trackedFiles(root) {
-  return git(root, ['ls-files', '-z'])
-    .split('\0')
-    .filter((entry) => entry.length > 0);
+  return nameList(git(root, ['ls-files', '-z']));
+}
+
+export function committedFiles(root, ref) {
+  return nameList(git(root, ['ls-tree', '-r', '-z', '--name-only', ref, '--', '.']));
 }
 
 export function committedSizes(root) {
