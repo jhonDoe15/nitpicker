@@ -73,3 +73,24 @@ describe('renderCodeQualityReport', () => {
     expect(renderCodeQualityReport([])).toBe('[]\n');
   });
 });
+
+describe('renderCodeQualityReport with findings GitLab would merge', () => {
+  it('keeps the first of the findings that share a fingerprint', () => {
+    const first = finding({ message: 'first' });
+    const again = finding({ message: 'again', location: { line: 40 } });
+
+    expect(
+      JSON.parse(renderCodeQualityReport([first, again])).map(({ description }) => description),
+    ).toEqual(['first']);
+  });
+
+  it('starts every location at line 1 or later', () => {
+    const lines = [0, -3].map(
+      (line) =>
+        JSON.parse(renderCodeQualityReport([finding({ location: { line } })]))[0].location.lines
+          .begin,
+    );
+
+    expect(lines).toEqual([1, 1]);
+  });
+});

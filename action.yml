@@ -12,16 +12,18 @@ inputs:
     default: '.'
   base-ref:
     description: >-
-      The ref to compare against, passed as `--base`, for example `origin/release`. Empty takes
-      the base the way nitpicker picks it (the pull request or merge queue target branch, then
-      `base` in `nitpicker.config.json`, then the repository default branch). The action fetches
-      the base and keys the cache on its merge base with `HEAD`.
+      The ref to compare against, passed as `--base`: a branch (`origin/release`), a tag or a
+      commit SHA. Empty takes the base the way nitpicker picks it (the pull request or merge queue
+      target branch, then `base` in `nitpicker.config.json`, then the repository default branch).
+      The action fetches the base, also into a shallow checkout, and keys the cache on its merge
+      base with `HEAD`.
     default: ''
   arguments:
     description: >-
       Extra nitpicker arguments, one per line or separated by spaces (no quoting), for example
-      `--analyzer eslint-lint`. `--output` and `--base` are refused: use `report-directory` and
-      `base-ref`.
+      `--analyzer eslint-lint`. `--output` and `--base` are refused (use `report-directory` and
+      `base-ref`), and so is `--all`, since the action always runs a comparison; run `npx
+      nitpicker --all` in a step of its own for a full run.
     default: ''
   package:
     description: >-
@@ -44,9 +46,11 @@ inputs:
     default: ''
   cache:
     description: >-
-      Restore and save the findings cache with `actions/cache`, keyed by the merge base and
-      `nitpicker.config.json`, also when the gate fails. It lives in
-      `node_modules/.cache/nitpicker`, or in the `.git` folder for a project without
+      Restore and save the findings cache with `actions/cache`, keyed by the runner, the project
+      folder, the merge base and `nitpicker.config.json`, also when the gate fails. GitHub scopes
+      caches by branch: a pull request reads its own caches and those of its base branch, never
+      another pull request's, so use `cache-url` to share the base across pull requests. The cache
+      lives in `node_modules/.cache/nitpicker`, or in the `.git` folder for a project without
       `node_modules`.
     default: 'true'
   cache-url:
@@ -90,7 +94,9 @@ inputs:
     default: 'true'
   artifact-name:
     description: >-
-      The artifact name of the report. Use another name when a job runs the action more than once.
+      The artifact name of the report. Artifact names are unique in a workflow run, so give each
+      use its own name: a job that runs the action more than once, and each job of a matrix or a
+      sharded run (for example `nitpicker-report-<shard>`).
     default: 'nitpicker-report'
 
 outputs:
@@ -128,8 +134,12 @@ runs:
           exit 0
         fi
         if [ -n "$INSTALL_COMMAND" ]; then
-          bash -c "$INSTALL_COMMAND"
+          bash -eo pipefail -c "$INSTALL_COMMAND"
           exit 0
+        fi
+        workspace="$GITHUB_WORKSPACE"
+        if command -v cygpath > /dev/null; then
+          workspace="$(cygpath -u "$workspace")"
         fi
         dir="$PWD"
         lockfile=''
@@ -141,7 +151,7 @@ runs:
             fi
           done
           parent="$(dirname "$dir")"
-          if [ "$dir" = "$GITHUB_WORKSPACE" ] || [ "$parent" = "$dir" ]; then
+          if [ "$dir" = "$workspace" ] || [ "$parent" = "$dir" ]; then
             break
           fi
           dir="$parent"
@@ -189,16 +199,24 @@ runs:
         MERGE_GROUP_BASE_REF: ${{ github.event.merge_group.base_ref }}
       run: |
         set -euo pipefail
+        native_path() {
+          if command -v cygpath > /dev/null; then
+            cygpath -m "$1"
+          else
+            printf '%s\n' "$1"
+          fi
+        }
         skip=false
         if [ -z "$BASE_REF" ] && [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH" ]; then
           skip=true
         fi
         echo "skip-gate=$skip" >> "$GITHUB_OUTPUT"
-        echo "cache-scope=$(printf '%s' "$WORKING_DIRECTORY" | tr '/,' '--')" >> "$GITHUB_OUTPUT"
+        scope="$(printf '%s' "$WORKING_DIRECTORY" | sed -e 's/%/%25/g' -e 's|/|%2F|g' -e 's/,/%2C/g')"
+        echo "cache-scope=$scope" >> "$GITHUB_OUTPUT"
         if [ -d node_modules ]; then
-          echo "cache-dir=$PWD/node_modules/.cache/nitpicker" >> "$GITHUB_OUTPUT"
+          echo "cache-dir=$(native_path "$PWD/node_modules/.cache/nitpicker")" >> "$GITHUB_OUTPUT"
         else
-          echo "cache-dir=$(git rev-parse --absolute-git-dir)/nitpicker-cache" >> "$GITHUB_OUTPUT"
+          echo "cache-dir=$(native_path "$(git rev-parse --absolute-git-dir)/nitpicker-cache")" >> "$GITHUB_OUTPUT"
         fi
         if [ "$skip" = true ]; then
           echo "base-sha=none" >> "$GITHUB_OUTPUT"
@@ -234,10 +252,25 @@ runs:
             git symbolic-ref refs/remotes/origin/HEAD "refs/remotes/origin/$DEFAULT_BRANCH"
           fi
         fi
+        base_arguments=()
         if [ -n "$BASE_REF" ]; then
-          base="$(nitpicker base --base "$BASE_REF")"
+          base_arguments=(--base "$BASE_REF")
+        fi
+        base_error="$(mktemp)"
+        if base="$(nitpicker base ${base_arguments[@]+"${base_arguments[@]}"} 2> "$base_error")"; then
+          :
+        elif grep -qx 'nitpicker failed: Unknown argument: base' "$base_error"; then
+          if [ -n "$BASE_REF" ]; then
+            base="$BASE_REF"
+          elif [ -n "${GITHUB_BASE_REF:-}" ]; then
+            base="origin/$GITHUB_BASE_REF"
+          else
+            base="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD || echo origin/main)"
+          fi
+          echo "::error title=nitpicker is too old for this action::The nitpicker of this project has no 'base' command, so the action cannot read base from nitpicker.config.json. Upgrade to nitpicker 0.1.0 or newer. This run compares with ${base}."
         else
-          base="$(nitpicker base)"
+          cat "$base_error" >&2
+          exit 1
         fi
         case "$base" in
           origin/*) fetch_branch "${base#origin/}" ;;
@@ -245,8 +278,15 @@ runs:
             if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
               git fetch --no-tags --unshallow origin || true
             fi
+            if ! git rev-parse --verify --quiet "$base^{commit}" > /dev/null; then
+              git fetch --no-tags origin "+refs/tags/$base:refs/tags/$base" || git fetch --no-tags origin "$base" || true
+            fi
             ;;
         esac
+        if ! git rev-parse --verify --quiet "$base^{commit}" > /dev/null; then
+          echo "::error title=nitpicker cannot find the base::${base} is not in the checkout and could not be fetched from origin. Set base-ref to a branch (origin/<branch>), a tag or a commit SHA that origin has."
+          exit 1
+        fi
         if ! base_sha="$(git merge-base HEAD "$base" 2> /dev/null)"; then
           echo "::error title=nitpicker needs the merge base::There is no merge base between HEAD and ${base}. Check out the full history with 'fetch-depth: 0' in actions/checkout (a shallow checkout cannot find where the branch started), and make sure ${base} exists."
           exit 1
@@ -259,9 +299,9 @@ runs:
       if: ${{ inputs.cache == 'true' && steps.prepare.outputs.skip-gate != 'true' }}
       with:
         path: ${{ steps.prepare.outputs.cache-dir }}
-        key: nitpicker-${{ runner.os }}-${{ steps.prepare.outputs.cache-scope }}-${{ steps.prepare.outputs.base-sha }}-${{ hashFiles(format('{0}/nitpicker.config.json', inputs.working-directory)) }}
+        key: nitpicker-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.cache-scope }}-${{ steps.prepare.outputs.base-sha }}-${{ hashFiles(format('{0}/nitpicker.config.json', inputs.working-directory)) }}
         restore-keys: |
-          nitpicker-${{ runner.os }}-${{ steps.prepare.outputs.cache-scope }}-${{ steps.prepare.outputs.base-sha }}-
+          nitpicker-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.cache-scope }}-${{ steps.prepare.outputs.base-sha }}-
 
     - name: Run the gate
       id: gate
@@ -290,6 +330,10 @@ runs:
               echo "::error title=nitpicker arguments::Pass ${argument%%=*} through the report-directory or base-ref input, not through arguments."
               exit 1
               ;;
+            --all)
+              echo "::error title=nitpicker arguments::The action runs a comparison with a base, which --all cannot be combined with. Run npx nitpicker --all in a step of its own for a full run."
+              exit 1
+              ;;
           esac
           args+=("$argument")
         done
@@ -303,13 +347,17 @@ runs:
         fi
         "${runner[@]}" "${args[@]}" && code=0 || code=$?
         echo "exit-code=$code" >> "$GITHUB_OUTPUT"
-        echo "report-directory=$(cd "$REPORT_DIRECTORY" 2> /dev/null && pwd || echo "$PWD/$REPORT_DIRECTORY")" >> "$GITHUB_OUTPUT"
+        report_directory="$(cd "$REPORT_DIRECTORY" 2> /dev/null && pwd || echo "$PWD/$REPORT_DIRECTORY")"
+        if command -v cygpath > /dev/null; then
+          report_directory="$(cygpath -m "$report_directory")"
+        fi
+        echo "report-directory=$report_directory" >> "$GITHUB_OUTPUT"
 
     - uses: actions/cache/save@v6.1.0
       if: ${{ !cancelled() && inputs.cache == 'true' && steps.gate.outputs.exit-code != '' && steps.cache.outputs.cache-hit != 'true' }}
       with:
         path: ${{ steps.prepare.outputs.cache-dir }}
-        key: nitpicker-${{ runner.os }}-${{ steps.prepare.outputs.cache-scope }}-${{ steps.prepare.outputs.base-sha }}-${{ hashFiles(format('{0}/nitpicker.config.json', inputs.working-directory)) }}
+        key: nitpicker-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.cache-scope }}-${{ steps.prepare.outputs.base-sha }}-${{ hashFiles(format('{0}/nitpicker.config.json', inputs.working-directory)) }}
 
     - name: Publish the findings of the default branch
       if: ${{ steps.prepare.outputs.skip-gate == 'true' && inputs.cache-publish == 'true' }}

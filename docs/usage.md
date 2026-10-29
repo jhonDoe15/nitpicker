@@ -189,7 +189,8 @@ repository, then the finding's path, percent-encoded, with `uriBaseId: "%SRCROOT
 repository root. A project in `packages/app` reports `packages/app/src/a.ts`, which is how code
 scanning matches a result to a file. The files hold no absolute path, so `originalUriBaseIds` is not
 written. When nitpicker cannot find the repository root (the `aggregate` command outside a git
-checkout), paths stay relative to the project and have no `uriBaseId`.
+checkout), paths stay relative to the project and have no `uriBaseId`. A finding about the whole
+project (no file) points at the project folder, or `.` for a project at the repository root.
 
 Upload the comparison file in pull requests with `github/codeql-action/upload-sarif`:
 

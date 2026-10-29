@@ -61,9 +61,17 @@ describe('fittedSummary', () => {
   });
 
   it('cuts at a line end and says so when the file would pass 1 MiB', () => {
-    const used = SUMMARY_LIMIT_BYTES - Buffer.byteLength(note) - 5;
+    const used = SUMMARY_LIMIT_BYTES - Buffer.byteLength(note) - 9;
 
     expect(fittedSummary(`abc\n${'x'.repeat(200)}\n`, used)).toBe(`abc${note}`);
+  });
+
+  it('closes a code block that the cut leaves open', () => {
+    const used = SUMMARY_LIMIT_BYTES - Buffer.byteLength(note) - 30;
+
+    expect(fittedSummary(`a\n\`\`\`json\n{"rule":"x"}\n${'y'.repeat(200)}\n\`\`\`\n`, used)).toBe(
+      `a\n\`\`\`json\n{"rule":"x"}\n\`\`\`${note}`,
+    );
   });
 
   it('adds nothing to a file that is full', () => {

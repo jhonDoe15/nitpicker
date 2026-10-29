@@ -33,8 +33,15 @@ jobs:
   # gate is expected to exit 1; this job is a demonstration and a check of the action, not a required check.
   sample-project:
     if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -60,7 +67,7 @@ jobs:
           working-directory: .github/sample-project
           base-ref: ${{ steps.seed.outputs.base }}
           install-command: npm ci && npm install --no-save "$GITHUB_WORKSPACE"
-          artifact-name: nitpicker-sample-report
+          artifact-name: nitpicker-sample-report-${{ matrix.os }}
       - name: The action reported the seeded finding
         env:
           EXIT_CODE: ${{ steps.nitpicker.outputs.exit-code }}
@@ -68,7 +75,12 @@ jobs:
           BASE: ${{ steps.seed.outputs.base }}
         run: |
           test "$EXIT_CODE" = 1
-          test "$REPORT_DIRECTORY" = "$GITHUB_WORKSPACE/.github/sample-project/reports/quality/diff"
+          workspace="$GITHUB_WORKSPACE"
+          if command -v cygpath > /dev/null; then
+            workspace="$(cygpath -m "$workspace")"
+          fi
+          test "$REPORT_DIRECTORY" = "$workspace/.github/sample-project/reports/quality/diff"
+          test -f "$REPORT_DIRECTORY/summary.json"
           test "$(node -p "require('$REPORT_DIRECTORY/summary.json').requestedBaseRef")" = "$BASE"
           grep -q 'eslint-lint/no-var' "$REPORT_DIRECTORY/report.txt"
           test -s "$REPORT_DIRECTORY/report.sarif"
