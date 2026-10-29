@@ -1,6 +1,7 @@
 import ast
 
-from checks.common import call_name, dotted_name, finding, own_nodes
+from checks.common import call_name, dotted_name, finding, type_checking_nodes
+from environment.paths import path_method_calls
 from environment.purity_names import (
     CLOCK_CALLS_WITHOUT_ARGUMENT,
     CLOCK_FORMATTERS,
@@ -9,10 +10,10 @@ from environment.purity_names import (
     INPUT_OUTPUT_MODULES,
     LAYER_DIRECTORY,
     MODULE_LOADERS,
+    NEW_VALUE_FACTORIES,
     NUMPY_FUNCTIONS,
-    PATH_FACTORIES,
-    PATH_METHODS,
     RANDOM_FUNCTIONS,
+    RANDOM_MODULES,
     RANDOM_NAMES,
     SEEDED_FACTORIES,
 )
@@ -38,76 +39,43 @@ def call_rule(name, node):
         return "clock-now" if not node.args else None
     if name in CLOCK_FORMATTERS:
         return "clock-now" if len(node.args) < 2 else None
-    if name in SEEDED_FACTORIES:
+    if name in SEEDED_FACTORIES or name in NEW_VALUE_FACTORIES:
         return "random-in-domain" if not (node.args or node.keywords) else None
     return "io-in-domain" if name in INPUT_OUTPUT_CALLS else None
 
 
-def is_input_output_module(module):
+def is_listed_module(module, listed_modules):
     return any(
-        module == listed or module.startswith(f"{listed}.")
-        for listed in INPUT_OUTPUT_MODULES
+        module == listed or module.startswith(f"{listed}.") for listed in listed_modules
     )
 
 
-def imported_modules(tree):
+def is_input_output_module(module):
+    return is_listed_module(module, INPUT_OUTPUT_MODULES)
+
+
+def import_rule(module):
+    if is_input_output_module(module) or is_adapter_import(module):
+        return "io-in-domain"
+    return "random-in-domain" if is_listed_module(module, RANDOM_MODULES) else None
+
+
+def import_names(node):
+    if isinstance(node, ast.Import):
+        return [alias.name for alias in node.names]
+    if not isinstance(node, ast.ImportFrom):
+        return []
+    return [node.module] if node.module else [alias.name for alias in node.names]
+
+
+def imported_modules(tree, skipped=frozenset()):
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                yield alias.name, node
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            yield node.module, node
-        elif isinstance(node, ast.ImportFrom):
-            for alias in node.names:
-                yield alias.name, node
+        names = [] if id(node) in skipped else import_names(node)
+        yield from ((name, node) for name in names)
 
 
 def is_adapter_import(module):
     return LAYER_DIRECTORY in module.split(".")
-
-
-def path_names(scope, aliases):
-    names = set()
-    for node in own_nodes(scope):
-        if isinstance(node, ast.Assign) and builds_path(node.value, aliases):
-            names.update(t.id for t in node.targets if isinstance(t, ast.Name))
-    arguments = getattr(scope, "args", None)
-    if arguments is not None:
-        every = arguments.posonlyargs + arguments.args + arguments.kwonlyargs
-        for argument in every:
-            text = ast.dump(argument.annotation) if argument.annotation else ""
-            if "Path" in text:
-                names.add(argument.arg)
-    return names
-
-
-def builds_path(node, aliases):
-    if isinstance(node, ast.Call):
-        return dotted_name(node.func, aliases) in PATH_FACTORIES
-    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
-        return builds_path(node.left, aliases)
-    return False
-
-
-def path_method_calls(context):
-    scopes = [context.tree] + [
-        node
-        for node in ast.walk(context.tree)
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-    ]
-    for scope in scopes:
-        names = path_names(scope, context.aliases)
-        for node in own_nodes(scope):
-            if not (
-                isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-            ):
-                continue
-            owner = node.func.value
-            is_path = builds_path(owner, context.aliases) or (
-                isinstance(owner, ast.Name) and owner.id in names
-            )
-            if is_path and node.func.attr in PATH_METHODS:
-                yield node, f"Path.{node.func.attr}"
 
 
 def loaded_io_module(node, aliases):
@@ -119,34 +87,48 @@ def loaded_io_module(node, aliases):
     return None
 
 
+def reference_findings(node, context):
+    name = (
+        dotted_name(node, context.aliases)
+        if isinstance(node, (ast.Name, ast.Attribute))
+        else None
+    )
+    rule = reference_rule(name) if name else None
+    if rule is None or isinstance(node.ctx, ast.Store):
+        return []
+    return [finding(context.path, rule, name, node)]
+
+
+def call_findings(node, context):
+    name = call_name(node, context.aliases)
+    rule = call_rule(name, node) if name else None
+    found = [finding(context.path, rule, name, node)] if rule is not None else []
+    loaded = (
+        loaded_io_module(node, context.aliases) if isinstance(node, ast.Call) else None
+    )
+    if loaded is not None:
+        found.append(finding(context.path, "io-in-domain", loaded, node))
+    return found
+
+
+def import_findings(context):
+    skipped = type_checking_nodes(context.tree, context.aliases)
+    found = []
+    for module, node in imported_modules(context.tree, skipped):
+        rule = import_rule(module)
+        if rule is not None:
+            subject = module if rule == "io-in-domain" else f"import {module}"
+            found.append(finding(context.path, rule, subject, node))
+    return found
+
+
 def domain_findings(context):
     found = []
     for node in ast.walk(context.tree):
-        name = (
-            dotted_name(node, context.aliases)
-            if isinstance(node, (ast.Name, ast.Attribute))
-            else None
-        )
-        rule = reference_rule(name) if name else None
-        if rule is not None and not isinstance(node.ctx, ast.Store):
-            found.append(finding(context.path, rule, name, node))
-        name = call_name(node, context.aliases)
-        rule = call_rule(name, node) if name else None
-        if rule is not None:
-            found.append(finding(context.path, rule, name, node))
-        loaded = (
-            loaded_io_module(node, context.aliases)
-            if isinstance(node, ast.Call)
-            else None
-        )
-        if loaded is not None:
-            found.append(finding(context.path, "io-in-domain", loaded, node))
+        found.extend(reference_findings(node, context) + call_findings(node, context))
     for node, name in path_method_calls(context):
         found.append(finding(context.path, "io-in-domain", name, node))
-    for module, node in imported_modules(context.tree):
-        if is_input_output_module(module) or is_adapter_import(module):
-            found.append(finding(context.path, "io-in-domain", module, node))
-    return found
+    return found + import_findings(context)
 
 
 def check(context):

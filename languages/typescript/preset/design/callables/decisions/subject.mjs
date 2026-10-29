@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { accessedName, unwrap } from '../../syntax/nodes.mjs';
 import { entryOfNodeOrType } from '../../types/type-lookup.mjs';
 import { symbolOf } from '../scope.mjs';

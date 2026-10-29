@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { descendants, thisOwner } from '../syntax/nodes.mjs';
 
 export function createScope(state, site) {

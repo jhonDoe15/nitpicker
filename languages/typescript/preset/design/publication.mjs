@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { toPosix } from '../layout.mjs';
 import { codeFilesUnder } from '../unused-api/program.mjs';
 import { projectModules } from '../unused-api/test-only/project-modules.mjs';

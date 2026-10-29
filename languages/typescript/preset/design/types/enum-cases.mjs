@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { depthFirst } from '../../../../../shared/traversal.mjs';
 import { followAlias } from './type-lookup.mjs';
 

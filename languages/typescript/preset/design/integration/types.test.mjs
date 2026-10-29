@@ -19,6 +19,7 @@ const TYPES = [
     line: 3,
     kind: 'class',
     exported: true,
+    supertypes: ['src/priced.ts#Priced'],
     fields: [
       { name: 'items', mutable: true, private: true },
       { name: 'copy', private: true },
